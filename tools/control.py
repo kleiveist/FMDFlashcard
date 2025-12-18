@@ -1,180 +1,114 @@
 #!/usr/bin/env python3
-# checkup.py — hübscher Terminal-Check (Icons + klare Ausgabe)
-# Nutzung:
-#   python3 checkup.py
-# Optional:
-#   python3 checkup.py --json   (gibt zusätzlich JSON aus)
+"""
+Project control entry point.
 
-import os
-import shutil
-import subprocess
+Examples:
+    ./control.py --doctor
+    ./control.py --doctor --json
+"""
+
+from __future__ import annotations
+
+import argparse
+import importlib
+import platform
 import sys
-import json
-from dataclasses import dataclass
-from typing import Optional, List, Dict
+from pathlib import Path
 
-@dataclass
-class Check:
-    name: str
-    ok: bool
-    details: str
-    category: str
+SCRIPT_DIR = Path(__file__).resolve().parent
+PY_DIR = SCRIPT_DIR / "py"
+if str(PY_DIR) not in sys.path:
+    sys.path.insert(0, str(PY_DIR))
 
-ICONS = {
-    "ok": "✅",
-    "miss": "❌",
-    "info": "ℹ️",
-    "warn": "⚠️",
-    "dot": "•",
-}
+from doctor import run as run_doctor  # type: ignore
 
-def run(cmd: List[str]) -> Optional[str]:
+
+def _detect_installer_module() -> str | None:
+    """Return installer module name (without .py) based on the current OS."""
+    sys_name = platform.system().lower()
+    if sys_name == "windows":
+        return "installwin"
+    if sys_name == "darwin":
+        return "installmac"
+    if sys_name == "linux":
+        return "installuix"
+    return None
+
+
+def _load_installer_run_install():
+    mod_name = _detect_installer_module()
+    if not mod_name:
+        return None
     try:
-        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
-        return out.strip()
-    except Exception:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Konnte Installer-Modul nicht laden: {mod_name} ({e})")
         return None
 
-def which(cmd: str) -> Optional[str]:
-    return shutil.which(cmd)
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"Installer-Modul '{mod_name}' hat keine Funktion run_install(dry_run=...).")
+        return None
+    return fn
 
-def header(title: str) -> None:
-    line = "═" * (len(title) + 2)
-    print(f"\n{line}\n {title}\n{line}")
 
-def print_checks(checks: List[Check]) -> None:
-    # group by category
-    cats: Dict[str, List[Check]] = {}
-    for c in checks:
-        cats.setdefault(c.category, []).append(c)
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Project toolbox launcher.")
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Führt den System-/Tooling-Check aus.",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Alias für --doctor.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Zusätzliche JSON-Ausgabe für --doctor.",
+    )
+    parser.add_argument(
+        "--install",
+        action="store_true",
+        help="Installiert fehlende Abhängigkeiten über das passende Install-Skript (win/uix/mac).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Nur anzeigen, welche Befehle --install ausführen würde.",
+    )
+    return parser.parse_args(argv)
 
-    for cat in cats:
-        print(f"\n{ICONS['dot']} {cat}")
-        for c in cats[cat]:
-            icon = ICONS["ok"] if c.ok else ICONS["miss"]
-            # Align name column
-            print(f"  {icon} {c.name:<18} {c.details}")
 
-def main() -> int:
-    want_json = "--json" in sys.argv
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv or sys.argv[1:])
+    exit_code = 0
+    handled = False
 
-    checks: List[Check] = []
-
-    # Shell
-    shell = os.environ.get("SHELL", "unbekannt")
-    checks.append(Check("SHELL", True, shell, "Shell"))
-
-    # PATH top entries
-    path = os.environ.get("PATH", "")
-    path_entries = path.split(":") if path else []
-    top = path_entries[:8]
-    checks.append(Check("PATH (Top 8)", True, "\n" + "\n".join([f"    {i+1}. {p}" for i, p in enumerate(top)]), "Shell"))
-
-    # Grundtools
-    for tool in ["git", "curl", "file", "pkg-config", "cmake", "make", "gcc", "g++"]:
-        p = which(tool)
-        if p:
-            checks.append(Check(tool, True, f"{p}", "Grundtools"))
+    if args.install:
+        handled = True
+        run_install = _load_installer_run_install()
+        if not run_install:
+            print(
+                "Keine passende Installationsroutine gefunden. "
+                "Erwartet: py/installwin.py, py/installuix.py oder py/installmac.py"
+            )
+            exit_code = max(exit_code, 1)
         else:
-            checks.append(Check(tool, False, "nicht gefunden", "Grundtools"))
+            exit_code = max(exit_code, int(run_install(dry_run=args.dry_run)))
 
-    # Rust
-    rustup = which("rustup")
-    rustc = which("rustc")
-    cargo = which("cargo")
+    if args.doctor or args.check:
+        handled = True
+        exit_code = max(exit_code, int(run_doctor(want_json=args.json)))
 
-    if rustup:
-        v = run(["rustup", "--version"]) or "Version nicht ermittelbar"
-        active = run(["rustup", "show", "active-toolchain"]) or "(active-toolchain unbekannt)"
-        checks.append(Check("rustup", True, v, "Rust"))
-        checks.append(Check("toolchain", True, active, "Rust"))
-    else:
-        checks.append(Check("rustup", False, "nicht gefunden", "Rust"))
+    if not handled:
+        print("Bitte einen Befehl angeben (z.B. --doctor oder --install).")
+        return 1
 
-    if rustc:
-        v = run(["rustc", "-V"]) or "Version nicht ermittelbar"
-        checks.append(Check("rustc", True, v, "Rust"))
-    else:
-        checks.append(Check("rustc", False, "nicht gefunden", "Rust"))
+    return exit_code
 
-    if cargo:
-        v = run(["cargo", "-V"]) or "Version nicht ermittelbar"
-        checks.append(Check("cargo", True, v, "Rust"))
-    else:
-        checks.append(Check("cargo", False, "nicht gefunden", "Rust"))
-
-    # Node / npm / pnpm
-    node = which("node")
-    npm = which("npm")
-    pnpm = which("pnpm")
-
-    if node:
-        checks.append(Check("node", True, run(["node", "-v"]) or node, "Node"))
-    else:
-        checks.append(Check("node", False, "nicht gefunden", "Node"))
-
-    if npm:
-        checks.append(Check("npm", True, run(["npm", "-v"]) or npm, "Node"))
-    else:
-        checks.append(Check("npm", False, "nicht gefunden", "Node"))
-
-    if pnpm:
-        checks.append(Check("pnpm", True, run(["pnpm", "-v"]) or pnpm, "Node"))
-    else:
-        checks.append(Check("pnpm", True, "nicht installiert (optional)", "Node"))
-
-    # Tauri Dependencies (Arch/CachyOS via pacman)
-    pacman = which("pacman")
-    deps = ["gtk3", "webkit2gtk", "libappindicator-gtk3", "librsvg", "openssl"]
-
-    if pacman:
-        for d in deps:
-            q = run(["pacman", "-Q", d])
-            if q:
-                checks.append(Check(d, True, q, "Tauri System-Libs (Arch)"))
-            else:
-                checks.append(Check(d, False, "nicht installiert", "Tauri System-Libs (Arch)"))
-    else:
-        # If not Arch-based, just mark as info
-        for d in deps:
-            checks.append(Check(d, True, "pacman nicht gefunden (nur Arch/CachyOS Check)", "Tauri System-Libs"))
-
-    # SQLite (optional)
-    sqlite = which("sqlite3")
-    if sqlite:
-        checks.append(Check("sqlite3", True, run(["sqlite3", "--version"]) or sqlite, "Optional"))
-    else:
-        checks.append(Check("sqlite3", True, "nicht installiert (optional)", "Optional"))
-
-    # Print summary
-    header("Terminal Checkup")
-    print_checks(checks)
-
-    missing = [c for c in checks if (not c.ok) and c.category in ("Grundtools", "Rust", "Node", "Tauri System-Libs (Arch)")]
-    header("Zusammenfassung")
-    if not missing:
-        print(f"{ICONS['ok']} Alles Nötige ist vorhanden.")
-    else:
-        print(f"{ICONS['warn']} Fehlend / nötig für Tauri:")
-        for c in missing:
-            print(f"  {ICONS['miss']} {c.name}  ({c.category})")
-
-        # Helpful install hint for Arch
-        if pacman and any(c.name in ("webkit2gtk", "libappindicator-gtk3", "cmake") for c in missing):
-            print("\nInstall-Hinweis (Arch/CachyOS):")
-            pkgs = []
-            for name in ["webkit2gtk", "libappindicator-gtk3", "cmake"]:
-                if any(c.name == name for c in missing):
-                    pkgs.append(name)
-            if pkgs:
-                print(f"  sudo pacman -Syu --needed {' '.join(pkgs)}")
-
-    if want_json:
-        data = [c.__dict__ for c in checks]
-        print("\nJSON:")
-        print(json.dumps(data, indent=2, ensure_ascii=False))
-
-    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())
