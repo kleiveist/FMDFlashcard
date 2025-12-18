@@ -1,0 +1,218 @@
+```bibtex
+% =====================================================================
+% BLANKO-VORLAGE: Literaturdatenbank (.bib) für BibLaTeX + biber
+% ---------------------------------------------------------------------
+% Hinweise:
+% - Citekeys eindeutig wählen: z.B. nachnameJahr_kurztitel (mueller2024_srs)
+% - Umlaute in BibLaTeX i.d.R. direkt möglich (äöüß). Sicher: \"a, \"o, \"u, \ss{}
+% - Firmennamen/Kapitalisierung schützen: {{PSI Software SE}}
+% - Datumsformat (urldate/date): YYYY-MM-DD
+% =====================================================================
+
+% =====================================================================
+% BÜCHER
+% =====================================================================
+
+@book{citekey-book,
+  author    = {Nachname, Vorname and Nachname2, Vorname2},
+  title     = {Haupttitel des Buches},
+  subtitle  = {Untertitel (optional)},
+  year      = {YYYY},
+  edition   = {Auflage (optional, z.B. 2)},
+  publisher = {Verlag},
+  location  = {Ort},
+  isbn      = {978-3-xxx-xxxx-x},
+  doi       = {10.xxxx/xxxxx},
+  url       = {https://...},
+  urldate   = {YYYY-MM-DD},
+  langid    = {german},
+  note      = {Beliebige Anmerkung (optional)}
+}
+
+% Kapitel/Beitrag in einem Buch (wenn ein einzelnes Kapitel zitiert wird)
+@inbook{citekey-inbook,
+  author    = {Nachname, Vorname},
+  title     = {Buchtitel (wie im @book)},
+  booktitle = {Buchtitel (falls benötigt)},
+  chapter   = {Kapitelnummer (optional)},
+  pages     = {1--20},
+  publisher = {Verlag},
+  location  = {Ort},
+  year      = {YYYY},
+  langid    = {german},
+  note      = {Optional}
+}
+
+% Herausgegebenes Buch (Sammelband)
+@collection{citekey-collection,
+  editor    = {Nachname, Vorname and Nachname2, Vorname2},
+  title     = {Titel des Sammelbandes},
+  year      = {YYYY},
+  publisher = {Verlag},
+  location  = {Ort},
+  langid    = {german}
+}
+
+% Beitrag in Sammelband
+@incollection{citekey-incollection,
+  author    = {Nachname, Vorname},
+  title     = {Titel des Beitrags/Kapitels},
+  booktitle = {Titel des Sammelbandes},
+  editor    = {Nachname, Vorname},
+  pages     = {1--20},
+  publisher = {Verlag},
+  location  = {Ort},
+  year      = {YYYY},
+  langid    = {german},
+  note      = {Optional}
+}
+
+% =====================================================================
+% ARTIKEL / ZEITSCHRIFTEN
+% =====================================================================
+
+@article{citekey-article,
+  author       = {Nachname, Vorname and Nachname2, Vorname2},
+  title        = {Titel des Artikels},
+  journaltitle = {Name der Zeitschrift},
+  year         = {YYYY},
+  volume       = {Band (optional)},
+  number       = {Heftnummer (optional)},
+  pages        = {1--20},
+  doi          = {10.xxxx/xxxxx},
+  url          = {https://...},
+  urldate      = {YYYY-MM-DD},
+  langid       = {german},
+  note         = {Optional}
+}
+
+% =====================================================================
+% KONFERENZEN / TAGUNGSBÄNDE
+% =====================================================================
+
+@inproceedings{citekey-inproceedings,
+  author    = {Nachname, Vorname},
+  title     = {Titel des Beitrags},
+  booktitle = {Proceedings/Tagungsband-Titel},
+  year      = {YYYY},
+  pages     = {1--10},
+  publisher = {Verlag/Organisation (optional)},
+  location  = {Ort (optional)},
+  doi       = {10.xxxx/xxxxx},
+  url       = {https://...},
+  urldate   = {YYYY-MM-DD},
+  langid    = {english},
+  note      = {Optional}
+}
+
+@proceedings{citekey-proceedings,
+  title     = {Proceedings/Tagungsband-Titel},
+  year      = {YYYY},
+  editor    = {Nachname, Vorname},
+  publisher = {Verlag/Organisation (optional)},
+  location  = {Ort (optional)},
+  langid    = {english}
+}
+
+% =====================================================================
+% "HEFTE" / UNTERLAGEN / REPORTS (Skripte, Leitfäden, interne PDFs)
+% =====================================================================
+
+% Report/Leitfaden/Prüfungsdokument/Whitepaper
+@report{citekey-report,
+  institution  = {{Organisation/Institution}},
+  title        = {Titel des Dokuments},
+  subtitle     = {Untertitel (optional)},
+  type         = {Report/Leitfaden/Whitepaper (optional)},
+  number       = {Dokumentnummer (optional)},
+  year         = {YYYY},
+  howpublished = {PDF (intern/extern)},
+  url          = {https://...},
+  urldate      = {YYYY-MM-DD},
+  langid       = {german},
+  note         = {z.B. ohne Datum; interne Unterlage (optional)}
+}
+
+% Skript/Manual/Handbuch (z.B. Lehrskript, technische Doku als PDF)
+@manual{citekey-manual,
+  author       = {{Organisation oder Autor}},
+  title        = {Titel des Manuals/Skripts},
+  year         = {YYYY},
+  howpublished = {Skript (PDF)},
+  url          = {https://...},
+  urldate      = {YYYY-MM-DD},
+  langid       = {german},
+  note         = {Optional}
+}
+
+% Unveröffentlicht (z.B. interne Notizen, unveröffentlichtes Skript)
+@unpublished{citekey-unpublished,
+  author  = {Nachname, Vorname},
+  title   = {Titel},
+  year    = {YYYY},
+  note    = {Unveröffentlichtes Manuskript / interne Unterlage},
+  langid  = {german}
+}
+
+% Abschlussarbeiten
+@thesis{citekey-thesis,
+  author      = {Nachname, Vorname},
+  title       = {Titel der Arbeit},
+  type        = {Bachelorarbeit/Masterarbeit/Dissertation},
+  institution = {Hochschule/Universität},
+  year        = {YYYY},
+  location    = {Ort (optional)},
+  url         = {https://...},
+  urldate     = {YYYY-MM-DD},
+  langid      = {german},
+  note        = {Optional}
+}
+
+% =====================================================================
+% WEBSEITEN (Online-Quellen)
+% =====================================================================
+
+@online{citekey-online,
+  author  = {{Organisation oder Autor}},
+  title   = {Titel der Webseite},
+  year    = {YYYY},          % falls unbekannt: weglassen oder "n.d." via note
+  url     = {https://...},
+  urldate = {YYYY-MM-DD},    % Abrufdatum (wichtig!)
+  langid  = {german},
+  note    = {Kurzbeschreibung (optional)}
+}
+
+@online{python:official,
+  author       = {{Python Software Foundation}},
+  title        = {Python.org},
+  subtitle     = {The official home of the Python Programming Language},
+  year         = {2025},
+  url          = {https://www.python.org/},
+  urldate      = {2025-12-17},
+  langid       = {english},
+  note         = {Offizielle Projektwebseite}
+}
+% =====================================================================
+% ABBILDUNGEN / EIGENE DARSTELLUNGEN / SONSTIGES
+% =====================================================================
+
+% Eigene Abbildungen, Entwürfe, selbst erstellte Grafiken
+@misc{Eigendarstellung,
+  author = {{Eigendarstellung}},
+  title  = {Abbildung/Entwurf (eigene Erstellung)},
+  year   = {2026},
+  note   = {Die Abbildung wurde vom Autor für diese Arbeit erstellt.},
+  langid = {german}
+}
+
+% Sonstige Quelle (z.B. Dataset, Software, Blogpost ohne klare Kategorie)
+@misc{citekey-misc,
+  author  = {Nachname, Vorname or {{Organisation}}},
+  title   = {Titel},
+  year    = {YYYY},
+  url     = {https://...},
+  urldate = {YYYY-MM-DD},
+  note    = {Optional},
+  langid  = {german}
+}
+```

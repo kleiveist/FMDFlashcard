@@ -1,0 +1,45 @@
+\subsection{Voraussetzung: Python}
+Python ist eine weit verbreitete, plattformübergreifende Programmiersprache, die häufig für Automatisierung, Systemadministration und Tooling eingesetzt wird. In diesem Projekt wird Python primär als \textbf{administrative Unterstützung} genutzt: Installations- und Setup-Schritte werden über Skripte standardisiert, und das Checkup-/Diagnose-Skript verwendet Python, um Systemzustand, Abhängigkeiten und Toolchain konsistent zu prüfen.\cite{python:official}\footnote{\url{https://www.python.org/}}
+
+\textbf{Warum Python zuerst?}
+\begin{itemize}
+  \item Installationsskripte und Checks können damit auf \textbf{Windows, Linux und macOS} einheitlich ausgeführt werden.
+  \item Python eignet sich für robuste Systemabfragen (z.\,B. Pfade, Versionen, verfügbare Tools) und reduziert manuelle Fehler.
+  \item Das Projekt nutzt Python nicht als Laufzeitabhängigkeit der Anwendung selbst, sondern als \textbf{Tooling-Schicht} rund um Setup und Wartung.
+\end{itemize}
+
+\textbf{Hinweis zur Vorinstallation:}
+Auf vielen Linux-Distributionen ist \codeinline{python3} in typischen Desktop-Installationen bereits vorhanden (z.\,B. Ubuntu, Fedora Workstation, openSUSE Leap).
+Das ist jedoch nicht garantiert: Bei Minimal-Images oder sehr schlanken Installationen kann Python fehlen (z.\,B. bei einer reinen Arch-\codeinline{base}-Installation).
+Auf macOS wird Python nicht zuverlässig mitgeliefert und sollte daher explizit installiert werden.
+Für eine reproduzierbare Umgebung wird in jedem Fall empfohlen, die verwendete Python-Version zu prüfen und zu dokumentieren.
+
+\textbf{Beispiel Installationsbefehle:}
+
+\begin{codeblock}[title=Python installieren (Beispiele)]
+
+#  Arch Linux (Details vollständiges Setup: siehe Anhang A)
+sudo pacman -S python python-pip
+
+# Fedora / RPM-basiert (DNF)
+sudo dnf install -y python3 python3-pip
+
+# Ubuntu/Debian
+sudo apt update
+sudo apt install python3 python3-pip
+
+# macOS (Homebrew)
+brew install python
+
+# Windows (Winget)
+winget install -e --id Python.Python.3
+\end{codeblock}
+
+\subsubsection{Prüfen der Installation}
+Nach der Installation sollte die Python-Version überprüft werden. Je nach System ist Python entweder über \codeinline{python} oder \codeinline{python3} erreichbar.
+
+\begin{codeblock}[title=Python-Version prüfen]
+python3 --version
+# alternativ (falls passend):
+python --version
+\end{codeblock}

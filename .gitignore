@@ -1,0 +1,42 @@
+# Project/backup archives
+/.archive/
+**/.archive/
+docs/*.zip
+
+# Local/editor clutter
+..gitignore.kate-swp
+*.kate-swp
+*.swp
+*.swo
+*~
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Python / virtualenv
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# Node/Tauri build output
+node_modules/
+dist/
+build/
+out/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*.fdb_latexmk
+*.fls
+*.synctex.gz

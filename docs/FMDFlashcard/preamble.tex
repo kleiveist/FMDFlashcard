@@ -1,0 +1,182 @@
+% ===================== Sprache & Encoding =====================
+\usepackage[ngerman]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc} % für pdfLaTeX
+\usepackage{csquotes}
+\usepackage{lmodern}
+% ===================== Seitenlayout =====================
+\usepackage{geometry}
+\geometry{top=2cm, bottom=2cm, left=2cm, right=2cm}
+
+% 1,5 Zeilenabstand
+\usepackage{setspace}
+\onehalfspacing
+
+% Blocksatz-Feintypografie
+\usepackage{microtype}
+
+% ===================== Schrift (modern) =====================
+\usepackage[sfdefault]{FiraSans} % modern, gut lesbar
+\usepackage{FiraMono}           % terminal-artig
+\renewcommand{\familydefault}{\sfdefault}
+
+% ===================== Überschriften exakt 12 pt =====================
+\usepackage{titlesec}
+\titleformat{\section}{\bfseries\fontsize{12pt}{14pt}\selectfont}{\thesection}{1em}{}
+\titleformat{\subsection}{\bfseries\fontsize{12pt}{14pt}\selectfont}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\bfseries\fontsize{12pt}{14pt}\selectfont}{\thesubsubsection}{1em}{}
+
+% Max. 3 Ebenen nummerieren & im ToC zeigen
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+
+% Absätze: 6 pt Abstand, kein Erstzeileneinzug
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+
+% Fußnoten = 10 pt
+\makeatletter
+\renewcommand\footnotesize{\@setfontsize\footnotesize{10pt}{12pt}}
+\makeatother
+
+% ===================== Kopf-/Fußzeile =====================
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+% ===================== Grafiken, Tabellen =====================
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+\usepackage{threeparttable}
+\usepackage{tabularx}
+
+% Farben für Tabellen-Zeilen
+\usepackage[table]{xcolor} % \rowcolor in Tabellen
+
+% Moderne Tabellen-Box (wie Codeblöcke)
+\usepackage[most]{tcolorbox}
+\usepackage{tabularray}
+\UseTblrLibrary{booktabs}
+\tcbuselibrary{listings,breakable}
+\newtcolorbox{tableblock}[1][]{
+  enhanced,
+  breakable,
+  colback=black!3,
+  colframe=black!12,
+  boxrule=0.4pt,
+  arc=2mm,
+  left=6pt,right=6pt,top=6pt,bottom=6pt,
+  #1
+}
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{6pt}
+% Tabelllinien (tabularray) etwas heller
+\renewcommand{\lTblrDefaultHruleColorTl}{black!25}
+\renewcommand{\lTblrDefaultVruleColorTl}{black!25} % falls du mal vertikale Linien nutzt
+
+% ===================== Code-Blöcke (hellgrau + Terminal-Look) =====================
+\usepackage{listings}
+
+\lstdefinestyle{terminal}{
+  language=bash,
+  basicstyle=\ttfamily\small,
+  columns=fullflexible,
+  breaklines=true,
+  keepspaces=true,
+  showstringspaces=false,
+  tabsize=2,
+  morecomment=[l]{\#},
+  commentstyle=\color{green!50!black}\itshape
+}
+
+% Umgebung: \begin{codeblock}...\end{codeblock}
+\newtcblisting{codeblock}[1][]{
+  listing only,
+  breakable,
+  colback=black!3,
+  colframe=black!12,
+  boxrule=0.4pt,
+  arc=2mm,
+  left=6pt,right=6pt,top=6pt,bottom=6pt,
+  listing options={style=terminal},
+  #1
+}
+
+% Inline-Code (optional): \codeinline{...}
+\usepackage{xparse}
+\NewDocumentCommand{\codeinline}{m}{\texttt{#1}}
+
+% (optional) sauberere Captions (auch für \caption*)
+\usepackage[font=small,labelfont=bf]{caption}
+% ===================== Hyperlinks (spät laden) =====================
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+
+% ===================== Eigene Verzeichnisse / Registerzuordnung =====================
+\usepackage{tocloft}
+\usepackage{etoolbox}
+
+% --- Registerzuordnung (Nier-Berlin) -----------------------------
+\newlistof{regentry}{rgt}{Registerzuordnung (Nier\,-\,Berlin)}
+\newcommand{\listofregister}{\listof{regentry}{Registerzuordnung (Nier\,-\,Berlin)}}
+\newcounter{regtab}
+\NewDocumentCommand{\RegisterCategory}{O{} m}{%
+  \begingroup
+  \def\entry{#2}%
+  \ifstrempty{#1}{%
+    \stepcounter{regtab}%
+    \addcontentsline{rgt}{regentry}{Tab \theregtab\quad \entry}%
+  }{%
+    \addcontentsline{rgt}{regentry}{Tab #1\quad \entry}%
+  }%
+  \endgroup
+}
+
+% ===================== Literatur: biblatex-apa =====================
+\usepackage[
+  style=apa,
+  backend=biber,
+  sorting=nyt,
+  giveninits=true,
+  maxcitenames=2,
+  maxbibnames=20,
+  doi=true,
+  url=true,
+  isbn=true
+]{biblatex}
+\DeclareLanguageMapping{ngerman}{ngerman-apa}
+\addbibresource{references.bib}
+
+
+% ===================== Footnotes in Grau =====================
+\usepackage{xcolor}
+
+% Nimm hier deine bestehende Graufarbe oder definiere eine:
+\definecolor{FMDGray}{HTML}{6B6B6B} % ggf. anpassen
+
+\makeatletter
+
+% Ziffer (Marker) im Fließtext grau
+\renewcommand{\@makefnmark}{%
+  \hbox{\textcolor{FMDGray}{\@textsuperscript{\normalfont\@thefnmark}}}%
+}
+
+% Fußnotentext + Marker im Fußnotenbereich grau (mit Hanging-Indent)
+\renewcommand\@makefntext[1]{%
+  \parindent 1em%
+  \noindent
+  \hb@xt@1.8em{\hss\textcolor{FMDGray}{\@makefnmark}}%
+  \textcolor{FMDGray}{#1}%
+}
+
+% Fußnoten-Trennlinie grau (kurz + dünn, wie "UI-Linien")
+\renewcommand{\footnoterule}{%
+  \kern -3pt
+  {\color{FMDGray}\hrule width .35\linewidth height .4pt}
+  \kern 2.6pt
+}
+\makeatother

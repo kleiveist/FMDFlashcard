@@ -1,0 +1,129 @@
+% !TeX program = pdflatex
+\documentclass[11pt,a4paper]{article}
+
+% zentrale Einstellungen / Pakete
+\input{preamble}
+
+% ------------------ Projektdaten ---------------------------------
+\newcommand{\projektname}{FMD Flashcard}
+\newcommand{\dokumenttyp}{Projekt-Dokumentation}
+\newcommand{\dokumenttitel}{Vault-basierte Lern-App}
+\newcommand{\version}{0.1.0}
+\newcommand{\status}{Entwurf}
+\newcommand{\build}{Commit: \codeinline{<hash>} \quad Branch: \codeinline{main}}
+\newcommand{\repo}{\url{https://<dein-repo-link>}}
+\newcommand{\autorname}{Marcel Tenhaft}
+\newcommand{\kontakt}{\codeinline{<mail>} / \codeinline{<discord/github>}}
+\newcommand{\abgabedatum}{Dezember 2025}
+
+% PDF-Metadaten (optional)
+\hypersetup{
+  pdftitle={\projektname\ - \dokumenttyp},
+  pdfauthor={\autorname}
+}
+
+\begin{document}
+
+% ======================= TITELSEITEN ==============================
+\pagenumbering{Roman}
+\thispagestyle{empty}
+
+\begin{titlepage}
+  \centering
+  {\Large \dokumenttyp \par}
+  \vspace{1.2cm}
+
+  {\bfseries\LARGE \projektname \par}
+  \vspace{0.3cm}
+  {\Large \dokumenttitel \par}
+
+  \vspace{1.8cm}
+
+  \begin{tabular}{@{}ll@{}}
+    Version: & \version \\
+    Status:  & \status \\
+    Datum:   & \abgabedatum \\
+    Autor:   & \autorname \\
+    Repository: & \repo \\
+    Build: & \build \\
+    Kontakt: & \kontakt \\
+  \end{tabular}
+
+  \vfill
+  \small
+  Dieses Dokument beschreibt Anforderungen, Architektur, Implementierung und Betrieb des Projekts \projektname.
+\end{titlepage}
+
+% ======================= DOKUMENTKONTROLLE ========================
+\section*{Änderungshistorie}
+\addcontentsline{toc}{section}{Änderungshistorie}
+
+\begin{tabularx}{\textwidth}{@{}l l l X@{}}
+\textbf{Version} & \textbf{Datum} & \textbf{Autor} & \textbf{Änderung} \\
+\hline
+0.1.0 & \abgabedatum & \autorname & Initiale Projektstruktur, Präambel, Kapitel-Imports \\
+\end{tabularx}
+
+\newpage
+
+% ======================= VERZEICHNISSE ============================
+\tableofcontents
+\newpage
+
+\renewcommand{\listfigurename}{Abbildungen}
+\renewcommand{\listtablename}{Tabellen}
+
+\begingroup
+\setcounter{tocdepth}{0}
+\listoffigures
+\bigskip
+\listoftables
+%\listofcommands
+\endgroup
+
+\newpage
+
+% ======================= ABKÜRZUNGEN ==============================
+\section*{Abkürzungsverzeichnis}
+\addcontentsline{toc}{section}{Abkürzungsverzeichnis}
+
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\textbf{Abk.} & \textbf{Deutsch} & \textbf{Englisch / Kommentar} \\
+\hline
+A/B-Test & Vergleichstest & Split-Run-Test zweier Varianten \\
+IT       & Informationstechnologie & Information Technology \\
+\end{tabularx}
+
+\newpage
+
+% ======================= HAUPTTEIL ================================
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% Tipp: In deinen Kapiteldateien kannst du Code so setzen:
+% \begin{codeblock}[title=Terminal]
+% cargo tauri dev
+% \end{codeblock}
+
+\input{FMD/chapters/einleitung/100}
+\input{FMD/chapters/hauptteil/200}
+\input{FMD/chapters/hauptteil/201}
+\input{FMD/chapters/hauptteil/202}
+\input{FMD/chapters/hauptteil/203}
+\input{FMD/chapters/hauptteil/204}
+\input{FMD/chapters/hauptteil/299}
+\input{FMD/chapters/schluss/300}
+
+% ======================= LITERATUR ================================
+\clearpage
+\printbibliography[heading=bibintoc, title={Literaturverzeichnis}]
+\clearpage
+
+% ======================= ANHANG ===================================
+\section*{Verzeichnis der Anhänge}
+\addcontentsline{toc}{section}{Verzeichnis der Anhänge}
+
+\appendix
+\section{Beispielanhänge}
+
+\end{document}

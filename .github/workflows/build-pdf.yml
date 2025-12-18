@@ -1,0 +1,33 @@
+name: Build PDF
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build LaTeX (PDFLaTeX + Biber)
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: docs/FMDFlashcard
+          root_file: name.tex
+          latexmk_use_pdflatex: true
+          latexmk_shell_escape: false
+          # TeXLive "full" ist am stressfreiesten (keine fehlenden Pakete).
+          # Wenn es läuft, kann man später abspecken.
+          texlive_scheme: full
+
+      - name: Build LaTeX (PDFLaTeX + Biber)
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: docs/FMDFlashcard
+          root_file: name.tex
+          latexmk_use_pdflatex: true
+          latexmk_use_biber: true
+          texlive_scheme: full

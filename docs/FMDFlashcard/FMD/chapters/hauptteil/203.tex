@@ -1,0 +1,44 @@
+\subsection{Voraussetzung: Git}
+Git ist ein verteiltes Versionsverwaltungssystem, das Änderungen am Quellcode nachvollziehbar speichert und Zusammenarbeit über Branches, Commits und Tags ermöglicht. In diesem Projekt wird Git benötigt, um das Repository zu klonen, Updates einzuspielen und Stände reproduzierbar zu referenzieren (z.\,B. über Tags/Commits).
+
+\textbf{Warum Git?}
+\begin{itemize}
+  \item \textbf{Reproduzierbarkeit:} definierte Stände über Tags/Commits
+  \item \textbf{Nachvollziehbarkeit:} Historie von Änderungen und Entscheidungen
+  \item \textbf{Zusammenarbeit:} Branching/Merging für parallele Entwicklung
+\end{itemize}
+
+\textbf{Hinweis zur Vorinstallation:}
+Ob Git bereits vorinstalliert ist, hängt vom Betriebssystem und der jeweiligen Installation (Desktop vs. Minimal-Image) ab.
+Auf macOS ist Git häufig über die Xcode Command Line Tools verfügbar bzw. wird beim ersten Aufruf nachinstalliert. Auf einigen Linux-Images kann Git bereits vorhanden sein (z.\,B. wird es bei Fedora Silverblue häufig mitgeliefert), bei Minimalinstallationen ist es jedoch nicht garantiert.
+
+Praxisbeispiel: In der Testumgebung (Arch Linux / CachyOS) waren Git und Python bereits vorinstalliert; dies kann je nach Distribution und Installationsprofil abweichen.
+
+\textbf{Beispiel Installationsbefehle:}
+
+\begin{codeblock}[title=Git installieren (Beispiele)]
+# Arch Linux
+sudo pacman -S git
+
+# Fedora / RPM-basiert
+sudo dnf install git-all
+
+# Ubuntu/Debian
+sudo apt update
+sudo apt install git
+
+# macOS (Apple/Xcode CLT oder Homebrew)
+xcode-select --install
+# alternativ:
+brew install git
+
+# Windows (Winget)
+winget install --id Git.Git -e --source winget
+\end{codeblock}
+
+\subsubsection{Prüfen der Installation}
+Nach der Installation sollte Git verfügbar sein:
+
+\begin{codeblock}[title=Git-Version prüfen]
+git --version
+\end{codeblock}

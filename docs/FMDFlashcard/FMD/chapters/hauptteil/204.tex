@@ -1,0 +1,53 @@
+\subsection{Quickstart}
+Die folgenden Schritte zeigen den schnellsten Weg, um \projektname lokal zu starten. Das Setup wird über das Control-/Checkup-Tooling standardisiert (z.\,B. \codeinline{doctor}, \codeinline{install}, \codeinline{run}). 
+
+\begin{codeblock}[title=Quickstart (Beispiel)]
+# git clone git clone https://github.com/octocat/Hello-World.git
+git clone <REPO-URL>
+cd <PROJEKT-ORDNER>
+
+# optional: Health-Check / Doctor
+ cd /<PFAD-SYSTEM-PROJEKT-ORDNER>/FMDFlashcard/tools
+./control.py --doctor
+
+
+
+# Dependencies installieren / Build vorbereiten
+./control.sh install
+
+# Projekt starten (Dev)
+./control.sh run
+\end{codeblock}
+
+
+\textit{Hinweis:} Das Beispiel oben zeigt die Befehle für ein Linux-System; unter macOS sind \texttt{git clone} und \texttt{cd} identisch. Unter Windows funktionieren die Befehle in \enquote{Git Bash} wie unter Linux; in PowerShell/CMD ebenfalls, nur das Auflisten des Verzeichnisses erfolgt typischerweise mit \texttt{dir} (PowerShell unterstützt auch \texttt{ls}).
+
+
+
+\subsection{Toolchain und Frameworks}
+Tabelle~\ref{tab:toolchain} fasst die eingesetzten Werkzeuge zusammen. Versionen sind als Mindestempfehlung zu verstehen und können projektabhängig angepasst werden (z.\,B. via \codeinline{.tool-versions}, \codeinline{rust-toolchain.toml} oder \codeinline{package.json}).
+
+\begin{table}[H]
+\centering
+\begin{tblr}{
+  colspec = {Q[l,wd=0.28\textwidth] Q[c,wd=0.18\textwidth] Q[l,wd=0.54\textwidth]},
+  row{1} = {font=\bfseries, bg=black!6},
+  row{even} = {bg=black!2},
+  rowsep = 4pt,
+  leftsep = 6pt,
+  rightsep = 6pt
+}
+\toprule
+Tool/Framework & Version & Zweck im Projekt \\
+\midrule
+Git & >= 2.x & Repository klonen, Branching, Versionsverwaltung \\
+VS Code & aktuell & IDE/Editor; empfohlen für konsistente Formatierung und Debugging \\
+Rust (rustup, cargo) & >= 1.7x & Backend/Build (abhängig vom Projektanteil in Rust) \\
+Node.js & >= 18 LTS & Frontend/Tooling (Build, Dev-Server, Bundling) \\
+Paketmanager (pnpm/yarn/npm) & projektspezifisch & Abhängigkeiten installieren, Scripts ausführen \\
+Control-Skript (\codeinline{control.sh}) & repo-intern & Standardisierte Befehle: Check, Install, Build, Run \\
+\bottomrule
+\end{tblr}
+\caption{Toolchain-Übersicht}
+\label{tab:toolchain}
+\end{table}

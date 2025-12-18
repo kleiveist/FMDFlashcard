@@ -1,0 +1,47 @@
+\subsubsection{Empfohlene VS-Code-Erweiterungen}
+Für eine konsistente Developer Experience werden folgende Erweiterungen empfohlen (optional):
+\begin{itemize}
+  \item \textbf{Rust Analyzer} (Rust-IDE-Features)
+  \item \textbf{EditorConfig} (einheitliche Formatierung)
+  \item \textbf{ESLint} / \textbf{Prettier} (bei JavaScript/TypeScript-Frontend)
+\end{itemize}
+
+\subsection{Setup-Schritte}
+Dieser Abschnitt beschreibt die grundlegenden Setup-Schritte unabhängig vom Betriebssystem. OS-spezifische Installationsbefehle sind im Anhang dokumentiert.
+
+\subsubsection{Repository beziehen}
+\begin{codeblock}[title=Repository klonen]
+git clone <REPO-URL>
+cd <PROJEKT-ORDNER>
+\end{codeblock}
+
+\subsubsection{Abhängigkeiten installieren}
+Wenn das Projekt ein Control-Skript bereitstellt, sollte dieses bevorzugt genutzt werden, da es wiederholbare Abläufe kapselt.
+
+\begin{codeblock}[title=Installation via Control-Skript]
+./control.sh doctor
+./control.sh install
+\end{codeblock}
+
+Alternativ können (je nach Projektstruktur) die Abhängigkeiten direkt über den jeweiligen Paketmanager bzw. Cargo installiert werden:
+
+\begin{codeblock}[title=Installation ohne Control-Skript (Beispiel)]
+# Frontend
+pnpm install
+
+# Rust-Anteile (falls erforderlich)
+cargo fetch
+\end{codeblock}
+
+\subsubsection{Projekt starten (Entwicklung)}
+\begin{codeblock}[title=Start (Dev)]
+./control.sh run
+\end{codeblock}
+
+\subsection{Arch Linux: OS-spezifische Installation (Anhang)}
+Die vollständige Installationsanleitung für Arch Linux inklusive systemabhängiger Pakete und dem vollständigen Setup-Skript ist im Anhang dokumentiert:
+\begin{itemize}
+  \item \textbf{Anhang~A:} Installationsskript und Paketliste für Arch Linux
+\end{itemize}
+
+Für weitere Betriebssysteme (z.\,B. Ubuntu/Debian, Fedora, Windows, macOS) kann die Anleitung analog ergänzt werden. Dabei ist insbesondere auf systemabhängige Bibliotheken und Build-Tools zu achten (Compiler, Linker, ggf. UI-Framework-Abhängigkeiten).
