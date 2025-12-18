@@ -12,13 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build LaTeX (latexmk + biber)
-        uses: xu-cheng/latex-action@v3
+      - name: Build LaTeX (latexmk)
+        uses: xu-cheng/latex-action@v4
         with:
           working_directory: docs/FMDFlashcard
           root_file: name.tex
           compiler: latexmk
-          args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode -usebiber
+          args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode
           latexmk_shell_escape: false
           docker_image: ghcr.io/xu-cheng/texlive-full:latest
 
