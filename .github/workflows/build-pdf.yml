@@ -24,7 +24,7 @@ jobs:
         uses: xu-cheng/latex-action@v4
         with:
           working_directory: docs/FMDFlashcard
-          root_file: FMDFlashcard.tex
+          root_file: name.tex
           compiler: latexmk
           args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode
           latexmk_shell_escape: false
@@ -33,7 +33,7 @@ jobs:
       - name: Copy PDF to /docs
         run: |
           mkdir -p docs
-          cp docs/FMDFlashcard/FMDFlashcard.pdf docs/FMDFlashcard.pdf
+          cp docs/FMDFlashcard/name.pdf docs/FMDFlashcard.pdf
 
       - name: Commit PDF to repo (main)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
