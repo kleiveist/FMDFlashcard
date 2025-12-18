@@ -2,32 +2,28 @@ name: Build PDF
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Build LaTeX (PDFLaTeX + Biber)
+      - name: Build LaTeX (latexmk + biber)
         uses: xu-cheng/latex-action@v3
         with:
           working_directory: docs/FMDFlashcard
           root_file: name.tex
-          latexmk_use_pdflatex: true
+          compiler: latexmk
+          args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode -usebiber
           latexmk_shell_escape: false
-          # TeXLive "full" ist am stressfreiesten (keine fehlenden Pakete).
-          # Wenn es läuft, kann man später abspecken.
-          texlive_scheme: full
+          docker_image: ghcr.io/xu-cheng/texlive-full:latest
 
-      - name: Build LaTeX (PDFLaTeX + Biber)
-        uses: xu-cheng/latex-action@v3
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
         with:
-          working_directory: docs/FMDFlashcard
-          root_file: name.tex
-          latexmk_use_pdflatex: true
-          latexmk_use_biber: true
-          texlive_scheme: full
+          name: FMDFlashcard-PDF
+          path: docs/FMDFlashcard/name.pdf
