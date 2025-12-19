@@ -30,8 +30,8 @@ mkdir -p ~/Projects
 cd ~/Projects
 
 # Clone repository (replace URL)
-git clone <REPO-URL>
-cd <REPO-ORDNER>
+git clone https://github.com/kleiveist/FMDFlashcard.git
+cd FMDFlashcard
 ```
 
 3) Control-Skript ausführen (ein Block)
