@@ -34,14 +34,18 @@ git clone https://github.com/kleiveist/FMDFlashcard.git
 cd FMDFlashcard
 ```
 
-3) Control-Skript ausführen (ein Block)
+## 3) Control-Skript ausführen (ein Block)
 ```bash
-# Optional: health check / doctor
-./control.sh doctor
+# optional: health check / doctor
+python3 tools/control.py --doctor
+```
 
-# Installation / setup
-./control.sh install
+### 4) Install & start (single block)
 
-# Start (dev)
-./control.sh run
+```bash
+# installation / setup
+python3 tools/control.py --install
+
+# start (dev)
+# python3 tools/control.py --run
 ```
