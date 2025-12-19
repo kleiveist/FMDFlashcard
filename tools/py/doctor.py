@@ -31,10 +31,10 @@ ICONS = {
 }
 
 CRITICAL_CATEGORIES = (
-    "Grundtools",
+    "Core Tools",
     "Rust",
     "Node",
-    "Tauri System-Libs",
+    "Tauri System Libs",
 )
 
 
@@ -72,7 +72,7 @@ def collect_checks() -> List[Check]:
 
     system = platform.system().lower()
 
-    shell = os.environ.get("SHELL", "unbekannt")
+    shell = os.environ.get("SHELL", "unknown")
     checks.append(Check("SHELL", True, shell, "Shell"))
 
     path = os.environ.get("PATH", "")
@@ -90,33 +90,33 @@ def collect_checks() -> List[Check]:
     for tool in ["git", "curl", "file", "pkg-config", "cmake", "make", "gcc", "g++"]:
         p = which(tool)
         if p:
-            checks.append(Check(tool, True, f"{p}", "Grundtools"))
+            checks.append(Check(tool, True, f"{p}", "Core Tools"))
         else:
-            checks.append(Check(tool, False, "nicht gefunden", "Grundtools"))
+            checks.append(Check(tool, False, "not found", "Core Tools"))
 
     rustup = which("rustup")
     rustc = which("rustc")
     cargo = which("cargo")
 
     if rustup:
-        v = run_cmd(["rustup", "--version"]) or "Version nicht ermittelbar"
-        active = run_cmd(["rustup", "show", "active-toolchain"]) or "(active-toolchain unbekannt)"
+        v = run_cmd(["rustup", "--version"]) or "version unavailable"
+        active = run_cmd(["rustup", "show", "active-toolchain"]) or "(active toolchain unknown)"
         checks.append(Check("rustup", True, v, "Rust"))
         checks.append(Check("toolchain", True, active, "Rust"))
     else:
-        checks.append(Check("rustup", False, "nicht gefunden", "Rust"))
+        checks.append(Check("rustup", False, "not found", "Rust"))
 
     if rustc:
-        v = run_cmd(["rustc", "-V"]) or "Version nicht ermittelbar"
+        v = run_cmd(["rustc", "-V"]) or "version unavailable"
         checks.append(Check("rustc", True, v, "Rust"))
     else:
-        checks.append(Check("rustc", False, "nicht gefunden", "Rust"))
+        checks.append(Check("rustc", False, "not found", "Rust"))
 
     if cargo:
-        v = run_cmd(["cargo", "-V"]) or "Version nicht ermittelbar"
+        v = run_cmd(["cargo", "-V"]) or "version unavailable"
         checks.append(Check("cargo", True, v, "Rust"))
     else:
-        checks.append(Check("cargo", False, "nicht gefunden", "Rust"))
+        checks.append(Check("cargo", False, "not found", "Rust"))
 
     node = which("node")
     npm = which("npm")
@@ -125,17 +125,17 @@ def collect_checks() -> List[Check]:
     if node:
         checks.append(Check("node", True, run_cmd(["node", "-v"]) or node, "Node"))
     else:
-        checks.append(Check("node", False, "nicht gefunden", "Node"))
+        checks.append(Check("node", False, "not found", "Node"))
 
     if npm:
         checks.append(Check("npm", True, run_cmd(["npm", "-v"]) or npm, "Node"))
     else:
-        checks.append(Check("npm", False, "nicht gefunden", "Node"))
+        checks.append(Check("npm", False, "not found", "Node"))
 
     if pnpm:
         checks.append(Check("pnpm", True, run_cmd(["pnpm", "-v"]) or pnpm, "Node"))
     else:
-        checks.append(Check("pnpm", True, "nicht installiert (optional)", "Node"))
+        checks.append(Check("pnpm", True, "not installed (optional)", "Node"))
 
     # Tauri / WebView dependencies are OS + distro specific.
     # We check them only on Linux, using the available package manager.
@@ -156,38 +156,38 @@ def collect_checks() -> List[Check]:
         for d in deps:
             q = run_cmd(["pacman", "-Q", d])
             if q:
-                checks.append(Check(d, True, q, "Tauri System-Libs"))
+                checks.append(Check(d, True, q, "Tauri System Libs"))
             else:
-                checks.append(Check(d, False, "nicht installiert", "Tauri System-Libs"))
+                checks.append(Check(d, False, "not installed", "Tauri System Libs"))
     elif system == "linux" and dpkg_query:
         for d in deps:
             pkg = debian_pkg[d]
             q = run_cmd(["dpkg-query", "-W", "-f=${Status} ${Version}", pkg])
             if q and "install ok installed" in q:
-                checks.append(Check(d, True, f"{pkg}: {q}", "Tauri System-Libs"))
+                checks.append(Check(d, True, f"{pkg}: {q}", "Tauri System Libs"))
             else:
-                checks.append(Check(d, False, f"{pkg}: nicht installiert", "Tauri System-Libs"))
+                checks.append(Check(d, False, f"{pkg}: not installed", "Tauri System Libs"))
     else:
         # Non-Linux systems or unknown Linux distros: don't fail the doctor on these.
         for d in deps:
-            checks.append(Check(d, True, "übersprungen (nur Linux Paket-Check)", "Tauri System-Libs"))
+            checks.append(Check(d, True, "skipped (Linux package check only)", "Tauri System Libs"))
 
     sqlite = which("sqlite3")
     if sqlite:
         checks.append(Check("sqlite3", True, run_cmd(["sqlite3", "--version"]) or sqlite, "Optional"))
     else:
-        checks.append(Check("sqlite3", True, "nicht installiert (optional)", "Optional"))
+        checks.append(Check("sqlite3", True, "not installed (optional)", "Optional"))
 
     return checks
 
 
 def summarize(checks: List[Check]) -> None:
-    header("Zusammenfassung")
+    header("Summary")
     missing = missing_checks(checks, categories=CRITICAL_CATEGORIES)
     if not missing:
-        print(f"{ICONS['ok']} Alles Nötige ist vorhanden.")
+        print(f"{ICONS['ok']} All required tools are present.")
     else:
-        print(f"{ICONS['warn']} Fehlend / nötig für Tauri:")
+        print(f"{ICONS['warn']} Missing / required for Tauri:")
         for c in missing:
             print(f"  {ICONS['miss']} {c.name}  ({c.category})")
 

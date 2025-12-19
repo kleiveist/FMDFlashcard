@@ -17,6 +17,14 @@ from typing import List, Set, Tuple
 
 from doctor import CRITICAL_CATEGORIES, collect_checks, missing_checks
 
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+}
+
 
 # Tool-name -> winget package IDs (exact match)
 WINGET_MAP = {
@@ -55,15 +63,15 @@ def _detect_manager() -> str | None:
 
 
 def _run(cmd: List[str], dry_run: bool) -> int:
-    print("→", " ".join(cmd))
+    print(f"{ICONS['run']} {' '.join(cmd)}")
     if dry_run:
-        print("Dry-Run: überspringe Ausführung.")
+        print(f"{ICONS['info']} Dry run: skipping execution.")
         return 0
     try:
         subprocess.run(cmd, check=True)
         return 0
     except subprocess.CalledProcessError as e:
-        print(f"Fehler beim Ausführen (Exit {e.returncode}): {' '.join(cmd)}")
+        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
         return int(e.returncode) if e.returncode is not None else 1
 
 
@@ -89,7 +97,7 @@ def _expand(manager: str, tools: List[str]) -> Tuple[List[str], List[str]]:
 
 def _install(manager: str, packages: List[str], dry_run: bool) -> int:
     if not packages:
-        print("Alles ist bereits installiert (laut Doctor) oder nicht unterstützbar.")
+        print(f"{ICONS['ok']} Everything is already installed (per Doctor) or not supported.")
         return 0
 
     if manager == "winget":
@@ -122,9 +130,9 @@ def run_install(dry_run: bool = False) -> int:
     manager = _detect_manager()
     if not manager:
         print(
-            "Kein Paketmanager gefunden (winget/choco/scoop).\n"
-            "- winget ist i.d.R. auf Windows 10/11 verfügbar\n"
-            "- alternativ Chocolatey oder Scoop installieren"
+            f"{ICONS['err']} No package manager found (winget/choco/scoop).\n"
+            f"{ICONS['info']} winget is usually available on Windows 10/11\n"
+            f"{ICONS['info']} Alternatively install Chocolatey or Scoop"
         )
         return 1
 
@@ -133,24 +141,24 @@ def run_install(dry_run: bool = False) -> int:
     missing_tools = [c.name for c in missing]
 
     if not missing_tools:
-        print("Keine fehlenden Tools laut Doctor.")
+        print(f"{ICONS['ok']} No missing tools per Doctor.")
         return 0
 
     packages, unknown = _expand(manager, missing_tools)
 
-    print(f"Gefundener Paketmanager: {manager}")
-    print("Fehlende Tools laut Doctor:", ", ".join(missing_tools))
+    print(f"{ICONS['info']} Detected package manager: {manager}")
+    print(f"{ICONS['warn']} Missing tools per Doctor: {', '.join(missing_tools)}")
 
     if unknown:
-        print("Hinweis: Diese Tools kann ich unter Windows nicht automatisch installieren:")
-        print("- " + "\n- ".join(unknown))
-        print("(z.B. make/gcc/g++ kommen eher über MSVC/BuildTools oder WSL)")
+        print(f"{ICONS['warn']} These tools cannot be installed automatically on Windows:")
+        print("\n".join([f"{ICONS['info']} {t}" for t in unknown]))
+        print(f"{ICONS['info']} (e.g. make/gcc/g++ usually come from MSVC/BuildTools or WSL)")
 
     if not packages:
-        print("Keine installierbaren Pakete ermittelt.")
+        print(f"{ICONS['err']} No installable packages determined.")
         return 1
 
-    print("Installiere Pakete:", ", ".join(packages))
+    print(f"{ICONS['info']} Installing packages: {', '.join(packages)}")
     return _install(manager, packages, dry_run)
 
 

@@ -17,6 +17,14 @@ from typing import Dict, Iterable, List, Set
 
 from doctor import Check, CRITICAL_CATEGORIES, collect_checks, missing_checks
 
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+}
+
 PackageMap = Dict[str, Iterable[str]]
 
 PACMAN_MAP: PackageMap = {
@@ -98,25 +106,25 @@ def _expand_packages(manager: str, tools: Iterable[str]) -> tuple[list[str], lis
 
 
 def _run_cmd(cmd: list[str], dry_run: bool) -> int:
-    print("→", " ".join(cmd))
+    print(f"{ICONS['run']} {' '.join(cmd)}")
     if dry_run:
-        print("Dry-Run: überspringe Ausführung.")
+        print(f"{ICONS['info']} Dry run: skipping execution.")
         return 0
     try:
         subprocess.run(cmd, check=True)
         return 0
     except subprocess.CalledProcessError as e:
-        print(f"Fehler beim Ausführen (Exit {e.returncode}): {' '.join(cmd)}")
+        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
         return int(e.returncode) if e.returncode is not None else 1
 
 
 def _install_packages(manager: str, packages: list[str], dry_run: bool) -> int:
     if not packages:
-        print("Alles ist bereits installiert (laut Doctor).")
+        print(f"{ICONS['ok']} Everything is already installed (per Doctor).")
         return 0
 
     if manager == "pacman":
-        # NOTE: --noconfirm ist bequem, aber riskant. Wenn du interaktiv bleiben willst, entferne es.
+        # NOTE: --noconfirm is convenient but risky. Remove it to keep things interactive.
         cmd = ["sudo", "pacman", "-S", "--needed", "--noconfirm", *packages]
         return _run_cmd(cmd, dry_run)
 
@@ -130,7 +138,7 @@ def _install_packages(manager: str, packages: list[str], dry_run: bool) -> int:
 def run_install(dry_run: bool = False) -> int:
     manager = _detect_pkg_manager()
     if not manager:
-        print("Keine unterstützte Paketverwaltung gefunden (pacman oder apt-get).")
+        print(f"{ICONS['err']} No supported package manager found (pacman or apt-get).")
         return 1
 
     checks = collect_checks()
@@ -138,20 +146,20 @@ def run_install(dry_run: bool = False) -> int:
     packages, unknown = _expand_packages(manager, missing_tools)
 
     if not missing_tools:
-        print("Keine fehlenden Tools laut Doctor.")
+        print(f"{ICONS['ok']} No missing tools per Doctor.")
         return 0
 
-    print(f"Gefundene Paketverwaltung: {manager}")
-    print("Fehlende Tools laut Doctor:", ", ".join(missing_tools))
+    print(f"{ICONS['info']} Detected package manager: {manager}")
+    print(f"{ICONS['warn']} Missing tools per Doctor: {', '.join(missing_tools)}")
 
     if unknown:
-        print("Hinweis: Für diese Tools gibt es kein Mapping (werden ignoriert):", ", ".join(unknown))
+        print(f"{ICONS['warn']} No mapping for these tools (ignored): {', '.join(unknown)}")
 
     if not packages:
-        print("Keine installierbaren Pakete ermittelt.")
+        print(f"{ICONS['err']} No installable packages determined.")
         return 1
 
-    print("Installiere Pakete:", ", ".join(packages))
+    print(f"{ICONS['info']} Installing packages: {', '.join(packages)}")
     return _install_packages(manager, packages, dry_run=dry_run)
 
 

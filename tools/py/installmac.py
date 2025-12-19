@@ -14,6 +14,14 @@ from typing import List, Set
 
 from doctor import CRITICAL_CATEGORIES, collect_checks, missing_checks
 
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+}
+
 
 # Tool-name -> brew formulae.
 # Notes:
@@ -29,15 +37,15 @@ BREW_MAP = {
 
 
 def _run(cmd: List[str], dry_run: bool) -> int:
-    print("→", " ".join(cmd))
+    print(f"{ICONS['run']} {' '.join(cmd)}")
     if dry_run:
-        print("Dry-Run: überspringe Ausführung.")
+        print(f"{ICONS['info']} Dry run: skipping execution.")
         return 0
     try:
         subprocess.run(cmd, check=True)
         return 0
     except subprocess.CalledProcessError as e:
-        print(f"Fehler beim Ausführen (Exit {e.returncode}): {' '.join(cmd)}")
+        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
         return int(e.returncode) if e.returncode is not None else 1
 
 
@@ -62,7 +70,7 @@ def _install_rustup(dry_run: bool) -> int:
 def run_install(dry_run: bool = False) -> int:
     if not shutil.which("brew"):
         print(
-            "Homebrew wurde nicht gefunden. Installiere Homebrew oder installiere die Abhängigkeiten manuell."
+            f"{ICONS['err']} Homebrew not found. Install Homebrew or install dependencies manually."
         )
         return 1
 
@@ -71,7 +79,7 @@ def run_install(dry_run: bool = False) -> int:
     missing_tools = [c.name for c in missing]
 
     if not missing_tools:
-        print("Keine fehlenden Tools laut Doctor.")
+        print(f"{ICONS['ok']} No missing tools per Doctor.")
         return 0
 
     # Collect brew formulae.
@@ -89,8 +97,10 @@ def run_install(dry_run: bool = False) -> int:
     # Xcode Command Line Tools hint.
     needs_xcode = any(t in ("make", "gcc", "g++") for t in missing_tools)
     if needs_xcode:
-        print("Hinweis: Für make/gcc/g++ brauchst du auf macOS i.d.R. Xcode Command Line Tools:")
-        print("→ xcode-select --install")
+        print(
+            f"{ICONS['info']} For make/gcc/g++ you typically need Xcode Command Line Tools on macOS:"
+        )
+        print(f"{ICONS['run']} xcode-select --install")
 
     # Brew install
     rc = _install_brew(sorted(formulae), dry_run)
@@ -99,12 +109,12 @@ def run_install(dry_run: bool = False) -> int:
 
     # Rust
     if wants_rustup:
-        print("Installiere Rust via rustup...")
+        print(f"{ICONS['info']} Installing Rust via rustup...")
         rc = _install_rustup(dry_run)
         if rc != 0:
             return rc
 
-    print("Installation abgeschlossen (soweit unterstützt).")
+    print(f"{ICONS['ok']} Installation completed (as far as supported).")
     return 0
 
 

@@ -42,12 +42,12 @@ def _load_installer_run_install():
     try:
         mod = importlib.import_module(mod_name)
     except Exception as e:
-        print(f"Konnte Installer-Modul nicht laden: {mod_name} ({e})")
+        print(f"Could not load installer module: {mod_name} ({e})")
         return None
 
     fn = getattr(mod, "run_install", None)
     if not callable(fn):
-        print(f"Installer-Modul '{mod_name}' hat keine Funktion run_install(dry_run=...).")
+        print(f"Installer module '{mod_name}' has no run_install(dry_run=...) function.")
         return None
     return fn
 
@@ -57,27 +57,27 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--doctor",
         action="store_true",
-        help="Führt den System-/Tooling-Check aus.",
+        help="Runs the system/tooling check.",
     )
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Alias für --doctor.",
+        help="Alias for --doctor.",
     )
     parser.add_argument(
         "--json",
         action="store_true",
-        help="Zusätzliche JSON-Ausgabe für --doctor.",
+        help="Additional JSON output for --doctor.",
     )
     parser.add_argument(
         "--install",
         action="store_true",
-        help="Installiert fehlende Abhängigkeiten über das passende Install-Skript (win/uix/mac).",
+        help="Installs missing dependencies via the matching install script (win/uix/mac).",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Nur anzeigen, welche Befehle --install ausführen würde.",
+        help="Only show which commands --install would run.",
     )
     return parser.parse_args(argv)
 
@@ -92,8 +92,8 @@ def main(argv: list[str] | None = None) -> int:
         run_install = _load_installer_run_install()
         if not run_install:
             print(
-                "Keine passende Installationsroutine gefunden. "
-                "Erwartet: py/installwin.py, py/installuix.py oder py/installmac.py"
+                "No matching installation routine found. "
+                "Expected: py/installwin.py, py/installuix.py, or py/installmac.py"
             )
             exit_code = max(exit_code, 1)
         else:
@@ -104,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         exit_code = max(exit_code, int(run_doctor(want_json=args.json)))
 
     if not handled:
-        print("Bitte einen Befehl angeben (z.B. --doctor oder --install).")
+        print("Please specify a command (e.g. --doctor or --install).")
         return 1
 
     return exit_code
