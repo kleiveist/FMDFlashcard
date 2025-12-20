@@ -32,17 +32,20 @@ cd ~/Projects
 # Clone repository (replace URL)
 git clone https://github.com/kleiveist/FMDFlashcard.git
 cd FMDFlashcard
+
 ```
 
-## 3) Control-Skript ausführen (ein Block)
+## 3) Control-Skript ausführen
 ```bash
+cd ~/Projects/FMDFlashcard
 # optional: health check / doctor
 python3 tools/control.py --doctor
 ```
 
-### 4) Install & start (single block)
+### 4) Install & start
 
 ```bash
+cd ~/Projects/FMDFlashcard
 # installation / setup
 python3 tools/control.py --install
 
