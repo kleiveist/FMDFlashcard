@@ -28,11 +28,12 @@ git --version
 # Linux/macOS: ~/Projects
 mkdir -p ~/Projects
 cd ~/Projects
+```
 
 # Clone repository (replace URL)
+```bash
 git clone https://github.com/kleiveist/FMDFlashcard.git
 cd FMDFlashcard
-
 ```
 
 ## 3) Control-Skript ausführen
