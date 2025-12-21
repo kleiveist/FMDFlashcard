@@ -29,14 +29,13 @@ git --version
 mkdir -p ~/Projects
 cd ~/Projects
 ```
-
-# Clone repository (replace URL)
+### Clone repository (replace URL)
 ```bash
 git clone https://github.com/kleiveist/FMDFlashcard.git
 cd FMDFlashcard
 ```
 
-## 3) Control-Skript ausführen
+## 3) Control-Skript
 ```bash
 cd ~/Projects/FMDFlashcard
 # optional: health check / doctor
