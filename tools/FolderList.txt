@@ -1,0 +1,13 @@
+📁 tools
+├── 📁 inst
+│   ├── 📁 __pycache__
+│   │   ├── 📄 doctor.cpython-311.pyc
+│   │   ├── 📄 doctor.cpython-313.pyc
+│   │   ├── 📄 installuix.cpython-311.pyc
+│   │   └── 📄 installuix.cpython-313.pyc
+│   ├── 🐍VSinstalluix.py
+│   ├── 🐍doctor.py
+│   ├── 🐍installmac.py
+│   ├── 🐍installuix.py
+│   └── 🐍installwin.py
+└── 🐍control.py

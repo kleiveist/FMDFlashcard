@@ -14,13 +14,18 @@ import importlib
 import platform
 import sys
 from pathlib import Path
+from typing import Callable, cast
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PY_DIR = SCRIPT_DIR / "py"
+PY_DIR = SCRIPT_DIR / "inst"
 if str(PY_DIR) not in sys.path:
     sys.path.insert(0, str(PY_DIR))
 
 from doctor import run as run_doctor  # type: ignore
+
+RunInstall = Callable[[bool], int]
+RunVsCodeInstall = Callable[[], int]
+run_doctor = cast(Callable[[bool], int], run_doctor)
 
 
 def _detect_installer_module() -> str | None:
@@ -35,7 +40,7 @@ def _detect_installer_module() -> str | None:
     return None
 
 
-def _load_installer_run_install():
+def _load_installer_run_install() -> RunInstall | None:
     mod_name = _detect_installer_module()
     if not mod_name:
         return None
@@ -49,7 +54,22 @@ def _load_installer_run_install():
     if not callable(fn):
         print(f"Installer module '{mod_name}' has no run_install(dry_run=...) function.")
         return None
-    return fn
+    return cast(RunInstall, fn)
+
+
+def _load_vscode_run_install() -> RunVsCodeInstall | None:
+    mod_name = "VSinstalluix"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load VS Code installer module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"VS Code installer module '{mod_name}' has no run_install() function.")
+        return None
+    return cast(RunVsCodeInstall, fn)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -75,6 +95,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Installs missing dependencies via the matching install script (win/uix/mac).",
     )
     parser.add_argument(
+        "--VScode",
+        "--vscode",
+        dest="vscode",
+        action="store_true",
+        help="Installs Visual Studio Code (Linux).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Only show which commands --install would run.",
@@ -93,15 +120,24 @@ def main(argv: list[str] | None = None) -> int:
         if not run_install:
             print(
                 "No matching installation routine found. "
-                "Expected: py/installwin.py, py/installuix.py, or py/installmac.py"
+                "Expected: inst/installwin.py, py/installuix.py, or py/installmac.py"
             )
             exit_code = max(exit_code, 1)
         else:
-            exit_code = max(exit_code, int(run_install(dry_run=args.dry_run)))
+            exit_code = max(exit_code, run_install(args.dry_run))
+
+    if args.vscode:
+        handled = True
+        run_vscode = _load_vscode_run_install()
+        if not run_vscode:
+            print("No VS Code install routine found. Expected: inst/VSinstalluix.py")
+            exit_code = max(exit_code, 1)
+        else:
+            exit_code = max(exit_code, run_vscode())
 
     if args.doctor or args.check:
         handled = True
-        exit_code = max(exit_code, int(run_doctor(want_json=args.json)))
+        exit_code = max(exit_code, run_doctor(args.json))
 
     if not handled:
         print("Please specify a command (e.g. --doctor or --install).")
