@@ -44,8 +44,13 @@ def is_root() -> bool:
     return hasattr(os, "geteuid") and os.geteuid() == 0
 
 
-def run(cmd: List[str], check: bool = True, env: dict | None = None) -> None:
-    if not is_root() and shutil.which("sudo"):
+def run(
+    cmd: List[str],
+    check: bool = True,
+    env: dict | None = None,
+    use_sudo: bool = True,
+) -> None:
+    if use_sudo and not is_root() and shutil.which("sudo"):
         cmd = ["sudo"] + cmd
     print("+", " ".join(cmd))
     subprocess.run(cmd, check=check, env=env)
@@ -57,7 +62,9 @@ def pacman_install(pkgs: List[str]) -> None:
 
 
 def aur_install(helper: str, pkg: str) -> None:
-    run([helper, "-S", "--needed", "--noconfirm", pkg])
+    if is_root():
+        raise RuntimeError("AUR helper darf nicht als root laufen. Bitte ohne sudo ausfuehren.")
+    run([helper, "-S", "--needed", "--noconfirm", pkg], use_sudo=False)
 
 
 def ensure_pkg(pkg: str) -> None:
