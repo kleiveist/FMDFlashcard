@@ -148,11 +148,13 @@ def _main() -> int:
     osr = read_os_release()
     os_id = (osr.get("ID") or "").lower()
     os_like = (osr.get("ID_LIKE") or "").lower().split()
+    has_pacman = shutil.which("pacman") is not None
+    has_apt = shutil.which("apt-get") is not None
 
-    if os_id == "arch" or "arch" in os_like:
+    if os_id in {"arch", "manjaro", "endeavouros", "cachyos"} or "arch" in os_like or has_pacman:
         return install_arch()
 
-    if os_id in {"debian", "ubuntu"} or "debian" in os_like or "ubuntu" in os_like:
+    if os_id in {"debian", "ubuntu"} or "debian" in os_like or "ubuntu" in os_like or has_apt:
         return install_deb_like()
 
     print(
