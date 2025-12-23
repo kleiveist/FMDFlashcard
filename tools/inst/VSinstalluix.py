@@ -146,17 +146,18 @@ def install_deb_like() -> int:
 
 def _main() -> int:
     osr = read_os_release()
-    os_id = osr.get("ID")
+    os_id = (osr.get("ID") or "").lower()
+    os_like = (osr.get("ID_LIKE") or "").lower().split()
 
-    if os_id in {"arch", "manjaro", "endeavouros"}:
+    if os_id == "arch" or "arch" in os_like:
         return install_arch()
 
-    if os_id in {"debian", "ubuntu"}:
+    if os_id in {"debian", "ubuntu"} or "debian" in os_like or "ubuntu" in os_like:
         return install_deb_like()
 
     print(
         f"{ICONS['err']} Dieses Skript ist fuer Arch/Derivate, Debian oder Ubuntu gedacht. "
-        f"Detected ID={os_id}"
+        f"Detected ID={os_id}, ID_LIKE={' '.join(os_like) if os_like else '-'}"
     )
     return 2
 
