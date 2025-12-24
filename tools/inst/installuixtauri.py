@@ -247,7 +247,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         ensure_not_root()
         family, osr = detect_linux_family()
         if family == "unknown":
-            raise RuntimeError(f"Unsupported distro (ID={osr.get('ID')}, ID_LIKE={osr.get('ID_LIKE')}).")
+            print(
+                "Unknown distro; skipping automatic system dependency install. "
+                f"(ID={osr.get('ID')}, ID_LIKE={osr.get('ID_LIKE')})"
+            )
 
         repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path(__file__).resolve().parents[2]
         target_dir = (repo_root / args.target).resolve()
@@ -256,7 +259,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"Repo root: {repo_root}")
         print(f"Target dir: {target_dir}")
 
-        if not args.skip_system_deps:
+        if not args.skip_system_deps and family != "unknown":
             if family == "arch" and args.full_upgrade_arch:
                 run(["sudo", "pacman", "-Syu", "--noconfirm"])
             if need_system_deps():
@@ -264,7 +267,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 install_system_deps(family)
             else:
                 print("System prerequisites look OK -> skipping install.")
-        else:
+        elif args.skip_system_deps:
             print("Skipping system dependency installation (requested).")
 
         ensure_pnpm()
