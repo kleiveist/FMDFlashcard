@@ -25,6 +25,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+_DRY_RUN = False
+
 
 def eprint(*args: object) -> None:
     print(*args, file=sys.stderr)
@@ -32,6 +34,8 @@ def eprint(*args: object) -> None:
 
 def run(cmd: List[str], cwd: Optional[Path] = None, check: bool = True) -> subprocess.CompletedProcess:
     print(f"$ {' '.join(cmd)}")
+    if _DRY_RUN:
+        return subprocess.CompletedProcess(cmd, 0)
     proc = subprocess.run(cmd, cwd=str(cwd) if cwd else None)
     if check and proc.returncode != 0:
         raise RuntimeError(f"Command failed (exit {proc.returncode}): {' '.join(cmd)}")
@@ -148,6 +152,9 @@ def install_system_deps(family: str) -> None:
 def ensure_pnpm() -> None:
     if which("pnpm"):
         return
+    if _DRY_RUN:
+        print("pnpm not found; dry-run would install/enable pnpm.")
+        return
 
     # Prefer corepack (recommended by Tauri docs).
     if which("corepack"):
@@ -186,7 +193,7 @@ def ensure_empty_target(target_dir: Path, force: bool) -> None:
         raise RuntimeError(f"Target directory already exists and is not empty: {target_dir}")
 
 
-def main() -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Init a Tauri + React + TypeScript project on Linux (pnpm, non-interactive)."
     )
@@ -230,7 +237,7 @@ def main() -> int:
         action="store_true",
         help="Allow using an existing target directory (must be empty unless you know what you're doing).",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if platform.system().lower() != "linux":
         eprint("This script is Linux-only.")
@@ -263,7 +270,10 @@ def main() -> int:
         ensure_pnpm()
 
         # Ensure apps dir exists
-        target_dir.parent.mkdir(parents=True, exist_ok=True)
+        if _DRY_RUN:
+            print(f"[dry-run] Would ensure parent dir exists: {target_dir.parent}")
+        else:
+            target_dir.parent.mkdir(parents=True, exist_ok=True)
         ensure_empty_target(target_dir, force=args.force)
 
         # Scaffold
@@ -289,6 +299,12 @@ def main() -> int:
     except Exception as ex:
         eprint(f"❌ {ex}")
         return 1
+
+
+def run_install(dry_run: bool = False) -> int:
+    global _DRY_RUN
+    _DRY_RUN = dry_run
+    return main([])
 
 
 if __name__ == "__main__":
