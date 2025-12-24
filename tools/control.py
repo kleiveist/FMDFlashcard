@@ -156,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.vscode:
         handled = True
         run_vscode = _load_vscode_run_install()
-    if not run_vscode:
+        if not run_vscode:
             print("No VS Code install routine found. Expected: inst/installuixvs.py")
             exit_code = max(exit_code, 1)
         else:
