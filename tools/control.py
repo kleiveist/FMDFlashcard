@@ -59,7 +59,7 @@ def _load_installer_run_install() -> RunInstall | None:
 
 
 def _load_vscode_run_install() -> RunVsCodeInstall | None:
-    mod_name = "VSinstalluix"
+    mod_name = "installuixvs"
     try:
         mod = importlib.import_module(mod_name)
     except Exception as e:
@@ -156,8 +156,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.vscode:
         handled = True
         run_vscode = _load_vscode_run_install()
-        if not run_vscode:
-            print("No VS Code install routine found. Expected: inst/VSinstalluix.py")
+    if not run_vscode:
+            print("No VS Code install routine found. Expected: inst/installuixvs.py")
             exit_code = max(exit_code, 1)
         else:
             exit_code = max(exit_code, run_vscode())
