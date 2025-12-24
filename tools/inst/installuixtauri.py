@@ -26,6 +26,11 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 _DRY_RUN = False
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+}
 
 
 def eprint(*args: object) -> None:
@@ -195,6 +200,34 @@ def ensure_rust() -> None:
     raise RuntimeError("Rust not found. Install rustup or rustc/cargo and re-run.")
 
 
+def report_rust_status() -> None:
+    rustc_path = which("rustc")
+    cargo_path = which("cargo")
+    rustup_path = which("rustup")
+
+    def _version(cmd: str) -> str:
+        proc = subprocess.run([cmd, "--version"], capture_output=True, text=True)
+        if proc.returncode == 0:
+            return proc.stdout.strip()
+        return f"{cmd} not available"
+
+    if rustc_path and cargo_path:
+        print(f"{ICONS['ok']} Rust gefunden.")
+    else:
+        print(f"{ICONS['warn']} Rust fehlt oder ist nicht im PATH.")
+
+    if rustc_path:
+        print(f"{ICONS['info']} rustc: {rustc_path} ({_version('rustc')})")
+    if cargo_path:
+        print(f"{ICONS['info']} cargo: {cargo_path} ({_version('cargo')})")
+    if rustup_path:
+        proc = subprocess.run(["rustup", "show"], capture_output=True, text=True)
+        if proc.returncode == 0:
+            print(f"{ICONS['info']} rustup:\n{proc.stdout.strip()}")
+        else:
+            print(f"{ICONS['warn']} rustup vorhanden, aber 'rustup show' fehlgeschlagen.")
+
+
 def scaffold_project(target_dir: Path, template: str) -> None:
     # `pnpm create tauri-app <dir> --template react-ts`
     # (non-interactive supported by create-tauri-app)
@@ -208,7 +241,9 @@ def ensure_empty_target(target_dir: Path, force: bool) -> None:
         # If exists but empty -> OK
         if target_dir.is_dir() and not any(target_dir.iterdir()):
             return
-        raise RuntimeError(f"Target directory already exists and is not empty: {target_dir}")
+        print(f"{ICONS['info']} Target directory exists and is not empty: {target_dir}")
+        print(f"{ICONS['info']} Skipping scaffold; will continue with install steps.")
+        return
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -290,6 +325,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         ensure_pnpm()
         ensure_rust()
+        report_rust_status()
 
         # Ensure apps dir exists
         if _DRY_RUN:
