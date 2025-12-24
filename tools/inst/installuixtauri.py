@@ -72,9 +72,14 @@ def detect_linux_family() -> Tuple[str, Dict[str, str]]:
     def has(token: str) -> bool:
         return token in distro_id or token in like
 
-    if has("arch"):
+    if has("arch") or distro_id in {"cachyos"}:
         return "arch", osr
     if has("debian") or distro_id in {"ubuntu", "debian"}:
+        return "debian", osr
+    # Fallback to package manager detection when ID/ID_LIKE is incomplete.
+    if which("pacman"):
+        return "arch", osr
+    if which("apt-get"):
         return "debian", osr
     return "unknown", osr
 
@@ -123,6 +128,8 @@ def install_system_deps(family: str) -> None:
             "libayatana-appindicator3-dev",
             "librsvg2-dev",
             "pkg-config",
+            "rustc",
+            "cargo",
         ]
         run(["sudo", "apt", "update"])
         run(["sudo", "apt", "install", "-y", *pkgs])
@@ -141,6 +148,7 @@ def install_system_deps(family: str) -> None:
             "librsvg",
             "xdotool",
             "pkgconf",  # pkg-config provider on Arch
+            "rustup",
         ]
         # Avoid auto full-upgrade unless user explicitly wants it (handled by caller)
         run(["sudo", "pacman", "-S", "--needed", "--noconfirm", *pkgs])
@@ -175,6 +183,16 @@ def ensure_pnpm() -> None:
             return
 
     raise RuntimeError("Could not install/enable pnpm automatically. Install pnpm and re-run.")
+
+
+def ensure_rust() -> None:
+    if which("rustc") and which("cargo"):
+        return
+    if which("rustup"):
+        run(["rustup", "toolchain", "install", "stable"])
+        run(["rustup", "default", "stable"])
+        return
+    raise RuntimeError("Rust not found. Install rustup or rustc/cargo and re-run.")
 
 
 def scaffold_project(target_dir: Path, template: str) -> None:
@@ -271,6 +289,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("Skipping system dependency installation (requested).")
 
         ensure_pnpm()
+        ensure_rust()
 
         # Ensure apps dir exists
         if _DRY_RUN:
