@@ -1,0 +1,9 @@
+📁 tools
+├── 📁 inst
+│   ├── 🐍VSinstalluix.py
+│   ├── 🐍doctor.py
+│   ├── 🐍installmac.py
+│   ├── 🐍installuix.py
+│   ├── 🐍installuixtauri.py
+│   └── 🐍installwin.py
+└── 🐍control.py

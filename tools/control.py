@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import inspect
 import platform
 import sys
 from pathlib import Path
@@ -72,6 +73,27 @@ def _load_vscode_run_install() -> RunVsCodeInstall | None:
     return cast(RunVsCodeInstall, fn)
 
 
+def _load_tauri_run_install() -> Callable[..., int] | None:
+    mod_name = "installuixtauri"
+    if platform.system().lower() != "linux":
+        print("Tauri install routine is Linux-only.")
+        return None
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load Tauri installer module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(
+            "Tauri installer module "
+            f"'{mod_name}' has no run_install(dry_run=...) function."
+        )
+        return None
+    return cast(Callable[..., int], fn)
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Project toolbox launcher.")
     parser.add_argument(
@@ -100,6 +122,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         dest="vscode",
         action="store_true",
         help="Installs Visual Studio Code (Linux).",
+    )
+    parser.add_argument(
+        "--tauri",
+        action="store_true",
+        help="Installs Tauri prerequisites (Linux).",
     )
     parser.add_argument(
         "--dry-run",
@@ -134,6 +161,23 @@ def main(argv: list[str] | None = None) -> int:
             exit_code = max(exit_code, 1)
         else:
             exit_code = max(exit_code, run_vscode())
+
+    if args.tauri:
+        handled = True
+        run_tauri = _load_tauri_run_install()
+        if not run_tauri:
+            print("No Tauri install routine found. Expected: inst/installuixtauri.py")
+            exit_code = max(exit_code, 1)
+        else:
+            # Accept run_install() or run_install(dry_run)
+            try:
+                sig = inspect.signature(run_tauri)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_tauri())
+                else:
+                    exit_code = max(exit_code, run_tauri(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_tauri(args.dry_run))
 
     if args.doctor or args.check:
         handled = True
