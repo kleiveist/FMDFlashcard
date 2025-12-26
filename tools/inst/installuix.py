@@ -11,8 +11,11 @@ This module exposes: run_install(dry_run: bool = False) -> int
 
 from __future__ import annotations
 
+import importlib.util
 import shutil
 import subprocess
+import sys
+from pathlib import Path
 from typing import Dict, Iterable, List, Set
 
 from doctor import Check, CRITICAL_CATEGORIES, collect_checks, missing_checks
@@ -118,15 +121,79 @@ def _run_cmd(cmd: list[str], dry_run: bool) -> int:
         return int(e.returncode) if e.returncode is not None else 1
 
 
+def _run_capture(cmd: list[str], dry_run: bool) -> tuple[int, str]:
+    print(f"{ICONS['run']} {' '.join(cmd)}")
+    if dry_run:
+        print(f"{ICONS['info']} Dry run: skipping execution.")
+        return 0, ""
+    try:
+        p = subprocess.run(
+            cmd,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        return p.returncode, (p.stdout or "")
+    except OSError as e:
+        print(f"{ICONS['err']} Error running: {' '.join(cmd)} ({e})")
+        return 1, ""
+
+
+def _maybe_run_pacman_keyring_fix(pacman_output: str, dry_run: bool) -> bool:
+    fix_script = Path(__file__).resolve().parent.parent / "fixes" / "pacman_keyring_fix.py"
+    if not fix_script.exists():
+        return False
+
+    spec = importlib.util.spec_from_file_location("pacman_keyring_fix", fix_script)
+    if spec is None or spec.loader is None:
+        print(f"{ICONS['warn']} Unable to load pacman keyring fix module spec.")
+        return False
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as e:
+        print(f"{ICONS['warn']} Unable to load pacman keyring fix: {e}")
+        return False
+
+    should_apply = getattr(module, "should_apply", None)
+    if not callable(should_apply):
+        print(f"{ICONS['warn']} pacman_keyring_fix missing should_apply().")
+        return False
+
+    if not should_apply(pacman_output):
+        return False
+
+    rc, _ = _run_capture([sys.executable, str(fix_script)], dry_run=dry_run)
+    return rc == 0
+
+
+def _install_pacman(packages: list[str], dry_run: bool) -> int:
+    # NOTE: --noconfirm is convenient but risky. Remove it to keep things interactive.
+    cmd = ["sudo", "pacman", "-S", "--needed", "--noconfirm", *packages]
+    rc, out = _run_capture(cmd, dry_run)
+    if rc == 0:
+        return 0
+
+    if _maybe_run_pacman_keyring_fix(out, dry_run=dry_run):
+        rc2, out2 = _run_capture(cmd, dry_run)
+        if rc2 == 0:
+            return 0
+        if out2:
+            print(out2)
+        return rc2
+
+    if out:
+        print(out)
+    return rc
+
+
 def _install_packages(manager: str, packages: list[str], dry_run: bool) -> int:
     if not packages:
         print(f"{ICONS['ok']} Everything is already installed (per Doctor).")
         return 0
 
     if manager == "pacman":
-        # NOTE: --noconfirm is convenient but risky. Remove it to keep things interactive.
-        cmd = ["sudo", "pacman", "-S", "--needed", "--noconfirm", *packages]
-        return _run_cmd(cmd, dry_run)
+        return _install_pacman(packages, dry_run)
 
     # apt-get
     rc = _run_cmd(["sudo", "apt-get", "update"], dry_run)
