@@ -1,3 +1,18 @@
+---
+Cover: '[[README-01.png]]'
+Section: Blobbite
+Rank: Develop
+Projekt: FMDFlashcard
+Task: workspace
+tags:
+- README
+- Blobbite
+- Develop
+- FMDFlashcard
+- workspace
+link1: '[[README]]'
+---
+
 # Fast start setup
 
 > Note: Example commands for **Linux/macOS** (Terminal).  

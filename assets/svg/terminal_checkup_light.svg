@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1045" height="1054" viewBox="0 0 1045 1054">
+  <rect x="0" y="0" width="1045" height="1054" fill="#fafafa"/>
+  <!-- Terminal title bar -->
+  <rect x="0" y="0" width="1045" height="44" fill="#e9ecef"/>
+  <line x1="0" y1="44" x2="1045" y2="44" stroke="#d0d7de" stroke-width="1"/>
+  <circle cx="18" cy="22.0" r="6" fill="#ff5f57"/>
+  <circle cx="36" cy="22.0" r="6" fill="#febc2e"/>
+  <circle cx="54" cy="22.0" r="6" fill="#28c840"/>
+  <text x="522.5" y="26.666666666666668" text-anchor="middle"
+        font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace"
+        font-size="14" fill="#1f2328">Terminal</text>
+
+<line x1="20" y1="58" x2="160" y2="58" stroke="#cfd6dd" stroke-width="2" stroke-linecap="round"/>
+<text x="20" y="78" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">Terminal Checkup</text>
+<line x1="20" y1="84" x2="160" y2="84" stroke="#cfd6dd" stroke-width="2" stroke-linecap="round"/>
+<text x="20" y="118" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">• Shell</text>
+
+    <rect x="40" y="127" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 133 L 45 136 L 49 130" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="138" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">SHELL                 /bin/fish</text>
+
+    <rect x="40" y="147" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 153 L 45 156 L 49 150" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="158" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">PATH (Top 8)          </text>
+<text x="60" y="178" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">1. /usr/local/sbin</text>
+<text x="60" y="198" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">2. /usr/local/bin</text>
+<text x="60" y="218" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">3. /usr/bin</text>
+<text x="60" y="238" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">4. /usr/bin/site_perl</text>
+<text x="60" y="258" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">5. /usr/bin/vendor_perl</text>
+<text x="60" y="278" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">6. /usr/bin/core_perl</text>
+<text x="20" y="318" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">• Core Tools</text>
+
+    <rect x="40" y="327" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 333 L 45 336 L 49 330" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="338" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">git                   /usr/bin/git</text>
+
+    <rect x="40" y="347" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 353 L 45 356 L 49 350" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="358" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">curl                  /usr/bin/curl</text>
+
+    <rect x="40" y="367" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 373 L 45 376 L 49 370" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="378" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">file                  /usr/bin/file</text>
+
+    <rect x="40" y="387" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 393 L 45 396 L 49 390" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="398" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">pkg-config            /usr/bin/pkg-config</text>
+
+    <rect x="40" y="407" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 413 L 45 416 L 49 410" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="418" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">cmake                 /usr/bin/cmake</text>
+
+    <rect x="40" y="427" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 433 L 45 436 L 49 430" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="438" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">make                  /usr/bin/make</text>
+
+    <rect x="40" y="447" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 453 L 45 456 L 49 450" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="458" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">gcc                   /usr/bin/gcc</text>
+
+    <rect x="40" y="467" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 473 L 45 476 L 49 470" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="478" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">g++                   /usr/bin/g++</text>
+<text x="20" y="518" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">• Rust</text>
+
+    <rect x="40" y="527" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 533 L 45 536 L 49 530" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="538" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">rustup                rustup 1.28.2 (2025-12-16)</text>
+<text x="20" y="558" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">info: This is the version for the rustup toolchain manager, not the rustc compiler.</text>
+<text x="20" y="578" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">info: The currently active `rustc` version is `rustc 1.92.0 (ded5c06cf 2025-12-08)`</text>
+
+    <rect x="40" y="587" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 593 L 45 596 L 49 590" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="598" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">toolchain             stable-x86_64-unknown-linux-gnu (default)</text>
+
+    <rect x="40" y="607" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 613 L 45 616 L 49 610" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="618" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">rustc                 rustc 1.92.0 (ded5c06cf 2025-12-08)</text>
+
+    <rect x="40" y="627" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 633 L 45 636 L 49 630" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="638" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">cargo                 cargo 1.92.0 (344c4567c 2025-10-21)</text>
+<text x="20" y="678" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">• Node</text>
+
+    <rect x="40" y="687" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 693 L 45 696 L 49 690" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="698" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">node                  v25.2.1</text>
+
+    <rect x="40" y="707" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 713 L 45 716 L 49 710" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="718" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">npm                   11.6.4</text>
+
+    <rect x="40" y="727" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 733 L 45 736 L 49 730" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="738" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">pnpm                  10.26.2</text>
+<text x="20" y="778" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">• Tauri System Libs</text>
+
+    <rect x="40" y="787" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 793 L 45 796 L 49 790" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="798" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">gtk3                  gtk3 1:3.24.51-1.1</text>
+
+    <rect x="40" y="807" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 813 L 45 816 L 49 810" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="818" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">webkit2gtk            webkit2gtk 2.50.4-1</text>
+
+    <rect x="40" y="827" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 833 L 45 836 L 49 830" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="838" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">libappindicator-gtk3  libappindicator 12.10.1-1</text>
+
+    <rect x="40" y="847" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 853 L 45 856 L 49 850" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="858" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">librsvg               librsvg 2:2.61.3-1.1</text>
+
+    <rect x="40" y="867" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 873 L 45 876 L 49 870" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="878" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">openssl               openssl 3.6.0-1.1</text>
+<text x="20" y="918" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">• Optional</text>
+
+    <rect x="40" y="927" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 43 933 L 45 936 L 49 930" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="60" y="938" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">sqlite3               3.51.1 2025-11-28 17:28:25 281fc0e9afc38674b9b0991943b9e9d1e64c6cbdb133d35f6f5c87ff6af3a1t1 (64-bit)</text>
+<line x1="20" y1="958" x2="160" y2="958" stroke="#cfd6dd" stroke-width="2" stroke-linecap="round"/>
+<text x="20" y="978" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">Summary</text>
+<line x1="20" y1="984" x2="160" y2="984" stroke="#cfd6dd" stroke-width="2" stroke-linecap="round"/>
+
+    <rect x="20" y="1007" width="12" height="12" rx="2" fill="#35c759"/>
+    <path d="M 23 1013 L 25 1016 L 29 1010" fill="none" stroke="#0b1f12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+<text x="40" y="1018" xml:space="preserve" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', monospace" font-size="14" fill="#1f2328">All required tools are present.</text>
+</svg>

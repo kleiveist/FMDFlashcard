@@ -1,3 +1,18 @@
+---
+Cover: '[[TexV0.1main-01.png]]'
+Section: Blobbite
+Rank: Develop
+Projekt: FMDFlashcard
+Task: docs
+tags:
+- TexV0.1main
+- Blobbite
+- Develop
+- FMDFlashcard
+- docs
+link1: '[[TexV0.1main]]'
+---
+
 Markdown-Scan – Root: /mnt/T7-1TB/workspace/Blobbite/Develop/FMDFlashcard/docs/FMDFlashcard
 Erzeugt: 2025-12-16T22:05:32
 Einstellungen: content=full, snippet_chars=800, toc_depth=3, types=.tex
