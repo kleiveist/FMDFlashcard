@@ -1,369 +1,291 @@
 #!/usr/bin/env python3
-"""
-Init (Linux): Tauri + React + TypeScript (pnpm) project scaffold.
+"""Linux-only: prepare Tauri dev env + scaffold a pnpm + React/TS Tauri app.
 
-What it does (defaults):
-1) (Optional) Install Linux system deps if missing (Debian/Ubuntu via apt, Arch via pacman).
-2) Ensure pnpm is available (prefer corepack).
-3) Scaffold a new Tauri project (non-interactive): `pnpm create tauri-app <dir> --template react-ts`
-4) Run `pnpm install`
-5) (Optional) Run `pnpm tauri dev`
+Stages (order):
+1) WASD libs (WebKit2GTK + GUI deps)
+2) Build deps (cc/make/pkg-config)
+3) Node tooling (node/npm + pnpm)
+4) Rust toolchain (rustup + stable toolchain)
+5) Scaffold (create-tauri-app) + pnpm install (+ optional dev)
 
-References:
-- Tauri Linux prerequisites package lists: https://v2.tauri.app/start/prerequisites/
-- create-tauri-app non-interactive `--template react-ts`: https://github.com/tauri-apps/create-tauri-app
+Entry for tools/control.py: run_install(dry_run: bool=False) -> int
 """
 
 from __future__ import annotations
 
-import argparse
-import os
-import platform
-import shutil
-import subprocess
-import sys
+import argparse, os, platform, shutil, subprocess, sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-_DRY_RUN = False
-ICONS = {
-    "ok": "✅",
-    "info": "ℹ️",
-    "warn": "⚠️",
+ICONS: Dict[str, str] = {
+    "ok": "✅", "info": "ℹ️", "warn": "⚠️", "err": "❌", "run": "▶️",
+    "step": "🧩", "box": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
 }
+_DRY_RUN = False
 
+def eprint(*a: object) -> None: print(*a, file=sys.stderr)
 
-def eprint(*args: object) -> None:
-    print(*args, file=sys.stderr)
+def section(title: str) -> None:
+    print(f"\n{ICONS['box']}\n{ICONS['step']} {title}\n{ICONS['box']}\n")
 
-
-def run(cmd: List[str], cwd: Optional[Path] = None, check: bool = True) -> subprocess.CompletedProcess:
-    print(f"$ {' '.join(cmd)}")
+def run(cmd: List[str], *, cwd: Optional[Path]=None, env: Optional[Dict[str,str]]=None, check: bool=True) -> subprocess.CompletedProcess:
+    cwd_txt = f" (cwd={cwd})" if cwd else ""
+    print(f"{ICONS['run']} {' '.join(cmd)}{cwd_txt}")
     if _DRY_RUN:
         return subprocess.CompletedProcess(cmd, 0)
-    proc = subprocess.run(cmd, cwd=str(cwd) if cwd else None)
+    proc = subprocess.run(cmd, cwd=str(cwd) if cwd else None, env=env, text=True)
     if check and proc.returncode != 0:
         raise RuntimeError(f"Command failed (exit {proc.returncode}): {' '.join(cmd)}")
     return proc
 
+def cmd_ok(cmd: List[str]) -> bool:
+    if _DRY_RUN: return True
+    try: return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+    except Exception: return False
 
-def which(cmd: str) -> Optional[str]:
-    return shutil.which(cmd)
-
-
-def read_os_release() -> Dict[str, str]:
-    data: Dict[str, str] = {}
-    path = Path("/etc/os-release")
-    if not path.exists():
-        return data
-    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        v = v.strip().strip('"')
-        data[k.strip()] = v
-    return data
-
-
-def detect_linux_family() -> Tuple[str, Dict[str, str]]:
-    """
-    Returns: ("arch"|"debian"|"unknown", os_release_dict)
-    """
-    osr = read_os_release()
-    distro_id = (osr.get("ID") or "").lower()
-    like = (osr.get("ID_LIKE") or "").lower()
-
-    def has(token: str) -> bool:
-        return token in distro_id or token in like
-
-    if has("arch") or distro_id in {"cachyos"}:
-        return "arch", osr
-    if has("debian") or distro_id in {"ubuntu", "debian"}:
-        return "debian", osr
-    # Fallback to package manager detection when ID/ID_LIKE is incomplete.
-    if which("pacman"):
-        return "arch", osr
-    if which("apt-get"):
-        return "debian", osr
-    return "unknown", osr
-
+def which(cmd: str) -> Optional[str]: return shutil.which(cmd)
 
 def ensure_not_root() -> None:
-    if os.geteuid() == 0:
-        raise RuntimeError(
-            "Please run this script as a normal user (NOT root). "
-            "It will call sudo only for system package installs."
-        )
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        raise RuntimeError("Please run as a normal user (not root).")
 
+def read_os_release() -> Dict[str, str]:
+    p = Path("/etc/os-release")
+    if not p.exists(): return {}
+    out: Dict[str, str] = {}
+    for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line: continue
+        k, v = line.split("=", 1)
+        out[k] = v.strip().strip('"')
+    return out
 
-def pkg_config_exists(pkg: str) -> bool:
-    if not which("pkg-config"):
-        return False
-    return subprocess.run(["pkg-config", "--exists", pkg]).returncode == 0
+def detect_linux_family() -> Tuple[str, Dict[str, str]]:
+    osr = read_os_release()
+    os_id = (osr.get("ID") or "").lower()
+    like = (osr.get("ID_LIKE") or "").lower().split()
+    if os_id in {"debian","ubuntu"} or "debian" in like or "ubuntu" in like: return "debian", osr
+    if os_id in {"arch","manjaro","endeavouros","cachyos"} or "arch" in like: return "arch", osr
+    if which("apt-get") or which("apt"): return "debian", osr
+    if which("pacman"): return "arch", osr
+    return "unknown", osr
 
+def pkg_config_exists(name: str) -> bool:
+    return which("pkg-config") is not None and cmd_ok(["pkg-config","--exists",name])
 
-def need_system_deps() -> bool:
-    # Minimal checks that usually fail when prerequisites are missing
-    # (covers the most common build error: missing webkit2gtk-4.1.pc).
-    required_cmds = ["cc", "make", "pkg-config"]
-    if any(which(c) is None for c in required_cmds):
-        return True
-    if not pkg_config_exists("webkit2gtk-4.1"):
-        return True
-    if not pkg_config_exists("openssl"):
-        return True
-    # librsvg provides "librsvg-2.0" on many distros; if missing, still fine for some setups,
-    # but Tauri lists it as prerequisite -> treat as required.
-    if not pkg_config_exists("librsvg-2.0"):
-        return True
+def need_wasd_deps() -> bool:
+    for r in ["webkit2gtk-4.1","gtk+-3.0","openssl","librsvg-2.0"]:
+        if not pkg_config_exists(r): return True
     return False
 
+def need_build_deps() -> bool:
+    return any(which(c) is None for c in ["cc","make","pkg-config"])
 
-def install_system_deps(family: str) -> None:
+def rust_ready() -> bool:
+    # which(rustc) may be a rustup shim; we require the toolchain to be active.
+    return cmd_ok(["rustc","--version"]) and cmd_ok(["cargo","--version"])
+
+def _install_apt(pkgs: List[str]) -> None:
+    env = dict(os.environ); env["DEBIAN_FRONTEND"] = "noninteractive"
+    run(["sudo","apt-get","update"], env=env)
+    run(["sudo","apt-get","install","-y",*pkgs], env=env)
+
+def _install_pacman(pkgs: List[str]) -> None:
+    run(["sudo","pacman","-S","--needed","--noconfirm",*pkgs])
+
+def install_wasd_deps(family: str) -> None:
     if family == "debian":
-        pkgs = [
-            "libwebkit2gtk-4.1-dev",
-            "build-essential",
-            "curl",
-            "wget",
-            "file",
-            "libxdo-dev",
-            "libssl-dev",
-            "libayatana-appindicator3-dev",
-            "librsvg2-dev",
-            "pkg-config",
-            "rustc",
-            "cargo",
-        ]
-        run(["sudo", "apt", "update"])
-        run(["sudo", "apt", "install", "-y", *pkgs])
+        _install_apt([
+            "libwebkit2gtk-4.1-dev","libgtk-3-dev","libssl-dev","libxdo-dev",
+            "librsvg2-dev","libayatana-appindicator3-dev","pkg-config"
+        ])
         return
-
     if family == "arch":
-        pkgs = [
-            "webkit2gtk-4.1",
-            "base-devel",
-            "curl",
-            "wget",
-            "file",
-            "openssl",
-            "appmenu-gtk-module",
-            "libappindicator-gtk3",
-            "librsvg",
-            "xdotool",
-            "pkgconf",  # pkg-config provider on Arch
-            "rustup",
-        ]
-        # Avoid auto full-upgrade unless user explicitly wants it (handled by caller)
-        run(["sudo", "pacman", "-S", "--needed", "--noconfirm", *pkgs])
+        _install_pacman([
+            "webkit2gtk-4.1","gtk3","openssl","xdotool","librsvg",
+            "appmenu-gtk-module","libappindicator-gtk3","pkgconf"
+        ])
         return
-
     raise RuntimeError(f"Unsupported Linux family for auto-install: {family}")
 
+def install_build_deps(family: str) -> None:
+    if family == "debian": _install_apt(["build-essential","curl","wget","file","pkg-config"]); return
+    if family == "arch": _install_pacman(["base-devel","curl","wget","file","pkgconf"]); return
+    raise RuntimeError(f"Unsupported Linux family for auto-install: {family}")
 
-def ensure_pnpm() -> None:
-    if which("pnpm"):
-        return
-    if _DRY_RUN:
-        print("pnpm not found; dry-run would install/enable pnpm.")
-        return
+def install_node_deps(family: str) -> None:
+    if family == "debian": _install_apt(["nodejs","npm"]); return
+    if family == "arch": _install_pacman(["nodejs","npm","pnpm"]); return
+    raise RuntimeError(f"Unsupported Linux family for auto-install: {family}")
 
-    # Prefer corepack (recommended by Tauri docs).
+def install_rustup_pkg(family: str) -> None:
+    if family == "debian": _install_apt(["rustup"]); return
+    if family == "arch": _install_pacman(["rustup"]); return
+    raise RuntimeError(f"Unsupported Linux family for auto-install: {family}")
+
+def ensure_pnpm(family: str) -> None:
+    if which("pnpm"): print(f"{ICONS['ok']} pnpm gefunden."); return
+    if _DRY_RUN: print(f"{ICONS['info']} pnpm fehlt; dry-run wuerde installieren."); return
+
+    # Arch: prefer pacman (avoids npm -g permission/EACCES).
+    if family == "arch" and which("pacman"):
+        try: _install_pacman(["pnpm"])
+        except Exception: pass
+        if which("pnpm"): print(f"{ICONS['ok']} pnpm installiert (pacman)."); return
+
+    # Prefer corepack when available.
     if which("corepack"):
-        run(["corepack", "enable"], check=False)
-        # Prepare latest pnpm; if offline or blocked, this may fail.
-        run(["corepack", "prepare", "pnpm@latest", "--activate"])
-        if which("pnpm"):
-            return
+        run(["corepack","enable"], check=False)
+        run(["corepack","prepare","pnpm@latest","--activate"], check=False)
+        if which("pnpm"): print(f"{ICONS['ok']} pnpm aktiviert (corepack)."); return
 
-    # Fallback: npm global install (may require sudo depending on node setup)
+    # Fallback: npm -g (may require sudo).
     if which("npm"):
-        eprint("pnpm not found. Trying: npm i -g pnpm (may ask for sudo)")
-        try:
-            run(["npm", "i", "-g", "pnpm"])
-        except RuntimeError:
-            run(["sudo", "npm", "i", "-g", "pnpm"])
-        if which("pnpm"):
-            return
+        try: run(["npm","i","-g","pnpm"], check=True)
+        except Exception: run(["sudo","npm","i","-g","pnpm"], check=True)
+        if which("pnpm"): print(f"{ICONS['ok']} pnpm installiert (npm -g)."); return
 
-    raise RuntimeError("Could not install/enable pnpm automatically. Install pnpm and re-run.")
+    raise RuntimeError("Could not install/enable pnpm automatically.")
 
+def ensure_rust(family: str) -> None:
+    if rust_ready(): print(f"{ICONS['ok']} Rust Toolchain aktiv."); return
+    if _DRY_RUN: print(f"{ICONS['info']} Rust fehlt/inaktiv; dry-run wuerde rustup+stable installieren."); return
 
-def ensure_rust() -> None:
-    if which("rustc") and which("cargo"):
-        return
-    if which("rustup"):
-        run(["rustup", "toolchain", "install", "stable"])
-        run(["rustup", "default", "stable"])
-        return
-    raise RuntimeError("Rust not found. Install rustup or rustc/cargo and re-run.")
+    if which("rustup") is None:
+        try: install_rustup_pkg(family)
+        except Exception: pass
 
+    if which("rustup") is None:
+        # Fallback: official installer
+        if which("bash") and which("curl"):
+            run(["bash","-lc","curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"])
+        else:
+            raise RuntimeError("Rust not found. Install rustup or rustc/cargo.")
+
+    # This fixes the log case: rustup installed but "no active toolchain".
+    run(["rustup","toolchain","install","stable"], check=False)
+    run(["rustup","default","stable"], check=False)
+
+    if not rust_ready():
+        raise RuntimeError("Rust installed but rustc/cargo still not usable. Open a new shell and re-run.")
+    print(f"{ICONS['ok']} Rust Toolchain aktiviert (stable).")
 
 def report_rust_status() -> None:
-    rustc_path = which("rustc")
-    cargo_path = which("cargo")
-    rustup_path = which("rustup")
+    section("Rust Status")
+    def ver(cmd: str) -> str:
+        try:
+            p = subprocess.run([cmd,"--version"], capture_output=True, text=True)
+            return p.stdout.strip() if p.returncode == 0 else f"{cmd} not available"
+        except Exception:
+            return f"{cmd} not available"
+    print(f"{ICONS['info']} rustc: {which('rustc') or '-'} ({ver('rustc')})")
+    print(f"{ICONS['info']} cargo: {which('cargo') or '-'} ({ver('cargo')})")
+    if which("rustup"):
+        p = subprocess.run(["rustup","show"], capture_output=True, text=True)
+        if p.returncode == 0: print(f"{ICONS['info']} rustup show:\n{p.stdout.strip()}")
+    print(f"{ICONS['ok']} Rust bereit." if rust_ready() else f"{ICONS['warn']} Rust noch nicht bereit.")
 
-    def _version(cmd: str) -> str:
-        proc = subprocess.run([cmd, "--version"], capture_output=True, text=True)
-        if proc.returncode == 0:
-            return proc.stdout.strip()
-        return f"{cmd} not available"
-
-    if rustc_path and cargo_path:
-        print(f"{ICONS['ok']} Rust gefunden.")
-    else:
-        print(f"{ICONS['warn']} Rust fehlt oder ist nicht im PATH.")
-
-    if rustc_path:
-        print(f"{ICONS['info']} rustc: {rustc_path} ({_version('rustc')})")
-    if cargo_path:
-        print(f"{ICONS['info']} cargo: {cargo_path} ({_version('cargo')})")
-    if rustup_path:
-        proc = subprocess.run(["rustup", "show"], capture_output=True, text=True)
-        if proc.returncode == 0:
-            print(f"{ICONS['info']} rustup:\n{proc.stdout.strip()}")
-        else:
-            print(f"{ICONS['warn']} rustup vorhanden, aber 'rustup show' fehlgeschlagen.")
-
-
-def scaffold_project(target_dir: Path, template: str) -> None:
-    # `pnpm create tauri-app <dir> --template react-ts`
-    # (non-interactive supported by create-tauri-app)
-    run(["pnpm", "create", "tauri-app", str(target_dir), "--template", template])
-
-
-def ensure_empty_target(target_dir: Path, force: bool) -> None:
+def ensure_target_dir(target_dir: Path, force: bool) -> bool:
     if target_dir.exists():
-        if force:
-            return
-        # If exists but empty -> OK
-        if target_dir.is_dir() and not any(target_dir.iterdir()):
-            return
-        print(f"{ICONS['info']} Target directory exists and is not empty: {target_dir}")
-        print(f"{ICONS['info']} Skipping scaffold; will continue with install steps.")
-        return
+        if force or (target_dir.is_dir() and not any(target_dir.iterdir())): return True
+        print(f"{ICONS['warn']} Target exists and is not empty: {target_dir}")
+        print(f"{ICONS['info']} Skipping scaffold; continuing with install steps in that directory.")
+        return False
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    return True
 
+def scaffold_project(target_dir: Path, template: str, identifier: str) -> None:
+    section("Scaffold (create-tauri-app)")
+    # create-tauri-app supports: --manager, --template, --yes, --identifier
+    run([
+        "pnpm","create","tauri-app",
+        "--template",template,
+        "--manager","pnpm",
+        "--yes",
+        "--identifier",identifier,
+        str(target_dir)
+    ])
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Init a Tauri + React + TypeScript project on Linux (pnpm, non-interactive)."
-    )
-    parser.add_argument(
-        "--target",
-        default="apps/fmd-desktop",
-        help="Target directory (relative to repo root by default). Default: apps/fmd-desktop",
-    )
-    parser.add_argument(
-        "--template",
-        default="react-ts",
-        help="create-tauri-app template preset. Default: react-ts",
-    )
-    parser.add_argument(
-        "--repo-root",
-        default=None,
-        help="Explicit repo root. If omitted, inferred as two levels above this script (../..).",
-    )
-    parser.add_argument(
-        "--skip-system-deps",
-        action="store_true",
-        help="Do not install Linux system dependencies (even if missing).",
-    )
-    parser.add_argument(
-        "--full-upgrade-arch",
-        action="store_true",
-        help="Arch only: run `sudo pacman -Syu --noconfirm` before installing deps.",
-    )
-    parser.add_argument(
-        "--skip-install",
-        action="store_true",
-        help="Do not run `pnpm install` after scaffolding.",
-    )
-    parser.add_argument(
-        "--dev",
-        action="store_true",
-        help="Run `pnpm tauri dev` after install.",
-    )
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Allow using an existing target directory (must be empty unless you know what you're doing).",
-    )
-    args = parser.parse_args(argv)
+    ap = argparse.ArgumentParser(description="Prepare Linux for Tauri (WASD libs, pnpm, rustup, scaffold).")
+    ap.add_argument("--target", default="apps/fmd-desktop")
+    ap.add_argument("--template", default="react-ts")
+    ap.add_argument("--identifier", default="com.fmd.flashcard")
+    ap.add_argument("--repo-root", default=None)
+    ap.add_argument("--skip-system-deps", action="store_true")
+    ap.add_argument("--full-upgrade-arch", action="store_true")
+    ap.add_argument("--skip-install", action="store_true")
+    ap.add_argument("--dev", action="store_true")
+    ap.add_argument("--force", action="store_true")
+    args = ap.parse_args(argv)
 
     if platform.system().lower() != "linux":
-        eprint("This script is Linux-only.")
-        return 2
+        eprint("This script is Linux-only."); return 2
 
     try:
         ensure_not_root()
         family, osr = detect_linux_family()
-        if family == "unknown":
-            print(
-                "Unknown distro; skipping automatic system dependency install. "
-                f"(ID={osr.get('ID')}, ID_LIKE={osr.get('ID_LIKE')})"
-            )
 
+        # tools/inst/installuixtauri.py -> parents[2] == repo root
         repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path(__file__).resolve().parents[2]
         target_dir = (repo_root / args.target).resolve()
 
-        print(f"Detected distro family: {family} (ID={osr.get('ID')})")
-        print(f"Repo root: {repo_root}")
-        print(f"Target dir: {target_dir}")
+        section("Context")
+        print(f"{ICONS['info']} Detected distro family: {family} (ID={osr.get('ID')})")
+        print(f"{ICONS['info']} Repo root: {repo_root}")
+        print(f"{ICONS['info']} Target dir: {target_dir}")
 
         if not args.skip_system_deps and family != "unknown":
             if family == "arch" and args.full_upgrade_arch:
-                run(["sudo", "pacman", "-Syu", "--noconfirm"])
-            if need_system_deps():
-                print("System prerequisites seem missing -> installing...")
-                install_system_deps(family)
+                section("Arch: Full upgrade"); run(["sudo","pacman","-Syu","--noconfirm"])
+
+            section("System deps: WASD libs (WebView/GUI)")
+            if need_wasd_deps():
+                print(f"{ICONS['warn']} Missing -> installing...")
+                install_wasd_deps(family)
             else:
-                print("System prerequisites look OK -> skipping install.")
-        elif args.skip_system_deps:
-            print("Skipping system dependency installation (requested).")
+                print(f"{ICONS['ok']} OK -> skipping.")
 
-        ensure_pnpm()
-        ensure_rust()
-        report_rust_status()
+            section("System deps: Build toolchain")
+            if need_build_deps():
+                print(f"{ICONS['warn']} Missing -> installing...")
+                install_build_deps(family)
+            else:
+                print(f"{ICONS['ok']} OK -> skipping.")
 
-        # Ensure apps dir exists
-        if _DRY_RUN:
-            print(f"[dry-run] Would ensure parent dir exists: {target_dir.parent}")
+            section("System deps: Node tooling")
+            if which("node") is None or which("npm") is None:
+                print(f"{ICONS['warn']} Missing -> installing...")
+                install_node_deps(family)
+            else:
+                print(f"{ICONS['ok']} OK -> skipping.")
         else:
-            target_dir.parent.mkdir(parents=True, exist_ok=True)
-        ensure_empty_target(target_dir, force=args.force)
+            section("System deps")
+            print(f"{ICONS['info']} Skipped (requested or unknown distro).")
 
-        # Scaffold
-        if not target_dir.exists() or (target_dir.exists() and not any(target_dir.iterdir())):
-            scaffold_project(target_dir, args.template)
-        else:
-            print("Target directory exists; skipping scaffold (use a fresh/empty folder for best results).")
+        section("Ensure pnpm"); ensure_pnpm(family)
+        section("Ensure Rust toolchain"); ensure_rust(family); report_rust_status()
 
-        # Install JS deps
+        if ensure_target_dir(target_dir, force=args.force):
+            scaffold_project(target_dir, template=args.template, identifier=args.identifier)
+
         if not args.skip_install:
-            run(["pnpm", "install"], cwd=target_dir)
-
-        # Dev
+            section("pnpm install"); run(["pnpm","install"], cwd=target_dir)
         if args.dev:
-            run(["pnpm", "tauri", "dev"], cwd=target_dir)
+            section("pnpm tauri dev"); run(["pnpm","tauri","dev"], cwd=target_dir)
 
-        print("Done.")
-        print("Next manual commands (if you didn't use --dev):")
-        print(f"  cd {target_dir}")
-        print("  pnpm tauri dev")
+        section("Done")
+        print(f"{ICONS['ok']} Fertig.")
+        if not args.dev:
+            print(f"{ICONS['info']} Next: cd {target_dir} && pnpm tauri dev")
         return 0
-
     except Exception as ex:
-        eprint(f"❌ {ex}")
-        return 1
-
+        eprint(f"{ICONS['err']} {ex}"); return 1
 
 def run_install(dry_run: bool = False) -> int:
     global _DRY_RUN
     _DRY_RUN = dry_run
     return main([])
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
