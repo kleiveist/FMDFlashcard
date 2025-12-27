@@ -13,6 +13,10 @@ docs/*.zip
 .DS_Store
 Thumbs.db
 
+# IDEs (optional)
+.vscode/
+.idea/
+
 # Python / virtualenv
 __pycache__/
 *.py[cod]
@@ -20,11 +24,39 @@ __pycache__/
 .venv/
 venv/
 
-# Node/Tauri build output
+# Node / Vite / React
 node_modules/
 dist/
 build/
 out/
+.vite/
+.eslintcache
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Rust / Tauri build output
+target/                # ignores any Rust target/ (incl. src-tauri/target)
+**/src-tauri/target/   # explicit, for clarity
+
+# Tauri bundler outputs (falls sie ausserhalb von target landen)
+*.AppImage
+*.deb
+*.rpm
+*.dmg
+*.msi
+*.exe
+*.app
+
+# Local env files
+.env
+.env.*
+!.env.example
 
 # LaTeX build artifacts
 *.aux
