@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Linux/Unix installer.
+"""
+Arch Linux installer (pacman-based).
 
-Installs missing packages based on the Doctor results.
-Supported package managers:
-- pacman (Arch/CachyOS/Manjaro/...)
-- apt-get (Debian/Ubuntu/...)
-
-This module exposes: run_install(dry_run: bool = False) -> int
+Exposes: run_install(dry_run: bool = False) -> int
 """
 
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
 import subprocess
 import sys
@@ -30,7 +27,9 @@ ICONS = {
 
 PackageMap = Dict[str, Iterable[str]]
 
+# Arch/pacman package mapping (dedup happens automatically).
 PACMAN_MAP: PackageMap = {
+    # Core tools
     "git": ["git"],
     "curl": ["curl"],
     "file": ["file"],
@@ -39,9 +38,11 @@ PACMAN_MAP: PackageMap = {
     "make": ["make"],
     "gcc": ["gcc"],
     "g++": ["gcc"],
+    # Rust
     "rustup": ["rustup"],
     "rustc": ["rust"],
     "cargo": ["rust"],
+    # Node
     "node": ["nodejs"],
     "npm": ["npm"],
     # Tauri / WebView deps
@@ -52,38 +53,10 @@ PACMAN_MAP: PackageMap = {
     "openssl": ["openssl"],
 }
 
-APT_MAP: PackageMap = {
-    "git": ["git"],
-    "curl": ["curl"],
-    "file": ["file"],
-    "pkg-config": ["pkg-config"],
-    "cmake": ["cmake"],
-    # build chain
-    "make": ["build-essential"],
-    "gcc": ["build-essential"],
-    "g++": ["build-essential"],
-    # rust
-    "rustup": ["rustup"],
-    "rustc": ["rustc"],
-    "cargo": ["cargo"],
-    # node
-    "node": ["nodejs"],
-    "npm": ["npm"],
-    # Tauri / WebView deps
-    "gtk3": ["libgtk-3-dev"],
-    "webkit2gtk": ["libwebkit2gtk-4.1-dev"],
-    "libappindicator-gtk3": ["libappindicator3-dev"],
-    "librsvg": ["librsvg2-dev"],
-    "openssl": ["libssl-dev"],
-}
-
-
-def _detect_pkg_manager() -> str | None:
-    if shutil.which("pacman"):
-        return "pacman"
-    if shutil.which("apt-get"):
-        return "apt"
-    return None
+# If you want fully interactive installs, set FMD_PACMAN_NOCONFIRM=0
+PACMAN_NOCONFIRM = os.environ.get("FMD_PACMAN_NOCONFIRM", "1") != "0"
+# Optional: do a full sync+upgrade before installing. Set FMD_PACMAN_UPGRADE=0 to disable.
+PACMAN_UPGRADE = os.environ.get("FMD_PACMAN_UPGRADE", "1") != "0"
 
 
 def _gather_missing_tool_names(checks: List[Check]) -> List[str]:
@@ -91,13 +64,12 @@ def _gather_missing_tool_names(checks: List[Check]) -> List[str]:
     return [m.name for m in missing]
 
 
-def _expand_packages(manager: str, tools: Iterable[str]) -> tuple[list[str], list[str]]:
-    mapping = PACMAN_MAP if manager == "pacman" else APT_MAP
+def _expand_packages(tools: Iterable[str]) -> tuple[list[str], list[str]]:
     pkgs: Set[str] = set()
     unknown: List[str] = []
 
     for tool in tools:
-        entries = mapping.get(tool)
+        entries = PACMAN_MAP.get(tool)
         if entries is None:
             unknown.append(tool)
             continue
@@ -140,7 +112,8 @@ def _run_capture(cmd: list[str], dry_run: bool) -> tuple[int, str]:
 
 
 def _maybe_run_pacman_keyring_fix(pacman_output: str, dry_run: bool) -> bool:
-    fix_script = Path(__file__).resolve().parent.parent / "fixes" / "pacman_keyring_fix.py"
+    # tools/fixes/pacman_keyring_fix.py
+    fix_script = Path(__file__).resolve().parents[2] / "fixes" / "pacman_keyring_fix.py"
     if not fix_script.exists():
         return False
 
@@ -148,6 +121,7 @@ def _maybe_run_pacman_keyring_fix(pacman_output: str, dry_run: bool) -> bool:
     if spec is None or spec.loader is None:
         print(f"{ICONS['warn']} Unable to load pacman keyring fix module spec.")
         return False
+
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
@@ -168,14 +142,36 @@ def _maybe_run_pacman_keyring_fix(pacman_output: str, dry_run: bool) -> bool:
 
 
 def _install_pacman(packages: list[str], dry_run: bool) -> int:
-    # NOTE: --noconfirm is convenient but risky. Remove it to keep things interactive.
-    cmd = ["sudo", "pacman", "-S", "--needed", "--noconfirm", *packages]
-    rc, out = _run_capture(cmd, dry_run)
+    if not packages:
+        print(f"{ICONS['ok']} Everything is already installed (per Doctor).")
+        return 0
+
+    if not shutil.which("pacman"):
+        print(f"{ICONS['err']} pacman not found. This installer is for Arch/pacman systems.")
+        return 1
+
+    base_flags = ["sudo", "pacman"]
+    if PACMAN_UPGRADE:
+        # Keep system consistent (avoids partial upgrades / dependency weirdness)
+        upgrade_cmd = [*base_flags, "-Syu"]
+        if PACMAN_NOCONFIRM:
+            upgrade_cmd.insert(3, "--noconfirm")
+        rc = _run_cmd(upgrade_cmd, dry_run=dry_run)
+        if rc != 0:
+            return rc
+
+    install_cmd = [*base_flags, "-S", "--needed"]
+    if PACMAN_NOCONFIRM:
+        install_cmd.append("--noconfirm")
+    install_cmd.extend(packages)
+
+    rc, out = _run_capture(install_cmd, dry_run)
     if rc == 0:
         return 0
 
+    # Try keyring fix if it looks like a signature/key issue
     if _maybe_run_pacman_keyring_fix(out, dry_run=dry_run):
-        rc2, out2 = _run_capture(cmd, dry_run)
+        rc2, out2 = _run_capture(install_cmd, dry_run)
         if rc2 == 0:
             return 0
         if out2:
@@ -187,47 +183,23 @@ def _install_pacman(packages: list[str], dry_run: bool) -> int:
     return rc
 
 
-def _install_packages(manager: str, packages: list[str], dry_run: bool) -> int:
-    if not packages:
-        print(f"{ICONS['ok']} Everything is already installed (per Doctor).")
-        return 0
-
-    if manager == "pacman":
-        return _install_pacman(packages, dry_run)
-
-    # apt-get
-    rc = _run_cmd(["sudo", "apt-get", "update"], dry_run)
-    if rc != 0:
-        return rc
-    return _run_cmd(["sudo", "apt-get", "install", "-y", *packages], dry_run)
-
-
 def run_install(dry_run: bool = False) -> int:
-    manager = _detect_pkg_manager()
-    if not manager:
-        print(f"{ICONS['err']} No supported package manager found (pacman or apt-get).")
-        return 1
-
     checks = collect_checks()
     missing_tools = _gather_missing_tool_names(checks)
-    packages, unknown = _expand_packages(manager, missing_tools)
+    packages, unknown = _expand_packages(missing_tools)
 
     if not missing_tools:
         print(f"{ICONS['ok']} No missing tools per Doctor.")
         return 0
 
-    print(f"{ICONS['info']} Detected package manager: {manager}")
+    print(f"{ICONS['info']} Installer: Arch/pacman")
     print(f"{ICONS['warn']} Missing tools per Doctor: {', '.join(missing_tools)}")
 
     if unknown:
         print(f"{ICONS['warn']} No mapping for these tools (ignored): {', '.join(unknown)}")
 
-    if not packages:
-        print(f"{ICONS['err']} No installable packages determined.")
-        return 1
-
     print(f"{ICONS['info']} Installing packages: {', '.join(packages)}")
-    return _install_packages(manager, packages, dry_run=dry_run)
+    return _install_pacman(packages, dry_run=dry_run)
 
 
 if __name__ == "__main__":
