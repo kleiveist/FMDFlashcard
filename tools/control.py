@@ -19,8 +19,9 @@ from typing import Callable, cast
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PY_DIR = SCRIPT_DIR / "inst"
-if str(PY_DIR) not in sys.path:
-    sys.path.insert(0, str(PY_DIR))
+for extra_dir in (PY_DIR, PY_DIR / "linux", PY_DIR / "mac", PY_DIR / "win"):
+    if extra_dir.exists() and str(extra_dir) not in sys.path:
+        sys.path.insert(0, str(extra_dir))
 
 from doctor import run as run_doctor  # type: ignore
 
@@ -168,7 +169,8 @@ def main(argv: list[str] | None = None) -> int:
         if not run_install:
             print(
                 "No matching installation routine found. "
-                "Expected: tools/inst/installwin.py, tools/inst/installuix.py, or tools/inst/installmac.py"
+                "Expected: tools/inst/win/installwin.py, "
+                "tools/inst/linux/installuix.py, or tools/inst/mac/installmac.py"
             )
             exit_code = max(exit_code, 1)
         else:
@@ -178,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
         handled = True
         run_vscode = _load_vscode_run_install()
         if not run_vscode:
-            print("No VS Code install routine found. Expected: inst/installuixvs.py")
+            print("No VS Code install routine found. Expected: tools/inst/linux/installuixvs.py")
             exit_code = max(exit_code, 1)
         else:
             exit_code = max(exit_code, run_vscode())
@@ -187,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
         handled = True
         run_tauri = _load_tauri_run_install()
         if not run_tauri:
-            print("No Tauri install routine found. Expected: inst/installuixtauri.py")
+            print("No Tauri install routine found. Expected: tools/inst/linux/installuixtauri.py")
             exit_code = max(exit_code, 1)
         else:
             # Accept run_install() or run_install(dry_run)
