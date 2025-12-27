@@ -94,6 +94,22 @@ def _load_tauri_run_install() -> Callable[..., int] | None:
     return cast(Callable[..., int], fn)
 
 
+def _load_run_runner() -> Callable[..., int] | None:
+    """Load tools/inst/run.py (runner for pnpm tauri dev)."""
+    mod_name = "run"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load run module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"Run module '{mod_name}' has no run_install(dry_run=...) function.")
+        return None
+    return cast(Callable[..., int], fn)
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Project toolbox launcher.")
     parser.add_argument(
@@ -129,9 +145,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Installs Tauri prerequisites (Linux).",
     )
     parser.add_argument(
+        "--run",
+        action="store_true",
+        help="Runs the Tauri desktop app (pnpm tauri dev).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Only show which commands --install would run.",
+        help="Only show which commands would run.",
     )
     return parser.parse_args(argv)
 
@@ -147,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
         if not run_install:
             print(
                 "No matching installation routine found. "
-                "Expected: inst/installwin.py, py/installuix.py, or py/installmac.py"
+                "Expected: tools/inst/installwin.py, tools/inst/installuix.py, or tools/inst/installmac.py"
             )
             exit_code = max(exit_code, 1)
         else:
@@ -179,12 +200,28 @@ def main(argv: list[str] | None = None) -> int:
             except Exception:
                 exit_code = max(exit_code, run_tauri(args.dry_run))
 
+    if args.run:
+        handled = True
+        run_runner = _load_run_runner()
+        if not run_runner:
+            print("No run routine found. Expected: tools/inst/run.py")
+            exit_code = max(exit_code, 1)
+        else:
+            try:
+                sig = inspect.signature(run_runner)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_runner())
+                else:
+                    exit_code = max(exit_code, run_runner(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_runner(args.dry_run))
+
     if args.doctor or args.check:
         handled = True
         exit_code = max(exit_code, run_doctor(args.json))
 
     if not handled:
-        print("Please specify a command (e.g. --doctor or --install).")
+        print("Please specify a command (e.g. --doctor, --install, --tauri, or --run).")
         return 1
 
     return exit_code
