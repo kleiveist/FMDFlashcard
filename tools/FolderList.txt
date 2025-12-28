@@ -1,13 +1,23 @@
 📁 tools
 ├── 📁 fixes
+│   ├── 📁 __pycache__
+│   │   └── 📄 pacman_keyring_fix.cpython-313.pyc
 │   └── 🐍pacman_keyring_fix.py
 ├── 📁 inst
 │   ├── 📁 __pycache__
 │   │   ├── 📄 doctor.cpython-313.pyc
-│   │   └── 📄 installuixtauri.cpython-313.pyc
+│   │   ├── 📄 installuixtauri.cpython-313.pyc
+│   │   └── 📄 run.cpython-313.pyc
 │   ├── 📁 linux
+│   │   ├── 📁 __pycache__
+│   │   │   ├── 📄 installuix.cpython-313.pyc
+│   │   │   ├── 📄 installuixarc.cpython-313.pyc
+│   │   │   └── 📄 installuixtauri.cpython-313.pyc
 │   │   ├── 🐍installuix.py
+│   │   ├── 🐍installuixarc.py
+│   │   ├── 🐍installuixdeb.py
 │   │   ├── 🐍installuixtauri.py
+│   │   ├── 🐍installuixubu.py
 │   │   └── 🐍installuixvs.py
 │   ├── 📁 mac
 │   │   └── 🐍installmac.py
@@ -15,5 +25,4 @@
 │   │   └── 🐍installwin.py
 │   ├── 🐍doctor.py
 │   └── 🐍run.py
-├── 📝FolderList.txt
 └── 🐍control.py

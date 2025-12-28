@@ -1,0 +1,87 @@
+\subsection{Tauri Dev-Start (Ausführen via \texttt{--start}/\texttt{--run})}
+Der Befehl \texttt{python3 tools/control.py --start} (Alias: \texttt{--run}) startet die Desktop-App im Entwicklungsmodus.
+Dabei wird in das Tauri-Projektverzeichnis gewechselt und \texttt{pnpm tauri dev} ausgeführt. Falls JavaScript-Abhängigkeiten noch nicht installiert sind, wird vorher automatisch \texttt{pnpm install} ausgeführt. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
+
+\paragraph{Aufruf}
+\begin{verbatim}
+python3 tools/control.py --start
+# oder identisch:
+python3 tools/control.py --run
+\end{verbatim}
+Optional kann mit \texttt{--dry-run} nur angezeigt werden, welche Befehle ausgeführt würden (ohne Ausführung). :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3}
+
+\paragraph{Was passiert beim Ausführen?}
+Beim Aufruf von \texttt{--start/--run} lädt \texttt{control.py} das Modul \texttt{run} (entspricht \texttt{tools/inst/run.py}) und ruft dessen \texttt{run\_install(dry\_run=\dots)} auf. :contentReference[oaicite:4]{index=4} :contentReference[oaicite:5]{index=5}
+
+\begin{itemize}
+    \item \textbf{Kontext/Projektpfade:} 
+    Ermittelt werden \emph{Repo-Root} und das Zielverzeichnis \texttt{apps/fmd-desktop}. Falls nur ein Legacy-Pfad existiert (\texttt{tools/apps/fmd-desktop}), wird darauf hingewiesen und dieser Pfad verwendet. :contentReference[oaicite:6]{index=6}
+
+    \item \textbf{Vorbedingungen prüfen:}
+    \begin{itemize}
+        \item \textbf{Zielverzeichnis vorhanden?} Wenn \texttt{apps/fmd-desktop} nicht existiert, wird mit Hinweis abgebrochen, dass zuerst \texttt{--tauri} auszuführen ist. :contentReference[oaicite:7]{index=7}
+        \item \textbf{\texttt{pnpm} vorhanden?} Wenn \texttt{pnpm} nicht im \texttt{PATH} gefunden wird, bricht das Skript ab und verweist auf \texttt{--tauri}. :contentReference[oaicite:8]{index=8}
+        \item \textbf{Rust-Toolchain nutzbar?} Es wird geprüft, ob \texttt{rustc --version} und \texttt{cargo --version} erfolgreich laufen; sonst Abbruch mit Hinweis auf \texttt{--tauri}. :contentReference[oaicite:9]{index=9}
+    \end{itemize}
+
+    \item \textbf{JavaScript-Abhängigkeiten:}
+    Existiert \texttt{node\_modules} im Zielverzeichnis noch nicht, wird \texttt{pnpm install} ausgeführt. Ist \texttt{node\_modules} vorhanden, wird die Installation übersprungen. :contentReference[oaicite:10]{index=10}
+
+    \item \textbf{Start des Dev-Modus:}
+    Anschließend wird \texttt{pnpm tauri dev} im Zielverzeichnis ausgeführt. Dieser Prozess läuft dauerhaft weiter, bis er beendet wird. :contentReference[oaicite:11]{index=11}
+
+    \item \textbf{Beenden (Ctrl+C mit Bestätigung):}
+    Bei interaktivem Terminal fängt das Skript \texttt{Ctrl+C} ab und fragt nach \texttt{Beenden? (j/n)}. Bei \texttt{j} wird ein \texttt{SIGINT} an den gestarteten Prozess (Prozessgruppe) gesendet. :contentReference[oaicite:12]{index=12}
+
+    \item \textbf{Headless-Fallback (Linux):}
+    Wenn kein \texttt{DISPLAY} bzw. \texttt{WAYLAND\_DISPLAY} gesetzt ist und der Dev-Start fehlschlägt, versucht das Skript automatisch über \texttt{xvfb-run} erneut zu starten.
+    Falls \texttt{xvfb-run} fehlt, wird es (wenn möglich) über \texttt{apt-get} oder \texttt{pacman} nachinstalliert. :contentReference[oaicite:13]{index=13}
+\end{itemize}
+
+\paragraph{Warum sieht man beim ersten Start häufig Downloads und Compiling?}
+\texttt{pnpm tauri dev} startet typischerweise zwei Teilprozesse:
+(1) den Frontend-Dev-Server (z.\,B. Vite) und (2) den Rust/Tauri-Dev-Build via \texttt{cargo run}.
+Beim ersten Lauf (oder nach Cache-Löschung) lädt \texttt{cargo} benötigte Rust-Abhängigkeiten und kompiliert sie in das Projekt-\texttt{target/}-Verzeichnis; spätere Starts sind meist deutlich schneller, weil bereits gebaute Artefakte wiederverwendet werden.
+
+\paragraph{Wann wird \texttt{--start/--run} eingesetzt und wofür?}
+\texttt{--start/--run} ist der Standard-Workflow für die tägliche Entwicklung:
+Nach erfolgreichem Setup (\texttt{--tauri}) wird der Dev-Modus gestartet, um UI und Backend gemeinsam auszuführen und Änderungen iterativ zu testen.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{FMD/image/DesktopTauri.png}
+    \caption{DesktopTauri.\cite{Eigendarstellung}}
+    \label{fig:terminal-checkup}
+\end{figure}
+
+\paragraph{Ergebnis nach dem Start}
+Nach erfolgreicher Initialisierung und dem Aufruf von \texttt{python3 tools/control.py --start} erscheint ein Desktop-Fenster der Tauri-Anwendung.
+Im Fenster ist die Standard-Startseite des Templates sichtbar: die Überschrift \enquote{Welcome to Tauri + React}, darunter die Logos von Vite, Tauri und React sowie ein kurzer Hinweistext.
+Im unteren Bereich befinden sich ein Eingabefeld (\enquote{Enter a name...}) und ein Button (\enquote{Greet}).
+Diese Ansicht bestätigt, dass (a) der Frontend-Dev-Server läuft und (b) die Tauri-Runtime die WebView korrekt startet und die UI lädt.
+
+
+\paragraph{Hinweis: Dateisystem (Festplattenformat) und \texttt{node\_modules} unter Linux}
+\begin{quote}
+\textbf{Wichtig:} Die JavaScript-Abhängigkeiten (\texttt{node\_modules}) werden bei \texttt{pnpm} intern über ein Store-/Link-System aufgebaut, das unter Linux typischerweise \textbf{Symlinks} (und teils Hardlinks) verwendet. Wenn das Projekt auf einem Datenträger liegt, dessen Dateisystem diese POSIX-Features nicht unterstützt, schlägt \texttt{pnpm install} fehl (z.\,B. mit \texttt{ERR\_PNPM\_EPERM} und Meldungen zu \texttt{symlink} / \texttt{operation not permitted}). In der Folge kann auch \texttt{pnpm tauri dev} scheitern (z.\,B. \texttt{tauri: Kommando nicht gefunden}), weil die lokalen Binaries in \texttt{node\_modules/.bin} nicht korrekt angelegt wurden.
+    
+\medskip
+\textbf{Typische Problemfälle unter Linux:}
+\begin{itemize}
+  \item \textbf{exFAT/FAT (häufig bei externen SSDs/USB-Sticks):} unterstützt keine POSIX-Symlinks $\rightarrow$ \texttt{pnpm install} bricht ab.
+  \item \textbf{NTFS (je nach Mount/Optionen):} Symlinks können eingeschränkt sein $\rightarrow$ ebenfalls mögliche \texttt{EPERM}-Fehler.
+  \item \textbf{Netzwerk-/FUSE-Mounts (z.\,B. Samba, GVFS, spezielle Verschlüsselungs-/Cloud-Mounts):} Symlinks/Dateirechte sind je nach Setup limitiert.
+\end{itemize}
+
+\medskip
+\textbf{Empfehlung:} Für Tauri/Node-Entwicklung das Repo (oder zumindest \texttt{apps/fmd-desktop/node\_modules}) auf einem nativen Linux-Dateisystem ablegen, z.\,B. \textbf{ext4} oder \textbf{btrfs}. Dadurch funktionieren Symlinks zuverlässig und \texttt{pnpm install} kann korrekt ausführen.
+
+\medskip
+\textbf{Wenn es schief geht (Quick-Fix):}
+\begin{verbatim}
+rm -rf apps/fmd-desktop/node_modules
+pnpm install
+\end{verbatim}
+Falls das Repo auf einem nicht geeigneten Dateisystem liegen muss, kann alternativ \texttt{node\_modules} auf ein ext4/btrfs-Verzeichnis ausgelagert und per Bind-Mount eingebunden werden.
+\end{quote}

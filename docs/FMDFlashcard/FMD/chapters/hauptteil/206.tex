@@ -1,0 +1,24 @@
+\subsection{Tauri (Prüfung, Abhängigkeiten und Initialisierung via \texttt{--tauri})}
+Der Befehl \texttt{python3 tools/control.py --tauri} dient dazu, eine Linux-Umgebung für die Entwicklung einer Tauri-Anwendung vorzubereiten. Dabei werden die erforderlichen Systembibliotheken geprüft und (falls nötig) installiert. Zusätzlich wird ein lauffähiges Tauri-Projektgerüst (React + TypeScript, \texttt{pnpm}) erstellt und die JavaScript-Abhängigkeiten werden installiert.
+
+\paragraph{Aufruf}
+\begin{verbatim}
+python3 tools/control.py --tauri
+\end{verbatim}
+Optional kann mit \texttt{--dry-run} zunächst nur angezeigt werden, welche Installationsbefehle ausgeführt würden.
+
+\paragraph{Was passiert beim Ausführen?}
+Beim Start lädt \texttt{control.py} unter Linux das Modul \texttt{installuixtauri} und ruft dessen \texttt{run\_install(...)} auf (unter Windows/macOS wird der Vorgang abgebrochen, da die Routine Linux-only ist).
+
+\begin{itemize}
+    \item \textbf{Sicherheits-/Ausführungsmodus:} Das Skript muss als normaler Benutzer laufen (nicht als \texttt{root}); für Systempakete wird gezielt \texttt{sudo} verwendet.
+    \item \textbf{Distro-Erkennung:} Erkennung von Debian/Ubuntu vs. Arch (über \texttt{/etc/os-release} und Fallbacks).
+    \item \textbf{Systemabhängigkeiten (Linux):} Es wird geprüft, ob zentrale Build-Tools und \texttt{pkg-config}-Einträge (u.\,a. \texttt{webkit2gtk-4.1}, \texttt{openssl}, \texttt{librsvg-2.0}) vorhanden sind. Wenn nicht, werden passende Pakete automatisch installiert (via \texttt{apt} oder \texttt{pacman}).
+    \item \textbf{\texttt{pnpm} bereitstellen:} Falls \texttt{pnpm} fehlt, wird bevorzugt \texttt{corepack} verwendet (\texttt{corepack enable} und \texttt{corepack prepare pnpm@latest --activate}); alternativ erfolgt ein Fallback über \texttt{npm i -g pnpm} (ggf. mit \texttt{sudo}).
+    \item \textbf{Rust sicherstellen:} Falls \texttt{rustc}/\texttt{cargo} fehlen, wird über \texttt{rustup} die stabile Toolchain installiert und als Standard gesetzt.
+    \item \textbf{Projektgerüst erstellen:} Anschließend wird nicht-interaktiv ein neues Tauri-Projekt mittels \texttt{pnpm create tauri-app} mit dem Template \texttt{react-ts} erzeugt (Standardziel: \texttt{apps/fmd-desktop}). Danach folgt \texttt{pnpm install}.
+\end{itemize}
+
+\paragraph{Wann wird \texttt{--tauri} eingesetzt und wofür?}
+\texttt{--tauri} wird eingesetzt, wenn eine neue Entwicklungsumgebung (z.\,B. frische VM) für Tauri vorbereitet werden soll oder wenn typische Tauri-Buildfehler auf fehlende Systembibliotheken bzw. Toolchains hindeuten. Der Abschnitt automatisiert insbesondere die Linux-spezifischen Voraussetzungen (WebView/GTK/WebKit, Build-Tools) und reduziert manuelle Installationsschritte, bevor anschließend die eigentliche Anwendung entwickelt bzw. gebaut wird.
+

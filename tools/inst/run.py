@@ -18,6 +18,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import signal
 from pathlib import Path
 from typing import List, Optional
 
@@ -75,6 +76,73 @@ def run(cmd: List[str], *, cwd: Optional[Path] = None, check: bool = True) -> in
     if check and p.returncode != 0:
         raise RuntimeError(f"Command failed (exit {p.returncode}): {' '.join(cmd)}")
     return p.returncode
+
+
+def run_with_interrupt_prompt(
+    cmd: List[str],
+    *,
+    cwd: Optional[Path] = None,
+    check: bool = True,
+) -> int:
+    if _DRY_RUN or not sys.stdin.isatty():
+        return run(cmd, cwd=cwd, check=check)
+    cwd_txt = f" (cwd={cwd})" if cwd else ""
+    print(f"{ICONS['run']} {' '.join(cmd)}{cwd_txt}")
+
+    popen_kwargs: dict = {}
+    if os.name == "posix":
+        popen_kwargs["start_new_session"] = True
+    elif sys.platform == "win32" and hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
+    p = subprocess.Popen(cmd, cwd=str(cwd) if cwd else None, **popen_kwargs)
+    while True:
+        try:
+            rc = p.wait()
+            break
+        except KeyboardInterrupt:
+            if p.poll() is not None:
+                rc = p.returncode
+                break
+            if _confirm_exit():
+                _signal_child(p, signal.SIGINT)
+                rc = p.wait()
+                break
+            print(f"{ICONS['info']} Weiter...")
+            continue
+
+    if check and rc != 0:
+        raise RuntimeError(f"Command failed (exit {rc}): {' '.join(cmd)}")
+    return rc
+
+
+def _confirm_exit() -> bool:
+    while True:
+        try:
+            answer = input("Beenden? (j/n) ").strip().lower()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return True
+        if answer in {"j", "ja", "y", "yes"}:
+            return True
+        if answer in {"n", "nein", ""}:
+            return False
+        print("Bitte 'j' oder 'n' eingeben.")
+
+
+def _signal_child(proc: subprocess.Popen, sig: int) -> None:
+    try:
+        if os.name == "posix":
+            os.killpg(proc.pid, sig)
+        else:
+            proc.send_signal(sig)
+    except ProcessLookupError:
+        return
+    except Exception:
+        try:
+            proc.send_signal(sig)
+        except Exception:
+            return
 
 
 def cmd_ok(cmd: List[str]) -> bool:
@@ -153,9 +221,9 @@ def run_install(dry_run: bool = False) -> int:
             print(f"{ICONS['ok']} node_modules present -> skipping pnpm install.")
 
         section("Start Tauri dev")
-        print(f"{ICONS['info']} This keeps running until you stop it (Ctrl+C).")
+        print(f"{ICONS['info']} Stop with Ctrl+C, then confirm with j/n.")
         dev_cmd = ["pnpm", "tauri", "dev"]
-        rc = run(dev_cmd, cwd=target_dir, check=False)
+        rc = run_with_interrupt_prompt(dev_cmd, cwd=target_dir, check=False)
         if rc == 0:
             return 0
 

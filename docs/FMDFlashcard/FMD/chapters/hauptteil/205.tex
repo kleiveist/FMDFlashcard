@@ -1,0 +1,20 @@
+\subsection{Visual Studio Code (Installation via \texttt{--vscode})}
+Als Code-Editor wird Visual Studio Code (VS Code) empfohlen, da er plattformübergreifend auf allen gängigen Betriebssystemen verfügbar ist und eine große Auswahl an Erweiterungen bietet. Für dieses Projekt sind insbesondere die Python-Unterstützung (z.\,B. Linting, Debugging) sowie KI-gestützte Erweiterungen (z.\,B. Codex-Integration) als Produktivitätswerkzeuge relevant. Weitere Erweiterungen für die Frontend-Entwicklung (CSS/JavaScript), z.\,B. Formatierung, Linting und Framework-spezifische Hilfen, werden in späteren Kapiteln ergänzt.
+
+\paragraph{Aufruf}
+Die Installation kann automatisiert über das Projekt-Tooling angestoßen werden:
+\begin{verbatim}
+python3 tools/control.py --vscode
+\end{verbatim}
+Der Schalter \texttt{--vscode} ist in \texttt{control.py} hinterlegt und lädt das passende Installationsmodul \texttt{installuixvs} (Linux) und führt dessen \texttt{run\_install()} aus. :contentReference[oaicite:0]{index=0}
+
+\paragraph{Funktionsweise des Installationsskripts}
+Das Installationsskript ist als \enquote{Unified Installer} für Linux/Unix umgesetzt und unterstützt Arch-basierte Systeme sowie Debian/Ubuntu. Es prüft zunächst, ob VS Code bereits vorhanden ist (Binary \texttt{code}); in diesem Fall wird keine Installation durchgeführ 
+
+\begin{itemize}
+    \item \textbf{Arch/Derivate:} Standardmäßig wird – sofern ein AUR-Helper (\texttt{paru} oder \texttt{yay}) vorhanden ist – der Microsoft-Build (\texttt{visual-studio-code-bin}) aus dem AUR installiert. Falls kein AUR-Helper gefunden wird, erfolgt ein Fallback auf \texttt{code} (Code - OSS) via \texttt{pacman}. Optional kann über \texttt{VSCODE\_VARIANT=oss} erzwungen werden, dass immer die OSS-Variante installiert wird. Zusätzlich verhindert das Skript bewusst eine AUR-Installation als \texttt{root}, um typische Arch-Konventionen einzuhalten. :contentReference[oaicite:2]{index=2}
+    \item \textbf{Debian/Ubuntu:} Das Skript stellt sicher, dass \texttt{curl} verfügbar ist, ermittelt die Systemarchitektur (z.\,B. x64/arm64/armhf), lädt das aktuelle stabile \texttt{.deb} direkt von der offiziellen Update-Quelle von VS Code herunter und installiert es anschließend per \texttt{apt}. Dabei wird im nicht-interaktiven Modus gearbeitet, um eine saubere Automatisierung zu ermöglichen.
+\end{itemize}
+
+\paragraph{Nutzen für neue VMs}
+Gerade auf frischen oder neu provisionierten VMs ist dieser Ansatz hilfreich, weil die Installation reproduzierbar und ohne manuelle Zwischenschritte erfolgt (inklusive OS-Erkennung, Paketmanager-Pfad und ggf. \texttt{sudo}-Nutzung). Dadurch steht die Entwicklungsumgebung schnell für nachfolgende Schritte (Python-, CSS- und JS-Workflow) bereit. 
