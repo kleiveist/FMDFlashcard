@@ -147,6 +147,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--run",
+        "--start",
+        dest="run",
         action="store_true",
         help="Runs the Tauri desktop app (pnpm tauri dev).",
     )
@@ -223,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
         exit_code = max(exit_code, run_doctor(args.json))
 
     if not handled:
-        print("Please specify a command (e.g. --doctor, --install, --tauri, or --run).")
+        print("Please specify a command (e.g. --doctor, --install, --tauri, or --start/--run).")
         return 1
 
     return exit_code

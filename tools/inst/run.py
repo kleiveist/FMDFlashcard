@@ -3,7 +3,7 @@
 Run the Tauri desktop app in dev mode.
 
 control.py entry:
-  python3 tools/control.py --run
+  python3 tools/control.py --start (alias: --run)
 
 What it does (default):
   cd <repo>/apps/fmd-desktop
@@ -39,6 +39,10 @@ def section(title: str) -> None:
 
 def which(cmd: str) -> Optional[str]:
     return shutil.which(cmd)
+
+
+def display_available() -> bool:
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
 def run(cmd: List[str], *, cwd: Optional[Path] = None, check: bool = True) -> int:
@@ -80,13 +84,20 @@ def run_install(dry_run: bool = False) -> int:
 
     if platform.system().lower() != "linux":
         print(
-            f"{ICONS['warn']} --run is primarily intended for Linux Tauri dev; "
+            f"{ICONS['warn']} --start/--run is primarily intended for Linux Tauri dev; "
             f"OS={platform.system()}."
         )
         # Still attempt to run in case pnpm/tauri is usable.
     try:
         repo_root = repo_root_from_here()
         target_dir = (repo_root / "apps" / "fmd-desktop").resolve()
+        legacy_dir = (repo_root / "tools" / "apps" / "fmd-desktop").resolve()
+        if not target_dir.exists() and legacy_dir.exists():
+            print(
+                f"{ICONS['warn']} Found legacy path (tools/apps). "
+                "Consider re-running --tauri to scaffold into /apps."
+            )
+            target_dir = legacy_dir
 
         section("Run Context")
         print(f"{ICONS['info']} Repo root:  {repo_root}")
@@ -122,7 +133,24 @@ def run_install(dry_run: bool = False) -> int:
 
         section("Start Tauri dev")
         print(f"{ICONS['info']} This keeps running until you stop it (Ctrl+C).")
-        run(["pnpm", "tauri", "dev"], cwd=target_dir, check=True)
+        dev_cmd = ["pnpm", "tauri", "dev"]
+        if platform.system().lower() == "linux" and not display_available():
+            xvfb_run = which("xvfb-run")
+            if xvfb_run:
+                print(f"{ICONS['info']} No display detected; using xvfb-run.")
+                dev_cmd = [xvfb_run, "-a", *dev_cmd]
+            else:
+                print(f"{ICONS['err']} No display detected and xvfb-run not found.")
+                if which("apt-get"):
+                    hint = "sudo apt-get install -y xvfb"
+                elif which("pacman"):
+                    hint = "sudo pacman -S --needed xvfb"
+                else:
+                    hint = "Install xvfb with your package manager"
+                print(f"{ICONS['info']} Fix with: {hint}")
+                print(f"{ICONS['info']} Then run: python3 tools/control.py --start")
+                return 1
+        run(dev_cmd, cwd=target_dir, check=True)
 
         return 0
     except Exception as ex:

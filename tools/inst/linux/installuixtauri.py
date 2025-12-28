@@ -45,6 +45,9 @@ def cmd_ok(cmd: List[str]) -> bool:
 
 def which(cmd: str) -> Optional[str]: return shutil.which(cmd)
 
+def display_available() -> bool:
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
 def ensure_not_root() -> None:
     if hasattr(os, "geteuid") and os.geteuid() == 0:
         raise RuntimeError("Please run as a normal user (not root).")
@@ -95,10 +98,13 @@ def _install_pacman(pkgs: List[str]) -> None:
 
 def install_wasd_deps(family: str) -> None:
     if family == "debian":
-        _install_apt([
+        pkgs = [
             "libwebkit2gtk-4.1-dev","libgtk-3-dev","libssl-dev","libxdo-dev",
             "librsvg2-dev","libayatana-appindicator3-dev","pkg-config"
-        ])
+        ]
+        if not display_available():
+            pkgs.append("xvfb")
+        _install_apt(pkgs)
         return
     if family == "arch":
         _install_pacman([
@@ -226,8 +232,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         ensure_not_root()
         family, osr = detect_linux_family()
 
-        # tools/inst/installuixtauri.py -> parents[2] == repo root
-        repo_root = Path(args.repo_root).expanduser().resolve() if args.repo_root else Path(__file__).resolve().parents[2]
+        # tools/inst/linux/installuixtauri.py -> parents[3] == repo root
+        repo_root = (
+            Path(args.repo_root).expanduser().resolve()
+            if args.repo_root
+            else Path(__file__).resolve().parents[3]
+        )
         target_dir = (repo_root / args.target).resolve()
 
         section("Context")
@@ -277,7 +287,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         section("Done")
         print(f"{ICONS['ok']} Fertig.")
         if not args.dev:
-            print(f"{ICONS['info']} Next: cd {target_dir} && pnpm tauri dev")
+            print(f"{ICONS['info']} Next:")
+            print("  python3 tools/control.py --start")
+            if not display_available():
+                print("  (headless) xvfb-run -a pnpm tauri dev")
+            print(f"  oder: cd {target_dir} && pnpm tauri dev")
         return 0
     except Exception as ex:
         eprint(f"{ICONS['err']} {ex}"); return 1

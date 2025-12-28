@@ -65,5 +65,5 @@ cd ~/Projects/FMDFlashcard
 python3 tools/control.py --install
 
 # start (dev)
-# python3 tools/control.py --run
+# python3 tools/control.py --start
 ```
