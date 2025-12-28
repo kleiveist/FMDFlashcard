@@ -198,12 +198,24 @@ def collect_checks() -> List[Check]:
         "librsvg": ["librsvg2-dev"],
         "openssl": ["libssl-dev"],
     }
+    arch_pkg = {
+        "gtk3": ["gtk3"],
+        "webkit2gtk": ["webkit2gtk-4.1", "webkit2gtk"],
+        "libappindicator-gtk3": ["libappindicator", "libappindicator-gtk3"],
+        "librsvg": ["librsvg"],
+        "openssl": ["openssl"],
+    }
 
     if system == "linux" and pacman:
         for d in deps:
-            q = run_cmd(["pacman", "-Q", d])
-            if q:
-                checks.append(Check(d, True, q, "Tauri System Libs"))
+            found = None
+            for pkg in arch_pkg.get(d, [d]):
+                q = run_cmd(["pacman", "-Q", pkg])
+                if q:
+                    found = q
+                    break
+            if found:
+                checks.append(Check(d, True, found, "Tauri System Libs"))
             else:
                 checks.append(Check(d, False, "not installed", "Tauri System Libs"))
     elif system == "linux" and dpkg_query:
