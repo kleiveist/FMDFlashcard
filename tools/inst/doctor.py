@@ -50,6 +50,31 @@ def which(cmd: str) -> Optional[str]:
     return shutil.which(cmd)
 
 
+def _cargo_home() -> Path:
+    cargo_home = os.environ.get("CARGO_HOME")
+    if cargo_home:
+        return Path(cargo_home).expanduser()
+    return Path.home() / ".cargo"
+
+
+def _resolve_tool_with_cargo_bin(cmd: str, cargo_bin: Path) -> tuple[Optional[str], bool]:
+    found = which(cmd)
+    if found:
+        return found, False
+    candidate = cargo_bin / cmd
+    if candidate.exists() and os.access(candidate, os.X_OK):
+        return str(candidate), True
+    return None, False
+
+
+def _with_path_hint(details: str, from_cargo: bool, cargo_env: Path, cargo_bin: Path) -> str:
+    if not from_cargo:
+        return details
+    if cargo_env.exists():
+        return f"{details} (not in PATH; run 'source {cargo_env}')"
+    return f"{details} (not in PATH; add {cargo_bin} to PATH)"
+
+
 def header(title: str) -> None:
     line = "═" * (len(title) + 2)
     print(f"\n{line}\n {title}\n{line}")
@@ -94,27 +119,48 @@ def collect_checks() -> List[Check]:
         else:
             checks.append(Check(tool, False, "not found", "Core Tools"))
 
-    rustup = which("rustup")
-    rustc = which("rustc")
-    cargo = which("cargo")
+    cargo_home = _cargo_home()
+    cargo_bin = cargo_home / "bin"
+    cargo_env = cargo_home / "env"
+    rustup, rustup_from_cargo = _resolve_tool_with_cargo_bin("rustup", cargo_bin)
+    rustc, rustc_from_cargo = _resolve_tool_with_cargo_bin("rustc", cargo_bin)
+    cargo, cargo_from_cargo = _resolve_tool_with_cargo_bin("cargo", cargo_bin)
 
     if rustup:
-        v = run_cmd(["rustup", "--version"]) or "version unavailable"
-        active = run_cmd(["rustup", "show", "active-toolchain"]) or "(active toolchain unknown)"
-        checks.append(Check("rustup", True, v, "Rust"))
-        checks.append(Check("toolchain", True, active, "Rust"))
+        v = run_cmd([rustup, "--version"]) or "version unavailable"
+        active = run_cmd([rustup, "show", "active-toolchain"]) or "(active toolchain unknown)"
+        checks.append(
+            Check(
+                "rustup",
+                True,
+                _with_path_hint(v, rustup_from_cargo, cargo_env, cargo_bin),
+                "Rust",
+            )
+        )
+        checks.append(
+            Check(
+                "toolchain",
+                True,
+                _with_path_hint(active, rustup_from_cargo, cargo_env, cargo_bin),
+                "Rust",
+            )
+        )
     else:
         checks.append(Check("rustup", False, "not found", "Rust"))
 
     if rustc:
-        v = run_cmd(["rustc", "-V"]) or "version unavailable"
-        checks.append(Check("rustc", True, v, "Rust"))
+        v = run_cmd([rustc, "-V"]) or "version unavailable"
+        checks.append(
+            Check("rustc", True, _with_path_hint(v, rustc_from_cargo, cargo_env, cargo_bin), "Rust")
+        )
     else:
         checks.append(Check("rustc", False, "not found", "Rust"))
 
     if cargo:
-        v = run_cmd(["cargo", "-V"]) or "version unavailable"
-        checks.append(Check("cargo", True, v, "Rust"))
+        v = run_cmd([cargo, "-V"]) or "version unavailable"
+        checks.append(
+            Check("cargo", True, _with_path_hint(v, cargo_from_cargo, cargo_env, cargo_bin), "Rust")
+        )
     else:
         checks.append(Check("cargo", False, "not found", "Rust"))
 
