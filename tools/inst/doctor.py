@@ -145,11 +145,11 @@ def collect_checks() -> List[Check]:
 
     # Debian/Ubuntu package names for the above logical deps.
     debian_pkg = {
-        "gtk3": "libgtk-3-dev",
-        "webkit2gtk": "libwebkit2gtk-4.1-dev",
-        "libappindicator-gtk3": "libappindicator3-dev",
-        "librsvg": "librsvg2-dev",
-        "openssl": "libssl-dev",
+        "gtk3": ["libgtk-3-dev"],
+        "webkit2gtk": ["libwebkit2gtk-4.1-dev", "libwebkit2gtk-4.0-dev"],
+        "libappindicator-gtk3": ["libayatana-appindicator3-dev", "libappindicator3-dev"],
+        "librsvg": ["librsvg2-dev"],
+        "openssl": ["libssl-dev"],
     }
 
     if system == "linux" and pacman:
@@ -161,12 +161,21 @@ def collect_checks() -> List[Check]:
                 checks.append(Check(d, False, "not installed", "Tauri System Libs"))
     elif system == "linux" and dpkg_query:
         for d in deps:
-            pkg = debian_pkg[d]
-            q = run_cmd(["dpkg-query", "-W", "-f=${Status} ${Version}", pkg])
-            if q and "install ok installed" in q:
-                checks.append(Check(d, True, f"{pkg}: {q}", "Tauri System Libs"))
+            pkgs = debian_pkg[d]
+            found_pkg = None
+            found_status = None
+            for pkg in pkgs:
+                q = run_cmd(["dpkg-query", "-W", "-f=${Status} ${Version}", pkg])
+                if q and "install ok installed" in q:
+                    found_pkg = pkg
+                    found_status = q
+                    break
+            if found_pkg:
+                checks.append(Check(d, True, f"{found_pkg}: {found_status}", "Tauri System Libs"))
             else:
-                checks.append(Check(d, False, f"{pkg}: not installed", "Tauri System Libs"))
+                checks.append(
+                    Check(d, False, f"{'/'.join(pkgs)}: not installed", "Tauri System Libs")
+                )
     else:
         # Non-Linux systems or unknown Linux distros: don't fail the doctor on these.
         for d in deps:
