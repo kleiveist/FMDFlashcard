@@ -45,6 +45,27 @@ def display_available() -> bool:
     return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
+def ensure_xvfb() -> bool:
+    if which("xvfb-run"):
+        return True
+    if _DRY_RUN:
+        print(f"{ICONS['info']} Dry run: would install xvfb.")
+        return True
+
+    if which("apt-get"):
+        run(["sudo", "apt-get", "install", "-y", "xvfb"], check=False)
+        if which("xvfb-run"):
+            return True
+
+    if which("pacman"):
+        for pkg in ["xorg-server-xvfb", "xvfb"]:
+            run(["sudo", "pacman", "-S", "--needed", "--noconfirm", pkg], check=False)
+            if which("xvfb-run"):
+                return True
+
+    return False
+
+
 def run(cmd: List[str], *, cwd: Optional[Path] = None, check: bool = True) -> int:
     cwd_txt = f" (cwd={cwd})" if cwd else ""
     print(f"{ICONS['run']} {' '.join(cmd)}{cwd_txt}")
@@ -134,25 +155,30 @@ def run_install(dry_run: bool = False) -> int:
         section("Start Tauri dev")
         print(f"{ICONS['info']} This keeps running until you stop it (Ctrl+C).")
         dev_cmd = ["pnpm", "tauri", "dev"]
-        if platform.system().lower() == "linux" and not display_available():
-            xvfb_run = which("xvfb-run")
-            if xvfb_run:
-                print(f"{ICONS['info']} No display detected; using xvfb-run.")
-                dev_cmd = [xvfb_run, "-a", *dev_cmd]
-            else:
-                print(f"{ICONS['err']} No display detected and xvfb-run not found.")
-                if which("apt-get"):
-                    hint = "sudo apt-get install -y xvfb"
-                elif which("pacman"):
-                    hint = "sudo pacman -S --needed xvfb"
-                else:
-                    hint = "Install xvfb with your package manager"
-                print(f"{ICONS['info']} Fix with: {hint}")
-                print(f"{ICONS['info']} Then run: python3 tools/control.py --start")
-                return 1
-        run(dev_cmd, cwd=target_dir, check=True)
+        rc = run(dev_cmd, cwd=target_dir, check=False)
+        if rc == 0:
+            return 0
 
-        return 0
+        if platform.system().lower() == "linux" and not display_available():
+            print(f"{ICONS['warn']} Tauri dev exited (code {rc}); trying xvfb-run.")
+            if ensure_xvfb():
+                xvfb_run = which("xvfb-run")
+                if xvfb_run:
+                    print(f"{ICONS['info']} Using xvfb-run after failure.")
+                    return run([xvfb_run, "-a", *dev_cmd], cwd=target_dir, check=True)
+
+            print(f"{ICONS['err']} No display detected and xvfb-run not available.")
+            if which("apt-get"):
+                hint = "sudo apt-get install -y xvfb"
+            elif which("pacman"):
+                hint = "sudo pacman -S --needed xorg-server-xvfb"
+            else:
+                hint = "Install xvfb with your package manager"
+            print(f"{ICONS['info']} Fix with: {hint}")
+            print(f"{ICONS['info']} Then run: python3 tools/control.py --start")
+            return 1
+
+        return rc
     except Exception as ex:
         print(f"{ICONS['err']} {ex}")
         return 1
