@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "homecodeprojectsfmdflashcardappsfmd-desktop",
-  "version": "0.1.0",
-  "identifier": "com.fmd.flashcard",
+  "productName": "FMD Flashcard",
+  "version": "0.2.0",
+  "identifier": "com.blobbite.fmdflashcard",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "homecodeprojectsfmdflashcardappsfmd-desktop",
+        "title": "FMD Flashcard",
         "width": 800,
         "height": 600
       }
