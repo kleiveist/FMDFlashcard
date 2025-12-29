@@ -12,7 +12,128 @@ type TabKey = "dashboard" | "settings";
 
 type LoadState = "idle" | "loading" | "error";
 
+type TreeNode = {
+  name: string;
+  path: string;
+  type: "dir" | "file";
+  children?: TreeNode[];
+  fullPath?: string;
+};
+
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
+
+const FolderIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+  </svg>
+);
+
+const FileIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M7 4h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+    <path d="M14 4v5h5" />
+  </svg>
+);
+
+const normalizeRelativePath = (value: string) =>
+  value.replace(/\\/g, "/").replace(/^\/+/, "");
+
+const buildTree = (files: VaultFile[]): TreeNode[] => {
+  const root: TreeNode = {
+    name: "__root__",
+    path: "",
+    type: "dir",
+    children: [],
+  };
+
+  for (const file of files) {
+    const relative = normalizeRelativePath(file.relative_path);
+    const parts = relative.split("/").filter(Boolean);
+    if (parts.length === 0) {
+      continue;
+    }
+    let current = root;
+    let currentPath = "";
+
+    parts.forEach((part, index) => {
+      const isFile = index === parts.length - 1;
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      if (isFile) {
+        const existing = current.children?.find(
+          (child) => child.type === "file" && child.path === currentPath,
+        );
+        if (!existing) {
+          current.children = current.children ?? [];
+          current.children.push({
+            name: part,
+            path: currentPath,
+            type: "file",
+            fullPath: file.path,
+          });
+        }
+        return;
+      }
+
+      let next = current.children?.find(
+        (child) => child.type === "dir" && child.name === part,
+      );
+      if (!next) {
+        next = {
+          name: part,
+          path: currentPath,
+          type: "dir",
+          children: [],
+        };
+        current.children = current.children ?? [];
+        current.children.push(next);
+      }
+      current = next;
+    });
+  }
+
+  return sortNodes(root.children ?? []);
+};
+
+const sortNodes = (nodes: TreeNode[]): TreeNode[] => {
+  const sorted = [...nodes].sort((a, b) => {
+    if (a.type !== b.type) {
+      return a.type === "dir" ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  return sorted.map((node) => {
+    if (node.type === "dir" && node.children) {
+      return { ...node, children: sortNodes(node.children) };
+    }
+    return node;
+  });
+};
+
+const vaultBaseName = (value: string | null) => {
+  if (!value) {
+    return "Vault";
+  }
+  const trimmed = value.replace(/[\\/]+$/, "");
+  const parts = trimmed.split(/[\\/]/);
+  return parts[parts.length - 1] || "Vault";
+};
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
@@ -24,6 +145,7 @@ function App() {
   const [previewState, setPreviewState] = useState<LoadState>("idle");
   const [listError, setListError] = useState("");
   const [previewError, setPreviewError] = useState("");
+  const [treeSelection, setTreeSelection] = useState<string | null>(null);
 
   const fileCountLabel = useMemo(() => {
     if (!vaultPath) {
@@ -34,6 +156,9 @@ function App() {
     }
     return `${files.length} Markdown-Datei${files.length === 1 ? "" : "en"}`;
   }, [files.length, vaultPath]);
+
+  const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
+  const treeNodes = useMemo(() => buildTree(files), [files]);
 
   const handlePickVault = async () => {
     setListError("");
@@ -50,12 +175,13 @@ function App() {
 
     setVaultPath(selected);
     setSelectedFile(null);
+    setTreeSelection(null);
     setPreview("");
     setFiles([]);
     setListState("loading");
     try {
       const results = await invoke<VaultFile[]>("list_markdown_files", {
-        vault_path: selected,
+        vaultPath: selected,
       });
       setFiles(results);
       setListState("idle");
@@ -94,6 +220,40 @@ function App() {
     }
   };
 
+  const renderTreeNodes = (nodes: TreeNode[]) =>
+    nodes.map((node) => {
+      if (node.type === "dir") {
+        return (
+          <details className="tree-dir" key={node.path}>
+            <summary className="tree-item">
+              <span className="tree-icon">
+                <FolderIcon />
+              </span>
+              <span className="tree-name">{node.name}</span>
+            </summary>
+            <div className="tree-children">{renderTreeNodes(node.children ?? [])}</div>
+          </details>
+        );
+      }
+
+      return (
+        <button
+          type="button"
+          key={node.path}
+          className={`tree-item tree-file ${
+            treeSelection === node.path ? "active" : ""
+          }`}
+          onClick={() => setTreeSelection(node.path)}
+          title={node.path}
+        >
+          <span className="tree-icon">
+            <FileIcon />
+          </span>
+          <span className="tree-name">{node.name}</span>
+        </button>
+      );
+    });
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -112,24 +272,37 @@ function App() {
           >
             Dashboard
           </button>
+        </nav>
+        <div className="sidebar-footer">
+          <div className="vault-status">
+            <span className="label">Vault</span>
+            <span className="value">{vaultPath ? "Aktiv" : "Nicht gesetzt"}</span>
+          </div>
           <button
             type="button"
-            className={`nav-item ${activeTab === "settings" ? "active" : ""}`}
+            className={`nav-icon ${activeTab === "settings" ? "active" : ""}`}
             onClick={() => setActiveTab("settings")}
+            aria-label="Einstellungen"
+            title="Einstellungen"
           >
-            Einstellungen
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <circle cx="9" cy="6" r="2.5" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <circle cx="14" cy="12" r="2.5" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+              <circle cx="11" cy="18" r="2.5" />
+            </svg>
           </button>
-        </nav>
-        <div className="sidebar-card">
-          <span className="label">Vault</span>
-          <span className="value">{vaultPath ? "Aktiv" : "Nicht gesetzt"}</span>
-          <span className="path" title={vaultPath ?? undefined}>
-            {vaultPath ?? "Vault auswaehlen, um zu starten"}
-          </span>
         </div>
-        <button type="button" className="ghost" onClick={handlePickVault}>
-          Vault auswaehlen
-        </button>
       </aside>
 
       <main className="content">
@@ -144,12 +317,45 @@ function App() {
                   sofort an.
                 </p>
               </div>
-              <div className="actions">
-                <button type="button" className="primary" onClick={handlePickVault}>
-                  Vault auswaehlen
-                </button>
-              </div>
             </header>
+
+            <details className="vault-details">
+              <summary>
+                <span>Datenverzeichnis</span>
+                <span className="vault-summary">{fileCountLabel}</span>
+              </summary>
+              <div className="vault-body">
+                {!vaultPath ? (
+                  <div className="empty-state">
+                    Waehle einen Vault, um das Verzeichnis anzuzeigen.
+                  </div>
+                ) : null}
+                {listState === "loading" ? (
+                  <span className="chip">Scanne...</span>
+                ) : null}
+                {listState === "error" ? (
+                  <div className="error">{listError}</div>
+                ) : null}
+                {vaultPath && listState === "idle" && treeNodes.length === 0 ? (
+                  <div className="empty-state">
+                    Keine Markdown-Dateien in diesem Vault.
+                  </div>
+                ) : null}
+                {vaultPath && listState === "idle" && treeNodes.length > 0 ? (
+                  <div className="vault-tree">
+                    <details className="tree-dir" open>
+                      <summary className="tree-item">
+                        <span className="tree-icon">
+                          <FolderIcon />
+                        </span>
+                        <span className="tree-name">{vaultRootName}</span>
+                      </summary>
+                      <div className="tree-children">{renderTreeNodes(treeNodes)}</div>
+                    </details>
+                  </div>
+                ) : null}
+              </div>
+            </details>
 
             <div className="workspace">
               <section className="panel list-panel">
@@ -246,7 +452,9 @@ function App() {
                 </p>
                 <div className="setting-row">
                   <span className="label">Aktueller Vault</span>
-                  <span className="value">{vaultPath ?? "Nicht gesetzt"}</span>
+                  <span className="value path-value">
+                    {vaultPath ?? "Nicht gesetzt"}
+                  </span>
                 </div>
               </section>
               <section className="panel">

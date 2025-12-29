@@ -1,0 +1,9 @@
+📁 VaultTest
+├── 📁 daily
+│   └── 📝2025-02-04.md
+├── 📁 notes
+│   ├── 📝flashcards.md
+│   └── 📄 tauri_setup.markdown
+├── 📁 projects
+│   └── 📄 ui_exploration.mdx
+└── 📝Inbox.md
