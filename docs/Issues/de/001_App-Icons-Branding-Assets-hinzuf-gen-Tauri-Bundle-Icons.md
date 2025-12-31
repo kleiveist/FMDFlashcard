@@ -15,12 +15,12 @@ Ein vollständiges Icon-Set bereitstellen und in das Tauri-Bundle integrieren, s
 - Verifizieren, dass `tauri build` die Icons übernimmt.
 
 ## Aufgaben
-- [ ] Ein **Source-Logo (SVG)** unter `assets/brand/` erstellen.
-- [ ] Benötigte Icon-Größen generieren (Tauri Icon-Set).
-- [ ] Generierte Dateien nach `apps/fmd-desktop/src-tauri/icons/` ablegen.
-- [ ] `apps/fmd-desktop/src-tauri/tauri.conf.json` (bzw. v2 config) auf die Icons verweisen lassen.
-- [ ] Unter Linux prüfen: `.desktop`-Eintrag zeigt Icon (falls vorhanden).
-- [ ] `pnpm tauri build` ausführen und sicherstellen, dass das Bundle die richtigen Icons enthält.
+- [x] Ein **Source-Logo (SVG)** unter `assets/brand/` erstellen.
+- [x] Benötigte Icon-Größen generieren (Tauri Icon-Set).
+- [x] Generierte Dateien nach `apps/fmd-desktop/src-tauri/icons/` ablegen.
+- [x] `apps/fmd-desktop/src-tauri/tauri.conf.json` (bzw. v2 config) auf die Icons verweisen lassen.
+- [?] Unter Linux prüfen: `.desktop`-Eintrag zeigt Icon (falls vorhanden).
+- [?] `pnpm tauri build` ausführen und sicherstellen, dass das Bundle die richtigen Icons enthält.
 
 ## Akzeptanzkriterien
 - `pnpm tauri build` läuft durch und die gebaute App zeigt das neue Icon.
