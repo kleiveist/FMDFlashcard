@@ -36,6 +36,8 @@
   );
   --preview-bg: #111616;
   --preview-ink: #f5f1e6;
+  --preview-code-bg: rgba(255, 255, 255, 0.08);
+  --preview-code-border: rgba(255, 255, 255, 0.16);
   --chip-bg: rgba(20, 23, 23, 0.06);
   --glow: radial-gradient(circle, rgba(47, 143, 131, 0.18), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.12);
@@ -63,6 +65,8 @@
   );
   --preview-bg: #0b0f12;
   --preview-ink: #e7edf0;
+  --preview-code-bg: rgba(255, 255, 255, 0.12);
+  --preview-code-border: rgba(255, 255, 255, 0.24);
   --chip-bg: rgba(237, 242, 244, 0.08);
   --glow: radial-gradient(circle, rgba(224, 122, 95, 0.18), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.2);
@@ -306,6 +310,16 @@ button {
   color: var(--accent-strong);
 }
 
+.ghost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ghost.small.active {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+}
+
 .ghost.small {
   padding: 8px 12px;
   font-size: 0.85rem;
@@ -518,6 +532,12 @@ h2 {
   gap: 12px;
 }
 
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .panel-body {
   display: flex;
   flex-direction: column;
@@ -567,12 +587,106 @@ h2 {
   background: var(--preview-bg);
   color: var(--preview-ink);
   border-radius: 16px;
-  font-family: var(--mono);
-  font-size: 0.85rem;
-  white-space: pre-wrap;
   min-height: 300px;
   max-height: 420px;
   overflow-y: auto;
+}
+
+.preview.raw {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+
+.preview.raw pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.preview.markdown {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.preview.markdown > :first-child {
+  margin-top: 0;
+}
+
+.preview.markdown h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.6rem;
+}
+
+.preview.markdown h2 {
+  font-size: 1.2rem;
+  margin: 1.2rem 0 0.6rem;
+}
+
+.preview.markdown h3 {
+  font-size: 1.05rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.preview.markdown p {
+  margin: 0 0 0.8rem;
+}
+
+.preview.markdown ul,
+.preview.markdown ol {
+  margin: 0 0 0.8rem;
+  padding-left: 1.4rem;
+}
+
+.preview.markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.preview.markdown a:hover {
+  color: var(--accent-strong);
+}
+
+.preview.markdown code {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.preview.markdown pre {
+  margin: 0 0 0.8rem;
+  padding: 12px;
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.preview.markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.preview.markdown blockquote {
+  margin: 0 0 0.8rem;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent);
+  color: var(--preview-ink);
+  opacity: 0.9;
+}
+
+.preview.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
 }
 
 .empty-state {

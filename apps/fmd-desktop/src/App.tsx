@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import "./App.css";
 
 type VaultFile = {
@@ -25,6 +27,7 @@ type TreeNode = {
   path: string;
   type: "dir" | "file";
   children?: TreeNode[];
+  file?: VaultFile;
   fullPath?: string;
 };
 
@@ -102,6 +105,7 @@ const buildTree = (files: VaultFile[]): TreeNode[] => {
             name: part,
             path: currentPath,
             type: "file",
+            file,
             fullPath: file.path,
           });
         }
@@ -253,9 +257,9 @@ function App() {
   const [preview, setPreview] = useState("");
   const [listState, setListState] = useState<LoadState>("idle");
   const [previewState, setPreviewState] = useState<LoadState>("idle");
+  const [rawPreview, setRawPreview] = useState(false);
   const [listError, setListError] = useState("");
   const [previewError, setPreviewError] = useState("");
-  const [treeSelection, setTreeSelection] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
@@ -324,7 +328,6 @@ function App() {
       setPreviewError("");
       setVaultPath(path);
       setSelectedFile(null);
-      setTreeSelection(null);
       setPreview("");
       setFiles([]);
       setListState("loading");
@@ -506,15 +509,21 @@ function App() {
         );
       }
 
+      const fileRef =
+        node.file ??
+        (node.fullPath
+          ? { path: node.fullPath, relative_path: node.path }
+          : null);
+      const isActive = !!fileRef && selectedFile?.path === fileRef.path;
+
       return (
         <button
           type="button"
           key={node.path}
-          className={`tree-item tree-file ${
-            treeSelection === node.path ? "active" : ""
-          }`}
-          onClick={() => setTreeSelection(node.path)}
+          className={`tree-item tree-file ${isActive ? "active" : ""}`}
+          onClick={() => fileRef && handleSelectFile(fileRef)}
           title={node.path}
+          disabled={!fileRef}
         >
           <span className="tree-icon">
             <FileIcon />
@@ -680,17 +689,38 @@ function App() {
                       {selectedFile?.relative_path ?? "Keine Datei ausgewaehlt"}
                     </p>
                   </div>
-                  {previewState === "loading" ? (
-                    <span className="chip">Lade...</span>
-                  ) : null}
+                  <div className="preview-actions">
+                    <button
+                      type="button"
+                      className={`ghost small ${rawPreview ? "active" : ""}`}
+                      onClick={() => setRawPreview((prev) => !prev)}
+                      aria-pressed={rawPreview}
+                      disabled={!selectedFile}
+                    >
+                      {rawPreview ? "Markdown" : "Rohtext"}
+                    </button>
+                    {previewState === "loading" ? (
+                      <span className="chip">Lade...</span>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="panel-body">
                   {previewState === "error" ? (
                     <div className="error">{previewError}</div>
                   ) : null}
-                  <pre className="preview">
-                    {preview || emptyPreview}
-                  </pre>
+                  {preview ? (
+                    <div className={`preview ${rawPreview ? "raw" : "markdown"}`}>
+                      {rawPreview ? (
+                        <pre>{preview}</pre>
+                      ) : (
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                          {preview}
+                        </ReactMarkdown>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="preview placeholder">{emptyPreview}</div>
+                  )}
                 </div>
               </section>
             </div>
