@@ -216,6 +216,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.vault-status:hover {
+  border-color: var(--accent-border);
+  color: var(--accent-strong);
+}
+
+.vault-status:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
 }
 
 .nav-icon {

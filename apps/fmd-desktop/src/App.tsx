@@ -431,7 +431,33 @@ function App() {
       return;
     }
 
-    await loadVault(selected, { persist: true });
+    const previousState = {
+      vaultPath,
+      files,
+      selectedFile,
+      preview,
+      listState,
+      previewState,
+      listError,
+      previewError,
+    };
+
+    const loaded = await loadVault(selected, {
+      persist: true,
+      clearOnFailure: false,
+      errorMessage: "Ausgewaehlter Vault ist nicht verfuegbar.",
+    });
+
+    if (!loaded) {
+      setVaultPath(previousState.vaultPath);
+      setFiles(previousState.files);
+      setSelectedFile(previousState.selectedFile);
+      setPreview(previousState.preview);
+      setListState(previousState.listState);
+      setPreviewState(previousState.previewState);
+      setListError("Ausgewaehlter Vault ist nicht verfuegbar.");
+      setPreviewError(previousState.previewError);
+    }
   };
 
   const handleSelectFile = async (file: VaultFile) => {
@@ -553,10 +579,18 @@ function App() {
           </button>
         </nav>
         <div className="sidebar-footer">
-          <div className="vault-status">
-            <span className="label">Vault</span>
-            <span className="value">{vaultPath ? "Aktiv" : "Nicht gesetzt"}</span>
-          </div>
+          <button
+            type="button"
+            className="vault-status"
+            onClick={handlePickVault}
+            title={vaultPath ?? "Vault auswaehlen"}
+            aria-label="Vault auswaehlen"
+          >
+            <span className="label">Aktiver Vault</span>
+            <span className="value">
+              Vault: {vaultPath ? vaultRootName : "Nicht gesetzt"}
+            </span>
+          </button>
           <button
             type="button"
             className={`nav-icon ${activeTab === "settings" ? "active" : ""}`}
@@ -612,9 +646,7 @@ function App() {
                 {listState === "loading" ? (
                   <span className="chip">Scanne...</span>
                 ) : null}
-                {listState === "error" ? (
-                  <div className="error">{listError}</div>
-                ) : null}
+                {listError ? <div className="error">{listError}</div> : null}
                 {vaultPath && listState === "idle" && treeNodes.length === 0 ? (
                   <div className="empty-state">
                     Keine Markdown-Dateien in diesem Vault.
@@ -653,9 +685,7 @@ function App() {
                       Waehle einen Vault, um die Liste zu fuellen.
                     </div>
                   ) : null}
-                  {listState === "error" ? (
-                    <div className="error">{listError}</div>
-                  ) : null}
+                  {listError ? <div className="error">{listError}</div> : null}
                   {vaultPath && listState === "idle" && files.length === 0 ? (
                     <div className="empty-state">
                       Keine Markdown-Dateien in diesem Vault.
