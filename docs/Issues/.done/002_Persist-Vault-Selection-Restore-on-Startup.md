@@ -11,13 +11,13 @@ Persist the vault path and restore it on app startup, including refreshing the m
 - On startup: load stored vault path; if exists, list files automatically.
 
 ## Tasks
-- [ ] Choose storage method:
+- [x] Choose storage method:
   - [ ] Preferred: `@tauri-apps/plugin-store`
-  - [ ] Fallback: write to app data directory via Rust command
-- [ ] Add `loadSettings()` on app init (e.g., in `App.tsx`).
-- [ ] Add `saveVaultPath()` when user selects a vault.
-- [ ] On startup with valid vault path, trigger listing flow and set UI states.
-- [ ] Handle missing/unavailable path gracefully (show message + clear persisted value).
+  - [x] Fallback: write to app data directory via Rust command
+- [x] Add `loadSettings()` on app init (e.g., in `App.tsx`).
+- [x] Add `saveVaultPath()` when user selects a vault.
+- [x] On startup with valid vault path, trigger listing flow and set UI states.
+- [x] Handle missing/unavailable path gracefully (show message + clear persisted value).
 
 ## Acceptance Criteria
 - Restarting the app restores the last vault and file list without user interaction.

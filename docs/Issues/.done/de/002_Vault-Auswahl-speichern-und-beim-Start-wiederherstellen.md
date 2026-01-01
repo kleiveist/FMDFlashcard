@@ -11,13 +11,13 @@ Den Vault-Pfad persistent speichern und beim App-Start automatisch wiederherstel
 - Beim Start: gespeicherten Pfad laden; falls gültig, Dateiliste automatisch laden.
 
 ## Aufgaben
-- [ ] Speichermethode festlegen:
+- [x] Speichermethode festlegen:
   - [ ] Bevorzugt: `@tauri-apps/plugin-store`
-  - [ ] Fallback: JSON-Datei über Rust-Command im App-Data-Directory
-- [ ] `loadSettings()` beim App-Init ergänzen (z. B. in `App.tsx`).
-- [ ] `saveVaultPath()` bei Vault-Auswahl implementieren.
-- [ ] Beim Start (gültiger Pfad): Listing starten und UI-State setzen.
-- [ ] Ungültigen Pfad sauber behandeln (Hinweis anzeigen + gespeicherten Wert löschen/ignorieren).
+  - [x] Fallback: JSON-Datei über Rust-Command im App-Data-Directory
+- [x] `loadSettings()` beim App-Init ergänzen (z. B. in `App.tsx`).
+- [x] `saveVaultPath()` bei Vault-Auswahl implementieren.
+- [x] Beim Start (gültiger Pfad): Listing starten und UI-State setzen.
+- [x] Ungültigen Pfad sauber behandeln (Hinweis anzeigen + gespeicherten Wert löschen/ignorieren).
 
 ## Akzeptanzkriterien
 - Neustart der App stellt den letzten Vault und die Dateiliste ohne User-Interaktion wieder her.

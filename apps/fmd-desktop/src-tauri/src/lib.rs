@@ -3,12 +3,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use tauri::Manager;
 use walkdir::{DirEntry, WalkDir};
 
 #[derive(serde::Serialize)]
 struct VaultFile {
     path: String,
     relative_path: String,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+struct VaultSettings {
+    vault_path: Option<String>,
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
@@ -24,6 +30,45 @@ fn is_markdown(path: &Path) -> bool {
         }
         None => false,
     }
+}
+
+fn settings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map_err(|err| err.to_string())
+        .map(|dir| dir.join("settings.json"))
+}
+
+#[tauri::command]
+fn load_vault_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = settings_path(&app)?;
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let data = fs::read_to_string(&path).map_err(|err| err.to_string())?;
+    let settings: VaultSettings = serde_json::from_str(&data).map_err(|err| err.to_string())?;
+    Ok(settings.vault_path)
+}
+
+#[tauri::command]
+fn save_vault_path(app: tauri::AppHandle, vault_path: Option<String>) -> Result<(), String> {
+    let path = settings_path(&app)?;
+
+    if vault_path.is_none() {
+        if path.exists() {
+            fs::remove_file(&path).map_err(|err| err.to_string())?;
+        }
+        return Ok(());
+    }
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+
+    let settings = VaultSettings { vault_path };
+    let data = serde_json::to_string_pretty(&settings).map_err(|err| err.to_string())?;
+    fs::write(&path, data).map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -82,6 +127,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            load_vault_path,
+            save_vault_path,
             list_markdown_files,
             read_text_file
         ])

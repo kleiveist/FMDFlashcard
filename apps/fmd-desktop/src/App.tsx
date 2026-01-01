@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
@@ -135,6 +135,16 @@ const vaultBaseName = (value: string | null) => {
   return parts[parts.length - 1] || "Vault";
 };
 
+const asErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return fallback;
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [vaultPath, setVaultPath] = useState<string | null>(null);
@@ -160,6 +170,92 @@ function App() {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const treeNodes = useMemo(() => buildTree(files), [files]);
 
+  const persistVaultPath = useCallback(async (path: string | null) => {
+    try {
+      await invoke("save_vault_path", { vaultPath: path });
+      return true;
+    } catch (error) {
+      console.error("Failed to save vault path", error);
+      return false;
+    }
+  }, []);
+
+  const loadVault = useCallback(
+    async (
+      path: string,
+      options: {
+        persist: boolean;
+        clearOnFailure?: boolean;
+        errorMessage?: string;
+      },
+    ) => {
+      setListError("");
+      setPreviewError("");
+      setVaultPath(path);
+      setSelectedFile(null);
+      setTreeSelection(null);
+      setPreview("");
+      setFiles([]);
+      setListState("loading");
+      try {
+        const results = await invoke<VaultFile[]>("list_markdown_files", {
+          vaultPath: path,
+        });
+        setFiles(results);
+        setListState("idle");
+        if (options.persist) {
+          await persistVaultPath(path);
+        }
+        return true;
+      } catch (error) {
+        const message = asErrorMessage(error, "Failed to list markdown files.");
+        setListError(options.errorMessage ?? message);
+        setListState("error");
+        if (options.clearOnFailure) {
+          setVaultPath(null);
+          await persistVaultPath(null);
+        }
+        return false;
+      }
+    },
+    [persistVaultPath],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const restoreVault = async () => {
+      try {
+        const storedPath = await invoke<string | null>("load_vault_path");
+        if (!storedPath || cancelled) {
+          return;
+        }
+        await loadVault(storedPath, {
+          persist: false,
+          clearOnFailure: true,
+          errorMessage:
+            "Gespeicherter Vault ist nicht verfuegbar. Bitte neu auswaehlen.",
+        });
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        const message = asErrorMessage(
+          error,
+          "Gespeicherte Einstellungen konnten nicht geladen werden.",
+        );
+        setListError(message);
+        setListState("error");
+      }
+    };
+
+    void restoreVault();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadVault]);
+
   const handlePickVault = async () => {
     setListError("");
     setPreviewError("");
@@ -173,28 +269,7 @@ function App() {
       return;
     }
 
-    setVaultPath(selected);
-    setSelectedFile(null);
-    setTreeSelection(null);
-    setPreview("");
-    setFiles([]);
-    setListState("loading");
-    try {
-      const results = await invoke<VaultFile[]>("list_markdown_files", {
-        vaultPath: selected,
-      });
-      setFiles(results);
-      setListState("idle");
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === "string"
-            ? error
-            : "Failed to list markdown files.";
-      setListError(message);
-      setListState("error");
-    }
+    await loadVault(selected, { persist: true });
   };
 
   const handleSelectFile = async (file: VaultFile) => {
@@ -209,12 +284,7 @@ function App() {
       setPreview(contents);
       setPreviewState("idle");
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === "string"
-            ? error
-            : "Failed to load file contents.";
+      const message = asErrorMessage(error, "Failed to load file contents.");
       setPreviewError(message);
       setPreviewState("error");
     }

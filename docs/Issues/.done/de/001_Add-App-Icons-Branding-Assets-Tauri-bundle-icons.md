@@ -15,12 +15,12 @@ Provide a complete icon set and wire it into the Tauri bundle so the app shows t
 - Verify `tauri build` picks them up.
 
 ## Tasks
-- [ ] Create a single **source** logo (SVG) under `assets/brand/`.
-- [ ] Generate required icon sizes (Tauri icon set).
-- [ ] Place generated files in `apps/fmd-desktop/src-tauri/icons/`.
-- [ ] Update `apps/fmd-desktop/src-tauri/tauri.conf.json` (or v2 config) to reference icons.
-- [ ] Verify on Linux: `.desktop` entry shows icon (if applicable).
-- [ ] Run `pnpm tauri build` and confirm the produced bundle contains correct icons.
+- [x] Create a single **source** logo (SVG) under `assets/brand/`.
+- [x] Generate required icon sizes (Tauri icon set).
+- [x] Place generated files in `apps/fmd-desktop/src-tauri/icons/`.
+- [x] Update `apps/fmd-desktop/src-tauri/tauri.conf.json` (or v2 config) to reference icons.
+- [?] Verify on Linux: `.desktop` entry shows icon (if applicable).
+- [?] Run `pnpm tauri build` and confirm the produced bundle contains correct icons.
 
 ## Acceptance Criteria
 - `pnpm tauri build` completes and the built app shows the new icon.
