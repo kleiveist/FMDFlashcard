@@ -1,0 +1,9 @@
+VaultTest2
+|-- daily
+|   `-- 2025-02-05.md
+|-- notes
+|   |-- flashcards.md
+|   `-- tauri_setup.markdown
+|-- projects
+|   `-- ui_exploration.mdx
+`-- Inbox.md
