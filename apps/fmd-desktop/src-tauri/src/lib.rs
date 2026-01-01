@@ -13,8 +13,16 @@ struct VaultFile {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
-struct VaultSettings {
+struct AppSettings {
     vault_path: Option<String>,
+    theme: Option<String>,
+    accent_color: Option<String>,
+}
+
+impl AppSettings {
+    fn is_empty(&self) -> bool {
+        self.vault_path.is_none() && self.theme.is_none() && self.accent_color.is_none()
+    }
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
@@ -39,25 +47,19 @@ fn settings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map(|dir| dir.join("settings.json"))
 }
 
-#[tauri::command]
-fn load_vault_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let path = settings_path(&app)?;
+fn read_settings(path: &Path) -> Result<AppSettings, String> {
     if !path.exists() {
-        return Ok(None);
+        return Ok(AppSettings::default());
     }
 
-    let data = fs::read_to_string(&path).map_err(|err| err.to_string())?;
-    let settings: VaultSettings = serde_json::from_str(&data).map_err(|err| err.to_string())?;
-    Ok(settings.vault_path)
+    let data = fs::read_to_string(path).map_err(|err| err.to_string())?;
+    serde_json::from_str(&data).map_err(|err| err.to_string())
 }
 
-#[tauri::command]
-fn save_vault_path(app: tauri::AppHandle, vault_path: Option<String>) -> Result<(), String> {
-    let path = settings_path(&app)?;
-
-    if vault_path.is_none() {
+fn write_settings(path: &Path, settings: &AppSettings) -> Result<(), String> {
+    if settings.is_empty() {
         if path.exists() {
-            fs::remove_file(&path).map_err(|err| err.to_string())?;
+            fs::remove_file(path).map_err(|err| err.to_string())?;
         }
         return Ok(());
     }
@@ -66,9 +68,45 @@ fn save_vault_path(app: tauri::AppHandle, vault_path: Option<String>) -> Result<
         fs::create_dir_all(parent).map_err(|err| err.to_string())?;
     }
 
-    let settings = VaultSettings { vault_path };
-    let data = serde_json::to_string_pretty(&settings).map_err(|err| err.to_string())?;
-    fs::write(&path, data).map_err(|err| err.to_string())
+    let data = serde_json::to_string_pretty(settings).map_err(|err| err.to_string())?;
+    fs::write(path, data).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn load_app_settings(app: tauri::AppHandle) -> Result<AppSettings, String> {
+    let path = settings_path(&app)?;
+    read_settings(&path)
+}
+
+#[tauri::command]
+fn save_app_settings(
+    app: tauri::AppHandle,
+    vault_path: Option<String>,
+    theme: Option<String>,
+    accent_color: Option<String>,
+) -> Result<(), String> {
+    let path = settings_path(&app)?;
+    let settings = AppSettings {
+        vault_path,
+        theme,
+        accent_color,
+    };
+    write_settings(&path, &settings)
+}
+
+#[tauri::command]
+fn load_vault_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = settings_path(&app)?;
+    let settings = read_settings(&path)?;
+    Ok(settings.vault_path)
+}
+
+#[tauri::command]
+fn save_vault_path(app: tauri::AppHandle, vault_path: Option<String>) -> Result<(), String> {
+    let path = settings_path(&app)?;
+    let mut settings = read_settings(&path)?;
+    settings.vault_path = vault_path;
+    write_settings(&path, &settings)
 }
 
 #[tauri::command]
@@ -127,6 +165,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            load_app_settings,
+            save_app_settings,
             load_vault_path,
             save_vault_path,
             list_markdown_files,

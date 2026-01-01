@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import "./App.css";
@@ -12,6 +12,14 @@ type TabKey = "dashboard" | "settings";
 
 type LoadState = "idle" | "loading" | "error";
 
+type ThemeMode = "light" | "dark";
+
+type AppSettings = {
+  vault_path?: string | null;
+  theme?: string | null;
+  accent_color?: string | null;
+};
+
 type TreeNode = {
   name: string;
   path: string;
@@ -21,6 +29,16 @@ type TreeNode = {
 };
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
+const DEFAULT_THEME: ThemeMode = "light";
+const DEFAULT_ACCENT = "#E07A5F";
+const ACCENT_PALETTE = [
+  "#E07A5F",
+  "#2F8F83",
+  "#3A7D44",
+  "#3B82F6",
+  "#D97706",
+  "#DC2626",
+];
 
 const FolderIcon = () => (
   <svg
@@ -145,6 +163,88 @@ const asErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const normalizeHex = (value: string) => {
+  const trimmed = value.trim().toUpperCase();
+  if (!trimmed) {
+    return "";
+  }
+  if (!trimmed.startsWith("#")) {
+    return `#${trimmed}`;
+  }
+  return `#${trimmed.slice(1)}`;
+};
+
+const isValidHex = (value: string) => /^#[0-9A-F]{6}$/.test(value);
+
+const hexToRgb = (value: string) => {
+  if (!isValidHex(value)) {
+    return null;
+  }
+  const hex = value.slice(1);
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+  return { r, g, b };
+};
+
+const rgbToHex = (r: number, g: number, b: number) => {
+  const toHex = (channel: number) =>
+    channel.toString(16).toUpperCase().padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+const mixChannel = (from: number, to: number, amount: number) =>
+  Math.round(from + (to - from) * amount);
+
+const mixRgb = (
+  rgb: { r: number; g: number; b: number },
+  target: { r: number; g: number; b: number },
+  amount: number,
+) => ({
+  r: mixChannel(rgb.r, target.r, amount),
+  g: mixChannel(rgb.g, target.g, amount),
+  b: mixChannel(rgb.b, target.b, amount),
+});
+
+const contrastFor = (rgb: { r: number; g: number; b: number }) => {
+  const luminance = 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+  return luminance > 170 ? "#1A1A1A" : "#FFFFFF";
+};
+
+const buildAccentTokens = (value: string) => {
+  const normalized = normalizeHex(value);
+  const rgb = hexToRgb(normalized) ?? hexToRgb(DEFAULT_ACCENT)!;
+  const strong = mixRgb(rgb, { r: 0, g: 0, b: 0 }, 0.18);
+  const highlight = mixRgb(rgb, { r: 255, g: 255, b: 255 }, 0.28);
+  return {
+    accent: rgbToHex(rgb.r, rgb.g, rgb.b),
+    accentStrong: rgbToHex(strong.r, strong.g, strong.b),
+    accentSoft: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`,
+    accentHighlight: rgbToHex(highlight.r, highlight.g, highlight.b),
+    accentBorder: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)`,
+    accentContrast: contrastFor(rgb),
+    accentContrastStrong: contrastFor(strong),
+  };
+};
+
+const applyTheme = (theme: ThemeMode) => {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+};
+
+const applyAccentColor = (value: string) => {
+  const root = document.documentElement;
+  const tokens = buildAccentTokens(value);
+  root.style.setProperty("--accent", tokens.accent);
+  root.style.setProperty("--accent-strong", tokens.accentStrong);
+  root.style.setProperty("--accent-soft", tokens.accentSoft);
+  root.style.setProperty("--accent-highlight", tokens.accentHighlight);
+  root.style.setProperty("--accent-border", tokens.accentBorder);
+  root.style.setProperty("--accent-contrast", tokens.accentContrast);
+  root.style.setProperty("--accent-contrast-strong", tokens.accentContrastStrong);
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [vaultPath, setVaultPath] = useState<string | null>(null);
@@ -156,6 +256,11 @@ function App() {
   const [listError, setListError] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [treeSelection, setTreeSelection] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
+  const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
+  const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
+  const [accentError, setAccentError] = useState("");
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const fileCountLabel = useMemo(() => {
     if (!vaultPath) {
@@ -170,15 +275,41 @@ function App() {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const treeNodes = useMemo(() => buildTree(files), [files]);
 
-  const persistVaultPath = useCallback(async (path: string | null) => {
-    try {
-      await invoke("save_vault_path", { vaultPath: path });
-      return true;
-    } catch (error) {
-      console.error("Failed to save vault path", error);
-      return false;
-    }
-  }, []);
+  const saveSettings = useCallback(
+    async (settings: { vaultPath: string | null; theme: ThemeMode; accentColor: string }) => {
+      try {
+        await invoke("save_app_settings", {
+          vaultPath: settings.vaultPath,
+          theme: settings.theme,
+          accentColor: settings.accentColor,
+        });
+        return true;
+      } catch (error) {
+        console.error("Failed to save settings", error);
+        return false;
+      }
+    },
+    [],
+  );
+
+  const persistSettings = useCallback(
+    async (updates: {
+      vaultPath?: string | null;
+      theme?: ThemeMode;
+      accentColor?: string;
+    }) => {
+      if (!settingsLoaded) {
+        return false;
+      }
+      const nextSettings = {
+        vaultPath: updates.vaultPath ?? vaultPath,
+        theme: updates.theme ?? theme,
+        accentColor: updates.accentColor ?? accentColor,
+      };
+      return saveSettings(nextSettings);
+    },
+    [accentColor, saveSettings, settingsLoaded, theme, vaultPath],
+  );
 
   const loadVault = useCallback(
     async (
@@ -204,7 +335,7 @@ function App() {
         setFiles(results);
         setListState("idle");
         if (options.persist) {
-          await persistVaultPath(path);
+          await persistSettings({ vaultPath: path });
         }
         return true;
       } catch (error) {
@@ -213,48 +344,76 @@ function App() {
         setListState("error");
         if (options.clearOnFailure) {
           setVaultPath(null);
-          await persistVaultPath(null);
+          await persistSettings({ vaultPath: null });
         }
         return false;
       }
     },
-    [persistVaultPath],
+    [persistSettings],
   );
 
   useEffect(() => {
     let cancelled = false;
 
-    const restoreVault = async () => {
+    const restoreSettings = async () => {
       try {
-        const storedPath = await invoke<string | null>("load_vault_path");
-        if (!storedPath || cancelled) {
+        const settings = await invoke<AppSettings>("load_app_settings");
+        if (cancelled) {
           return;
         }
-        await loadVault(storedPath, {
-          persist: false,
-          clearOnFailure: true,
-          errorMessage:
-            "Gespeicherter Vault ist nicht verfuegbar. Bitte neu auswaehlen.",
-        });
+
+        const storedTheme = settings.theme === "dark" ? "dark" : DEFAULT_THEME;
+        const storedAccentRaw = settings.accent_color ?? DEFAULT_ACCENT;
+        const storedAccent = normalizeHex(storedAccentRaw);
+        const resolvedAccent = isValidHex(storedAccent)
+          ? storedAccent
+          : DEFAULT_ACCENT;
+
+        setTheme(storedTheme);
+        setAccentColor(resolvedAccent);
+        setAccentDraft(resolvedAccent);
+        setAccentError("");
+        setSettingsLoaded(true);
+
+        if (settings.vault_path) {
+          const loaded = await loadVault(settings.vault_path, {
+            persist: false,
+            clearOnFailure: false,
+            errorMessage:
+              "Gespeicherter Vault ist nicht verfuegbar. Bitte neu auswaehlen.",
+          });
+          if (!loaded) {
+            setVaultPath(null);
+            await saveSettings({
+              vaultPath: null,
+              theme: storedTheme,
+              accentColor: resolvedAccent,
+            });
+          }
+        }
       } catch (error) {
         if (cancelled) {
           return;
         }
-        const message = asErrorMessage(
-          error,
-          "Gespeicherte Einstellungen konnten nicht geladen werden.",
-        );
-        setListError(message);
-        setListState("error");
+        console.error("Failed to load settings", error);
+        setSettingsLoaded(true);
       }
     };
 
-    void restoreVault();
+    void restoreSettings();
 
     return () => {
       cancelled = true;
     };
-  }, [loadVault]);
+  }, [loadVault, saveSettings]);
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    applyAccentColor(accentColor);
+  }, [accentColor]);
 
   const handlePickVault = async () => {
     setListError("");
@@ -287,6 +446,47 @@ function App() {
       const message = asErrorMessage(error, "Failed to load file contents.");
       setPreviewError(message);
       setPreviewState("error");
+    }
+  };
+
+  const handleThemeToggle = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextTheme: ThemeMode = event.target.checked ? "dark" : "light";
+    setTheme(nextTheme);
+    void persistSettings({ theme: nextTheme });
+  };
+
+  const handleAccentPick = (value: string) => {
+    const normalized = normalizeHex(value);
+    if (!isValidHex(normalized)) {
+      return;
+    }
+    setAccentError("");
+    setAccentColor(normalized);
+    setAccentDraft(normalized);
+    void persistSettings({ accentColor: normalized });
+  };
+
+  const handleAccentInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = normalizeHex(event.target.value);
+    setAccentDraft(nextValue);
+    if (!nextValue) {
+      setAccentError("");
+      return;
+    }
+    if (isValidHex(nextValue)) {
+      setAccentError("");
+      setAccentColor(nextValue);
+      void persistSettings({ accentColor: nextValue });
+    } else {
+      setAccentError("HEX muss #RRGGBB sein.");
+    }
+  };
+
+  const handleCopyAccent = async () => {
+    try {
+      await navigator.clipboard.writeText(accentColor);
+    } catch (error) {
+      console.error("Failed to copy accent color", error);
     }
   };
 
@@ -514,6 +714,78 @@ function App() {
             </header>
 
             <div className="settings-grid">
+              <section className="panel appearance-panel">
+                <h2>Erscheinungsbild</h2>
+                <p className="muted">
+                  Theme und Akzentfarbe praegen die Oberflaeche und bleiben
+                  gespeichert.
+                </p>
+                <div className="setting-row">
+                  <span className="label">Theme</span>
+                  <div className="theme-toggle">
+                    <span className="toggle-label">Hell</span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={theme === "dark"}
+                        onChange={handleThemeToggle}
+                        aria-label="Theme umschalten"
+                      />
+                      <span className="slider" />
+                    </label>
+                    <span className="toggle-label">Dunkel</span>
+                  </div>
+                  <span className="helper-text">
+                    Wechselt Hintergrund, Kontrast und Panels.
+                  </span>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Akzentfarbe</span>
+                  <div className="accent-controls">
+                    <input
+                      type="color"
+                      className="color-wheel"
+                      value={accentColor}
+                      onChange={(event) => handleAccentPick(event.target.value)}
+                      aria-label="Akzentfarbe auswaehlen"
+                    />
+                    <div className="accent-palette">
+                      {ACCENT_PALETTE.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`accent-swatch ${
+                            accentColor === color ? "active" : ""
+                          }`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => handleAccentPick(color)}
+                          aria-label={`Akzentfarbe ${color}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="accent-hex">
+                    <input
+                      type="text"
+                      className="hex-input"
+                      value={accentDraft}
+                      onChange={handleAccentInputChange}
+                      placeholder="#RRGGBB"
+                      aria-label="Akzentfarbe als HEX"
+                    />
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleCopyAccent}
+                    >
+                      Kopieren
+                    </button>
+                  </div>
+                  <span className={`helper-text ${accentError ? "error-text" : ""}`}>
+                    {accentError || "HEX Wert der Akzentfarbe (#RRGGBB)."}
+                  </span>
+                </div>
+              </section>
               <section className="panel">
                 <h2>Vault Status</h2>
                 <p className="muted">
