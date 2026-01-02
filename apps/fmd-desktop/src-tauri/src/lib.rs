@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -17,6 +18,38 @@ struct AppSettings {
     vault_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct SpacedRepetitionCardState {
+    box: u32,
+    attempts: u32,
+    last_result: Option<String>,
+    last_reviewed_at: Option<String>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct SpacedRepetitionUserState {
+    card_states: HashMap<String, SpacedRepetitionCardState>,
+    last_loaded_at: Option<String>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct SpacedRepetitionUser {
+    id: String,
+    name: String,
+    created_at: String,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct SpacedRepetitionStorage {
+    users: Vec<SpacedRepetitionUser>,
+    user_state_by_id: HashMap<String, SpacedRepetitionUserState>,
+    last_active_user_id: Option<String>,
 }
 
 impl AppSettings {
@@ -47,6 +80,13 @@ fn settings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map(|dir| dir.join("settings.json"))
 }
 
+fn spaced_repetition_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map_err(|err| err.to_string())
+        .map(|dir| dir.join("spaced_repetition.json"))
+}
+
 fn read_settings(path: &Path) -> Result<AppSettings, String> {
     if !path.exists() {
         return Ok(AppSettings::default());
@@ -72,6 +112,30 @@ fn write_settings(path: &Path, settings: &AppSettings) -> Result<(), String> {
     fs::write(path, data).map_err(|err| err.to_string())
 }
 
+fn read_spaced_repetition_data(path: &Path) -> Result<SpacedRepetitionStorage, String> {
+    if !path.exists() {
+        return Ok(SpacedRepetitionStorage::default());
+    }
+
+    let data = fs::read_to_string(path).map_err(|err| err.to_string())?;
+    match serde_json::from_str(&data) {
+        Ok(storage) => Ok(storage),
+        Err(_) => Ok(SpacedRepetitionStorage::default()),
+    }
+}
+
+fn write_spaced_repetition_data(
+    path: &Path,
+    storage: &SpacedRepetitionStorage,
+) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+
+    let data = serde_json::to_string_pretty(storage).map_err(|err| err.to_string())?;
+    fs::write(path, data).map_err(|err| err.to_string())
+}
+
 #[tauri::command]
 fn load_app_settings(app: tauri::AppHandle) -> Result<AppSettings, String> {
     let path = settings_path(&app)?;
@@ -92,6 +156,21 @@ fn save_app_settings(
         accent_color,
     };
     write_settings(&path, &settings)
+}
+
+#[tauri::command]
+fn load_spaced_repetition_data(app: tauri::AppHandle) -> Result<SpacedRepetitionStorage, String> {
+    let path = spaced_repetition_path(&app)?;
+    read_spaced_repetition_data(&path)
+}
+
+#[tauri::command]
+fn save_spaced_repetition_data(
+    app: tauri::AppHandle,
+    storage: SpacedRepetitionStorage,
+) -> Result<(), String> {
+    let path = spaced_repetition_path(&app)?;
+    write_spaced_repetition_data(&path, &storage)
 }
 
 #[tauri::command]
@@ -167,6 +246,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_app_settings,
             save_app_settings,
+            load_spaced_repetition_data,
+            save_spaced_repetition_data,
             load_vault_path,
             save_vault_path,
             list_markdown_files,

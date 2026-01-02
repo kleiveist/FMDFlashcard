@@ -50,16 +50,36 @@ type FlashcardStats = {
 type SpacedRepetitionCardProgress = {
   box: number;
   attempts: number;
+  lastResult: FlashcardResult;
+  lastReviewedAt: string | null;
 };
 
 type SpacedRepetitionSession = {
   flashcards: Flashcard[];
+  cardIds: string[];
   selections: Record<number, string>;
   submissions: Record<number, boolean>;
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>;
   clozeResponses: Record<number, Record<string, string>>;
   page: number;
-  cardProgress: Record<number, SpacedRepetitionCardProgress>;
+  cardProgressById: Record<string, SpacedRepetitionCardProgress>;
+};
+
+type SpacedRepetitionUser = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
+type SpacedRepetitionUserState = {
+  cardStates: Record<string, SpacedRepetitionCardProgress>;
+  lastLoadedAt: string | null;
+};
+
+type SpacedRepetitionStorage = {
+  users: SpacedRepetitionUser[];
+  userStateById: Record<string, SpacedRepetitionUserState>;
+  lastActiveUserId: string | null;
 };
 
 type ClozeDragPayload = {
@@ -343,23 +363,49 @@ const buildLineChartPoints = (values: number[]) => {
     .join(" ");
 };
 
-const buildSpacedRepetitionUserName = (
-  name: string,
-  existing: string[],
-) => {
-  const trimmed = name.trim();
-  const baseName = trimmed || `User ${existing.length + 1}`;
-  if (!existing.includes(baseName)) {
-    return baseName;
+const createSpacedRepetitionUserId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
   }
-  let suffix = 2;
-  let candidate = `${baseName} (${suffix})`;
-  while (existing.includes(candidate)) {
-    suffix += 1;
-    candidate = `${baseName} (${suffix})`;
-  }
-  return candidate;
+  return `user-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
+
+const hashString = (value: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+};
+
+const getFlashcardIdentityPayload = (card: Flashcard) => {
+  if (card.kind === "multiple-choice") {
+    return {
+      kind: card.kind,
+      question: card.question,
+      options: card.options,
+      correctKeys: card.correctKeys,
+    };
+  }
+
+  if (card.kind === "true-false") {
+    return {
+      kind: card.kind,
+      items: card.items,
+    };
+  }
+
+  return {
+    kind: card.kind,
+    question: card.question,
+    segments: card.segments,
+    dragTokens: card.dragTokens,
+  };
+};
+
+const getFlashcardId = (card: Flashcard) =>
+  `card-${hashString(JSON.stringify(getFlashcardIdentityPayload(card)))}`;
 
 const shuffleFlashcards = (cards: Flashcard[]) => {
   const shuffled = [...cards];
@@ -443,27 +489,64 @@ const isTrueFalseCardCorrect = (
 
 const createEmptySpacedRepetitionSession = (): SpacedRepetitionSession => ({
   flashcards: [],
+  cardIds: [],
   selections: {},
   submissions: {},
   trueFalseSelections: {},
   clozeResponses: {},
   page: 0,
-  cardProgress: {},
+  cardProgressById: {},
+});
+
+const createEmptySpacedRepetitionUserState = (): SpacedRepetitionUserState => ({
+  cardStates: {},
+  lastLoadedAt: null,
+});
+
+const normalizeSpacedRepetitionCardProgress = (
+  progress?: Partial<SpacedRepetitionCardProgress> | null,
+): SpacedRepetitionCardProgress => ({
+  box:
+    typeof progress?.box === "number" && Number.isFinite(progress.box)
+      ? Math.max(1, progress.box)
+      : 1,
+  attempts:
+    typeof progress?.attempts === "number" && Number.isFinite(progress.attempts)
+      ? Math.max(0, progress.attempts)
+      : 0,
+  lastResult:
+    progress?.lastResult === "correct" || progress?.lastResult === "incorrect"
+      ? progress.lastResult
+      : "neutral",
+  lastReviewedAt:
+    typeof progress?.lastReviewedAt === "string" ? progress.lastReviewedAt : null,
 });
 
 const buildSpacedRepetitionSession = (
   flashcards: Flashcard[],
-): SpacedRepetitionSession => ({
-  ...createEmptySpacedRepetitionSession(),
-  flashcards,
-  cardProgress: flashcards.reduce<Record<number, SpacedRepetitionCardProgress>>(
-    (accumulator, _card, index) => {
-      accumulator[index] = { box: 1, attempts: 0 };
-      return accumulator;
-    },
-    {},
-  ),
-});
+  existingCardStates: Record<string, SpacedRepetitionCardProgress> = {},
+): SpacedRepetitionSession => {
+  const cardIds = flashcards.map(getFlashcardId);
+  const nextCardStates = Object.fromEntries(
+    Object.entries(existingCardStates).map(([cardId, progress]) => [
+      cardId,
+      normalizeSpacedRepetitionCardProgress(progress),
+    ]),
+  );
+
+  cardIds.forEach((cardId) => {
+    if (!nextCardStates[cardId]) {
+      nextCardStates[cardId] = normalizeSpacedRepetitionCardProgress(null);
+    }
+  });
+
+  return {
+    ...createEmptySpacedRepetitionSession(),
+    flashcards,
+    cardIds,
+    cardProgressById: nextCardStates,
+  };
+};
 
 const evaluateFlashcardResult = (
   card: Flashcard,
@@ -553,13 +636,21 @@ function App() {
     useState<SpacedRepetitionBoxes>(5);
   const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
     useState<SpacedRepetitionOrder>("in-order");
-  const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<string[]>([]);
-  const [spacedRepetitionActiveUser, setSpacedRepetitionActiveUser] =
+  const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<
+    SpacedRepetitionUser[]
+  >([]);
+  const [spacedRepetitionActiveUserId, setSpacedRepetitionActiveUserId] =
     useState<string | null>(null);
-  const [spacedRepetitionSelectedUser, setSpacedRepetitionSelectedUser] =
+  const [spacedRepetitionSelectedUserId, setSpacedRepetitionSelectedUserId] =
     useState<string>("");
   const [spacedRepetitionNewUserName, setSpacedRepetitionNewUserName] =
     useState("");
+  const [spacedRepetitionUserError, setSpacedRepetitionUserError] =
+    useState("");
+  const [spacedRepetitionUserStateById, setSpacedRepetitionUserStateById] =
+    useState<Record<string, SpacedRepetitionUserState>>({});
+  const [spacedRepetitionDataLoaded, setSpacedRepetitionDataLoaded] =
+    useState(false);
   const [spacedRepetitionSessions, setSpacedRepetitionSessions] = useState<
     Record<string, SpacedRepetitionSession>
   >({});
@@ -603,8 +694,15 @@ function App() {
   }, [files.length, vaultPath]);
 
   const flashcardStatusLabel = "Not scanned yet";
-  const spacedRepetitionSession = spacedRepetitionActiveUser
-    ? spacedRepetitionSessions[spacedRepetitionActiveUser]
+  const spacedRepetitionActiveUser = spacedRepetitionActiveUserId
+    ? spacedRepetitionUsers.find((user) => user.id === spacedRepetitionActiveUserId)
+        ?.name ?? null
+    : null;
+  const spacedRepetitionActiveUserState = spacedRepetitionActiveUserId
+    ? spacedRepetitionUserStateById[spacedRepetitionActiveUserId] ?? null
+    : null;
+  const spacedRepetitionSession = spacedRepetitionActiveUserId
+    ? spacedRepetitionSessions[spacedRepetitionActiveUserId]
     : undefined;
   const spacedRepetitionFlashcards = spacedRepetitionSession?.flashcards ?? [];
   const spacedRepetitionSelections = spacedRepetitionSession?.selections ?? {};
@@ -615,8 +713,10 @@ function App() {
   const spacedRepetitionClozeResponses =
     spacedRepetitionSession?.clozeResponses ?? {};
   const spacedRepetitionPage = spacedRepetitionSession?.page ?? 0;
-  const spacedRepetitionCardProgress =
-    spacedRepetitionSession?.cardProgress ?? {};
+  const spacedRepetitionCardStates =
+    spacedRepetitionActiveUserState?.cardStates ??
+    spacedRepetitionSession?.cardProgressById ??
+    {};
   const lastOpenedFile = selectedFile?.relative_path;
   const vaultIndexedComplete = useMemo(
     () => Boolean(vaultPath) && listState === "idle",
@@ -716,28 +816,25 @@ function App() {
   const {
     correctCount: spacedRepetitionCorrectCount,
     incorrectCount: spacedRepetitionIncorrectCount,
-  } = useMemo(
-    () =>
-      calculateFlashcardStats(
-        spacedRepetitionFlashcards,
-        spacedRepetitionSubmissions,
-        spacedRepetitionSelections,
-        spacedRepetitionTrueFalseSelections,
-        spacedRepetitionClozeResponses,
-      ),
-    [
-      spacedRepetitionClozeResponses,
-      spacedRepetitionFlashcards,
-      spacedRepetitionSelections,
-      spacedRepetitionSubmissions,
-      spacedRepetitionTrueFalseSelections,
-    ],
-  );
-
-  const spacedRepetitionTotalQuestions = spacedRepetitionFlashcards.length;
+    total: spacedRepetitionTotalQuestions,
+  } = useMemo(() => {
+    const cardStates = Object.values(spacedRepetitionCardStates);
+    let correct = 0;
+    let incorrect = 0;
+    cardStates.forEach((state) => {
+      const normalized = normalizeSpacedRepetitionCardProgress(state);
+      if (normalized.lastResult === "correct") {
+        correct += 1;
+      } else if (normalized.lastResult === "incorrect") {
+        incorrect += 1;
+      }
+    });
+    return { correctCount: correct, incorrectCount: incorrect, total: cardStates.length };
+  }, [spacedRepetitionCardStates]);
 
   const spacedRepetitionProgressStats = useMemo(() => {
-    const total = spacedRepetitionFlashcards.length;
+    const cardStates = Object.values(spacedRepetitionCardStates);
+    const total = cardStates.length;
     if (total === 0) {
       return {
         dueNow: 0,
@@ -752,18 +849,15 @@ function App() {
     let dueToday = 0;
     let completedToday = 0;
 
-    for (let index = 0; index < total; index += 1) {
-      const progress = spacedRepetitionCardProgress[index] ?? {
-        box: 1,
-        attempts: 0,
-      };
-      if (progress.attempts > 0) {
+    for (const progress of cardStates) {
+      const normalized = normalizeSpacedRepetitionCardProgress(progress);
+      if (normalized.attempts > 0) {
         completedToday += 1;
       }
-      if (progress.box <= 1) {
+      if (normalized.box <= 1) {
         dueNow += 1;
       }
-      if (progress.box <= dueTodayThreshold) {
+      if (normalized.box <= dueTodayThreshold) {
         dueToday += 1;
       }
     }
@@ -776,8 +870,7 @@ function App() {
     };
   }, [
     spacedRepetitionBoxes,
-    spacedRepetitionCardProgress,
-    spacedRepetitionFlashcards.length,
+    spacedRepetitionCardStates,
   ]);
 
   const statsChartStyle = useMemo(
@@ -794,20 +887,20 @@ function App() {
 
   const updateActiveSpacedRepetitionSession = useCallback(
     (updater: (session: SpacedRepetitionSession) => SpacedRepetitionSession) => {
-      if (!spacedRepetitionActiveUser) {
+      if (!spacedRepetitionActiveUserId) {
         return;
       }
       setSpacedRepetitionSessions((prev) => {
         const current =
-          prev[spacedRepetitionActiveUser] ?? createEmptySpacedRepetitionSession();
+          prev[spacedRepetitionActiveUserId] ?? createEmptySpacedRepetitionSession();
         const next = updater(current);
         if (next === current) {
           return prev;
         }
-        return { ...prev, [spacedRepetitionActiveUser]: next };
+        return { ...prev, [spacedRepetitionActiveUserId]: next };
       });
     },
-    [spacedRepetitionActiveUser],
+    [spacedRepetitionActiveUserId],
   );
 
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
@@ -952,6 +1045,126 @@ function App() {
   }, [loadVault, saveSettings]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const restoreSpacedRepetitionData = async () => {
+      try {
+        const storage = await invoke<SpacedRepetitionStorage>(
+          "load_spaced_repetition_data",
+        );
+        if (cancelled) {
+          return;
+        }
+        const users = Array.isArray(storage.users)
+          ? storage.users
+              .map((user) => {
+                if (!user || typeof user !== "object") {
+                  return null;
+                }
+                const id = "id" in user && typeof user.id === "string" ? user.id : "";
+                const name =
+                  "name" in user && typeof user.name === "string" ? user.name : "";
+                if (!id || !name) {
+                  return null;
+                }
+                const createdAt =
+                  "createdAt" in user && typeof user.createdAt === "string"
+                    ? user.createdAt
+                    : new Date().toISOString();
+                return { id, name, createdAt };
+              })
+              .filter((user): user is SpacedRepetitionUser => Boolean(user))
+          : [];
+        const userStateByIdRaw =
+          storage.userStateById && typeof storage.userStateById === "object"
+            ? storage.userStateById
+            : {};
+        const userIds = new Set(users.map((user) => user.id));
+        const userStateById = Object.fromEntries(
+          Object.entries(userStateByIdRaw)
+            .filter(([userId]) => userIds.has(userId))
+            .map(([userId, state]) => {
+              const cardStatesRaw =
+                state && typeof state === "object" && "cardStates" in state
+                  ? (state as SpacedRepetitionUserState).cardStates
+                  : {};
+              const normalizedCardStates = Object.fromEntries(
+                Object.entries(cardStatesRaw ?? {}).map(([cardId, progress]) => [
+                  cardId,
+                  normalizeSpacedRepetitionCardProgress(progress),
+                ]),
+              );
+              const lastLoadedAt =
+                state &&
+                typeof state === "object" &&
+                "lastLoadedAt" in state &&
+                typeof (state as SpacedRepetitionUserState).lastLoadedAt === "string"
+                  ? (state as SpacedRepetitionUserState).lastLoadedAt
+                  : null;
+              return [
+                userId,
+                {
+                  cardStates: normalizedCardStates,
+                  lastLoadedAt,
+                },
+              ];
+            }),
+        );
+        const lastActiveUserId =
+          storage.lastActiveUserId &&
+          users.some((user) => user.id === storage.lastActiveUserId)
+            ? storage.lastActiveUserId
+            : null;
+
+        setSpacedRepetitionUsers(users);
+        setSpacedRepetitionUserStateById(userStateById);
+
+        if (lastActiveUserId && users.some((user) => user.id === lastActiveUserId)) {
+          setSpacedRepetitionActiveUserId(lastActiveUserId);
+          setSpacedRepetitionSelectedUserId(lastActiveUserId);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load spaced repetition data", error);
+          setSpacedRepetitionUsers([]);
+          setSpacedRepetitionUserStateById({});
+          setSpacedRepetitionActiveUserId(null);
+          setSpacedRepetitionSelectedUserId("");
+        }
+      } finally {
+        if (!cancelled) {
+          setSpacedRepetitionDataLoaded(true);
+        }
+      }
+    };
+
+    void restoreSpacedRepetitionData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!spacedRepetitionDataLoaded) {
+      return;
+    }
+    const storage: SpacedRepetitionStorage = {
+      users: spacedRepetitionUsers,
+      userStateById: spacedRepetitionUserStateById,
+      lastActiveUserId: spacedRepetitionActiveUserId,
+    };
+    void invoke("save_spaced_repetition_data", { storage }).catch((error) => {
+      console.error("Failed to save spaced repetition data", error);
+    });
+  }, [
+    spacedRepetitionActiveUserId,
+    spacedRepetitionDataLoaded,
+    spacedRepetitionUserStateById,
+    spacedRepetitionUsers,
+  ]);
+
+  useEffect(() => {
     applyTheme(theme);
   }, [theme]);
 
@@ -981,19 +1194,24 @@ function App() {
   }, [flashcardPage, flashcardPageCount]);
 
   useEffect(() => {
-    if (!spacedRepetitionActiveUser) {
+    if (!spacedRepetitionActiveUserId) {
       return;
     }
     setSpacedRepetitionSessions((prev) => {
-      if (prev[spacedRepetitionActiveUser]) {
+      if (prev[spacedRepetitionActiveUserId]) {
         return prev;
       }
+      const storedState =
+        spacedRepetitionUserStateById[spacedRepetitionActiveUserId];
       return {
         ...prev,
-        [spacedRepetitionActiveUser]: createEmptySpacedRepetitionSession(),
+        [spacedRepetitionActiveUserId]: {
+          ...createEmptySpacedRepetitionSession(),
+          cardProgressById: storedState?.cardStates ?? {},
+        },
       };
     });
-  }, [spacedRepetitionActiveUser]);
+  }, [spacedRepetitionActiveUserId, spacedRepetitionUserStateById]);
 
   useEffect(() => {
     setSpacedRepetitionSessions((prev) => {
@@ -1002,15 +1220,16 @@ function App() {
 
       Object.entries(prev).forEach(([user, session]) => {
         let progressChanged = false;
-        const nextProgress: Record<number, SpacedRepetitionCardProgress> = {};
+        const nextProgress: Record<string, SpacedRepetitionCardProgress> = {};
 
-        Object.entries(session.cardProgress).forEach(([index, progress]) => {
-          const clampedBox = Math.min(progress.box, spacedRepetitionBoxes);
-          if (clampedBox !== progress.box) {
+        Object.entries(session.cardProgressById).forEach(([cardId, progress]) => {
+          const normalized = normalizeSpacedRepetitionCardProgress(progress);
+          const clampedBox = Math.min(normalized.box, spacedRepetitionBoxes);
+          if (clampedBox !== normalized.box) {
             progressChanged = true;
-            nextProgress[Number(index)] = { ...progress, box: clampedBox };
+            nextProgress[cardId] = { ...normalized, box: clampedBox };
           } else {
-            nextProgress[Number(index)] = progress;
+            nextProgress[cardId] = normalized;
           }
         });
 
@@ -1018,7 +1237,7 @@ function App() {
           changed = true;
           next[user] = {
             ...session,
-            cardProgress: nextProgress,
+            cardProgressById: nextProgress,
           };
         } else {
           next[user] = session;
@@ -1030,7 +1249,7 @@ function App() {
   }, [spacedRepetitionBoxes]);
 
   useEffect(() => {
-    if (!spacedRepetitionActiveUser) {
+    if (!spacedRepetitionActiveUserId) {
       return;
     }
     const maxPage = Math.max(0, spacedRepetitionPageCount - 1);
@@ -1041,11 +1260,35 @@ function App() {
       }));
     }
   }, [
-    spacedRepetitionActiveUser,
+    spacedRepetitionActiveUserId,
     spacedRepetitionPage,
     spacedRepetitionPageCount,
     updateActiveSpacedRepetitionSession,
   ]);
+
+  useEffect(() => {
+    if (!spacedRepetitionActiveUserId) {
+      return;
+    }
+    const session = spacedRepetitionSessions[spacedRepetitionActiveUserId];
+    if (!session) {
+      return;
+    }
+    setSpacedRepetitionUserStateById((prev) => {
+      const current =
+        prev[spacedRepetitionActiveUserId] ?? createEmptySpacedRepetitionUserState();
+      if (current.cardStates === session.cardProgressById) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [spacedRepetitionActiveUserId]: {
+          ...current,
+          cardStates: session.cardProgressById,
+        },
+      };
+    });
+  }, [spacedRepetitionActiveUserId, spacedRepetitionSessions]);
 
   const handlePickVault = async () => {
     setListError("");
@@ -1235,65 +1478,125 @@ function App() {
   }, [flashcardPageCount]);
 
   const handleSpacedRepetitionCreateUser = useCallback(() => {
-    setSpacedRepetitionUsers((prev) => {
-      const nextName = buildSpacedRepetitionUserName(
-        spacedRepetitionNewUserName,
-        prev,
-      );
-      const next = [...prev, nextName];
-      setSpacedRepetitionActiveUser(nextName);
-      setSpacedRepetitionSelectedUser(nextName);
-      setSpacedRepetitionNewUserName("");
-      return next;
-    });
-  }, [spacedRepetitionNewUserName]);
+    const trimmed = spacedRepetitionNewUserName.trim();
+    if (!trimmed) {
+      setSpacedRepetitionUserError("User name is required.");
+      return;
+    }
+    const normalized = trimmed.toLowerCase();
+    const hasDuplicate = spacedRepetitionUsers.some(
+      (user) => user.name.trim().toLowerCase() === normalized,
+    );
+    if (hasDuplicate) {
+      setSpacedRepetitionUserError("User name already exists.");
+      return;
+    }
+
+    const newUser: SpacedRepetitionUser = {
+      id: createSpacedRepetitionUserId(),
+      name: trimmed,
+      createdAt: new Date().toISOString(),
+    };
+
+    setSpacedRepetitionUsers((prev) => [...prev, newUser]);
+    setSpacedRepetitionUserStateById((prev) => ({
+      ...prev,
+      [newUser.id]: createEmptySpacedRepetitionUserState(),
+    }));
+    setSpacedRepetitionActiveUserId(newUser.id);
+    setSpacedRepetitionSelectedUserId(newUser.id);
+    setSpacedRepetitionNewUserName("");
+    setSpacedRepetitionUserError("");
+  }, [spacedRepetitionNewUserName, spacedRepetitionUsers]);
 
   const handleSpacedRepetitionLoadUser = useCallback(() => {
-    if (!spacedRepetitionSelectedUser) {
+    if (!spacedRepetitionSelectedUserId) {
       return;
     }
-    setSpacedRepetitionActiveUser(spacedRepetitionSelectedUser);
-  }, [spacedRepetitionSelectedUser]);
+    setSpacedRepetitionActiveUserId(spacedRepetitionSelectedUserId);
+    setSpacedRepetitionUserStateById((prev) => {
+      const current =
+        prev[spacedRepetitionSelectedUserId] ?? createEmptySpacedRepetitionUserState();
+      return {
+        ...prev,
+        [spacedRepetitionSelectedUserId]: {
+          ...current,
+          lastLoadedAt: new Date().toISOString(),
+        },
+      };
+    });
+    setSpacedRepetitionUserError("");
+  }, [spacedRepetitionSelectedUserId]);
 
   const handleSpacedRepetitionDeleteUser = useCallback(() => {
-    if (!spacedRepetitionSelectedUser) {
+    if (!spacedRepetitionSelectedUserId) {
       return;
     }
+    const deletedId = spacedRepetitionSelectedUserId;
+
     setSpacedRepetitionSessions((prev) => {
-      if (!prev[spacedRepetitionSelectedUser]) {
+      if (!prev[deletedId]) {
         return prev;
       }
       const next = { ...prev };
-      delete next[spacedRepetitionSelectedUser];
+      delete next[deletedId];
+      return next;
+    });
+    setSpacedRepetitionUserStateById((prev) => {
+      if (!prev[deletedId]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[deletedId];
       return next;
     });
     setSpacedRepetitionUsers((prev) => {
-      const next = prev.filter((user) => user !== spacedRepetitionSelectedUser);
-      const nextSelected = next[0] ?? "";
-      if (spacedRepetitionActiveUser === spacedRepetitionSelectedUser) {
-        setSpacedRepetitionActiveUser(next[0] ?? null);
+      const next = prev.filter((user) => user.id !== deletedId);
+      const nextSelected = next[0]?.id ?? "";
+      if (spacedRepetitionActiveUserId === deletedId) {
+        setSpacedRepetitionActiveUserId(null);
       }
-      setSpacedRepetitionSelectedUser(nextSelected);
+      setSpacedRepetitionSelectedUserId(nextSelected);
       return next;
     });
-  }, [spacedRepetitionActiveUser, spacedRepetitionSelectedUser]);
+    setSpacedRepetitionUserError("");
+  }, [spacedRepetitionActiveUserId, spacedRepetitionSelectedUserId]);
 
   const handleSpacedRepetitionActiveUserLoadCards = useCallback(async () => {
-    if (!spacedRepetitionActiveUser || isFlashcardScanning) {
+    if (!spacedRepetitionActiveUserId || isFlashcardScanning) {
       return;
     }
-    const activeUser = spacedRepetitionActiveUser;
+    const activeUserId = spacedRepetitionActiveUserId;
     setIsFlashcardScanning(true);
     try {
       const cards = await scanFlashcards({ allowVaultFallback: true });
+      const storedCardStates =
+        spacedRepetitionUserStateById[activeUserId]?.cardStates ?? {};
+      const nextSession = buildSpacedRepetitionSession(cards, storedCardStates);
       setSpacedRepetitionSessions((prev) => ({
         ...prev,
-        [activeUser]: buildSpacedRepetitionSession(cards),
+        [activeUserId]: nextSession,
       }));
+      setSpacedRepetitionUserStateById((prev) => {
+        const current = prev[activeUserId] ?? createEmptySpacedRepetitionUserState();
+        return {
+          ...prev,
+          [activeUserId]: {
+            ...current,
+            cardStates: nextSession.cardProgressById,
+            lastLoadedAt: new Date().toISOString(),
+          },
+        };
+      });
     } finally {
       setIsFlashcardScanning(false);
     }
-  }, [isFlashcardScanning, scanFlashcards, spacedRepetitionActiveUser]);
+  }, [
+    isFlashcardScanning,
+    scanFlashcards,
+    spacedRepetitionActiveUserId,
+    spacedRepetitionUserStateById,
+  ]);
 
   const handleSpacedRepetitionOptionSelect = useCallback(
     (cardIndex: number, key: string) => {
@@ -1343,6 +1646,11 @@ function App() {
         if (!card) {
           return session;
         }
+        const cardIds =
+          session.cardIds.length === session.flashcards.length
+            ? session.cardIds
+            : session.flashcards.map(getFlashcardId);
+        const cardId = cardIds[cardIndex] ?? getFlashcardId(card);
         const result = evaluateFlashcardResult(
           card,
           cardIndex,
@@ -1350,13 +1658,14 @@ function App() {
           session.trueFalseSelections,
           session.clozeResponses,
         );
-        const currentProgress = session.cardProgress[cardIndex] ?? {
-          box: 1,
-          attempts: 0,
-        };
+        const currentProgress = normalizeSpacedRepetitionCardProgress(
+          session.cardProgressById[cardId],
+        );
         const nextProgress = {
           box: currentProgress.box,
           attempts: currentProgress.attempts + 1,
+          lastResult: result,
+          lastReviewedAt: new Date().toISOString(),
         };
         if (result === "correct") {
           nextProgress.box = Math.min(currentProgress.box + 1, spacedRepetitionBoxes);
@@ -1366,10 +1675,11 @@ function App() {
 
         return {
           ...session,
+          cardIds,
           submissions: { ...session.submissions, [cardIndex]: true },
-          cardProgress: {
-            ...session.cardProgress,
-            [cardIndex]: nextProgress,
+          cardProgressById: {
+            ...session.cardProgressById,
+            [cardId]: nextProgress,
           },
         };
       });
@@ -2655,16 +2965,16 @@ function App() {
                     <span className="label">User list</span>
                     <select
                       className="text-input"
-                      value={spacedRepetitionSelectedUser}
+                      value={spacedRepetitionSelectedUserId}
                       onChange={(event) =>
-                        setSpacedRepetitionSelectedUser(event.target.value)
+                        setSpacedRepetitionSelectedUserId(event.target.value)
                       }
                       aria-label="Select user"
                     >
                       <option value="">Select user</option>
                       {spacedRepetitionUsers.map((user) => (
-                        <option key={user} value={user}>
-                          {user}
+                        <option key={user.id} value={user.id}>
+                          {user.name}
                         </option>
                       ))}
                     </select>
@@ -2676,9 +2986,12 @@ function App() {
                         type="text"
                         className="text-input"
                         value={spacedRepetitionNewUserName}
-                        onChange={(event) =>
-                          setSpacedRepetitionNewUserName(event.target.value)
-                        }
+                        onChange={(event) => {
+                          setSpacedRepetitionNewUserName(event.target.value);
+                          if (spacedRepetitionUserError) {
+                            setSpacedRepetitionUserError("");
+                          }
+                        }}
                         placeholder="User name"
                         aria-label="New user name"
                       />
@@ -2690,6 +3003,11 @@ function App() {
                         Create
                       </button>
                     </div>
+                    {spacedRepetitionUserError ? (
+                      <span className="helper-text error-text">
+                        {spacedRepetitionUserError}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="setting-row">
                     <span className="label">Actions</span>
@@ -2698,7 +3016,7 @@ function App() {
                         type="button"
                         className="ghost small"
                         onClick={handleSpacedRepetitionLoadUser}
-                        disabled={!spacedRepetitionSelectedUser}
+                        disabled={!spacedRepetitionSelectedUserId}
                       >
                         Load
                       </button>
@@ -2706,7 +3024,7 @@ function App() {
                         type="button"
                         className="ghost small"
                         onClick={handleSpacedRepetitionDeleteUser}
-                        disabled={!spacedRepetitionSelectedUser}
+                        disabled={!spacedRepetitionSelectedUserId}
                       >
                         Delete
                       </button>
