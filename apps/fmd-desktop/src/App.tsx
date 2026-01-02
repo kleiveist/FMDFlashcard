@@ -28,6 +28,7 @@ type FlashcardOrder = "in-order" | "random";
 type FlashcardMode = "multiple-choice" | "yes-no";
 type FlashcardBoxes = "3" | "5" | "7";
 type FlashcardScope = "current" | "vault";
+type FlashcardPageSize = 2 | 5 | 10;
 
 type AppSettings = {
   vault_path?: string | null;
@@ -280,7 +281,13 @@ function App() {
     useState<FlashcardBoxes>("3");
   const [flashcardScope, setFlashcardScope] =
     useState<FlashcardScope>("current");
+  const [flashcardPageSize, setFlashcardPageSize] =
+    useState<FlashcardPageSize>(2);
   const [spacedRepetitionEnabled, setSpacedRepetitionEnabled] = useState(false);
+  const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
+  const [statsResetMode, setStatsResetMode] = useState<"scan" | "session">(
+    "scan",
+  );
   const [flashcardPage, setFlashcardPage] = useState(0);
   const [isFlashcardScanning, setIsFlashcardScanning] = useState(false);
   const [flashcardSelections, setFlashcardSelections] = useState<
@@ -296,6 +303,10 @@ function App() {
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
   const [accentError, setAccentError] = useState("");
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [maxFilesPerScan, setMaxFilesPerScan] = useState("");
+  const [scanParallelism, setScanParallelism] = useState<
+    "low" | "medium" | "high"
+  >("medium");
 
   const fileCountLabel = useMemo(() => {
     if (!vaultPath) {
@@ -308,11 +319,15 @@ function App() {
   }, [files.length, vaultPath]);
 
   const flashcardStatusLabel = "Not scanned yet";
-  const flashcardPageSize = 2;
+  const lastOpenedFile = selectedFile?.relative_path;
+  const vaultIndexedComplete = useMemo(
+    () => Boolean(vaultPath) && listState === "idle",
+    [listState, vaultPath],
+  );
 
   const flashcardPageCount = useMemo(
     () => Math.ceil(flashcards.length / flashcardPageSize),
-    [flashcards.length],
+    [flashcardPageSize, flashcards.length],
   );
 
   const flashcardPageIndex = useMemo(
@@ -327,7 +342,7 @@ function App() {
       flashcardPageStart,
       flashcardPageStart + flashcardPageSize,
     );
-  }, [flashcards, flashcardPageStart]);
+  }, [flashcardPageSize, flashcards, flashcardPageStart]);
 
   const canGoBack = flashcardPageIndex > 0;
   const canGoNext = flashcardPageIndex < flashcardPageCount - 1;
@@ -725,6 +740,43 @@ function App() {
       await navigator.clipboard.writeText(accentColor);
     } catch (error) {
       console.error("Failed to copy accent color", error);
+    }
+  };
+
+  const handleCopyVaultPath = async () => {
+    if (!vaultPath) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(vaultPath);
+    } catch (error) {
+      console.error("Failed to copy vault path", error);
+    }
+  };
+
+  const handleRescanVault = useCallback(async () => {
+    if (!vaultPath || listState === "loading") {
+      return;
+    }
+    setListError("");
+    setListState("loading");
+    try {
+      const results = await invoke<VaultFile[]>("list_markdown_files", {
+        vaultPath,
+      });
+      setFiles(results);
+      setListState("idle");
+    } catch (error) {
+      const message = asErrorMessage(error, "Vault konnte nicht neu gescannt werden.");
+      setListError(message);
+      setListState("error");
+    }
+  }, [listState, vaultPath]);
+
+  const handleMaxFilesPerScanChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value.trim();
+    if (nextValue === "" || /^[0-9]+$/.test(nextValue)) {
+      setMaxFilesPerScan(nextValue);
     }
   };
 
@@ -1313,7 +1365,312 @@ function App() {
               </div>
             </header>
 
+            <section className="panel vault-index-panel">
+              <div>
+                <h2>Vault &amp; Index</h2>
+                <p className="muted">
+                  Vault path, last opened note, and index status.
+                </p>
+              </div>
+              <div className="setting-row">
+                <span className="label">Current vault path</span>
+                <div className="setting-inline">
+                  <span className="value path-value">{vaultPath ?? "—"}</span>
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={handleCopyVaultPath}
+                    disabled={!vaultPath}
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <div className="setting-row">
+                <span className="label">Last opened</span>
+                <span className="value path-value">
+                  {lastOpenedFile ?? "Not loaded yet"}
+                </span>
+              </div>
+              <div className="setting-row">
+                <span className="label">Status indicators</span>
+                <div className="status-list">
+                  <div className="status-item">
+                    <label className="status-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={vaultIndexedComplete}
+                        disabled
+                        aria-label="Fully processed"
+                      />
+                      <span>Fully processed</span>
+                    </label>
+                    <span className="helper-text">
+                      All notes have been scanned and indexed.
+                    </span>
+                  </div>
+                  <div className="status-item">
+                    <div className="status-row">
+                      <span>Watcher active</span>
+                      <div className="toggle-row">
+                        <span className="toggle-label">Coming later</span>
+                        <label className="switch">
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            disabled
+                            aria-label="Watcher active (coming later)"
+                          />
+                          <span className="slider" />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="status-item">
+                    <div className="status-row">
+                      <span>Auto-scan</span>
+                      <div className="toggle-row">
+                        <span className="toggle-label">Coming later</span>
+                        <label className="switch">
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            disabled
+                            aria-label="Auto-scan (coming later)"
+                          />
+                          <span className="slider" />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="setting-row">
+                <span className="label">Actions</span>
+                <div className="setting-actions">
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={handleRescanVault}
+                    disabled={!vaultPath || listState === "loading"}
+                  >
+                    Rescan vault
+                  </button>
+                  <button type="button" className="ghost small" disabled>
+                    Reset index
+                  </button>
+                </div>
+                <span className="helper-text">Reset index is coming later.</span>
+              </div>
+            </section>
+
             <div className="settings-grid">
+              <section className="panel">
+                <h2>Flashcards</h2>
+                <p className="muted">
+                  Default behavior for scans and review sessions.
+                </p>
+                <div className="setting-row">
+                  <span className="label">Default scope</span>
+                  <div className="pill-grid">
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        flashcardScope === "current" ? "active" : ""
+                      }`}
+                      aria-pressed={flashcardScope === "current"}
+                      onClick={() => setFlashcardScope("current")}
+                    >
+                      Current note
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        flashcardScope === "vault" ? "active" : ""
+                      }`}
+                      aria-pressed={flashcardScope === "vault"}
+                      onClick={() => setFlashcardScope("vault")}
+                    >
+                      Whole vault
+                    </button>
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Default order</span>
+                  <div className="pill-grid">
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        flashcardOrder === "in-order" ? "active" : ""
+                      }`}
+                      aria-pressed={flashcardOrder === "in-order"}
+                      onClick={() => setFlashcardOrder("in-order")}
+                    >
+                      In order
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        flashcardOrder === "random" ? "active" : ""
+                      }`}
+                      aria-pressed={flashcardOrder === "random"}
+                      onClick={() => setFlashcardOrder("random")}
+                    >
+                      Random
+                    </button>
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Page size</span>
+                  <div className="pill-grid">
+                    {[2, 5, 10].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        className={`pill pill-button ${
+                          flashcardPageSize === size ? "active" : ""
+                        }`}
+                        aria-pressed={flashcardPageSize === size}
+                        onClick={() => setFlashcardPageSize(size as FlashcardPageSize)}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Solution reveal</span>
+                  <div className="toggle-row">
+                    <span className="toggle-label">
+                      {solutionRevealEnabled ? "On" : "Off"}
+                    </span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={solutionRevealEnabled}
+                        onChange={(event) =>
+                          setSolutionRevealEnabled(event.target.checked)
+                        }
+                        aria-label="Solution reveal"
+                      />
+                      <span className="slider" />
+                    </label>
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Statistics reset</span>
+                  <div className="pill-grid">
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        statsResetMode === "scan" ? "active" : ""
+                      }`}
+                      aria-pressed={statsResetMode === "scan"}
+                      onClick={() => setStatsResetMode("scan")}
+                    >
+                      Per scan
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        statsResetMode === "session" ? "active" : ""
+                      }`}
+                      aria-pressed={statsResetMode === "session"}
+                      onClick={() => setStatsResetMode("session")}
+                    >
+                      Per session
+                    </button>
+                  </div>
+                </div>
+              </section>
+              <section className="panel">
+                <h2>Performance</h2>
+                <p className="muted">
+                  Tune vault scans for larger libraries.
+                </p>
+                <div className="setting-row">
+                  <span className="label">Max files per vault scan</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    className="text-input"
+                    value={maxFilesPerScan}
+                    onChange={handleMaxFilesPerScanChange}
+                    placeholder="Optional"
+                    aria-label="Max files per vault scan"
+                  />
+                  <span className="helper-text">
+                    Leave empty for no limit.
+                  </span>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Scan parallelism</span>
+                  <div className="pill-grid">
+                    {(["low", "medium", "high"] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        className={`pill pill-button ${
+                          scanParallelism === level ? "active" : ""
+                        }`}
+                        aria-pressed={scanParallelism === level}
+                        onClick={() => setScanParallelism(level)}
+                      >
+                        {level.charAt(0).toUpperCase() + level.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Watcher debounce/throttle</span>
+                  <input
+                    type="text"
+                    className="text-input"
+                    value="Coming later"
+                    disabled
+                    aria-label="Watcher debounce or throttle (coming later)"
+                  />
+                </div>
+              </section>
+              <section className="panel">
+                <h2>Data &amp; Sync</h2>
+                <p className="muted">
+                  Storage and sync options will land here later.
+                </p>
+                <div className="setting-row">
+                  <span className="label">Local storage path</span>
+                  <input
+                    type="text"
+                    className="text-input"
+                    value="—"
+                    disabled
+                    aria-label="Local storage path"
+                  />
+                </div>
+                <div className="setting-row">
+                  <span className="label">Export / Import (JSON)</span>
+                  <div className="setting-actions">
+                    <button type="button" className="ghost small" disabled>
+                      Export JSON
+                    </button>
+                    <button type="button" className="ghost small" disabled>
+                      Import JSON
+                    </button>
+                  </div>
+                  <span className="helper-text">Coming later.</span>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Sync provider</span>
+                  <input
+                    type="text"
+                    className="text-input"
+                    value="Coming later"
+                    disabled
+                    aria-label="Sync provider"
+                  />
+                </div>
+              </section>
               <section className="panel appearance-panel">
                 <h2>Erscheinungsbild</h2>
                 <p className="muted">
@@ -1383,43 +1740,6 @@ function App() {
                   </div>
                   <span className={`helper-text ${accentError ? "error-text" : ""}`}>
                     {accentError || "HEX Wert der Akzentfarbe (#RRGGBB)."}
-                  </span>
-                </div>
-              </section>
-              <section className="panel">
-                <h2>Vault Status</h2>
-                <p className="muted">
-                  Aktiver Pfad wird hier gespeichert. Bald folgen Auto-Scan und
-                  Watcher.
-                </p>
-                <div className="setting-row">
-                  <span className="label">Aktueller Vault</span>
-                  <span className="value path-value">
-                    {vaultPath ?? "Nicht gesetzt"}
-                  </span>
-                </div>
-              </section>
-              <section className="panel">
-                <h2>Naechste Schritte</h2>
-                <p className="muted">
-                  Parser, Karten-Generator und Sync werden als naechste vertikale
-                  Scheiben ausgebaut.
-                </p>
-                <div className="pill-grid">
-                  <span className="pill">Parser</span>
-                  <span className="pill">Card Build</span>
-                  <span className="pill">Vault Watcher</span>
-                </div>
-              </section>
-              <section className="panel">
-                <h2>Aktivitaet</h2>
-                <p className="muted">
-                  Zuletzt gelesene Datei und Import-Logs erscheinen hier.
-                </p>
-                <div className="setting-row">
-                  <span className="label">Zuletzt</span>
-                  <span className="value">
-                    {selectedFile?.relative_path ?? "Noch nichts geladen"}
                   </span>
                 </div>
               </section>

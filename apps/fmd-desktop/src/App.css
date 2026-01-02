@@ -1016,6 +1016,50 @@ h2 {
   border-top: 1px solid var(--line);
 }
 
+.setting-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.setting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.status-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.status-checkbox input {
+  accent-color: var(--accent);
+}
+
 .appearance-panel .setting-row:first-of-type {
   border-top: none;
   padding-top: 0;
@@ -1074,6 +1118,27 @@ h2 {
 
 .switch input:checked + .slider::before {
   transform: translateX(20px);
+}
+
+.switch input:disabled + .slider {
+  background: var(--line-soft);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.text-input {
+  min-width: 140px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-warm);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.text-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .accent-controls {
