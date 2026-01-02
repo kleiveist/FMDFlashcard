@@ -1,0 +1,142 @@
+import type { Flashcard } from "../../lib/flashcards";
+import type { FlashcardResult, TrueFalseSelection } from "../flashcards/logic";
+
+export type SpacedRepetitionCardProgress = {
+  box: number;
+  attempts: number;
+  lastResult: FlashcardResult;
+  lastReviewedAt: string | null;
+};
+
+export type SpacedRepetitionSession = {
+  flashcards: Flashcard[];
+  cardIds: string[];
+  selections: Record<number, string>;
+  submissions: Record<number, boolean>;
+  trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>;
+  clozeResponses: Record<number, Record<string, string>>;
+  page: number;
+  cardProgressById: Record<string, SpacedRepetitionCardProgress>;
+};
+
+export type SpacedRepetitionUser = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
+export type SpacedRepetitionUserState = {
+  cardStates: Record<string, SpacedRepetitionCardProgress>;
+  lastLoadedAt: string | null;
+};
+
+export type SpacedRepetitionStorage = {
+  users: SpacedRepetitionUser[];
+  userStateById: Record<string, SpacedRepetitionUserState>;
+  lastActiveUserId: string | null;
+};
+
+export const createSpacedRepetitionUserId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `user-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+export const hashString = (value: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+};
+
+const getFlashcardIdentityPayload = (card: Flashcard) => {
+  if (card.kind === "multiple-choice") {
+    return {
+      kind: card.kind,
+      question: card.question,
+      options: card.options,
+      correctKeys: card.correctKeys,
+    };
+  }
+
+  if (card.kind === "true-false") {
+    return {
+      kind: card.kind,
+      items: card.items,
+    };
+  }
+
+  return {
+    kind: card.kind,
+    question: card.question,
+    segments: card.segments,
+    dragTokens: card.dragTokens,
+  };
+};
+
+export const getFlashcardId = (card: Flashcard) =>
+  `card-${hashString(JSON.stringify(getFlashcardIdentityPayload(card)))}`;
+
+export const createEmptySpacedRepetitionSession = (): SpacedRepetitionSession => ({
+  flashcards: [],
+  cardIds: [],
+  selections: {},
+  submissions: {},
+  trueFalseSelections: {},
+  clozeResponses: {},
+  page: 0,
+  cardProgressById: {},
+});
+
+export const createEmptySpacedRepetitionUserState = (): SpacedRepetitionUserState => ({
+  cardStates: {},
+  lastLoadedAt: null,
+});
+
+export const normalizeSpacedRepetitionCardProgress = (
+  progress?: Partial<SpacedRepetitionCardProgress> | null,
+): SpacedRepetitionCardProgress => ({
+  box:
+    typeof progress?.box === "number" && Number.isFinite(progress.box)
+      ? Math.max(1, progress.box)
+      : 1,
+  attempts:
+    typeof progress?.attempts === "number" && Number.isFinite(progress.attempts)
+      ? Math.max(0, progress.attempts)
+      : 0,
+  lastResult:
+    progress?.lastResult === "correct" || progress?.lastResult === "incorrect"
+      ? progress.lastResult
+      : "neutral",
+  lastReviewedAt:
+    typeof progress?.lastReviewedAt === "string" ? progress.lastReviewedAt : null,
+});
+
+export const buildSpacedRepetitionSession = (
+  flashcards: Flashcard[],
+  existingCardStates: Record<string, SpacedRepetitionCardProgress> = {},
+): SpacedRepetitionSession => {
+  const cardIds = flashcards.map(getFlashcardId);
+  const nextCardStates = Object.fromEntries(
+    Object.entries(existingCardStates).map(([cardId, progress]) => [
+      cardId,
+      normalizeSpacedRepetitionCardProgress(progress),
+    ]),
+  );
+
+  cardIds.forEach((cardId) => {
+    if (!nextCardStates[cardId]) {
+      nextCardStates[cardId] = normalizeSpacedRepetitionCardProgress(null);
+    }
+  });
+
+  return {
+    ...createEmptySpacedRepetitionSession(),
+    flashcards,
+    cardIds,
+    cardProgressById: nextCardStates,
+  };
+};
