@@ -15,7 +15,9 @@ import {
 
 export const SpacedRepetitionPage = () => {
   const { flashcards, spacedRepetition, vault } = useAppState();
-  const [statsView, setStatsView] = useState<"boxes" | "vault">("boxes");
+  const [statsView, setStatsView] = useState<
+    "boxes" | "vault" | "completed"
+  >("boxes");
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
@@ -87,6 +89,16 @@ export const SpacedRepetitionPage = () => {
                   >
                     Active vault
                   </button>
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      statsView === "completed" ? "active" : ""
+                    }`}
+                    aria-pressed={statsView === "completed"}
+                    onClick={() => setStatsView("completed")}
+                  >
+                    Completed per day
+                  </button>
                 </div>
               </div>
               {statsView === "boxes" ? (
@@ -117,7 +129,7 @@ export const SpacedRepetitionPage = () => {
                     })}
                   </div>
                 </div>
-              ) : (
+              ) : statsView === "vault" ? (
                 <div className="sr-vault-card">
                   <div className="sr-vault-row">
                     <span className="label">Vault</span>
@@ -132,6 +144,38 @@ export const SpacedRepetitionPage = () => {
                     <span className="value">
                       {spacedRepetition.spacedRepetitionFlashcards.length}
                     </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="chart-card">
+                  <div className="chart-header">
+                    <span className="label">Completed per day</span>
+                    <span className="chart-meta">Last 7 days</span>
+                  </div>
+                  <div className="chart-canvas">
+                    <svg
+                      className="sr-chart"
+                      viewBox="0 0 100 40"
+                      role="img"
+                      aria-label="Completed per day"
+                    >
+                      <line
+                        x1="0"
+                        y1="40"
+                        x2="100"
+                        y2="40"
+                        className="sr-chart-axis"
+                      />
+                      <polyline
+                        className="sr-chart-line"
+                        points={buildLineChartPoints(SPACED_REPETITION_CHART_DATA)}
+                      />
+                    </svg>
+                  </div>
+                  <div className="chart-axis">
+                    {SPACED_REPETITION_CHART_LABELS.map((label) => (
+                      <span key={label}>{label}</span>
+                    ))}
                   </div>
                 </div>
               )}
@@ -173,31 +217,6 @@ export const SpacedRepetitionPage = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          <div className="chart-card">
-            <div className="chart-header">
-              <span className="label">Completed per day</span>
-              <span className="chart-meta">Last 7 days</span>
-            </div>
-            <div className="chart-canvas">
-              <svg
-                className="sr-chart"
-                viewBox="0 0 100 40"
-                role="img"
-                aria-label="Completed per day"
-              >
-                <line x1="0" y1="40" x2="100" y2="40" className="sr-chart-axis" />
-                <polyline
-                  className="sr-chart-line"
-                  points={buildLineChartPoints(SPACED_REPETITION_CHART_DATA)}
-                />
-              </svg>
-            </div>
-            <div className="chart-axis">
-              {SPACED_REPETITION_CHART_LABELS.map((label) => (
-                <span key={label}>{label}</span>
-              ))}
             </div>
           </div>
         </div>
