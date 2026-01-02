@@ -33,9 +33,8 @@ type ThemeMode = "light" | "dark";
 
 type FlashcardOrder = "in-order" | "random";
 type FlashcardMode = "multiple-choice" | "yes-no";
-type FlashcardBoxes = "3" | "5" | "7";
 type FlashcardScope = "current" | "vault";
-type FlashcardPageSize = 2 | 5 | 10;
+type FlashcardPageSize = 1 | 2 | 5 | 10;
 type TrueFalseSelection = "wahr" | "falsch";
 
 type ClozeDragPayload = {
@@ -72,6 +71,8 @@ const ACCENT_PALETTE = [
   "#DC2626",
 ];
 const CLOZE_TOKEN_DRAG_TYPE = "application/x-cloze-token";
+const FLASHCARD_PAGE_SIZES: FlashcardPageSize[] = [1, 2, 5, 10];
+const DEFAULT_FLASHCARD_PAGE_SIZE: FlashcardPageSize = 2;
 
 const FolderIcon = () => (
   <svg
@@ -279,6 +280,20 @@ const applyAccentColor = (value: string) => {
   root.style.setProperty("--accent-contrast-strong", tokens.accentContrastStrong);
 };
 
+const normalizeFlashcardPageSize = (value: number) =>
+  FLASHCARD_PAGE_SIZES.includes(value as FlashcardPageSize)
+    ? (value as FlashcardPageSize)
+    : DEFAULT_FLASHCARD_PAGE_SIZE;
+
+const shuffleFlashcards = (cards: Flashcard[]) => {
+  const shuffled = [...cards];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 const getClozeBlanks = (segments: ClozeSegment[]) =>
   segments.filter((segment): segment is ClozeBlankSegment => segment.type === "blank");
 
@@ -364,13 +379,10 @@ function App() {
     useState<FlashcardOrder>("in-order");
   const [flashcardMode, setFlashcardMode] =
     useState<FlashcardMode>("multiple-choice");
-  const [flashcardBoxes, setFlashcardBoxes] =
-    useState<FlashcardBoxes>("3");
   const [flashcardScope, setFlashcardScope] =
     useState<FlashcardScope>("current");
   const [flashcardPageSize, setFlashcardPageSize] =
-    useState<FlashcardPageSize>(2);
-  const [spacedRepetitionEnabled, setSpacedRepetitionEnabled] = useState(false);
+    useState<FlashcardPageSize>(DEFAULT_FLASHCARD_PAGE_SIZE);
   const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
   const [statsResetMode, setStatsResetMode] = useState<"scan" | "session">(
     "scan",
@@ -417,9 +429,14 @@ function App() {
     [listState, vaultPath],
   );
 
+  const resolvedFlashcardPageSize = useMemo(
+    () => normalizeFlashcardPageSize(flashcardPageSize),
+    [flashcardPageSize],
+  );
+
   const flashcardPageCount = useMemo(
-    () => Math.ceil(flashcards.length / flashcardPageSize),
-    [flashcardPageSize, flashcards.length],
+    () => Math.ceil(flashcards.length / resolvedFlashcardPageSize),
+    [flashcards.length, resolvedFlashcardPageSize],
   );
 
   const flashcardPageIndex = useMemo(
@@ -427,14 +444,14 @@ function App() {
     [flashcardPage, flashcardPageCount],
   );
 
-  const flashcardPageStart = flashcardPageIndex * flashcardPageSize;
+  const flashcardPageStart = flashcardPageIndex * resolvedFlashcardPageSize;
 
   const visibleFlashcards = useMemo(() => {
     return flashcards.slice(
       flashcardPageStart,
-      flashcardPageStart + flashcardPageSize,
+      flashcardPageStart + resolvedFlashcardPageSize,
     );
-  }, [flashcardPageSize, flashcards, flashcardPageStart]);
+  }, [flashcards, flashcardPageStart, resolvedFlashcardPageSize]);
 
   const canGoBack = flashcardPageIndex > 0;
   const canGoNext = flashcardPageIndex < flashcardPageCount - 1;
@@ -659,6 +676,13 @@ function App() {
   }, [accentColor]);
 
   useEffect(() => {
+    const normalized = normalizeFlashcardPageSize(flashcardPageSize);
+    if (normalized !== flashcardPageSize) {
+      setFlashcardPageSize(normalized);
+    }
+  }, [flashcardPageSize]);
+
+  useEffect(() => {
     const maxPage = Math.max(0, flashcardPageCount - 1);
     if (flashcardPage > maxPage) {
       setFlashcardPage(maxPage);
@@ -782,26 +806,18 @@ function App() {
           }
         });
 
-        setFlashcards(merged);
+        const ordered = flashcardOrder === "random" ? shuffleFlashcards(merged) : merged;
+        setFlashcards(ordered);
         return;
       }
 
       const cards = parseFlashcards(preview);
-      setFlashcards(cards);
+      const ordered = flashcardOrder === "random" ? shuffleFlashcards(cards) : cards;
+      setFlashcards(ordered);
     } finally {
       setIsFlashcardScanning(false);
     }
-  }, [files, flashcardScope, preview, vaultPath]);
-
-  const persistSpacedRepetition = useCallback((enabled: boolean) => {
-    void enabled;
-  }, []);
-
-  const handleSpacedRepetitionToggle = (event: ChangeEvent<HTMLInputElement>) => {
-    const enabled = event.target.checked;
-    setSpacedRepetitionEnabled(enabled);
-    persistSpacedRepetition(enabled);
-  };
+  }, [files, flashcardOrder, flashcardScope, preview, vaultPath]);
 
   const handleFlashcardOptionSelect = useCallback(
     (cardIndex: number, key: string) => {
@@ -1813,111 +1829,104 @@ function App() {
                     {isFlashcardScanning ? "Scanning..." : "Flashcard"}
                   </button>
                   <div className="flashcard-controls">
-                      <div className="toolbar-section">
-                        <span className="label">SPACED REPETITION</span>
-                        <div className="toggle-row">
-                          <span className="toggle-label">Enabled</span>
-                          <label className="switch">
-                            <input
-                              type="checkbox"
-                              checked={spacedRepetitionEnabled}
-                              onChange={handleSpacedRepetitionToggle}
-                              aria-label="Enabled"
-                            />
-                            <span className="slider" />
-                          </label>
-                        </div>
+                    <div className="toolbar-section">
+                      <span className="label">ORDER</span>
+                      <div className="pill-grid">
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardOrder === "in-order" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardOrder === "in-order"}
+                          onClick={() => setFlashcardOrder("in-order")}
+                        >
+                          In order
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardOrder === "random" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardOrder === "random"}
+                          onClick={() => setFlashcardOrder("random")}
+                        >
+                          Random
+                        </button>
                       </div>
-                      <div className="toolbar-section">
-                        <span className="label">ORDER</span>
-                        <div className="pill-grid">
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardOrder === "in-order" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardOrder === "in-order"}
-                            onClick={() => setFlashcardOrder("in-order")}
-                          >
-                            In order
-                          </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardOrder === "random" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardOrder === "random"}
-                            onClick={() => setFlashcardOrder("random")}
-                          >
-                            Random
-                          </button>
-                        </div>
+                    </div>
+                    <div className="toolbar-section">
+                      <span className="label">MODE</span>
+                      <div className="pill-grid">
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardMode === "multiple-choice" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardMode === "multiple-choice"}
+                          onClick={() => setFlashcardMode("multiple-choice")}
+                        >
+                          Multiple Choice
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardMode === "yes-no" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardMode === "yes-no"}
+                          onClick={() => setFlashcardMode("yes-no")}
+                        >
+                          Yes/No
+                        </button>
                       </div>
-                      <div className="toolbar-section">
-                        <span className="label">MODE</span>
-                        <div className="pill-grid">
+                    </div>
+                    <div className="toolbar-section">
+                      <span className="label">PAGE SIZE</span>
+                      <div className="pill-grid">
+                        {FLASHCARD_PAGE_SIZES.map((size) => (
                           <button
+                            key={size}
                             type="button"
                             className={`pill pill-button ${
-                              flashcardMode === "multiple-choice" ? "active" : ""
+                              flashcardPageSize === size ? "active" : ""
                             }`}
-                            aria-pressed={flashcardMode === "multiple-choice"}
-                            onClick={() => setFlashcardMode("multiple-choice")}
+                            aria-pressed={flashcardPageSize === size}
+                            onClick={() => setFlashcardPageSize(size)}
                           >
-                            Multiple Choice
+                            {size}
                           </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardMode === "yes-no" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardMode === "yes-no"}
-                            onClick={() => setFlashcardMode("yes-no")}
-                          >
-                            Yes/No
-                          </button>
-                        </div>
+                        ))}
                       </div>
-                      <div className="toolbar-section">
-                        <span className="label">BOXES</span>
-                        <div className="pill-grid">
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardBoxes === "3" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardBoxes === "3"}
-                            onClick={() => setFlashcardBoxes("3")}
-                          >
-                            3 Boxes
-                          </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardBoxes === "5" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardBoxes === "5"}
-                            onClick={() => setFlashcardBoxes("5")}
-                          >
-                            5 Boxes
-                          </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardBoxes === "7" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardBoxes === "7"}
-                            onClick={() => setFlashcardBoxes("7")}
-                          >
-                            7 Boxes
-                          </button>
-                        </div>
+                    </div>
+                    <div className="toolbar-section">
+                      <span className="label">DEFAULT SCOPE</span>
+                      <div className="pill-grid">
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardScope === "current" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardScope === "current"}
+                          onClick={() => setFlashcardScope("current")}
+                        >
+                          Current note
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardScope === "vault" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardScope === "vault"}
+                          onClick={() => setFlashcardScope("vault")}
+                        >
+                          Whole vault
+                        </button>
                       </div>
                     </div>
                   </div>
-                </section>
+                </div>
+              </section>
 
-                <section className="panel stats-panel">
+              <section className="panel stats-panel">
                   <div className="panel-header">
                     <div>
                       <h2>Statistics</h2>
@@ -1954,7 +1963,7 @@ function App() {
                       </div>
                     </div>
                   </div>
-                </section>
+              </section>
               </div>
             </div>
           </>
@@ -2170,7 +2179,7 @@ function App() {
                 <div className="setting-row">
                   <span className="label">Page size</span>
                   <div className="pill-grid">
-                    {[2, 5, 10].map((size) => (
+                    {FLASHCARD_PAGE_SIZES.map((size) => (
                       <button
                         key={size}
                         type="button"
@@ -2178,7 +2187,7 @@ function App() {
                           flashcardPageSize === size ? "active" : ""
                         }`}
                         aria-pressed={flashcardPageSize === size}
-                        onClick={() => setFlashcardPageSize(size as FlashcardPageSize)}
+                        onClick={() => setFlashcardPageSize(size)}
                       >
                         {size}
                       </button>
@@ -2233,23 +2242,6 @@ function App() {
               <section className="panel spaced-repetition-panel">
                 <h2>Spaced Repetition</h2>
                 <p className="muted">Configure spaced repetition behavior.</p>
-                <div className="setting-row">
-                  <span className="label">Enabled</span>
-                  <div className="toggle-row">
-                    <span className="toggle-label">
-                      {spacedRepetitionEnabled ? "On" : "Off"}
-                    </span>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={spacedRepetitionEnabled}
-                        onChange={handleSpacedRepetitionToggle}
-                        aria-label="Spaced repetition enabled"
-                      />
-                      <span className="slider" />
-                    </label>
-                  </div>
-                </div>
                 <div className="setting-row">
                   <span className="label">Persistence</span>
                   <input
