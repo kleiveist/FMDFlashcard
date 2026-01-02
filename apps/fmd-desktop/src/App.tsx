@@ -411,6 +411,94 @@ const isTrueFalseCardCorrect = (
   return card.items.every((item) => selections[item.id] === item.correct);
 };
 
+const createEmptySpacedRepetitionSession = (): SpacedRepetitionSession => ({
+  flashcards: [],
+  selections: {},
+  submissions: {},
+  trueFalseSelections: {},
+  clozeResponses: {},
+  page: 0,
+  cardProgress: {},
+});
+
+const buildSpacedRepetitionSession = (
+  flashcards: Flashcard[],
+): SpacedRepetitionSession => ({
+  ...createEmptySpacedRepetitionSession(),
+  flashcards,
+  cardProgress: flashcards.reduce<Record<number, SpacedRepetitionCardProgress>>(
+    (accumulator, _card, index) => {
+      accumulator[index] = { box: 1, attempts: 0 };
+      return accumulator;
+    },
+    {},
+  ),
+});
+
+const evaluateFlashcardResult = (
+  card: Flashcard,
+  cardIndex: number,
+  selections: Record<number, string>,
+  trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>,
+  clozeResponses: Record<number, Record<string, string>>,
+): FlashcardResult => {
+  if (card.kind === "multiple-choice") {
+    if (card.correctKeys.length === 0) {
+      return "neutral";
+    }
+    const selected = selections[cardIndex];
+    return selected && card.correctKeys.includes(selected) ? "correct" : "incorrect";
+  }
+
+  if (card.kind === "true-false") {
+    if (card.items.length === 0) {
+      return "neutral";
+    }
+    const selectionsForCard = trueFalseSelections[cardIndex] ?? {};
+    return isTrueFalseCardCorrect(card, selectionsForCard) ? "correct" : "incorrect";
+  }
+
+  const blanks = getClozeBlanks(card.segments);
+  if (blanks.length === 0) {
+    return "neutral";
+  }
+  const responses = clozeResponses[cardIndex] ?? {};
+  return isClozeCardCorrect(card, responses) ? "correct" : "incorrect";
+};
+
+const calculateFlashcardStats = (
+  flashcards: Flashcard[],
+  submissions: Record<number, boolean>,
+  selections: Record<number, string>,
+  trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>,
+  clozeResponses: Record<number, Record<string, string>>,
+): FlashcardStats => {
+  let correct = 0;
+  let incorrect = 0;
+
+  flashcards.forEach((card, index) => {
+    if (!submissions[index]) {
+      return;
+    }
+    const result = evaluateFlashcardResult(
+      card,
+      index,
+      selections,
+      trueFalseSelections,
+      clozeResponses,
+    );
+    if (result === "correct") {
+      correct += 1;
+    } else if (result === "incorrect") {
+      incorrect += 1;
+    }
+  });
+
+  const total = correct + incorrect;
+  const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+  return { correctCount: correct, incorrectCount: incorrect, correctPercent: percent };
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [vaultPath, setVaultPath] = useState<string | null>(null);
@@ -440,6 +528,9 @@ function App() {
     useState<string>("");
   const [spacedRepetitionNewUserName, setSpacedRepetitionNewUserName] =
     useState("");
+  const [spacedRepetitionSessions, setSpacedRepetitionSessions] = useState<
+    Record<string, SpacedRepetitionSession>
+  >({});
   const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
   const [statsResetMode, setStatsResetMode] = useState<"scan" | "session">(
     "scan",
@@ -480,6 +571,20 @@ function App() {
   }, [files.length, vaultPath]);
 
   const flashcardStatusLabel = "Not scanned yet";
+  const spacedRepetitionSession = spacedRepetitionActiveUser
+    ? spacedRepetitionSessions[spacedRepetitionActiveUser]
+    : undefined;
+  const spacedRepetitionFlashcards = spacedRepetitionSession?.flashcards ?? [];
+  const spacedRepetitionSelections = spacedRepetitionSession?.selections ?? {};
+  const spacedRepetitionSubmissions =
+    spacedRepetitionSession?.submissions ?? {};
+  const spacedRepetitionTrueFalseSelections =
+    spacedRepetitionSession?.trueFalseSelections ?? {};
+  const spacedRepetitionClozeResponses =
+    spacedRepetitionSession?.clozeResponses ?? {};
+  const spacedRepetitionPage = spacedRepetitionSession?.page ?? 0;
+  const spacedRepetitionCardProgress =
+    spacedRepetitionSession?.cardProgress ?? {};
   const lastOpenedFile = selectedFile?.relative_path;
   const vaultIndexedComplete = useMemo(
     () => Boolean(vaultPath) && listState === "idle",
@@ -513,62 +618,127 @@ function App() {
   const canGoBack = flashcardPageIndex > 0;
   const canGoNext = flashcardPageIndex < flashcardPageCount - 1;
 
-  const { correctCount, incorrectCount, correctPercent } = useMemo(() => {
-    let correct = 0;
-    let incorrect = 0;
+  const spacedRepetitionPageCount = useMemo(
+    () =>
+      Math.ceil(spacedRepetitionFlashcards.length / resolvedFlashcardPageSize),
+    [resolvedFlashcardPageSize, spacedRepetitionFlashcards.length],
+  );
 
-    flashcards.forEach((card, index) => {
-      if (!flashcardSubmissions[index]) {
-        return;
-      }
-      if (card.kind === "multiple-choice") {
-        if (card.correctKeys.length === 0) {
-          return;
-        }
-        const selected = flashcardSelections[index];
-        if (selected && card.correctKeys.includes(selected)) {
-          correct += 1;
-        } else {
-          incorrect += 1;
-        }
-        return;
-      }
+  const spacedRepetitionPageIndex = useMemo(
+    () => Math.min(spacedRepetitionPage, Math.max(0, spacedRepetitionPageCount - 1)),
+    [spacedRepetitionPage, spacedRepetitionPageCount],
+  );
 
-      if (card.kind === "true-false") {
-        if (card.items.length === 0) {
-          return;
-        }
-        const selections = flashcardTrueFalseSelections[index] ?? {};
-        if (isTrueFalseCardCorrect(card, selections)) {
-          correct += 1;
-        } else {
-          incorrect += 1;
-        }
-        return;
-      }
+  const spacedRepetitionPageStart =
+    spacedRepetitionPageIndex * resolvedFlashcardPageSize;
 
-      const blanks = getClozeBlanks(card.segments);
-      if (blanks.length === 0) {
-        return;
-      }
-      const responses = flashcardClozeResponses[index] ?? {};
-      if (isClozeCardCorrect(card, responses)) {
-        correct += 1;
-      } else {
-        incorrect += 1;
-      }
-    });
-
-    const total = correct + incorrect;
-    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
-
-    return { correctCount: correct, incorrectCount: incorrect, correctPercent: percent };
+  const spacedRepetitionVisibleFlashcards = useMemo(() => {
+    return spacedRepetitionFlashcards.slice(
+      spacedRepetitionPageStart,
+      spacedRepetitionPageStart + resolvedFlashcardPageSize,
+    );
   }, [
-    flashcards,
-    flashcardClozeResponses,
-    flashcardSelections,
-    flashcardSubmissions,
-    flashcardTrueFalseSelections,
+    resolvedFlashcardPageSize,
+    spacedRepetitionFlashcards,
+    spacedRepetitionPageStart,
+  ]);
+
+  const spacedRepetitionCanGoBack = spacedRepetitionPageIndex > 0;
+  const spacedRepetitionCanGoNext =
+    spacedRepetitionPageIndex < spacedRepetitionPageCount - 1;
+
+  const spacedRepetitionStatusLabel =
+    spacedRepetitionFlashcards.length === 0
+      ? "No cards loaded yet"
+      : `${spacedRepetitionFlashcards.length} cards loaded`;
+
+  const spacedRepetitionEmptyState = spacedRepetitionActiveUser
+    ? "Click the active user to load cards."
+    : "Select a user to begin.";
+
+  const { correctCount, incorrectCount, correctPercent } = useMemo(
+    () =>
+      calculateFlashcardStats(
+        flashcards,
+        flashcardSubmissions,
+        flashcardSelections,
+        flashcardTrueFalseSelections,
+        flashcardClozeResponses,
+      ),
+    [
+      flashcards,
+      flashcardClozeResponses,
+      flashcardSelections,
+      flashcardSubmissions,
+      flashcardTrueFalseSelections,
+    ],
+  );
+
+  const {
+    correctCount: spacedRepetitionCorrectCount,
+    incorrectCount: spacedRepetitionIncorrectCount,
+  } = useMemo(
+    () =>
+      calculateFlashcardStats(
+        spacedRepetitionFlashcards,
+        spacedRepetitionSubmissions,
+        spacedRepetitionSelections,
+        spacedRepetitionTrueFalseSelections,
+        spacedRepetitionClozeResponses,
+      ),
+    [
+      spacedRepetitionClozeResponses,
+      spacedRepetitionFlashcards,
+      spacedRepetitionSelections,
+      spacedRepetitionSubmissions,
+      spacedRepetitionTrueFalseSelections,
+    ],
+  );
+
+  const spacedRepetitionTotalQuestions = spacedRepetitionFlashcards.length;
+
+  const spacedRepetitionProgressStats = useMemo(() => {
+    const total = spacedRepetitionFlashcards.length;
+    if (total === 0) {
+      return {
+        dueNow: 0,
+        dueToday: 0,
+        inQueue: 0,
+        completedToday: 0,
+      };
+    }
+
+    const dueTodayThreshold = Math.min(2, spacedRepetitionBoxes);
+    let dueNow = 0;
+    let dueToday = 0;
+    let completedToday = 0;
+
+    for (let index = 0; index < total; index += 1) {
+      const progress = spacedRepetitionCardProgress[index] ?? {
+        box: 1,
+        attempts: 0,
+      };
+      if (progress.attempts > 0) {
+        completedToday += 1;
+      }
+      if (progress.box <= 1) {
+        dueNow += 1;
+      }
+      if (progress.box <= dueTodayThreshold) {
+        dueToday += 1;
+      }
+    }
+
+    return {
+      dueNow,
+      dueToday,
+      inQueue: total - completedToday,
+      completedToday,
+    };
+  }, [
+    spacedRepetitionBoxes,
+    spacedRepetitionCardProgress,
+    spacedRepetitionFlashcards.length,
   ]);
 
   const statsChartStyle = useMemo(
@@ -582,6 +752,24 @@ function App() {
   const statsTotal = correctCount + incorrectCount;
   const totalQuestions = flashcards.length;
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
+
+  const updateActiveSpacedRepetitionSession = useCallback(
+    (updater: (session: SpacedRepetitionSession) => SpacedRepetitionSession) => {
+      if (!spacedRepetitionActiveUser) {
+        return;
+      }
+      setSpacedRepetitionSessions((prev) => {
+        const current =
+          prev[spacedRepetitionActiveUser] ?? createEmptySpacedRepetitionSession();
+        const next = updater(current);
+        if (next === current) {
+          return prev;
+        }
+        return { ...prev, [spacedRepetitionActiveUser]: next };
+      });
+    },
+    [spacedRepetitionActiveUser],
+  );
 
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const treeNodes = useMemo(() => buildTree(files), [files]);
@@ -746,6 +934,73 @@ function App() {
     }
   }, [flashcardPage, flashcardPageCount]);
 
+  useEffect(() => {
+    if (!spacedRepetitionActiveUser) {
+      return;
+    }
+    setSpacedRepetitionSessions((prev) => {
+      if (prev[spacedRepetitionActiveUser]) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [spacedRepetitionActiveUser]: createEmptySpacedRepetitionSession(),
+      };
+    });
+  }, [spacedRepetitionActiveUser]);
+
+  useEffect(() => {
+    setSpacedRepetitionSessions((prev) => {
+      let changed = false;
+      const next: Record<string, SpacedRepetitionSession> = {};
+
+      Object.entries(prev).forEach(([user, session]) => {
+        let progressChanged = false;
+        const nextProgress: Record<number, SpacedRepetitionCardProgress> = {};
+
+        Object.entries(session.cardProgress).forEach(([index, progress]) => {
+          const clampedBox = Math.min(progress.box, spacedRepetitionBoxes);
+          if (clampedBox !== progress.box) {
+            progressChanged = true;
+            nextProgress[Number(index)] = { ...progress, box: clampedBox };
+          } else {
+            nextProgress[Number(index)] = progress;
+          }
+        });
+
+        if (progressChanged) {
+          changed = true;
+          next[user] = {
+            ...session,
+            cardProgress: nextProgress,
+          };
+        } else {
+          next[user] = session;
+        }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [spacedRepetitionBoxes]);
+
+  useEffect(() => {
+    if (!spacedRepetitionActiveUser) {
+      return;
+    }
+    const maxPage = Math.max(0, spacedRepetitionPageCount - 1);
+    if (spacedRepetitionPage > maxPage) {
+      updateActiveSpacedRepetitionSession((session) => ({
+        ...session,
+        page: maxPage,
+      }));
+    }
+  }, [
+    spacedRepetitionActiveUser,
+    spacedRepetitionPage,
+    spacedRepetitionPageCount,
+    updateActiveSpacedRepetitionSession,
+  ]);
+
   const handlePickVault = async () => {
     setListError("");
     setPreviewError("");
@@ -825,20 +1080,16 @@ function App() {
     }
   };
 
-  const handleFlashcardScan = useCallback(async () => {
-    setIsFlashcardScanning(true);
-    setFlashcards([]);
-    setFlashcardSelections({});
-    setFlashcardSubmissions({});
-    setFlashcardTrueFalseSelections({});
-    setFlashcardClozeResponses({});
-    setFlashcardPage(0);
+  const scanFlashcards = useCallback(
+    async (options?: { scopeOverride?: FlashcardScope; allowVaultFallback?: boolean }) => {
+      const scope = options?.scopeOverride ?? flashcardScope;
+      const shouldFallbackToVault =
+        options?.allowVaultFallback && scope === "current" && !selectedFile;
+      const resolvedScope = shouldFallbackToVault ? "vault" : scope;
 
-    try {
-      if (flashcardScope === "vault") {
+      if (resolvedScope === "vault") {
         if (!vaultPath || files.length === 0) {
-          setFlashcards([]);
-          return;
+          return [];
         }
 
         const results = await Promise.allSettled(
@@ -863,18 +1114,31 @@ function App() {
           }
         });
 
-        const ordered = flashcardOrder === "random" ? shuffleFlashcards(merged) : merged;
-        setFlashcards(ordered);
-        return;
+        return flashcardOrder === "random" ? shuffleFlashcards(merged) : merged;
       }
 
       const cards = parseFlashcards(preview);
-      const ordered = flashcardOrder === "random" ? shuffleFlashcards(cards) : cards;
-      setFlashcards(ordered);
+      return flashcardOrder === "random" ? shuffleFlashcards(cards) : cards;
+    },
+    [files, flashcardOrder, flashcardScope, preview, selectedFile, vaultPath],
+  );
+
+  const handleFlashcardScan = useCallback(async () => {
+    setIsFlashcardScanning(true);
+    setFlashcards([]);
+    setFlashcardSelections({});
+    setFlashcardSubmissions({});
+    setFlashcardTrueFalseSelections({});
+    setFlashcardClozeResponses({});
+    setFlashcardPage(0);
+
+    try {
+      const cards = await scanFlashcards();
+      setFlashcards(cards);
     } finally {
       setIsFlashcardScanning(false);
     }
-  }, [files, flashcardOrder, flashcardScope, preview, vaultPath]);
+  }, [scanFlashcards]);
 
   const handleFlashcardOptionSelect = useCallback(
     (cardIndex: number, key: string) => {
@@ -949,6 +1213,14 @@ function App() {
     if (!spacedRepetitionSelectedUser) {
       return;
     }
+    setSpacedRepetitionSessions((prev) => {
+      if (!prev[spacedRepetitionSelectedUser]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[spacedRepetitionSelectedUser];
+      return next;
+    });
     setSpacedRepetitionUsers((prev) => {
       const next = prev.filter((user) => user !== spacedRepetitionSelectedUser);
       const nextSelected = next[0] ?? "";
@@ -959,6 +1231,205 @@ function App() {
       return next;
     });
   }, [spacedRepetitionActiveUser, spacedRepetitionSelectedUser]);
+
+  const handleSpacedRepetitionActiveUserLoadCards = useCallback(async () => {
+    if (!spacedRepetitionActiveUser || isFlashcardScanning) {
+      return;
+    }
+    const activeUser = spacedRepetitionActiveUser;
+    setIsFlashcardScanning(true);
+    try {
+      const cards = await scanFlashcards({ allowVaultFallback: true });
+      setSpacedRepetitionSessions((prev) => ({
+        ...prev,
+        [activeUser]: buildSpacedRepetitionSession(cards),
+      }));
+    } finally {
+      setIsFlashcardScanning(false);
+    }
+  }, [isFlashcardScanning, scanFlashcards, spacedRepetitionActiveUser]);
+
+  const handleSpacedRepetitionOptionSelect = useCallback(
+    (cardIndex: number, key: string) => {
+      updateActiveSpacedRepetitionSession((session) => {
+        if (session.submissions[cardIndex]) {
+          return session;
+        }
+        return {
+          ...session,
+          selections: { ...session.selections, [cardIndex]: key },
+        };
+      });
+    },
+    [updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionTrueFalseSelect = useCallback(
+    (cardIndex: number, itemId: string, value: TrueFalseSelection) => {
+      updateActiveSpacedRepetitionSession((session) => {
+        if (session.submissions[cardIndex]) {
+          return session;
+        }
+        const current = { ...(session.trueFalseSelections[cardIndex] ?? {}) };
+        current[itemId] = value;
+        return {
+          ...session,
+          trueFalseSelections: {
+            ...session.trueFalseSelections,
+            [cardIndex]: current,
+          },
+        };
+      });
+    },
+    [updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionSubmit = useCallback(
+    (cardIndex: number, canSubmit: boolean) => {
+      if (!canSubmit) {
+        return;
+      }
+      updateActiveSpacedRepetitionSession((session) => {
+        if (session.submissions[cardIndex]) {
+          return session;
+        }
+        const card = session.flashcards[cardIndex];
+        if (!card) {
+          return session;
+        }
+        const result = evaluateFlashcardResult(
+          card,
+          cardIndex,
+          session.selections,
+          session.trueFalseSelections,
+          session.clozeResponses,
+        );
+        const currentProgress = session.cardProgress[cardIndex] ?? {
+          box: 1,
+          attempts: 0,
+        };
+        const nextProgress = {
+          box: currentProgress.box,
+          attempts: currentProgress.attempts + 1,
+        };
+        if (result === "correct") {
+          nextProgress.box = Math.min(currentProgress.box + 1, spacedRepetitionBoxes);
+        } else if (result === "incorrect") {
+          nextProgress.box = 1;
+        }
+
+        return {
+          ...session,
+          submissions: { ...session.submissions, [cardIndex]: true },
+          cardProgress: {
+            ...session.cardProgress,
+            [cardIndex]: nextProgress,
+          },
+        };
+      });
+    },
+    [spacedRepetitionBoxes, updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionPageBack = useCallback(() => {
+    updateActiveSpacedRepetitionSession((session) => ({
+      ...session,
+      page: Math.max(0, session.page - 1),
+    }));
+  }, [updateActiveSpacedRepetitionSession]);
+
+  const handleSpacedRepetitionPageNext = useCallback(() => {
+    if (spacedRepetitionPageCount <= 0) {
+      return;
+    }
+    updateActiveSpacedRepetitionSession((session) => ({
+      ...session,
+      page: Math.min(spacedRepetitionPageCount - 1, session.page + 1),
+    }));
+  }, [spacedRepetitionPageCount, updateActiveSpacedRepetitionSession]);
+
+  const handleSpacedRepetitionClozeInputChange = useCallback(
+    (cardIndex: number, blankId: string, value: string) => {
+      updateActiveSpacedRepetitionSession((session) => {
+        const current = { ...(session.clozeResponses[cardIndex] ?? {}) };
+        current[blankId] = value;
+        return {
+          ...session,
+          clozeResponses: {
+            ...session.clozeResponses,
+            [cardIndex]: current,
+          },
+        };
+      });
+    },
+    [updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      event.preventDefault();
+      const payload = getClozeDragPayload(event);
+      if (!payload || payload.cardIndex !== cardIndex) {
+        return;
+      }
+      if (!validTokenIds.has(payload.tokenId)) {
+        return;
+      }
+      if (!dragBlankIds.has(blankId)) {
+        return;
+      }
+
+      updateActiveSpacedRepetitionSession((session) => {
+        if (session.submissions[cardIndex]) {
+          return session;
+        }
+        const current = { ...(session.clozeResponses[cardIndex] ?? {}) };
+        Object.keys(current).forEach((key) => {
+          if (!dragBlankIds.has(key)) {
+            return;
+          }
+          if (current[key] === payload.tokenId) {
+            delete current[key];
+          }
+        });
+        current[blankId] = payload.tokenId;
+        return {
+          ...session,
+          clozeResponses: {
+            ...session.clozeResponses,
+            [cardIndex]: current,
+          },
+        };
+      });
+    },
+    [updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionClozeTokenRemove = useCallback(
+    (cardIndex: number, blankId: string) => {
+      updateActiveSpacedRepetitionSession((session) => {
+        if (session.submissions[cardIndex]) {
+          return session;
+        }
+        const current = { ...(session.clozeResponses[cardIndex] ?? {}) };
+        delete current[blankId];
+        return {
+          ...session,
+          clozeResponses: {
+            ...session.clozeResponses,
+            [cardIndex]: current,
+          },
+        };
+      });
+    },
+    [updateActiveSpacedRepetitionSession],
+  );
 
   const handleThemeToggle = (event: ChangeEvent<HTMLInputElement>) => {
     const nextTheme: ThemeMode = event.target.checked ? "dark" : "light";
@@ -2124,9 +2595,15 @@ function App() {
                 <div className="panel-body">
                   <div className="setting-row">
                     <span className="label">Active user</span>
-                    <span className="value">
+                    <button
+                      type="button"
+                      className="value active-user-button"
+                      onClick={handleSpacedRepetitionActiveUserLoadCards}
+                      disabled={!spacedRepetitionActiveUser || isFlashcardScanning}
+                      aria-label="Load flashcards for active user"
+                    >
                       {spacedRepetitionActiveUser ?? "—"}
-                    </span>
+                    </button>
                   </div>
                   <div className="setting-row">
                     <span className="label">User list</span>
@@ -2195,18 +2672,517 @@ function App() {
                 <div className="panel-header">
                   <div>
                     <h2>Flashcards</h2>
-                    <p className="muted">{flashcardStatusLabel}</p>
+                    <p className="muted">{spacedRepetitionStatusLabel}</p>
                   </div>
                 </div>
                 <div className="panel-body">
-                  <div className="empty-state">
-                    Select a note and start the flashcard scan.
-                  </div>
+                  {spacedRepetitionFlashcards.length === 0 ? (
+                    <div className="empty-state">{spacedRepetitionEmptyState}</div>
+                  ) : (
+                    <div className="flashcard-list">
+                      {spacedRepetitionVisibleFlashcards.map((card, localIndex) => {
+                        const cardIndex = spacedRepetitionPageStart + localIndex;
+                        const submitted = !!spacedRepetitionSubmissions[cardIndex];
+                        if (card.kind === "cloze") {
+                          const blanks = getClozeBlanks(card.segments);
+                          const dragBlanks = blanks.filter(
+                            (blank) => blank.kind === "drag",
+                          );
+                          const dragBlankIds = new Set(
+                            dragBlanks.map((blank) => blank.id),
+                          );
+                          const responses =
+                            spacedRepetitionClozeResponses[cardIndex] ?? {};
+                          const tokenById = new Map(
+                            card.dragTokens.map((token) => [token.id, token.value]),
+                          );
+                          const assignedTokenIds = new Set(
+                            dragBlanks
+                              .map((blank) => responses[blank.id])
+                              .filter((tokenId) => tokenById.has(tokenId)),
+                          );
+                          const hasDragTokens = card.dragTokens.length > 0;
+                          const validTokenIds = new Set(
+                            card.dragTokens.map((token) => token.id),
+                          );
+                          const canSubmit = areClozeBlanksComplete(card, responses);
+                          const isCorrect = isClozeCardCorrect(card, responses);
+                          const resultLabel = submitted
+                            ? isCorrect
+                              ? "Correct"
+                              : "Incorrect"
+                            : "";
+                          let blankPosition = 0;
+
+                          return (
+                            <article
+                              className="flashcard-item cloze-card"
+                              key={`flashcard-${cardIndex}`}
+                            >
+                              <h3 className="flashcard-question">{card.question}</h3>
+                              <div className="cloze-text">
+                                {card.segments.map((segment, segmentIndex) => {
+                                  if (segment.type === "text") {
+                                    return (
+                                      <span key={`cloze-text-${cardIndex}-${segmentIndex}`}>
+                                        {segment.value}
+                                      </span>
+                                    );
+                                  }
+
+                                  blankPosition += 1;
+                                  const blankNumber = blankPosition;
+
+                                  if (segment.kind === "input") {
+                                    const value = responses[segment.id] ?? "";
+                                    const isBlankCorrect = submitted
+                                      ? isInputAnswerMatch(value, segment.solution)
+                                      : false;
+                                    const blankClasses = [
+                                      "cloze-blank",
+                                      "input",
+                                      value.trim() ? "filled" : "",
+                                      submitted
+                                        ? isBlankCorrect
+                                          ? "correct"
+                                          : "incorrect"
+                                        : "",
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" ");
+
+                                    return (
+                                      <span
+                                        key={`cloze-blank-${cardIndex}-${segmentIndex}`}
+                                        className={blankClasses}
+                                      >
+                                        <input
+                                          type="text"
+                                          className="cloze-input"
+                                          value={value}
+                                          onChange={(event) =>
+                                            handleSpacedRepetitionClozeInputChange(
+                                              cardIndex,
+                                              segment.id,
+                                              event.target.value,
+                                            )
+                                          }
+                                          disabled={submitted}
+                                          placeholder="____"
+                                          aria-label={`Blank ${blankNumber}`}
+                                        />
+                                      </span>
+                                    );
+                                  }
+
+                                  const assignedTokenId = responses[segment.id] ?? "";
+                                  const assignedValue = assignedTokenId
+                                    ? tokenById.get(assignedTokenId) ?? ""
+                                    : "";
+                                  const hasToken = Boolean(assignedValue);
+                                  const isBlankCorrect = submitted
+                                    ? isDragAnswerMatch(assignedValue, segment.solution)
+                                    : false;
+                                  const blankClasses = [
+                                    "cloze-blank",
+                                    "drag",
+                                    hasToken ? "filled" : "",
+                                    submitted ? (isBlankCorrect ? "correct" : "incorrect") : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ");
+
+                                  return (
+                                    <span
+                                      key={`cloze-blank-${cardIndex}-${segmentIndex}`}
+                                      className={blankClasses}
+                                      aria-label={`Drop zone ${blankNumber}`}
+                                      onDragOver={handleClozeBlankDragOver}
+                                      onDrop={(event) =>
+                                        handleSpacedRepetitionClozeTokenDrop(
+                                          event,
+                                          cardIndex,
+                                          segment.id,
+                                          validTokenIds,
+                                          dragBlankIds,
+                                        )
+                                      }
+                                    >
+                                      {hasToken ? (
+                                        <span className="cloze-token">
+                                          <button
+                                            type="button"
+                                            className="token-chip"
+                                            draggable={!submitted}
+                                            onDragStart={(event) =>
+                                              handleClozeTokenDragStart(event, {
+                                                cardIndex,
+                                                tokenId: assignedTokenId,
+                                              })
+                                            }
+                                            disabled={submitted}
+                                          >
+                                            {assignedValue}
+                                          </button>
+                                          {!submitted ? (
+                                            <button
+                                              type="button"
+                                              className="token-remove"
+                                              onClick={() =>
+                                                handleSpacedRepetitionClozeTokenRemove(
+                                                  cardIndex,
+                                                  segment.id,
+                                                )
+                                              }
+                                              aria-label="Remove token"
+                                            >
+                                              x
+                                            </button>
+                                          ) : null}
+                                        </span>
+                                      ) : (
+                                        <span className="cloze-placeholder">
+                                          Drop token
+                                        </span>
+                                      )}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                              {hasDragTokens ? (
+                                <div className="token-section">
+                                  <span className="label">Tokens</span>
+                                  <div className="token-pool">
+                                    {card.dragTokens.map((token) => {
+                                      const isUsed = assignedTokenIds.has(token.id);
+                                      return (
+                                        <button
+                                          key={`token-${cardIndex}-${token.id}`}
+                                          type="button"
+                                          className={`token-chip ${isUsed ? "used" : ""}`}
+                                          draggable={!submitted && !isUsed}
+                                          onDragStart={(event) =>
+                                            handleClozeTokenDragStart(event, {
+                                              cardIndex,
+                                              tokenId: token.id,
+                                            })
+                                          }
+                                          disabled={submitted || isUsed}
+                                        >
+                                          {token.value}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                              <div className="flashcard-actions">
+                                <button
+                                  type="button"
+                                  className="ghost small flashcard-submit"
+                                  onClick={() =>
+                                    handleSpacedRepetitionSubmit(cardIndex, canSubmit)
+                                  }
+                                  disabled={submitted || !canSubmit}
+                                >
+                                  Submit
+                                </button>
+                                {submitted ? (
+                                  <span
+                                    className={`flashcard-result ${
+                                      isCorrect ? "correct" : "incorrect"
+                                    }`}
+                                  >
+                                    {resultLabel}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {submitted ? (
+                                <div className="token-solution">
+                                  <span className="label">Solution</span>
+                                  <div className="cloze-solution">
+                                    {card.segments.map((segment, segmentIndex) => {
+                                      if (segment.type === "text") {
+                                        return (
+                                          <span
+                                            key={`solution-text-${cardIndex}-${segmentIndex}`}
+                                          >
+                                            {segment.value}
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <span
+                                          key={`solution-blank-${cardIndex}-${segmentIndex}`}
+                                          className="cloze-solution-token"
+                                        >
+                                          {segment.solution}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </article>
+                          );
+                        }
+
+                        if (card.kind === "true-false") {
+                          const selections =
+                            spacedRepetitionTrueFalseSelections[cardIndex] ?? {};
+                          const canSubmit = areTrueFalseItemsComplete(
+                            card,
+                            selections,
+                          );
+                          const isCorrect = isTrueFalseCardCorrect(card, selections);
+                          const resultLabel = submitted
+                            ? isCorrect
+                              ? "Correct"
+                              : "Incorrect"
+                            : "";
+
+                          return (
+                            <article
+                              className="flashcard-item truefalse-card"
+                              key={`flashcard-${cardIndex}`}
+                            >
+                              <h3 className="flashcard-question">True/False</h3>
+                              <ul className="truefalse-list">
+                                {card.items.map((item) => {
+                                  const selected = selections[item.id];
+                                  const isItemCorrect =
+                                    submitted && selected === item.correct;
+                                  const isItemIncorrect =
+                                    submitted &&
+                                    selected &&
+                                    selected !== item.correct;
+                                  const trueClasses = [
+                                    "truefalse-option",
+                                    selected === "wahr" ? "selected" : "",
+                                    submitted && item.correct === "wahr" ? "correct" : "",
+                                    submitted && selected === "wahr" && isItemIncorrect
+                                      ? "incorrect"
+                                      : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ");
+                                  const falseClasses = [
+                                    "truefalse-option",
+                                    selected === "falsch" ? "selected" : "",
+                                    submitted && item.correct === "falsch" ? "correct" : "",
+                                    submitted && selected === "falsch" && isItemIncorrect
+                                      ? "incorrect"
+                                      : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ");
+
+                                  return (
+                                    <li key={item.id} className="truefalse-item">
+                                      <div className="truefalse-question">
+                                        {item.question}
+                                      </div>
+                                      <div className="truefalse-options">
+                                        <button
+                                          type="button"
+                                          className={trueClasses}
+                                          onClick={() =>
+                                            handleSpacedRepetitionTrueFalseSelect(
+                                              cardIndex,
+                                              item.id,
+                                              "wahr",
+                                            )
+                                          }
+                                          aria-pressed={selected === "wahr"}
+                                          disabled={submitted}
+                                        >
+                                          True
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={falseClasses}
+                                          onClick={() =>
+                                            handleSpacedRepetitionTrueFalseSelect(
+                                              cardIndex,
+                                              item.id,
+                                              "falsch",
+                                            )
+                                          }
+                                          aria-pressed={selected === "falsch"}
+                                          disabled={submitted}
+                                        >
+                                          False
+                                        </button>
+                                      </div>
+                                      {submitted ? (
+                                        <span
+                                          className={`truefalse-result ${
+                                            isItemCorrect ? "correct" : "incorrect"
+                                          }`}
+                                        >
+                                          {isItemCorrect ? "Correct" : "Incorrect"}
+                                        </span>
+                                      ) : null}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                              <div className="flashcard-actions">
+                                <button
+                                  type="button"
+                                  className="ghost small flashcard-submit"
+                                  onClick={() =>
+                                    handleSpacedRepetitionSubmit(cardIndex, canSubmit)
+                                  }
+                                  disabled={submitted || !canSubmit}
+                                >
+                                  Submit
+                                </button>
+                                {submitted ? (
+                                  <span
+                                    className={`flashcard-result ${
+                                      isCorrect ? "correct" : "incorrect"
+                                    }`}
+                                  >
+                                    {resultLabel}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {submitted ? (
+                                <div className="truefalse-solution">
+                                  <span className="label">Solution</span>
+                                  <ul className="truefalse-solution-list">
+                                    {card.items.map((item) => (
+                                      <li
+                                        key={`solution-${item.id}`}
+                                        className="truefalse-solution-item"
+                                      >
+                                        <span>{item.question}</span>
+                                        <span className="truefalse-solution-answer">
+                                          {item.correct === "wahr" ? "True" : "False"}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null}
+                            </article>
+                          );
+                        }
+
+                        const selectedKey = spacedRepetitionSelections[cardIndex] ?? "";
+                        const hasSolutions = card.correctKeys.length > 0;
+                        const selectionIsCorrect =
+                          hasSolutions && selectedKey
+                            ? card.correctKeys.includes(selectedKey)
+                            : false;
+                        const resultLabel = submitted
+                          ? hasSolutions
+                            ? selectionIsCorrect
+                              ? "Correct"
+                              : "Incorrect"
+                            : "No solution defined"
+                          : "";
+
+                        return (
+                          <article
+                            className="flashcard-item"
+                            key={`flashcard-${cardIndex}`}
+                          >
+                            <h3 className="flashcard-question">{card.question}</h3>
+                            <ul className="flashcard-options">
+                              {card.options.map((option) => {
+                                const isSelected = selectedKey === option.key;
+                                const isCorrect =
+                                  hasSolutions &&
+                                  card.correctKeys.includes(option.key);
+                                const isIncorrect =
+                                  hasSolutions &&
+                                  submitted &&
+                                  isSelected &&
+                                  !isCorrect;
+                                const optionClasses = [
+                                  "flashcard-option",
+                                  isSelected ? "selected" : "",
+                                  submitted && isCorrect ? "correct" : "",
+                                  isIncorrect ? "incorrect" : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ");
+
+                                return (
+                                  <li key={`flashcard-${cardIndex}-${option.key}`}>
+                                    <button
+                                      type="button"
+                                      className={optionClasses}
+                                      onClick={() =>
+                                        handleSpacedRepetitionOptionSelect(
+                                          cardIndex,
+                                          option.key,
+                                        )
+                                      }
+                                      disabled={submitted}
+                                      aria-pressed={isSelected}
+                                    >
+                                      <span className="flashcard-key">
+                                        {option.key}
+                                      </span>
+                                      <span className="flashcard-text">
+                                        {option.text}
+                                      </span>
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                            <div className="flashcard-actions">
+                              <button
+                                type="button"
+                                className="ghost small flashcard-submit"
+                                onClick={() =>
+                                  handleSpacedRepetitionSubmit(
+                                    cardIndex,
+                                    Boolean(selectedKey),
+                                  )
+                                }
+                                disabled={!selectedKey || submitted}
+                              >
+                                Submit
+                              </button>
+                              {submitted ? (
+                                <span
+                                  className={`flashcard-result ${
+                                    hasSolutions
+                                      ? selectionIsCorrect
+                                        ? "correct"
+                                        : "incorrect"
+                                      : "neutral"
+                                  }`}
+                                >
+                                  {resultLabel}
+                                </span>
+                              ) : null}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div className="flashcard-pagination">
-                    <button type="button" className="ghost small" disabled>
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleSpacedRepetitionPageBack}
+                      disabled={!spacedRepetitionCanGoBack}
+                    >
                       Back
                     </button>
-                    <button type="button" className="ghost small" disabled>
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleSpacedRepetitionPageNext}
+                      disabled={!spacedRepetitionCanGoNext}
+                    >
                       Next
                     </button>
                   </div>
@@ -2287,13 +3263,16 @@ function App() {
                 <div className="panel-body">
                   <div className="kpi-grid">
                     {[
-                      { label: "Correct", value: 0 },
-                      { label: "Incorrect", value: 0 },
-                      { label: "Total", value: 0 },
-                      { label: "Due now", value: 0 },
-                      { label: "Due today", value: 0 },
-                      { label: "In queue", value: 0 },
-                      { label: "Completed today", value: 0 },
+                      { label: "Correct", value: spacedRepetitionCorrectCount },
+                      { label: "Incorrect", value: spacedRepetitionIncorrectCount },
+                      { label: "Total", value: spacedRepetitionTotalQuestions },
+                      { label: "Due now", value: spacedRepetitionProgressStats.dueNow },
+                      { label: "Due today", value: spacedRepetitionProgressStats.dueToday },
+                      { label: "In queue", value: spacedRepetitionProgressStats.inQueue },
+                      {
+                        label: "Completed today",
+                        value: spacedRepetitionProgressStats.completedToday,
+                      },
                     ].map((kpi) => (
                       <div key={kpi.label} className="kpi-card">
                         <span className="kpi-label">{kpi.label}</span>
