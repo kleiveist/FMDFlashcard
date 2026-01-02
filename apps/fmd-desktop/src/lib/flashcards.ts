@@ -7,13 +7,13 @@
  * -a
  * #
  *
- * v3 (cloze text)
+ * v3 (cloze blanks + tokens)
  * #card
  * Question line
- * Body text with blanks like %%answer%%
+ * Body text with input blanks like %%answer%% and drag tokens like `token`
  * #
  *
- * Invalid cards (missing end marker, empty question, no options/answers) are skipped.
+ * Invalid cards (missing end marker, empty question, no options/blanks/tokens) are skipped.
  */
 export type FlashcardOption = {
   key: string;
@@ -29,16 +29,31 @@ export type MultipleChoiceCard = {
 
 export type ClozeSegment =
   | { type: "text"; value: string }
-  | { type: "blank"; answer: string };
+  | { type: "blank"; id: string; kind: "input" | "drag"; solution: string };
+
+export type ClozeDragToken = {
+  id: string;
+  value: string;
+};
 
 export type ClozeCard = {
   kind: "cloze";
   question: string;
   segments: ClozeSegment[];
-  answers: string[];
+  dragTokens: ClozeDragToken[];
 };
 
 export type Flashcard = MultipleChoiceCard | ClozeCard;
+
+export const normalizeInputAnswer = (value: string) => value.trim().toLowerCase();
+
+export const isInputAnswerMatch = (input: string, solution: string) =>
+  normalizeInputAnswer(input) === normalizeInputAnswer(solution);
+
+export const normalizeDragAnswer = (value: string) => value.trim();
+
+export const isDragAnswerMatch = (tokenValue: string, solution: string) =>
+  normalizeDragAnswer(tokenValue) === normalizeDragAnswer(solution);
 
 const normalizeLines = (markdown: string) =>
   markdown.replace(/\r\n?/g, "\n").split("\n");
@@ -46,46 +61,132 @@ const normalizeLines = (markdown: string) =>
 const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
 
-const parseClozeSegments = (body: string) => {
-  const segments: ClozeSegment[] = [];
-  const answers: string[] = [];
-  let cursor = 0;
+const trimEmptyLines = (lines: string[]) => {
+  let start = 0;
+  let end = lines.length;
 
-  while (cursor < body.length) {
-    const start = body.indexOf("%%", cursor);
-    if (start === -1) {
-      if (cursor < body.length) {
-        segments.push({ type: "text", value: body.slice(cursor) });
-      }
-      break;
-    }
-    if (start > cursor) {
-      segments.push({ type: "text", value: body.slice(cursor, start) });
-    }
-    const end = body.indexOf("%%", start + 2);
-    if (end === -1) {
-      segments.push({ type: "text", value: body.slice(start) });
-      break;
-    }
-
-    const rawAnswer = body.slice(start + 2, end);
-    const answer = rawAnswer.trim();
-    if (!answer) {
-      return null;
-    }
-    segments.push({ type: "blank", answer });
-    answers.push(answer);
-    cursor = end + 2;
+  while (start < end && lines[start].trim() === "") {
+    start += 1;
+  }
+  while (end > start && lines[end - 1].trim() === "") {
+    end -= 1;
   }
 
-  return { segments, answers };
+  return lines.slice(start, end);
 };
 
-export const normalizeClozeAnswer = (value: string) =>
-  value.trim().toLowerCase();
+const appendText = (segments: ClozeSegment[], text: string) => {
+  if (!text) {
+    return;
+  }
+  const last = segments[segments.length - 1];
+  if (last?.type === "text") {
+    last.value += text;
+  } else {
+    segments.push({ type: "text", value: text });
+  }
+};
 
-export const isClozeAnswerMatch = (input: string, answer: string) =>
-  normalizeClozeAnswer(input) === normalizeClozeAnswer(answer);
+const parseClozeSegments = (lines: string[]) => {
+  const segments: ClozeSegment[] = [];
+  const dragTokens: ClozeDragToken[] = [];
+  let blankIndex = 0;
+  let tokenIndex = 0;
+  let inFence = false;
+  const fencePattern = /^(```|~~~)/;
+
+  const handleLine = (line: string) => {
+    let cursor = 0;
+
+    while (cursor < line.length) {
+      const nextInput = line.indexOf("%%", cursor);
+      const nextDrag = line.indexOf("`", cursor);
+      const nextMarker = Math.min(
+        nextInput === -1 ? Number.POSITIVE_INFINITY : nextInput,
+        nextDrag === -1 ? Number.POSITIVE_INFINITY : nextDrag,
+      );
+
+      if (!Number.isFinite(nextMarker)) {
+        appendText(segments, line.slice(cursor));
+        break;
+      }
+
+      if (nextMarker > cursor) {
+        appendText(segments, line.slice(cursor, nextMarker));
+      }
+
+      if (nextMarker === nextInput) {
+        const end = line.indexOf("%%", nextInput + 2);
+        if (end === -1) {
+          appendText(segments, line.slice(nextInput));
+          break;
+        }
+        const rawSolution = line.slice(nextInput + 2, end);
+        const solution = rawSolution.trim();
+        if (!solution) {
+          return null;
+        }
+        segments.push({
+          type: "blank",
+          id: `blank-${blankIndex}`,
+          kind: "input",
+          solution,
+        });
+        blankIndex += 1;
+        cursor = end + 2;
+        continue;
+      }
+
+      const end = line.indexOf("`", nextDrag + 1);
+      if (end === -1) {
+        appendText(segments, line.slice(nextDrag));
+        break;
+      }
+      const rawToken = line.slice(nextDrag + 1, end);
+      const value = rawToken.trim();
+      if (!value) {
+        appendText(segments, line.slice(nextDrag, end + 1));
+        cursor = end + 1;
+        continue;
+      }
+      segments.push({
+        type: "blank",
+        id: `blank-${blankIndex}`,
+        kind: "drag",
+        solution: value,
+      });
+      dragTokens.push({ id: `token-${tokenIndex}`, value });
+      blankIndex += 1;
+      tokenIndex += 1;
+      cursor = end + 1;
+    }
+
+    return true;
+  };
+
+  const trimmedLines = trimEmptyLines(lines);
+  for (let lineIndex = 0; lineIndex < trimmedLines.length; lineIndex += 1) {
+    const line = trimmedLines[lineIndex];
+    const trimmed = line.trimStart();
+    if (fencePattern.test(trimmed)) {
+      inFence = !inFence;
+      appendText(segments, line);
+    } else if (inFence) {
+      appendText(segments, line);
+    } else {
+      const parsed = handleLine(line);
+      if (!parsed) {
+        return null;
+      }
+    }
+
+    if (lineIndex < trimmedLines.length - 1) {
+      appendText(segments, "\n");
+    }
+  }
+
+  return { segments, dragTokens };
+};
 
 const pushUnique = (items: string[], value: string) => {
   if (!items.includes(value)) {
@@ -182,17 +283,17 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
       continue;
     }
 
-    const body = bodyLines.join("\n").trim();
-    const parsed = parseClozeSegments(body);
+    const parsed = parseClozeSegments(bodyLines);
     if (!parsed) {
       continue;
     }
-    if (parsed.answers.length > 0) {
+    const hasBlanks = parsed.segments.some((segment) => segment.type === "blank");
+    if (hasBlanks) {
       cards.push({
         kind: "cloze",
         question,
         segments: parsed.segments,
-        answers: parsed.answers,
+        dragTokens: parsed.dragTokens,
       });
     }
   }

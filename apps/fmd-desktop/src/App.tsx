@@ -5,6 +5,7 @@ import {
   useState,
   type ChangeEvent,
   type CSSProperties,
+  type DragEvent,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -12,8 +13,10 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import "./App.css";
 import {
-  isClozeAnswerMatch,
+  isDragAnswerMatch,
+  isInputAnswerMatch,
   parseFlashcards,
+  type ClozeSegment,
   type Flashcard,
 } from "./lib/flashcards";
 
@@ -33,6 +36,13 @@ type FlashcardMode = "multiple-choice" | "yes-no";
 type FlashcardBoxes = "3" | "5" | "7";
 type FlashcardScope = "current" | "vault";
 type FlashcardPageSize = 2 | 5 | 10;
+
+type ClozeDragPayload = {
+  cardIndex: number;
+  tokenId: string;
+};
+
+type ClozeBlankSegment = Extract<ClozeSegment, { type: "blank" }>;
 
 type AppSettings = {
   vault_path?: string | null;
@@ -60,6 +70,7 @@ const ACCENT_PALETTE = [
   "#D97706",
   "#DC2626",
 ];
+const CLOZE_TOKEN_DRAG_TYPE = "application/x-cloze-token";
 
 const FolderIcon = () => (
   <svg
@@ -267,8 +278,56 @@ const applyAccentColor = (value: string) => {
   root.style.setProperty("--accent-contrast-strong", tokens.accentContrastStrong);
 };
 
-const buildEmptyClozeInputs = (count: number) =>
-  Array.from({ length: count }, () => "");
+const getClozeBlanks = (segments: ClozeSegment[]) =>
+  segments.filter((segment): segment is ClozeBlankSegment => segment.type === "blank");
+
+const isClozeBlankFilled = (
+  blank: ClozeBlankSegment,
+  responses: Record<string, string>,
+  tokenById: Map<string, string>,
+) => {
+  const value = responses[blank.id] ?? "";
+  if (blank.kind === "input") {
+    return value.trim().length > 0;
+  }
+  return tokenById.has(value);
+};
+
+const isClozeBlankCorrect = (
+  blank: ClozeBlankSegment,
+  responses: Record<string, string>,
+  tokenById: Map<string, string>,
+) => {
+  const value = responses[blank.id] ?? "";
+  if (blank.kind === "input") {
+    return isInputAnswerMatch(value, blank.solution);
+  }
+  return isDragAnswerMatch(tokenById.get(value) ?? "", blank.solution);
+};
+
+const areClozeBlanksComplete = (
+  card: Extract<Flashcard, { kind: "cloze" }>,
+  responses: Record<string, string>,
+) => {
+  const blanks = getClozeBlanks(card.segments);
+  if (blanks.length === 0) {
+    return false;
+  }
+  const tokenById = new Map(card.dragTokens.map((token) => [token.id, token.value]));
+  return blanks.every((blank) => isClozeBlankFilled(blank, responses, tokenById));
+};
+
+const isClozeCardCorrect = (
+  card: Extract<Flashcard, { kind: "cloze" }>,
+  responses: Record<string, string>,
+) => {
+  const blanks = getClozeBlanks(card.segments);
+  if (blanks.length === 0) {
+    return false;
+  }
+  const tokenById = new Map(card.dragTokens.map((token) => [token.id, token.value]));
+  return blanks.every((blank) => isClozeBlankCorrect(blank, responses, tokenById));
+};
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
@@ -303,8 +362,8 @@ function App() {
   const [flashcardSubmissions, setFlashcardSubmissions] = useState<
     Record<number, boolean>
   >({});
-  const [flashcardClozeInputs, setFlashcardClozeInputs] = useState<
-    Record<number, string[]>
+  const [flashcardClozeResponses, setFlashcardClozeResponses] = useState<
+    Record<number, Record<string, string>>
   >({});
   const [listError, setListError] = useState("");
   const [previewError, setPreviewError] = useState("");
@@ -378,18 +437,12 @@ function App() {
         return;
       }
 
-      if (card.answers.length === 0) {
+      const blanks = getClozeBlanks(card.segments);
+      if (blanks.length === 0) {
         return;
       }
-      const inputs = flashcardClozeInputs[index];
-      if (!inputs || inputs.length !== card.answers.length) {
-        incorrect += 1;
-        return;
-      }
-      const isCorrect = card.answers.every((answer, position) =>
-        isClozeAnswerMatch(inputs[position] ?? "", answer),
-      );
-      if (isCorrect) {
+      const responses = flashcardClozeResponses[index] ?? {};
+      if (isClozeCardCorrect(card, responses)) {
         correct += 1;
       } else {
         incorrect += 1;
@@ -400,7 +453,7 @@ function App() {
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
 
     return { correctCount: correct, incorrectCount: incorrect, correctPercent: percent };
-  }, [flashcards, flashcardClozeInputs, flashcardSelections, flashcardSubmissions]);
+  }, [flashcards, flashcardClozeResponses, flashcardSelections, flashcardSubmissions]);
 
   const statsChartStyle = useMemo(
     () =>
@@ -470,7 +523,7 @@ function App() {
       setFlashcards([]);
       setFlashcardSelections({});
       setFlashcardSubmissions({});
-      setFlashcardClozeInputs({});
+      setFlashcardClozeResponses({});
       setFlashcardPage(0);
       setIsFlashcardScanning(false);
       setFiles([]);
@@ -590,7 +643,7 @@ function App() {
       flashcards,
       flashcardSelections,
       flashcardSubmissions,
-      flashcardClozeInputs,
+      flashcardClozeResponses,
       flashcardPage,
       listState,
       previewState,
@@ -612,7 +665,7 @@ function App() {
       setFlashcards(previousState.flashcards);
       setFlashcardSelections(previousState.flashcardSelections);
       setFlashcardSubmissions(previousState.flashcardSubmissions);
-      setFlashcardClozeInputs(previousState.flashcardClozeInputs);
+      setFlashcardClozeResponses(previousState.flashcardClozeResponses);
       setFlashcardPage(previousState.flashcardPage);
       setListState(previousState.listState);
       setPreviewState(previousState.previewState);
@@ -627,7 +680,7 @@ function App() {
     setFlashcards([]);
     setFlashcardSelections({});
     setFlashcardSubmissions({});
-    setFlashcardClozeInputs({});
+    setFlashcardClozeResponses({});
     setFlashcardPage(0);
     setIsFlashcardScanning(false);
     setPreviewError("");
@@ -650,7 +703,7 @@ function App() {
     setFlashcards([]);
     setFlashcardSelections({});
     setFlashcardSubmissions({});
-    setFlashcardClozeInputs({});
+    setFlashcardClozeResponses({});
     setFlashcardPage(0);
 
     try {
@@ -815,19 +868,101 @@ function App() {
     }
   };
 
+  const setClozeDragPayload = (
+    event: DragEvent<HTMLElement>,
+    payload: ClozeDragPayload,
+  ) => {
+    event.dataTransfer.setData(CLOZE_TOKEN_DRAG_TYPE, JSON.stringify(payload));
+    event.dataTransfer.effectAllowed = "move";
+  };
+
+  const getClozeDragPayload = (event: DragEvent<HTMLElement>) => {
+    const raw = event.dataTransfer.getData(CLOZE_TOKEN_DRAG_TYPE);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as ClozeDragPayload;
+      if (
+        typeof parsed.cardIndex !== "number" ||
+        typeof parsed.tokenId !== "string"
+      ) {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleClozeTokenDragStart = (
+    event: DragEvent<HTMLElement>,
+    payload: ClozeDragPayload,
+  ) => {
+    event.dataTransfer.clearData();
+    setClozeDragPayload(event, payload);
+  };
+
+  const handleClozeBlankDragOver = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  };
+
   const handleClozeInputChange = (
     cardIndex: number,
-    blankIndex: number,
-    blankCount: number,
+    blankId: string,
     value: string,
   ) => {
-    setFlashcardClozeInputs((prev) => {
-      const stored = prev[cardIndex];
-      const current =
-        stored && stored.length === blankCount
-          ? [...stored]
-          : buildEmptyClozeInputs(blankCount);
-      current[blankIndex] = value;
+    setFlashcardClozeResponses((prev) => {
+      const current = { ...(prev[cardIndex] ?? {}) };
+      current[blankId] = value;
+      return { ...prev, [cardIndex]: current };
+    });
+  };
+
+  const handleClozeTokenDrop = (
+    event: DragEvent<HTMLElement>,
+    cardIndex: number,
+    blankId: string,
+    validTokenIds: Set<string>,
+    dragBlankIds: Set<string>,
+  ) => {
+    event.preventDefault();
+    if (flashcardSubmissions[cardIndex]) {
+      return;
+    }
+    const payload = getClozeDragPayload(event);
+    if (!payload || payload.cardIndex !== cardIndex) {
+      return;
+    }
+    if (!validTokenIds.has(payload.tokenId)) {
+      return;
+    }
+    if (!dragBlankIds.has(blankId)) {
+      return;
+    }
+    setFlashcardClozeResponses((prev) => {
+      const current = { ...(prev[cardIndex] ?? {}) };
+      Object.keys(current).forEach((key) => {
+        if (!dragBlankIds.has(key)) {
+          return;
+        }
+        if (current[key] === payload.tokenId) {
+          delete current[key];
+        }
+      });
+      current[blankId] = payload.tokenId;
+      return { ...prev, [cardIndex]: current };
+    });
+  };
+
+  const handleClozeTokenRemove = (cardIndex: number, blankId: string) => {
+    if (flashcardSubmissions[cardIndex]) {
+      return;
+    }
+    setFlashcardClozeResponses((prev) => {
+      const current = { ...(prev[cardIndex] ?? {}) };
+      delete current[blankId];
       return { ...prev, [cardIndex]: current };
     });
   };
@@ -1098,30 +1233,34 @@ function App() {
                         const cardIndex = flashcardPageStart + localIndex;
                         const submitted = !!flashcardSubmissions[cardIndex];
                         if (card.kind === "cloze") {
-                          const blankCount = card.answers.length;
-                          const storedInputs = flashcardClozeInputs[cardIndex];
-                          const inputs =
-                            storedInputs && storedInputs.length === blankCount
-                              ? storedInputs
-                              : buildEmptyClozeInputs(blankCount);
-                          const filledCount = inputs.filter(
-                            (value) => value.trim().length > 0,
-                          ).length;
-                          const canSubmit = blankCount > 0 && filledCount === blankCount;
-                          const isCorrect =
-                            blankCount > 0 &&
-                            inputs.every((value, position) =>
-                              isClozeAnswerMatch(
-                                value,
-                                card.answers[position] ?? "",
-                              ),
-                            );
+                          const blanks = getClozeBlanks(card.segments);
+                          const dragBlanks = blanks.filter(
+                            (blank) => blank.kind === "drag",
+                          );
+                          const dragBlankIds = new Set(
+                            dragBlanks.map((blank) => blank.id),
+                          );
+                          const responses = flashcardClozeResponses[cardIndex] ?? {};
+                          const tokenById = new Map(
+                            card.dragTokens.map((token) => [token.id, token.value]),
+                          );
+                          const assignedTokenIds = new Set(
+                            dragBlanks
+                              .map((blank) => responses[blank.id])
+                              .filter((tokenId) => tokenById.has(tokenId)),
+                          );
+                          const hasDragTokens = card.dragTokens.length > 0;
+                          const validTokenIds = new Set(
+                            card.dragTokens.map((token) => token.id),
+                          );
+                          const canSubmit = areClozeBlanksComplete(card, responses);
+                          const isCorrect = isClozeCardCorrect(card, responses);
                           const resultLabel = submitted
                             ? isCorrect
                               ? "Correct"
                               : "Incorrect"
                             : "";
-                          let blankIndex = 0;
+                          let blankPosition = 0;
 
                           return (
                             <article
@@ -1139,15 +1278,63 @@ function App() {
                                     );
                                   }
 
-                                  const currentBlank = blankIndex;
-                                  blankIndex += 1;
-                                  const value = inputs[currentBlank] ?? "";
+                                  blankPosition += 1;
+                                  const blankNumber = blankPosition;
+
+                                  if (segment.kind === "input") {
+                                    const value = responses[segment.id] ?? "";
+                                    const isBlankCorrect = submitted
+                                      ? isInputAnswerMatch(value, segment.solution)
+                                      : false;
+                                    const blankClasses = [
+                                      "cloze-blank",
+                                      "input",
+                                      value.trim() ? "filled" : "",
+                                      submitted
+                                        ? isBlankCorrect
+                                          ? "correct"
+                                          : "incorrect"
+                                        : "",
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" ");
+
+                                    return (
+                                      <span
+                                        key={`cloze-blank-${cardIndex}-${segmentIndex}`}
+                                        className={blankClasses}
+                                      >
+                                        <input
+                                          type="text"
+                                          className="cloze-input"
+                                          value={value}
+                                          onChange={(event) =>
+                                            handleClozeInputChange(
+                                              cardIndex,
+                                              segment.id,
+                                              event.target.value,
+                                            )
+                                          }
+                                          disabled={submitted}
+                                          placeholder="____"
+                                          aria-label={`Blank ${blankNumber}`}
+                                        />
+                                      </span>
+                                    );
+                                  }
+
+                                  const assignedTokenId = responses[segment.id] ?? "";
+                                  const assignedValue = assignedTokenId
+                                    ? tokenById.get(assignedTokenId) ?? ""
+                                    : "";
+                                  const hasToken = Boolean(assignedValue);
                                   const isBlankCorrect = submitted
-                                    ? isClozeAnswerMatch(value, segment.answer)
+                                    ? isDragAnswerMatch(assignedValue, segment.solution)
                                     : false;
                                   const blankClasses = [
                                     "cloze-blank",
-                                    value.trim() ? "filled" : "",
+                                    "drag",
+                                    hasToken ? "filled" : "",
                                     submitted ? (isBlankCorrect ? "correct" : "incorrect") : "",
                                   ]
                                     .filter(Boolean)
@@ -1157,32 +1344,86 @@ function App() {
                                     <span
                                       key={`cloze-blank-${cardIndex}-${segmentIndex}`}
                                       className={blankClasses}
+                                      aria-label={`Drop zone ${blankNumber}`}
+                                      onDragOver={handleClozeBlankDragOver}
+                                      onDrop={(event) =>
+                                        handleClozeTokenDrop(
+                                          event,
+                                          cardIndex,
+                                          segment.id,
+                                          validTokenIds,
+                                          dragBlankIds,
+                                        )
+                                      }
                                     >
-                                      <input
-                                        type="text"
-                                        className="cloze-input"
-                                        value={value}
-                                        onChange={(event) =>
-                                          handleClozeInputChange(
-                                            cardIndex,
-                                            currentBlank,
-                                            blankCount,
-                                            event.target.value,
-                                          )
-                                        }
-                                        disabled={submitted}
-                                        placeholder="____"
-                                        aria-label={`Blank ${currentBlank + 1}`}
-                                      />
-                                      {submitted ? (
-                                        <span className="blank-solution">
-                                          {segment.answer}
+                                      {hasToken ? (
+                                        <span className="cloze-token">
+                                          <button
+                                            type="button"
+                                            className="token-chip"
+                                            draggable={!submitted}
+                                            onDragStart={(event) =>
+                                              handleClozeTokenDragStart(event, {
+                                                cardIndex,
+                                                tokenId: assignedTokenId,
+                                              })
+                                            }
+                                            disabled={submitted}
+                                          >
+                                            {assignedValue}
+                                          </button>
+                                          {!submitted ? (
+                                            <button
+                                              type="button"
+                                              className="token-remove"
+                                              onClick={() =>
+                                                handleClozeTokenRemove(
+                                                  cardIndex,
+                                                  segment.id,
+                                                )
+                                              }
+                                              aria-label="Remove token"
+                                            >
+                                              x
+                                            </button>
+                                          ) : null}
                                         </span>
-                                      ) : null}
+                                      ) : (
+                                        <span className="cloze-placeholder">
+                                          Drop token
+                                        </span>
+                                      )}
                                     </span>
                                   );
                                 })}
                               </div>
+                              {hasDragTokens ? (
+                                <div className="token-section">
+                                  <span className="label">Tokens</span>
+                                  <div className="token-pool">
+                                    {card.dragTokens.map((token) => {
+                                      const isUsed = assignedTokenIds.has(token.id);
+                                      return (
+                                        <button
+                                          key={`token-${cardIndex}-${token.id}`}
+                                          type="button"
+                                          className={`token-chip ${isUsed ? "used" : ""}`}
+                                          draggable={!submitted && !isUsed}
+                                          onDragStart={(event) =>
+                                            handleClozeTokenDragStart(event, {
+                                              cardIndex,
+                                              tokenId: token.id,
+                                            })
+                                          }
+                                          disabled={submitted || isUsed}
+                                        >
+                                          {token.value}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
                               <div className="flashcard-actions">
                                 <button
                                   type="button"
@@ -1223,7 +1464,7 @@ function App() {
                                           key={`solution-blank-${cardIndex}-${segmentIndex}`}
                                           className="cloze-solution-token"
                                         >
-                                          {segment.answer}
+                                          {segment.solution}
                                         </span>
                                       );
                                     })}

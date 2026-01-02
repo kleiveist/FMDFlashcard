@@ -711,15 +711,21 @@ h2 {
 
 .cloze-blank {
   display: inline-flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 120px;
+  min-height: 36px;
   padding: 6px 8px;
   margin: 0 4px;
   border-radius: 10px;
   border: 1px dashed var(--line);
   background: var(--panel);
+  vertical-align: middle;
+}
+
+.cloze-blank.input {
+  min-width: 90px;
 }
 
 .cloze-blank.filled {
@@ -744,6 +750,7 @@ h2 {
   border-radius: 8px;
   padding: 4px 6px;
   font-size: 0.85rem;
+  min-width: 80px;
 }
 
 .cloze-input:disabled {
@@ -759,9 +766,71 @@ h2 {
   border-color: var(--error-border);
 }
 
-.blank-solution {
+.cloze-placeholder {
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.cloze-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.token-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.token-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.token-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--panel-warm);
+  color: var(--ink);
+  cursor: grab;
+  user-select: none;
+}
+
+.token-chip:active {
+  cursor: grabbing;
+}
+
+.token-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.token-chip.used {
+  opacity: 0.6;
+}
+
+.token-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.token-remove:hover {
+  color: var(--ink);
+  border-color: var(--line-soft);
 }
 
 .cloze-solution {
