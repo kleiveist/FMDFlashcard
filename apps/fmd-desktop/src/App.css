@@ -533,13 +533,13 @@ h2 {
 
 .spaced-repetition-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto auto;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: auto auto auto;
   gap: 24px;
   align-items: start;
 }
 
-.spaced-repetition-layout .sr-stats-panel {
+.spaced-repetition-layout .sr-diagram-panel {
   grid-column: 1;
   grid-row: 1;
 }
@@ -549,9 +549,19 @@ h2 {
   grid-row: 1;
 }
 
-.spaced-repetition-layout .sr-tools-panel {
-  grid-column: 1 / span 2;
+.spaced-repetition-layout .sr-flashcards-panel {
+  grid-column: 1;
   grid-row: 2;
+}
+
+.spaced-repetition-layout .sr-tools-panel {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.spaced-repetition-layout .sr-stats-panel {
+  grid-column: 1 / span 2;
+  grid-row: 3;
 }
 
 .flashcard-sidebar {
@@ -1034,6 +1044,58 @@ h2 {
 .kpi-value {
   font-weight: 700;
   font-size: 1.2rem;
+}
+
+.chart-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--panel-warm);
+  border: 1px solid var(--line-soft);
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chart-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.chart-canvas {
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+}
+
+.sr-chart {
+  width: 100%;
+  height: 120px;
+}
+
+.sr-chart-axis {
+  stroke: var(--line);
+  stroke-width: 0.8;
+}
+
+.sr-chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--muted);
 }
 
 .stats-summary {
@@ -1601,7 +1663,12 @@ h2 {
 
   .spaced-repetition-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
+  }
+
+  .spaced-repetition-layout .sr-diagram-panel {
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .spaced-repetition-layout .sr-user-panel {
@@ -1609,9 +1676,19 @@ h2 {
     grid-row: 2;
   }
 
-  .spaced-repetition-layout .sr-tools-panel {
+  .spaced-repetition-layout .sr-flashcards-panel {
     grid-column: 1;
     grid-row: 3;
+  }
+
+  .spaced-repetition-layout .sr-tools-panel {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .spaced-repetition-layout .sr-stats-panel {
+    grid-column: 1;
+    grid-row: 5;
   }
 }
 

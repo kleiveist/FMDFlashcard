@@ -76,6 +76,16 @@ const CLOZE_TOKEN_DRAG_TYPE = "application/x-cloze-token";
 const FLASHCARD_PAGE_SIZES: FlashcardPageSize[] = [1, 2, 5, 10];
 const DEFAULT_FLASHCARD_PAGE_SIZE: FlashcardPageSize = 2;
 const SPACED_REPETITION_BOXES: SpacedRepetitionBoxes[] = [3, 5, 8];
+const SPACED_REPETITION_CHART_LABELS = [
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+  "Sun",
+];
+const SPACED_REPETITION_CHART_DATA = [1, 3, 2, 4, 3, 5, 4];
 
 const FolderIcon = () => (
   <svg
@@ -287,6 +297,21 @@ const normalizeFlashcardPageSize = (value: number) =>
   FLASHCARD_PAGE_SIZES.includes(value as FlashcardPageSize)
     ? (value as FlashcardPageSize)
     : DEFAULT_FLASHCARD_PAGE_SIZE;
+
+const buildLineChartPoints = (values: number[]) => {
+  if (values.length === 0) {
+    return "";
+  }
+  const maxValue = Math.max(1, ...values);
+  const step = values.length === 1 ? 0 : 100 / (values.length - 1);
+  return values
+    .map((value, index) => {
+      const x = index * step;
+      const y = 40 - (value / maxValue) * 30;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+};
 
 const buildSpacedRepetitionUserName = (
   name: string,
@@ -2047,28 +2072,46 @@ function App() {
         ) : activeTab === "spaced-repetition" ? (
           <>
             <div className="spaced-repetition-layout">
-              <section className="panel stats-panel sr-stats-panel">
+              <section className="panel sr-diagram-panel">
                 <div className="panel-header">
                   <div>
-                    <h2>Statistics</h2>
+                    <h2>Statistics Diagram</h2>
+                    <p className="muted">Progress trends over time.</p>
                   </div>
                 </div>
                 <div className="panel-body">
-                  <div className="kpi-grid">
-                    {[
-                      { label: "Correct", value: 0 },
-                      { label: "Incorrect", value: 0 },
-                      { label: "Total", value: 0 },
-                      { label: "Due now", value: 0 },
-                      { label: "Due today", value: 0 },
-                      { label: "In queue", value: 0 },
-                      { label: "Completed today", value: 0 },
-                    ].map((kpi) => (
-                      <div key={kpi.label} className="kpi-card">
-                        <span className="kpi-label">{kpi.label}</span>
-                        <span className="kpi-value">{kpi.value}</span>
-                      </div>
-                    ))}
+                  <div className="chart-card">
+                    <div className="chart-header">
+                      <span className="label">Completed per day</span>
+                      <span className="chart-meta">Last 7 days</span>
+                    </div>
+                    <div className="chart-canvas">
+                      <svg
+                        className="sr-chart"
+                        viewBox="0 0 100 40"
+                        role="img"
+                        aria-label="Completed per day"
+                      >
+                        <line
+                          x1="0"
+                          y1="40"
+                          x2="100"
+                          y2="40"
+                          className="sr-chart-axis"
+                        />
+                        <polyline
+                          className="sr-chart-line"
+                          points={buildLineChartPoints(
+                            SPACED_REPETITION_CHART_DATA,
+                          )}
+                        />
+                      </svg>
+                    </div>
+                    <div className="chart-axis">
+                      {SPACED_REPETITION_CHART_LABELS.map((label) => (
+                        <span key={label}>{label}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </section>
@@ -2148,6 +2191,27 @@ function App() {
                   </div>
                 </div>
               </section>
+              <section className="panel sr-flashcards-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Flashcards</h2>
+                    <p className="muted">{flashcardStatusLabel}</p>
+                  </div>
+                </div>
+                <div className="panel-body">
+                  <div className="empty-state">
+                    Select a note and start the flashcard scan.
+                  </div>
+                  <div className="flashcard-pagination">
+                    <button type="button" className="ghost small" disabled>
+                      Back
+                    </button>
+                    <button type="button" className="ghost small" disabled>
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </section>
               <section className="panel sr-tools-panel">
                 <div className="panel-header">
                   <div>
@@ -2211,6 +2275,31 @@ function App() {
                       Repetition order will prioritize due cards when scheduling
                       is available.
                     </span>
+                  </div>
+                </div>
+              </section>
+              <section className="panel stats-panel sr-stats-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Statistics</h2>
+                  </div>
+                </div>
+                <div className="panel-body">
+                  <div className="kpi-grid">
+                    {[
+                      { label: "Correct", value: 0 },
+                      { label: "Incorrect", value: 0 },
+                      { label: "Total", value: 0 },
+                      { label: "Due now", value: 0 },
+                      { label: "Due today", value: 0 },
+                      { label: "In queue", value: 0 },
+                      { label: "Completed today", value: 0 },
+                    ].map((kpi) => (
+                      <div key={kpi.label} className="kpi-card">
+                        <span className="kpi-label">{kpi.label}</span>
+                        <span className="kpi-value">{kpi.value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </section>
