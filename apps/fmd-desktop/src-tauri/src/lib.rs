@@ -21,10 +21,12 @@ struct AppSettings {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 struct SpacedRepetitionCardState {
-    #[serde(rename = "box")]
-    r#box: u32,
+    #[serde(rename = "box", skip_serializing_if = "Option::is_none")]
+    r#box: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    box_canonical: Option<u32>,
     attempts: u32,
     last_result: Option<String>,
     last_reviewed_at: Option<String>,

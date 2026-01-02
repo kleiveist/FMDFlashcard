@@ -13,8 +13,9 @@ import {
   createEmptySpacedRepetitionUserState,
   createSpacedRepetitionUserId,
   getFlashcardId,
+  getSpacedRepetitionEffectiveBox,
+  MAX_SPACED_REPETITION_BOX,
   normalizeSpacedRepetitionCardProgress,
-  type SpacedRepetitionCardProgress,
   type SpacedRepetitionSession,
   type SpacedRepetitionStorage,
   type SpacedRepetitionUser,
@@ -105,8 +106,8 @@ export const useSpacedRepetition = ({
     spacedRepetitionSession?.clozeResponses ?? {};
   const spacedRepetitionPage = spacedRepetitionSession?.page ?? 0;
   const spacedRepetitionCardStates =
-    spacedRepetitionActiveUserState?.cardStates ??
     spacedRepetitionSession?.cardProgressById ??
+    spacedRepetitionActiveUserState?.cardStates ??
     {};
 
   const resolvedSpacedRepetitionPageSize = useMemo(
@@ -175,6 +176,14 @@ export const useSpacedRepetition = ({
     return { correctCount: correct, incorrectCount: incorrect, total: cardStates.length };
   }, [spacedRepetitionCardStates]);
 
+  const spacedRepetitionCorrectPercent = useMemo(() => {
+    const total = spacedRepetitionCorrectCount + spacedRepetitionIncorrectCount;
+    if (total === 0) {
+      return 0;
+    }
+    return Math.round((spacedRepetitionCorrectCount / total) * 100);
+  }, [spacedRepetitionCorrectCount, spacedRepetitionIncorrectCount]);
+
   const spacedRepetitionProgressStats = useMemo(() => {
     const cardStates = Object.values(spacedRepetitionCardStates);
     const total = cardStates.length;
@@ -194,13 +203,17 @@ export const useSpacedRepetition = ({
 
     for (const progress of cardStates) {
       const normalized = normalizeSpacedRepetitionCardProgress(progress);
+      const effectiveBox = getSpacedRepetitionEffectiveBox(
+        normalized,
+        spacedRepetitionBoxes,
+      );
       if (normalized.attempts > 0) {
         completedToday += 1;
       }
-      if (normalized.box <= 1) {
+      if (effectiveBox <= 1) {
         dueNow += 1;
       }
-      if (normalized.box <= dueTodayThreshold) {
+      if (effectiveBox <= dueTodayThreshold) {
         dueToday += 1;
       }
     }
@@ -211,6 +224,20 @@ export const useSpacedRepetition = ({
       inQueue: total - completedToday,
       completedToday,
     };
+  }, [spacedRepetitionBoxes, spacedRepetitionCardStates]);
+
+  const spacedRepetitionBoxCounts = useMemo(() => {
+    const counts = Array.from({ length: spacedRepetitionBoxes }, () => 0);
+    Object.values(spacedRepetitionCardStates).forEach((progress) => {
+      const normalized = normalizeSpacedRepetitionCardProgress(progress);
+      const effectiveBox = getSpacedRepetitionEffectiveBox(
+        normalized,
+        spacedRepetitionBoxes,
+      );
+      const index = Math.max(1, Math.min(spacedRepetitionBoxes, effectiveBox)) - 1;
+      counts[index] += 1;
+    });
+    return counts;
   }, [spacedRepetitionBoxes, spacedRepetitionCardStates]);
 
   const updateActiveSpacedRepetitionSession = useCallback(
@@ -377,41 +404,6 @@ export const useSpacedRepetition = ({
       };
     });
   }, [spacedRepetitionActiveUserId, spacedRepetitionUserStateById]);
-
-  useEffect(() => {
-    setSpacedRepetitionSessions((prev) => {
-      let changed = false;
-      const next: Record<string, SpacedRepetitionSession> = {};
-
-      Object.entries(prev).forEach(([user, session]) => {
-        let progressChanged = false;
-        const nextProgress: Record<string, SpacedRepetitionCardProgress> = {};
-
-        Object.entries(session.cardProgressById).forEach(([cardId, progress]) => {
-          const normalized = normalizeSpacedRepetitionCardProgress(progress);
-          const clampedBox = Math.min(normalized.box, spacedRepetitionBoxes);
-          if (clampedBox !== normalized.box) {
-            progressChanged = true;
-            nextProgress[cardId] = { ...normalized, box: clampedBox };
-          } else {
-            nextProgress[cardId] = normalized;
-          }
-        });
-
-        if (progressChanged) {
-          changed = true;
-          next[user] = {
-            ...session,
-            cardProgressById: nextProgress,
-          };
-        } else {
-          next[user] = session;
-        }
-      });
-
-      return changed ? next : prev;
-    });
-  }, [spacedRepetitionBoxes]);
 
   useEffect(() => {
     if (!spacedRepetitionActiveUserId) {
@@ -640,17 +632,26 @@ export const useSpacedRepetition = ({
         const currentProgress = normalizeSpacedRepetitionCardProgress(
           session.cardProgressById[cardId],
         );
+        const effectiveBox = getSpacedRepetitionEffectiveBox(
+          currentProgress,
+          spacedRepetitionBoxes,
+        );
+        const baseBox =
+          currentProgress.boxCanonical > spacedRepetitionBoxes
+            ? effectiveBox
+            : currentProgress.boxCanonical;
+        let nextBox = baseBox;
+        if (result === "correct") {
+          nextBox = Math.min(baseBox + 1, MAX_SPACED_REPETITION_BOX);
+        } else if (result === "incorrect") {
+          nextBox = Math.max(baseBox - 1, 1);
+        }
         const nextProgress = {
-          box: currentProgress.box,
+          boxCanonical: nextBox,
           attempts: currentProgress.attempts + 1,
           lastResult: result,
           lastReviewedAt: new Date().toISOString(),
         };
-        if (result === "correct") {
-          nextProgress.box = Math.min(currentProgress.box + 1, spacedRepetitionBoxes);
-        } else if (result === "incorrect") {
-          nextProgress.box = 1;
-        }
 
         return {
           ...session,
@@ -782,10 +783,12 @@ export const useSpacedRepetition = ({
     setSpacedRepetitionUserError,
     spacedRepetitionActiveUser,
     spacedRepetitionBoxes,
+    spacedRepetitionBoxCounts,
     spacedRepetitionCanGoBack,
     spacedRepetitionCanGoNext,
     spacedRepetitionClozeResponses,
     spacedRepetitionCorrectCount,
+    spacedRepetitionCorrectPercent,
     spacedRepetitionDataLoaded,
     spacedRepetitionEmptyState,
     spacedRepetitionFlashcards,

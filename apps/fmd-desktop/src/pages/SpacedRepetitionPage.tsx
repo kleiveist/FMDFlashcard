@@ -1,3 +1,4 @@
+import { useMemo, type CSSProperties } from "react";
 import { buildLineChartPoints } from "../lib/chart";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
@@ -13,6 +14,19 @@ import {
 
 export const SpacedRepetitionPage = () => {
   const { flashcards, spacedRepetition } = useAppState();
+
+  const statsTotal =
+    spacedRepetition.spacedRepetitionCorrectCount +
+    spacedRepetition.spacedRepetitionIncorrectCount;
+  const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
+  const statsChartStyle = useMemo(
+    () =>
+      ({
+        "--correct-percent": `${spacedRepetition.spacedRepetitionCorrectPercent}%`,
+      }) as CSSProperties,
+    [spacedRepetition.spacedRepetitionCorrectPercent],
+  );
+  const maxBoxCount = Math.max(...spacedRepetition.spacedRepetitionBoxCounts, 0);
 
   const kpiItems = [
     { label: "Correct", value: spacedRepetition.spacedRepetitionCorrectCount },
@@ -38,6 +52,76 @@ export const SpacedRepetitionPage = () => {
 
   return (
     <div className="spaced-repetition-layout">
+      <section className="panel stats-panel sr-statistics-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Statistics</h2>
+          </div>
+        </div>
+        <div className="panel-body">
+          <div className="stats-summary">
+            <div className="stats-counters">
+              <div className="stats-counter">
+                <span className="stats-label">Correct</span>
+                <span className="stats-value">
+                  {spacedRepetition.spacedRepetitionCorrectCount}
+                </span>
+              </div>
+              <div className="stats-counter">
+                <span className="stats-label">Incorrect</span>
+                <span className="stats-value">
+                  {spacedRepetition.spacedRepetitionIncorrectCount}
+                </span>
+              </div>
+              <div className="stats-counter">
+                <span className="stats-label">Total</span>
+                <span className="stats-value">
+                  {spacedRepetition.spacedRepetitionTotalQuestions}
+                </span>
+              </div>
+            </div>
+            <div
+              className={statsChartClass}
+              style={statsChartStyle}
+              role="img"
+              aria-label={`Correct ${spacedRepetition.spacedRepetitionCorrectCount}, Incorrect ${spacedRepetition.spacedRepetitionIncorrectCount}, Total ${spacedRepetition.spacedRepetitionTotalQuestions}`}
+            >
+              <div className="stats-chart-label">
+                <span className="stats-chart-total">
+                  {spacedRepetition.spacedRepetitionTotalQuestions}
+                </span>
+                <span className="stats-chart-caption">Total</span>
+              </div>
+            </div>
+          </div>
+          <div className="sr-box-chart">
+            <div className="sr-box-chart-header">
+              <span className="label">BOXES</span>
+            </div>
+            <div className="sr-box-chart-grid">
+              {spacedRepetition.spacedRepetitionBoxCounts.map((count, index) => {
+                const heightPercent =
+                  maxBoxCount > 0 ? Math.round((count / maxBoxCount) * 100) : 0;
+                const barStyle = {
+                  "--bar-height":
+                    count > 0 ? `${Math.max(heightPercent, 6)}%` : "0%",
+                } as CSSProperties;
+
+                return (
+                  <div key={`box-${index + 1}`} className="sr-box-column">
+                    <span className="sr-box-count">{count}</span>
+                    <div className="sr-box-bar" style={barStyle}>
+                      <div className="sr-box-bar-fill" />
+                    </div>
+                    <span className="sr-box-label">{index + 1}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="panel sr-diagram-panel">
         <div className="panel-header">
           <div>

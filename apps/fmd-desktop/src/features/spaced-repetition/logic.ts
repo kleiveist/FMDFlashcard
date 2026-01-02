@@ -1,11 +1,18 @@
 import type { Flashcard } from "../../lib/flashcards";
 import type { FlashcardResult, TrueFalseSelection } from "../flashcards/logic";
 
+export const MAX_SPACED_REPETITION_BOX = 8;
+
 export type SpacedRepetitionCardProgress = {
-  box: number;
+  boxCanonical: number;
   attempts: number;
   lastResult: FlashcardResult;
   lastReviewedAt: string | null;
+};
+
+type SpacedRepetitionCardProgressInput = Partial<SpacedRepetitionCardProgress> & {
+  box?: number;
+  boxCanonical?: number;
 };
 
 export type SpacedRepetitionSession = {
@@ -97,23 +104,40 @@ export const createEmptySpacedRepetitionUserState = (): SpacedRepetitionUserStat
 });
 
 export const normalizeSpacedRepetitionCardProgress = (
-  progress?: Partial<SpacedRepetitionCardProgress> | null,
-): SpacedRepetitionCardProgress => ({
-  box:
-    typeof progress?.box === "number" && Number.isFinite(progress.box)
-      ? Math.max(1, progress.box)
-      : 1,
-  attempts:
-    typeof progress?.attempts === "number" && Number.isFinite(progress.attempts)
-      ? Math.max(0, progress.attempts)
-      : 0,
-  lastResult:
-    progress?.lastResult === "correct" || progress?.lastResult === "incorrect"
-      ? progress.lastResult
-      : "neutral",
-  lastReviewedAt:
-    typeof progress?.lastReviewedAt === "string" ? progress.lastReviewedAt : null,
-});
+  progress?: SpacedRepetitionCardProgressInput | null,
+): SpacedRepetitionCardProgress => {
+  const rawBoxCanonical =
+    typeof progress?.boxCanonical === "number" && Number.isFinite(progress.boxCanonical)
+      ? progress.boxCanonical
+      : typeof progress?.box === "number" && Number.isFinite(progress.box)
+        ? progress.box
+        : 1;
+  const clampedBoxCanonical = Math.min(
+    MAX_SPACED_REPETITION_BOX,
+    Math.max(1, rawBoxCanonical),
+  );
+
+  return {
+    boxCanonical: clampedBoxCanonical,
+    attempts:
+      typeof progress?.attempts === "number" && Number.isFinite(progress.attempts)
+        ? Math.max(0, progress.attempts)
+        : 0,
+    lastResult:
+      progress?.lastResult === "correct" || progress?.lastResult === "incorrect"
+        ? progress.lastResult
+        : "neutral",
+    lastReviewedAt:
+      typeof progress?.lastReviewedAt === "string"
+        ? progress.lastReviewedAt
+        : null,
+  };
+};
+
+export const getSpacedRepetitionEffectiveBox = (
+  progress: SpacedRepetitionCardProgress,
+  boxCount: number,
+) => Math.min(progress.boxCanonical, boxCount);
 
 export const buildSpacedRepetitionSession = (
   flashcards: Flashcard[],
