@@ -60,6 +60,80 @@ b) Beta
     }
   });
 
+  it("parses a single true/false item", () => {
+    const markdown = `#card
+1. The earth orbits the sun. Wahr/Falsch?
+-wahr
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].kind).toBe("true-false");
+    if (cards[0].kind === "true-false") {
+      expect(cards[0].items).toEqual([
+        {
+          id: "tf-0",
+          question: "1. The earth orbits the sun. Wahr/Falsch?",
+          correct: "wahr",
+        },
+      ]);
+    }
+  });
+
+  it("parses multiple true/false items in one card", () => {
+    const markdown = `#card
+2. Water boils at 100C. Wahr/Falsch?
+-wahr
+3. The moon is a planet. Wahr/Falsch?
+-falsch
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].kind).toBe("true-false");
+    if (cards[0].kind === "true-false") {
+      expect(cards[0].items).toEqual([
+        {
+          id: "tf-0",
+          question: "2. Water boils at 100C. Wahr/Falsch?",
+          correct: "wahr",
+        },
+        {
+          id: "tf-1",
+          question: "3. The moon is a planet. Wahr/Falsch?",
+          correct: "falsch",
+        },
+      ]);
+    }
+  });
+
+  it("skips true/false questions without valid markers", () => {
+    const markdown = `#card
+Missing marker. Wahr/Falsch?
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(0);
+  });
+
+  it("parses true/false markers case-insensitively", () => {
+    const markdown = `#card
+Case check. Wahr/Falsch?
+-FALSCH
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].kind).toBe("true-false");
+    if (cards[0].kind === "true-false") {
+      expect(cards[0].items[0]?.correct).toBe("falsch");
+    }
+  });
+
   it("collects multiple correct markers", () => {
     const markdown = `#card
 Choose two.

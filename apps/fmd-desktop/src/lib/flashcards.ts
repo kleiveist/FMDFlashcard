@@ -13,6 +13,12 @@
  * Body text with input blanks like %%answer%% and drag tokens like `token`
  * #
  *
+ * v4 (true/false)
+ * #card
+ * Statement Wahr/Falsch?
+ * -wahr
+ * #
+ *
  * Invalid cards (missing end marker, empty question, no options/blanks/tokens) are skipped.
  */
 export type FlashcardOption = {
@@ -25,6 +31,17 @@ export type MultipleChoiceCard = {
   question: string;
   options: FlashcardOption[];
   correctKeys: string[];
+};
+
+export type TrueFalseItem = {
+  id: string;
+  question: string;
+  correct: "wahr" | "falsch";
+};
+
+export type TrueFalseCard = {
+  kind: "true-false";
+  items: TrueFalseItem[];
 };
 
 export type ClozeSegment =
@@ -43,7 +60,7 @@ export type ClozeCard = {
   dragTokens: ClozeDragToken[];
 };
 
-export type Flashcard = MultipleChoiceCard | ClozeCard;
+export type Flashcard = MultipleChoiceCard | TrueFalseCard | ClozeCard;
 
 export const normalizeInputAnswer = (value: string) => value.trim().toLowerCase();
 
@@ -60,6 +77,8 @@ const normalizeLines = (markdown: string) =>
 
 const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
+const trueFalseSuffix = "Wahr/Falsch?";
+const trueFalseMarkerPattern = /^-(wahr|falsch)$/i;
 
 const trimEmptyLines = (lines: string[]) => {
   let start = 0;
@@ -188,6 +207,47 @@ const parseClozeSegments = (lines: string[]) => {
   return { segments, dragTokens };
 };
 
+const normalizeTrueFalseMarker = (value: string) => {
+  const match = value.match(trueFalseMarkerPattern);
+  if (!match) {
+    return null;
+  }
+  return match[1].toLowerCase() as "wahr" | "falsch";
+};
+
+const parseTrueFalseItems = (lines: string[]) => {
+  const items: TrueFalseItem[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const question = lines[index].trim();
+    if (!question || !question.endsWith(trueFalseSuffix)) {
+      continue;
+    }
+
+    let markerIndex = index + 1;
+    while (markerIndex < lines.length && lines[markerIndex].trim() === "") {
+      markerIndex += 1;
+    }
+    if (markerIndex >= lines.length) {
+      continue;
+    }
+
+    const marker = normalizeTrueFalseMarker(lines[markerIndex].trim());
+    if (!marker) {
+      continue;
+    }
+
+    items.push({
+      id: `tf-${items.length}`,
+      question,
+      correct: marker,
+    });
+    index = markerIndex;
+  }
+
+  return items;
+};
+
 const pushUnique = (items: string[], value: string) => {
   if (!items.includes(value)) {
     items.push(value);
@@ -206,20 +266,13 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
       continue;
     }
 
-    let question = "";
-    const options: FlashcardOption[] = [];
-    const correctKeys: string[] = [];
-    const bodyLines: string[] = [];
+    const cardLines: string[] = [];
     let foundEnd = false;
 
     index += 1;
 
     while (index < lines.length) {
       const trimmed = lines[index].trim();
-      if (!trimmed) {
-        index += 1;
-        continue;
-      }
       if (trimmed === "#") {
         foundEnd = true;
         index += 1;
@@ -228,26 +281,30 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
       if (trimmed === "#card") {
         break;
       }
-      question = trimmed;
+      cardLines.push(lines[index]);
       index += 1;
-      break;
     }
 
-    while (index < lines.length) {
-      const rawLine = lines[index];
+    if (!foundEnd) {
+      continue;
+    }
+
+    const questionIndex = cardLines.findIndex((entry) => entry.trim() !== "");
+    if (questionIndex === -1) {
+      continue;
+    }
+    const question = cardLines[questionIndex].trim();
+    const bodyLines = cardLines.slice(questionIndex + 1);
+
+    const options: FlashcardOption[] = [];
+    const correctKeys: string[] = [];
+    const clozeLines: string[] = [];
+
+    bodyLines.forEach((rawLine) => {
       const trimmed = rawLine.trim();
-      if (trimmed === "#") {
-        foundEnd = true;
-        index += 1;
-        break;
-      }
-      if (trimmed === "#card") {
-        break;
-      }
       if (!trimmed) {
-        bodyLines.push("");
-        index += 1;
-        continue;
+        clozeLines.push("");
+        return;
       }
 
       const optionMatch = trimmed.match(optionPattern);
@@ -259,31 +316,30 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
             text,
           });
         }
-        index += 1;
-        continue;
+        return;
       }
 
       const markerMatch = trimmed.match(markerPattern);
       if (markerMatch) {
         pushUnique(correctKeys, markerMatch[1].toLowerCase());
-        index += 1;
-        continue;
+        return;
       }
 
-      bodyLines.push(rawLine);
-      index += 1;
-    }
-
-    if (!question || !foundEnd) {
-      continue;
-    }
+      clozeLines.push(rawLine);
+    });
 
     if (options.length > 0) {
       cards.push({ kind: "multiple-choice", question, options, correctKeys });
       continue;
     }
 
-    const parsed = parseClozeSegments(bodyLines);
+    const trueFalseItems = parseTrueFalseItems(cardLines.slice(questionIndex));
+    if (trueFalseItems.length > 0) {
+      cards.push({ kind: "true-false", items: trueFalseItems });
+      continue;
+    }
+
+    const parsed = parseClozeSegments(clozeLines);
     if (!parsed) {
       continue;
     }

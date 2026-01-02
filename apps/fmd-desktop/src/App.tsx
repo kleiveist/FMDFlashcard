@@ -36,6 +36,7 @@ type FlashcardMode = "multiple-choice" | "yes-no";
 type FlashcardBoxes = "3" | "5" | "7";
 type FlashcardScope = "current" | "vault";
 type FlashcardPageSize = 2 | 5 | 10;
+type TrueFalseSelection = "wahr" | "falsch";
 
 type ClozeDragPayload = {
   cardIndex: number;
@@ -329,6 +330,26 @@ const isClozeCardCorrect = (
   return blanks.every((blank) => isClozeBlankCorrect(blank, responses, tokenById));
 };
 
+const areTrueFalseItemsComplete = (
+  card: Extract<Flashcard, { kind: "true-false" }>,
+  selections: Record<string, TrueFalseSelection>,
+) => {
+  if (card.items.length === 0) {
+    return false;
+  }
+  return card.items.every((item) => Boolean(selections[item.id]));
+};
+
+const isTrueFalseCardCorrect = (
+  card: Extract<Flashcard, { kind: "true-false" }>,
+  selections: Record<string, TrueFalseSelection>,
+) => {
+  if (card.items.length === 0) {
+    return false;
+  }
+  return card.items.every((item) => selections[item.id] === item.correct);
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [vaultPath, setVaultPath] = useState<string | null>(null);
@@ -362,6 +383,8 @@ function App() {
   const [flashcardSubmissions, setFlashcardSubmissions] = useState<
     Record<number, boolean>
   >({});
+  const [flashcardTrueFalseSelections, setFlashcardTrueFalseSelections] =
+    useState<Record<number, Record<string, TrueFalseSelection>>>({});
   const [flashcardClozeResponses, setFlashcardClozeResponses] = useState<
     Record<number, Record<string, string>>
   >({});
@@ -437,6 +460,19 @@ function App() {
         return;
       }
 
+      if (card.kind === "true-false") {
+        if (card.items.length === 0) {
+          return;
+        }
+        const selections = flashcardTrueFalseSelections[index] ?? {};
+        if (isTrueFalseCardCorrect(card, selections)) {
+          correct += 1;
+        } else {
+          incorrect += 1;
+        }
+        return;
+      }
+
       const blanks = getClozeBlanks(card.segments);
       if (blanks.length === 0) {
         return;
@@ -453,7 +489,13 @@ function App() {
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
 
     return { correctCount: correct, incorrectCount: incorrect, correctPercent: percent };
-  }, [flashcards, flashcardClozeResponses, flashcardSelections, flashcardSubmissions]);
+  }, [
+    flashcards,
+    flashcardClozeResponses,
+    flashcardSelections,
+    flashcardSubmissions,
+    flashcardTrueFalseSelections,
+  ]);
 
   const statsChartStyle = useMemo(
     () =>
@@ -523,6 +565,7 @@ function App() {
       setFlashcards([]);
       setFlashcardSelections({});
       setFlashcardSubmissions({});
+      setFlashcardTrueFalseSelections({});
       setFlashcardClozeResponses({});
       setFlashcardPage(0);
       setIsFlashcardScanning(false);
@@ -643,6 +686,7 @@ function App() {
       flashcards,
       flashcardSelections,
       flashcardSubmissions,
+      flashcardTrueFalseSelections,
       flashcardClozeResponses,
       flashcardPage,
       listState,
@@ -665,6 +709,7 @@ function App() {
       setFlashcards(previousState.flashcards);
       setFlashcardSelections(previousState.flashcardSelections);
       setFlashcardSubmissions(previousState.flashcardSubmissions);
+      setFlashcardTrueFalseSelections(previousState.flashcardTrueFalseSelections);
       setFlashcardClozeResponses(previousState.flashcardClozeResponses);
       setFlashcardPage(previousState.flashcardPage);
       setListState(previousState.listState);
@@ -680,6 +725,7 @@ function App() {
     setFlashcards([]);
     setFlashcardSelections({});
     setFlashcardSubmissions({});
+    setFlashcardTrueFalseSelections({});
     setFlashcardClozeResponses({});
     setFlashcardPage(0);
     setIsFlashcardScanning(false);
@@ -703,6 +749,7 @@ function App() {
     setFlashcards([]);
     setFlashcardSelections({});
     setFlashcardSubmissions({});
+    setFlashcardTrueFalseSelections({});
     setFlashcardClozeResponses({});
     setFlashcardPage(0);
 
@@ -762,6 +809,20 @@ function App() {
         return;
       }
       setFlashcardSelections((prev) => ({ ...prev, [cardIndex]: key }));
+    },
+    [flashcardSubmissions],
+  );
+
+  const handleTrueFalseSelect = useCallback(
+    (cardIndex: number, itemId: string, value: TrueFalseSelection) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      setFlashcardTrueFalseSelections((prev) => {
+        const current = { ...(prev[cardIndex] ?? {}) };
+        current[itemId] = value;
+        return { ...prev, [cardIndex]: current };
+      });
     },
     [flashcardSubmissions],
   );
@@ -1469,6 +1530,149 @@ function App() {
                                       );
                                     })}
                                   </div>
+                                </div>
+                              ) : null}
+                            </article>
+                          );
+                        }
+
+                        if (card.kind === "true-false") {
+                          const selections =
+                            flashcardTrueFalseSelections[cardIndex] ?? {};
+                          const canSubmit = areTrueFalseItemsComplete(
+                            card,
+                            selections,
+                          );
+                          const isCorrect = isTrueFalseCardCorrect(card, selections);
+                          const resultLabel = submitted
+                            ? isCorrect
+                              ? "Correct"
+                              : "Incorrect"
+                            : "";
+
+                          return (
+                            <article
+                              className="flashcard-item truefalse-card"
+                              key={`flashcard-${cardIndex}`}
+                            >
+                              <h3 className="flashcard-question">True/False</h3>
+                              <ul className="truefalse-list">
+                                {card.items.map((item) => {
+                                  const selected = selections[item.id];
+                                  const isItemCorrect =
+                                    submitted && selected === item.correct;
+                                  const isItemIncorrect =
+                                    submitted &&
+                                    selected &&
+                                    selected !== item.correct;
+                                  const trueClasses = [
+                                    "truefalse-option",
+                                    selected === "wahr" ? "selected" : "",
+                                    submitted && item.correct === "wahr" ? "correct" : "",
+                                    submitted && selected === "wahr" && isItemIncorrect
+                                      ? "incorrect"
+                                      : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ");
+                                  const falseClasses = [
+                                    "truefalse-option",
+                                    selected === "falsch" ? "selected" : "",
+                                    submitted && item.correct === "falsch" ? "correct" : "",
+                                    submitted && selected === "falsch" && isItemIncorrect
+                                      ? "incorrect"
+                                      : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ");
+
+                                  return (
+                                    <li key={item.id} className="truefalse-item">
+                                      <div className="truefalse-question">
+                                        {item.question}
+                                      </div>
+                                      <div className="truefalse-options">
+                                        <button
+                                          type="button"
+                                          className={trueClasses}
+                                          onClick={() =>
+                                            handleTrueFalseSelect(
+                                              cardIndex,
+                                              item.id,
+                                              "wahr",
+                                            )
+                                          }
+                                          aria-pressed={selected === "wahr"}
+                                          disabled={submitted}
+                                        >
+                                          True
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className={falseClasses}
+                                          onClick={() =>
+                                            handleTrueFalseSelect(
+                                              cardIndex,
+                                              item.id,
+                                              "falsch",
+                                            )
+                                          }
+                                          aria-pressed={selected === "falsch"}
+                                          disabled={submitted}
+                                        >
+                                          False
+                                        </button>
+                                      </div>
+                                      {submitted ? (
+                                        <span
+                                          className={`truefalse-result ${
+                                            isItemCorrect ? "correct" : "incorrect"
+                                          }`}
+                                        >
+                                          {isItemCorrect ? "Correct" : "Incorrect"}
+                                        </span>
+                                      ) : null}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                              <div className="flashcard-actions">
+                                <button
+                                  type="button"
+                                  className="ghost small flashcard-submit"
+                                  onClick={() =>
+                                    handleFlashcardSubmit(cardIndex, canSubmit)
+                                  }
+                                  disabled={submitted || !canSubmit}
+                                >
+                                  Submit
+                                </button>
+                                {submitted ? (
+                                  <span
+                                    className={`flashcard-result ${
+                                      isCorrect ? "correct" : "incorrect"
+                                    }`}
+                                  >
+                                    {resultLabel}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {submitted ? (
+                                <div className="truefalse-solution">
+                                  <span className="label">Solution</span>
+                                  <ul className="truefalse-solution-list">
+                                    {card.items.map((item) => (
+                                      <li
+                                        key={`solution-${item.id}`}
+                                        className="truefalse-solution-item"
+                                      >
+                                        <span>{item.question}</span>
+                                        <span className="truefalse-solution-answer">
+                                          {item.correct === "wahr" ? "True" : "False"}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
                               ) : null}
                             </article>
