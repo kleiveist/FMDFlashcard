@@ -68,12 +68,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setIsFlashcardScanning: flashcards.setIsFlashcardScanning,
     settings: {
       setSpacedRepetitionBoxes: settings.setSpacedRepetitionBoxes,
-      setSpacedRepetitionHelpCollapsed: settings.setSpacedRepetitionHelpCollapsed,
       setSpacedRepetitionOrder: settings.setSpacedRepetitionOrder,
       setSpacedRepetitionPageSize: settings.setSpacedRepetitionPageSize,
       setSpacedRepetitionStatsView: settings.setSpacedRepetitionStatsView,
       spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
-      spacedRepetitionHelpCollapsed: settings.spacedRepetitionHelpCollapsed,
       spacedRepetitionOrder: settings.spacedRepetitionOrder,
       spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
       spacedRepetitionStatsView: settings.spacedRepetitionStatsView,

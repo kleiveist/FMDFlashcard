@@ -31,7 +31,6 @@ struct AppSettings {
     spaced_repetition_order: Option<String>,
     spaced_repetition_page_size: Option<u32>,
     spaced_repetition_stats_view: Option<String>,
-    spaced_repetition_help_collapsed: Option<bool>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -87,7 +86,6 @@ impl AppSettings {
             && self.spaced_repetition_order.is_none()
             && self.spaced_repetition_page_size.is_none()
             && self.spaced_repetition_stats_view.is_none()
-            && self.spaced_repetition_help_collapsed.is_none()
     }
 }
 
@@ -194,7 +192,6 @@ fn save_app_settings(
     spaced_repetition_order: Option<String>,
     spaced_repetition_page_size: Option<u32>,
     spaced_repetition_stats_view: Option<String>,
-    spaced_repetition_help_collapsed: Option<bool>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
     let settings = AppSettings {
@@ -214,7 +211,6 @@ fn save_app_settings(
         spaced_repetition_order,
         spaced_repetition_page_size,
         spaced_repetition_stats_view,
-        spaced_repetition_help_collapsed,
     };
     write_settings(&path, &settings)
 }

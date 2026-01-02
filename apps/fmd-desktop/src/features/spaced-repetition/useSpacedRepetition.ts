@@ -57,12 +57,10 @@ type UseSpacedRepetitionOptions = {
   setIsFlashcardScanning: (value: boolean) => void;
   settings: {
     spacedRepetitionBoxes: SpacedRepetitionBoxes;
-    spacedRepetitionHelpCollapsed: boolean;
     spacedRepetitionOrder: SpacedRepetitionOrder;
     spacedRepetitionPageSize: SpacedRepetitionPageSize;
     spacedRepetitionStatsView: SpacedRepetitionStatsView;
     setSpacedRepetitionBoxes: (value: SpacedRepetitionBoxes) => void;
-    setSpacedRepetitionHelpCollapsed: (value: boolean) => void;
     setSpacedRepetitionOrder: (value: SpacedRepetitionOrder) => void;
     setSpacedRepetitionPageSize: (value: SpacedRepetitionPageSize) => void;
     setSpacedRepetitionStatsView: (value: SpacedRepetitionStatsView) => void;
@@ -77,12 +75,10 @@ export const useSpacedRepetition = ({
 }: UseSpacedRepetitionOptions) => {
   const {
     spacedRepetitionBoxes,
-    spacedRepetitionHelpCollapsed,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
     spacedRepetitionStatsView,
     setSpacedRepetitionBoxes,
-    setSpacedRepetitionHelpCollapsed,
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
     setSpacedRepetitionStatsView,
@@ -801,7 +797,6 @@ export const useSpacedRepetition = ({
     handleSpacedRepetitionTrueFalseSelect,
     setSpacedRepetitionActiveUserId,
     setSpacedRepetitionBoxes,
-    setSpacedRepetitionHelpCollapsed,
     setSpacedRepetitionNewUserName,
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
@@ -820,7 +815,6 @@ export const useSpacedRepetition = ({
     spacedRepetitionEmptyState,
     spacedRepetitionFlashcards,
     spacedRepetitionIncorrectCount,
-    spacedRepetitionHelpCollapsed,
     spacedRepetitionNewUserName,
     spacedRepetitionOrder,
     spacedRepetitionPage,

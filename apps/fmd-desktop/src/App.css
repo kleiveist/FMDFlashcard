@@ -200,6 +200,23 @@ body {
   color: var(--accent-strong);
 }
 
+.nav-item-help {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.nav-subtext {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.nav-item.active .nav-subtext {
+  color: var(--accent-strong);
+}
+
 .sidebar-footer {
   margin-top: auto;
   display: flex;
@@ -558,7 +575,7 @@ h2 {
 .spaced-repetition-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto auto auto auto;
+  grid-template-rows: auto auto auto;
   gap: 24px;
   align-items: start;
 }
@@ -586,11 +603,6 @@ h2 {
 .spaced-repetition-layout .sr-stats-panel {
   grid-column: 1 / span 2;
   grid-row: 3;
-}
-
-.spaced-repetition-layout .sr-help-panel {
-  grid-column: 1 / span 2;
-  grid-row: 4;
 }
 
 .flashcard-sidebar {
@@ -1268,7 +1280,7 @@ h2 {
   border: 1px solid var(--line-soft);
 }
 
-.sr-help-panel .panel-body {
+.help-panel .panel-body {
   min-height: auto;
 }
 
@@ -1287,6 +1299,42 @@ h2 {
 .help-item:first-child {
   border-top: none;
   padding-top: 0;
+}
+
+.help-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.help-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.help-list li {
+  line-height: 1.5;
+}
+
+.help-examples {
+  display: grid;
+  gap: 10px;
+}
+
+.help-code {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel-warm);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
 }
 
 .sr-vault-row {
@@ -1862,7 +1910,7 @@ h2 {
 
   .spaced-repetition-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
   }
 
   .spaced-repetition-layout .sr-diagram-panel {
@@ -1888,11 +1936,6 @@ h2 {
   .spaced-repetition-layout .sr-stats-panel {
     grid-column: 1;
     grid-row: 5;
-  }
-
-  .spaced-repetition-layout .sr-help-panel {
-    grid-column: 1;
-    grid-row: 6;
   }
 
   .sr-stats-top {

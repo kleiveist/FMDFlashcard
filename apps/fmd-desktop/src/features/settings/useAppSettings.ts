@@ -40,7 +40,6 @@ type AppSettings = {
   spaced_repetition_order?: string | null;
   spaced_repetition_page_size?: number | null;
   spaced_repetition_stats_view?: string | null;
-  spaced_repetition_help_collapsed?: boolean | null;
 };
 
 type PersistUpdates = {
@@ -60,7 +59,6 @@ type PersistUpdates = {
   spacedRepetitionOrder?: SpacedRepetitionOrder;
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
   spacedRepetitionStatsView?: SpacedRepetitionStatsView;
-  spacedRepetitionHelpCollapsed?: boolean;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -73,7 +71,6 @@ const DEFAULT_STATS_RESET_MODE: StatsResetMode = "scan";
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
-const DEFAULT_SPACED_REPETITION_HELP_COLLAPSED = true;
 
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
@@ -106,8 +103,6 @@ export const useAppSettings = () => {
     useState<SpacedRepetitionPageSize>(DEFAULT_SPACED_REPETITION_PAGE_SIZE);
   const [spacedRepetitionStatsView, setSpacedRepetitionStatsView] =
     useState<SpacedRepetitionStatsView>(DEFAULT_SPACED_REPETITION_STATS_VIEW);
-  const [spacedRepetitionHelpCollapsed, setSpacedRepetitionHelpCollapsed] =
-    useState(DEFAULT_SPACED_REPETITION_HELP_COLLAPSED);
   const autoSaveReady = useRef(false);
   const autoSaveTimer = useRef<number | null>(null);
 
@@ -129,7 +124,6 @@ export const useAppSettings = () => {
       spacedRepetitionOrder: SpacedRepetitionOrder;
       spacedRepetitionPageSize: SpacedRepetitionPageSize;
       spacedRepetitionStatsView: SpacedRepetitionStatsView;
-      spacedRepetitionHelpCollapsed: boolean;
     }) => {
       try {
         await invoke("save_app_settings", {
@@ -149,7 +143,6 @@ export const useAppSettings = () => {
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
-          spacedRepetitionHelpCollapsed: settings.spacedRepetitionHelpCollapsed,
         });
         return true;
       } catch (error) {
@@ -187,9 +180,6 @@ export const useAppSettings = () => {
           updates.spacedRepetitionPageSize ?? spacedRepetitionPageSize,
         spacedRepetitionStatsView:
           updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
-        spacedRepetitionHelpCollapsed:
-          updates.spacedRepetitionHelpCollapsed ??
-          spacedRepetitionHelpCollapsed,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "vaultPath" in updates) {
@@ -210,7 +200,6 @@ export const useAppSettings = () => {
       settingsLoaded,
       solutionRevealEnabled,
       spacedRepetitionBoxes,
-      spacedRepetitionHelpCollapsed,
       spacedRepetitionOrder,
       spacedRepetitionPageSize,
       spacedRepetitionStatsView,
@@ -304,11 +293,6 @@ export const useAppSettings = () => {
           settings.spaced_repetition_stats_view === "completed"
             ? settings.spaced_repetition_stats_view
             : DEFAULT_SPACED_REPETITION_STATS_VIEW;
-        const storedSpacedRepetitionHelpCollapsed =
-          typeof settings.spaced_repetition_help_collapsed === "boolean"
-            ? settings.spaced_repetition_help_collapsed
-            : DEFAULT_SPACED_REPETITION_HELP_COLLAPSED;
-
         setTheme(storedTheme);
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
@@ -327,7 +311,6 @@ export const useAppSettings = () => {
         setSpacedRepetitionOrder(storedSpacedRepetitionOrder);
         setSpacedRepetitionPageSize(storedSpacedRepetitionPageSize);
         setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
-        setSpacedRepetitionHelpCollapsed(storedSpacedRepetitionHelpCollapsed);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -381,7 +364,6 @@ export const useAppSettings = () => {
         spacedRepetitionOrder,
         spacedRepetitionPageSize,
         spacedRepetitionStatsView,
-        spacedRepetitionHelpCollapsed,
       });
     }, 300);
 
@@ -403,7 +385,6 @@ export const useAppSettings = () => {
     settingsLoaded,
     solutionRevealEnabled,
     spacedRepetitionBoxes,
-    spacedRepetitionHelpCollapsed,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
     spacedRepetitionStatsView,
@@ -436,7 +417,6 @@ export const useAppSettings = () => {
     setScanParallelism,
     setSolutionRevealEnabled,
     setSpacedRepetitionBoxes,
-    setSpacedRepetitionHelpCollapsed,
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
     setSpacedRepetitionStatsView,
@@ -445,7 +425,6 @@ export const useAppSettings = () => {
     settingsLoaded,
     solutionRevealEnabled,
     spacedRepetitionBoxes,
-    spacedRepetitionHelpCollapsed,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
     spacedRepetitionStatsView,

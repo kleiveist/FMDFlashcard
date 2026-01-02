@@ -2,7 +2,12 @@ import { useMemo } from "react";
 import { useAppState } from "./AppStateProvider";
 import { vaultBaseName } from "../lib/path";
 
-type TabKey = "dashboard" | "flashcard" | "spaced-repetition" | "settings";
+type TabKey =
+  | "dashboard"
+  | "flashcard"
+  | "spaced-repetition"
+  | "help"
+  | "settings";
 
 type SidebarNavProps = {
   activeTab: TabKey;
@@ -48,6 +53,14 @@ export const SidebarNav = ({ activeTab, onTabChange }: SidebarNavProps) => {
           onClick={() => onTabChange("spaced-repetition")}
         >
           Spaced Repetition
+        </button>
+        <button
+          type="button"
+          className={`nav-item nav-item-help ${activeTab === "help" ? "active" : ""}`}
+          onClick={() => onTabChange("help")}
+        >
+          <span>Help</span>
+          <span className="nav-subtext">Quick reminders for this workflow.</span>
         </button>
       </nav>
       <div className="sidebar-footer">

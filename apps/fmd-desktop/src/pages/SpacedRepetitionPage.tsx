@@ -16,7 +16,6 @@ import {
 export const SpacedRepetitionPage = () => {
   const { flashcards, spacedRepetition, vault } = useAppState();
   const statsView = spacedRepetition.spacedRepetitionStatsView;
-  const helpCollapsed = spacedRepetition.spacedRepetitionHelpCollapsed;
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
@@ -496,48 +495,6 @@ export const SpacedRepetitionPage = () => {
         <div className="panel-body">
           <KpiGrid items={kpiItems} />
         </div>
-      </section>
-
-      <section className="panel sr-help-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Help</h2>
-            <p className="muted">Quick reminders for this workflow.</p>
-          </div>
-          <button
-            type="button"
-            className="ghost small"
-            onClick={() => spacedRepetition.setSpacedRepetitionHelpCollapsed(!helpCollapsed)}
-            aria-expanded={!helpCollapsed}
-          >
-            {helpCollapsed ? "Show" : "Hide"}
-          </button>
-        </div>
-        {helpCollapsed ? null : (
-          <div className="panel-body help-body">
-            <div className="help-item">
-              <span className="label">Persistence</span>
-              <p className="muted">
-                All settings and tool options are saved automatically and restored
-                after restart.
-              </p>
-            </div>
-            <div className="help-item">
-              <span className="label">Edit / Save / Cancel</span>
-              <p className="muted">
-                Edit opens edit mode, Save persists changes, Cancel discards edits
-                and returns to preview.
-              </p>
-            </div>
-            <div className="help-item">
-              <span className="label">Settings</span>
-              <p className="muted">
-                Default behavior (scan scope, order, boxes, etc.) can be adjusted
-                in Settings.
-              </p>
-            </div>
-          </div>
-        )}
       </section>
     </div>
   );

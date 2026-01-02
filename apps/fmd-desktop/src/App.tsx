@@ -4,10 +4,16 @@ import { AppStateProvider } from "./components/AppStateProvider";
 import { SidebarNav } from "./components/SidebarNav";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
+import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 
-type TabKey = "dashboard" | "flashcard" | "spaced-repetition" | "settings";
+type TabKey =
+  | "dashboard"
+  | "flashcard"
+  | "spaced-repetition"
+  | "help"
+  | "settings";
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
@@ -23,6 +29,8 @@ function App() {
             <FlashcardPage />
           ) : activeTab === "spaced-repetition" ? (
             <SpacedRepetitionPage />
+          ) : activeTab === "help" ? (
+            <HelpPage />
           ) : (
             <SettingsPage />
           )}
