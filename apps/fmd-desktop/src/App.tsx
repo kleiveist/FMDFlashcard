@@ -1975,108 +1975,144 @@ function App() {
                 </button>
               </div>
             </header>
-
-            <section className="panel vault-index-panel">
-              <div>
-                <h2>Vault &amp; Index</h2>
-                <p className="muted">
-                  Vault path, last opened note, and index status.
-                </p>
-              </div>
-              <div className="setting-row">
-                <span className="label">Current vault path</span>
-                <div className="setting-inline">
-                  <span className="value path-value">{vaultPath ?? "—"}</span>
-                  <button
-                    type="button"
-                    className="ghost small"
-                    onClick={handleCopyVaultPath}
-                    disabled={!vaultPath}
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-              <div className="setting-row">
-                <span className="label">Last opened</span>
-                <span className="value path-value">
-                  {lastOpenedFile ?? "Not loaded yet"}
-                </span>
-              </div>
-              <div className="setting-row">
-                <span className="label">Status indicators</span>
-                <div className="status-list">
-                  <div className="status-item">
-                    <label className="status-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={vaultIndexedComplete}
-                        disabled
-                        aria-label="Fully processed"
-                      />
-                      <span>Fully processed</span>
-                    </label>
-                    <span className="helper-text">
-                      All notes have been scanned and indexed.
-                    </span>
-                  </div>
-                  <div className="status-item">
-                    <div className="status-row">
-                      <span>Watcher active</span>
-                      <div className="toggle-row">
-                        <span className="toggle-label">Coming later</span>
-                        <label className="switch">
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            disabled
-                            aria-label="Watcher active (coming later)"
-                          />
-                          <span className="slider" />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="status-item">
-                    <div className="status-row">
-                      <span>Auto-scan</span>
-                      <div className="toggle-row">
-                        <span className="toggle-label">Coming later</span>
-                        <label className="switch">
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            disabled
-                            aria-label="Auto-scan (coming later)"
-                          />
-                          <span className="slider" />
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="setting-row">
-                <span className="label">Actions</span>
-                <div className="setting-actions">
-                  <button
-                    type="button"
-                    className="ghost small"
-                    onClick={handleRescanVault}
-                    disabled={!vaultPath || listState === "loading"}
-                  >
-                    Rescan vault
-                  </button>
-                  <button type="button" className="ghost small" disabled>
-                    Reset index
-                  </button>
-                </div>
-                <span className="helper-text">Reset index is coming later.</span>
-              </div>
-            </section>
-
             <div className="settings-grid">
-              <section className="panel">
+              <section className="panel vault-index-panel">
+                <div>
+                  <h2>Vault &amp; Index</h2>
+                  <p className="muted">
+                    Vault path, last opened note, and index status.
+                  </p>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Current vault path</span>
+                  <div className="setting-inline">
+                    <span className="value path-value">{vaultPath ?? "—"}</span>
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleCopyVaultPath}
+                      disabled={!vaultPath}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Last opened</span>
+                  <span className="value path-value">
+                    {lastOpenedFile ?? "Not loaded yet"}
+                  </span>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Status indicators</span>
+                  <div className="status-list">
+                    <div className="status-item">
+                      <label className="status-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={vaultIndexedComplete}
+                          disabled
+                          aria-label="Fully processed"
+                        />
+                        <span>Fully processed</span>
+                      </label>
+                      <span className="helper-text">
+                        All notes have been scanned and indexed.
+                      </span>
+                    </div>
+                    <div className="status-item">
+                      <div className="status-row">
+                        <span>Watcher active</span>
+                        <div className="toggle-row">
+                          <span className="toggle-label">Coming later</span>
+                          <label className="switch">
+                            <input
+                              type="checkbox"
+                              checked={false}
+                              disabled
+                              aria-label="Watcher active (coming later)"
+                            />
+                            <span className="slider" />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="status-item">
+                      <div className="status-row">
+                        <span>Auto-scan</span>
+                        <div className="toggle-row">
+                          <span className="toggle-label">Coming later</span>
+                          <label className="switch">
+                            <input
+                              type="checkbox"
+                              checked={false}
+                              disabled
+                              aria-label="Auto-scan (coming later)"
+                            />
+                            <span className="slider" />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Actions</span>
+                  <div className="setting-actions">
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleRescanVault}
+                      disabled={!vaultPath || listState === "loading"}
+                    >
+                      Rescan vault
+                    </button>
+                    <button type="button" className="ghost small" disabled>
+                      Reset index
+                    </button>
+                  </div>
+                  <span className="helper-text">Reset index is coming later.</span>
+                </div>
+              </section>
+              <section className="panel data-sync-panel">
+                <h2>Data &amp; Sync</h2>
+                <p className="muted">
+                  Storage and sync options will land here later.
+                </p>
+                <div className="setting-row">
+                  <span className="label">Local storage path</span>
+                  <input
+                    type="text"
+                    className="text-input"
+                    value="—"
+                    disabled
+                    aria-label="Local storage path"
+                  />
+                </div>
+                <div className="setting-row">
+                  <span className="label">Export / Import (JSON)</span>
+                  <div className="setting-actions">
+                    <button type="button" className="ghost small" disabled>
+                      Export JSON
+                    </button>
+                    <button type="button" className="ghost small" disabled>
+                      Import JSON
+                    </button>
+                  </div>
+                  <span className="helper-text">Coming later.</span>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Sync provider</span>
+                  <input
+                    type="text"
+                    className="text-input"
+                    value="Coming later"
+                    disabled
+                    aria-label="Sync provider"
+                  />
+                </div>
+              </section>
+              <section className="panel settings-flashcards-panel">
                 <h2>Flashcards</h2>
                 <p className="muted">
                   Default behavior for scans and review sessions.
@@ -2194,7 +2230,48 @@ function App() {
                   </div>
                 </div>
               </section>
-              <section className="panel">
+              <section className="panel spaced-repetition-panel">
+                <h2>Spaced Repetition</h2>
+                <p className="muted">Configure spaced repetition behavior.</p>
+                <div className="setting-row">
+                  <span className="label">Enabled</span>
+                  <div className="toggle-row">
+                    <span className="toggle-label">
+                      {spacedRepetitionEnabled ? "On" : "Off"}
+                    </span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={spacedRepetitionEnabled}
+                        onChange={handleSpacedRepetitionToggle}
+                        aria-label="Spaced repetition enabled"
+                      />
+                      <span className="slider" />
+                    </label>
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Persistence</span>
+                  <input
+                    type="text"
+                    className="text-input"
+                    value="Coming later"
+                    disabled
+                    aria-label="Spaced repetition persistence (coming later)"
+                  />
+                </div>
+                <div className="setting-row">
+                  <span className="label">Sync integration</span>
+                  <input
+                    type="text"
+                    className="text-input"
+                    value="Coming later"
+                    disabled
+                    aria-label="Spaced repetition sync integration (coming later)"
+                  />
+                </div>
+              </section>
+              <section className="panel performance-panel">
                 <h2>Performance</h2>
                 <p className="muted">
                   Tune vault scans for larger libraries.
@@ -2241,44 +2318,6 @@ function App() {
                     value="Coming later"
                     disabled
                     aria-label="Watcher debounce or throttle (coming later)"
-                  />
-                </div>
-              </section>
-              <section className="panel">
-                <h2>Data &amp; Sync</h2>
-                <p className="muted">
-                  Storage and sync options will land here later.
-                </p>
-                <div className="setting-row">
-                  <span className="label">Local storage path</span>
-                  <input
-                    type="text"
-                    className="text-input"
-                    value="—"
-                    disabled
-                    aria-label="Local storage path"
-                  />
-                </div>
-                <div className="setting-row">
-                  <span className="label">Export / Import (JSON)</span>
-                  <div className="setting-actions">
-                    <button type="button" className="ghost small" disabled>
-                      Export JSON
-                    </button>
-                    <button type="button" className="ghost small" disabled>
-                      Import JSON
-                    </button>
-                  </div>
-                  <span className="helper-text">Coming later.</span>
-                </div>
-                <div className="setting-row">
-                  <span className="label">Sync provider</span>
-                  <input
-                    type="text"
-                    className="text-input"
-                    value="Coming later"
-                    disabled
-                    aria-label="Sync provider"
                   />
                 </div>
               </section>
