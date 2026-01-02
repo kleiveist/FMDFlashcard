@@ -12,11 +12,11 @@ Markdown notes need a defined flashcard block format. A new UI entry point shoul
 
 1. Define and implement **Syntax v1** for multiple-choice flashcards.
 2. Add a **"Flashcard" button** in the right toolbar (below Dashboard).
-3. On click: validate/parse Markdown, extract flashcards, and render them in the right action panel — **without showing results/answers**.
+3. On click: validate/parse Markdown, extract flashcards, and render them in the right action panel -- **without showing results/answers**.
 
 ---
 
-### Flashcard Syntax (v1) – Multiple-Choice
+### Flashcard Syntax (v1) - Multiple-Choice
 
 **Start:** `#card` (own line)  
 **Question:** next line (free text, e.g. "1.5 ...")  

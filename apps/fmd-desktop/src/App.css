@@ -312,6 +312,12 @@ button {
   color: var(--accent-contrast-strong);
 }
 
+.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .ghost {
   background: transparent;
   border: 1px dashed var(--line);
@@ -514,8 +520,20 @@ h2 {
 
 .workspace {
   display: grid;
-  grid-template-columns: 1fr 1.4fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
   gap: 24px;
+}
+
+.flashcard-layout {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.right-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(100%, 360px);
 }
 
 .panel {
@@ -528,6 +546,113 @@ h2 {
   flex-direction: column;
   gap: 16px;
   animation: riseIn 0.6s ease both;
+}
+
+.toolbar-panel .panel-body {
+  min-height: auto;
+}
+
+.toolbar-panel .primary {
+  width: 100%;
+}
+
+.flashcard-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.toolbar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pill-button {
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.pill-button:hover {
+  border-color: var(--accent-border);
+}
+
+.pill-button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: var(--shadow-soft);
+}
+
+.pill-button:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
+.pill-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.flashcard-panel .panel-body {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.flashcard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.flashcard-item {
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--panel-warm);
+  border: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flashcard-question {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.flashcard-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flashcard-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.flashcard-key {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: lowercase;
+  flex-shrink: 0;
+}
+
+.flashcard-text {
+  color: var(--ink);
 }
 
 .workspace .panel:nth-child(1) {
@@ -905,6 +1030,16 @@ h2 {
   color: var(--accent-strong);
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+@media (max-width: 1200px) {
+  .flashcard-layout {
+    justify-content: stretch;
+  }
+
+  .right-rail {
+    width: 100%;
+  }
 }
 
 @media (max-width: 980px) {
