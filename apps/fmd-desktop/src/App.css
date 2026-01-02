@@ -703,6 +703,92 @@ h2 {
   flex-wrap: wrap;
 }
 
+.cloze-text {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+
+.cloze-blank {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 120px;
+  padding: 6px 8px;
+  margin: 0 4px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  background: var(--panel);
+}
+
+.cloze-blank.filled {
+  border-style: solid;
+  background: var(--panel-warm);
+}
+
+.cloze-blank.correct {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.cloze-blank.incorrect {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+}
+
+.cloze-input {
+  border: 1px solid var(--line-soft);
+  background: var(--panel-warm);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 4px 6px;
+  font-size: 0.85rem;
+}
+
+.cloze-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.cloze-blank.correct .cloze-input {
+  border-color: var(--accent-border);
+}
+
+.cloze-blank.incorrect .cloze-input {
+  border-color: var(--error-border);
+}
+
+.blank-solution {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.cloze-solution {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--ink);
+}
+
+.cloze-solution-token {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  margin: 0 2px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.token-solution {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
 .flashcard-submit {
   border-style: solid;
 }

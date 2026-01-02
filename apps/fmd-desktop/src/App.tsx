@@ -11,7 +11,11 @@ import { open } from "@tauri-apps/plugin-dialog";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import "./App.css";
-import { parseFlashcards, type Flashcard } from "./lib/flashcards";
+import {
+  isClozeAnswerMatch,
+  parseFlashcards,
+  type Flashcard,
+} from "./lib/flashcards";
 
 type VaultFile = {
   path: string;
@@ -263,6 +267,9 @@ const applyAccentColor = (value: string) => {
   root.style.setProperty("--accent-contrast-strong", tokens.accentContrastStrong);
 };
 
+const buildEmptyClozeInputs = (count: number) =>
+  Array.from({ length: count }, () => "");
+
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [vaultPath, setVaultPath] = useState<string | null>(null);
@@ -295,6 +302,9 @@ function App() {
   >({});
   const [flashcardSubmissions, setFlashcardSubmissions] = useState<
     Record<number, boolean>
+  >({});
+  const [flashcardClozeInputs, setFlashcardClozeInputs] = useState<
+    Record<number, string[]>
   >({});
   const [listError, setListError] = useState("");
   const [previewError, setPreviewError] = useState("");
@@ -355,11 +365,31 @@ function App() {
       if (!flashcardSubmissions[index]) {
         return;
       }
-      if (card.correctKeys.length === 0) {
+      if (card.kind === "multiple-choice") {
+        if (card.correctKeys.length === 0) {
+          return;
+        }
+        const selected = flashcardSelections[index];
+        if (selected && card.correctKeys.includes(selected)) {
+          correct += 1;
+        } else {
+          incorrect += 1;
+        }
         return;
       }
-      const selected = flashcardSelections[index];
-      if (selected && card.correctKeys.includes(selected)) {
+
+      if (card.answers.length === 0) {
+        return;
+      }
+      const inputs = flashcardClozeInputs[index];
+      if (!inputs || inputs.length !== card.answers.length) {
+        incorrect += 1;
+        return;
+      }
+      const isCorrect = card.answers.every((answer, position) =>
+        isClozeAnswerMatch(inputs[position] ?? "", answer),
+      );
+      if (isCorrect) {
         correct += 1;
       } else {
         incorrect += 1;
@@ -370,7 +400,7 @@ function App() {
     const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
 
     return { correctCount: correct, incorrectCount: incorrect, correctPercent: percent };
-  }, [flashcards, flashcardSelections, flashcardSubmissions]);
+  }, [flashcards, flashcardClozeInputs, flashcardSelections, flashcardSubmissions]);
 
   const statsChartStyle = useMemo(
     () =>
@@ -440,6 +470,7 @@ function App() {
       setFlashcards([]);
       setFlashcardSelections({});
       setFlashcardSubmissions({});
+      setFlashcardClozeInputs({});
       setFlashcardPage(0);
       setIsFlashcardScanning(false);
       setFiles([]);
@@ -559,6 +590,7 @@ function App() {
       flashcards,
       flashcardSelections,
       flashcardSubmissions,
+      flashcardClozeInputs,
       flashcardPage,
       listState,
       previewState,
@@ -580,6 +612,7 @@ function App() {
       setFlashcards(previousState.flashcards);
       setFlashcardSelections(previousState.flashcardSelections);
       setFlashcardSubmissions(previousState.flashcardSubmissions);
+      setFlashcardClozeInputs(previousState.flashcardClozeInputs);
       setFlashcardPage(previousState.flashcardPage);
       setListState(previousState.listState);
       setPreviewState(previousState.previewState);
@@ -594,6 +627,7 @@ function App() {
     setFlashcards([]);
     setFlashcardSelections({});
     setFlashcardSubmissions({});
+    setFlashcardClozeInputs({});
     setFlashcardPage(0);
     setIsFlashcardScanning(false);
     setPreviewError("");
@@ -616,6 +650,7 @@ function App() {
     setFlashcards([]);
     setFlashcardSelections({});
     setFlashcardSubmissions({});
+    setFlashcardClozeInputs({});
     setFlashcardPage(0);
 
     try {
@@ -679,8 +714,8 @@ function App() {
   );
 
   const handleFlashcardSubmit = useCallback(
-    (cardIndex: number) => {
-      if (!flashcardSelections[cardIndex]) {
+    (cardIndex: number, canSubmit: boolean) => {
+      if (!canSubmit) {
         return;
       }
       if (flashcardSubmissions[cardIndex]) {
@@ -688,7 +723,7 @@ function App() {
       }
       setFlashcardSubmissions((prev) => ({ ...prev, [cardIndex]: true }));
     },
-    [flashcardSelections, flashcardSubmissions],
+    [flashcardSubmissions],
   );
 
   const handleFlashcardPageBack = useCallback(() => {
@@ -778,6 +813,23 @@ function App() {
     if (nextValue === "" || /^[0-9]+$/.test(nextValue)) {
       setMaxFilesPerScan(nextValue);
     }
+  };
+
+  const handleClozeInputChange = (
+    cardIndex: number,
+    blankIndex: number,
+    blankCount: number,
+    value: string,
+  ) => {
+    setFlashcardClozeInputs((prev) => {
+      const stored = prev[cardIndex];
+      const current =
+        stored && stored.length === blankCount
+          ? [...stored]
+          : buildEmptyClozeInputs(blankCount);
+      current[blankIndex] = value;
+      return { ...prev, [cardIndex]: current };
+    });
   };
 
   const renderTreeNodes = (nodes: TreeNode[]) =>
@@ -1044,8 +1096,145 @@ function App() {
                     <div className="flashcard-list">
                       {visibleFlashcards.map((card, localIndex) => {
                         const cardIndex = flashcardPageStart + localIndex;
-                        const selectedKey = flashcardSelections[cardIndex] ?? "";
                         const submitted = !!flashcardSubmissions[cardIndex];
+                        if (card.kind === "cloze") {
+                          const blankCount = card.answers.length;
+                          const storedInputs = flashcardClozeInputs[cardIndex];
+                          const inputs =
+                            storedInputs && storedInputs.length === blankCount
+                              ? storedInputs
+                              : buildEmptyClozeInputs(blankCount);
+                          const filledCount = inputs.filter(
+                            (value) => value.trim().length > 0,
+                          ).length;
+                          const canSubmit = blankCount > 0 && filledCount === blankCount;
+                          const isCorrect =
+                            blankCount > 0 &&
+                            inputs.every((value, position) =>
+                              isClozeAnswerMatch(
+                                value,
+                                card.answers[position] ?? "",
+                              ),
+                            );
+                          const resultLabel = submitted
+                            ? isCorrect
+                              ? "Correct"
+                              : "Incorrect"
+                            : "";
+                          let blankIndex = 0;
+
+                          return (
+                            <article
+                              className="flashcard-item cloze-card"
+                              key={`flashcard-${cardIndex}`}
+                            >
+                              <h3 className="flashcard-question">{card.question}</h3>
+                              <div className="cloze-text">
+                                {card.segments.map((segment, segmentIndex) => {
+                                  if (segment.type === "text") {
+                                    return (
+                                      <span key={`cloze-text-${cardIndex}-${segmentIndex}`}>
+                                        {segment.value}
+                                      </span>
+                                    );
+                                  }
+
+                                  const currentBlank = blankIndex;
+                                  blankIndex += 1;
+                                  const value = inputs[currentBlank] ?? "";
+                                  const isBlankCorrect = submitted
+                                    ? isClozeAnswerMatch(value, segment.answer)
+                                    : false;
+                                  const blankClasses = [
+                                    "cloze-blank",
+                                    value.trim() ? "filled" : "",
+                                    submitted ? (isBlankCorrect ? "correct" : "incorrect") : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ");
+
+                                  return (
+                                    <span
+                                      key={`cloze-blank-${cardIndex}-${segmentIndex}`}
+                                      className={blankClasses}
+                                    >
+                                      <input
+                                        type="text"
+                                        className="cloze-input"
+                                        value={value}
+                                        onChange={(event) =>
+                                          handleClozeInputChange(
+                                            cardIndex,
+                                            currentBlank,
+                                            blankCount,
+                                            event.target.value,
+                                          )
+                                        }
+                                        disabled={submitted}
+                                        placeholder="____"
+                                        aria-label={`Blank ${currentBlank + 1}`}
+                                      />
+                                      {submitted ? (
+                                        <span className="blank-solution">
+                                          {segment.answer}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                              <div className="flashcard-actions">
+                                <button
+                                  type="button"
+                                  className="ghost small flashcard-submit"
+                                  onClick={() =>
+                                    handleFlashcardSubmit(cardIndex, canSubmit)
+                                  }
+                                  disabled={submitted || !canSubmit}
+                                >
+                                  Submit
+                                </button>
+                                {submitted ? (
+                                  <span
+                                    className={`flashcard-result ${
+                                      isCorrect ? "correct" : "incorrect"
+                                    }`}
+                                  >
+                                    {resultLabel}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {submitted ? (
+                                <div className="token-solution">
+                                  <span className="label">Solution</span>
+                                  <div className="cloze-solution">
+                                    {card.segments.map((segment, segmentIndex) => {
+                                      if (segment.type === "text") {
+                                        return (
+                                          <span
+                                            key={`solution-text-${cardIndex}-${segmentIndex}`}
+                                          >
+                                            {segment.value}
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <span
+                                          key={`solution-blank-${cardIndex}-${segmentIndex}`}
+                                          className="cloze-solution-token"
+                                        >
+                                          {segment.answer}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </article>
+                          );
+                        }
+
+                        const selectedKey = flashcardSelections[cardIndex] ?? "";
                         const hasSolutions = card.correctKeys.length > 0;
                         const selectionIsCorrect =
                           hasSolutions && selectedKey
@@ -1114,7 +1303,9 @@ function App() {
                               <button
                                 type="button"
                                 className="ghost small flashcard-submit"
-                                onClick={() => handleFlashcardSubmit(cardIndex)}
+                                onClick={() =>
+                                  handleFlashcardSubmit(cardIndex, Boolean(selectedKey))
+                                }
                                 disabled={!selectedKey || submitted}
                               >
                                 Submit
@@ -1177,31 +1368,6 @@ function App() {
                     {isFlashcardScanning ? "Scanning..." : "Flashcard"}
                   </button>
                   <div className="flashcard-controls">
-                      <div className="toolbar-section">
-                        <span className="label">SCOPE</span>
-                        <div className="pill-grid">
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardScope === "current" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardScope === "current"}
-                            onClick={() => setFlashcardScope("current")}
-                          >
-                            Current note
-                          </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardScope === "vault" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardScope === "vault"}
-                            onClick={() => setFlashcardScope("vault")}
-                          >
-                            Whole vault
-                          </button>
-                        </div>
-                      </div>
                       <div className="toolbar-section">
                         <span className="label">SPACED REPETITION</span>
                         <div className="toggle-row">
