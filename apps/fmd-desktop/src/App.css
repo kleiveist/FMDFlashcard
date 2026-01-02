@@ -1448,6 +1448,12 @@ h2 {
   border-top: 1px solid var(--line);
 }
 
+.spaced-repetition-layout .setting-row,
+.settings-grid .spaced-repetition-panel .setting-row {
+  border-top: none;
+  padding-top: 0;
+}
+
 .setting-inline {
   display: flex;
   align-items: center;

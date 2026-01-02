@@ -35,9 +35,32 @@ type FlashcardOrder = "in-order" | "random";
 type FlashcardMode = "multiple-choice" | "yes-no";
 type FlashcardScope = "current" | "vault";
 type FlashcardPageSize = 1 | 2 | 5 | 10;
+type SpacedRepetitionPageSize = FlashcardPageSize;
 type SpacedRepetitionBoxes = 3 | 5 | 8;
 type SpacedRepetitionOrder = "in-order" | "random" | "repetition";
 type TrueFalseSelection = "wahr" | "falsch";
+type FlashcardResult = "correct" | "incorrect" | "neutral";
+
+type FlashcardStats = {
+  correctCount: number;
+  incorrectCount: number;
+  correctPercent: number;
+};
+
+type SpacedRepetitionCardProgress = {
+  box: number;
+  attempts: number;
+};
+
+type SpacedRepetitionSession = {
+  flashcards: Flashcard[];
+  selections: Record<number, string>;
+  submissions: Record<number, boolean>;
+  trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>;
+  clozeResponses: Record<number, Record<string, string>>;
+  page: number;
+  cardProgress: Record<number, SpacedRepetitionCardProgress>;
+};
 
 type ClozeDragPayload = {
   cardIndex: number;
@@ -75,6 +98,8 @@ const ACCENT_PALETTE = [
 const CLOZE_TOKEN_DRAG_TYPE = "application/x-cloze-token";
 const FLASHCARD_PAGE_SIZES: FlashcardPageSize[] = [1, 2, 5, 10];
 const DEFAULT_FLASHCARD_PAGE_SIZE: FlashcardPageSize = 2;
+const SPACED_REPETITION_PAGE_SIZES: SpacedRepetitionPageSize[] = [1, 2, 5, 10];
+const DEFAULT_SPACED_REPETITION_PAGE_SIZE: SpacedRepetitionPageSize = 2;
 const SPACED_REPETITION_BOXES: SpacedRepetitionBoxes[] = [3, 5, 8];
 const SPACED_REPETITION_CHART_LABELS = [
   "Mon",
@@ -298,6 +323,11 @@ const normalizeFlashcardPageSize = (value: number) =>
     ? (value as FlashcardPageSize)
     : DEFAULT_FLASHCARD_PAGE_SIZE;
 
+const normalizeSpacedRepetitionPageSize = (value: number) =>
+  SPACED_REPETITION_PAGE_SIZES.includes(value as SpacedRepetitionPageSize)
+    ? (value as SpacedRepetitionPageSize)
+    : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
+
 const buildLineChartPoints = (values: number[]) => {
   if (values.length === 0) {
     return "";
@@ -517,6 +547,8 @@ function App() {
     useState<FlashcardScope>("current");
   const [flashcardPageSize, setFlashcardPageSize] =
     useState<FlashcardPageSize>(DEFAULT_FLASHCARD_PAGE_SIZE);
+  const [spacedRepetitionPageSize, setSpacedRepetitionPageSize] =
+    useState<SpacedRepetitionPageSize>(DEFAULT_SPACED_REPETITION_PAGE_SIZE);
   const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
     useState<SpacedRepetitionBoxes>(5);
   const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
@@ -596,6 +628,11 @@ function App() {
     [flashcardPageSize],
   );
 
+  const resolvedSpacedRepetitionPageSize = useMemo(
+    () => normalizeSpacedRepetitionPageSize(spacedRepetitionPageSize),
+    [spacedRepetitionPageSize],
+  );
+
   const flashcardPageCount = useMemo(
     () => Math.ceil(flashcards.length / resolvedFlashcardPageSize),
     [flashcards.length, resolvedFlashcardPageSize],
@@ -620,8 +657,10 @@ function App() {
 
   const spacedRepetitionPageCount = useMemo(
     () =>
-      Math.ceil(spacedRepetitionFlashcards.length / resolvedFlashcardPageSize),
-    [resolvedFlashcardPageSize, spacedRepetitionFlashcards.length],
+      Math.ceil(
+        spacedRepetitionFlashcards.length / resolvedSpacedRepetitionPageSize,
+      ),
+    [resolvedSpacedRepetitionPageSize, spacedRepetitionFlashcards.length],
   );
 
   const spacedRepetitionPageIndex = useMemo(
@@ -630,15 +669,15 @@ function App() {
   );
 
   const spacedRepetitionPageStart =
-    spacedRepetitionPageIndex * resolvedFlashcardPageSize;
+    spacedRepetitionPageIndex * resolvedSpacedRepetitionPageSize;
 
   const spacedRepetitionVisibleFlashcards = useMemo(() => {
     return spacedRepetitionFlashcards.slice(
       spacedRepetitionPageStart,
-      spacedRepetitionPageStart + resolvedFlashcardPageSize,
+      spacedRepetitionPageStart + resolvedSpacedRepetitionPageSize,
     );
   }, [
-    resolvedFlashcardPageSize,
+    resolvedSpacedRepetitionPageSize,
     spacedRepetitionFlashcards,
     spacedRepetitionPageStart,
   ]);
@@ -926,6 +965,13 @@ function App() {
       setFlashcardPageSize(normalized);
     }
   }, [flashcardPageSize]);
+
+  useEffect(() => {
+    const normalized = normalizeSpacedRepetitionPageSize(spacedRepetitionPageSize);
+    if (normalized !== spacedRepetitionPageSize) {
+      setSpacedRepetitionPageSize(normalized);
+    }
+  }, [spacedRepetitionPageSize]);
 
   useEffect(() => {
     const maxPage = Math.max(0, flashcardPageCount - 1);
@@ -3252,6 +3298,24 @@ function App() {
                       is available.
                     </span>
                   </div>
+                  <div className="setting-row">
+                    <span className="label">Page size</span>
+                    <div className="pill-grid">
+                      {SPACED_REPETITION_PAGE_SIZES.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          className={`pill pill-button ${
+                            spacedRepetitionPageSize === size ? "active" : ""
+                          }`}
+                          aria-pressed={spacedRepetitionPageSize === size}
+                          onClick={() => setSpacedRepetitionPageSize(size)}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </section>
               <section className="panel stats-panel sr-stats-panel">
@@ -3610,6 +3674,24 @@ function App() {
                     >
                       Repetition
                     </button>
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Page size</span>
+                  <div className="pill-grid">
+                    {SPACED_REPETITION_PAGE_SIZES.map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        className={`pill pill-button ${
+                          spacedRepetitionPageSize === size ? "active" : ""
+                        }`}
+                        aria-pressed={spacedRepetitionPageSize === size}
+                        onClick={() => setSpacedRepetitionPageSize(size)}
+                      >
+                        {size}
+                      </button>
+                    ))}
                   </div>
                 </div>
                 <div className="setting-row">
