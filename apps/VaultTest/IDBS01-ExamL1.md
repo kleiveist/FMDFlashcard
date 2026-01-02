@@ -44,9 +44,10 @@ PyObisExam --90
 #card
 **1.** Welche Aussage beschreibt referentielle Integrität korrekt?  
 A) Datentypen passen automatisch zueinander  
-x B) Fremdschlüssel müssen auf existierende Primärschlüssel verweisen  
+B) Fremdschlüssel müssen auf existierende Primärschlüssel verweisen  
 C) NULL-Werte sind grundsätzlich verboten  
 D) Tabellen ohne Fremdschlüssel benötigen keine Schlüsselprüfung  
+-b
 #
 #card
 **2.** Welche Operation gehört zur DML?  

@@ -531,6 +531,12 @@ h2 {
   align-items: start;
 }
 
+.flashcard-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .panel {
   background: var(--panel);
   border-radius: 20px;
@@ -561,6 +567,12 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .pill-button {
@@ -678,6 +690,12 @@ h2 {
   color: var(--ink);
 }
 
+.flashcard-pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .flashcard-actions {
   display: flex;
   align-items: center;
@@ -703,6 +721,89 @@ h2 {
 
 .flashcard-result.neutral {
   color: var(--muted);
+}
+
+.stats-panel .panel-body {
+  min-height: auto;
+}
+
+.stats-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stats-counters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stats-counter {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stats-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stats-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.stats-chart {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--accent) 0 var(--correct-percent),
+    var(--error-ink) var(--correct-percent) 100%
+  );
+  position: relative;
+  flex-shrink: 0;
+}
+
+.stats-chart::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  z-index: 1;
+}
+
+.stats-chart.empty {
+  background: conic-gradient(var(--line) 0 100%);
+}
+
+.stats-chart-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.stats-chart-total {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.stats-chart-caption {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .workspace .panel:nth-child(1) {
