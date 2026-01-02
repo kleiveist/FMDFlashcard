@@ -531,6 +531,29 @@ h2 {
   align-items: start;
 }
 
+.spaced-repetition-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  gap: 24px;
+  align-items: start;
+}
+
+.spaced-repetition-layout .sr-stats-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.spaced-repetition-layout .sr-user-panel {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.spaced-repetition-layout .sr-tools-panel {
+  grid-column: 1 / span 2;
+  grid-row: 2;
+}
+
 .flashcard-sidebar {
   display: flex;
   flex-direction: column;
@@ -983,6 +1006,34 @@ h2 {
 
 .stats-panel .panel-body {
   min-height: auto;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.kpi-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--panel-warm);
+  border: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kpi-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.kpi-value {
+  font-weight: 700;
+  font-size: 1.2rem;
 }
 
 .stats-summary {
@@ -1546,6 +1597,21 @@ h2 {
 @media (max-width: 1200px) {
   .flashcard-layout {
     grid-template-columns: 1fr;
+  }
+
+  .spaced-repetition-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .spaced-repetition-layout .sr-user-panel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .spaced-repetition-layout .sr-tools-panel {
+    grid-column: 1;
+    grid-row: 3;
   }
 }
 

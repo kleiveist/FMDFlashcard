@@ -25,7 +25,7 @@ type VaultFile = {
   relative_path: string;
 };
 
-type TabKey = "dashboard" | "flashcard" | "settings";
+type TabKey = "dashboard" | "flashcard" | "spaced-repetition" | "settings";
 
 type LoadState = "idle" | "loading" | "error";
 
@@ -35,6 +35,8 @@ type FlashcardOrder = "in-order" | "random";
 type FlashcardMode = "multiple-choice" | "yes-no";
 type FlashcardScope = "current" | "vault";
 type FlashcardPageSize = 1 | 2 | 5 | 10;
+type SpacedRepetitionBoxes = 3 | 5 | 8;
+type SpacedRepetitionOrder = "in-order" | "random" | "repetition";
 type TrueFalseSelection = "wahr" | "falsch";
 
 type ClozeDragPayload = {
@@ -73,6 +75,7 @@ const ACCENT_PALETTE = [
 const CLOZE_TOKEN_DRAG_TYPE = "application/x-cloze-token";
 const FLASHCARD_PAGE_SIZES: FlashcardPageSize[] = [1, 2, 5, 10];
 const DEFAULT_FLASHCARD_PAGE_SIZE: FlashcardPageSize = 2;
+const SPACED_REPETITION_BOXES: SpacedRepetitionBoxes[] = [3, 5, 8];
 
 const FolderIcon = () => (
   <svg
@@ -285,6 +288,24 @@ const normalizeFlashcardPageSize = (value: number) =>
     ? (value as FlashcardPageSize)
     : DEFAULT_FLASHCARD_PAGE_SIZE;
 
+const buildSpacedRepetitionUserName = (
+  name: string,
+  existing: string[],
+) => {
+  const trimmed = name.trim();
+  const baseName = trimmed || `User ${existing.length + 1}`;
+  if (!existing.includes(baseName)) {
+    return baseName;
+  }
+  let suffix = 2;
+  let candidate = `${baseName} (${suffix})`;
+  while (existing.includes(candidate)) {
+    suffix += 1;
+    candidate = `${baseName} (${suffix})`;
+  }
+  return candidate;
+};
+
 const shuffleFlashcards = (cards: Flashcard[]) => {
   const shuffled = [...cards];
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
@@ -383,6 +404,17 @@ function App() {
     useState<FlashcardScope>("current");
   const [flashcardPageSize, setFlashcardPageSize] =
     useState<FlashcardPageSize>(DEFAULT_FLASHCARD_PAGE_SIZE);
+  const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
+    useState<SpacedRepetitionBoxes>(5);
+  const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
+    useState<SpacedRepetitionOrder>("in-order");
+  const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<string[]>([]);
+  const [spacedRepetitionActiveUser, setSpacedRepetitionActiveUser] =
+    useState<string | null>(null);
+  const [spacedRepetitionSelectedUser, setSpacedRepetitionSelectedUser] =
+    useState<string>("");
+  const [spacedRepetitionNewUserName, setSpacedRepetitionNewUserName] =
+    useState("");
   const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
   const [statsResetMode, setStatsResetMode] = useState<"scan" | "session">(
     "scan",
@@ -867,6 +899,42 @@ function App() {
     setFlashcardPage((prev) => Math.min(flashcardPageCount - 1, prev + 1));
   }, [flashcardPageCount]);
 
+  const handleSpacedRepetitionCreateUser = useCallback(() => {
+    setSpacedRepetitionUsers((prev) => {
+      const nextName = buildSpacedRepetitionUserName(
+        spacedRepetitionNewUserName,
+        prev,
+      );
+      const next = [...prev, nextName];
+      setSpacedRepetitionActiveUser(nextName);
+      setSpacedRepetitionSelectedUser(nextName);
+      setSpacedRepetitionNewUserName("");
+      return next;
+    });
+  }, [spacedRepetitionNewUserName]);
+
+  const handleSpacedRepetitionLoadUser = useCallback(() => {
+    if (!spacedRepetitionSelectedUser) {
+      return;
+    }
+    setSpacedRepetitionActiveUser(spacedRepetitionSelectedUser);
+  }, [spacedRepetitionSelectedUser]);
+
+  const handleSpacedRepetitionDeleteUser = useCallback(() => {
+    if (!spacedRepetitionSelectedUser) {
+      return;
+    }
+    setSpacedRepetitionUsers((prev) => {
+      const next = prev.filter((user) => user !== spacedRepetitionSelectedUser);
+      const nextSelected = next[0] ?? "";
+      if (spacedRepetitionActiveUser === spacedRepetitionSelectedUser) {
+        setSpacedRepetitionActiveUser(next[0] ?? null);
+      }
+      setSpacedRepetitionSelectedUser(nextSelected);
+      return next;
+    });
+  }, [spacedRepetitionActiveUser, spacedRepetitionSelectedUser]);
+
   const handleThemeToggle = (event: ChangeEvent<HTMLInputElement>) => {
     const nextTheme: ThemeMode = event.target.checked ? "dark" : "light";
     setTheme(nextTheme);
@@ -1108,6 +1176,15 @@ function App() {
             onClick={() => setActiveTab("flashcard")}
           >
             Flashcard
+          </button>
+          <button
+            type="button"
+            className={`nav-item ${
+              activeTab === "spaced-repetition" ? "active" : ""
+            }`}
+            onClick={() => setActiveTab("spaced-repetition")}
+          >
+            Spaced Repetition
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -1967,6 +2044,178 @@ function App() {
               </div>
             </div>
           </>
+        ) : activeTab === "spaced-repetition" ? (
+          <>
+            <div className="spaced-repetition-layout">
+              <section className="panel stats-panel sr-stats-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Statistics</h2>
+                  </div>
+                </div>
+                <div className="panel-body">
+                  <div className="kpi-grid">
+                    {[
+                      { label: "Correct", value: 0 },
+                      { label: "Incorrect", value: 0 },
+                      { label: "Total", value: 0 },
+                      { label: "Due now", value: 0 },
+                      { label: "Due today", value: 0 },
+                      { label: "In queue", value: 0 },
+                      { label: "Completed today", value: 0 },
+                    ].map((kpi) => (
+                      <div key={kpi.label} className="kpi-card">
+                        <span className="kpi-label">{kpi.label}</span>
+                        <span className="kpi-value">{kpi.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+              <section className="panel sr-user-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>User Tools</h2>
+                  </div>
+                </div>
+                <div className="panel-body">
+                  <div className="setting-row">
+                    <span className="label">Active user</span>
+                    <span className="value">
+                      {spacedRepetitionActiveUser ?? "—"}
+                    </span>
+                  </div>
+                  <div className="setting-row">
+                    <span className="label">User list</span>
+                    <select
+                      className="text-input"
+                      value={spacedRepetitionSelectedUser}
+                      onChange={(event) =>
+                        setSpacedRepetitionSelectedUser(event.target.value)
+                      }
+                      aria-label="Select user"
+                    >
+                      <option value="">Select user</option>
+                      {spacedRepetitionUsers.map((user) => (
+                        <option key={user} value={user}>
+                          {user}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="setting-row">
+                    <span className="label">New user</span>
+                    <div className="setting-inline">
+                      <input
+                        type="text"
+                        className="text-input"
+                        value={spacedRepetitionNewUserName}
+                        onChange={(event) =>
+                          setSpacedRepetitionNewUserName(event.target.value)
+                        }
+                        placeholder="User name"
+                        aria-label="New user name"
+                      />
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={handleSpacedRepetitionCreateUser}
+                      >
+                        Create
+                      </button>
+                    </div>
+                  </div>
+                  <div className="setting-row">
+                    <span className="label">Actions</span>
+                    <div className="setting-actions">
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={handleSpacedRepetitionLoadUser}
+                        disabled={!spacedRepetitionSelectedUser}
+                      >
+                        Load
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={handleSpacedRepetitionDeleteUser}
+                        disabled={!spacedRepetitionSelectedUser}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section className="panel sr-tools-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Spaced Repetition Tools</h2>
+                  </div>
+                </div>
+                <div className="panel-body">
+                  <div className="setting-row">
+                    <span className="label">Boxes</span>
+                    <div className="pill-grid">
+                      {SPACED_REPETITION_BOXES.map((box) => (
+                        <button
+                          key={box}
+                          type="button"
+                          className={`pill pill-button ${
+                            spacedRepetitionBoxes === box ? "active" : ""
+                          }`}
+                          aria-pressed={spacedRepetitionBoxes === box}
+                          onClick={() => setSpacedRepetitionBoxes(box)}
+                        >
+                          {box} Boxes
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="setting-row">
+                    <span className="label">Default order</span>
+                    <div className="pill-grid">
+                      <button
+                        type="button"
+                        className={`pill pill-button ${
+                          spacedRepetitionOrder === "in-order" ? "active" : ""
+                        }`}
+                        aria-pressed={spacedRepetitionOrder === "in-order"}
+                        onClick={() => setSpacedRepetitionOrder("in-order")}
+                      >
+                        In order
+                      </button>
+                      <button
+                        type="button"
+                        className={`pill pill-button ${
+                          spacedRepetitionOrder === "random" ? "active" : ""
+                        }`}
+                        aria-pressed={spacedRepetitionOrder === "random"}
+                        onClick={() => setSpacedRepetitionOrder("random")}
+                      >
+                        Random
+                      </button>
+                      <button
+                        type="button"
+                        className={`pill pill-button ${
+                          spacedRepetitionOrder === "repetition" ? "active" : ""
+                        }`}
+                        aria-pressed={spacedRepetitionOrder === "repetition"}
+                        onClick={() => setSpacedRepetitionOrder("repetition")}
+                      >
+                        Repetition
+                      </button>
+                    </div>
+                    <span className="helper-text">
+                      Repetition order will prioritize due cards when scheduling
+                      is available.
+                    </span>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </>
         ) : (
           <>
             <header className="content-header">
@@ -2242,6 +2491,59 @@ function App() {
               <section className="panel spaced-repetition-panel">
                 <h2>Spaced Repetition</h2>
                 <p className="muted">Configure spaced repetition behavior.</p>
+                <div className="setting-row">
+                  <span className="label">Boxes</span>
+                  <div className="pill-grid">
+                    {SPACED_REPETITION_BOXES.map((box) => (
+                      <button
+                        key={box}
+                        type="button"
+                        className={`pill pill-button ${
+                          spacedRepetitionBoxes === box ? "active" : ""
+                        }`}
+                        aria-pressed={spacedRepetitionBoxes === box}
+                        onClick={() => setSpacedRepetitionBoxes(box)}
+                      >
+                        {box} Boxes
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="setting-row">
+                  <span className="label">Default order</span>
+                  <div className="pill-grid">
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        spacedRepetitionOrder === "in-order" ? "active" : ""
+                      }`}
+                      aria-pressed={spacedRepetitionOrder === "in-order"}
+                      onClick={() => setSpacedRepetitionOrder("in-order")}
+                    >
+                      In order
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        spacedRepetitionOrder === "random" ? "active" : ""
+                      }`}
+                      aria-pressed={spacedRepetitionOrder === "random"}
+                      onClick={() => setSpacedRepetitionOrder("random")}
+                    >
+                      Random
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        spacedRepetitionOrder === "repetition" ? "active" : ""
+                      }`}
+                      aria-pressed={spacedRepetitionOrder === "repetition"}
+                      onClick={() => setSpacedRepetitionOrder("repetition")}
+                    >
+                      Repetition
+                    </button>
+                  </div>
+                </div>
                 <div className="setting-row">
                   <span className="label">Persistence</span>
                   <input
