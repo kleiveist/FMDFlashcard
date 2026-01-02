@@ -24,7 +24,9 @@ export const FlashcardPage = () => {
         </div>
         <div className="panel-body">
           {flashcards.flashcards.length === 0 ? (
-            <div className="empty-state">Select a note and start the flashcard scan.</div>
+            <div className="empty-state">
+              Select a note from DASHBOARD and start the flashcard scan
+            </div>
           ) : (
             <div className="flashcard-list">
               {flashcards.visibleFlashcards.map((card, localIndex) => {

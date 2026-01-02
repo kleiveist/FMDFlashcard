@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import { DataSyncSection } from "../components/settings/DataSyncSection";
@@ -15,10 +15,18 @@ import {
 export const SettingsPage = () => {
   const { actions, flashcards, preview, settings, spacedRepetition, vault } =
     useAppState();
+  const { language, persistSettings, setLanguage } = settings;
   const lastOpenedFile = preview.selectedFile?.relative_path ?? null;
   const vaultIndexedComplete = useMemo(
     () => Boolean(vault.vaultPath) && vault.listState === "idle",
     [vault.listState, vault.vaultPath],
+  );
+  const handleLanguageChange = useCallback(
+    (nextLanguage: "de" | "en") => {
+      setLanguage(nextLanguage);
+      void persistSettings({ language: nextLanguage });
+    },
+    [persistSettings, setLanguage],
   );
 
   return (
@@ -47,7 +55,10 @@ export const SettingsPage = () => {
           vaultIndexedComplete={vaultIndexedComplete}
           vaultPath={vault.vaultPath}
         />
-        <DataSyncSection />
+        <DataSyncSection
+          language={language}
+          onLanguageChange={handleLanguageChange}
+        />
         <FlashcardsSettingsSection
           flashcardOrder={flashcards.flashcardOrder}
           flashcardPageSize={flashcards.flashcardPageSize}

@@ -18,6 +18,7 @@ struct AppSettings {
     vault_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
+    language: Option<String>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -57,7 +58,10 @@ struct SpacedRepetitionStorage {
 
 impl AppSettings {
     fn is_empty(&self) -> bool {
-        self.vault_path.is_none() && self.theme.is_none() && self.accent_color.is_none()
+        self.vault_path.is_none()
+            && self.theme.is_none()
+            && self.accent_color.is_none()
+            && self.language.is_none()
     }
 }
 
@@ -151,12 +155,14 @@ fn save_app_settings(
     vault_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
+    language: Option<String>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
     let settings = AppSettings {
         vault_path,
         theme,
         accent_color,
+        language,
     };
     write_settings(&path, &settings)
 }
@@ -241,6 +247,21 @@ fn read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|err| err.to_string())
 }
 
+#[tauri::command]
+fn write_text_file(path: String, contents: String) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    if !path.exists() {
+        return Err("File not found.".to_string());
+    }
+    if !path.is_file() {
+        return Err("Path is not a file.".to_string());
+    }
+    if !is_markdown(&path) {
+        return Err("Only markdown files are supported.".to_string());
+    }
+    fs::write(path, contents).map_err(|err| err.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -254,7 +275,8 @@ pub fn run() {
             load_vault_path,
             save_vault_path,
             list_markdown_files,
-            read_text_file
+            read_text_file,
+            write_text_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

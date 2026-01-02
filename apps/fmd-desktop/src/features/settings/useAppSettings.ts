@@ -3,19 +3,24 @@ import { invoke } from "@tauri-apps/api/core";
 import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color";
 import { applyAccentColor, applyTheme, type ThemeMode } from "../../lib/theme";
 
+type AppLanguage = "de" | "en";
+
 type AppSettings = {
   vault_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
+  language?: AppLanguage | null;
 };
 
 type PersistUpdates = {
   vaultPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
+  language?: AppLanguage;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
+export const DEFAULT_LANGUAGE: AppLanguage = "de";
 
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
@@ -24,6 +29,7 @@ export const useAppSettings = () => {
   const [accentError, setAccentError] = useState("");
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
+  const [language, setLanguage] = useState<AppLanguage>(DEFAULT_LANGUAGE);
   const [maxFilesPerScan, setMaxFilesPerScan] = useState("");
   const [scanParallelism, setScanParallelism] = useState<
     "low" | "medium" | "high"
@@ -34,12 +40,14 @@ export const useAppSettings = () => {
       vaultPath: string | null;
       theme: ThemeMode;
       accentColor: string;
+      language: AppLanguage;
     }) => {
       try {
         await invoke("save_app_settings", {
           vaultPath: settings.vaultPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
+          language: settings.language,
         });
         return true;
       } catch (error) {
@@ -59,6 +67,7 @@ export const useAppSettings = () => {
         vaultPath: updates.vaultPath ?? vaultPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
+        language: updates.language ?? language,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "vaultPath" in updates) {
@@ -66,7 +75,7 @@ export const useAppSettings = () => {
       }
       return saved;
     },
-    [accentColor, saveSettings, settingsLoaded, theme, vaultPath],
+    [accentColor, language, saveSettings, settingsLoaded, theme, vaultPath],
   );
 
   useEffect(() => {
@@ -85,12 +94,15 @@ export const useAppSettings = () => {
         const resolvedAccent = isValidHex(storedAccent)
           ? storedAccent
           : DEFAULT_ACCENT;
+        const storedLanguage =
+          settings.language === "en" ? "en" : DEFAULT_LANGUAGE;
 
         setTheme(storedTheme);
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
         setAccentError("");
         setVaultPath(settings.vault_path ?? null);
+        setLanguage(storedLanguage);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -119,12 +131,14 @@ export const useAppSettings = () => {
     accentColor,
     accentDraft,
     accentError,
+    language,
     maxFilesPerScan,
     persistSettings,
     scanParallelism,
     setAccentColor,
     setAccentDraft,
     setAccentError,
+    setLanguage,
     setMaxFilesPerScan,
     setScanParallelism,
     setTheme,

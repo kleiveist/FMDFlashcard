@@ -1335,6 +1335,24 @@ h2 {
   gap: 8px;
 }
 
+.preview-body {
+  position: relative;
+  padding-bottom: 56px;
+}
+
+.preview-edit-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview-edit-button {
+  min-width: 84px;
+}
+
 .panel-body {
   display: flex;
   flex-direction: column;
@@ -1387,6 +1405,20 @@ h2 {
   min-height: 300px;
   max-height: 420px;
   overflow-y: auto;
+}
+
+.preview-editor {
+  width: 100%;
+  min-height: 300px;
+  max-height: 420px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--preview-bg);
+  color: var(--preview-ink);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  resize: vertical;
 }
 
 .preview.raw {
@@ -1561,8 +1593,7 @@ h2 {
   border-top: 1px solid var(--line);
 }
 
-.spaced-repetition-layout .setting-row,
-.settings-grid .spaced-repetition-panel .setting-row {
+.spaced-repetition-layout .setting-row {
   border-top: none;
   padding-top: 0;
 }
