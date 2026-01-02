@@ -270,6 +270,12 @@ function App() {
     useState<FlashcardMode>("multiple-choice");
   const [flashcardBoxes, setFlashcardBoxes] =
     useState<FlashcardBoxes>("3");
+  const [flashcardSelections, setFlashcardSelections] = useState<
+    Record<number, string>
+  >({});
+  const [flashcardSubmissions, setFlashcardSubmissions] = useState<
+    Record<number, boolean>
+  >({});
   const [listError, setListError] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
@@ -288,10 +294,7 @@ function App() {
     return `${files.length} Markdown-Datei${files.length === 1 ? "" : "en"}`;
   }, [files.length, vaultPath]);
 
-  const flashcardStatusLabel = useMemo(
-    () => (flashcards.length === 0 ? "Not scanned yet" : ""),
-    [flashcards.length],
-  );
+  const flashcardStatusLabel = "Not scanned yet";
 
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const treeNodes = useMemo(() => buildTree(files), [files]);
@@ -347,6 +350,8 @@ function App() {
       setSelectedFile(null);
       setPreview("");
       setFlashcards([]);
+      setFlashcardSelections({});
+      setFlashcardSubmissions({});
       setFiles([]);
       setListState("loading");
       try {
@@ -455,6 +460,8 @@ function App() {
       selectedFile,
       preview,
       flashcards,
+      flashcardSelections,
+      flashcardSubmissions,
       listState,
       previewState,
       listError,
@@ -473,6 +480,8 @@ function App() {
       setSelectedFile(previousState.selectedFile);
       setPreview(previousState.preview);
       setFlashcards(previousState.flashcards);
+      setFlashcardSelections(previousState.flashcardSelections);
+      setFlashcardSubmissions(previousState.flashcardSubmissions);
       setListState(previousState.listState);
       setPreviewState(previousState.previewState);
       setListError("Ausgewaehlter Vault ist nicht verfuegbar.");
@@ -484,6 +493,8 @@ function App() {
     setSelectedFile(file);
     setPreview("");
     setFlashcards([]);
+    setFlashcardSelections({});
+    setFlashcardSubmissions({});
     setPreviewError("");
     setPreviewState("loading");
     try {
@@ -502,7 +513,32 @@ function App() {
   const handleFlashcardScan = useCallback(() => {
     const cards = parseFlashcards(preview);
     setFlashcards(cards);
+    setFlashcardSelections({});
+    setFlashcardSubmissions({});
   }, [preview]);
+
+  const handleFlashcardOptionSelect = useCallback(
+    (cardIndex: number, key: string) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      setFlashcardSelections((prev) => ({ ...prev, [cardIndex]: key }));
+    },
+    [flashcardSubmissions],
+  );
+
+  const handleFlashcardSubmit = useCallback(
+    (cardIndex: number) => {
+      if (!flashcardSelections[cardIndex]) {
+        return;
+      }
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      setFlashcardSubmissions((prev) => ({ ...prev, [cardIndex]: true }));
+    },
+    [flashcardSelections, flashcardSubmissions],
+  );
 
   const handleThemeToggle = (event: ChangeEvent<HTMLInputElement>) => {
     const nextTheme: ThemeMode = event.target.checked ? "dark" : "light";
@@ -791,152 +827,224 @@ function App() {
         ) : activeTab === "flashcard" ? (
           <>
             <div className="flashcard-layout">
-              <aside className="right-rail">
-                <section className="panel toolbar-panel">
-                  <div className="panel-header">
-                    <div>
-                      <h2>Flashcard Tools</h2>
-                      <p className="muted">Scan current notes for cards.</p>
-                    </div>
-                  </div>
-                  <div className="panel-body">
-                    <button
-                      type="button"
-                      className="primary"
-                      onClick={handleFlashcardScan}
-                    >
-                      Flashcard
-                    </button>
-                    <div className="flashcard-controls">
-                      <div className="toolbar-section">
-                        <span className="label">ORDER</span>
-                        <div className="pill-grid">
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardOrder === "in-order" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardOrder === "in-order"}
-                            onClick={() => setFlashcardOrder("in-order")}
-                          >
-                            In order
-                          </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardOrder === "random" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardOrder === "random"}
-                            onClick={() => setFlashcardOrder("random")}
-                          >
-                            Random
-                          </button>
-                        </div>
-                      </div>
-                      <div className="toolbar-section">
-                        <span className="label">MODE</span>
-                        <div className="pill-grid">
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardMode === "multiple-choice" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardMode === "multiple-choice"}
-                            onClick={() => setFlashcardMode("multiple-choice")}
-                          >
-                            Multiple Choice
-                          </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardMode === "yes-no" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardMode === "yes-no"}
-                            onClick={() => setFlashcardMode("yes-no")}
-                          >
-                            Yes/No
-                          </button>
-                        </div>
-                      </div>
-                      <div className="toolbar-section">
-                        <span className="label">BOXES</span>
-                        <div className="pill-grid">
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardBoxes === "3" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardBoxes === "3"}
-                            onClick={() => setFlashcardBoxes("3")}
-                          >
-                            3 Boxes
-                          </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardBoxes === "5" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardBoxes === "5"}
-                            onClick={() => setFlashcardBoxes("5")}
-                          >
-                            5 Boxes
-                          </button>
-                          <button
-                            type="button"
-                            className={`pill pill-button ${
-                              flashcardBoxes === "7" ? "active" : ""
-                            }`}
-                            aria-pressed={flashcardBoxes === "7"}
-                            onClick={() => setFlashcardBoxes("7")}
-                          >
-                            7 Boxes
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section className="panel flashcard-panel">
-                  <div className="panel-header">
-                    <div>
-                      <h2>Flashcards</h2>
-                      {flashcards.length === 0 ? (
-                        <p className="muted">{flashcardStatusLabel}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="panel-body">
+              <section className="panel flashcard-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Flashcards</h2>
                     {flashcards.length === 0 ? (
-                      <div className="empty-state">
-                        Select a note and start the flashcard scan.
-                      </div>
-                    ) : (
-                      <div className="flashcard-list">
-                        {flashcards.map((card, index) => (
+                      <p className="muted">{flashcardStatusLabel}</p>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="panel-body">
+                  {flashcards.length === 0 ? (
+                    <div className="empty-state">
+                      Select a note and start the flashcard scan.
+                    </div>
+                  ) : (
+                    <div className="flashcard-list">
+                      {flashcards.map((card, index) => {
+                        const selectedKey = flashcardSelections[index] ?? "";
+                        const submitted = !!flashcardSubmissions[index];
+                        const hasSolutions = card.correctKeys.length > 0;
+                        const selectionIsCorrect =
+                          hasSolutions && selectedKey
+                            ? card.correctKeys.includes(selectedKey)
+                            : false;
+                        const resultLabel = submitted
+                          ? hasSolutions
+                            ? selectionIsCorrect
+                              ? "Correct"
+                              : "Incorrect"
+                            : "No solution defined"
+                          : "";
+
+                        return (
                           <article
                             className="flashcard-item"
                             key={`flashcard-${index}`}
                           >
                             <h3 className="flashcard-question">{card.question}</h3>
                             <ul className="flashcard-options">
-                              {card.options.map((option) => (
-                                <li
-                                  className="flashcard-option"
-                                  key={`flashcard-${index}-${option.key}`}
-                                >
-                                  <span className="flashcard-key">{option.key}</span>
-                                  <span className="flashcard-text">{option.text}</span>
-                                </li>
-                              ))}
+                              {card.options.map((option) => {
+                                const isSelected = selectedKey === option.key;
+                                const isCorrect =
+                                  hasSolutions &&
+                                  card.correctKeys.includes(option.key);
+                                const isIncorrect =
+                                  hasSolutions &&
+                                  submitted &&
+                                  isSelected &&
+                                  !isCorrect;
+                                const optionClasses = [
+                                  "flashcard-option",
+                                  isSelected ? "selected" : "",
+                                  submitted && isCorrect ? "correct" : "",
+                                  isIncorrect ? "incorrect" : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ");
+
+                                return (
+                                  <li key={`flashcard-${index}-${option.key}`}>
+                                    <button
+                                      type="button"
+                                      className={optionClasses}
+                                      onClick={() =>
+                                        handleFlashcardOptionSelect(
+                                          index,
+                                          option.key,
+                                        )
+                                      }
+                                      disabled={submitted}
+                                      aria-pressed={isSelected}
+                                    >
+                                      <span className="flashcard-key">
+                                        {option.key}
+                                      </span>
+                                      <span className="flashcard-text">
+                                        {option.text}
+                                      </span>
+                                    </button>
+                                  </li>
+                                );
+                              })}
                             </ul>
+                            <div className="flashcard-actions">
+                              <button
+                                type="button"
+                                className="ghost small flashcard-submit"
+                                onClick={() => handleFlashcardSubmit(index)}
+                                disabled={!selectedKey || submitted}
+                              >
+                                Submit
+                              </button>
+                              {submitted ? (
+                                <span
+                                  className={`flashcard-result ${
+                                    hasSolutions
+                                      ? selectionIsCorrect
+                                        ? "correct"
+                                        : "incorrect"
+                                      : "neutral"
+                                  }`}
+                                >
+                                  {resultLabel}
+                                </span>
+                              ) : null}
+                            </div>
                           </article>
-                        ))}
-                      </div>
-                    )}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="panel toolbar-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Flashcard Tools</h2>
+                    <p className="muted">Scan current notes for cards.</p>
                   </div>
-                </section>
-              </aside>
+                </div>
+                <div className="panel-body">
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={handleFlashcardScan}
+                  >
+                    Flashcard
+                  </button>
+                  <div className="flashcard-controls">
+                    <div className="toolbar-section">
+                      <span className="label">ORDER</span>
+                      <div className="pill-grid">
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardOrder === "in-order" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardOrder === "in-order"}
+                          onClick={() => setFlashcardOrder("in-order")}
+                        >
+                          In order
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardOrder === "random" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardOrder === "random"}
+                          onClick={() => setFlashcardOrder("random")}
+                        >
+                          Random
+                        </button>
+                      </div>
+                    </div>
+                    <div className="toolbar-section">
+                      <span className="label">MODE</span>
+                      <div className="pill-grid">
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardMode === "multiple-choice" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardMode === "multiple-choice"}
+                          onClick={() => setFlashcardMode("multiple-choice")}
+                        >
+                          Multiple Choice
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardMode === "yes-no" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardMode === "yes-no"}
+                          onClick={() => setFlashcardMode("yes-no")}
+                        >
+                          Yes/No
+                        </button>
+                      </div>
+                    </div>
+                    <div className="toolbar-section">
+                      <span className="label">BOXES</span>
+                      <div className="pill-grid">
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardBoxes === "3" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardBoxes === "3"}
+                          onClick={() => setFlashcardBoxes("3")}
+                        >
+                          3 Boxes
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardBoxes === "5" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardBoxes === "5"}
+                          onClick={() => setFlashcardBoxes("5")}
+                        >
+                          5 Boxes
+                        </button>
+                        <button
+                          type="button"
+                          className={`pill pill-button ${
+                            flashcardBoxes === "7" ? "active" : ""
+                          }`}
+                          aria-pressed={flashcardBoxes === "7"}
+                          onClick={() => setFlashcardBoxes("7")}
+                        >
+                          7 Boxes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
             </div>
           </>
         ) : (
