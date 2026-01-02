@@ -1,15 +1,46 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color";
 import { applyAccentColor, applyTheme, type ThemeMode } from "../../lib/theme";
+import {
+  DEFAULT_FLASHCARD_PAGE_SIZE,
+  FLASHCARD_PAGE_SIZES,
+  type FlashcardMode,
+  type FlashcardOrder,
+  type FlashcardPageSize,
+  type FlashcardScope,
+  type StatsResetMode,
+} from "../flashcards/useFlashcards";
+import {
+  DEFAULT_SPACED_REPETITION_PAGE_SIZE,
+  SPACED_REPETITION_BOXES,
+  SPACED_REPETITION_PAGE_SIZES,
+  type SpacedRepetitionBoxes,
+  type SpacedRepetitionOrder,
+  type SpacedRepetitionPageSize,
+} from "../spaced-repetition/useSpacedRepetition";
 
 type AppLanguage = "de" | "en";
+type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 
 type AppSettings = {
   vault_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
   language?: AppLanguage | null;
+  max_files_per_scan?: string | null;
+  scan_parallelism?: string | null;
+  flashcard_order?: string | null;
+  flashcard_mode?: string | null;
+  flashcard_scope?: string | null;
+  flashcard_page_size?: number | null;
+  flashcard_solution_reveal_enabled?: boolean | null;
+  flashcard_stats_reset_mode?: string | null;
+  spaced_repetition_boxes?: number | null;
+  spaced_repetition_order?: string | null;
+  spaced_repetition_page_size?: number | null;
+  spaced_repetition_stats_view?: string | null;
+  spaced_repetition_help_collapsed?: boolean | null;
 };
 
 type PersistUpdates = {
@@ -17,10 +48,32 @@ type PersistUpdates = {
   theme?: ThemeMode;
   accentColor?: string;
   language?: AppLanguage;
+  maxFilesPerScan?: string;
+  scanParallelism?: "low" | "medium" | "high";
+  flashcardOrder?: FlashcardOrder;
+  flashcardMode?: FlashcardMode;
+  flashcardScope?: FlashcardScope;
+  flashcardPageSize?: FlashcardPageSize;
+  solutionRevealEnabled?: boolean;
+  statsResetMode?: StatsResetMode;
+  spacedRepetitionBoxes?: SpacedRepetitionBoxes;
+  spacedRepetitionOrder?: SpacedRepetitionOrder;
+  spacedRepetitionPageSize?: SpacedRepetitionPageSize;
+  spacedRepetitionStatsView?: SpacedRepetitionStatsView;
+  spacedRepetitionHelpCollapsed?: boolean;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
 export const DEFAULT_LANGUAGE: AppLanguage = "de";
+const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
+const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
+const DEFAULT_FLASHCARD_MODE: FlashcardMode = "multiple-choice";
+const DEFAULT_FLASHCARD_SCOPE: FlashcardScope = "current";
+const DEFAULT_STATS_RESET_MODE: StatsResetMode = "scan";
+const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
+const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
+const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
+const DEFAULT_SPACED_REPETITION_HELP_COLLAPSED = true;
 
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
@@ -33,7 +86,30 @@ export const useAppSettings = () => {
   const [maxFilesPerScan, setMaxFilesPerScan] = useState("");
   const [scanParallelism, setScanParallelism] = useState<
     "low" | "medium" | "high"
-  >("medium");
+  >(DEFAULT_SCAN_PARALLELISM);
+  const [flashcardOrder, setFlashcardOrder] =
+    useState<FlashcardOrder>(DEFAULT_FLASHCARD_ORDER);
+  const [flashcardMode, setFlashcardMode] =
+    useState<FlashcardMode>(DEFAULT_FLASHCARD_MODE);
+  const [flashcardScope, setFlashcardScope] =
+    useState<FlashcardScope>(DEFAULT_FLASHCARD_SCOPE);
+  const [flashcardPageSize, setFlashcardPageSize] =
+    useState<FlashcardPageSize>(DEFAULT_FLASHCARD_PAGE_SIZE);
+  const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
+  const [statsResetMode, setStatsResetMode] =
+    useState<StatsResetMode>(DEFAULT_STATS_RESET_MODE);
+  const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
+    useState<SpacedRepetitionBoxes>(DEFAULT_SPACED_REPETITION_BOXES);
+  const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
+    useState<SpacedRepetitionOrder>(DEFAULT_SPACED_REPETITION_ORDER);
+  const [spacedRepetitionPageSize, setSpacedRepetitionPageSize] =
+    useState<SpacedRepetitionPageSize>(DEFAULT_SPACED_REPETITION_PAGE_SIZE);
+  const [spacedRepetitionStatsView, setSpacedRepetitionStatsView] =
+    useState<SpacedRepetitionStatsView>(DEFAULT_SPACED_REPETITION_STATS_VIEW);
+  const [spacedRepetitionHelpCollapsed, setSpacedRepetitionHelpCollapsed] =
+    useState(DEFAULT_SPACED_REPETITION_HELP_COLLAPSED);
+  const autoSaveReady = useRef(false);
+  const autoSaveTimer = useRef<number | null>(null);
 
   const saveSettings = useCallback(
     async (settings: {
@@ -41,6 +117,19 @@ export const useAppSettings = () => {
       theme: ThemeMode;
       accentColor: string;
       language: AppLanguage;
+      maxFilesPerScan: string;
+      scanParallelism: "low" | "medium" | "high";
+      flashcardOrder: FlashcardOrder;
+      flashcardMode: FlashcardMode;
+      flashcardScope: FlashcardScope;
+      flashcardPageSize: FlashcardPageSize;
+      solutionRevealEnabled: boolean;
+      statsResetMode: StatsResetMode;
+      spacedRepetitionBoxes: SpacedRepetitionBoxes;
+      spacedRepetitionOrder: SpacedRepetitionOrder;
+      spacedRepetitionPageSize: SpacedRepetitionPageSize;
+      spacedRepetitionStatsView: SpacedRepetitionStatsView;
+      spacedRepetitionHelpCollapsed: boolean;
     }) => {
       try {
         await invoke("save_app_settings", {
@@ -48,6 +137,19 @@ export const useAppSettings = () => {
           theme: settings.theme,
           accentColor: settings.accentColor,
           language: settings.language,
+          maxFilesPerScan: settings.maxFilesPerScan || null,
+          scanParallelism: settings.scanParallelism,
+          flashcardOrder: settings.flashcardOrder,
+          flashcardMode: settings.flashcardMode,
+          flashcardScope: settings.flashcardScope,
+          flashcardPageSize: settings.flashcardPageSize,
+          flashcardSolutionRevealEnabled: settings.solutionRevealEnabled,
+          flashcardStatsResetMode: settings.statsResetMode,
+          spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
+          spacedRepetitionOrder: settings.spacedRepetitionOrder,
+          spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
+          spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
+          spacedRepetitionHelpCollapsed: settings.spacedRepetitionHelpCollapsed,
         });
         return true;
       } catch (error) {
@@ -68,6 +170,26 @@ export const useAppSettings = () => {
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
         language: updates.language ?? language,
+        maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
+        scanParallelism: updates.scanParallelism ?? scanParallelism,
+        flashcardOrder: updates.flashcardOrder ?? flashcardOrder,
+        flashcardMode: updates.flashcardMode ?? flashcardMode,
+        flashcardScope: updates.flashcardScope ?? flashcardScope,
+        flashcardPageSize: updates.flashcardPageSize ?? flashcardPageSize,
+        solutionRevealEnabled:
+          updates.solutionRevealEnabled ?? solutionRevealEnabled,
+        statsResetMode: updates.statsResetMode ?? statsResetMode,
+        spacedRepetitionBoxes:
+          updates.spacedRepetitionBoxes ?? spacedRepetitionBoxes,
+        spacedRepetitionOrder:
+          updates.spacedRepetitionOrder ?? spacedRepetitionOrder,
+        spacedRepetitionPageSize:
+          updates.spacedRepetitionPageSize ?? spacedRepetitionPageSize,
+        spacedRepetitionStatsView:
+          updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
+        spacedRepetitionHelpCollapsed:
+          updates.spacedRepetitionHelpCollapsed ??
+          spacedRepetitionHelpCollapsed,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "vaultPath" in updates) {
@@ -75,7 +197,27 @@ export const useAppSettings = () => {
       }
       return saved;
     },
-    [accentColor, language, saveSettings, settingsLoaded, theme, vaultPath],
+    [
+      accentColor,
+      flashcardMode,
+      flashcardOrder,
+      flashcardPageSize,
+      flashcardScope,
+      language,
+      maxFilesPerScan,
+      saveSettings,
+      scanParallelism,
+      settingsLoaded,
+      solutionRevealEnabled,
+      spacedRepetitionBoxes,
+      spacedRepetitionHelpCollapsed,
+      spacedRepetitionOrder,
+      spacedRepetitionPageSize,
+      spacedRepetitionStatsView,
+      statsResetMode,
+      theme,
+      vaultPath,
+    ],
   );
 
   useEffect(() => {
@@ -96,6 +238,76 @@ export const useAppSettings = () => {
           : DEFAULT_ACCENT;
         const storedLanguage =
           settings.language === "en" ? "en" : DEFAULT_LANGUAGE;
+        const maxFilesRaw = settings.max_files_per_scan;
+        const maxFilesValue =
+          typeof maxFilesRaw === "number"
+            ? String(maxFilesRaw)
+            : typeof maxFilesRaw === "string"
+              ? maxFilesRaw.trim()
+              : "";
+        const storedMaxFilesPerScan =
+          maxFilesValue && /^[0-9]+$/.test(maxFilesValue) ? maxFilesValue : "";
+        const storedScanParallelism =
+          settings.scan_parallelism === "low" ||
+          settings.scan_parallelism === "high" ||
+          settings.scan_parallelism === "medium"
+            ? settings.scan_parallelism
+            : DEFAULT_SCAN_PARALLELISM;
+        const storedFlashcardOrder =
+          settings.flashcard_order === "random"
+            ? "random"
+            : DEFAULT_FLASHCARD_ORDER;
+        const storedFlashcardMode =
+          settings.flashcard_mode === "yes-no"
+            ? "yes-no"
+            : DEFAULT_FLASHCARD_MODE;
+        const storedFlashcardScope =
+          settings.flashcard_scope === "vault"
+            ? "vault"
+            : DEFAULT_FLASHCARD_SCOPE;
+        const storedFlashcardPageSize =
+          typeof settings.flashcard_page_size === "number" &&
+          FLASHCARD_PAGE_SIZES.includes(
+            settings.flashcard_page_size as FlashcardPageSize,
+          )
+            ? (settings.flashcard_page_size as FlashcardPageSize)
+            : DEFAULT_FLASHCARD_PAGE_SIZE;
+        const storedSolutionRevealEnabled =
+          typeof settings.flashcard_solution_reveal_enabled === "boolean"
+            ? settings.flashcard_solution_reveal_enabled
+            : true;
+        const storedStatsResetMode =
+          settings.flashcard_stats_reset_mode === "session"
+            ? "session"
+            : DEFAULT_STATS_RESET_MODE;
+        const storedSpacedRepetitionBoxes =
+          typeof settings.spaced_repetition_boxes === "number" &&
+          SPACED_REPETITION_BOXES.includes(
+            settings.spaced_repetition_boxes as SpacedRepetitionBoxes,
+          )
+            ? (settings.spaced_repetition_boxes as SpacedRepetitionBoxes)
+            : DEFAULT_SPACED_REPETITION_BOXES;
+        const storedSpacedRepetitionOrder =
+          settings.spaced_repetition_order === "random" ||
+          settings.spaced_repetition_order === "repetition"
+            ? settings.spaced_repetition_order
+            : DEFAULT_SPACED_REPETITION_ORDER;
+        const storedSpacedRepetitionPageSize =
+          typeof settings.spaced_repetition_page_size === "number" &&
+          SPACED_REPETITION_PAGE_SIZES.includes(
+            settings.spaced_repetition_page_size as SpacedRepetitionPageSize,
+          )
+            ? (settings.spaced_repetition_page_size as SpacedRepetitionPageSize)
+            : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
+        const storedSpacedRepetitionStatsView =
+          settings.spaced_repetition_stats_view === "vault" ||
+          settings.spaced_repetition_stats_view === "completed"
+            ? settings.spaced_repetition_stats_view
+            : DEFAULT_SPACED_REPETITION_STATS_VIEW;
+        const storedSpacedRepetitionHelpCollapsed =
+          typeof settings.spaced_repetition_help_collapsed === "boolean"
+            ? settings.spaced_repetition_help_collapsed
+            : DEFAULT_SPACED_REPETITION_HELP_COLLAPSED;
 
         setTheme(storedTheme);
         setAccentColor(resolvedAccent);
@@ -103,6 +315,19 @@ export const useAppSettings = () => {
         setAccentError("");
         setVaultPath(settings.vault_path ?? null);
         setLanguage(storedLanguage);
+        setMaxFilesPerScan(storedMaxFilesPerScan);
+        setScanParallelism(storedScanParallelism);
+        setFlashcardOrder(storedFlashcardOrder);
+        setFlashcardMode(storedFlashcardMode);
+        setFlashcardScope(storedFlashcardScope);
+        setFlashcardPageSize(storedFlashcardPageSize);
+        setSolutionRevealEnabled(storedSolutionRevealEnabled);
+        setStatsResetMode(storedStatsResetMode);
+        setSpacedRepetitionBoxes(storedSpacedRepetitionBoxes);
+        setSpacedRepetitionOrder(storedSpacedRepetitionOrder);
+        setSpacedRepetitionPageSize(storedSpacedRepetitionPageSize);
+        setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
+        setSpacedRepetitionHelpCollapsed(storedSpacedRepetitionHelpCollapsed);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -127,10 +352,74 @@ export const useAppSettings = () => {
     applyAccentColor(accentColor);
   }, [accentColor]);
 
+  useEffect(() => {
+    if (!settingsLoaded) {
+      return;
+    }
+    if (!autoSaveReady.current) {
+      autoSaveReady.current = true;
+      return;
+    }
+    if (autoSaveTimer.current) {
+      window.clearTimeout(autoSaveTimer.current);
+    }
+    autoSaveTimer.current = window.setTimeout(() => {
+      void saveSettings({
+        vaultPath,
+        theme,
+        accentColor,
+        language,
+        maxFilesPerScan,
+        scanParallelism,
+        flashcardOrder,
+        flashcardMode,
+        flashcardScope,
+        flashcardPageSize,
+        solutionRevealEnabled,
+        statsResetMode,
+        spacedRepetitionBoxes,
+        spacedRepetitionOrder,
+        spacedRepetitionPageSize,
+        spacedRepetitionStatsView,
+        spacedRepetitionHelpCollapsed,
+      });
+    }, 300);
+
+    return () => {
+      if (autoSaveTimer.current) {
+        window.clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [
+    accentColor,
+    flashcardMode,
+    flashcardOrder,
+    flashcardPageSize,
+    flashcardScope,
+    language,
+    maxFilesPerScan,
+    saveSettings,
+    scanParallelism,
+    settingsLoaded,
+    solutionRevealEnabled,
+    spacedRepetitionBoxes,
+    spacedRepetitionHelpCollapsed,
+    spacedRepetitionOrder,
+    spacedRepetitionPageSize,
+    spacedRepetitionStatsView,
+    statsResetMode,
+    theme,
+    vaultPath,
+  ]);
+
   return {
     accentColor,
     accentDraft,
     accentError,
+    flashcardMode,
+    flashcardOrder,
+    flashcardPageSize,
+    flashcardScope,
     language,
     maxFilesPerScan,
     persistSettings,
@@ -138,11 +427,29 @@ export const useAppSettings = () => {
     setAccentColor,
     setAccentDraft,
     setAccentError,
+    setFlashcardMode,
+    setFlashcardOrder,
+    setFlashcardPageSize,
+    setFlashcardScope,
     setLanguage,
     setMaxFilesPerScan,
     setScanParallelism,
+    setSolutionRevealEnabled,
+    setSpacedRepetitionBoxes,
+    setSpacedRepetitionHelpCollapsed,
+    setSpacedRepetitionOrder,
+    setSpacedRepetitionPageSize,
+    setSpacedRepetitionStatsView,
+    setStatsResetMode,
     setTheme,
     settingsLoaded,
+    solutionRevealEnabled,
+    spacedRepetitionBoxes,
+    spacedRepetitionHelpCollapsed,
+    spacedRepetitionOrder,
+    spacedRepetitionPageSize,
+    spacedRepetitionStatsView,
+    statsResetMode,
     theme,
     vaultPath,
   };

@@ -15,7 +15,7 @@ import {
 export const SettingsPage = () => {
   const { actions, flashcards, preview, settings, spacedRepetition, vault } =
     useAppState();
-  const { language, persistSettings, setLanguage } = settings;
+  const { language, setLanguage } = settings;
   const lastOpenedFile = preview.selectedFile?.relative_path ?? null;
   const vaultIndexedComplete = useMemo(
     () => Boolean(vault.vaultPath) && vault.listState === "idle",
@@ -24,9 +24,8 @@ export const SettingsPage = () => {
   const handleLanguageChange = useCallback(
     (nextLanguage: "de" | "en") => {
       setLanguage(nextLanguage);
-      void persistSettings({ language: nextLanguage });
     },
-    [persistSettings, setLanguage],
+    [setLanguage],
   );
 
   return (

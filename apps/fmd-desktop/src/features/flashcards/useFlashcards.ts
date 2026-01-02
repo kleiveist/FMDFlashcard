@@ -35,6 +35,20 @@ type UseFlashcardsOptions = {
   preview: string;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
+  settings: {
+    flashcardMode: FlashcardMode;
+    flashcardOrder: FlashcardOrder;
+    flashcardPageSize: FlashcardPageSize;
+    flashcardScope: FlashcardScope;
+    setFlashcardMode: (value: FlashcardMode) => void;
+    setFlashcardOrder: (value: FlashcardOrder) => void;
+    setFlashcardPageSize: (value: FlashcardPageSize) => void;
+    setFlashcardScope: (value: FlashcardScope) => void;
+    setSolutionRevealEnabled: (value: boolean) => void;
+    setStatsResetMode: (value: StatsResetMode) => void;
+    solutionRevealEnabled: boolean;
+    statsResetMode: StatsResetMode;
+  };
 };
 
 export const useFlashcards = ({
@@ -42,16 +56,23 @@ export const useFlashcards = ({
   preview,
   selectedFile,
   vaultPath,
+  settings,
 }: UseFlashcardsOptions) => {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
-  const [flashcardOrder, setFlashcardOrder] =
-    useState<FlashcardOrder>("in-order");
-  const [flashcardMode, setFlashcardMode] =
-    useState<FlashcardMode>("multiple-choice");
-  const [flashcardScope, setFlashcardScope] =
-    useState<FlashcardScope>("current");
-  const [flashcardPageSize, setFlashcardPageSize] =
-    useState<FlashcardPageSize>(DEFAULT_FLASHCARD_PAGE_SIZE);
+  const {
+    flashcardMode,
+    flashcardOrder,
+    flashcardPageSize,
+    flashcardScope,
+    setFlashcardMode,
+    setFlashcardOrder,
+    setFlashcardPageSize,
+    setFlashcardScope,
+    setSolutionRevealEnabled,
+    setStatsResetMode,
+    solutionRevealEnabled,
+    statsResetMode,
+  } = settings;
   const [flashcardPage, setFlashcardPage] = useState(0);
   const [isFlashcardScanning, setIsFlashcardScanning] = useState(false);
   const [flashcardSelections, setFlashcardSelections] = useState<
@@ -65,9 +86,6 @@ export const useFlashcards = ({
   const [flashcardClozeResponses, setFlashcardClozeResponses] = useState<
     Record<number, Record<string, string>>
   >({});
-  const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
-  const [statsResetMode, setStatsResetMode] = useState<StatsResetMode>("scan");
-
   const takeSnapshot = useCallback(
     () => ({
       flashcards,

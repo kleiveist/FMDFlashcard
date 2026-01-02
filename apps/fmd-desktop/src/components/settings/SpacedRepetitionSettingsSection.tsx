@@ -78,6 +78,10 @@ export const SpacedRepetitionSettingsSection = ({
           Repetition
         </button>
       </div>
+      <span className="helper-text">
+        In order keeps scan order. Random shuffles on load. Repetition prioritizes
+        lower boxes and skips the last box.
+      </span>
     </div>
     <div className="setting-row">
       <span className="label">Page size</span>

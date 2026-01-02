@@ -47,11 +47,37 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     preview: preview.preview,
     selectedFile: preview.selectedFile,
     vaultPath: vault.vaultPath,
+    settings: {
+      flashcardMode: settings.flashcardMode,
+      flashcardOrder: settings.flashcardOrder,
+      flashcardPageSize: settings.flashcardPageSize,
+      flashcardScope: settings.flashcardScope,
+      setFlashcardMode: settings.setFlashcardMode,
+      setFlashcardOrder: settings.setFlashcardOrder,
+      setFlashcardPageSize: settings.setFlashcardPageSize,
+      setFlashcardScope: settings.setFlashcardScope,
+      setSolutionRevealEnabled: settings.setSolutionRevealEnabled,
+      setStatsResetMode: settings.setStatsResetMode,
+      solutionRevealEnabled: settings.solutionRevealEnabled,
+      statsResetMode: settings.statsResetMode,
+    },
   });
   const spacedRepetition = useSpacedRepetition({
     isFlashcardScanning: flashcards.isFlashcardScanning,
     scanFlashcards: flashcards.scanFlashcards,
     setIsFlashcardScanning: flashcards.setIsFlashcardScanning,
+    settings: {
+      setSpacedRepetitionBoxes: settings.setSpacedRepetitionBoxes,
+      setSpacedRepetitionHelpCollapsed: settings.setSpacedRepetitionHelpCollapsed,
+      setSpacedRepetitionOrder: settings.setSpacedRepetitionOrder,
+      setSpacedRepetitionPageSize: settings.setSpacedRepetitionPageSize,
+      setSpacedRepetitionStatsView: settings.setSpacedRepetitionStatsView,
+      spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
+      spacedRepetitionHelpCollapsed: settings.spacedRepetitionHelpCollapsed,
+      spacedRepetitionOrder: settings.spacedRepetitionOrder,
+      spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
+      spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
+    },
   });
   const hasRestoredVault = useRef(false);
   const {
@@ -149,9 +175,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const handleThemeChange = useCallback(
     (nextTheme: ThemeMode) => {
       setTheme(nextTheme);
-      void persistSettings({ theme: nextTheme });
     },
-    [persistSettings, setTheme],
+    [setTheme],
   );
 
   const handleAccentPick = useCallback(
@@ -163,9 +188,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       setAccentError("");
       setAccentColor(normalized);
       setAccentDraft(normalized);
-      void persistSettings({ accentColor: normalized });
     },
-    [persistSettings, setAccentColor, setAccentDraft, setAccentError],
+    [setAccentColor, setAccentDraft, setAccentError],
   );
 
   const handleAccentInputChange = useCallback(
@@ -179,12 +203,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       if (isValidHex(nextValue)) {
         setAccentError("");
         setAccentColor(nextValue);
-        void persistSettings({ accentColor: nextValue });
       } else {
         setAccentError("HEX muss #RRGGBB sein.");
       }
     },
-    [persistSettings, setAccentColor, setAccentDraft, setAccentError],
+    [setAccentColor, setAccentDraft, setAccentError],
   );
 
   const handleCopyAccent = useCallback(async () => {

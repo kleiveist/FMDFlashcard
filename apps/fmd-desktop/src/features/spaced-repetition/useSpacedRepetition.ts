@@ -25,6 +25,7 @@ import {
 export type SpacedRepetitionPageSize = 1 | 2 | 5 | 10;
 export type SpacedRepetitionBoxes = 3 | 5 | 8;
 export type SpacedRepetitionOrder = "in-order" | "random" | "repetition";
+export type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 
 export const SPACED_REPETITION_PAGE_SIZES: SpacedRepetitionPageSize[] = [
   1, 2, 5, 10,
@@ -54,19 +55,38 @@ type UseSpacedRepetitionOptions = {
     allowVaultFallback?: boolean;
   }) => Promise<Flashcard[]>;
   setIsFlashcardScanning: (value: boolean) => void;
+  settings: {
+    spacedRepetitionBoxes: SpacedRepetitionBoxes;
+    spacedRepetitionHelpCollapsed: boolean;
+    spacedRepetitionOrder: SpacedRepetitionOrder;
+    spacedRepetitionPageSize: SpacedRepetitionPageSize;
+    spacedRepetitionStatsView: SpacedRepetitionStatsView;
+    setSpacedRepetitionBoxes: (value: SpacedRepetitionBoxes) => void;
+    setSpacedRepetitionHelpCollapsed: (value: boolean) => void;
+    setSpacedRepetitionOrder: (value: SpacedRepetitionOrder) => void;
+    setSpacedRepetitionPageSize: (value: SpacedRepetitionPageSize) => void;
+    setSpacedRepetitionStatsView: (value: SpacedRepetitionStatsView) => void;
+  };
 };
 
 export const useSpacedRepetition = ({
   isFlashcardScanning,
   scanFlashcards,
   setIsFlashcardScanning,
+  settings,
 }: UseSpacedRepetitionOptions) => {
-  const [spacedRepetitionPageSize, setSpacedRepetitionPageSize] =
-    useState<SpacedRepetitionPageSize>(DEFAULT_SPACED_REPETITION_PAGE_SIZE);
-  const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
-    useState<SpacedRepetitionBoxes>(5);
-  const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
-    useState<SpacedRepetitionOrder>("in-order");
+  const {
+    spacedRepetitionBoxes,
+    spacedRepetitionHelpCollapsed,
+    spacedRepetitionOrder,
+    spacedRepetitionPageSize,
+    spacedRepetitionStatsView,
+    setSpacedRepetitionBoxes,
+    setSpacedRepetitionHelpCollapsed,
+    setSpacedRepetitionOrder,
+    setSpacedRepetitionPageSize,
+    setSpacedRepetitionStatsView,
+  } = settings;
   const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<
     SpacedRepetitionUser[]
   >([]);
@@ -542,7 +562,10 @@ export const useSpacedRepetition = ({
       const cards = await scanFlashcards({ allowVaultFallback: true });
       const storedCardStates =
         spacedRepetitionUserStateById[activeUserId]?.cardStates ?? {};
-      const nextSession = buildSpacedRepetitionSession(cards, storedCardStates);
+      const nextSession = buildSpacedRepetitionSession(cards, storedCardStates, {
+        order: spacedRepetitionOrder,
+        boxCount: spacedRepetitionBoxes,
+      });
       setSpacedRepetitionSessions((prev) => ({
         ...prev,
         [activeUserId]: nextSession,
@@ -566,6 +589,8 @@ export const useSpacedRepetition = ({
     scanFlashcards,
     setIsFlashcardScanning,
     spacedRepetitionActiveUserId,
+    spacedRepetitionBoxes,
+    spacedRepetitionOrder,
     spacedRepetitionUserStateById,
   ]);
 
@@ -776,10 +801,12 @@ export const useSpacedRepetition = ({
     handleSpacedRepetitionTrueFalseSelect,
     setSpacedRepetitionActiveUserId,
     setSpacedRepetitionBoxes,
+    setSpacedRepetitionHelpCollapsed,
     setSpacedRepetitionNewUserName,
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
     setSpacedRepetitionSelectedUserId,
+    setSpacedRepetitionStatsView,
     setSpacedRepetitionUserError,
     spacedRepetitionActiveUser,
     spacedRepetitionBoxes,
@@ -793,6 +820,7 @@ export const useSpacedRepetition = ({
     spacedRepetitionEmptyState,
     spacedRepetitionFlashcards,
     spacedRepetitionIncorrectCount,
+    spacedRepetitionHelpCollapsed,
     spacedRepetitionNewUserName,
     spacedRepetitionOrder,
     spacedRepetitionPage,
@@ -804,6 +832,7 @@ export const useSpacedRepetition = ({
     spacedRepetitionSelections,
     spacedRepetitionSessions,
     spacedRepetitionStatusLabel,
+    spacedRepetitionStatsView,
     spacedRepetitionSubmissions,
     spacedRepetitionTotalQuestions,
     spacedRepetitionTrueFalseSelections,

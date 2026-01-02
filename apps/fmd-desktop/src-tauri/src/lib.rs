@@ -19,6 +19,19 @@ struct AppSettings {
     theme: Option<String>,
     accent_color: Option<String>,
     language: Option<String>,
+    max_files_per_scan: Option<String>,
+    scan_parallelism: Option<String>,
+    flashcard_order: Option<String>,
+    flashcard_mode: Option<String>,
+    flashcard_scope: Option<String>,
+    flashcard_page_size: Option<u32>,
+    flashcard_solution_reveal_enabled: Option<bool>,
+    flashcard_stats_reset_mode: Option<String>,
+    spaced_repetition_boxes: Option<u32>,
+    spaced_repetition_order: Option<String>,
+    spaced_repetition_page_size: Option<u32>,
+    spaced_repetition_stats_view: Option<String>,
+    spaced_repetition_help_collapsed: Option<bool>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -62,6 +75,19 @@ impl AppSettings {
             && self.theme.is_none()
             && self.accent_color.is_none()
             && self.language.is_none()
+            && self.max_files_per_scan.is_none()
+            && self.scan_parallelism.is_none()
+            && self.flashcard_order.is_none()
+            && self.flashcard_mode.is_none()
+            && self.flashcard_scope.is_none()
+            && self.flashcard_page_size.is_none()
+            && self.flashcard_solution_reveal_enabled.is_none()
+            && self.flashcard_stats_reset_mode.is_none()
+            && self.spaced_repetition_boxes.is_none()
+            && self.spaced_repetition_order.is_none()
+            && self.spaced_repetition_page_size.is_none()
+            && self.spaced_repetition_stats_view.is_none()
+            && self.spaced_repetition_help_collapsed.is_none()
     }
 }
 
@@ -156,6 +182,19 @@ fn save_app_settings(
     theme: Option<String>,
     accent_color: Option<String>,
     language: Option<String>,
+    max_files_per_scan: Option<String>,
+    scan_parallelism: Option<String>,
+    flashcard_order: Option<String>,
+    flashcard_mode: Option<String>,
+    flashcard_scope: Option<String>,
+    flashcard_page_size: Option<u32>,
+    flashcard_solution_reveal_enabled: Option<bool>,
+    flashcard_stats_reset_mode: Option<String>,
+    spaced_repetition_boxes: Option<u32>,
+    spaced_repetition_order: Option<String>,
+    spaced_repetition_page_size: Option<u32>,
+    spaced_repetition_stats_view: Option<String>,
+    spaced_repetition_help_collapsed: Option<bool>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
     let settings = AppSettings {
@@ -163,6 +202,19 @@ fn save_app_settings(
         theme,
         accent_color,
         language,
+        max_files_per_scan,
+        scan_parallelism,
+        flashcard_order,
+        flashcard_mode,
+        flashcard_scope,
+        flashcard_page_size,
+        flashcard_solution_reveal_enabled,
+        flashcard_stats_reset_mode,
+        spaced_repetition_boxes,
+        spaced_repetition_order,
+        spaced_repetition_page_size,
+        spaced_repetition_stats_view,
+        spaced_repetition_help_collapsed,
     };
     write_settings(&path, &settings)
 }

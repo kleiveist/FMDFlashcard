@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { buildLineChartPoints } from "../lib/chart";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
@@ -15,9 +15,8 @@ import {
 
 export const SpacedRepetitionPage = () => {
   const { flashcards, spacedRepetition, vault } = useAppState();
-  const [statsView, setStatsView] = useState<
-    "boxes" | "vault" | "completed"
-  >("boxes");
+  const statsView = spacedRepetition.spacedRepetitionStatsView;
+  const helpCollapsed = spacedRepetition.spacedRepetitionHelpCollapsed;
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
@@ -77,7 +76,7 @@ export const SpacedRepetitionPage = () => {
                     type="button"
                     className={`pill pill-button ${statsView === "boxes" ? "active" : ""}`}
                     aria-pressed={statsView === "boxes"}
-                    onClick={() => setStatsView("boxes")}
+                    onClick={() => spacedRepetition.setSpacedRepetitionStatsView("boxes")}
                   >
                     Boxes
                   </button>
@@ -85,7 +84,7 @@ export const SpacedRepetitionPage = () => {
                     type="button"
                     className={`pill pill-button ${statsView === "vault" ? "active" : ""}`}
                     aria-pressed={statsView === "vault"}
-                    onClick={() => setStatsView("vault")}
+                    onClick={() => spacedRepetition.setSpacedRepetitionStatsView("vault")}
                   >
                     Active vault
                   </button>
@@ -95,7 +94,9 @@ export const SpacedRepetitionPage = () => {
                       statsView === "completed" ? "active" : ""
                     }`}
                     aria-pressed={statsView === "completed"}
-                    onClick={() => setStatsView("completed")}
+                    onClick={() =>
+                      spacedRepetition.setSpacedRepetitionStatsView("completed")
+                    }
                   >
                     Completed per day
                   </button>
@@ -461,7 +462,8 @@ export const SpacedRepetitionPage = () => {
               </button>
             </div>
             <span className="helper-text">
-              Repetition order will prioritize due cards when scheduling is available.
+              In order keeps scan order. Random shuffles on load. Repetition
+              prioritizes lower boxes and skips the last box.
             </span>
           </div>
           <div className="setting-row">
@@ -494,6 +496,48 @@ export const SpacedRepetitionPage = () => {
         <div className="panel-body">
           <KpiGrid items={kpiItems} />
         </div>
+      </section>
+
+      <section className="panel sr-help-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Help</h2>
+            <p className="muted">Quick reminders for this workflow.</p>
+          </div>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={() => spacedRepetition.setSpacedRepetitionHelpCollapsed(!helpCollapsed)}
+            aria-expanded={!helpCollapsed}
+          >
+            {helpCollapsed ? "Show" : "Hide"}
+          </button>
+        </div>
+        {helpCollapsed ? null : (
+          <div className="panel-body help-body">
+            <div className="help-item">
+              <span className="label">Persistence</span>
+              <p className="muted">
+                All settings and tool options are saved automatically and restored
+                after restart.
+              </p>
+            </div>
+            <div className="help-item">
+              <span className="label">Edit / Save / Cancel</span>
+              <p className="muted">
+                Edit opens edit mode, Save persists changes, Cancel discards edits
+                and returns to preview.
+              </p>
+            </div>
+            <div className="help-item">
+              <span className="label">Settings</span>
+              <p className="muted">
+                Default behavior (scan scope, order, boxes, etc.) can be adjusted
+                in Settings.
+              </p>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

@@ -139,9 +139,52 @@ export const getSpacedRepetitionEffectiveBox = (
   boxCount: number,
 ) => Math.min(progress.boxCanonical, boxCount);
 
+const shuffleEntries = <T>(entries: T[]) => {
+  const copy = [...entries];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+};
+
+const buildWeightedOrder = <T extends { progress: SpacedRepetitionCardProgress }>(
+  entries: T[],
+  boxCount: number,
+) => {
+  const candidates = entries
+    .map((entry) => {
+      const effectiveBox = getSpacedRepetitionEffectiveBox(entry.progress, boxCount);
+      return {
+        entry,
+        effectiveBox,
+        weight: Math.max(1, boxCount - effectiveBox),
+      };
+    })
+    .filter((candidate) => candidate.effectiveBox < boxCount);
+
+  const ordered: T[] = [];
+  while (candidates.length > 0) {
+    const totalWeight = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+    let threshold = Math.random() * totalWeight;
+    const index = candidates.findIndex((candidate) => {
+      threshold -= candidate.weight;
+      return threshold <= 0;
+    });
+    const pickedIndex = index >= 0 ? index : candidates.length - 1;
+    const [picked] = candidates.splice(pickedIndex, 1);
+    ordered.push(picked.entry);
+  }
+  return ordered;
+};
+
 export const buildSpacedRepetitionSession = (
   flashcards: Flashcard[],
   existingCardStates: Record<string, SpacedRepetitionCardProgress> = {},
+  options?: {
+    order?: "in-order" | "random" | "repetition";
+    boxCount?: number;
+  },
 ): SpacedRepetitionSession => {
   const cardIds = flashcards.map(getFlashcardId);
   const nextCardStates = Object.fromEntries(
@@ -157,10 +200,24 @@ export const buildSpacedRepetitionSession = (
     }
   });
 
+  const entries = flashcards.map((card, index) => ({
+    card,
+    cardId: cardIds[index],
+    progress: nextCardStates[cardIds[index]],
+  }));
+  const order = options?.order ?? "in-order";
+  const boxCount = options?.boxCount ?? MAX_SPACED_REPETITION_BOX;
+  const orderedEntries =
+    order === "random"
+      ? shuffleEntries(entries)
+      : order === "repetition"
+        ? buildWeightedOrder(entries, boxCount)
+        : entries;
+
   return {
     ...createEmptySpacedRepetitionSession(),
-    flashcards,
-    cardIds,
+    flashcards: orderedEntries.map((entry) => entry.card),
+    cardIds: orderedEntries.map((entry) => entry.cardId),
     cardProgressById: nextCardStates,
   };
 };
