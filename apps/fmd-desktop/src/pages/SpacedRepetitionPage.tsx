@@ -1,4 +1,11 @@
-import { useMemo, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
 import { buildLineChartPoints } from "../lib/chart";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
@@ -7,15 +14,35 @@ import { KpiGrid } from "../components/KpiGrid";
 import { useAppState } from "../components/AppStateProvider";
 import { vaultBaseName } from "../lib/path";
 import {
+  areClozeBlanksComplete,
+  areTrueFalseItemsComplete,
+} from "../features/flashcards/logic";
+import {
   SPACED_REPETITION_BOXES,
   SPACED_REPETITION_CHART_DATA,
   SPACED_REPETITION_CHART_LABELS,
   SPACED_REPETITION_PAGE_SIZES,
 } from "../features/spaced-repetition/useSpacedRepetition";
 
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tagName = target.tagName;
+  return (
+    target.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT"
+  );
+};
+
 export const SpacedRepetitionPage = () => {
   const { flashcards, spacedRepetition, vault } = useAppState();
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const statsView = spacedRepetition.spacedRepetitionStatsView;
+  const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
@@ -56,9 +83,197 @@ export const SpacedRepetitionPage = () => {
     },
   ];
 
+  useEffect(() => {
+    document.body.classList.toggle("focus-mode", isFocusMode);
+    return () => {
+      document.body.classList.remove("focus-mode");
+    };
+  }, [isFocusMode]);
+
+  useEffect(() => {
+    if (!isFocusMode) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      if (event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        if (spacedRepetition.spacedRepetitionCanGoBack) {
+          spacedRepetition.handleSpacedRepetitionPageBack();
+        }
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        if (spacedRepetition.spacedRepetitionCanGoNext) {
+          spacedRepetition.handleSpacedRepetitionPageNext();
+        }
+        return;
+      }
+
+      if (event.key !== "Enter" && event.key !== "NumpadEnter") {
+        return;
+      }
+
+      const visibleCards = spacedRepetition.spacedRepetitionVisibleFlashcards;
+      if (visibleCards.length === 0) {
+        return;
+      }
+
+      const findFirstSubmittableIndex = () => {
+        for (let localIndex = 0; localIndex < visibleCards.length; localIndex += 1) {
+          const cardIndex =
+            spacedRepetition.spacedRepetitionPageStart + localIndex;
+          const card = visibleCards[localIndex];
+          if (spacedRepetition.spacedRepetitionSubmissions[cardIndex]) {
+            continue;
+          }
+          if (card.kind === "multiple-choice") {
+            if (spacedRepetition.spacedRepetitionSelections[cardIndex]) {
+              return cardIndex;
+            }
+            continue;
+          }
+          if (card.kind === "true-false") {
+            const selections =
+              spacedRepetition.spacedRepetitionTrueFalseSelections[cardIndex] ?? {};
+            if (areTrueFalseItemsComplete(card, selections)) {
+              return cardIndex;
+            }
+            continue;
+          }
+          const responses =
+            spacedRepetition.spacedRepetitionClozeResponses[cardIndex] ?? {};
+          if (areClozeBlanksComplete(card, responses)) {
+            return cardIndex;
+          }
+        }
+        return null;
+      };
+
+      const resolvedIndex =
+        activeCardIndex !== null &&
+        activeCardIndex >= spacedRepetition.spacedRepetitionPageStart &&
+        activeCardIndex <
+          spacedRepetition.spacedRepetitionPageStart +
+            spacedRepetition.spacedRepetitionVisibleFlashcards.length
+          ? activeCardIndex
+          : findFirstSubmittableIndex();
+
+      if (resolvedIndex === null) {
+        return;
+      }
+
+      const localIndex = resolvedIndex - spacedRepetition.spacedRepetitionPageStart;
+      const card = visibleCards[localIndex];
+      if (!card || spacedRepetition.spacedRepetitionSubmissions[resolvedIndex]) {
+        return;
+      }
+      if (card.kind === "multiple-choice") {
+        if (!spacedRepetition.spacedRepetitionSelections[resolvedIndex]) {
+          return;
+        }
+      } else if (card.kind === "true-false") {
+        const selections =
+          spacedRepetition.spacedRepetitionTrueFalseSelections[resolvedIndex] ?? {};
+        if (!areTrueFalseItemsComplete(card, selections)) {
+          return;
+        }
+      } else {
+        const responses =
+          spacedRepetition.spacedRepetitionClozeResponses[resolvedIndex] ?? {};
+        if (!areClozeBlanksComplete(card, responses)) {
+          return;
+        }
+      }
+
+      event.preventDefault();
+      spacedRepetition.handleSpacedRepetitionSubmit(resolvedIndex, true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    activeCardIndex,
+    isFocusMode,
+    spacedRepetition,
+  ]);
+
+  const handleOptionSelect = useCallback(
+    (cardIndex: number, key: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionOptionSelect(cardIndex, key);
+    },
+    [spacedRepetition],
+  );
+
+  const handleTrueFalseSelect = useCallback(
+    (cardIndex: number, itemId: string, value: "wahr" | "falsch") => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionTrueFalseSelect(
+        cardIndex,
+        itemId,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleClozeInputChange = useCallback(
+    (cardIndex: number, blankId: string, value: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionClozeInputChange(
+        cardIndex,
+        blankId,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionClozeTokenDrop(
+        event,
+        cardIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleClozeTokenRemove = useCallback(
+    (cardIndex: number, blankId: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionClozeTokenRemove(cardIndex, blankId);
+    },
+    [spacedRepetition],
+  );
+
   return (
-    <div className="spaced-repetition-layout">
-      <section className="panel sr-diagram-panel">
+    <div className={`spaced-repetition-layout ${isFocusMode ? "focus-mode" : ""}`}>
+      {isFocusMode ? null : (
+        <section className="panel sr-diagram-panel">
         <div className="panel-header">
           <div>
             <h2>Statistics Diagram</h2>
@@ -221,8 +436,10 @@ export const SpacedRepetitionPage = () => {
           </div>
         </div>
       </section>
+      )}
 
-      <section className="panel sr-user-panel">
+      {isFocusMode ? null : (
+        <section className="panel sr-user-panel">
         <div className="panel-header">
           <div>
             <h2>User Tools</h2>
@@ -315,12 +532,36 @@ export const SpacedRepetitionPage = () => {
           </div>
         </div>
       </section>
+      )}
 
       <section className="panel sr-flashcards-panel">
         <div className="panel-header">
           <div>
             <h2>Flashcards</h2>
             <p className="muted">{spacedRepetition.spacedRepetitionStatusLabel}</p>
+          </div>
+          <div className="panel-actions">
+            <button
+              type="button"
+              className={`focus-toggle ${isFocusMode ? "active" : ""}`}
+              onClick={() => setIsFocusMode((prev) => !prev)}
+              aria-pressed={isFocusMode}
+              aria-label={focusLabel}
+              title={focusLabel}
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                <circle cx="12" cy="12" r="3.5" />
+              </svg>
+            </button>
           </div>
         </div>
         <div className="panel-body">
@@ -340,9 +581,9 @@ export const SpacedRepetitionPage = () => {
                       cardIndex={cardIndex}
                       submitted={submitted}
                       responses={spacedRepetition.spacedRepetitionClozeResponses[cardIndex] ?? {}}
-                      onInputChange={spacedRepetition.handleSpacedRepetitionClozeInputChange}
-                      onTokenDrop={spacedRepetition.handleSpacedRepetitionClozeTokenDrop}
-                      onTokenRemove={spacedRepetition.handleSpacedRepetitionClozeTokenRemove}
+                      onInputChange={handleClozeInputChange}
+                      onTokenDrop={handleClozeTokenDrop}
+                      onTokenRemove={handleClozeTokenRemove}
                       onTokenDragStart={flashcards.handleClozeTokenDragStart}
                       onBlankDragOver={flashcards.handleClozeBlankDragOver}
                       onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
@@ -360,7 +601,7 @@ export const SpacedRepetitionPage = () => {
                       selections={
                         spacedRepetition.spacedRepetitionTrueFalseSelections[cardIndex] ?? {}
                       }
-                      onSelect={spacedRepetition.handleSpacedRepetitionTrueFalseSelect}
+                      onSelect={handleTrueFalseSelect}
                       onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
                     />
                   );
@@ -373,7 +614,7 @@ export const SpacedRepetitionPage = () => {
                     cardIndex={cardIndex}
                     submitted={submitted}
                     selectedKey={spacedRepetition.spacedRepetitionSelections[cardIndex] ?? ""}
-                    onSelect={spacedRepetition.handleSpacedRepetitionOptionSelect}
+                    onSelect={handleOptionSelect}
                     onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
                   />
                 );
@@ -401,101 +642,105 @@ export const SpacedRepetitionPage = () => {
         </div>
       </section>
 
-      <section className="panel sr-tools-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Spaced Repetition Tools</h2>
+      {isFocusMode ? null : (
+        <section className="panel sr-tools-panel">
+          <div className="panel-header">
+            <div>
+              <h2>Spaced Repetition Tools</h2>
+            </div>
           </div>
-        </div>
-        <div className="panel-body">
-          <div className="setting-row">
-            <span className="label">Boxes</span>
-            <div className="pill-grid">
-              {SPACED_REPETITION_BOXES.map((box) => (
+          <div className="panel-body">
+            <div className="setting-row">
+              <span className="label">Boxes</span>
+              <div className="pill-grid">
+                {SPACED_REPETITION_BOXES.map((box) => (
+                  <button
+                    key={box}
+                    type="button"
+                    className={`pill pill-button ${
+                      spacedRepetition.spacedRepetitionBoxes === box ? "active" : ""
+                    }`}
+                    aria-pressed={spacedRepetition.spacedRepetitionBoxes === box}
+                    onClick={() => spacedRepetition.setSpacedRepetitionBoxes(box)}
+                  >
+                    {box} Boxes
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="setting-row">
+              <span className="label">Default order</span>
+              <div className="pill-grid">
                 <button
-                  key={box}
                   type="button"
                   className={`pill pill-button ${
-                    spacedRepetition.spacedRepetitionBoxes === box ? "active" : ""
+                    spacedRepetition.spacedRepetitionOrder === "in-order" ? "active" : ""
                   }`}
-                  aria-pressed={spacedRepetition.spacedRepetitionBoxes === box}
-                  onClick={() => spacedRepetition.setSpacedRepetitionBoxes(box)}
+                  aria-pressed={spacedRepetition.spacedRepetitionOrder === "in-order"}
+                  onClick={() => spacedRepetition.setSpacedRepetitionOrder("in-order")}
                 >
-                  {box} Boxes
+                  In order
                 </button>
-              ))}
-            </div>
-          </div>
-          <div className="setting-row">
-            <span className="label">Default order</span>
-            <div className="pill-grid">
-              <button
-                type="button"
-                className={`pill pill-button ${
-                  spacedRepetition.spacedRepetitionOrder === "in-order" ? "active" : ""
-                }`}
-                aria-pressed={spacedRepetition.spacedRepetitionOrder === "in-order"}
-                onClick={() => spacedRepetition.setSpacedRepetitionOrder("in-order")}
-              >
-                In order
-              </button>
-              <button
-                type="button"
-                className={`pill pill-button ${
-                  spacedRepetition.spacedRepetitionOrder === "random" ? "active" : ""
-                }`}
-                aria-pressed={spacedRepetition.spacedRepetitionOrder === "random"}
-                onClick={() => spacedRepetition.setSpacedRepetitionOrder("random")}
-              >
-                Random
-              </button>
-              <button
-                type="button"
-                className={`pill pill-button ${
-                  spacedRepetition.spacedRepetitionOrder === "repetition" ? "active" : ""
-                }`}
-                aria-pressed={spacedRepetition.spacedRepetitionOrder === "repetition"}
-                onClick={() => spacedRepetition.setSpacedRepetitionOrder("repetition")}
-              >
-                Repetition
-              </button>
-            </div>
-            <span className="helper-text">
-              In order keeps scan order. Random shuffles on load. Repetition
-              prioritizes lower boxes and skips the last box.
-            </span>
-          </div>
-          <div className="setting-row">
-            <span className="label">Page size</span>
-            <div className="pill-grid">
-              {SPACED_REPETITION_PAGE_SIZES.map((size) => (
                 <button
-                  key={size}
                   type="button"
                   className={`pill pill-button ${
-                    spacedRepetition.spacedRepetitionPageSize === size ? "active" : ""
+                    spacedRepetition.spacedRepetitionOrder === "random" ? "active" : ""
                   }`}
-                  aria-pressed={spacedRepetition.spacedRepetitionPageSize === size}
-                  onClick={() => spacedRepetition.setSpacedRepetitionPageSize(size)}
+                  aria-pressed={spacedRepetition.spacedRepetitionOrder === "random"}
+                  onClick={() => spacedRepetition.setSpacedRepetitionOrder("random")}
                 >
-                  {size}
+                  Random
                 </button>
-              ))}
+                <button
+                  type="button"
+                  className={`pill pill-button ${
+                    spacedRepetition.spacedRepetitionOrder === "repetition" ? "active" : ""
+                  }`}
+                  aria-pressed={spacedRepetition.spacedRepetitionOrder === "repetition"}
+                  onClick={() => spacedRepetition.setSpacedRepetitionOrder("repetition")}
+                >
+                  Repetition
+                </button>
+              </div>
+              <span className="helper-text">
+                In order keeps scan order. Random shuffles on load. Repetition
+                prioritizes lower boxes and skips the last box.
+              </span>
+            </div>
+            <div className="setting-row">
+              <span className="label">Page size</span>
+              <div className="pill-grid">
+                {SPACED_REPETITION_PAGE_SIZES.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`pill pill-button ${
+                      spacedRepetition.spacedRepetitionPageSize === size ? "active" : ""
+                    }`}
+                    aria-pressed={spacedRepetition.spacedRepetitionPageSize === size}
+                    onClick={() => spacedRepetition.setSpacedRepetitionPageSize(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="panel stats-panel sr-stats-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Statistics</h2>
+      {isFocusMode ? null : (
+        <section className="panel stats-panel sr-stats-panel">
+          <div className="panel-header">
+            <div>
+              <h2>Statistics</h2>
+            </div>
           </div>
-        </div>
-        <div className="panel-body">
-          <KpiGrid items={kpiItems} />
-        </div>
-      </section>
+          <div className="panel-body">
+            <KpiGrid items={kpiItems} />
+          </div>
+        </section>
+      )}
     </div>
   );
 };
