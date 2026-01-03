@@ -555,7 +555,7 @@ export const useSpacedRepetition = ({
     const activeUserId = spacedRepetitionActiveUserId;
     setIsFlashcardScanning(true);
     try {
-      const cards = await scanFlashcards({ allowVaultFallback: true });
+      const cards = await scanFlashcards({ scopeOverride: "vault" });
       const storedCardStates =
         spacedRepetitionUserStateById[activeUserId]?.cardStates ?? {};
       const nextSession = buildSpacedRepetitionSession(cards, storedCardStates, {
