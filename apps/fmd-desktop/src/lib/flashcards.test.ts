@@ -60,6 +60,46 @@ b) Beta
     }
   });
 
+  it("parses a front/back card with Answer marker", () => {
+    const markdown = `#card
+What is SQL used for as a common interface?
+Answer: SQL is used to define, manipulate, manage permissions, and handle transactions.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].kind).toBe("free-text");
+    if (cards[0].kind === "free-text") {
+      expect(cards[0].front).toBe(
+        "What is SQL used for as a common interface?",
+      );
+      expect(cards[0].back).toBe(
+        "SQL is used to define, manipulate, manage permissions, and handle transactions.",
+      );
+    }
+  });
+
+  it("parses a front/back card with Antwort marker", () => {
+    const markdown = `#card
+1. Was ist eine Transaktion?
+Antwort:
+Eine Transaktion ist eine atomare Einheit von Operationen.
+#
+`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].kind).toBe("free-text");
+    if (cards[0].kind === "free-text") {
+      expect(cards[0].front).toBe("1. Was ist eine Transaktion?");
+      expect(cards[0].back).toBe(
+        "Eine Transaktion ist eine atomare Einheit von Operationen.",
+      );
+    }
+  });
+
   it("parses a single true/false item", () => {
     const markdown = `#card
 1. The earth orbits the sun. Wahr/Falsch?

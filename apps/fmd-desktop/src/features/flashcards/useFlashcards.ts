@@ -7,6 +7,7 @@ import {
   handleClozeBlankDragOver,
   handleClozeTokenDragStart,
   shuffleFlashcards,
+  type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "./logic";
 import { type VaultFile } from "../../lib/tree";
@@ -78,6 +79,15 @@ export const useFlashcards = ({
   const [flashcardSelections, setFlashcardSelections] = useState<
     Record<number, string>
   >({});
+  const [flashcardTextResponses, setFlashcardTextResponses] = useState<
+    Record<number, string>
+  >({});
+  const [flashcardTextRevealed, setFlashcardTextRevealed] = useState<
+    Record<number, boolean>
+  >({});
+  const [flashcardSelfGrades, setFlashcardSelfGrades] = useState<
+    Record<number, FlashcardSelfGrade>
+  >({});
   const [flashcardSubmissions, setFlashcardSubmissions] = useState<
     Record<number, boolean>
   >({});
@@ -90,6 +100,9 @@ export const useFlashcards = ({
     () => ({
       flashcards,
       flashcardSelections,
+      flashcardTextResponses,
+      flashcardTextRevealed,
+      flashcardSelfGrades,
       flashcardSubmissions,
       flashcardTrueFalseSelections,
       flashcardClozeResponses,
@@ -99,7 +112,10 @@ export const useFlashcards = ({
       flashcardClozeResponses,
       flashcardPage,
       flashcardSelections,
+      flashcardSelfGrades,
       flashcardSubmissions,
+      flashcardTextResponses,
+      flashcardTextRevealed,
       flashcardTrueFalseSelections,
       flashcards,
     ],
@@ -109,6 +125,9 @@ export const useFlashcards = ({
     (snapshot: {
       flashcards: Flashcard[];
       flashcardSelections: Record<number, string>;
+      flashcardTextResponses: Record<number, string>;
+      flashcardTextRevealed: Record<number, boolean>;
+      flashcardSelfGrades: Record<number, FlashcardSelfGrade>;
       flashcardSubmissions: Record<number, boolean>;
       flashcardTrueFalseSelections: Record<number, Record<string, TrueFalseSelection>>;
       flashcardClozeResponses: Record<number, Record<string, string>>;
@@ -116,6 +135,9 @@ export const useFlashcards = ({
     }) => {
       setFlashcards(snapshot.flashcards);
       setFlashcardSelections(snapshot.flashcardSelections);
+      setFlashcardTextResponses(snapshot.flashcardTextResponses);
+      setFlashcardTextRevealed(snapshot.flashcardTextRevealed);
+      setFlashcardSelfGrades(snapshot.flashcardSelfGrades);
       setFlashcardSubmissions(snapshot.flashcardSubmissions);
       setFlashcardTrueFalseSelections(snapshot.flashcardTrueFalseSelections);
       setFlashcardClozeResponses(snapshot.flashcardClozeResponses);
@@ -159,11 +181,13 @@ export const useFlashcards = ({
         flashcardSelections,
         flashcardTrueFalseSelections,
         flashcardClozeResponses,
+        flashcardSelfGrades,
       ),
     [
       flashcards,
       flashcardClozeResponses,
       flashcardSelections,
+      flashcardSelfGrades,
       flashcardSubmissions,
       flashcardTrueFalseSelections,
     ],
@@ -186,6 +210,9 @@ export const useFlashcards = ({
   const resetFlashcards = useCallback((options?: { keepScanning?: boolean }) => {
     setFlashcards([]);
     setFlashcardSelections({});
+    setFlashcardTextResponses({});
+    setFlashcardTextRevealed({});
+    setFlashcardSelfGrades({});
     setFlashcardSubmissions({});
     setFlashcardTrueFalseSelections({});
     setFlashcardClozeResponses({});
@@ -287,6 +314,37 @@ export const useFlashcards = ({
     [flashcardSubmissions],
   );
 
+  const handleFlashcardTextInputChange = useCallback(
+    (cardIndex: number, value: string) => {
+      if (flashcardSubmissions[cardIndex] || flashcardTextRevealed[cardIndex]) {
+        return;
+      }
+      setFlashcardTextResponses((prev) => ({ ...prev, [cardIndex]: value }));
+    },
+    [flashcardSubmissions, flashcardTextRevealed],
+  );
+
+  const handleFlashcardTextCheck = useCallback(
+    (cardIndex: number) => {
+      if (flashcardSubmissions[cardIndex] || flashcardTextRevealed[cardIndex]) {
+        return;
+      }
+      setFlashcardTextRevealed((prev) => ({ ...prev, [cardIndex]: true }));
+    },
+    [flashcardSubmissions, flashcardTextRevealed],
+  );
+
+  const handleFlashcardSelfGrade = useCallback(
+    (cardIndex: number, grade: FlashcardSelfGrade) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      setFlashcardSelfGrades((prev) => ({ ...prev, [cardIndex]: grade }));
+      setFlashcardSubmissions((prev) => ({ ...prev, [cardIndex]: true }));
+    },
+    [flashcardSubmissions],
+  );
+
   const handleFlashcardPageBack = useCallback(() => {
     setFlashcardPage((prev) => Math.max(0, prev - 1));
   }, []);
@@ -377,7 +435,10 @@ export const useFlashcards = ({
     flashcardPageStart,
     flashcardScope,
     flashcardSelections,
+    flashcardSelfGrades,
     flashcardSubmissions,
+    flashcardTextResponses,
+    flashcardTextRevealed,
     flashcardTrueFalseSelections,
     flashcards,
     handleClozeBlankDragOver,
@@ -389,7 +450,10 @@ export const useFlashcards = ({
     handleFlashcardPageBack,
     handleFlashcardPageNext,
     handleFlashcardScan,
+    handleFlashcardSelfGrade,
     handleFlashcardSubmit,
+    handleFlashcardTextCheck,
+    handleFlashcardTextInputChange,
     handleTrueFalseSelect,
     incorrectCount,
     isFlashcardScanning,

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   evaluateFlashcardResult,
   getClozeDragPayload,
+  type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "../flashcards/logic";
 import type { FlashcardScope } from "../flashcards/useFlashcards";
@@ -122,6 +123,10 @@ export const useSpacedRepetition = ({
     : undefined;
   const spacedRepetitionFlashcards = spacedRepetitionSession?.flashcards ?? [];
   const spacedRepetitionSelections = spacedRepetitionSession?.selections ?? {};
+  const spacedRepetitionTextResponses =
+    spacedRepetitionSession?.textResponses ?? {};
+  const spacedRepetitionTextRevealed = spacedRepetitionSession?.textRevealed ?? {};
+  const spacedRepetitionSelfGrades = spacedRepetitionSession?.selfGrades ?? {};
   const spacedRepetitionSubmissions =
     spacedRepetitionSession?.submissions ?? {};
   const spacedRepetitionTrueFalseSelections =
@@ -636,7 +641,7 @@ export const useSpacedRepetition = ({
   );
 
   const handleSpacedRepetitionSubmit = useCallback(
-    (cardIndex: number, canSubmit: boolean) => {
+    (cardIndex: number, canSubmit: boolean, selfGrade?: FlashcardSelfGrade) => {
       if (!canSubmit) {
         return;
       }
@@ -653,13 +658,19 @@ export const useSpacedRepetition = ({
             ? session.cardIds
             : session.flashcards.map(getFlashcardId);
         const cardId = cardIds[cardIndex] ?? getFlashcardId(card);
-        const result = evaluateFlashcardResult(
-          card,
-          cardIndex,
-          session.selections,
-          session.trueFalseSelections,
-          session.clozeResponses,
-        );
+        const nextSelfGrades = selfGrade
+          ? { ...session.selfGrades, [cardIndex]: selfGrade }
+          : session.selfGrades;
+        const result =
+          selfGrade ??
+          evaluateFlashcardResult(
+            card,
+            cardIndex,
+            session.selections,
+            session.trueFalseSelections,
+            session.clozeResponses,
+            nextSelfGrades,
+          );
         const currentProgress = normalizeSpacedRepetitionCardProgress(
           session.cardProgressById[cardId],
         );
@@ -688,6 +699,7 @@ export const useSpacedRepetition = ({
           ...session,
           cardIds,
           submissions: { ...session.submissions, [cardIndex]: true },
+          selfGrades: nextSelfGrades,
           cardProgressById: {
             ...session.cardProgressById,
             [cardId]: nextProgress,
@@ -696,6 +708,43 @@ export const useSpacedRepetition = ({
       });
     },
     [spacedRepetitionBoxes, updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionTextInputChange = useCallback(
+    (cardIndex: number, value: string) => {
+      updateActiveSpacedRepetitionSession((session) => {
+        if (session.submissions[cardIndex] || session.textRevealed[cardIndex]) {
+          return session;
+        }
+        return {
+          ...session,
+          textResponses: { ...session.textResponses, [cardIndex]: value },
+        };
+      });
+    },
+    [updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionTextCheck = useCallback(
+    (cardIndex: number) => {
+      updateActiveSpacedRepetitionSession((session) => {
+        if (session.submissions[cardIndex] || session.textRevealed[cardIndex]) {
+          return session;
+        }
+        return {
+          ...session,
+          textRevealed: { ...session.textRevealed, [cardIndex]: true },
+        };
+      });
+    },
+    [updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionSelfGrade = useCallback(
+    (cardIndex: number, grade: FlashcardSelfGrade) => {
+      handleSpacedRepetitionSubmit(cardIndex, true, grade);
+    },
+    [handleSpacedRepetitionSubmit],
   );
 
   const handleSpacedRepetitionPageBack = useCallback(() => {
@@ -803,7 +852,10 @@ export const useSpacedRepetition = ({
     handleSpacedRepetitionOptionSelect,
     handleSpacedRepetitionPageBack,
     handleSpacedRepetitionPageNext,
+    handleSpacedRepetitionSelfGrade,
     handleSpacedRepetitionSubmit,
+    handleSpacedRepetitionTextCheck,
+    handleSpacedRepetitionTextInputChange,
     handleSpacedRepetitionTrueFalseSelect,
     setSpacedRepetitionActiveUserId,
     setSpacedRepetitionBoxes,
@@ -840,6 +892,9 @@ export const useSpacedRepetition = ({
     spacedRepetitionStatusLabel,
     spacedRepetitionStatsView,
     spacedRepetitionSubmissions,
+    spacedRepetitionTextRevealed,
+    spacedRepetitionTextResponses,
+    spacedRepetitionSelfGrades,
     spacedRepetitionTotalQuestions,
     spacedRepetitionTrueFalseSelections,
     spacedRepetitionUserError,

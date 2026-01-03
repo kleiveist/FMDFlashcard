@@ -950,6 +950,42 @@ body.focus-mode .sr-stats-panel {
   flex-wrap: wrap;
 }
 
+.flashcard-text-block {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.flashcard-input {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.flashcard-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.flashcard-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.flashcard-answer-text {
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
 .cloze-text {
   line-height: 1.6;
   white-space: pre-wrap;

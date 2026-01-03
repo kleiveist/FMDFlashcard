@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type DragEvent } from "react";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
+import { FreeTextCard } from "../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
 import { StatsPanel } from "../components/StatsPanel";
@@ -105,6 +106,9 @@ export const FlashcardPage = () => {
             }
             continue;
           }
+          if (card.kind === "free-text") {
+            continue;
+          }
           const responses = flashcards.flashcardClozeResponses[cardIndex] ?? {};
           if (areClozeBlanksComplete(card, responses)) {
             return cardIndex;
@@ -139,6 +143,8 @@ export const FlashcardPage = () => {
         if (!areTrueFalseItemsComplete(card, selections)) {
           return;
         }
+      } else if (card.kind === "free-text") {
+        return;
       } else {
         const responses = flashcards.flashcardClozeResponses[resolvedIndex] ?? {};
         if (!areClozeBlanksComplete(card, responses)) {
@@ -206,6 +212,30 @@ export const FlashcardPage = () => {
     (cardIndex: number, blankId: string) => {
       setActiveCardIndex(cardIndex);
       flashcards.handleClozeTokenRemove(cardIndex, blankId);
+    },
+    [flashcards],
+  );
+
+  const handleTextInputChange = useCallback(
+    (cardIndex: number, value: string) => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleFlashcardTextInputChange(cardIndex, value);
+    },
+    [flashcards],
+  );
+
+  const handleTextCheck = useCallback(
+    (cardIndex: number) => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleFlashcardTextCheck(cardIndex);
+    },
+    [flashcards],
+  );
+
+  const handleSelfGrade = useCallback(
+    (cardIndex: number, grade: "correct" | "incorrect") => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleFlashcardSelfGrade(cardIndex, grade);
     },
     [flashcards],
   );
@@ -283,6 +313,23 @@ export const FlashcardPage = () => {
                       selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
                       onSelect={handleTrueFalseSelect}
                       onSubmit={flashcards.handleFlashcardSubmit}
+                    />
+                  );
+                }
+
+                if (card.kind === "free-text") {
+                  return (
+                    <FreeTextCard
+                      key={`flashcard-${cardIndex}`}
+                      card={card}
+                      cardIndex={cardIndex}
+                      submitted={submitted}
+                      response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
+                      revealed={flashcards.flashcardTextRevealed[cardIndex] ?? false}
+                      selfGrade={flashcards.flashcardSelfGrades[cardIndex]}
+                      onInputChange={handleTextInputChange}
+                      onCheck={handleTextCheck}
+                      onSelfGrade={handleSelfGrade}
                     />
                   );
                 }

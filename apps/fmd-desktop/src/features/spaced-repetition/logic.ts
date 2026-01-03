@@ -1,5 +1,9 @@
 import type { Flashcard } from "../../lib/flashcards";
-import type { FlashcardResult, TrueFalseSelection } from "../flashcards/logic";
+import type {
+  FlashcardResult,
+  FlashcardSelfGrade,
+  TrueFalseSelection,
+} from "../flashcards/logic";
 
 export const MAX_SPACED_REPETITION_BOX = 8;
 export type SpacedRepetitionRepetitionStrength = "weak" | "medium" | "strong";
@@ -27,6 +31,9 @@ export type SpacedRepetitionSession = {
   flashcards: Flashcard[];
   cardIds: string[];
   selections: Record<number, string>;
+  textResponses: Record<number, string>;
+  textRevealed: Record<number, boolean>;
+  selfGrades: Record<number, FlashcardSelfGrade>;
   submissions: Record<number, boolean>;
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>;
   clozeResponses: Record<number, Record<string, string>>;
@@ -84,6 +91,14 @@ const getFlashcardIdentityPayload = (card: Flashcard) => {
     };
   }
 
+  if (card.kind === "free-text") {
+    return {
+      kind: card.kind,
+      front: card.front,
+      back: card.back,
+    };
+  }
+
   return {
     kind: card.kind,
     question: card.question,
@@ -99,6 +114,9 @@ export const createEmptySpacedRepetitionSession = (): SpacedRepetitionSession =>
   flashcards: [],
   cardIds: [],
   selections: {},
+  textResponses: {},
+  textRevealed: {},
+  selfGrades: {},
   submissions: {},
   trueFalseSelections: {},
   clozeResponses: {},

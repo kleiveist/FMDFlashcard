@@ -8,6 +8,7 @@ import {
 
 export type TrueFalseSelection = "wahr" | "falsch";
 export type FlashcardResult = "correct" | "incorrect" | "neutral";
+export type FlashcardSelfGrade = Exclude<FlashcardResult, "neutral">;
 
 export type FlashcardStats = {
   correctCount: number;
@@ -147,6 +148,7 @@ export const evaluateFlashcardResult = (
   selections: Record<number, string>,
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>,
   clozeResponses: Record<number, Record<string, string>>,
+  selfGrades: Record<number, FlashcardSelfGrade> = {},
 ): FlashcardResult => {
   if (card.kind === "multiple-choice") {
     if (card.correctKeys.length === 0) {
@@ -164,12 +166,17 @@ export const evaluateFlashcardResult = (
     return isTrueFalseCardCorrect(card, selectionsForCard) ? "correct" : "incorrect";
   }
 
-  const blanks = getClozeBlanks(card.segments);
-  if (blanks.length === 0) {
-    return "neutral";
+  if (card.kind === "cloze") {
+    const blanks = getClozeBlanks(card.segments);
+    if (blanks.length === 0) {
+      return "neutral";
+    }
+    const responses = clozeResponses[cardIndex] ?? {};
+    return isClozeCardCorrect(card, responses) ? "correct" : "incorrect";
   }
-  const responses = clozeResponses[cardIndex] ?? {};
-  return isClozeCardCorrect(card, responses) ? "correct" : "incorrect";
+
+  const grade = selfGrades[cardIndex];
+  return grade ?? "neutral";
 };
 
 export const calculateFlashcardStats = (
@@ -178,6 +185,7 @@ export const calculateFlashcardStats = (
   selections: Record<number, string>,
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>,
   clozeResponses: Record<number, Record<string, string>>,
+  selfGrades: Record<number, FlashcardSelfGrade> = {},
 ): FlashcardStats => {
   let correct = 0;
   let incorrect = 0;
@@ -192,6 +200,7 @@ export const calculateFlashcardStats = (
       selections,
       trueFalseSelections,
       clozeResponses,
+      selfGrades,
     );
     if (result === "correct") {
       correct += 1;

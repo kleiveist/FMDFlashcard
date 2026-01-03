@@ -8,6 +8,7 @@ import {
 } from "react";
 import { buildLineChartPoints } from "../lib/chart";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
+import { FreeTextCard } from "../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
 import { KpiGrid } from "../components/KpiGrid";
@@ -184,6 +185,9 @@ export const SpacedRepetitionPage = () => {
             }
             continue;
           }
+          if (card.kind === "free-text") {
+            continue;
+          }
           const responses =
             spacedRepetition.spacedRepetitionClozeResponses[cardIndex] ?? {};
           if (areClozeBlanksComplete(card, responses)) {
@@ -221,6 +225,8 @@ export const SpacedRepetitionPage = () => {
         if (!areTrueFalseItemsComplete(card, selections)) {
           return;
         }
+      } else if (card.kind === "free-text") {
+        return;
       } else {
         const responses =
           spacedRepetition.spacedRepetitionClozeResponses[resolvedIndex] ?? {};
@@ -297,6 +303,30 @@ export const SpacedRepetitionPage = () => {
     (cardIndex: number, blankId: string) => {
       setActiveCardIndex(cardIndex);
       spacedRepetition.handleSpacedRepetitionClozeTokenRemove(cardIndex, blankId);
+    },
+    [spacedRepetition],
+  );
+
+  const handleTextInputChange = useCallback(
+    (cardIndex: number, value: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionTextInputChange(cardIndex, value);
+    },
+    [spacedRepetition],
+  );
+
+  const handleTextCheck = useCallback(
+    (cardIndex: number) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionTextCheck(cardIndex);
+    },
+    [spacedRepetition],
+  );
+
+  const handleSelfGrade = useCallback(
+    (cardIndex: number, grade: "correct" | "incorrect") => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionSelfGrade(cardIndex, grade);
     },
     [spacedRepetition],
   );
@@ -656,6 +686,28 @@ export const SpacedRepetitionPage = () => {
                       }
                       onSelect={handleTrueFalseSelect}
                       onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
+                    />
+                  );
+                }
+
+                if (card.kind === "free-text") {
+                  return (
+                    <FreeTextCard
+                      key={`flashcard-${cardIndex}`}
+                      card={card}
+                      cardIndex={cardIndex}
+                      submitted={submitted}
+                      response={
+                        spacedRepetition.spacedRepetitionTextResponses[cardIndex] ?? ""
+                      }
+                      revealed={
+                        spacedRepetition.spacedRepetitionTextRevealed[cardIndex] ??
+                        false
+                      }
+                      selfGrade={spacedRepetition.spacedRepetitionSelfGrades[cardIndex]}
+                      onInputChange={handleTextInputChange}
+                      onCheck={handleTextCheck}
+                      onSelfGrade={handleSelfGrade}
                     />
                   );
                 }

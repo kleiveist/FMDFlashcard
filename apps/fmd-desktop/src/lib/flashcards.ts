@@ -33,6 +33,12 @@ export type MultipleChoiceCard = {
   correctKeys: string[];
 };
 
+export type FreeTextCard = {
+  kind: "free-text";
+  front: string;
+  back: string;
+};
+
 export type TrueFalseItem = {
   id: string;
   question: string;
@@ -60,7 +66,7 @@ export type ClozeCard = {
   dragTokens: ClozeDragToken[];
 };
 
-export type Flashcard = MultipleChoiceCard | TrueFalseCard | ClozeCard;
+export type Flashcard = MultipleChoiceCard | FreeTextCard | TrueFalseCard | ClozeCard;
 
 export const normalizeInputAnswer = (value: string) => value.trim().toLowerCase();
 
@@ -77,6 +83,7 @@ const normalizeLines = (markdown: string) =>
 
 const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
+const answerMarkerPattern = /^(answer|antwort):\s*/i;
 const trueFalseSuffix = "Wahr/Falsch?";
 const trueFalseMarkerPattern = /^-(wahr|falsch)$/i;
 
@@ -248,6 +255,32 @@ const parseTrueFalseItems = (lines: string[]) => {
   return items;
 };
 
+const splitAnswerCard = (lines: string[]) => {
+  const markerIndex = lines.findIndex((line) =>
+    answerMarkerPattern.test(line.trim()),
+  );
+  if (markerIndex === -1) {
+    return null;
+  }
+  const frontLines = trimEmptyLines(lines.slice(0, markerIndex));
+  const markerLine = lines[markerIndex] ?? "";
+  const trimmedMarkerLine = markerLine.trimStart();
+  const markerMatch = trimmedMarkerLine.match(answerMarkerPattern);
+  const inlineAnswer = markerMatch
+    ? trimmedMarkerLine.slice(markerMatch[0].length)
+    : "";
+  const backLines = [inlineAnswer, ...lines.slice(markerIndex + 1)];
+  const normalizedFront = trimEmptyLines(frontLines).join("\n").trim();
+  const normalizedBack = trimEmptyLines(backLines).join("\n").trim();
+  if (!normalizedFront || !normalizedBack) {
+    return null;
+  }
+  return {
+    front: normalizedFront,
+    back: normalizedBack,
+  };
+};
+
 const pushUnique = (items: string[], value: string) => {
   if (!items.includes(value)) {
     items.push(value);
@@ -295,6 +328,7 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
     }
     const question = cardLines[questionIndex].trim();
     const bodyLines = cardLines.slice(questionIndex + 1);
+    const contentLines = cardLines.slice(questionIndex);
 
     const options: FlashcardOption[] = [];
     const correctKeys: string[] = [];
@@ -336,6 +370,12 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
     const trueFalseItems = parseTrueFalseItems(cardLines.slice(questionIndex));
     if (trueFalseItems.length > 0) {
       cards.push({ kind: "true-false", items: trueFalseItems });
+      continue;
+    }
+
+    const answerCard = splitAnswerCard(contentLines);
+    if (answerCard) {
+      cards.push({ kind: "free-text", ...answerCard });
       continue;
     }
 
