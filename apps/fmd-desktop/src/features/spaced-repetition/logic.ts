@@ -2,6 +2,14 @@ import type { Flashcard } from "../../lib/flashcards";
 import type { FlashcardResult, TrueFalseSelection } from "../flashcards/logic";
 
 export const MAX_SPACED_REPETITION_BOX = 8;
+export type SpacedRepetitionRepetitionStrength = "weak" | "medium" | "strong";
+
+// Index 0..7 maps to boxes 1..8 for weighted repetition order.
+const REPETITION_WEIGHTS: Record<SpacedRepetitionRepetitionStrength, number[]> = {
+  weak: [6, 5, 4, 3, 2, 2, 1, 1],
+  medium: [8, 5, 3, 2, 1, 1, 1, 1],
+  strong: [12, 6, 3, 2, 1, 1, 1, 1],
+};
 
 export type SpacedRepetitionCardProgress = {
   boxCanonical: number;
@@ -151,14 +159,16 @@ const shuffleEntries = <T>(entries: T[]) => {
 const buildWeightedOrder = <T extends { progress: SpacedRepetitionCardProgress }>(
   entries: T[],
   boxCount: number,
+  strength: SpacedRepetitionRepetitionStrength,
 ) => {
+  const weights = REPETITION_WEIGHTS[strength];
   const candidates = entries
     .map((entry) => {
       const effectiveBox = getSpacedRepetitionEffectiveBox(entry.progress, boxCount);
       return {
         entry,
         effectiveBox,
-        weight: Math.max(1, boxCount - effectiveBox),
+        weight: Math.max(1, weights[effectiveBox - 1] ?? 1),
       };
     })
     .filter((candidate) => candidate.effectiveBox < boxCount);
@@ -184,6 +194,7 @@ export const buildSpacedRepetitionSession = (
   options?: {
     order?: "in-order" | "random" | "repetition";
     boxCount?: number;
+    repetitionStrength?: SpacedRepetitionRepetitionStrength;
   },
 ): SpacedRepetitionSession => {
   const cardIds = flashcards.map(getFlashcardId);
@@ -211,7 +222,11 @@ export const buildSpacedRepetitionSession = (
     order === "random"
       ? shuffleEntries(entries)
       : order === "repetition"
-        ? buildWeightedOrder(entries, boxCount)
+        ? buildWeightedOrder(
+            entries,
+            boxCount,
+            options?.repetitionStrength ?? "medium",
+          )
         : entries;
 
   return {

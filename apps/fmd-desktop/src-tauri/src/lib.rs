@@ -30,6 +30,7 @@ struct AppSettings {
     spaced_repetition_boxes: Option<u32>,
     spaced_repetition_order: Option<String>,
     spaced_repetition_page_size: Option<u32>,
+    spaced_repetition_repetition_strength: Option<String>,
     spaced_repetition_stats_view: Option<String>,
 }
 
@@ -85,6 +86,7 @@ impl AppSettings {
             && self.spaced_repetition_boxes.is_none()
             && self.spaced_repetition_order.is_none()
             && self.spaced_repetition_page_size.is_none()
+            && self.spaced_repetition_repetition_strength.is_none()
             && self.spaced_repetition_stats_view.is_none()
     }
 }
@@ -191,6 +193,7 @@ fn save_app_settings(
     spaced_repetition_boxes: Option<u32>,
     spaced_repetition_order: Option<String>,
     spaced_repetition_page_size: Option<u32>,
+    spaced_repetition_repetition_strength: Option<String>,
     spaced_repetition_stats_view: Option<String>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
@@ -210,6 +213,7 @@ fn save_app_settings(
         spaced_repetition_boxes,
         spaced_repetition_order,
         spaced_repetition_page_size,
+        spaced_repetition_repetition_strength,
         spaced_repetition_stats_view,
     };
     write_settings(&path, &settings)

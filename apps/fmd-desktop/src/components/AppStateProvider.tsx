@@ -70,10 +70,14 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       setSpacedRepetitionBoxes: settings.setSpacedRepetitionBoxes,
       setSpacedRepetitionOrder: settings.setSpacedRepetitionOrder,
       setSpacedRepetitionPageSize: settings.setSpacedRepetitionPageSize,
+      setSpacedRepetitionRepetitionStrength:
+        settings.setSpacedRepetitionRepetitionStrength,
       setSpacedRepetitionStatsView: settings.setSpacedRepetitionStatsView,
       spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
       spacedRepetitionOrder: settings.spacedRepetitionOrder,
       spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
+      spacedRepetitionRepetitionStrength:
+        settings.spacedRepetitionRepetitionStrength,
       spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
     },
   });

@@ -16,6 +16,7 @@ import {
   getSpacedRepetitionEffectiveBox,
   MAX_SPACED_REPETITION_BOX,
   normalizeSpacedRepetitionCardProgress,
+  type SpacedRepetitionRepetitionStrength,
   type SpacedRepetitionSession,
   type SpacedRepetitionStorage,
   type SpacedRepetitionUser,
@@ -26,6 +27,7 @@ export type SpacedRepetitionPageSize = 1 | 2 | 5 | 10;
 export type SpacedRepetitionBoxes = 3 | 5 | 8;
 export type SpacedRepetitionOrder = "in-order" | "random" | "repetition";
 export type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
+export type { SpacedRepetitionRepetitionStrength };
 
 export const SPACED_REPETITION_PAGE_SIZES: SpacedRepetitionPageSize[] = [
   1, 2, 5, 10,
@@ -59,10 +61,14 @@ type UseSpacedRepetitionOptions = {
     spacedRepetitionBoxes: SpacedRepetitionBoxes;
     spacedRepetitionOrder: SpacedRepetitionOrder;
     spacedRepetitionPageSize: SpacedRepetitionPageSize;
+    spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
     spacedRepetitionStatsView: SpacedRepetitionStatsView;
     setSpacedRepetitionBoxes: (value: SpacedRepetitionBoxes) => void;
     setSpacedRepetitionOrder: (value: SpacedRepetitionOrder) => void;
     setSpacedRepetitionPageSize: (value: SpacedRepetitionPageSize) => void;
+    setSpacedRepetitionRepetitionStrength: (
+      value: SpacedRepetitionRepetitionStrength,
+    ) => void;
     setSpacedRepetitionStatsView: (value: SpacedRepetitionStatsView) => void;
   };
 };
@@ -77,10 +83,12 @@ export const useSpacedRepetition = ({
     spacedRepetitionBoxes,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
+    spacedRepetitionRepetitionStrength,
     spacedRepetitionStatsView,
     setSpacedRepetitionBoxes,
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
+    setSpacedRepetitionRepetitionStrength,
     setSpacedRepetitionStatsView,
   } = settings;
   const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<
@@ -561,6 +569,7 @@ export const useSpacedRepetition = ({
       const nextSession = buildSpacedRepetitionSession(cards, storedCardStates, {
         order: spacedRepetitionOrder,
         boxCount: spacedRepetitionBoxes,
+        repetitionStrength: spacedRepetitionRepetitionStrength,
       });
       setSpacedRepetitionSessions((prev) => ({
         ...prev,
@@ -587,6 +596,7 @@ export const useSpacedRepetition = ({
     spacedRepetitionActiveUserId,
     spacedRepetitionBoxes,
     spacedRepetitionOrder,
+    spacedRepetitionRepetitionStrength,
     spacedRepetitionUserStateById,
   ]);
 
@@ -800,6 +810,7 @@ export const useSpacedRepetition = ({
     setSpacedRepetitionNewUserName,
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
+    setSpacedRepetitionRepetitionStrength,
     setSpacedRepetitionSelectedUserId,
     setSpacedRepetitionStatsView,
     setSpacedRepetitionUserError,
@@ -822,6 +833,7 @@ export const useSpacedRepetition = ({
     spacedRepetitionPageSize,
     spacedRepetitionPageStart,
     spacedRepetitionProgressStats,
+    spacedRepetitionRepetitionStrength,
     spacedRepetitionSelectedUserId,
     spacedRepetitionSelections,
     spacedRepetitionSessions,

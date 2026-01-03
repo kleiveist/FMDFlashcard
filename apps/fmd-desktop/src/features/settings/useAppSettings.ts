@@ -18,6 +18,7 @@ import {
   type SpacedRepetitionBoxes,
   type SpacedRepetitionOrder,
   type SpacedRepetitionPageSize,
+  type SpacedRepetitionRepetitionStrength,
 } from "../spaced-repetition/useSpacedRepetition";
 
 type AppLanguage = "de" | "en";
@@ -39,6 +40,7 @@ type AppSettings = {
   spaced_repetition_boxes?: number | null;
   spaced_repetition_order?: string | null;
   spaced_repetition_page_size?: number | null;
+  spaced_repetition_repetition_strength?: string | null;
   spaced_repetition_stats_view?: string | null;
 };
 
@@ -58,6 +60,7 @@ type PersistUpdates = {
   spacedRepetitionBoxes?: SpacedRepetitionBoxes;
   spacedRepetitionOrder?: SpacedRepetitionOrder;
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
+  spacedRepetitionRepetitionStrength?: SpacedRepetitionRepetitionStrength;
   spacedRepetitionStatsView?: SpacedRepetitionStatsView;
 };
 
@@ -70,6 +73,8 @@ const DEFAULT_FLASHCARD_SCOPE: FlashcardScope = "current";
 const DEFAULT_STATS_RESET_MODE: StatsResetMode = "scan";
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
+const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
+  "medium";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
 
 export const useAppSettings = () => {
@@ -101,6 +106,12 @@ export const useAppSettings = () => {
     useState<SpacedRepetitionOrder>(DEFAULT_SPACED_REPETITION_ORDER);
   const [spacedRepetitionPageSize, setSpacedRepetitionPageSize] =
     useState<SpacedRepetitionPageSize>(DEFAULT_SPACED_REPETITION_PAGE_SIZE);
+  const [
+    spacedRepetitionRepetitionStrength,
+    setSpacedRepetitionRepetitionStrength,
+  ] = useState<SpacedRepetitionRepetitionStrength>(
+    DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH,
+  );
   const [spacedRepetitionStatsView, setSpacedRepetitionStatsView] =
     useState<SpacedRepetitionStatsView>(DEFAULT_SPACED_REPETITION_STATS_VIEW);
   const autoSaveReady = useRef(false);
@@ -123,6 +134,7 @@ export const useAppSettings = () => {
       spacedRepetitionBoxes: SpacedRepetitionBoxes;
       spacedRepetitionOrder: SpacedRepetitionOrder;
       spacedRepetitionPageSize: SpacedRepetitionPageSize;
+      spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
       spacedRepetitionStatsView: SpacedRepetitionStatsView;
     }) => {
       try {
@@ -142,6 +154,8 @@ export const useAppSettings = () => {
           spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
+          spacedRepetitionRepetitionStrength:
+            settings.spacedRepetitionRepetitionStrength,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
         });
         return true;
@@ -178,6 +192,9 @@ export const useAppSettings = () => {
           updates.spacedRepetitionOrder ?? spacedRepetitionOrder,
         spacedRepetitionPageSize:
           updates.spacedRepetitionPageSize ?? spacedRepetitionPageSize,
+        spacedRepetitionRepetitionStrength:
+          updates.spacedRepetitionRepetitionStrength ??
+          spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView:
           updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
       };
@@ -202,6 +219,7 @@ export const useAppSettings = () => {
       spacedRepetitionBoxes,
       spacedRepetitionOrder,
       spacedRepetitionPageSize,
+      spacedRepetitionRepetitionStrength,
       spacedRepetitionStatsView,
       statsResetMode,
       theme,
@@ -288,6 +306,12 @@ export const useAppSettings = () => {
           )
             ? (settings.spaced_repetition_page_size as SpacedRepetitionPageSize)
             : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
+        const storedSpacedRepetitionRepetitionStrength =
+          settings.spaced_repetition_repetition_strength === "weak" ||
+          settings.spaced_repetition_repetition_strength === "strong" ||
+          settings.spaced_repetition_repetition_strength === "medium"
+            ? settings.spaced_repetition_repetition_strength
+            : DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH;
         const storedSpacedRepetitionStatsView =
           settings.spaced_repetition_stats_view === "vault" ||
           settings.spaced_repetition_stats_view === "completed"
@@ -310,6 +334,9 @@ export const useAppSettings = () => {
         setSpacedRepetitionBoxes(storedSpacedRepetitionBoxes);
         setSpacedRepetitionOrder(storedSpacedRepetitionOrder);
         setSpacedRepetitionPageSize(storedSpacedRepetitionPageSize);
+        setSpacedRepetitionRepetitionStrength(
+          storedSpacedRepetitionRepetitionStrength,
+        );
         setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
         setSettingsLoaded(true);
       } catch (error) {
@@ -363,6 +390,7 @@ export const useAppSettings = () => {
         spacedRepetitionBoxes,
         spacedRepetitionOrder,
         spacedRepetitionPageSize,
+        spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView,
       });
     }, 300);
@@ -387,6 +415,7 @@ export const useAppSettings = () => {
     spacedRepetitionBoxes,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
+    spacedRepetitionRepetitionStrength,
     spacedRepetitionStatsView,
     statsResetMode,
     theme,
@@ -419,6 +448,7 @@ export const useAppSettings = () => {
     setSpacedRepetitionBoxes,
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
+    setSpacedRepetitionRepetitionStrength,
     setSpacedRepetitionStatsView,
     setStatsResetMode,
     setTheme,
@@ -427,6 +457,7 @@ export const useAppSettings = () => {
     spacedRepetitionBoxes,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
+    spacedRepetitionRepetitionStrength,
     spacedRepetitionStatsView,
     statsResetMode,
     theme,

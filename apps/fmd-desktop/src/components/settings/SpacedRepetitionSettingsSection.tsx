@@ -2,6 +2,7 @@ import type {
   SpacedRepetitionBoxes,
   SpacedRepetitionOrder,
   SpacedRepetitionPageSize,
+  SpacedRepetitionRepetitionStrength,
 } from "../../features/spaced-repetition/useSpacedRepetition";
 
 type SpacedRepetitionSettingsSectionProps = {
@@ -10,9 +11,13 @@ type SpacedRepetitionSettingsSectionProps = {
   spacedRepetitionOrder: SpacedRepetitionOrder;
   spacedRepetitionPageSize: SpacedRepetitionPageSize;
   spacedRepetitionPageSizes: SpacedRepetitionPageSize[];
+  spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
   setSpacedRepetitionBoxes: (value: SpacedRepetitionBoxes) => void;
   setSpacedRepetitionOrder: (value: SpacedRepetitionOrder) => void;
   setSpacedRepetitionPageSize: (value: SpacedRepetitionPageSize) => void;
+  setSpacedRepetitionRepetitionStrength: (
+    value: SpacedRepetitionRepetitionStrength,
+  ) => void;
 };
 
 export const SpacedRepetitionSettingsSection = ({
@@ -21,9 +26,11 @@ export const SpacedRepetitionSettingsSection = ({
   spacedRepetitionOrder,
   spacedRepetitionPageSize,
   spacedRepetitionPageSizes,
+  spacedRepetitionRepetitionStrength,
   setSpacedRepetitionBoxes,
   setSpacedRepetitionOrder,
   setSpacedRepetitionPageSize,
+  setSpacedRepetitionRepetitionStrength,
 }: SpacedRepetitionSettingsSectionProps) => (
   <section className="panel spaced-repetition-panel">
     <h2>Spaced Repetition</h2>
@@ -82,6 +89,43 @@ export const SpacedRepetitionSettingsSection = ({
         In order keeps scan order. Random shuffles on load. Repetition prioritizes
         lower boxes and skips the last box.
       </span>
+      {spacedRepetitionOrder === "repetition" && (
+        <div className="setting-subrow">
+          <span className="label">Repetition strength</span>
+          <div className="pill-grid">
+            <button
+              type="button"
+              className={`pill pill-button ${
+                spacedRepetitionRepetitionStrength === "weak" ? "active" : ""
+              }`}
+              aria-pressed={spacedRepetitionRepetitionStrength === "weak"}
+              onClick={() => setSpacedRepetitionRepetitionStrength("weak")}
+            >
+              Weak
+            </button>
+            <button
+              type="button"
+              className={`pill pill-button ${
+                spacedRepetitionRepetitionStrength === "medium" ? "active" : ""
+              }`}
+              aria-pressed={spacedRepetitionRepetitionStrength === "medium"}
+              onClick={() => setSpacedRepetitionRepetitionStrength("medium")}
+            >
+              Medium
+            </button>
+            <button
+              type="button"
+              className={`pill pill-button ${
+                spacedRepetitionRepetitionStrength === "strong" ? "active" : ""
+              }`}
+              aria-pressed={spacedRepetitionRepetitionStrength === "strong"}
+              onClick={() => setSpacedRepetitionRepetitionStrength("strong")}
+            >
+              Strong
+            </button>
+          </div>
+        </div>
+      )}
     </div>
     <div className="setting-row">
       <span className="label">Page size</span>
@@ -100,26 +144,6 @@ export const SpacedRepetitionSettingsSection = ({
           </button>
         ))}
       </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Persistence</span>
-      <input
-        type="text"
-        className="text-input"
-        value="Coming later"
-        disabled
-        aria-label="Spaced repetition persistence (coming later)"
-      />
-    </div>
-    <div className="setting-row">
-      <span className="label">Sync integration</span>
-      <input
-        type="text"
-        className="text-input"
-        value="Coming later"
-        disabled
-        aria-label="Spaced repetition sync integration (coming later)"
-      />
     </div>
   </section>
 );

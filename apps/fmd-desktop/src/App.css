@@ -1666,6 +1666,13 @@ h2 {
   border-top: 1px solid var(--line);
 }
 
+.setting-subrow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .spaced-repetition-layout .setting-row {
   border-top: none;
   padding-top: 0;

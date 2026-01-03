@@ -77,9 +77,15 @@ export const SettingsPage = () => {
           spacedRepetitionOrder={spacedRepetition.spacedRepetitionOrder}
           spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
           spacedRepetitionPageSizes={SPACED_REPETITION_PAGE_SIZES}
+          spacedRepetitionRepetitionStrength={
+            spacedRepetition.spacedRepetitionRepetitionStrength
+          }
           setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
           setSpacedRepetitionOrder={spacedRepetition.setSpacedRepetitionOrder}
           setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
+          setSpacedRepetitionRepetitionStrength={
+            spacedRepetition.setSpacedRepetitionRepetitionStrength
+          }
         />
         <PerformanceSection
           maxFilesPerScan={settings.maxFilesPerScan}
