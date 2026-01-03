@@ -622,7 +622,7 @@ export const SpacedRepetitionPage = () => {
       <section className="panel sr-flashcards-panel">
         <div className="panel-header">
           <div>
-            <h2>Flashcards</h2>
+            <h2>Flashcard</h2>
             <p className="muted">{spacedRepetition.spacedRepetitionStatusLabel}</p>
           </div>
           <div className="panel-actions">

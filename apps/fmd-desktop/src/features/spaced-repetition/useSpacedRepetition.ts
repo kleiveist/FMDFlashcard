@@ -24,14 +24,14 @@ import {
   type SpacedRepetitionUserState,
 } from "./logic";
 
-export type SpacedRepetitionPageSize = 1 | 2 | 5 | 10;
+export type SpacedRepetitionPageSize = 1 | 2 | 3 | 5;
 export type SpacedRepetitionBoxes = 3 | 5 | 8;
 export type SpacedRepetitionOrder = "in-order" | "random" | "repetition";
 export type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 export type { SpacedRepetitionRepetitionStrength };
 
 export const SPACED_REPETITION_PAGE_SIZES: SpacedRepetitionPageSize[] = [
-  1, 2, 5, 10,
+  1, 2, 3, 5,
 ];
 export const DEFAULT_SPACED_REPETITION_PAGE_SIZE: SpacedRepetitionPageSize = 2;
 export const SPACED_REPETITION_BOXES: SpacedRepetitionBoxes[] = [3, 5, 8];
@@ -81,10 +81,14 @@ const normalizeCompletedPerDay = (value: unknown) => {
   );
 };
 
-const normalizeSpacedRepetitionPageSize = (value: number) =>
-  SPACED_REPETITION_PAGE_SIZES.includes(value as SpacedRepetitionPageSize)
+const normalizeSpacedRepetitionPageSize = (value: number) => {
+  if (value === 10) {
+    return 5;
+  }
+  return SPACED_REPETITION_PAGE_SIZES.includes(value as SpacedRepetitionPageSize)
     ? (value as SpacedRepetitionPageSize)
     : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
+};
 
 type UseSpacedRepetitionOptions = {
   isFlashcardScanning: boolean;

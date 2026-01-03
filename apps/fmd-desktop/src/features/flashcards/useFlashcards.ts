@@ -15,16 +15,20 @@ import { type VaultFile } from "../../lib/tree";
 export type FlashcardOrder = "in-order" | "random";
 export type FlashcardMode = "multiple-choice" | "yes-no";
 export type FlashcardScope = "current" | "vault";
-export type FlashcardPageSize = 1 | 2 | 5 | 10;
+export type FlashcardPageSize = 1 | 2 | 3 | 5;
 export type StatsResetMode = "scan" | "session";
 
-export const FLASHCARD_PAGE_SIZES: FlashcardPageSize[] = [1, 2, 5, 10];
+export const FLASHCARD_PAGE_SIZES: FlashcardPageSize[] = [1, 2, 3, 5];
 export const DEFAULT_FLASHCARD_PAGE_SIZE: FlashcardPageSize = 2;
 
-const normalizeFlashcardPageSize = (value: number) =>
-  FLASHCARD_PAGE_SIZES.includes(value as FlashcardPageSize)
+const normalizeFlashcardPageSize = (value: number) => {
+  if (value === 10) {
+    return 5;
+  }
+  return FLASHCARD_PAGE_SIZES.includes(value as FlashcardPageSize)
     ? (value as FlashcardPageSize)
     : DEFAULT_FLASHCARD_PAGE_SIZE;
+};
 
 type ScanOptions = {
   scopeOverride?: FlashcardScope;

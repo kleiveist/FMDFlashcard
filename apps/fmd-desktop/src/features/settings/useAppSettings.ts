@@ -293,12 +293,17 @@ export const useAppSettings = () => {
           settings.flashcard_scope === "vault"
             ? "vault"
             : DEFAULT_FLASHCARD_SCOPE;
+        const storedFlashcardPageSizeRaw = settings.flashcard_page_size;
+        const migratedFlashcardPageSize =
+          storedFlashcardPageSizeRaw === 10
+            ? 5
+            : storedFlashcardPageSizeRaw;
         const storedFlashcardPageSize =
-          typeof settings.flashcard_page_size === "number" &&
+          typeof migratedFlashcardPageSize === "number" &&
           FLASHCARD_PAGE_SIZES.includes(
-            settings.flashcard_page_size as FlashcardPageSize,
+            migratedFlashcardPageSize as FlashcardPageSize,
           )
-            ? (settings.flashcard_page_size as FlashcardPageSize)
+            ? (migratedFlashcardPageSize as FlashcardPageSize)
             : DEFAULT_FLASHCARD_PAGE_SIZE;
         const storedSolutionRevealEnabled =
           typeof settings.flashcard_solution_reveal_enabled === "boolean"
@@ -320,12 +325,18 @@ export const useAppSettings = () => {
           settings.spaced_repetition_order === "repetition"
             ? settings.spaced_repetition_order
             : DEFAULT_SPACED_REPETITION_ORDER;
+        const storedSpacedRepetitionPageSizeRaw =
+          settings.spaced_repetition_page_size;
+        const migratedSpacedRepetitionPageSize =
+          storedSpacedRepetitionPageSizeRaw === 10
+            ? 5
+            : storedSpacedRepetitionPageSizeRaw;
         const storedSpacedRepetitionPageSize =
-          typeof settings.spaced_repetition_page_size === "number" &&
+          typeof migratedSpacedRepetitionPageSize === "number" &&
           SPACED_REPETITION_PAGE_SIZES.includes(
-            settings.spaced_repetition_page_size as SpacedRepetitionPageSize,
+            migratedSpacedRepetitionPageSize as SpacedRepetitionPageSize,
           )
-            ? (settings.spaced_repetition_page_size as SpacedRepetitionPageSize)
+            ? (migratedSpacedRepetitionPageSize as SpacedRepetitionPageSize)
             : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
         const storedSpacedRepetitionRepetitionStrength =
           settings.spaced_repetition_repetition_strength === "weak" ||

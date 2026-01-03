@@ -33,7 +33,7 @@ export const FlashcardsSettingsSection = ({
   statsResetMode,
 }: FlashcardsSettingsSectionProps) => (
   <section className="panel settings-flashcards-panel">
-    <h2>Flashcards</h2>
+    <h2>Flashcard</h2>
     <p className="muted">Default behavior for scans and review sessions.</p>
     <div className="setting-row">
       <span className="label">Default scope</span>

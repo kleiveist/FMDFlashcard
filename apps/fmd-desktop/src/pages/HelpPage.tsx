@@ -67,8 +67,8 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Workflow", de: "Workflow" },
         bullets: [
           {
-            en: "Dashboard -> select a note -> scan -> review (Flashcards or Spaced Repetition).",
-            de: "Dashboard -> Notiz waehlen -> scannen -> wiederholen (Flashcards oder Spaced Repetition).",
+            en: "Dashboard -> select a note -> scan -> review (Flashcard Tools or Spaced Repetition Tools).",
+            de: "Dashboard -> Notiz waehlen -> scannen -> wiederholen (Flashcard Tools oder Spaced Repetition Tools).",
           },
         ],
       },
@@ -161,7 +161,7 @@ const helpTopics: HelpTopic[] = [
   },
   {
     id: "spaced-repetition",
-    title: { en: "Spaced repetition", de: "Spaced Repetition" },
+    title: { en: "Spaced Repetition Tools", de: "Spaced Repetition Tools" },
     summary: {
       en: "Leitner boxes, progression, and session flow.",
       de: "Leitner-Boxen, Fortschritt und Session-Ablauf.",
@@ -223,7 +223,7 @@ const helpTopics: HelpTopic[] = [
     sections: [
       {
         id: "settings-flashcards",
-        title: { en: "Flashcards defaults", de: "Flashcards-Defaults" },
+        title: { en: "Flashcard Tools defaults", de: "Flashcard-Tools-Defaults" },
         bullets: [
           {
             en: "Scan scope, order, page size, and stats reset define the review flow.",
@@ -233,7 +233,10 @@ const helpTopics: HelpTopic[] = [
       },
       {
         id: "settings-sr",
-        title: { en: "Spaced Repetition defaults", de: "Spaced Repetition-Defaults" },
+        title: {
+          en: "Spaced Repetition Tools defaults",
+          de: "Spaced Repetition-Tools-Defaults",
+        },
         bullets: [
           {
             en: "Boxes, order, page size, and repetition strength set SR behavior.",

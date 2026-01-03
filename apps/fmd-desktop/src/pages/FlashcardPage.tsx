@@ -245,7 +245,7 @@ export const FlashcardPage = () => {
       <section className="panel flashcard-panel">
         <div className="panel-header">
           <div>
-            <h2>Flashcards</h2>
+            <h2>Flashcard</h2>
             {flashcards.flashcards.length === 0 ? (
               <p className="muted">{flashcardStatusLabel}</p>
             ) : null}
