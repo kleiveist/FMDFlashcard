@@ -94,7 +94,7 @@ export const FlashcardPage = () => {
             continue;
           }
           if (card.kind === "multiple-choice") {
-            if (flashcards.flashcardSelections[cardIndex]) {
+            if ((flashcards.flashcardSelections[cardIndex] ?? []).length > 0) {
               return cardIndex;
             }
             continue;
@@ -135,7 +135,7 @@ export const FlashcardPage = () => {
         return;
       }
       if (card.kind === "multiple-choice") {
-        if (!flashcards.flashcardSelections[resolvedIndex]) {
+        if ((flashcards.flashcardSelections[resolvedIndex] ?? []).length === 0) {
           return;
         }
       } else if (card.kind === "true-false") {
@@ -165,9 +165,9 @@ export const FlashcardPage = () => {
   ]);
 
   const handleOptionSelect = useCallback(
-    (cardIndex: number, key: string) => {
+    (cardIndex: number, keys: string[]) => {
       setActiveCardIndex(cardIndex);
-      flashcards.handleFlashcardOptionSelect(cardIndex, key);
+      flashcards.handleFlashcardOptionSelect(cardIndex, keys);
     },
     [flashcards],
   );
@@ -340,7 +340,7 @@ export const FlashcardPage = () => {
                     card={card}
                     cardIndex={cardIndex}
                     submitted={submitted}
-                    selectedKey={flashcards.flashcardSelections[cardIndex] ?? ""}
+                    selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}
                     onSelect={handleOptionSelect}
                     onSubmit={flashcards.handleFlashcardSubmit}
                   />

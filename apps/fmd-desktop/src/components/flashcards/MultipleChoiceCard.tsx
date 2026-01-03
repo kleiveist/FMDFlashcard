@@ -22,12 +22,23 @@ const shuffleOptions = <T,>(options: T[]) => {
   return copy;
 };
 
+const isExactKeyMatch = (selected: string[], correct: string[]) => {
+  if (selected.length !== correct.length) {
+    return false;
+  }
+  const selectedSet = new Set(selected);
+  if (selectedSet.size !== correct.length) {
+    return false;
+  }
+  return correct.every((key) => selectedSet.has(key));
+};
+
 type MultipleChoiceCardProps = {
   card: MultipleChoiceCardType;
   cardIndex: number;
   submitted: boolean;
-  selectedKey: string;
-  onSelect: (cardIndex: number, key: string) => void;
+  selectedKeys: string[];
+  onSelect: (cardIndex: number, keys: string[]) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
 
@@ -35,13 +46,16 @@ export const MultipleChoiceCard = ({
   card,
   cardIndex,
   submitted,
-  selectedKey,
+  selectedKeys,
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
   const hasSolutions = card.correctKeys.length > 0;
+  const isMultiSelect = card.correctKeys.length > 1;
   const selectionIsCorrect =
-    hasSolutions && selectedKey ? card.correctKeys.includes(selectedKey) : false;
+    hasSolutions && selectedKeys.length > 0
+      ? isExactKeyMatch(selectedKeys, card.correctKeys)
+      : false;
   const resultLabel = submitted
     ? hasSolutions
       ? selectionIsCorrect
@@ -50,13 +64,20 @@ export const MultipleChoiceCard = ({
       : "No solution defined"
     : "";
 
+  const cardSignature = useMemo(() => {
+    const optionsSignature = card.options
+      .map((option) => `${option.key}:${option.text}`)
+      .join("|");
+    return [card.question, card.correctKeys.join(","), optionsSignature].join("::");
+  }, [card.question, card.correctKeys, card.options]);
+
   const displayOptions = useMemo(
     () =>
       shuffleOptions(card.options).map((option, index) => ({
         option,
         label: indexToLabel(index),
       })),
-    [card.options],
+    [cardSignature],
   );
 
   return (
@@ -64,7 +85,7 @@ export const MultipleChoiceCard = ({
       <h3 className="flashcard-question">{card.question}</h3>
       <ul className="flashcard-options">
         {displayOptions.map(({ option, label }) => {
-          const isSelected = selectedKey === option.key;
+          const isSelected = selectedKeys.includes(option.key);
           const isCorrect = hasSolutions && card.correctKeys.includes(option.key);
           const isIncorrect = hasSolutions && submitted && isSelected && !isCorrect;
           const optionClasses = [
@@ -81,7 +102,16 @@ export const MultipleChoiceCard = ({
               <button
                 type="button"
                 className={optionClasses}
-                onClick={() => onSelect(cardIndex, option.key)}
+                onClick={() => {
+                  if (isMultiSelect) {
+                    const nextKeys = isSelected
+                      ? selectedKeys.filter((key) => key !== option.key)
+                      : [...selectedKeys, option.key];
+                    onSelect(cardIndex, nextKeys);
+                    return;
+                  }
+                  onSelect(cardIndex, [option.key]);
+                }}
                 disabled={submitted}
                 aria-pressed={isSelected}
               >
@@ -96,8 +126,8 @@ export const MultipleChoiceCard = ({
         <button
           type="button"
           className="ghost small flashcard-submit"
-          onClick={() => onSubmit(cardIndex, Boolean(selectedKey))}
-          disabled={!selectedKey || submitted}
+          onClick={() => onSubmit(cardIndex, selectedKeys.length > 0)}
+          disabled={selectedKeys.length === 0 || submitted}
         >
           Submit
         </button>

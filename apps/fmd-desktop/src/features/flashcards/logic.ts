@@ -142,10 +142,21 @@ export const isTrueFalseCardCorrect = (
   return card.items.every((item) => selections[item.id] === item.correct);
 };
 
+const isExactKeyMatch = (selected: string[], correct: string[]) => {
+  if (selected.length !== correct.length) {
+    return false;
+  }
+  const selectedSet = new Set(selected);
+  if (selectedSet.size !== correct.length) {
+    return false;
+  }
+  return correct.every((key) => selectedSet.has(key));
+};
+
 export const evaluateFlashcardResult = (
   card: Flashcard,
   cardIndex: number,
-  selections: Record<number, string>,
+  selections: Record<number, string[]>,
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>,
   clozeResponses: Record<number, Record<string, string>>,
   selfGrades: Record<number, FlashcardSelfGrade> = {},
@@ -154,8 +165,8 @@ export const evaluateFlashcardResult = (
     if (card.correctKeys.length === 0) {
       return "neutral";
     }
-    const selected = selections[cardIndex];
-    return selected && card.correctKeys.includes(selected) ? "correct" : "incorrect";
+    const selected = selections[cardIndex] ?? [];
+    return isExactKeyMatch(selected, card.correctKeys) ? "correct" : "incorrect";
   }
 
   if (card.kind === "true-false") {
@@ -182,7 +193,7 @@ export const evaluateFlashcardResult = (
 export const calculateFlashcardStats = (
   flashcards: Flashcard[],
   submissions: Record<number, boolean>,
-  selections: Record<number, string>,
+  selections: Record<number, string[]>,
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>,
   clozeResponses: Record<number, Record<string, string>>,
   selfGrades: Record<number, FlashcardSelfGrade> = {},

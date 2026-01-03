@@ -170,7 +170,9 @@ export const SpacedRepetitionPage = () => {
             continue;
           }
           if (card.kind === "multiple-choice") {
-            if (spacedRepetition.spacedRepetitionSelections[cardIndex]) {
+            if (
+              (spacedRepetition.spacedRepetitionSelections[cardIndex] ?? []).length > 0
+            ) {
               return cardIndex;
             }
             continue;
@@ -214,7 +216,10 @@ export const SpacedRepetitionPage = () => {
         return;
       }
       if (card.kind === "multiple-choice") {
-        if (!spacedRepetition.spacedRepetitionSelections[resolvedIndex]) {
+        if (
+          (spacedRepetition.spacedRepetitionSelections[resolvedIndex] ?? []).length ===
+          0
+        ) {
           return;
         }
       } else if (card.kind === "true-false") {
@@ -246,9 +251,9 @@ export const SpacedRepetitionPage = () => {
   ]);
 
   const handleOptionSelect = useCallback(
-    (cardIndex: number, key: string) => {
+    (cardIndex: number, keys: string[]) => {
       setActiveCardIndex(cardIndex);
-      spacedRepetition.handleSpacedRepetitionOptionSelect(cardIndex, key);
+      spacedRepetition.handleSpacedRepetitionOptionSelect(cardIndex, keys);
     },
     [spacedRepetition],
   );
@@ -720,7 +725,9 @@ export const SpacedRepetitionPage = () => {
                     card={card}
                     cardIndex={cardIndex}
                     submitted={submitted}
-                    selectedKey={spacedRepetition.spacedRepetitionSelections[cardIndex] ?? ""}
+                    selectedKeys={
+                      spacedRepetition.spacedRepetitionSelections[cardIndex] ?? []
+                    }
                     onSelect={handleOptionSelect}
                     onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
                   />

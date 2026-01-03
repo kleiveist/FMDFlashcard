@@ -81,7 +81,7 @@ export const useFlashcards = ({
   const [flashcardPage, setFlashcardPage] = useState(0);
   const [isFlashcardScanning, setIsFlashcardScanning] = useState(false);
   const [flashcardSelections, setFlashcardSelections] = useState<
-    Record<number, string>
+    Record<number, string[]>
   >({});
   const [flashcardTextResponses, setFlashcardTextResponses] = useState<
     Record<number, string>
@@ -128,7 +128,7 @@ export const useFlashcards = ({
   const restoreSnapshot = useCallback(
     (snapshot: {
       flashcards: Flashcard[];
-      flashcardSelections: Record<number, string>;
+      flashcardSelections: Record<number, string[]>;
       flashcardTextResponses: Record<number, string>;
       flashcardTextRevealed: Record<number, boolean>;
       flashcardSelfGrades: Record<number, FlashcardSelfGrade>;
@@ -282,11 +282,12 @@ export const useFlashcards = ({
   }, [resetFlashcards, scanFlashcards]);
 
   const handleFlashcardOptionSelect = useCallback(
-    (cardIndex: number, key: string) => {
+    (cardIndex: number, keys: string[]) => {
       if (flashcardSubmissions[cardIndex]) {
         return;
       }
-      setFlashcardSelections((prev) => ({ ...prev, [cardIndex]: key }));
+      const uniqueKeys = Array.from(new Set(keys));
+      setFlashcardSelections((prev) => ({ ...prev, [cardIndex]: uniqueKeys }));
     },
     [flashcardSubmissions],
   );

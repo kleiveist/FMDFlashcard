@@ -687,14 +687,15 @@ export const useSpacedRepetition = ({
   ]);
 
   const handleSpacedRepetitionOptionSelect = useCallback(
-    (cardIndex: number, key: string) => {
+    (cardIndex: number, keys: string[]) => {
       updateActiveSpacedRepetitionSession((session) => {
         if (session.submissions[cardIndex]) {
           return session;
         }
+        const uniqueKeys = Array.from(new Set(keys));
         return {
           ...session,
-          selections: { ...session.selections, [cardIndex]: key },
+          selections: { ...session.selections, [cardIndex]: uniqueKeys },
         };
       });
     },

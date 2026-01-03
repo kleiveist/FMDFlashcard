@@ -30,7 +30,7 @@ type SpacedRepetitionCardProgressInput = Partial<SpacedRepetitionCardProgress> &
 export type SpacedRepetitionSession = {
   flashcards: Flashcard[];
   cardIds: string[];
-  selections: Record<number, string>;
+  selections: Record<number, string[]>;
   textResponses: Record<number, string>;
   textRevealed: Record<number, boolean>;
   selfGrades: Record<number, FlashcardSelfGrade>;
