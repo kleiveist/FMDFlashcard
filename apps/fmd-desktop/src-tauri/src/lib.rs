@@ -15,6 +15,7 @@ struct VaultFile {
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 struct AppSettings {
+    active_note_path: Option<String>,
     vault_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
@@ -32,6 +33,7 @@ struct AppSettings {
     spaced_repetition_page_size: Option<u32>,
     spaced_repetition_repetition_strength: Option<String>,
     spaced_repetition_stats_view: Option<String>,
+    right_toolbar_collapsed: Option<bool>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -72,6 +74,7 @@ struct SpacedRepetitionStorage {
 impl AppSettings {
     fn is_empty(&self) -> bool {
         self.vault_path.is_none()
+            && self.active_note_path.is_none()
             && self.theme.is_none()
             && self.accent_color.is_none()
             && self.language.is_none()
@@ -88,6 +91,7 @@ impl AppSettings {
             && self.spaced_repetition_page_size.is_none()
             && self.spaced_repetition_repetition_strength.is_none()
             && self.spaced_repetition_stats_view.is_none()
+            && self.right_toolbar_collapsed.is_none()
     }
 }
 
@@ -178,6 +182,7 @@ fn load_app_settings(app: tauri::AppHandle) -> Result<AppSettings, String> {
 #[tauri::command]
 fn save_app_settings(
     app: tauri::AppHandle,
+    active_note_path: Option<String>,
     vault_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
@@ -195,9 +200,11 @@ fn save_app_settings(
     spaced_repetition_page_size: Option<u32>,
     spaced_repetition_repetition_strength: Option<String>,
     spaced_repetition_stats_view: Option<String>,
+    right_toolbar_collapsed: Option<bool>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
     let settings = AppSettings {
+        active_note_path,
         vault_path,
         theme,
         accent_color,
@@ -215,6 +222,7 @@ fn save_app_settings(
         spaced_repetition_page_size,
         spaced_repetition_repetition_strength,
         spaced_repetition_stats_view,
+        right_toolbar_collapsed,
     };
     write_settings(&path, &settings)
 }

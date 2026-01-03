@@ -82,12 +82,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     },
   });
   const hasRestoredVault = useRef(false);
+  const isRestoringActiveNote = useRef(false);
+  const hasResolvedActiveNote = useRef(false);
   const {
+    activeNotePath,
     accentColor,
     persistSettings,
     setAccentColor,
     setAccentDraft,
     setAccentError,
+    setActiveNotePath,
     setMaxFilesPerScan,
     setTheme,
     settingsLoaded,
@@ -136,6 +140,73 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       cancelled = true;
     };
   }, [loadVault, persistSettings, setVaultPath, settingsLoaded, storedVaultPath]);
+
+  useEffect(() => {
+    if (!settingsLoaded) {
+      return;
+    }
+    if (preview.selectedFile && !hasResolvedActiveNote.current) {
+      hasResolvedActiveNote.current = true;
+    }
+    if (!hasResolvedActiveNote.current) {
+      return;
+    }
+    const nextPath = preview.selectedFile?.relative_path ?? null;
+    if (nextPath === activeNotePath) {
+      return;
+    }
+    setActiveNotePath(nextPath);
+  }, [activeNotePath, preview.selectedFile, setActiveNotePath, settingsLoaded]);
+
+  useEffect(() => {
+    if (!settingsLoaded) {
+      return;
+    }
+    if (!vault.vaultPath || vault.listState !== "idle") {
+      return;
+    }
+    if (preview.selectedFile || isRestoringActiveNote.current) {
+      if (preview.selectedFile) {
+        hasResolvedActiveNote.current = true;
+      }
+      return;
+    }
+    if (!activeNotePath) {
+      hasResolvedActiveNote.current = true;
+      return;
+    }
+    const storedFile = vault.files.find(
+      (file) =>
+        file.relative_path === activeNotePath || file.path === activeNotePath,
+    );
+    if (!storedFile) {
+      setActiveNotePath(null);
+      if (vault.files.length === 0) {
+        hasResolvedActiveNote.current = true;
+        return;
+      }
+    }
+    const nextFile = storedFile ?? vault.files[0];
+    if (!nextFile) {
+      return;
+    }
+    isRestoringActiveNote.current = true;
+    resetFlashcards();
+    void Promise.resolve(selectFile(nextFile)).finally(() => {
+      isRestoringActiveNote.current = false;
+      hasResolvedActiveNote.current = true;
+    });
+  }, [
+    activeNotePath,
+    preview.selectedFile,
+    resetFlashcards,
+    selectFile,
+    setActiveNotePath,
+    settingsLoaded,
+    vault.files,
+    vault.listState,
+    vault.vaultPath,
+  ]);
 
   const handlePickVault = useCallback(async () => {
     setPreviewError("");

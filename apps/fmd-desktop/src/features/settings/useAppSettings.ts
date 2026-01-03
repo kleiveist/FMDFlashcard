@@ -25,6 +25,7 @@ type AppLanguage = "de" | "en";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 
 type AppSettings = {
+  active_note_path?: string | null;
   vault_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
@@ -42,9 +43,11 @@ type AppSettings = {
   spaced_repetition_page_size?: number | null;
   spaced_repetition_repetition_strength?: string | null;
   spaced_repetition_stats_view?: string | null;
+  right_toolbar_collapsed?: boolean | null;
 };
 
 type PersistUpdates = {
+  activeNotePath?: string | null;
   vaultPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
@@ -62,6 +65,7 @@ type PersistUpdates = {
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
   spacedRepetitionRepetitionStrength?: SpacedRepetitionRepetitionStrength;
   spacedRepetitionStatsView?: SpacedRepetitionStatsView;
+  rightToolbarCollapsed?: boolean;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -76,6 +80,7 @@ const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
   "medium";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
+const DEFAULT_RIGHT_TOOLBAR_COLLAPSED = false;
 
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
@@ -83,6 +88,7 @@ export const useAppSettings = () => {
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
   const [accentError, setAccentError] = useState("");
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [language, setLanguage] = useState<AppLanguage>(DEFAULT_LANGUAGE);
   const [maxFilesPerScan, setMaxFilesPerScan] = useState("");
@@ -114,11 +120,15 @@ export const useAppSettings = () => {
   );
   const [spacedRepetitionStatsView, setSpacedRepetitionStatsView] =
     useState<SpacedRepetitionStatsView>(DEFAULT_SPACED_REPETITION_STATS_VIEW);
+  const [rightToolbarCollapsed, setRightToolbarCollapsed] = useState(
+    DEFAULT_RIGHT_TOOLBAR_COLLAPSED,
+  );
   const autoSaveReady = useRef(false);
   const autoSaveTimer = useRef<number | null>(null);
 
   const saveSettings = useCallback(
     async (settings: {
+      activeNotePath: string | null;
       vaultPath: string | null;
       theme: ThemeMode;
       accentColor: string;
@@ -136,9 +146,11 @@ export const useAppSettings = () => {
       spacedRepetitionPageSize: SpacedRepetitionPageSize;
       spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
       spacedRepetitionStatsView: SpacedRepetitionStatsView;
+      rightToolbarCollapsed: boolean;
     }) => {
       try {
         await invoke("save_app_settings", {
+          activeNotePath: settings.activeNotePath,
           vaultPath: settings.vaultPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
@@ -157,6 +169,7 @@ export const useAppSettings = () => {
           spacedRepetitionRepetitionStrength:
             settings.spacedRepetitionRepetitionStrength,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
+          rightToolbarCollapsed: settings.rightToolbarCollapsed,
         });
         return true;
       } catch (error) {
@@ -173,6 +186,7 @@ export const useAppSettings = () => {
         return false;
       }
       const nextSettings = {
+        activeNotePath: updates.activeNotePath ?? activeNotePath,
         vaultPath: updates.vaultPath ?? vaultPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
@@ -197,14 +211,20 @@ export const useAppSettings = () => {
           spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView:
           updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
+        rightToolbarCollapsed:
+          updates.rightToolbarCollapsed ?? rightToolbarCollapsed,
       };
       const saved = await saveSettings(nextSettings);
+      if (saved && "activeNotePath" in updates) {
+        setActiveNotePath(nextSettings.activeNotePath ?? null);
+      }
       if (saved && "vaultPath" in updates) {
         setVaultPath(nextSettings.vaultPath ?? null);
       }
       return saved;
     },
     [
+      activeNotePath,
       accentColor,
       flashcardMode,
       flashcardOrder,
@@ -224,6 +244,7 @@ export const useAppSettings = () => {
       statsResetMode,
       theme,
       vaultPath,
+      rightToolbarCollapsed,
     ],
   );
 
@@ -317,10 +338,19 @@ export const useAppSettings = () => {
           settings.spaced_repetition_stats_view === "completed"
             ? settings.spaced_repetition_stats_view
             : DEFAULT_SPACED_REPETITION_STATS_VIEW;
+        const storedActiveNotePath =
+          typeof settings.active_note_path === "string"
+            ? settings.active_note_path
+            : null;
+        const storedRightToolbarCollapsed =
+          typeof settings.right_toolbar_collapsed === "boolean"
+            ? settings.right_toolbar_collapsed
+            : DEFAULT_RIGHT_TOOLBAR_COLLAPSED;
         setTheme(storedTheme);
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
         setAccentError("");
+        setActiveNotePath(storedActiveNotePath);
         setVaultPath(settings.vault_path ?? null);
         setLanguage(storedLanguage);
         setMaxFilesPerScan(storedMaxFilesPerScan);
@@ -338,6 +368,7 @@ export const useAppSettings = () => {
           storedSpacedRepetitionRepetitionStrength,
         );
         setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
+        setRightToolbarCollapsed(storedRightToolbarCollapsed);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -375,6 +406,7 @@ export const useAppSettings = () => {
     }
     autoSaveTimer.current = window.setTimeout(() => {
       void saveSettings({
+        activeNotePath,
         vaultPath,
         theme,
         accentColor,
@@ -392,6 +424,7 @@ export const useAppSettings = () => {
         spacedRepetitionPageSize,
         spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView,
+        rightToolbarCollapsed,
       });
     }, 300);
 
@@ -402,6 +435,7 @@ export const useAppSettings = () => {
     };
   }, [
     accentColor,
+    activeNotePath,
     flashcardMode,
     flashcardOrder,
     flashcardPageSize,
@@ -420,10 +454,12 @@ export const useAppSettings = () => {
     statsResetMode,
     theme,
     vaultPath,
+    rightToolbarCollapsed,
   ]);
 
   return {
     accentColor,
+    activeNotePath,
     accentDraft,
     accentError,
     flashcardMode,
@@ -437,12 +473,14 @@ export const useAppSettings = () => {
     setAccentColor,
     setAccentDraft,
     setAccentError,
+    setActiveNotePath,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,
     setFlashcardScope,
     setLanguage,
     setMaxFilesPerScan,
+    setRightToolbarCollapsed,
     setScanParallelism,
     setSolutionRevealEnabled,
     setSpacedRepetitionBoxes,
@@ -462,5 +500,6 @@ export const useAppSettings = () => {
     statsResetMode,
     theme,
     vaultPath,
+    rightToolbarCollapsed,
   };
 };
