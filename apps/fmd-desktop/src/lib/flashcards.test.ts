@@ -100,6 +100,24 @@ Eine Transaktion ist eine atomare Einheit von Operationen.
     }
   });
 
+  it("parses a front/back card with Reponse marker", () => {
+    const markdown = `#card
+Que signifie SQL ?
+Reponse: SQL est un langage pour interroger des bases de donnees.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].kind).toBe("free-text");
+    if (cards[0].kind === "free-text") {
+      expect(cards[0].front).toBe("Que signifie SQL ?");
+      expect(cards[0].back).toBe(
+        "SQL est un langage pour interroger des bases de donnees.",
+      );
+    }
+  });
+
   it("parses a single true/false item", () => {
     const markdown = `#card
 1. The earth orbits the sun. Wahr/Falsch?
@@ -115,6 +133,27 @@ Eine Transaktion ist eine atomare Einheit von Operationen.
         {
           id: "tf-0",
           question: "1. The earth orbits the sun. Wahr/Falsch?",
+          correct: "wahr",
+        },
+      ]);
+    }
+  });
+
+  it("parses true/false items without suffix in other languages", () => {
+    const markdown = `#card
+La tierra orbita el sol.
+-verdadero
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].kind).toBe("true-false");
+    if (cards[0].kind === "true-false") {
+      expect(cards[0].items).toEqual([
+        {
+          id: "tf-0",
+          question: "La tierra orbita el sol.",
           correct: "wahr",
         },
       ]);
@@ -163,6 +202,21 @@ Missing marker. Wahr/Falsch?
     const markdown = `#card
 Case check. Wahr/Falsch?
 -FALSCH
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].kind).toBe("true-false");
+    if (cards[0].kind === "true-false") {
+      expect(cards[0].items[0]?.correct).toBe("falsch");
+    }
+  });
+
+  it("parses true/false markers with spacing and punctuation", () => {
+    const markdown = `#card
+Spacing check.
+- falsch,
 #`;
 
     const cards = parseFlashcards(markdown);

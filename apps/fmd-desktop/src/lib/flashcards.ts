@@ -1,3 +1,5 @@
+import { answerMarkers, falseTokens, trueTokens } from "./flashcardKeywords";
+
 /**
  * Flashcard syntax:
  * v1 (multiple choice)
@@ -83,9 +85,20 @@ const normalizeLines = (markdown: string) =>
 
 const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
-const answerMarkerPattern = /^(answer|antwort):\s*/i;
-const trueFalseSuffix = "Wahr/Falsch?";
-const trueFalseMarkerPattern = /^-(wahr|falsch)$/i;
+
+const normalizeKeyword = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const normalizedTrueTokens = new Set(trueTokens.map(normalizeKeyword));
+const normalizedFalseTokens = new Set(falseTokens.map(normalizeKeyword));
+const normalizedAnswerMarkers = answerMarkers.map((marker) => ({
+  raw: marker,
+  normalized: normalizeKeyword(marker),
+}));
 
 const trimEmptyLines = (lines: string[]) => {
   let start = 0;
@@ -215,11 +228,23 @@ const parseClozeSegments = (lines: string[]) => {
 };
 
 const normalizeTrueFalseMarker = (value: string) => {
-  const match = value.match(trueFalseMarkerPattern);
-  if (!match) {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("-")) {
     return null;
   }
-  return match[1].toLowerCase() as "wahr" | "falsch";
+  const rawToken = trimmed.slice(1).trim();
+  if (!rawToken) {
+    return null;
+  }
+  const cleaned = rawToken.replace(/[.,;:!?]+$/g, "");
+  const normalized = normalizeKeyword(cleaned);
+  if (normalizedTrueTokens.has(normalized)) {
+    return "wahr";
+  }
+  if (normalizedFalseTokens.has(normalized)) {
+    return "falsch";
+  }
+  return null;
 };
 
 const parseTrueFalseItems = (lines: string[]) => {
@@ -227,7 +252,7 @@ const parseTrueFalseItems = (lines: string[]) => {
 
   for (let index = 0; index < lines.length; index += 1) {
     const question = lines[index].trim();
-    if (!question || !question.endsWith(trueFalseSuffix)) {
+    if (!question) {
       continue;
     }
 
@@ -255,21 +280,39 @@ const parseTrueFalseItems = (lines: string[]) => {
   return items;
 };
 
+const findAnswerMarkerMatch = (line: string) => {
+  const trimmedLine = line.trimStart();
+  const normalizedLine = normalizeKeyword(trimmedLine);
+  for (const marker of normalizedAnswerMarkers) {
+    if (normalizedLine.startsWith(marker.normalized)) {
+      const colonIndex = trimmedLine.indexOf(":");
+      const markerEndIndex = colonIndex >= 0 ? colonIndex + 1 : marker.raw.length;
+      return { trimmedLine, markerEndIndex };
+    }
+  }
+  return null;
+};
+
+const findAnswerMarkerLine = (lines: string[]) => {
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = findAnswerMarkerMatch(lines[index] ?? "");
+    if (match) {
+      return { index, match };
+    }
+  }
+  return null;
+};
+
 const splitAnswerCard = (lines: string[]) => {
-  const markerIndex = lines.findIndex((line) =>
-    answerMarkerPattern.test(line.trim()),
-  );
-  if (markerIndex === -1) {
+  const markerInfo = findAnswerMarkerLine(lines);
+  if (!markerInfo) {
     return null;
   }
-  const frontLines = trimEmptyLines(lines.slice(0, markerIndex));
-  const markerLine = lines[markerIndex] ?? "";
-  const trimmedMarkerLine = markerLine.trimStart();
-  const markerMatch = trimmedMarkerLine.match(answerMarkerPattern);
-  const inlineAnswer = markerMatch
-    ? trimmedMarkerLine.slice(markerMatch[0].length)
-    : "";
-  const backLines = [inlineAnswer, ...lines.slice(markerIndex + 1)];
+  const frontLines = trimEmptyLines(lines.slice(0, markerInfo.index));
+  const inlineAnswer = markerInfo.match.trimmedLine
+    .slice(markerInfo.match.markerEndIndex)
+    .trimStart();
+  const backLines = [inlineAnswer, ...lines.slice(markerInfo.index + 1)];
   const normalizedFront = trimEmptyLines(frontLines).join("\n").trim();
   const normalizedBack = trimEmptyLines(backLines).join("\n").trim();
   if (!normalizedFront || !normalizedBack) {
