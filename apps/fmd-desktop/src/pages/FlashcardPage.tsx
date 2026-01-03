@@ -51,6 +51,11 @@ export const FlashcardPage = () => {
       if (event.altKey || event.ctrlKey || event.metaKey) {
         return;
       }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsFocusMode(false);
+        return;
+      }
       if (isEditableTarget(event.target)) {
         return;
       }

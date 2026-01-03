@@ -41,12 +41,28 @@ export const SpacedRepetitionPage = () => {
   const { flashcards, spacedRepetition, vault } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const statsView = spacedRepetition.spacedRepetitionStatsView;
   const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
   );
+  const selectedUser = useMemo(
+    () =>
+      spacedRepetition.spacedRepetitionUsers.find(
+        (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
+      ),
+    [
+      spacedRepetition.spacedRepetitionSelectedUserId,
+      spacedRepetition.spacedRepetitionUsers,
+    ],
+  );
+  const deleteTargetName = selectedUser?.name ?? "";
+  const deleteInputValue = deleteConfirmInput.trim();
+  const canConfirmDelete =
+    Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
 
   const statsTotal =
     spacedRepetition.spacedRepetitionCorrectCount +
@@ -84,6 +100,16 @@ export const SpacedRepetitionPage = () => {
   ];
 
   useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return;
+    }
+    if (!selectedUser) {
+      setIsDeleteDialogOpen(false);
+      setDeleteConfirmInput("");
+    }
+  }, [isDeleteDialogOpen, selectedUser]);
+
+  useEffect(() => {
     document.body.classList.toggle("focus-mode", isFocusMode);
     return () => {
       document.body.classList.remove("focus-mode");
@@ -100,6 +126,11 @@ export const SpacedRepetitionPage = () => {
         return;
       }
       if (event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsFocusMode(false);
         return;
       }
       if (isEditableTarget(event.target)) {
@@ -269,6 +300,28 @@ export const SpacedRepetitionPage = () => {
     },
     [spacedRepetition],
   );
+
+  const handleDeleteOpen = useCallback(() => {
+    if (!selectedUser) {
+      return;
+    }
+    setDeleteConfirmInput("");
+    setIsDeleteDialogOpen(true);
+  }, [selectedUser]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!canConfirmDelete) {
+      return;
+    }
+    spacedRepetition.handleSpacedRepetitionDeleteUser();
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  }, [canConfirmDelete, spacedRepetition]);
 
   return (
     <div className={`spaced-repetition-layout ${isFocusMode ? "focus-mode" : ""}`}>
@@ -523,7 +576,7 @@ export const SpacedRepetitionPage = () => {
               <button
                 type="button"
                 className="ghost small"
-                onClick={spacedRepetition.handleSpacedRepetitionDeleteUser}
+                onClick={handleDeleteOpen}
                 disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
               >
                 Delete
@@ -741,6 +794,51 @@ export const SpacedRepetitionPage = () => {
           </div>
         </section>
       )}
+      {isDeleteDialogOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-user-title"
+          >
+            <h3 id="delete-user-title">Delete user</h3>
+            <p className="muted">
+              This permanently deletes the user and all spaced repetition progress.
+            </p>
+            <div className="modal-body">
+              <span className="label">Type {deleteTargetName} to confirm</span>
+              <input
+                type="text"
+                className="text-input"
+                value={deleteConfirmInput}
+                onChange={(event) => setDeleteConfirmInput(event.target.value)}
+                aria-label="Type the username to confirm deletion"
+              />
+              <span className="helper-text">
+                Match is case-sensitive. Leading/trailing spaces are ignored.
+              </span>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleDeleteCancel}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={handleDeleteConfirm}
+                disabled={!canConfirmDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

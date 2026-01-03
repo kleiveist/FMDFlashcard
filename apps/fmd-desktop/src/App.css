@@ -1543,6 +1543,42 @@ body.focus-mode .sr-stats-panel {
   min-height: 240px;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 16, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 20;
+}
+
+.modal-panel {
+  width: min(420px, 100%);
+  background: var(--panel);
+  border-radius: 18px;
+  border: 1px solid var(--line-soft);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .file-list {
   list-style: none;
   padding: 0;
