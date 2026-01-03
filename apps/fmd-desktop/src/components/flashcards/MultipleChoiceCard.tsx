@@ -1,4 +1,26 @@
+import { useMemo } from "react";
 import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
+
+const OPTION_LABELS = "abcdefghijklmnopqrstuvwxyz";
+
+const indexToLabel = (index: number) => {
+  let label = "";
+  let cursor = index;
+  do {
+    label = OPTION_LABELS[cursor % 26] + label;
+    cursor = Math.floor(cursor / 26) - 1;
+  } while (cursor >= 0);
+  return label;
+};
+
+const shuffleOptions = <T,>(options: T[]) => {
+  const copy = [...options];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+};
 
 type MultipleChoiceCardProps = {
   card: MultipleChoiceCardType;
@@ -28,11 +50,20 @@ export const MultipleChoiceCard = ({
       : "No solution defined"
     : "";
 
+  const displayOptions = useMemo(
+    () =>
+      shuffleOptions(card.options).map((option, index) => ({
+        option,
+        label: indexToLabel(index),
+      })),
+    [card.options],
+  );
+
   return (
     <article className="flashcard-item">
       <h3 className="flashcard-question">{card.question}</h3>
       <ul className="flashcard-options">
-        {card.options.map((option) => {
+        {displayOptions.map(({ option, label }) => {
           const isSelected = selectedKey === option.key;
           const isCorrect = hasSolutions && card.correctKeys.includes(option.key);
           const isIncorrect = hasSolutions && submitted && isSelected && !isCorrect;
@@ -54,7 +85,7 @@ export const MultipleChoiceCard = ({
                 disabled={submitted}
                 aria-pressed={isSelected}
               >
-                <span className="flashcard-key">{option.key}</span>
+                <span className="flashcard-key">{label}</span>
                 <span className="flashcard-text">{option.text}</span>
               </button>
             </li>
