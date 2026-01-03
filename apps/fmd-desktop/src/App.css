@@ -716,11 +716,27 @@ body.focus-mode .spaced-repetition-layout {
   grid-template-columns: 1fr;
 }
 
-body.focus-mode .flashcard-panel,
+body.focus-mode .flashcard-layout {
+  justify-items: center;
+}
+
+body.focus-mode .flashcard-panel {
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
+  justify-self: center;
+}
+
 body.focus-mode .sr-flashcards-panel {
   width: 100%;
   max-width: 920px;
   margin: 0 auto;
+}
+
+body.focus-mode .flashcard-panel img {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 body.focus-mode .flashcard-sidebar,
