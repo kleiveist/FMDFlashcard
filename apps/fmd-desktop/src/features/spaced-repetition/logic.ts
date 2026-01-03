@@ -39,6 +39,7 @@ export type SpacedRepetitionSession = {
   clozeResponses: Record<number, Record<string, string>>;
   page: number;
   cardProgressById: Record<string, SpacedRepetitionCardProgress>;
+  completedPerDay: Record<string, number>;
 };
 
 export type SpacedRepetitionUser = {
@@ -50,6 +51,7 @@ export type SpacedRepetitionUser = {
 export type SpacedRepetitionUserState = {
   cardStates: Record<string, SpacedRepetitionCardProgress>;
   lastLoadedAt: string | null;
+  completedPerDay: Record<string, number>;
 };
 
 export type SpacedRepetitionStorage = {
@@ -122,11 +124,13 @@ export const createEmptySpacedRepetitionSession = (): SpacedRepetitionSession =>
   clozeResponses: {},
   page: 0,
   cardProgressById: {},
+  completedPerDay: {},
 });
 
 export const createEmptySpacedRepetitionUserState = (): SpacedRepetitionUserState => ({
   cardStates: {},
   lastLoadedAt: null,
+  completedPerDay: {},
 });
 
 export const normalizeSpacedRepetitionCardProgress = (

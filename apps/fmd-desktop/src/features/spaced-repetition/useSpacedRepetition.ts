@@ -35,16 +35,51 @@ export const SPACED_REPETITION_PAGE_SIZES: SpacedRepetitionPageSize[] = [
 ];
 export const DEFAULT_SPACED_REPETITION_PAGE_SIZE: SpacedRepetitionPageSize = 2;
 export const SPACED_REPETITION_BOXES: SpacedRepetitionBoxes[] = [3, 5, 8];
-export const SPACED_REPETITION_CHART_LABELS = [
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-  "Sat",
-  "Sun",
-];
-export const SPACED_REPETITION_CHART_DATA = [1, 3, 2, 4, 3, 5, 4];
+const DAY_MS = 24 * 60 * 60 * 1000;
+const BERLIN_TIME_ZONE = "Europe/Berlin";
+const berlinDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: BERLIN_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const berlinWeekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: BERLIN_TIME_ZONE,
+  weekday: "short",
+});
+
+const buildBerlinDateKey = (date: Date) => {
+  const parts = berlinDateFormatter.formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  if (!year || !month || !day) {
+    return berlinDateFormatter.format(date);
+  }
+  return `${year}-${month}-${day}`;
+};
+
+const buildBerlinWeekdayLabel = (date: Date) =>
+  berlinWeekdayFormatter.format(date);
+
+const buildLastSevenDays = (now = new Date()) => {
+  const days: Date[] = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    days.push(new Date(now.getTime() - offset * DAY_MS));
+  }
+  return days;
+};
+
+const normalizeCompletedPerDay = (value: unknown) => {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, count]) => typeof count === "number" && Number.isFinite(count))
+      .map(([key, count]) => [key, Math.max(0, Math.floor(count))]),
+  );
+};
 
 const normalizeSpacedRepetitionPageSize = (value: number) =>
   SPACED_REPETITION_PAGE_SIZES.includes(value as SpacedRepetitionPageSize)
@@ -138,6 +173,10 @@ export const useSpacedRepetition = ({
     spacedRepetitionSession?.cardProgressById ??
     spacedRepetitionActiveUserState?.cardStates ??
     {};
+  const spacedRepetitionCompletedPerDay =
+    spacedRepetitionSession?.completedPerDay ??
+    spacedRepetitionActiveUserState?.completedPerDay ??
+    {};
 
   const resolvedSpacedRepetitionPageSize = useMemo(
     () => normalizeSpacedRepetitionPageSize(spacedRepetitionPageSize),
@@ -228,7 +267,7 @@ export const useSpacedRepetition = ({
     const dueTodayThreshold = Math.min(2, spacedRepetitionBoxes);
     let dueNow = 0;
     let dueToday = 0;
-    let completedToday = 0;
+    let completedEver = 0;
 
     for (const progress of cardStates) {
       const normalized = normalizeSpacedRepetitionCardProgress(progress);
@@ -237,7 +276,7 @@ export const useSpacedRepetition = ({
         spacedRepetitionBoxes,
       );
       if (normalized.attempts > 0) {
-        completedToday += 1;
+        completedEver += 1;
       }
       if (effectiveBox <= 1) {
         dueNow += 1;
@@ -247,13 +286,22 @@ export const useSpacedRepetition = ({
       }
     }
 
+    const todayKey = buildBerlinDateKey(new Date());
+    const completedToday = todayKey
+      ? spacedRepetitionCompletedPerDay[todayKey] ?? 0
+      : 0;
+
     return {
       dueNow,
       dueToday,
-      inQueue: total - completedToday,
+      inQueue: total - completedEver,
       completedToday,
     };
-  }, [spacedRepetitionBoxes, spacedRepetitionCardStates]);
+  }, [
+    spacedRepetitionBoxes,
+    spacedRepetitionCardStates,
+    spacedRepetitionCompletedPerDay,
+  ]);
 
   const spacedRepetitionBoxCounts = useMemo(() => {
     const counts = Array.from({ length: spacedRepetitionBoxes }, () => 0);
@@ -268,6 +316,19 @@ export const useSpacedRepetition = ({
     });
     return counts;
   }, [spacedRepetitionBoxes, spacedRepetitionCardStates]);
+
+  const spacedRepetitionCompletedSeries = useMemo(() => {
+    const days = buildLastSevenDays();
+    const labels = days.map((day) => buildBerlinWeekdayLabel(day));
+    const data = days.map((day) => {
+      const key = buildBerlinDateKey(day);
+      if (!key) {
+        return 0;
+      }
+      return spacedRepetitionCompletedPerDay[key] ?? 0;
+    });
+    return { labels, data };
+  }, [spacedRepetitionCompletedPerDay]);
 
   const updateActiveSpacedRepetitionSession = useCallback(
     (updater: (session: SpacedRepetitionSession) => SpacedRepetitionSession) => {
@@ -337,6 +398,11 @@ export const useSpacedRepetition = ({
                   normalizeSpacedRepetitionCardProgress(progress),
                 ]),
               );
+              const completedPerDayRaw =
+                state && typeof state === "object" && "completedPerDay" in state
+                  ? (state as SpacedRepetitionUserState).completedPerDay
+                  : {};
+              const completedPerDay = normalizeCompletedPerDay(completedPerDayRaw);
               const lastLoadedAt =
                 state &&
                 typeof state === "object" &&
@@ -348,6 +414,7 @@ export const useSpacedRepetition = ({
                 userId,
                 {
                   cardStates: normalizedCardStates,
+                  completedPerDay,
                   lastLoadedAt,
                 },
               ];
@@ -429,6 +496,7 @@ export const useSpacedRepetition = ({
         [spacedRepetitionActiveUserId]: {
           ...createEmptySpacedRepetitionSession(),
           cardProgressById: storedState?.cardStates ?? {},
+          completedPerDay: storedState?.completedPerDay ?? {},
         },
       };
     });
@@ -463,7 +531,10 @@ export const useSpacedRepetition = ({
     setSpacedRepetitionUserStateById((prev) => {
       const current =
         prev[spacedRepetitionActiveUserId] ?? createEmptySpacedRepetitionUserState();
-      if (current.cardStates === session.cardProgressById) {
+      if (
+        current.cardStates === session.cardProgressById &&
+        current.completedPerDay === session.completedPerDay
+      ) {
         return prev;
       }
       return {
@@ -471,6 +542,7 @@ export const useSpacedRepetition = ({
         [spacedRepetitionActiveUserId]: {
           ...current,
           cardStates: session.cardProgressById,
+          completedPerDay: session.completedPerDay,
         },
       };
     });
@@ -571,6 +643,8 @@ export const useSpacedRepetition = ({
       const cards = await scanFlashcards({ scopeOverride: "vault" });
       const storedCardStates =
         spacedRepetitionUserStateById[activeUserId]?.cardStates ?? {};
+      const storedCompletedPerDay =
+        spacedRepetitionUserStateById[activeUserId]?.completedPerDay ?? {};
       const nextSession = buildSpacedRepetitionSession(cards, storedCardStates, {
         order: spacedRepetitionOrder,
         boxCount: spacedRepetitionBoxes,
@@ -578,7 +652,10 @@ export const useSpacedRepetition = ({
       });
       setSpacedRepetitionSessions((prev) => ({
         ...prev,
-        [activeUserId]: nextSession,
+        [activeUserId]: {
+          ...nextSession,
+          completedPerDay: storedCompletedPerDay,
+        },
       }));
       setSpacedRepetitionUserStateById((prev) => {
         const current = prev[activeUserId] ?? createEmptySpacedRepetitionUserState();
@@ -694,6 +771,13 @@ export const useSpacedRepetition = ({
           lastResult: result,
           lastReviewedAt: new Date().toISOString(),
         };
+        const todayKey = buildBerlinDateKey(new Date());
+        const nextCompletedPerDay = todayKey
+          ? {
+              ...session.completedPerDay,
+              [todayKey]: (session.completedPerDay[todayKey] ?? 0) + 1,
+            }
+          : session.completedPerDay;
 
         return {
           ...session,
@@ -704,6 +788,7 @@ export const useSpacedRepetition = ({
             ...session.cardProgressById,
             [cardId]: nextProgress,
           },
+          completedPerDay: nextCompletedPerDay,
         };
       });
     },
@@ -872,6 +957,8 @@ export const useSpacedRepetition = ({
     spacedRepetitionCanGoBack,
     spacedRepetitionCanGoNext,
     spacedRepetitionClozeResponses,
+    spacedRepetitionCompletedChartData: spacedRepetitionCompletedSeries.data,
+    spacedRepetitionCompletedChartLabels: spacedRepetitionCompletedSeries.labels,
     spacedRepetitionCorrectCount,
     spacedRepetitionCorrectPercent,
     spacedRepetitionDataLoaded,

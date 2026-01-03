@@ -49,10 +49,12 @@ struct SpacedRepetitionCardState {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 struct SpacedRepetitionUserState {
     card_states: HashMap<String, SpacedRepetitionCardState>,
     last_loaded_at: Option<String>,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    completed_per_day: HashMap<String, u32>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]

@@ -20,8 +20,6 @@ import {
 } from "../features/flashcards/logic";
 import {
   SPACED_REPETITION_BOXES,
-  SPACED_REPETITION_CHART_DATA,
-  SPACED_REPETITION_CHART_LABELS,
   SPACED_REPETITION_PAGE_SIZES,
 } from "../features/spaced-repetition/useSpacedRepetition";
 
@@ -466,14 +464,18 @@ export const SpacedRepetitionPage = () => {
                       />
                       <polyline
                         className="sr-chart-line"
-                        points={buildLineChartPoints(SPACED_REPETITION_CHART_DATA)}
+                        points={buildLineChartPoints(
+                          spacedRepetition.spacedRepetitionCompletedChartData,
+                        )}
                       />
                     </svg>
                   </div>
                   <div className="chart-axis">
-                    {SPACED_REPETITION_CHART_LABELS.map((label) => (
+                    {spacedRepetition.spacedRepetitionCompletedChartLabels.map(
+                      (label) => (
                       <span key={label}>{label}</span>
-                    ))}
+                    ),
+                    )}
                   </div>
                 </div>
               )}
