@@ -63,26 +63,28 @@ export const PreviewPanel = ({
     </div>
     <div className="panel-body preview-body">
       {previewState === "error" ? <div className="error">{previewError}</div> : null}
-      {isEditing ? (
-        <textarea
-          className="preview-editor"
-          value={editDraft}
-          onChange={(event) => onEditChange(event.target.value)}
-          aria-label="Edit markdown preview"
-        />
-      ) : preview ? (
-        <div className={`preview ${rawPreview ? "raw" : "markdown"}`}>
-          {rawPreview ? (
-            <pre>{preview}</pre>
-          ) : (
-            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-              {preview}
-            </ReactMarkdown>
-          )}
-        </div>
-      ) : (
-        <div className="preview placeholder">{emptyPreview}</div>
-      )}
+      <div className="preview-content">
+        {isEditing ? (
+          <textarea
+            className="preview-editor"
+            value={editDraft}
+            onChange={(event) => onEditChange(event.target.value)}
+            aria-label="Edit markdown preview"
+          />
+        ) : preview ? (
+          <div className={`preview ${rawPreview ? "raw" : "markdown"}`}>
+            {rawPreview ? (
+              <pre>{preview}</pre>
+            ) : (
+              <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                {preview}
+              </ReactMarkdown>
+            )}
+          </div>
+        ) : (
+          <div className="preview placeholder">{emptyPreview}</div>
+        )}
+      </div>
       {editError ? <div className="error">{editError}</div> : null}
       {selectedFile ? (
         <div className="preview-edit-actions">

@@ -1,14 +1,22 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 
 type AppLanguage = "de" | "en";
 type LocalizedText = { de?: string; en?: string };
 
+type HelpExample = {
+  id: string;
+  title: LocalizedText;
+  description: LocalizedText;
+  code: string;
+};
+
 type HelpSection = {
   id: string;
   title: LocalizedText;
   bullets?: LocalizedText[];
-  examples?: LocalizedText[];
+  examples?: HelpExample[];
+  tone?: "help-block";
 };
 
 type HelpTopic = {
@@ -31,9 +39,97 @@ const helpHeader = {
 
 const helpLabels = {
   back: { en: "Back", de: "Zurueck" },
+  copy: { en: "Copy", de: "Kopieren" },
+  copied: { en: "Copied", de: "Kopiert" },
   draft: { en: "Draft", de: "Entwurf" },
   openTopic: { en: "Open topic", de: "Thema oeffnen" },
 };
+
+const flashcardSyntaxExamples: HelpExample[] = [
+  {
+    id: "qa-classic",
+    title: { en: "Classic Q&A card", de: "Klassische Q&A-Karte" },
+    description: {
+      en: "Use an Answer:/Antwort: marker to split front and back; the answer can be inline or multiline.",
+      de: "Answer:/Antwort: trennt Vorder- und Rueckseite; die Antwort kann inline oder mehrzeilig sein.",
+    },
+    code: "#card\nWhat is SQL?\nAnswer: A language for querying databases.\n#",
+  },
+  {
+    id: "multiple-choice",
+    title: { en: "Multiple choice", de: "Multiple Choice" },
+    description: {
+      en: "List options as a) / b) and mark the correct choice with -a (multiple markers allowed).",
+      de: "Optionen als a) / b) angeben und die richtige Wahl mit -a markieren (mehrere Marker moeglich).",
+    },
+    code: "#card\nQuestion line\na) Option A\nb) Option B\n-a\n#",
+  },
+  {
+    id: "cloze-combined",
+    title: { en: "Cloze with inline code", de: "Cloze mit Inline-Code" },
+    description: {
+      en: "%%...%% creates typed blanks, while inline code `token` becomes a drag blank; both can be combined.",
+      de: "%%...%% erzeugt Eingabeblanks, Inline-Code `token` wird zum Drag-Blank; beides kann kombiniert werden.",
+    },
+    code:
+      "#card\nFill in: The capital of France is %%Paris%% and `Seine` flows nearby.\n#",
+  },
+  {
+    id: "true-false",
+    title: { en: "True/False statement", de: "True/False-Aussage" },
+    description: {
+      en: "Write a statement line and follow it with -true or -false; multiple statements can be stacked in one card.",
+      de: "Schreibe eine Aussage und danach -true oder -false; mehrere Aussagen koennen in einer Karte stehen.",
+    },
+    code: "#card\nStatement\n-true\n#",
+  },
+  {
+    id: "qa-german",
+    title: { en: "German Q&A card", de: "Deutsch: Q&A-Karte" },
+    description: {
+      en: "Antwort: works the same as Answer: and supports multi-line answers.",
+      de: "Antwort: funktioniert wie Answer: und erlaubt mehrzeilige Antworten.",
+    },
+    code: "#card\n4. text?\nAntwort: textcorrect\n#",
+  },
+  {
+    id: "true-false-de",
+    title: { en: "True/False question (DE)", de: "Deutsch: True/False" },
+    description: {
+      en: "Use -wahr/-falsch or -true/-false for true/false prompts in any language.",
+      de: "Nutze -wahr/-falsch oder -true/-false fuer True/False-Prompts in jeder Sprache.",
+    },
+    code: "#card\n5. 2. text? true/false?\n-true\n#",
+  },
+  {
+    id: "inline-code-multi",
+    title: { en: "Multiple inline-code tokens", de: "Mehrere Inline-Code-Tokens" },
+    description: {
+      en: "Each `inline code` token becomes a drag blank; multiple tokens are allowed in one line.",
+      de: "Jeder `inline code`-Token wird zum Drag-Blank; mehrere Tokens pro Zeile sind moeglich.",
+    },
+    code: "#card\n1. text  \ntext `block` text `block` text `Tabelle` text.\n#",
+  },
+  {
+    id: "separator-block",
+    title: { en: "Structured separator block", de: "Strukturierter Separator-Block" },
+    description: {
+      en: "Markdown separators (---) can wrap cards; text outside #card/# is ignored.",
+      de: "Markdown-Trennlinien (---) koennen Karten umrahmen; Text ausserhalb von #card/# wird ignoriert.",
+    },
+    code: "---\n#card\n9. text\ntext %% block %%, texte\n#\n---",
+  },
+  {
+    id: "multiline-cloze",
+    title: { en: "Multiline cloze (SQL/code)", de: "Mehrzeiliges Cloze (SQL/Code)" },
+    description: {
+      en: "Cloze blanks can span multiple lines, and inline-code tokens still work in the same card.",
+      de: "Cloze-Blaenke funktionieren ueber mehrere Zeilen; Inline-Code-Tokens sind im selben Card-Block erlaubt.",
+    },
+    code:
+      "---\n#card\n1. text\n%% SELECT %% RechnungID, KundeID, Betrag\n%% FROM %% `RECHNUNG`\n%% WHERE %% `Betrag > 100`\n%% ORDER BY %% `Betrag DESC;`\n---\n#",
+  },
+];
 
 const helpTopics: HelpTopic[] = [
   {
@@ -78,84 +174,36 @@ const helpTopics: HelpTopic[] = [
     id: "flashcard-syntax",
     title: { en: "Flashcard syntax", de: "Karteikarten-Syntax" },
     summary: {
-      en: "Front/back blocks, free text answers, and classic formats.",
-      de: "Vorder-/Rueckseite, Freitext und klassische Formate.",
+      en: "Complete syntax reference with examples for every supported card type.",
+      de: "Komplette Syntax-Referenz mit Beispielen fuer alle Kartentypen.",
     },
-    draft: true,
     sections: [
       {
-        id: "syntax-front-back",
-        title: { en: "Front / Back", de: "Vorderseite / Rueckseite" },
+        id: "syntax-help",
+        title: {
+          en: "Quick reminders for this workflow.",
+          de: "Quick reminders for this workflow.",
+        },
+        tone: "help-block",
         bullets: [
           {
-            en: "Use an Answer:/Antwort: marker to split the card.",
-            de: "Mit Answer:/Antwort: die Karte in Vorder- und Rueckseite teilen.",
+            en: "Wrap every card with #card and # on their own lines; content outside is ignored.",
+            de: "Jede Karte mit #card und # auf eigenen Zeilen umschliessen; Inhalt ausserhalb wird ignoriert.",
           },
           {
-            en: "Everything before the marker is the front; everything after is the back.",
-            de: "Alles vor dem Marker ist die Vorderseite, alles danach die Rueckseite.",
-          },
-        ],
-      },
-      {
-        id: "syntax-free-text",
-        title: { en: "Free-text answers", de: "Freitext-Antworten" },
-        bullets: [
-          {
-            en: "When an Answer/Antwort marker exists, a text input appears.",
-            de: "Wenn ein Answer/Antwort-Marker existiert, erscheint ein Texteingabefeld.",
+            en: "The first non-empty line is the prompt; the rest defines the card type.",
+            de: "Die erste nicht-leere Zeile ist die Frage; der Rest definiert den Kartentyp.",
           },
           {
-            en: "Check reveals the model answer, then self-grade Correct/Incorrect.",
-            de: "Check zeigt die Musterloesung, danach selbst mit Korrekt/Inkorrekt bewerten.",
-          },
-        ],
-      },
-      {
-        id: "syntax-true-false",
-        title: { en: "True / False", de: "Wahr / Falsch" },
-        bullets: [
-          {
-            en: "Use -<token> for the solution; tokens accept multiple languages (true/false, wahr/falsch, etc.).",
-            de: "Die Loesung wird mit -<token> angegeben; Tokens sind mehrsprachig (true/false, wahr/falsch, usw.).",
-          },
-        ],
-      },
-      {
-        id: "syntax-mc-cloze",
-        title: { en: "Multiple choice & Cloze", de: "Multiple Choice & Cloze" },
-        bullets: [
-          {
-            en: "Multiple choice uses a) Option and a marker like -a for the correct key.",
-            de: "Multiple Choice nutzt a) Option und einen Marker wie -a fuer die richtige Antwort.",
-          },
-          {
-            en: "Cloze uses %%answer%% for input blanks and `token` for drag blanks.",
-            de: "Cloze nutzt %%answer%% fuer Eingabefelder und `token` fuer Drag-Optionen.",
+            en: "Cloze input blanks (%%...%%) and inline-code drag tokens (`...`) can be combined in one #card; other formats should be used alone.",
+            de: "Cloze-Eingabeblanks (%%...%%) und Inline-Code-Drag-Tokens (`...`) koennen in einer #card kombiniert werden; andere Formate sollten getrennt bleiben.",
           },
         ],
       },
       {
         id: "syntax-examples",
-        title: { en: "Examples", de: "Beispiele" },
-        examples: [
-          {
-            en: "#card\nWhat is SQL?\nAnswer: A language for querying databases.\n#",
-            de: "#card\nWas ist SQL?\nAntwort: Eine Sprache zum Abfragen von Datenbanken.\n#",
-          },
-          {
-            en: "#card\nQuestion line\na) Option A\nb) Option B\n-a\n#",
-            de: "#card\nFrage\na) Option A\nb) Option B\n-a\n#",
-          },
-          {
-            en: "#card\nFill in: The capital of France is %%Paris%% and `Seine` flows nearby.\n#",
-            de: "#card\nErgaenze: Die Hauptstadt von Frankreich ist %%Paris%% und `Seine` fliesst dort.\n#",
-          },
-          {
-            en: "#card\nStatement\n-true\n#",
-            de: "#card\nAussage\n-wahr\n#",
-          },
-        ],
+        title: { en: "EXAMPLES", de: "EXAMPLES" },
+        examples: flashcardSyntaxExamples,
       },
     ],
   },
@@ -413,10 +461,51 @@ const resolveList = (items: LocalizedText[] | undefined, language: AppLanguage) 
 export const HelpPage = () => {
   const { settings } = useAppState();
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+  const [copiedExampleId, setCopiedExampleId] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<number | null>(null);
   const language = settings.language;
   const activeTopic = helpTopics.find((topic) => topic.id === activeTopicId) ?? null;
 
   const titleText = resolveText(helpHeader.title, language);
+
+  const copyLabel = resolveText(helpLabels.copy, language);
+  const copiedLabel = resolveText(helpLabels.copied, language);
+
+  const handleCopy = async (example: HelpExample) => {
+    const text = example.code;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopiedExampleId(example.id);
+      if (copyTimeoutRef.current) {
+        window.clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = window.setTimeout(() => {
+        setCopiedExampleId(null);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy example", error);
+    }
+  };
+
+  useEffect(
+    () => () => {
+      if (copyTimeoutRef.current) {
+        window.clearTimeout(copyTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   return (
     <>
@@ -456,11 +545,17 @@ export const HelpPage = () => {
               <div className="help-detail-sections">
                 {activeTopic.sections.map((section) => {
                   const bullets = resolveList(section.bullets, language);
-                  const examples = resolveList(section.examples, language);
+                  const examples = section.examples ?? [];
+                  const sectionLabelClass =
+                    section.tone === "help-block" ? "help-block-title" : "label";
+                  const sectionClassName =
+                    section.tone === "help-block"
+                      ? "help-detail-section help-block"
+                      : "help-detail-section";
                   return (
-                    <div key={section.id} className="help-detail-section">
+                    <div key={section.id} className={sectionClassName}>
                       <div className="help-item-header">
-                        <span className="label">
+                        <span className={sectionLabelClass}>
                           {resolveText(section.title, language)}
                         </span>
                       </div>
@@ -473,11 +568,39 @@ export const HelpPage = () => {
                       ) : null}
                       {examples.length > 0 ? (
                         <div className="help-examples">
-                          {examples.map((example) => (
-                            <pre key={example} className="help-code">
-                              {example}
-                            </pre>
-                          ))}
+                          {examples.map((example) => {
+                            const exampleTitle = resolveText(example.title, language);
+                            const exampleDescription = resolveText(
+                              example.description,
+                              language,
+                            );
+                            const isCopied = copiedExampleId === example.id;
+                            return (
+                              <div key={example.id} className="help-example">
+                                <div className="help-example-header">
+                                  <div className="help-example-text">
+                                    <div className="help-example-title">
+                                      {exampleTitle}
+                                    </div>
+                                    {exampleDescription ? (
+                                      <p className="help-example-description">
+                                        {exampleDescription}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="ghost small help-copy"
+                                    onClick={() => handleCopy(example)}
+                                    aria-label={`${copyLabel}: ${exampleTitle}`}
+                                  >
+                                    {isCopied ? copiedLabel : copyLabel}
+                                  </button>
+                                </div>
+                                <pre className="help-code">{example.code}</pre>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : null}
                     </div>

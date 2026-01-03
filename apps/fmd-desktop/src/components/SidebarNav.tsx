@@ -12,18 +12,29 @@ type TabKey =
 type SidebarNavProps = {
   activeTab: TabKey;
   onTabChange: (tab: TabKey) => void;
+  isMobileNavOpen: boolean;
+  onMobileNavClose: () => void;
 };
 
-export const SidebarNav = ({ activeTab, onTabChange }: SidebarNavProps) => {
+export const SidebarNav = ({
+  activeTab,
+  onTabChange,
+  isMobileNavOpen,
+  onMobileNavClose,
+}: SidebarNavProps) => {
   const { actions, settings, vault } = useAppState();
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
-  const isCollapsed = settings.rightToolbarCollapsed;
+  const isCollapsed = settings.rightToolbarCollapsed && !isMobileNavOpen;
 
   return (
-    <aside className={`sidebar ${isCollapsed ? "collapsed" : ""}`}>
+    <aside
+      id="app-sidebar"
+      className={`sidebar ${isCollapsed ? "collapsed" : ""}`}
+      aria-label="Primary navigation"
+    >
       {isCollapsed ? (
         <button
           type="button"
@@ -48,6 +59,14 @@ export const SidebarNav = ({ activeTab, onTabChange }: SidebarNavProps) => {
               <span className="brand-title">FMD Flashcard</span>
               <span className="brand-sub">Vault-first study workspace</span>
             </div>
+            <button
+              type="button"
+              className="mobile-nav-close"
+              onClick={onMobileNavClose}
+              aria-label="Close navigation"
+            >
+              Close
+            </button>
           </div>
           <nav className="nav">
             <button

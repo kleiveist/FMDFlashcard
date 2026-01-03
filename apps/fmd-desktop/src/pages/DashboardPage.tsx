@@ -70,11 +70,11 @@ export const DashboardPage = () => {
   };
 
   return (
-    <>
+    <div className="dashboard-page">
       <header className="content-header">
         <div>
           <p className="eyebrow">Dashboard</p>
-          <h1>Vault Uebersicht</h1>
+          <h1>Vault</h1>
           <p className="muted">
             Waehle einen Vault, scanne Markdown-Dateien und sieh dir Inhalte sofort
             an.
@@ -82,18 +82,8 @@ export const DashboardPage = () => {
         </div>
       </header>
 
-      <VaultTree
-        fileCountLabel={fileCountLabel}
-        files={vault.files}
-        listError={vault.listError}
-        listState={vault.listState}
-        onSelectFile={actions.handleSelectFile}
-        selectedFile={preview.selectedFile}
-        vaultPath={vault.vaultPath}
-      />
-
       <div className="workspace">
-        <FileList
+        <VaultTree
           fileCountLabel={fileCountLabel}
           files={vault.files}
           listError={vault.listError}
@@ -121,7 +111,17 @@ export const DashboardPage = () => {
           onEditStart={handleEditStart}
           setRawPreview={preview.setRawPreview}
         />
+
+        <FileList
+          fileCountLabel={fileCountLabel}
+          files={vault.files}
+          listError={vault.listError}
+          listState={vault.listState}
+          onSelectFile={actions.handleSelectFile}
+          selectedFile={preview.selectedFile}
+          vaultPath={vault.vaultPath}
+        />
       </div>
-    </>
+    </div>
   );
 };
