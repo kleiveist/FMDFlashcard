@@ -3,6 +3,7 @@ import {
   isDragAnswerMatch,
   isInputAnswerMatch,
   type ClozeSegment,
+  type FlashcardPart,
   type Flashcard,
 } from "../../lib/flashcards";
 
@@ -19,6 +20,16 @@ export type FlashcardStats = {
 export type ClozeDragPayload = {
   cardIndex: number;
   tokenId: string;
+  partIndex?: number;
+};
+
+export type CompositePartState = {
+  selections?: string[];
+  trueFalseSelections?: Record<string, TrueFalseSelection>;
+  clozeResponses?: Record<string, string>;
+  textResponse?: string;
+  textRevealed?: boolean;
+  selfGrade?: FlashcardSelfGrade;
 };
 
 type ClozeBlankSegment = Extract<ClozeSegment, { type: "blank" }>;
@@ -41,6 +52,13 @@ export const getClozeDragPayload = (event: DragEvent<HTMLElement>) => {
   try {
     const parsed = JSON.parse(raw) as ClozeDragPayload;
     if (typeof parsed.cardIndex !== "number" || typeof parsed.tokenId !== "string") {
+      return null;
+    }
+    if (
+      "partIndex" in parsed &&
+      typeof parsed.partIndex !== "number" &&
+      parsed.partIndex !== undefined
+    ) {
       return null;
     }
     return parsed;
@@ -142,6 +160,22 @@ export const isTrueFalseCardCorrect = (
   return card.items.every((item) => selections[item.id] === item.correct);
 };
 
+export const isFlashcardPartComplete = (
+  part: FlashcardPart,
+  state: CompositePartState = {},
+) => {
+  if (part.kind === "multiple-choice") {
+    return (state.selections ?? []).length > 0;
+  }
+  if (part.kind === "true-false") {
+    return areTrueFalseItemsComplete(part, state.trueFalseSelections ?? {});
+  }
+  if (part.kind === "cloze") {
+    return areClozeBlanksComplete(part, state.clozeResponses ?? {});
+  }
+  return Boolean(state.selfGrade);
+};
+
 const isExactKeyMatch = (selected: string[], correct: string[]) => {
   if (selected.length !== correct.length) {
     return false;
@@ -153,6 +187,31 @@ const isExactKeyMatch = (selected: string[], correct: string[]) => {
   return correct.every((key) => selectedSet.has(key));
 };
 
+export const evaluateFlashcardPartResult = (
+  part: FlashcardPart,
+  state: CompositePartState = {},
+): FlashcardResult => {
+  if (part.kind === "multiple-choice") {
+    if (part.correctKeys.length === 0) {
+      return "neutral";
+    }
+    const selected = state.selections ?? [];
+    return isExactKeyMatch(selected, part.correctKeys) ? "correct" : "incorrect";
+  }
+
+  if (part.kind === "true-false") {
+    const selections = state.trueFalseSelections ?? {};
+    return isTrueFalseCardCorrect(part, selections) ? "correct" : "incorrect";
+  }
+
+  if (part.kind === "cloze") {
+    const responses = state.clozeResponses ?? {};
+    return isClozeCardCorrect(part, responses) ? "correct" : "incorrect";
+  }
+
+  return state.selfGrade ?? "neutral";
+};
+
 export const evaluateFlashcardResult = (
   card: Flashcard,
   cardIndex: number,
@@ -160,7 +219,16 @@ export const evaluateFlashcardResult = (
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>,
   clozeResponses: Record<number, Record<string, string>>,
   selfGrades: Record<number, FlashcardSelfGrade> = {},
+  compositeStates?: Record<number, CompositePartState[]>,
 ): FlashcardResult => {
+  if (card.kind === "composite") {
+    const partStates = compositeStates?.[cardIndex] ?? [];
+    const allCorrect = card.parts.every((part, partIndex) =>
+      evaluateFlashcardPartResult(part, partStates[partIndex] ?? {}),
+    );
+    return allCorrect ? "correct" : "incorrect";
+  }
+
   if (card.kind === "multiple-choice") {
     if (card.correctKeys.length === 0) {
       return "neutral";
@@ -197,6 +265,7 @@ export const calculateFlashcardStats = (
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>,
   clozeResponses: Record<number, Record<string, string>>,
   selfGrades: Record<number, FlashcardSelfGrade> = {},
+  compositeStates?: Record<number, CompositePartState[]>,
 ): FlashcardStats => {
   let correct = 0;
   let incorrect = 0;
@@ -212,6 +281,7 @@ export const calculateFlashcardStats = (
       trueFalseSelections,
       clozeResponses,
       selfGrades,
+      compositeStates,
     );
     if (result === "correct") {
       correct += 1;

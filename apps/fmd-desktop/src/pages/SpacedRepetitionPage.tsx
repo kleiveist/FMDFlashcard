@@ -8,6 +8,7 @@ import {
 } from "react";
 import { buildLineChartPoints } from "../lib/chart";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
+import { CompositeCard } from "../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
@@ -17,6 +18,7 @@ import { vaultBaseName } from "../lib/path";
 import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
+  isFlashcardPartComplete,
 } from "../features/flashcards/logic";
 import {
   SPACED_REPETITION_BOXES,
@@ -226,6 +228,19 @@ export const SpacedRepetitionPage = () => {
           if (spacedRepetition.spacedRepetitionSubmissions[cardIndex]) {
             continue;
           }
+          if (card.kind === "composite") {
+            const partStates =
+              spacedRepetition.spacedRepetitionCompositeStates?.[cardIndex] ?? [];
+            const canSubmit =
+              card.parts.length > 0 &&
+              card.parts.every((part, partIndex) =>
+                isFlashcardPartComplete(part, partStates[partIndex] ?? {}),
+              );
+            if (canSubmit) {
+              return cardIndex;
+            }
+            continue;
+          }
           if (card.kind === "multiple-choice") {
             if (
               (spacedRepetition.spacedRepetitionSelections[cardIndex] ?? []).length > 0
@@ -272,7 +287,18 @@ export const SpacedRepetitionPage = () => {
       if (!card || spacedRepetition.spacedRepetitionSubmissions[resolvedIndex]) {
         return;
       }
-      if (card.kind === "multiple-choice") {
+      if (card.kind === "composite") {
+        const partStates =
+          spacedRepetition.spacedRepetitionCompositeStates?.[resolvedIndex] ?? [];
+        const canSubmit =
+          card.parts.length > 0 &&
+          card.parts.every((part, partIndex) =>
+            isFlashcardPartComplete(part, partStates[partIndex] ?? {}),
+          );
+        if (!canSubmit) {
+          return;
+        }
+      } else if (card.kind === "multiple-choice") {
         if (
           (spacedRepetition.spacedRepetitionSelections[resolvedIndex] ?? []).length ===
           0
@@ -387,6 +413,110 @@ export const SpacedRepetitionPage = () => {
     (cardIndex: number, grade: "correct" | "incorrect") => {
       setActiveCardIndex(cardIndex);
       spacedRepetition.handleSpacedRepetitionSelfGrade(cardIndex, grade);
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeOptionSelect = useCallback(
+    (cardIndex: number, partIndex: number, keys: string[]) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeOptionSelect(
+        cardIndex,
+        partIndex,
+        keys,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeTrueFalseSelect = useCallback(
+    (cardIndex: number, partIndex: number, itemId: string, value: "wahr" | "falsch") => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeTrueFalseSelect(
+        cardIndex,
+        partIndex,
+        itemId,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeClozeInputChange = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string, value: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeClozeInputChange(
+        cardIndex,
+        partIndex,
+        blankId,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeClozeTokenDrop(
+        event,
+        cardIndex,
+        partIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeClozeTokenRemove = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeClozeTokenRemove(
+        cardIndex,
+        partIndex,
+        blankId,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeTextInputChange = useCallback(
+    (cardIndex: number, partIndex: number, value: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeTextInputChange(
+        cardIndex,
+        partIndex,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeTextCheck = useCallback(
+    (cardIndex: number, partIndex: number) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeTextCheck(cardIndex, partIndex);
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeSelfGrade = useCallback(
+    (cardIndex: number, partIndex: number, grade: "correct" | "incorrect") => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeSelfGrade(
+        cardIndex,
+        partIndex,
+        grade,
+      );
     },
     [spacedRepetition],
   );
@@ -732,6 +862,32 @@ export const SpacedRepetitionPage = () => {
                 const submitted = !!spacedRepetition.spacedRepetitionSubmissions[
                   cardIndex
                 ];
+
+                if (card.kind === "composite") {
+                  return (
+                    <CompositeCard
+                      key={`flashcard-${cardIndex}`}
+                      card={card}
+                      cardIndex={cardIndex}
+                      submitted={submitted}
+                      partStates={
+                        spacedRepetition.spacedRepetitionCompositeStates?.[cardIndex] ??
+                        []
+                      }
+                      onOptionSelect={handleCompositeOptionSelect}
+                      onTrueFalseSelect={handleCompositeTrueFalseSelect}
+                      onClozeInputChange={handleCompositeClozeInputChange}
+                      onClozeTokenDrop={handleCompositeClozeTokenDrop}
+                      onClozeTokenRemove={handleCompositeClozeTokenRemove}
+                      onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
+                      onBlankDragOver={flashcards.handleClozeBlankDragOver}
+                      onTextInputChange={handleCompositeTextInputChange}
+                      onTextCheck={handleCompositeTextCheck}
+                      onSelfGrade={handleCompositeSelfGrade}
+                      onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
+                    />
+                  );
+                }
 
                 if (card.kind === "cloze") {
                   return (

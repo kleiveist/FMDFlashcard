@@ -4,6 +4,7 @@ import {
   parseFlashcards,
   type Flashcard,
   type FlashcardDetectedType,
+  type FlashcardPart,
 } from "../../lib/flashcards";
 import {
   evaluateFlashcardResult,
@@ -11,6 +12,7 @@ import {
   handleClozeBlankDragOver,
   handleClozeTokenDragStart,
   shuffleFlashcards,
+  type CompositePartState,
   type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "./logic";
@@ -47,7 +49,45 @@ const normalizeFlashcardMode = (
 ): Exclude<FlashcardMode, "yes-no"> =>
   mode === "yes-no" ? "true-false" : mode;
 
+const getDetectedTypesForPart = (card: FlashcardPart): FlashcardDetectedType[] => {
+  if (card.kind === "multiple-choice") {
+    return ["multiple-choice"];
+  }
+  if (card.kind === "true-false") {
+    return ["true-false"];
+  }
+  if (card.kind === "free-text") {
+    return ["qa"];
+  }
+
+  const types: FlashcardDetectedType[] = [];
+  const hasInputBlank = card.segments.some(
+    (segment) => segment.type === "blank" && segment.kind === "input",
+  );
+  const hasDragBlank = card.segments.some(
+    (segment) => segment.type === "blank" && segment.kind === "drag",
+  );
+  if (hasInputBlank) {
+    types.push("fill-blank");
+  }
+  if (hasDragBlank) {
+    types.push("assignment");
+  }
+  return types.length > 0 ? types : ["fill-blank"];
+};
+
 const getPrimaryTypeFromKind = (card: Flashcard): FlashcardDetectedType => {
+  if (card.primaryType) {
+    return card.primaryType;
+  }
+  if (card.kind === "composite") {
+    const detected = card.detectedTypes ?? [];
+    if (detected.length > 0) {
+      return detected[0];
+    }
+    const partTypes = card.parts.flatMap(getDetectedTypesForPart);
+    return partTypes[0] ?? "qa";
+  }
   if (card.kind === "multiple-choice") {
     return "multiple-choice";
   }
@@ -73,6 +113,17 @@ const getDetectedTypes = (card: Flashcard): FlashcardDetectedType[] => {
   const detected = card.detectedTypes;
   if (detected && detected.length > 0) {
     return detected;
+  }
+  if (card.kind === "composite") {
+    const types: FlashcardDetectedType[] = [];
+    card.parts.forEach((part) => {
+      getDetectedTypesForPart(part).forEach((type) => {
+        if (!types.includes(type)) {
+          types.push(type);
+        }
+      });
+    });
+    return types.length > 0 ? types : ["qa"];
   }
   if (card.kind === "cloze") {
     const types: FlashcardDetectedType[] = [];
@@ -183,6 +234,9 @@ export const useFlashcards = ({
   const [flashcardClozeResponses, setFlashcardClozeResponses] = useState<
     Record<number, Record<string, string>>
   >({});
+  const [flashcardCompositeStates, setFlashcardCompositeStates] = useState<
+    Record<number, CompositePartState[]>
+  >({});
   const takeSnapshot = useCallback(
     () => ({
       flashcards,
@@ -193,10 +247,12 @@ export const useFlashcards = ({
       flashcardSubmissions,
       flashcardTrueFalseSelections,
       flashcardClozeResponses,
+      flashcardCompositeStates,
       flashcardPage,
     }),
     [
       flashcardClozeResponses,
+      flashcardCompositeStates,
       flashcardPage,
       flashcardSelections,
       flashcardSelfGrades,
@@ -218,6 +274,7 @@ export const useFlashcards = ({
       flashcardSubmissions: Record<number, boolean>;
       flashcardTrueFalseSelections: Record<number, Record<string, TrueFalseSelection>>;
       flashcardClozeResponses: Record<number, Record<string, string>>;
+      flashcardCompositeStates: Record<number, CompositePartState[]>;
       flashcardPage: number;
     }) => {
       setFlashcards(snapshot.flashcards);
@@ -228,6 +285,7 @@ export const useFlashcards = ({
       setFlashcardSubmissions(snapshot.flashcardSubmissions);
       setFlashcardTrueFalseSelections(snapshot.flashcardTrueFalseSelections);
       setFlashcardClozeResponses(snapshot.flashcardClozeResponses);
+      setFlashcardCompositeStates(snapshot.flashcardCompositeStates);
       setFlashcardPage(snapshot.flashcardPage);
     },
     [],
@@ -318,6 +376,7 @@ export const useFlashcards = ({
         flashcardTrueFalseSelections,
         flashcardClozeResponses,
         flashcardSelfGrades,
+        flashcardCompositeStates,
       );
       if (result === "correct") {
         correct += 1;
@@ -331,6 +390,7 @@ export const useFlashcards = ({
     return { correctCount: correct, incorrectCount: incorrect, correctPercent: percent };
   }, [
     flashcardClozeResponses,
+    flashcardCompositeStates,
     flashcardSelections,
     flashcardSelfGrades,
     flashcardSubmissions,
@@ -362,6 +422,7 @@ export const useFlashcards = ({
     setFlashcardSubmissions({});
     setFlashcardTrueFalseSelections({});
     setFlashcardClozeResponses({});
+    setFlashcardCompositeStates({});
     setFlashcardPage(0);
     if (!options?.keepScanning) {
       setIsFlashcardScanning(false);
@@ -492,6 +553,167 @@ export const useFlashcards = ({
     [flashcardSubmissions],
   );
 
+  const updateCompositePartState = useCallback(
+    (
+      cardIndex: number,
+      partIndex: number,
+      updater: (current: CompositePartState) => CompositePartState,
+    ) => {
+      setFlashcardCompositeStates((prev) => {
+        const nextParts = [...(prev[cardIndex] ?? [])];
+        const current = nextParts[partIndex] ?? {};
+        const nextState = updater(current);
+        nextParts[partIndex] = nextState;
+        return { ...prev, [cardIndex]: nextParts };
+      });
+    },
+    [],
+  );
+
+  const handleCompositeOptionSelect = useCallback(
+    (cardIndex: number, partIndex: number, keys: string[]) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      const uniqueKeys = Array.from(new Set(keys));
+      updateCompositePartState(cardIndex, partIndex, (current) => ({
+        ...current,
+        selections: uniqueKeys,
+      }));
+    },
+    [flashcardSubmissions, updateCompositePartState],
+  );
+
+  const handleCompositeTrueFalseSelect = useCallback(
+    (cardIndex: number, partIndex: number, itemId: string, value: TrueFalseSelection) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      updateCompositePartState(cardIndex, partIndex, (current) => ({
+        ...current,
+        trueFalseSelections: {
+          ...(current.trueFalseSelections ?? {}),
+          [itemId]: value,
+        },
+      }));
+    },
+    [flashcardSubmissions, updateCompositePartState],
+  );
+
+  const handleCompositeClozeInputChange = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string, value: string) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      updateCompositePartState(cardIndex, partIndex, (current) => ({
+        ...current,
+        clozeResponses: {
+          ...(current.clozeResponses ?? {}),
+          [blankId]: value,
+        },
+      }));
+    },
+    [flashcardSubmissions, updateCompositePartState],
+  );
+
+  const handleCompositeClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      event.preventDefault();
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      const payload = getClozeDragPayload(event);
+      if (!payload || payload.cardIndex !== cardIndex || payload.partIndex !== partIndex) {
+        return;
+      }
+      if (payload.tokenId === blankId) {
+        return;
+      }
+      if (!validTokenIds.has(payload.tokenId)) {
+        return;
+      }
+
+      updateCompositePartState(cardIndex, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        const existingBlankId = Object.entries(responses).find(
+          ([key, value]) => value === payload.tokenId && key !== blankId,
+        )?.[0];
+        if (existingBlankId) {
+          delete responses[existingBlankId];
+        }
+        if (dragBlankIds.has(blankId)) {
+          responses[blankId] = payload.tokenId;
+        }
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [flashcardSubmissions, updateCompositePartState],
+  );
+
+  const handleCompositeClozeTokenRemove = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      updateCompositePartState(cardIndex, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        delete responses[blankId];
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [flashcardSubmissions, updateCompositePartState],
+  );
+
+  const handleCompositeTextInputChange = useCallback(
+    (cardIndex: number, partIndex: number, value: string) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      updateCompositePartState(cardIndex, partIndex, (current) => {
+        if (current.textRevealed) {
+          return current;
+        }
+        return { ...current, textResponse: value };
+      });
+    },
+    [flashcardSubmissions, updateCompositePartState],
+  );
+
+  const handleCompositeTextCheck = useCallback(
+    (cardIndex: number, partIndex: number) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      updateCompositePartState(cardIndex, partIndex, (current) => {
+        if (current.textRevealed) {
+          return current;
+        }
+        return { ...current, textRevealed: true };
+      });
+    },
+    [flashcardSubmissions, updateCompositePartState],
+  );
+
+  const handleCompositeSelfGrade = useCallback(
+    (cardIndex: number, partIndex: number, grade: FlashcardSelfGrade) => {
+      if (flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      updateCompositePartState(cardIndex, partIndex, (current) => ({
+        ...current,
+        selfGrade: grade,
+      }));
+    },
+    [flashcardSubmissions, updateCompositePartState],
+  );
+
   const handleFlashcardPageBack = useCallback(() => {
     setFlashcardPage((prev) => Math.max(0, prev - 1));
   }, []);
@@ -573,6 +795,7 @@ export const useFlashcards = ({
     canGoNext,
     correctCount,
     flashcardClozeResponses,
+    flashcardCompositeStates,
     flashcardMode,
     flashcardOrder,
     flashcardPage,
@@ -603,6 +826,14 @@ export const useFlashcards = ({
     handleFlashcardTextCheck,
     handleFlashcardTextInputChange,
     handleTrueFalseSelect,
+    handleCompositeOptionSelect,
+    handleCompositeTrueFalseSelect,
+    handleCompositeClozeInputChange,
+    handleCompositeClozeTokenDrop,
+    handleCompositeClozeTokenRemove,
+    handleCompositeTextInputChange,
+    handleCompositeTextCheck,
+    handleCompositeSelfGrade,
     incorrectCount,
     isFlashcardScanning,
     resetFlashcards,

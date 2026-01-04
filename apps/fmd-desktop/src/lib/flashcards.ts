@@ -68,6 +68,13 @@ export type ClozeCard = {
   dragTokens: ClozeDragToken[];
 };
 
+export type FlashcardPart = MultipleChoiceCard | FreeTextCard | TrueFalseCard | ClozeCard;
+
+export type CompositeFlashcard = {
+  kind: "composite";
+  parts: FlashcardPart[];
+};
+
 export type FlashcardDetectedType =
   | "qa"
   | "multiple-choice"
@@ -81,8 +88,7 @@ export type FlashcardMetadata = {
   isMixed?: boolean;
 };
 
-export type Flashcard = (MultipleChoiceCard | FreeTextCard | TrueFalseCard | ClozeCard) &
-  FlashcardMetadata;
+export type Flashcard = (FlashcardPart | CompositeFlashcard) & FlashcardMetadata;
 
 export const normalizeInputAnswer = (value: string) => value.trim().toLowerCase();
 
@@ -99,6 +105,8 @@ const normalizeLines = (markdown: string) =>
 
 const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
+const assignmentPattern = /^(.+?)=>\s*(.+)$/;
+const separatorLine = "---";
 
 const normalizeKeyword = (value: string) =>
   value
@@ -127,6 +135,40 @@ const trimEmptyLines = (lines: string[]) => {
 
   return lines.slice(start, end);
 };
+
+const isSeparatorLine = (line: string) => line.trim() === separatorLine;
+
+const isAssignmentLine = (line: string) => {
+  const match = line.match(assignmentPattern);
+  if (!match) {
+    return false;
+  }
+  const left = match[1].trim();
+  const right = match[2].trim();
+  return Boolean(left && right);
+};
+
+const normalizeAssignmentLine = (line: string) => {
+  const match = line.match(assignmentPattern);
+  if (!match) {
+    return null;
+  }
+  const left = match[1].trimEnd();
+  const right = match[2].trim();
+  if (!left || !right) {
+    return null;
+  }
+  const normalizedRight =
+    right.startsWith("`") && right.endsWith("`") ? right : `\`${right}\``;
+  return `${left} => ${normalizedRight}`;
+};
+
+const isOptionLine = (line: string) => optionPattern.test(line.trim());
+const isCorrectMarkerLine = (line: string) => markerPattern.test(line.trim());
+const isTrueFalseMarkerLine = (line: string) =>
+  normalizeTrueFalseMarker(line.trim()) !== null;
+const isAnswerMarkerLine = (line: string) => Boolean(findAnswerMarkerMatch(line));
+const hasClozeMarker = (line: string) => line.includes("%%") || line.includes("`");
 
 const appendText = (segments: ClozeSegment[], text: string) => {
   if (!text) {
@@ -344,6 +386,265 @@ const pushUnique = (items: string[], value: string) => {
   }
 };
 
+type CardSplitState = {
+  hasQuestion: boolean;
+  hasOption: boolean;
+  hasCorrectMarker: boolean;
+  hasAnswerMarker: boolean;
+  hasTrueFalseMarker: boolean;
+  hasClozeMarker: boolean;
+  hasAssignmentLine: boolean;
+};
+
+const createSplitState = (): CardSplitState => ({
+  hasQuestion: false,
+  hasOption: false,
+  hasCorrectMarker: false,
+  hasAnswerMarker: false,
+  hasTrueFalseMarker: false,
+  hasClozeMarker: false,
+  hasAssignmentLine: false,
+});
+
+const splitCardLines = (lines: string[]) => {
+  const blocks: string[][] = [];
+  let current: string[] = [];
+  let state = createSplitState();
+
+  const reset = () => {
+    current = [];
+    state = createSplitState();
+  };
+
+  const flush = () => {
+    const trimmed = trimEmptyLines(current);
+    if (trimmed.length > 0) {
+      blocks.push(trimmed);
+    }
+    reset();
+  };
+
+  const updateState = (line: string) => {
+    const trimmed = line.trim();
+    if (!state.hasQuestion && trimmed) {
+      state.hasQuestion = true;
+    }
+    if (isOptionLine(line)) {
+      state.hasOption = true;
+    }
+    if (isCorrectMarkerLine(line)) {
+      state.hasCorrectMarker = true;
+    }
+    if (isAnswerMarkerLine(line)) {
+      state.hasAnswerMarker = true;
+    }
+    if (isTrueFalseMarkerLine(line)) {
+      state.hasTrueFalseMarker = true;
+    }
+    if (hasClozeMarker(line)) {
+      state.hasClozeMarker = true;
+    }
+    if (isAssignmentLine(line)) {
+      state.hasAssignmentLine = true;
+    }
+  };
+
+  const isComplete = () =>
+    state.hasTrueFalseMarker ||
+    (state.hasOption && state.hasCorrectMarker) ||
+    state.hasAnswerMarker ||
+    state.hasClozeMarker ||
+    state.hasAssignmentLine;
+
+  const findNextNonEmpty = (startIndex: number) => {
+    for (let i = startIndex; i < lines.length; i += 1) {
+      const trimmed = lines[i].trim();
+      if (!trimmed || isSeparatorLine(lines[i])) {
+        continue;
+      }
+      return trimmed;
+    }
+    return null;
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (isSeparatorLine(line)) {
+      flush();
+      continue;
+    }
+
+    if (
+      current.length > 0 &&
+      state.hasOption &&
+      state.hasCorrectMarker &&
+      trimmed &&
+      !isOptionLine(line) &&
+      !isCorrectMarkerLine(line)
+    ) {
+      flush();
+    }
+
+    current.push(line);
+    updateState(line);
+
+    if (state.hasTrueFalseMarker && state.hasQuestion && isTrueFalseMarkerLine(line)) {
+      flush();
+      continue;
+    }
+
+    if (!trimmed && isComplete()) {
+      const nextNonEmpty = findNextNonEmpty(index + 1);
+      if (nextNonEmpty) {
+        flush();
+      }
+    }
+  }
+
+  flush();
+  return blocks;
+};
+
+const parseCardLines = (
+  cardLines: string[],
+): { part: FlashcardPart; detectedTypes: FlashcardDetectedType[] } | null => {
+  const questionIndex = cardLines.findIndex((entry) => entry.trim() !== "");
+  if (questionIndex === -1) {
+    return null;
+  }
+  const question = cardLines[questionIndex].trim();
+  const bodyLines = cardLines.slice(questionIndex + 1);
+  const contentLines = cardLines.slice(questionIndex);
+
+  const options: FlashcardOption[] = [];
+  const correctKeys: string[] = [];
+  const clozeLines: string[] = [];
+  let hasAssignmentLines = false;
+
+  bodyLines.forEach((rawLine) => {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      clozeLines.push("");
+      return;
+    }
+
+    const optionMatch = trimmed.match(optionPattern);
+    if (optionMatch) {
+      const text = optionMatch[2].trim();
+      if (text) {
+        options.push({
+          key: optionMatch[1].toLowerCase(),
+          text,
+        });
+      }
+      return;
+    }
+
+    const markerMatch = trimmed.match(markerPattern);
+    if (markerMatch) {
+      pushUnique(correctKeys, markerMatch[1].toLowerCase());
+      return;
+    }
+
+    const assignmentLine = normalizeAssignmentLine(rawLine);
+    if (assignmentLine) {
+      hasAssignmentLines = true;
+      clozeLines.push(assignmentLine);
+      return;
+    }
+
+    clozeLines.push(rawLine);
+  });
+
+  const detectedTypes: FlashcardDetectedType[] = [];
+  if (options.length > 0) {
+    pushUnique(detectedTypes, "multiple-choice");
+  }
+
+  const trueFalseItems = parseTrueFalseItems(cardLines.slice(questionIndex));
+  if (trueFalseItems.length > 0) {
+    pushUnique(detectedTypes, "true-false");
+  }
+
+  const answerCard = splitAnswerCard(contentLines);
+  if (answerCard) {
+    pushUnique(detectedTypes, "qa");
+  }
+
+  const parsed = parseClozeSegments(clozeLines);
+  let hasInputBlanks = false;
+  let hasDragBlanks = false;
+  if (parsed) {
+    parsed.segments.forEach((segment) => {
+      if (segment.type !== "blank") {
+        return;
+      }
+      if (segment.kind === "input") {
+        hasInputBlanks = true;
+      } else {
+        hasDragBlanks = true;
+      }
+    });
+  }
+  if (hasInputBlanks) {
+    pushUnique(detectedTypes, "fill-blank");
+  }
+  if (hasDragBlanks || hasAssignmentLines) {
+    pushUnique(detectedTypes, "assignment");
+  }
+
+  if (options.length > 0) {
+    return {
+      part: {
+        kind: "multiple-choice",
+        question,
+        options,
+        correctKeys,
+      },
+      detectedTypes,
+    };
+  }
+
+  if (trueFalseItems.length > 0) {
+    return {
+      part: {
+        kind: "true-false",
+        items: trueFalseItems,
+      },
+      detectedTypes,
+    };
+  }
+
+  if (answerCard) {
+    return {
+      part: {
+        kind: "free-text",
+        ...answerCard,
+      },
+      detectedTypes,
+    };
+  }
+
+  if (!parsed) {
+    return null;
+  }
+  if (hasInputBlanks || hasDragBlanks || hasAssignmentLines) {
+    return {
+      part: {
+        kind: "cloze",
+        question,
+        segments: parsed.segments,
+        dragTokens: parsed.dragTokens,
+      },
+      detectedTypes,
+    };
+  }
+
+  return null;
+};
+
 export const parseFlashcards = (markdown: string): Flashcard[] => {
   const lines = normalizeLines(markdown);
   const cards: Flashcard[] = [];
@@ -379,134 +680,35 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
       continue;
     }
 
-    const questionIndex = cardLines.findIndex((entry) => entry.trim() !== "");
-    if (questionIndex === -1) {
-      continue;
-    }
-    const question = cardLines[questionIndex].trim();
-    const bodyLines = cardLines.slice(questionIndex + 1);
-    const contentLines = cardLines.slice(questionIndex);
+    const blocks = splitCardLines(cardLines);
+    const parts: FlashcardPart[] = [];
+    const detectedTypes: FlashcardDetectedType[] = [];
 
-    const options: FlashcardOption[] = [];
-    const correctKeys: string[] = [];
-    const clozeLines: string[] = [];
-
-    bodyLines.forEach((rawLine) => {
-      const trimmed = rawLine.trim();
-      if (!trimmed) {
-        clozeLines.push("");
+    blocks.forEach((block) => {
+      const parsed = parseCardLines(block);
+      if (!parsed) {
         return;
       }
-
-      const optionMatch = trimmed.match(optionPattern);
-      if (optionMatch) {
-        const text = optionMatch[2].trim();
-        if (text) {
-          options.push({
-            key: optionMatch[1].toLowerCase(),
-            text,
-          });
-        }
-        return;
-      }
-
-      const markerMatch = trimmed.match(markerPattern);
-      if (markerMatch) {
-        pushUnique(correctKeys, markerMatch[1].toLowerCase());
-        return;
-      }
-
-      clozeLines.push(rawLine);
+      parts.push(parsed.part);
+      parsed.detectedTypes.forEach((detected) => {
+        pushUnique(detectedTypes, detected);
+      });
     });
 
-    const detectedTypes: FlashcardDetectedType[] = [];
-    if (options.length > 0) {
-      pushUnique(detectedTypes, "multiple-choice");
+    if (parts.length === 0) {
+      continue;
     }
 
-    const trueFalseItems = parseTrueFalseItems(cardLines.slice(questionIndex));
-    if (trueFalseItems.length > 0) {
-      pushUnique(detectedTypes, "true-false");
-    }
-
-    const answerCard = splitAnswerCard(contentLines);
-    if (answerCard) {
-      pushUnique(detectedTypes, "qa");
-    }
-
-    const parsed = parseClozeSegments(clozeLines);
-    let hasInputBlanks = false;
-    let hasDragBlanks = false;
-    if (parsed) {
-      parsed.segments.forEach((segment) => {
-        if (segment.type !== "blank") {
-          return;
-        }
-        if (segment.kind === "input") {
-          hasInputBlanks = true;
-        } else {
-          hasDragBlanks = true;
-        }
-      });
-    }
-    if (hasInputBlanks) {
-      pushUnique(detectedTypes, "fill-blank");
-    }
-    if (hasDragBlanks) {
-      pushUnique(detectedTypes, "assignment");
-    }
     const isMixed = detectedTypes.length >= 2;
+    const primaryType = detectedTypes.length === 1 ? detectedTypes[0] : undefined;
 
-    if (options.length > 0) {
-      cards.push({
-        kind: "multiple-choice",
-        question,
-        options,
-        correctKeys,
-        primaryType: "multiple-choice",
-        detectedTypes,
-        isMixed,
-      });
-      continue;
-    }
-
-    if (trueFalseItems.length > 0) {
-      cards.push({
-        kind: "true-false",
-        items: trueFalseItems,
-        primaryType: "true-false",
-        detectedTypes,
-        isMixed,
-      });
-      continue;
-    }
-
-    if (answerCard) {
-      cards.push({
-        kind: "free-text",
-        ...answerCard,
-        primaryType: "qa",
-        detectedTypes,
-        isMixed,
-      });
-      continue;
-    }
-
-    if (!parsed) {
-      continue;
-    }
-    if (hasInputBlanks || hasDragBlanks) {
-      const clozePrimaryType = hasInputBlanks ? "fill-blank" : "assignment";
-      cards.push({
-        kind: "cloze",
-        question,
-        segments: parsed.segments,
-        dragTokens: parsed.dragTokens,
-        primaryType: clozePrimaryType,
-        detectedTypes,
-        isMixed,
-      });
-    }
+    cards.push({
+      kind: "composite",
+      parts,
+      primaryType,
+      detectedTypes,
+      isMixed,
+    });
   }
 
   return cards;

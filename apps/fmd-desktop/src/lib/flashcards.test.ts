@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { isDragAnswerMatch, isInputAnswerMatch, parseFlashcards } from "./flashcards";
+import {
+  isDragAnswerMatch,
+  isInputAnswerMatch,
+  parseFlashcards,
+  type Flashcard,
+} from "./flashcards";
+
+const getCompositeParts = (card: Flashcard | undefined) => {
+  expect(card?.kind).toBe("composite");
+  if (!card || card.kind !== "composite") {
+    throw new Error("Expected composite card");
+  }
+  return card.parts;
+};
+
+const getSinglePart = (card: Flashcard | undefined) => {
+  const parts = getCompositeParts(card);
+  expect(parts).toHaveLength(1);
+  return parts[0];
+};
 
 describe("parseFlashcards", () => {
   it("parses a single card", () => {
@@ -16,16 +35,17 @@ d) DCL
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("multiple-choice");
-    if (cards[0].kind === "multiple-choice") {
-      expect(cards[0].question).toBe("1.5 Which SQL category controls access rights?");
-      expect(cards[0].options).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.question).toBe("1.5 Which SQL category controls access rights?");
+      expect(part.options).toEqual([
         { key: "a", text: "DML" },
         { key: "b", text: "DDL" },
         { key: "c", text: "TCL" },
         { key: "d", text: "DCL" },
       ]);
-      expect(cards[0].correctKeys).toEqual(["d"]);
+      expect(part.correctKeys).toEqual(["d"]);
     }
   });
 
@@ -50,13 +70,104 @@ b) Beta
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(2);
-    expect(cards[0].kind).toBe("multiple-choice");
-    expect(cards[1].kind).toBe("multiple-choice");
-    if (cards[0].kind === "multiple-choice") {
-      expect(cards[0].question).toBe("First question?");
+    const firstPart = getSinglePart(cards[0]);
+    const secondPart = getSinglePart(cards[1]);
+    expect(firstPart.kind).toBe("multiple-choice");
+    expect(secondPart.kind).toBe("multiple-choice");
+    if (firstPart.kind === "multiple-choice") {
+      expect(firstPart.question).toBe("First question?");
     }
-    if (cards[1].kind === "multiple-choice") {
-      expect(cards[1].question).toBe("Second question?");
+    if (secondPart.kind === "multiple-choice") {
+      expect(secondPart.question).toBe("Second question?");
+    }
+  });
+
+  it("parses multiple parts inside a single block", () => {
+    const markdown = `#card
+Statement 1. Wahr/Falsch?
+-wahr
+
+What is SQL?
+Answer: A query language.
+
+Pick one.
+a) First
+b) Second
+-a
+Pick two.
+a) Alpha
+b) Beta
+c) Gamma
+-a
+-c
+
+Cloze sample.
+Use %%token%% with \`drag\`.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts.map((part) => part.kind)).toEqual([
+      "true-false",
+      "free-text",
+      "multiple-choice",
+      "multiple-choice",
+      "cloze",
+    ]);
+    const [trueFalsePart, freeTextPart, singleMc, multiMc, clozePart] = parts;
+    if (trueFalsePart.kind === "true-false") {
+      expect(trueFalsePart.items).toHaveLength(1);
+    }
+    if (freeTextPart.kind === "free-text") {
+      expect(freeTextPart.front).toBe("What is SQL?");
+      expect(freeTextPart.back).toBe("A query language.");
+    }
+    if (singleMc.kind === "multiple-choice") {
+      expect(singleMc.options).toEqual([
+        { key: "a", text: "First" },
+        { key: "b", text: "Second" },
+      ]);
+      expect(singleMc.correctKeys).toEqual(["a"]);
+    }
+    if (multiMc.kind === "multiple-choice") {
+      expect(multiMc.options).toEqual([
+        { key: "a", text: "Alpha" },
+        { key: "b", text: "Beta" },
+        { key: "c", text: "Gamma" },
+      ]);
+      expect(multiMc.correctKeys).toEqual(["a", "c"]);
+    }
+    if (clozePart.kind === "cloze") {
+      expect(clozePart.dragTokens).toEqual([{ id: "token-0", value: "drag" }]);
+    }
+  });
+
+  it("splits parts on separators inside a block", () => {
+    const markdown = `#card
+First question?
+Answer: One
+---
+Second question?
+Answer: Two
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts).toHaveLength(2);
+    const [first, second] = parts;
+    expect(first.kind).toBe("free-text");
+    expect(second.kind).toBe("free-text");
+    if (first.kind === "free-text") {
+      expect(first.front).toBe("First question?");
+      expect(first.back).toBe("One");
+    }
+    if (second.kind === "free-text") {
+      expect(second.front).toBe("Second question?");
+      expect(second.back).toBe("Two");
     }
   });
 
@@ -69,12 +180,11 @@ Answer: SQL is used to define, manipulate, manage permissions, and handle transa
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("free-text");
-    if (cards[0].kind === "free-text") {
-      expect(cards[0].front).toBe(
-        "What is SQL used for as a common interface?",
-      );
-      expect(cards[0].back).toBe(
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is SQL used for as a common interface?");
+      expect(part.back).toBe(
         "SQL is used to define, manipulate, manage permissions, and handle transactions.",
       );
     }
@@ -91,10 +201,11 @@ Eine Transaktion ist eine atomare Einheit von Operationen.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("free-text");
-    if (cards[0].kind === "free-text") {
-      expect(cards[0].front).toBe("1. Was ist eine Transaktion?");
-      expect(cards[0].back).toBe(
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("1. Was ist eine Transaktion?");
+      expect(part.back).toBe(
         "Eine Transaktion ist eine atomare Einheit von Operationen.",
       );
     }
@@ -109,10 +220,11 @@ Reponse: SQL est un langage pour interroger des bases de donnees.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("free-text");
-    if (cards[0].kind === "free-text") {
-      expect(cards[0].front).toBe("Que signifie SQL ?");
-      expect(cards[0].back).toBe(
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("Que signifie SQL ?");
+      expect(part.back).toBe(
         "SQL est un langage pour interroger des bases de donnees.",
       );
     }
@@ -127,9 +239,10 @@ Reponse: SQL est un langage pour interroger des bases de donnees.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("true-false");
-    if (cards[0].kind === "true-false") {
-      expect(cards[0].items).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("true-false");
+    if (part.kind === "true-false") {
+      expect(part.items).toEqual([
         {
           id: "tf-0",
           question: "1. The earth orbits the sun. Wahr/Falsch?",
@@ -148,9 +261,10 @@ La tierra orbita el sol.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("true-false");
-    if (cards[0].kind === "true-false") {
-      expect(cards[0].items).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("true-false");
+    if (part.kind === "true-false") {
+      expect(part.items).toEqual([
         {
           id: "tf-0",
           question: "La tierra orbita el sol.",
@@ -160,7 +274,7 @@ La tierra orbita el sol.
     }
   });
 
-  it("parses multiple true/false items in one card", () => {
+  it("parses multiple true/false items in one block", () => {
     const markdown = `#card
 2. Water boils at 100C. Wahr/Falsch?
 -wahr
@@ -171,16 +285,24 @@ La tierra orbita el sol.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("true-false");
-    if (cards[0].kind === "true-false") {
-      expect(cards[0].items).toEqual([
+    const parts = getCompositeParts(cards[0]);
+    expect(parts).toHaveLength(2);
+    const [first, second] = parts;
+    expect(first.kind).toBe("true-false");
+    expect(second.kind).toBe("true-false");
+    if (first.kind === "true-false") {
+      expect(first.items).toEqual([
         {
           id: "tf-0",
           question: "2. Water boils at 100C. Wahr/Falsch?",
           correct: "wahr",
         },
+      ]);
+    }
+    if (second.kind === "true-false") {
+      expect(second.items).toEqual([
         {
-          id: "tf-1",
+          id: "tf-0",
           question: "3. The moon is a planet. Wahr/Falsch?",
           correct: "falsch",
         },
@@ -207,9 +329,10 @@ Case check. Wahr/Falsch?
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("true-false");
-    if (cards[0].kind === "true-false") {
-      expect(cards[0].items[0]?.correct).toBe("falsch");
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("true-false");
+    if (part.kind === "true-false") {
+      expect(part.items[0]?.correct).toBe("falsch");
     }
   });
 
@@ -222,9 +345,10 @@ Spacing check.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("true-false");
-    if (cards[0].kind === "true-false") {
-      expect(cards[0].items[0]?.correct).toBe("falsch");
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("true-false");
+    if (part.kind === "true-false") {
+      expect(part.items[0]?.correct).toBe("falsch");
     }
   });
 
@@ -242,9 +366,10 @@ c) Three
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("multiple-choice");
-    if (cards[0].kind === "multiple-choice") {
-      expect(cards[0].correctKeys).toEqual(["a", "d"]);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.correctKeys).toEqual(["a", "d"]);
     }
   });
 
@@ -260,9 +385,10 @@ More text.`;
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("multiple-choice");
-    if (cards[0].kind === "multiple-choice") {
-      expect(cards[0].question).toBe("Question?");
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.question).toBe("Question?");
     }
   });
 
@@ -282,11 +408,13 @@ Only \`beta\`.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(2);
-    expect(cards[0].kind).toBe("cloze");
-    expect(cards[1].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].dragTokens).toEqual([{ id: "token-0", value: "alpha" }]);
-      expect(cards[0].segments).toEqual([
+    const firstPart = getSinglePart(cards[0]);
+    const secondPart = getSinglePart(cards[1]);
+    expect(firstPart.kind).toBe("cloze");
+    expect(secondPart.kind).toBe("cloze");
+    if (firstPart.kind === "cloze") {
+      expect(firstPart.dragTokens).toEqual([{ id: "token-0", value: "alpha" }]);
+      expect(firstPart.segments).toEqual([
         { type: "text", value: "Fill " },
         { type: "blank", id: "blank-0", kind: "input", solution: "one" },
         { type: "text", value: " and " },
@@ -294,9 +422,9 @@ Only \`beta\`.
         { type: "text", value: "." },
       ]);
     }
-    if (cards[1].kind === "cloze") {
-      expect(cards[1].dragTokens).toEqual([{ id: "token-0", value: "beta" }]);
-      expect(cards[1].segments).toEqual([
+    if (secondPart.kind === "cloze") {
+      expect(secondPart.dragTokens).toEqual([{ id: "token-0", value: "beta" }]);
+      expect(secondPart.segments).toEqual([
         { type: "text", value: "Only " },
         { type: "blank", id: "blank-0", kind: "drag", solution: "beta" },
         { type: "text", value: "." },
@@ -323,11 +451,12 @@ A foreign key is an %% attribute or attribute set %% that references a %%primary
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].question).toBe("Define foreign key.");
-      expect(cards[0].dragTokens).toEqual([]);
-      expect(cards[0].segments).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.question).toBe("Define foreign key.");
+      expect(part.dragTokens).toEqual([]);
+      expect(part.segments).toEqual([
         { type: "text", value: "A foreign key is an " },
         {
           type: "blank",
@@ -353,9 +482,10 @@ Short cloze.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].segments).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.segments).toEqual([
         { type: "blank", id: "blank-0", kind: "input", solution: "alpha" },
         { type: "text", value: " and " },
         { type: "blank", id: "blank-1", kind: "input", solution: "beta" },
@@ -375,13 +505,14 @@ Use %%blank%% with \`alpha\` and \`beta\`.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].dragTokens).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.dragTokens).toEqual([
         { id: "token-0", value: "alpha" },
         { id: "token-1", value: "beta" },
       ]);
-      expect(cards[0].segments).toEqual([
+      expect(part.segments).toEqual([
         { type: "text", value: "Use " },
         { type: "blank", id: "blank-0", kind: "input", solution: "blank" },
         { type: "text", value: " with " },
@@ -402,13 +533,14 @@ Use \`alpha\` and \`beta\` here.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].dragTokens).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.dragTokens).toEqual([
         { id: "token-0", value: "alpha" },
         { id: "token-1", value: "beta" },
       ]);
-      expect(cards[0].segments).toEqual([
+      expect(part.segments).toEqual([
         { type: "text", value: "Use " },
         { type: "blank", id: "blank-0", kind: "drag", solution: "alpha" },
         { type: "text", value: " and " },
@@ -427,9 +559,10 @@ Use \`same\` and \`same\` again.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].dragTokens).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.dragTokens).toEqual([
         { id: "token-0", value: "same" },
         { id: "token-1", value: "same" },
       ]);
@@ -445,10 +578,11 @@ Valid %%answer%% and %%unfinished.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].dragTokens).toEqual([]);
-      expect(cards[0].segments).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.dragTokens).toEqual([]);
+      expect(part.segments).toEqual([
         { type: "text", value: "Valid " },
         { type: "blank", id: "blank-0", kind: "input", solution: "answer" },
         { type: "text", value: " and %%unfinished." },
@@ -465,10 +599,11 @@ Valid %%answer%% and \`unfinished.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].dragTokens).toEqual([]);
-      expect(cards[0].segments).toEqual([
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.dragTokens).toEqual([]);
+      expect(part.segments).toEqual([
         { type: "text", value: "Valid " },
         { type: "blank", id: "blank-0", kind: "input", solution: "answer" },
         { type: "text", value: " and `unfinished." },
@@ -490,12 +625,11 @@ Outside \`token\` and %%blank%%.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(1);
-    expect(cards[0].kind).toBe("cloze");
-    if (cards[0].kind === "cloze") {
-      expect(cards[0].dragTokens).toEqual([{ id: "token-0", value: "token" }]);
-      const blanks = cards[0].segments.filter(
-        (segment) => segment.type === "blank",
-      );
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.dragTokens).toEqual([{ id: "token-0", value: "token" }]);
+      const blanks = part.segments.filter((segment) => segment.type === "blank");
       expect(blanks).toEqual([
         { type: "blank", id: "blank-0", kind: "drag", solution: "token" },
         { type: "blank", id: "blank-1", kind: "input", solution: "blank" },

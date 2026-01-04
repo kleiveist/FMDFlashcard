@@ -21,6 +21,8 @@ export const answerMarkers = [
 
 export const trueTokens = [
   "true",
+  "yes",
+  "ja",
   "wahr",
   "vrai",
   "verdadero",
@@ -43,6 +45,8 @@ export const trueTokens = [
 
 export const falseTokens = [
   "false",
+  "no",
+  "nein",
   "falsch",
   "faux",
   "falso",

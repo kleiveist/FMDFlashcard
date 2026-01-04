@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type DragEvent } from "react";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
+import { CompositeCard } from "../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
@@ -8,6 +9,7 @@ import { useAppState } from "../components/AppStateProvider";
 import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
+  isFlashcardPartComplete,
 } from "../features/flashcards/logic";
 import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
 
@@ -96,6 +98,18 @@ export const FlashcardPage = () => {
           if (flashcards.flashcardSubmissions[cardIndex]) {
             continue;
           }
+          if (card.kind === "composite") {
+            const partStates = flashcards.flashcardCompositeStates[cardIndex] ?? [];
+            const canSubmit =
+              card.parts.length > 0 &&
+              card.parts.every((part, partIndex) =>
+                isFlashcardPartComplete(part, partStates[partIndex] ?? {}),
+              );
+            if (canSubmit) {
+              return cardIndex;
+            }
+            continue;
+          }
           if (card.kind === "multiple-choice") {
             if ((flashcards.flashcardSelections[cardIndex] ?? []).length > 0) {
               return cardIndex;
@@ -137,7 +151,17 @@ export const FlashcardPage = () => {
       if (!card || flashcards.flashcardSubmissions[resolvedIndex]) {
         return;
       }
-      if (card.kind === "multiple-choice") {
+      if (card.kind === "composite") {
+        const partStates = flashcards.flashcardCompositeStates[resolvedIndex] ?? [];
+        const canSubmit =
+          card.parts.length > 0 &&
+          card.parts.every((part, partIndex) =>
+            isFlashcardPartComplete(part, partStates[partIndex] ?? {}),
+          );
+        if (!canSubmit) {
+          return;
+        }
+      } else if (card.kind === "multiple-choice") {
         if ((flashcards.flashcardSelections[resolvedIndex] ?? []).length === 0) {
           return;
         }
@@ -149,14 +173,14 @@ export const FlashcardPage = () => {
       } else if (card.kind === "free-text") {
         return;
       } else {
-        const responses = flashcards.flashcardClozeResponses[resolvedIndex] ?? {};
-        if (!areClozeBlanksComplete(card, responses)) {
-          return;
-        }
+      const responses = flashcards.flashcardClozeResponses[resolvedIndex] ?? {};
+      if (!areClozeBlanksComplete(card, responses)) {
+        return;
       }
+    }
 
-      event.preventDefault();
-      flashcards.handleFlashcardSubmit(resolvedIndex, true);
+    event.preventDefault();
+    flashcards.handleFlashcardSubmit(resolvedIndex, true);
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -243,6 +267,84 @@ export const FlashcardPage = () => {
     [flashcards],
   );
 
+  const handleCompositeOptionSelect = useCallback(
+    (cardIndex: number, partIndex: number, keys: string[]) => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleCompositeOptionSelect(cardIndex, partIndex, keys);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeTrueFalseSelect = useCallback(
+    (cardIndex: number, partIndex: number, itemId: string, value: "wahr" | "falsch") => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleCompositeTrueFalseSelect(cardIndex, partIndex, itemId, value);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeClozeInputChange = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string, value: string) => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleCompositeClozeInputChange(cardIndex, partIndex, blankId, value);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleCompositeClozeTokenDrop(
+        event,
+        cardIndex,
+        partIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [flashcards],
+  );
+
+  const handleCompositeClozeTokenRemove = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string) => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleCompositeClozeTokenRemove(cardIndex, partIndex, blankId);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeTextInputChange = useCallback(
+    (cardIndex: number, partIndex: number, value: string) => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleCompositeTextInputChange(cardIndex, partIndex, value);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeTextCheck = useCallback(
+    (cardIndex: number, partIndex: number) => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleCompositeTextCheck(cardIndex, partIndex);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeSelfGrade = useCallback(
+    (cardIndex: number, partIndex: number, grade: "correct" | "incorrect") => {
+      setActiveCardIndex(cardIndex);
+      flashcards.handleCompositeSelfGrade(cardIndex, partIndex, grade);
+    },
+    [flashcards],
+  );
+
   return (
     <div className={`flashcard-layout ${isFocusMode ? "focus-mode" : ""}`}>
       <section className="panel flashcard-panel">
@@ -290,6 +392,29 @@ export const FlashcardPage = () => {
                 const cardIndex = entry.cardIndex;
                 const card = entry.card;
                 const submitted = !!flashcards.flashcardSubmissions[cardIndex];
+
+                if (card.kind === "composite") {
+                  return (
+                    <CompositeCard
+                      key={`flashcard-${cardIndex}`}
+                      card={card}
+                      cardIndex={cardIndex}
+                      submitted={submitted}
+                      partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
+                      onOptionSelect={handleCompositeOptionSelect}
+                      onTrueFalseSelect={handleCompositeTrueFalseSelect}
+                      onClozeInputChange={handleCompositeClozeInputChange}
+                      onClozeTokenDrop={handleCompositeClozeTokenDrop}
+                      onClozeTokenRemove={handleCompositeClozeTokenRemove}
+                      onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
+                      onBlankDragOver={flashcards.handleClozeBlankDragOver}
+                      onTextInputChange={handleCompositeTextInputChange}
+                      onTextCheck={handleCompositeTextCheck}
+                      onSelfGrade={handleCompositeSelfGrade}
+                      onSubmit={flashcards.handleFlashcardSubmit}
+                    />
+                  );
+                }
 
                 if (card.kind === "cloze") {
                   return (

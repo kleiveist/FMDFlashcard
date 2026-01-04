@@ -39,6 +39,7 @@ type MultipleChoiceCardProps = {
   submitted: boolean;
   selectedKeys: string[];
   submissionLocked?: boolean;
+  showSubmit?: boolean;
   onSelect: (cardIndex: number, keys: string[]) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -49,6 +50,7 @@ export const MultipleChoiceCard = ({
   submitted,
   selectedKeys,
   submissionLocked = false,
+  showSubmit = true,
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
@@ -81,6 +83,8 @@ export const MultipleChoiceCard = ({
       })),
     [cardSignature],
   );
+
+  const showActions = showSubmit || submitted;
 
   return (
     <article className="flashcard-item">
@@ -124,25 +128,29 @@ export const MultipleChoiceCard = ({
           );
         })}
       </ul>
-      <div className="flashcard-actions">
-        <button
-          type="button"
-          className="ghost small flashcard-submit"
-          onClick={() => onSubmit(cardIndex, selectedKeys.length > 0)}
-          disabled={selectedKeys.length === 0 || submitted || submissionLocked}
-        >
-          Submit
-        </button>
-        {submitted ? (
-          <span
-            className={`flashcard-result ${
-              hasSolutions ? (selectionIsCorrect ? "correct" : "incorrect") : "neutral"
-            }`}
-          >
-            {resultLabel}
-          </span>
-        ) : null}
-      </div>
+      {showActions ? (
+        <div className="flashcard-actions">
+          {showSubmit ? (
+            <button
+              type="button"
+              className="ghost small flashcard-submit"
+              onClick={() => onSubmit(cardIndex, selectedKeys.length > 0)}
+              disabled={selectedKeys.length === 0 || submitted || submissionLocked}
+            >
+              Submit
+            </button>
+          ) : null}
+          {submitted ? (
+            <span
+              className={`flashcard-result ${
+                hasSolutions ? (selectionIsCorrect ? "correct" : "incorrect") : "neutral"
+              }`}
+            >
+              {resultLabel}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 };

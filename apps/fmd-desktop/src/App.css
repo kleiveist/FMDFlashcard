@@ -939,6 +939,20 @@ body.focus-mode .sr-stats-panel {
   gap: 10px;
 }
 
+.composite-card {
+  gap: 16px;
+}
+
+.composite-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.composite-card .flashcard-item {
+  background: var(--panel);
+}
+
 .flashcard-question {
   margin: 0;
   font-size: 1rem;

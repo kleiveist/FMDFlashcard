@@ -1,5 +1,6 @@
-import type { Flashcard } from "../../lib/flashcards";
+import type { Flashcard, FlashcardPart } from "../../lib/flashcards";
 import type {
+  CompositePartState,
   FlashcardResult,
   FlashcardSelfGrade,
   TrueFalseSelection,
@@ -37,6 +38,7 @@ export type SpacedRepetitionSession = {
   submissions: Record<number, boolean>;
   trueFalseSelections: Record<number, Record<string, TrueFalseSelection>>;
   clozeResponses: Record<number, Record<string, string>>;
+  compositeStates: Record<number, CompositePartState[]>;
   page: number;
   cardProgressById: Record<string, SpacedRepetitionCardProgress>;
   completedPerDay: Record<string, number>;
@@ -76,7 +78,7 @@ export const hashString = (value: string) => {
   return (hash >>> 0).toString(16);
 };
 
-const getFlashcardIdentityPayload = (card: Flashcard) => {
+const getFlashcardPartIdentityPayload = (card: FlashcardPart) => {
   if (card.kind === "multiple-choice") {
     return {
       kind: card.kind,
@@ -109,7 +111,7 @@ const getFlashcardIdentityPayload = (card: Flashcard) => {
   };
 };
 
-const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
+const getFlashcardLegacyPartIdentityPayload = (card: FlashcardPart) => {
   if (card.kind === "multiple-choice") {
     return {
       kind: card.kind,
@@ -142,6 +144,26 @@ const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
   };
 };
 
+const getFlashcardIdentityPayload = (card: Flashcard) => {
+  if (card.kind === "composite") {
+    return {
+      kind: card.kind,
+      parts: card.parts.map(getFlashcardPartIdentityPayload),
+    };
+  }
+  return getFlashcardPartIdentityPayload(card);
+};
+
+const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
+  if (card.kind === "composite") {
+    return {
+      kind: card.kind,
+      parts: card.parts.map(getFlashcardLegacyPartIdentityPayload),
+    };
+  }
+  return getFlashcardLegacyPartIdentityPayload(card);
+};
+
 export const getFlashcardId = (card: Flashcard) =>
   `card-${hashString(JSON.stringify(getFlashcardIdentityPayload(card)))}`;
 
@@ -158,6 +180,7 @@ export const createEmptySpacedRepetitionSession = (): SpacedRepetitionSession =>
   submissions: {},
   trueFalseSelections: {},
   clozeResponses: {},
+  compositeStates: {},
   page: 0,
   cardProgressById: {},
   completedPerDay: {},

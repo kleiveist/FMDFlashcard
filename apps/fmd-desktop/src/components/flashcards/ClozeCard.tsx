@@ -16,6 +16,8 @@ type ClozeCardProps = {
   submitted: boolean;
   responses: Record<string, string>;
   submissionLocked?: boolean;
+  partIndex?: number;
+  showSubmit?: boolean;
   onInputChange: (cardIndex: number, blankId: string, value: string) => void;
   onTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -27,7 +29,7 @@ type ClozeCardProps = {
   onTokenRemove: (cardIndex: number, blankId: string) => void;
   onTokenDragStart: (
     event: DragEvent<HTMLElement>,
-    payload: { cardIndex: number; tokenId: string },
+    payload: { cardIndex: number; tokenId: string; partIndex?: number },
   ) => void;
   onBlankDragOver: (event: DragEvent<HTMLElement>) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
@@ -39,6 +41,8 @@ export const ClozeCard = ({
   submitted,
   responses,
   submissionLocked = false,
+  partIndex,
+  showSubmit = true,
   onBlankDragOver,
   onInputChange,
   onSubmit,
@@ -62,6 +66,7 @@ export const ClozeCard = ({
   const canSubmit = areClozeBlanksComplete(card, responses);
   const isCorrect = isClozeCardCorrect(card, responses);
   const resultLabel = submitted ? (isCorrect ? "Correct" : "Incorrect") : "";
+  const showActions = showSubmit || submitted;
   let blankPosition = 0;
 
   return (
@@ -148,13 +153,14 @@ export const ClozeCard = ({
                     className="token-chip"
                     draggable={!submitted}
                     onDragStart={(event) =>
-                      onTokenDragStart(event, {
-                        cardIndex,
-                        tokenId: assignedTokenId,
-                      })
-                    }
-                    disabled={submitted}
-                  >
+                    onTokenDragStart(event, {
+                      cardIndex,
+                      tokenId: assignedTokenId,
+                      partIndex,
+                    })
+                  }
+                  disabled={submitted}
+                >
                     {assignedValue}
                   </button>
                   {!submitted ? (
@@ -191,6 +197,7 @@ export const ClozeCard = ({
                     onTokenDragStart(event, {
                       cardIndex,
                       tokenId: token.id,
+                      partIndex,
                     })
                   }
                   disabled={submitted || isUsed}
@@ -202,21 +209,25 @@ export const ClozeCard = ({
           </div>
         </div>
       ) : null}
-      <div className="flashcard-actions">
-        <button
-          type="button"
-          className="ghost small flashcard-submit"
-          onClick={() => onSubmit(cardIndex, canSubmit)}
-          disabled={submitted || !canSubmit || submissionLocked}
-        >
-          Submit
-        </button>
-        {submitted ? (
-          <span className={`flashcard-result ${isCorrect ? "correct" : "incorrect"}`}>
-            {resultLabel}
-          </span>
-        ) : null}
-      </div>
+      {showActions ? (
+        <div className="flashcard-actions">
+          {showSubmit ? (
+            <button
+              type="button"
+              className="ghost small flashcard-submit"
+              onClick={() => onSubmit(cardIndex, canSubmit)}
+              disabled={submitted || !canSubmit || submissionLocked}
+            >
+              Submit
+            </button>
+          ) : null}
+          {submitted ? (
+            <span className={`flashcard-result ${isCorrect ? "correct" : "incorrect"}`}>
+              {resultLabel}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {submitted ? (
         <div className="token-solution">
           <span className="label">Solution</span>

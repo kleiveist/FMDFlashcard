@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   evaluateFlashcardResult,
   getClozeDragPayload,
+  type CompositePartState,
   type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "../flashcards/logic";
@@ -173,6 +174,8 @@ export const useSpacedRepetition = ({
     spacedRepetitionSession?.trueFalseSelections ?? {};
   const spacedRepetitionClozeResponses =
     spacedRepetitionSession?.clozeResponses ?? {};
+  const spacedRepetitionCompositeStates =
+    spacedRepetitionSession?.compositeStates ?? {};
   const spacedRepetitionPage = spacedRepetitionSession?.page ?? 0;
   const spacedRepetitionCardStates =
     spacedRepetitionSession?.cardProgressById ??
@@ -762,6 +765,56 @@ export const useSpacedRepetition = ({
     [updateActiveSpacedRepetitionSession],
   );
 
+  const updateCompositePartState = useCallback(
+    (
+      cardIndex: number,
+      partIndex: number,
+      updater: (current: CompositePartState) => CompositePartState,
+    ) => {
+      updateActiveSpacedRepetitionSession((session) => {
+        if (session.submissions[cardIndex]) {
+          return session;
+        }
+        const nextParts = [...(session.compositeStates[cardIndex] ?? [])];
+        const current = nextParts[partIndex] ?? {};
+        const nextState = updater(current);
+        nextParts[partIndex] = nextState;
+        return {
+          ...session,
+          compositeStates: {
+            ...session.compositeStates,
+            [cardIndex]: nextParts,
+          },
+        };
+      });
+    },
+    [updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionCompositeOptionSelect = useCallback(
+    (cardIndex: number, partIndex: number, keys: string[]) => {
+      const uniqueKeys = Array.from(new Set(keys));
+      updateCompositePartState(cardIndex, partIndex, (current) => ({
+        ...current,
+        selections: uniqueKeys,
+      }));
+    },
+    [updateCompositePartState],
+  );
+
+  const handleSpacedRepetitionCompositeTrueFalseSelect = useCallback(
+    (cardIndex: number, partIndex: number, itemId: string, value: TrueFalseSelection) => {
+      updateCompositePartState(cardIndex, partIndex, (current) => ({
+        ...current,
+        trueFalseSelections: {
+          ...(current.trueFalseSelections ?? {}),
+          [itemId]: value,
+        },
+      }));
+    },
+    [updateCompositePartState],
+  );
+
   const handleSpacedRepetitionSubmit = useCallback(
     (cardIndex: number, canSubmit: boolean, selfGrade?: FlashcardSelfGrade) => {
       if (!canSubmit) {
@@ -792,6 +845,7 @@ export const useSpacedRepetition = ({
             session.trueFalseSelections,
             session.clozeResponses,
             nextSelfGrades,
+            session.compositeStates,
           );
         const currentProgress = normalizeSpacedRepetitionCardProgress(
           session.cardProgressById[cardId],
@@ -838,6 +892,40 @@ export const useSpacedRepetition = ({
       });
     },
     [spacedRepetitionBoxes, updateActiveSpacedRepetitionSession],
+  );
+
+  const handleSpacedRepetitionCompositeTextInputChange = useCallback(
+    (cardIndex: number, partIndex: number, value: string) => {
+      updateCompositePartState(cardIndex, partIndex, (current) => {
+        if (current.textRevealed) {
+          return current;
+        }
+        return { ...current, textResponse: value };
+      });
+    },
+    [updateCompositePartState],
+  );
+
+  const handleSpacedRepetitionCompositeTextCheck = useCallback(
+    (cardIndex: number, partIndex: number) => {
+      updateCompositePartState(cardIndex, partIndex, (current) => {
+        if (current.textRevealed) {
+          return current;
+        }
+        return { ...current, textRevealed: true };
+      });
+    },
+    [updateCompositePartState],
+  );
+
+  const handleSpacedRepetitionCompositeSelfGrade = useCallback(
+    (cardIndex: number, partIndex: number, grade: FlashcardSelfGrade) => {
+      updateCompositePartState(cardIndex, partIndex, (current) => ({
+        ...current,
+        selfGrade: grade,
+      }));
+    },
+    [updateCompositePartState],
   );
 
   const handleSpacedRepetitionTextInputChange = useCallback(
@@ -911,6 +999,19 @@ export const useSpacedRepetition = ({
     [updateActiveSpacedRepetitionSession],
   );
 
+  const handleSpacedRepetitionCompositeClozeInputChange = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string, value: string) => {
+      updateCompositePartState(cardIndex, partIndex, (current) => ({
+        ...current,
+        clozeResponses: {
+          ...(current.clozeResponses ?? {}),
+          [blankId]: value,
+        },
+      }));
+    },
+    [updateCompositePartState],
+  );
+
   const handleSpacedRepetitionClozeTokenDrop = useCallback(
     (
       event: DragEvent<HTMLElement>,
@@ -954,6 +1055,47 @@ export const useSpacedRepetition = ({
     [spacedRepetitionSubmissions, updateActiveSpacedRepetitionSession],
   );
 
+  const handleSpacedRepetitionCompositeClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      event.preventDefault();
+      if (spacedRepetitionSubmissions[cardIndex]) {
+        return;
+      }
+      const payload = getClozeDragPayload(event);
+      if (!payload || payload.cardIndex !== cardIndex || payload.partIndex !== partIndex) {
+        return;
+      }
+      if (payload.tokenId === blankId) {
+        return;
+      }
+      if (!validTokenIds.has(payload.tokenId)) {
+        return;
+      }
+
+      updateCompositePartState(cardIndex, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        const existingBlankId = Object.entries(responses).find(
+          ([key, value]) => value === payload.tokenId && key !== blankId,
+        )?.[0];
+        if (existingBlankId) {
+          delete responses[existingBlankId];
+        }
+        if (dragBlankIds.has(blankId)) {
+          responses[blankId] = payload.tokenId;
+        }
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [spacedRepetitionSubmissions, updateCompositePartState],
+  );
+
   const handleSpacedRepetitionClozeTokenRemove = useCallback(
     (cardIndex: number, blankId: string) => {
       if (spacedRepetitionSubmissions[cardIndex]) {
@@ -971,22 +1113,44 @@ export const useSpacedRepetition = ({
     [spacedRepetitionSubmissions, updateActiveSpacedRepetitionSession],
   );
 
+  const handleSpacedRepetitionCompositeClozeTokenRemove = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string) => {
+      if (spacedRepetitionSubmissions[cardIndex]) {
+        return;
+      }
+      updateCompositePartState(cardIndex, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        delete responses[blankId];
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [spacedRepetitionSubmissions, updateCompositePartState],
+  );
+
   return {
     handleSpacedRepetitionActiveUserLoadCards,
     handleSpacedRepetitionClozeInputChange,
     handleSpacedRepetitionClozeTokenDrop,
     handleSpacedRepetitionClozeTokenRemove,
+    handleSpacedRepetitionCompositeClozeInputChange,
+    handleSpacedRepetitionCompositeClozeTokenDrop,
+    handleSpacedRepetitionCompositeClozeTokenRemove,
     handleSpacedRepetitionCreateUser,
     handleSpacedRepetitionDeleteUser,
     handleSpacedRepetitionLoadUser,
     handleSpacedRepetitionOptionSelect,
+    handleSpacedRepetitionCompositeOptionSelect,
     handleSpacedRepetitionPageBack,
     handleSpacedRepetitionPageNext,
     handleSpacedRepetitionSelfGrade,
+    handleSpacedRepetitionCompositeSelfGrade,
     handleSpacedRepetitionSubmit,
     handleSpacedRepetitionTextCheck,
     handleSpacedRepetitionTextInputChange,
+    handleSpacedRepetitionCompositeTextCheck,
+    handleSpacedRepetitionCompositeTextInputChange,
     handleSpacedRepetitionTrueFalseSelect,
+    handleSpacedRepetitionCompositeTrueFalseSelect,
     setSpacedRepetitionActiveUserId,
     setSpacedRepetitionBoxes,
     setSpacedRepetitionNewUserName,
@@ -1002,6 +1166,7 @@ export const useSpacedRepetition = ({
     spacedRepetitionCanGoBack,
     spacedRepetitionCanGoNext,
     spacedRepetitionClozeResponses,
+    spacedRepetitionCompositeStates,
     spacedRepetitionCompletedChartData: spacedRepetitionCompletedSeries.data,
     spacedRepetitionCompletedChartLabels: spacedRepetitionCompletedSeries.labels,
     spacedRepetitionCorrectCount,

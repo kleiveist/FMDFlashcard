@@ -8,6 +8,7 @@ import {
   type DragEvent,
 } from "react";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
+import { CompositeCard } from "../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
@@ -68,10 +69,12 @@ export const FastFlashcardPage = () => {
       flashcards.flashcardTrueFalseSelections,
       flashcards.flashcardClozeResponses,
       flashcards.flashcardSelfGrades,
+      flashcards.flashcardCompositeStates,
     );
   }, [
     currentEntry,
     flashcards.flashcardClozeResponses,
+    flashcards.flashcardCompositeStates,
     flashcards.flashcardSelections,
     flashcards.flashcardSelfGrades,
     flashcards.flashcardTrueFalseSelections,
@@ -184,6 +187,7 @@ export const FastFlashcardPage = () => {
           flashcards.flashcardTrueFalseSelections,
           flashcards.flashcardClozeResponses,
           flashcards.flashcardSelfGrades,
+          flashcards.flashcardCompositeStates,
         );
         nextTotal += 1;
         if (result === "correct") {
@@ -202,6 +206,7 @@ export const FastFlashcardPage = () => {
   }, [
     flashcardSubmissions,
     flashcards.flashcardClozeResponses,
+    flashcards.flashcardCompositeStates,
     flashcards.flashcardSelections,
     flashcards.flashcardSelfGrades,
     flashcards.flashcardTrueFalseSelections,
@@ -342,6 +347,76 @@ export const FastFlashcardPage = () => {
   const handleTextCheck = useCallback(
     (cardIndex: number) => {
       flashcards.handleFlashcardTextCheck(cardIndex);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeOptionSelect = useCallback(
+    (cardIndex: number, partIndex: number, keys: string[]) => {
+      flashcards.handleCompositeOptionSelect(cardIndex, partIndex, keys);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeTrueFalseSelect = useCallback(
+    (cardIndex: number, partIndex: number, itemId: string, value: "wahr" | "falsch") => {
+      flashcards.handleCompositeTrueFalseSelect(cardIndex, partIndex, itemId, value);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeClozeInputChange = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string, value: string) => {
+      flashcards.handleCompositeClozeInputChange(cardIndex, partIndex, blankId, value);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      flashcards.handleCompositeClozeTokenDrop(
+        event,
+        cardIndex,
+        partIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [flashcards],
+  );
+
+  const handleCompositeClozeTokenRemove = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string) => {
+      flashcards.handleCompositeClozeTokenRemove(cardIndex, partIndex, blankId);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeTextInputChange = useCallback(
+    (cardIndex: number, partIndex: number, value: string) => {
+      flashcards.handleCompositeTextInputChange(cardIndex, partIndex, value);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeTextCheck = useCallback(
+    (cardIndex: number, partIndex: number) => {
+      flashcards.handleCompositeTextCheck(cardIndex, partIndex);
+    },
+    [flashcards],
+  );
+
+  const handleCompositeSelfGrade = useCallback(
+    (cardIndex: number, partIndex: number, grade: "correct" | "incorrect") => {
+      flashcards.handleCompositeSelfGrade(cardIndex, partIndex, grade);
     },
     [flashcards],
   );
@@ -653,7 +728,29 @@ export const FastFlashcardPage = () => {
             <div className="empty-state">No cards match the selected mode.</div>
           ) : currentEntry ? (
             <div className="flashcard-list">
-              {currentEntry.card.kind === "cloze" ? (
+              {currentEntry.card.kind === "composite" ? (
+                <CompositeCard
+                  key={`fast-flashcard-${currentEntry.cardIndex}`}
+                  card={currentEntry.card}
+                  cardIndex={currentEntry.cardIndex}
+                  submitted={isCurrentSubmitted}
+                  submissionLocked={submissionLocked}
+                  partStates={
+                    flashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
+                  }
+                  onOptionSelect={handleCompositeOptionSelect}
+                  onTrueFalseSelect={handleCompositeTrueFalseSelect}
+                  onClozeInputChange={handleCompositeClozeInputChange}
+                  onClozeTokenDrop={handleCompositeClozeTokenDrop}
+                  onClozeTokenRemove={handleCompositeClozeTokenRemove}
+                  onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
+                  onBlankDragOver={flashcards.handleClozeBlankDragOver}
+                  onTextInputChange={handleCompositeTextInputChange}
+                  onTextCheck={handleCompositeTextCheck}
+                  onSelfGrade={handleCompositeSelfGrade}
+                  onSubmit={handleFastSubmit}
+                />
+              ) : currentEntry.card.kind === "cloze" ? (
                 <ClozeCard
                   key={`fast-flashcard-${currentEntry.cardIndex}`}
                   card={currentEntry.card}

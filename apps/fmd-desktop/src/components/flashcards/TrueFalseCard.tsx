@@ -11,6 +11,7 @@ type TrueFalseCardProps = {
   submitted: boolean;
   selections: Record<string, TrueFalseSelection>;
   submissionLocked?: boolean;
+  showSubmit?: boolean;
   onSelect: (cardIndex: number, itemId: string, value: TrueFalseSelection) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -21,12 +22,14 @@ export const TrueFalseCard = ({
   submitted,
   selections,
   submissionLocked = false,
+  showSubmit = true,
   onSelect,
   onSubmit,
 }: TrueFalseCardProps) => {
   const canSubmit = areTrueFalseItemsComplete(card, selections);
   const isCorrect = isTrueFalseCardCorrect(card, selections);
   const resultLabel = submitted ? (isCorrect ? "Correct" : "Incorrect") : "";
+  const showActions = showSubmit || submitted;
 
   return (
     <article className="flashcard-item truefalse-card">
@@ -89,21 +92,25 @@ export const TrueFalseCard = ({
           );
         })}
       </ul>
-      <div className="flashcard-actions">
-        <button
-          type="button"
-          className="ghost small flashcard-submit"
-          onClick={() => onSubmit(cardIndex, canSubmit)}
-          disabled={submitted || !canSubmit || submissionLocked}
-        >
-          Submit
-        </button>
-        {submitted ? (
-          <span className={`flashcard-result ${isCorrect ? "correct" : "incorrect"}`}>
-            {resultLabel}
-          </span>
-        ) : null}
-      </div>
+      {showActions ? (
+        <div className="flashcard-actions">
+          {showSubmit ? (
+            <button
+              type="button"
+              className="ghost small flashcard-submit"
+              onClick={() => onSubmit(cardIndex, canSubmit)}
+              disabled={submitted || !canSubmit || submissionLocked}
+            >
+              Submit
+            </button>
+          ) : null}
+          {submitted ? (
+            <span className={`flashcard-result ${isCorrect ? "correct" : "incorrect"}`}>
+              {resultLabel}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {submitted ? (
         <div className="truefalse-solution">
           <span className="label">Solution</span>
