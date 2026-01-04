@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { parseFlashcards, type Flashcard } from "../../lib/flashcards";
 import {
-  calculateFlashcardStats,
+  parseFlashcards,
+  type Flashcard,
+  type FlashcardDetectedType,
+} from "../../lib/flashcards";
+import {
+  evaluateFlashcardResult,
   getClozeDragPayload,
   handleClozeBlankDragOver,
   handleClozeTokenDragStart,
@@ -13,7 +17,15 @@ import {
 import { type VaultFile } from "../../lib/tree";
 
 export type FlashcardOrder = "in-order" | "random";
-export type FlashcardMode = "multiple-choice" | "yes-no";
+export type FlashcardMode =
+  | "all"
+  | "qa"
+  | "multiple-choice"
+  | "mix"
+  | "cloze"
+  | "matching"
+  | "true-false"
+  | "yes-no";
 export type FlashcardScope = "current" | "vault";
 export type FlashcardPageSize = 1 | 2 | 3 | 5;
 export type StatsResetMode = "scan" | "session";
@@ -28,6 +40,49 @@ const normalizeFlashcardPageSize = (value: number) => {
   return FLASHCARD_PAGE_SIZES.includes(value as FlashcardPageSize)
     ? (value as FlashcardPageSize)
     : DEFAULT_FLASHCARD_PAGE_SIZE;
+};
+
+const normalizeFlashcardMode = (
+  mode: FlashcardMode,
+): Exclude<FlashcardMode, "yes-no"> =>
+  mode === "yes-no" ? "true-false" : mode;
+
+const getPrimaryTypeFromKind = (card: Flashcard): FlashcardDetectedType => {
+  if (card.kind === "multiple-choice") {
+    return "multiple-choice";
+  }
+  if (card.kind === "true-false") {
+    return "true-false";
+  }
+  if (card.kind === "cloze") {
+    return "cloze";
+  }
+  return "qa";
+};
+
+const getDetectedTypes = (card: Flashcard): FlashcardDetectedType[] => {
+  const detected = card.detectedTypes;
+  if (detected && detected.length > 0) {
+    return detected;
+  }
+  return [card.primaryType ?? getPrimaryTypeFromKind(card)];
+};
+
+const matchesFlashcardMode = (card: Flashcard, mode: FlashcardMode) => {
+  const resolvedMode = normalizeFlashcardMode(mode);
+  if (resolvedMode === "all") {
+    return true;
+  }
+  const detectedTypes = getDetectedTypes(card);
+  const isMix = detectedTypes.length > 1;
+  if (resolvedMode === "mix") {
+    return isMix;
+  }
+  if (isMix) {
+    return false;
+  }
+  const primaryType = card.primaryType ?? getPrimaryTypeFromKind(card);
+  return primaryType === resolvedMode;
 };
 
 type ScanOptions = {
@@ -156,9 +211,25 @@ export const useFlashcards = ({
     [flashcardPageSize],
   );
 
+  const filteredFlashcardIndices = useMemo(() => {
+    return flashcards.reduce<number[]>((accumulator, card, cardIndex) => {
+      if (matchesFlashcardMode(card, flashcardMode)) {
+        accumulator.push(cardIndex);
+      }
+      return accumulator;
+    }, []);
+  }, [flashcards, flashcardMode]);
+
+  const orderedFlashcardIndices = useMemo(() => {
+    if (flashcardOrder === "random") {
+      return shuffleFlashcards(filteredFlashcardIndices);
+    }
+    return filteredFlashcardIndices;
+  }, [filteredFlashcardIndices, flashcardOrder]);
+
   const flashcardPageCount = useMemo(
-    () => Math.ceil(flashcards.length / resolvedFlashcardPageSize),
-    [flashcards.length, resolvedFlashcardPageSize],
+    () => Math.ceil(orderedFlashcardIndices.length / resolvedFlashcardPageSize),
+    [orderedFlashcardIndices.length, resolvedFlashcardPageSize],
   );
 
   const flashcardPageIndex = useMemo(
@@ -168,35 +239,69 @@ export const useFlashcards = ({
 
   const flashcardPageStart = flashcardPageIndex * resolvedFlashcardPageSize;
 
-  const visibleFlashcards = useMemo(() => {
-    return flashcards.slice(
-      flashcardPageStart,
-      flashcardPageStart + resolvedFlashcardPageSize,
-    );
-  }, [flashcards, flashcardPageStart, resolvedFlashcardPageSize]);
+  const visibleFlashcardEntries = useMemo(() => {
+    return orderedFlashcardIndices
+      .slice(flashcardPageStart, flashcardPageStart + resolvedFlashcardPageSize)
+      .map((cardIndex) => ({
+        cardIndex,
+        card: flashcards[cardIndex]!,
+      }));
+  }, [
+    flashcardPageStart,
+    flashcards,
+    orderedFlashcardIndices,
+    resolvedFlashcardPageSize,
+  ]);
+
+  const visibleFlashcards = useMemo(
+    () => visibleFlashcardEntries.map((entry) => entry.card),
+    [visibleFlashcardEntries],
+  );
+
+  const filteredFlashcardCount = orderedFlashcardIndices.length;
 
   const canGoBack = flashcardPageIndex > 0;
   const canGoNext = flashcardPageIndex < flashcardPageCount - 1;
 
-  const { correctCount, incorrectCount, correctPercent } = useMemo(
-    () =>
-      calculateFlashcardStats(
-        flashcards,
-        flashcardSubmissions,
+  const { correctCount, incorrectCount, correctPercent } = useMemo(() => {
+    let correct = 0;
+    let incorrect = 0;
+
+    orderedFlashcardIndices.forEach((cardIndex) => {
+      if (!flashcardSubmissions[cardIndex]) {
+        return;
+      }
+      const card = flashcards[cardIndex];
+      if (!card) {
+        return;
+      }
+      const result = evaluateFlashcardResult(
+        card,
+        cardIndex,
         flashcardSelections,
         flashcardTrueFalseSelections,
         flashcardClozeResponses,
         flashcardSelfGrades,
-      ),
-    [
-      flashcards,
-      flashcardClozeResponses,
-      flashcardSelections,
-      flashcardSelfGrades,
-      flashcardSubmissions,
-      flashcardTrueFalseSelections,
-    ],
-  );
+      );
+      if (result === "correct") {
+        correct += 1;
+      } else if (result === "incorrect") {
+        incorrect += 1;
+      }
+    });
+
+    const total = correct + incorrect;
+    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+    return { correctCount: correct, incorrectCount: incorrect, correctPercent: percent };
+  }, [
+    flashcardClozeResponses,
+    flashcardSelections,
+    flashcardSelfGrades,
+    flashcardSubmissions,
+    flashcardTrueFalseSelections,
+    flashcards,
+    orderedFlashcardIndices,
+  ]);
 
   useEffect(() => {
     const normalized = normalizeFlashcardPageSize(flashcardPageSize);
@@ -230,7 +335,6 @@ export const useFlashcards = ({
   const scanFlashcards = useCallback(
     async (options?: ScanOptions) => {
       const scope = options?.scopeOverride ?? flashcardScope;
-      const order = options?.orderOverride ?? flashcardOrder;
       const shouldFallbackToVault =
         options?.allowVaultFallback && scope === "current" && !selectedFile;
       const resolvedScope = shouldFallbackToVault ? "vault" : scope;
@@ -262,13 +366,13 @@ export const useFlashcards = ({
           }
         });
 
-        return order === "random" ? shuffleFlashcards(merged) : merged;
+        return merged;
       }
 
       const cards = parseFlashcards(preview);
-      return order === "random" ? shuffleFlashcards(cards) : cards;
+      return cards;
     },
-    [files, flashcardOrder, flashcardScope, preview, selectedFile, vaultPath],
+    [files, flashcardScope, preview, selectedFile, vaultPath],
   );
 
   const handleFlashcardScan = useCallback(async () => {
@@ -448,6 +552,7 @@ export const useFlashcards = ({
     flashcardTextRevealed,
     flashcardTrueFalseSelections,
     flashcards,
+    filteredFlashcardCount,
     handleClozeBlankDragOver,
     handleClozeInputChange,
     handleClozeTokenDragStart,
@@ -477,6 +582,7 @@ export const useFlashcards = ({
     solutionRevealEnabled,
     statsResetMode,
     takeSnapshot,
+    visibleFlashcardEntries,
     visibleFlashcards,
     correctPercent,
   };

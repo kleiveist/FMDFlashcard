@@ -68,7 +68,20 @@ export type ClozeCard = {
   dragTokens: ClozeDragToken[];
 };
 
-export type Flashcard = MultipleChoiceCard | FreeTextCard | TrueFalseCard | ClozeCard;
+export type FlashcardDetectedType =
+  | "qa"
+  | "multiple-choice"
+  | "cloze"
+  | "matching"
+  | "true-false";
+
+export type FlashcardMetadata = {
+  primaryType?: FlashcardDetectedType;
+  detectedTypes?: FlashcardDetectedType[];
+};
+
+export type Flashcard = (MultipleChoiceCard | FreeTextCard | TrueFalseCard | ClozeCard) &
+  FlashcardMetadata;
 
 export const normalizeInputAnswer = (value: string) => value.trim().toLowerCase();
 
@@ -405,34 +418,72 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
       clozeLines.push(rawLine);
     });
 
+    const detectedTypes: FlashcardDetectedType[] = [];
     if (options.length > 0) {
-      cards.push({ kind: "multiple-choice", question, options, correctKeys });
-      continue;
+      pushUnique(detectedTypes, "multiple-choice");
     }
 
     const trueFalseItems = parseTrueFalseItems(cardLines.slice(questionIndex));
     if (trueFalseItems.length > 0) {
-      cards.push({ kind: "true-false", items: trueFalseItems });
-      continue;
+      pushUnique(detectedTypes, "true-false");
     }
 
     const answerCard = splitAnswerCard(contentLines);
     if (answerCard) {
-      cards.push({ kind: "free-text", ...answerCard });
-      continue;
+      pushUnique(detectedTypes, "qa");
     }
 
     const parsed = parseClozeSegments(clozeLines);
+    const hasBlanks = parsed
+      ? parsed.segments.some((segment) => segment.type === "blank")
+      : false;
+    if (hasBlanks) {
+      pushUnique(detectedTypes, "cloze");
+    }
+
+    if (options.length > 0) {
+      cards.push({
+        kind: "multiple-choice",
+        question,
+        options,
+        correctKeys,
+        primaryType: "multiple-choice",
+        detectedTypes,
+      });
+      continue;
+    }
+
+    if (trueFalseItems.length > 0) {
+      cards.push({
+        kind: "true-false",
+        items: trueFalseItems,
+        primaryType: "true-false",
+        detectedTypes,
+      });
+      continue;
+    }
+
+    if (answerCard) {
+      cards.push({
+        kind: "free-text",
+        ...answerCard,
+        primaryType: "qa",
+        detectedTypes,
+      });
+      continue;
+    }
+
     if (!parsed) {
       continue;
     }
-    const hasBlanks = parsed.segments.some((segment) => segment.type === "blank");
     if (hasBlanks) {
       cards.push({
         kind: "cloze",
         question,
         segments: parsed.segments,
         dragTokens: parsed.dragTokens,
+        primaryType: "cloze",
+        detectedTypes,
       });
     }
   }

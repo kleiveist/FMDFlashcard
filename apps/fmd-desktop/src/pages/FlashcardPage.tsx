@@ -30,7 +30,9 @@ export const FlashcardPage = () => {
   const { flashcards } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
-  const totalQuestions = flashcards.flashcards.length;
+  const totalQuestions = flashcards.filteredFlashcardCount;
+  const hasScannedCards = flashcards.flashcards.length > 0;
+  const hasFilteredCards = flashcards.filteredFlashcardCount > 0;
   const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
 
   useEffect(() => {
@@ -81,15 +83,16 @@ export const FlashcardPage = () => {
         return;
       }
 
-      const visibleCards = flashcards.visibleFlashcards;
-      if (visibleCards.length === 0) {
+      const visibleEntries = flashcards.visibleFlashcardEntries;
+      if (visibleEntries.length === 0) {
         return;
       }
 
       const findFirstSubmittableIndex = () => {
-        for (let localIndex = 0; localIndex < visibleCards.length; localIndex += 1) {
-          const cardIndex = flashcards.flashcardPageStart + localIndex;
-          const card = visibleCards[localIndex];
+        for (let localIndex = 0; localIndex < visibleEntries.length; localIndex += 1) {
+          const entry = visibleEntries[localIndex];
+          const cardIndex = entry.cardIndex;
+          const card = entry.card;
           if (flashcards.flashcardSubmissions[cardIndex]) {
             continue;
           }
@@ -119,9 +122,7 @@ export const FlashcardPage = () => {
 
       const resolvedIndex =
         activeCardIndex !== null &&
-        activeCardIndex >= flashcards.flashcardPageStart &&
-        activeCardIndex <
-          flashcards.flashcardPageStart + flashcards.visibleFlashcards.length
+        visibleEntries.some((entry) => entry.cardIndex === activeCardIndex)
           ? activeCardIndex
           : findFirstSubmittableIndex();
 
@@ -129,8 +130,10 @@ export const FlashcardPage = () => {
         return;
       }
 
-      const localIndex = resolvedIndex - flashcards.flashcardPageStart;
-      const card = visibleCards[localIndex];
+      const resolvedEntry = visibleEntries.find(
+        (entry) => entry.cardIndex === resolvedIndex,
+      );
+      const card = resolvedEntry?.card;
       if (!card || flashcards.flashcardSubmissions[resolvedIndex]) {
         return;
       }
@@ -246,7 +249,7 @@ export const FlashcardPage = () => {
         <div className="panel-header">
           <div>
             <h2>Flashcard</h2>
-            {flashcards.flashcards.length === 0 ? (
+            {!hasScannedCards ? (
               <p className="muted">{flashcardStatusLabel}</p>
             ) : null}
           </div>
@@ -275,14 +278,17 @@ export const FlashcardPage = () => {
           </div>
         </div>
         <div className="panel-body">
-          {flashcards.flashcards.length === 0 ? (
+          {!hasScannedCards ? (
             <div className="empty-state">
               Select a note from DASHBOARD and start the flashcard scan
             </div>
+          ) : !hasFilteredCards ? (
+            <div className="empty-state">No cards match the selected mode.</div>
           ) : (
             <div className="flashcard-list">
-              {flashcards.visibleFlashcards.map((card, localIndex) => {
-                const cardIndex = flashcards.flashcardPageStart + localIndex;
+              {flashcards.visibleFlashcardEntries.map((entry) => {
+                const cardIndex = entry.cardIndex;
+                const card = entry.card;
                 const submitted = !!flashcards.flashcardSubmissions[cardIndex];
 
                 if (card.kind === "cloze") {
@@ -415,28 +421,24 @@ export const FlashcardPage = () => {
                 </div>
                 <div className="toolbar-section">
                   <span className="label">MODE</span>
-                  <div className="pill-grid">
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        flashcards.flashcardMode === "multiple-choice" ? "active" : ""
-                      }`}
-                      aria-pressed={flashcards.flashcardMode === "multiple-choice"}
-                      onClick={() => flashcards.setFlashcardMode("multiple-choice")}
-                    >
-                      Multiple Choice
-                    </button>
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        flashcards.flashcardMode === "yes-no" ? "active" : ""
-                      }`}
-                      aria-pressed={flashcards.flashcardMode === "yes-no"}
-                      onClick={() => flashcards.setFlashcardMode("yes-no")}
-                    >
-                      Yes/No
-                    </button>
-                  </div>
+                  <select
+                    className="text-input"
+                    value={flashcards.flashcardMode}
+                    onChange={(event) =>
+                      flashcards.setFlashcardMode(
+                        event.target.value as typeof flashcards.flashcardMode,
+                      )
+                    }
+                    aria-label="Select mode filter"
+                  >
+                    <option value="all">All</option>
+                    <option value="qa">Q&amp;A</option>
+                    <option value="multiple-choice">Multiple Choice</option>
+                    <option value="mix">Mix</option>
+                    <option value="cloze">Cloze</option>
+                    <option value="matching">Matching</option>
+                    <option value="true-false">True/False</option>
+                  </select>
                 </div>
                 <div className="toolbar-section">
                   <span className="label">PAGE SIZE</span>

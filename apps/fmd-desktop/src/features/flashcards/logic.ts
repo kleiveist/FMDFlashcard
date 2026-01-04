@@ -62,7 +62,7 @@ export const handleClozeBlankDragOver = (event: DragEvent<HTMLElement>) => {
   event.dataTransfer.dropEffect = "move";
 };
 
-export const shuffleFlashcards = (cards: Flashcard[]) => {
+export const shuffleFlashcards = <T,>(cards: T[]) => {
   const shuffled = [...cards];
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));

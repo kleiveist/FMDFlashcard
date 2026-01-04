@@ -72,7 +72,7 @@ export const DEFAULT_THEME: ThemeMode = "light";
 export const DEFAULT_LANGUAGE: AppLanguage = "de";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
-const DEFAULT_FLASHCARD_MODE: FlashcardMode = "multiple-choice";
+const DEFAULT_FLASHCARD_MODE: FlashcardMode = "all";
 const DEFAULT_FLASHCARD_SCOPE: FlashcardScope = "current";
 const DEFAULT_STATS_RESET_MODE: StatsResetMode = "scan";
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
@@ -286,9 +286,17 @@ export const useAppSettings = () => {
             ? "random"
             : DEFAULT_FLASHCARD_ORDER;
         const storedFlashcardMode =
-          settings.flashcard_mode === "yes-no"
-            ? "yes-no"
-            : DEFAULT_FLASHCARD_MODE;
+          settings.flashcard_mode === "all" ||
+          settings.flashcard_mode === "qa" ||
+          settings.flashcard_mode === "multiple-choice" ||
+          settings.flashcard_mode === "mix" ||
+          settings.flashcard_mode === "cloze" ||
+          settings.flashcard_mode === "matching" ||
+          settings.flashcard_mode === "true-false"
+            ? settings.flashcard_mode
+            : settings.flashcard_mode === "yes-no"
+              ? "true-false"
+              : DEFAULT_FLASHCARD_MODE;
         const storedFlashcardScope =
           settings.flashcard_scope === "vault"
             ? "vault"
