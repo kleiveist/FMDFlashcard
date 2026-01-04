@@ -82,6 +82,39 @@ const getFlashcardIdentityPayload = (card: Flashcard) => {
       kind: card.kind,
       question: card.question,
       options: card.options,
+      correctKeys: [...card.correctKeys].sort((a, b) => a.localeCompare(b)),
+    };
+  }
+
+  if (card.kind === "true-false") {
+    return {
+      kind: card.kind,
+      items: card.items,
+    };
+  }
+
+  if (card.kind === "free-text") {
+    return {
+      kind: card.kind,
+      front: card.front,
+      back: card.back,
+    };
+  }
+
+  return {
+    kind: card.kind,
+    question: card.question,
+    segments: card.segments,
+    dragTokens: card.dragTokens,
+  };
+};
+
+const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
+  if (card.kind === "multiple-choice") {
+    return {
+      kind: card.kind,
+      question: card.question,
+      options: card.options,
       correctKeys: card.correctKeys,
     };
   }
@@ -111,6 +144,9 @@ const getFlashcardIdentityPayload = (card: Flashcard) => {
 
 export const getFlashcardId = (card: Flashcard) =>
   `card-${hashString(JSON.stringify(getFlashcardIdentityPayload(card)))}`;
+
+const getFlashcardLegacyId = (card: Flashcard) =>
+  `card-${hashString(JSON.stringify(getFlashcardLegacyIdentityPayload(card)))}`;
 
 export const createEmptySpacedRepetitionSession = (): SpacedRepetitionSession => ({
   flashcards: [],
@@ -219,7 +255,6 @@ export const buildSpacedRepetitionSession = (
     repetitionStrength?: SpacedRepetitionRepetitionStrength;
   },
 ): SpacedRepetitionSession => {
-  const cardIds = flashcards.map(getFlashcardId);
   const nextCardStates = Object.fromEntries(
     Object.entries(existingCardStates).map(([cardId, progress]) => [
       cardId,
@@ -227,10 +262,18 @@ export const buildSpacedRepetitionSession = (
     ]),
   );
 
-  cardIds.forEach((cardId) => {
+  const cardIds = flashcards.map((card) => {
+    const cardId = getFlashcardId(card);
+    const legacyId = getFlashcardLegacyId(card);
     if (!nextCardStates[cardId]) {
-      nextCardStates[cardId] = normalizeSpacedRepetitionCardProgress(null);
+      if (legacyId !== cardId && nextCardStates[legacyId]) {
+        nextCardStates[cardId] = nextCardStates[legacyId];
+        delete nextCardStates[legacyId];
+      } else {
+        nextCardStates[cardId] = normalizeSpacedRepetitionCardProgress(null);
+      }
     }
+    return cardId;
   });
 
   const entries = flashcards.map((card, index) => ({

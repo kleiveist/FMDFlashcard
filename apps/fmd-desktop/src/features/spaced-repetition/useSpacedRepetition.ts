@@ -6,7 +6,7 @@ import {
   type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "../flashcards/logic";
-import type { FlashcardScope } from "../flashcards/useFlashcards";
+import type { FlashcardOrder, FlashcardScope } from "../flashcards/useFlashcards";
 import type { Flashcard } from "../../lib/flashcards";
 import {
   buildSpacedRepetitionSession,
@@ -95,6 +95,7 @@ type UseSpacedRepetitionOptions = {
   scanFlashcards: (options?: {
     scopeOverride?: FlashcardScope;
     allowVaultFallback?: boolean;
+    orderOverride?: FlashcardOrder;
   }) => Promise<Flashcard[]>;
   setIsFlashcardScanning: (value: boolean) => void;
   settings: {
@@ -644,7 +645,10 @@ export const useSpacedRepetition = ({
     const activeUserId = spacedRepetitionActiveUserId;
     setIsFlashcardScanning(true);
     try {
-      const cards = await scanFlashcards({ scopeOverride: "vault" });
+      const cards = await scanFlashcards({
+        scopeOverride: "vault",
+        orderOverride: "in-order",
+      });
       const storedCardStates =
         spacedRepetitionUserStateById[activeUserId]?.cardStates ?? {};
       const storedCompletedPerDay =

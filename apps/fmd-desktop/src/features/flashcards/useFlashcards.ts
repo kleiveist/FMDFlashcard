@@ -33,6 +33,7 @@ const normalizeFlashcardPageSize = (value: number) => {
 type ScanOptions = {
   scopeOverride?: FlashcardScope;
   allowVaultFallback?: boolean;
+  orderOverride?: FlashcardOrder;
 };
 
 type UseFlashcardsOptions = {
@@ -229,6 +230,7 @@ export const useFlashcards = ({
   const scanFlashcards = useCallback(
     async (options?: ScanOptions) => {
       const scope = options?.scopeOverride ?? flashcardScope;
+      const order = options?.orderOverride ?? flashcardOrder;
       const shouldFallbackToVault =
         options?.allowVaultFallback && scope === "current" && !selectedFile;
       const resolvedScope = shouldFallbackToVault ? "vault" : scope;
@@ -260,11 +262,11 @@ export const useFlashcards = ({
           }
         });
 
-        return flashcardOrder === "random" ? shuffleFlashcards(merged) : merged;
+        return order === "random" ? shuffleFlashcards(merged) : merged;
       }
 
       const cards = parseFlashcards(preview);
-      return flashcardOrder === "random" ? shuffleFlashcards(cards) : cards;
+      return order === "random" ? shuffleFlashcards(cards) : cards;
     },
     [files, flashcardOrder, flashcardScope, preview, selectedFile, vaultPath],
   );
