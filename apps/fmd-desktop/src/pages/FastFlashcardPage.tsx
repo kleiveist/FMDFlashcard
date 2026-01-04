@@ -13,12 +13,13 @@ import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
 import { useAppState } from "../components/AppStateProvider";
 import { evaluateFlashcardResult } from "../features/flashcards/logic";
+import { vaultBaseName } from "../lib/path";
 
 const fastFlashcardStatusLabel = "Not scanned yet";
 const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
 
 export const FastFlashcardPage = () => {
-  const { flashcards } = useAppState();
+  const { flashcards, vault } = useAppState();
   const {
     flashcardSubmissions,
     handleFlashcardSelfGrade,
@@ -26,9 +27,18 @@ export const FastFlashcardPage = () => {
   } = flashcards;
   const [fastCardPosition, setFastCardPosition] = useState(0);
   const [isTimeModeEnabled, setIsTimeModeEnabled] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState<number>(6);
+  const [selectedDuration, setSelectedDuration] = useState(6);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [sessionStats, setSessionStats] = useState({
+    total: 0,
+    correct: 0,
+    incorrect: 0,
+  });
+  const [sessionElapsedMs, setSessionElapsedMs] = useState(0);
   const timerRef = useRef<number | null>(null);
+  const sessionStartRef = useRef<number | null>(null);
+  const sessionCountedRef = useRef<Set<number>>(new Set());
+  const prevTimeModeRef = useRef(false);
 
   const orderedEntries = flashcards.orderedFlashcardEntries;
   const currentEntry = orderedEntries[fastCardPosition] ?? null;
@@ -96,9 +106,11 @@ export const FastFlashcardPage = () => {
       : 1
     : 0;
 
-  const timeStatusLabel = timeModeActive
-    ? `Remaining: ${remainingSeconds}s`
-    : "Inactive";
+  const timeStatusLabel = !timeModeActive
+    ? "Inactive"
+    : isTimerRunning
+      ? `Remaining: ${remainingSeconds}s`
+      : "Ready";
 
   const timeProgressStyle = useMemo(
     () =>
@@ -122,6 +134,87 @@ export const FastFlashcardPage = () => {
   useEffect(() => {
     setFastCardPosition(0);
   }, [flashcards.flashcards]);
+
+  useEffect(() => {
+    const wasEnabled = prevTimeModeRef.current;
+    if (!wasEnabled && isTimeModeEnabled) {
+      sessionStartRef.current = Date.now();
+      sessionCountedRef.current = new Set(
+        Object.keys(flashcardSubmissions)
+          .map((key) => Number(key))
+          .filter((index) => flashcardSubmissions[index]),
+      );
+      setSessionStats({ total: 0, correct: 0, incorrect: 0 });
+      setSessionElapsedMs(0);
+    }
+    prevTimeModeRef.current = isTimeModeEnabled;
+  }, [flashcardSubmissions, isTimeModeEnabled]);
+
+  useEffect(() => {
+    if (!timeModeActive) {
+      return;
+    }
+
+    const counted = sessionCountedRef.current;
+    const submittedIndices = Object.keys(flashcardSubmissions)
+      .map((key) => Number(key))
+      .filter((index) => flashcardSubmissions[index]);
+    const newIndices = submittedIndices.filter((index) => !counted.has(index));
+
+    if (newIndices.length === 0) {
+      return;
+    }
+
+    newIndices.forEach((index) => counted.add(index));
+
+    setSessionStats((prev) => {
+      let nextTotal = prev.total;
+      let nextCorrect = prev.correct;
+      let nextIncorrect = prev.incorrect;
+
+      newIndices.forEach((index) => {
+        const card = flashcards.flashcards[index];
+        if (!card) {
+          return;
+        }
+        const result = evaluateFlashcardResult(
+          card,
+          index,
+          flashcards.flashcardSelections,
+          flashcards.flashcardTrueFalseSelections,
+          flashcards.flashcardClozeResponses,
+          flashcards.flashcardSelfGrades,
+        );
+        nextTotal += 1;
+        if (result === "correct") {
+          nextCorrect += 1;
+        } else if (result === "incorrect") {
+          nextIncorrect += 1;
+        }
+      });
+
+      return {
+        total: nextTotal,
+        correct: nextCorrect,
+        incorrect: nextIncorrect,
+      };
+    });
+  }, [
+    flashcardSubmissions,
+    flashcards.flashcardClozeResponses,
+    flashcards.flashcardSelections,
+    flashcards.flashcardSelfGrades,
+    flashcards.flashcardTrueFalseSelections,
+    flashcards.flashcards,
+    timeModeActive,
+  ]);
+
+  useEffect(() => {
+    if (!timeModeActive || !isTimerRunning || !sessionStartRef.current) {
+      return;
+    }
+    setSessionElapsedMs(Date.now() - sessionStartRef.current);
+  }, [isTimerRunning, timeModeActive, timeRemaining]);
 
   const handleTimeout = useCallback(() => {
     if (!currentEntry) {
@@ -165,7 +258,7 @@ export const FastFlashcardPage = () => {
     }
     timerRef.current = window.setInterval(() => {
       setTimeRemaining((prev) => {
-        const next = prev === null ? selectedDuration ?? 0 : prev - 1;
+        const next = prev === null ? selectedDuration : prev - 1;
         if (next <= 0) {
           if (timerRef.current !== null) {
             window.clearInterval(timerRef.current);
@@ -277,6 +370,20 @@ export const FastFlashcardPage = () => {
     [handleFlashcardSelfGrade, timeModeActive],
   );
 
+  const sessionAnswered = sessionStats.correct + sessionStats.incorrect;
+  const sessionAccuracy =
+    sessionAnswered > 0
+      ? Math.round((sessionStats.correct / sessionAnswered) * 100)
+      : 0;
+  const sessionScore = sessionStats.correct * 10 - sessionStats.incorrect * 5;
+  const sessionMinutes = sessionElapsedMs / 60000;
+  const sessionPace =
+    sessionMinutes > 0 ? (sessionStats.total / sessionMinutes).toFixed(1) : "0.0";
+  const vaultName = useMemo(
+    () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "ToDoList"),
+    [vault.vaultPath],
+  );
+
   return (
     <div className="fast-flashcard-layout">
       <section className="panel fast-stats-panel">
@@ -367,6 +474,50 @@ export const FastFlashcardPage = () => {
               </div>
             </div>
           </div>
+          <div className="fast-session-section">
+            <div className="fast-section-header">
+              <div>
+                <h3 className="fast-section-title">Session Momentum</h3>
+                <p className="muted">Your progress for the current timer run.</p>
+              </div>
+            </div>
+            <div className="fast-session-grid">
+              <div className="fast-session-card">
+                <span className="label">Cards</span>
+                <span className="fast-session-value">{sessionStats.total}</span>
+                <span className="fast-session-sub">Completed</span>
+              </div>
+              <div className="fast-session-card">
+                <span className="label">Accuracy</span>
+                <span className="fast-session-value">{sessionAccuracy}%</span>
+                <span className="fast-session-sub">
+                  {sessionStats.correct} correct / {sessionStats.incorrect} missed
+                </span>
+              </div>
+              <div className="fast-session-card">
+                <span className="label">Pace</span>
+                <span className="fast-session-value">{sessionPace}</span>
+                <span className="fast-session-sub">cards / min</span>
+              </div>
+              <div className="fast-session-card">
+                <span className="label">Score</span>
+                <span className="fast-session-value">{sessionScore}</span>
+                <span className="fast-session-sub">+10 / -5</span>
+              </div>
+            </div>
+          </div>
+          <div className="fast-vault-block">
+            <span className="label">AKTIVER VAULT</span>
+            <div className="fast-vault-list">
+              <span className="fast-vault-line">Vault: {vaultName}</span>
+              <span className="fast-vault-line">
+                Cards loaded: {flashcards.flashcards.length}
+              </span>
+              <span className="fast-vault-line">
+                Filtered cards: {flashcards.filteredFlashcardCount}
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -398,6 +549,10 @@ export const FastFlashcardPage = () => {
                       selectedDuration === duration ? "active" : ""
                     }`}
                     aria-pressed={selectedDuration === duration}
+                    disabled={isTimeModeEnabled}
+                    title={
+                      isTimeModeEnabled ? "Stop timer to change duration" : undefined
+                    }
                     onClick={() => setSelectedDuration(duration)}
                   >
                     {duration}s

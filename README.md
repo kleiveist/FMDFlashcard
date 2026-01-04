@@ -63,7 +63,12 @@ python3 tools/control.py --doctor
 cd ~/Projects/FMDFlashcard
 # installation / setup
 python3 tools/control.py --install
-
-# start (dev)
-# python3 tools/control.py --start
+```
+### 5) tauri
+```bash
+python3 tools/control.py --tauri
+```
+### 6) start
+```bash
+python3 tools/control.py --start
 ```
