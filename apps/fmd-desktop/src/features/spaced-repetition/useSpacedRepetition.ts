@@ -976,6 +976,7 @@ export const useSpacedRepetition = ({
     spacedRepetitionPageCount,
     spacedRepetitionPageSize,
     spacedRepetitionPageStart,
+    spacedRepetitionCardStates,
     spacedRepetitionProgressStats,
     spacedRepetitionRepetitionStrength,
     spacedRepetitionSelectedUserId,

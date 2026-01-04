@@ -1703,6 +1703,29 @@ body.focus-mode .sr-stats-panel {
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 10px 6px 8px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.sr-box-column:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 3px;
+}
+
+.sr-box-column.active {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent-border);
 }
 
 .sr-box-count {

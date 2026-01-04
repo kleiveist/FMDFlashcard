@@ -22,6 +22,11 @@ import {
   SPACED_REPETITION_BOXES,
   SPACED_REPETITION_PAGE_SIZES,
 } from "../features/spaced-repetition/useSpacedRepetition";
+import {
+  getFlashcardId,
+  getSpacedRepetitionEffectiveBox,
+  normalizeSpacedRepetitionCardProgress,
+} from "../features/spaced-repetition/logic";
 
 const isEditableTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) {
@@ -42,6 +47,7 @@ export const SpacedRepetitionPage = () => {
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
   const statsView = spacedRepetition.spacedRepetitionStatsView;
   const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
   const vaultName = useMemo(
@@ -75,6 +81,46 @@ export const SpacedRepetitionPage = () => {
     [spacedRepetition.spacedRepetitionCorrectPercent],
   );
   const maxBoxCount = Math.max(...spacedRepetition.spacedRepetitionBoxCounts, 0);
+  const visibleFlashcardEntries = useMemo(
+    () =>
+      spacedRepetition.spacedRepetitionVisibleFlashcards.map((card, localIndex) => ({
+        card,
+        cardIndex: spacedRepetition.spacedRepetitionPageStart + localIndex,
+      })),
+    [
+      spacedRepetition.spacedRepetitionPageStart,
+      spacedRepetition.spacedRepetitionVisibleFlashcards,
+    ],
+  );
+  const filteredFlashcardEntries = useMemo(() => {
+    if (
+      activeBoxFilter === null ||
+      statsView !== "boxes" ||
+      !spacedRepetition.spacedRepetitionCardStates
+    ) {
+      return visibleFlashcardEntries;
+    }
+    return visibleFlashcardEntries.filter(({ card }) => {
+      const cardId = getFlashcardId(card);
+      const progress =
+        spacedRepetition.spacedRepetitionCardStates[cardId] ?? null;
+      const normalized = normalizeSpacedRepetitionCardProgress(progress);
+      const effectiveBox = getSpacedRepetitionEffectiveBox(
+        normalized,
+        spacedRepetition.spacedRepetitionBoxes,
+      );
+      return effectiveBox === activeBoxFilter;
+    });
+  }, [
+    activeBoxFilter,
+    statsView,
+    spacedRepetition.spacedRepetitionBoxes,
+    spacedRepetition.spacedRepetitionCardStates,
+    visibleFlashcardEntries,
+  ]);
+  const toggleBoxFilter = useCallback((boxNumber: number) => {
+    setActiveBoxFilter((prev) => (prev === boxNumber ? null : boxNumber));
+  }, []);
 
   const kpiItems = [
     { label: "Correct", value: spacedRepetition.spacedRepetitionCorrectCount },
@@ -417,15 +463,23 @@ export const SpacedRepetitionPage = () => {
                         "--bar-height":
                           count > 0 ? `${Math.max(heightPercent, 6)}%` : "0%",
                       } as CSSProperties;
+                      const boxNumber = index + 1;
+                      const isFilterActive = activeBoxFilter === boxNumber;
 
                       return (
-                        <div key={`box-${index + 1}`} className="sr-box-column">
+                        <button
+                          key={`box-${boxNumber}`}
+                          type="button"
+                          className={`sr-box-column ${isFilterActive ? "active" : ""}`}
+                          aria-pressed={isFilterActive}
+                          onClick={() => toggleBoxFilter(boxNumber)}
+                        >
                           <span className="sr-box-count">{count}</span>
                           <div className="sr-box-bar" style={barStyle}>
                             <div className="sr-box-bar-fill" />
                           </div>
-                          <span className="sr-box-label">{index + 1}</span>
-                        </div>
+                          <span className="sr-box-label">{boxNumber}</span>
+                        </button>
                       );
                     })}
                   </div>
@@ -655,13 +709,20 @@ export const SpacedRepetitionPage = () => {
           </div>
         </div>
         <div className="panel-body">
-          {spacedRepetition.spacedRepetitionFlashcards.length === 0 ? (
-            <div className="empty-state">{spacedRepetition.spacedRepetitionEmptyState}</div>
+          {filteredFlashcardEntries.length === 0 ? (
+            <div className="empty-state">
+              {spacedRepetition.spacedRepetitionFlashcards.length === 0
+                ? spacedRepetition.spacedRepetitionEmptyState
+                : activeBoxFilter !== null && statsView === "boxes"
+                  ? `No cards currently in box ${activeBoxFilter}.`
+                  : spacedRepetition.spacedRepetitionEmptyState}
+            </div>
           ) : (
             <div className="flashcard-list">
-              {spacedRepetition.spacedRepetitionVisibleFlashcards.map((card, localIndex) => {
-                const cardIndex = spacedRepetition.spacedRepetitionPageStart + localIndex;
-                const submitted = !!spacedRepetition.spacedRepetitionSubmissions[cardIndex];
+              {filteredFlashcardEntries.map(({ card, cardIndex }) => {
+                const submitted = !!spacedRepetition.spacedRepetitionSubmissions[
+                  cardIndex
+                ];
 
                 if (card.kind === "cloze") {
                   return (
