@@ -87,18 +87,20 @@ export const SidebarNav = ({
             <button
               type="button"
               className={`nav-item ${
+                activeTab === "fast-flashcard" ? "active" : ""
+              }`}
+              onClick={() => onTabChange("fast-flashcard")}
+            >
+              Fast Flashcard
+            </button>
+            <button
+              type="button"
+              className={`nav-item ${
                 activeTab === "spaced-repetition" ? "active" : ""
               }`}
               onClick={() => onTabChange("spaced-repetition")}
             >
               Spaced Repetition
-            </button>
-            <button
-              type="button"
-              className={`nav-item ${activeTab === "fast-flashcard" ? "active" : ""}`}
-              onClick={() => onTabChange("fast-flashcard")}
-            >
-              Fast Flashcard
             </button>
             <button
               type="button"

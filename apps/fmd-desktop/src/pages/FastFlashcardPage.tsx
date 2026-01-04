@@ -15,7 +15,7 @@ import { useAppState } from "../components/AppStateProvider";
 import { evaluateFlashcardResult } from "../features/flashcards/logic";
 
 const fastFlashcardStatusLabel = "Not scanned yet";
-const FAST_FLASHCARD_DURATIONS = [6, 12, 24];
+const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
 
 export const FastFlashcardPage = () => {
   const { flashcards } = useAppState();
@@ -26,7 +26,7 @@ export const FastFlashcardPage = () => {
   } = flashcards;
   const [fastCardPosition, setFastCardPosition] = useState(0);
   const [isTimeModeEnabled, setIsTimeModeEnabled] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
+  const [selectedDuration, setSelectedDuration] = useState<number>(6);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const timerRef = useRef<number | null>(null);
 
@@ -39,7 +39,7 @@ export const FastFlashcardPage = () => {
   const statsCorrect = flashcards.correctCount;
   const statsIncorrect = flashcards.incorrectCount;
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
-  const timeModeActive = isTimeModeEnabled && selectedDuration !== null;
+  const timeModeActive = isTimeModeEnabled;
   const isCurrentSubmitted =
     currentCardIndex !== undefined &&
     Boolean(flashcardSubmissions[currentCardIndex]);
@@ -89,12 +89,16 @@ export const FastFlashcardPage = () => {
     [correctPercent],
   );
 
-  const timeProgress = isTimerRunning && selectedDuration
-    ? Math.max(
-        0,
-        Math.min(1, (timeRemaining ?? selectedDuration) / selectedDuration),
-      )
+  const remainingSeconds = Math.max(0, timeRemaining ?? selectedDuration);
+  const timeProgress = timeModeActive
+    ? isTimerRunning
+      ? Math.max(0, Math.min(1, remainingSeconds / selectedDuration))
+      : 1
     : 0;
+
+  const timeStatusLabel = timeModeActive
+    ? `Remaining: ${remainingSeconds}s`
+    : "Inactive";
 
   const timeProgressStyle = useMemo(
     () =>
@@ -285,26 +289,54 @@ export const FastFlashcardPage = () => {
         <div className="panel-body">
           <div className="fast-stats-switch">
             <span className="label">View</span>
-            <div className="pill-grid">
-              <button
-                type="button"
-                className="pill pill-button active"
-                aria-pressed="true"
-              >
-                Time
-              </button>
-            </div>
+            <button
+              type="button"
+              className={`timer-start-button ${isTimeModeEnabled ? "active" : ""}`}
+              onClick={handleTimeToggle}
+              aria-pressed={isTimeModeEnabled}
+            >
+              <span className="timer-start-icon" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="7.5" />
+                  <path d="M12 7.5v4.4l2.8 1.8" />
+                </svg>
+              </span>
+              <span className="timer-start-text">
+                <span className="timer-start-meta">Time</span>
+                <span className="timer-start-action">
+                  {isTimeModeEnabled ? "Stop" : "Start"}
+                </span>
+              </span>
+            </button>
           </div>
           <div className="fast-stats-blocks">
             <div className="fast-time-block">
               <div className="fast-block-header">
                 <span className="label">Time</span>
+                <span
+                  className={`fast-time-status ${
+                    timeModeActive ? "active" : "inactive"
+                  }`}
+                >
+                  {timeStatusLabel}
+                </span>
               </div>
               <div
                 className="fast-time-meter"
                 style={timeProgressStyle}
                 aria-hidden="true"
               />
+              <div className="fast-time-scale">
+                <span>0s</span>
+                <span>{selectedDuration}s</span>
+              </div>
             </div>
             <div className="fast-stats-block">
               <div className="fast-stats-block-header">
@@ -356,30 +388,7 @@ export const FastFlashcardPage = () => {
           </button>
           <div className="flashcard-controls">
             <div className="toolbar-section">
-              <span className="label">TIMER</span>
-              <button
-                type="button"
-                className={`timer-start-button ${
-                  isTimeModeEnabled ? "active" : ""
-                }`}
-                onClick={handleTimeToggle}
-                aria-pressed={isTimeModeEnabled}
-              >
-                <span className="timer-start-icon" aria-hidden="true">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="7.5" />
-                    <path d="M12 7.5v4.4l2.8 1.8" />
-                  </svg>
-                </span>
-                <span>{isTimeModeEnabled ? "Stop" : "Start"}</span>
-              </button>
+              <span className="label">Duration</span>
               <div className="pill-grid">
                 {FAST_FLASHCARD_DURATIONS.map((duration) => (
                   <button
