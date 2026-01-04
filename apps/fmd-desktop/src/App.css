@@ -718,18 +718,19 @@ body.focus-mode .spaced-repetition-layout {
 
 body.focus-mode .flashcard-panel {
   width: 100%;
-  max-width: min(1200px, 92vw);
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   justify-self: stretch;
 }
 
 body.focus-mode .sr-flashcards-panel {
   width: 100%;
-  max-width: 920px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
 }
 
-body.focus-mode .flashcard-panel img {
+body.focus-mode .flashcard-panel img,
+body.focus-mode .sr-flashcards-panel img {
   max-width: 100%;
   height: auto;
   display: block;
