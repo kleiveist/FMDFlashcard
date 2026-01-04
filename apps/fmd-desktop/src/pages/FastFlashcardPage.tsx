@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type DragEvent,
 } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { CompositeCard } from "../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../components/flashcards/FreeTextCard";
@@ -18,6 +19,51 @@ import { vaultBaseName } from "../lib/path";
 
 const fastFlashcardStatusLabel = "Not scanned yet";
 const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
+
+type FastFlashcardSessionSummary = {
+  id: string;
+  endedAt: string;
+  score: number;
+  correct: number;
+  incorrect: number;
+  total: number;
+  accuracy: number;
+  pace: number;
+  durationMs: number;
+};
+
+type FastFlashcardStorage = {
+  sessions: FastFlashcardSessionSummary[];
+};
+
+const buildSessionId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const getSessionTimeValue = (value: string) => {
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const formatSessionTimestamp = (value: string) => {
+  const timestamp = getSessionTimeValue(value);
+  if (!timestamp) {
+    return value;
+  }
+  return new Date(timestamp).toLocaleString("en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatSessionPace = (pace: number) =>
+  Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
 export const FastFlashcardPage = () => {
   const { flashcards, vault } = useAppState();
@@ -36,8 +82,14 @@ export const FastFlashcardPage = () => {
     incorrect: 0,
   });
   const [sessionElapsedMs, setSessionElapsedMs] = useState(0);
+  const [sessionHistory, setSessionHistory] = useState<
+    FastFlashcardSessionSummary[]
+  >([]);
+  const [sessionHistoryLoaded, setSessionHistoryLoaded] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const sessionTimerRef = useRef<number | null>(null);
   const sessionStartRef = useRef<number | null>(null);
+  const sessionBaselineRef = useRef<Set<number>>(new Set());
   const sessionCountedRef = useRef<Set<number>>(new Set());
   const prevTimeModeRef = useRef(false);
 
@@ -46,9 +98,9 @@ export const FastFlashcardPage = () => {
   const currentCardIndex = currentEntry?.cardIndex;
   const hasScannedCards = flashcards.flashcards.length > 0;
   const hasFilteredCards = orderedEntries.length > 0;
-  const statsTotal = flashcards.filteredFlashcardCount;
   const statsCorrect = flashcards.correctCount;
   const statsIncorrect = flashcards.incorrectCount;
+  const statsTotal = statsCorrect + statsIncorrect;
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
   const timeModeActive = isTimeModeEnabled;
   const isCurrentSubmitted =
@@ -124,6 +176,47 @@ export const FastFlashcardPage = () => {
   );
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadSessions = async () => {
+      try {
+        const storage = await invoke<FastFlashcardStorage>(
+          "load_fast_flashcard_data",
+        );
+        if (cancelled) {
+          return;
+        }
+        const sessions = Array.isArray(storage?.sessions) ? storage.sessions : [];
+        setSessionHistory(sessions);
+      } catch (error) {
+        console.warn("Failed to load fast flashcard sessions", error);
+      } finally {
+        if (!cancelled) {
+          setSessionHistoryLoaded(true);
+        }
+      }
+    };
+
+    void loadSessions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sessionHistoryLoaded) {
+      return;
+    }
+    const storage: FastFlashcardStorage = {
+      sessions: sessionHistory,
+    };
+    void invoke("save_fast_flashcard_data", { storage }).catch((error) => {
+      console.warn("Failed to save fast flashcard sessions", error);
+    });
+  }, [sessionHistory, sessionHistoryLoaded]);
+
+  useEffect(() => {
     if (fastCardPosition < orderedEntries.length) {
       return;
     }
@@ -142,11 +235,13 @@ export const FastFlashcardPage = () => {
     const wasEnabled = prevTimeModeRef.current;
     if (!wasEnabled && isTimeModeEnabled) {
       sessionStartRef.current = Date.now();
-      sessionCountedRef.current = new Set(
+      const baseline = new Set(
         Object.keys(flashcardSubmissions)
           .map((key) => Number(key))
           .filter((index) => flashcardSubmissions[index]),
       );
+      sessionBaselineRef.current = new Set(baseline);
+      sessionCountedRef.current = baseline;
       setSessionStats({ total: 0, correct: 0, incorrect: 0 });
       setSessionElapsedMs(0);
     }
@@ -189,10 +284,11 @@ export const FastFlashcardPage = () => {
           flashcards.flashcardSelfGrades,
           flashcards.flashcardCompositeStates,
         );
-        nextTotal += 1;
         if (result === "correct") {
+          nextTotal += 1;
           nextCorrect += 1;
         } else if (result === "incorrect") {
+          nextTotal += 1;
           nextIncorrect += 1;
         }
       });
@@ -215,11 +311,34 @@ export const FastFlashcardPage = () => {
   ]);
 
   useEffect(() => {
-    if (!timeModeActive || !isTimerRunning || !sessionStartRef.current) {
+    if (!timeModeActive || !sessionStartRef.current) {
+      if (sessionTimerRef.current !== null) {
+        window.clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
       return;
     }
-    setSessionElapsedMs(Date.now() - sessionStartRef.current);
-  }, [isTimerRunning, timeModeActive, timeRemaining]);
+
+    const updateElapsed = () => {
+      if (!sessionStartRef.current) {
+        return;
+      }
+      setSessionElapsedMs(Date.now() - sessionStartRef.current);
+    };
+
+    updateElapsed();
+    if (sessionTimerRef.current !== null) {
+      window.clearInterval(sessionTimerRef.current);
+    }
+    sessionTimerRef.current = window.setInterval(updateElapsed, 1000);
+
+    return () => {
+      if (sessionTimerRef.current !== null) {
+        window.clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
+      }
+    };
+  }, [timeModeActive]);
 
   const handleTimeout = useCallback(() => {
     if (!currentEntry) {
@@ -232,15 +351,11 @@ export const FastFlashcardPage = () => {
         handleFlashcardSubmit(currentEntry.cardIndex, true);
       }
     }
-    setFastCardPosition((prev) =>
-      Math.min(prev + 1, Math.max(orderedEntries.length - 1, 0)),
-    );
   }, [
     currentEntry,
     flashcardSubmissions,
     handleFlashcardSelfGrade,
     handleFlashcardSubmit,
-    orderedEntries.length,
   ]);
 
   useEffect(() => {
@@ -421,9 +536,85 @@ export const FastFlashcardPage = () => {
     [flashcards],
   );
 
+  const finalizeSession = useCallback(() => {
+    if (!sessionStartRef.current) {
+      return;
+    }
+    const baseline = sessionBaselineRef.current;
+    const submittedIndices = Object.keys(flashcardSubmissions)
+      .map((key) => Number(key))
+      .filter((index) => flashcardSubmissions[index])
+      .filter((index) => !baseline.has(index));
+    if (submittedIndices.length === 0) {
+      return;
+    }
+
+    let correct = 0;
+    let incorrect = 0;
+    submittedIndices.forEach((index) => {
+      const card = flashcards.flashcards[index];
+      if (!card) {
+        return;
+      }
+      const result = evaluateFlashcardResult(
+        card,
+        index,
+        flashcards.flashcardSelections,
+        flashcards.flashcardTrueFalseSelections,
+        flashcards.flashcardClozeResponses,
+        flashcards.flashcardSelfGrades,
+        flashcards.flashcardCompositeStates,
+      );
+      if (result === "correct") {
+        correct += 1;
+      } else if (result === "incorrect") {
+        incorrect += 1;
+      }
+    });
+
+    const total = correct + incorrect;
+    if (total === 0) {
+      return;
+    }
+    const durationMs = Math.max(0, Date.now() - sessionStartRef.current);
+    const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const pace =
+      durationMs > 0 ? Number((total / (durationMs / 60000)).toFixed(1)) : 0;
+    const score = correct * 10 - incorrect * 5;
+
+    setSessionElapsedMs(durationMs);
+    setSessionHistory((prev) => [
+      ...prev,
+      {
+        id: buildSessionId(),
+        endedAt: new Date().toISOString(),
+        score,
+        correct,
+        incorrect,
+        total,
+        accuracy,
+        pace,
+        durationMs,
+      },
+    ]);
+  }, [
+    flashcardSubmissions,
+    flashcards.flashcardClozeResponses,
+    flashcards.flashcardCompositeStates,
+    flashcards.flashcardSelections,
+    flashcards.flashcardSelfGrades,
+    flashcards.flashcardTrueFalseSelections,
+    flashcards.flashcards,
+  ]);
+
   const handleTimeToggle = useCallback(() => {
-    setIsTimeModeEnabled((prev) => !prev);
-  }, []);
+    setIsTimeModeEnabled((prev) => {
+      if (prev) {
+        finalizeSession();
+      }
+      return !prev;
+    });
+  }, [finalizeSession]);
 
   const handleFastSubmit = useCallback(
     (cardIndex: number, canSubmit: boolean) => {
@@ -458,6 +649,21 @@ export const FastFlashcardPage = () => {
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "ToDoList"),
     [vault.vaultPath],
   );
+  const lastSessions = useMemo(() => {
+    return [...sessionHistory]
+      .sort((a, b) => getSessionTimeValue(b.endedAt) - getSessionTimeValue(a.endedAt))
+      .slice(0, 10);
+  }, [sessionHistory]);
+  const topSessions = useMemo(() => {
+    return [...sessionHistory]
+      .sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return getSessionTimeValue(b.endedAt) - getSessionTimeValue(a.endedAt);
+      })
+      .slice(0, 3);
+  }, [sessionHistory]);
 
   return (
     <div className="fast-flashcard-layout">
@@ -707,6 +913,76 @@ export const FastFlashcardPage = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="panel fast-history-panel fast-history-panel-recent">
+        <div className="panel-header">
+          <div>
+            <h2>Last 10 Sessions</h2>
+            <p className="muted">Most recent timer runs.</p>
+          </div>
+        </div>
+        <div className="panel-body">
+          {lastSessions.length === 0 ? (
+            <div className="empty-state">No sessions yet.</div>
+          ) : (
+            <div className="fast-session-table">
+              <div className="fast-session-row header">
+                <span className="fast-session-cell timestamp">Date/Time</span>
+                <span className="fast-session-cell">Score</span>
+                <span className="fast-session-cell">Accuracy</span>
+                <span className="fast-session-cell">Pace</span>
+              </div>
+              {lastSessions.map((session) => (
+                <div key={session.id} className="fast-session-row">
+                  <span className="fast-session-cell timestamp">
+                    {formatSessionTimestamp(session.endedAt)}
+                  </span>
+                  <span className="fast-session-cell">{session.score}</span>
+                  <span className="fast-session-cell">{session.accuracy}%</span>
+                  <span className="fast-session-cell">
+                    {formatSessionPace(session.pace)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="panel fast-history-panel fast-history-panel-top">
+        <div className="panel-header">
+          <div>
+            <h2>Top 3 Sessions</h2>
+            <p className="muted">Highest scores so far.</p>
+          </div>
+        </div>
+        <div className="panel-body">
+          {topSessions.length === 0 ? (
+            <div className="empty-state">No sessions yet.</div>
+          ) : (
+            <div className="fast-session-table">
+              <div className="fast-session-row header">
+                <span className="fast-session-cell timestamp">Date/Time</span>
+                <span className="fast-session-cell">Score</span>
+                <span className="fast-session-cell">Accuracy</span>
+                <span className="fast-session-cell">Pace</span>
+              </div>
+              {topSessions.map((session) => (
+                <div key={session.id} className="fast-session-row">
+                  <span className="fast-session-cell timestamp">
+                    {formatSessionTimestamp(session.endedAt)}
+                  </span>
+                  <span className="fast-session-cell">{session.score}</span>
+                  <span className="fast-session-cell">{session.accuracy}%</span>
+                  <span className="fast-session-cell">
+                    {formatSessionPace(session.pace)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

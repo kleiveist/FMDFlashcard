@@ -73,6 +73,26 @@ struct SpacedRepetitionStorage {
     last_active_user_id: Option<String>,
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct FastFlashcardSession {
+    id: String,
+    ended_at: String,
+    score: i32,
+    correct: u32,
+    incorrect: u32,
+    total: u32,
+    accuracy: f32,
+    pace: f32,
+    duration_ms: u64,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct FastFlashcardStorage {
+    sessions: Vec<FastFlashcardSession>,
+}
+
 impl AppSettings {
     fn is_empty(&self) -> bool {
         self.vault_path.is_none()
@@ -126,6 +146,13 @@ fn spaced_repetition_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map(|dir| dir.join("spaced_repetition.json"))
 }
 
+fn fast_flashcard_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map_err(|err| err.to_string())
+        .map(|dir| dir.join("fast_flashcard.json"))
+}
+
 fn read_settings(path: &Path) -> Result<AppSettings, String> {
     if !path.exists() {
         return Ok(AppSettings::default());
@@ -166,6 +193,30 @@ fn read_spaced_repetition_data(path: &Path) -> Result<SpacedRepetitionStorage, S
 fn write_spaced_repetition_data(
     path: &Path,
     storage: &SpacedRepetitionStorage,
+) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+
+    let data = serde_json::to_string_pretty(storage).map_err(|err| err.to_string())?;
+    fs::write(path, data).map_err(|err| err.to_string())
+}
+
+fn read_fast_flashcard_data(path: &Path) -> Result<FastFlashcardStorage, String> {
+    if !path.exists() {
+        return Ok(FastFlashcardStorage::default());
+    }
+
+    let data = fs::read_to_string(path).map_err(|err| err.to_string())?;
+    match serde_json::from_str(&data) {
+        Ok(storage) => Ok(storage),
+        Err(_) => Ok(FastFlashcardStorage::default()),
+    }
+}
+
+fn write_fast_flashcard_data(
+    path: &Path,
+    storage: &FastFlashcardStorage,
 ) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|err| err.to_string())?;
@@ -242,6 +293,21 @@ fn save_spaced_repetition_data(
 ) -> Result<(), String> {
     let path = spaced_repetition_path(&app)?;
     write_spaced_repetition_data(&path, &storage)
+}
+
+#[tauri::command]
+fn load_fast_flashcard_data(app: tauri::AppHandle) -> Result<FastFlashcardStorage, String> {
+    let path = fast_flashcard_path(&app)?;
+    read_fast_flashcard_data(&path)
+}
+
+#[tauri::command]
+fn save_fast_flashcard_data(
+    app: tauri::AppHandle,
+    storage: FastFlashcardStorage,
+) -> Result<(), String> {
+    let path = fast_flashcard_path(&app)?;
+    write_fast_flashcard_data(&path, &storage)
 }
 
 #[tauri::command]
@@ -334,6 +400,8 @@ pub fn run() {
             save_app_settings,
             load_spaced_repetition_data,
             save_spaced_repetition_data,
+            load_fast_flashcard_data,
+            save_fast_flashcard_data,
             load_vault_path,
             save_vault_path,
             list_markdown_files,

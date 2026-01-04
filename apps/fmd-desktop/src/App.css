@@ -696,7 +696,7 @@ h2 {
 .fast-flashcard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   gap: 24px;
   align-items: start;
 }
@@ -755,7 +755,19 @@ body.focus-mode .sr-flashcards-panel {
 
 .fast-flashcard-panel {
   grid-column: 1;
+  grid-row: 2 / span 2;
+}
+
+.fast-history-panel {
+  grid-column: 2;
+}
+
+.fast-history-panel-recent {
   grid-row: 2;
+}
+
+.fast-history-panel-top {
+  grid-row: 3;
 }
 
 body.focus-mode .flashcard-panel img,
@@ -1599,6 +1611,35 @@ body.focus-mode .sr-stats-panel {
 
 .fast-vault-line {
   color: var(--ink);
+}
+
+.fast-session-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fast-session-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 0.7fr));
+  gap: 8px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.fast-session-row.header {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.fast-session-cell {
+  text-align: right;
+}
+
+.fast-session-cell.timestamp {
+  text-align: left;
 }
 
 .stats-counters {
@@ -2847,7 +2888,7 @@ body.focus-mode .sr-stats-panel {
 
   .fast-flashcard-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
   }
 
   .fast-stats-panel {
@@ -2860,13 +2901,23 @@ body.focus-mode .sr-stats-panel {
     grid-row: 2;
   }
 
+  .fast-history-panel-recent {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .fast-history-panel-top {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
   .fast-session-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 
   .fast-flashcard-panel {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 5;
   }
 
   .fast-stats-blocks {
