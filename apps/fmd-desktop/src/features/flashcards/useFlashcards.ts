@@ -22,8 +22,8 @@ export type FlashcardMode =
   | "qa"
   | "multiple-choice"
   | "mix"
-  | "cloze"
-  | "matching"
+  | "fill-blank"
+  | "assignment"
   | "true-false"
   | "yes-no";
 export type FlashcardScope = "current" | "vault";
@@ -55,7 +55,16 @@ const getPrimaryTypeFromKind = (card: Flashcard): FlashcardDetectedType => {
     return "true-false";
   }
   if (card.kind === "cloze") {
-    return "cloze";
+    const hasInputBlank = card.segments.some(
+      (segment) => segment.type === "blank" && segment.kind === "input",
+    );
+    const hasDragBlank = card.segments.some(
+      (segment) => segment.type === "blank" && segment.kind === "drag",
+    );
+    if (hasDragBlank && !hasInputBlank) {
+      return "assignment";
+    }
+    return "fill-blank";
   }
   return "qa";
 };
@@ -64,6 +73,24 @@ const getDetectedTypes = (card: Flashcard): FlashcardDetectedType[] => {
   const detected = card.detectedTypes;
   if (detected && detected.length > 0) {
     return detected;
+  }
+  if (card.kind === "cloze") {
+    const types: FlashcardDetectedType[] = [];
+    const hasInputBlank = card.segments.some(
+      (segment) => segment.type === "blank" && segment.kind === "input",
+    );
+    const hasDragBlank = card.segments.some(
+      (segment) => segment.type === "blank" && segment.kind === "drag",
+    );
+    if (hasInputBlank) {
+      types.push("fill-blank");
+    }
+    if (hasDragBlank) {
+      types.push("assignment");
+    }
+    if (types.length > 0) {
+      return types;
+    }
   }
   return [card.primaryType ?? getPrimaryTypeFromKind(card)];
 };
@@ -74,7 +101,7 @@ const matchesFlashcardMode = (card: Flashcard, mode: FlashcardMode) => {
     return true;
   }
   const detectedTypes = getDetectedTypes(card);
-  const isMix = detectedTypes.length > 1;
+  const isMix = card.isMixed ?? detectedTypes.length >= 2;
   if (resolvedMode === "mix") {
     return isMix;
   }

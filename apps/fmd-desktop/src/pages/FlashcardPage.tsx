@@ -434,10 +434,10 @@ export const FlashcardPage = () => {
                     <option value="all">All</option>
                     <option value="qa">Q&amp;A</option>
                     <option value="multiple-choice">Multiple Choice</option>
-                    <option value="mix">Mix</option>
-                    <option value="cloze">Cloze</option>
-                    <option value="matching">Matching</option>
+                    <option value="fill-blank">Fill-in-the-blank</option>
+                    <option value="assignment">Assignment</option>
                     <option value="true-false">True/False</option>
+                    <option value="mix">Mix</option>
                   </select>
                 </div>
                 <div className="toolbar-section">

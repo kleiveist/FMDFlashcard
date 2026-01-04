@@ -71,13 +71,14 @@ export type ClozeCard = {
 export type FlashcardDetectedType =
   | "qa"
   | "multiple-choice"
-  | "cloze"
-  | "matching"
+  | "fill-blank"
+  | "assignment"
   | "true-false";
 
 export type FlashcardMetadata = {
   primaryType?: FlashcardDetectedType;
   detectedTypes?: FlashcardDetectedType[];
+  isMixed?: boolean;
 };
 
 export type Flashcard = (MultipleChoiceCard | FreeTextCard | TrueFalseCard | ClozeCard) &
@@ -434,12 +435,27 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
     }
 
     const parsed = parseClozeSegments(clozeLines);
-    const hasBlanks = parsed
-      ? parsed.segments.some((segment) => segment.type === "blank")
-      : false;
-    if (hasBlanks) {
-      pushUnique(detectedTypes, "cloze");
+    let hasInputBlanks = false;
+    let hasDragBlanks = false;
+    if (parsed) {
+      parsed.segments.forEach((segment) => {
+        if (segment.type !== "blank") {
+          return;
+        }
+        if (segment.kind === "input") {
+          hasInputBlanks = true;
+        } else {
+          hasDragBlanks = true;
+        }
+      });
     }
+    if (hasInputBlanks) {
+      pushUnique(detectedTypes, "fill-blank");
+    }
+    if (hasDragBlanks) {
+      pushUnique(detectedTypes, "assignment");
+    }
+    const isMixed = detectedTypes.length >= 2;
 
     if (options.length > 0) {
       cards.push({
@@ -449,6 +465,7 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
         correctKeys,
         primaryType: "multiple-choice",
         detectedTypes,
+        isMixed,
       });
       continue;
     }
@@ -459,6 +476,7 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
         items: trueFalseItems,
         primaryType: "true-false",
         detectedTypes,
+        isMixed,
       });
       continue;
     }
@@ -469,6 +487,7 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
         ...answerCard,
         primaryType: "qa",
         detectedTypes,
+        isMixed,
       });
       continue;
     }
@@ -476,14 +495,16 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
     if (!parsed) {
       continue;
     }
-    if (hasBlanks) {
+    if (hasInputBlanks || hasDragBlanks) {
+      const clozePrimaryType = hasInputBlanks ? "fill-blank" : "assignment";
       cards.push({
         kind: "cloze",
         question,
         segments: parsed.segments,
         dragTokens: parsed.dragTokens,
-        primaryType: "cloze",
+        primaryType: clozePrimaryType,
         detectedTypes,
+        isMixed,
       });
     }
   }

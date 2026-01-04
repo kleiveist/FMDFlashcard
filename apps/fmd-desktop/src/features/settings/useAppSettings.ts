@@ -290,8 +290,8 @@ export const useAppSettings = () => {
           settings.flashcard_mode === "qa" ||
           settings.flashcard_mode === "multiple-choice" ||
           settings.flashcard_mode === "mix" ||
-          settings.flashcard_mode === "cloze" ||
-          settings.flashcard_mode === "matching" ||
+          settings.flashcard_mode === "fill-blank" ||
+          settings.flashcard_mode === "assignment" ||
           settings.flashcard_mode === "true-false"
             ? settings.flashcard_mode
             : settings.flashcard_mode === "yes-no"
