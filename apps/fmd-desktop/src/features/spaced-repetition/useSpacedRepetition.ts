@@ -638,11 +638,15 @@ export const useSpacedRepetition = ({
     setSpacedRepetitionUserError("");
   }, [spacedRepetitionActiveUserId, spacedRepetitionSelectedUserId]);
 
-  const handleSpacedRepetitionActiveUserLoadCards = useCallback(async () => {
+  const handleSpacedRepetitionActiveUserLoadCards = useCallback(async (
+    options?: { boxFilter?: number | null },
+  ) => {
     if (!spacedRepetitionActiveUserId || isFlashcardScanning) {
       return;
     }
     const activeUserId = spacedRepetitionActiveUserId;
+    const boxFilter =
+      typeof options?.boxFilter === "number" ? options.boxFilter : null;
     setIsFlashcardScanning(true);
     try {
       const cards = await scanFlashcards({
@@ -653,15 +657,47 @@ export const useSpacedRepetition = ({
         spacedRepetitionUserStateById[activeUserId]?.cardStates ?? {};
       const storedCompletedPerDay =
         spacedRepetitionUserStateById[activeUserId]?.completedPerDay ?? {};
+      const loadOrder =
+        boxFilter && spacedRepetitionOrder === "repetition"
+          ? "in-order"
+          : spacedRepetitionOrder;
       const nextSession = buildSpacedRepetitionSession(cards, storedCardStates, {
-        order: spacedRepetitionOrder,
+        order: loadOrder,
         boxCount: spacedRepetitionBoxes,
         repetitionStrength: spacedRepetitionRepetitionStrength,
       });
+      const filteredSession =
+        boxFilter === null
+          ? nextSession
+          : (() => {
+              const entries = nextSession.flashcards.map((card, index) => {
+                const cardId = nextSession.cardIds[index] ?? getFlashcardId(card);
+                const progress = normalizeSpacedRepetitionCardProgress(
+                  nextSession.cardProgressById[cardId],
+                );
+                return {
+                  card,
+                  cardId,
+                  effectiveBox: getSpacedRepetitionEffectiveBox(
+                    progress,
+                    spacedRepetitionBoxes,
+                  ),
+                };
+              });
+              const filteredEntries = entries.filter(
+                (entry) => entry.effectiveBox === boxFilter,
+              );
+              return {
+                ...nextSession,
+                flashcards: filteredEntries.map((entry) => entry.card),
+                cardIds: filteredEntries.map((entry) => entry.cardId),
+                page: 0,
+              };
+            })();
       setSpacedRepetitionSessions((prev) => ({
         ...prev,
         [activeUserId]: {
-          ...nextSession,
+          ...filteredSession,
           completedPerDay: storedCompletedPerDay,
         },
       }));

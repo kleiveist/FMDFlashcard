@@ -54,6 +54,10 @@ export const SpacedRepetitionPage = () => {
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
   );
+  const showBoxEmptyMessage =
+    statsView === "boxes" &&
+    activeBoxFilter !== null &&
+    Boolean(spacedRepetition.spacedRepetitionActiveUser);
   const selectedUser = useMemo(
     () =>
       spacedRepetition.spacedRepetitionUsers.find(
@@ -118,9 +122,16 @@ export const SpacedRepetitionPage = () => {
     spacedRepetition.spacedRepetitionCardStates,
     visibleFlashcardEntries,
   ]);
-  const toggleBoxFilter = useCallback((boxNumber: number) => {
-    setActiveBoxFilter((prev) => (prev === boxNumber ? null : boxNumber));
-  }, []);
+  const toggleBoxFilter = useCallback(
+    (boxNumber: number) => {
+      const nextFilter = activeBoxFilter === boxNumber ? null : boxNumber;
+      setActiveBoxFilter(nextFilter);
+      spacedRepetition.handleSpacedRepetitionActiveUserLoadCards({
+        boxFilter: nextFilter,
+      });
+    },
+    [activeBoxFilter, spacedRepetition],
+  );
 
   const kpiItems = [
     { label: "Correct", value: spacedRepetition.spacedRepetitionCorrectCount },
@@ -711,11 +722,9 @@ export const SpacedRepetitionPage = () => {
         <div className="panel-body">
           {filteredFlashcardEntries.length === 0 ? (
             <div className="empty-state">
-              {spacedRepetition.spacedRepetitionFlashcards.length === 0
-                ? spacedRepetition.spacedRepetitionEmptyState
-                : activeBoxFilter !== null && statsView === "boxes"
-                  ? `No cards currently in box ${activeBoxFilter}.`
-                  : spacedRepetition.spacedRepetitionEmptyState}
+              {showBoxEmptyMessage
+                ? `No cards currently in box ${activeBoxFilter}.`
+                : spacedRepetition.spacedRepetitionEmptyState}
             </div>
           ) : (
             <div className="flashcard-list">
