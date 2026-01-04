@@ -15,6 +15,7 @@ type ClozeCardProps = {
   cardIndex: number;
   submitted: boolean;
   responses: Record<string, string>;
+  submissionLocked?: boolean;
   onInputChange: (cardIndex: number, blankId: string, value: string) => void;
   onTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -37,6 +38,7 @@ export const ClozeCard = ({
   cardIndex,
   submitted,
   responses,
+  submissionLocked = false,
   onBlankDragOver,
   onInputChange,
   onSubmit,
@@ -205,7 +207,7 @@ export const ClozeCard = ({
           type="button"
           className="ghost small flashcard-submit"
           onClick={() => onSubmit(cardIndex, canSubmit)}
-          disabled={submitted || !canSubmit}
+          disabled={submitted || !canSubmit || submissionLocked}
         >
           Submit
         </button>

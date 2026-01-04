@@ -748,18 +748,13 @@ body.focus-mode .sr-flashcards-panel {
   gap: 16px;
 }
 
-.fast-user-panel {
+.fast-tools-panel {
   grid-column: 2;
   grid-row: 1;
 }
 
 .fast-flashcard-panel {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.fast-tools-panel {
-  grid-column: 2;
+  grid-column: 1 / -1;
   grid-row: 2;
 }
 
@@ -847,43 +842,38 @@ body.focus-mode .sr-stats-panel {
   gap: 12px;
 }
 
-.time-toggle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+.timer-start-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
   border: 1px solid var(--line-soft);
-  background: conic-gradient(
-    var(--accent) 0 var(--fast-time-progress, 0%),
-    var(--line) var(--fast-time-progress, 0%) 100%
-  );
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.timer-start-button:hover {
+  border-color: var(--line);
+}
+
+.timer-start-button.active {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-strong);
+}
+
+.timer-start-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  color: var(--text);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.time-toggle::after {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  background: var(--panel);
-  border: 1px solid var(--line-soft);
-  z-index: 1;
-}
-
-.time-toggle svg {
-  width: 20px;
-  height: 20px;
-  position: relative;
-  z-index: 2;
-}
-
-.time-toggle.active {
-  box-shadow: 0 0 0 3px var(--accent-soft);
-  transform: translateY(-1px);
+.timer-start-icon svg {
+  width: 18px;
+  height: 18px;
 }
 
 .pill-button {
@@ -1456,17 +1446,6 @@ body.focus-mode .sr-stats-panel {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-}
-
-.fast-timer-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.fast-duration-grid {
-  justify-content: flex-end;
 }
 
 .fast-stats-grid {
@@ -2755,7 +2734,7 @@ body.focus-mode .sr-stats-panel {
 
   .fast-flashcard-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto;
   }
 
   .fast-stats-panel {
@@ -2763,7 +2742,7 @@ body.focus-mode .sr-stats-panel {
     grid-row: 1;
   }
 
-  .fast-user-panel {
+  .fast-tools-panel {
     grid-column: 1;
     grid-row: 2;
   }
@@ -2773,19 +2752,8 @@ body.focus-mode .sr-stats-panel {
     grid-row: 3;
   }
 
-  .fast-tools-panel {
-    grid-column: 1;
-    grid-row: 4;
-  }
-
   .fast-stats-blocks {
     grid-template-columns: 1fr;
-  }
-
-  .fast-timer-controls,
-  .fast-duration-grid {
-    align-items: flex-start;
-    justify-content: flex-start;
   }
 
   .spaced-repetition-layout {

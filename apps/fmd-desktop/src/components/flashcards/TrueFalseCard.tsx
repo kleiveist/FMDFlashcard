@@ -10,6 +10,7 @@ type TrueFalseCardProps = {
   cardIndex: number;
   submitted: boolean;
   selections: Record<string, TrueFalseSelection>;
+  submissionLocked?: boolean;
   onSelect: (cardIndex: number, itemId: string, value: TrueFalseSelection) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -19,6 +20,7 @@ export const TrueFalseCard = ({
   cardIndex,
   submitted,
   selections,
+  submissionLocked = false,
   onSelect,
   onSubmit,
 }: TrueFalseCardProps) => {
@@ -92,7 +94,7 @@ export const TrueFalseCard = ({
           type="button"
           className="ghost small flashcard-submit"
           onClick={() => onSubmit(cardIndex, canSubmit)}
-          disabled={submitted || !canSubmit}
+          disabled={submitted || !canSubmit || submissionLocked}
         >
           Submit
         </button>

@@ -8,6 +8,7 @@ type FreeTextCardProps = {
   response: string;
   revealed: boolean;
   selfGrade?: FlashcardSelfGrade;
+  submissionLocked?: boolean;
   onInputChange: (cardIndex: number, value: string) => void;
   onCheck: (cardIndex: number) => void;
   onSelfGrade: (cardIndex: number, grade: FlashcardSelfGrade) => void;
@@ -20,6 +21,7 @@ export const FreeTextCard = ({
   response,
   revealed,
   selfGrade,
+  submissionLocked = false,
   onInputChange,
   onCheck,
   onSelfGrade,
@@ -48,7 +50,7 @@ export const FreeTextCard = ({
             type="button"
             className="ghost small flashcard-submit"
             onClick={() => onCheck(cardIndex)}
-            disabled={!hasInput || submitted}
+            disabled={!hasInput || submitted || submissionLocked}
           >
             Check
           </button>
@@ -58,7 +60,7 @@ export const FreeTextCard = ({
               type="button"
               className="primary small flashcard-submit"
               onClick={() => onSelfGrade(cardIndex, "correct")}
-              disabled={submitted}
+              disabled={submitted || submissionLocked}
             >
               Correct
             </button>
@@ -66,7 +68,7 @@ export const FreeTextCard = ({
               type="button"
               className="ghost small flashcard-submit"
               onClick={() => onSelfGrade(cardIndex, "incorrect")}
-              disabled={submitted}
+              disabled={submitted || submissionLocked}
             >
               Incorrect
             </button>

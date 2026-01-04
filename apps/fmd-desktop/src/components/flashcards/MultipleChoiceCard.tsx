@@ -38,6 +38,7 @@ type MultipleChoiceCardProps = {
   cardIndex: number;
   submitted: boolean;
   selectedKeys: string[];
+  submissionLocked?: boolean;
   onSelect: (cardIndex: number, keys: string[]) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -47,6 +48,7 @@ export const MultipleChoiceCard = ({
   cardIndex,
   submitted,
   selectedKeys,
+  submissionLocked = false,
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
@@ -127,7 +129,7 @@ export const MultipleChoiceCard = ({
           type="button"
           className="ghost small flashcard-submit"
           onClick={() => onSubmit(cardIndex, selectedKeys.length > 0)}
-          disabled={selectedKeys.length === 0 || submitted}
+          disabled={selectedKeys.length === 0 || submitted || submissionLocked}
         >
           Submit
         </button>
