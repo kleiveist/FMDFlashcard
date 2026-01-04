@@ -14,6 +14,7 @@ type HelpExample = {
 type SyntaxDetail = {
   whatItIs: string;
   rules: string[];
+  rulesNote?: string;
   promptTemplate: string;
   example: string;
   mistakes?: string[];
@@ -114,6 +115,8 @@ const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Do not expect --- to start or end a card by itself.",
           "Can be combined with other syntaxes in the same #card block (if desired).",
         ],
+        rulesNote:
+          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Dashboard -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition Tools).",
         promptTemplate: joinLines([
           "Create one flashcard and optionally wrap it with markdown separators.",
           "Return only the #card block (and optional --- lines).",
@@ -152,6 +155,8 @@ const flashcardSyntaxEntries: SyntaxEntry[] = [
           "--- ersetzt keine #card/#-Markierung.",
           "Kann mit anderen Syntaxen im selben #card-Block kombiniert werden (falls gewuenscht).",
         ],
+        rulesNote:
+          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Dashboard -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition Tools).",
         promptTemplate: joinLines([
           "Erstelle eine Karte und umrahme sie optional mit Markdown-Trennlinien.",
           "Antworte nur mit dem #card-Block (und optional ---).",
@@ -804,44 +809,6 @@ const flashcardSyntaxEntries: SyntaxEntry[] = [
 
 const helpTopics: HelpTopic[] = [
   {
-    id: "create-flashcards",
-    title: { en: "Create flashcards", de: "Karteikarten erstellen" },
-    summary: {
-      en: "Define cards in markdown and scan them for review.",
-      de: "Karten in Markdown definieren und fuer die Wiederholung scannen.",
-    },
-    sections: [
-      {
-        id: "create-basics",
-        title: { en: "Basics", de: "Grundlagen" },
-        bullets: [
-          {
-            en: "Wrap each card with #card and #.",
-            de: "Jede Karte mit #card und # umschliessen.",
-          },
-          {
-            en: "The first non-empty line becomes the prompt.",
-            de: "Die erste nicht-leere Zeile ist die Frage.",
-          },
-          {
-            en: "Add options, blanks, or an Answer/Antwort marker inside the block.",
-            de: "Optionen, Luecken oder einen Answer-/Antwort-Marker im Block angeben.",
-          },
-        ],
-      },
-      {
-        id: "create-workflow",
-        title: { en: "Workflow", de: "Workflow" },
-        bullets: [
-          {
-            en: "Dashboard -> select a note -> scan -> review (Flashcard Tools or Spaced Repetition Tools).",
-            de: "Dashboard -> Notiz waehlen -> scannen -> wiederholen (Flashcard Tools oder Spaced Repetition Tools).",
-          },
-        ],
-      },
-    ],
-  },
-  {
     id: "flashcard-syntax",
     title: { en: "Flashcard syntax", de: "Karteikarten-Syntax" },
     summary: {
@@ -1186,6 +1153,23 @@ export const HelpPage = () => {
     setSyntaxLanguage(settings.language);
   }, [activeTopicId, settings.language]);
 
+  useEffect(() => {
+    if (!activeTopicId) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      event.preventDefault();
+      setActiveTopicId(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeTopicId]);
+
   useEffect(
     () => () => {
       if (copyTimeoutRef.current) {
@@ -1344,6 +1328,11 @@ export const HelpPage = () => {
                           <div className="help-syntax-section-header">
                             <span className="label">{syntaxRulesLabel}</span>
                           </div>
+                          {activeSyntax.detail[syntaxLanguage].rulesNote ? (
+                            <p className="help-syntax-text">
+                              {activeSyntax.detail[syntaxLanguage].rulesNote}
+                            </p>
+                          ) : null}
                           <ul className="help-syntax-list">
                             {activeSyntax.detail[syntaxLanguage].rules.map(
                               (rule) => (
