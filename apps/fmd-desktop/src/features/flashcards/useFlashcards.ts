@@ -254,6 +254,15 @@ export const useFlashcards = ({
     return filteredFlashcardIndices;
   }, [filteredFlashcardIndices, flashcardOrder]);
 
+  const orderedFlashcardEntries = useMemo(
+    () =>
+      orderedFlashcardIndices.map((cardIndex) => ({
+        cardIndex,
+        card: flashcards[cardIndex]!,
+      })),
+    [flashcards, orderedFlashcardIndices],
+  );
+
   const flashcardPageCount = useMemo(
     () => Math.ceil(orderedFlashcardIndices.length / resolvedFlashcardPageSize),
     [orderedFlashcardIndices.length, resolvedFlashcardPageSize],
@@ -609,6 +618,7 @@ export const useFlashcards = ({
     solutionRevealEnabled,
     statsResetMode,
     takeSnapshot,
+    orderedFlashcardEntries,
     visibleFlashcardEntries,
     visibleFlashcards,
     correctPercent,

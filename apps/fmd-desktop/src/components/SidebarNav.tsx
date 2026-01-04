@@ -6,6 +6,7 @@ type TabKey =
   | "dashboard"
   | "flashcard"
   | "spaced-repetition"
+  | "fast-flashcard"
   | "help"
   | "settings";
 
@@ -91,6 +92,13 @@ export const SidebarNav = ({
               onClick={() => onTabChange("spaced-repetition")}
             >
               Spaced Repetition
+            </button>
+            <button
+              type="button"
+              className={`nav-item ${activeTab === "fast-flashcard" ? "active" : ""}`}
+              onClick={() => onTabChange("fast-flashcard")}
+            >
+              Fast Flashcard
             </button>
             <button
               type="button"

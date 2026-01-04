@@ -4,6 +4,7 @@ import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { SidebarNav } from "./components/SidebarNav";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
+import { FastFlashcardPage } from "./pages/FastFlashcardPage";
 import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
@@ -12,6 +13,7 @@ type TabKey =
   | "dashboard"
   | "flashcard"
   | "spaced-repetition"
+  | "fast-flashcard"
   | "help"
   | "settings";
 
@@ -58,6 +60,8 @@ const AppContent = () => {
           <FlashcardPage />
         ) : activeTab === "spaced-repetition" ? (
           <SpacedRepetitionPage />
+        ) : activeTab === "fast-flashcard" ? (
+          <FastFlashcardPage />
         ) : activeTab === "help" ? (
           <HelpPage />
         ) : (
