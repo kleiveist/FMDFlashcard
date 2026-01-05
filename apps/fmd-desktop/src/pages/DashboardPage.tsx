@@ -15,7 +15,7 @@ export const DashboardPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
-      return "Kein Vault gewaehlt";
+      return "No vault selected";
     }
     if (vault.files.length === 0) {
       return "Keine Markdown-Dateien";

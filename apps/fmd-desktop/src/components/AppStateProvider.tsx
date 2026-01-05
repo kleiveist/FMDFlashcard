@@ -165,7 +165,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         persist: false,
         clearOnFailure: false,
         errorMessage:
-          "Gespeicherter Vault ist nicht verfuegbar. Bitte neu auswaehlen.",
+          "Saved vault is unavailable. Please reselect.",
       });
       if (!loaded && !cancelled) {
         setVaultPath(null);

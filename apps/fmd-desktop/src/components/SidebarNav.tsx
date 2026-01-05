@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useAppState } from "./AppStateProvider";
 import { vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
-import { CardsIcon, FolderIcon, HelpIcon } from "./icons";
+import { CardsIcon, FolderIcon, PlaceholderIcon } from "./icons";
 
 type TabKey =
   | "dashboard"
@@ -11,6 +11,8 @@ type TabKey =
   | "fast-flashcard"
   | "help"
   | "settings";
+
+type ToolbarMode = "nav" | "vault" | "placeholder";
 
 type SidebarNavProps = {
   activeTab: TabKey;
@@ -26,14 +28,14 @@ export const SidebarNav = ({
   onMobileNavClose,
 }: SidebarNavProps) => {
   const { actions, preview, settings, vault } = useAppState();
-  const [isVaultPanelOpen, setIsVaultPanelOpen] = useState(false);
+  const [toolbarMode, setToolbarMode] = useState<ToolbarMode>("nav");
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
-      return "Kein Vault gewaehlt";
+      return "No vault selected";
     }
     if (vault.files.length === 0) {
       return "Keine Markdown-Dateien";
@@ -43,7 +45,8 @@ export const SidebarNav = ({
     }`;
   }, [vault.files.length, vault.vaultPath]);
   const isCollapsed = settings.rightToolbarCollapsed && !isMobileNavOpen;
-  const isStudyActive =
+  const isNavTab =
+    activeTab === "dashboard" ||
     activeTab === "flashcard" ||
     activeTab === "fast-flashcard" ||
     activeTab === "spaced-repetition";
@@ -71,9 +74,14 @@ export const SidebarNav = ({
               <button
                 type="button"
                 className={`nav-icon sidebar-icon-button ${
-                  isStudyActive ? "active" : ""
+                  toolbarMode === "nav" ? "active" : ""
                 }`}
-                onClick={() => onTabChange("flashcard")}
+                onClick={() => {
+                  setToolbarMode("nav");
+                  if (!isNavTab) {
+                    onTabChange("flashcard");
+                  }
+                }}
                 aria-label="Study flashcards"
                 title="Study"
               >
@@ -82,12 +90,12 @@ export const SidebarNav = ({
               <button
                 type="button"
                 className={`nav-icon sidebar-icon-button ${
-                  isVaultPanelOpen ? "active" : ""
+                  toolbarMode === "vault" ? "active" : ""
                 }`}
-                onClick={() => setIsVaultPanelOpen((prev) => !prev)}
+                onClick={() => setToolbarMode("vault")}
                 aria-label="Vault directory"
                 aria-controls="sidebar-vault-panel"
-                aria-expanded={isVaultPanelOpen}
+                aria-expanded={toolbarMode === "vault"}
                 title="Vault directory"
               >
                 <FolderIcon />
@@ -95,15 +103,19 @@ export const SidebarNav = ({
               <button
                 type="button"
                 className={`nav-icon sidebar-icon-button ${
-                  activeTab === "help" ? "active" : ""
+                  toolbarMode === "placeholder" ? "active" : ""
                 }`}
-                onClick={() => onTabChange("help")}
-                aria-label="Help"
-                title="Help"
+                onClick={() => setToolbarMode("placeholder")}
+                aria-label="Dashboard placeholder"
+                title="Placeholder"
               >
-                <HelpIcon />
+                <PlaceholderIcon />
               </button>
             </div>
+            <div
+              className="sidebar-divider sidebar-divider-muted"
+              aria-hidden="true"
+            />
             <div className="brand">
               <button
                 type="button"
@@ -127,53 +139,43 @@ export const SidebarNav = ({
               </button>
             </div>
           </div>
-          <nav className="nav">
-            <button
-              type="button"
-              className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
-              onClick={() => onTabChange("dashboard")}
-            >
-              Dashboard
-            </button>
-            <button
-              type="button"
-              className={`nav-item ${activeTab === "flashcard" ? "active" : ""}`}
-              onClick={() => onTabChange("flashcard")}
-            >
-              Flashcard
-            </button>
-            <button
-              type="button"
-              className={`nav-item ${
-                activeTab === "fast-flashcard" ? "active" : ""
-              }`}
-              onClick={() => onTabChange("fast-flashcard")}
-            >
-              Fast Flashcard
-            </button>
-            <button
-              type="button"
-              className={`nav-item ${
-                activeTab === "spaced-repetition" ? "active" : ""
-              }`}
-              onClick={() => onTabChange("spaced-repetition")}
-            >
-              Spaced Repetition
-            </button>
-            <button
-              type="button"
-              className={`nav-item nav-item-help ${
-                activeTab === "help" ? "active" : ""
-              }`}
-              onClick={() => onTabChange("help")}
-            >
-              <span>Help</span>
-              <span className="nav-subtext">
-                Quick reminders for this workflow.
-              </span>
-            </button>
-          </nav>
-          {isVaultPanelOpen ? (
+          {toolbarMode === "nav" ? (
+            <nav className="nav">
+              <button
+                type="button"
+                className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
+                onClick={() => onTabChange("dashboard")}
+              >
+                Dashboard
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeTab === "flashcard" ? "active" : ""}`}
+                onClick={() => onTabChange("flashcard")}
+              >
+                Flashcard
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${
+                  activeTab === "fast-flashcard" ? "active" : ""
+                }`}
+                onClick={() => onTabChange("fast-flashcard")}
+              >
+                Fast Flashcard
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${
+                  activeTab === "spaced-repetition" ? "active" : ""
+                }`}
+                onClick={() => onTabChange("spaced-repetition")}
+              >
+                Spaced Repetition
+              </button>
+            </nav>
+          ) : null}
+          {toolbarMode === "vault" ? (
             <div className="sidebar-vault-panel" id="sidebar-vault-panel">
               <VaultTree
                 fileCountLabel={fileCountLabel}
@@ -185,6 +187,20 @@ export const SidebarNav = ({
                 vaultPath={vault.vaultPath}
                 forceOpen
               />
+            </div>
+          ) : null}
+          {toolbarMode === "placeholder" ? (
+            <div className="sidebar-placeholder-panel">
+              <div className="sidebar-card placeholder-card">
+                <div className="placeholder-orbit" aria-hidden="true" />
+                <span className="placeholder-title">Dashboard (Placeholder)</span>
+                <p className="placeholder-copy">
+                  Keep sessions short. Review daily. Trust repetition.
+                </p>
+                <span className="placeholder-hint">
+                  A calm focus hub lands here soon.
+                </span>
+              </div>
             </div>
           ) : null}
           <div className="sidebar-footer">
@@ -200,30 +216,44 @@ export const SidebarNav = ({
                 Vault: {vault.vaultPath ? vaultRootName : "Nicht gesetzt"}
               </span>
             </button>
-            <button
-              type="button"
-              className={`nav-icon ${activeTab === "settings" ? "active" : ""}`}
-              onClick={() => onTabChange("settings")}
-              aria-label="Einstellungen"
-              title="Einstellungen"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="sidebar-footer-actions">
+              <button
+                type="button"
+                className={`nav-item nav-item-help ${
+                  activeTab === "help" ? "active" : ""
+                }`}
+                onClick={() => onTabChange("help")}
               >
-                <line x1="4" y1="6" x2="20" y2="6" />
-                <circle cx="9" cy="6" r="2.5" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <circle cx="14" cy="12" r="2.5" />
-                <line x1="4" y1="18" x2="20" y2="18" />
-                <circle cx="11" cy="18" r="2.5" />
-              </svg>
-            </button>
+                <span>Help</span>
+                <span className="nav-subtext">
+                  Quick reminders for this workflow.
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`nav-icon ${activeTab === "settings" ? "active" : ""}`}
+                onClick={() => onTabChange("settings")}
+                aria-label="Einstellungen"
+                title="Einstellungen"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="4" y1="6" x2="20" y2="6" />
+                  <circle cx="9" cy="6" r="2.5" />
+                  <line x1="4" y1="12" x2="20" y2="12" />
+                  <circle cx="14" cy="12" r="2.5" />
+                  <line x1="4" y1="18" x2="20" y2="18" />
+                  <circle cx="11" cy="18" r="2.5" />
+                </svg>
+              </button>
+            </div>
           </div>
         </>
       )}

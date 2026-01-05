@@ -135,6 +135,10 @@
   opacity: 0.6;
 }
 
+.sidebar-divider-muted {
+  opacity: 0.35;
+}
+
 .sidebar-icon-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -195,8 +199,19 @@
 .sidebar-footer {
   margin-top: auto;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.sidebar-footer-actions {
+  display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.sidebar-footer-actions .nav-item {
+  flex: 1;
 }
 
 .vault-status {
@@ -259,11 +274,62 @@
   min-height: 0;
 }
 
+.sidebar-placeholder-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.placeholder-orbit {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line-soft);
+  background: radial-gradient(circle, transparent 55%, var(--panel-warm) 56%);
+}
+
+.placeholder-title {
+  font-weight: 700;
+}
+
+.placeholder-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.placeholder-hint {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
 .sidebar .vault-details {
   display: flex;
   flex-direction: column;
   min-height: 0;
   max-height: 40vh;
+}
+
+.sidebar .vault-details summary {
+  position: relative;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 4px;
+  padding-right: 18px;
+}
+
+.sidebar .vault-details summary::after {
+  position: absolute;
+  top: 2px;
+  right: 0;
+}
+
+.sidebar .vault-summary {
+  display: block;
+  width: 100%;
 }
 
 .sidebar .vault-body {
@@ -280,6 +346,10 @@
   background: var(--panel-warm);
   border-radius: 16px;
   border: 1px solid var(--line-soft);
+}
+
+.sidebar-card.placeholder-card {
+  gap: 8px;
 }
 
 .label {

@@ -69,13 +69,13 @@ export const VaultTree = ({
   return (
     <details className="vault-details" open={forceOpen || undefined}>
       <summary>
-        <span>Datenverzeichnis</span>
+        <span>Vault Directory</span>
         <span className="vault-summary">{fileCountLabel}</span>
       </summary>
       <div className="vault-body">
         {!vaultPath ? (
           <div className="empty-state">
-            Waehle einen Vault, um das Verzeichnis anzuzeigen.
+            Select a vault to view the directory.
           </div>
         ) : null}
         {listState === "loading" ? <span className="chip">Scanne...</span> : null}

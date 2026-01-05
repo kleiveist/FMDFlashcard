@@ -57,3 +57,18 @@ export const HelpIcon = () => (
     <circle cx="12" cy="17.2" r="0.9" fill="currentColor" stroke="none" />
   </svg>
 );
+
+export const PlaceholderIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="7" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
