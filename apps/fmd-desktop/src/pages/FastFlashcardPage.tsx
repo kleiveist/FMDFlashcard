@@ -829,14 +829,16 @@ export const FastFlashcardPage = () => {
           </div>
           <div className="fast-vault-block">
             <span className="label">AKTIVER VAULT</span>
-            <div className="fast-vault-list">
-              <span className="fast-vault-line">Vault: {vaultName}</span>
-              <span className="fast-vault-line">
-                Cards loaded: {flashcards.flashcards.length}
+            <div className="fast-vault-row">
+              <span>Vault: {vaultName}</span>
+              <span className="fast-vault-sep" aria-hidden="true">
+                •
               </span>
-              <span className="fast-vault-line">
-                Filtered cards: {flashcards.filteredFlashcardCount}
+              <span>Cards loaded: {flashcards.flashcards.length}</span>
+              <span className="fast-vault-sep" aria-hidden="true">
+                •
               </span>
+              <span>Filtered cards: {flashcards.filteredFlashcardCount}</span>
             </div>
           </div>
         </div>

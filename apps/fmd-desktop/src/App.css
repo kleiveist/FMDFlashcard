@@ -696,8 +696,8 @@ h2 {
 .fast-flashcard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto auto auto;
-  gap: 24px;
+  grid-template-rows: auto auto;
+  gap: 18px 24px;
   align-items: start;
 }
 
@@ -745,7 +745,7 @@ body.focus-mode .sr-flashcards-panel {
 .fast-stats-panel .panel-body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .fast-tools-panel {
@@ -755,12 +755,12 @@ body.focus-mode .sr-flashcards-panel {
 
 .fast-flashcard-panel {
   grid-column: 1;
-  grid-row: 2 / span 2;
+  grid-row: 2;
 }
 
 .fast-history-panel {
   grid-column: 2;
-  grid-row: 2 / span 2;
+  grid-row: 2;
 }
 
 body.focus-mode .flashcard-panel img,
@@ -1460,15 +1460,15 @@ body.focus-mode .sr-stats-panel {
 .fast-stats-blocks {
   display: grid;
   grid-template-columns: minmax(0, 0.6fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 .fast-time-block,
 .fast-stats-block {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px 12px;
   border-radius: 16px;
   background: var(--panel-warm);
   border: 1px solid var(--line-soft);
@@ -1492,7 +1492,7 @@ body.focus-mode .sr-stats-panel {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .fast-stats-grid .stats-chart {
@@ -1549,7 +1549,7 @@ body.focus-mode .sr-stats-panel {
 .fast-session-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .fast-history-sections {
@@ -1566,14 +1566,14 @@ body.focus-mode .sr-stats-panel {
 .fast-session-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .fast-session-card {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 16px;
   border: 1px solid var(--line-soft);
   background: var(--panel-warm);
@@ -1593,23 +1593,32 @@ body.focus-mode .sr-stats-panel {
 .fast-vault-block {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: 16px;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 12px;
   border: 1px solid var(--line-soft);
   background: var(--panel-warm);
 }
 
-.fast-vault-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.85rem;
+.fast-vault-block .label {
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
-.fast-vault-line {
+.fast-vault-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.85rem;
   color: var(--ink);
+}
+
+.fast-vault-sep {
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 .fast-session-table {
