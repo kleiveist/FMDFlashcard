@@ -234,9 +234,11 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
   min-height: 0;
   width: 100%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .sidebar-mode-panel {
@@ -251,11 +253,17 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: 40vh;
+  flex: 1;
+  max-height: none;
   width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: hidden;
 }
 
-.sidebar .vault-details summary {
+.sidebar .vault-details > summary {
   position: relative;
   flex-direction: column;
   align-items: flex-start;
@@ -264,7 +272,7 @@
   padding-right: 18px;
 }
 
-.sidebar .vault-details summary::after {
+.sidebar .vault-details > summary::after {
   position: absolute;
   top: 2px;
   right: 0;
@@ -278,7 +286,8 @@
 .sidebar .vault-body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
+  padding: 8px 0 0;
 }
 
 .sidebar-card {
