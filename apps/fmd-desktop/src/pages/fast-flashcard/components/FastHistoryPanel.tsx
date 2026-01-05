@@ -16,7 +16,6 @@ export const FastHistoryPanel = ({
     <div className="panel-header">
       <div>
         <h2>Session History</h2>
-        <p className="muted">Top scores and recent runs.</p>
       </div>
     </div>
     <div className="panel-body">
@@ -27,7 +26,6 @@ export const FastHistoryPanel = ({
           <div className="fast-session-section">
             <div>
               <h3 className="fast-section-title">Top 3 Sessions</h3>
-              <p className="muted">Highest scores so far.</p>
             </div>
             <div className="fast-session-table">
               <div className="fast-session-row header">
@@ -52,8 +50,7 @@ export const FastHistoryPanel = ({
           </div>
           <div className="fast-session-section">
             <div>
-              <h3 className="fast-section-title">Last 10 Sessions</h3>
-              <p className="muted">Most recent timer runs.</p>
+              <h3 className="fast-section-title">Last 5 Sessions</h3>
             </div>
             <div className="fast-session-table">
               <div className="fast-session-row header">

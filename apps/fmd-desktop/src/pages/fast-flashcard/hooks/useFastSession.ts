@@ -720,7 +720,7 @@ export const useFastSession = () => {
   const lastSessions = useMemo(() => {
     return [...sessionHistory]
       .sort((a, b) => getSessionTimeValue(b.endedAt) - getSessionTimeValue(a.endedAt))
-      .slice(0, 10);
+      .slice(0, 5);
   }, [sessionHistory]);
   const topSessions = useMemo(() => {
     return [...sessionHistory]
