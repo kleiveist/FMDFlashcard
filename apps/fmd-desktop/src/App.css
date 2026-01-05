@@ -753,6 +753,22 @@ body.focus-mode .sr-flashcards-panel {
   grid-row: 1;
 }
 
+.fast-flashcard-tools-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fast-flashcard-tools-settings--dividers .fast-flashcard-tools-settings-section {
+  padding-top: 0;
+}
+
+.fast-flashcard-tools-settings--dividers
+.fast-flashcard-tools-settings-section + .fast-flashcard-tools-settings-section {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
 .fast-flashcard-panel {
   grid-column: 1;
   grid-row: 2;
@@ -2612,7 +2628,7 @@ body.focus-mode .sr-stats-panel {
   grid-row: 1;
 }
 
-.settings-grid .data-sync-panel {
+.settings-grid .settings-tabs-panel {
   grid-column: 3 / span 2;
   grid-row: 1;
 }
@@ -2622,14 +2638,20 @@ body.focus-mode .sr-stats-panel {
   grid-row: 2;
 }
 
-.settings-grid .spaced-repetition-panel {
+.settings-grid .fast-flashcard-tools-panel {
   grid-column: 2;
   grid-row: 2;
 }
 
-.settings-grid .performance-panel {
+.settings-grid .spaced-repetition-panel {
   grid-column: 3;
   grid-row: 2;
+}
+
+.settings-tabs-panel .settings-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .settings-grid .appearance-panel {

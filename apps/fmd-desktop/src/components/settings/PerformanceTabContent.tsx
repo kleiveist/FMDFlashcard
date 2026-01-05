@@ -1,18 +1,17 @@
-type PerformanceSectionProps = {
+type PerformanceTabContentProps = {
   maxFilesPerScan: string;
   onMaxFilesPerScanChange: (value: string) => void;
   scanParallelism: "low" | "medium" | "high";
   setScanParallelism: (value: "low" | "medium" | "high") => void;
 };
 
-export const PerformanceSection = ({
+export const PerformanceTabContent = ({
   maxFilesPerScan,
   onMaxFilesPerScanChange,
   scanParallelism,
   setScanParallelism,
-}: PerformanceSectionProps) => (
-  <section className="panel performance-panel">
-    <h2>Performance</h2>
+}: PerformanceTabContentProps) => (
+  <>
     <p className="muted">Tune vault scans for larger libraries.</p>
     <div className="setting-row">
       <span className="label">Max files per vault scan</span>
@@ -54,5 +53,5 @@ export const PerformanceSection = ({
         aria-label="Watcher debounce or throttle (coming later)"
       />
     </div>
-  </section>
+  </>
 );
