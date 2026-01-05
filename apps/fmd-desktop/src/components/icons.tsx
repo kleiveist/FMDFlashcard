@@ -58,7 +58,7 @@ export const HelpIcon = () => (
   </svg>
 );
 
-export const PlaceholderIcon = () => (
+export const SettingsIcon = () => (
   <svg
     aria-hidden="true"
     viewBox="0 0 24 24"
@@ -68,7 +68,11 @@ export const PlaceholderIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <circle cx="12" cy="12" r="7" />
-    <circle cx="12" cy="12" r="3" />
+    <line x1="4" y1="6" x2="20" y2="6" />
+    <circle cx="9" cy="6" r="2.5" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <circle cx="14" cy="12" r="2.5" />
+    <line x1="4" y1="18" x2="20" y2="18" />
+    <circle cx="11" cy="18" r="2.5" />
   </svg>
 );

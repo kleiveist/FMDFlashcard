@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useAppState } from "./AppStateProvider";
 import { vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
-import { CardsIcon, FolderIcon, PlaceholderIcon } from "./icons";
+import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons";
 
 type TabKey =
   | "dashboard"
@@ -12,7 +12,7 @@ type TabKey =
   | "help"
   | "settings";
 
-type ToolbarMode = "nav" | "vault" | "placeholder";
+type ToolbarMode = "cards" | "vault" | "settings" | "help";
 
 type SidebarNavProps = {
   activeTab: TabKey;
@@ -28,7 +28,8 @@ export const SidebarNav = ({
   onMobileNavClose,
 }: SidebarNavProps) => {
   const { actions, preview, settings, vault } = useAppState();
-  const [toolbarMode, setToolbarMode] = useState<ToolbarMode>("nav");
+  const [toolbarMode, setToolbarMode] = useState<ToolbarMode>("cards");
+  const isToolbarCollapsed = settings.rightToolbarCollapsed;
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
@@ -44,12 +45,14 @@ export const SidebarNav = ({
       vault.files.length === 1 ? "" : "en"
     }`;
   }, [vault.files.length, vault.vaultPath]);
-  const isCollapsed = settings.rightToolbarCollapsed && !isMobileNavOpen;
-  const isNavTab =
+  const isCollapsed = isToolbarCollapsed && !isMobileNavOpen;
+  const isCardsTab =
     activeTab === "dashboard" ||
     activeTab === "flashcard" ||
     activeTab === "fast-flashcard" ||
     activeTab === "spaced-repetition";
+  const toggleLabel = isToolbarCollapsed ? "Expand toolbar" : "Collapse toolbar";
+  const toggleSymbol = isToolbarCollapsed ? ">" : "<";
 
   return (
     <aside
@@ -57,28 +60,49 @@ export const SidebarNav = ({
       className={`sidebar ${isCollapsed ? "collapsed" : ""}`}
       aria-label="Primary navigation"
     >
-      {isCollapsed ? (
-        <button
-          type="button"
-          className="sidebar-rail"
-          onClick={() => settings.setRightToolbarCollapsed(false)}
-          aria-label="Expand toolbar"
-        >
-          <span className="rail-arrow">&gt;</span>
-        </button>
-      ) : (
+      <button
+        type="button"
+        className="sidebar-handle"
+        onClick={() => settings.setRightToolbarCollapsed((prev) => !prev)}
+        aria-label={toggleLabel}
+        title={toggleLabel}
+      >
+        <span className="sidebar-handle-chevron" aria-hidden="true">
+          {toggleSymbol}
+        </span>
+      </button>
+      {isCollapsed ? null : (
         <>
           <div className="sidebar-head">
-            <div className="sidebar-divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="mobile-nav-close"
+              onClick={onMobileNavClose}
+              aria-label="Close navigation"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              className="vault-status"
+              onClick={actions.handlePickVault}
+              title={vault.vaultPath ?? "Select vault"}
+              aria-label="Select vault"
+            >
+              <span className="label">Active Vault</span>
+              <span className="value">
+                Vault: {vault.vaultPath ? vaultRootName : "Not set"}
+              </span>
+            </button>
             <div className="sidebar-icon-row">
               <button
                 type="button"
                 className={`nav-icon sidebar-icon-button ${
-                  toolbarMode === "nav" ? "active" : ""
+                  toolbarMode === "cards" ? "active" : ""
                 }`}
                 onClick={() => {
-                  setToolbarMode("nav");
-                  if (!isNavTab) {
+                  setToolbarMode("cards");
+                  if (!isCardsTab) {
                     onTabChange("flashcard");
                   }
                 }}
@@ -103,43 +127,38 @@ export const SidebarNav = ({
               <button
                 type="button"
                 className={`nav-icon sidebar-icon-button ${
-                  toolbarMode === "placeholder" ? "active" : ""
+                  toolbarMode === "settings" ? "active" : ""
                 }`}
-                onClick={() => setToolbarMode("placeholder")}
-                aria-label="Dashboard placeholder"
-                title="Placeholder"
+                onClick={() => {
+                  setToolbarMode("settings");
+                  onTabChange("settings");
+                }}
+                aria-label="Settings"
+                title="Settings"
               >
-                <PlaceholderIcon />
+                <SettingsIcon />
+              </button>
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  toolbarMode === "help" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setToolbarMode("help");
+                  onTabChange("help");
+                }}
+                aria-label="Help"
+                title="Help"
+              >
+                <HelpIcon />
               </button>
             </div>
             <div
               className="sidebar-divider sidebar-divider-muted"
               aria-hidden="true"
             />
-            <div className="brand">
-              <button
-                type="button"
-                className="brand-mark"
-                onClick={() => settings.setRightToolbarCollapsed(true)}
-                aria-label="Collapse toolbar"
-              >
-                FMD
-              </button>
-              <div className="brand-text">
-                <span className="brand-title">FMD Flashcard</span>
-                <span className="brand-sub">Vault-first study workspace</span>
-              </div>
-              <button
-                type="button"
-                className="mobile-nav-close"
-                onClick={onMobileNavClose}
-                aria-label="Close navigation"
-              >
-                Close
-              </button>
-            </div>
           </div>
-          {toolbarMode === "nav" ? (
+          {toolbarMode === "cards" ? (
             <nav className="nav">
               <button
                 type="button"
@@ -189,72 +208,28 @@ export const SidebarNav = ({
               />
             </div>
           ) : null}
-          {toolbarMode === "placeholder" ? (
-            <div className="sidebar-placeholder-panel">
-              <div className="sidebar-card placeholder-card">
-                <div className="placeholder-orbit" aria-hidden="true" />
-                <span className="placeholder-title">Dashboard (Placeholder)</span>
-                <p className="placeholder-copy">
-                  Keep sessions short. Review daily. Trust repetition.
+          {toolbarMode === "settings" ? (
+            <div className="sidebar-mode-panel">
+              <div className="sidebar-card">
+                <span className="label">Settings</span>
+                <span className="value">Tune your workspace</span>
+                <p className="muted">
+                  Adjust study flow, vault scanning, and performance options.
                 </p>
-                <span className="placeholder-hint">
-                  A calm focus hub lands here soon.
-                </span>
               </div>
             </div>
           ) : null}
-          <div className="sidebar-footer">
-            <button
-              type="button"
-              className="vault-status"
-              onClick={actions.handlePickVault}
-              title={vault.vaultPath ?? "Vault auswaehlen"}
-              aria-label="Vault auswaehlen"
-            >
-              <span className="label">Aktiver Vault</span>
-              <span className="value">
-                Vault: {vault.vaultPath ? vaultRootName : "Nicht gesetzt"}
-              </span>
-            </button>
-            <div className="sidebar-footer-actions">
-              <button
-                type="button"
-                className={`nav-item nav-item-help ${
-                  activeTab === "help" ? "active" : ""
-                }`}
-                onClick={() => onTabChange("help")}
-              >
-                <span>Help</span>
-                <span className="nav-subtext">
-                  Quick reminders for this workflow.
-                </span>
-              </button>
-              <button
-                type="button"
-                className={`nav-icon ${activeTab === "settings" ? "active" : ""}`}
-                onClick={() => onTabChange("settings")}
-                aria-label="Einstellungen"
-                title="Einstellungen"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="4" y1="6" x2="20" y2="6" />
-                  <circle cx="9" cy="6" r="2.5" />
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <circle cx="14" cy="12" r="2.5" />
-                  <line x1="4" y1="18" x2="20" y2="18" />
-                  <circle cx="11" cy="18" r="2.5" />
-                </svg>
-              </button>
+          {toolbarMode === "help" ? (
+            <div className="sidebar-mode-panel">
+              <div className="sidebar-card">
+                <span className="label">Help</span>
+                <span className="value">Quick reminders</span>
+                <p className="muted">
+                  Keep sessions short. Review daily. Trust repetition.
+                </p>
+              </div>
             </div>
-          </div>
+          ) : null}
         </>
       )}
     </aside>

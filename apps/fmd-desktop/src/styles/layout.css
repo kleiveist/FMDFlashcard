@@ -1,16 +1,19 @@
 
 .app-shell {
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 36px;
   position: relative;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--sidebar-width) 1fr;
   gap: 24px;
   padding: 24px;
   min-height: 100vh;
   animation: riseIn 0.6s ease both;
+  transition: grid-template-columns 0.2s ease;
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 52px 1fr;
+  --sidebar-width: var(--sidebar-collapsed-width);
 }
 
 .app-shell.dashboard-active {
@@ -42,6 +45,7 @@
 }
 
 .sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -50,82 +54,60 @@
   padding: 24px;
   box-shadow: var(--shadow);
   border: 1px solid var(--line-soft);
+  transition: padding 0.2s ease;
 }
 
 .sidebar.collapsed {
-  padding: 12px 8px;
+  padding: 8px 6px;
   gap: 0;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.brand-mark {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: linear-gradient(140deg, var(--accent), var(--accent-highlight));
-  color: var(--accent-contrast);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-}
-
-.sidebar-rail {
-  width: 100%;
-  min-height: 180px;
+.sidebar-handle {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
   border: none;
+  padding: 0;
+  margin: 0;
   background: transparent;
-  color: var(--ink);
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 24px 0 0 24px;
+  transition: background 0.2s ease, color 0.2s ease;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  border-radius: 16px;
-  transition: 0.2s ease;
+  z-index: 2;
 }
 
-.sidebar-rail:hover {
-  background: var(--panel-warm);
+.sidebar-handle:hover,
+.sidebar-handle:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--accent-strong);
 }
 
-.sidebar-rail:focus-visible {
+.sidebar-handle:focus-visible {
   outline: 2px solid var(--accent-border);
-  outline-offset: 4px;
+  outline-offset: 2px;
 }
 
-.rail-arrow {
-  font-size: 1.2rem;
+.sidebar-handle-chevron {
+  font-size: 0.75rem;
   font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.brand-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.brand-sub {
-  font-size: 0.85rem;
-  color: var(--muted);
+.sidebar-handle:hover .sidebar-handle-chevron,
+.sidebar-handle:focus-visible .sidebar-handle-chevron {
+  opacity: 1;
 }
 
 .sidebar-head {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .sidebar-divider {
@@ -141,7 +123,7 @@
 
 .sidebar-icon-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -196,26 +178,7 @@
   color: var(--accent-strong);
 }
 
-.sidebar-footer {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-}
-
-.sidebar-footer-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sidebar-footer-actions .nav-item {
-  flex: 1;
-}
-
 .vault-status {
-  flex: 1;
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--panel-warm);
@@ -274,35 +237,10 @@
   min-height: 0;
 }
 
-.sidebar-placeholder-panel {
+.sidebar-mode-panel {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.placeholder-orbit {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--line-soft);
-  background: radial-gradient(circle, transparent 55%, var(--panel-warm) 56%);
-}
-
-.placeholder-title {
-  font-weight: 700;
-}
-
-.placeholder-copy {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.4;
-}
-
-.placeholder-hint {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.7rem;
-  color: var(--muted);
 }
 
 .sidebar .vault-details {
@@ -348,9 +286,6 @@
   border: 1px solid var(--line-soft);
 }
 
-.sidebar-card.placeholder-card {
-  gap: 8px;
-}
 
 .label {
   text-transform: uppercase;
