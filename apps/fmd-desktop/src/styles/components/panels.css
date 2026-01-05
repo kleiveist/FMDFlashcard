@@ -1,0 +1,119 @@
+
+.panel {
+  background: var(--panel);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: riseIn 0.6s ease both;
+}
+
+.toolbar-panel .panel-body {
+  min-height: auto;
+}
+
+.toolbar-panel .primary {
+  width: 100%;
+}
+
+.flashcard-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.toolbar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timer-start-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+  transition: 0.2s ease;
+  box-shadow: var(--shadow-soft);
+}
+
+.timer-start-button:not(.active):hover {
+  background: var(--accent-strong);
+}
+
+.timer-start-button.active {
+  background: var(--panel);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  box-shadow: none;
+}
+
+.timer-start-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer-start-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+
+.timer-start-meta {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.timer-start-action {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.timer-start-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pill-button {
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.pill-button:hover {
+  border-color: var(--accent-border);
+}
+
+.pill-button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: var(--shadow-soft);
+}
+
+.pill-button:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
+.pill-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

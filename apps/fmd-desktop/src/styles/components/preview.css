@@ -1,0 +1,164 @@
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.file-item {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--panel-warm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.file-item:hover {
+  border-color: var(--accent-border);
+}
+
+.file-item.active {
+  border-color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.file-name {
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.preview {
+  margin: 0;
+  padding: 16px;
+  background: var(--preview-bg);
+  color: var(--preview-ink);
+  border-radius: 16px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+}
+
+.preview-editor {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--preview-bg);
+  color: var(--preview-ink);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  resize: none;
+}
+
+.preview.raw {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+
+.preview.raw pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.preview.markdown {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.preview.markdown > :first-child {
+  margin-top: 0;
+}
+
+.preview.markdown h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.6rem;
+}
+
+.preview.markdown h2 {
+  font-size: 1.2rem;
+  margin: 1.2rem 0 0.6rem;
+}
+
+.preview.markdown h3 {
+  font-size: 1.05rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.preview.markdown p {
+  margin: 0 0 0.8rem;
+}
+
+.preview.markdown ul,
+.preview.markdown ol {
+  margin: 0 0 0.8rem;
+  padding-left: 1.4rem;
+}
+
+.preview.markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.preview.markdown a:hover {
+  color: var(--accent-strong);
+}
+
+.preview.markdown code {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.preview.markdown pre {
+  margin: 0 0 0.8rem;
+  padding: 12px;
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.preview.markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.preview.markdown blockquote {
+  margin: 0 0 0.8rem;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent);
+  color: var(--preview-ink);
+  opacity: 0.9;
+}
+
+.preview.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+}

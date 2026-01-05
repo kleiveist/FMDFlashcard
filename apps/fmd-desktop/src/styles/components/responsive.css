@@ -1,0 +1,134 @@
+
+@media (max-width: 1200px) {
+  .flashcard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fast-flashcard-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .fast-stats-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .fast-tools-panel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .fast-history-panel {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .fast-session-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .fast-flashcard-panel {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .fast-stats-blocks {
+    grid-template-columns: 1fr;
+  }
+
+  .spaced-repetition-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto auto;
+  }
+
+  .spaced-repetition-layout .sr-diagram-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .spaced-repetition-layout .sr-user-panel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .spaced-repetition-layout .sr-flashcards-panel {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .spaced-repetition-layout .sr-tools-panel {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .spaced-repetition-layout .sr-stats-panel {
+    grid-column: 1;
+    grid-row: 5;
+  }
+
+  .sr-stats-top {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .app-shell,
+  .app-shell.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(320px, 85vw);
+    max-height: 100vh;
+    overflow-y: auto;
+    transform: translateX(-110%);
+    transition: transform 0.2s ease;
+    z-index: 30;
+  }
+
+  .app-shell.nav-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .app-shell.dashboard-active .content {
+    overflow: auto;
+  }
+
+  .mobile-nav-header {
+    display: flex;
+  }
+
+  .mobile-nav-close {
+    display: inline-flex;
+  }
+
+  .app-shell.nav-open .mobile-nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .dashboard-page {
+    height: auto;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+    flex: 0 0 auto;
+  }
+
+  .workspace .panel,
+  .workspace .vault-details {
+    height: auto;
+  }
+
+  .sidebar {
+    order: 1;
+  }
+
+  .content {
+    order: 2;
+  }
+}

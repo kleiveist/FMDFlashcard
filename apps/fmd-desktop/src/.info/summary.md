@@ -1,5 +1,5 @@
 Markdown-Scan – Root: /home/kleif/Projects/FMDFlashcard/apps/fmd-desktop/src
-Erzeugt: 2026-01-05T09:04:29
+Erzeugt: 2026-01-05T12:15:08
 Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css, .ts, .shipping
 
 === Dateien ===
@@ -7,10 +7,10 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 📁 .
   📝 App.css
      Pfad: 📝 App.css
-     Größe: 51.52 KB (52759 B)
-     Geändert: 2026-01-05T09:01:03
+     Größe: 49.76 KB (50957 B)
+     Geändert: 2026-01-05T09:45:32
      Titel: f7dccb 0%,
-     Überschriften: 7, Zeilen: 3148, Wörter: 7108, Zeichen: 52759
+     Überschriften: 7, Zeilen: 3046, Wörter: 6859, Zeichen: 50957
      Inhalt (Auszug): :root { font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; font-weight: 400; color: var(--ink); background-color: var(--bg); font-synthesis: none; text-rendering: optimizeLegibility;
 
   📝 App.tsx
@@ -323,10 +323,10 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 
   📝 FastFlashcardPage.tsx
      Pfad: 📁 pages / 📝 FastFlashcardPage.tsx
-     Größe: 37.55 KB (38448 B)
-     Geändert: 2026-01-05T08:46:11
-     Überschriften: 0, Zeilen: 1141, Wörter: 2772, Zeichen: 38442
-     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, } from "react"; import { invoke } from "@tauri-apps/api/core"; import { ClozeCard } from "../components/flashcards/ClozeCard"; import { CompositeCard } from "../components/flashcards/CompositeCard"; import { FreeTextCard } from "../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../components/flashcards/TrueFalseCard"; import { FastFlashcardToolsSettings } from "../components/settings/FastFlashcardToolsSettings"; import { useAppState } from "../components/AppStateProvider"; import { evaluateFlashcardResult } from "../features/flashcards/logic"; import { vaultBaseName } from "../lib/path";
+     Größe: 72 B (72 B)
+     Geändert: 2026-01-05T11:44:56
+     Überschriften: 0, Zeilen: 1, Wörter: 6, Zeichen: 72
+     Inhalt (Auszug): export { FastFlashcardPage } from "./fast-flashcard/FastFlashcardPage";
 
   📝 FlashcardPage.tsx
      Pfad: 📁 pages / 📝 FlashcardPage.tsx
@@ -337,10 +337,10 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 
   📝 HelpPage.tsx
      Pfad: 📁 pages / 📝 HelpPage.tsx
-     Größe: 70.20 KB (71880 B)
-     Geändert: 2026-01-05T09:00:28
-     Überschriften: 0, Zeilen: 1736, Wörter: 6699, Zeichen: 71780
-     Inhalt (Auszug): import { useEffect, useRef, useState } from "react"; import { useAppState } from "../components/AppStateProvider";
+     Größe: 6.28 KB (6426 B)
+     Geändert: 2026-01-05T11:08:35
+     Überschriften: 0, Zeilen: 181, Wörter: 440, Zeichen: 6426
+     Inhalt (Auszug): import { useEffect, useRef, useState } from "react"; import { useAppState } from "../components/AppStateProvider"; import { AppLanguage, flashcardSyntaxEntries, flashcardSyntaxOverview, helpHeader, helpLabels, helpTopics, resolveList, resolveText, } from "./help/helpContent"; import { HelpDetailSection } from "./help/sections/HelpDetailSection"; import { HelpHeaderSection } from "./help/sections/HelpHeaderSection"; import { HelpOverviewSection } from "./help/sections/HelpOverviewSection"; import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
 
   📝 SettingsPage.tsx
      Pfad: 📁 pages / 📝 SettingsPage.tsx
@@ -351,10 +351,261 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 
   📝 SpacedRepetitionPage.tsx
      Pfad: 📁 pages / 📝 SpacedRepetitionPage.tsx
-     Größe: 39.09 KB (40030 B)
-     Geändert: 2026-01-05T06:50:48
-     Überschriften: 0, Zeilen: 1131, Wörter: 2438, Zeichen: 40026
-     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useState, type CSSProperties, type DragEvent, } from "react"; import { buildLineChartPoints } from "../lib/chart"; import { ClozeCard } from "../components/flashcards/ClozeCard"; import { CompositeCard } from "../components/flashcards/CompositeCard"; import { FreeTextCard } from "../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../components/flashcards/TrueFalseCard"; import { KpiGrid } from "../components/KpiGrid"; import { useAppState } from "../components/AppStateProvider"; import { vaultBaseName } from "../lib/path"; import { areClozeBlanksComplete, areTrueFalseItemsComplete, isFlashcardPartComplete, } from "../features/flashcards/logic"; imp …
+     Größe: 81 B (81 B)
+     Geändert: 2026-01-05T11:55:07
+     Überschriften: 0, Zeilen: 1, Wörter: 6, Zeichen: 81
+     Inhalt (Auszug): export { SpacedRepetitionPage } from "./spaced-repetition/SpacedRepetitionPage";
+
+
+📁 pages/fast-flashcard
+  📝 FastFlashcardPage.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📝 FastFlashcardPage.tsx
+     Größe: 4.51 KB (4615 B)
+     Geändert: 2026-01-05T11:44:46
+     Überschriften: 0, Zeilen: 134, Wörter: 222, Zeichen: 4615
+     Inhalt (Auszug): import { FastCardHost } from "./components/FastCardHost"; import { FastHeader } from "./components/FastHeader"; import { FastHistoryPanel } from "./components/FastHistoryPanel"; import { FastStatsPanel } from "./components/FastStatsPanel"; import { FastToolsPanel } from "./components/FastToolsPanel"; import { useFastSession } from "./hooks/useFastSession";
+
+
+📁 pages/fast-flashcard/components
+  📝 FastCardHost.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastCardHost.tsx
+     Größe: 8.39 KB (8590 B)
+     Geändert: 2026-01-05T11:44:13
+     Überschriften: 0, Zeilen: 238, Wörter: 563, Zeichen: 8590
+     Inhalt (Auszug): import type { DragEvent } from "react"; import { ClozeCard } from "../../../components/flashcards/ClozeCard"; import { CompositeCard } from "../../../components/flashcards/CompositeCard"; import { FreeTextCard } from "../../../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
+
+  📝 FastHeader.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastHeader.tsx
+     Größe: 391 B (391 B)
+     Geändert: 2026-01-05T11:42:38
+     Überschriften: 0, Zeilen: 16, Wörter: 31, Zeichen: 391
+     Inhalt (Auszug): import { fastFlashcardStatusLabel } from "../hooks/useFastSession";
+
+  📝 FastHistoryPanel.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastHistoryPanel.tsx
+     Größe: 3.35 KB (3427 B)
+     Geändert: 2026-01-05T11:42:31
+     Überschriften: 0, Zeilen: 83, Wörter: 306, Zeichen: 3427
+     Inhalt (Auszug): import type { FastFlashcardSessionSummary } from "../hooks/useFastSession"; import { formatSessionPace, formatSessionTimestamp } from "../hooks/useFastSession";
+
+  📝 FastStatsPanel.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastStatsPanel.tsx
+     Größe: 6.15 KB (6299 B)
+     Geändert: 2026-01-05T11:41:50
+     Überschriften: 0, Zeilen: 185, Wörter: 562, Zeichen: 6293
+     Inhalt (Auszug): import type { CSSProperties } from "react"; import type { FastFlashcardSessionStats } from "../hooks/useFastSession";
+
+  📝 FastToolsPanel.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastToolsPanel.tsx
+     Größe: 2.56 KB (2626 B)
+     Geändert: 2026-01-05T11:42:13
+     Überschriften: 0, Zeilen: 77, Wörter: 177, Zeichen: 2626
+     Inhalt (Auszug): import { FastFlashcardToolsSettings } from "../../../components/settings/FastFlashcardToolsSettings"; import { FAST_FLASHCARD_DURATIONS } from "../hooks/useFastSession";
+
+
+📁 pages/fast-flashcard/hooks
+  📝 useFastSession.ts
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 hooks / 📝 useFastSession.ts
+     Größe: 21.91 KB (22440 B)
+     Geändert: 2026-01-05T11:41:00
+     Überschriften: 0, Zeilen: 795, Wörter: 1598, Zeichen: 22440
+     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, } from "react"; import { invoke } from "@tauri-apps/api/core"; import { useAppState } from "../../../components/AppStateProvider"; import { evaluateFlashcardResult } from "../../../features/flashcards/logic"; import { vaultBaseName } from "../../../lib/path";
+
+
+📁 pages/help
+  📝 helpContent.ts
+     Pfad: 📁 pages / 📁 help / 📝 helpContent.ts
+     Größe: 257 B (257 B)
+     Geändert: 2026-01-05T10:48:11
+     Überschriften: 0, Zeilen: 7, Wörter: 30, Zeichen: 257
+     Inhalt (Auszug): export * from "./content/types"; export * from "./content/i18n"; export * from "./content/labels"; export * from "./content/topics"; export * from "./content/appSections"; export * from "./content/syntax/overview"; export * from "./content/syntax/entries";
+
+
+📁 pages/help/content
+  📝 appSections.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 appSections.ts
+     Größe: 12.22 KB (12510 B)
+     Geändert: 2026-01-05T11:18:41
+     Überschriften: 0, Zeilen: 230, Wörter: 1563, Zeichen: 12445
+     Inhalt (Auszug): import { AppSectionData, AppSectionId, LocalizedText } from "./types";
+
+  📝 i18n.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 i18n.ts
+     Größe: 441 B (441 B)
+     Geändert: 2026-01-05T10:46:30
+     Überschriften: 0, Zeilen: 13, Wörter: 43, Zeichen: 441
+     Inhalt (Auszug): import { AppLanguage, LocalizedText } from "./types";
+
+  📝 labels.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 labels.ts
+     Größe: 941 B (941 B)
+     Geändert: 2026-01-05T10:46:41
+     Überschriften: 0, Zeilen: 24, Wörter: 116, Zeichen: 941
+     Inhalt (Auszug): export const helpHeader = { eyebrow: { en: "Help", de: "Hilfe" }, title: { en: "Help", de: "Hilfe" }, summary: { en: "Quick reminders for the workflow and syntax.", de: "Kurze Hinweise zum Workflow und zur Syntax.", }, };
+
+  📝 topics.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 topics.ts
+     Größe: 7.92 KB (8106 B)
+     Geändert: 2026-01-05T10:57:51
+     Überschriften: 0, Zeilen: 205, Wörter: 883, Zeichen: 8106
+     Inhalt (Auszug): import { HelpTopic } from "./types";
+
+  📝 types.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 types.ts
+     Größe: 1.29 KB (1318 B)
+     Geändert: 2026-01-05T10:46:25
+     Überschriften: 0, Zeilen: 66, Wörter: 120, Zeichen: 1318
+     Inhalt (Auszug): export type AppLanguage = "de" | "en"; export type LocalizedText = { de?: string; en?: string };
+
+
+📁 pages/help/content/syntax
+  📝 entries.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📁 syntax / 📝 entries.ts
+     Größe: 26.60 KB (27237 B)
+     Geändert: 2026-01-05T10:47:21
+     Überschriften: 0, Zeilen: 719, Wörter: 2800, Zeichen: 27237
+     Inhalt (Auszug): import { SyntaxEntry } from "../types";
+
+  📝 overview.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📁 syntax / 📝 overview.ts
+     Größe: 683 B (683 B)
+     Geändert: 2026-01-05T10:46:49
+     Überschriften: 0, Zeilen: 17, Wörter: 89, Zeichen: 683
+     Inhalt (Auszug): export const flashcardSyntaxOverview = { title: { en: "Core rules", de: "Grundregeln" }, bullets: [ { en: "Wrap every card with #card and # on their own lines; content outside is ignored.", de: "Jede Karte mit #card und # auf eigenen Zeilen umschliessen; Inhalt ausserhalb wird ignoriert.", }, { en: "The first non-empty line is the prompt.", de: "Die erste nicht-leere Zeile ist die Frage.", }, { en: "Syntaxes can be combined in one #card block when desired; keep markers clear and consistent.", de: "Syntaxen koennen bei Bedarf in einem #card-Block kombiniert werden; Marker klar und konsistent halten.", }, ], };
+
+
+📁 pages/help/sections
+  📝 AppSectionsGuidePanel.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 AppSectionsGuidePanel.tsx
+     Größe: 6.28 KB (6433 B)
+     Geändert: 2026-01-05T10:17:25
+     Überschriften: 0, Zeilen: 174, Wörter: 462, Zeichen: 6433
+     Inhalt (Auszug): import { useEffect, useState } from "react"; import { APP_SECTION_DATA, APP_SECTION_GROUND_RULES, APP_SECTION_LABELS, APP_SECTION_ORDER, AppLanguage, AppSectionId, resolveText, } from "../helpContent";
+
+  📝 HelpDetailSection.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpDetailSection.tsx
+     Größe: 3.65 KB (3735 B)
+     Geändert: 2026-01-05T10:19:08
+     Überschriften: 0, Zeilen: 120, Wörter: 250, Zeichen: 3735
+     Inhalt (Auszug): import { AppLanguage, HelpTopic, SyntaxEntry, helpLabels, resolveText } from "../helpContent"; import { AppSectionsGuidePanel } from "./AppSectionsGuidePanel"; import { HelpTopicSections } from "./HelpTopicSections"; import { SyntaxSection } from "./SyntaxSection";
+
+  📝 HelpHeaderSection.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpHeaderSection.tsx
+     Größe: 407 B (407 B)
+     Geändert: 2026-01-05T10:17:31
+     Überschriften: 0, Zeilen: 19, Wörter: 35, Zeichen: 407
+     Inhalt (Auszug): type HelpHeaderSectionProps = { eyebrowText: string; titleText: string; summaryText: string; };
+
+  📝 HelpOverviewSection.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpOverviewSection.tsx
+     Größe: 1.26 KB (1295 B)
+     Geändert: 2026-01-05T10:17:40
+     Überschriften: 0, Zeilen: 42, Wörter: 114, Zeichen: 1295
+     Inhalt (Auszug): import { AppLanguage, HelpTopic, helpLabels, resolveText } from "../helpContent";
+
+  📝 HelpTopicHeadingsBlock.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpTopicHeadingsBlock.tsx
+     Größe: 779 B (779 B)
+     Geändert: 2026-01-05T11:08:21
+     Überschriften: 0, Zeilen: 29, Wörter: 63, Zeichen: 779
+     Inhalt (Auszug): import { AppLanguage, HelpTopic, resolveText } from "../helpContent";
+
+  📝 HelpTopicSections.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpTopicSections.tsx
+     Größe: 2.93 KB (3002 B)
+     Geändert: 2026-01-05T10:17:54
+     Überschriften: 0, Zeilen: 89, Wörter: 217, Zeichen: 3002
+     Inhalt (Auszug): import { AppLanguage, HelpTopic, resolveList, resolveText, } from "../helpContent";
+
+  📝 SyntaxSection.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 SyntaxSection.tsx
+     Größe: 7.55 KB (7732 B)
+     Geändert: 2026-01-05T10:19:03
+     Überschriften: 0, Zeilen: 219, Wörter: 549, Zeichen: 7732
+     Inhalt (Auszug): import { AppLanguage, SyntaxEntry, flashcardSyntaxEntries, flashcardSyntaxOverview, resolveText, } from "../helpContent";
+
+
+📁 pages/spaced-repetition
+  📝 SpacedRepetitionPage.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📝 SpacedRepetitionPage.tsx
+     Größe: 6.96 KB (7127 B)
+     Geändert: 2026-01-05T11:54:58
+     Überschriften: 0, Zeilen: 183, Wörter: 295, Zeichen: 7127
+     Inhalt (Auszug): import { SrCardHost } from "./components/SrCardHost"; import { SrDeleteModal } from "./components/SrDeleteModal"; import { SrHeader } from "./components/SrHeader"; import { SrStatsAndChart } from "./components/SrStatsAndChart"; import { SrStatsPanel } from "./components/SrStatsPanel"; import { SrToolsPanel } from "./components/SrToolsPanel"; import { SrUserPanel } from "./components/SrUserPanel"; import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
+
+
+📁 pages/spaced-repetition/components
+  📝 SrBoxesPanel.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrBoxesPanel.tsx
+     Größe: 1.48 KB (1515 B)
+     Geändert: 2026-01-05T11:51:26
+     Überschriften: 0, Zeilen: 48, Wörter: 134, Zeichen: 1515
+     Inhalt (Auszug): import type { CSSProperties } from "react";
+
+  📝 SrCardHost.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrCardHost.tsx
+     Größe: 8.22 KB (8416 B)
+     Geändert: 2026-01-05T11:53:21
+     Überschriften: 0, Zeilen: 228, Wörter: 476, Zeichen: 8416
+     Inhalt (Auszug): import type { DragEvent } from "react"; import { ClozeCard } from "../../../components/flashcards/ClozeCard"; import { CompositeCard } from "../../../components/flashcards/CompositeCard"; import { FreeTextCard } from "../../../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard"; import { SrReviewActions } from "./SrReviewActions";
+
+  📝 SrDeleteModal.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrDeleteModal.tsx
+     Größe: 1.79 KB (1829 B)
+     Geändert: 2026-01-05T11:54:00
+     Überschriften: 0, Zeilen: 60, Wörter: 149, Zeichen: 1829
+     Inhalt (Auszug): type SrDeleteModalProps = { isDeleteDialogOpen: boolean; deleteTargetName: string; deleteConfirmInput: string; setDeleteConfirmInput: (value: string) => void; handleDeleteCancel: () => void; handleDeleteConfirm: () => void; canConfirmDelete: boolean; };
+
+  📝 SrHeader.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrHeader.tsx
+     Größe: 1.17 KB (1193 B)
+     Geändert: 2026-01-05T11:51:16
+     Überschriften: 0, Zeilen: 45, Wörter: 124, Zeichen: 1193
+     Inhalt (Auszug): import type { Dispatch, SetStateAction } from "react";
+
+  📝 SrReviewActions.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrReviewActions.tsx
+     Größe: 813 B (813 B)
+     Geändert: 2026-01-05T11:52:30
+     Überschriften: 0, Zeilen: 32, Wörter: 47, Zeichen: 813
+     Inhalt (Auszug): type SrReviewActionsProps = { spacedRepetitionCanGoBack: boolean; spacedRepetitionCanGoNext: boolean; handleSpacedRepetitionPageBack: () => void; handleSpacedRepetitionPageNext: () => void; };
+
+  📝 SrStatsAndChart.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrStatsAndChart.tsx
+     Größe: 6.36 KB (6514 B)
+     Geändert: 2026-01-05T11:56:27
+     Überschriften: 0, Zeilen: 173, Wörter: 457, Zeichen: 6514
+     Inhalt (Auszug): import type { CSSProperties } from "react"; import { buildLineChartPoints } from "../../../lib/chart"; import { type SpacedRepetitionStatsView } from "../../../features/spaced-repetition/useSpacedRepetition"; import { SrBoxesPanel } from "./SrBoxesPanel";
+
+  📝 SrStatsPanel.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrStatsPanel.tsx
+     Größe: 453 B (453 B)
+     Geändert: 2026-01-05T11:53:48
+     Überschriften: 0, Zeilen: 18, Wörter: 44, Zeichen: 453
+     Inhalt (Auszug): import { KpiGrid } from "../../../components/KpiGrid";
+
+  📝 SrToolsPanel.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrToolsPanel.tsx
+     Größe: 3.53 KB (3613 B)
+     Geändert: 2026-01-05T11:56:21
+     Überschriften: 0, Zeilen: 108, Wörter: 247, Zeichen: 3613
+     Inhalt (Auszug): import { SPACED_REPETITION_BOXES, SPACED_REPETITION_PAGE_SIZES, type SpacedRepetitionBoxes, type SpacedRepetitionOrder, type SpacedRepetitionPageSize, } from "../../../features/spaced-repetition/useSpacedRepetition";
+
+  📝 SrUserPanel.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrUserPanel.tsx
+     Größe: 3.85 KB (3939 B)
+     Geändert: 2026-01-05T11:52:16
+     Überschriften: 0, Zeilen: 119, Wörter: 266, Zeichen: 3937
+     Inhalt (Auszug): type SrUserPanelProps = { flashcards: { isFlashcardScanning: boolean; }; spacedRepetition: { spacedRepetitionActiveUser: string | null; spacedRepetitionSelectedUserId: string; spacedRepetitionUsers: { id: string; name: string }[]; spacedRepetitionNewUserName: string; spacedRepetitionUserError: string; handleSpacedRepetitionActiveUserLoadCards: () => void; setSpacedRepetitionSelectedUserId: (value: string) => void; setSpacedRepetitionNewUserName: (value: string) => void; setSpacedRepetitionUserError: (value: string) => void; handleSpacedRepetitionCreateUser: () => void; handleSpacedRepetitionLoadUser: () => void; }; handleDeleteOpen: () => void; };
+
+
+📁 pages/spaced-repetition/hooks
+  📝 useSrSessionViewModel.ts
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 hooks / 📝 useSrSessionViewModel.ts
+     Größe: 16.56 KB (16957 B)
+     Geändert: 2026-01-05T11:51:05
+     Überschriften: 0, Zeilen: 572, Wörter: 1003, Zeichen: 16955
+     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useState, type CSSProperties, type DragEvent, } from "react"; import { useAppState } from "../../../components/AppStateProvider"; import { vaultBaseName } from "../../../lib/path"; import { areClozeBlanksComplete, areTrueFalseItemsComplete, isFlashcardPartComplete, } from "../../../features/flashcards/logic"; import { getFlashcardId, getSpacedRepetitionEffectiveBox, normalizeSpacedRepetitionCardProgress, } from "../../../features/spaced-repetition/logic";
 
 
 === Ordnerbaum (Quelle, nur ausgewählte Typen) ===
@@ -410,6 +661,49 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 │   ├── 📝 tree.ts
 │   └── 📝 types.ts
 ├── 📁 pages
+│   ├── 📁 fast-flashcard
+│   │   ├── 📁 components
+│   │   │   ├── 📝 FastCardHost.tsx
+│   │   │   ├── 📝 FastHeader.tsx
+│   │   │   ├── 📝 FastHistoryPanel.tsx
+│   │   │   ├── 📝 FastStatsPanel.tsx
+│   │   │   └── 📝 FastToolsPanel.tsx
+│   │   ├── 📁 hooks
+│   │   │   └── 📝 useFastSession.ts
+│   │   └── 📝 FastFlashcardPage.tsx
+│   ├── 📁 help
+│   │   ├── 📁 content
+│   │   │   ├── 📁 syntax
+│   │   │   │   ├── 📝 entries.ts
+│   │   │   │   └── 📝 overview.ts
+│   │   │   ├── 📝 appSections.ts
+│   │   │   ├── 📝 i18n.ts
+│   │   │   ├── 📝 labels.ts
+│   │   │   ├── 📝 topics.ts
+│   │   │   └── 📝 types.ts
+│   │   ├── 📁 sections
+│   │   │   ├── 📝 AppSectionsGuidePanel.tsx
+│   │   │   ├── 📝 HelpDetailSection.tsx
+│   │   │   ├── 📝 HelpHeaderSection.tsx
+│   │   │   ├── 📝 HelpOverviewSection.tsx
+│   │   │   ├── 📝 HelpTopicHeadingsBlock.tsx
+│   │   │   ├── 📝 HelpTopicSections.tsx
+│   │   │   └── 📝 SyntaxSection.tsx
+│   │   └── 📝 helpContent.ts
+│   ├── 📁 spaced-repetition
+│   │   ├── 📁 components
+│   │   │   ├── 📝 SrBoxesPanel.tsx
+│   │   │   ├── 📝 SrCardHost.tsx
+│   │   │   ├── 📝 SrDeleteModal.tsx
+│   │   │   ├── 📝 SrHeader.tsx
+│   │   │   ├── 📝 SrReviewActions.tsx
+│   │   │   ├── 📝 SrStatsAndChart.tsx
+│   │   │   ├── 📝 SrStatsPanel.tsx
+│   │   │   ├── 📝 SrToolsPanel.tsx
+│   │   │   └── 📝 SrUserPanel.tsx
+│   │   ├── 📁 hooks
+│   │   │   └── 📝 useSrSessionViewModel.ts
+│   │   └── 📝 SpacedRepetitionPage.tsx
 │   ├── 📝 DashboardPage.tsx
 │   ├── 📝 FastFlashcardPage.tsx
 │   ├── 📝 FlashcardPage.tsx
@@ -425,6 +719,8 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 
 📁 .
 ├── 📁 .info
+│   ├── 📝 allsummary.md
+│   ├── 📝 index.json
 │   └── 📝 summary.md
 ├── 📁 assets
 │   └── 📝 react.svg
@@ -476,6 +772,49 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 │   ├── 📝 tree.ts
 │   └── 📝 types.ts
 ├── 📁 pages
+│   ├── 📁 fast-flashcard
+│   │   ├── 📁 components
+│   │   │   ├── 📝 FastCardHost.tsx
+│   │   │   ├── 📝 FastHeader.tsx
+│   │   │   ├── 📝 FastHistoryPanel.tsx
+│   │   │   ├── 📝 FastStatsPanel.tsx
+│   │   │   └── 📝 FastToolsPanel.tsx
+│   │   ├── 📁 hooks
+│   │   │   └── 📝 useFastSession.ts
+│   │   └── 📝 FastFlashcardPage.tsx
+│   ├── 📁 help
+│   │   ├── 📁 content
+│   │   │   ├── 📁 syntax
+│   │   │   │   ├── 📝 entries.ts
+│   │   │   │   └── 📝 overview.ts
+│   │   │   ├── 📝 appSections.ts
+│   │   │   ├── 📝 i18n.ts
+│   │   │   ├── 📝 labels.ts
+│   │   │   ├── 📝 topics.ts
+│   │   │   └── 📝 types.ts
+│   │   ├── 📁 sections
+│   │   │   ├── 📝 AppSectionsGuidePanel.tsx
+│   │   │   ├── 📝 HelpDetailSection.tsx
+│   │   │   ├── 📝 HelpHeaderSection.tsx
+│   │   │   ├── 📝 HelpOverviewSection.tsx
+│   │   │   ├── 📝 HelpTopicHeadingsBlock.tsx
+│   │   │   ├── 📝 HelpTopicSections.tsx
+│   │   │   └── 📝 SyntaxSection.tsx
+│   │   └── 📝 helpContent.ts
+│   ├── 📁 spaced-repetition
+│   │   ├── 📁 components
+│   │   │   ├── 📝 SrBoxesPanel.tsx
+│   │   │   ├── 📝 SrCardHost.tsx
+│   │   │   ├── 📝 SrDeleteModal.tsx
+│   │   │   ├── 📝 SrHeader.tsx
+│   │   │   ├── 📝 SrReviewActions.tsx
+│   │   │   ├── 📝 SrStatsAndChart.tsx
+│   │   │   ├── 📝 SrStatsPanel.tsx
+│   │   │   ├── 📝 SrToolsPanel.tsx
+│   │   │   └── 📝 SrUserPanel.tsx
+│   │   ├── 📁 hooks
+│   │   │   └── 📝 useSrSessionViewModel.ts
+│   │   └── 📝 SpacedRepetitionPage.tsx
 │   ├── 📝 DashboardPage.tsx
 │   ├── 📝 FastFlashcardPage.tsx
 │   ├── 📝 FlashcardPage.tsx

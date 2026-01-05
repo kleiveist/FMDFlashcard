@@ -1964,108 +1964,6 @@ body.focus-mode .sr-stats-panel {
   line-height: 1.4;
 }
 
-.help-app-sections-card {
-  padding: 16px;
-  border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.help-app-sections-header {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.help-app-sections-title {
-  font-weight: 600;
-}
-
-.help-app-sections-summary {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.help-app-sections-body {
-  display: grid;
-  grid-template-columns: minmax(0, 0.35fr) minmax(0, 0.65fr);
-  gap: 16px;
-}
-
-.help-app-sections-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.help-app-sections-list-item {
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 10px 12px;
-  border-radius: 12px;
-  font-weight: 600;
-  text-align: left;
-  color: var(--ink);
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.help-app-sections-list-item:hover,
-.help-app-sections-list-item:focus-visible {
-  border-color: var(--line);
-}
-
-.help-app-sections-list-item.selected {
-  background: var(--panel);
-  border-color: var(--accent-border);
-  color: var(--accent-strong);
-}
-
-.help-app-sections-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.help-app-sections-intro {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-.help-app-sections-detail-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.help-app-sections-detail-description {
-  margin: 0;
-}
-
-.help-app-sections-detail-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.help-app-sections-detail-field .label {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.help-app-section-workflow {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
 .help-topic-arrow {
   margin-left: auto;
   color: var(--muted);
@@ -11275,7 +11173,770 @@ export const DashboardPage = () => {
 
 ---
 
-## 📝 FastFlashcardPage.tsx — ./pages/FastFlashcardPage.tsx
+## 📝 FastCardHost.tsx — ./pages/fast-flashcard/components/FastCardHost.tsx
+
+import type { DragEvent } from "react";
+import { ClozeCard } from "../../../components/flashcards/ClozeCard";
+import { CompositeCard } from "../../../components/flashcards/CompositeCard";
+import { FreeTextCard } from "../../../components/flashcards/FreeTextCard";
+import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard";
+import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
+
+type FastCardHostProps = {
+  hasScannedCards: boolean;
+  hasFilteredCards: boolean;
+  currentEntry: { card: any; cardIndex: number } | null;
+  isCurrentSubmitted: boolean;
+  submissionLocked: boolean;
+  fastFlashcards: {
+    flashcardCompositeStates: Record<number, any[]>;
+    flashcardClozeResponses: Record<number, Record<string, string>>;
+    flashcardTrueFalseSelections: Record<number, Record<string, any>>;
+    flashcardTextResponses: Record<number, string>;
+    flashcardTextRevealed: Record<number, boolean>;
+    flashcardSelfGrades: Record<number, any>;
+    flashcardSelections: Record<number, string[]>;
+    handleClozeTokenDragStart: (event: DragEvent<HTMLElement>) => void;
+    handleClozeBlankDragOver: (event: DragEvent<HTMLElement>) => void;
+  };
+  orderedEntries: { cardIndex: number; card: any }[];
+  canGoBack: boolean;
+  canGoNext: boolean;
+  setFastCardPosition: (value: (prev: number) => number) => void;
+  handleOptionSelect: (cardIndex: number, keys: string[]) => void;
+  handleTrueFalseSelect: (
+    cardIndex: number,
+    itemId: string,
+    value: "wahr" | "falsch",
+  ) => void;
+  handleClozeInputChange: (cardIndex: number, blankId: string, value: string) => void;
+  handleClozeTokenDrop: (
+    event: DragEvent<HTMLElement>,
+    cardIndex: number,
+    blankId: string,
+    validTokenIds: Set<string>,
+    dragBlankIds: Set<string>,
+  ) => void;
+  handleClozeTokenRemove: (cardIndex: number, blankId: string) => void;
+  handleTextInputChange: (cardIndex: number, value: string) => void;
+  handleTextCheck: (cardIndex: number) => void;
+  handleCompositeOptionSelect: (
+    cardIndex: number,
+    partIndex: number,
+    keys: string[],
+  ) => void;
+  handleCompositeTrueFalseSelect: (
+    cardIndex: number,
+    partIndex: number,
+    itemId: string,
+    value: "wahr" | "falsch",
+  ) => void;
+  handleCompositeClozeInputChange: (
+    cardIndex: number,
+    partIndex: number,
+    blankId: string,
+    value: string,
+  ) => void;
+  handleCompositeClozeTokenDrop: (
+    event: DragEvent<HTMLElement>,
+    cardIndex: number,
+    partIndex: number,
+    blankId: string,
+    validTokenIds: Set<string>,
+    dragBlankIds: Set<string>,
+  ) => void;
+  handleCompositeClozeTokenRemove: (
+    cardIndex: number,
+    partIndex: number,
+    blankId: string,
+  ) => void;
+  handleCompositeTextInputChange: (
+    cardIndex: number,
+    partIndex: number,
+    value: string,
+  ) => void;
+  handleCompositeTextCheck: (cardIndex: number, partIndex: number) => void;
+  handleCompositeSelfGrade: (
+    cardIndex: number,
+    partIndex: number,
+    grade: "correct" | "incorrect",
+  ) => void;
+  handleFastSubmit: (cardIndex: number, canSubmit: boolean) => void;
+  handleFastSelfGrade: (cardIndex: number, grade: "correct" | "incorrect") => void;
+};
+
+export const FastCardHost = ({
+  hasScannedCards,
+  hasFilteredCards,
+  currentEntry,
+  isCurrentSubmitted,
+  submissionLocked,
+  fastFlashcards,
+  orderedEntries,
+  canGoBack,
+  canGoNext,
+  setFastCardPosition,
+  handleOptionSelect,
+  handleTrueFalseSelect,
+  handleClozeInputChange,
+  handleClozeTokenDrop,
+  handleClozeTokenRemove,
+  handleTextInputChange,
+  handleTextCheck,
+  handleCompositeOptionSelect,
+  handleCompositeTrueFalseSelect,
+  handleCompositeClozeInputChange,
+  handleCompositeClozeTokenDrop,
+  handleCompositeClozeTokenRemove,
+  handleCompositeTextInputChange,
+  handleCompositeTextCheck,
+  handleCompositeSelfGrade,
+  handleFastSubmit,
+  handleFastSelfGrade,
+}: FastCardHostProps) => (
+  <div className="panel-body">
+    {!hasScannedCards ? (
+      <div className="empty-state">
+        Select a note from DASHBOARD and start the flashcard scan
+      </div>
+    ) : !hasFilteredCards ? (
+      <div className="empty-state">No cards match the selected mode.</div>
+    ) : currentEntry ? (
+      <div className="flashcard-list">
+        {currentEntry.card.kind === "composite" ? (
+          <CompositeCard
+            key={`fast-flashcard-${currentEntry.cardIndex}`}
+            card={currentEntry.card}
+            cardIndex={currentEntry.cardIndex}
+            submitted={isCurrentSubmitted}
+            submissionLocked={submissionLocked}
+            partStates={
+              fastFlashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
+            }
+            onOptionSelect={handleCompositeOptionSelect}
+            onTrueFalseSelect={handleCompositeTrueFalseSelect}
+            onClozeInputChange={handleCompositeClozeInputChange}
+            onClozeTokenDrop={handleCompositeClozeTokenDrop}
+            onClozeTokenRemove={handleCompositeClozeTokenRemove}
+            onClozeTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
+            onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
+            onTextInputChange={handleCompositeTextInputChange}
+            onTextCheck={handleCompositeTextCheck}
+            onSelfGrade={handleCompositeSelfGrade}
+            onSubmit={handleFastSubmit}
+          />
+        ) : currentEntry.card.kind === "cloze" ? (
+          <ClozeCard
+            key={`fast-flashcard-${currentEntry.cardIndex}`}
+            card={currentEntry.card}
+            cardIndex={currentEntry.cardIndex}
+            submitted={isCurrentSubmitted}
+            submissionLocked={submissionLocked}
+            responses={
+              fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ?? {}
+            }
+            onInputChange={handleClozeInputChange}
+            onTokenDrop={handleClozeTokenDrop}
+            onTokenRemove={handleClozeTokenRemove}
+            onTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
+            onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
+            onSubmit={handleFastSubmit}
+          />
+        ) : currentEntry.card.kind === "true-false" ? (
+          <TrueFalseCard
+            key={`fast-flashcard-${currentEntry.cardIndex}`}
+            card={currentEntry.card}
+            cardIndex={currentEntry.cardIndex}
+            submitted={isCurrentSubmitted}
+            submissionLocked={submissionLocked}
+            selections={
+              fastFlashcards.flashcardTrueFalseSelections[currentEntry.cardIndex] ?? {}
+            }
+            onSelect={handleTrueFalseSelect}
+            onSubmit={handleFastSubmit}
+          />
+        ) : currentEntry.card.kind === "free-text" ? (
+          <FreeTextCard
+            key={`fast-flashcard-${currentEntry.cardIndex}`}
+            card={currentEntry.card}
+            cardIndex={currentEntry.cardIndex}
+            submitted={isCurrentSubmitted}
+            submissionLocked={submissionLocked}
+            response={fastFlashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""}
+            revealed={
+              fastFlashcards.flashcardTextRevealed[currentEntry.cardIndex] ?? false
+            }
+            selfGrade={fastFlashcards.flashcardSelfGrades[currentEntry.cardIndex]}
+            onInputChange={handleTextInputChange}
+            onCheck={handleTextCheck}
+            onSelfGrade={handleFastSelfGrade}
+          />
+        ) : (
+          <MultipleChoiceCard
+            key={`fast-flashcard-${currentEntry.cardIndex}`}
+            card={currentEntry.card}
+            cardIndex={currentEntry.cardIndex}
+            submitted={isCurrentSubmitted}
+            submissionLocked={submissionLocked}
+            selectedKeys={
+              fastFlashcards.flashcardSelections[currentEntry.cardIndex] ?? []
+            }
+            onSelect={handleOptionSelect}
+            onSubmit={handleFastSubmit}
+          />
+        )}
+      </div>
+    ) : (
+      <div className="empty-state">No cards available.</div>
+    )}
+    <div className="flashcard-pagination">
+      <button
+        type="button"
+        className="ghost small"
+        onClick={() => setFastCardPosition((prev) => Math.max(0, prev - 1))}
+        disabled={!canGoBack}
+      >
+        Back
+      </button>
+      <button
+        type="button"
+        className="ghost small"
+        onClick={() =>
+          setFastCardPosition((prev) =>
+            Math.min(prev + 1, Math.max(orderedEntries.length - 1, 0)),
+          )
+        }
+        disabled={!canGoNext}
+      >
+        Next
+      </button>
+    </div>
+  </div>
+);
+
+---
+
+## 📝 FastHeader.tsx — ./pages/fast-flashcard/components/FastHeader.tsx
+
+import { fastFlashcardStatusLabel } from "../hooks/useFastSession";
+
+type FastHeaderProps = {
+  hasScannedCards: boolean;
+};
+
+export const FastHeader = ({ hasScannedCards }: FastHeaderProps) => (
+  <div className="panel-header">
+    <div>
+      <h2>Flashcard</h2>
+      {!hasScannedCards ? (
+        <p className="muted">{fastFlashcardStatusLabel}</p>
+      ) : null}
+    </div>
+  </div>
+);
+
+---
+
+## 📝 FastHistoryPanel.tsx — ./pages/fast-flashcard/components/FastHistoryPanel.tsx
+
+import type { FastFlashcardSessionSummary } from "../hooks/useFastSession";
+import { formatSessionPace, formatSessionTimestamp } from "../hooks/useFastSession";
+
+type FastHistoryPanelProps = {
+  sessionHistory: FastFlashcardSessionSummary[];
+  topSessions: FastFlashcardSessionSummary[];
+  lastSessions: FastFlashcardSessionSummary[];
+};
+
+export const FastHistoryPanel = ({
+  sessionHistory,
+  topSessions,
+  lastSessions,
+}: FastHistoryPanelProps) => (
+  <section className="panel fast-history-panel">
+    <div className="panel-header">
+      <div>
+        <h2>Session History</h2>
+        <p className="muted">Top scores and recent runs.</p>
+      </div>
+    </div>
+    <div className="panel-body">
+      {sessionHistory.length === 0 ? (
+        <div className="empty-state">No sessions yet.</div>
+      ) : (
+        <div className="fast-history-sections">
+          <div className="fast-session-section">
+            <div>
+              <h3 className="fast-section-title">Top 3 Sessions</h3>
+              <p className="muted">Highest scores so far.</p>
+            </div>
+            <div className="fast-session-table">
+              <div className="fast-session-row header">
+                <span className="fast-session-cell timestamp">Date/Time</span>
+                <span className="fast-session-cell">Score</span>
+                <span className="fast-session-cell">Accuracy</span>
+                <span className="fast-session-cell">Pace</span>
+              </div>
+              {topSessions.map((session) => (
+                <div key={session.id} className="fast-session-row">
+                  <span className="fast-session-cell timestamp">
+                    {formatSessionTimestamp(session.endedAt)}
+                  </span>
+                  <span className="fast-session-cell">{session.score}</span>
+                  <span className="fast-session-cell">{session.accuracy}%</span>
+                  <span className="fast-session-cell">
+                    {formatSessionPace(session.pace)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="fast-session-section">
+            <div>
+              <h3 className="fast-section-title">Last 10 Sessions</h3>
+              <p className="muted">Most recent timer runs.</p>
+            </div>
+            <div className="fast-session-table">
+              <div className="fast-session-row header">
+                <span className="fast-session-cell timestamp">Date/Time</span>
+                <span className="fast-session-cell">Score</span>
+                <span className="fast-session-cell">Accuracy</span>
+                <span className="fast-session-cell">Pace</span>
+              </div>
+              {lastSessions.map((session) => (
+                <div key={session.id} className="fast-session-row">
+                  <span className="fast-session-cell timestamp">
+                    {formatSessionTimestamp(session.endedAt)}
+                  </span>
+                  <span className="fast-session-cell">{session.score}</span>
+                  <span className="fast-session-cell">{session.accuracy}%</span>
+                  <span className="fast-session-cell">
+                    {formatSessionPace(session.pace)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+);
+
+---
+
+## 📝 FastStatsPanel.tsx — ./pages/fast-flashcard/components/FastStatsPanel.tsx
+
+import type { CSSProperties } from "react";
+import type { FastFlashcardSessionStats } from "../hooks/useFastSession";
+
+type FastStatsPanelProps = {
+  isTimeModeEnabled: boolean;
+  timeModeActive: boolean;
+  timeStatusLabel: string;
+  timeProgressStyle: CSSProperties;
+  selectedDuration: number;
+  statsChartClass: string;
+  statsChartStyle: CSSProperties;
+  statsCorrect: number;
+  statsIncorrect: number;
+  statsTotal: number;
+  sessionStats: FastFlashcardSessionStats;
+  sessionCompleted: number;
+  sessionMissed: number;
+  sessionAccuracy: number;
+  sessionPace: string;
+  sessionScore: number;
+  sessionMultiplier: number;
+  vaultName: string;
+  flashcardsCount: number;
+  filteredFlashcardCount: number;
+  handleTimeToggle: () => void;
+};
+
+export const FastStatsPanel = ({
+  isTimeModeEnabled,
+  timeModeActive,
+  timeStatusLabel,
+  timeProgressStyle,
+  selectedDuration,
+  statsChartClass,
+  statsChartStyle,
+  statsCorrect,
+  statsIncorrect,
+  statsTotal,
+  sessionStats,
+  sessionCompleted,
+  sessionMissed,
+  sessionAccuracy,
+  sessionPace,
+  sessionScore,
+  sessionMultiplier,
+  vaultName,
+  flashcardsCount,
+  filteredFlashcardCount,
+  handleTimeToggle,
+}: FastStatsPanelProps) => (
+  <section className="panel fast-stats-panel">
+    <div className="panel-header">
+      <div>
+        <h2>Statistics Diagram</h2>
+        <p className="muted">Progress trends over time</p>
+      </div>
+    </div>
+    <div className="panel-body">
+      <div className="fast-stats-switch">
+        <span className="label">View</span>
+        <button
+          type="button"
+          className={`timer-start-button ${isTimeModeEnabled ? "active" : ""}`}
+          onClick={handleTimeToggle}
+          aria-pressed={isTimeModeEnabled}
+        >
+          <span className="timer-start-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="7.5" />
+              <path d="M12 7.5v4.4l2.8 1.8" />
+            </svg>
+          </span>
+          <span className="timer-start-text">
+            <span className="timer-start-meta">Time</span>
+            <span className="timer-start-action">
+              {isTimeModeEnabled ? "Stop" : "Start"}
+            </span>
+          </span>
+        </button>
+      </div>
+      <div className="fast-stats-blocks">
+        <div className="fast-time-block">
+          <div className="fast-block-header">
+            <span className="label">Time</span>
+            <span
+              className={`fast-time-status ${
+                timeModeActive ? "active" : "inactive"
+              }`}
+            >
+              {timeStatusLabel}
+            </span>
+          </div>
+          <div className="fast-time-meter" style={timeProgressStyle} aria-hidden="true" />
+          <div className="fast-time-scale">
+            <span>0s</span>
+            <span>{selectedDuration}s</span>
+          </div>
+        </div>
+        <div className="fast-stats-block">
+          <div className="fast-stats-block-header">
+            <span className="label">Statistics</span>
+          </div>
+          <div className="fast-stats-grid">
+            <div className="fast-stats-labels">
+              <span className="stats-label">Correct</span>
+              <span className="stats-label">Incorrect</span>
+              <span className="stats-label">Total</span>
+            </div>
+            <div
+              className={statsChartClass}
+              style={statsChartStyle}
+              role="img"
+              aria-label={`Total ${statsTotal}`}
+            >
+              <div className="stats-chart-label">
+                <span className="stats-chart-total">{statsTotal}</span>
+                <span className="stats-chart-caption">Total</span>
+              </div>
+            </div>
+            <div className="fast-stats-values">
+              <span className="stats-value">{statsCorrect}</span>
+              <span className="stats-value">{statsIncorrect}</span>
+              <span className="stats-value">{statsTotal}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="fast-session-section">
+        <div className="fast-section-header">
+          <div>
+            <h3 className="fast-section-title">Session Momentum</h3>
+            <p className="muted">Your progress for the current timer run.</p>
+          </div>
+        </div>
+        <div className="fast-session-grid">
+          <div className="fast-session-card">
+            <span className="label">Cards</span>
+            <span className="fast-session-value">{sessionCompleted}</span>
+            <span className="fast-session-sub">Completed</span>
+          </div>
+          <div className="fast-session-card">
+            <span className="label">Accuracy</span>
+            <span className="fast-session-value">{sessionAccuracy}%</span>
+            <span className="fast-session-sub">
+              {sessionStats.correct} correct / {sessionMissed} missed
+            </span>
+          </div>
+          <div className="fast-session-card">
+            <span className="label">Pace</span>
+            <span className="fast-session-value">{sessionPace}</span>
+            <span className="fast-session-sub">cards / min</span>
+          </div>
+          <div className="fast-session-card">
+            <span className="label">Score</span>
+            <span className="fast-session-value">{sessionScore}</span>
+            <span className="fast-session-sub">
+              +10 / -5 • x{sessionMultiplier.toFixed(1)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="fast-vault-block">
+        <span className="label">AKTIVER VAULT</span>
+        <div className="fast-vault-row">
+          <span>Vault: {vaultName}</span>
+          <span className="fast-vault-sep" aria-hidden="true">
+            •
+          </span>
+          <span>Cards loaded: {flashcardsCount}</span>
+          <span className="fast-vault-sep" aria-hidden="true">
+            •
+          </span>
+          <span>Filtered cards: {filteredFlashcardCount}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+---
+
+## 📝 FastToolsPanel.tsx — ./pages/fast-flashcard/components/FastToolsPanel.tsx
+
+import { FastFlashcardToolsSettings } from "../../../components/settings/FastFlashcardToolsSettings";
+import { FAST_FLASHCARD_DURATIONS } from "../hooks/useFastSession";
+
+type FastToolsPanelProps = {
+  fastFlashcards: {
+    handleFlashcardScan: () => void;
+    isFlashcardScanning: boolean;
+  };
+  settings: {
+    fastFlashcardOrder: string;
+    fastFlashcardMode: string;
+    fastFlashcardScope: string;
+    setFastFlashcardOrder: (value: string) => void;
+    setFastFlashcardMode: (value: string) => void;
+    setFastFlashcardScope: (value: string) => void;
+  };
+  selectedDuration: number;
+  setSelectedDuration: (value: number) => void;
+  isTimeModeEnabled: boolean;
+};
+
+export const FastToolsPanel = ({
+  fastFlashcards,
+  settings,
+  selectedDuration,
+  setSelectedDuration,
+  isTimeModeEnabled,
+}: FastToolsPanelProps) => (
+  <section className="panel fast-tools-panel">
+    <div className="panel-header">
+      <div>
+        <h2>Fast Flashcard Tools</h2>
+        <p className="muted">Scan current notes for cards.</p>
+      </div>
+    </div>
+    <div className="panel-body">
+      <button
+        type="button"
+        className="primary"
+        onClick={fastFlashcards.handleFlashcardScan}
+        disabled={fastFlashcards.isFlashcardScanning}
+      >
+        {fastFlashcards.isFlashcardScanning ? "Scanning..." : "Flashcard"}
+      </button>
+      <div className="flashcard-controls">
+        <div className="toolbar-section">
+          <span className="label">Duration</span>
+          <div className="pill-grid">
+            {FAST_FLASHCARD_DURATIONS.map((duration) => (
+              <button
+                key={duration}
+                type="button"
+                className={`pill pill-button ${
+                  selectedDuration === duration ? "active" : ""
+                }`}
+                aria-pressed={selectedDuration === duration}
+                disabled={isTimeModeEnabled}
+                title={isTimeModeEnabled ? "Stop timer to change duration" : undefined}
+                onClick={() => setSelectedDuration(duration)}
+              >
+                {duration}s
+              </button>
+            ))}
+          </div>
+        </div>
+        <FastFlashcardToolsSettings
+          fastFlashcardOrder={settings.fastFlashcardOrder}
+          fastFlashcardMode={settings.fastFlashcardMode}
+          fastFlashcardScope={settings.fastFlashcardScope}
+          setFastFlashcardOrder={settings.setFastFlashcardOrder}
+          setFastFlashcardMode={settings.setFastFlashcardMode}
+          setFastFlashcardScope={settings.setFastFlashcardScope}
+        />
+      </div>
+    </div>
+  </section>
+);
+
+---
+
+## 📝 FastFlashcardPage.tsx — ./pages/fast-flashcard/FastFlashcardPage.tsx
+
+import { FastCardHost } from "./components/FastCardHost";
+import { FastHeader } from "./components/FastHeader";
+import { FastHistoryPanel } from "./components/FastHistoryPanel";
+import { FastStatsPanel } from "./components/FastStatsPanel";
+import { FastToolsPanel } from "./components/FastToolsPanel";
+import { useFastSession } from "./hooks/useFastSession";
+
+export const FastFlashcardPage = () => {
+  const {
+    fastFlashcards,
+    settings,
+    orderedEntries,
+    currentEntry,
+    hasScannedCards,
+    hasFilteredCards,
+    isCurrentSubmitted,
+    submissionLocked,
+    handleCompositeOptionSelect,
+    handleCompositeTrueFalseSelect,
+    handleCompositeClozeInputChange,
+    handleCompositeClozeTokenDrop,
+    handleCompositeClozeTokenRemove,
+    handleCompositeTextInputChange,
+    handleCompositeTextCheck,
+    handleCompositeSelfGrade,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleTextCheck,
+    handleFastSubmit,
+    handleFastSelfGrade,
+    canGoBack,
+    canGoNext,
+    setFastCardPosition,
+    statsCorrect,
+    statsIncorrect,
+    statsTotal,
+    statsChartClass,
+    statsChartStyle,
+    isTimeModeEnabled,
+    timeModeActive,
+    handleTimeToggle,
+    timeStatusLabel,
+    timeProgressStyle,
+    selectedDuration,
+    setSelectedDuration,
+    sessionStats,
+    sessionCompleted,
+    sessionMissed,
+    sessionAccuracy,
+    sessionPace,
+    sessionScore,
+    sessionMultiplier,
+    vaultName,
+    sessionHistory,
+    topSessions,
+    lastSessions,
+  } = useFastSession();
+
+  return (
+    <div className="fast-flashcard-layout">
+      <FastStatsPanel
+        isTimeModeEnabled={isTimeModeEnabled}
+        timeModeActive={timeModeActive}
+        timeStatusLabel={timeStatusLabel}
+        timeProgressStyle={timeProgressStyle}
+        selectedDuration={selectedDuration}
+        statsChartClass={statsChartClass}
+        statsChartStyle={statsChartStyle}
+        statsCorrect={statsCorrect}
+        statsIncorrect={statsIncorrect}
+        statsTotal={statsTotal}
+        sessionStats={sessionStats}
+        sessionCompleted={sessionCompleted}
+        sessionMissed={sessionMissed}
+        sessionAccuracy={sessionAccuracy}
+        sessionPace={sessionPace}
+        sessionScore={sessionScore}
+        sessionMultiplier={sessionMultiplier}
+        vaultName={vaultName}
+        flashcardsCount={fastFlashcards.flashcards.length}
+        filteredFlashcardCount={fastFlashcards.filteredFlashcardCount}
+        handleTimeToggle={handleTimeToggle}
+      />
+      <FastToolsPanel
+        fastFlashcards={fastFlashcards}
+        settings={settings}
+        selectedDuration={selectedDuration}
+        setSelectedDuration={setSelectedDuration}
+        isTimeModeEnabled={isTimeModeEnabled}
+      />
+      <FastHistoryPanel
+        sessionHistory={sessionHistory}
+        topSessions={topSessions}
+        lastSessions={lastSessions}
+      />
+      <section className="panel fast-flashcard-panel">
+        <FastHeader hasScannedCards={hasScannedCards} />
+        <FastCardHost
+          hasScannedCards={hasScannedCards}
+          hasFilteredCards={hasFilteredCards}
+          currentEntry={currentEntry}
+          isCurrentSubmitted={isCurrentSubmitted}
+          submissionLocked={submissionLocked}
+          fastFlashcards={fastFlashcards}
+          orderedEntries={orderedEntries}
+          canGoBack={canGoBack}
+          canGoNext={canGoNext}
+          setFastCardPosition={setFastCardPosition}
+          handleOptionSelect={handleOptionSelect}
+          handleTrueFalseSelect={handleTrueFalseSelect}
+          handleClozeInputChange={handleClozeInputChange}
+          handleClozeTokenDrop={handleClozeTokenDrop}
+          handleClozeTokenRemove={handleClozeTokenRemove}
+          handleTextInputChange={handleTextInputChange}
+          handleTextCheck={handleTextCheck}
+          handleCompositeOptionSelect={handleCompositeOptionSelect}
+          handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
+          handleCompositeClozeInputChange={handleCompositeClozeInputChange}
+          handleCompositeClozeTokenDrop={handleCompositeClozeTokenDrop}
+          handleCompositeClozeTokenRemove={handleCompositeClozeTokenRemove}
+          handleCompositeTextInputChange={handleCompositeTextInputChange}
+          handleCompositeTextCheck={handleCompositeTextCheck}
+          handleCompositeSelfGrade={handleCompositeSelfGrade}
+          handleFastSubmit={handleFastSubmit}
+          handleFastSelfGrade={handleFastSelfGrade}
+        />
+      </section>
+    </div>
+  );
+};
+
+---
+
+## 📝 useFastSession.ts — ./pages/fast-flashcard/hooks/useFastSession.ts
 
 import {
   useCallback,
@@ -11287,22 +11948,16 @@ import {
   type DragEvent,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ClozeCard } from "../components/flashcards/ClozeCard";
-import { CompositeCard } from "../components/flashcards/CompositeCard";
-import { FreeTextCard } from "../components/flashcards/FreeTextCard";
-import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
-import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
-import { FastFlashcardToolsSettings } from "../components/settings/FastFlashcardToolsSettings";
-import { useAppState } from "../components/AppStateProvider";
-import { evaluateFlashcardResult } from "../features/flashcards/logic";
-import { vaultBaseName } from "../lib/path";
+import { useAppState } from "../../../components/AppStateProvider";
+import { evaluateFlashcardResult } from "../../../features/flashcards/logic";
+import { vaultBaseName } from "../../../lib/path";
 
-const fastFlashcardStatusLabel = "Not scanned yet";
-const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
+export const fastFlashcardStatusLabel = "Not scanned yet";
+export const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
 
-type FastFlashcardResult = "correct" | "incorrect" | "timeout";
+export type FastFlashcardResult = "correct" | "incorrect" | "timeout";
 
-type FastFlashcardSessionSummary = {
+export type FastFlashcardSessionSummary = {
   id: string;
   endedAt: string;
   score: number;
@@ -11319,7 +11974,7 @@ type FastFlashcardStorage = {
   sessions: FastFlashcardSessionSummary[];
 };
 
-type FastFlashcardSessionStats = {
+export type FastFlashcardSessionStats = {
   correct: number;
   incorrect: number;
   timeout: number;
@@ -11354,7 +12009,7 @@ const getSessionTimeValue = (value: string) => {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
-const formatSessionTimestamp = (value: string) => {
+export const formatSessionTimestamp = (value: string) => {
   const timestamp = getSessionTimeValue(value);
   if (!timestamp) {
     return value;
@@ -11368,10 +12023,10 @@ const formatSessionTimestamp = (value: string) => {
   });
 };
 
-const formatSessionPace = (pace: number) =>
+export const formatSessionPace = (pace: number) =>
   Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
-export const FastFlashcardPage = () => {
+export const useFastSession = () => {
   const { flashcards: appFlashcards, fastFlashcards, settings, vault } =
     useAppState();
   const {
@@ -12024,400 +12679,66 @@ export const FastFlashcardPage = () => {
       .slice(0, 3);
   }, [sessionHistory]);
 
-  return (
-    <div className="fast-flashcard-layout">
-      <section className="panel fast-stats-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Statistics Diagram</h2>
-            <p className="muted">Progress trends over time</p>
-          </div>
-        </div>
-        <div className="panel-body">
-          <div className="fast-stats-switch">
-            <span className="label">View</span>
-            <button
-              type="button"
-              className={`timer-start-button ${isTimeModeEnabled ? "active" : ""}`}
-              onClick={handleTimeToggle}
-              aria-pressed={isTimeModeEnabled}
-            >
-              <span className="timer-start-icon" aria-hidden="true">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="7.5" />
-                  <path d="M12 7.5v4.4l2.8 1.8" />
-                </svg>
-              </span>
-              <span className="timer-start-text">
-                <span className="timer-start-meta">Time</span>
-                <span className="timer-start-action">
-                  {isTimeModeEnabled ? "Stop" : "Start"}
-                </span>
-              </span>
-            </button>
-          </div>
-          <div className="fast-stats-blocks">
-            <div className="fast-time-block">
-              <div className="fast-block-header">
-                <span className="label">Time</span>
-                <span
-                  className={`fast-time-status ${
-                    timeModeActive ? "active" : "inactive"
-                  }`}
-                >
-                  {timeStatusLabel}
-                </span>
-              </div>
-              <div
-                className="fast-time-meter"
-                style={timeProgressStyle}
-                aria-hidden="true"
-              />
-              <div className="fast-time-scale">
-                <span>0s</span>
-                <span>{selectedDuration}s</span>
-              </div>
-            </div>
-            <div className="fast-stats-block">
-              <div className="fast-stats-block-header">
-                <span className="label">Statistics</span>
-              </div>
-              <div className="fast-stats-grid">
-                <div className="fast-stats-labels">
-                  <span className="stats-label">Correct</span>
-                  <span className="stats-label">Incorrect</span>
-                  <span className="stats-label">Total</span>
-                </div>
-                <div
-                  className={statsChartClass}
-                  style={statsChartStyle}
-                  role="img"
-                  aria-label={`Total ${statsTotal}`}
-                >
-                  <div className="stats-chart-label">
-                    <span className="stats-chart-total">{statsTotal}</span>
-                    <span className="stats-chart-caption">Total</span>
-                  </div>
-                </div>
-                <div className="fast-stats-values">
-                  <span className="stats-value">{statsCorrect}</span>
-                  <span className="stats-value">{statsIncorrect}</span>
-                  <span className="stats-value">{statsTotal}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="fast-session-section">
-            <div className="fast-section-header">
-              <div>
-                <h3 className="fast-section-title">Session Momentum</h3>
-                <p className="muted">Your progress for the current timer run.</p>
-              </div>
-            </div>
-            <div className="fast-session-grid">
-              <div className="fast-session-card">
-                <span className="label">Cards</span>
-                <span className="fast-session-value">{sessionCompleted}</span>
-                <span className="fast-session-sub">Completed</span>
-              </div>
-              <div className="fast-session-card">
-                <span className="label">Accuracy</span>
-                <span className="fast-session-value">{sessionAccuracy}%</span>
-                <span className="fast-session-sub">
-                  {sessionStats.correct} correct / {sessionMissed} missed
-                </span>
-              </div>
-              <div className="fast-session-card">
-                <span className="label">Pace</span>
-                <span className="fast-session-value">{sessionPace}</span>
-                <span className="fast-session-sub">cards / min</span>
-              </div>
-            <div className="fast-session-card">
-              <span className="label">Score</span>
-              <span className="fast-session-value">{sessionScore}</span>
-              <span className="fast-session-sub">
-                +10 / -5 • x{sessionMultiplier.toFixed(1)}
-              </span>
-            </div>
-            </div>
-          </div>
-          <div className="fast-vault-block">
-            <span className="label">AKTIVER VAULT</span>
-            <div className="fast-vault-row">
-              <span>Vault: {vaultName}</span>
-              <span className="fast-vault-sep" aria-hidden="true">
-                •
-              </span>
-              <span>Cards loaded: {fastFlashcards.flashcards.length}</span>
-              <span className="fast-vault-sep" aria-hidden="true">
-                •
-              </span>
-              <span>Filtered cards: {fastFlashcards.filteredFlashcardCount}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="panel fast-tools-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Fast Flashcard Tools</h2>
-            <p className="muted">Scan current notes for cards.</p>
-          </div>
-        </div>
-        <div className="panel-body">
-          <button
-            type="button"
-            className="primary"
-            onClick={fastFlashcards.handleFlashcardScan}
-            disabled={fastFlashcards.isFlashcardScanning}
-          >
-            {fastFlashcards.isFlashcardScanning ? "Scanning..." : "Flashcard"}
-          </button>
-          <div className="flashcard-controls">
-            <div className="toolbar-section">
-              <span className="label">Duration</span>
-              <div className="pill-grid">
-                {FAST_FLASHCARD_DURATIONS.map((duration) => (
-                  <button
-                    key={duration}
-                    type="button"
-                    className={`pill pill-button ${
-                      selectedDuration === duration ? "active" : ""
-                    }`}
-                    aria-pressed={selectedDuration === duration}
-                    disabled={isTimeModeEnabled}
-                    title={
-                      isTimeModeEnabled ? "Stop timer to change duration" : undefined
-                    }
-                    onClick={() => setSelectedDuration(duration)}
-                  >
-                    {duration}s
-                  </button>
-                ))}
-              </div>
-            </div>
-            <FastFlashcardToolsSettings
-              fastFlashcardOrder={settings.fastFlashcardOrder}
-              fastFlashcardMode={settings.fastFlashcardMode}
-              fastFlashcardScope={settings.fastFlashcardScope}
-              setFastFlashcardOrder={settings.setFastFlashcardOrder}
-              setFastFlashcardMode={settings.setFastFlashcardMode}
-              setFastFlashcardScope={settings.setFastFlashcardScope}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="panel fast-history-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Session History</h2>
-            <p className="muted">Top scores and recent runs.</p>
-          </div>
-        </div>
-        <div className="panel-body">
-          {sessionHistory.length === 0 ? (
-            <div className="empty-state">No sessions yet.</div>
-          ) : (
-            <div className="fast-history-sections">
-              <div className="fast-session-section">
-                <div>
-                  <h3 className="fast-section-title">Top 3 Sessions</h3>
-                  <p className="muted">Highest scores so far.</p>
-                </div>
-                <div className="fast-session-table">
-                  <div className="fast-session-row header">
-                    <span className="fast-session-cell timestamp">Date/Time</span>
-                    <span className="fast-session-cell">Score</span>
-                    <span className="fast-session-cell">Accuracy</span>
-                    <span className="fast-session-cell">Pace</span>
-                  </div>
-                  {topSessions.map((session) => (
-                    <div key={session.id} className="fast-session-row">
-                      <span className="fast-session-cell timestamp">
-                        {formatSessionTimestamp(session.endedAt)}
-                      </span>
-                      <span className="fast-session-cell">{session.score}</span>
-                      <span className="fast-session-cell">{session.accuracy}%</span>
-                      <span className="fast-session-cell">
-                        {formatSessionPace(session.pace)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="fast-session-section">
-                <div>
-                  <h3 className="fast-section-title">Last 10 Sessions</h3>
-                  <p className="muted">Most recent timer runs.</p>
-                </div>
-                <div className="fast-session-table">
-                  <div className="fast-session-row header">
-                    <span className="fast-session-cell timestamp">Date/Time</span>
-                    <span className="fast-session-cell">Score</span>
-                    <span className="fast-session-cell">Accuracy</span>
-                    <span className="fast-session-cell">Pace</span>
-                  </div>
-                  {lastSessions.map((session) => (
-                    <div key={session.id} className="fast-session-row">
-                      <span className="fast-session-cell timestamp">
-                        {formatSessionTimestamp(session.endedAt)}
-                      </span>
-                      <span className="fast-session-cell">{session.score}</span>
-                      <span className="fast-session-cell">{session.accuracy}%</span>
-                      <span className="fast-session-cell">
-                        {formatSessionPace(session.pace)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="panel fast-flashcard-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Flashcard</h2>
-            {!hasScannedCards ? (
-              <p className="muted">{fastFlashcardStatusLabel}</p>
-            ) : null}
-          </div>
-        </div>
-        <div className="panel-body">
-          {!hasScannedCards ? (
-            <div className="empty-state">
-              Select a note from DASHBOARD and start the flashcard scan
-            </div>
-          ) : !hasFilteredCards ? (
-            <div className="empty-state">No cards match the selected mode.</div>
-          ) : currentEntry ? (
-            <div className="flashcard-list">
-              {currentEntry.card.kind === "composite" ? (
-                <CompositeCard
-                  key={`fast-flashcard-${currentEntry.cardIndex}`}
-                  card={currentEntry.card}
-                  cardIndex={currentEntry.cardIndex}
-                  submitted={isCurrentSubmitted}
-                  submissionLocked={submissionLocked}
-                  partStates={
-                    fastFlashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
-                  }
-                  onOptionSelect={handleCompositeOptionSelect}
-                  onTrueFalseSelect={handleCompositeTrueFalseSelect}
-                  onClozeInputChange={handleCompositeClozeInputChange}
-                  onClozeTokenDrop={handleCompositeClozeTokenDrop}
-                  onClozeTokenRemove={handleCompositeClozeTokenRemove}
-                  onClozeTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
-                  onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
-                  onTextInputChange={handleCompositeTextInputChange}
-                  onTextCheck={handleCompositeTextCheck}
-                  onSelfGrade={handleCompositeSelfGrade}
-                  onSubmit={handleFastSubmit}
-                />
-              ) : currentEntry.card.kind === "cloze" ? (
-                <ClozeCard
-                  key={`fast-flashcard-${currentEntry.cardIndex}`}
-                  card={currentEntry.card}
-                  cardIndex={currentEntry.cardIndex}
-                  submitted={isCurrentSubmitted}
-                  submissionLocked={submissionLocked}
-                  responses={
-                    fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ?? {}
-                  }
-                  onInputChange={handleClozeInputChange}
-                  onTokenDrop={handleClozeTokenDrop}
-                  onTokenRemove={handleClozeTokenRemove}
-                  onTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
-                  onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
-                  onSubmit={handleFastSubmit}
-                />
-              ) : currentEntry.card.kind === "true-false" ? (
-                <TrueFalseCard
-                  key={`fast-flashcard-${currentEntry.cardIndex}`}
-                  card={currentEntry.card}
-                  cardIndex={currentEntry.cardIndex}
-                  submitted={isCurrentSubmitted}
-                  submissionLocked={submissionLocked}
-                  selections={
-                    fastFlashcards.flashcardTrueFalseSelections[currentEntry.cardIndex] ?? {}
-                  }
-                  onSelect={handleTrueFalseSelect}
-                  onSubmit={handleFastSubmit}
-                />
-              ) : currentEntry.card.kind === "free-text" ? (
-                <FreeTextCard
-                  key={`fast-flashcard-${currentEntry.cardIndex}`}
-                  card={currentEntry.card}
-                  cardIndex={currentEntry.cardIndex}
-                  submitted={isCurrentSubmitted}
-                  submissionLocked={submissionLocked}
-                  response={
-                    fastFlashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""
-                  }
-                  revealed={
-                    fastFlashcards.flashcardTextRevealed[currentEntry.cardIndex] ?? false
-                  }
-                  selfGrade={fastFlashcards.flashcardSelfGrades[currentEntry.cardIndex]}
-                  onInputChange={handleTextInputChange}
-                  onCheck={handleTextCheck}
-                  onSelfGrade={handleFastSelfGrade}
-                />
-              ) : (
-                <MultipleChoiceCard
-                  key={`fast-flashcard-${currentEntry.cardIndex}`}
-                  card={currentEntry.card}
-                  cardIndex={currentEntry.cardIndex}
-                  submitted={isCurrentSubmitted}
-                  submissionLocked={submissionLocked}
-                  selectedKeys={
-                    fastFlashcards.flashcardSelections[currentEntry.cardIndex] ?? []
-                  }
-                  onSelect={handleOptionSelect}
-                  onSubmit={handleFastSubmit}
-                />
-              )}
-            </div>
-          ) : (
-            <div className="empty-state">No cards available.</div>
-          )}
-          <div className="flashcard-pagination">
-            <button
-              type="button"
-              className="ghost small"
-              onClick={() => setFastCardPosition((prev) => Math.max(0, prev - 1))}
-              disabled={!canGoBack}
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              className="ghost small"
-              onClick={() =>
-                setFastCardPosition((prev) =>
-                  Math.min(prev + 1, Math.max(orderedEntries.length - 1, 0)),
-                )
-              }
-              disabled={!canGoNext}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
+  return {
+    fastFlashcards,
+    settings,
+    orderedEntries,
+    currentEntry,
+    hasScannedCards,
+    hasFilteredCards,
+    isCurrentSubmitted,
+    submissionLocked,
+    handleCompositeOptionSelect,
+    handleCompositeTrueFalseSelect,
+    handleCompositeClozeInputChange,
+    handleCompositeClozeTokenDrop,
+    handleCompositeClozeTokenRemove,
+    handleCompositeTextInputChange,
+    handleCompositeTextCheck,
+    handleCompositeSelfGrade,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleTextCheck,
+    handleFastSubmit,
+    handleFastSelfGrade,
+    canGoBack,
+    canGoNext,
+    setFastCardPosition,
+    statsCorrect,
+    statsIncorrect,
+    statsTotal,
+    statsChartClass,
+    statsChartStyle,
+    isTimeModeEnabled,
+    timeModeActive,
+    handleTimeToggle,
+    timeStatusLabel,
+    timeProgressStyle,
+    selectedDuration,
+    setSelectedDuration,
+    sessionStats,
+    sessionCompleted,
+    sessionMissed,
+    sessionAccuracy,
+    sessionPace,
+    sessionScore,
+    sessionMultiplier,
+    vaultName,
+    sessionHistory,
+    topSessions,
+    lastSessions,
+  };
 };
+
+---
+
+## 📝 FastFlashcardPage.tsx — ./pages/FastFlashcardPage.tsx
+
+export { FastFlashcardPage } from "./fast-flashcard/FastFlashcardPage";
 
 ---
 
@@ -13051,72 +13372,262 @@ export const FlashcardPage = () => {
 
 ---
 
-## 📝 HelpPage.tsx — ./pages/HelpPage.tsx
+## 📝 appSections.ts — ./pages/help/content/appSections.ts
 
-import { useEffect, useRef, useState } from "react";
-import { useAppState } from "../components/AppStateProvider";
+import { AppSectionData, AppSectionId, LocalizedText } from "./types";
 
-type AppLanguage = "de" | "en";
-type LocalizedText = { de?: string; en?: string };
+export const APP_SECTION_ORDER: AppSectionId[] = [
+  "dashboard",
+  "flashcard",
+  "fast-flashcard",
+  "spaced-repetition",
+];
 
-type HelpExample = {
-  id: string;
-  title: LocalizedText;
-  description: LocalizedText;
-  code: string;
+export const APP_SECTION_GROUND_RULES: {
+  paragraph: LocalizedText;
+  bullets: LocalizedText[];
+} = {
+  paragraph: {
+    en: "Start at the Dashboard to pick a note and scan its cards, then use the sections below to understand how each tool manages your reviews. This quick orientation helps you decide where to continue next.",
+    de: "Beginne im Dashboard, wähle eine Notiz und scanne sie, dann nutze die unten stehenden Sektionen, um zu verstehen, wie jedes Tool deine Wiederholungen steuert. Diese kurze Orientierung hilft dir, den naechsten Schritt sicher zu waehlen.",
+  },
+  bullets: [
+    {
+      en: "Choose one of the four sections on the left; the detail panel updates instantly so you can keep reading without leaving the page.",
+      de: "Wähle eine der vier Sektionen links; der Detailbereich aktualisiert sich sofort, damit du ohne Seitenwechsel weiterlesen kannst.",
+    },
+    {
+      en: "The highlighted entry marks your current location and makes it easy to switch topics.",
+      de: "Der markierte Eintrag zeigt dir, wo du gerade bist, und erleichtert den Wechsel zwischen Themen.",
+    },
+    {
+      en: "Use the Back button or breadcrumb to return to the overview when you are done.",
+      de: "Nutze Zurück oder die Breadcrumb, um nach dem Lesen zur Übersicht zurückzukehren.",
+    },
+    {
+      en: "Each detail panel explains what you see, how to act, and how filtering works for that tool, step by step.",
+      de: "Jeder Detailbereich beschreibt, was du siehst, welche Aktionen möglich sind und wie das Filtern in diesem Tool funktioniert, Schritt fuer Schritt.",
+    },
+  ],
 };
 
-type SyntaxDetail = {
-  whatItIs: string;
-  rules: string[];
-  rulesNote?: string;
-  promptTemplate: string;
-  example: string;
-  mistakes?: string[];
+export const APP_SECTION_LABELS = {
+  groundRulesTitle: { en: "Ground rules", de: "Grundregeln" },
+  typicalAction: { en: "Typical action", de: "Typische Aktion" },
+  whatIs: { en: "What is it?", de: "Was ist das?" },
+  purpose: { en: "What is it for?", de: "Wofuer ist es?" },
+  whatYouSee: { en: "What you see there", de: "Was du dort siehst" },
+  showCards: { en: "Show cards & filter", de: "Karten anzeigen & filtern" },
+  workflow: { en: "Core workflow", de: "Core-Workflow" },
+  tips: { en: "Tips", de: "Tipps" },
 };
 
-type SyntaxEntry = {
-  id: string;
-  title: LocalizedText;
-  markers: string[];
-  keyRule: LocalizedText;
-  snippet?: LocalizedText;
-  detail: { en: SyntaxDetail; de: SyntaxDetail };
+export const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
+  dashboard: {
+    title: { en: "Dashboard", de: "Dashboard" },
+    summary: {
+      en: "Note list, scan status, and quick previews to orient you before review.",
+      de: "Notizenliste mit Scan-Status und Vorschauen, damit du dich vor dem Review orientierst.",
+    },
+    action: {
+      en: "Pick a note",
+      de: "Notiz wählen",
+    },
+    detail: {
+      whatIs: {
+        en: "Dashboard shows vault notes, scan health, and shortcuts before any review. It is the starting hub where you decide what to study next.",
+        de: "Das Dashboard zeigt Vault-Notizen, Scan-Status und Schnellaktionen vor jeder Wiederholung. Es ist der Startpunkt, an dem du entscheidest, was als naechstes dran ist.",
+      },
+      purpose: [
+        {
+          en: "Choose the note you want to study and see recent scan timestamps to confirm it is up to date.",
+          de: "Wähle die Notiz aus und sieh die letzten Scanzeiten, damit du weisst, ob sie aktuell ist.",
+        },
+        {
+          en: "Trigger scans or rescans so the latest cards flow into the review tools and appear immediately.",
+          de: "Starte Scans/Rescans, damit neue Karten in den Review-Tools verfuegbar sind und sofort erscheinen.",
+        },
+        {
+          en: "Open a preview or jump directly into one of the review tools via quick actions for a faster start.",
+          de: "Öffne die Vorschau oder spring per Schnellaktion direkt in ein Review-Tool, um schneller zu starten.",
+        },
+      ],
+      whatYouSee: {
+        en: "A note list with status badges, timestamps, quick actions, and filters for recently scanned items, plus quick access to previews.",
+        de: "Eine Notizenliste mit Badges, Zeitstempeln, Schnellaktionen und Filtern fuer kuerzlich gescannte Notizen sowie direktem Zugang zur Vorschau.",
+      },
+      workflow: {
+        en: "Select note → Scan/Rescan → open Flashcard/Fast Flashcard/Spaced Repetition to review.",
+        de: "Notiz wählen → Scannen/Rescan → Flashcard/Fast Flashcard/Spaced Repetition öffnen und wiederholen.",
+      },
+      showCards: {
+        en: "Scanned cards feed the three tools; adjust their filters to control the reviews and narrow the focus.",
+        de: "Gescannten Karten landen in den Tools; passe deren Filter an, um die Auswahl zu steuern und den Fokus zu setzen.",
+      },
+      tips: {
+        en: "Filter by scan status to focus on notes you just updated and avoid outdated cards.",
+        de: "Filtere nach Scan-Status, um frisch bearbeitete Notizen zu priorisieren und veraltete Karten zu vermeiden.",
+      },
+    },
+  },
+  flashcard: {
+    title: { en: "Flashcard", de: "Flashcard" },
+    summary: {
+      en: "Standard review with stats and filters to pace a focused session.",
+      de: "Normale Wiederholung mit Statistiken und Filtern, damit die Session klar strukturiert bleibt.",
+    },
+    action: {
+      en: "Start a review",
+      de: "Review starten",
+    },
+    detail: {
+      whatIs: {
+        en: "Flashcard Tools deliver single-card reviews with a stats diagram, counters, and navigation. It is the classic mode for steady, deliberate practice.",
+        de: "Die Flashcard Tools bieten Einzelkarten-Wiederholungen mit Diagramm, Zählern und Navigation. Das ist der klassische Modus fuer ruhiges, systematisches Lernen.",
+      },
+      purpose: [
+        {
+          en: "Answer cards while tracking accuracy and totals, so progress stays visible.",
+          de: "Beantworte Karten und behalte Genauigkeit und Totale im Blick, damit der Fortschritt sichtbar bleibt.",
+        },
+        {
+          en: "Tweak ORDER, MODE, DEFAULT SCOPE, PAGE SIZE, solution reveal, and stats reset to shape each session and reuse settings later.",
+          de: "Passe ORDER, MODE, DEFAULT SCOPE, PAGE SIZE, Solution Reveal und Statistik-Reset an den Ablauf an und nutze diese Einstellungen erneut.",
+        },
+      ],
+      whatYouSee: {
+        en: "Card view with submission buttons, counters, stats diagram, and Flashcard Tools controls for order, scope, and mode.",
+        de: "Kartenbereich mit Abgabe, Zählern, Diagramm und Flashcard Tools-Schaltern fuer Order, Scope und Mode.",
+      },
+      workflow: {
+        en: "Scan note → open Flashcard → adjust filters → answer sequentially and watch stats update.",
+        de: "Notiz scannen → Flashcard öffnen → Filter anpassen → Karten nacheinander beantworten und Statistiken verfolgen.",
+      },
+      showCards: {
+        en: "Cards respect the selected scope/order/mode/page size; changes refresh the content instantly and update the order.",
+        de: "Die Karten folgen Scope, Order, Mode und Page Size; Anpassungen aktualisieren sofort und passen die Reihenfolge an.",
+      },
+      tips: {
+        en: "Use solution reveal for tricky cards and reset stats when restarting a session for a clean run.",
+        de: "Nutze Solution Reveal bei schwierigen Karten und setze Statistiken zurück, wenn du eine Session sauber neu starten willst.",
+      },
+    },
+  },
+  "fast-flashcard": {
+    title: { en: "Fast Flashcard", de: "Fast Flashcard" },
+    summary: {
+      en: "Timed sprints with duration pills and scoring for quick practice.",
+      de: "Zeitgesteuerte Sprints mit Dauer-Buttons und Score fuer schnelle Uebungen.",
+    },
+    action: {
+      en: "Start the timer",
+      de: "Timer starten",
+    },
+    detail: {
+      whatIs: {
+        en: "Fast Flashcard wraps cards in a timer, momentum cards, and a duration-weighted score. It rewards speed while still tracking accuracy.",
+        de: "Fast Flashcard kombiniert Karten mit Timer, Momentum-Karten und dauergewichteten Punkten. Es belohnt Tempo und misst zugleich die Genauigkeit.",
+      },
+      purpose: [
+        {
+          en: "Practice fast repetitions and measure pace/accuracy across short runs.",
+          de: "Trainiere schnelle Wiederholungen und messe Tempo/Genauigkeit ueber kurze Laeufe.",
+        },
+        {
+          en: "Compare session stats via the history panel to see trends over time.",
+          de: "Vergleiche Sessions ueber den Verlauf, um Trends ueber die Zeit zu erkennen.",
+        },
+      ],
+      whatYouSee: {
+        en: "Timer block, stats diagram, session momentum cards (Cards/Accuracy/Pace/Score), flashcard list, submission outcome pill, and duration pills alongside ORDER/MODE/DEFAULT SCOPE for quick setup.",
+        de: "Timer, Diagramm, Session-Karten, Kartenliste, Submit-Ergebnis und Fast Flashcard Tools mit Dauer-Buttons sowie ORDER/MODE/DEFAULT SCOPE fuer schnelles Setup.",
+      },
+      workflow: {
+        en: "Scan note → choose duration → start Fast Flashcard → submit before time ends and continue with the next card.",
+        de: "Notiz scannen → Dauer wählen → Fast Flashcard starten → vor Ablauf abgeben und mit der naechsten Karte weitermachen.",
+      },
+      showCards: {
+        en: "Cards follow Fast Flashcard filters; adjust ORDER, MODE, DEFAULT SCOPE, and duration pills to tweak pacing and difficulty.",
+        de: "Die Karten folgen Fast Flashcard-Filtern; ändere ORDER, MODE, DEFAULT SCOPE und Dauer-Buttons, um Tempo und Schwierigkeit zu steuern.",
+      },
+      tips: {
+        en: "Stop the timer between runs to reset session stats without affecting history and keep comparisons clean.",
+        de: "Pause den Timer zwischen Läufen, um Session-Stats zu resetten ohne den Verlauf zu beeinflussen und Vergleiche sauber zu halten.",
+      },
+    },
+  },
+  "spaced-repetition": {
+    title: { en: "Spaced Repetition", de: "Spaced Repetition" },
+    summary: {
+      en: "Box-based sessions with weighted order for long-term retention.",
+      de: "Boxen-Sessionen mit gewichteter Reihenfolge fuer langfristige Wiederholung.",
+    },
+    action: {
+      en: "Run a session",
+      de: "Session starten",
+    },
+    detail: {
+      whatIs: {
+        en: "Spaced Repetition fits cards into Leitner boxes and runs adjustable sessions for retention. It focuses practice on weaker cards and spaces repeats over time.",
+        de: "Spaced Repetition ordnet Karten in Leitner-Boxen und fuehrt einstellbare Sessions durch. Der Fokus liegt auf schwachen Karten und gestaffelten Wiederholungen.",
+      },
+      purpose: [
+        {
+          en: "Focus on difficult cards by selecting specific boxes and controlling the mix.",
+          de: "Fokussiere schwierige Karten ueber Boxenauswahl und steuere die Mischung.",
+        },
+        {
+          en: "Choose order, page size, and repetition strength for pacing and workload.",
+          de: "Waehle Order, Page Size und Repetition Strength fuer Tempo und Umfang.",
+        },
+        {
+          en: "Let answers promote/demote cards automatically so progress is reflected in the boxes.",
+          de: "Lass Antworten Karten automatisch befoerdern oder zurueckstufen, damit der Fortschritt in den Boxen sichtbar ist.",
+        },
+      ],
+      whatYouSee: {
+        en: "Box grid with counts, queue preview, and controls for order/page size/repetition strength, so you can see what is due.",
+        de: "Boxen-Raster mit Zaehlern, Queue-Preview und Controls fuer Order/Page Size/Repetition Strength, damit du siehst, was ansteht.",
+      },
+      workflow: {
+        en: "Scan note → open Spaced Repetition → pick boxes/order → run session and observe box changes.",
+        de: "Notiz scannen → Spaced Repetition öffnen → Boxen/Order wählen → Session durchführen und Boxenveraenderungen beobachten.",
+      },
+      showCards: {
+        en: "Only cards from selected boxes appear; order and page size plus repetition strength decide repetition frequency and spacing.",
+        de: "Nur Karten aus gewaehlten Boxen erscheinen; Order/Page Size und Repetition Strength bestimmen Frequenz und Abstand.",
+      },
+      tips: {
+        en: "Boost repetition strength when lower boxes need more practice, then scale back once accuracy improves.",
+        de: "Erhoehe die Repetition Strength, wenn niedrigere Boxen mehr Uebung brauchen, und reduziere sie wieder, wenn die Genauigkeit steigt.",
+      },
+    },
+  },
 };
 
-type HelpSection = {
-  id: string;
-  title: LocalizedText;
-  bullets?: LocalizedText[];
-  examples?: HelpExample[];
-  tone?: "help-block";
+---
+
+## 📝 i18n.ts — ./pages/help/content/i18n.ts
+
+import { AppLanguage, LocalizedText } from "./types";
+
+export const resolveText = (value: LocalizedText, language: AppLanguage) => {
+  if (language === "de") {
+    return value.de ?? value.en ?? "";
+  }
+  return value.en ?? value.de ?? "";
 };
 
-type HelpTopic = {
-  id: string;
-  title: LocalizedText;
-  summary: LocalizedText;
-  sections: HelpSection[];
-  draft?: boolean;
-  icon?: string;
-};
+export const resolveList = (items: LocalizedText[] | undefined, language: AppLanguage) =>
+  (items ?? [])
+    .map((item) => resolveText(item, language))
+    .filter((item) => item.trim() !== "");
 
-type AppSectionId =
-  | "dashboard"
-  | "flashcard"
-  | "fast-flashcard"
-  | "spaced-repetition";
+---
 
-type AppSectionContent = {
-  title: LocalizedText;
-  description: LocalizedText;
-  whatYouSee: LocalizedText;
-  coreActions: LocalizedText;
-  showingCards: LocalizedText;
-  workflow: LocalizedText;
-};
+## 📝 labels.ts — ./pages/help/content/labels.ts
 
-const helpHeader = {
+export const helpHeader = {
   eyebrow: { en: "Help", de: "Hilfe" },
   title: { en: "Help", de: "Hilfe" },
   summary: {
@@ -13125,7 +13636,7 @@ const helpHeader = {
   },
 };
 
-const helpLabels = {
+export const helpLabels = {
   back: { en: "Back", de: "Zurueck" },
   copy: { en: "Copy", de: "Kopieren" },
   copied: { en: "Copied", de: "Kopiert" },
@@ -13141,27 +13652,15 @@ const helpLabels = {
   openTopic: { en: "Open topic", de: "Thema oeffnen" },
 };
 
+---
+
+## 📝 entries.ts — ./pages/help/content/syntax/entries.ts
+
+import { SyntaxEntry } from "../types";
+
 const joinLines = (lines: string[]) => lines.join("\n");
 
-const flashcardSyntaxOverview = {
-  title: { en: "Core rules", de: "Grundregeln" },
-  bullets: [
-    {
-      en: "Wrap every card with #card and # on their own lines; content outside is ignored.",
-      de: "Jede Karte mit #card und # auf eigenen Zeilen umschliessen; Inhalt ausserhalb wird ignoriert.",
-    },
-    {
-      en: "The first non-empty line is the prompt.",
-      de: "Die erste nicht-leere Zeile ist die Frage.",
-    },
-    {
-      en: "Syntaxes can be combined in one #card block when desired; keep markers clear and consistent.",
-      de: "Syntaxen koennen bei Bedarf in einem #card-Block kombiniert werden; Marker klar und konsistent halten.",
-    },
-  ],
-};
-
-const flashcardSyntaxEntries: SyntaxEntry[] = [
+export const flashcardSyntaxEntries: SyntaxEntry[] = [
   {
     id: "separator-block",
     title: { en: "Structured separator block", de: "Strukturierter Separator-Block" },
@@ -13186,7 +13685,7 @@ const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Can be combined with other syntaxes in the same #card block (if desired).",
         ],
         rulesNote:
-          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Dashboard -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition Tools).",
+          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Dashboard -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition).",
         promptTemplate: joinLines([
           "Create one flashcard and optionally wrap it with markdown separators.",
           "Return only the #card block (and optional --- lines).",
@@ -13226,7 +13725,7 @@ const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Kann mit anderen Syntaxen im selben #card-Block kombiniert werden (falls gewuenscht).",
         ],
         rulesNote:
-          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Dashboard -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition Tools).",
+          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Dashboard -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition).",
         promptTemplate: joinLines([
           "Erstelle eine Karte und umrahme sie optional mit Markdown-Trennlinien.",
           "Antworte nur mit dem #card-Block (und optional ---).",
@@ -13877,76 +14376,59 @@ const flashcardSyntaxEntries: SyntaxEntry[] = [
   },
 ];
 
-const helpTopics: HelpTopic[] = [
+---
+
+## 📝 overview.ts — ./pages/help/content/syntax/overview.ts
+
+export const flashcardSyntaxOverview = {
+  title: { en: "Core rules", de: "Grundregeln" },
+  bullets: [
+    {
+      en: "Wrap every card with #card and # on their own lines; content outside is ignored.",
+      de: "Jede Karte mit #card und # auf eigenen Zeilen umschliessen; Inhalt ausserhalb wird ignoriert.",
+    },
+    {
+      en: "The first non-empty line is the prompt.",
+      de: "Die erste nicht-leere Zeile ist die Frage.",
+    },
+    {
+      en: "Syntaxes can be combined in one #card block when desired; keep markers clear and consistent.",
+      de: "Syntaxen koennen bei Bedarf in einem #card-Block kombiniert werden; Marker klar und konsistent halten.",
+    },
+  ],
+};
+
+---
+
+## 📝 topics.ts — ./pages/help/content/topics.ts
+
+import { HelpTopic } from "./types";
+
+export const helpTopics: HelpTopic[] = [
   {
     id: "flashcard-syntax",
     title: { en: "Flashcard syntax", de: "Karteikarten-Syntax" },
     summary: {
-      en: "Complete syntax reference with examples for every supported card type.",
-      de: "Komplette Syntax-Referenz mit Beispielen fuer alle Kartentypen.",
+      en: "Complete syntax reference with examples for every supported card type, plus rules and copy-ready templates.",
+      de: "Komplette Syntax-Referenz mit Beispielen fuer alle Kartentypen sowie Regeln und Vorlagen zum Kopieren.",
     },
     sections: [],
   },
   {
-    id: "spaced-repetition",
-    title: { en: "App Sections", de: "App-Bereiche" },
+    id: "app-sections",
+    title: { en: "App Sections", de: "App Sections" },
     summary: {
-      en: "Dashboard, Flashcard, Fast Flashcard, and Spaced Repetition – overview & getting started.",
-      de: "Dashboard, Flashcard, Fast Flashcard und Spaced Repetition – Überblick & Einstieg.",
+      en: "Overview, navigation, and typical workflows for new users, with a quick tour of each main area.",
+      de: "Ueberblick, Navigation und typische Workflows fuer neue Nutzer, inklusive kurzem Rundgang durch alle Hauptbereiche.",
     },
-    sections: [
-      {
-        id: "sr-boxes",
-        title: { en: "Leitner boxes", de: "Leitner-Boxen" },
-        bullets: [
-          {
-            en: "3/5/8 boxes represent learning stages.",
-            de: "3/5/8 Boxen bilden Lernstufen ab.",
-          },
-          {
-            en: "Cards in the last box are excluded from sessions.",
-            de: "Karten in der letzten Box werden nicht angezeigt.",
-          },
-        ],
-      },
-      {
-        id: "sr-progression",
-        title: { en: "Progression", de: "Fortschritt" },
-        bullets: [
-          {
-            en: "Correct answers promote a card; incorrect answers demote it.",
-            de: "Korrekte Antworten befoerdern eine Karte, falsche stufen sie herunter.",
-          },
-        ],
-      },
-      {
-        id: "sr-order",
-        title: { en: "Default order", de: "Standardreihenfolge" },
-        bullets: [
-          {
-            en: "In order, Random, or Repetition (box-weighted; lower boxes appear more often).",
-            de: "In order, Random oder Repetition (box-gewichtet; niedrigere Boxen haeufiger).",
-          },
-        ],
-      },
-      {
-        id: "sr-flow",
-        title: { en: "Workflow", de: "Workflow" },
-        bullets: [
-          {
-            en: "Select a user, load cards, review, and watch stats update live.",
-            de: "User waehlen, Karten laden, wiederholen und Live-Statistiken beobachten.",
-          },
-        ],
-      },
-    ],
+    sections: [],
   },
   {
     id: "settings",
     title: { en: "Settings explained", de: "Einstellungen erklaert" },
     summary: {
-      en: "What the main options control and where defaults live.",
-      de: "Welche Optionen was steuern und wo Standards gesetzt werden.",
+      en: "What the main options control and where defaults live, so you can predict tool behavior between sessions.",
+      de: "Welche Optionen was steuern und wo Standards gesetzt werden, damit das Tool-Verhalten nachvollziehbar bleibt.",
     },
     sections: [
       {
@@ -13954,21 +14436,21 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Flashcard Tools defaults", de: "Flashcard-Tools-Defaults" },
         bullets: [
           {
-            en: "Scan scope, order, page size, and stats reset define the review flow.",
-            de: "Scan-Scope, Reihenfolge, Page Size und Statistik-Reset steuern den Ablauf.",
+            en: "Scan scope, order, page size, and stats reset define the review flow and which cards appear.",
+            de: "Scan-Scope, Reihenfolge, Page Size und Statistik-Reset steuern den Ablauf und welche Karten erscheinen.",
           },
         ],
       },
       {
         id: "settings-sr",
         title: {
-          en: "Spaced Repetition Tools defaults",
-          de: "Spaced Repetition-Tools-Defaults",
+          en: "Spaced Repetition defaults",
+          de: "Spaced Repetition-Defaults",
         },
         bullets: [
           {
-            en: "Boxes, order, page size, and repetition strength set SR behavior.",
-            de: "Boxen, Reihenfolge, Page Size und Repetition Strength bestimmen SR.",
+            en: "Boxes, order, page size, and repetition strength set SR behavior and repeat frequency.",
+            de: "Boxen, Reihenfolge, Page Size und Repetition Strength bestimmen SR und die Wiederholfrequenz.",
           },
         ],
       },
@@ -13977,8 +14459,8 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Language & appearance", de: "Sprache & Aussehen" },
         bullets: [
           {
-            en: "Language switches labels instantly; theme and accent change visuals.",
-            de: "Sprache schaltet Labels sofort um; Theme und Accent aendern das Aussehen.",
+            en: "Language switches labels instantly; theme and accent change visuals without touching your data.",
+            de: "Sprache schaltet Labels sofort um; Theme und Accent aendern die Optik ohne deine Daten zu veraendern.",
           },
         ],
       },
@@ -13988,7 +14470,7 @@ const helpTopics: HelpTopic[] = [
         bullets: [
           {
             en: "All settings and tool options are saved automatically and restored after restart.",
-            de: "Alle Einstellungen und Tool-Optionen werden automatisch gespeichert.",
+            de: "Alle Einstellungen und Tool-Optionen werden automatisch gespeichert und nach Neustart wiederhergestellt.",
           },
         ],
       },
@@ -13998,8 +14480,8 @@ const helpTopics: HelpTopic[] = [
     id: "advanced",
     title: { en: "More settings / Advanced", de: "Weitere Einstellungen / Advanced" },
     summary: {
-      en: "Performance, layout tweaks, and power options.",
-      de: "Performance, Layout-Anpassungen und Power-Optionen.",
+      en: "Performance, layout tweaks, and power options for heavier vaults or personal preferences.",
+      de: "Performance, Layout-Anpassungen und Power-Optionen fuer groessere Vaults oder persoenliche Vorlieben.",
     },
     sections: [
       {
@@ -14007,8 +14489,8 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Performance", de: "Performance" },
         bullets: [
           {
-            en: "Max files per scan and scan parallelism limit how much is indexed at once.",
-            de: "Max Files pro Scan und Scan-Parallelism begrenzen die Indexierung.",
+            en: "Max files per scan and scan parallelism limit how much is indexed at once; lower values can reduce load.",
+            de: "Max Files pro Scan und Scan-Parallelism begrenzen die Indexierung; kleinere Werte entlasten das System.",
           },
         ],
       },
@@ -14017,8 +14499,8 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Layout", de: "Layout" },
         bullets: [
           {
-            en: "The right toolbar can be collapsed and restored with the FMD toggle.",
-            de: "Die rechte Toolbar laesst sich ueber den FMD-Schalter einklappen.",
+            en: "The right toolbar can be collapsed and restored with the FMD toggle to free screen space.",
+            de: "Die rechte Toolbar laesst sich ueber den FMD-Schalter einklappen, um mehr Platz zu schaffen.",
           },
         ],
       },
@@ -14027,8 +14509,8 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Data & Sync", de: "Data & Sync" },
         bullets: [
           {
-            en: "Data & Sync collects storage-related options; some items may be placeholders.",
-            de: "Data & Sync enthaelt Speicher-Optionen; einige Punkte koennen Platzhalter sein.",
+            en: "Data & Sync collects storage-related options; some items may be placeholders depending on the build.",
+            de: "Data & Sync enthaelt Speicher-Optionen; einige Punkte koennen je nach Build Platzhalter sein.",
           },
         ],
       },
@@ -14038,8 +14520,8 @@ const helpTopics: HelpTopic[] = [
     id: "vault",
     title: { en: "Load a vault", de: "Vault laden" },
     summary: {
-      en: "Select a vault and troubleshoot common issues.",
-      de: "Vault auswaehlen und typische Probleme beheben.",
+      en: "Select a vault, confirm permissions, and troubleshoot common issues when lists stay empty.",
+      de: "Vault auswaehlen, Berechtigungen bestaetigen und typische Probleme bei leeren Listen beheben.",
     },
     sections: [
       {
@@ -14047,12 +14529,12 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Select a vault", de: "Vault auswaehlen" },
         bullets: [
           {
-            en: "Use Dashboard to choose a folder and allow access when prompted.",
-            de: "Im Dashboard einen Ordner waehlen und Zugriff erlauben.",
+            en: "Use Dashboard to choose a folder and allow access when prompted; confirm the correct path.",
+            de: "Im Dashboard einen Ordner waehlen und Zugriff erlauben; den richtigen Pfad bestaetigen.",
           },
           {
-            en: "After loading, pick a note to preview and scan.",
-            de: "Nach dem Laden eine Notiz waehlen und scannen.",
+            en: "After loading, pick a note to preview and scan so cards populate the tools.",
+            de: "Nach dem Laden eine Notiz waehlen, Vorschau pruefen und scannen, damit Karten geladen werden.",
           },
         ],
       },
@@ -14061,16 +14543,16 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Common issues", de: "Haeufige Probleme" },
         bullets: [
           {
-            en: "Missing permissions can block the file list or previews.",
-            de: "Fehlende Berechtigungen blockieren Dateiliste oder Vorschau.",
+            en: "Missing permissions can block the file list or previews; re-approve access if needed.",
+            de: "Fehlende Berechtigungen blockieren Dateiliste oder Vorschau; Zugriff ggf. erneut erlauben.",
           },
           {
-            en: "If the list is empty, verify the path and markdown file types.",
-            de: "Bei leerer Liste Pfad und Markdown-Dateien pruefen.",
+            en: "If the list is empty, verify the path, markdown file types, and any active filters.",
+            de: "Bei leerer Liste Pfad, Markdown-Dateien und aktive Filter pruefen.",
           },
           {
-            en: "If the vault moved, reselect it in Dashboard.",
-            de: "Wenn der Vault verschoben wurde, neu auswaehlen.",
+            en: "If the vault moved, reselect it in Dashboard and scan again.",
+            de: "Wenn der Vault verschoben wurde, neu auswaehlen und erneut scannen.",
           },
         ],
       },
@@ -14080,8 +14562,8 @@ const helpTopics: HelpTopic[] = [
     id: "extras",
     title: { en: "Additional features", de: "Weitere Funktionsbereiche" },
     summary: {
-      en: "Focus mode, shortcuts, and optional tooling.",
-      de: "Fokusmodus, Shortcuts und optionale Funktionen.",
+      en: "Focus mode, shortcuts, and optional tooling to speed up review and reduce distractions.",
+      de: "Fokusmodus, Shortcuts und optionale Funktionen fuer schnelleres Review und weniger Ablenkung.",
     },
     sections: [
       {
@@ -14089,12 +14571,12 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Focus mode", de: "Fokusmodus" },
         bullets: [
           {
-            en: "Use the eye icon to focus on the card and hide the rest of the UI.",
-            de: "Mit dem Auge-Icon nur die Karte anzeigen und den Rest ausblenden.",
+            en: "Use the eye icon to focus on the card and hide the rest of the UI for distraction-free review.",
+            de: "Mit dem Auge-Icon nur die Karte anzeigen und den Rest fuer konzentriertes Review ausblenden.",
           },
           {
-            en: "Press Esc to exit focus mode.",
-            de: "Mit Esc den Fokusmodus verlassen.",
+            en: "Press Esc to exit focus mode and restore the full layout.",
+            de: "Mit Esc den Fokusmodus verlassen und das volle Layout wiederherstellen.",
           },
         ],
       },
@@ -14103,12 +14585,12 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Shortcuts", de: "Shortcuts" },
         bullets: [
           {
-            en: "In focus mode: Left/Right for Back/Next, Enter to submit when possible.",
-            de: "Im Fokusmodus: Links/Rechts fuer Zurueck/Weiter, Enter zum Abgeben.",
+            en: "In focus mode: Left/Right for Back/Next, Enter to submit when possible, keeping hands on the keyboard.",
+            de: "Im Fokusmodus: Links/Rechts fuer Zurueck/Weiter, Enter zum Abgeben; Haende bleiben auf der Tastatur.",
           },
           {
-            en: "Shortcuts are ignored while typing in inputs.",
-            de: "Shortcuts werden in Eingabefeldern ignoriert.",
+            en: "Shortcuts are ignored while typing in inputs to avoid accidental submissions.",
+            de: "Shortcuts werden in Eingabefeldern ignoriert, um Fehlklicks zu vermeiden.",
           },
         ],
       },
@@ -14117,8 +14599,8 @@ const helpTopics: HelpTopic[] = [
         title: { en: "Import / Export", de: "Import / Export" },
         bullets: [
           {
-            en: "If available, use Data & Sync to manage exports; otherwise it is coming later.",
-            de: "Falls vorhanden, ueber Data & Sync exportieren; sonst Coming Later.",
+            en: "If available, use Data & Sync to manage exports; otherwise it is coming later and not yet wired.",
+            de: "Falls vorhanden, ueber Data & Sync exportieren; sonst Coming Later und noch nicht verfuegbar.",
           },
         ],
       },
@@ -14126,193 +14608,836 @@ const helpTopics: HelpTopic[] = [
   },
 ];
 
-const APP_SECTION_ORDER: AppSectionId[] = [
-  "dashboard",
-  "flashcard",
-  "fast-flashcard",
-  "spaced-repetition",
-];
+---
 
-const APP_SECTION_INTRO: LocalizedText = {
-  en: "The Dashboard lists your notes, lets you select one, and keeps track of recent scans. Select a note, click Scan to build or refresh its cards, then jump into Flashcard, Fast Flashcard, or Spaced Repetition to start reviewing quickly.",
-  de: "Das Dashboard listet deine Notizen, erlaubt die Auswahl einer aktiven Notiz und zeigt Scan-Status. Wähle eine Notiz, klicke auf Scannen, um Karten zu erstellen oder zu aktualisieren, und starte dann Flashcard, Fast Flashcard oder Spaced Repetition zum Wiederholen.",
+## 📝 types.ts — ./pages/help/content/types.ts
+
+export type AppLanguage = "de" | "en";
+export type LocalizedText = { de?: string; en?: string };
+
+export type HelpExample = {
+  id: string;
+  title: LocalizedText;
+  description: LocalizedText;
+  code: string;
 };
 
-const APP_SECTION_DETAILS: Record<AppSectionId, AppSectionContent> = {
-  dashboard: {
-    title: { en: "Dashboard", de: "Dashboard" },
-    description: {
-      en: "Dashboard is the home screen for selecting notes, seeing scan progress, and spotting new cards. It summarizes each note’s scan status, last scan time, and quick links to open the file. After selecting a note and clicking Scan, the app builds or refreshes that note’s cards so every review tool works with the latest data.",
-      de: "Das Dashboard ist die Startseite, um Notizen auszuwählen, Scan-Fortschritte zu sehen und neue Karten zu erkennen. Es zeigt für jede Notiz den Scan-Status, Zeitstempel und schnelle Links zum Öffnen. Nach der Auswahl einer Notiz und einem Klick auf Scannen werden die Karten erstellt oder aktualisiert, damit alle Review-Tools auf dem aktuellen Stand arbeiten.",
-    },
-    whatYouSee: {
-      en: "A note list with scan status, last scan timestamps, status badges, and quick actions, plus aggregate stats and filters for recently scanned items.",
-      de: "Eine Notizenliste mit Scan-Status, letzter Scan-Zeit, Status-Badges und Schnellaktionen sowie aggregierten Statistiken und Filtern für kürzlich gescannte Einträge.",
-    },
-    coreActions: {
-      en: "Pick the active note, press Scan or Rescan to generate cards, open the note preview, and watch the status indicators update after each scan.",
-      de: "Wähle die aktive Notiz, drücke Scannen/Rescan zum Erstellen von Karten, öffne die Notiz-Vorschau und beobachte, wie sich die Statusanzeigen nach jedem Scan aktualisieren.",
-    },
-    showingCards: {
-      en: "Scanned cards feed into Flashcard, Fast Flashcard, and Spaced Repetition; change Flashcard or Fast Flashcard scope, order, and mode, or limit Spaced Repetition boxes to control which cards appear.",
-      de: "Die gescannten Karten fließen in Flashcard, Fast Flashcard und Spaced Repetition; passe Scope, Order und Mode der Flashcard- oder Fast-Tools an oder beschränke Spaced Repetition auf bestimmte Boxen, um die Auswahl zu steuern.",
-    },
-    workflow: {
-      en: "Workflow: Select a note → Scan → choose Flashcard, Fast Flashcard, or Spaced Repetition.",
-      de: "Workflow: Notiz wählen → Scannen → Flashcard, Fast Flashcard oder Spaced Repetition öffnen.",
-    },
-  },
-  flashcard: {
-    title: { en: "Flashcard", de: "Flashcard" },
-    description: {
-      en: "Flashcard Tools runs the main review session with large cards, correctness stats, and navigation controls. It walks through the scanned content one card at a time while keeping the stats diagram and counters visible. The Flashcard Tools sidebar houses filters so you can focus on the cards you need.",
-      de: "Die Flashcard Tools führen die reguläre Wiederholung mit großen Karten, Korrektheitsstatistiken und Navigation durch. Sie arbeiten die gescannten Inhalte eine Karte nach der anderen ab und behalten das Statistik-Diagramm im Blick. Die Flashcard Tools-Seitenleiste enthält Filter, damit du dich auf die gewünschten Karten konzentrieren kannst.",
-    },
-    whatYouSee: {
-      en: "A card view, stats diagram, correct/incorrect/total counters, and Flashcard Tools controls for ORDER, MODE, DEFAULT SCOPE, PAGE SIZE, solution reveal, and submission navigation.",
-      de: "Eine Kartenansicht, Statistik-Diagramm, Correct/Incorrect/Total-Zähler sowie Flashcard Tools-Schalter für ORDER, MODE, DEFAULT SCOPE, PAGE SIZE, Solution Reveal und Navigationsbuttons.",
-    },
-    coreActions: {
-      en: "Use ORDER (In order/Random) and MODE filters (QA, multiple choice, fill-in, assignment, etc.), pick DEFAULT SCOPE (current note vs whole vault), adjust PAGE SIZE, toggle solution reveal, submit answers, and move through cards with Back/Next.",
-      de: "Nutze ORDER (In order/Random) und MODE-Filter (QA, Multiple Choice, Fill-in, Assignment etc.), wähle DEFAULT SCOPE (aktuelle Notiz vs gesamter Vault), passe PAGE SIZE an, toggel die Solution Reveal, sende Antworten ab und navigiere mit Zurück/Weiter.",
-    },
-    showingCards: {
-      en: "Displayed cards respect the current scope/order/mode/page size so scanned results refresh immediately; change the filters in the Flashcard Tools panel at any time.",
-      de: "Die angezeigten Karten folgen Scope, Order, Mode und Page Size der Flashcard Tools, sodass gescannte Ergebnisse sofort aktualisiert werden; ändere die Filter jederzeit im Flashcard Tools-Panel.",
-    },
-    workflow: {
-      en: "Workflow: Scan note → open Flashcard → tweak filters → answer cards sequentially.",
-      de: "Workflow: Notiz scannen → Flashcard öffnen → Filter anpassen → Karten der Reihe nach beantworten.",
-    },
-  },
-  "fast-flashcard": {
-    title: { en: "Fast Flashcard", de: "Fast Flashcard" },
-    description: {
-      en: "Fast Flashcard is the timed sprint with a countdown, session momentum, and scoreboard tailored for quick repetitions. It keeps a sharply focused flashcard view, session stats, and history so you can monitor cards, accuracy, pace, and score. Fast Flashcard Tools mirror the regular filters while adding duration pills for pace-driven runs.",
-      de: "Fast Flashcard ist der zeitgesteuerte Sprint mit Countdown, Session-Momentum und Scoreboard für schnelle Wiederholungen. Es zeigt einen fokussierten Kartenbereich, Session-Statistiken und Verlauf, sodass du Karten, Genauigkeit, Tempo und Punkte im Blick behältst. Die Fast Flashcard Tools spiegeln die regulären Filter und fügen Dauer-Buttons für tempoabhängige Läufe hinzu.",
-    },
-    whatYouSee: {
-      en: "The timer block, stats diagram, session momentum cards (Cards/Accuracy/Pace/Score), vault info, flashcard list, submission outcome pill, and Fast Flashcard Tools with duration pills plus ORDER/MODE/DEFAULT SCOPE.",
-      de: "Timer-Block, Statistiken, Session-Momentum-Karten (Cards/Accuracy/Pace/Score), Vault-Info, Kartenliste, Submit-Ergebnis und Fast Flashcard Tools mit Dauer-Buttons sowie ORDER/MODE/DEFAULT SCOPE.",
-    },
-    coreActions: {
-      en: "Choose a duration, start the timer, submit answers before time expires (self-grade free text when required), and watch accuracy, pace, and the duration-weighted score update live.",
-      de: "Wähle eine Dauer, starte den Timer, sende Antworten vor Ablauf ab (self-grade Free-Text bei Bedarf) und beobachte, wie Genauigkeit, Tempo und der dauergewichtete Score live aktualisiert werden.",
-    },
-    showingCards: {
-      en: "Cards obey the Fast Flashcard Tools filters; ORDER, MODE, and DEFAULT SCOPE plus the duration pills control which cards and what pacing you encounter.",
-      de: "Die Karten folgen den Fast Flashcard Tools-Filtern; ORDER, MODE und DEFAULT SCOPE sowie die Dauer-Buttons bestimmen, welche Karten und welches Tempo du bekommst.",
-    },
-    workflow: {
-      en: "Workflow: Scan note → set duration → start Fast Flashcard → answer under the timer.",
-      de: "Workflow: Notiz scannen → Dauer wählen → Fast Flashcard starten → unter dem Timer beantworten.",
-    },
-  },
-  "spaced-repetition": {
-    title: { en: "Spaced Repetition", de: "Spaced Repetition" },
-    description: {
-      en: "Spaced Repetition Tools organize cards into Leitner boxes and run graduated sessions to strengthen retention. It tracks promotions/demotions and shows box counts so you can focus on hard cards. Choose the right boxes, order, and repetition strength to shape each session.",
-      de: "Die Spaced Repetition Tools ordnen Karten in Leitner-Boxen und führen abgestufte Sessions zur Verfestigung durch. Sie verfolgen Beförderungen/Herabstufungen und zeigen Boxenzahlen, damit du schwierige Karten fokussieren kannst. Wähle passende Boxen, Reihenfolge und Repetition Strength für jede Session.",
-    },
-    whatYouSee: {
-      en: "A grid of boxes with counts, session controls for order/page size/repetition strength, queue previews, and stats that highlight how many cards sit in each box.",
-      de: "Ein Raster aus Boxen mit Zählern, Session-Kontrollen für Order/Page Size/Repetition Strength, Queue-Preview und Statistiken, die zeigen, wie viele Karten in jeder Box liegen.",
-    },
-    coreActions: {
-      en: "Load cards, select the boxes you want to review, pick order (In order/Random/Repetition), set page size and repetition strength, start a session, and let answers promote or demote cards automatically.",
-      de: "Karten laden, gewünschte Boxen auswählen, Order (In order/Random/Repetition) einstellen, Page Size und Repetition Strength festlegen, Session starten und Antworten automatisch Karten befördern oder herunterstufen lassen.",
-    },
-    showingCards: {
-      en: "Only cards from the chosen boxes appear during a session; order and page size drop-downs plus repetition strength sliders decide how often lower boxes resurface.",
-      de: "Nur Karten aus den gewählten Boxen erscheinen während einer Session; Order- und Page-Size-Dropdowns sowie die Repetition Strength entscheiden, wie oft niedrigere Boxen wieder auftauchen.",
-    },
-    workflow: {
-      en: "Workflow: Scan note → open Spaced Repetition → choose boxes/order → run session.",
-      de: "Workflow: Notiz scannen → Spaced Repetition öffnen → Boxen/Order wählen → Session starten.",
-    },
-  },
+export type SyntaxDetail = {
+  whatItIs: string;
+  rules: string[];
+  rulesNote?: string;
+  promptTemplate: string;
+  example: string;
+  mistakes?: string[];
 };
 
-const resolveText = (value: LocalizedText, language: AppLanguage) => {
-  if (language === "de") {
-    return value.de ?? value.en ?? "";
-  }
-  return value.en ?? value.de ?? "";
+export type SyntaxEntry = {
+  id: string;
+  title: LocalizedText;
+  markers: string[];
+  keyRule: LocalizedText;
+  snippet?: LocalizedText;
+  detail: { en: SyntaxDetail; de: SyntaxDetail };
 };
 
-const resolveList = (items: LocalizedText[] | undefined, language: AppLanguage) =>
-  (items ?? [])
-    .map((item) => resolveText(item, language))
-    .filter((item) => item.trim() !== "");
+export type HelpSection = {
+  id: string;
+  title: LocalizedText;
+  bullets?: LocalizedText[];
+  examples?: HelpExample[];
+  tone?: "help-block";
+};
+
+export type HelpTopic = {
+  id: string;
+  title: LocalizedText;
+  summary: LocalizedText;
+  sections: HelpSection[];
+  draft?: boolean;
+  icon?: string;
+};
+
+export type AppSectionId =
+  | "dashboard"
+  | "flashcard"
+  | "fast-flashcard"
+  | "spaced-repetition";
+
+export type AppSectionDetail = {
+  whatIs: LocalizedText;
+  purpose: LocalizedText[];
+  whatYouSee: LocalizedText;
+  workflow: LocalizedText;
+  showCards: LocalizedText;
+  tips?: LocalizedText;
+};
+
+export type AppSectionData = {
+  title: LocalizedText;
+  summary: LocalizedText;
+  action: LocalizedText;
+  detail: AppSectionDetail;
+};
+
+---
+
+## 📝 helpContent.ts — ./pages/help/helpContent.ts
+
+export * from "./content/types";
+export * from "./content/i18n";
+export * from "./content/labels";
+export * from "./content/topics";
+export * from "./content/appSections";
+export * from "./content/syntax/overview";
+export * from "./content/syntax/entries";
+
+---
+
+## 📝 AppSectionsGuidePanel.tsx — ./pages/help/sections/AppSectionsGuidePanel.tsx
+
+import { useEffect, useState } from "react";
+import {
+  APP_SECTION_DATA,
+  APP_SECTION_GROUND_RULES,
+  APP_SECTION_LABELS,
+  APP_SECTION_ORDER,
+  AppLanguage,
+  AppSectionId,
+  resolveText,
+} from "../helpContent";
 
 type AppSectionsGuidePanelProps = {
   language: AppLanguage;
-  title: string;
-  summary: string;
 };
 
-const AppSectionsGuidePanel = ({
-  language,
-  title,
-  summary,
-}: AppSectionsGuidePanelProps) => {
+export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) => {
   const [selectedSectionId, setSelectedSectionId] =
     useState<AppSectionId>("dashboard");
-  const selectedDetail = APP_SECTION_DETAILS[selectedSectionId];
+  const [sectionLanguage, setSectionLanguage] = useState<AppLanguage>(language);
+  const selectedSection = APP_SECTION_DATA[selectedSectionId];
+
+  useEffect(() => {
+    setSectionLanguage(language);
+  }, [language]);
 
   return (
-    <div className="help-app-sections-card">
-      <div className="help-app-sections-header">
-        <div className="help-app-sections-title">{title}</div>
-        <p className="muted help-app-sections-summary">{summary}</p>
-      </div>
-      <div className="help-app-sections-body">
-        <div className="help-app-sections-list" role="tablist">
-          {APP_SECTION_ORDER.map((sectionId) => (
-            <button
-              key={sectionId}
-              type="button"
-              className={`help-app-sections-list-item ${
-                selectedSectionId === sectionId ? "selected" : ""
-              }`}
-              aria-pressed={selectedSectionId === sectionId}
-              onClick={() => setSelectedSectionId(sectionId)}
-            >
-              {resolveText(APP_SECTION_DETAILS[sectionId].title, language)}
-            </button>
-          ))}
+    <div className="help-detail-sections">
+      <div className="help-detail-section help-block">
+        <div className="help-item-header">
+          <span className="help-block-title">
+            {resolveText(APP_SECTION_LABELS.groundRulesTitle, sectionLanguage)}
+          </span>
         </div>
-        <div className="help-app-sections-detail">
-          <p className="help-app-sections-intro">
-            {resolveText(APP_SECTION_INTRO, language)}
-          </p>
-          <h3 className="help-app-sections-detail-title">
-            {resolveText(selectedDetail.title, language)}
-          </h3>
-          <p className="help-app-sections-detail-description">
-            {resolveText(selectedDetail.description, language)}
-          </p>
-          <div className="help-app-sections-detail-field">
-            <span className="label">What you see</span>
-            <p>{resolveText(selectedDetail.whatYouSee, language)}</p>
+        <p className="help-syntax-text">
+          {resolveText(APP_SECTION_GROUND_RULES.paragraph, sectionLanguage)}
+        </p>
+        <ul className="help-list">
+          {APP_SECTION_GROUND_RULES.bullets.map((bullet, index) => (
+            <li key={`ground-${index}`}>
+              {resolveText(bullet, sectionLanguage)}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="help-syntax-layout">
+        <div className="help-syntax-cards" role="tablist">
+          {APP_SECTION_ORDER.map((sectionId) => {
+            const section = APP_SECTION_DATA[sectionId];
+            const isActive = selectedSectionId === sectionId;
+            return (
+              <button
+                key={sectionId}
+                type="button"
+                className={`help-syntax-card${isActive ? " active" : ""}`}
+                onClick={() => setSelectedSectionId(sectionId)}
+                role="tab"
+                aria-selected={isActive}
+              >
+                <div className="help-syntax-card-title">
+                  {resolveText(section.title, sectionLanguage)}
+                </div>
+                <div className="help-syntax-card-meta">
+                  <span className="help-syntax-card-label">
+                    {resolveText(
+                      APP_SECTION_LABELS.typicalAction,
+                      sectionLanguage,
+                    )}
+                  </span>
+                  <span>{resolveText(section.action, sectionLanguage)}</span>
+                </div>
+                <div className="help-syntax-card-rule">
+                  {resolveText(section.summary, sectionLanguage)}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="help-syntax-detail">
+          <div className="help-syntax-detail-header">
+            <div className="help-syntax-detail-title">
+              {resolveText(selectedSection.title, sectionLanguage)}
+            </div>
+            <div className="help-syntax-lang-tabs">
+              <button
+                type="button"
+                className={`help-syntax-lang${
+                  sectionLanguage === "en" ? " active" : ""
+                }`}
+                onClick={() => setSectionLanguage("en")}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={`help-syntax-lang${
+                  sectionLanguage === "de" ? " active" : ""
+                }`}
+                onClick={() => setSectionLanguage("de")}
+              >
+                DE
+              </button>
+            </div>
           </div>
-          <div className="help-app-sections-detail-field">
-            <span className="label">Core actions</span>
-            <p>{resolveText(selectedDetail.coreActions, language)}</p>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.whatIs, sectionLanguage)}
+              </span>
+            </div>
+            <p className="help-syntax-text">
+              {resolveText(selectedSection.detail.whatIs, sectionLanguage)}
+            </p>
           </div>
-          <div className="help-app-sections-detail-field">
-            <span className="label">Showing cards &amp; filtering</span>
-            <p>{resolveText(selectedDetail.showingCards, language)}</p>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.purpose, sectionLanguage)}
+              </span>
+            </div>
+            <ul className="help-syntax-list">
+              {selectedSection.detail.purpose.map((item, index) => (
+                <li key={`${selectedSectionId}-purpose-${index}`}>
+                  {resolveText(item, sectionLanguage)}
+                </li>
+              ))}
+            </ul>
           </div>
-          <p className="help-app-section-workflow">
-            <span className="label">Typical workflow</span>{" "}
-            {resolveText(selectedDetail.workflow, language)}
-          </p>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.whatYouSee, sectionLanguage)}
+              </span>
+            </div>
+            <p className="help-syntax-text">
+              {resolveText(selectedSection.detail.whatYouSee, sectionLanguage)}
+            </p>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.showCards, sectionLanguage)}
+              </span>
+            </div>
+            <p className="help-syntax-text">
+              {resolveText(selectedSection.detail.showCards, sectionLanguage)}
+            </p>
+          </div>
+          {selectedSection.detail.tips ? (
+            <div className="help-syntax-section">
+              <div className="help-syntax-section-header">
+                <span className="label">
+                  {resolveText(APP_SECTION_LABELS.tips, sectionLanguage)}
+                </span>
+              </div>
+              <p className="help-syntax-text">
+                {resolveText(selectedSection.detail.tips, sectionLanguage)}
+              </p>
+            </div>
+          ) : null}
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.workflow, sectionLanguage)}
+              </span>
+            </div>
+            <p className="help-syntax-text">
+              {resolveText(selectedSection.detail.workflow, sectionLanguage)}
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+---
+
+## 📝 HelpDetailSection.tsx — ./pages/help/sections/HelpDetailSection.tsx
+
+import { AppLanguage, HelpTopic, SyntaxEntry, helpLabels, resolveText } from "../helpContent";
+import { AppSectionsGuidePanel } from "./AppSectionsGuidePanel";
+import { HelpTopicSections } from "./HelpTopicSections";
+import { SyntaxSection } from "./SyntaxSection";
+
+type HelpDetailSectionProps = {
+  titleText: string;
+  activeTopic: HelpTopic;
+  language: AppLanguage;
+  isSyntaxTopic: boolean;
+  isAppSectionsTopic: boolean;
+  activeSyntax: SyntaxEntry | null;
+  setActiveTopicId: (value: string | null) => void;
+  setActiveSyntaxId: (value: string | null) => void;
+  syntaxLanguage: AppLanguage;
+  setSyntaxLanguage: (value: AppLanguage) => void;
+  copyLabel: string;
+  copiedLabel: string;
+  copiedItemId: string | null;
+  handleCopy: (text: string, copyId: string) => void;
+  overviewBullets: string[];
+  syntaxCopyExampleLabel: string;
+  syntaxCopyPromptLabel: string;
+  syntaxCopiedLabel: string;
+  syntaxPromptLabel: string;
+  syntaxExampleLabel: string;
+  syntaxRulesLabel: string;
+  syntaxWhatItIsLabel: string;
+  syntaxMistakesLabel: string;
+  syntaxMarkersLabel: string;
+};
+
+export const HelpDetailSection = ({
+  titleText,
+  activeTopic,
+  language,
+  isSyntaxTopic,
+  isAppSectionsTopic,
+  activeSyntax,
+  setActiveTopicId,
+  setActiveSyntaxId,
+  syntaxLanguage,
+  setSyntaxLanguage,
+  copyLabel,
+  copiedLabel,
+  copiedItemId,
+  handleCopy,
+  overviewBullets,
+  syntaxCopyExampleLabel,
+  syntaxCopyPromptLabel,
+  syntaxCopiedLabel,
+  syntaxPromptLabel,
+  syntaxExampleLabel,
+  syntaxRulesLabel,
+  syntaxWhatItIsLabel,
+  syntaxMistakesLabel,
+  syntaxMarkersLabel,
+}: HelpDetailSectionProps) => (
+  <>
+    <div className="help-detail-header">
+      <div className="help-breadcrumb">
+        <span>{titleText}</span>
+        <span className="help-crumb-sep">&gt;</span>
+        <span className="help-breadcrumb-current">
+          {resolveText(activeTopic.title, language)}
+        </span>
+        {isSyntaxTopic && activeSyntax ? (
+          <>
+            <span className="help-crumb-sep">&gt;</span>
+            <span className="help-breadcrumb-current help-breadcrumb-leaf">
+              {resolveText(activeSyntax.title, syntaxLanguage)}
+            </span>
+          </>
+        ) : null}
+        {activeTopic.draft ? (
+          <span className="chip">{resolveText(helpLabels.draft, language)}</span>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        className="ghost small"
+        onClick={() => setActiveTopicId(null)}
+      >
+        {resolveText(helpLabels.back, language)}
+      </button>
+    </div>
+    <p className="muted">{resolveText(activeTopic.summary, language)}</p>
+    {isSyntaxTopic ? (
+      <SyntaxSection
+        overviewBullets={overviewBullets}
+        activeSyntax={activeSyntax}
+        syntaxLanguage={syntaxLanguage}
+        setActiveSyntaxId={setActiveSyntaxId}
+        setSyntaxLanguage={setSyntaxLanguage}
+        handleCopy={handleCopy}
+        copiedItemId={copiedItemId}
+        syntaxCopyExampleLabel={syntaxCopyExampleLabel}
+        syntaxCopyPromptLabel={syntaxCopyPromptLabel}
+        syntaxCopiedLabel={syntaxCopiedLabel}
+        syntaxPromptLabel={syntaxPromptLabel}
+        syntaxExampleLabel={syntaxExampleLabel}
+        syntaxRulesLabel={syntaxRulesLabel}
+        syntaxWhatItIsLabel={syntaxWhatItIsLabel}
+        syntaxMistakesLabel={syntaxMistakesLabel}
+        syntaxMarkersLabel={syntaxMarkersLabel}
+      />
+    ) : isAppSectionsTopic ? (
+      <AppSectionsGuidePanel language={language} />
+    ) : (
+      <HelpTopicSections
+        activeTopic={activeTopic}
+        language={language}
+        copiedItemId={copiedItemId}
+        copyLabel={copyLabel}
+        copiedLabel={copiedLabel}
+        handleCopy={handleCopy}
+      />
+    )}
+  </>
+);
+
+---
+
+## 📝 HelpHeaderSection.tsx — ./pages/help/sections/HelpHeaderSection.tsx
+
+type HelpHeaderSectionProps = {
+  eyebrowText: string;
+  titleText: string;
+  summaryText: string;
+};
+
+export const HelpHeaderSection = ({
+  eyebrowText,
+  titleText,
+  summaryText,
+}: HelpHeaderSectionProps) => (
+  <header className="content-header">
+    <div>
+      <p className="eyebrow">{eyebrowText}</p>
+      <h1>{titleText}</h1>
+      <p className="muted">{summaryText}</p>
+    </div>
+  </header>
+);
+
+---
+
+## 📝 HelpOverviewSection.tsx — ./pages/help/sections/HelpOverviewSection.tsx
+
+import { AppLanguage, HelpTopic, helpLabels, resolveText } from "../helpContent";
+
+type HelpOverviewSectionProps = {
+  helpTopics: HelpTopic[];
+  language: AppLanguage;
+  setActiveTopicId: (value: string | null) => void;
+};
+
+export const HelpOverviewSection = ({
+  helpTopics,
+  language,
+  setActiveTopicId,
+}: HelpOverviewSectionProps) => (
+  <div className="help-overview-grid">
+    {helpTopics.map((topic) => (
+      <button
+        key={topic.id}
+        type="button"
+        className="help-topic-card"
+        aria-label={`${resolveText(helpLabels.openTopic, language)}: ${resolveText(
+          topic.title,
+          language,
+        )}`}
+        onClick={() => setActiveTopicId(topic.id)}
+      >
+        {topic.icon ? <span className="help-topic-icon">{topic.icon}</span> : null}
+        <div className="help-topic-content">
+          <div className="help-topic-title">{resolveText(topic.title, language)}</div>
+          <div className="help-topic-summary">
+            {resolveText(topic.summary, language)}
+          </div>
+        </div>
+        {topic.draft ? (
+          <span className="chip">
+            {resolveText(helpLabels.draft, language)}
+          </span>
+        ) : null}
+        <span className="help-topic-arrow">&gt;</span>
+      </button>
+    ))}
+  </div>
+);
+
+---
+
+## 📝 HelpTopicHeadingsBlock.tsx — ./pages/help/sections/HelpTopicHeadingsBlock.tsx
+
+import { AppLanguage, HelpTopic, resolveText } from "../helpContent";
+
+type HelpTopicHeadingsBlockProps = {
+  helpTopics: HelpTopic[];
+  language: AppLanguage;
+  activeTopicId: string;
+  setActiveTopicId: (value: string | null) => void;
+};
+
+export const HelpTopicHeadingsBlock = ({
+  helpTopics,
+  language,
+  activeTopicId,
+  setActiveTopicId,
+}: HelpTopicHeadingsBlockProps) => (
+  <div className="pill-grid">
+    {helpTopics.map((topic) => (
+      <button
+        key={topic.id}
+        type="button"
+        className={`pill pill-button${activeTopicId === topic.id ? " active" : ""}`}
+        aria-pressed={activeTopicId === topic.id}
+        onClick={() => setActiveTopicId(topic.id)}
+      >
+        {resolveText(topic.title, language)}
+      </button>
+    ))}
+  </div>
+);
+
+---
+
+## 📝 HelpTopicSections.tsx — ./pages/help/sections/HelpTopicSections.tsx
+
+import {
+  AppLanguage,
+  HelpTopic,
+  resolveList,
+  resolveText,
+} from "../helpContent";
+
+type HelpTopicSectionsProps = {
+  activeTopic: HelpTopic;
+  language: AppLanguage;
+  copiedItemId: string | null;
+  copyLabel: string;
+  copiedLabel: string;
+  handleCopy: (text: string, copyId: string) => void;
+};
+
+export const HelpTopicSections = ({
+  activeTopic,
+  language,
+  copiedItemId,
+  copyLabel,
+  copiedLabel,
+  handleCopy,
+}: HelpTopicSectionsProps) => (
+  <div className="help-detail-sections">
+    {activeTopic.sections.map((section) => {
+      const bullets = resolveList(section.bullets, language);
+      const examples = section.examples ?? [];
+      const sectionLabelClass =
+        section.tone === "help-block" ? "help-block-title" : "label";
+      const sectionClassName =
+        section.tone === "help-block"
+          ? "help-detail-section help-block"
+          : "help-detail-section";
+      return (
+        <div key={section.id} className={sectionClassName}>
+          <div className="help-item-header">
+            <span className={sectionLabelClass}>
+              {resolveText(section.title, language)}
+            </span>
+          </div>
+          {bullets.length > 0 ? (
+            <ul className="help-list">
+              {bullets.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+          {examples.length > 0 ? (
+            <div className="help-examples">
+              {examples.map((example) => {
+                const exampleTitle = resolveText(example.title, language);
+                const exampleDescription = resolveText(
+                  example.description,
+                  language,
+                );
+                const copyId = `example-${example.id}`;
+                const isCopied = copiedItemId === copyId;
+                return (
+                  <div key={example.id} className="help-example">
+                    <div className="help-example-header">
+                      <div className="help-example-text">
+                        <div className="help-example-title">{exampleTitle}</div>
+                        {exampleDescription ? (
+                          <p className="help-example-description">
+                            {exampleDescription}
+                          </p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        className="ghost small help-copy"
+                        onClick={() => handleCopy(example.code, copyId)}
+                        aria-label={`${copyLabel}: ${exampleTitle}`}
+                      >
+                        {isCopied ? copiedLabel : copyLabel}
+                      </button>
+                    </div>
+                    <pre className="help-code">{example.code}</pre>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      );
+    })}
+  </div>
+);
+
+---
+
+## 📝 SyntaxSection.tsx — ./pages/help/sections/SyntaxSection.tsx
+
+import {
+  AppLanguage,
+  SyntaxEntry,
+  flashcardSyntaxEntries,
+  flashcardSyntaxOverview,
+  resolveText,
+} from "../helpContent";
+
+type SyntaxSectionProps = {
+  overviewBullets: string[];
+  activeSyntax: SyntaxEntry | null;
+  syntaxLanguage: AppLanguage;
+  setActiveSyntaxId: (value: string | null) => void;
+  setSyntaxLanguage: (value: AppLanguage) => void;
+  handleCopy: (text: string, copyId: string) => void;
+  copiedItemId: string | null;
+  syntaxCopyExampleLabel: string;
+  syntaxCopyPromptLabel: string;
+  syntaxCopiedLabel: string;
+  syntaxPromptLabel: string;
+  syntaxExampleLabel: string;
+  syntaxRulesLabel: string;
+  syntaxWhatItIsLabel: string;
+  syntaxMistakesLabel: string;
+  syntaxMarkersLabel: string;
+};
+
+export const SyntaxSection = ({
+  overviewBullets,
+  activeSyntax,
+  syntaxLanguage,
+  setActiveSyntaxId,
+  setSyntaxLanguage,
+  handleCopy,
+  copiedItemId,
+  syntaxCopyExampleLabel,
+  syntaxCopyPromptLabel,
+  syntaxCopiedLabel,
+  syntaxPromptLabel,
+  syntaxExampleLabel,
+  syntaxRulesLabel,
+  syntaxWhatItIsLabel,
+  syntaxMistakesLabel,
+  syntaxMarkersLabel,
+}: SyntaxSectionProps) => (
+  <div className="help-detail-sections">
+    <div className="help-detail-section help-block">
+      <div className="help-item-header">
+        <span className="help-block-title">
+          {resolveText(flashcardSyntaxOverview.title, syntaxLanguage)}
+        </span>
+      </div>
+      {overviewBullets.length > 0 ? (
+        <ul className="help-list">
+          {overviewBullets.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+    <div className="help-syntax-layout">
+      <div className="help-syntax-cards" role="tablist">
+        {flashcardSyntaxEntries.map((entry) => {
+          const isActive = entry.id === activeSyntax?.id;
+          const entryTitle = resolveText(entry.title, syntaxLanguage);
+          const entrySnippet = entry.snippet
+            ? resolveText(entry.snippet, syntaxLanguage)
+            : "";
+          return (
+            <button
+              key={entry.id}
+              type="button"
+              className={`help-syntax-card${isActive ? " active" : ""}`}
+              onClick={() => setActiveSyntaxId(entry.id)}
+              role="tab"
+              aria-selected={isActive}
+            >
+              <div className="help-syntax-card-title">{entryTitle}</div>
+              <div className="help-syntax-card-meta">
+                <span className="help-syntax-card-label">{syntaxMarkersLabel}</span>
+                <div className="help-syntax-token-list">
+                  {entry.markers.map((marker) => (
+                    <span key={marker} className="help-syntax-token">
+                      {marker}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="help-syntax-card-rule">
+                {resolveText(entry.keyRule, syntaxLanguage)}
+              </div>
+              {entrySnippet ? (
+                <pre className="help-syntax-snippet">{entrySnippet}</pre>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {activeSyntax ? (
+        <div className="help-syntax-detail">
+          <div className="help-syntax-detail-header">
+            <div className="help-syntax-detail-title">
+              {resolveText(activeSyntax.title, syntaxLanguage)}
+            </div>
+            <div className="help-syntax-lang-tabs">
+              <button
+                type="button"
+                className={`help-syntax-lang${
+                  syntaxLanguage === "en" ? " active" : ""
+                }`}
+                onClick={() => setSyntaxLanguage("en")}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={`help-syntax-lang${
+                  syntaxLanguage === "de" ? " active" : ""
+                }`}
+                onClick={() => setSyntaxLanguage("de")}
+              >
+                DE
+              </button>
+            </div>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">{syntaxWhatItIsLabel}</span>
+            </div>
+            <p className="help-syntax-text">
+              {activeSyntax.detail[syntaxLanguage].whatItIs}
+            </p>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">{syntaxRulesLabel}</span>
+            </div>
+            {activeSyntax.detail[syntaxLanguage].rulesNote ? (
+              <p className="help-syntax-text">
+                {activeSyntax.detail[syntaxLanguage].rulesNote}
+              </p>
+            ) : null}
+            <ul className="help-syntax-list">
+              {activeSyntax.detail[syntaxLanguage].rules.map((rule) => (
+                <li key={rule}>{rule}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">{syntaxPromptLabel}</span>
+              <button
+                type="button"
+                className="ghost small help-copy"
+                onClick={() =>
+                  handleCopy(
+                    activeSyntax.detail[syntaxLanguage].promptTemplate,
+                    `syntax-prompt-${activeSyntax.id}-${syntaxLanguage}`,
+                  )
+                }
+                aria-label={`${syntaxCopyPromptLabel}: ${resolveText(
+                  activeSyntax.title,
+                  syntaxLanguage,
+                )}`}
+              >
+                {copiedItemId ===
+                `syntax-prompt-${activeSyntax.id}-${syntaxLanguage}`
+                  ? syntaxCopiedLabel
+                  : syntaxCopyPromptLabel}
+              </button>
+            </div>
+            <pre className="help-code">
+              {activeSyntax.detail[syntaxLanguage].promptTemplate}
+            </pre>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">{syntaxExampleLabel}</span>
+              <button
+                type="button"
+                className="ghost small help-copy"
+                onClick={() =>
+                  handleCopy(
+                    activeSyntax.detail[syntaxLanguage].example,
+                    `syntax-example-${activeSyntax.id}-${syntaxLanguage}`,
+                  )
+                }
+                aria-label={`${syntaxCopyExampleLabel}: ${resolveText(
+                  activeSyntax.title,
+                  syntaxLanguage,
+                )}`}
+              >
+                {copiedItemId ===
+                `syntax-example-${activeSyntax.id}-${syntaxLanguage}`
+                  ? syntaxCopiedLabel
+                  : syntaxCopyExampleLabel}
+              </button>
+            </div>
+            <pre className="help-code">
+              {activeSyntax.detail[syntaxLanguage].example}
+            </pre>
+          </div>
+          {activeSyntax.detail[syntaxLanguage].mistakes?.length ? (
+            <div className="help-syntax-section">
+              <div className="help-syntax-section-header">
+                <span className="label">{syntaxMistakesLabel}</span>
+              </div>
+              <ul className="help-syntax-list">
+                {activeSyntax.detail[syntaxLanguage].mistakes?.map((mistake) => (
+                  <li key={mistake}>{mistake}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  </div>
+);
+
+---
+
+## 📝 HelpPage.tsx — ./pages/HelpPage.tsx
+
+import { useEffect, useRef, useState } from "react";
+import { useAppState } from "../components/AppStateProvider";
+import {
+  AppLanguage,
+  flashcardSyntaxEntries,
+  flashcardSyntaxOverview,
+  helpHeader,
+  helpLabels,
+  helpTopics,
+  resolveList,
+  resolveText,
+} from "./help/helpContent";
+import { HelpDetailSection } from "./help/sections/HelpDetailSection";
+import { HelpHeaderSection } from "./help/sections/HelpHeaderSection";
+import { HelpOverviewSection } from "./help/sections/HelpOverviewSection";
+import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
 
 export const HelpPage = () => {
   const { settings } = useAppState();
@@ -14328,12 +15453,15 @@ export const HelpPage = () => {
   const language = settings.language;
   const activeTopic = helpTopics.find((topic) => topic.id === activeTopicId) ?? null;
   const isSyntaxTopic = activeTopic?.id === "flashcard-syntax";
+  const isAppSectionsTopic = activeTopic?.id === "app-sections";
   const activeSyntax =
     flashcardSyntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
     flashcardSyntaxEntries[0] ??
     null;
 
   const titleText = resolveText(helpHeader.title, language);
+  const eyebrowText = resolveText(helpHeader.eyebrow, language);
+  const summaryText = resolveText(helpHeader.summary, language);
 
   const copyLabel = resolveText(helpLabels.copy, language);
   const copiedLabel = resolveText(helpLabels.copied, language);
@@ -14341,15 +15469,9 @@ export const HelpPage = () => {
     helpLabels.copyExample,
     syntaxLanguage,
   );
-  const syntaxCopyPromptLabel = resolveText(
-    helpLabels.copyPrompt,
-    syntaxLanguage,
-  );
+  const syntaxCopyPromptLabel = resolveText(helpLabels.copyPrompt, syntaxLanguage);
   const syntaxCopiedLabel = resolveText(helpLabels.copied, syntaxLanguage);
-  const syntaxPromptLabel = resolveText(
-    helpLabels.promptTemplate,
-    syntaxLanguage,
-  );
+  const syntaxPromptLabel = resolveText(helpLabels.promptTemplate, syntaxLanguage);
   const syntaxExampleLabel = resolveText(helpLabels.example, syntaxLanguage);
   const syntaxRulesLabel = resolveText(helpLabels.rules, syntaxLanguage);
   const syntaxWhatItIsLabel = resolveText(helpLabels.whatItIs, syntaxLanguage);
@@ -14427,362 +15549,54 @@ export const HelpPage = () => {
 
   return (
     <>
-      <header className="content-header">
-        <div>
-          <p className="eyebrow">{resolveText(helpHeader.eyebrow, language)}</p>
-          <h1>{titleText}</h1>
-          <p className="muted">{resolveText(helpHeader.summary, language)}</p>
-        </div>
-      </header>
+      <HelpHeaderSection
+        eyebrowText={eyebrowText}
+        titleText={titleText}
+        summaryText={summaryText}
+      />
       <section className="panel help-panel">
         <div className="panel-body help-body">
           {activeTopic ? (
             <>
-              <div className="help-detail-header">
-                <div className="help-breadcrumb">
-                  <span>{titleText}</span>
-                  <span className="help-crumb-sep">&gt;</span>
-                  <span className="help-breadcrumb-current">
-                    {resolveText(activeTopic.title, language)}
-                  </span>
-                  {isSyntaxTopic && activeSyntax ? (
-                    <>
-                      <span className="help-crumb-sep">&gt;</span>
-                      <span className="help-breadcrumb-current help-breadcrumb-leaf">
-                        {resolveText(activeSyntax.title, syntaxLanguage)}
-                      </span>
-                    </>
-                  ) : null}
-                  {activeTopic.draft ? (
-                    <span className="chip">
-                      {resolveText(helpLabels.draft, language)}
-                    </span>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  className="ghost small"
-                  onClick={() => setActiveTopicId(null)}
-                >
-                  {resolveText(helpLabels.back, language)}
-                </button>
-              </div>
-              <p className="muted">
-                {resolveText(activeTopic.summary, language)}
-              </p>
-              {isSyntaxTopic ? (
-                <div className="help-detail-sections">
-                  <div className="help-detail-section help-block">
-                    <div className="help-item-header">
-                      <span className="help-block-title">
-                        {resolveText(flashcardSyntaxOverview.title, syntaxLanguage)}
-                      </span>
-                    </div>
-                    {overviewBullets.length > 0 ? (
-                      <ul className="help-list">
-                        {overviewBullets.map((item) => (
-                          <li key={item}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-                  <div className="help-syntax-layout">
-                    <div className="help-syntax-cards" role="tablist">
-                      {flashcardSyntaxEntries.map((entry) => {
-                        const isActive = entry.id === activeSyntax?.id;
-                        const entryTitle = resolveText(
-                          entry.title,
-                          syntaxLanguage,
-                        );
-                        const entrySnippet = entry.snippet
-                          ? resolveText(entry.snippet, syntaxLanguage)
-                          : "";
-                        return (
-                          <button
-                            key={entry.id}
-                            type="button"
-                            className={`help-syntax-card${
-                              isActive ? " active" : ""
-                            }`}
-                            onClick={() => setActiveSyntaxId(entry.id)}
-                            role="tab"
-                            aria-selected={isActive}
-                          >
-                            <div className="help-syntax-card-title">
-                              {entryTitle}
-                            </div>
-                            <div className="help-syntax-card-meta">
-                              <span className="help-syntax-card-label">
-                                {syntaxMarkersLabel}
-                              </span>
-                              <div className="help-syntax-token-list">
-                                {entry.markers.map((marker) => (
-                                  <span key={marker} className="help-syntax-token">
-                                    {marker}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="help-syntax-card-rule">
-                              {resolveText(entry.keyRule, syntaxLanguage)}
-                            </div>
-                            {entrySnippet ? (
-                              <pre className="help-syntax-snippet">
-                                {entrySnippet}
-                              </pre>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {activeSyntax ? (
-                      <div className="help-syntax-detail">
-                        <div className="help-syntax-detail-header">
-                          <div className="help-syntax-detail-title">
-                            {resolveText(activeSyntax.title, syntaxLanguage)}
-                          </div>
-                          <div className="help-syntax-lang-tabs">
-                            <button
-                              type="button"
-                              className={`help-syntax-lang${
-                                syntaxLanguage === "en" ? " active" : ""
-                              }`}
-                              onClick={() => setSyntaxLanguage("en")}
-                            >
-                              EN
-                            </button>
-                            <button
-                              type="button"
-                              className={`help-syntax-lang${
-                                syntaxLanguage === "de" ? " active" : ""
-                              }`}
-                              onClick={() => setSyntaxLanguage("de")}
-                            >
-                              DE
-                            </button>
-                          </div>
-                        </div>
-                        <div className="help-syntax-section">
-                          <div className="help-syntax-section-header">
-                            <span className="label">{syntaxWhatItIsLabel}</span>
-                          </div>
-                          <p className="help-syntax-text">
-                            {activeSyntax.detail[syntaxLanguage].whatItIs}
-                          </p>
-                        </div>
-                        <div className="help-syntax-section">
-                          <div className="help-syntax-section-header">
-                            <span className="label">{syntaxRulesLabel}</span>
-                          </div>
-                          {activeSyntax.detail[syntaxLanguage].rulesNote ? (
-                            <p className="help-syntax-text">
-                              {activeSyntax.detail[syntaxLanguage].rulesNote}
-                            </p>
-                          ) : null}
-                          <ul className="help-syntax-list">
-                            {activeSyntax.detail[syntaxLanguage].rules.map(
-                              (rule) => (
-                                <li key={rule}>{rule}</li>
-                              ),
-                            )}
-                          </ul>
-                        </div>
-                        <div className="help-syntax-section">
-                          <div className="help-syntax-section-header">
-                            <span className="label">{syntaxPromptLabel}</span>
-                            <button
-                              type="button"
-                              className="ghost small help-copy"
-                              onClick={() =>
-                                handleCopy(
-                                  activeSyntax.detail[syntaxLanguage]
-                                    .promptTemplate,
-                                  `syntax-prompt-${activeSyntax.id}-${syntaxLanguage}`,
-                                )
-                              }
-                              aria-label={`${syntaxCopyPromptLabel}: ${resolveText(
-                                activeSyntax.title,
-                                syntaxLanguage,
-                              )}`}
-                            >
-                              {copiedItemId ===
-                              `syntax-prompt-${activeSyntax.id}-${syntaxLanguage}`
-                                ? syntaxCopiedLabel
-                                : syntaxCopyPromptLabel}
-                            </button>
-                          </div>
-                          <pre className="help-code">
-                            {activeSyntax.detail[syntaxLanguage].promptTemplate}
-                          </pre>
-                        </div>
-                        <div className="help-syntax-section">
-                          <div className="help-syntax-section-header">
-                            <span className="label">{syntaxExampleLabel}</span>
-                            <button
-                              type="button"
-                              className="ghost small help-copy"
-                              onClick={() =>
-                                handleCopy(
-                                  activeSyntax.detail[syntaxLanguage].example,
-                                  `syntax-example-${activeSyntax.id}-${syntaxLanguage}`,
-                                )
-                              }
-                              aria-label={`${syntaxCopyExampleLabel}: ${resolveText(
-                                activeSyntax.title,
-                                syntaxLanguage,
-                              )}`}
-                            >
-                              {copiedItemId ===
-                              `syntax-example-${activeSyntax.id}-${syntaxLanguage}`
-                                ? syntaxCopiedLabel
-                                : syntaxCopyExampleLabel}
-                            </button>
-                          </div>
-                          <pre className="help-code">
-                            {activeSyntax.detail[syntaxLanguage].example}
-                          </pre>
-                        </div>
-                        {activeSyntax.detail[syntaxLanguage].mistakes?.length ? (
-                          <div className="help-syntax-section">
-                            <div className="help-syntax-section-header">
-                              <span className="label">
-                                {syntaxMistakesLabel}
-                              </span>
-                            </div>
-                            <ul className="help-syntax-list">
-                              {activeSyntax.detail[syntaxLanguage].mistakes?.map(
-                                (mistake) => (
-                                  <li key={mistake}>{mistake}</li>
-                                ),
-                              )}
-                            </ul>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : (
-                <div className="help-detail-sections">
-                  {activeTopic.sections.map((section) => {
-                    const bullets = resolveList(section.bullets, language);
-                    const examples = section.examples ?? [];
-                    const sectionLabelClass =
-                      section.tone === "help-block"
-                        ? "help-block-title"
-                        : "label";
-                    const sectionClassName =
-                      section.tone === "help-block"
-                        ? "help-detail-section help-block"
-                        : "help-detail-section";
-                    return (
-                      <div key={section.id} className={sectionClassName}>
-                        <div className="help-item-header">
-                          <span className={sectionLabelClass}>
-                            {resolveText(section.title, language)}
-                          </span>
-                        </div>
-                        {bullets.length > 0 ? (
-                          <ul className="help-list">
-                            {bullets.map((item) => (
-                              <li key={item}>{item}</li>
-                            ))}
-                          </ul>
-                        ) : null}
-                        {examples.length > 0 ? (
-                          <div className="help-examples">
-                            {examples.map((example) => {
-                              const exampleTitle = resolveText(
-                                example.title,
-                                language,
-                              );
-                              const exampleDescription = resolveText(
-                                example.description,
-                                language,
-                              );
-                              const copyId = `example-${example.id}`;
-                              const isCopied = copiedItemId === copyId;
-                              return (
-                                <div key={example.id} className="help-example">
-                                  <div className="help-example-header">
-                                    <div className="help-example-text">
-                                      <div className="help-example-title">
-                                        {exampleTitle}
-                                      </div>
-                                      {exampleDescription ? (
-                                        <p className="help-example-description">
-                                          {exampleDescription}
-                                        </p>
-                                      ) : null}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      className="ghost small help-copy"
-                                      onClick={() =>
-                                        handleCopy(example.code, copyId)
-                                      }
-                                      aria-label={`${copyLabel}: ${exampleTitle}`}
-                                    >
-                                      {isCopied ? copiedLabel : copyLabel}
-                                    </button>
-                                  </div>
-                                  <pre className="help-code">{example.code}</pre>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <HelpTopicHeadingsBlock
+                helpTopics={helpTopics}
+                language={language}
+                activeTopicId={activeTopic.id}
+                setActiveTopicId={setActiveTopicId}
+              />
+              <HelpDetailSection
+                titleText={titleText}
+                activeTopic={activeTopic}
+                language={language}
+                isSyntaxTopic={isSyntaxTopic}
+                isAppSectionsTopic={isAppSectionsTopic}
+                activeSyntax={activeSyntax}
+                setActiveTopicId={setActiveTopicId}
+                setActiveSyntaxId={setActiveSyntaxId}
+                syntaxLanguage={syntaxLanguage}
+                setSyntaxLanguage={setSyntaxLanguage}
+                copyLabel={copyLabel}
+                copiedLabel={copiedLabel}
+                copiedItemId={copiedItemId}
+                handleCopy={handleCopy}
+                overviewBullets={overviewBullets}
+                syntaxCopyExampleLabel={syntaxCopyExampleLabel}
+                syntaxCopyPromptLabel={syntaxCopyPromptLabel}
+                syntaxCopiedLabel={syntaxCopiedLabel}
+                syntaxPromptLabel={syntaxPromptLabel}
+                syntaxExampleLabel={syntaxExampleLabel}
+                syntaxRulesLabel={syntaxRulesLabel}
+                syntaxWhatItIsLabel={syntaxWhatItIsLabel}
+                syntaxMistakesLabel={syntaxMistakesLabel}
+                syntaxMarkersLabel={syntaxMarkersLabel}
+              />
             </>
           ) : (
-            <div className="help-overview-grid">
-              {helpTopics.map((topic) => {
-                if (topic.id === "spaced-repetition") {
-                  return (
-                    <AppSectionsGuidePanel
-                      key={topic.id}
-                      language={language}
-                      title={resolveText(topic.title, language)}
-                      summary={resolveText(topic.summary, language)}
-                    />
-                  );
-                }
-                return (
-                  <button
-                    key={topic.id}
-                    type="button"
-                    className="help-topic-card"
-                    aria-label={`${resolveText(
-                      helpLabels.openTopic,
-                      language,
-                    )}: ${resolveText(topic.title, language)}`}
-                    onClick={() => setActiveTopicId(topic.id)}
-                  >
-                    {topic.icon ? (
-                      <span className="help-topic-icon">{topic.icon}</span>
-                    ) : null}
-                    <div className="help-topic-content">
-                      <div className="help-topic-title">
-                        {resolveText(topic.title, language)}
-                      </div>
-                      <div className="help-topic-summary">
-                        {resolveText(topic.summary, language)}
-                      </div>
-                    </div>
-                    {topic.draft ? (
-                      <span className="chip">
-                        {resolveText(helpLabels.draft, language)}
-                      </span>
-                    ) : null}
-                    <span className="help-topic-arrow">&gt;</span>
-                  </button>
-                );
-              })}
-            </div>
+            <HelpOverviewSection
+              helpTopics={helpTopics}
+              language={language}
+              setActiveTopicId={setActiveTopicId}
+            />
           )}
         </div>
       </section>
@@ -14988,7 +15802,883 @@ export const SettingsPage = () => {
 
 ---
 
-## 📝 SpacedRepetitionPage.tsx — ./pages/SpacedRepetitionPage.tsx
+## 📝 SrBoxesPanel.tsx — ./pages/spaced-repetition/components/SrBoxesPanel.tsx
+
+import type { CSSProperties } from "react";
+
+type SrBoxesPanelProps = {
+  spacedRepetitionBoxCounts: number[];
+  maxBoxCount: number;
+  activeBoxFilter: number | null;
+  toggleBoxFilter: (boxNumber: number) => void;
+};
+
+export const SrBoxesPanel = ({
+  spacedRepetitionBoxCounts,
+  maxBoxCount,
+  activeBoxFilter,
+  toggleBoxFilter,
+}: SrBoxesPanelProps) => (
+  <div className="sr-box-chart">
+    <div className="sr-box-chart-header">
+      <span className="label">BOXES</span>
+    </div>
+    <div className="sr-box-chart-grid">
+      {spacedRepetitionBoxCounts.map((count, index) => {
+        const heightPercent =
+          maxBoxCount > 0 ? Math.round((count / maxBoxCount) * 100) : 0;
+        const barStyle = {
+          "--bar-height": count > 0 ? `${Math.max(heightPercent, 6)}%` : "0%",
+        } as CSSProperties;
+        const boxNumber = index + 1;
+        const isFilterActive = activeBoxFilter === boxNumber;
+
+        return (
+          <button
+            key={`box-${boxNumber}`}
+            type="button"
+            className={`sr-box-column ${isFilterActive ? "active" : ""}`}
+            aria-pressed={isFilterActive}
+            onClick={() => toggleBoxFilter(boxNumber)}
+          >
+            <span className="sr-box-count">{count}</span>
+            <div className="sr-box-bar" style={barStyle}>
+              <div className="sr-box-bar-fill" />
+            </div>
+            <span className="sr-box-label">{boxNumber}</span>
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
+
+---
+
+## 📝 SrCardHost.tsx — ./pages/spaced-repetition/components/SrCardHost.tsx
+
+import type { DragEvent } from "react";
+import { ClozeCard } from "../../../components/flashcards/ClozeCard";
+import { CompositeCard } from "../../../components/flashcards/CompositeCard";
+import { FreeTextCard } from "../../../components/flashcards/FreeTextCard";
+import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard";
+import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
+import { SrReviewActions } from "./SrReviewActions";
+
+type SrCardHostProps = {
+  filteredFlashcardEntries: { card: any; cardIndex: number }[];
+  showBoxEmptyMessage: boolean;
+  activeBoxFilter: number | null;
+  spacedRepetitionEmptyState: string;
+  spacedRepetitionSubmissions: Record<number, boolean>;
+  spacedRepetitionCompositeStates?: Record<number, any[]>;
+  spacedRepetitionClozeResponses: Record<number, Record<string, string>>;
+  spacedRepetitionTrueFalseSelections: Record<number, Record<string, any>>;
+  spacedRepetitionTextResponses: Record<number, string>;
+  spacedRepetitionTextRevealed: Record<number, boolean>;
+  spacedRepetitionSelfGrades: Record<number, any>;
+  spacedRepetitionSelections: Record<number, string[]>;
+  handleCompositeOptionSelect: (cardIndex: number, partIndex: number, keys: string[]) => void;
+  handleCompositeTrueFalseSelect: (
+    cardIndex: number,
+    partIndex: number,
+    itemId: string,
+    value: "wahr" | "falsch",
+  ) => void;
+  handleCompositeClozeInputChange: (
+    cardIndex: number,
+    partIndex: number,
+    blankId: string,
+    value: string,
+  ) => void;
+  handleCompositeClozeTokenDrop: (
+    event: DragEvent<HTMLElement>,
+    cardIndex: number,
+    partIndex: number,
+    blankId: string,
+    validTokenIds: Set<string>,
+    dragBlankIds: Set<string>,
+  ) => void;
+  handleCompositeClozeTokenRemove: (
+    cardIndex: number,
+    partIndex: number,
+    blankId: string,
+  ) => void;
+  handleCompositeTextInputChange: (
+    cardIndex: number,
+    partIndex: number,
+    value: string,
+  ) => void;
+  handleCompositeTextCheck: (cardIndex: number, partIndex: number) => void;
+  handleCompositeSelfGrade: (
+    cardIndex: number,
+    partIndex: number,
+    grade: "correct" | "incorrect",
+  ) => void;
+  handleOptionSelect: (cardIndex: number, keys: string[]) => void;
+  handleTrueFalseSelect: (
+    cardIndex: number,
+    itemId: string,
+    value: "wahr" | "falsch",
+  ) => void;
+  handleClozeInputChange: (cardIndex: number, blankId: string, value: string) => void;
+  handleClozeTokenDrop: (
+    event: DragEvent<HTMLElement>,
+    cardIndex: number,
+    blankId: string,
+    validTokenIds: Set<string>,
+    dragBlankIds: Set<string>,
+  ) => void;
+  handleClozeTokenRemove: (cardIndex: number, blankId: string) => void;
+  handleTextInputChange: (cardIndex: number, value: string) => void;
+  handleTextCheck: (cardIndex: number) => void;
+  handleSelfGrade: (cardIndex: number, grade: "correct" | "incorrect") => void;
+  handleSpacedRepetitionSubmit: (cardIndex: number, isFocusSubmit?: boolean) => void;
+  handleClozeTokenDragStart: (event: DragEvent<HTMLElement>) => void;
+  handleClozeBlankDragOver: (event: DragEvent<HTMLElement>) => void;
+  spacedRepetitionCanGoBack: boolean;
+  spacedRepetitionCanGoNext: boolean;
+  handleSpacedRepetitionPageBack: () => void;
+  handleSpacedRepetitionPageNext: () => void;
+};
+
+export const SrCardHost = ({
+  filteredFlashcardEntries,
+  showBoxEmptyMessage,
+  activeBoxFilter,
+  spacedRepetitionEmptyState,
+  spacedRepetitionSubmissions,
+  spacedRepetitionCompositeStates,
+  spacedRepetitionClozeResponses,
+  spacedRepetitionTrueFalseSelections,
+  spacedRepetitionTextResponses,
+  spacedRepetitionTextRevealed,
+  spacedRepetitionSelfGrades,
+  spacedRepetitionSelections,
+  handleCompositeOptionSelect,
+  handleCompositeTrueFalseSelect,
+  handleCompositeClozeInputChange,
+  handleCompositeClozeTokenDrop,
+  handleCompositeClozeTokenRemove,
+  handleCompositeTextInputChange,
+  handleCompositeTextCheck,
+  handleCompositeSelfGrade,
+  handleOptionSelect,
+  handleTrueFalseSelect,
+  handleClozeInputChange,
+  handleClozeTokenDrop,
+  handleClozeTokenRemove,
+  handleTextInputChange,
+  handleTextCheck,
+  handleSelfGrade,
+  handleSpacedRepetitionSubmit,
+  handleClozeTokenDragStart,
+  handleClozeBlankDragOver,
+  spacedRepetitionCanGoBack,
+  spacedRepetitionCanGoNext,
+  handleSpacedRepetitionPageBack,
+  handleSpacedRepetitionPageNext,
+}: SrCardHostProps) => (
+  <div className="panel-body">
+    {filteredFlashcardEntries.length === 0 ? (
+      <div className="empty-state">
+        {showBoxEmptyMessage
+          ? `No cards currently in box ${activeBoxFilter}.`
+          : spacedRepetitionEmptyState}
+      </div>
+    ) : (
+      <div className="flashcard-list">
+        {filteredFlashcardEntries.map(({ card, cardIndex }) => {
+          const submitted = !!spacedRepetitionSubmissions[cardIndex];
+
+          if (card.kind === "composite") {
+            return (
+              <CompositeCard
+                key={`flashcard-${cardIndex}`}
+                card={card}
+                cardIndex={cardIndex}
+                submitted={submitted}
+                partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
+                onOptionSelect={handleCompositeOptionSelect}
+                onTrueFalseSelect={handleCompositeTrueFalseSelect}
+                onClozeInputChange={handleCompositeClozeInputChange}
+                onClozeTokenDrop={handleCompositeClozeTokenDrop}
+                onClozeTokenRemove={handleCompositeClozeTokenRemove}
+                onClozeTokenDragStart={handleClozeTokenDragStart}
+                onBlankDragOver={handleClozeBlankDragOver}
+                onTextInputChange={handleCompositeTextInputChange}
+                onTextCheck={handleCompositeTextCheck}
+                onSelfGrade={handleCompositeSelfGrade}
+                onSubmit={handleSpacedRepetitionSubmit}
+              />
+            );
+          }
+
+          if (card.kind === "cloze") {
+            return (
+              <ClozeCard
+                key={`flashcard-${cardIndex}`}
+                card={card}
+                cardIndex={cardIndex}
+                submitted={submitted}
+                responses={spacedRepetitionClozeResponses[cardIndex] ?? {}}
+                onInputChange={handleClozeInputChange}
+                onTokenDrop={handleClozeTokenDrop}
+                onTokenRemove={handleClozeTokenRemove}
+                onTokenDragStart={handleClozeTokenDragStart}
+                onBlankDragOver={handleClozeBlankDragOver}
+                onSubmit={handleSpacedRepetitionSubmit}
+              />
+            );
+          }
+
+          if (card.kind === "true-false") {
+            return (
+              <TrueFalseCard
+                key={`flashcard-${cardIndex}`}
+                card={card}
+                cardIndex={cardIndex}
+                submitted={submitted}
+                selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
+                onSelect={handleTrueFalseSelect}
+                onSubmit={handleSpacedRepetitionSubmit}
+              />
+            );
+          }
+
+          if (card.kind === "free-text") {
+            return (
+              <FreeTextCard
+                key={`flashcard-${cardIndex}`}
+                card={card}
+                cardIndex={cardIndex}
+                submitted={submitted}
+                response={spacedRepetitionTextResponses[cardIndex] ?? ""}
+                revealed={spacedRepetitionTextRevealed[cardIndex] ?? false}
+                selfGrade={spacedRepetitionSelfGrades[cardIndex]}
+                onInputChange={handleTextInputChange}
+                onCheck={handleTextCheck}
+                onSelfGrade={handleSelfGrade}
+              />
+            );
+          }
+
+          return (
+            <MultipleChoiceCard
+              key={`flashcard-${cardIndex}`}
+              card={card}
+              cardIndex={cardIndex}
+              submitted={submitted}
+              selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}
+              onSelect={handleOptionSelect}
+              onSubmit={handleSpacedRepetitionSubmit}
+            />
+          );
+        })}
+      </div>
+    )}
+    <SrReviewActions
+      spacedRepetitionCanGoBack={spacedRepetitionCanGoBack}
+      spacedRepetitionCanGoNext={spacedRepetitionCanGoNext}
+      handleSpacedRepetitionPageBack={handleSpacedRepetitionPageBack}
+      handleSpacedRepetitionPageNext={handleSpacedRepetitionPageNext}
+    />
+  </div>
+);
+
+---
+
+## 📝 SrDeleteModal.tsx — ./pages/spaced-repetition/components/SrDeleteModal.tsx
+
+type SrDeleteModalProps = {
+  isDeleteDialogOpen: boolean;
+  deleteTargetName: string;
+  deleteConfirmInput: string;
+  setDeleteConfirmInput: (value: string) => void;
+  handleDeleteCancel: () => void;
+  handleDeleteConfirm: () => void;
+  canConfirmDelete: boolean;
+};
+
+export const SrDeleteModal = ({
+  isDeleteDialogOpen,
+  deleteTargetName,
+  deleteConfirmInput,
+  setDeleteConfirmInput,
+  handleDeleteCancel,
+  handleDeleteConfirm,
+  canConfirmDelete,
+}: SrDeleteModalProps) =>
+  isDeleteDialogOpen ? (
+    <div className="modal-backdrop" role="presentation">
+      <div
+        className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-user-title"
+      >
+        <h3 id="delete-user-title">Delete user</h3>
+        <p className="muted">
+          This permanently deletes the user and all spaced repetition progress.
+        </p>
+        <div className="modal-body">
+          <span className="label">Type {deleteTargetName} to confirm</span>
+          <input
+            type="text"
+            className="text-input"
+            value={deleteConfirmInput}
+            onChange={(event) => setDeleteConfirmInput(event.target.value)}
+            aria-label="Type the username to confirm deletion"
+          />
+          <span className="helper-text">
+            Match is case-sensitive. Leading/trailing spaces are ignored.
+          </span>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="ghost" onClick={handleDeleteCancel}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="primary"
+            onClick={handleDeleteConfirm}
+            disabled={!canConfirmDelete}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+---
+
+## 📝 SrHeader.tsx — ./pages/spaced-repetition/components/SrHeader.tsx
+
+import type { Dispatch, SetStateAction } from "react";
+
+type SrHeaderProps = {
+  spacedRepetitionStatusLabel: string;
+  isFocusMode: boolean;
+  focusLabel: string;
+  setIsFocusMode: Dispatch<SetStateAction<boolean>>;
+};
+
+export const SrHeader = ({
+  spacedRepetitionStatusLabel,
+  isFocusMode,
+  focusLabel,
+  setIsFocusMode,
+}: SrHeaderProps) => (
+  <div className="panel-header">
+    <div>
+      <h2>Flashcard</h2>
+      <p className="muted">{spacedRepetitionStatusLabel}</p>
+    </div>
+    <div className="panel-actions">
+      <button
+        type="button"
+        className={`focus-toggle ${isFocusMode ? "active" : ""}`}
+        onClick={() => setIsFocusMode((prev) => !prev)}
+        aria-pressed={isFocusMode}
+        aria-label={focusLabel}
+        title={focusLabel}
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+          <circle cx="12" cy="12" r="3.5" />
+        </svg>
+      </button>
+    </div>
+  </div>
+);
+
+---
+
+## 📝 SrReviewActions.tsx — ./pages/spaced-repetition/components/SrReviewActions.tsx
+
+type SrReviewActionsProps = {
+  spacedRepetitionCanGoBack: boolean;
+  spacedRepetitionCanGoNext: boolean;
+  handleSpacedRepetitionPageBack: () => void;
+  handleSpacedRepetitionPageNext: () => void;
+};
+
+export const SrReviewActions = ({
+  spacedRepetitionCanGoBack,
+  spacedRepetitionCanGoNext,
+  handleSpacedRepetitionPageBack,
+  handleSpacedRepetitionPageNext,
+}: SrReviewActionsProps) => (
+  <div className="flashcard-pagination">
+    <button
+      type="button"
+      className="ghost small"
+      onClick={handleSpacedRepetitionPageBack}
+      disabled={!spacedRepetitionCanGoBack}
+    >
+      Back
+    </button>
+    <button
+      type="button"
+      className="ghost small"
+      onClick={handleSpacedRepetitionPageNext}
+      disabled={!spacedRepetitionCanGoNext}
+    >
+      Next
+    </button>
+  </div>
+);
+
+---
+
+## 📝 SrStatsAndChart.tsx — ./pages/spaced-repetition/components/SrStatsAndChart.tsx
+
+import type { CSSProperties } from "react";
+import { buildLineChartPoints } from "../../../lib/chart";
+import { type SpacedRepetitionStatsView } from "../../../features/spaced-repetition/useSpacedRepetition";
+import { SrBoxesPanel } from "./SrBoxesPanel";
+
+type SrStatsAndChartProps = {
+  statsView: SpacedRepetitionStatsView;
+  setSpacedRepetitionStatsView: (value: SpacedRepetitionStatsView) => void;
+  spacedRepetitionBoxCounts: number[];
+  maxBoxCount: number;
+  activeBoxFilter: number | null;
+  toggleBoxFilter: (boxNumber: number) => void;
+  vaultName: string;
+  vaultFilesCount: number;
+  spacedRepetitionFlashcardsLength: number;
+  spacedRepetitionCompletedChartData: number[];
+  spacedRepetitionCompletedChartLabels: string[];
+  statsChartClass: string;
+  statsChartStyle: CSSProperties;
+  spacedRepetitionCorrectCount: number;
+  spacedRepetitionIncorrectCount: number;
+  spacedRepetitionTotalQuestions: number;
+};
+
+export const SrStatsAndChart = ({
+  statsView,
+  setSpacedRepetitionStatsView,
+  spacedRepetitionBoxCounts,
+  maxBoxCount,
+  activeBoxFilter,
+  toggleBoxFilter,
+  vaultName,
+  vaultFilesCount,
+  spacedRepetitionFlashcardsLength,
+  spacedRepetitionCompletedChartData,
+  spacedRepetitionCompletedChartLabels,
+  statsChartClass,
+  statsChartStyle,
+  spacedRepetitionCorrectCount,
+  spacedRepetitionIncorrectCount,
+  spacedRepetitionTotalQuestions,
+}: SrStatsAndChartProps) => (
+  <section className="panel sr-diagram-panel">
+    <div className="panel-header">
+      <div>
+        <h2>Statistics Diagram</h2>
+        <p className="muted">Progress trends over time.</p>
+      </div>
+    </div>
+    <div className="panel-body">
+      <div className="sr-stats-top">
+        <div className="sr-stats-left">
+          <div className="sr-stats-switch">
+            <span className="label">View</span>
+            <div className="pill-grid">
+              <button
+                type="button"
+                className={`pill pill-button ${statsView === "boxes" ? "active" : ""}`}
+                aria-pressed={statsView === "boxes"}
+                onClick={() => setSpacedRepetitionStatsView("boxes")}
+              >
+                Boxes
+              </button>
+              <button
+                type="button"
+                className={`pill pill-button ${statsView === "vault" ? "active" : ""}`}
+                aria-pressed={statsView === "vault"}
+                onClick={() => setSpacedRepetitionStatsView("vault")}
+              >
+                Active vault
+              </button>
+              <button
+                type="button"
+                className={`pill pill-button ${
+                  statsView === "completed" ? "active" : ""
+                }`}
+                aria-pressed={statsView === "completed"}
+                onClick={() => setSpacedRepetitionStatsView("completed")}
+              >
+                Completed per day
+              </button>
+            </div>
+          </div>
+          {statsView === "boxes" ? (
+            <SrBoxesPanel
+              spacedRepetitionBoxCounts={spacedRepetitionBoxCounts}
+              maxBoxCount={maxBoxCount}
+              activeBoxFilter={activeBoxFilter}
+              toggleBoxFilter={toggleBoxFilter}
+            />
+          ) : statsView === "vault" ? (
+            <div className="sr-vault-card">
+              <div className="sr-vault-row">
+                <span className="label">Vault</span>
+                <span className="value">{vaultName}</span>
+              </div>
+              <div className="sr-vault-row">
+                <span className="label">Notes</span>
+                <span className="value">{vaultFilesCount}</span>
+              </div>
+              <div className="sr-vault-row">
+                <span className="label">Cards loaded</span>
+                <span className="value">{spacedRepetitionFlashcardsLength}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="chart-card">
+              <div className="chart-header">
+                <span className="label">Completed per day</span>
+                <span className="chart-meta">Last 7 days</span>
+              </div>
+              <div className="chart-canvas">
+                <svg
+                  className="sr-chart"
+                  viewBox="0 0 100 40"
+                  role="img"
+                  aria-label="Completed per day"
+                >
+                  <line
+                    x1="0"
+                    y1="40"
+                    x2="100"
+                    y2="40"
+                    className="sr-chart-axis"
+                  />
+                  <polyline
+                    className="sr-chart-line"
+                    points={buildLineChartPoints(spacedRepetitionCompletedChartData)}
+                  />
+                </svg>
+              </div>
+              <div className="chart-axis">
+                {spacedRepetitionCompletedChartLabels.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="sr-stats-right">
+          <span className="label">Statistics</span>
+          <div className="stats-summary">
+            <div className="stats-counters">
+              <div className="stats-counter">
+                <span className="stats-label">Correct</span>
+                <span className="stats-value">{spacedRepetitionCorrectCount}</span>
+              </div>
+              <div className="stats-counter">
+                <span className="stats-label">Incorrect</span>
+                <span className="stats-value">{spacedRepetitionIncorrectCount}</span>
+              </div>
+              <div className="stats-counter">
+                <span className="stats-label">Total</span>
+                <span className="stats-value">{spacedRepetitionTotalQuestions}</span>
+              </div>
+            </div>
+            <div
+              className={statsChartClass}
+              style={statsChartStyle}
+              role="img"
+              aria-label={`Correct ${spacedRepetitionCorrectCount}, Incorrect ${spacedRepetitionIncorrectCount}, Total ${spacedRepetitionTotalQuestions}`}
+            >
+              <div className="stats-chart-label">
+                <span className="stats-chart-total">{spacedRepetitionTotalQuestions}</span>
+                <span className="stats-chart-caption">Total</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+---
+
+## 📝 SrStatsPanel.tsx — ./pages/spaced-repetition/components/SrStatsPanel.tsx
+
+import { KpiGrid } from "../../../components/KpiGrid";
+
+type SrStatsPanelProps = {
+  kpiItems: { label: string; value: number }[];
+};
+
+export const SrStatsPanel = ({ kpiItems }: SrStatsPanelProps) => (
+  <section className="panel stats-panel sr-stats-panel">
+    <div className="panel-header">
+      <div>
+        <h2>Statistics</h2>
+      </div>
+    </div>
+    <div className="panel-body">
+      <KpiGrid items={kpiItems} />
+    </div>
+  </section>
+);
+
+---
+
+## 📝 SrToolsPanel.tsx — ./pages/spaced-repetition/components/SrToolsPanel.tsx
+
+import {
+  SPACED_REPETITION_BOXES,
+  SPACED_REPETITION_PAGE_SIZES,
+  type SpacedRepetitionBoxes,
+  type SpacedRepetitionOrder,
+  type SpacedRepetitionPageSize,
+} from "../../../features/spaced-repetition/useSpacedRepetition";
+
+type SrToolsPanelProps = {
+  spacedRepetitionBoxes: SpacedRepetitionBoxes;
+  setSpacedRepetitionBoxes: (value: SpacedRepetitionBoxes) => void;
+  spacedRepetitionOrder: SpacedRepetitionOrder;
+  setSpacedRepetitionOrder: (value: SpacedRepetitionOrder) => void;
+  spacedRepetitionPageSize: SpacedRepetitionPageSize;
+  setSpacedRepetitionPageSize: (value: SpacedRepetitionPageSize) => void;
+};
+
+export const SrToolsPanel = ({
+  spacedRepetitionBoxes,
+  setSpacedRepetitionBoxes,
+  spacedRepetitionOrder,
+  setSpacedRepetitionOrder,
+  spacedRepetitionPageSize,
+  setSpacedRepetitionPageSize,
+}: SrToolsPanelProps) => (
+  <section className="panel sr-tools-panel">
+    <div className="panel-header">
+      <div>
+        <h2>Spaced Repetition</h2>
+      </div>
+    </div>
+    <div className="panel-body">
+      <div className="setting-row">
+        <span className="label">Boxes</span>
+        <div className="pill-grid">
+          {SPACED_REPETITION_BOXES.map((box) => (
+            <button
+              key={box}
+              type="button"
+              className={`pill pill-button ${spacedRepetitionBoxes === box ? "active" : ""}`}
+              aria-pressed={spacedRepetitionBoxes === box}
+              onClick={() => setSpacedRepetitionBoxes(box)}
+            >
+              {box} Boxes
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">Default order</span>
+        <div className="pill-grid">
+          <button
+            type="button"
+            className={`pill pill-button ${
+              spacedRepetitionOrder === "in-order" ? "active" : ""
+            }`}
+            aria-pressed={spacedRepetitionOrder === "in-order"}
+            onClick={() => setSpacedRepetitionOrder("in-order")}
+          >
+            In order
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${
+              spacedRepetitionOrder === "random" ? "active" : ""
+            }`}
+            aria-pressed={spacedRepetitionOrder === "random"}
+            onClick={() => setSpacedRepetitionOrder("random")}
+          >
+            Random
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${
+              spacedRepetitionOrder === "repetition" ? "active" : ""
+            }`}
+            aria-pressed={spacedRepetitionOrder === "repetition"}
+            onClick={() => setSpacedRepetitionOrder("repetition")}
+          >
+            Repetition
+          </button>
+        </div>
+        <span className="helper-text">
+          In order keeps scan order. Random shuffles on load. Repetition prioritizes
+          lower boxes and skips the last box.
+        </span>
+      </div>
+      <div className="setting-row">
+        <span className="label">Page size</span>
+        <div className="pill-grid">
+          {SPACED_REPETITION_PAGE_SIZES.map((size) => (
+            <button
+              key={size}
+              type="button"
+              className={`pill pill-button ${
+                spacedRepetitionPageSize === size ? "active" : ""
+              }`}
+              aria-pressed={spacedRepetitionPageSize === size}
+              onClick={() => setSpacedRepetitionPageSize(size)}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+---
+
+## 📝 SrUserPanel.tsx — ./pages/spaced-repetition/components/SrUserPanel.tsx
+
+type SrUserPanelProps = {
+  flashcards: {
+    isFlashcardScanning: boolean;
+  };
+  spacedRepetition: {
+    spacedRepetitionActiveUser: string | null;
+    spacedRepetitionSelectedUserId: string;
+    spacedRepetitionUsers: { id: string; name: string }[];
+    spacedRepetitionNewUserName: string;
+    spacedRepetitionUserError: string;
+    handleSpacedRepetitionActiveUserLoadCards: () => void;
+    setSpacedRepetitionSelectedUserId: (value: string) => void;
+    setSpacedRepetitionNewUserName: (value: string) => void;
+    setSpacedRepetitionUserError: (value: string) => void;
+    handleSpacedRepetitionCreateUser: () => void;
+    handleSpacedRepetitionLoadUser: () => void;
+  };
+  handleDeleteOpen: () => void;
+};
+
+export const SrUserPanel = ({
+  flashcards,
+  spacedRepetition,
+  handleDeleteOpen,
+}: SrUserPanelProps) => (
+  <section className="panel sr-user-panel">
+    <div className="panel-header">
+      <div>
+        <h2>User Tools</h2>
+      </div>
+    </div>
+    <div className="panel-body">
+      <div className="setting-row">
+        <span className="label">Active user</span>
+        <button
+          type="button"
+          className="value active-user-button"
+          onClick={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
+          disabled={
+            !spacedRepetition.spacedRepetitionActiveUser ||
+            flashcards.isFlashcardScanning
+          }
+          aria-label="Load flashcards for active user"
+        >
+          {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
+        </button>
+      </div>
+      <div className="setting-row">
+        <span className="label">User list</span>
+        <select
+          className="text-input"
+          value={spacedRepetition.spacedRepetitionSelectedUserId}
+          onChange={(event) =>
+            spacedRepetition.setSpacedRepetitionSelectedUserId(event.target.value)
+          }
+          aria-label="Select user"
+        >
+          <option value="">Select user</option>
+          {spacedRepetition.spacedRepetitionUsers.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="setting-row">
+        <span className="label">New user</span>
+        <div className="setting-inline">
+          <input
+            type="text"
+            className="text-input"
+            value={spacedRepetition.spacedRepetitionNewUserName}
+            onChange={(event) => {
+              spacedRepetition.setSpacedRepetitionNewUserName(event.target.value);
+              if (spacedRepetition.spacedRepetitionUserError) {
+                spacedRepetition.setSpacedRepetitionUserError("");
+              }
+            }}
+            placeholder="User name"
+            aria-label="New user name"
+          />
+          <button
+            type="button"
+            className="ghost small"
+            onClick={spacedRepetition.handleSpacedRepetitionCreateUser}
+          >
+            Create
+          </button>
+        </div>
+        {spacedRepetition.spacedRepetitionUserError ? (
+          <span className="helper-text error-text">
+            {spacedRepetition.spacedRepetitionUserError}
+          </span>
+        ) : null}
+      </div>
+      <div className="setting-row">
+        <span className="label">Actions</span>
+        <div className="setting-actions">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={spacedRepetition.handleSpacedRepetitionLoadUser}
+            disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
+          >
+            Load
+          </button>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleDeleteOpen}
+            disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+---
+
+## 📝 useSrSessionViewModel.ts — ./pages/spaced-repetition/hooks/useSrSessionViewModel.ts
 
 import {
   useCallback,
@@ -14998,29 +16688,18 @@ import {
   type CSSProperties,
   type DragEvent,
 } from "react";
-import { buildLineChartPoints } from "../lib/chart";
-import { ClozeCard } from "../components/flashcards/ClozeCard";
-import { CompositeCard } from "../components/flashcards/CompositeCard";
-import { FreeTextCard } from "../components/flashcards/FreeTextCard";
-import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
-import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
-import { KpiGrid } from "../components/KpiGrid";
-import { useAppState } from "../components/AppStateProvider";
-import { vaultBaseName } from "../lib/path";
+import { useAppState } from "../../../components/AppStateProvider";
+import { vaultBaseName } from "../../../lib/path";
 import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
   isFlashcardPartComplete,
-} from "../features/flashcards/logic";
-import {
-  SPACED_REPETITION_BOXES,
-  SPACED_REPETITION_PAGE_SIZES,
-} from "../features/spaced-repetition/useSpacedRepetition";
+} from "../../../features/flashcards/logic";
 import {
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
   normalizeSpacedRepetitionCardProgress,
-} from "../features/spaced-repetition/logic";
+} from "../../../features/spaced-repetition/logic";
 
 const isEditableTarget = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) {
@@ -15035,7 +16714,7 @@ const isEditableTarget = (target: EventTarget | null) => {
   );
 };
 
-export const SpacedRepetitionPage = () => {
+export const useSrSessionViewModel = () => {
   const { flashcards, spacedRepetition, vault } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
@@ -15100,8 +16779,7 @@ export const SpacedRepetitionPage = () => {
     }
     return visibleFlashcardEntries.filter(({ card }) => {
       const cardId = getFlashcardId(card);
-      const progress =
-        spacedRepetition.spacedRepetitionCardStates[cardId] ?? null;
+      const progress = spacedRepetition.spacedRepetitionCardStates[cardId] ?? null;
       const normalized = normalizeSpacedRepetitionCardProgress(progress);
       const effectiveBox = getSpacedRepetitionEffectiveBox(
         normalized,
@@ -15319,11 +16997,7 @@ export const SpacedRepetitionPage = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    activeCardIndex,
-    isFocusMode,
-    spacedRepetition,
-  ]);
+  }, [activeCardIndex, isFocusMode, spacedRepetition]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
@@ -15535,592 +17209,243 @@ export const SpacedRepetitionPage = () => {
     setDeleteConfirmInput("");
   }, [canConfirmDelete, spacedRepetition]);
 
+  return {
+    flashcards,
+    spacedRepetition,
+    vault,
+    isFocusMode,
+    setIsFocusMode,
+    activeBoxFilter,
+    statsView,
+    focusLabel,
+    vaultName,
+    showBoxEmptyMessage,
+    statsChartClass,
+    statsChartStyle,
+    maxBoxCount,
+    filteredFlashcardEntries,
+    toggleBoxFilter,
+    kpiItems,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleTextCheck,
+    handleSelfGrade,
+    handleCompositeOptionSelect,
+    handleCompositeTrueFalseSelect,
+    handleCompositeClozeInputChange,
+    handleCompositeClozeTokenDrop,
+    handleCompositeClozeTokenRemove,
+    handleCompositeTextInputChange,
+    handleCompositeTextCheck,
+    handleCompositeSelfGrade,
+    handleDeleteOpen,
+    handleDeleteCancel,
+    handleDeleteConfirm,
+    isDeleteDialogOpen,
+    deleteConfirmInput,
+    setDeleteConfirmInput,
+    deleteTargetName,
+    canConfirmDelete,
+  };
+};
+
+---
+
+## 📝 SpacedRepetitionPage.tsx — ./pages/spaced-repetition/SpacedRepetitionPage.tsx
+
+import { SrCardHost } from "./components/SrCardHost";
+import { SrDeleteModal } from "./components/SrDeleteModal";
+import { SrHeader } from "./components/SrHeader";
+import { SrStatsAndChart } from "./components/SrStatsAndChart";
+import { SrStatsPanel } from "./components/SrStatsPanel";
+import { SrToolsPanel } from "./components/SrToolsPanel";
+import { SrUserPanel } from "./components/SrUserPanel";
+import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
+
+export const SpacedRepetitionPage = () => {
+  const {
+    flashcards,
+    spacedRepetition,
+    vault,
+    isFocusMode,
+    setIsFocusMode,
+    activeBoxFilter,
+    statsView,
+    focusLabel,
+    vaultName,
+    showBoxEmptyMessage,
+    statsChartClass,
+    statsChartStyle,
+    maxBoxCount,
+    filteredFlashcardEntries,
+    toggleBoxFilter,
+    kpiItems,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleTextCheck,
+    handleSelfGrade,
+    handleCompositeOptionSelect,
+    handleCompositeTrueFalseSelect,
+    handleCompositeClozeInputChange,
+    handleCompositeClozeTokenDrop,
+    handleCompositeClozeTokenRemove,
+    handleCompositeTextInputChange,
+    handleCompositeTextCheck,
+    handleCompositeSelfGrade,
+    handleDeleteOpen,
+    handleDeleteCancel,
+    handleDeleteConfirm,
+    isDeleteDialogOpen,
+    deleteConfirmInput,
+    setDeleteConfirmInput,
+    deleteTargetName,
+    canConfirmDelete,
+  } = useSrSessionViewModel();
+
   return (
     <div className={`spaced-repetition-layout ${isFocusMode ? "focus-mode" : ""}`}>
       {isFocusMode ? null : (
-        <section className="panel sr-diagram-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Statistics Diagram</h2>
-            <p className="muted">Progress trends over time.</p>
-          </div>
-        </div>
-        <div className="panel-body">
-          <div className="sr-stats-top">
-            <div className="sr-stats-left">
-              <div className="sr-stats-switch">
-                <span className="label">View</span>
-                <div className="pill-grid">
-                  <button
-                    type="button"
-                    className={`pill pill-button ${statsView === "boxes" ? "active" : ""}`}
-                    aria-pressed={statsView === "boxes"}
-                    onClick={() => spacedRepetition.setSpacedRepetitionStatsView("boxes")}
-                  >
-                    Boxes
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill pill-button ${statsView === "vault" ? "active" : ""}`}
-                    aria-pressed={statsView === "vault"}
-                    onClick={() => spacedRepetition.setSpacedRepetitionStatsView("vault")}
-                  >
-                    Active vault
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill pill-button ${
-                      statsView === "completed" ? "active" : ""
-                    }`}
-                    aria-pressed={statsView === "completed"}
-                    onClick={() =>
-                      spacedRepetition.setSpacedRepetitionStatsView("completed")
-                    }
-                  >
-                    Completed per day
-                  </button>
-                </div>
-              </div>
-              {statsView === "boxes" ? (
-                <div className="sr-box-chart">
-                  <div className="sr-box-chart-header">
-                    <span className="label">BOXES</span>
-                  </div>
-                  <div className="sr-box-chart-grid">
-                    {spacedRepetition.spacedRepetitionBoxCounts.map((count, index) => {
-                      const heightPercent =
-                        maxBoxCount > 0
-                          ? Math.round((count / maxBoxCount) * 100)
-                          : 0;
-                      const barStyle = {
-                        "--bar-height":
-                          count > 0 ? `${Math.max(heightPercent, 6)}%` : "0%",
-                      } as CSSProperties;
-                      const boxNumber = index + 1;
-                      const isFilterActive = activeBoxFilter === boxNumber;
-
-                      return (
-                        <button
-                          key={`box-${boxNumber}`}
-                          type="button"
-                          className={`sr-box-column ${isFilterActive ? "active" : ""}`}
-                          aria-pressed={isFilterActive}
-                          onClick={() => toggleBoxFilter(boxNumber)}
-                        >
-                          <span className="sr-box-count">{count}</span>
-                          <div className="sr-box-bar" style={barStyle}>
-                            <div className="sr-box-bar-fill" />
-                          </div>
-                          <span className="sr-box-label">{boxNumber}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : statsView === "vault" ? (
-                <div className="sr-vault-card">
-                  <div className="sr-vault-row">
-                    <span className="label">Vault</span>
-                    <span className="value">{vaultName}</span>
-                  </div>
-                  <div className="sr-vault-row">
-                    <span className="label">Notes</span>
-                    <span className="value">{vault.files.length}</span>
-                  </div>
-                  <div className="sr-vault-row">
-                    <span className="label">Cards loaded</span>
-                    <span className="value">
-                      {spacedRepetition.spacedRepetitionFlashcards.length}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="chart-card">
-                  <div className="chart-header">
-                    <span className="label">Completed per day</span>
-                    <span className="chart-meta">Last 7 days</span>
-                  </div>
-                  <div className="chart-canvas">
-                    <svg
-                      className="sr-chart"
-                      viewBox="0 0 100 40"
-                      role="img"
-                      aria-label="Completed per day"
-                    >
-                      <line
-                        x1="0"
-                        y1="40"
-                        x2="100"
-                        y2="40"
-                        className="sr-chart-axis"
-                      />
-                      <polyline
-                        className="sr-chart-line"
-                        points={buildLineChartPoints(
-                          spacedRepetition.spacedRepetitionCompletedChartData,
-                        )}
-                      />
-                    </svg>
-                  </div>
-                  <div className="chart-axis">
-                    {spacedRepetition.spacedRepetitionCompletedChartLabels.map(
-                      (label) => (
-                      <span key={label}>{label}</span>
-                    ),
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="sr-stats-right">
-              <span className="label">Statistics</span>
-              <div className="stats-summary">
-                <div className="stats-counters">
-                  <div className="stats-counter">
-                    <span className="stats-label">Correct</span>
-                    <span className="stats-value">
-                      {spacedRepetition.spacedRepetitionCorrectCount}
-                    </span>
-                  </div>
-                  <div className="stats-counter">
-                    <span className="stats-label">Incorrect</span>
-                    <span className="stats-value">
-                      {spacedRepetition.spacedRepetitionIncorrectCount}
-                    </span>
-                  </div>
-                  <div className="stats-counter">
-                    <span className="stats-label">Total</span>
-                    <span className="stats-value">
-                      {spacedRepetition.spacedRepetitionTotalQuestions}
-                    </span>
-                  </div>
-                </div>
-                <div
-                  className={statsChartClass}
-                  style={statsChartStyle}
-                  role="img"
-                  aria-label={`Correct ${spacedRepetition.spacedRepetitionCorrectCount}, Incorrect ${spacedRepetition.spacedRepetitionIncorrectCount}, Total ${spacedRepetition.spacedRepetitionTotalQuestions}`}
-                >
-                  <div className="stats-chart-label">
-                    <span className="stats-chart-total">
-                      {spacedRepetition.spacedRepetitionTotalQuestions}
-                    </span>
-                    <span className="stats-chart-caption">Total</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        <SrStatsAndChart
+          statsView={statsView}
+          setSpacedRepetitionStatsView={
+            spacedRepetition.setSpacedRepetitionStatsView
+          }
+          spacedRepetitionBoxCounts={spacedRepetition.spacedRepetitionBoxCounts}
+          maxBoxCount={maxBoxCount}
+          activeBoxFilter={activeBoxFilter}
+          toggleBoxFilter={toggleBoxFilter}
+          vaultName={vaultName}
+          vaultFilesCount={vault.files.length}
+          spacedRepetitionFlashcardsLength={
+            spacedRepetition.spacedRepetitionFlashcards.length
+          }
+          spacedRepetitionCompletedChartData={
+            spacedRepetition.spacedRepetitionCompletedChartData
+          }
+          spacedRepetitionCompletedChartLabels={
+            spacedRepetition.spacedRepetitionCompletedChartLabels
+          }
+          statsChartClass={statsChartClass}
+          statsChartStyle={statsChartStyle}
+          spacedRepetitionCorrectCount={spacedRepetition.spacedRepetitionCorrectCount}
+          spacedRepetitionIncorrectCount={
+            spacedRepetition.spacedRepetitionIncorrectCount
+          }
+          spacedRepetitionTotalQuestions={
+            spacedRepetition.spacedRepetitionTotalQuestions
+          }
+        />
       )}
 
       {isFocusMode ? null : (
-        <section className="panel sr-user-panel">
-        <div className="panel-header">
-          <div>
-            <h2>User Tools</h2>
-          </div>
-        </div>
-        <div className="panel-body">
-          <div className="setting-row">
-            <span className="label">Active user</span>
-            <button
-              type="button"
-              className="value active-user-button"
-              onClick={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
-              disabled={
-                !spacedRepetition.spacedRepetitionActiveUser ||
-                flashcards.isFlashcardScanning
-              }
-              aria-label="Load flashcards for active user"
-            >
-              {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
-            </button>
-          </div>
-          <div className="setting-row">
-            <span className="label">User list</span>
-            <select
-              className="text-input"
-              value={spacedRepetition.spacedRepetitionSelectedUserId}
-              onChange={(event) =>
-                spacedRepetition.setSpacedRepetitionSelectedUserId(event.target.value)
-              }
-              aria-label="Select user"
-            >
-              <option value="">Select user</option>
-              {spacedRepetition.spacedRepetitionUsers.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="setting-row">
-            <span className="label">New user</span>
-            <div className="setting-inline">
-              <input
-                type="text"
-                className="text-input"
-                value={spacedRepetition.spacedRepetitionNewUserName}
-                onChange={(event) => {
-                  spacedRepetition.setSpacedRepetitionNewUserName(event.target.value);
-                  if (spacedRepetition.spacedRepetitionUserError) {
-                    spacedRepetition.setSpacedRepetitionUserError("");
-                  }
-                }}
-                placeholder="User name"
-                aria-label="New user name"
-              />
-              <button
-                type="button"
-                className="ghost small"
-                onClick={spacedRepetition.handleSpacedRepetitionCreateUser}
-              >
-                Create
-              </button>
-            </div>
-            {spacedRepetition.spacedRepetitionUserError ? (
-              <span className="helper-text error-text">
-                {spacedRepetition.spacedRepetitionUserError}
-              </span>
-            ) : null}
-          </div>
-          <div className="setting-row">
-            <span className="label">Actions</span>
-            <div className="setting-actions">
-              <button
-                type="button"
-                className="ghost small"
-                onClick={spacedRepetition.handleSpacedRepetitionLoadUser}
-                disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
-              >
-                Load
-              </button>
-              <button
-                type="button"
-                className="ghost small"
-                onClick={handleDeleteOpen}
-                disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+        <SrUserPanel
+          flashcards={flashcards}
+          spacedRepetition={spacedRepetition}
+          handleDeleteOpen={handleDeleteOpen}
+        />
       )}
 
       <section className="panel sr-flashcards-panel">
-        <div className="panel-header">
-          <div>
-            <h2>Flashcard</h2>
-            <p className="muted">{spacedRepetition.spacedRepetitionStatusLabel}</p>
-          </div>
-          <div className="panel-actions">
-            <button
-              type="button"
-              className={`focus-toggle ${isFocusMode ? "active" : ""}`}
-              onClick={() => setIsFocusMode((prev) => !prev)}
-              aria-pressed={isFocusMode}
-              aria-label={focusLabel}
-              title={focusLabel}
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-                <circle cx="12" cy="12" r="3.5" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div className="panel-body">
-          {filteredFlashcardEntries.length === 0 ? (
-            <div className="empty-state">
-              {showBoxEmptyMessage
-                ? `No cards currently in box ${activeBoxFilter}.`
-                : spacedRepetition.spacedRepetitionEmptyState}
-            </div>
-          ) : (
-            <div className="flashcard-list">
-              {filteredFlashcardEntries.map(({ card, cardIndex }) => {
-                const submitted = !!spacedRepetition.spacedRepetitionSubmissions[
-                  cardIndex
-                ];
-
-                if (card.kind === "composite") {
-                  return (
-                    <CompositeCard
-                      key={`flashcard-${cardIndex}`}
-                      card={card}
-                      cardIndex={cardIndex}
-                      submitted={submitted}
-                      partStates={
-                        spacedRepetition.spacedRepetitionCompositeStates?.[cardIndex] ??
-                        []
-                      }
-                      onOptionSelect={handleCompositeOptionSelect}
-                      onTrueFalseSelect={handleCompositeTrueFalseSelect}
-                      onClozeInputChange={handleCompositeClozeInputChange}
-                      onClozeTokenDrop={handleCompositeClozeTokenDrop}
-                      onClozeTokenRemove={handleCompositeClozeTokenRemove}
-                      onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
-                      onBlankDragOver={flashcards.handleClozeBlankDragOver}
-                      onTextInputChange={handleCompositeTextInputChange}
-                      onTextCheck={handleCompositeTextCheck}
-                      onSelfGrade={handleCompositeSelfGrade}
-                      onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
-                    />
-                  );
-                }
-
-                if (card.kind === "cloze") {
-                  return (
-                    <ClozeCard
-                      key={`flashcard-${cardIndex}`}
-                      card={card}
-                      cardIndex={cardIndex}
-                      submitted={submitted}
-                      responses={spacedRepetition.spacedRepetitionClozeResponses[cardIndex] ?? {}}
-                      onInputChange={handleClozeInputChange}
-                      onTokenDrop={handleClozeTokenDrop}
-                      onTokenRemove={handleClozeTokenRemove}
-                      onTokenDragStart={flashcards.handleClozeTokenDragStart}
-                      onBlankDragOver={flashcards.handleClozeBlankDragOver}
-                      onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
-                    />
-                  );
-                }
-
-                if (card.kind === "true-false") {
-                  return (
-                    <TrueFalseCard
-                      key={`flashcard-${cardIndex}`}
-                      card={card}
-                      cardIndex={cardIndex}
-                      submitted={submitted}
-                      selections={
-                        spacedRepetition.spacedRepetitionTrueFalseSelections[cardIndex] ?? {}
-                      }
-                      onSelect={handleTrueFalseSelect}
-                      onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
-                    />
-                  );
-                }
-
-                if (card.kind === "free-text") {
-                  return (
-                    <FreeTextCard
-                      key={`flashcard-${cardIndex}`}
-                      card={card}
-                      cardIndex={cardIndex}
-                      submitted={submitted}
-                      response={
-                        spacedRepetition.spacedRepetitionTextResponses[cardIndex] ?? ""
-                      }
-                      revealed={
-                        spacedRepetition.spacedRepetitionTextRevealed[cardIndex] ??
-                        false
-                      }
-                      selfGrade={spacedRepetition.spacedRepetitionSelfGrades[cardIndex]}
-                      onInputChange={handleTextInputChange}
-                      onCheck={handleTextCheck}
-                      onSelfGrade={handleSelfGrade}
-                    />
-                  );
-                }
-
-                return (
-                  <MultipleChoiceCard
-                    key={`flashcard-${cardIndex}`}
-                    card={card}
-                    cardIndex={cardIndex}
-                    submitted={submitted}
-                    selectedKeys={
-                      spacedRepetition.spacedRepetitionSelections[cardIndex] ?? []
-                    }
-                    onSelect={handleOptionSelect}
-                    onSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
-                  />
-                );
-              })}
-            </div>
-          )}
-          <div className="flashcard-pagination">
-            <button
-              type="button"
-              className="ghost small"
-              onClick={spacedRepetition.handleSpacedRepetitionPageBack}
-              disabled={!spacedRepetition.spacedRepetitionCanGoBack}
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              className="ghost small"
-              onClick={spacedRepetition.handleSpacedRepetitionPageNext}
-              disabled={!spacedRepetition.spacedRepetitionCanGoNext}
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <SrHeader
+          spacedRepetitionStatusLabel={spacedRepetition.spacedRepetitionStatusLabel}
+          isFocusMode={isFocusMode}
+          focusLabel={focusLabel}
+          setIsFocusMode={setIsFocusMode}
+        />
+        <SrCardHost
+          filteredFlashcardEntries={filteredFlashcardEntries}
+          showBoxEmptyMessage={showBoxEmptyMessage}
+          activeBoxFilter={activeBoxFilter}
+          spacedRepetitionEmptyState={spacedRepetition.spacedRepetitionEmptyState}
+          spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
+          spacedRepetitionCompositeStates={
+            spacedRepetition.spacedRepetitionCompositeStates
+          }
+          spacedRepetitionClozeResponses={
+            spacedRepetition.spacedRepetitionClozeResponses
+          }
+          spacedRepetitionTrueFalseSelections={
+            spacedRepetition.spacedRepetitionTrueFalseSelections
+          }
+          spacedRepetitionTextResponses={
+            spacedRepetition.spacedRepetitionTextResponses
+          }
+          spacedRepetitionTextRevealed={
+            spacedRepetition.spacedRepetitionTextRevealed
+          }
+          spacedRepetitionSelfGrades={spacedRepetition.spacedRepetitionSelfGrades}
+          spacedRepetitionSelections={spacedRepetition.spacedRepetitionSelections}
+          handleCompositeOptionSelect={handleCompositeOptionSelect}
+          handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
+          handleCompositeClozeInputChange={handleCompositeClozeInputChange}
+          handleCompositeClozeTokenDrop={handleCompositeClozeTokenDrop}
+          handleCompositeClozeTokenRemove={handleCompositeClozeTokenRemove}
+          handleCompositeTextInputChange={handleCompositeTextInputChange}
+          handleCompositeTextCheck={handleCompositeTextCheck}
+          handleCompositeSelfGrade={handleCompositeSelfGrade}
+          handleOptionSelect={handleOptionSelect}
+          handleTrueFalseSelect={handleTrueFalseSelect}
+          handleClozeInputChange={handleClozeInputChange}
+          handleClozeTokenDrop={handleClozeTokenDrop}
+          handleClozeTokenRemove={handleClozeTokenRemove}
+          handleTextInputChange={handleTextInputChange}
+          handleTextCheck={handleTextCheck}
+          handleSelfGrade={handleSelfGrade}
+          handleSpacedRepetitionSubmit={
+            spacedRepetition.handleSpacedRepetitionSubmit
+          }
+          handleClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
+          handleClozeBlankDragOver={flashcards.handleClozeBlankDragOver}
+          spacedRepetitionCanGoBack={spacedRepetition.spacedRepetitionCanGoBack}
+          spacedRepetitionCanGoNext={spacedRepetition.spacedRepetitionCanGoNext}
+          handleSpacedRepetitionPageBack={
+            spacedRepetition.handleSpacedRepetitionPageBack
+          }
+          handleSpacedRepetitionPageNext={
+            spacedRepetition.handleSpacedRepetitionPageNext
+          }
+        />
       </section>
 
       {isFocusMode ? null : (
-        <section className="panel sr-tools-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Spaced Repetition Tools</h2>
-            </div>
-          </div>
-          <div className="panel-body">
-            <div className="setting-row">
-              <span className="label">Boxes</span>
-              <div className="pill-grid">
-                {SPACED_REPETITION_BOXES.map((box) => (
-                  <button
-                    key={box}
-                    type="button"
-                    className={`pill pill-button ${
-                      spacedRepetition.spacedRepetitionBoxes === box ? "active" : ""
-                    }`}
-                    aria-pressed={spacedRepetition.spacedRepetitionBoxes === box}
-                    onClick={() => spacedRepetition.setSpacedRepetitionBoxes(box)}
-                  >
-                    {box} Boxes
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="setting-row">
-              <span className="label">Default order</span>
-              <div className="pill-grid">
-                <button
-                  type="button"
-                  className={`pill pill-button ${
-                    spacedRepetition.spacedRepetitionOrder === "in-order" ? "active" : ""
-                  }`}
-                  aria-pressed={spacedRepetition.spacedRepetitionOrder === "in-order"}
-                  onClick={() => spacedRepetition.setSpacedRepetitionOrder("in-order")}
-                >
-                  In order
-                </button>
-                <button
-                  type="button"
-                  className={`pill pill-button ${
-                    spacedRepetition.spacedRepetitionOrder === "random" ? "active" : ""
-                  }`}
-                  aria-pressed={spacedRepetition.spacedRepetitionOrder === "random"}
-                  onClick={() => spacedRepetition.setSpacedRepetitionOrder("random")}
-                >
-                  Random
-                </button>
-                <button
-                  type="button"
-                  className={`pill pill-button ${
-                    spacedRepetition.spacedRepetitionOrder === "repetition" ? "active" : ""
-                  }`}
-                  aria-pressed={spacedRepetition.spacedRepetitionOrder === "repetition"}
-                  onClick={() => spacedRepetition.setSpacedRepetitionOrder("repetition")}
-                >
-                  Repetition
-                </button>
-              </div>
-              <span className="helper-text">
-                In order keeps scan order. Random shuffles on load. Repetition
-                prioritizes lower boxes and skips the last box.
-              </span>
-            </div>
-            <div className="setting-row">
-              <span className="label">Page size</span>
-              <div className="pill-grid">
-                {SPACED_REPETITION_PAGE_SIZES.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    className={`pill pill-button ${
-                      spacedRepetition.spacedRepetitionPageSize === size ? "active" : ""
-                    }`}
-                    aria-pressed={spacedRepetition.spacedRepetitionPageSize === size}
-                    onClick={() => spacedRepetition.setSpacedRepetitionPageSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <SrToolsPanel
+          spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
+          setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
+          spacedRepetitionOrder={spacedRepetition.spacedRepetitionOrder}
+          setSpacedRepetitionOrder={spacedRepetition.setSpacedRepetitionOrder}
+          spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
+          setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
+        />
       )}
 
-      {isFocusMode ? null : (
-        <section className="panel stats-panel sr-stats-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Statistics</h2>
-            </div>
-          </div>
-          <div className="panel-body">
-            <KpiGrid items={kpiItems} />
-          </div>
-        </section>
-      )}
-      {isDeleteDialogOpen ? (
-        <div className="modal-backdrop" role="presentation">
-          <div
-            className="modal-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-user-title"
-          >
-            <h3 id="delete-user-title">Delete user</h3>
-            <p className="muted">
-              This permanently deletes the user and all spaced repetition progress.
-            </p>
-            <div className="modal-body">
-              <span className="label">Type {deleteTargetName} to confirm</span>
-              <input
-                type="text"
-                className="text-input"
-                value={deleteConfirmInput}
-                onChange={(event) => setDeleteConfirmInput(event.target.value)}
-                aria-label="Type the username to confirm deletion"
-              />
-              <span className="helper-text">
-                Match is case-sensitive. Leading/trailing spaces are ignored.
-              </span>
-            </div>
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="ghost"
-                onClick={handleDeleteCancel}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="primary"
-                onClick={handleDeleteConfirm}
-                disabled={!canConfirmDelete}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {isFocusMode ? null : <SrStatsPanel kpiItems={kpiItems} />}
+
+      <SrDeleteModal
+        isDeleteDialogOpen={isDeleteDialogOpen}
+        deleteTargetName={deleteTargetName}
+        deleteConfirmInput={deleteConfirmInput}
+        setDeleteConfirmInput={setDeleteConfirmInput}
+        handleDeleteCancel={handleDeleteCancel}
+        handleDeleteConfirm={handleDeleteConfirm}
+        canConfirmDelete={canConfirmDelete}
+      />
     </div>
   );
 };
+
+---
+
+## 📝 SpacedRepetitionPage.tsx — ./pages/SpacedRepetitionPage.tsx
+
+export { SpacedRepetitionPage } from "./spaced-repetition/SpacedRepetitionPage";
 
 ---
 

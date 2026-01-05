@@ -1,0 +1,75 @@
+:root {
+  font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--ink);
+  background-color: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: light;
+  --bg: #f3efe6;
+  --bg-strong: #ece6da;
+  --panel: #ffffff;
+  --panel-warm: #f8f2e8;
+  --ink: #141717;
+  --muted: #5b6265;
+  --line: rgba(18, 24, 27, 0.12);
+  --line-soft: rgba(18, 24, 27, 0.08);
+  --accent: #e07a5f;
+  --accent-strong: #cc5c3f;
+  --accent-soft: rgba(224, 122, 95, 0.14);
+  --accent-highlight: #f2cc8f;
+  --accent-border: rgba(224, 122, 95, 0.35);
+  --accent-contrast: #1a1a1a;
+  --accent-contrast-strong: #ffffff;
+  --shadow: 0 20px 40px rgba(19, 26, 28, 0.1);
+  --shadow-soft: 0 12px 24px rgba(19, 26, 28, 0.08);
+  --mono: "JetBrains Mono", "Fira Code", "IBM Plex Mono", monospace;
+  --bg-gradient: radial-gradient(
+    circle at top left,
+    #f7dccb 0%,
+    #f3efe6 45%,
+    #e6f0ee 100%
+  );
+  --preview-bg: #111616;
+  --preview-ink: #f5f1e6;
+  --preview-code-bg: rgba(255, 255, 255, 0.08);
+  --preview-code-border: rgba(255, 255, 255, 0.16);
+  --chip-bg: rgba(20, 23, 23, 0.06);
+  --glow: radial-gradient(circle, rgba(47, 143, 131, 0.18), transparent 70%);
+  --error-bg: rgba(204, 92, 63, 0.12);
+  --error-border: rgba(204, 92, 63, 0.3);
+  --error-ink: #7a2e1c;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1417;
+  --bg-strong: #121a1f;
+  --panel: #151c20;
+  --panel-warm: #1b2429;
+  --ink: #edf2f4;
+  --muted: #a3abb0;
+  --line: rgba(237, 242, 244, 0.16);
+  --line-soft: rgba(237, 242, 244, 0.1);
+  --shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  --shadow-soft: 0 12px 24px rgba(0, 0, 0, 0.3);
+  --bg-gradient: radial-gradient(
+    circle at top left,
+    #1b2a33 0%,
+    #0f1417 55%,
+    #0b1012 100%
+  );
+  --preview-bg: #0b0f12;
+  --preview-ink: #e7edf0;
+  --preview-code-bg: rgba(255, 255, 255, 0.12);
+  --preview-code-border: rgba(255, 255, 255, 0.24);
+  --chip-bg: rgba(237, 242, 244, 0.08);
+  --glow: radial-gradient(circle, rgba(224, 122, 95, 0.18), transparent 70%);
+  --error-bg: rgba(204, 92, 63, 0.2);
+  --error-border: rgba(204, 92, 63, 0.45);
+  --error-ink: #f6c1b2;
+}
