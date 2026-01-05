@@ -986,7 +986,7 @@ export const SpacedRepetitionPage = () => {
         <section className="panel sr-tools-panel">
           <div className="panel-header">
             <div>
-              <h2>Spaced Repetition Tools</h2>
+              <h2>Spaced Repetition</h2>
             </div>
           </div>
           <div className="panel-body">

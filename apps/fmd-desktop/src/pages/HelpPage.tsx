@@ -46,6 +46,28 @@ type HelpTopic = {
   icon?: string;
 };
 
+type AppSectionId =
+  | "dashboard"
+  | "flashcard"
+  | "fast-flashcard"
+  | "spaced-repetition";
+
+type AppSectionDetail = {
+  whatIs: LocalizedText;
+  purpose: LocalizedText[];
+  whatYouSee: LocalizedText;
+  workflow: LocalizedText;
+  showCards: LocalizedText;
+  tips?: LocalizedText;
+};
+
+type AppSectionData = {
+  title: LocalizedText;
+  summary: LocalizedText;
+  action: LocalizedText;
+  detail: AppSectionDetail;
+};
+
 const helpHeader = {
   eyebrow: { en: "Help", de: "Hilfe" },
   title: { en: "Help", de: "Hilfe" },
@@ -116,7 +138,7 @@ const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Can be combined with other syntaxes in the same #card block (if desired).",
         ],
         rulesNote:
-          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Dashboard -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition Tools).",
+          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Dashboard -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition).",
         promptTemplate: joinLines([
           "Create one flashcard and optionally wrap it with markdown separators.",
           "Return only the #card block (and optional --- lines).",
@@ -156,7 +178,7 @@ const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Kann mit anderen Syntaxen im selben #card-Block kombiniert werden (falls gewuenscht).",
         ],
         rulesNote:
-          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Dashboard -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition Tools).",
+          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Dashboard -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition).",
         promptTemplate: joinLines([
           "Erstelle eine Karte und umrahme sie optional mit Markdown-Trennlinien.",
           "Antworte nur mit dem #card-Block (und optional ---).",
@@ -818,58 +840,13 @@ const helpTopics: HelpTopic[] = [
     sections: [],
   },
   {
-    id: "spaced-repetition",
-    title: { en: "Spaced Repetition Tools", de: "Spaced Repetition Tools" },
+    id: "app-sections",
+    title: { en: "App Sections", de: "App Sections" },
     summary: {
-      en: "Leitner boxes, progression, and session flow.",
-      de: "Leitner-Boxen, Fortschritt und Session-Ablauf.",
+      en: "Overview, navigation, and typical workflows for new users.",
+      de: "Ueberblick, Navigation und typische Workflows fuer neue Nutzer.",
     },
-    sections: [
-      {
-        id: "sr-boxes",
-        title: { en: "Leitner boxes", de: "Leitner-Boxen" },
-        bullets: [
-          {
-            en: "3/5/8 boxes represent learning stages.",
-            de: "3/5/8 Boxen bilden Lernstufen ab.",
-          },
-          {
-            en: "Cards in the last box are excluded from sessions.",
-            de: "Karten in der letzten Box werden nicht angezeigt.",
-          },
-        ],
-      },
-      {
-        id: "sr-progression",
-        title: { en: "Progression", de: "Fortschritt" },
-        bullets: [
-          {
-            en: "Correct answers promote a card; incorrect answers demote it.",
-            de: "Korrekte Antworten befoerdern eine Karte, falsche stufen sie herunter.",
-          },
-        ],
-      },
-      {
-        id: "sr-order",
-        title: { en: "Default order", de: "Standardreihenfolge" },
-        bullets: [
-          {
-            en: "In order, Random, or Repetition (box-weighted; lower boxes appear more often).",
-            de: "In order, Random oder Repetition (box-gewichtet; niedrigere Boxen haeufiger).",
-          },
-        ],
-      },
-      {
-        id: "sr-flow",
-        title: { en: "Workflow", de: "Workflow" },
-        bullets: [
-          {
-            en: "Select a user, load cards, review, and watch stats update live.",
-            de: "User waehlen, Karten laden, wiederholen und Live-Statistiken beobachten.",
-          },
-        ],
-      },
-    ],
+    sections: [],
   },
   {
     id: "settings",
@@ -892,8 +869,8 @@ const helpTopics: HelpTopic[] = [
       {
         id: "settings-sr",
         title: {
-          en: "Spaced Repetition Tools defaults",
-          de: "Spaced Repetition-Tools-Defaults",
+          en: "Spaced Repetition defaults",
+          de: "Spaced Repetition-Defaults",
         },
         bullets: [
           {
@@ -1056,6 +1033,235 @@ const helpTopics: HelpTopic[] = [
   },
 ];
 
+const APP_SECTION_ORDER: AppSectionId[] = [
+  "dashboard",
+  "flashcard",
+  "fast-flashcard",
+  "spaced-repetition",
+];
+
+const APP_SECTION_GROUND_RULES: {
+  paragraph: LocalizedText;
+  bullets: LocalizedText[];
+} = {
+  paragraph: {
+    en: "Start at the Dashboard to pick a note and scan its cards, then use the sections below to understand how each tool manages your reviews.",
+    de: "Beginne im Dashboard, wähle eine Notiz und scanne sie, dann nutze die unten stehenden Sektionen, um zu verstehen, wie jedes Tool deine Wiederholungen steuert.",
+  },
+  bullets: [
+    {
+      en: "Choose one of the four sections on the left; the detail panel updates instantly.",
+      de: "Wähle eine der vier Sektionen links; der Detailbereich aktualisiert sich sofort.",
+    },
+    {
+      en: "The highlighted entry marks your current location.",
+      de: "Der markierte Eintrag zeigt dir, wo du gerade bist.",
+    },
+    {
+      en: "Use the Back button or breadcrumb to return to the overview.",
+      de: "Nutze Zurück oder die Breadcrumb, um zur Übersicht zurückzukehren.",
+    },
+    {
+      en: "Each detail panel explains what you see, how to act, and how filtering works for that tool.",
+      de: "Jeder Detailbereich beschreibt, was du siehst, welche Aktionen möglich sind und wie das Filtern in diesem Tool funktioniert.",
+    },
+  ],
+};
+
+const APP_SECTION_LABELS = {
+  groundRulesTitle: { en: "Ground rules", de: "Grundregeln" },
+  typicalAction: { en: "Typical action", de: "Typische Aktion" },
+  whatIs: { en: "What is it?", de: "Was ist das?" },
+  purpose: { en: "What is it for?", de: "Wofuer ist es?" },
+  whatYouSee: { en: "What you see there", de: "Was du dort siehst" },
+  showCards: { en: "Show cards & filter", de: "Karten anzeigen & filtern" },
+  workflow: { en: "Core workflow", de: "Core-Workflow" },
+  tips: { en: "Tips", de: "Tipps" },
+};
+
+const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
+  dashboard: {
+    title: { en: "Dashboard", de: "Dashboard" },
+    summary: {
+      en: "Note list, scan status, and quick previews.",
+      de: "Notizenliste mit Scan-Status und Vorschauen.",
+    },
+    action: {
+      en: "Pick a note",
+      de: "Notiz wählen",
+    },
+    detail: {
+      whatIs: {
+        en: "Dashboard shows vault notes, scan health, and shortcuts before any review.",
+        de: "Das Dashboard zeigt Vault-Notizen, Scan-Status und Schnellaktionen vor jeder Wiederholung.",
+      },
+      purpose: [
+        {
+          en: "Choose the note you want to study and see recent scan timestamps.",
+          de: "Wähle die Notiz aus und sieh die letzten Scanzeiten.",
+        },
+        {
+          en: "Trigger scans or rescans so the latest cards flow into the review tools.",
+          de: "Starte Scans/Rescans, damit neue Karten in den Review-Tools verfügbar sind.",
+        },
+        {
+          en: "Open a preview or jump directly into one of the review tools via quick actions.",
+          de: "Öffne die Vorschau oder spring direkt in ein Review-Tool.",
+        },
+      ],
+      whatYouSee: {
+        en: "A note list with status badges, timestamps, quick actions, and filters for recently scanned items.",
+        de: "Eine Notizenliste mit Badges, Zeitstempeln, Schnellaktionen und Filtern für kürzliche Scans.",
+      },
+      workflow: {
+        en: "Select note → Scan/Rescan → open Flashcard/Fast Flashcard/Spaced Repetition.",
+        de: "Notiz wählen → Scannen/Rescan → Flashcard/Fast Flashcard/Spaced Repetition öffnen.",
+      },
+      showCards: {
+        en: "Scanned cards feed the three tools; adjust their filters to control the reviews.",
+        de: "Gescannten Karten landen in den Tools; passe deren Filter an, um die Auswahl zu steuern.",
+      },
+      tips: {
+        en: "Filter by scan status to focus on notes you just updated.",
+        de: "Filtere nach Scan-Status, um frisch bearbeitete Notizen zu priorisieren.",
+      },
+    },
+  },
+  flashcard: {
+    title: { en: "Flashcard", de: "Flashcard" },
+    summary: {
+      en: "Standard review with stats and filters.",
+      de: "Normale Wiederholung mit Statistiken und Filtern.",
+    },
+    action: {
+      en: "Start a review",
+      de: "Review starten",
+    },
+    detail: {
+      whatIs: {
+        en: "Flashcard Tools deliver single-card reviews with a stats diagram, counters, and navigation.",
+        de: "Die Flashcard Tools bieten Einzelkarten-Wiederholungen mit Diagramm, Zählern und Navigation.",
+      },
+      purpose: [
+        {
+          en: "Answer cards while tracking accuracy and totals.",
+          de: "Beantworte Karten und behalte Genauigkeit und Totale im Blick.",
+        },
+        {
+          en: "Tweak ORDER, MODE, DEFAULT SCOPE, PAGE SIZE, solution reveal, and stats reset to shape each session.",
+          de: "Passe ORDER, MODE, DEFAULT SCOPE, PAGE SIZE, Solution Reveal und Statistik-Reset an den Ablauf an.",
+        },
+      ],
+      whatYouSee: {
+        en: "Card view with submission buttons, counters, stats diagram, and Flashcard Tools controls.",
+        de: "Kartenbereich mit Abgabe, Zählern, Diagramm und Flashcard Tools-Schaltern.",
+      },
+      workflow: {
+        en: "Scan note → open Flashcard → adjust filters → answer sequentially.",
+        de: "Notiz scannen → Flashcard öffnen → Filter anpassen → Karten nacheinander beantworten.",
+      },
+      showCards: {
+        en: "Cards respect the selected scope/order/mode/page size; changes refresh the content instantly.",
+        de: "Die Karten folgen Scope, Order, Mode und Page Size; Anpassungen aktualisieren sofort.",
+      },
+      tips: {
+        en: "Use solution reveal for tricky cards and reset stats when restarting a session.",
+        de: "Nutze Solution Reveal bei schwierigen Karten und setze Statistiken zurück bei Neustarts.",
+      },
+    },
+  },
+  "fast-flashcard": {
+    title: { en: "Fast Flashcard", de: "Fast Flashcard" },
+    summary: {
+      en: "Timed sprints with duration pills and scoring.",
+      de: "Zeitgesteuerte Sprints mit Dauer-Buttons und Score.",
+    },
+    action: {
+      en: "Start the timer",
+      de: "Timer starten",
+    },
+    detail: {
+      whatIs: {
+        en: "Fast Flashcard wraps cards in a timer, momentum cards, and a duration-weighted score.",
+        de: "Fast Flashcard kombiniert Karten mit Timer, Momentum-Karten und dauergewichteten Punkten.",
+      },
+      purpose: [
+        {
+          en: "Practice fast repetitions and measure pace/accuracy.",
+          de: "Trainiere schnelle Wiederholungen und messe Tempo/Genauigkeit.",
+        },
+        {
+          en: "Compare session stats via the history panel.",
+          de: "Vergleiche Sessions über den Verlauf.",
+        },
+      ],
+      whatYouSee: {
+        en: "Timer block, stats diagram, session momentum cards (Cards/Accuracy/Pace/Score), flashcard list, submission outcome pill, and duration pills alongside ORDER/MODE/DEFAULT SCOPE.",
+        de: "Timer, Diagramm, Session-Karten, Kartenliste, Submit-Ergebnis und Fast Flashcard Tools mit Dauer-Buttons sowie ORDER/MODE/DEFAULT SCOPE.",
+      },
+      workflow: {
+        en: "Scan note → choose duration → start Fast Flashcard → submit before time ends.",
+        de: "Notiz scannen → Dauer wählen → Fast Flashcard starten → vor Ablauf abgeben.",
+      },
+      showCards: {
+        en: "Cards follow Fast Flashcard filters; adjust ORDER, MODE, DEFAULT SCOPE, and duration pills to tweak pacing.",
+        de: "Die Karten folgen Fast Flashcard-Filtern; ändere ORDER, MODE, DEFAULT SCOPE und Dauer-Buttons fürs Tempo.",
+      },
+      tips: {
+        en: "Stop the timer between runs to reset session stats without affecting history.",
+        de: "Pause den Timer zwischen Läufen, um Session-Stats zu resetten ohne den Verlauf zu beeinflussen.",
+      },
+    },
+  },
+  "spaced-repetition": {
+    title: { en: "Spaced Repetition", de: "Spaced Repetition" },
+    summary: {
+      en: "Box-based sessions with weighted order.",
+      de: "Boxen-Sessionen mit gewichteter Reihenfolge.",
+    },
+    action: {
+      en: "Run a session",
+      de: "Session starten",
+    },
+    detail: {
+      whatIs: {
+        en: "Spaced Repetition fits cards into Leitner boxes and runs adjustable sessions for retention.",
+        de: "Spaced Repetition ordnet Karten in Leitner-Boxen und fuehrt einstellbare Sessions durch.",
+      },
+      purpose: [
+        {
+          en: "Focus on difficult cards by selecting specific boxes.",
+          de: "Fokussiere schwierige Karten über Boxenauswahl.",
+        },
+        {
+          en: "Choose order, page size, and repetition strength for pacing.",
+          de: "Wähle Order, Page Size und Repetition Strength fürs Tempo.",
+        },
+        {
+          en: "Let answers promote/demote cards automatically.",
+          de: "Lass Antworten Karten automatisch befördern oder zurückstufen.",
+        },
+      ],
+      whatYouSee: {
+        en: "Box grid with counts, queue preview, and controls for order/page size/repetition strength.",
+        de: "Boxen-Raster mit Zählern, Queue-Preview und Controls für Order/Page Size/Repetition Strength.",
+      },
+      workflow: {
+        en: "Scan note → open Spaced Repetition → pick boxes/order → run session.",
+        de: "Notiz scannen → Spaced Repetition öffnen → Boxen/Order wählen → Session durchführen.",
+      },
+      showCards: {
+        en: "Only cards from selected boxes appear; order and page size plus repetition strength decide repetition frequency.",
+        de: "Nur Karten aus gewählten Boxen erscheinen; Order/Page Size und Repetition Strength bestimmen die Frequenz.",
+      },
+      tips: {
+        en: "Boost repetition strength when lower boxes need more practice.",
+        de: "Erhöhe die Repetition Strength, wenn niedrigere Boxen intensiver geübt werden sollen.",
+      },
+    },
+  },
+};
+
 const resolveText = (value: LocalizedText, language: AppLanguage) => {
   if (language === "de") {
     return value.de ?? value.en ?? "";
@@ -1067,6 +1273,170 @@ const resolveList = (items: LocalizedText[] | undefined, language: AppLanguage) 
   (items ?? [])
     .map((item) => resolveText(item, language))
     .filter((item) => item.trim() !== "");
+
+type AppSectionsGuidePanelProps = {
+  language: AppLanguage;
+};
+
+const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) => {
+  const [selectedSectionId, setSelectedSectionId] =
+    useState<AppSectionId>("dashboard");
+  const [sectionLanguage, setSectionLanguage] = useState<AppLanguage>(language);
+  const selectedSection = APP_SECTION_DATA[selectedSectionId];
+
+  useEffect(() => {
+    setSectionLanguage(language);
+  }, [language]);
+
+  return (
+    <div className="help-detail-sections">
+      <div className="help-detail-section help-block">
+        <div className="help-item-header">
+          <span className="help-block-title">
+            {resolveText(APP_SECTION_LABELS.groundRulesTitle, sectionLanguage)}
+          </span>
+        </div>
+        <p className="help-syntax-text">
+          {resolveText(APP_SECTION_GROUND_RULES.paragraph, sectionLanguage)}
+        </p>
+        <ul className="help-list">
+          {APP_SECTION_GROUND_RULES.bullets.map((bullet, index) => (
+            <li key={`ground-${index}`}>
+              {resolveText(bullet, sectionLanguage)}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="help-syntax-layout">
+        <div className="help-syntax-cards" role="tablist">
+          {APP_SECTION_ORDER.map((sectionId) => {
+            const section = APP_SECTION_DATA[sectionId];
+            const isActive = selectedSectionId === sectionId;
+            return (
+              <button
+                key={sectionId}
+                type="button"
+                className={`help-syntax-card${isActive ? " active" : ""}`}
+                onClick={() => setSelectedSectionId(sectionId)}
+                role="tab"
+                aria-selected={isActive}
+              >
+                <div className="help-syntax-card-title">
+                  {resolveText(section.title, sectionLanguage)}
+                </div>
+                <div className="help-syntax-card-meta">
+                  <span className="help-syntax-card-label">
+                    {resolveText(
+                      APP_SECTION_LABELS.typicalAction,
+                      sectionLanguage,
+                    )}
+                  </span>
+                  <span>{resolveText(section.action, sectionLanguage)}</span>
+                </div>
+                <div className="help-syntax-card-rule">
+                  {resolveText(section.summary, sectionLanguage)}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="help-syntax-detail">
+          <div className="help-syntax-detail-header">
+            <div className="help-syntax-detail-title">
+              {resolveText(selectedSection.title, sectionLanguage)}
+            </div>
+            <div className="help-syntax-lang-tabs">
+              <button
+                type="button"
+                className={`help-syntax-lang${
+                  sectionLanguage === "en" ? " active" : ""
+                }`}
+                onClick={() => setSectionLanguage("en")}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={`help-syntax-lang${
+                  sectionLanguage === "de" ? " active" : ""
+                }`}
+                onClick={() => setSectionLanguage("de")}
+              >
+                DE
+              </button>
+            </div>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.whatIs, sectionLanguage)}
+              </span>
+            </div>
+            <p className="help-syntax-text">
+              {resolveText(selectedSection.detail.whatIs, sectionLanguage)}
+            </p>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.purpose, sectionLanguage)}
+              </span>
+            </div>
+            <ul className="help-syntax-list">
+              {selectedSection.detail.purpose.map((item, index) => (
+                <li key={`${selectedSectionId}-purpose-${index}`}>
+                  {resolveText(item, sectionLanguage)}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.whatYouSee, sectionLanguage)}
+              </span>
+            </div>
+            <p className="help-syntax-text">
+              {resolveText(selectedSection.detail.whatYouSee, sectionLanguage)}
+            </p>
+          </div>
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.showCards, sectionLanguage)}
+              </span>
+            </div>
+            <p className="help-syntax-text">
+              {resolveText(selectedSection.detail.showCards, sectionLanguage)}
+            </p>
+          </div>
+          {selectedSection.detail.tips ? (
+            <div className="help-syntax-section">
+              <div className="help-syntax-section-header">
+                <span className="label">
+                  {resolveText(APP_SECTION_LABELS.tips, sectionLanguage)}
+                </span>
+              </div>
+              <p className="help-syntax-text">
+                {resolveText(selectedSection.detail.tips, sectionLanguage)}
+              </p>
+            </div>
+          ) : null}
+          <div className="help-syntax-section">
+            <div className="help-syntax-section-header">
+              <span className="label">
+                {resolveText(APP_SECTION_LABELS.workflow, sectionLanguage)}
+              </span>
+            </div>
+            <p className="help-syntax-text">
+              {resolveText(selectedSection.detail.workflow, sectionLanguage)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const HelpPage = () => {
   const { settings } = useAppState();
@@ -1082,6 +1452,7 @@ export const HelpPage = () => {
   const language = settings.language;
   const activeTopic = helpTopics.find((topic) => topic.id === activeTopicId) ?? null;
   const isSyntaxTopic = activeTopic?.id === "flashcard-syntax";
+  const isAppSectionsTopic = activeTopic?.id === "app-sections";
   const activeSyntax =
     flashcardSyntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
     flashcardSyntaxEntries[0] ??
@@ -1221,9 +1592,7 @@ export const HelpPage = () => {
                   {resolveText(helpLabels.back, language)}
                 </button>
               </div>
-              <p className="muted">
-                {resolveText(activeTopic.summary, language)}
-              </p>
+              <p className="muted">{resolveText(activeTopic.summary, language)}</p>
               {isSyntaxTopic ? (
                 <div className="help-detail-sections">
                   <div className="help-detail-section help-block">
@@ -1416,6 +1785,8 @@ export const HelpPage = () => {
                     ) : null}
                   </div>
                 </div>
+              ) : isAppSectionsTopic ? (
+                <AppSectionsGuidePanel language={language} />
               ) : (
                 <div className="help-detail-sections">
                   {activeTopic.sections.map((section) => {
