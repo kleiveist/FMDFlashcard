@@ -19,9 +19,6 @@ type FastStatsPanelProps = {
   sessionPace: string;
   sessionScore: number;
   sessionMultiplier: number;
-  vaultName: string;
-  flashcardsCount: number;
-  filteredFlashcardCount: number;
   handleTimeToggle: () => void;
 };
 
@@ -43,9 +40,6 @@ export const FastStatsPanel = ({
   sessionPace,
   sessionScore,
   sessionMultiplier,
-  vaultName,
-  flashcardsCount,
-  filteredFlashcardCount,
   handleTimeToggle,
 }: FastStatsPanelProps) => (
   <section className="panel fast-stats-panel">
@@ -164,20 +158,6 @@ export const FastStatsPanel = ({
               +10 / -5 • x{sessionMultiplier.toFixed(1)}
             </span>
           </div>
-        </div>
-      </div>
-      <div className="fast-vault-block">
-        <span className="label">AKTIVER VAULT</span>
-        <div className="fast-vault-row">
-          <span>Vault: {vaultName}</span>
-          <span className="fast-vault-sep" aria-hidden="true">
-            •
-          </span>
-          <span>Cards loaded: {flashcardsCount}</span>
-          <span className="fast-vault-sep" aria-hidden="true">
-            •
-          </span>
-          <span>Filtered cards: {filteredFlashcardCount}</span>
         </div>
       </div>
     </div>

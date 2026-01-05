@@ -54,7 +54,6 @@ export const FastFlashcardPage = () => {
     sessionPace,
     sessionScore,
     sessionMultiplier,
-    vaultName,
     sessionHistory,
     topSessions,
     lastSessions,
@@ -80,9 +79,6 @@ export const FastFlashcardPage = () => {
         sessionPace={sessionPace}
         sessionScore={sessionScore}
         sessionMultiplier={sessionMultiplier}
-        vaultName={vaultName}
-        flashcardsCount={fastFlashcards.flashcards.length}
-        filteredFlashcardCount={fastFlashcards.filteredFlashcardCount}
         handleTimeToggle={handleTimeToggle}
       />
       <FastToolsPanel

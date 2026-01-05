@@ -10,7 +10,6 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { useAppState } from "../../../components/AppStateProvider";
 import { evaluateFlashcardResult } from "../../../features/flashcards/logic";
-import { vaultBaseName } from "../../../lib/path";
 
 export const fastFlashcardStatusLabel = "Not scanned yet";
 export const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
@@ -87,7 +86,7 @@ export const formatSessionPace = (pace: number) =>
   Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
 export const useFastSession = () => {
-  const { fastFlashcards, settings, vault } = useAppState();
+  const { fastFlashcards, settings } = useAppState();
   const {
     flashcardSubmissions,
     handleFlashcardSelfGrade,
@@ -718,10 +717,6 @@ export const useFastSession = () => {
   const sessionMinutes = sessionElapsedMs / 60000;
   const sessionPace =
     sessionMinutes > 0 ? (sessionCompleted / sessionMinutes).toFixed(1) : "0.0";
-  const vaultName = useMemo(
-    () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "ToDoList"),
-    [vault.vaultPath],
-  );
   const lastSessions = useMemo(() => {
     return [...sessionHistory]
       .sort((a, b) => getSessionTimeValue(b.endedAt) - getSessionTimeValue(a.endedAt))
@@ -786,7 +781,6 @@ export const useFastSession = () => {
     sessionPace,
     sessionScore,
     sessionMultiplier,
-    vaultName,
     sessionHistory,
     topSessions,
     lastSessions,

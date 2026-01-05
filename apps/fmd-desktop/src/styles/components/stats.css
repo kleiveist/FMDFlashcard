@@ -231,37 +231,6 @@
   color: var(--muted);
 }
 
-.fast-vault-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
-}
-
-.fast-vault-block .label {
-  font-size: 0.65rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.fast-vault-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: var(--ink);
-}
-
-.fast-vault-sep {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
 .fast-session-table {
   display: flex;
   flex-direction: column;

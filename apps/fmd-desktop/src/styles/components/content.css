@@ -261,7 +261,7 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 360px;
   grid-template-rows: auto auto;
   gap: 18px 24px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .spaced-repetition-layout {
@@ -309,6 +309,7 @@ body.focus-mode .sr-flashcards-panel {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .fast-tools-panel {
