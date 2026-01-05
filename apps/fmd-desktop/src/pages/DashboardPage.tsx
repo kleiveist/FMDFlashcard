@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
-import { VaultTree } from "../components/VaultTree";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
 
@@ -83,16 +82,6 @@ export const DashboardPage = () => {
       </header>
 
       <div className="workspace">
-        <VaultTree
-          fileCountLabel={fileCountLabel}
-          files={vault.files}
-          listError={vault.listError}
-          listState={vault.listState}
-          onSelectFile={actions.handleSelectFile}
-          selectedFile={preview.selectedFile}
-          vaultPath={vault.vaultPath}
-        />
-
         <PreviewPanel
           emptyPreview={emptyPreview}
           editDraft={editDraft}

@@ -122,6 +122,31 @@
   color: var(--muted);
 }
 
+.sidebar-head {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar-divider {
+  height: 1px;
+  width: 100%;
+  background: var(--line-soft);
+  opacity: 0.6;
+}
+
+.sidebar-icon-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sidebar-icon-button {
+  width: 100%;
+  height: 40px;
+  border-radius: 12px;
+}
+
 .nav {
   display: flex;
   flex-direction: column;
@@ -225,6 +250,26 @@
 .nav-icon svg {
   width: 20px;
   height: 20px;
+}
+
+.sidebar-vault-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.sidebar .vault-details {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 40vh;
+}
+
+.sidebar .vault-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .sidebar-card {

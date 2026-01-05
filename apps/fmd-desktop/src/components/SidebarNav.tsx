@@ -1,6 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppState } from "./AppStateProvider";
 import { vaultBaseName } from "../lib/path";
+import { VaultTree } from "./VaultTree";
+import { CardsIcon, FolderIcon, HelpIcon } from "./icons";
 
 type TabKey =
   | "dashboard"
@@ -23,12 +25,28 @@ export const SidebarNav = ({
   isMobileNavOpen,
   onMobileNavClose,
 }: SidebarNavProps) => {
-  const { actions, settings, vault } = useAppState();
+  const { actions, preview, settings, vault } = useAppState();
+  const [isVaultPanelOpen, setIsVaultPanelOpen] = useState(false);
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
+  const fileCountLabel = useMemo(() => {
+    if (!vault.vaultPath) {
+      return "Kein Vault gewaehlt";
+    }
+    if (vault.files.length === 0) {
+      return "Keine Markdown-Dateien";
+    }
+    return `${vault.files.length} Markdown-Datei${
+      vault.files.length === 1 ? "" : "en"
+    }`;
+  }, [vault.files.length, vault.vaultPath]);
   const isCollapsed = settings.rightToolbarCollapsed && !isMobileNavOpen;
+  const isStudyActive =
+    activeTab === "flashcard" ||
+    activeTab === "fast-flashcard" ||
+    activeTab === "spaced-repetition";
 
   return (
     <aside
@@ -47,27 +65,67 @@ export const SidebarNav = ({
         </button>
       ) : (
         <>
-          <div className="brand">
-            <button
-              type="button"
-              className="brand-mark"
-              onClick={() => settings.setRightToolbarCollapsed(true)}
-              aria-label="Collapse toolbar"
-            >
-              FMD
-            </button>
-            <div className="brand-text">
-              <span className="brand-title">FMD Flashcard</span>
-              <span className="brand-sub">Vault-first study workspace</span>
+          <div className="sidebar-head">
+            <div className="sidebar-divider" aria-hidden="true" />
+            <div className="sidebar-icon-row">
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  isStudyActive ? "active" : ""
+                }`}
+                onClick={() => onTabChange("flashcard")}
+                aria-label="Study flashcards"
+                title="Study"
+              >
+                <CardsIcon />
+              </button>
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  isVaultPanelOpen ? "active" : ""
+                }`}
+                onClick={() => setIsVaultPanelOpen((prev) => !prev)}
+                aria-label="Vault directory"
+                aria-controls="sidebar-vault-panel"
+                aria-expanded={isVaultPanelOpen}
+                title="Vault directory"
+              >
+                <FolderIcon />
+              </button>
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  activeTab === "help" ? "active" : ""
+                }`}
+                onClick={() => onTabChange("help")}
+                aria-label="Help"
+                title="Help"
+              >
+                <HelpIcon />
+              </button>
             </div>
-            <button
-              type="button"
-              className="mobile-nav-close"
-              onClick={onMobileNavClose}
-              aria-label="Close navigation"
-            >
-              Close
-            </button>
+            <div className="brand">
+              <button
+                type="button"
+                className="brand-mark"
+                onClick={() => settings.setRightToolbarCollapsed(true)}
+                aria-label="Collapse toolbar"
+              >
+                FMD
+              </button>
+              <div className="brand-text">
+                <span className="brand-title">FMD Flashcard</span>
+                <span className="brand-sub">Vault-first study workspace</span>
+              </div>
+              <button
+                type="button"
+                className="mobile-nav-close"
+                onClick={onMobileNavClose}
+                aria-label="Close navigation"
+              >
+                Close
+              </button>
+            </div>
           </div>
           <nav className="nav">
             <button
@@ -115,6 +173,20 @@ export const SidebarNav = ({
               </span>
             </button>
           </nav>
+          {isVaultPanelOpen ? (
+            <div className="sidebar-vault-panel" id="sidebar-vault-panel">
+              <VaultTree
+                fileCountLabel={fileCountLabel}
+                files={vault.files}
+                listError={vault.listError}
+                listState={vault.listState}
+                onSelectFile={actions.handleSelectFile}
+                selectedFile={preview.selectedFile}
+                vaultPath={vault.vaultPath}
+                forceOpen
+              />
+            </div>
+          ) : null}
           <div className="sidebar-footer">
             <button
               type="button"

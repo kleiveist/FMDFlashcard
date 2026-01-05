@@ -12,6 +12,7 @@ type VaultTreeProps = {
   onSelectFile: (file: VaultFile) => void;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
+  forceOpen?: boolean;
 };
 
 export const VaultTree = ({
@@ -22,6 +23,7 @@ export const VaultTree = ({
   onSelectFile,
   selectedFile,
   vaultPath,
+  forceOpen,
 }: VaultTreeProps) => {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const treeNodes = useMemo(() => buildTree(files), [files]);
@@ -65,7 +67,7 @@ export const VaultTree = ({
     });
 
   return (
-    <details className="vault-details">
+    <details className="vault-details" open={forceOpen || undefined}>
       <summary>
         <span>Datenverzeichnis</span>
         <span className="vault-summary">{fileCountLabel}</span>

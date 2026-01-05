@@ -215,7 +215,7 @@ h2 {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr);
   gap: 24px;
   align-items: stretch;
   flex: 1;
