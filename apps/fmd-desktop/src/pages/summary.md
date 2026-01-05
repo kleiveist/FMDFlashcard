@@ -1,31 +1,10 @@
 Markdown-Scan – Root: /home/kleif/Projects/FMDFlashcard/apps/fmd-desktop/src/pages
-Erzeugt: 2026-01-05T10:36:37
+Erzeugt: 2026-01-05T10:59:30
 Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css, .ts, .shipping
 
 === Dateien ===
 
 📁 .
-  📝 DashboardPage.tsx
-     Pfad: 📝 DashboardPage.tsx
-     Größe: 3.68 KB (3773 B)
-     Geändert: 2026-01-05T06:50:48
-     Überschriften: 0, Zeilen: 127, Wörter: 304, Zeichen: 3773
-     Inhalt (Auszug): import { useEffect, useMemo, useState } from "react"; import { invoke } from "@tauri-apps/api/core"; import { FileList } from "../components/FileList"; import { PreviewPanel } from "../components/PreviewPanel"; import { VaultTree } from "../components/VaultTree"; import { useAppState } from "../components/AppStateProvider"; import { asErrorMessage } from "../lib/errors";
-
-  📝 FastFlashcardPage.tsx
-     Pfad: 📝 FastFlashcardPage.tsx
-     Größe: 37.55 KB (38448 B)
-     Geändert: 2026-01-05T08:46:11
-     Überschriften: 0, Zeilen: 1141, Wörter: 2772, Zeichen: 38442
-     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, } from "react"; import { invoke } from "@tauri-apps/api/core"; import { ClozeCard } from "../components/flashcards/ClozeCard"; import { CompositeCard } from "../components/flashcards/CompositeCard"; import { FreeTextCard } from "../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../components/flashcards/TrueFalseCard"; import { FastFlashcardToolsSettings } from "../components/settings/FastFlashcardToolsSettings"; import { useAppState } from "../components/AppStateProvider"; import { evaluateFlashcardResult } from "../features/flashcards/logic"; import { vaultBaseName } from "../lib/path";
-
-  📝 FlashcardPage.tsx
-     Pfad: 📝 FlashcardPage.tsx
-     Größe: 21.52 KB (22033 B)
-     Geändert: 2026-01-05T06:50:48
-     Überschriften: 0, Zeilen: 625, Wörter: 1418, Zeichen: 22033
-     Inhalt (Auszug): import { useCallback, useEffect, useState, type DragEvent } from "react"; import { ClozeCard } from "../components/flashcards/ClozeCard"; import { CompositeCard } from "../components/flashcards/CompositeCard"; import { FreeTextCard } from "../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../components/flashcards/TrueFalseCard"; import { StatsPanel } from "../components/StatsPanel"; import { useAppState } from "../components/AppStateProvider"; import { areClozeBlanksComplete, areTrueFalseItemsComplete, isFlashcardPartComplete, } from "../features/flashcards/logic"; import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
-
   📝 HelpPage.tsx
      Pfad: 📝 HelpPage.tsx
      Größe: 5.89 KB (6032 B)
@@ -33,28 +12,66 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
      Überschriften: 0, Zeilen: 172, Wörter: 424, Zeichen: 6032
      Inhalt (Auszug): import { useEffect, useRef, useState } from "react"; import { useAppState } from "../components/AppStateProvider"; import { AppLanguage, flashcardSyntaxEntries, flashcardSyntaxOverview, helpHeader, helpLabels, helpTopics, resolveList, resolveText, } from "./help/helpContent"; import { HelpDetailSection } from "./help/sections/HelpDetailSection"; import { HelpHeaderSection } from "./help/sections/HelpHeaderSection"; import { HelpOverviewSection } from "./help/sections/HelpOverviewSection";
 
-  📝 SettingsPage.tsx
-     Pfad: 📝 SettingsPage.tsx
-     Größe: 7.88 KB (8072 B)
-     Geändert: 2026-01-05T08:53:36
-     Überschriften: 0, Zeilen: 191, Wörter: 504, Zeichen: 8072
-     Inhalt (Auszug): import { useCallback, useMemo, useState } from "react"; import { useAppState } from "../components/AppStateProvider"; import { AppearanceSection } from "../components/settings/AppearanceSection"; import { FastFlashcardToolsSettings } from "../components/settings/FastFlashcardToolsSettings"; import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection"; import { LanguageTabContent, DataSyncTabContent } from "../components/settings/DataSyncTabContent"; import { PerformanceTabContent } from "../components/settings/PerformanceTabContent"; import { SpacedRepetitionSettingsSection } from "../components/settings/SpacedRepetitionSettingsSection"; import { VaultIndexSection } from "../components/settings/VaultIndexSection"; import { FLASHCARD_PAGE_SIZES } from "../fea …
-
-  📝 SpacedRepetitionPage.tsx
-     Pfad: 📝 SpacedRepetitionPage.tsx
-     Größe: 39.09 KB (40024 B)
-     Geändert: 2026-01-05T09:34:42
-     Überschriften: 0, Zeilen: 1131, Wörter: 2437, Zeichen: 40020
-     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useState, type CSSProperties, type DragEvent, } from "react"; import { buildLineChartPoints } from "../lib/chart"; import { ClozeCard } from "../components/flashcards/ClozeCard"; import { CompositeCard } from "../components/flashcards/CompositeCard"; import { FreeTextCard } from "../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../components/flashcards/TrueFalseCard"; import { KpiGrid } from "../components/KpiGrid"; import { useAppState } from "../components/AppStateProvider"; import { vaultBaseName } from "../lib/path"; import { areClozeBlanksComplete, areTrueFalseItemsComplete, isFlashcardPartComplete, } from "../features/flashcards/logic"; imp …
-
-
 📁 help
   📝 helpContent.ts
      Pfad: 📁 help / 📝 helpContent.ts
-     Größe: 45.98 KB (47088 B)
-     Geändert: 2026-01-05T10:23:07
-     Überschriften: 0, Zeilen: 1273, Wörter: 4978, Zeichen: 47008
+     Größe: 257 B (257 B)
+     Geändert: 2026-01-05T10:48:11
+     Überschriften: 0, Zeilen: 7, Wörter: 30, Zeichen: 257
+     Inhalt (Auszug): export * from "./content/types"; export * from "./content/i18n"; export * from "./content/labels"; export * from "./content/topics"; export * from "./content/appSections"; export * from "./content/syntax/overview"; export * from "./content/syntax/entries";
+
+
+📁 help/content
+  📝 appSections.ts
+     Pfad: 📁 help / 📁 content / 📝 appSections.ts
+     Größe: 9.76 KB (9991 B)
+     Geändert: 2026-01-05T10:48:00
+     Überschriften: 0, Zeilen: 230, Wörter: 1157, Zeichen: 9911
+     Inhalt (Auszug): import { AppSectionData, AppSectionId, LocalizedText } from "./types";
+
+  📝 i18n.ts
+     Pfad: 📁 help / 📁 content / 📝 i18n.ts
+     Größe: 441 B (441 B)
+     Geändert: 2026-01-05T10:46:30
+     Überschriften: 0, Zeilen: 13, Wörter: 43, Zeichen: 441
+     Inhalt (Auszug): import { AppLanguage, LocalizedText } from "./types";
+
+  📝 labels.ts
+     Pfad: 📁 help / 📁 content / 📝 labels.ts
+     Größe: 941 B (941 B)
+     Geändert: 2026-01-05T10:46:41
+     Überschriften: 0, Zeilen: 24, Wörter: 116, Zeichen: 941
+     Inhalt (Auszug): export const helpHeader = { eyebrow: { en: "Help", de: "Hilfe" }, title: { en: "Help", de: "Hilfe" }, summary: { en: "Quick reminders for the workflow and syntax.", de: "Kurze Hinweise zum Workflow und zur Syntax.", }, };
+
+  📝 topics.ts
+     Pfad: 📁 help / 📁 content / 📝 topics.ts
+     Größe: 7.92 KB (8106 B)
+     Geändert: 2026-01-05T10:57:51
+     Überschriften: 0, Zeilen: 205, Wörter: 883, Zeichen: 8106
+     Inhalt (Auszug): import { HelpTopic } from "./types";
+
+  📝 types.ts
+     Pfad: 📁 help / 📁 content / 📝 types.ts
+     Größe: 1.29 KB (1318 B)
+     Geändert: 2026-01-05T10:46:25
+     Überschriften: 0, Zeilen: 66, Wörter: 120, Zeichen: 1318
      Inhalt (Auszug): export type AppLanguage = "de" | "en"; export type LocalizedText = { de?: string; en?: string };
+
+
+📁 help/content/syntax
+  📝 entries.ts
+     Pfad: 📁 help / 📁 content / 📁 syntax / 📝 entries.ts
+     Größe: 26.60 KB (27237 B)
+     Geändert: 2026-01-05T10:47:21
+     Überschriften: 0, Zeilen: 719, Wörter: 2800, Zeichen: 27237
+     Inhalt (Auszug): import { SyntaxEntry } from "../types";
+
+  📝 overview.ts
+     Pfad: 📁 help / 📁 content / 📁 syntax / 📝 overview.ts
+     Größe: 683 B (683 B)
+     Geändert: 2026-01-05T10:46:49
+     Überschriften: 0, Zeilen: 17, Wörter: 89, Zeichen: 683
+     Inhalt (Auszug): export const flashcardSyntaxOverview = { title: { en: "Core rules", de: "Grundregeln" }, bullets: [ { en: "Wrap every card with #card and # on their own lines; content outside is ignored.", de: "Jede Karte mit #card und # auf eigenen Zeilen umschliessen; Inhalt ausserhalb wird ignoriert.", }, { en: "The first non-empty line is the prompt.", de: "Die erste nicht-leere Zeile ist die Frage.", }, { en: "Syntaxes can be combined in one #card block when desired; keep markers clear and consistent.", de: "Syntaxen koennen bei Bedarf in einem #card-Block kombiniert werden; Marker klar und konsistent halten.", }, ], };
 
 
 📁 help/sections
@@ -105,6 +122,15 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 
 📁 .
 ├── 📁 help
+│   ├── 📁 content
+│   │   ├── 📁 syntax
+│   │   │   ├── 📝 entries.ts
+│   │   │   └── 📝 overview.ts
+│   │   ├── 📝 appSections.ts
+│   │   ├── 📝 i18n.ts
+│   │   ├── 📝 labels.ts
+│   │   ├── 📝 topics.ts
+│   │   └── 📝 types.ts
 │   ├── 📁 sections
 │   │   ├── 📝 AppSectionsGuidePanel.tsx
 │   │   ├── 📝 HelpDetailSection.tsx
@@ -124,6 +150,15 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 
 📁 .
 ├── 📁 help
+│   ├── 📁 content
+│   │   ├── 📁 syntax
+│   │   │   ├── 📝 entries.ts
+│   │   │   └── 📝 overview.ts
+│   │   ├── 📝 appSections.ts
+│   │   ├── 📝 i18n.ts
+│   │   ├── 📝 labels.ts
+│   │   ├── 📝 topics.ts
+│   │   └── 📝 types.ts
 │   ├── 📁 sections
 │   │   ├── 📝 AppSectionsGuidePanel.tsx
 │   │   ├── 📝 HelpDetailSection.tsx

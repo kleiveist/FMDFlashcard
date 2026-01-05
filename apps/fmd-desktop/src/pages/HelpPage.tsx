@@ -13,6 +13,7 @@ import {
 import { HelpDetailSection } from "./help/sections/HelpDetailSection";
 import { HelpHeaderSection } from "./help/sections/HelpHeaderSection";
 import { HelpOverviewSection } from "./help/sections/HelpOverviewSection";
+import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
 
 export const HelpPage = () => {
   const { settings } = useAppState();
@@ -132,32 +133,40 @@ export const HelpPage = () => {
       <section className="panel help-panel">
         <div className="panel-body help-body">
           {activeTopic ? (
-            <HelpDetailSection
-              titleText={titleText}
-              activeTopic={activeTopic}
-              language={language}
-              isSyntaxTopic={isSyntaxTopic}
-              isAppSectionsTopic={isAppSectionsTopic}
-              activeSyntax={activeSyntax}
-              setActiveTopicId={setActiveTopicId}
-              setActiveSyntaxId={setActiveSyntaxId}
-              syntaxLanguage={syntaxLanguage}
-              setSyntaxLanguage={setSyntaxLanguage}
-              copyLabel={copyLabel}
-              copiedLabel={copiedLabel}
-              copiedItemId={copiedItemId}
-              handleCopy={handleCopy}
-              overviewBullets={overviewBullets}
-              syntaxCopyExampleLabel={syntaxCopyExampleLabel}
-              syntaxCopyPromptLabel={syntaxCopyPromptLabel}
-              syntaxCopiedLabel={syntaxCopiedLabel}
-              syntaxPromptLabel={syntaxPromptLabel}
-              syntaxExampleLabel={syntaxExampleLabel}
-              syntaxRulesLabel={syntaxRulesLabel}
-              syntaxWhatItIsLabel={syntaxWhatItIsLabel}
-              syntaxMistakesLabel={syntaxMistakesLabel}
-              syntaxMarkersLabel={syntaxMarkersLabel}
-            />
+            <>
+              <HelpTopicHeadingsBlock
+                helpTopics={helpTopics}
+                language={language}
+                activeTopicId={activeTopic.id}
+                setActiveTopicId={setActiveTopicId}
+              />
+              <HelpDetailSection
+                titleText={titleText}
+                activeTopic={activeTopic}
+                language={language}
+                isSyntaxTopic={isSyntaxTopic}
+                isAppSectionsTopic={isAppSectionsTopic}
+                activeSyntax={activeSyntax}
+                setActiveTopicId={setActiveTopicId}
+                setActiveSyntaxId={setActiveSyntaxId}
+                syntaxLanguage={syntaxLanguage}
+                setSyntaxLanguage={setSyntaxLanguage}
+                copyLabel={copyLabel}
+                copiedLabel={copiedLabel}
+                copiedItemId={copiedItemId}
+                handleCopy={handleCopy}
+                overviewBullets={overviewBullets}
+                syntaxCopyExampleLabel={syntaxCopyExampleLabel}
+                syntaxCopyPromptLabel={syntaxCopyPromptLabel}
+                syntaxCopiedLabel={syntaxCopiedLabel}
+                syntaxPromptLabel={syntaxPromptLabel}
+                syntaxExampleLabel={syntaxExampleLabel}
+                syntaxRulesLabel={syntaxRulesLabel}
+                syntaxWhatItIsLabel={syntaxWhatItIsLabel}
+                syntaxMistakesLabel={syntaxMistakesLabel}
+                syntaxMarkersLabel={syntaxMarkersLabel}
+              />
+            </>
           ) : (
             <HelpOverviewSection
               helpTopics={helpTopics}
