@@ -224,7 +224,7 @@ export const evaluateFlashcardResult = (
   if (card.kind === "composite") {
     const partStates = compositeStates?.[cardIndex] ?? [];
     const allCorrect = card.parts.every((part, partIndex) =>
-      evaluateFlashcardPartResult(part, partStates[partIndex] ?? {}),
+      evaluateFlashcardPartResult(part, partStates[partIndex] ?? {}) === "correct",
     );
     return allCorrect ? "correct" : "incorrect";
   }

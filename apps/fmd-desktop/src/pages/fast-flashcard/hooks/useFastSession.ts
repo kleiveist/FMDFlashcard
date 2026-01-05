@@ -87,8 +87,7 @@ export const formatSessionPace = (pace: number) =>
   Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
 export const useFastSession = () => {
-  const { flashcards: appFlashcards, fastFlashcards, settings, vault } =
-    useAppState();
+  const { fastFlashcards, settings, vault } = useAppState();
   const {
     flashcardSubmissions,
     handleFlashcardSelfGrade,
@@ -121,8 +120,8 @@ export const useFastSession = () => {
   const currentCardIndex = currentEntry?.cardIndex;
   const hasScannedCards = fastFlashcards.flashcards.length > 0;
   const hasFilteredCards = orderedEntries.length > 0;
-  const statsCorrect = appFlashcards.correctCount;
-  const statsIncorrect = appFlashcards.incorrectCount;
+  const statsCorrect = fastFlashcards.correctCount;
+  const statsIncorrect = fastFlashcards.incorrectCount;
   const statsTotal = statsCorrect + statsIncorrect;
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
   const timeModeActive = isTimeModeEnabled;

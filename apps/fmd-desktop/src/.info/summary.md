@@ -1,5 +1,5 @@
 Markdown-Scan – Root: /home/kleif/Projects/FMDFlashcard/apps/fmd-desktop/src
-Erzeugt: 2026-01-05T12:15:08
+Erzeugt: 2026-01-05T12:39:25
 Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css, .ts, .shipping
 
 === Dateien ===
@@ -7,11 +7,10 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 📁 .
   📝 App.css
      Pfad: 📝 App.css
-     Größe: 49.76 KB (50957 B)
-     Geändert: 2026-01-05T09:45:32
-     Titel: f7dccb 0%,
-     Überschriften: 7, Zeilen: 3046, Wörter: 6859, Zeichen: 50957
-     Inhalt (Auszug): :root { font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; font-weight: 400; color: var(--ink); background-color: var(--bg); font-synthesis: none; text-rendering: optimizeLegibility;
+     Größe: 665 B (665 B)
+     Geändert: 2026-01-05T12:30:02
+     Überschriften: 0, Zeilen: 16, Wörter: 79, Zeichen: 665
+     Inhalt (Auszug): @import "./styles/tokens.css"; @import "./styles/base.css"; @import "./styles/layout.css"; @import "./styles/components/buttons.css"; @import "./styles/components/content.css"; @import "./styles/components/panels.css"; @import "./styles/components/flashcards.css"; @import "./styles/components/stats.css"; @import "./styles/components/help.css"; @import "./styles/components/spaced-repetition.css"; @import "./styles/components/panel-layout.css"; @import "./styles/components/modals.css"; @import "./styles/components/preview.css"; @import "./styles/components/utility.css"; @import "./styles/components/settings.css"; @import "./styles/components/responsive.css";
 
   📝 App.tsx
      Pfad: 📝 App.tsx
@@ -608,6 +607,124 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
      Inhalt (Auszug): import { useCallback, useEffect, useMemo, useState, type CSSProperties, type DragEvent, } from "react"; import { useAppState } from "../../../components/AppStateProvider"; import { vaultBaseName } from "../../../lib/path"; import { areClozeBlanksComplete, areTrueFalseItemsComplete, isFlashcardPartComplete, } from "../../../features/flashcards/logic"; import { getFlashcardId, getSpacedRepetitionEffectiveBox, normalizeSpacedRepetitionCardProgress, } from "../../../features/spaced-repetition/logic";
 
 
+📁 styles
+  📝 base.css
+     Pfad: 📁 styles / 📝 base.css
+     Größe: 306 B (306 B)
+     Geändert: 2026-01-05T12:31:32
+     Titel: root {
+     Überschriften: 1, Zeilen: 26, Wörter: 35, Zeichen: 306
+     Inhalt (Auszug): box-sizing: border-box; }
+
+  📝 layout.css
+     Pfad: 📁 styles / 📝 layout.css
+     Größe: 4.54 KB (4645 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 279, Wörter: 606, Zeichen: 4645
+     Inhalt (Auszug): .app-shell { position: relative; display: grid; grid-template-columns: 260px 1fr; gap: 24px; padding: 24px; min-height: 100vh; animation: riseIn 0.6s ease both; }
+
+  📝 tokens.css
+     Pfad: 📁 styles / 📝 tokens.css
+     Größe: 2.22 KB (2276 B)
+     Geändert: 2026-01-05T12:28:47
+     Titel: f7dccb 0%,
+     Überschriften: 6, Zeilen: 75, Wörter: 348, Zeichen: 2276
+     Inhalt (Auszug): :root { font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; font-weight: 400; color: var(--ink); background-color: var(--bg); font-synthesis: none; text-rendering: optimizeLegibility;
+
+
+📁 styles/components
+  📝 buttons.css
+     Pfad: 📁 styles / 📁 components / 📝 buttons.css
+     Größe: 861 B (861 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 57, Wörter: 108, Zeichen: 861
+     Inhalt (Auszug): button { border: none; font: inherit; }
+
+  📝 content.css
+     Pfad: 📁 styles / 📁 components / 📝 content.css
+     Größe: 6.20 KB (6344 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 389, Wörter: 865, Zeichen: 6344
+     Inhalt (Auszug): .content { display: flex; flex-direction: column; gap: 24px; animation: riseIn 0.6s ease both; animation-delay: 0.05s; }
+
+  📝 flashcards.css
+     Pfad: 📁 styles / 📁 components / 📝 flashcards.css
+     Größe: 6.84 KB (7007 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 430, Wörter: 901, Zeichen: 7007
+     Inhalt (Auszug): .flashcard-list { display: flex; flex-direction: column; gap: 12px; }
+
+  📝 help.css
+     Pfad: 📁 styles / 📁 components / 📝 help.css
+     Größe: 6.53 KB (6688 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 404, Wörter: 916, Zeichen: 6688
+     Inhalt (Auszug): .help-panel .panel-body { min-height: auto; }
+
+  📝 modals.css
+     Pfad: 📁 styles / 📁 components / 📝 modals.css
+     Größe: 595 B (595 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 36, Wörter: 79, Zeichen: 595
+     Inhalt (Auszug): .modal-backdrop { position: fixed; inset: 0; background: rgba(10, 12, 16, 0.45); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 20; }
+
+  📝 panel-layout.css
+     Pfad: 📁 styles / 📁 components / 📝 panel-layout.css
+     Größe: 1.56 KB (1601 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 106, Wörter: 214, Zeichen: 1601
+     Inhalt (Auszug): .workspace .panel:nth-child(1) { animation-delay: 0.1s; }
+
+  📝 panels.css
+     Pfad: 📁 styles / 📁 components / 📝 panels.css
+     Größe: 1.94 KB (1988 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 119, Wörter: 260, Zeichen: 1988
+     Inhalt (Auszug): .panel { background: var(--panel); border-radius: 20px; padding: 20px; box-shadow: var(--shadow-soft); border: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 16px; animation: riseIn 0.6s ease both; }
+
+  📝 preview.css
+     Pfad: 📁 styles / 📁 components / 📝 preview.css
+     Größe: 2.67 KB (2734 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 164, Wörter: 385, Zeichen: 2734
+     Inhalt (Auszug): .file-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; }
+
+  📝 responsive.css
+     Pfad: 📁 styles / 📁 components / 📝 responsive.css
+     Größe: 2.10 KB (2149 B)
+     Geändert: 2026-01-05T12:31:33
+     Überschriften: 0, Zeilen: 134, Wörter: 268, Zeichen: 2149
+     Inhalt (Auszug): @media (max-width: 1200px) { .flashcard-layout { grid-template-columns: 1fr; }
+
+  📝 settings.css
+     Pfad: 📁 styles / 📁 components / 📝 settings.css
+     Größe: 4.64 KB (4754 B)
+     Geändert: 2026-01-05T12:31:33
+     Überschriften: 0, Zeilen: 301, Wörter: 639, Zeichen: 4754
+     Inhalt (Auszug): .settings-grid { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); grid-template-rows: auto auto; gap: 20px; align-items: start; overflow-x: auto; }
+
+  📝 spaced-repetition.css
+     Pfad: 📁 styles / 📁 components / 📝 spaced-repetition.css
+     Größe: 1.42 KB (1459 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 74, Wörter: 206, Zeichen: 1459
+     Inhalt (Auszug): .sr-vault-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+  📝 stats.css
+     Pfad: 📁 styles / 📁 components / 📝 stats.css
+     Größe: 6.95 KB (7116 B)
+     Geändert: 2026-01-05T12:31:32
+     Überschriften: 0, Zeilen: 428, Wörter: 971, Zeichen: 7116
+     Inhalt (Auszug): .stats-panel .panel-body { min-height: auto; }
+
+  📝 utility.css
+     Pfad: 📁 styles / 📁 components / 📝 utility.css
+     Größe: 434 B (434 B)
+     Geändert: 2026-01-05T12:31:33
+     Überschriften: 0, Zeilen: 24, Wörter: 58, Zeichen: 434
+     Inhalt (Auszug): .empty-state { padding: 18px; border-radius: 16px; border: 1px dashed var(--line); color: var(--muted); background: var(--panel-warm); }
+
+
 === Ordnerbaum (Quelle, nur ausgewählte Typen) ===
 
 📁 .
@@ -710,6 +827,24 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 │   ├── 📝 HelpPage.tsx
 │   ├── 📝 SettingsPage.tsx
 │   └── 📝 SpacedRepetitionPage.tsx
+├── 📁 styles
+│   ├── 📁 components
+│   │   ├── 📝 buttons.css
+│   │   ├── 📝 content.css
+│   │   ├── 📝 flashcards.css
+│   │   ├── 📝 help.css
+│   │   ├── 📝 modals.css
+│   │   ├── 📝 panel-layout.css
+│   │   ├── 📝 panels.css
+│   │   ├── 📝 preview.css
+│   │   ├── 📝 responsive.css
+│   │   ├── 📝 settings.css
+│   │   ├── 📝 spaced-repetition.css
+│   │   ├── 📝 stats.css
+│   │   └── 📝 utility.css
+│   ├── 📝 base.css
+│   ├── 📝 layout.css
+│   └── 📝 tokens.css
 ├── 📝 App.css
 ├── 📝 App.tsx
 ├── 📝 main.tsx
@@ -821,6 +956,24 @@ Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css
 │   ├── 📝 HelpPage.tsx
 │   ├── 📝 SettingsPage.tsx
 │   └── 📝 SpacedRepetitionPage.tsx
+├── 📁 styles
+│   ├── 📁 components
+│   │   ├── 📝 buttons.css
+│   │   ├── 📝 content.css
+│   │   ├── 📝 flashcards.css
+│   │   ├── 📝 help.css
+│   │   ├── 📝 modals.css
+│   │   ├── 📝 panel-layout.css
+│   │   ├── 📝 panels.css
+│   │   ├── 📝 preview.css
+│   │   ├── 📝 responsive.css
+│   │   ├── 📝 settings.css
+│   │   ├── 📝 spaced-repetition.css
+│   │   ├── 📝 stats.css
+│   │   └── 📝 utility.css
+│   ├── 📝 base.css
+│   ├── 📝 layout.css
+│   └── 📝 tokens.css
 ├── 📝 App.css
 ├── 📝 App.tsx
 ├── 📝 index.json
