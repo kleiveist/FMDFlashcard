@@ -20,12 +20,15 @@ import { vaultBaseName } from "../lib/path";
 const fastFlashcardStatusLabel = "Not scanned yet";
 const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
 
+type FastFlashcardResult = "correct" | "incorrect" | "timeout";
+
 type FastFlashcardSessionSummary = {
   id: string;
   endedAt: string;
   score: number;
   correct: number;
   incorrect: number;
+  timeout?: number;
   total: number;
   accuracy: number;
   pace: number;
@@ -34,6 +37,18 @@ type FastFlashcardSessionSummary = {
 
 type FastFlashcardStorage = {
   sessions: FastFlashcardSessionSummary[];
+};
+
+type FastFlashcardSessionStats = {
+  correct: number;
+  incorrect: number;
+  timeout: number;
+};
+
+const FAST_FLASHCARD_SCORE_BY_RESULT: Record<FastFlashcardResult, number> = {
+  correct: 10,
+  incorrect: -5,
+  timeout: -5,
 };
 
 const buildSessionId = () => {
@@ -76,10 +91,10 @@ export const FastFlashcardPage = () => {
   const [isTimeModeEnabled, setIsTimeModeEnabled] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState(6);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const [sessionStats, setSessionStats] = useState({
-    total: 0,
+  const [sessionStats, setSessionStats] = useState<FastFlashcardSessionStats>({
     correct: 0,
     incorrect: 0,
+    timeout: 0,
   });
   const [sessionElapsedMs, setSessionElapsedMs] = useState(0);
   const [sessionHistory, setSessionHistory] = useState<
@@ -89,8 +104,9 @@ export const FastFlashcardPage = () => {
   const timerRef = useRef<number | null>(null);
   const sessionTimerRef = useRef<number | null>(null);
   const sessionStartRef = useRef<number | null>(null);
-  const sessionBaselineRef = useRef<Set<number>>(new Set());
   const sessionCountedRef = useRef<Set<number>>(new Set());
+  const sessionResultsRef = useRef<Map<number, FastFlashcardResult>>(new Map());
+  const sessionTimeoutsRef = useRef<Set<number>>(new Set());
   const prevTimeModeRef = useRef(false);
 
   const orderedEntries = flashcards.orderedFlashcardEntries;
@@ -175,6 +191,77 @@ export const FastFlashcardPage = () => {
     [timeProgress],
   );
 
+  const registerSessionResult = useCallback(
+    (cardIndex: number, result: FastFlashcardResult) => {
+      const results = sessionResultsRef.current;
+      if (results.has(cardIndex)) {
+        return;
+      }
+      results.set(cardIndex, result);
+      setSessionStats((prev) => {
+        if (result === "correct") {
+          return { ...prev, correct: prev.correct + 1 };
+        }
+        if (result === "incorrect") {
+          return { ...prev, incorrect: prev.incorrect + 1 };
+        }
+        return { ...prev, timeout: prev.timeout + 1 };
+      });
+    },
+    [],
+  );
+
+  const resolveSessionResult = useCallback(
+    (cardIndex: number): FastFlashcardResult | null => {
+      if (sessionTimeoutsRef.current.has(cardIndex)) {
+        sessionTimeoutsRef.current.delete(cardIndex);
+        return "timeout";
+      }
+      const card = flashcards.flashcards[cardIndex];
+      if (!card) {
+        return null;
+      }
+      const result = evaluateFlashcardResult(
+        card,
+        cardIndex,
+        flashcards.flashcardSelections,
+        flashcards.flashcardTrueFalseSelections,
+        flashcards.flashcardClozeResponses,
+        flashcards.flashcardSelfGrades,
+        flashcards.flashcardCompositeStates,
+      );
+      if (result === "correct" || result === "incorrect") {
+        return result;
+      }
+      return null;
+    },
+    [
+      flashcards.flashcardClozeResponses,
+      flashcards.flashcardCompositeStates,
+      flashcards.flashcardSelections,
+      flashcards.flashcardSelfGrades,
+      flashcards.flashcardTrueFalseSelections,
+      flashcards.flashcards,
+    ],
+  );
+
+  const recordSessionResults = useCallback(
+    (indices: number[]) => {
+      if (indices.length === 0) {
+        return;
+      }
+      const counted = sessionCountedRef.current;
+      indices.forEach((index) => counted.add(index));
+      indices.forEach((index) => {
+        const result = resolveSessionResult(index);
+        if (result) {
+          registerSessionResult(index, result);
+        }
+      });
+    },
+    [registerSessionResult, resolveSessionResult],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -240,9 +327,10 @@ export const FastFlashcardPage = () => {
           .map((key) => Number(key))
           .filter((index) => flashcardSubmissions[index]),
       );
-      sessionBaselineRef.current = new Set(baseline);
       sessionCountedRef.current = baseline;
-      setSessionStats({ total: 0, correct: 0, incorrect: 0 });
+      sessionResultsRef.current = new Map();
+      sessionTimeoutsRef.current = new Set();
+      setSessionStats({ correct: 0, incorrect: 0, timeout: 0 });
       setSessionElapsedMs(0);
     }
     prevTimeModeRef.current = isTimeModeEnabled;
@@ -259,46 +347,7 @@ export const FastFlashcardPage = () => {
       .filter((index) => flashcardSubmissions[index]);
     const newIndices = submittedIndices.filter((index) => !counted.has(index));
 
-    if (newIndices.length === 0) {
-      return;
-    }
-
-    newIndices.forEach((index) => counted.add(index));
-
-    setSessionStats((prev) => {
-      let nextTotal = prev.total;
-      let nextCorrect = prev.correct;
-      let nextIncorrect = prev.incorrect;
-
-      newIndices.forEach((index) => {
-        const card = flashcards.flashcards[index];
-        if (!card) {
-          return;
-        }
-        const result = evaluateFlashcardResult(
-          card,
-          index,
-          flashcards.flashcardSelections,
-          flashcards.flashcardTrueFalseSelections,
-          flashcards.flashcardClozeResponses,
-          flashcards.flashcardSelfGrades,
-          flashcards.flashcardCompositeStates,
-        );
-        if (result === "correct") {
-          nextTotal += 1;
-          nextCorrect += 1;
-        } else if (result === "incorrect") {
-          nextTotal += 1;
-          nextIncorrect += 1;
-        }
-      });
-
-      return {
-        total: nextTotal,
-        correct: nextCorrect,
-        incorrect: nextIncorrect,
-      };
-    });
+    recordSessionResults(newIndices);
   }, [
     flashcardSubmissions,
     flashcards.flashcardClozeResponses,
@@ -307,6 +356,7 @@ export const FastFlashcardPage = () => {
     flashcards.flashcardSelfGrades,
     flashcards.flashcardTrueFalseSelections,
     flashcards.flashcards,
+    recordSessionResults,
     timeModeActive,
   ]);
 
@@ -345,6 +395,7 @@ export const FastFlashcardPage = () => {
       return;
     }
     if (!flashcardSubmissions[currentEntry.cardIndex]) {
+      sessionTimeoutsRef.current.add(currentEntry.cardIndex);
       if (currentEntry.card.kind === "free-text") {
         handleFlashcardSelfGrade(currentEntry.cardIndex, "incorrect");
       } else {
@@ -540,39 +591,27 @@ export const FastFlashcardPage = () => {
     if (!sessionStartRef.current) {
       return;
     }
-    const baseline = sessionBaselineRef.current;
+    const counted = sessionCountedRef.current;
     const submittedIndices = Object.keys(flashcardSubmissions)
       .map((key) => Number(key))
       .filter((index) => flashcardSubmissions[index])
-      .filter((index) => !baseline.has(index));
-    if (submittedIndices.length === 0) {
-      return;
-    }
+      .filter((index) => !counted.has(index));
+    recordSessionResults(submittedIndices);
 
     let correct = 0;
     let incorrect = 0;
-    submittedIndices.forEach((index) => {
-      const card = flashcards.flashcards[index];
-      if (!card) {
-        return;
-      }
-      const result = evaluateFlashcardResult(
-        card,
-        index,
-        flashcards.flashcardSelections,
-        flashcards.flashcardTrueFalseSelections,
-        flashcards.flashcardClozeResponses,
-        flashcards.flashcardSelfGrades,
-        flashcards.flashcardCompositeStates,
-      );
+    let timeout = 0;
+    sessionResultsRef.current.forEach((result) => {
       if (result === "correct") {
         correct += 1;
       } else if (result === "incorrect") {
         incorrect += 1;
+      } else {
+        timeout += 1;
       }
     });
 
-    const total = correct + incorrect;
+    const total = correct + incorrect + timeout;
     if (total === 0) {
       return;
     }
@@ -580,7 +619,10 @@ export const FastFlashcardPage = () => {
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
     const pace =
       durationMs > 0 ? Number((total / (durationMs / 60000)).toFixed(1)) : 0;
-    const score = correct * 10 - incorrect * 5;
+    const score =
+      correct * FAST_FLASHCARD_SCORE_BY_RESULT.correct +
+      incorrect * FAST_FLASHCARD_SCORE_BY_RESULT.incorrect +
+      timeout * FAST_FLASHCARD_SCORE_BY_RESULT.timeout;
 
     setSessionElapsedMs(durationMs);
     setSessionHistory((prev) => [
@@ -591,21 +633,14 @@ export const FastFlashcardPage = () => {
         score,
         correct,
         incorrect,
+        timeout,
         total,
         accuracy,
         pace,
         durationMs,
       },
     ]);
-  }, [
-    flashcardSubmissions,
-    flashcards.flashcardClozeResponses,
-    flashcards.flashcardCompositeStates,
-    flashcards.flashcardSelections,
-    flashcards.flashcardSelfGrades,
-    flashcards.flashcardTrueFalseSelections,
-    flashcards.flashcards,
-  ]);
+  }, [flashcardSubmissions, recordSessionResults]);
 
   const handleTimeToggle = useCallback(() => {
     setIsTimeModeEnabled((prev) => {
@@ -636,15 +671,20 @@ export const FastFlashcardPage = () => {
     [handleFlashcardSelfGrade, timeModeActive],
   );
 
-  const sessionAnswered = sessionStats.correct + sessionStats.incorrect;
+  const sessionCompleted =
+    sessionStats.correct + sessionStats.incorrect + sessionStats.timeout;
+  const sessionMissed = sessionStats.incorrect + sessionStats.timeout;
   const sessionAccuracy =
-    sessionAnswered > 0
-      ? Math.round((sessionStats.correct / sessionAnswered) * 100)
+    sessionCompleted > 0
+      ? Math.round((sessionStats.correct / sessionCompleted) * 100)
       : 0;
-  const sessionScore = sessionStats.correct * 10 - sessionStats.incorrect * 5;
+  const sessionScore =
+    sessionStats.correct * FAST_FLASHCARD_SCORE_BY_RESULT.correct +
+    sessionStats.incorrect * FAST_FLASHCARD_SCORE_BY_RESULT.incorrect +
+    sessionStats.timeout * FAST_FLASHCARD_SCORE_BY_RESULT.timeout;
   const sessionMinutes = sessionElapsedMs / 60000;
   const sessionPace =
-    sessionMinutes > 0 ? (sessionStats.total / sessionMinutes).toFixed(1) : "0.0";
+    sessionMinutes > 0 ? (sessionCompleted / sessionMinutes).toFixed(1) : "0.0";
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "ToDoList"),
     [vault.vaultPath],
@@ -765,14 +805,14 @@ export const FastFlashcardPage = () => {
             <div className="fast-session-grid">
               <div className="fast-session-card">
                 <span className="label">Cards</span>
-                <span className="fast-session-value">{sessionStats.total}</span>
+                <span className="fast-session-value">{sessionCompleted}</span>
                 <span className="fast-session-sub">Completed</span>
               </div>
               <div className="fast-session-card">
                 <span className="label">Accuracy</span>
                 <span className="fast-session-value">{sessionAccuracy}%</span>
                 <span className="fast-session-sub">
-                  {sessionStats.correct} correct / {sessionStats.incorrect} missed
+                  {sessionStats.correct} correct / {sessionMissed} missed
                 </span>
               </div>
               <div className="fast-session-card">
@@ -916,71 +956,70 @@ export const FastFlashcardPage = () => {
         </div>
       </section>
 
-      <section className="panel fast-history-panel fast-history-panel-recent">
+      <section className="panel fast-history-panel">
         <div className="panel-header">
           <div>
-            <h2>Last 10 Sessions</h2>
-            <p className="muted">Most recent timer runs.</p>
+            <h2>Session History</h2>
+            <p className="muted">Top scores and recent runs.</p>
           </div>
         </div>
         <div className="panel-body">
-          {lastSessions.length === 0 ? (
+          {sessionHistory.length === 0 ? (
             <div className="empty-state">No sessions yet.</div>
           ) : (
-            <div className="fast-session-table">
-              <div className="fast-session-row header">
-                <span className="fast-session-cell timestamp">Date/Time</span>
-                <span className="fast-session-cell">Score</span>
-                <span className="fast-session-cell">Accuracy</span>
-                <span className="fast-session-cell">Pace</span>
-              </div>
-              {lastSessions.map((session) => (
-                <div key={session.id} className="fast-session-row">
-                  <span className="fast-session-cell timestamp">
-                    {formatSessionTimestamp(session.endedAt)}
-                  </span>
-                  <span className="fast-session-cell">{session.score}</span>
-                  <span className="fast-session-cell">{session.accuracy}%</span>
-                  <span className="fast-session-cell">
-                    {formatSessionPace(session.pace)}
-                  </span>
+            <div className="fast-history-sections">
+              <div className="fast-session-section">
+                <div>
+                  <h3 className="fast-section-title">Top 3 Sessions</h3>
+                  <p className="muted">Highest scores so far.</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="panel fast-history-panel fast-history-panel-top">
-        <div className="panel-header">
-          <div>
-            <h2>Top 3 Sessions</h2>
-            <p className="muted">Highest scores so far.</p>
-          </div>
-        </div>
-        <div className="panel-body">
-          {topSessions.length === 0 ? (
-            <div className="empty-state">No sessions yet.</div>
-          ) : (
-            <div className="fast-session-table">
-              <div className="fast-session-row header">
-                <span className="fast-session-cell timestamp">Date/Time</span>
-                <span className="fast-session-cell">Score</span>
-                <span className="fast-session-cell">Accuracy</span>
-                <span className="fast-session-cell">Pace</span>
-              </div>
-              {topSessions.map((session) => (
-                <div key={session.id} className="fast-session-row">
-                  <span className="fast-session-cell timestamp">
-                    {formatSessionTimestamp(session.endedAt)}
-                  </span>
-                  <span className="fast-session-cell">{session.score}</span>
-                  <span className="fast-session-cell">{session.accuracy}%</span>
-                  <span className="fast-session-cell">
-                    {formatSessionPace(session.pace)}
-                  </span>
+                <div className="fast-session-table">
+                  <div className="fast-session-row header">
+                    <span className="fast-session-cell timestamp">Date/Time</span>
+                    <span className="fast-session-cell">Score</span>
+                    <span className="fast-session-cell">Accuracy</span>
+                    <span className="fast-session-cell">Pace</span>
+                  </div>
+                  {topSessions.map((session) => (
+                    <div key={session.id} className="fast-session-row">
+                      <span className="fast-session-cell timestamp">
+                        {formatSessionTimestamp(session.endedAt)}
+                      </span>
+                      <span className="fast-session-cell">{session.score}</span>
+                      <span className="fast-session-cell">{session.accuracy}%</span>
+                      <span className="fast-session-cell">
+                        {formatSessionPace(session.pace)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <div className="fast-session-section">
+                <div>
+                  <h3 className="fast-section-title">Last 10 Sessions</h3>
+                  <p className="muted">Most recent timer runs.</p>
+                </div>
+                <div className="fast-session-table">
+                  <div className="fast-session-row header">
+                    <span className="fast-session-cell timestamp">Date/Time</span>
+                    <span className="fast-session-cell">Score</span>
+                    <span className="fast-session-cell">Accuracy</span>
+                    <span className="fast-session-cell">Pace</span>
+                  </div>
+                  {lastSessions.map((session) => (
+                    <div key={session.id} className="fast-session-row">
+                      <span className="fast-session-cell timestamp">
+                        {formatSessionTimestamp(session.endedAt)}
+                      </span>
+                      <span className="fast-session-cell">{session.score}</span>
+                      <span className="fast-session-cell">{session.accuracy}%</span>
+                      <span className="fast-session-cell">
+                        {formatSessionPace(session.pace)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
