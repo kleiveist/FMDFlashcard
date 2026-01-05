@@ -30,6 +30,7 @@ type AppActions = {
 type AppState = {
   actions: AppActions;
   flashcards: ReturnType<typeof useFlashcards>;
+  fastFlashcards: ReturnType<typeof useFlashcards>;
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
   spacedRepetition: ReturnType<typeof useSpacedRepetition>;
@@ -40,7 +41,38 @@ const AppStateContext = createContext<AppState | null>(null);
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
-  const vault = useVault({ persistSettings: settings.persistSettings });
+  const {
+    activeNotePath,
+    accentColor,
+    persistSettings,
+    setAccentColor,
+    setAccentDraft,
+    setAccentError,
+    setActiveNotePath,
+    setMaxFilesPerScan,
+    setTheme,
+    settingsLoaded,
+    vaultPath: storedVaultPath,
+    flashcardMode,
+    flashcardOrder,
+    flashcardPageSize,
+    flashcardScope,
+    setFlashcardMode,
+    setFlashcardOrder,
+    setFlashcardPageSize,
+    setFlashcardScope,
+    fastFlashcardMode,
+    fastFlashcardOrder,
+    fastFlashcardScope,
+    setFastFlashcardMode,
+    setFastFlashcardOrder,
+    setFastFlashcardScope,
+    setSolutionRevealEnabled,
+    setStatsResetMode,
+    solutionRevealEnabled,
+    statsResetMode,
+  } = settings;
+  const vault = useVault({ persistSettings });
   const preview = usePreview();
   const flashcards = useFlashcards({
     files: vault.files,
@@ -48,18 +80,38 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     selectedFile: preview.selectedFile,
     vaultPath: vault.vaultPath,
     settings: {
-      flashcardMode: settings.flashcardMode,
-      flashcardOrder: settings.flashcardOrder,
-      flashcardPageSize: settings.flashcardPageSize,
-      flashcardScope: settings.flashcardScope,
-      setFlashcardMode: settings.setFlashcardMode,
-      setFlashcardOrder: settings.setFlashcardOrder,
-      setFlashcardPageSize: settings.setFlashcardPageSize,
-      setFlashcardScope: settings.setFlashcardScope,
-      setSolutionRevealEnabled: settings.setSolutionRevealEnabled,
-      setStatsResetMode: settings.setStatsResetMode,
-      solutionRevealEnabled: settings.solutionRevealEnabled,
-      statsResetMode: settings.statsResetMode,
+      flashcardMode,
+      flashcardOrder,
+      flashcardPageSize,
+      flashcardScope,
+      setFlashcardMode,
+      setFlashcardOrder,
+      setFlashcardPageSize,
+      setFlashcardScope,
+      setSolutionRevealEnabled,
+      setStatsResetMode,
+      solutionRevealEnabled,
+      statsResetMode,
+    },
+  });
+  const fastFlashcards = useFlashcards({
+    files: vault.files,
+    preview: preview.preview,
+    selectedFile: preview.selectedFile,
+    vaultPath: vault.vaultPath,
+    settings: {
+      flashcardMode: fastFlashcardMode,
+      flashcardOrder: fastFlashcardOrder,
+      flashcardPageSize,
+      flashcardScope: fastFlashcardScope,
+      setFlashcardMode: setFastFlashcardMode,
+      setFlashcardOrder: setFastFlashcardOrder,
+      setFlashcardPageSize,
+      setFlashcardScope: setFastFlashcardScope,
+      setSolutionRevealEnabled,
+      setStatsResetMode,
+      solutionRevealEnabled,
+      statsResetMode,
     },
   });
   const spacedRepetition = useSpacedRepetition({
@@ -84,19 +136,6 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const hasRestoredVault = useRef(false);
   const isRestoringActiveNote = useRef(false);
   const hasResolvedActiveNote = useRef(false);
-  const {
-    activeNotePath,
-    accentColor,
-    persistSettings,
-    setAccentColor,
-    setAccentDraft,
-    setAccentError,
-    setActiveNotePath,
-    setMaxFilesPerScan,
-    setTheme,
-    settingsLoaded,
-    vaultPath: storedVaultPath,
-  } = settings;
   const { loadVault, pickVault, rescanVault, setVaultPath, vaultPath } = vault;
   const {
     resetPreview,
@@ -329,6 +368,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleMaxFilesPerScanChange,
     },
     flashcards,
+    fastFlashcards,
     preview,
     settings,
     spacedRepetition,

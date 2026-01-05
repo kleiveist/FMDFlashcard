@@ -38,6 +38,9 @@ type AppSettings = {
   flashcard_page_size?: number | null;
   flashcard_solution_reveal_enabled?: boolean | null;
   flashcard_stats_reset_mode?: string | null;
+  fast_flashcard_order?: string | null;
+  fast_flashcard_mode?: string | null;
+  fast_flashcard_scope?: string | null;
   spaced_repetition_boxes?: number | null;
   spaced_repetition_order?: string | null;
   spaced_repetition_page_size?: number | null;
@@ -60,6 +63,9 @@ type PersistUpdates = {
   flashcardPageSize?: FlashcardPageSize;
   solutionRevealEnabled?: boolean;
   statsResetMode?: StatsResetMode;
+  fastFlashcardOrder?: FlashcardOrder;
+  fastFlashcardMode?: FlashcardMode;
+  fastFlashcardScope?: FlashcardScope;
   spacedRepetitionBoxes?: SpacedRepetitionBoxes;
   spacedRepetitionOrder?: SpacedRepetitionOrder;
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
@@ -75,6 +81,9 @@ const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
 const DEFAULT_FLASHCARD_MODE: FlashcardMode = "all";
 const DEFAULT_FLASHCARD_SCOPE: FlashcardScope = "current";
 const DEFAULT_STATS_RESET_MODE: StatsResetMode = "scan";
+const DEFAULT_FAST_FLASHCARD_ORDER: FlashcardOrder = DEFAULT_FLASHCARD_ORDER;
+const DEFAULT_FAST_FLASHCARD_MODE: FlashcardMode = DEFAULT_FLASHCARD_MODE;
+const DEFAULT_FAST_FLASHCARD_SCOPE: FlashcardScope = DEFAULT_FLASHCARD_SCOPE;
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
@@ -106,6 +115,12 @@ export const useAppSettings = () => {
   const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
   const [statsResetMode, setStatsResetMode] =
     useState<StatsResetMode>(DEFAULT_STATS_RESET_MODE);
+  const [fastFlashcardOrder, setFastFlashcardOrder] =
+    useState<FlashcardOrder>(DEFAULT_FAST_FLASHCARD_ORDER);
+  const [fastFlashcardMode, setFastFlashcardMode] =
+    useState<FlashcardMode>(DEFAULT_FAST_FLASHCARD_MODE);
+  const [fastFlashcardScope, setFastFlashcardScope] =
+    useState<FlashcardScope>(DEFAULT_FAST_FLASHCARD_SCOPE);
   const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
     useState<SpacedRepetitionBoxes>(DEFAULT_SPACED_REPETITION_BOXES);
   const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
@@ -127,27 +142,30 @@ export const useAppSettings = () => {
   const autoSaveTimer = useRef<number | null>(null);
 
   const saveSettings = useCallback(
-    async (settings: {
-      activeNotePath: string | null;
-      vaultPath: string | null;
-      theme: ThemeMode;
-      accentColor: string;
-      language: AppLanguage;
-      maxFilesPerScan: string;
-      scanParallelism: "low" | "medium" | "high";
-      flashcardOrder: FlashcardOrder;
-      flashcardMode: FlashcardMode;
-      flashcardScope: FlashcardScope;
-      flashcardPageSize: FlashcardPageSize;
-      solutionRevealEnabled: boolean;
-      statsResetMode: StatsResetMode;
-      spacedRepetitionBoxes: SpacedRepetitionBoxes;
-      spacedRepetitionOrder: SpacedRepetitionOrder;
-      spacedRepetitionPageSize: SpacedRepetitionPageSize;
-      spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
-      spacedRepetitionStatsView: SpacedRepetitionStatsView;
-      rightToolbarCollapsed: boolean;
-    }) => {
+      async (settings: {
+        activeNotePath: string | null;
+        vaultPath: string | null;
+        theme: ThemeMode;
+        accentColor: string;
+        language: AppLanguage;
+        maxFilesPerScan: string;
+        scanParallelism: "low" | "medium" | "high";
+        flashcardOrder: FlashcardOrder;
+        flashcardMode: FlashcardMode;
+        flashcardScope: FlashcardScope;
+        flashcardPageSize: FlashcardPageSize;
+        solutionRevealEnabled: boolean;
+        statsResetMode: StatsResetMode;
+        spacedRepetitionBoxes: SpacedRepetitionBoxes;
+        spacedRepetitionOrder: SpacedRepetitionOrder;
+        spacedRepetitionPageSize: SpacedRepetitionPageSize;
+        spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
+        spacedRepetitionStatsView: SpacedRepetitionStatsView;
+        rightToolbarCollapsed: boolean;
+        fastFlashcardOrder: FlashcardOrder;
+        fastFlashcardMode: FlashcardMode;
+        fastFlashcardScope: FlashcardScope;
+      }) => {
       try {
         await invoke("save_app_settings", {
           activeNotePath: settings.activeNotePath,
@@ -163,6 +181,9 @@ export const useAppSettings = () => {
           flashcardPageSize: settings.flashcardPageSize,
           flashcardSolutionRevealEnabled: settings.solutionRevealEnabled,
           flashcardStatsResetMode: settings.statsResetMode,
+          fastFlashcardOrder: settings.fastFlashcardOrder,
+          fastFlashcardMode: settings.fastFlashcardMode,
+          fastFlashcardScope: settings.fastFlashcardScope,
           spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
@@ -196,6 +217,9 @@ export const useAppSettings = () => {
         flashcardOrder: updates.flashcardOrder ?? flashcardOrder,
         flashcardMode: updates.flashcardMode ?? flashcardMode,
         flashcardScope: updates.flashcardScope ?? flashcardScope,
+        fastFlashcardOrder: updates.fastFlashcardOrder ?? fastFlashcardOrder,
+        fastFlashcardMode: updates.fastFlashcardMode ?? fastFlashcardMode,
+        fastFlashcardScope: updates.fastFlashcardScope ?? fastFlashcardScope,
         flashcardPageSize: updates.flashcardPageSize ?? flashcardPageSize,
         solutionRevealEnabled:
           updates.solutionRevealEnabled ?? solutionRevealEnabled,
@@ -228,6 +252,9 @@ export const useAppSettings = () => {
       accentColor,
       flashcardMode,
       flashcardOrder,
+      fastFlashcardMode,
+      fastFlashcardOrder,
+      fastFlashcardScope,
       flashcardPageSize,
       flashcardScope,
       language,
@@ -301,6 +328,26 @@ export const useAppSettings = () => {
           settings.flashcard_scope === "vault"
             ? "vault"
             : DEFAULT_FLASHCARD_SCOPE;
+        const storedFastFlashcardOrder =
+          settings.fast_flashcard_order === "random"
+            ? "random"
+            : DEFAULT_FAST_FLASHCARD_ORDER;
+        const storedFastFlashcardMode =
+          settings.fast_flashcard_mode === "all" ||
+          settings.fast_flashcard_mode === "qa" ||
+          settings.fast_flashcard_mode === "multiple-choice" ||
+          settings.fast_flashcard_mode === "mix" ||
+          settings.fast_flashcard_mode === "fill-blank" ||
+          settings.fast_flashcard_mode === "assignment" ||
+          settings.fast_flashcard_mode === "true-false"
+            ? settings.fast_flashcard_mode
+            : settings.fast_flashcard_mode === "yes-no"
+              ? "true-false"
+              : DEFAULT_FAST_FLASHCARD_MODE;
+        const storedFastFlashcardScope =
+          settings.fast_flashcard_scope === "vault"
+            ? "vault"
+            : DEFAULT_FAST_FLASHCARD_SCOPE;
         const storedFlashcardPageSizeRaw = settings.flashcard_page_size;
         const migratedFlashcardPageSize =
           storedFlashcardPageSizeRaw === 10
@@ -377,6 +424,9 @@ export const useAppSettings = () => {
         setFlashcardOrder(storedFlashcardOrder);
         setFlashcardMode(storedFlashcardMode);
         setFlashcardScope(storedFlashcardScope);
+        setFastFlashcardOrder(storedFastFlashcardOrder);
+        setFastFlashcardMode(storedFastFlashcardMode);
+        setFastFlashcardScope(storedFastFlashcardScope);
         setFlashcardPageSize(storedFlashcardPageSize);
         setSolutionRevealEnabled(storedSolutionRevealEnabled);
         setStatsResetMode(storedStatsResetMode);
@@ -423,29 +473,32 @@ export const useAppSettings = () => {
     if (autoSaveTimer.current) {
       window.clearTimeout(autoSaveTimer.current);
     }
-    autoSaveTimer.current = window.setTimeout(() => {
-      void saveSettings({
-        activeNotePath,
-        vaultPath,
-        theme,
-        accentColor,
-        language,
-        maxFilesPerScan,
-        scanParallelism,
-        flashcardOrder,
-        flashcardMode,
-        flashcardScope,
-        flashcardPageSize,
-        solutionRevealEnabled,
-        statsResetMode,
-        spacedRepetitionBoxes,
-        spacedRepetitionOrder,
-        spacedRepetitionPageSize,
-        spacedRepetitionRepetitionStrength,
-        spacedRepetitionStatsView,
-        rightToolbarCollapsed,
-      });
-    }, 300);
+      autoSaveTimer.current = window.setTimeout(() => {
+        void saveSettings({
+          activeNotePath,
+          vaultPath,
+          theme,
+          accentColor,
+          language,
+          maxFilesPerScan,
+          scanParallelism,
+          flashcardOrder,
+          flashcardMode,
+          flashcardScope,
+          flashcardPageSize,
+          solutionRevealEnabled,
+          statsResetMode,
+          spacedRepetitionBoxes,
+          spacedRepetitionOrder,
+          spacedRepetitionPageSize,
+          spacedRepetitionRepetitionStrength,
+          spacedRepetitionStatsView,
+          rightToolbarCollapsed,
+          fastFlashcardOrder,
+          fastFlashcardMode,
+          fastFlashcardScope,
+        });
+      }, 300);
 
     return () => {
       if (autoSaveTimer.current) {
@@ -457,6 +510,9 @@ export const useAppSettings = () => {
     activeNotePath,
     flashcardMode,
     flashcardOrder,
+    fastFlashcardMode,
+    fastFlashcardOrder,
+    fastFlashcardScope,
     flashcardPageSize,
     flashcardScope,
     language,
@@ -483,6 +539,9 @@ export const useAppSettings = () => {
     accentError,
     flashcardMode,
     flashcardOrder,
+    fastFlashcardMode,
+    fastFlashcardOrder,
+    fastFlashcardScope,
     flashcardPageSize,
     flashcardScope,
     language,
@@ -497,6 +556,9 @@ export const useAppSettings = () => {
     setFlashcardOrder,
     setFlashcardPageSize,
     setFlashcardScope,
+    setFastFlashcardMode,
+    setFastFlashcardOrder,
+    setFastFlashcardScope,
     setLanguage,
     setMaxFilesPerScan,
     setRightToolbarCollapsed,

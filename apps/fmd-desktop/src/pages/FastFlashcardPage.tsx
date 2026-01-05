@@ -15,6 +15,7 @@ import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
 import { useAppState } from "../components/AppStateProvider";
 import { evaluateFlashcardResult } from "../features/flashcards/logic";
+import { type FlashcardMode } from "../features/flashcards/useFlashcards";
 import { vaultBaseName } from "../lib/path";
 
 const fastFlashcardStatusLabel = "Not scanned yet";
@@ -51,6 +52,17 @@ const FAST_FLASHCARD_SCORE_BY_RESULT: Record<FastFlashcardResult, number> = {
   timeout: -5,
 };
 
+const FAST_FLASHCARD_DURATION_MULTIPLIER: Record<number, number> = {
+  3: 1.5,
+  6: 1.2,
+  12: 1.0,
+  24: 0.8,
+  48: 0.5,
+};
+
+const getFastFlashcardMultiplier = (duration: number) =>
+  FAST_FLASHCARD_DURATION_MULTIPLIER[duration] ?? 1;
+
 const buildSessionId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -81,12 +93,13 @@ const formatSessionPace = (pace: number) =>
   Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
 export const FastFlashcardPage = () => {
-  const { flashcards, vault } = useAppState();
+  const { flashcards: appFlashcards, fastFlashcards, settings, vault } =
+    useAppState();
   const {
     flashcardSubmissions,
     handleFlashcardSelfGrade,
     handleFlashcardSubmit,
-  } = flashcards;
+  } = fastFlashcards;
   const [fastCardPosition, setFastCardPosition] = useState(0);
   const [isTimeModeEnabled, setIsTimeModeEnabled] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState(6);
@@ -109,13 +122,13 @@ export const FastFlashcardPage = () => {
   const sessionTimeoutsRef = useRef<Set<number>>(new Set());
   const prevTimeModeRef = useRef(false);
 
-  const orderedEntries = flashcards.orderedFlashcardEntries;
+  const orderedEntries = fastFlashcards.orderedFlashcardEntries;
   const currentEntry = orderedEntries[fastCardPosition] ?? null;
   const currentCardIndex = currentEntry?.cardIndex;
-  const hasScannedCards = flashcards.flashcards.length > 0;
+  const hasScannedCards = fastFlashcards.flashcards.length > 0;
   const hasFilteredCards = orderedEntries.length > 0;
-  const statsCorrect = flashcards.correctCount;
-  const statsIncorrect = flashcards.incorrectCount;
+  const statsCorrect = appFlashcards.correctCount;
+  const statsIncorrect = appFlashcards.incorrectCount;
   const statsTotal = statsCorrect + statsIncorrect;
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
   const timeModeActive = isTimeModeEnabled;
@@ -133,19 +146,19 @@ export const FastFlashcardPage = () => {
     return evaluateFlashcardResult(
       currentEntry.card,
       currentEntry.cardIndex,
-      flashcards.flashcardSelections,
-      flashcards.flashcardTrueFalseSelections,
-      flashcards.flashcardClozeResponses,
-      flashcards.flashcardSelfGrades,
-      flashcards.flashcardCompositeStates,
+      fastFlashcards.flashcardSelections,
+      fastFlashcards.flashcardTrueFalseSelections,
+      fastFlashcards.flashcardClozeResponses,
+      fastFlashcards.flashcardSelfGrades,
+      fastFlashcards.flashcardCompositeStates,
     );
   }, [
     currentEntry,
-    flashcards.flashcardClozeResponses,
-    flashcards.flashcardCompositeStates,
-    flashcards.flashcardSelections,
-    flashcards.flashcardSelfGrades,
-    flashcards.flashcardTrueFalseSelections,
+    fastFlashcards.flashcardClozeResponses,
+    fastFlashcards.flashcardCompositeStates,
+    fastFlashcards.flashcardSelections,
+    fastFlashcards.flashcardSelfGrades,
+    fastFlashcards.flashcardTrueFalseSelections,
     isCurrentSubmitted,
   ]);
 
@@ -217,18 +230,18 @@ export const FastFlashcardPage = () => {
         sessionTimeoutsRef.current.delete(cardIndex);
         return "timeout";
       }
-      const card = flashcards.flashcards[cardIndex];
+      const card = fastFlashcards.flashcards[cardIndex];
       if (!card) {
         return null;
       }
       const result = evaluateFlashcardResult(
         card,
         cardIndex,
-        flashcards.flashcardSelections,
-        flashcards.flashcardTrueFalseSelections,
-        flashcards.flashcardClozeResponses,
-        flashcards.flashcardSelfGrades,
-        flashcards.flashcardCompositeStates,
+        fastFlashcards.flashcardSelections,
+        fastFlashcards.flashcardTrueFalseSelections,
+        fastFlashcards.flashcardClozeResponses,
+        fastFlashcards.flashcardSelfGrades,
+        fastFlashcards.flashcardCompositeStates,
       );
       if (result === "correct" || result === "incorrect") {
         return result;
@@ -236,12 +249,12 @@ export const FastFlashcardPage = () => {
       return null;
     },
     [
-      flashcards.flashcardClozeResponses,
-      flashcards.flashcardCompositeStates,
-      flashcards.flashcardSelections,
-      flashcards.flashcardSelfGrades,
-      flashcards.flashcardTrueFalseSelections,
-      flashcards.flashcards,
+      fastFlashcards.flashcardClozeResponses,
+      fastFlashcards.flashcardCompositeStates,
+      fastFlashcards.flashcardSelections,
+      fastFlashcards.flashcardSelfGrades,
+      fastFlashcards.flashcardTrueFalseSelections,
+      fastFlashcards.flashcards,
     ],
   );
 
@@ -312,11 +325,11 @@ export const FastFlashcardPage = () => {
 
   useEffect(() => {
     setFastCardPosition(0);
-  }, [flashcards.flashcardMode, flashcards.flashcardOrder]);
+  }, [fastFlashcards.flashcardMode, fastFlashcards.flashcardOrder]);
 
   useEffect(() => {
     setFastCardPosition(0);
-  }, [flashcards.flashcards]);
+  }, [fastFlashcards.flashcards]);
 
   useEffect(() => {
     const wasEnabled = prevTimeModeRef.current;
@@ -350,12 +363,12 @@ export const FastFlashcardPage = () => {
     recordSessionResults(newIndices);
   }, [
     flashcardSubmissions,
-    flashcards.flashcardClozeResponses,
-    flashcards.flashcardCompositeStates,
-    flashcards.flashcardSelections,
-    flashcards.flashcardSelfGrades,
-    flashcards.flashcardTrueFalseSelections,
-    flashcards.flashcards,
+    fastFlashcards.flashcardClozeResponses,
+    fastFlashcards.flashcardCompositeStates,
+    fastFlashcards.flashcardSelections,
+    fastFlashcards.flashcardSelfGrades,
+    fastFlashcards.flashcardTrueFalseSelections,
+    fastFlashcards.flashcards,
     recordSessionResults,
     timeModeActive,
   ]);
@@ -458,23 +471,23 @@ export const FastFlashcardPage = () => {
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
-      flashcards.handleFlashcardOptionSelect(cardIndex, keys);
+      fastFlashcards.handleFlashcardOptionSelect(cardIndex, keys);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleTrueFalseSelect = useCallback(
     (cardIndex: number, itemId: string, value: "wahr" | "falsch") => {
-      flashcards.handleTrueFalseSelect(cardIndex, itemId, value);
+      fastFlashcards.handleTrueFalseSelect(cardIndex, itemId, value);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleClozeInputChange = useCallback(
     (cardIndex: number, blankId: string, value: string) => {
-      flashcards.handleClozeInputChange(cardIndex, blankId, value);
+      fastFlashcards.handleClozeInputChange(cardIndex, blankId, value);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleClozeTokenDrop = useCallback(
@@ -485,7 +498,7 @@ export const FastFlashcardPage = () => {
       validTokenIds: Set<string>,
       dragBlankIds: Set<string>,
     ) => {
-      flashcards.handleClozeTokenDrop(
+      fastFlashcards.handleClozeTokenDrop(
         event,
         cardIndex,
         blankId,
@@ -493,49 +506,64 @@ export const FastFlashcardPage = () => {
         dragBlankIds,
       );
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleClozeTokenRemove = useCallback(
     (cardIndex: number, blankId: string) => {
-      flashcards.handleClozeTokenRemove(cardIndex, blankId);
+      fastFlashcards.handleClozeTokenRemove(cardIndex, blankId);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleTextInputChange = useCallback(
     (cardIndex: number, value: string) => {
-      flashcards.handleFlashcardTextInputChange(cardIndex, value);
+      fastFlashcards.handleFlashcardTextInputChange(cardIndex, value);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleTextCheck = useCallback(
     (cardIndex: number) => {
-      flashcards.handleFlashcardTextCheck(cardIndex);
+      fastFlashcards.handleFlashcardTextCheck(cardIndex);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleCompositeOptionSelect = useCallback(
     (cardIndex: number, partIndex: number, keys: string[]) => {
-      flashcards.handleCompositeOptionSelect(cardIndex, partIndex, keys);
+      fastFlashcards.handleCompositeOptionSelect(cardIndex, partIndex, keys);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleCompositeTrueFalseSelect = useCallback(
-    (cardIndex: number, partIndex: number, itemId: string, value: "wahr" | "falsch") => {
-      flashcards.handleCompositeTrueFalseSelect(cardIndex, partIndex, itemId, value);
+    (
+      cardIndex: number,
+      partIndex: number,
+      itemId: string,
+      value: "wahr" | "falsch",
+    ) => {
+      fastFlashcards.handleCompositeTrueFalseSelect(
+        cardIndex,
+        partIndex,
+        itemId,
+        value,
+      );
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleCompositeClozeInputChange = useCallback(
     (cardIndex: number, partIndex: number, blankId: string, value: string) => {
-      flashcards.handleCompositeClozeInputChange(cardIndex, partIndex, blankId, value);
+      fastFlashcards.handleCompositeClozeInputChange(
+        cardIndex,
+        partIndex,
+        blankId,
+        value,
+      );
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleCompositeClozeTokenDrop = useCallback(
@@ -547,44 +575,52 @@ export const FastFlashcardPage = () => {
       validTokenIds: Set<string>,
       dragBlankIds: Set<string>,
     ) => {
-      flashcards.handleCompositeClozeTokenDrop(
-        event,
-        cardIndex,
-        partIndex,
-        blankId,
-        validTokenIds,
-        dragBlankIds,
-      );
-    },
-    [flashcards],
+        fastFlashcards.handleCompositeClozeTokenDrop(
+          event,
+          cardIndex,
+          partIndex,
+          blankId,
+          validTokenIds,
+          dragBlankIds,
+        );
+      },
+      [fastFlashcards],
   );
 
   const handleCompositeClozeTokenRemove = useCallback(
     (cardIndex: number, partIndex: number, blankId: string) => {
-      flashcards.handleCompositeClozeTokenRemove(cardIndex, partIndex, blankId);
+      fastFlashcards.handleCompositeClozeTokenRemove(
+        cardIndex,
+        partIndex,
+        blankId,
+      );
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleCompositeTextInputChange = useCallback(
     (cardIndex: number, partIndex: number, value: string) => {
-      flashcards.handleCompositeTextInputChange(cardIndex, partIndex, value);
+      fastFlashcards.handleCompositeTextInputChange(
+        cardIndex,
+        partIndex,
+        value,
+      );
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleCompositeTextCheck = useCallback(
     (cardIndex: number, partIndex: number) => {
-      flashcards.handleCompositeTextCheck(cardIndex, partIndex);
+      fastFlashcards.handleCompositeTextCheck(cardIndex, partIndex);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const handleCompositeSelfGrade = useCallback(
     (cardIndex: number, partIndex: number, grade: "correct" | "incorrect") => {
-      flashcards.handleCompositeSelfGrade(cardIndex, partIndex, grade);
+      fastFlashcards.handleCompositeSelfGrade(cardIndex, partIndex, grade);
     },
-    [flashcards],
+    [fastFlashcards],
   );
 
   const finalizeSession = useCallback(() => {
@@ -619,10 +655,12 @@ export const FastFlashcardPage = () => {
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
     const pace =
       durationMs > 0 ? Number((total / (durationMs / 60000)).toFixed(1)) : 0;
-    const score =
+    const baseScore =
       correct * FAST_FLASHCARD_SCORE_BY_RESULT.correct +
       incorrect * FAST_FLASHCARD_SCORE_BY_RESULT.incorrect +
       timeout * FAST_FLASHCARD_SCORE_BY_RESULT.timeout;
+    const multiplier = getFastFlashcardMultiplier(selectedDuration);
+    const score = Math.round(baseScore * multiplier);
 
     setSessionElapsedMs(durationMs);
     setSessionHistory((prev) => [
@@ -640,7 +678,7 @@ export const FastFlashcardPage = () => {
         durationMs,
       },
     ]);
-  }, [flashcardSubmissions, recordSessionResults]);
+  }, [flashcardSubmissions, recordSessionResults, selectedDuration]);
 
   const handleTimeToggle = useCallback(() => {
     setIsTimeModeEnabled((prev) => {
@@ -678,10 +716,12 @@ export const FastFlashcardPage = () => {
     sessionCompleted > 0
       ? Math.round((sessionStats.correct / sessionCompleted) * 100)
       : 0;
-  const sessionScore =
+  const sessionBaseScore =
     sessionStats.correct * FAST_FLASHCARD_SCORE_BY_RESULT.correct +
     sessionStats.incorrect * FAST_FLASHCARD_SCORE_BY_RESULT.incorrect +
     sessionStats.timeout * FAST_FLASHCARD_SCORE_BY_RESULT.timeout;
+  const sessionMultiplier = getFastFlashcardMultiplier(selectedDuration);
+  const sessionScore = Math.round(sessionBaseScore * sessionMultiplier);
   const sessionMinutes = sessionElapsedMs / 60000;
   const sessionPace =
     sessionMinutes > 0 ? (sessionCompleted / sessionMinutes).toFixed(1) : "0.0";
@@ -820,11 +860,13 @@ export const FastFlashcardPage = () => {
                 <span className="fast-session-value">{sessionPace}</span>
                 <span className="fast-session-sub">cards / min</span>
               </div>
-              <div className="fast-session-card">
-                <span className="label">Score</span>
-                <span className="fast-session-value">{sessionScore}</span>
-                <span className="fast-session-sub">+10 / -5</span>
-              </div>
+            <div className="fast-session-card">
+              <span className="label">Score</span>
+              <span className="fast-session-value">{sessionScore}</span>
+              <span className="fast-session-sub">
+                +10 / -5 • x{sessionMultiplier.toFixed(1)}
+              </span>
+            </div>
             </div>
           </div>
           <div className="fast-vault-block">
@@ -834,11 +876,11 @@ export const FastFlashcardPage = () => {
               <span className="fast-vault-sep" aria-hidden="true">
                 •
               </span>
-              <span>Cards loaded: {flashcards.flashcards.length}</span>
+              <span>Cards loaded: {fastFlashcards.flashcards.length}</span>
               <span className="fast-vault-sep" aria-hidden="true">
                 •
               </span>
-              <span>Filtered cards: {flashcards.filteredFlashcardCount}</span>
+              <span>Filtered cards: {fastFlashcards.filteredFlashcardCount}</span>
             </div>
           </div>
         </div>
@@ -855,10 +897,10 @@ export const FastFlashcardPage = () => {
           <button
             type="button"
             className="primary"
-            onClick={flashcards.handleFlashcardScan}
-            disabled={flashcards.isFlashcardScanning}
+            onClick={fastFlashcards.handleFlashcardScan}
+            disabled={fastFlashcards.isFlashcardScanning}
           >
-            {flashcards.isFlashcardScanning ? "Scanning..." : "Flashcard"}
+            {fastFlashcards.isFlashcardScanning ? "Scanning..." : "Flashcard"}
           </button>
           <div className="flashcard-controls">
             <div className="toolbar-section">
@@ -889,20 +931,20 @@ export const FastFlashcardPage = () => {
                 <button
                   type="button"
                   className={`pill pill-button ${
-                    flashcards.flashcardOrder === "in-order" ? "active" : ""
+                    settings.fastFlashcardOrder === "in-order" ? "active" : ""
                   }`}
-                  aria-pressed={flashcards.flashcardOrder === "in-order"}
-                  onClick={() => flashcards.setFlashcardOrder("in-order")}
+                  aria-pressed={settings.fastFlashcardOrder === "in-order"}
+                  onClick={() => settings.setFastFlashcardOrder("in-order")}
                 >
                   In order
                 </button>
                 <button
                   type="button"
                   className={`pill pill-button ${
-                    flashcards.flashcardOrder === "random" ? "active" : ""
+                    settings.fastFlashcardOrder === "random" ? "active" : ""
                   }`}
-                  aria-pressed={flashcards.flashcardOrder === "random"}
-                  onClick={() => flashcards.setFlashcardOrder("random")}
+                  aria-pressed={settings.fastFlashcardOrder === "random"}
+                  onClick={() => settings.setFastFlashcardOrder("random")}
                 >
                   Random
                 </button>
@@ -910,16 +952,16 @@ export const FastFlashcardPage = () => {
             </div>
             <div className="toolbar-section">
               <span className="label">MODE</span>
-              <select
-                className="text-input"
-                value={flashcards.flashcardMode}
-                onChange={(event) =>
-                  flashcards.setFlashcardMode(
-                    event.target.value as typeof flashcards.flashcardMode,
-                  )
-                }
-                aria-label="Select mode filter"
-              >
+                <select
+                  className="text-input"
+                  value={settings.fastFlashcardMode}
+                  onChange={(event) =>
+                    settings.setFastFlashcardMode(
+                      event.target.value as FlashcardMode,
+                    )
+                  }
+                  aria-label="Select mode filter"
+                >
                 <option value="all">All</option>
                 <option value="qa">Q&amp;A</option>
                 <option value="multiple-choice">Multiple Choice</option>
@@ -935,20 +977,20 @@ export const FastFlashcardPage = () => {
                 <button
                   type="button"
                   className={`pill pill-button ${
-                    flashcards.flashcardScope === "current" ? "active" : ""
+                    settings.fastFlashcardScope === "current" ? "active" : ""
                   }`}
-                  aria-pressed={flashcards.flashcardScope === "current"}
-                  onClick={() => flashcards.setFlashcardScope("current")}
+                  aria-pressed={settings.fastFlashcardScope === "current"}
+                  onClick={() => settings.setFastFlashcardScope("current")}
                 >
                   Current note
                 </button>
                 <button
                   type="button"
                   className={`pill pill-button ${
-                    flashcards.flashcardScope === "vault" ? "active" : ""
+                    settings.fastFlashcardScope === "vault" ? "active" : ""
                   }`}
-                  aria-pressed={flashcards.flashcardScope === "vault"}
-                  onClick={() => flashcards.setFlashcardScope("vault")}
+                  aria-pressed={settings.fastFlashcardScope === "vault"}
+                  onClick={() => settings.setFastFlashcardScope("vault")}
                 >
                   Whole vault
                 </button>
@@ -1053,15 +1095,15 @@ export const FastFlashcardPage = () => {
                   submitted={isCurrentSubmitted}
                   submissionLocked={submissionLocked}
                   partStates={
-                    flashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
+                    fastFlashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
                   }
                   onOptionSelect={handleCompositeOptionSelect}
                   onTrueFalseSelect={handleCompositeTrueFalseSelect}
                   onClozeInputChange={handleCompositeClozeInputChange}
                   onClozeTokenDrop={handleCompositeClozeTokenDrop}
                   onClozeTokenRemove={handleCompositeClozeTokenRemove}
-                  onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
-                  onBlankDragOver={flashcards.handleClozeBlankDragOver}
+                  onClozeTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
+                  onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
                   onTextInputChange={handleCompositeTextInputChange}
                   onTextCheck={handleCompositeTextCheck}
                   onSelfGrade={handleCompositeSelfGrade}
@@ -1075,13 +1117,13 @@ export const FastFlashcardPage = () => {
                   submitted={isCurrentSubmitted}
                   submissionLocked={submissionLocked}
                   responses={
-                    flashcards.flashcardClozeResponses[currentEntry.cardIndex] ?? {}
+                    fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ?? {}
                   }
                   onInputChange={handleClozeInputChange}
                   onTokenDrop={handleClozeTokenDrop}
                   onTokenRemove={handleClozeTokenRemove}
-                  onTokenDragStart={flashcards.handleClozeTokenDragStart}
-                  onBlankDragOver={flashcards.handleClozeBlankDragOver}
+                  onTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
+                  onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
                   onSubmit={handleFastSubmit}
                 />
               ) : currentEntry.card.kind === "true-false" ? (
@@ -1092,7 +1134,7 @@ export const FastFlashcardPage = () => {
                   submitted={isCurrentSubmitted}
                   submissionLocked={submissionLocked}
                   selections={
-                    flashcards.flashcardTrueFalseSelections[currentEntry.cardIndex] ?? {}
+                    fastFlashcards.flashcardTrueFalseSelections[currentEntry.cardIndex] ?? {}
                   }
                   onSelect={handleTrueFalseSelect}
                   onSubmit={handleFastSubmit}
@@ -1105,12 +1147,12 @@ export const FastFlashcardPage = () => {
                   submitted={isCurrentSubmitted}
                   submissionLocked={submissionLocked}
                   response={
-                    flashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""
+                    fastFlashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""
                   }
                   revealed={
-                    flashcards.flashcardTextRevealed[currentEntry.cardIndex] ?? false
+                    fastFlashcards.flashcardTextRevealed[currentEntry.cardIndex] ?? false
                   }
-                  selfGrade={flashcards.flashcardSelfGrades[currentEntry.cardIndex]}
+                  selfGrade={fastFlashcards.flashcardSelfGrades[currentEntry.cardIndex]}
                   onInputChange={handleTextInputChange}
                   onCheck={handleTextCheck}
                   onSelfGrade={handleFastSelfGrade}
@@ -1123,7 +1165,7 @@ export const FastFlashcardPage = () => {
                   submitted={isCurrentSubmitted}
                   submissionLocked={submissionLocked}
                   selectedKeys={
-                    flashcards.flashcardSelections[currentEntry.cardIndex] ?? []
+                    fastFlashcards.flashcardSelections[currentEntry.cardIndex] ?? []
                   }
                   onSelect={handleOptionSelect}
                   onSubmit={handleFastSubmit}
