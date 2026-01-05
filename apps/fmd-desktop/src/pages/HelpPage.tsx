@@ -16,8 +16,8 @@ import { HelpOverviewSection } from "./help/sections/HelpOverviewSection";
 import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
 
 export const HelpPage = () => {
-  const { settings } = useAppState();
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+  const { help, settings } = useAppState();
+  const { activeTopicId, setActiveTopicId } = help;
   const [activeSyntaxId, setActiveSyntaxId] = useState<string | null>(
     flashcardSyntaxEntries[0]?.id ?? null,
   );

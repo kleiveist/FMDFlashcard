@@ -72,7 +72,7 @@ export const DashboardPage = () => {
     <div className="dashboard-page">
       <header className="content-header">
         <div>
-          <p className="eyebrow">Dashboard</p>
+          <p className="eyebrow">Makedon</p>
           <h1>Vault</h1>
           <p className="muted">
             Waehle einen Vault, scanne Markdown-Dateien und sieh dir Inhalte sofort

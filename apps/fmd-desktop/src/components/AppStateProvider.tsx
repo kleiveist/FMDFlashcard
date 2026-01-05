@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { isValidHex, normalizeHex } from "../lib/color";
@@ -31,6 +32,10 @@ type AppState = {
   actions: AppActions;
   flashcards: ReturnType<typeof useFlashcards>;
   fastFlashcards: ReturnType<typeof useFlashcards>;
+  help: {
+    activeTopicId: string | null;
+    setActiveTopicId: (value: string | null) => void;
+  };
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
   spacedRepetition: ReturnType<typeof useSpacedRepetition>;
@@ -41,6 +46,9 @@ const AppStateContext = createContext<AppState | null>(null);
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
+  const [activeHelpTopicId, setActiveHelpTopicId] = useState<string | null>(
+    null,
+  );
   const {
     activeNotePath,
     accentColor,
@@ -369,6 +377,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     },
     flashcards,
     fastFlashcards,
+    help: {
+      activeTopicId: activeHelpTopicId,
+      setActiveTopicId: setActiveHelpTopicId,
+    },
     preview,
     settings,
     spacedRepetition,

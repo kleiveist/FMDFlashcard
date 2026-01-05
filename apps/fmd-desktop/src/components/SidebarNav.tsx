@@ -3,6 +3,7 @@ import { useAppState } from "./AppStateProvider";
 import { vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
 import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons";
+import { helpTopics, resolveText } from "../pages/help/helpContent";
 
 type TabKey =
   | "dashboard"
@@ -27,8 +28,11 @@ export const SidebarNav = ({
   isMobileNavOpen,
   onMobileNavClose,
 }: SidebarNavProps) => {
-  const { actions, preview, settings, vault } = useAppState();
+  const { actions, help, preview, settings, vault } = useAppState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>("cards");
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
+    () => new Set(),
+  );
   const isToolbarCollapsed = settings.rightToolbarCollapsed;
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
@@ -53,6 +57,28 @@ export const SidebarNav = ({
     activeTab === "spaced-repetition";
   const toggleLabel = isToolbarCollapsed ? "Expand toolbar" : "Collapse toolbar";
   const toggleSymbol = isToolbarCollapsed ? ">" : "<";
+  const helpTopicOrder = [
+    "flashcard-syntax",
+    "app-sections",
+    "settings",
+    "advanced",
+    "vault",
+    "extras",
+  ];
+  const helpNavTopics = helpTopicOrder
+    .map((id) => helpTopics.find((topic) => topic.id === id))
+    .filter((topic): topic is (typeof helpTopics)[number] => Boolean(topic));
+  const handleTogglePath = (path: string, isOpen: boolean) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      if (isOpen) {
+        next.add(path);
+      } else {
+        next.delete(path);
+      }
+      return next;
+    });
+  };
 
   return (
     <aside
@@ -116,7 +142,12 @@ export const SidebarNav = ({
                 className={`nav-icon sidebar-icon-button ${
                   toolbarMode === "vault" ? "active" : ""
                 }`}
-                onClick={() => setToolbarMode("vault")}
+                onClick={() => {
+                  setToolbarMode("vault");
+                  if (activeTab !== "dashboard") {
+                    onTabChange("dashboard");
+                  }
+                }}
                 aria-label="Vault directory"
                 aria-controls="sidebar-vault-panel"
                 aria-expanded={toolbarMode === "vault"}
@@ -165,7 +196,7 @@ export const SidebarNav = ({
                 className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
                 onClick={() => onTabChange("dashboard")}
               >
-                Dashboard
+                Makedon
               </button>
               <button
                 type="button"
@@ -197,10 +228,12 @@ export const SidebarNav = ({
           {toolbarMode === "vault" ? (
             <div className="sidebar-vault-panel" id="sidebar-vault-panel">
               <VaultTree
+                expandedPaths={expandedPaths}
                 fileCountLabel={fileCountLabel}
                 files={vault.files}
                 listError={vault.listError}
                 listState={vault.listState}
+                onTogglePath={handleTogglePath}
                 onSelectFile={actions.handleSelectFile}
                 selectedFile={preview.selectedFile}
                 vaultPath={vault.vaultPath}
@@ -220,15 +253,23 @@ export const SidebarNav = ({
             </div>
           ) : null}
           {toolbarMode === "help" ? (
-            <div className="sidebar-mode-panel">
-              <div className="sidebar-card">
-                <span className="label">Help</span>
-                <span className="value">Quick reminders</span>
-                <p className="muted">
-                  Keep sessions short. Review daily. Trust repetition.
-                </p>
-              </div>
-            </div>
+            <nav className="nav">
+              {helpNavTopics.map((topic) => (
+                <button
+                  key={topic.id}
+                  type="button"
+                  className={`nav-item ${
+                    help.activeTopicId === topic.id ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    help.setActiveTopicId(topic.id);
+                    onTabChange("help");
+                  }}
+                >
+                  {resolveText(topic.title, settings.language)}
+                </button>
+              ))}
+            </nav>
           ) : null}
         </>
       )}

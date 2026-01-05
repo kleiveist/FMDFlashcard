@@ -12,8 +12,8 @@ export const APP_SECTION_GROUND_RULES: {
   bullets: LocalizedText[];
 } = {
   paragraph: {
-    en: "Start at the Dashboard to pick a note and scan its cards, then use the sections below to understand how each tool manages your reviews. This quick orientation helps you decide where to continue next.",
-    de: "Beginne im Dashboard, wähle eine Notiz und scanne sie, dann nutze die unten stehenden Sektionen, um zu verstehen, wie jedes Tool deine Wiederholungen steuert. Diese kurze Orientierung hilft dir, den naechsten Schritt sicher zu waehlen.",
+    en: "Start at Makedon to pick a note and scan its cards, then use the sections below to understand how each tool manages your reviews. This quick orientation helps you decide where to continue next.",
+    de: "Beginne in Makedon, wähle eine Notiz und scanne sie, dann nutze die unten stehenden Sektionen, um zu verstehen, wie jedes Tool deine Wiederholungen steuert. Diese kurze Orientierung hilft dir, den naechsten Schritt sicher zu waehlen.",
   },
   bullets: [
     {
@@ -48,7 +48,7 @@ export const APP_SECTION_LABELS = {
 
 export const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
   dashboard: {
-    title: { en: "Dashboard", de: "Dashboard" },
+    title: { en: "Makedon", de: "Makedon" },
     summary: {
       en: "Note list, scan status, and quick previews to orient you before review.",
       de: "Notizenliste mit Scan-Status und Vorschauen, damit du dich vor dem Review orientierst.",
@@ -59,8 +59,8 @@ export const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
     },
     detail: {
       whatIs: {
-        en: "Dashboard shows vault notes, scan health, and shortcuts before any review. It is the starting hub where you decide what to study next.",
-        de: "Das Dashboard zeigt Vault-Notizen, Scan-Status und Schnellaktionen vor jeder Wiederholung. Es ist der Startpunkt, an dem du entscheidest, was als naechstes dran ist.",
+        en: "Makedon shows vault notes, scan health, and shortcuts before any review. It is the starting hub where you decide what to study next.",
+        de: "Makedon zeigt Vault-Notizen, Scan-Status und Schnellaktionen vor jeder Wiederholung. Es ist der Startpunkt, an dem du entscheidest, was als naechstes dran ist.",
       },
       purpose: [
         {

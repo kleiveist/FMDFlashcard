@@ -27,7 +27,7 @@ export const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Can be combined with other syntaxes in the same #card block (if desired).",
         ],
         rulesNote:
-          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Dashboard -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition).",
+          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Makedon -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition).",
         promptTemplate: joinLines([
           "Create one flashcard and optionally wrap it with markdown separators.",
           "Return only the #card block (and optional --- lines).",
@@ -67,7 +67,7 @@ export const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Kann mit anderen Syntaxen im selben #card-Block kombiniert werden (falls gewuenscht).",
         ],
         rulesNote:
-          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Dashboard -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition).",
+          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Makedon -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition).",
         promptTemplate: joinLines([
           "Erstelle eine Karte und umrahme sie optional mit Markdown-Trennlinien.",
           "Antworte nur mit dem #card-Block (und optional ---).",

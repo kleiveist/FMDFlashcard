@@ -135,19 +135,20 @@ h2 {
 }
 
 .tree-dir {
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .tree-item {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
   background: var(--panel-warm);
   border: 1px solid transparent;
   font-weight: 600;
+  font-size: 0.82rem;
   color: var(--ink);
   cursor: pointer;
   transition: 0.2s ease;
@@ -174,6 +175,7 @@ h2 {
   content: ">";
   margin-left: auto;
   color: var(--muted);
+  font-size: 0.7rem;
   transition: transform 0.2s ease;
 }
 
@@ -182,25 +184,26 @@ h2 {
 }
 
 .tree-children {
-  margin-left: 16px;
-  padding-left: 12px;
+  margin-left: 12px;
+  padding-left: 10px;
   border-left: 1px dashed var(--line);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .tree-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   color: var(--accent);
 }
 
 .tree-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
 }
 
 .tree-file {
@@ -208,7 +211,9 @@ h2 {
 }
 
 .tree-name {
-  font-size: 0.9rem;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
   overflow-wrap: anywhere;
   word-break: break-word;
 }

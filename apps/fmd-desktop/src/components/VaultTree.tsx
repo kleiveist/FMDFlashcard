@@ -5,10 +5,12 @@ import { buildTree, type TreeNode, type VaultFile } from "../lib/tree";
 import { type LoadState } from "../lib/types";
 
 type VaultTreeProps = {
+  expandedPaths: Set<string>;
   fileCountLabel: string;
   files: VaultFile[];
   listError: string;
   listState: LoadState;
+  onTogglePath: (path: string, isOpen: boolean) => void;
   onSelectFile: (file: VaultFile) => void;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
@@ -16,10 +18,12 @@ type VaultTreeProps = {
 };
 
 export const VaultTree = ({
+  expandedPaths,
   fileCountLabel,
   files,
   listError,
   listState,
+  onTogglePath,
   onSelectFile,
   selectedFile,
   vaultPath,
@@ -31,9 +35,17 @@ export const VaultTree = ({
   const renderTreeNodes = (nodes: TreeNode[]) =>
     nodes.map((node) => {
       if (node.type === "dir") {
+        const isOpen = expandedPaths.has(node.path);
         return (
-          <details className="tree-dir" key={node.path}>
-            <summary className="tree-item">
+          <details
+            className="tree-dir"
+            key={node.path}
+            open={isOpen}
+            onToggle={(event) => {
+              onTogglePath(node.path, event.currentTarget.open);
+            }}
+          >
+            <summary className="tree-item" title={node.path}>
               <span className="tree-icon">
                 <FolderIcon />
               </span>

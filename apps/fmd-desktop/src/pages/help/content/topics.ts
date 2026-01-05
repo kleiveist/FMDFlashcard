@@ -125,8 +125,8 @@ export const helpTopics: HelpTopic[] = [
         title: { en: "Select a vault", de: "Vault auswaehlen" },
         bullets: [
           {
-            en: "Use Dashboard to choose a folder and allow access when prompted; confirm the correct path.",
-            de: "Im Dashboard einen Ordner waehlen und Zugriff erlauben; den richtigen Pfad bestaetigen.",
+            en: "Use Makedon to choose a folder and allow access when prompted; confirm the correct path.",
+            de: "In Makedon einen Ordner waehlen und Zugriff erlauben; den richtigen Pfad bestaetigen.",
           },
           {
             en: "After loading, pick a note to preview and scan so cards populate the tools.",
@@ -147,8 +147,8 @@ export const helpTopics: HelpTopic[] = [
             de: "Bei leerer Liste Pfad, Markdown-Dateien und aktive Filter pruefen.",
           },
           {
-            en: "If the vault moved, reselect it in Dashboard and scan again.",
-            de: "Wenn der Vault verschoben wurde, neu auswaehlen und erneut scannen.",
+            en: "If the vault moved, reselect it in Makedon and scan again.",
+            de: "Wenn der Vault verschoben wurde, neu in Makedon auswaehlen und erneut scannen.",
           },
         ],
       },
