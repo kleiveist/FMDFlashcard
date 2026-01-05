@@ -1,0 +1,119 @@
+type SrUserPanelProps = {
+  flashcards: {
+    isFlashcardScanning: boolean;
+  };
+  spacedRepetition: {
+    spacedRepetitionActiveUser: string | null;
+    spacedRepetitionSelectedUserId: string;
+    spacedRepetitionUsers: { id: string; name: string }[];
+    spacedRepetitionNewUserName: string;
+    spacedRepetitionUserError: string;
+    handleSpacedRepetitionActiveUserLoadCards: () => void;
+    setSpacedRepetitionSelectedUserId: (value: string) => void;
+    setSpacedRepetitionNewUserName: (value: string) => void;
+    setSpacedRepetitionUserError: (value: string) => void;
+    handleSpacedRepetitionCreateUser: () => void;
+    handleSpacedRepetitionLoadUser: () => void;
+  };
+  handleDeleteOpen: () => void;
+};
+
+export const SrUserPanel = ({
+  flashcards,
+  spacedRepetition,
+  handleDeleteOpen,
+}: SrUserPanelProps) => (
+  <section className="panel sr-user-panel">
+    <div className="panel-header">
+      <div>
+        <h2>User Tools</h2>
+      </div>
+    </div>
+    <div className="panel-body">
+      <div className="setting-row">
+        <span className="label">Active user</span>
+        <button
+          type="button"
+          className="value active-user-button"
+          onClick={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
+          disabled={
+            !spacedRepetition.spacedRepetitionActiveUser ||
+            flashcards.isFlashcardScanning
+          }
+          aria-label="Load flashcards for active user"
+        >
+          {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
+        </button>
+      </div>
+      <div className="setting-row">
+        <span className="label">User list</span>
+        <select
+          className="text-input"
+          value={spacedRepetition.spacedRepetitionSelectedUserId}
+          onChange={(event) =>
+            spacedRepetition.setSpacedRepetitionSelectedUserId(event.target.value)
+          }
+          aria-label="Select user"
+        >
+          <option value="">Select user</option>
+          {spacedRepetition.spacedRepetitionUsers.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="setting-row">
+        <span className="label">New user</span>
+        <div className="setting-inline">
+          <input
+            type="text"
+            className="text-input"
+            value={spacedRepetition.spacedRepetitionNewUserName}
+            onChange={(event) => {
+              spacedRepetition.setSpacedRepetitionNewUserName(event.target.value);
+              if (spacedRepetition.spacedRepetitionUserError) {
+                spacedRepetition.setSpacedRepetitionUserError("");
+              }
+            }}
+            placeholder="User name"
+            aria-label="New user name"
+          />
+          <button
+            type="button"
+            className="ghost small"
+            onClick={spacedRepetition.handleSpacedRepetitionCreateUser}
+          >
+            Create
+          </button>
+        </div>
+        {spacedRepetition.spacedRepetitionUserError ? (
+          <span className="helper-text error-text">
+            {spacedRepetition.spacedRepetitionUserError}
+          </span>
+        ) : null}
+      </div>
+      <div className="setting-row">
+        <span className="label">Actions</span>
+        <div className="setting-actions">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={spacedRepetition.handleSpacedRepetitionLoadUser}
+            disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
+          >
+            Load
+          </button>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleDeleteOpen}
+            disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+);

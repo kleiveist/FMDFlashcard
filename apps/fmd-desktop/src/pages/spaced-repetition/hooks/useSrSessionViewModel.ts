@@ -1,0 +1,572 @@
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
+import { useAppState } from "../../../components/AppStateProvider";
+import { vaultBaseName } from "../../../lib/path";
+import {
+  areClozeBlanksComplete,
+  areTrueFalseItemsComplete,
+  isFlashcardPartComplete,
+} from "../../../features/flashcards/logic";
+import {
+  getFlashcardId,
+  getSpacedRepetitionEffectiveBox,
+  normalizeSpacedRepetitionCardProgress,
+} from "../../../features/spaced-repetition/logic";
+
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tagName = target.tagName;
+  return (
+    target.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT"
+  );
+};
+
+export const useSrSessionViewModel = () => {
+  const { flashcards, spacedRepetition, vault } = useAppState();
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
+  const statsView = spacedRepetition.spacedRepetitionStatsView;
+  const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
+  const vaultName = useMemo(
+    () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
+    [vault.vaultPath],
+  );
+  const showBoxEmptyMessage =
+    statsView === "boxes" &&
+    activeBoxFilter !== null &&
+    Boolean(spacedRepetition.spacedRepetitionActiveUser);
+  const selectedUser = useMemo(
+    () =>
+      spacedRepetition.spacedRepetitionUsers.find(
+        (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
+      ),
+    [
+      spacedRepetition.spacedRepetitionSelectedUserId,
+      spacedRepetition.spacedRepetitionUsers,
+    ],
+  );
+  const deleteTargetName = selectedUser?.name ?? "";
+  const deleteInputValue = deleteConfirmInput.trim();
+  const canConfirmDelete =
+    Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
+
+  const statsTotal =
+    spacedRepetition.spacedRepetitionCorrectCount +
+    spacedRepetition.spacedRepetitionIncorrectCount;
+  const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
+  const statsChartStyle = useMemo(
+    () =>
+      ({
+        "--correct-percent": `${spacedRepetition.spacedRepetitionCorrectPercent}%`,
+      }) as CSSProperties,
+    [spacedRepetition.spacedRepetitionCorrectPercent],
+  );
+  const maxBoxCount = Math.max(...spacedRepetition.spacedRepetitionBoxCounts, 0);
+  const visibleFlashcardEntries = useMemo(
+    () =>
+      spacedRepetition.spacedRepetitionVisibleFlashcards.map((card, localIndex) => ({
+        card,
+        cardIndex: spacedRepetition.spacedRepetitionPageStart + localIndex,
+      })),
+    [
+      spacedRepetition.spacedRepetitionPageStart,
+      spacedRepetition.spacedRepetitionVisibleFlashcards,
+    ],
+  );
+  const filteredFlashcardEntries = useMemo(() => {
+    if (
+      activeBoxFilter === null ||
+      statsView !== "boxes" ||
+      !spacedRepetition.spacedRepetitionCardStates
+    ) {
+      return visibleFlashcardEntries;
+    }
+    return visibleFlashcardEntries.filter(({ card }) => {
+      const cardId = getFlashcardId(card);
+      const progress = spacedRepetition.spacedRepetitionCardStates[cardId] ?? null;
+      const normalized = normalizeSpacedRepetitionCardProgress(progress);
+      const effectiveBox = getSpacedRepetitionEffectiveBox(
+        normalized,
+        spacedRepetition.spacedRepetitionBoxes,
+      );
+      return effectiveBox === activeBoxFilter;
+    });
+  }, [
+    activeBoxFilter,
+    statsView,
+    spacedRepetition.spacedRepetitionBoxes,
+    spacedRepetition.spacedRepetitionCardStates,
+    visibleFlashcardEntries,
+  ]);
+  const toggleBoxFilter = useCallback(
+    (boxNumber: number) => {
+      const nextFilter = activeBoxFilter === boxNumber ? null : boxNumber;
+      setActiveBoxFilter(nextFilter);
+      spacedRepetition.handleSpacedRepetitionActiveUserLoadCards({
+        boxFilter: nextFilter,
+      });
+    },
+    [activeBoxFilter, spacedRepetition],
+  );
+
+  const kpiItems = [
+    { label: "Correct", value: spacedRepetition.spacedRepetitionCorrectCount },
+    { label: "Incorrect", value: spacedRepetition.spacedRepetitionIncorrectCount },
+    { label: "Total", value: spacedRepetition.spacedRepetitionTotalQuestions },
+    {
+      label: "Due now",
+      value: spacedRepetition.spacedRepetitionProgressStats.dueNow,
+    },
+    {
+      label: "Due today",
+      value: spacedRepetition.spacedRepetitionProgressStats.dueToday,
+    },
+    {
+      label: "In queue",
+      value: spacedRepetition.spacedRepetitionProgressStats.inQueue,
+    },
+    {
+      label: "Completed today",
+      value: spacedRepetition.spacedRepetitionProgressStats.completedToday,
+    },
+  ];
+
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return;
+    }
+    if (!selectedUser) {
+      setIsDeleteDialogOpen(false);
+      setDeleteConfirmInput("");
+    }
+  }, [isDeleteDialogOpen, selectedUser]);
+
+  useEffect(() => {
+    document.body.classList.toggle("focus-mode", isFocusMode);
+    return () => {
+      document.body.classList.remove("focus-mode");
+    };
+  }, [isFocusMode]);
+
+  useEffect(() => {
+    if (!isFocusMode) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      if (event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsFocusMode(false);
+        return;
+      }
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        if (spacedRepetition.spacedRepetitionCanGoBack) {
+          spacedRepetition.handleSpacedRepetitionPageBack();
+        }
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        if (spacedRepetition.spacedRepetitionCanGoNext) {
+          spacedRepetition.handleSpacedRepetitionPageNext();
+        }
+        return;
+      }
+
+      if (event.key !== "Enter" && event.key !== "NumpadEnter") {
+        return;
+      }
+
+      const visibleCards = spacedRepetition.spacedRepetitionVisibleFlashcards;
+      if (visibleCards.length === 0) {
+        return;
+      }
+
+      const findFirstSubmittableIndex = () => {
+        for (let localIndex = 0; localIndex < visibleCards.length; localIndex += 1) {
+          const cardIndex =
+            spacedRepetition.spacedRepetitionPageStart + localIndex;
+          const card = visibleCards[localIndex];
+          if (spacedRepetition.spacedRepetitionSubmissions[cardIndex]) {
+            continue;
+          }
+          if (card.kind === "composite") {
+            const partStates =
+              spacedRepetition.spacedRepetitionCompositeStates?.[cardIndex] ?? [];
+            const canSubmit =
+              card.parts.length > 0 &&
+              card.parts.every((part, partIndex) =>
+                isFlashcardPartComplete(part, partStates[partIndex] ?? {}),
+              );
+            if (canSubmit) {
+              return cardIndex;
+            }
+            continue;
+          }
+          if (card.kind === "multiple-choice") {
+            if (
+              (spacedRepetition.spacedRepetitionSelections[cardIndex] ?? []).length > 0
+            ) {
+              return cardIndex;
+            }
+            continue;
+          }
+          if (card.kind === "true-false") {
+            const selections =
+              spacedRepetition.spacedRepetitionTrueFalseSelections[cardIndex] ?? {};
+            if (areTrueFalseItemsComplete(card, selections)) {
+              return cardIndex;
+            }
+            continue;
+          }
+          if (card.kind === "free-text") {
+            continue;
+          }
+          const responses =
+            spacedRepetition.spacedRepetitionClozeResponses[cardIndex] ?? {};
+          if (areClozeBlanksComplete(card, responses)) {
+            return cardIndex;
+          }
+        }
+        return null;
+      };
+
+      const resolvedIndex =
+        activeCardIndex !== null &&
+        activeCardIndex >= spacedRepetition.spacedRepetitionPageStart &&
+        activeCardIndex <
+          spacedRepetition.spacedRepetitionPageStart +
+            spacedRepetition.spacedRepetitionVisibleFlashcards.length
+          ? activeCardIndex
+          : findFirstSubmittableIndex();
+
+      if (resolvedIndex === null) {
+        return;
+      }
+
+      const localIndex = resolvedIndex - spacedRepetition.spacedRepetitionPageStart;
+      const card = visibleCards[localIndex];
+      if (!card || spacedRepetition.spacedRepetitionSubmissions[resolvedIndex]) {
+        return;
+      }
+      if (card.kind === "composite") {
+        const partStates =
+          spacedRepetition.spacedRepetitionCompositeStates?.[resolvedIndex] ?? [];
+        const canSubmit =
+          card.parts.length > 0 &&
+          card.parts.every((part, partIndex) =>
+            isFlashcardPartComplete(part, partStates[partIndex] ?? {}),
+          );
+        if (!canSubmit) {
+          return;
+        }
+      } else if (card.kind === "multiple-choice") {
+        if (
+          (spacedRepetition.spacedRepetitionSelections[resolvedIndex] ?? []).length ===
+          0
+        ) {
+          return;
+        }
+      } else if (card.kind === "true-false") {
+        const selections =
+          spacedRepetition.spacedRepetitionTrueFalseSelections[resolvedIndex] ?? {};
+        if (!areTrueFalseItemsComplete(card, selections)) {
+          return;
+        }
+      } else if (card.kind === "free-text") {
+        return;
+      } else {
+        const responses =
+          spacedRepetition.spacedRepetitionClozeResponses[resolvedIndex] ?? {};
+        if (!areClozeBlanksComplete(card, responses)) {
+          return;
+        }
+      }
+
+      event.preventDefault();
+      spacedRepetition.handleSpacedRepetitionSubmit(resolvedIndex, true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeCardIndex, isFocusMode, spacedRepetition]);
+
+  const handleOptionSelect = useCallback(
+    (cardIndex: number, keys: string[]) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionOptionSelect(cardIndex, keys);
+    },
+    [spacedRepetition],
+  );
+
+  const handleTrueFalseSelect = useCallback(
+    (cardIndex: number, itemId: string, value: "wahr" | "falsch") => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionTrueFalseSelect(
+        cardIndex,
+        itemId,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleClozeInputChange = useCallback(
+    (cardIndex: number, blankId: string, value: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionClozeInputChange(
+        cardIndex,
+        blankId,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionClozeTokenDrop(
+        event,
+        cardIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleClozeTokenRemove = useCallback(
+    (cardIndex: number, blankId: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionClozeTokenRemove(cardIndex, blankId);
+    },
+    [spacedRepetition],
+  );
+
+  const handleTextInputChange = useCallback(
+    (cardIndex: number, value: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionTextInputChange(cardIndex, value);
+    },
+    [spacedRepetition],
+  );
+
+  const handleTextCheck = useCallback(
+    (cardIndex: number) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionTextCheck(cardIndex);
+    },
+    [spacedRepetition],
+  );
+
+  const handleSelfGrade = useCallback(
+    (cardIndex: number, grade: "correct" | "incorrect") => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionSelfGrade(cardIndex, grade);
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeOptionSelect = useCallback(
+    (cardIndex: number, partIndex: number, keys: string[]) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeOptionSelect(
+        cardIndex,
+        partIndex,
+        keys,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeTrueFalseSelect = useCallback(
+    (cardIndex: number, partIndex: number, itemId: string, value: "wahr" | "falsch") => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeTrueFalseSelect(
+        cardIndex,
+        partIndex,
+        itemId,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeClozeInputChange = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string, value: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeClozeInputChange(
+        cardIndex,
+        partIndex,
+        blankId,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      cardIndex: number,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeClozeTokenDrop(
+        event,
+        cardIndex,
+        partIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeClozeTokenRemove = useCallback(
+    (cardIndex: number, partIndex: number, blankId: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeClozeTokenRemove(
+        cardIndex,
+        partIndex,
+        blankId,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeTextInputChange = useCallback(
+    (cardIndex: number, partIndex: number, value: string) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeTextInputChange(
+        cardIndex,
+        partIndex,
+        value,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeTextCheck = useCallback(
+    (cardIndex: number, partIndex: number) => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeTextCheck(cardIndex, partIndex);
+    },
+    [spacedRepetition],
+  );
+
+  const handleCompositeSelfGrade = useCallback(
+    (cardIndex: number, partIndex: number, grade: "correct" | "incorrect") => {
+      setActiveCardIndex(cardIndex);
+      spacedRepetition.handleSpacedRepetitionCompositeSelfGrade(
+        cardIndex,
+        partIndex,
+        grade,
+      );
+    },
+    [spacedRepetition],
+  );
+
+  const handleDeleteOpen = useCallback(() => {
+    if (!selectedUser) {
+      return;
+    }
+    setDeleteConfirmInput("");
+    setIsDeleteDialogOpen(true);
+  }, [selectedUser]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!canConfirmDelete) {
+      return;
+    }
+    spacedRepetition.handleSpacedRepetitionDeleteUser();
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  }, [canConfirmDelete, spacedRepetition]);
+
+  return {
+    flashcards,
+    spacedRepetition,
+    vault,
+    isFocusMode,
+    setIsFocusMode,
+    activeBoxFilter,
+    statsView,
+    focusLabel,
+    vaultName,
+    showBoxEmptyMessage,
+    statsChartClass,
+    statsChartStyle,
+    maxBoxCount,
+    filteredFlashcardEntries,
+    toggleBoxFilter,
+    kpiItems,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleTextCheck,
+    handleSelfGrade,
+    handleCompositeOptionSelect,
+    handleCompositeTrueFalseSelect,
+    handleCompositeClozeInputChange,
+    handleCompositeClozeTokenDrop,
+    handleCompositeClozeTokenRemove,
+    handleCompositeTextInputChange,
+    handleCompositeTextCheck,
+    handleCompositeSelfGrade,
+    handleDeleteOpen,
+    handleDeleteCancel,
+    handleDeleteConfirm,
+    isDeleteDialogOpen,
+    deleteConfirmInput,
+    setDeleteConfirmInput,
+    deleteTargetName,
+    canConfirmDelete,
+  };
+};
