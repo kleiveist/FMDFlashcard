@@ -237,6 +237,13 @@ export const SettingsPage = () => {
               spacedRepetition.setSpacedRepetitionRepetitionStrength
             }
           />
+        </div>
+      ) : null}
+      {activeSettingsPage === "exam-settings" ? (
+        <div
+          className="settings-page settings-single-column"
+          id="settings-page-exam-settings"
+        >
           <ExamSettingsSection
             maxTotalPoints={settings.examMaxTotalPoints}
             taskCount={settings.examTaskCount}
