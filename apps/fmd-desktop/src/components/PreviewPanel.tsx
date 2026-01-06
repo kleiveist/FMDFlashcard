@@ -1,4 +1,11 @@
-import { type MouseEvent, useCallback, useEffect, useRef } from "react";
+import {
+  type FocusEvent,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
@@ -680,8 +687,26 @@ export const PreviewPanel = ({
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
+  const scrollStateRef = useRef({ top: 0, left: 0 });
+  const lastCaretIndexRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  const captureScroll = useCallback((element: HTMLElement | null) => {
+    if (!element) {
+      return;
+    }
+    scrollStateRef.current.top = element.scrollTop;
+    scrollStateRef.current.left = element.scrollLeft;
+  }, []);
+
+  const restoreScroll = useCallback((element: HTMLElement | null) => {
+    if (!element) {
+      return;
+    }
+    element.scrollTop = scrollStateRef.current.top;
+    element.scrollLeft = scrollStateRef.current.left;
+  }, []);
+
+  useLayoutEffect(() => {
     if (!isEditing || rawPreview) {
       markdownEditorReadyRef.current = false;
       if (!isEditing) {
@@ -696,6 +721,18 @@ export const PreviewPanel = ({
     markdownEditorReadyRef.current = true;
   }, [isEditing, rawPreview]);
 
+  useLayoutEffect(() => {
+    if (isEditing) {
+      if (rawPreview) {
+        restoreScroll(editorRef.current);
+      } else {
+        restoreScroll(markdownEditorRef.current);
+      }
+      return;
+    }
+    restoreScroll(previewRef.current);
+  }, [isEditing, rawPreview, restoreScroll]);
+
   useEffect(() => {
     if (!isEditing || !rawPreview || !editorRef.current) {
       return;
@@ -709,6 +746,9 @@ export const PreviewPanel = ({
     const handle = window.requestAnimationFrame(() => {
       editor.focus();
       editor.setSelectionRange(nextIndex, nextIndex);
+      lastCaretIndexRef.current = nextIndex;
+      scrollStateRef.current.top = editor.scrollTop;
+      scrollStateRef.current.left = editor.scrollLeft;
       onEditCaretApplied();
     });
     return () => window.cancelAnimationFrame(handle);
@@ -726,6 +766,9 @@ export const PreviewPanel = ({
     const handle = window.requestAnimationFrame(() => {
       editor.focus();
       setCaretAtPlainOffset(editor, plainOffset);
+      lastCaretIndexRef.current = editCaretIndex;
+      scrollStateRef.current.top = editor.scrollTop;
+      scrollStateRef.current.left = editor.scrollLeft;
       onEditCaretApplied();
     });
     return () => window.cancelAnimationFrame(handle);
@@ -742,29 +785,68 @@ export const PreviewPanel = ({
       const origin = rawPreview ? "raw" : "markdown";
       let caretIndex = preview.length === 0 ? 0 : null;
       if (previewRef.current) {
-        const selection = getSelectionRange(previewRef.current);
+        const container = previewRef.current;
+        captureScroll(container);
+        const selection = getSelectionRange(container);
         if (selection && !selection.collapsed) {
           return;
         }
-        const range = getRangeFromEvent(event, previewRef.current);
+        const range = getRangeFromEvent(event, container);
         const resolvedIndex = rawPreview
-          ? resolveRawCaretIndex(previewRef.current, range)
-          : resolveMarkdownCaretIndex(previewRef.current, preview, range);
+          ? resolveRawCaretIndex(container, range)
+          : resolveMarkdownCaretIndex(container, preview, range);
         if (typeof resolvedIndex === "number") {
           caretIndex = resolvedIndex;
         }
         if (!rawPreview) {
-          markdownEditorHtmlRef.current = previewRef.current.innerHTML;
+          markdownEditorHtmlRef.current = container.innerHTML;
         }
       } else if (!rawPreview) {
         markdownEditorHtmlRef.current = "";
       }
-      if (caretIndex === null && preview.length > 0) {
-        caretIndex = preview.length;
+      if (caretIndex === null) {
+        if (typeof lastCaretIndexRef.current === "number") {
+          caretIndex = lastCaretIndexRef.current;
+        } else if (preview.length > 0) {
+          caretIndex = preview.length;
+        }
+      }
+      if (typeof caretIndex === "number") {
+        lastCaretIndexRef.current = caretIndex;
       }
       onEditStart({ caretIndex, origin });
     },
-    [canEdit, isEditing, onEditStart, preview, rawPreview],
+    [canEdit, captureScroll, isEditing, onEditStart, preview, rawPreview],
+  );
+
+  const handleRawEditorBlur = useCallback(
+    (event: FocusEvent<HTMLTextAreaElement>) => {
+      captureScroll(event.currentTarget);
+      const caretIndex = event.currentTarget.selectionStart;
+      if (typeof caretIndex === "number") {
+        lastCaretIndexRef.current = caretIndex;
+      } else {
+        lastCaretIndexRef.current = event.currentTarget.value.length;
+      }
+      onEditExit();
+    },
+    [captureScroll, onEditExit],
+  );
+
+  const handleMarkdownEditorBlur = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      captureScroll(event.currentTarget);
+      const caretIndex = resolveMarkdownCaretIndex(
+        event.currentTarget,
+        editDraft,
+        null,
+      );
+      if (typeof caretIndex === "number") {
+        lastCaretIndexRef.current = caretIndex;
+      }
+      onEditExit();
+    },
+    [captureScroll, editDraft, onEditExit],
   );
 
   const handleMarkdownInput = useCallback(() => {
@@ -805,21 +887,25 @@ export const PreviewPanel = ({
           {isEditing ? (
             rawPreview ? (
               <textarea
+                key="raw-edit"
                 ref={editorRef}
                 className="preview-editor"
                 value={editDraft}
                 onChange={(event) => onEditChange(event.target.value)}
-                onBlur={onEditExit}
+                onBlur={handleRawEditorBlur}
+                onScroll={(event) => captureScroll(event.currentTarget)}
                 aria-label="Edit markdown preview"
               />
             ) : (
               <div
+                key="markdown-edit"
                 ref={markdownEditorRef}
                 className="preview preview-editor markdown"
                 contentEditable
                 suppressContentEditableWarning
                 onInput={handleMarkdownInput}
-                onBlur={onEditExit}
+                onBlur={handleMarkdownEditorBlur}
+                onScroll={(event) => captureScroll(event.currentTarget)}
                 role="textbox"
                 aria-multiline="true"
                 aria-label="Edit markdown preview"
@@ -827,8 +913,10 @@ export const PreviewPanel = ({
             )
           ) : preview ? (
             <div
+              key={rawPreview ? "raw-view" : "markdown-view"}
               ref={previewRef}
               className={`preview ${rawPreview ? "raw" : "markdown"}`}
+              onScroll={(event) => captureScroll(event.currentTarget)}
             >
               {rawPreview ? (
                 <pre>{preview}</pre>
@@ -849,7 +937,9 @@ export const PreviewPanel = ({
               )}
             </div>
           ) : (
-            <div className="preview placeholder">{emptyPreview}</div>
+            <div key="preview-empty" className="preview placeholder">
+              {emptyPreview}
+            </div>
           )}
         </div>
         {editError ? <div className="error">{editError}</div> : null}
