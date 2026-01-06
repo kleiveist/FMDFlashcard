@@ -1,7 +1,28 @@
 import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
 import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
+
+const markdownSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    table: [...(defaultSchema.attributes?.table ?? []), "className"],
+    th: [...(defaultSchema.attributes?.th ?? []), "align"],
+    td: [...(defaultSchema.attributes?.td ?? []), "align"],
+  },
+};
 
 type PreviewPanelProps = {
   editDraft: string;
@@ -76,7 +97,17 @@ export const PreviewPanel = ({
             {rawPreview ? (
               <pre>{preview}</pre>
             ) : (
-              <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+                components={{
+                  table: ({ node: _node, ...props }) => (
+                    <div className="markdown-table">
+                      <table {...props} />
+                    </div>
+                  ),
+                }}
+              >
                 {preview}
               </ReactMarkdown>
             )}

@@ -34,10 +34,10 @@
     #f3efe6 45%,
     #e6f0ee 100%
   );
-  --preview-bg: #111616;
-  --preview-ink: #f5f1e6;
-  --preview-code-bg: rgba(255, 255, 255, 0.08);
-  --preview-code-border: rgba(255, 255, 255, 0.16);
+  --preview-bg: var(--panel);
+  --preview-ink: var(--ink);
+  --preview-code-bg: var(--panel-warm);
+  --preview-code-border: var(--line-soft);
   --chip-bg: rgba(20, 23, 23, 0.06);
   --glow: radial-gradient(circle, rgba(47, 143, 131, 0.18), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.12);
@@ -63,10 +63,10 @@
     #0f1417 55%,
     #0b1012 100%
   );
-  --preview-bg: #0b0f12;
-  --preview-ink: #e7edf0;
-  --preview-code-bg: rgba(255, 255, 255, 0.12);
-  --preview-code-border: rgba(255, 255, 255, 0.24);
+  --preview-bg: var(--panel);
+  --preview-ink: var(--ink);
+  --preview-code-bg: var(--panel-warm);
+  --preview-code-border: var(--line-soft);
   --chip-bg: rgba(237, 242, 244, 0.08);
   --glow: radial-gradient(circle, rgba(224, 122, 95, 0.18), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.2);

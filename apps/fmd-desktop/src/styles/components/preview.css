@@ -40,6 +40,7 @@
   margin: 0;
   padding: 16px;
   background: var(--preview-bg);
+  background: color-mix(in srgb, var(--preview-bg) 94%, var(--accent) 6%);
   color: var(--preview-ink);
   border-radius: 16px;
   flex: 1;
@@ -57,10 +58,33 @@
   border-radius: 16px;
   border: 1px solid var(--line-soft);
   background: var(--preview-bg);
+  background: color-mix(in srgb, var(--preview-bg) 94%, var(--accent) 6%);
   color: var(--preview-ink);
   font-family: var(--mono);
   font-size: 0.85rem;
   resize: none;
+  caret-color: var(--accent);
+}
+
+.preview-editor:hover {
+  border-color: var(--line);
+}
+
+.preview-editor:focus-visible {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.preview-editor::selection {
+  background: var(--accent-soft);
+  color: var(--preview-ink);
+}
+
+.preview.markdown ::selection,
+.preview.raw ::selection {
+  background: var(--accent-soft);
+  color: var(--preview-ink);
 }
 
 .preview.raw {
@@ -149,6 +173,46 @@
   border-left: 3px solid var(--accent);
   color: var(--preview-ink);
   opacity: 0.9;
+}
+
+.markdown-table {
+  width: 100%;
+  overflow-x: auto;
+  margin: 0 0 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--preview-bg);
+  background: color-mix(in srgb, var(--preview-bg) 94%, var(--accent) 6%);
+}
+
+.preview.markdown table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.preview.markdown thead th {
+  background: var(--panel-warm);
+  background: color-mix(in srgb, var(--preview-bg) 88%, var(--accent) 12%);
+  text-align: left;
+  font-weight: 600;
+}
+
+.preview.markdown th,
+.preview.markdown td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+}
+
+.preview.markdown tr > :last-child {
+  border-right: none;
+}
+
+.preview.markdown tbody tr:last-child th,
+.preview.markdown tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .preview.placeholder {
