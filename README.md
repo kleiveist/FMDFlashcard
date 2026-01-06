@@ -12,42 +12,42 @@ while adding a dedicated review experience and study progress tracking.
 - Review cards in multiple modes (e.g., standard flashcards, fast mode, spaced repetition).
 - Keep your learning workflow local-first.
 
-> Note: The UX and feature set are evolving. If something is unclear, check the in-app Help and the docs in `docs/`.
+> Note: The UX and feature set are evolving. If something is unclear, check the in-app Help and the docs in [docs](docs/).
 
 ## Documentation index (fast links)
 
 If GitHub’s repository navigation feels slow, use these direct links:
 
 ### User docs
-- Docs home: `docs/index.md`
-- User docs index: `docs/user/index.md`
-- Getting started: `docs/user/getting-started.md`
-- Flashcard syntax: `docs/user/flashcard-syntax.md`
-- Spaced repetition: `docs/user/spaced-repetition.md`
-- Settings: `docs/user/settings.md`
-- Troubleshooting: `docs/user/troubleshooting.md`
+- [Docs home](docs/index.md)
+- [User docs index](docs/user/index.md)
+- [Getting started](docs/user/getting-started.md)
+- [Flashcard syntax](docs/user/flashcard-syntax.md)
+- [Spaced repetition](docs/user/spaced-repetition.md)
+- [Settings](docs/user/settings.md)
+- [Troubleshooting](docs/user/troubleshooting.md)
 
 ### Developer docs
-- Developer docs index: `docs/dev/index.md`
-- Setup (run from source): `docs/dev/setup.md`
-- Control script: `docs/dev/control-script.md`
-- Architecture: `docs/dev/architecture.md`
-- Testing: `docs/dev/testing.md`
-- Releases / packaging: `docs/dev/release.md`
+- [Developer docs index](docs/dev/index.md)
+- [Setup (run from source)](docs/dev/setup.md)
+- [Control script](docs/dev/control-script.md)
+- [Architecture](docs/dev/architecture.md)
+- [Testing](docs/dev/testing.md)
+- [Releases / packaging](docs/dev/release.md)
 
 ### Project meta
-- Contributing: `CONTRIBUTING.md`
-- Changelog: `CHANGELOG.md`
-- Security policy: `SECURITY.md`
-- ADR index: `docs/adr/index.md`
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Security policy](SECURITY.md)
+- [ADR index](docs/adr/index.md)
 
 
 ## Quickstart (run from source)
 
 If you want to run the desktop app from source, follow the full setup guide:
 
-- **Developer setup:** `docs/dev/setup.md`
-- **Control script guide:** `docs/dev/control-script.md`
+- **Developer setup:** [Setup guide](docs/dev/setup.md)
+- **Control script guide:** [Control script guide](docs/dev/control-script.md)
 
 A typical flow looks like:
 
@@ -59,15 +59,15 @@ A typical flow looks like:
 
 ## Documentation
 
-- **Docs home:** `docs/index.md`
-- **User docs:** `docs/user/`
-- **Developer docs:** `docs/dev/`
-- **Architecture decisions:** `docs/adr/`
+- **Docs home:** [Documentation index](docs/index.md)
+- **User docs:** [User documentation](docs/user/)
+- **Developer docs:** [Developer documentation](docs/dev/)
+- **Architecture decisions:** [ADRs](docs/adr/)
 
 ## Contributing
 
-See `CONTRIBUTING.md` for development workflow and pull request guidelines.
+See the [Contributing guide](CONTRIBUTING.md) for development workflow and pull request guidelines.
 
 ## License
 
-See `LICENSE` (if present in this repository).
+See [License](LICENSE) (if present in this repository).
