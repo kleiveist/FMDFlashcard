@@ -66,7 +66,7 @@ python3 tools/control.py --tauri
 python3 tools/control.py --start
 ```
 
-7) Build (release bundles / native packaging)
+## 7) Build (release bundles / native packaging)
 ```bash
 python3 to
 cd ~/Projects/FMDFlashcard
