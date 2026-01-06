@@ -2,6 +2,31 @@
 
 This documentation is split into two main tracks:
 
+> If GitHub's repository navigation feels slow, use these direct links:
+>
+> **User docs**
+> - [Docs home](index.md)
+> - [User docs index](user/index.md)
+> - [Getting started](user/getting-started.md)
+> - [Flashcard syntax](user/flashcard-syntax.md)
+> - [Spaced repetition](user/spaced-repetition.md)
+> - [Settings](user/settings.md)
+> - [Troubleshooting](user/troubleshooting.md)
+>
+> **Developer docs**
+> - [Developer docs index](dev/index.md)
+> - [Setup (run from source)](dev/setup.md)
+> - [Control script](dev/control-script.md)
+> - [Architecture](dev/architecture.md)
+> - [Testing](dev/testing.md)
+> - [Releases / packaging](dev/release.md)
+>
+> **Project meta**
+> - [Contributing](../CONTRIBUTING.md)
+> - [Changelog](../CHANGELOG.md)
+> - [Security policy](../SECURITY.md)
+> - [ADR index](adr/index.md)
+
 ## Section indexes
 
 - [User docs index](user/index.md)

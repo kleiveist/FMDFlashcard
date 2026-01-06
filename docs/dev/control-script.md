@@ -34,12 +34,33 @@ python3 tools/control.py --tauri
 python3 tools/control.py --start
 ```
 
+### Build release bundles
+
+```bash
+python3 tools/control.py --build
+```
+
+Builds the desktop app release bundles by running `pnpm tauri build`.
+Produces platform-specific bundles/installers.
+
+Notes:
+- Working directory: `apps/fmd-desktop`.
+- Requires Node + pnpm dependencies and Tauri build prerequisites for the OS.
+- Outputs are produced by Tauri under the desktop app's release bundle directory (typically `apps/fmd-desktop/src-tauri/target/release/bundle`).
+
 ## Suggested workflow
 
 1. `--doctor` to verify dependencies
 2. `--install` to install dependencies / bootstrap
 3. `--tauri` to prepare Tauri prerequisites
 4. `--start` to run the app
+
+For packaging, run `--build` after `--tauri`.
+
+## When to use
+
+- Use `--start` for day-to-day development and local testing.
+- Use `--build` when you need release bundles or installers for distribution.
 
 ## Extending the control script
 
