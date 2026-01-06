@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
@@ -30,7 +30,6 @@ type PreviewPanelProps = {
   editError: string;
   editCaretIndex: number | null;
   isEditing: boolean;
-  isSaving: boolean;
   emptyPreview: string;
   preview: string;
   previewError: string;
@@ -38,22 +37,15 @@ type PreviewPanelProps = {
   rawPreview: boolean;
   selectedFile: VaultFile | null;
   canEdit: boolean;
-  onEditCancel: () => void;
   onEditChange: (value: string) => void;
   onEditCaretApplied: () => void;
-  onEditSave: () => void;
+  onEditExit: () => void;
   onEditStart: (options?: {
     caretIndex?: number | null;
     origin?: "raw" | "markdown";
   }) => void;
-  setRawPreview: (value: boolean | ((prev: boolean) => boolean)) => void;
+  onToggleRawPreview: () => void;
 };
-
-const BLOCK_SELECTOR =
-  "p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, code, td, th";
-
-const normalizeWhitespace = (value: string) =>
-  value.replace(/\s+/g, " ").trim();
 
 const getRangeOffset = (container: HTMLElement, range: Range) => {
   const offsetRange = document.createRange();
@@ -74,70 +66,190 @@ const getSelectionRange = (container: HTMLElement) => {
   return range;
 };
 
-const findTextMatch = (raw: string, text: string) => {
-  const normalized = normalizeWhitespace(text);
-  if (!normalized) {
-    return null;
+const getRangeFromPoint = (x: number, y: number) => {
+  if ("caretRangeFromPoint" in document) {
+    return (document as Document & { caretRangeFromPoint?: (x: number, y: number) => Range | null })
+      .caretRangeFromPoint?.(x, y) ?? null;
   }
-  const directIndex = raw.indexOf(normalized);
-  if (directIndex !== -1) {
-    return directIndex;
-  }
-  const words = normalized.split(" ");
-  for (const word of words) {
-    if (!word) {
-      continue;
-    }
-    const wordIndex = raw.indexOf(word);
-    if (wordIndex !== -1) {
-      return wordIndex;
+  if ("caretPositionFromPoint" in document) {
+    const position = (
+      document as Document & {
+        caretPositionFromPoint?: (
+          x: number,
+          y: number,
+        ) => { offsetNode: Node; offset: number } | null;
+      }
+    ).caretPositionFromPoint?.(x, y);
+    if (position) {
+      const range = document.createRange();
+      range.setStart(position.offsetNode, position.offset);
+      range.collapse(true);
+      return range;
     }
   }
   return null;
 };
 
-const resolveRawCaretIndex = (container: HTMLElement) => {
-  const range = getSelectionRange(container);
-  if (!range) {
+const getRangeFromEvent = (
+  event: MouseEvent<HTMLDivElement>,
+  container: HTMLElement,
+) => {
+  const rangeFromPoint = getRangeFromPoint(event.clientX, event.clientY);
+  if (rangeFromPoint && container.contains(rangeFromPoint.startContainer)) {
+    return rangeFromPoint;
+  }
+  return getSelectionRange(container);
+};
+
+const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
+  if (plainOffset <= 0) {
+    return 0;
+  }
+  let rawIndex = 0;
+  let plainIndex = 0;
+  let inFence = false;
+  let inInlineCode = false;
+  let inLinkText = false;
+  let inLinkUrl = false;
+  let lineStart = true;
+
+  const skipToLineEnd = () => {
+    while (rawIndex < rawMarkdown.length && rawMarkdown[rawIndex] !== "\n") {
+      rawIndex += 1;
+    }
+  };
+
+  while (rawIndex < rawMarkdown.length) {
+    const char = rawMarkdown[rawIndex];
+
+    if (lineStart && rawMarkdown.startsWith("```", rawIndex)) {
+      inFence = !inFence;
+      skipToLineEnd();
+      continue;
+    }
+
+    if (char === "\n") {
+      lineStart = true;
+      if (plainIndex >= plainOffset) {
+        return rawIndex;
+      }
+      plainIndex += 1;
+      rawIndex += 1;
+      continue;
+    }
+
+    if (lineStart && !inFence) {
+      if (char === "#") {
+        while (rawMarkdown[rawIndex] === "#") {
+          rawIndex += 1;
+        }
+        if (rawMarkdown[rawIndex] === " ") {
+          rawIndex += 1;
+        }
+        continue;
+      }
+      if (char === ">") {
+        rawIndex += 1;
+        if (rawMarkdown[rawIndex] === " ") {
+          rawIndex += 1;
+        }
+        continue;
+      }
+      if (
+        (char === "-" || char === "*" || char === "+") &&
+        rawMarkdown[rawIndex + 1] === " "
+      ) {
+        rawIndex += 2;
+        continue;
+      }
+      if (char >= "0" && char <= "9") {
+        const markerStart = rawIndex;
+        while (rawMarkdown[rawIndex] >= "0" && rawMarkdown[rawIndex] <= "9") {
+          rawIndex += 1;
+        }
+        if (
+          rawMarkdown[rawIndex] === "." &&
+          rawMarkdown[rawIndex + 1] === " "
+        ) {
+          rawIndex += 2;
+          continue;
+        }
+        rawIndex = markerStart;
+      }
+    }
+
+    lineStart = false;
+
+    if (!inFence) {
+      if (inLinkUrl) {
+        if (char === ")") {
+          inLinkUrl = false;
+        }
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "`") {
+        inInlineCode = !inInlineCode;
+        rawIndex += 1;
+        continue;
+      }
+      if (!inInlineCode && (char === "*" || char === "_")) {
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "[") {
+        inLinkText = true;
+        rawIndex += 1;
+        continue;
+      }
+      if (inLinkText && char === "]") {
+        inLinkText = false;
+        if (rawMarkdown[rawIndex + 1] === "(") {
+          inLinkUrl = true;
+          rawIndex += 2;
+          continue;
+        }
+        rawIndex += 1;
+        continue;
+      }
+    }
+
+    if (plainIndex >= plainOffset) {
+      return rawIndex;
+    }
+    plainIndex += 1;
+    rawIndex += 1;
+  }
+
+  return rawMarkdown.length;
+};
+
+const resolveRawCaretIndex = (container: HTMLElement, range: Range | null) => {
+  const resolvedRange = range ?? getSelectionRange(container);
+  if (!resolvedRange) {
     return null;
   }
-  return getRangeOffset(container, range);
+  return getRangeOffset(container, resolvedRange);
 };
 
 const resolveMarkdownCaretIndex = (
   container: HTMLElement,
   rawMarkdown: string,
+  range: Range | null,
 ) => {
-  const range = getSelectionRange(container);
-  if (!range) {
+  const resolvedRange = range ?? getSelectionRange(container);
+  if (!resolvedRange) {
     return null;
   }
-  const selection = window.getSelection();
-  const selectionText = selection ? normalizeWhitespace(selection.toString()) : "";
-  const anchorElement =
-    range.startContainer instanceof Element
-      ? range.startContainer
-      : range.startContainer.parentElement;
-  const blockElement = anchorElement?.closest(BLOCK_SELECTOR) ?? container;
-  const blockText = normalizeWhitespace(blockElement.textContent ?? "");
-  if (blockText) {
-    const blockIndex = rawMarkdown.indexOf(blockText);
-    if (blockIndex !== -1) {
-      const blockOffset = getRangeOffset(blockElement, range);
-      return blockIndex + Math.min(blockOffset, blockText.length);
-    }
+  const plainOffset = getRangeOffset(container, resolvedRange);
+  if (rawMarkdown.length === 0) {
+    return 0;
   }
-  if (selectionText) {
-    const selectionIndex = rawMarkdown.indexOf(selectionText);
-    if (selectionIndex !== -1) {
-      return selectionIndex;
-    }
-  }
-  const fallbackIndex = findTextMatch(rawMarkdown, blockText || selectionText);
-  if (fallbackIndex !== null) {
-    return fallbackIndex;
-  }
-  return null;
+  return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset);
 };
 
 export const PreviewPanel = ({
@@ -145,7 +257,6 @@ export const PreviewPanel = ({
   editError,
   editCaretIndex,
   isEditing,
-  isSaving,
   emptyPreview,
   preview,
   previewError,
@@ -153,49 +264,56 @@ export const PreviewPanel = ({
   rawPreview,
   selectedFile,
   canEdit,
-  onEditCancel,
   onEditChange,
   onEditCaretApplied,
-  onEditSave,
+  onEditExit,
   onEditStart,
-  setRawPreview,
+  onToggleRawPreview,
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    if (!isEditing || editCaretIndex === null || !editorRef.current) {
+    if (!isEditing || !editorRef.current) {
       return;
     }
     const editor = editorRef.current;
-    const nextIndex = Math.max(
-      0,
-      Math.min(editCaretIndex, editor.value.length),
-    );
+    const desiredIndex =
+      typeof editCaretIndex === "number" ? editCaretIndex : editor.value.length;
+    const nextIndex = Math.max(0, Math.min(desiredIndex, editor.value.length));
     const handle = window.requestAnimationFrame(() => {
       editor.focus();
       editor.setSelectionRange(nextIndex, nextIndex);
-      onEditCaretApplied();
+      if (typeof editCaretIndex === "number") {
+        onEditCaretApplied();
+      }
     });
     return () => window.cancelAnimationFrame(handle);
   }, [editCaretIndex, isEditing, onEditCaretApplied]);
 
-  const handlePreviewDoubleClick = useCallback(() => {
-    if (!canEdit || isEditing) {
-      return;
-    }
-    const origin = rawPreview ? "raw" : "markdown";
-    let caretIndex = preview.length === 0 ? 0 : null;
-    if (previewRef.current) {
-      const resolvedIndex = rawPreview
-        ? resolveRawCaretIndex(previewRef.current)
-        : resolveMarkdownCaretIndex(previewRef.current, preview);
-      if (typeof resolvedIndex === "number") {
-        caretIndex = resolvedIndex;
+  const handlePreviewDoubleClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (!canEdit || isEditing) {
+        return;
       }
-    }
-    onEditStart({ caretIndex, origin });
-  }, [canEdit, isEditing, onEditStart, preview, rawPreview]);
+      const origin = rawPreview ? "raw" : "markdown";
+      let caretIndex = preview.length === 0 ? 0 : null;
+      if (previewRef.current) {
+        const range = getRangeFromEvent(event, previewRef.current);
+        const resolvedIndex = rawPreview
+          ? resolveRawCaretIndex(previewRef.current, range)
+          : resolveMarkdownCaretIndex(previewRef.current, preview, range);
+        if (typeof resolvedIndex === "number") {
+          caretIndex = resolvedIndex;
+        }
+      }
+      if (caretIndex === null && preview.length > 0) {
+        caretIndex = preview.length;
+      }
+      onEditStart({ caretIndex, origin });
+    },
+    [canEdit, isEditing, onEditStart, preview, rawPreview],
+  );
 
   return (
     <section className="panel preview-panel">
@@ -210,9 +328,9 @@ export const PreviewPanel = ({
           <button
             type="button"
             className={`ghost small ${rawPreview ? "active" : ""}`}
-            onClick={() => setRawPreview((prev) => !prev)}
+            onClick={onToggleRawPreview}
             aria-pressed={rawPreview}
-            disabled={!selectedFile || isEditing}
+            disabled={!selectedFile}
           >
             {rawPreview ? "Markdown" : "Rohtext"}
           </button>
@@ -230,6 +348,7 @@ export const PreviewPanel = ({
               className="preview-editor"
               value={editDraft}
               onChange={(event) => onEditChange(event.target.value)}
+              onBlur={onEditExit}
               aria-label="Edit markdown preview"
             />
           ) : preview ? (
@@ -260,43 +379,6 @@ export const PreviewPanel = ({
           )}
         </div>
         {editError ? <div className="error">{editError}</div> : null}
-        {selectedFile ? (
-          <div className="preview-edit-actions">
-            {isEditing ? (
-              <>
-                <button
-                  type="button"
-                  className="primary small preview-edit-button"
-                  onClick={onEditSave}
-                  disabled={isSaving}
-                >
-                  {isSaving ? "Saving..." : "Save"}
-                </button>
-                <button
-                  type="button"
-                  className="ghost small preview-edit-button"
-                  onClick={onEditCancel}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="primary small preview-edit-button"
-                onClick={() =>
-                  onEditStart({
-                    origin: rawPreview ? "raw" : "markdown",
-                  })
-                }
-                disabled={!canEdit}
-              >
-                Edit
-              </button>
-            )}
-          </div>
-        ) : null}
       </div>
     </section>
   );

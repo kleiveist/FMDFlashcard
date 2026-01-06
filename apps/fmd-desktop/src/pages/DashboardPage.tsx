@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
@@ -14,7 +14,6 @@ export const DashboardPage = () => {
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
-  const editReturnToMarkdown = useRef(false);
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
       return "No vault selected";
@@ -35,7 +34,6 @@ export const DashboardPage = () => {
     setEditError("");
     setIsSaving(false);
     setEditCaretIndex(null);
-    editReturnToMarkdown.current = false;
   }, [preview.selectedFile?.path]);
 
   const handleEditStart = useCallback(
@@ -43,13 +41,6 @@ export const DashboardPage = () => {
       if (!preview.selectedFile || preview.previewState !== "idle") {
         return;
       }
-      const startedInMarkdown =
-        options?.origin === "markdown" ||
-        (!options?.origin && !preview.rawPreview);
-      if (startedInMarkdown && !preview.rawPreview) {
-        preview.setRawPreview(true);
-      }
-      editReturnToMarkdown.current = startedInMarkdown;
       setEditDraft(preview.preview);
       setEditError("");
       setEditCaretIndex(
@@ -60,19 +51,14 @@ export const DashboardPage = () => {
     [preview],
   );
 
-  const handleEditCancel = () => {
-    setIsEditing(false);
-    setEditError("");
-    setEditCaretIndex(null);
-    if (editReturnToMarkdown.current) {
-      preview.setRawPreview(false);
-      editReturnToMarkdown.current = false;
+  const handleEditAutosave = useCallback(async () => {
+    if (!preview.selectedFile || !isEditing || isSaving) {
+      return false;
     }
-  };
-
-  const handleEditSave = async () => {
-    if (!preview.selectedFile) {
-      return;
+    if (editDraft === preview.preview) {
+      setIsEditing(false);
+      setEditCaretIndex(null);
+      return true;
     }
     setIsSaving(true);
     setEditError("");
@@ -84,16 +70,24 @@ export const DashboardPage = () => {
       preview.setPreview(editDraft);
       setIsEditing(false);
       setEditCaretIndex(null);
-      if (editReturnToMarkdown.current) {
-        preview.setRawPreview(false);
-        editReturnToMarkdown.current = false;
-      }
+      return true;
     } catch (error) {
       setEditError(asErrorMessage(error, "Failed to save file."));
+      return false;
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [editDraft, isEditing, isSaving, preview]);
+
+  const handleToggleRawPreview = useCallback(async () => {
+    if (isEditing) {
+      const saved = await handleEditAutosave();
+      if (!saved) {
+        return;
+      }
+    }
+    preview.setRawPreview((current) => !current);
+  }, [handleEditAutosave, isEditing, preview]);
   const handleEditCaretApplied = useCallback(() => {
     setEditCaretIndex(null);
   }, []);
@@ -118,19 +112,17 @@ export const DashboardPage = () => {
           editError={editError}
           editCaretIndex={editCaretIndex}
           isEditing={isEditing}
-          isSaving={isSaving}
           preview={preview.preview}
           previewError={preview.previewError}
           previewState={preview.previewState}
           rawPreview={preview.rawPreview}
           selectedFile={preview.selectedFile}
           canEdit={canEdit}
-          onEditCancel={handleEditCancel}
           onEditChange={setEditDraft}
           onEditCaretApplied={handleEditCaretApplied}
-          onEditSave={handleEditSave}
+          onEditExit={handleEditAutosave}
           onEditStart={handleEditStart}
-          setRawPreview={preview.setRawPreview}
+          onToggleRawPreview={handleToggleRawPreview}
         />
 
         <FileList
