@@ -3,10 +3,7 @@ import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
 import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
-import {
-  LanguageTabContent,
-  DataSyncTabContent,
-} from "../components/settings/DataSyncTabContent";
+import { LanguageTabContent } from "../components/settings/DataSyncTabContent";
 import { PerformanceTabContent } from "../components/settings/PerformanceTabContent";
 import { SpacedRepetitionSettingsSection } from "../components/settings/SpacedRepetitionSettingsSection";
 import { VaultIndexSection } from "../components/settings/VaultIndexSection";
@@ -93,23 +90,6 @@ export const SettingsPage = () => {
                 scanParallelism={settings.scanParallelism}
                 setScanParallelism={settings.setScanParallelism}
               />
-            </div>
-          </section>
-        </div>
-      ) : null}
-      {activeSettingsPage === "data-sync" ? (
-        <div className="settings-page settings-single-column" id="settings-page-data-sync">
-          <section className="panel settings-data-sync-panel">
-            <div className="panel-header">
-              <div>
-                <h2>Data &amp; Sync</h2>
-                <p className="muted">Storage and sync options will land here later.</p>
-              </div>
-            </div>
-            <div className="panel-body">
-              <div className="settings-tab-content">
-                <DataSyncTabContent />
-              </div>
             </div>
           </section>
         </div>
@@ -270,10 +250,6 @@ export const SettingsPage = () => {
             onThemeToggle={actions.handleThemeChange}
             theme={settings.theme}
           />
-        </div>
-      ) : null}
-      {activeSettingsPage === "language" ? (
-        <div className="settings-page settings-single-column" id="settings-page-language">
           <section className="panel settings-language-panel">
             <div className="panel-header">
               <div>

@@ -52,6 +52,23 @@
   gap: 14px;
 }
 
+.settings-tab-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 @media (max-width: 1200px) {
   .settings-app-grid {
     grid-template-columns: 1fr;

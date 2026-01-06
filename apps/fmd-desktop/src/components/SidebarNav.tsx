@@ -59,7 +59,6 @@ export const SidebarNav = ({
     activeTab === "spaced-repetition";
   const toggleLabel = isToolbarCollapsed ? "Expand toolbar" : "Collapse toolbar";
   const toggleSymbol = isToolbarCollapsed ? ">" : "<";
-  const languageSummary = settings.language === "de" ? "Deutsch" : "English";
   const helpTopicOrder = [
     "flashcard-syntax",
     "app-sections",
@@ -266,12 +265,6 @@ export const SidebarNav = ({
                   </button>
                 ))}
               </nav>
-              {activeSettingsPage === "language" ? (
-                <div className="sidebar-card" aria-label="Language summary">
-                  <span className="label">Language</span>
-                  <span className="value">{languageSummary}</span>
-                </div>
-              ) : null}
             </>
           ) : null}
           {toolbarMode === "help" ? (
