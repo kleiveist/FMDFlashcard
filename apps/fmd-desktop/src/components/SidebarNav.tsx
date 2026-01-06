@@ -4,6 +4,7 @@ import { vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
 import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons";
 import { helpTopics, resolveText } from "../pages/help/helpContent";
+import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
 
 type TabKey =
   | "dashboard"
@@ -28,11 +29,12 @@ export const SidebarNav = ({
   isMobileNavOpen,
   onMobileNavClose,
 }: SidebarNavProps) => {
-  const { actions, help, preview, settings, vault } = useAppState();
+  const { actions, help, preview, settings, settingsNav, vault } = useAppState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>("cards");
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => new Set(),
   );
+  const { activeSettingsPage, setActiveSettingsPage } = settingsNav;
   const isToolbarCollapsed = settings.rightToolbarCollapsed;
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
@@ -242,15 +244,27 @@ export const SidebarNav = ({
             </div>
           ) : null}
           {toolbarMode === "settings" ? (
-            <div className="sidebar-mode-panel">
-              <div className="sidebar-card">
-                <span className="label">Settings</span>
-                <span className="value">Tune your workspace</span>
-                <p className="muted">
-                  Adjust study flow, vault scanning, and performance options.
-                </p>
-              </div>
-            </div>
+            <nav className="nav settings-nav" aria-label="Settings pages">
+              {SETTINGS_PAGES.map((page) => (
+                <button
+                  key={page.id}
+                  type="button"
+                  className={`nav-item ${
+                    activeSettingsPage === page.id ? "active" : ""
+                  }`}
+                  aria-pressed={activeSettingsPage === page.id}
+                  aria-controls={`settings-page-${page.id}`}
+                  onClick={() => {
+                    setActiveSettingsPage(page.id);
+                    if (activeTab !== "settings") {
+                      onTabChange("settings");
+                    }
+                  }}
+                >
+                  {page.label}
+                </button>
+              ))}
+            </nav>
           ) : null}
           {toolbarMode === "help" ? (
             <nav className="nav">

@@ -33,7 +33,7 @@ export const SpacedRepetitionSettingsSection = ({
   setSpacedRepetitionRepetitionStrength,
 }: SpacedRepetitionSettingsSectionProps) => (
   <section className="panel spaced-repetition-panel">
-    <h2>Spaced Repetition</h2>
+    <h2>Spaced Repetition Tools</h2>
     <p className="muted">Configure spaced repetition behavior.</p>
     <div className="setting-row">
       <span className="label">Boxes</span>

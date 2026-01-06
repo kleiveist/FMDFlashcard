@@ -13,6 +13,7 @@ import { type VaultFile } from "../lib/tree";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
 import { usePreview } from "../features/preview/usePreview";
 import { useAppSettings } from "../features/settings/useAppSettings";
+import { type SettingsPageId } from "../features/settings/settingsNavigation";
 import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepetition";
 import { useVault } from "../features/vault/useVault";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
@@ -36,6 +37,10 @@ type AppState = {
   help: {
     activeTopicId: string | null;
     setActiveTopicId: (value: string | null) => void;
+  };
+  settingsNav: {
+    activeSettingsPage: SettingsPageId;
+    setActiveSettingsPage: (value: SettingsPageId) => void;
   };
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
@@ -71,6 +76,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<
     number | null
   >(null);
+  const [activeSettingsPage, setActiveSettingsPage] =
+    useState<SettingsPageId>("app-settings");
   const {
     activeNotePath,
     accentColor,
@@ -416,6 +423,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     help: {
       activeTopicId: activeHelpTopicId,
       setActiveTopicId: setActiveHelpTopicId,
+    },
+    settingsNav: {
+      activeSettingsPage,
+      setActiveSettingsPage,
     },
     preview,
     settings,
