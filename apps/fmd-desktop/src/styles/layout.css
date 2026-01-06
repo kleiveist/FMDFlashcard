@@ -1,4 +1,3 @@
-
 .app-shell {
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 36px;
@@ -58,6 +57,8 @@
   border: 1px solid var(--line-soft);
   transition: padding 0.2s ease;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .sidebar.collapsed {
@@ -237,25 +238,32 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   min-width: 0;
+  overflow: hidden;
+  height: 100%;
 }
 
+/* FIX: this wrapper must fill the remaining height and allow inner scroll areas to work */
 .sidebar-mode-panel {
   display: flex;
   flex-direction: column;
   gap: 12px;
   width: 100%;
   min-width: 0;
+
+  flex: 1 1 auto;     /* added */
+  min-height: 0;      /* added */
+  overflow: hidden;   /* added: prevents “escape”, scroll happens in the inner list */
 }
 
 .sidebar .vault-details {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex: 1;
+  flex: 1 1 auto;
   height: 100%;
   max-height: none;
   width: 100%;
@@ -266,8 +274,12 @@
   overflow: hidden;
 }
 
+/* FIX: summary needs display:flex; otherwise flex properties here are ignored */
 .sidebar .vault-details > summary {
+  display: flex; /* added */
+
   position: relative;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
@@ -287,9 +299,20 @@
 }
 
 .sidebar .vault-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 8px 0 0;
+}
+
+/* This is the ONLY vertical scroll container for the tree */
+.sidebar .vault-tree-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-card {
@@ -300,8 +323,9 @@
   background: var(--panel-warm);
   border-radius: 16px;
   border: 1px solid var(--line-soft);
-}
 
+  min-height: 0; /* added: helps nested flex children shrink/scroll correctly */
+}
 
 .label {
   text-transform: uppercase;
