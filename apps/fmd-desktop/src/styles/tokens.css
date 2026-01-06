@@ -12,12 +12,21 @@
   color-scheme: light;
   --bg: #f3efe6;
   --bg-strong: #ece6da;
+  --page-bg-base: #f3efe6;
+  --page-bg-spot-base: #f7dccb;
+  --page-bg-edge-base: #e6f0ee;
+  --page-bg: var(--bg-gradient);
   --panel: #ffffff;
   --panel-warm: #f8f2e8;
   --ink: #141717;
   --muted: #5b6265;
   --line: rgba(18, 24, 27, 0.12);
   --line-soft: rgba(18, 24, 27, 0.08);
+  --field-bg-base: var(--panel);
+  --field-bg: var(--field-bg-base);
+  --field-border-base: var(--line-soft);
+  --field-border: var(--field-border-base);
+  --field-glow: transparent;
   --accent: #e07a5f;
   --accent-strong: #cc5c3f;
   --accent-soft: rgba(224, 122, 95, 0.14);
@@ -30,9 +39,9 @@
   --mono: "JetBrains Mono", "Fira Code", "IBM Plex Mono", monospace;
   --bg-gradient: radial-gradient(
     circle at top left,
-    #f7dccb 0%,
-    #f3efe6 45%,
-    #e6f0ee 100%
+    var(--page-bg-spot-base) 0%,
+    var(--page-bg-base) 45%,
+    var(--page-bg-edge-base) 100%
   );
   --preview-bg: var(--panel);
   --preview-ink: var(--ink);
@@ -49,6 +58,9 @@
   color-scheme: dark;
   --bg: #0f1417;
   --bg-strong: #121a1f;
+  --page-bg-base: #0f1417;
+  --page-bg-spot-base: #1b2a33;
+  --page-bg-edge-base: #0b1012;
   --panel: #151c20;
   --panel-warm: #1b2429;
   --ink: #edf2f4;
@@ -59,9 +71,9 @@
   --shadow-soft: 0 12px 24px rgba(0, 0, 0, 0.3);
   --bg-gradient: radial-gradient(
     circle at top left,
-    #1b2a33 0%,
-    #0f1417 55%,
-    #0b1012 100%
+    var(--page-bg-spot-base) 0%,
+    var(--page-bg-base) 55%,
+    var(--page-bg-edge-base) 100%
   );
   --preview-bg: var(--panel);
   --preview-ink: var(--ink);
@@ -72,4 +84,22 @@
   --error-bg: rgba(204, 92, 63, 0.2);
   --error-border: rgba(204, 92, 63, 0.45);
   --error-ink: #f6c1b2;
+}
+
+@supports (color: color-mix(in srgb, white 50%, black)) {
+  :root {
+    --page-bg: radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--page-bg-spot-base) 94%, var(--accent) 6%) 0%,
+      color-mix(in srgb, var(--page-bg-base) 96%, var(--accent) 4%) 45%,
+      color-mix(in srgb, var(--page-bg-edge-base) 96%, var(--accent) 4%) 100%
+    );
+    --field-bg: color-mix(in srgb, var(--field-bg-base) 95%, var(--accent) 5%);
+    --field-border: color-mix(
+      in srgb,
+      var(--field-border-base) 90%,
+      var(--accent) 10%
+    );
+    --field-glow: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
 }

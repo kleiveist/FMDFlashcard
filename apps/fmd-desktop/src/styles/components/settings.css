@@ -205,10 +205,16 @@
   min-width: 140px;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   color: var(--ink);
   font-size: 0.85rem;
+}
+
+.text-input:focus-visible {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 2px var(--field-glow);
 }
 
 .text-input:disabled {
@@ -227,8 +233,8 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   padding: 0;
   cursor: pointer;
   appearance: none;
