@@ -1,6 +1,7 @@
 import { useState } from "react";
 import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { SidebarNav } from "./components/SidebarNav";
 import { DashboardPage } from "./pages/DashboardPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
@@ -81,9 +82,11 @@ const AppContent = () => {
 
 function App() {
   return (
-    <AppStateProvider>
-      <AppContent />
-    </AppStateProvider>
+    <AppErrorBoundary>
+      <AppStateProvider>
+        <AppContent />
+      </AppStateProvider>
+    </AppErrorBoundary>
   );
 }
 
