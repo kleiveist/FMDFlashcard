@@ -4,9 +4,13 @@ type AppearanceSectionProps = {
   accentColor: string;
   accentDraft: string;
   accentError: string;
+  editorExactColors: boolean;
+  editorBlueprintGrid: boolean;
   onAccentInputChange: (value: string) => void;
   onAccentPick: (value: string) => void;
   onCopyAccent: () => void;
+  onEditorExactColorsToggle: (value: boolean) => void;
+  onEditorBlueprintGridToggle: (value: boolean) => void;
   onThemeToggle: (nextTheme: ThemeMode) => void;
   theme: ThemeMode;
 };
@@ -24,9 +28,13 @@ export const AppearanceSection = ({
   accentColor,
   accentDraft,
   accentError,
+  editorExactColors,
+  editorBlueprintGrid,
   onAccentInputChange,
   onAccentPick,
   onCopyAccent,
+  onEditorExactColorsToggle,
+  onEditorBlueprintGridToggle,
   onThemeToggle,
   theme,
 }: AppearanceSectionProps) => (
@@ -95,6 +103,38 @@ export const AppearanceSection = ({
       <span className={`helper-text ${accentError ? "error-text" : ""}`}>
         {accentError || "HEX Wert der Akzentfarbe (#RRGGBB)."}
       </span>
+    </div>
+    <div className="setting-row">
+      <span className="label">Exact colors (Markdown Editor)</span>
+      <div className="theme-toggle">
+        <span className="toggle-label">Off</span>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={editorExactColors}
+            onChange={(event) => onEditorExactColorsToggle(event.target.checked)}
+            aria-label="Exact markdown editor colors"
+          />
+          <span className="slider" />
+        </label>
+        <span className="toggle-label">On</span>
+      </div>
+    </div>
+    <div className="setting-row">
+      <span className="label">Blueprint grid (Markdown Editor)</span>
+      <div className="theme-toggle">
+        <span className="toggle-label">Off</span>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={editorBlueprintGrid}
+            onChange={(event) => onEditorBlueprintGridToggle(event.target.checked)}
+            aria-label="Blueprint grid for markdown editor"
+          />
+          <span className="slider" />
+        </label>
+        <span className="toggle-label">On</span>
+      </div>
     </div>
   </section>
 );

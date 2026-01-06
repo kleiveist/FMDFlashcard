@@ -52,6 +52,21 @@
   --preview-ink: var(--ink);
   --preview-code-bg: var(--panel-warm);
   --preview-code-border: var(--line-soft);
+  --md-editor-bg: var(--preview-bg);
+  --md-editor-border: var(--line-soft);
+  --md-editor-border-hover: var(--line);
+  --md-editor-focus-border: var(--accent-border);
+  --md-editor-focus-glow: transparent;
+  --md-editor-selection-bg: var(--accent-soft);
+  --md-editor-caret: var(--accent);
+  --md-grid-size: 28px;
+  --md-grid-dot: 1px;
+  --md-grid-stroke: 6px;
+  --md-grid-cross-offset: 7px;
+  --md-grid-line: 1px;
+  --md-grid-line-neutral: rgba(20, 23, 23, 0.04);
+  --md-grid-line-accent: transparent;
+  --md-grid-line-color: var(--md-grid-line-accent);
   --chip-bg: rgba(20, 23, 23, 0.06);
   --glow: radial-gradient(circle, rgba(47, 143, 131, 0.18), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.12);
@@ -89,6 +104,7 @@
   --preview-ink: var(--ink);
   --preview-code-bg: var(--panel-warm);
   --preview-code-border: var(--line-soft);
+  --md-grid-line-neutral: rgba(0, 0, 0, 0.06);
   --chip-bg: rgba(237, 242, 244, 0.08);
   --glow: radial-gradient(circle, rgba(224, 122, 95, 0.18), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.2);
@@ -118,6 +134,9 @@
       var(--accent) 8%
     );
     --block-glow: color-mix(in srgb, var(--accent) 12%, transparent);
+    --md-editor-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--accent) 6%);
+    --md-editor-focus-glow: color-mix(in srgb, var(--accent) 22%, transparent);
+    --md-grid-line-accent: color-mix(in srgb, var(--accent) 4%, transparent);
   }
 
   :root[data-theme="dark"] {
@@ -128,5 +147,15 @@
       var(--accent) 10%
     );
     --block-glow: color-mix(in srgb, var(--accent) 14%, transparent);
+    --md-grid-line-accent: color-mix(in srgb, var(--accent) 7%, transparent);
   }
+}
+
+:root[data-md-editor-colors="off"] {
+  --md-editor-bg: var(--preview-bg);
+  --md-editor-focus-border: var(--line);
+  --md-editor-focus-glow: var(--line-soft);
+  --md-editor-selection-bg: var(--line-soft);
+  --md-editor-caret: var(--preview-ink);
+  --md-grid-line-color: var(--md-grid-line-neutral);
 }

@@ -19,6 +19,8 @@ struct AppSettings {
     vault_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
+    editor_exact_colors: Option<bool>,
+    editor_blueprint_grid: Option<bool>,
     language: Option<String>,
     max_files_per_scan: Option<String>,
     scan_parallelism: Option<String>,
@@ -103,6 +105,8 @@ impl AppSettings {
             && self.active_note_path.is_none()
             && self.theme.is_none()
             && self.accent_color.is_none()
+            && self.editor_exact_colors.is_none()
+            && self.editor_blueprint_grid.is_none()
             && self.language.is_none()
             && self.max_files_per_scan.is_none()
             && self.scan_parallelism.is_none()
@@ -247,6 +251,8 @@ fn save_app_settings(
     vault_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
+    editor_exact_colors: Option<bool>,
+    editor_blueprint_grid: Option<bool>,
     language: Option<String>,
     max_files_per_scan: Option<String>,
     scan_parallelism: Option<String>,
@@ -273,6 +279,8 @@ fn save_app_settings(
         vault_path,
         theme,
         accent_color,
+        editor_exact_colors,
+        editor_blueprint_grid,
         language,
         max_files_per_scan,
         scan_parallelism,

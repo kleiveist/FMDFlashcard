@@ -33,6 +33,8 @@ type AppSettings = {
   vault_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
+  editor_exact_colors?: boolean | null;
+  editor_blueprint_grid?: boolean | null;
   language?: AppLanguage | null;
   max_files_per_scan?: string | null;
   scan_parallelism?: string | null;
@@ -59,6 +61,8 @@ type PersistUpdates = {
   vaultPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
+  editorExactColors?: boolean;
+  editorBlueprintGrid?: boolean;
   language?: AppLanguage;
   maxFilesPerScan?: string;
   scanParallelism?: "low" | "medium" | "high";
@@ -82,6 +86,8 @@ type PersistUpdates = {
 
 export const DEFAULT_THEME: ThemeMode = "light";
 export const DEFAULT_LANGUAGE: AppLanguage = "de";
+const DEFAULT_EDITOR_EXACT_COLORS = true;
+const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
@@ -104,6 +110,12 @@ export const useAppSettings = () => {
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
   const [accentError, setAccentError] = useState("");
+  const [editorExactColors, setEditorExactColors] = useState(
+    DEFAULT_EDITOR_EXACT_COLORS,
+  );
+  const [editorBlueprintGrid, setEditorBlueprintGrid] = useState(
+    DEFAULT_EDITOR_BLUEPRINT_GRID,
+  );
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
@@ -160,6 +172,8 @@ export const useAppSettings = () => {
       vaultPath: string | null;
       theme: ThemeMode;
       accentColor: string;
+      editorExactColors: boolean;
+      editorBlueprintGrid: boolean;
       language: AppLanguage;
       maxFilesPerScan: string;
       scanParallelism: "low" | "medium" | "high";
@@ -186,6 +200,8 @@ export const useAppSettings = () => {
           vaultPath: settings.vaultPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
+          editorExactColors: settings.editorExactColors,
+          editorBlueprintGrid: settings.editorBlueprintGrid,
           language: settings.language,
           maxFilesPerScan: settings.maxFilesPerScan,
           scanParallelism: settings.scanParallelism,
@@ -226,6 +242,8 @@ export const useAppSettings = () => {
         vaultPath: updates.vaultPath ?? vaultPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
+        editorExactColors: updates.editorExactColors ?? editorExactColors,
+        editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
         language: updates.language ?? language,
         maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
         scanParallelism: updates.scanParallelism ?? scanParallelism,
@@ -267,6 +285,8 @@ export const useAppSettings = () => {
     [
       activeNotePath,
       accentColor,
+      editorExactColors,
+      editorBlueprintGrid,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -309,6 +329,14 @@ export const useAppSettings = () => {
         const resolvedAccent = isValidHex(storedAccent)
           ? storedAccent
           : DEFAULT_ACCENT;
+        const storedEditorExactColors =
+          typeof settings.editor_exact_colors === "boolean"
+            ? settings.editor_exact_colors
+            : DEFAULT_EDITOR_EXACT_COLORS;
+        const storedEditorBlueprintGrid =
+          typeof settings.editor_blueprint_grid === "boolean"
+            ? settings.editor_blueprint_grid
+            : DEFAULT_EDITOR_BLUEPRINT_GRID;
         const storedLanguage =
           settings.language === "en" ? "en" : DEFAULT_LANGUAGE;
         const maxFilesRaw = settings.max_files_per_scan;
@@ -451,6 +479,8 @@ export const useAppSettings = () => {
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
         setAccentError("");
+        setEditorExactColors(storedEditorExactColors);
+        setEditorBlueprintGrid(storedEditorBlueprintGrid);
         setActiveNotePath(storedActiveNotePath);
         setVaultPath(settings.vault_path ?? null);
         setLanguage(storedLanguage);
@@ -499,6 +529,16 @@ export const useAppSettings = () => {
   }, [accentColor]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.mdEditorColors = editorExactColors ? "on" : "off";
+  }, [editorExactColors]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.mdEditorGrid = editorBlueprintGrid ? "on" : "off";
+  }, [editorBlueprintGrid]);
+
+  useEffect(() => {
     if (!settingsLoaded) {
       return;
     }
@@ -515,6 +555,8 @@ export const useAppSettings = () => {
         vaultPath,
         theme,
         accentColor,
+        editorExactColors,
+        editorBlueprintGrid,
         language,
         maxFilesPerScan,
         scanParallelism,
@@ -545,6 +587,8 @@ export const useAppSettings = () => {
   }, [
     accentColor,
     activeNotePath,
+    editorExactColors,
+    editorBlueprintGrid,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -575,6 +619,8 @@ export const useAppSettings = () => {
     activeNotePath,
     accentDraft,
     accentError,
+    editorExactColors,
+    editorBlueprintGrid,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -591,6 +637,8 @@ export const useAppSettings = () => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
+    setEditorExactColors,
+    setEditorBlueprintGrid,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,
