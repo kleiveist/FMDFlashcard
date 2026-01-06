@@ -34,110 +34,116 @@ export const FlashcardsSettingsSection = ({
   statsResetMode,
 }: FlashcardsSettingsSectionProps) => (
   <section className="panel settings-flashcards-panel">
-    <h2>Flashcard Tools</h2>
-    <p className="muted">Default behavior for scans and review sessions.</p>
-    <div className="setting-row">
-      <span className="label">Default scope</span>
-      <div className="pill-grid">
-        <button
-          type="button"
-          className={`pill pill-button ${
-            flashcardScope === "current" ? "active" : ""
-          }`}
-          aria-pressed={flashcardScope === "current"}
-          onClick={() => setFlashcardScope("current")}
-        >
-          Current note
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${flashcardScope === "vault" ? "active" : ""}`}
-          aria-pressed={flashcardScope === "vault"}
-          onClick={() => setFlashcardScope("vault")}
-        >
-          Whole vault
-        </button>
+    <div className="panel-header">
+      <div>
+        <h2>Flashcard Tools</h2>
+        <p className="muted">Default behavior for scans and review sessions.</p>
       </div>
     </div>
-    <div className="setting-row">
-      <span className="label">Default order</span>
-      <div className="pill-grid">
-        <button
-          type="button"
-          className={`pill pill-button ${
-            flashcardOrder === "in-order" ? "active" : ""
-          }`}
-          aria-pressed={flashcardOrder === "in-order"}
-          onClick={() => setFlashcardOrder("in-order")}
-        >
-          In order
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${flashcardOrder === "random" ? "active" : ""}`}
-          aria-pressed={flashcardOrder === "random"}
-          onClick={() => setFlashcardOrder("random")}
-        >
-          Random
-        </button>
-      </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Mode</span>
-      <select
-        className="text-input"
-        value={flashcardMode}
-        onChange={(event) =>
-          setFlashcardMode(event.target.value as FlashcardMode)
-        }
-        aria-label="Select mode filter"
-      >
-        <option value="all">All</option>
-        <option value="qa">Q&amp;A</option>
-        <option value="multiple-choice">Multiple Choice</option>
-        <option value="fill-blank">Fill-in-the-blank</option>
-        <option value="assignment">Assignment</option>
-        <option value="true-false">True/False</option>
-        <option value="mix">Mix</option>
-      </select>
-    </div>
-    <div className="setting-row">
-      <span className="label">Page size</span>
-      <div className="pill-grid">
-        {flashcardPageSizes.map((size) => (
+    <div className="panel-body">
+      <div className="setting-row">
+        <span className="label">DEFAULT ORDER</span>
+        <div className="pill-grid">
           <button
-            key={size}
             type="button"
             className={`pill pill-button ${
-              flashcardPageSize === size ? "active" : ""
+              flashcardOrder === "in-order" ? "active" : ""
             }`}
-            aria-pressed={flashcardPageSize === size}
-            onClick={() => setFlashcardPageSize(size)}
+            aria-pressed={flashcardOrder === "in-order"}
+            onClick={() => setFlashcardOrder("in-order")}
           >
-            {size}
+            In order
           </button>
-        ))}
+          <button
+            type="button"
+            className={`pill pill-button ${flashcardOrder === "random" ? "active" : ""}`}
+            aria-pressed={flashcardOrder === "random"}
+            onClick={() => setFlashcardOrder("random")}
+          >
+            Random
+          </button>
+        </div>
       </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Statistics reset</span>
-      <div className="pill-grid">
-        <button
-          type="button"
-          className={`pill pill-button ${statsResetMode === "scan" ? "active" : ""}`}
-          aria-pressed={statsResetMode === "scan"}
-          onClick={() => setStatsResetMode("scan")}
+      <div className="setting-row">
+        <span className="label">MODE</span>
+        <select
+          className="text-input"
+          value={flashcardMode}
+          onChange={(event) =>
+            setFlashcardMode(event.target.value as FlashcardMode)
+          }
+          aria-label="Select mode filter"
         >
-          Per scan
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${statsResetMode === "session" ? "active" : ""}`}
-          aria-pressed={statsResetMode === "session"}
-          onClick={() => setStatsResetMode("session")}
-        >
-          Per session
-        </button>
+          <option value="all">All</option>
+          <option value="qa">Q&amp;A</option>
+          <option value="multiple-choice">Multiple Choice</option>
+          <option value="fill-blank">Fill-in-the-blank</option>
+          <option value="assignment">Assignment</option>
+          <option value="true-false">True/False</option>
+          <option value="mix">Mix</option>
+        </select>
+      </div>
+      <div className="setting-row">
+        <span className="label">PAGE SIZE</span>
+        <div className="pill-grid">
+          {flashcardPageSizes.map((size) => (
+            <button
+              key={size}
+              type="button"
+              className={`pill pill-button ${
+                flashcardPageSize === size ? "active" : ""
+              }`}
+              aria-pressed={flashcardPageSize === size}
+              onClick={() => setFlashcardPageSize(size)}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">DEFAULT SCOPE</span>
+        <div className="pill-grid">
+          <button
+            type="button"
+            className={`pill pill-button ${
+              flashcardScope === "current" ? "active" : ""
+            }`}
+            aria-pressed={flashcardScope === "current"}
+            onClick={() => setFlashcardScope("current")}
+          >
+            Current note
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${flashcardScope === "vault" ? "active" : ""}`}
+            aria-pressed={flashcardScope === "vault"}
+            onClick={() => setFlashcardScope("vault")}
+          >
+            Whole vault
+          </button>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">STATISTICS RESET</span>
+        <div className="pill-grid">
+          <button
+            type="button"
+            className={`pill pill-button ${statsResetMode === "scan" ? "active" : ""}`}
+            aria-pressed={statsResetMode === "scan"}
+            onClick={() => setStatsResetMode("scan")}
+          >
+            Per scan
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${statsResetMode === "session" ? "active" : ""}`}
+            aria-pressed={statsResetMode === "session"}
+            onClick={() => setStatsResetMode("session")}
+          >
+            Per session
+          </button>
+        </div>
       </div>
     </div>
   </section>

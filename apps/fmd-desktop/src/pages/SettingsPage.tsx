@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
-import { FastFlashcardToolsSettings } from "../components/settings/FastFlashcardToolsSettings";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
 import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
 import {
@@ -139,7 +138,53 @@ export const SettingsPage = () => {
             </div>
             <div className="panel-body">
               <div className="setting-row">
-                <span className="label">Duration</span>
+                <span className="label">DEFAULT ORDER</span>
+                <div className="pill-grid">
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      settings.fastFlashcardOrder === "in-order" ? "active" : ""
+                    }`}
+                    aria-pressed={settings.fastFlashcardOrder === "in-order"}
+                    onClick={() => settings.setFastFlashcardOrder("in-order")}
+                  >
+                    In order
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      settings.fastFlashcardOrder === "random" ? "active" : ""
+                    }`}
+                    aria-pressed={settings.fastFlashcardOrder === "random"}
+                    onClick={() => settings.setFastFlashcardOrder("random")}
+                  >
+                    Random
+                  </button>
+                </div>
+              </div>
+              <div className="setting-row">
+                <span className="label">MODE</span>
+                <select
+                  className="text-input"
+                  value={settings.fastFlashcardMode}
+                  onChange={(event) =>
+                    settings.setFastFlashcardMode(
+                      event.target.value as typeof settings.fastFlashcardMode,
+                    )
+                  }
+                  aria-label="Select mode filter"
+                >
+                  <option value="all">All</option>
+                  <option value="qa">Q&amp;A</option>
+                  <option value="multiple-choice">Multiple Choice</option>
+                  <option value="fill-blank">Fill-in-the-blank</option>
+                  <option value="assignment">Assignment</option>
+                  <option value="true-false">True/False</option>
+                  <option value="mix">Mix</option>
+                </select>
+              </div>
+              <div className="setting-row">
+                <span className="label">DURATION</span>
                 <div className="pill-grid">
                   {FAST_FLASHCARD_DURATIONS.map((duration) => (
                     <button
@@ -156,17 +201,33 @@ export const SettingsPage = () => {
                   ))}
                 </div>
               </div>
-              <FastFlashcardToolsSettings
-                fastFlashcardOrder={settings.fastFlashcardOrder}
-                fastFlashcardMode={settings.fastFlashcardMode}
-                fastFlashcardScope={settings.fastFlashcardScope}
-                setFastFlashcardOrder={settings.setFastFlashcardOrder}
-                setFastFlashcardMode={settings.setFastFlashcardMode}
-                setFastFlashcardScope={settings.setFastFlashcardScope}
-                showSectionDividers
-              />
               <div className="setting-row">
-                <span className="label">Session History</span>
+                <span className="label">DEFAULT SCOPE</span>
+                <div className="pill-grid">
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      settings.fastFlashcardScope === "current" ? "active" : ""
+                    }`}
+                    aria-pressed={settings.fastFlashcardScope === "current"}
+                    onClick={() => settings.setFastFlashcardScope("current")}
+                  >
+                    Current note
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      settings.fastFlashcardScope === "vault" ? "active" : ""
+                    }`}
+                    aria-pressed={settings.fastFlashcardScope === "vault"}
+                    onClick={() => settings.setFastFlashcardScope("vault")}
+                  >
+                    Whole vault
+                  </button>
+                </div>
+              </div>
+              <div className="setting-row">
+                <span className="label">SESSION HISTORY</span>
                 <div className="setting-actions">
                   <button
                     type="button"
