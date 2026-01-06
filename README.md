@@ -1,74 +1,45 @@
----
-Cover: '[[README-01.png]]'
-Section: Blobbite
-Rank: Develop
-Projekt: FMDFlashcard
-Task: workspace
-tags:
-- README
-- Blobbite
-- Develop
-- FMDFlashcard
-- workspace
-link1: '[[README]]'
----
+# FMDFlashcard
 
-# Fast start setup
+Local-first, Markdown-based flashcards with built-in learning modes (including spaced repetition).
 
-> Note: Example commands for **Linux/macOS** (Terminal).  
-> On **Windows**, use PowerShell or Git Bash; the steps are the same, only the directory path may differ.
+The project is designed to work with existing Markdown notes (similar in spirit to an Obsidian-style vault),
+while adding a dedicated review experience and study progress tracking.
 
-### 1) Install Python + Git & check versions (single block)
+## What you can do
 
-```bash
-# --- Check Python (or install if missing) ---
-python3 --version || true
+- Use your existing Markdown files as the source of truth for learning content.
+- Extract flashcards from Markdown using simple, readable markers.
+- Review cards in multiple modes (e.g., standard flashcards, fast mode, spaced repetition).
+- Keep your learning workflow local-first.
 
-# Linux (Debian/Ubuntu)
-sudo apt update
-sudo apt install -y python3 python3-pip git
+> Note: The UX and feature set are evolving. If something is unclear, check the in-app Help and the docs in `docs/`.
 
-# macOS (Homebrew, if available)
-# brew install python git
+## Quickstart (run from source)
 
-# Verify versions
-python3 --version
-git --version
+If you want to run the desktop app from source, follow the full setup guide:
 
-```
+- **Developer setup:** `docs/dev/setup.md`
+- **Control script guide:** `docs/dev/control-script.md`
 
-## 2) Clone the repo & switch to a standard project directory
-```bash
-# Standard project directory (works on all systems):
-# Linux/macOS: ~/Projects
-mkdir -p ~/Projects
-cd ~/Projects
-```
-### Clone repository (replace URL)
-```bash
-git clone https://github.com/kleiveist/FMDFlashcard.git
-cd FMDFlashcard
-```
+A typical flow looks like:
 
-## 3) Control-Skript
-```bash
-cd ~/Projects/FMDFlashcard
-# optional: health check / doctor
-python3 tools/control.py --doctor
-```
+1. Clone this repo
+2. `python3 tools/control.py --doctor`
+3. `python3 tools/control.py --install`
+4. `python3 tools/control.py --tauri`
+5. `python3 tools/control.py --start`
 
-### 4) Install & start
+## Documentation
 
-```bash
-cd ~/Projects/FMDFlashcard
-# installation / setup
-python3 tools/control.py --install
-```
-### 5) tauri
-```bash
-python3 tools/control.py --tauri
-```
-### 6) start
-```bash
-python3 tools/control.py --start
-```
+- **Docs home:** `docs/index.md`
+- **User docs:** `docs/user/`
+- **Developer docs:** `docs/dev/`
+- **Architecture decisions:** `docs/adr/`
+
+## Contributing
+
+See `CONTRIBUTING.md` for development workflow and pull request guidelines.
+
+## License
+
+See `LICENSE` (if present in this repository).
