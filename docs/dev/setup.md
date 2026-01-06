@@ -68,7 +68,6 @@ python3 tools/control.py --start
 
 ## 7) Build (release bundles / native packaging)
 ```bash
-python3 to
 cd ~/Projects/FMDFlashcard
 # build desktop app bundles (runs: pnpm tauri build)
 python3 tools/control.py --build
