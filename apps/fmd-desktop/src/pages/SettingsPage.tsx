@@ -247,7 +247,7 @@ export const SettingsPage = () => {
           <ExamSettingsSection
             maxTotalPoints={settings.examMaxTotalPoints}
             taskCount={settings.examTaskCount}
-            taskPoints={settings.examTaskPoints}
+            taskPoints={settings.examTaskPoints.slice(0, settings.examTaskCount)}
             aiEvaluation={settings.examAiEvaluation}
             setMaxTotalPoints={settings.setExamMaxTotalPoints}
             setTaskCount={settings.setExamTaskCount}

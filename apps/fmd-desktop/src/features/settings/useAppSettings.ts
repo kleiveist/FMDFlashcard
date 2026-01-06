@@ -178,19 +178,45 @@ const buildDefaultExamTaskPoints = (taskCount: number, maxTotalPoints: number) =
   );
 };
 
-const normalizeExamTaskPoints = (
+const normalizeExamTaskPointsAll = (
   value: unknown,
   taskCount: number,
   maxTotalPoints: number,
 ) => {
-  if (!Array.isArray(value) || value.length === 0) {
-    return buildDefaultExamTaskPoints(taskCount, maxTotalPoints);
-  }
-  const normalized = value.map(clampExamTaskPointsValue).slice(0, taskCount);
-  while (normalized.length < taskCount) {
-    normalized.push(0);
+  const defaults = buildDefaultExamTaskPoints(taskCount, maxTotalPoints);
+  const raw = Array.isArray(value) ? value : [];
+  const normalized: number[] = [];
+  for (let index = 0; index < MAX_EXAM_TASK_COUNT; index += 1) {
+    const candidate = raw[index];
+    if (typeof candidate !== "undefined") {
+      normalized.push(clampExamTaskPointsValue(candidate));
+    } else {
+      normalized.push(index < defaults.length ? defaults[index] : 0);
+    }
   }
   return normalized;
+};
+
+const mergeExamTaskPointsAll = (
+  current: unknown,
+  updates: unknown,
+  taskCount: number,
+  maxTotalPoints: number,
+) => {
+  const normalized = normalizeExamTaskPointsAll(
+    current,
+    taskCount,
+    maxTotalPoints,
+  );
+  if (!Array.isArray(updates)) {
+    return normalized;
+  }
+  const next = [...normalized];
+  const limit = Math.min(updates.length, taskCount);
+  for (let index = 0; index < limit; index += 1) {
+    next[index] = clampExamTaskPointsValue(updates[index]);
+  }
+  return next;
 };
 
 const normalizeExamAiEvaluation = (value: unknown): ExamAiEvaluation => {
@@ -269,7 +295,8 @@ export const useAppSettings = () => {
   );
   const [examTaskCount, setExamTaskCountState] = useState(DEFAULT_EXAM_TASK_COUNT);
   const [examTaskPoints, setExamTaskPointsState] = useState(() =>
-    buildDefaultExamTaskPoints(
+    normalizeExamTaskPointsAll(
+      [],
       DEFAULT_EXAM_TASK_COUNT,
       DEFAULT_EXAM_MAX_TOTAL_POINTS,
     ),
@@ -288,19 +315,20 @@ export const useAppSettings = () => {
     const nextCount = clampExamTaskCount(value);
     setExamTaskCountState(nextCount);
     setExamTaskPointsState((prev) => {
-      const normalized = prev.map(clampExamTaskPointsValue).slice(0, nextCount);
-      while (normalized.length < nextCount) {
-        normalized.push(0);
-      }
-      return normalized;
+      return normalizeExamTaskPointsAll(prev, nextCount, examMaxTotalPoints);
     });
-  }, []);
+  }, [examMaxTotalPoints]);
 
   const setExamTaskPoints = useCallback(
     (value: number[]) => {
-      setExamTaskPointsState(
-        normalizeExamTaskPoints(value, examTaskCount, examMaxTotalPoints),
-      );
+      setExamTaskPointsState((prev) => {
+        return mergeExamTaskPointsAll(
+          prev,
+          value,
+          examTaskCount,
+          examMaxTotalPoints,
+        );
+      });
     },
     [examMaxTotalPoints, examTaskCount],
   );
@@ -432,7 +460,12 @@ export const useAppSettings = () => {
           updates.rightToolbarCollapsed ?? rightToolbarCollapsed,
         examMaxTotalPoints: updates.examMaxTotalPoints ?? examMaxTotalPoints,
         examTaskCount: updates.examTaskCount ?? examTaskCount,
-        examTaskPoints: updates.examTaskPoints ?? examTaskPoints,
+        examTaskPoints: mergeExamTaskPointsAll(
+          examTaskPoints,
+          updates.examTaskPoints,
+          updates.examTaskCount ?? examTaskCount,
+          updates.examMaxTotalPoints ?? examMaxTotalPoints,
+        ),
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
       };
       const saved = await saveSettings(nextSettings);
@@ -654,7 +687,7 @@ export const useAppSettings = () => {
         const storedExamTaskCount = clampExamTaskCount(
           settings.exam_task_count ?? DEFAULT_EXAM_TASK_COUNT,
         );
-        const storedExamTaskPoints = normalizeExamTaskPoints(
+        const storedExamTaskPoints = normalizeExamTaskPointsAll(
           settings.exam_task_points,
           storedExamTaskCount,
           storedExamMaxTotalPoints,

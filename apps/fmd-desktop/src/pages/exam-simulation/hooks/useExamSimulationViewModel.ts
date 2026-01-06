@@ -140,7 +140,11 @@ export const useExamSimulationViewModel = () => {
     previewExamParse.tasks.length,
     settings.examTaskCount,
   );
-  const plannedTaskPoints = settings.examTaskPoints.slice(0, plannedTaskCount);
+  const activeTaskPoints = useMemo(
+    () => settings.examTaskPoints.slice(0, settings.examTaskCount),
+    [settings.examTaskCount, settings.examTaskPoints],
+  );
+  const plannedTaskPoints = activeTaskPoints.slice(0, plannedTaskCount);
   const plannedMaxPoints = plannedTaskPoints.reduce((sum, value) => sum + value, 0);
 
   const hasTaskCountMismatch = previewExamParse.tasks.length < settings.examTaskCount;
@@ -153,20 +157,17 @@ export const useExamSimulationViewModel = () => {
   const runTasks = activeTasks.slice(0, activeTaskCount);
   const runTaskPoints = (activeExamSettings
     ? activeExamSettings.taskPoints
-    : settings.examTaskPoints
+    : activeTaskPoints
   ).slice(0, activeTaskCount);
   const runMaxPoints = runTaskPoints.reduce((sum, value) => sum + value, 0);
 
   const activeTask = runTasks[activeTaskIndex] ?? null;
   const activeTaskMaxPoints = runTaskPoints[activeTaskIndex] ?? 0;
 
-  const taskPointsSum = settings.examTaskPoints.reduce(
-    (sum, value) => sum + value,
-    0,
-  );
+  const taskPointsSum = activeTaskPoints.reduce((sum, value) => sum + value, 0);
   const remainingPoints = settings.examMaxTotalPoints - taskPointsSum;
   const isSettingsValid =
-    settings.examTaskPoints.length === settings.examTaskCount &&
+    activeTaskPoints.length === settings.examTaskCount &&
     taskPointsSum === settings.examMaxTotalPoints &&
     settings.examTaskCount >= 1 &&
     settings.examTaskCount <= 20;
@@ -203,7 +204,7 @@ export const useExamSimulationViewModel = () => {
     const snapshot: ExamSettingsSnapshot = {
       maxTotalPoints: settings.examMaxTotalPoints,
       taskCount: settings.examTaskCount,
-      taskPoints: settings.examTaskPoints,
+      taskPoints: activeTaskPoints,
       aiEvaluation: settings.examAiEvaluation,
     };
     // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
@@ -225,7 +226,7 @@ export const useExamSimulationViewModel = () => {
     settings.examAiEvaluation,
     settings.examMaxTotalPoints,
     settings.examTaskCount,
-    settings.examTaskPoints,
+    activeTaskPoints,
   ]);
 
   const handleResetExam = useCallback(() => {
