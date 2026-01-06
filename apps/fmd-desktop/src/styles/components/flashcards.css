@@ -8,8 +8,8 @@
 .flashcard-item {
   padding: 14px;
   border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  border: 1px solid var(--block-border);
   display: flex;
   flex-direction: column;
   gap: 10px;

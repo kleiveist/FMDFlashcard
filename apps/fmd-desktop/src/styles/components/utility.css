@@ -2,9 +2,9 @@
 .empty-state {
   padding: 18px;
   border-radius: 16px;
-  border: 1px dashed var(--line);
+  border: 1px dashed var(--block-border);
   color: var(--muted);
-  background: var(--panel-warm);
+  background: var(--block-bg);
 }
 
 .error {

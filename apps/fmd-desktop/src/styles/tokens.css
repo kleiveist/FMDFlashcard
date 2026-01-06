@@ -22,6 +22,11 @@
   --muted: #5b6265;
   --line: rgba(18, 24, 27, 0.12);
   --line-soft: rgba(18, 24, 27, 0.08);
+  --block-bg-base: var(--panel);
+  --block-bg: var(--block-bg-base);
+  --block-border-base: var(--line-soft);
+  --block-border: var(--block-border-base);
+  --block-glow: transparent;
   --field-bg-base: var(--panel);
   --field-bg: var(--field-bg-base);
   --field-border-base: var(--line-soft);
@@ -67,6 +72,11 @@
   --muted: #a3abb0;
   --line: rgba(237, 242, 244, 0.16);
   --line-soft: rgba(237, 242, 244, 0.1);
+  --block-bg-base: var(--panel);
+  --block-bg: var(--block-bg-base);
+  --block-border-base: var(--line-soft);
+  --block-border: var(--block-border-base);
+  --block-glow: transparent;
   --shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
   --shadow-soft: 0 12px 24px rgba(0, 0, 0, 0.3);
   --bg-gradient: radial-gradient(
@@ -101,5 +111,12 @@
       var(--accent) 10%
     );
     --field-glow: color-mix(in srgb, var(--accent) 18%, transparent);
+    --block-bg: color-mix(in srgb, var(--block-bg-base) 95%, var(--accent) 5%);
+    --block-border: color-mix(
+      in srgb,
+      var(--block-border-base) 92%,
+      var(--accent) 8%
+    );
+    --block-glow: color-mix(in srgb, var(--accent) 12%, transparent);
   }
 }
