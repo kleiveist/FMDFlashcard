@@ -59,6 +59,7 @@ export const SidebarNav = ({
     activeTab === "spaced-repetition";
   const toggleLabel = isToolbarCollapsed ? "Expand toolbar" : "Collapse toolbar";
   const toggleSymbol = isToolbarCollapsed ? ">" : "<";
+  const languageSummary = settings.language === "de" ? "Deutsch" : "English";
   const helpTopicOrder = [
     "flashcard-syntax",
     "app-sections",
@@ -244,27 +245,35 @@ export const SidebarNav = ({
             </div>
           ) : null}
           {toolbarMode === "settings" ? (
-            <nav className="nav settings-nav" aria-label="Settings pages">
-              {SETTINGS_PAGES.map((page) => (
-                <button
-                  key={page.id}
-                  type="button"
-                  className={`nav-item ${
-                    activeSettingsPage === page.id ? "active" : ""
-                  }`}
-                  aria-pressed={activeSettingsPage === page.id}
-                  aria-controls={`settings-page-${page.id}`}
-                  onClick={() => {
-                    setActiveSettingsPage(page.id);
-                    if (activeTab !== "settings") {
-                      onTabChange("settings");
-                    }
-                  }}
-                >
-                  {page.label}
-                </button>
-              ))}
-            </nav>
+            <>
+              <nav className="nav settings-nav" aria-label="Settings pages">
+                {SETTINGS_PAGES.map((page) => (
+                  <button
+                    key={page.id}
+                    type="button"
+                    className={`nav-item ${
+                      activeSettingsPage === page.id ? "active" : ""
+                    }`}
+                    aria-pressed={activeSettingsPage === page.id}
+                    aria-controls={`settings-page-${page.id}`}
+                    onClick={() => {
+                      setActiveSettingsPage(page.id);
+                      if (activeTab !== "settings") {
+                        onTabChange("settings");
+                      }
+                    }}
+                  >
+                    {page.label}
+                  </button>
+                ))}
+              </nav>
+              {activeSettingsPage === "language" ? (
+                <div className="sidebar-card" aria-label="Language summary">
+                  <span className="label">Language</span>
+                  <span className="value">{languageSummary}</span>
+                </div>
+              ) : null}
+            </>
           ) : null}
           {toolbarMode === "help" ? (
             <nav className="nav">

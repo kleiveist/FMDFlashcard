@@ -20,7 +20,6 @@ const LANGUAGE_LABELS: Record<
 
 export const DataSyncTabContent = () => (
   <>
-    <p className="muted">Storage and sync options will land here later.</p>
     <div className="setting-row">
       <span className="label">Local storage path</span>
       <input
@@ -48,7 +47,7 @@ export const DataSyncTabContent = () => (
       <input
         type="text"
         className="text-input"
-        value="Coming later"
+        value="Coming later."
         disabled
         aria-label="Sync provider"
       />

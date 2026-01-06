@@ -31,7 +31,6 @@
   grid-column: 1;
 }
 
-.settings-app-grid .settings-tabs-panel,
 .settings-app-grid .settings-performance-panel {
   grid-column: 2;
 }
@@ -43,7 +42,7 @@
   align-items: start;
 }
 
-.settings-tabs-panel .settings-tab-content {
+.settings-tab-content {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -55,7 +54,6 @@
   }
 
   .settings-app-grid .vault-index-panel,
-  .settings-app-grid .settings-tabs-panel,
   .settings-app-grid .settings-performance-panel {
     grid-column: 1;
   }
