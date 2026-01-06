@@ -12,7 +12,10 @@ from __future__ import annotations
 import argparse
 import importlib
 import inspect
+import os
 import platform
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Callable, cast
@@ -28,6 +31,59 @@ from doctor import run as run_doctor  # type: ignore
 RunInstall = Callable[[bool], int]
 RunVsCodeInstall = Callable[[], int]
 run_doctor = cast(Callable[[bool], int], run_doctor)
+
+
+def _which_pnpm() -> str:
+    """
+    Returns an executable name/path for pnpm that works on Win/macOS/Linux.
+    """
+    exe = shutil.which("pnpm")
+    if exe:
+        return exe
+    if os.name == "nt":
+        exe = shutil.which("pnpm.cmd") or shutil.which("pnpm.exe")
+        if exe:
+            return exe
+    raise SystemExit("pnpm not found in PATH. Install pnpm (or enable corepack) and retry.")
+
+
+def _run(cmd: list[str], cwd: Path) -> int:
+    """
+    Run a command with streaming stdout/stderr. Returns process returncode.
+    """
+    print(f"[control] cwd={cwd}")
+    print(f"[control] $ {' '.join(cmd)}")
+    p = subprocess.Popen(cmd, cwd=str(cwd))
+    return p.wait()
+
+
+def _repo_root_from_tools_control() -> Path:
+    """
+    tools/control.py -> repo root is one level up from tools/.
+    """
+    return Path(__file__).resolve().parents[1]
+
+
+def cmd_build_desktop() -> int:
+    """
+    Build Tauri desktop app (release bundles).
+    Equivalent to: cd apps/fmd-desktop && pnpm tauri build
+    """
+    repo_root = _repo_root_from_tools_control()
+    app_dir = (repo_root / "apps" / "fmd-desktop").resolve()
+    legacy_dir = (repo_root / "tools" / "apps" / "fmd-desktop").resolve()
+    if not app_dir.exists() and legacy_dir.exists():
+        app_dir = legacy_dir
+    if not app_dir.exists():
+        raise SystemExit(f"Desktop app dir not found: {app_dir}")
+
+    pnpm = _which_pnpm()
+
+    rc = _run([pnpm, "install"], cwd=app_dir)
+    if rc != 0:
+        return rc
+
+    return _run([pnpm, "tauri", "build"], cwd=app_dir)
 
 
 def _detect_installer_module() -> str | None:
@@ -153,6 +209,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Runs the Tauri desktop app (pnpm tauri dev).",
     )
     parser.add_argument(
+        "--build",
+        action="store_true",
+        help="Build the desktop app (pnpm tauri build).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Only show which commands would run.",
@@ -220,12 +281,19 @@ def main(argv: list[str] | None = None) -> int:
             except Exception:
                 exit_code = max(exit_code, run_runner(args.dry_run))
 
+    if args.build:
+        handled = True
+        exit_code = max(exit_code, cmd_build_desktop())
+
     if args.doctor or args.check:
         handled = True
         exit_code = max(exit_code, run_doctor(args.json))
 
     if not handled:
-        print("Please specify a command (e.g. --doctor, --install, --tauri, or --start/--run).")
+        print(
+            "Please specify a command (e.g. --doctor, --install, --tauri, "
+            "or --start/--run/--build)."
+        )
         return 1
 
     return exit_code
