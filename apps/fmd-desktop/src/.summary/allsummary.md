@@ -1,4 +1,4 @@
-# Gesamtinhalte – Root: /home/kleif/Projects/FMDFlashcard/apps/fmd-desktop/src
+# Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/apps/fmd-desktop/src
 
 ## 📝 App.css — ./App.css
 
@@ -124,6 +124,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import { isValidHex, normalizeHex } from "../lib/color";
@@ -132,8 +133,10 @@ import { type VaultFile } from "../lib/tree";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
 import { usePreview } from "../features/preview/usePreview";
 import { useAppSettings } from "../features/settings/useAppSettings";
+import { type SettingsPageId } from "../features/settings/settingsNavigation";
 import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepetition";
 import { useVault } from "../features/vault/useVault";
+import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 
 type AppActions = {
   handlePickVault: () => Promise<boolean>;
@@ -151,6 +154,14 @@ type AppState = {
   actions: AppActions;
   flashcards: ReturnType<typeof useFlashcards>;
   fastFlashcards: ReturnType<typeof useFlashcards>;
+  help: {
+    activeTopicId: string | null;
+    setActiveTopicId: (value: string | null) => void;
+  };
+  settingsNav: {
+    activeSettingsPage: SettingsPageId;
+    setActiveSettingsPage: (value: SettingsPageId) => void;
+  };
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
   spacedRepetition: ReturnType<typeof useSpacedRepetition>;
@@ -159,8 +170,41 @@ type AppState = {
 
 const AppStateContext = createContext<AppState | null>(null);
 
+const countMarkdownFiles = (files: VaultFile[]) =>
+  files.reduce((count, file) => {
+    const relativePath = file.relative_path.replace(/\\/g, "/");
+    if (
+      relativePath
+        .split("/")
+        .some((segment) => segment.startsWith("."))
+    ) {
+      return count;
+    }
+    if (relativePath.toLowerCase().endsWith(".md")) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+
+const parseVaultWarningThreshold = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
+  const [activeHelpTopicId, setActiveHelpTopicId] = useState<string | null>(
+    null,
+  );
+  const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<
+    number | null
+  >(null);
+  const [activeSettingsPage, setActiveSettingsPage] =
+    useState<SettingsPageId>("appearance");
   const {
     activeNotePath,
     accentColor,
@@ -169,6 +213,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
+    maxFilesPerScan,
     setMaxFilesPerScan,
     setTheme,
     settingsLoaded,
@@ -281,13 +326,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false;
 
     const restoreVault = async () => {
-      const loaded = await loadVault(storedVaultPath, {
+      const results = await loadVault(storedVaultPath, {
         persist: false,
         clearOnFailure: false,
         errorMessage:
-          "Gespeicherter Vault ist nicht verfuegbar. Bitte neu auswaehlen.",
+          "Saved vault is unavailable. Please reselect.",
       });
-      if (!loaded && !cancelled) {
+      if (!results && !cancelled) {
         setVaultPath(null);
         await persistSettings({ vaultPath: null });
       }
@@ -372,7 +417,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     const previewSnapshot = takePreviewSnapshot();
     const flashcardsSnapshot = takeFlashcardsSnapshot();
 
-    const loaded = await pickVault({
+    const results = await pickVault({
       errorMessage: "Ausgewaehlter Vault ist nicht verfuegbar.",
       onBeforeLoad: () => {
         resetPreview();
@@ -384,7 +429,17 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       },
     });
 
-    return loaded;
+    if (results) {
+      const count = countMarkdownFiles(results);
+      const threshold = parseVaultWarningThreshold(maxFilesPerScan);
+      if (threshold && count > threshold) {
+        setLargeVaultWarningCount(count);
+      } else {
+        setLargeVaultWarningCount(null);
+      }
+    }
+
+    return Boolean(results);
   }, [
     pickVault,
     resetFlashcards,
@@ -394,6 +449,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setPreviewError,
     takeFlashcardsSnapshot,
     takePreviewSnapshot,
+    setLargeVaultWarningCount,
+    maxFilesPerScan,
   ]);
 
   const handleSelectFile = useCallback(
@@ -475,6 +532,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     [setMaxFilesPerScan],
   );
 
+  const handleLargeVaultWarningDismiss = useCallback(() => {
+    setLargeVaultWarningCount(null);
+  }, [setLargeVaultWarningCount]);
+
   const value: AppState = {
     actions: {
       handlePickVault,
@@ -489,6 +550,14 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     },
     flashcards,
     fastFlashcards,
+    help: {
+      activeTopicId: activeHelpTopicId,
+      setActiveTopicId: setActiveHelpTopicId,
+    },
+    settingsNav: {
+      activeSettingsPage,
+      setActiveSettingsPage,
+    },
     preview,
     settings,
     spacedRepetition,
@@ -496,7 +565,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
+    <AppStateContext.Provider value={value}>
+      {children}
+      <LargeVaultWarningModal
+        count={largeVaultWarningCount}
+        onClose={handleLargeVaultWarningDismiss}
+      />
+    </AppStateContext.Provider>
   );
 };
 
@@ -1468,6 +1543,56 @@ export const FileIcon = () => (
   </svg>
 );
 
+export const CardsIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="5" y="6" width="12" height="7" rx="2" />
+    <rect x="7" y="11" width="12" height="7" rx="2" />
+  </svg>
+);
+
+export const HelpIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9a2.5 2.5 0 1 1 5 1c0 1.4-1.5 2-2.4 2.7-0.4 0.3-0.6 0.7-0.6 1.3" />
+    <circle cx="12" cy="17.2" r="0.9" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const SettingsIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="4" y1="6" x2="20" y2="6" />
+    <circle cx="9" cy="6" r="2.5" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <circle cx="14" cy="12" r="2.5" />
+    <line x1="4" y1="18" x2="20" y2="18" />
+    <circle cx="11" cy="18" r="2.5" />
+  </svg>
+);
+
 ---
 
 ## 📝 KpiGrid.tsx — ./components/KpiGrid.tsx
@@ -1494,18 +1619,83 @@ export const KpiGrid = ({ items }: KpiGridProps) => (
 
 ---
 
+## 📝 LargeVaultWarningModal.tsx — ./components/LargeVaultWarningModal.tsx
+
+type LargeVaultWarningModalProps = {
+  count: number | null;
+  onClose: () => void;
+};
+
+export const LargeVaultWarningModal = ({
+  count,
+  onClose,
+}: LargeVaultWarningModalProps) => {
+  if (count === null) {
+    return null;
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div
+        className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="large-vault-warning-title"
+        aria-describedby="large-vault-warning-body"
+      >
+        <h3 id="large-vault-warning-title">Large Vault Detected</h3>
+        <div className="modal-body" id="large-vault-warning-body">
+          <p className="muted">
+            This vault contains {count} Markdown files. Loading and scanning may be
+            slower.
+          </p>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="primary" onClick={onClose}>
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+---
+
 ## 📝 PreviewPanel.tsx — ./components/PreviewPanel.tsx
 
+import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
 import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
+
+const markdownSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    table: [...(defaultSchema.attributes?.table ?? []), "className"],
+    th: [...(defaultSchema.attributes?.th ?? []), "align"],
+    td: [...(defaultSchema.attributes?.td ?? []), "align"],
+  },
+};
 
 type PreviewPanelProps = {
   editDraft: string;
   editError: string;
+  editCaretIndex: number | null;
   isEditing: boolean;
-  isSaving: boolean;
   emptyPreview: string;
   preview: string;
   previewError: string;
@@ -1513,18 +1703,631 @@ type PreviewPanelProps = {
   rawPreview: boolean;
   selectedFile: VaultFile | null;
   canEdit: boolean;
-  onEditCancel: () => void;
   onEditChange: (value: string) => void;
-  onEditSave: () => void;
-  onEditStart: () => void;
-  setRawPreview: (value: boolean | ((prev: boolean) => boolean)) => void;
+  onEditCaretApplied: () => void;
+  onEditExit: () => void;
+  onEditStart: (options?: {
+    caretIndex?: number | null;
+    origin?: "raw" | "markdown";
+  }) => void;
+  onToggleRawPreview: () => void;
+};
+
+const getRangeOffset = (container: HTMLElement, range: Range) => {
+  const offsetRange = document.createRange();
+  offsetRange.setStart(container, 0);
+  offsetRange.setEnd(range.startContainer, range.startOffset);
+  return offsetRange.toString().length;
+};
+
+const getSelectionRange = (container: HTMLElement) => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    return null;
+  }
+  const range = selection.getRangeAt(0);
+  if (!container.contains(range.startContainer)) {
+    return null;
+  }
+  return range;
+};
+
+const getRangeFromPoint = (x: number, y: number) => {
+  if ("caretRangeFromPoint" in document) {
+    return (document as Document & { caretRangeFromPoint?: (x: number, y: number) => Range | null })
+      .caretRangeFromPoint?.(x, y) ?? null;
+  }
+  if ("caretPositionFromPoint" in document) {
+    const position = (
+      document as Document & {
+        caretPositionFromPoint?: (
+          x: number,
+          y: number,
+        ) => { offsetNode: Node; offset: number } | null;
+      }
+    ).caretPositionFromPoint?.(x, y);
+    if (position) {
+      const range = document.createRange();
+      range.setStart(position.offsetNode, position.offset);
+      range.collapse(true);
+      return range;
+    }
+  }
+  return null;
+};
+
+const getRangeFromEvent = (
+  event: MouseEvent<HTMLDivElement>,
+  container: HTMLElement,
+) => {
+  const rangeFromPoint = getRangeFromPoint(event.clientX, event.clientY);
+  if (rangeFromPoint && container.contains(rangeFromPoint.startContainer)) {
+    return rangeFromPoint;
+  }
+  return getSelectionRange(container);
+};
+
+const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
+  if (plainOffset <= 0) {
+    return 0;
+  }
+  let rawIndex = 0;
+  let plainIndex = 0;
+  let inFence = false;
+  let inInlineCode = false;
+  let inLinkText = false;
+  let inLinkUrl = false;
+  let lineStart = true;
+
+  const skipToLineEnd = () => {
+    while (rawIndex < rawMarkdown.length && rawMarkdown[rawIndex] !== "\n") {
+      rawIndex += 1;
+    }
+  };
+
+  while (rawIndex < rawMarkdown.length) {
+    const char = rawMarkdown[rawIndex];
+
+    if (lineStart && rawMarkdown.startsWith("```", rawIndex)) {
+      inFence = !inFence;
+      skipToLineEnd();
+      continue;
+    }
+
+    if (char === "\n") {
+      lineStart = true;
+      if (plainIndex >= plainOffset) {
+        return rawIndex;
+      }
+      plainIndex += 1;
+      rawIndex += 1;
+      continue;
+    }
+
+    if (lineStart && !inFence) {
+      if (char === "#") {
+        while (rawMarkdown[rawIndex] === "#") {
+          rawIndex += 1;
+        }
+        if (rawMarkdown[rawIndex] === " ") {
+          rawIndex += 1;
+        }
+        continue;
+      }
+      if (char === ">") {
+        rawIndex += 1;
+        if (rawMarkdown[rawIndex] === " ") {
+          rawIndex += 1;
+        }
+        continue;
+      }
+      if (
+        (char === "-" || char === "*" || char === "+") &&
+        rawMarkdown[rawIndex + 1] === " "
+      ) {
+        rawIndex += 2;
+        continue;
+      }
+      if (char >= "0" && char <= "9") {
+        const markerStart = rawIndex;
+        while (rawMarkdown[rawIndex] >= "0" && rawMarkdown[rawIndex] <= "9") {
+          rawIndex += 1;
+        }
+        if (
+          rawMarkdown[rawIndex] === "." &&
+          rawMarkdown[rawIndex + 1] === " "
+        ) {
+          rawIndex += 2;
+          continue;
+        }
+        rawIndex = markerStart;
+      }
+    }
+
+    lineStart = false;
+
+    if (!inFence) {
+      if (inLinkUrl) {
+        if (char === ")") {
+          inLinkUrl = false;
+        }
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "`") {
+        inInlineCode = !inInlineCode;
+        rawIndex += 1;
+        continue;
+      }
+      if (!inInlineCode && (char === "*" || char === "_")) {
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "[") {
+        inLinkText = true;
+        rawIndex += 1;
+        continue;
+      }
+      if (inLinkText && char === "]") {
+        inLinkText = false;
+        if (rawMarkdown[rawIndex + 1] === "(") {
+          inLinkUrl = true;
+          rawIndex += 2;
+          continue;
+        }
+        rawIndex += 1;
+        continue;
+      }
+    }
+
+    if (plainIndex >= plainOffset) {
+      return rawIndex;
+    }
+    plainIndex += 1;
+    rawIndex += 1;
+  }
+
+  return rawMarkdown.length;
+};
+
+const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) => {
+  if (rawIndexTarget <= 0) {
+    return 0;
+  }
+  const target = Math.min(rawIndexTarget, rawMarkdown.length);
+  let rawIndex = 0;
+  let plainIndex = 0;
+  let inFence = false;
+  let inInlineCode = false;
+  let inLinkText = false;
+  let inLinkUrl = false;
+  let lineStart = true;
+
+  const skipToLineEnd = () => {
+    while (rawIndex < rawMarkdown.length && rawMarkdown[rawIndex] !== "\n") {
+      rawIndex += 1;
+    }
+  };
+
+  while (rawIndex < rawMarkdown.length && rawIndex < target) {
+    const char = rawMarkdown[rawIndex];
+
+    if (lineStart && rawMarkdown.startsWith("```", rawIndex)) {
+      inFence = !inFence;
+      skipToLineEnd();
+      continue;
+    }
+
+    if (char === "\n") {
+      lineStart = true;
+      plainIndex += 1;
+      rawIndex += 1;
+      continue;
+    }
+
+    if (lineStart && !inFence) {
+      if (char === "#") {
+        while (rawMarkdown[rawIndex] === "#") {
+          rawIndex += 1;
+        }
+        if (rawMarkdown[rawIndex] === " ") {
+          rawIndex += 1;
+        }
+        continue;
+      }
+      if (char === ">") {
+        rawIndex += 1;
+        if (rawMarkdown[rawIndex] === " ") {
+          rawIndex += 1;
+        }
+        continue;
+      }
+      if (
+        (char === "-" || char === "*" || char === "+") &&
+        rawMarkdown[rawIndex + 1] === " "
+      ) {
+        rawIndex += 2;
+        continue;
+      }
+      if (char >= "0" && char <= "9") {
+        const markerStart = rawIndex;
+        while (rawMarkdown[rawIndex] >= "0" && rawMarkdown[rawIndex] <= "9") {
+          rawIndex += 1;
+        }
+        if (
+          rawMarkdown[rawIndex] === "." &&
+          rawMarkdown[rawIndex + 1] === " "
+        ) {
+          rawIndex += 2;
+          continue;
+        }
+        rawIndex = markerStart;
+      }
+    }
+
+    lineStart = false;
+
+    if (!inFence) {
+      if (inLinkUrl) {
+        if (char === ")") {
+          inLinkUrl = false;
+        }
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "`") {
+        inInlineCode = !inInlineCode;
+        rawIndex += 1;
+        continue;
+      }
+      if (!inInlineCode && (char === "*" || char === "_")) {
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+        rawIndex += 1;
+        continue;
+      }
+      if (char === "[") {
+        inLinkText = true;
+        rawIndex += 1;
+        continue;
+      }
+      if (inLinkText && char === "]") {
+        inLinkText = false;
+        if (rawMarkdown[rawIndex + 1] === "(") {
+          inLinkUrl = true;
+          rawIndex += 2;
+          continue;
+        }
+        rawIndex += 1;
+        continue;
+      }
+    }
+
+    plainIndex += 1;
+    rawIndex += 1;
+  }
+
+  return plainIndex;
+};
+
+const findTextNodeAtOffset = (container: HTMLElement, offset: number) => {
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_TEXT,
+    null,
+  );
+  const range = document.createRange();
+  range.setStart(container, 0);
+
+  let current = walker.nextNode() as Text | null;
+  let lastTextNode: Text | null = null;
+
+  while (current) {
+    lastTextNode = current;
+    const nodeLength = current.nodeValue?.length ?? 0;
+    range.setEnd(current, nodeLength);
+    const endOffset = range.toString().length;
+
+    if (offset <= endOffset) {
+      let low = 0;
+      let high = nodeLength;
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        range.setEnd(current, mid);
+        const midOffset = range.toString().length;
+        if (midOffset < offset) {
+          low = mid + 1;
+        } else {
+          high = mid;
+        }
+      }
+      return { node: current, offset: low };
+    }
+
+    current = walker.nextNode() as Text | null;
+  }
+
+  if (lastTextNode) {
+    return {
+      node: lastTextNode,
+      offset: lastTextNode.nodeValue?.length ?? 0,
+    };
+  }
+
+  return null;
+};
+
+const setCaretAtPlainOffset = (container: HTMLElement, offset: number) => {
+  const selection = window.getSelection();
+  if (!selection) {
+    return;
+  }
+  const length = container.innerText.length;
+  const clampedOffset = Math.max(0, Math.min(offset, length));
+  const resolved = findTextNodeAtOffset(container, clampedOffset);
+  const range = document.createRange();
+  if (resolved) {
+    range.setStart(resolved.node, resolved.offset);
+  } else {
+    range.setStart(container, 0);
+  }
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+};
+
+const escapeMarkdownText = (text: string) =>
+  text
+    .replace(/\u00a0/g, " ")
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\*/g, "\\*")
+    .replace(/_/g, "\\_")
+    .replace(/~/g, "\\~");
+
+const escapeMarkdownLinkText = (text: string) =>
+  escapeMarkdownText(text).replace(/\[/g, "\\[").replace(/]/g, "\\]");
+
+const escapeMarkdownTableCell = (text: string) =>
+  escapeMarkdownText(text).replace(/\|/g, "\\|");
+
+const wrapInlineCode = (text: string) => {
+  const normalized = text.replace(/\u00a0/g, " ").replace(/\n+/g, " ");
+  const matches = normalized.match(/`+/g);
+  const fenceLength = matches
+    ? Math.max(...matches.map((match) => match.length)) + 1
+    : 1;
+  const fence = "`".repeat(fenceLength);
+  const needsPadding =
+    normalized.startsWith(" ") || normalized.endsWith(" ");
+  const content = needsPadding ? ` ${normalized} ` : normalized;
+  return `${fence}${content}${fence}`;
+};
+
+const wrapCodeBlock = (text: string) => {
+  const normalized = text.replace(/\r\n?/g, "\n");
+  const matches = normalized.match(/`+/g);
+  const fenceLength = matches
+    ? Math.max(...matches.map((match) => match.length)) + 1
+    : 3;
+  const fence = "`".repeat(Math.max(3, fenceLength));
+  const trimmed = normalized.replace(/\n$/, "");
+  return `${fence}\n${trimmed}\n${fence}\n\n`;
+};
+
+type MarkdownSerializeContext = {
+  listDepth: number;
+};
+
+const serializeMarkdownChildren = (
+  node: ParentNode,
+  context: MarkdownSerializeContext,
+) =>
+  Array.from(node.childNodes)
+    .map((child) => serializeMarkdownNode(child, context))
+    .join("");
+
+const serializeMarkdownNode = (
+  node: Node,
+  context: MarkdownSerializeContext,
+): string => {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return escapeMarkdownText(node.nodeValue ?? "");
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return "";
+  }
+
+  const element = node as HTMLElement;
+  const tag = element.tagName.toLowerCase();
+
+  if (tag === "br") {
+    return "\n";
+  }
+
+  if (tag === "p" || tag === "div") {
+    const content = serializeMarkdownChildren(element, context).trim();
+    return content ? `${content}\n\n` : "\n\n";
+  }
+
+  if (tag.startsWith("h") && tag.length === 2) {
+    const level = Number(tag[1]);
+    if (!Number.isNaN(level)) {
+      const content = serializeMarkdownChildren(element, context).trim();
+      return `${"#".repeat(level)} ${content}\n\n`;
+    }
+  }
+
+  if (tag === "strong" || tag === "b") {
+    return `**${serializeMarkdownChildren(element, context)}**`;
+  }
+
+  if (tag === "em" || tag === "i") {
+    return `*${serializeMarkdownChildren(element, context)}*`;
+  }
+
+  if (tag === "del" || tag === "s") {
+    return `~~${serializeMarkdownChildren(element, context)}~~`;
+  }
+
+  if (tag === "code") {
+    if (element.parentElement?.tagName.toLowerCase() === "pre") {
+      return "";
+    }
+    return wrapInlineCode(element.textContent ?? "");
+  }
+
+  if (tag === "pre") {
+    const code = element.querySelector("code")?.textContent ?? element.textContent ?? "";
+    return wrapCodeBlock(code);
+  }
+
+  if (tag === "blockquote") {
+    const content = serializeMarkdownChildren(element, context)
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    const lines = content.split("\n");
+    return `${lines.map((line) => (line ? `> ${line}` : ">")).join("\n")}\n\n`;
+  }
+
+  if (tag === "ul" || tag === "ol") {
+    return serializeMarkdownList(element, context);
+  }
+
+  if (tag === "li") {
+    return serializeMarkdownChildren(element, context).trim();
+  }
+
+  if (tag === "a") {
+    const href = element.getAttribute("href") ?? "";
+    const text = serializeMarkdownChildren(element, context).trim();
+    if (!href) {
+      return text;
+    }
+    return `[${escapeMarkdownLinkText(text)}](${href})`;
+  }
+
+  if (tag === "hr") {
+    return "---\n\n";
+  }
+
+  if (tag === "table") {
+    return serializeMarkdownTable(element, context);
+  }
+
+  return serializeMarkdownChildren(element, context);
+};
+
+const serializeMarkdownList = (
+  element: HTMLElement,
+  context: MarkdownSerializeContext,
+) => {
+  const isOrdered = element.tagName.toLowerCase() === "ol";
+  let index = Number(element.getAttribute("start") ?? "1");
+  if (Number.isNaN(index)) {
+    index = 1;
+  }
+  const indent = "  ".repeat(context.listDepth);
+  const items = Array.from(element.children).filter(
+    (child) => child.tagName.toLowerCase() === "li",
+  );
+  const lines: string[] = [];
+
+  items.forEach((item, itemIndex) => {
+    const content = serializeMarkdownChildren(item, {
+      ...context,
+      listDepth: context.listDepth + 1,
+    })
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    const marker = isOrdered ? `${index + itemIndex}. ` : "- ";
+    const itemLines = content ? content.split("\n") : [""];
+    lines.push(`${indent}${marker}${itemLines[0]}`);
+    itemLines.slice(1).forEach((line) => {
+      lines.push(`${indent}  ${line}`);
+    });
+  });
+
+  return `${lines.join("\n")}\n\n`;
+};
+
+const serializeMarkdownTable = (
+  element: HTMLElement,
+  context: MarkdownSerializeContext,
+) => {
+  const rows = Array.from(element.querySelectorAll("tr"));
+  if (rows.length === 0) {
+    return "";
+  }
+  const headerRow =
+    element.querySelector("thead tr") ?? rows[0];
+  const headerCells = Array.from(headerRow.children).map((cell) =>
+    serializeTableCell(cell as HTMLElement, context),
+  );
+  const bodyRows = rows.filter((row) => row !== headerRow);
+
+  const headerLine = `| ${headerCells.join(" | ")} |`;
+  const separatorLine = `| ${headerCells.map(() => "---").join(" | ")} |`;
+  const bodyLines = bodyRows.map((row) => {
+    const cells = Array.from(row.children).map((cell) =>
+      serializeTableCell(cell as HTMLElement, context),
+    );
+    return `| ${cells.join(" | ")} |`;
+  });
+
+  return `${[headerLine, separatorLine, ...bodyLines].join("\n")}\n\n`;
+};
+
+const serializeTableCell = (
+  element: HTMLElement,
+  context: MarkdownSerializeContext,
+) => {
+  const text = serializeMarkdownChildren(element, context)
+    .replace(/\n+/g, " ")
+    .trim();
+  return escapeMarkdownTableCell(text);
+};
+
+const serializeMarkdownFromHtml = (container: HTMLElement) => {
+  const markdown = serializeMarkdownChildren(container, { listDepth: 0 });
+  return markdown.replace(/\n{3,}/g, "\n\n").trimEnd();
+};
+
+const resolveRawCaretIndex = (container: HTMLElement, range: Range | null) => {
+  const resolvedRange = range ?? getSelectionRange(container);
+  if (!resolvedRange) {
+    return null;
+  }
+  return getRangeOffset(container, resolvedRange);
+};
+
+const resolveMarkdownCaretIndex = (
+  container: HTMLElement,
+  rawMarkdown: string,
+  range: Range | null,
+) => {
+  const resolvedRange = range ?? getSelectionRange(container);
+  if (!resolvedRange) {
+    return null;
+  }
+  const plainOffset = getRangeOffset(container, resolvedRange);
+  if (rawMarkdown.length === 0) {
+    return 0;
+  }
+  return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset);
 };
 
 export const PreviewPanel = ({
   editDraft,
   editError,
+  editCaretIndex,
   isEditing,
-  isSaving,
   emptyPreview,
   preview,
   previewError,
@@ -1532,94 +2335,191 @@ export const PreviewPanel = ({
   rawPreview,
   selectedFile,
   canEdit,
-  onEditCancel,
   onEditChange,
-  onEditSave,
+  onEditCaretApplied,
+  onEditExit,
   onEditStart,
-  setRawPreview,
-}: PreviewPanelProps) => (
-  <section className="panel preview-panel">
-    <div className="panel-header">
-      <div>
-        <h2>Vorschau</h2>
-        <p className="muted">
-          {selectedFile?.relative_path ?? "Keine Datei ausgewaehlt"}
-        </p>
+  onToggleRawPreview,
+}: PreviewPanelProps) => {
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const markdownEditorRef = useRef<HTMLDivElement | null>(null);
+  const markdownEditorHtmlRef = useRef<string | null>(null);
+  const markdownEditorReadyRef = useRef(false);
+
+  useEffect(() => {
+    if (!isEditing || rawPreview) {
+      markdownEditorReadyRef.current = false;
+      if (!isEditing) {
+        markdownEditorHtmlRef.current = null;
+      }
+      return;
+    }
+    if (!markdownEditorRef.current || markdownEditorReadyRef.current) {
+      return;
+    }
+    markdownEditorRef.current.innerHTML = markdownEditorHtmlRef.current ?? "";
+    markdownEditorReadyRef.current = true;
+  }, [isEditing, rawPreview]);
+
+  useEffect(() => {
+    if (!isEditing || !rawPreview || !editorRef.current) {
+      return;
+    }
+    if (typeof editCaretIndex !== "number") {
+      return;
+    }
+    const editor = editorRef.current;
+    const desiredIndex = editCaretIndex;
+    const nextIndex = Math.max(0, Math.min(desiredIndex, editor.value.length));
+    const handle = window.requestAnimationFrame(() => {
+      editor.focus();
+      editor.setSelectionRange(nextIndex, nextIndex);
+      onEditCaretApplied();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [editCaretIndex, isEditing, onEditCaretApplied, rawPreview]);
+
+  useEffect(() => {
+    if (!isEditing || rawPreview || !markdownEditorRef.current) {
+      return;
+    }
+    if (typeof editCaretIndex !== "number") {
+      return;
+    }
+    const editor = markdownEditorRef.current;
+    const plainOffset = mapRawIndexToPlainOffset(editDraft, editCaretIndex);
+    const handle = window.requestAnimationFrame(() => {
+      editor.focus();
+      setCaretAtPlainOffset(editor, plainOffset);
+      onEditCaretApplied();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [editCaretIndex, editDraft, isEditing, onEditCaretApplied, rawPreview]);
+
+  const handlePreviewClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (!canEdit || isEditing) {
+        return;
+      }
+      const origin = rawPreview ? "raw" : "markdown";
+      let caretIndex = preview.length === 0 ? 0 : null;
+      if (previewRef.current) {
+        const selection = getSelectionRange(previewRef.current);
+        if (selection && !selection.collapsed) {
+          return;
+        }
+        const range = getRangeFromEvent(event, previewRef.current);
+        const resolvedIndex = rawPreview
+          ? resolveRawCaretIndex(previewRef.current, range)
+          : resolveMarkdownCaretIndex(previewRef.current, preview, range);
+        if (typeof resolvedIndex === "number") {
+          caretIndex = resolvedIndex;
+        }
+        if (!rawPreview) {
+          markdownEditorHtmlRef.current = previewRef.current.innerHTML;
+        }
+      } else if (!rawPreview) {
+        markdownEditorHtmlRef.current = "";
+      }
+      if (caretIndex === null && preview.length > 0) {
+        caretIndex = preview.length;
+      }
+      onEditStart({ caretIndex, origin });
+    },
+    [canEdit, isEditing, onEditStart, preview, rawPreview],
+  );
+
+  const handleMarkdownInput = useCallback(() => {
+    if (!markdownEditorRef.current) {
+      return;
+    }
+    const nextValue = serializeMarkdownFromHtml(markdownEditorRef.current);
+    onEditChange(nextValue);
+  }, [onEditChange]);
+
+  return (
+    <section className="panel preview-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Vorschau</h2>
+          <p className="muted">
+            {selectedFile?.relative_path ?? "Keine Datei ausgewaehlt"}
+          </p>
+        </div>
+        <div className="preview-actions">
+          <button
+            type="button"
+            className={`ghost small ${rawPreview ? "active" : ""}`}
+            onClick={onToggleRawPreview}
+            aria-pressed={rawPreview}
+            disabled={!selectedFile}
+          >
+            {rawPreview ? "Markdown" : "Rohtext"}
+          </button>
+          {previewState === "loading" ? <span className="chip">Lade...</span> : null}
+        </div>
       </div>
-      <div className="preview-actions">
-        <button
-          type="button"
-          className={`ghost small ${rawPreview ? "active" : ""}`}
-          onClick={() => setRawPreview((prev) => !prev)}
-          aria-pressed={rawPreview}
-          disabled={!selectedFile || isEditing}
-        >
-          {rawPreview ? "Markdown" : "Rohtext"}
-        </button>
-        {previewState === "loading" ? <span className="chip">Lade...</span> : null}
-      </div>
-    </div>
-    <div className="panel-body preview-body">
-      {previewState === "error" ? <div className="error">{previewError}</div> : null}
-      <div className="preview-content">
-        {isEditing ? (
-          <textarea
-            className="preview-editor"
-            value={editDraft}
-            onChange={(event) => onEditChange(event.target.value)}
-            aria-label="Edit markdown preview"
-          />
-        ) : preview ? (
-          <div className={`preview ${rawPreview ? "raw" : "markdown"}`}>
-            {rawPreview ? (
-              <pre>{preview}</pre>
-            ) : (
-              <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-                {preview}
-              </ReactMarkdown>
-            )}
-          </div>
-        ) : (
-          <div className="preview placeholder">{emptyPreview}</div>
-        )}
-      </div>
-      {editError ? <div className="error">{editError}</div> : null}
-      {selectedFile ? (
-        <div className="preview-edit-actions">
+      <div className="panel-body preview-body">
+        {previewState === "error" ? (
+          <div className="error">{previewError}</div>
+        ) : null}
+        <div className="preview-content" onMouseUp={handlePreviewClick}>
           {isEditing ? (
-            <>
-              <button
-                type="button"
-                className="primary small preview-edit-button"
-                onClick={onEditSave}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </button>
-              <button
-                type="button"
-                className="ghost small preview-edit-button"
-                onClick={onEditCancel}
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="primary small preview-edit-button"
-              onClick={onEditStart}
-              disabled={!canEdit}
+            rawPreview ? (
+              <textarea
+                ref={editorRef}
+                className="preview-editor"
+                value={editDraft}
+                onChange={(event) => onEditChange(event.target.value)}
+                onBlur={onEditExit}
+                aria-label="Edit markdown preview"
+              />
+            ) : (
+              <div
+                ref={markdownEditorRef}
+                className="preview preview-editor markdown"
+                contentEditable
+                suppressContentEditableWarning
+                onInput={handleMarkdownInput}
+                onBlur={onEditExit}
+                role="textbox"
+                aria-multiline="true"
+                aria-label="Edit markdown preview"
+              />
+            )
+          ) : preview ? (
+            <div
+              ref={previewRef}
+              className={`preview ${rawPreview ? "raw" : "markdown"}`}
             >
-              Edit
-            </button>
+              {rawPreview ? (
+                <pre>{preview}</pre>
+              ) : (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+                  components={{
+                    table: ({ node: _node, ...props }) => (
+                      <div className="markdown-table">
+                        <table {...props} />
+                      </div>
+                    ),
+                  }}
+                >
+                  {preview}
+                </ReactMarkdown>
+              )}
+            </div>
+          ) : (
+            <div className="preview placeholder">{emptyPreview}</div>
           )}
         </div>
-      ) : null}
-    </div>
-  </section>
-);
+        {editError ? <div className="error">{editError}</div> : null}
+      </div>
+    </section>
+  );
+};
 
 ---
 
@@ -1631,9 +2531,17 @@ type AppearanceSectionProps = {
   accentColor: string;
   accentDraft: string;
   accentError: string;
+  editorExactColors: boolean;
+  editorBlueprintGrid: boolean;
+  editorBlueprintGridIntensity: "light" | "medium" | "strong";
   onAccentInputChange: (value: string) => void;
   onAccentPick: (value: string) => void;
   onCopyAccent: () => void;
+  onEditorExactColorsToggle: (value: boolean) => void;
+  onEditorBlueprintGridToggle: (value: boolean) => void;
+  onEditorBlueprintGridIntensityChange: (
+    value: "light" | "medium" | "strong",
+  ) => void;
   onThemeToggle: (nextTheme: ThemeMode) => void;
   theme: ThemeMode;
 };
@@ -1646,82 +2554,161 @@ const ACCENT_PALETTE = [
   "#D97706",
   "#DC2626",
 ];
+const GRID_INTENSITY_OPTIONS: Array<"light" | "medium" | "strong"> = [
+  "light",
+  "medium",
+  "strong",
+];
 
 export const AppearanceSection = ({
   accentColor,
   accentDraft,
   accentError,
+  editorExactColors,
+  editorBlueprintGrid,
+  editorBlueprintGridIntensity,
   onAccentInputChange,
   onAccentPick,
   onCopyAccent,
+  onEditorExactColorsToggle,
+  onEditorBlueprintGridToggle,
+  onEditorBlueprintGridIntensityChange,
   onThemeToggle,
   theme,
 }: AppearanceSectionProps) => (
   <section className="panel appearance-panel">
-    <h2>Erscheinungsbild</h2>
+    <h2>Appearance</h2>
     <p className="muted">
       Theme und Akzentfarbe praegen die Oberflaeche und bleiben gespeichert.
     </p>
-    <div className="setting-row">
-      <span className="label">Theme</span>
-      <div className="theme-toggle">
-        <span className="toggle-label">Hell</span>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={theme === "dark"}
-            onChange={(event) =>
-              onThemeToggle(event.target.checked ? "dark" : "light")
-            }
-            aria-label="Theme umschalten"
-          />
-          <span className="slider" />
-        </label>
-        <span className="toggle-label">Dunkel</span>
-      </div>
-      <span className="helper-text">
-        Wechselt Hintergrund, Kontrast und Panels.
-      </span>
-    </div>
-    <div className="setting-row">
-      <span className="label">Akzentfarbe</span>
-      <div className="accent-controls">
-        <input
-          type="color"
-          className="color-wheel"
-          value={accentColor}
-          onChange={(event) => onAccentPick(event.target.value)}
-          aria-label="Akzentfarbe auswaehlen"
-        />
-        <div className="accent-palette">
-          {ACCENT_PALETTE.map((color) => (
-            <button
-              key={color}
-              type="button"
-              className={`accent-swatch ${accentColor === color ? "active" : ""}`}
-              style={{ backgroundColor: color }}
-              onClick={() => onAccentPick(color)}
-              aria-label={`Akzentfarbe ${color}`}
+    <div className="appearance-layout">
+      <div className="appearance-main">
+        <div className="setting-row">
+          <span className="label">Theme</span>
+          <div className="theme-toggle">
+            <span className="toggle-label">Hell</span>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={theme === "dark"}
+                onChange={(event) =>
+                  onThemeToggle(event.target.checked ? "dark" : "light")
+                }
+                aria-label="Theme umschalten"
+              />
+              <span className="slider" />
+            </label>
+            <span className="toggle-label">Dunkel</span>
+          </div>
+          <span className="helper-text">
+            Wechselt Hintergrund, Kontrast und Panels.
+          </span>
+        </div>
+        <div className="setting-row">
+          <span className="label">Akzentfarbe</span>
+          <div className="accent-controls">
+            <input
+              type="color"
+              className="color-wheel"
+              value={accentColor}
+              onChange={(event) => onAccentPick(event.target.value)}
+              aria-label="Akzentfarbe auswaehlen"
             />
-          ))}
+            <div className="accent-palette">
+              {ACCENT_PALETTE.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`accent-swatch ${
+                    accentColor === color ? "active" : ""
+                  }`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => onAccentPick(color)}
+                  aria-label={`Akzentfarbe ${color}`}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="accent-hex">
+            <input
+              type="text"
+              className="hex-input"
+              value={accentDraft}
+              onChange={(event) => onAccentInputChange(event.target.value)}
+              placeholder="#RRGGBB"
+              aria-label="Akzentfarbe als HEX"
+            />
+            <button type="button" className="ghost small" onClick={onCopyAccent}>
+              Kopieren
+            </button>
+          </div>
+          <span className={`helper-text ${accentError ? "error-text" : ""}`}>
+            {accentError || "HEX Wert der Akzentfarbe (#RRGGBB)."}
+          </span>
         </div>
       </div>
-      <div className="accent-hex">
-        <input
-          type="text"
-          className="hex-input"
-          value={accentDraft}
-          onChange={(event) => onAccentInputChange(event.target.value)}
-          placeholder="#RRGGBB"
-          aria-label="Akzentfarbe als HEX"
-        />
-        <button type="button" className="ghost small" onClick={onCopyAccent}>
-          Kopieren
-        </button>
+      <div className="appearance-editor-panel">
+        <header className="appearance-editor-header">
+          <h3>Markdown Editor</h3>
+        </header>
+        <div className="setting-row">
+          <span className="label">EXACT COLORS (MARKDOWN EDITOR)</span>
+          <div className="theme-toggle">
+            <span className="toggle-label">Off</span>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={editorExactColors}
+                onChange={(event) =>
+                  onEditorExactColorsToggle(event.target.checked)
+                }
+                aria-label="Exact markdown editor colors"
+              />
+              <span className="slider" />
+            </label>
+            <span className="toggle-label">On</span>
+          </div>
+        </div>
+        <div className="setting-row">
+          <span className="label">BLUEPRINT GRID (MARKDOWN EDITOR)</span>
+          <div className="appearance-editor-inline">
+            <div className="theme-toggle">
+              <span className="toggle-label">Off</span>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={editorBlueprintGrid}
+                  onChange={(event) =>
+                    onEditorBlueprintGridToggle(event.target.checked)
+                  }
+                  aria-label="Blueprint grid for markdown editor"
+                />
+                <span className="slider" />
+              </label>
+              <span className="toggle-label">On</span>
+            </div>
+            <div className="appearance-grid-intensity">
+              <span className="toggle-label">Intensity</span>
+              <div className="pill-grid">
+                {GRID_INTENSITY_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`pill pill-button ${
+                      editorBlueprintGridIntensity === option ? "active" : ""
+                    }`}
+                    aria-pressed={editorBlueprintGridIntensity === option}
+                    onClick={() => onEditorBlueprintGridIntensityChange(option)}
+                  >
+                    {option.charAt(0).toUpperCase()}
+                    {option.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <span className={`helper-text ${accentError ? "error-text" : ""}`}>
-        {accentError || "HEX Wert der Akzentfarbe (#RRGGBB)."}
-      </span>
     </div>
   </section>
 );
@@ -1752,7 +2739,6 @@ const LANGUAGE_LABELS: Record<
 
 export const DataSyncTabContent = () => (
   <>
-    <p className="muted">Storage and sync options will land here later.</p>
     <div className="setting-row">
       <span className="label">Local storage path</span>
       <input
@@ -1780,7 +2766,7 @@ export const DataSyncTabContent = () => (
       <input
         type="text"
         className="text-input"
-        value="Coming later"
+        value="Coming later."
         disabled
         aria-label="Sync provider"
       />
@@ -1945,6 +2931,7 @@ export const FastFlashcardToolsSettings = ({
 ## 📝 FlashcardsSettingsSection.tsx — ./components/settings/FlashcardsSettingsSection.tsx
 
 import type {
+  FlashcardMode,
   FlashcardOrder,
   FlashcardPageSize,
   FlashcardScope,
@@ -1952,133 +2939,143 @@ import type {
 } from "../../features/flashcards/useFlashcards";
 
 type FlashcardsSettingsSectionProps = {
+  flashcardMode: FlashcardMode;
   flashcardOrder: FlashcardOrder;
   flashcardPageSize: FlashcardPageSize;
   flashcardPageSizes: FlashcardPageSize[];
   flashcardScope: FlashcardScope;
+  setFlashcardMode: (value: FlashcardMode) => void;
   setFlashcardOrder: (value: FlashcardOrder) => void;
   setFlashcardPageSize: (value: FlashcardPageSize) => void;
   setFlashcardScope: (value: FlashcardScope) => void;
-  setSolutionRevealEnabled: (value: boolean) => void;
   setStatsResetMode: (value: StatsResetMode) => void;
-  solutionRevealEnabled: boolean;
   statsResetMode: StatsResetMode;
 };
 
 export const FlashcardsSettingsSection = ({
+  flashcardMode,
   flashcardOrder,
   flashcardPageSize,
   flashcardPageSizes,
   flashcardScope,
+  setFlashcardMode,
   setFlashcardOrder,
   setFlashcardPageSize,
   setFlashcardScope,
-  setSolutionRevealEnabled,
   setStatsResetMode,
-  solutionRevealEnabled,
   statsResetMode,
 }: FlashcardsSettingsSectionProps) => (
   <section className="panel settings-flashcards-panel">
-    <h2>Flashcard</h2>
-    <p className="muted">Default behavior for scans and review sessions.</p>
-    <div className="setting-row">
-      <span className="label">Default scope</span>
-      <div className="pill-grid">
-        <button
-          type="button"
-          className={`pill pill-button ${
-            flashcardScope === "current" ? "active" : ""
-          }`}
-          aria-pressed={flashcardScope === "current"}
-          onClick={() => setFlashcardScope("current")}
-        >
-          Current note
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${flashcardScope === "vault" ? "active" : ""}`}
-          aria-pressed={flashcardScope === "vault"}
-          onClick={() => setFlashcardScope("vault")}
-        >
-          Whole vault
-        </button>
+    <div className="panel-header">
+      <div>
+        <h2>Flashcard Tools</h2>
+        <p className="muted">Default behavior for scans and review sessions.</p>
       </div>
     </div>
-    <div className="setting-row">
-      <span className="label">Default order</span>
-      <div className="pill-grid">
-        <button
-          type="button"
-          className={`pill pill-button ${
-            flashcardOrder === "in-order" ? "active" : ""
-          }`}
-          aria-pressed={flashcardOrder === "in-order"}
-          onClick={() => setFlashcardOrder("in-order")}
-        >
-          In order
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${flashcardOrder === "random" ? "active" : ""}`}
-          aria-pressed={flashcardOrder === "random"}
-          onClick={() => setFlashcardOrder("random")}
-        >
-          Random
-        </button>
-      </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Page size</span>
-      <div className="pill-grid">
-        {flashcardPageSizes.map((size) => (
+    <div className="panel-body">
+      <div className="setting-row">
+        <span className="label">DEFAULT ORDER</span>
+        <div className="pill-grid">
           <button
-            key={size}
             type="button"
             className={`pill pill-button ${
-              flashcardPageSize === size ? "active" : ""
+              flashcardOrder === "in-order" ? "active" : ""
             }`}
-            aria-pressed={flashcardPageSize === size}
-            onClick={() => setFlashcardPageSize(size)}
+            aria-pressed={flashcardOrder === "in-order"}
+            onClick={() => setFlashcardOrder("in-order")}
           >
-            {size}
+            In order
           </button>
-        ))}
+          <button
+            type="button"
+            className={`pill pill-button ${flashcardOrder === "random" ? "active" : ""}`}
+            aria-pressed={flashcardOrder === "random"}
+            onClick={() => setFlashcardOrder("random")}
+          >
+            Random
+          </button>
+        </div>
       </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Solution reveal</span>
-      <div className="toggle-row">
-        <span className="toggle-label">{solutionRevealEnabled ? "On" : "Off"}</span>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={solutionRevealEnabled}
-            onChange={(event) => setSolutionRevealEnabled(event.target.checked)}
-            aria-label="Solution reveal"
-          />
-          <span className="slider" />
-        </label>
+      <div className="setting-row">
+        <span className="label">MODE</span>
+        <select
+          className="text-input"
+          value={flashcardMode}
+          onChange={(event) =>
+            setFlashcardMode(event.target.value as FlashcardMode)
+          }
+          aria-label="Select mode filter"
+        >
+          <option value="all">All</option>
+          <option value="qa">Q&amp;A</option>
+          <option value="multiple-choice">Multiple Choice</option>
+          <option value="fill-blank">Fill-in-the-blank</option>
+          <option value="assignment">Assignment</option>
+          <option value="true-false">True/False</option>
+          <option value="mix">Mix</option>
+        </select>
       </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Statistics reset</span>
-      <div className="pill-grid">
-        <button
-          type="button"
-          className={`pill pill-button ${statsResetMode === "scan" ? "active" : ""}`}
-          aria-pressed={statsResetMode === "scan"}
-          onClick={() => setStatsResetMode("scan")}
-        >
-          Per scan
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${statsResetMode === "session" ? "active" : ""}`}
-          aria-pressed={statsResetMode === "session"}
-          onClick={() => setStatsResetMode("session")}
-        >
-          Per session
-        </button>
+      <div className="setting-row">
+        <span className="label">PAGE SIZE</span>
+        <div className="pill-grid">
+          {flashcardPageSizes.map((size) => (
+            <button
+              key={size}
+              type="button"
+              className={`pill pill-button ${
+                flashcardPageSize === size ? "active" : ""
+              }`}
+              aria-pressed={flashcardPageSize === size}
+              onClick={() => setFlashcardPageSize(size)}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">DEFAULT SCOPE</span>
+        <div className="pill-grid">
+          <button
+            type="button"
+            className={`pill pill-button ${
+              flashcardScope === "current" ? "active" : ""
+            }`}
+            aria-pressed={flashcardScope === "current"}
+            onClick={() => setFlashcardScope("current")}
+          >
+            Current note
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${flashcardScope === "vault" ? "active" : ""}`}
+            aria-pressed={flashcardScope === "vault"}
+            onClick={() => setFlashcardScope("vault")}
+          >
+            Whole vault
+          </button>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">STATISTICS RESET</span>
+        <div className="pill-grid">
+          <button
+            type="button"
+            className={`pill pill-button ${statsResetMode === "scan" ? "active" : ""}`}
+            aria-pressed={statsResetMode === "scan"}
+            onClick={() => setStatsResetMode("scan")}
+          >
+            Per scan
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${statsResetMode === "session" ? "active" : ""}`}
+            aria-pressed={statsResetMode === "session"}
+            onClick={() => setStatsResetMode("session")}
+          >
+            Per session
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -2102,7 +3099,6 @@ export const PerformanceTabContent = ({
   setScanParallelism,
 }: PerformanceTabContentProps) => (
   <>
-    <p className="muted">Tune vault scans for larger libraries.</p>
     <div className="setting-row">
       <span className="label">Max files per vault scan</span>
       <input
@@ -2115,7 +3111,9 @@ export const PerformanceTabContent = ({
         placeholder="Optional"
         aria-label="Max files per vault scan"
       />
-      <span className="helper-text">Leave empty for no limit.</span>
+      <span className="helper-text">
+        Leave empty to disable the large vault warning.
+      </span>
     </div>
     <div className="setting-row">
       <span className="label">Scan parallelism</span>
@@ -2133,18 +3131,62 @@ export const PerformanceTabContent = ({
         ))}
       </div>
     </div>
-    <div className="setting-row">
-      <span className="label">Watcher debounce/throttle</span>
-      <input
-        type="text"
-        className="text-input"
-        value="Coming later"
-        disabled
-        aria-label="Watcher debounce or throttle (coming later)"
-      />
-    </div>
   </>
 );
+
+---
+
+## 📝 ResetSessionHistoryModal.tsx — ./components/settings/ResetSessionHistoryModal.tsx
+
+type ResetSessionHistoryModalProps = {
+  isOpen: boolean;
+  isPending?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+export const ResetSessionHistoryModal = ({
+  isOpen,
+  isPending = false,
+  onCancel,
+  onConfirm,
+}: ResetSessionHistoryModalProps) => {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div
+        className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reset-session-history-title"
+        aria-describedby="reset-session-history-body"
+      >
+        <h3 id="reset-session-history-title">Reset Session History</h3>
+        <div className="modal-body" id="reset-session-history-body">
+          <p className="muted">
+            This will delete all saved session results (top scores and recent runs).
+          </p>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="ghost" onClick={onCancel} disabled={isPending}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="primary"
+            onClick={onConfirm}
+            disabled={isPending}
+          >
+            {isPending ? "Resetting..." : "Reset"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 ---
 
@@ -2185,116 +3227,120 @@ export const SpacedRepetitionSettingsSection = ({
   setSpacedRepetitionRepetitionStrength,
 }: SpacedRepetitionSettingsSectionProps) => (
   <section className="panel spaced-repetition-panel">
-    <h2>Spaced Repetition</h2>
-    <p className="muted">Configure spaced repetition behavior.</p>
-    <div className="setting-row">
-      <span className="label">Boxes</span>
-      <div className="pill-grid">
-        {spacedRepetitionBoxOptions.map((box) => (
-          <button
-            key={box}
-            type="button"
-            className={`pill pill-button ${spacedRepetitionBoxes === box ? "active" : ""}`}
-            aria-pressed={spacedRepetitionBoxes === box}
-            onClick={() => setSpacedRepetitionBoxes(box)}
-          >
-            {box} Boxes
-          </button>
-        ))}
+    <div className="panel-header">
+      <div>
+        <h2>Spaced Repetition Tools</h2>
+        <p className="muted">Configure spaced repetition behavior.</p>
       </div>
     </div>
-    <div className="setting-row">
-      <span className="label">Default order</span>
-      <div className="pill-grid">
-        <button
-          type="button"
-          className={`pill pill-button ${
-            spacedRepetitionOrder === "in-order" ? "active" : ""
-          }`}
-          aria-pressed={spacedRepetitionOrder === "in-order"}
-          onClick={() => setSpacedRepetitionOrder("in-order")}
-        >
-          In order
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${
-            spacedRepetitionOrder === "random" ? "active" : ""
-          }`}
-          aria-pressed={spacedRepetitionOrder === "random"}
-          onClick={() => setSpacedRepetitionOrder("random")}
-        >
-          Random
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${
-            spacedRepetitionOrder === "repetition" ? "active" : ""
-          }`}
-          aria-pressed={spacedRepetitionOrder === "repetition"}
-          onClick={() => setSpacedRepetitionOrder("repetition")}
-        >
-          Repetition
-        </button>
-      </div>
-      <span className="helper-text">
-        In order keeps scan order. Random shuffles on load. Repetition prioritizes
-        lower boxes and skips the last box.
-      </span>
-      {spacedRepetitionOrder === "repetition" && (
-        <div className="setting-subrow">
-          <span className="label">Repetition strength</span>
-          <div className="pill-grid">
-            <button
-              type="button"
-              className={`pill pill-button ${
-                spacedRepetitionRepetitionStrength === "weak" ? "active" : ""
-              }`}
-              aria-pressed={spacedRepetitionRepetitionStrength === "weak"}
-              onClick={() => setSpacedRepetitionRepetitionStrength("weak")}
-            >
-              Weak
-            </button>
-            <button
-              type="button"
-              className={`pill pill-button ${
-                spacedRepetitionRepetitionStrength === "medium" ? "active" : ""
-              }`}
-              aria-pressed={spacedRepetitionRepetitionStrength === "medium"}
-              onClick={() => setSpacedRepetitionRepetitionStrength("medium")}
-            >
-              Medium
-            </button>
-            <button
-              type="button"
-              className={`pill pill-button ${
-                spacedRepetitionRepetitionStrength === "strong" ? "active" : ""
-              }`}
-              aria-pressed={spacedRepetitionRepetitionStrength === "strong"}
-              onClick={() => setSpacedRepetitionRepetitionStrength("strong")}
-            >
-              Strong
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-    <div className="setting-row">
-      <span className="label">Page size</span>
-      <div className="pill-grid">
-        {spacedRepetitionPageSizes.map((size) => (
+    <div className="panel-body">
+      <div className="setting-row">
+        <span className="label">DEFAULT ORDER</span>
+        <div className="pill-grid">
           <button
-            key={size}
             type="button"
             className={`pill pill-button ${
-              spacedRepetitionPageSize === size ? "active" : ""
+              spacedRepetitionOrder === "in-order" ? "active" : ""
             }`}
-            aria-pressed={spacedRepetitionPageSize === size}
-            onClick={() => setSpacedRepetitionPageSize(size)}
+            aria-pressed={spacedRepetitionOrder === "in-order"}
+            onClick={() => setSpacedRepetitionOrder("in-order")}
           >
-            {size}
+            In order
           </button>
-        ))}
+          <button
+            type="button"
+            className={`pill pill-button ${
+              spacedRepetitionOrder === "random" ? "active" : ""
+            }`}
+            aria-pressed={spacedRepetitionOrder === "random"}
+            onClick={() => setSpacedRepetitionOrder("random")}
+          >
+            Random
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${
+              spacedRepetitionOrder === "repetition" ? "active" : ""
+            }`}
+            aria-pressed={spacedRepetitionOrder === "repetition"}
+            onClick={() => setSpacedRepetitionOrder("repetition")}
+          >
+            Repetition
+          </button>
+        </div>
+        <span className="helper-text">
+          In order keeps scan order. Random shuffles on load. Repetition prioritizes
+          lower boxes and skips the last box.
+        </span>
+      </div>
+      <div className="setting-row">
+        <span className="label">PAGE SIZE</span>
+        <div className="pill-grid">
+          {spacedRepetitionPageSizes.map((size) => (
+            <button
+              key={size}
+              type="button"
+              className={`pill pill-button ${
+                spacedRepetitionPageSize === size ? "active" : ""
+              }`}
+              aria-pressed={spacedRepetitionPageSize === size}
+              onClick={() => setSpacedRepetitionPageSize(size)}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">BOXES</span>
+        <div className="pill-grid">
+          {spacedRepetitionBoxOptions.map((box) => (
+            <button
+              key={box}
+              type="button"
+              className={`pill pill-button ${spacedRepetitionBoxes === box ? "active" : ""}`}
+              aria-pressed={spacedRepetitionBoxes === box}
+              onClick={() => setSpacedRepetitionBoxes(box)}
+            >
+              {box} Boxes
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">REPETITION STRENGTH</span>
+        <div className="pill-grid">
+          <button
+            type="button"
+            className={`pill pill-button ${
+              spacedRepetitionRepetitionStrength === "weak" ? "active" : ""
+            }`}
+            aria-pressed={spacedRepetitionRepetitionStrength === "weak"}
+            onClick={() => setSpacedRepetitionRepetitionStrength("weak")}
+          >
+            Weak
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${
+              spacedRepetitionRepetitionStrength === "medium" ? "active" : ""
+            }`}
+            aria-pressed={spacedRepetitionRepetitionStrength === "medium"}
+            onClick={() => setSpacedRepetitionRepetitionStrength("medium")}
+          >
+            Medium
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${
+              spacedRepetitionRepetitionStrength === "strong" ? "active" : ""
+            }`}
+            aria-pressed={spacedRepetitionRepetitionStrength === "strong"}
+            onClick={() => setSpacedRepetitionRepetitionStrength("strong")}
+          >
+            Strong
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -2304,7 +3350,11 @@ export const SpacedRepetitionSettingsSection = ({
 
 ## 📝 VaultIndexSection.tsx — ./components/settings/VaultIndexSection.tsx
 
+import { useState } from "react";
 import { type LoadState } from "../../lib/types";
+import { DataSyncTabContent } from "./DataSyncTabContent";
+
+type VaultIndexTab = "vault" | "data-sync";
 
 type VaultIndexSectionProps = {
   lastOpenedFile: string | null;
@@ -2322,108 +3372,168 @@ export const VaultIndexSection = ({
   onRescanVault,
   vaultIndexedComplete,
   vaultPath,
-}: VaultIndexSectionProps) => (
-  <section className="panel vault-index-panel">
-    <div>
-      <h2>Vault &amp; Index</h2>
-      <p className="muted">Vault path, last opened note, and index status.</p>
-    </div>
-    <div className="setting-row">
-      <span className="label">Current vault path</span>
-      <div className="setting-inline">
-        <span className="value path-value">{vaultPath ?? "—"}</span>
-        <button
-          type="button"
-          className="ghost small"
-          onClick={onCopyVaultPath}
-          disabled={!vaultPath}
-        >
-          Copy
-        </button>
-      </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Last opened</span>
-      <span className="value path-value">{lastOpenedFile ?? "Not loaded yet"}</span>
-    </div>
-    <div className="setting-row">
-      <span className="label">Status indicators</span>
-      <div className="status-list">
-        <div className="status-item">
-          <label className="status-checkbox">
-            <input
-              type="checkbox"
-              checked={vaultIndexedComplete}
-              disabled
-              aria-label="Fully processed"
-            />
-            <span>Fully processed</span>
-          </label>
-          <span className="helper-text">All notes have been scanned and indexed.</span>
+}: VaultIndexSectionProps) => {
+  const [activeTab, setActiveTab] = useState<VaultIndexTab>("vault");
+  const isVaultTab = activeTab === "vault";
+
+  return (
+    <section className="panel vault-index-panel">
+      <div className="panel-header settings-tab-header">
+        <div>
+          <h2>Vault &amp; Index</h2>
         </div>
-        <div className="status-item">
-          <div className="status-row">
-            <span>Watcher active</span>
-            <div className="toggle-row">
-              <span className="toggle-label">Coming later</span>
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  checked={false}
-                  disabled
-                  aria-label="Watcher active (coming later)"
-                />
-                <span className="slider" />
-              </label>
+        <div className="settings-tabs" role="tablist" aria-label="Vault settings tabs">
+          <button
+            type="button"
+            className={`pill pill-button ${isVaultTab ? "active" : ""}`}
+            onClick={() => setActiveTab("vault")}
+            role="tab"
+            aria-selected={isVaultTab}
+            aria-controls="vault-index-tab-panel"
+            id="vault-index-tab"
+          >
+            Vault &amp; Index
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${isVaultTab ? "" : "active"}`}
+            onClick={() => setActiveTab("data-sync")}
+            role="tab"
+            aria-selected={!isVaultTab}
+            aria-controls="data-sync-tab-panel"
+            id="data-sync-tab"
+          >
+            Data &amp; Sync
+          </button>
+        </div>
+      </div>
+      {isVaultTab ? (
+        <div
+          className="settings-tab-panel"
+          role="tabpanel"
+          id="vault-index-tab-panel"
+          aria-labelledby="vault-index-tab"
+        >
+          <p className="muted">Vault path, last opened note, and index status.</p>
+          <div className="setting-row">
+            <span className="label">Current vault path</span>
+            <div className="setting-inline">
+              <span className="value path-value">{vaultPath ?? "—"}</span>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={onCopyVaultPath}
+                disabled={!vaultPath}
+              >
+                Copy
+              </button>
             </div>
           </div>
-        </div>
-        <div className="status-item">
-          <div className="status-row">
-            <span>Auto-scan</span>
-            <div className="toggle-row">
-              <span className="toggle-label">Coming later</span>
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  checked={false}
-                  disabled
-                  aria-label="Auto-scan (coming later)"
-                />
-                <span className="slider" />
-              </label>
+          <div className="setting-row">
+            <span className="label">Last opened</span>
+            <span className="value path-value">
+              {lastOpenedFile ?? "Not loaded yet"}
+            </span>
+          </div>
+          <div className="setting-row">
+            <span className="label">Status indicators</span>
+            <div className="status-list">
+              <div className="status-item">
+                <label className="status-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={vaultIndexedComplete}
+                    disabled
+                    aria-label="Fully processed"
+                  />
+                  <span>Fully processed</span>
+                </label>
+                <span className="helper-text">
+                  All notes have been scanned and indexed.
+                </span>
+              </div>
+              <div className="status-item">
+                <div className="status-row">
+                  <span>Watcher active</span>
+                  <div className="toggle-row">
+                    <span className="toggle-label">Coming later</span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={false}
+                        disabled
+                        aria-label="Watcher active (coming later)"
+                      />
+                      <span className="slider" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="status-item">
+                <div className="status-row">
+                  <span>Auto-scan</span>
+                  <div className="toggle-row">
+                    <span className="toggle-label">Coming later</span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={false}
+                        disabled
+                        aria-label="Auto-scan (coming later)"
+                      />
+                      <span className="slider" />
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+          <div className="setting-row">
+            <span className="label">Actions</span>
+            <div className="setting-actions">
+              <button
+                type="button"
+                className="ghost small"
+                onClick={onRescanVault}
+                disabled={!vaultPath || listState === "loading"}
+              >
+                Rescan vault
+              </button>
+              <button type="button" className="ghost small" disabled>
+                Reset index
+              </button>
+            </div>
+            <span className="helper-text">Reset index is coming later.</span>
+          </div>
         </div>
-      </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Actions</span>
-      <div className="setting-actions">
-        <button
-          type="button"
-          className="ghost small"
-          onClick={onRescanVault}
-          disabled={!vaultPath || listState === "loading"}
+      ) : (
+        <div
+          className="settings-tab-panel"
+          role="tabpanel"
+          id="data-sync-tab-panel"
+          aria-labelledby="data-sync-tab"
         >
-          Rescan vault
-        </button>
-        <button type="button" className="ghost small" disabled>
-          Reset index
-        </button>
-      </div>
-      <span className="helper-text">Reset index is coming later.</span>
-    </div>
-  </section>
-);
+          <p className="muted">Storage and sync options will land here later.</p>
+          <div className="settings-tab-content">
+            <DataSyncTabContent />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
 
 ---
 
 ## 📝 SidebarNav.tsx — ./components/SidebarNav.tsx
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppState } from "./AppStateProvider";
 import { vaultBaseName } from "../lib/path";
+import { VaultTree } from "./VaultTree";
+import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons";
+import { helpTopics, resolveText } from "../pages/help/helpContent";
+import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
 
 type TabKey =
   | "dashboard"
@@ -2432,6 +3542,8 @@ type TabKey =
   | "fast-flashcard"
   | "help"
   | "settings";
+
+type ToolbarMode = "cards" | "vault" | "settings" | "help";
 
 type SidebarNavProps = {
   activeTab: TabKey;
@@ -2446,12 +3558,58 @@ export const SidebarNav = ({
   isMobileNavOpen,
   onMobileNavClose,
 }: SidebarNavProps) => {
-  const { actions, settings, vault } = useAppState();
+  const { actions, help, preview, settings, settingsNav, vault } = useAppState();
+  const [toolbarMode, setToolbarMode] = useState<ToolbarMode>("cards");
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const { activeSettingsPage, setActiveSettingsPage } = settingsNav;
+  const isToolbarCollapsed = settings.rightToolbarCollapsed;
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
-  const isCollapsed = settings.rightToolbarCollapsed && !isMobileNavOpen;
+  const fileCountLabel = useMemo(() => {
+    if (!vault.vaultPath) {
+      return "No vault selected";
+    }
+    if (vault.files.length === 0) {
+      return "Keine Markdown-Dateien";
+    }
+    return `${vault.files.length} Markdown-Datei${
+      vault.files.length === 1 ? "" : "en"
+    }`;
+  }, [vault.files.length, vault.vaultPath]);
+  const isCollapsed = isToolbarCollapsed && !isMobileNavOpen;
+  const isCardsTab =
+    activeTab === "dashboard" ||
+    activeTab === "flashcard" ||
+    activeTab === "fast-flashcard" ||
+    activeTab === "spaced-repetition";
+  const toggleLabel = isToolbarCollapsed ? "Expand toolbar" : "Collapse toolbar";
+  const toggleSymbol = isToolbarCollapsed ? ">" : "<";
+  const helpTopicOrder = [
+    "flashcard-syntax",
+    "app-sections",
+    "settings",
+    "advanced",
+    "vault",
+    "extras",
+  ];
+  const helpNavTopics = helpTopicOrder
+    .map((id) => helpTopics.find((topic) => topic.id === id))
+    .filter((topic): topic is (typeof helpTopics)[number] => Boolean(topic));
+  const handleTogglePath = (path: string, isOpen: boolean) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      if (isOpen) {
+        next.add(path);
+      } else {
+        next.delete(path);
+      }
+      return next;
+    });
+  };
 
   return (
     <aside
@@ -2459,30 +3617,20 @@ export const SidebarNav = ({
       className={`sidebar ${isCollapsed ? "collapsed" : ""}`}
       aria-label="Primary navigation"
     >
-      {isCollapsed ? (
-        <button
-          type="button"
-          className="sidebar-rail"
-          onClick={() => settings.setRightToolbarCollapsed(false)}
-          aria-label="Expand toolbar"
-        >
-          <span className="rail-arrow">&gt;</span>
-        </button>
-      ) : (
+      <button
+        type="button"
+        className="sidebar-handle"
+        onClick={() => settings.setRightToolbarCollapsed((prev) => !prev)}
+        aria-label={toggleLabel}
+        title={toggleLabel}
+      >
+        <span className="sidebar-handle-chevron" aria-hidden="true">
+          {toggleSymbol}
+        </span>
+      </button>
+      {isCollapsed ? null : (
         <>
-          <div className="brand">
-            <button
-              type="button"
-              className="brand-mark"
-              onClick={() => settings.setRightToolbarCollapsed(true)}
-              aria-label="Collapse toolbar"
-            >
-              FMD
-            </button>
-            <div className="brand-text">
-              <span className="brand-title">FMD Flashcard</span>
-              <span className="brand-sub">Vault-first study workspace</span>
-            </div>
+          <div className="sidebar-head">
             <button
               type="button"
               className="mobile-nav-close"
@@ -2491,91 +3639,182 @@ export const SidebarNav = ({
             >
               Close
             </button>
-          </div>
-          <nav className="nav">
-            <button
-              type="button"
-              className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
-              onClick={() => onTabChange("dashboard")}
-            >
-              Dashboard
-            </button>
-            <button
-              type="button"
-              className={`nav-item ${activeTab === "flashcard" ? "active" : ""}`}
-              onClick={() => onTabChange("flashcard")}
-            >
-              Flashcard
-            </button>
-            <button
-              type="button"
-              className={`nav-item ${
-                activeTab === "fast-flashcard" ? "active" : ""
-              }`}
-              onClick={() => onTabChange("fast-flashcard")}
-            >
-              Fast Flashcard
-            </button>
-            <button
-              type="button"
-              className={`nav-item ${
-                activeTab === "spaced-repetition" ? "active" : ""
-              }`}
-              onClick={() => onTabChange("spaced-repetition")}
-            >
-              Spaced Repetition
-            </button>
-            <button
-              type="button"
-              className={`nav-item nav-item-help ${
-                activeTab === "help" ? "active" : ""
-              }`}
-              onClick={() => onTabChange("help")}
-            >
-              <span>Help</span>
-              <span className="nav-subtext">
-                Quick reminders for this workflow.
-              </span>
-            </button>
-          </nav>
-          <div className="sidebar-footer">
             <button
               type="button"
               className="vault-status"
               onClick={actions.handlePickVault}
-              title={vault.vaultPath ?? "Vault auswaehlen"}
-              aria-label="Vault auswaehlen"
+              title={vault.vaultPath ?? "Select vault"}
+              aria-label="Select vault"
             >
-              <span className="label">Aktiver Vault</span>
+              <span className="label">Active Vault</span>
               <span className="value">
-                Vault: {vault.vaultPath ? vaultRootName : "Nicht gesetzt"}
+                Vault: {vault.vaultPath ? vaultRootName : "Not set"}
               </span>
             </button>
-            <button
-              type="button"
-              className={`nav-icon ${activeTab === "settings" ? "active" : ""}`}
-              onClick={() => onTabChange("settings")}
-              aria-label="Einstellungen"
-              title="Einstellungen"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="sidebar-icon-row">
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  toolbarMode === "cards" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setToolbarMode("cards");
+                  if (!isCardsTab) {
+                    onTabChange("flashcard");
+                  }
+                }}
+                aria-label="Study flashcards"
+                title="Study"
               >
-                <line x1="4" y1="6" x2="20" y2="6" />
-                <circle cx="9" cy="6" r="2.5" />
-                <line x1="4" y1="12" x2="20" y2="12" />
-                <circle cx="14" cy="12" r="2.5" />
-                <line x1="4" y1="18" x2="20" y2="18" />
-                <circle cx="11" cy="18" r="2.5" />
-              </svg>
-            </button>
+                <CardsIcon />
+              </button>
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  toolbarMode === "vault" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setToolbarMode("vault");
+                  if (activeTab !== "dashboard") {
+                    onTabChange("dashboard");
+                  }
+                }}
+                aria-label="Vault directory"
+                aria-controls="sidebar-vault-panel"
+                aria-expanded={toolbarMode === "vault"}
+                title="Vault directory"
+              >
+                <FolderIcon />
+              </button>
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  toolbarMode === "settings" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setToolbarMode("settings");
+                  onTabChange("settings");
+                }}
+                aria-label="Settings"
+                title="Settings"
+              >
+                <SettingsIcon />
+              </button>
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  toolbarMode === "help" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setToolbarMode("help");
+                  onTabChange("help");
+                }}
+                aria-label="Help"
+                title="Help"
+              >
+                <HelpIcon />
+              </button>
+            </div>
+            <div
+              className="sidebar-divider sidebar-divider-muted"
+              aria-hidden="true"
+            />
           </div>
+          {toolbarMode === "cards" ? (
+            <nav className="nav">
+              <button
+                type="button"
+                className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
+                onClick={() => onTabChange("dashboard")}
+              >
+                Makedon
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeTab === "flashcard" ? "active" : ""}`}
+                onClick={() => onTabChange("flashcard")}
+              >
+                Flashcard
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${
+                  activeTab === "fast-flashcard" ? "active" : ""
+                }`}
+                onClick={() => onTabChange("fast-flashcard")}
+              >
+                Fast Flashcard
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${
+                  activeTab === "spaced-repetition" ? "active" : ""
+                }`}
+                onClick={() => onTabChange("spaced-repetition")}
+              >
+                Spaced Repetition
+              </button>
+            </nav>
+          ) : null}
+          {toolbarMode === "vault" ? (
+            <div className="sidebar-vault-panel" id="sidebar-vault-panel">
+              <VaultTree
+                expandedPaths={expandedPaths}
+                fileCountLabel={fileCountLabel}
+                files={vault.files}
+                listError={vault.listError}
+                listState={vault.listState}
+                onTogglePath={handleTogglePath}
+                onSelectFile={actions.handleSelectFile}
+                selectedFile={preview.selectedFile}
+                vaultPath={vault.vaultPath}
+              />
+            </div>
+          ) : null}
+          {toolbarMode === "settings" ? (
+            <>
+              <nav className="nav settings-nav" aria-label="Settings pages">
+                {SETTINGS_PAGES.map((page) => (
+                  <button
+                    key={page.id}
+                    type="button"
+                    className={`nav-item ${
+                      activeSettingsPage === page.id ? "active" : ""
+                    }`}
+                    aria-pressed={activeSettingsPage === page.id}
+                    aria-controls={`settings-page-${page.id}`}
+                    onClick={() => {
+                      setActiveSettingsPage(page.id);
+                      if (activeTab !== "settings") {
+                        onTabChange("settings");
+                      }
+                    }}
+                  >
+                    {page.label}
+                  </button>
+                ))}
+              </nav>
+            </>
+          ) : null}
+          {toolbarMode === "help" ? (
+            <nav className="nav">
+              {helpNavTopics.map((topic) => (
+                <button
+                  key={topic.id}
+                  type="button"
+                  className={`nav-item ${
+                    help.activeTopicId === topic.id ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    help.setActiveTopicId(topic.id);
+                    onTabChange("help");
+                  }}
+                >
+                  {resolveText(topic.title, settings.language)}
+                </button>
+              ))}
+            </nav>
+          ) : null}
         </>
       )}
     </aside>
@@ -2655,46 +3894,87 @@ export const StatsPanel = ({
 
 ## 📝 VaultTree.tsx — ./components/VaultTree.tsx
 
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { FileIcon, FolderIcon } from "./icons";
 import { vaultBaseName } from "../lib/path";
 import { buildTree, type TreeNode, type VaultFile } from "../lib/tree";
 import { type LoadState } from "../lib/types";
 
+const INDENT_STEP = 12;
+const OVERFLOW_DEPTH = 4;
+
+const getIndentVars = (depth: number): CSSProperties =>
+  ({
+    "--tree-indent": `${depth * INDENT_STEP}px`,
+    "--tree-overflow": `${Math.max(0, depth - OVERFLOW_DEPTH) * INDENT_STEP}px`,
+  } as CSSProperties);
+
+const getMaxDepth = (nodes: TreeNode[], depth: number): number => {
+  let maxDepth = depth;
+  for (const node of nodes) {
+    if (node.type === "dir" && node.children?.length) {
+      maxDepth = Math.max(maxDepth, getMaxDepth(node.children, depth + 1));
+    } else {
+      maxDepth = Math.max(maxDepth, depth);
+    }
+  }
+  return maxDepth;
+};
+
 type VaultTreeProps = {
+  expandedPaths: Set<string>;
   fileCountLabel: string;
   files: VaultFile[];
   listError: string;
   listState: LoadState;
+  onTogglePath: (path: string, isOpen: boolean) => void;
   onSelectFile: (file: VaultFile) => void;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
 };
 
 export const VaultTree = ({
+  expandedPaths,
   fileCountLabel,
   files,
   listError,
   listState,
+  onTogglePath,
   onSelectFile,
   selectedFile,
   vaultPath,
 }: VaultTreeProps) => {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const treeNodes = useMemo(() => buildTree(files), [files]);
+  const maxDepth = useMemo(
+    () => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0),
+    [treeNodes],
+  );
+  const hasDeepIndent = maxDepth > OVERFLOW_DEPTH;
 
-  const renderTreeNodes = (nodes: TreeNode[]) =>
+  const renderTreeNodes = (nodes: TreeNode[], depth: number) =>
     nodes.map((node) => {
+      const indentStyle = getIndentVars(depth);
       if (node.type === "dir") {
+        const isOpen = expandedPaths.has(node.path);
         return (
-          <details className="tree-dir" key={node.path}>
-            <summary className="tree-item">
+          <details
+            className="tree-dir"
+            key={node.path}
+            open={isOpen}
+            onToggle={(event) => {
+              onTogglePath(node.path, event.currentTarget.open);
+            }}
+          >
+            <summary className="tree-item" title={node.path} style={indentStyle}>
               <span className="tree-icon">
                 <FolderIcon />
               </span>
               <span className="tree-name">{node.name}</span>
             </summary>
-            <div className="tree-children">{renderTreeNodes(node.children ?? [])}</div>
+            <div className="tree-children">
+              {renderTreeNodes(node.children ?? [], depth + 1)}
+            </div>
           </details>
         );
       }
@@ -2712,6 +3992,7 @@ export const VaultTree = ({
           onClick={() => fileRef && onSelectFile(fileRef)}
           title={node.path}
           disabled={!fileRef}
+          style={indentStyle}
         >
           <span className="tree-icon">
             <FileIcon />
@@ -2722,39 +4003,129 @@ export const VaultTree = ({
     });
 
   return (
-    <details className="vault-details">
-      <summary>
-        <span>Datenverzeichnis</span>
+    <div className="vault-details">
+      <div className="vault-details-header">
+        <span>Vault Directory</span>
         <span className="vault-summary">{fileCountLabel}</span>
-      </summary>
-      <div className="vault-body">
-        {!vaultPath ? (
-          <div className="empty-state">
-            Waehle einen Vault, um das Verzeichnis anzuzeigen.
-          </div>
-        ) : null}
-        {listState === "loading" ? <span className="chip">Scanne...</span> : null}
-        {listError ? <div className="error">{listError}</div> : null}
-        {vaultPath && listState === "idle" && treeNodes.length === 0 ? (
-          <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
-        ) : null}
-        {vaultPath && listState === "idle" && treeNodes.length > 0 ? (
-          <div className="vault-tree">
-            <details className="tree-dir" open>
-              <summary className="tree-item">
-                <span className="tree-icon">
-                  <FolderIcon />
-                </span>
-                <span className="tree-name">{vaultRootName}</span>
-              </summary>
-              <div className="tree-children">{renderTreeNodes(treeNodes)}</div>
-            </details>
-          </div>
-        ) : null}
       </div>
-    </details>
+      <div className="vault-body">
+        <div
+          className={`vault-tree-scroll${hasDeepIndent ? " vault-tree-scroll-wide" : ""}`}
+        >
+          {!vaultPath ? (
+            <div className="empty-state">
+              Select a vault to view the directory.
+            </div>
+          ) : null}
+          {listState === "loading" ? <span className="chip">Scanne...</span> : null}
+          {listError ? <div className="error">{listError}</div> : null}
+          {vaultPath && listState === "idle" && treeNodes.length === 0 ? (
+            <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
+          ) : null}
+          {vaultPath && listState === "idle" && treeNodes.length > 0 ? (
+            <div className="vault-tree">
+              <details className="tree-dir" open>
+                <summary
+                  className="tree-item"
+                  style={getIndentVars(0)}
+                >
+                  <span className="tree-icon">
+                    <FolderIcon />
+                  </span>
+                  <span className="tree-name">{vaultRootName}</span>
+                </summary>
+                <div className="tree-children">
+                  {renderTreeNodes(treeNodes, 1)}
+                </div>
+              </details>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 };
+
+---
+
+## 📝 constants.ts — ./features/fast-flashcard/constants.ts
+
+export const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48] as const;
+
+export type FastFlashcardDuration = (typeof FAST_FLASHCARD_DURATIONS)[number];
+
+---
+
+## 📝 logic.test.ts — ./features/flashcards/logic.test.ts
+
+import { describe, expect, it } from "vitest";
+import type { Flashcard } from "../../lib/flashcards";
+import {
+  calculateFlashcardStats,
+  evaluateFlashcardResult,
+  type CompositePartState,
+} from "./logic";
+
+const buildCompositeCard = (): Flashcard => ({
+  kind: "composite",
+  parts: [
+    {
+      kind: "multiple-choice",
+      question: "Pick one",
+      options: [
+        { key: "a", text: "A" },
+        { key: "b", text: "B" },
+      ],
+      correctKeys: ["a"],
+    },
+  ],
+});
+
+describe("evaluateFlashcardResult", () => {
+  it("returns incorrect when a composite part is wrong", () => {
+    const card = buildCompositeCard();
+    const compositeStates: Record<number, CompositePartState[]> = {
+      0: [{ selections: ["b"] }],
+    };
+
+    const result = evaluateFlashcardResult(
+      card,
+      0,
+      {},
+      {},
+      {},
+      {},
+      compositeStates,
+    );
+
+    expect(result).toBe("incorrect");
+  });
+});
+
+describe("calculateFlashcardStats", () => {
+  it("counts composite submissions using the same result logic", () => {
+    const card = buildCompositeCard();
+    const compositeStates: Record<number, CompositePartState[]> = {
+      0: [{ selections: ["b"] }],
+    };
+
+    const stats = calculateFlashcardStats(
+      [card],
+      { 0: true },
+      {},
+      {},
+      {},
+      {},
+      compositeStates,
+    );
+
+    expect(stats).toEqual({
+      correctCount: 0,
+      incorrectCount: 1,
+      correctPercent: 0,
+    });
+  });
+});
 
 ---
 
@@ -2986,7 +4357,7 @@ export const evaluateFlashcardResult = (
   if (card.kind === "composite") {
     const partStates = compositeStates?.[cardIndex] ?? [];
     const allCorrect = card.parts.every((part, partIndex) =>
-      evaluateFlashcardPartResult(part, partStates[partIndex] ?? {}),
+      evaluateFlashcardPartResult(part, partStates[partIndex] ?? {}) === "correct",
     );
     return allCorrect ? "correct" : "incorrect";
   }
@@ -4007,6 +5378,18 @@ export const usePreview = () => {
 
 ---
 
+## 📝 settingsNavigation.ts — ./features/settings/settingsNavigation.ts
+
+export const SETTINGS_PAGES = [
+  { id: "app-settings", label: "App Settings" },
+  { id: "review-tools", label: "Review Tools" },
+  { id: "appearance", label: "Appearance" },
+] as const;
+
+export type SettingsPageId = (typeof SETTINGS_PAGES)[number]["id"];
+
+---
+
 ## 📝 useAppSettings.ts — ./features/settings/useAppSettings.ts
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -4023,6 +5406,10 @@ import {
   type StatsResetMode,
 } from "../flashcards/useFlashcards";
 import {
+  FAST_FLASHCARD_DURATIONS,
+  type FastFlashcardDuration,
+} from "../fast-flashcard/constants";
+import {
   DEFAULT_SPACED_REPETITION_PAGE_SIZE,
   SPACED_REPETITION_BOXES,
   SPACED_REPETITION_PAGE_SIZES,
@@ -4033,6 +5420,7 @@ import {
 } from "../spaced-repetition/useSpacedRepetition";
 
 type AppLanguage = "de" | "en";
+type EditorGridIntensity = "light" | "medium" | "strong";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 
 type AppSettings = {
@@ -4040,6 +5428,9 @@ type AppSettings = {
   vault_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
+  editor_exact_colors?: boolean | null;
+  editor_blueprint_grid?: boolean | null;
+  editor_blueprint_grid_intensity?: string | null;
   language?: AppLanguage | null;
   max_files_per_scan?: string | null;
   scan_parallelism?: string | null;
@@ -4052,6 +5443,7 @@ type AppSettings = {
   fast_flashcard_order?: string | null;
   fast_flashcard_mode?: string | null;
   fast_flashcard_scope?: string | null;
+  fast_flashcard_duration?: number | null;
   spaced_repetition_boxes?: number | null;
   spaced_repetition_order?: string | null;
   spaced_repetition_page_size?: number | null;
@@ -4065,6 +5457,9 @@ type PersistUpdates = {
   vaultPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
+  editorExactColors?: boolean;
+  editorBlueprintGrid?: boolean;
+  editorBlueprintGridIntensity?: EditorGridIntensity;
   language?: AppLanguage;
   maxFilesPerScan?: string;
   scanParallelism?: "low" | "medium" | "high";
@@ -4077,6 +5472,7 @@ type PersistUpdates = {
   fastFlashcardOrder?: FlashcardOrder;
   fastFlashcardMode?: FlashcardMode;
   fastFlashcardScope?: FlashcardScope;
+  fastFlashcardDuration?: number;
   spacedRepetitionBoxes?: SpacedRepetitionBoxes;
   spacedRepetitionOrder?: SpacedRepetitionOrder;
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
@@ -4087,6 +5483,10 @@ type PersistUpdates = {
 
 export const DEFAULT_THEME: ThemeMode = "light";
 export const DEFAULT_LANGUAGE: AppLanguage = "de";
+const DEFAULT_EDITOR_EXACT_COLORS = true;
+const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
+const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
+const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
 const DEFAULT_FLASHCARD_MODE: FlashcardMode = "all";
@@ -4095,6 +5495,7 @@ const DEFAULT_STATS_RESET_MODE: StatsResetMode = "scan";
 const DEFAULT_FAST_FLASHCARD_ORDER: FlashcardOrder = DEFAULT_FLASHCARD_ORDER;
 const DEFAULT_FAST_FLASHCARD_MODE: FlashcardMode = DEFAULT_FLASHCARD_MODE;
 const DEFAULT_FAST_FLASHCARD_SCOPE: FlashcardScope = DEFAULT_FLASHCARD_SCOPE;
+const DEFAULT_FAST_FLASHCARD_DURATION = 6;
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
@@ -4107,11 +5508,21 @@ export const useAppSettings = () => {
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
   const [accentError, setAccentError] = useState("");
+  const [editorExactColors, setEditorExactColors] = useState(
+    DEFAULT_EDITOR_EXACT_COLORS,
+  );
+  const [editorBlueprintGrid, setEditorBlueprintGrid] = useState(
+    DEFAULT_EDITOR_BLUEPRINT_GRID,
+  );
+  const [editorBlueprintGridIntensity, setEditorBlueprintGridIntensity] =
+    useState<EditorGridIntensity>(DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [language, setLanguage] = useState<AppLanguage>(DEFAULT_LANGUAGE);
-  const [maxFilesPerScan, setMaxFilesPerScan] = useState("");
+  const [maxFilesPerScan, setMaxFilesPerScan] = useState(
+    DEFAULT_MAX_FILES_PER_SCAN,
+  );
   const [scanParallelism, setScanParallelism] = useState<
     "low" | "medium" | "high"
   >(DEFAULT_SCAN_PARALLELISM);
@@ -4132,6 +5543,9 @@ export const useAppSettings = () => {
     useState<FlashcardMode>(DEFAULT_FAST_FLASHCARD_MODE);
   const [fastFlashcardScope, setFastFlashcardScope] =
     useState<FlashcardScope>(DEFAULT_FAST_FLASHCARD_SCOPE);
+  const [fastFlashcardDuration, setFastFlashcardDuration] = useState(
+    DEFAULT_FAST_FLASHCARD_DURATION,
+  );
   const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
     useState<SpacedRepetitionBoxes>(DEFAULT_SPACED_REPETITION_BOXES);
   const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
@@ -4153,38 +5567,45 @@ export const useAppSettings = () => {
   const autoSaveTimer = useRef<number | null>(null);
 
   const saveSettings = useCallback(
-      async (settings: {
-        activeNotePath: string | null;
-        vaultPath: string | null;
-        theme: ThemeMode;
-        accentColor: string;
-        language: AppLanguage;
-        maxFilesPerScan: string;
-        scanParallelism: "low" | "medium" | "high";
-        flashcardOrder: FlashcardOrder;
-        flashcardMode: FlashcardMode;
-        flashcardScope: FlashcardScope;
-        flashcardPageSize: FlashcardPageSize;
-        solutionRevealEnabled: boolean;
-        statsResetMode: StatsResetMode;
-        spacedRepetitionBoxes: SpacedRepetitionBoxes;
-        spacedRepetitionOrder: SpacedRepetitionOrder;
-        spacedRepetitionPageSize: SpacedRepetitionPageSize;
-        spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
-        spacedRepetitionStatsView: SpacedRepetitionStatsView;
-        rightToolbarCollapsed: boolean;
-        fastFlashcardOrder: FlashcardOrder;
-        fastFlashcardMode: FlashcardMode;
-        fastFlashcardScope: FlashcardScope;
-      }) => {
+    async (settings: {
+      activeNotePath: string | null;
+      vaultPath: string | null;
+      theme: ThemeMode;
+      accentColor: string;
+      editorExactColors: boolean;
+      editorBlueprintGrid: boolean;
+      editorBlueprintGridIntensity: EditorGridIntensity;
+      language: AppLanguage;
+      maxFilesPerScan: string;
+      scanParallelism: "low" | "medium" | "high";
+      flashcardOrder: FlashcardOrder;
+      flashcardMode: FlashcardMode;
+      flashcardScope: FlashcardScope;
+      flashcardPageSize: FlashcardPageSize;
+      solutionRevealEnabled: boolean;
+      statsResetMode: StatsResetMode;
+      spacedRepetitionBoxes: SpacedRepetitionBoxes;
+      spacedRepetitionOrder: SpacedRepetitionOrder;
+      spacedRepetitionPageSize: SpacedRepetitionPageSize;
+      spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
+      spacedRepetitionStatsView: SpacedRepetitionStatsView;
+      rightToolbarCollapsed: boolean;
+      fastFlashcardOrder: FlashcardOrder;
+      fastFlashcardMode: FlashcardMode;
+      fastFlashcardScope: FlashcardScope;
+      fastFlashcardDuration: number;
+    }) => {
       try {
         await invoke("save_app_settings", {
           activeNotePath: settings.activeNotePath,
           vaultPath: settings.vaultPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
+          editorExactColors: settings.editorExactColors,
+          editorBlueprintGrid: settings.editorBlueprintGrid,
+          editorBlueprintGridIntensity: settings.editorBlueprintGridIntensity,
           language: settings.language,
-          maxFilesPerScan: settings.maxFilesPerScan || null,
+          maxFilesPerScan: settings.maxFilesPerScan,
           scanParallelism: settings.scanParallelism,
           flashcardOrder: settings.flashcardOrder,
           flashcardMode: settings.flashcardMode,
@@ -4195,6 +5616,7 @@ export const useAppSettings = () => {
           fastFlashcardOrder: settings.fastFlashcardOrder,
           fastFlashcardMode: settings.fastFlashcardMode,
           fastFlashcardScope: settings.fastFlashcardScope,
+          fastFlashcardDuration: settings.fastFlashcardDuration,
           spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
@@ -4222,6 +5644,10 @@ export const useAppSettings = () => {
         vaultPath: updates.vaultPath ?? vaultPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
+        editorExactColors: updates.editorExactColors ?? editorExactColors,
+        editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
+        editorBlueprintGridIntensity:
+          updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
         language: updates.language ?? language,
         maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
         scanParallelism: updates.scanParallelism ?? scanParallelism,
@@ -4231,6 +5657,8 @@ export const useAppSettings = () => {
         fastFlashcardOrder: updates.fastFlashcardOrder ?? fastFlashcardOrder,
         fastFlashcardMode: updates.fastFlashcardMode ?? fastFlashcardMode,
         fastFlashcardScope: updates.fastFlashcardScope ?? fastFlashcardScope,
+        fastFlashcardDuration:
+          updates.fastFlashcardDuration ?? fastFlashcardDuration,
         flashcardPageSize: updates.flashcardPageSize ?? flashcardPageSize,
         solutionRevealEnabled:
           updates.solutionRevealEnabled ?? solutionRevealEnabled,
@@ -4261,11 +5689,15 @@ export const useAppSettings = () => {
     [
       activeNotePath,
       accentColor,
+      editorExactColors,
+      editorBlueprintGrid,
+      editorBlueprintGridIntensity,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
       fastFlashcardOrder,
       fastFlashcardScope,
+      fastFlashcardDuration,
       flashcardPageSize,
       flashcardScope,
       language,
@@ -4302,6 +5734,20 @@ export const useAppSettings = () => {
         const resolvedAccent = isValidHex(storedAccent)
           ? storedAccent
           : DEFAULT_ACCENT;
+        const storedEditorExactColors =
+          typeof settings.editor_exact_colors === "boolean"
+            ? settings.editor_exact_colors
+            : DEFAULT_EDITOR_EXACT_COLORS;
+        const storedEditorBlueprintGrid =
+          typeof settings.editor_blueprint_grid === "boolean"
+            ? settings.editor_blueprint_grid
+            : DEFAULT_EDITOR_BLUEPRINT_GRID;
+        const storedEditorBlueprintGridIntensity =
+          settings.editor_blueprint_grid_intensity === "light" ||
+          settings.editor_blueprint_grid_intensity === "strong" ||
+          settings.editor_blueprint_grid_intensity === "medium"
+            ? settings.editor_blueprint_grid_intensity
+            : DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY;
         const storedLanguage =
           settings.language === "en" ? "en" : DEFAULT_LANGUAGE;
         const maxFilesRaw = settings.max_files_per_scan;
@@ -4310,9 +5756,13 @@ export const useAppSettings = () => {
             ? String(maxFilesRaw)
             : typeof maxFilesRaw === "string"
               ? maxFilesRaw.trim()
-              : "";
+              : DEFAULT_MAX_FILES_PER_SCAN;
         const storedMaxFilesPerScan =
-          maxFilesValue && /^[0-9]+$/.test(maxFilesValue) ? maxFilesValue : "";
+          maxFilesValue === ""
+            ? ""
+            : /^[0-9]+$/.test(maxFilesValue)
+              ? maxFilesValue
+              : DEFAULT_MAX_FILES_PER_SCAN;
         const storedScanParallelism =
           settings.scan_parallelism === "low" ||
           settings.scan_parallelism === "high" ||
@@ -4359,6 +5809,19 @@ export const useAppSettings = () => {
           settings.fast_flashcard_scope === "vault"
             ? "vault"
             : DEFAULT_FAST_FLASHCARD_SCOPE;
+        const storedFastFlashcardDurationRaw = settings.fast_flashcard_duration;
+        const storedFastFlashcardDurationValue =
+          typeof storedFastFlashcardDurationRaw === "number"
+            ? storedFastFlashcardDurationRaw
+            : typeof storedFastFlashcardDurationRaw === "string"
+              ? Number.parseInt(storedFastFlashcardDurationRaw, 10)
+              : DEFAULT_FAST_FLASHCARD_DURATION;
+        const storedFastFlashcardDuration =
+          FAST_FLASHCARD_DURATIONS.includes(
+            storedFastFlashcardDurationValue as FastFlashcardDuration,
+          )
+            ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
+            : DEFAULT_FAST_FLASHCARD_DURATION;
         const storedFlashcardPageSizeRaw = settings.flashcard_page_size;
         const migratedFlashcardPageSize =
           storedFlashcardPageSizeRaw === 10
@@ -4427,6 +5890,9 @@ export const useAppSettings = () => {
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
         setAccentError("");
+        setEditorExactColors(storedEditorExactColors);
+        setEditorBlueprintGrid(storedEditorBlueprintGrid);
+        setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
         setActiveNotePath(storedActiveNotePath);
         setVaultPath(settings.vault_path ?? null);
         setLanguage(storedLanguage);
@@ -4438,6 +5904,7 @@ export const useAppSettings = () => {
         setFastFlashcardOrder(storedFastFlashcardOrder);
         setFastFlashcardMode(storedFastFlashcardMode);
         setFastFlashcardScope(storedFastFlashcardScope);
+        setFastFlashcardDuration(storedFastFlashcardDuration);
         setFlashcardPageSize(storedFlashcardPageSize);
         setSolutionRevealEnabled(storedSolutionRevealEnabled);
         setStatsResetMode(storedStatsResetMode);
@@ -4474,6 +5941,21 @@ export const useAppSettings = () => {
   }, [accentColor]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.mdEditorColors = editorExactColors ? "on" : "off";
+  }, [editorExactColors]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.mdEditorGrid = editorBlueprintGrid ? "on" : "off";
+  }, [editorBlueprintGrid]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.mdEditorGridIntensity = editorBlueprintGridIntensity;
+  }, [editorBlueprintGridIntensity]);
+
+  useEffect(() => {
     if (!settingsLoaded) {
       return;
     }
@@ -4484,32 +5966,36 @@ export const useAppSettings = () => {
     if (autoSaveTimer.current) {
       window.clearTimeout(autoSaveTimer.current);
     }
-      autoSaveTimer.current = window.setTimeout(() => {
-        void saveSettings({
-          activeNotePath,
-          vaultPath,
-          theme,
-          accentColor,
-          language,
-          maxFilesPerScan,
-          scanParallelism,
-          flashcardOrder,
-          flashcardMode,
-          flashcardScope,
-          flashcardPageSize,
-          solutionRevealEnabled,
-          statsResetMode,
-          spacedRepetitionBoxes,
-          spacedRepetitionOrder,
-          spacedRepetitionPageSize,
-          spacedRepetitionRepetitionStrength,
-          spacedRepetitionStatsView,
-          rightToolbarCollapsed,
-          fastFlashcardOrder,
-          fastFlashcardMode,
-          fastFlashcardScope,
-        });
-      }, 300);
+    autoSaveTimer.current = window.setTimeout(() => {
+      void saveSettings({
+        activeNotePath,
+        vaultPath,
+        theme,
+        accentColor,
+        editorExactColors,
+        editorBlueprintGrid,
+        editorBlueprintGridIntensity,
+        language,
+        maxFilesPerScan,
+        scanParallelism,
+        flashcardOrder,
+        flashcardMode,
+        flashcardScope,
+        flashcardPageSize,
+        solutionRevealEnabled,
+        statsResetMode,
+        spacedRepetitionBoxes,
+        spacedRepetitionOrder,
+        spacedRepetitionPageSize,
+        spacedRepetitionRepetitionStrength,
+        spacedRepetitionStatsView,
+        rightToolbarCollapsed,
+        fastFlashcardOrder,
+        fastFlashcardMode,
+        fastFlashcardScope,
+        fastFlashcardDuration,
+      });
+    }, 300);
 
     return () => {
       if (autoSaveTimer.current) {
@@ -4519,11 +6005,15 @@ export const useAppSettings = () => {
   }, [
     accentColor,
     activeNotePath,
+    editorExactColors,
+    editorBlueprintGrid,
+    editorBlueprintGridIntensity,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
     fastFlashcardOrder,
     fastFlashcardScope,
+    fastFlashcardDuration,
     flashcardPageSize,
     flashcardScope,
     language,
@@ -4548,11 +6038,15 @@ export const useAppSettings = () => {
     activeNotePath,
     accentDraft,
     accentError,
+    editorExactColors,
+    editorBlueprintGrid,
+    editorBlueprintGridIntensity,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
     fastFlashcardOrder,
     fastFlashcardScope,
+    fastFlashcardDuration,
     flashcardPageSize,
     flashcardScope,
     language,
@@ -4563,6 +6057,9 @@ export const useAppSettings = () => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
+    setEditorExactColors,
+    setEditorBlueprintGrid,
+    setEditorBlueprintGridIntensity,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,
@@ -4570,6 +6067,7 @@ export const useAppSettings = () => {
     setFastFlashcardMode,
     setFastFlashcardOrder,
     setFastFlashcardScope,
+    setFastFlashcardDuration,
     setLanguage,
     setMaxFilesPerScan,
     setRightToolbarCollapsed,
@@ -6194,7 +7692,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
   }, []);
 
   const loadVault = useCallback(
-    async (path: string, options: LoadOptions) => {
+    async (path: string, options: LoadOptions): Promise<VaultFile[] | null> => {
       setListError("");
       setVaultPath(path);
       setFiles([]);
@@ -6208,7 +7706,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
         if (options.persist) {
           await persistSettings({ vaultPath: path });
         }
-        return true;
+        return results;
       } catch (error) {
         const message = asErrorMessage(error, "Failed to list markdown files.");
         setListError(options.errorMessage ?? message);
@@ -6217,14 +7715,14 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
           setVaultPath(null);
           await persistSettings({ vaultPath: null });
         }
-        return false;
+        return null;
       }
     },
     [persistSettings],
   );
 
   const pickVault = useCallback(
-    async (options?: PickOptions) => {
+    async (options?: PickOptions): Promise<VaultFile[] | null> => {
       setListError("");
       const selected = await open({
         directory: true,
@@ -6233,7 +7731,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
       });
 
       if (!selected || Array.isArray(selected)) {
-        return false;
+        return null;
       }
 
       const snapshot = takeSnapshot();
@@ -6241,19 +7739,19 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
 
       const errorMessage =
         options?.errorMessage ?? "Ausgewaehlter Vault ist nicht verfuegbar.";
-      const loaded = await loadVault(selected, {
+      const results = await loadVault(selected, {
         persist: true,
         clearOnFailure: false,
         errorMessage,
       });
 
-      if (!loaded) {
+      if (!results) {
         restoreSnapshot(snapshot);
         setListError(errorMessage);
         options?.onLoadFailed?.();
       }
 
-      return loaded;
+      return results;
     },
     [loadVault, restoreSnapshot, takeSnapshot],
   );
@@ -6373,6 +7871,7 @@ export const buildAccentTokens = (value: string, fallback = DEFAULT_ACCENT) => {
   const strong = mixRgb(rgb, { r: 0, g: 0, b: 0 }, 0.18);
   const highlight = mixRgb(rgb, { r: 255, g: 255, b: 255 }, 0.28);
   return {
+    accentRgb: `${rgb.r}, ${rgb.g}, ${rgb.b}`,
     accent: rgbToHex(rgb.r, rgb.g, rgb.b),
     accentStrong: rgbToHex(strong.r, strong.g, strong.b),
     accentSoft: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`,
@@ -7887,6 +9386,7 @@ export const applyTheme = (theme: ThemeMode) => {
 export const applyAccentColor = (value: string) => {
   const root = document.documentElement;
   const tokens = buildAccentTokens(value);
+  root.style.setProperty("--accent-rgb", tokens.accentRgb);
   root.style.setProperty("--accent", tokens.accent);
   root.style.setProperty("--accent-strong", tokens.accentStrong);
   root.style.setProperty("--accent-soft", tokens.accentSoft);
@@ -8013,11 +9513,10 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 
 ## 📝 DashboardPage.tsx — ./pages/DashboardPage.tsx
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
-import { VaultTree } from "../components/VaultTree";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
 
@@ -8029,9 +9528,10 @@ export const DashboardPage = () => {
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
-      return "Kein Vault gewaehlt";
+      return "No vault selected";
     }
     if (vault.files.length === 0) {
       return "Keine Markdown-Dateien";
@@ -8048,25 +9548,32 @@ export const DashboardPage = () => {
     setEditDraft("");
     setEditError("");
     setIsSaving(false);
+    setEditCaretIndex(null);
   }, [preview.selectedFile?.path]);
 
-  const handleEditStart = () => {
-    if (!preview.selectedFile || preview.previewState !== "idle") {
-      return;
+  const handleEditStart = useCallback(
+    (options?: { caretIndex?: number | null; origin?: "raw" | "markdown" }) => {
+      if (!preview.selectedFile || preview.previewState !== "idle") {
+        return;
+      }
+      setEditDraft(preview.preview);
+      setEditError("");
+      setEditCaretIndex(
+        typeof options?.caretIndex === "number" ? options.caretIndex : null,
+      );
+      setIsEditing(true);
+    },
+    [preview],
+  );
+
+  const handleEditAutosave = useCallback(async () => {
+    if (!preview.selectedFile || !isEditing || isSaving) {
+      return false;
     }
-    setEditDraft(preview.preview);
-    setEditError("");
-    setIsEditing(true);
-  };
-
-  const handleEditCancel = () => {
-    setIsEditing(false);
-    setEditError("");
-  };
-
-  const handleEditSave = async () => {
-    if (!preview.selectedFile) {
-      return;
+    if (editDraft === preview.preview) {
+      setIsEditing(false);
+      setEditCaretIndex(null);
+      return true;
     }
     setIsSaving(true);
     setEditError("");
@@ -8077,18 +9584,34 @@ export const DashboardPage = () => {
       });
       preview.setPreview(editDraft);
       setIsEditing(false);
+      setEditCaretIndex(null);
+      return true;
     } catch (error) {
       setEditError(asErrorMessage(error, "Failed to save file."));
+      return false;
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [editDraft, isEditing, isSaving, preview]);
+
+  const handleToggleRawPreview = useCallback(async () => {
+    if (isEditing) {
+      const saved = await handleEditAutosave();
+      if (!saved) {
+        return;
+      }
+    }
+    preview.setRawPreview((current) => !current);
+  }, [handleEditAutosave, isEditing, preview]);
+  const handleEditCaretApplied = useCallback(() => {
+    setEditCaretIndex(null);
+  }, []);
 
   return (
     <div className="dashboard-page">
       <header className="content-header">
         <div>
-          <p className="eyebrow">Dashboard</p>
+          <p className="eyebrow">Makedon</p>
           <h1>Vault</h1>
           <p className="muted">
             Waehle einen Vault, scanne Markdown-Dateien und sieh dir Inhalte sofort
@@ -8098,33 +9621,23 @@ export const DashboardPage = () => {
       </header>
 
       <div className="workspace">
-        <VaultTree
-          fileCountLabel={fileCountLabel}
-          files={vault.files}
-          listError={vault.listError}
-          listState={vault.listState}
-          onSelectFile={actions.handleSelectFile}
-          selectedFile={preview.selectedFile}
-          vaultPath={vault.vaultPath}
-        />
-
         <PreviewPanel
           emptyPreview={emptyPreview}
           editDraft={editDraft}
           editError={editError}
+          editCaretIndex={editCaretIndex}
           isEditing={isEditing}
-          isSaving={isSaving}
           preview={preview.preview}
           previewError={preview.previewError}
           previewState={preview.previewState}
           rawPreview={preview.rawPreview}
           selectedFile={preview.selectedFile}
           canEdit={canEdit}
-          onEditCancel={handleEditCancel}
           onEditChange={setEditDraft}
-          onEditSave={handleEditSave}
+          onEditCaretApplied={handleEditCaretApplied}
+          onEditExit={handleEditAutosave}
           onEditStart={handleEditStart}
-          setRawPreview={preview.setRawPreview}
+          onToggleRawPreview={handleToggleRawPreview}
         />
 
         <FileList
@@ -8427,7 +9940,6 @@ export const FastHistoryPanel = ({
     <div className="panel-header">
       <div>
         <h2>Session History</h2>
-        <p className="muted">Top scores and recent runs.</p>
       </div>
     </div>
     <div className="panel-body">
@@ -8438,7 +9950,6 @@ export const FastHistoryPanel = ({
           <div className="fast-session-section">
             <div>
               <h3 className="fast-section-title">Top 3 Sessions</h3>
-              <p className="muted">Highest scores so far.</p>
             </div>
             <div className="fast-session-table">
               <div className="fast-session-row header">
@@ -8463,8 +9974,7 @@ export const FastHistoryPanel = ({
           </div>
           <div className="fast-session-section">
             <div>
-              <h3 className="fast-section-title">Last 10 Sessions</h3>
-              <p className="muted">Most recent timer runs.</p>
+              <h3 className="fast-section-title">Last 5 Sessions</h3>
             </div>
             <div className="fast-session-table">
               <div className="fast-session-row header">
@@ -8518,9 +10028,6 @@ type FastStatsPanelProps = {
   sessionPace: string;
   sessionScore: number;
   sessionMultiplier: number;
-  vaultName: string;
-  flashcardsCount: number;
-  filteredFlashcardCount: number;
   handleTimeToggle: () => void;
 };
 
@@ -8542,9 +10049,6 @@ export const FastStatsPanel = ({
   sessionPace,
   sessionScore,
   sessionMultiplier,
-  vaultName,
-  flashcardsCount,
-  filteredFlashcardCount,
   handleTimeToggle,
 }: FastStatsPanelProps) => (
   <section className="panel fast-stats-panel">
@@ -8665,20 +10169,6 @@ export const FastStatsPanel = ({
           </div>
         </div>
       </div>
-      <div className="fast-vault-block">
-        <span className="label">AKTIVER VAULT</span>
-        <div className="fast-vault-row">
-          <span>Vault: {vaultName}</span>
-          <span className="fast-vault-sep" aria-hidden="true">
-            •
-          </span>
-          <span>Cards loaded: {flashcardsCount}</span>
-          <span className="fast-vault-sep" aria-hidden="true">
-            •
-          </span>
-          <span>Filtered cards: {filteredFlashcardCount}</span>
-        </div>
-      </div>
     </div>
   </section>
 );
@@ -8688,7 +10178,7 @@ export const FastStatsPanel = ({
 ## 📝 FastToolsPanel.tsx — ./pages/fast-flashcard/components/FastToolsPanel.tsx
 
 import { FastFlashcardToolsSettings } from "../../../components/settings/FastFlashcardToolsSettings";
-import { FAST_FLASHCARD_DURATIONS } from "../hooks/useFastSession";
+import { FAST_FLASHCARD_DURATIONS } from "../../../features/fast-flashcard/constants";
 
 type FastToolsPanelProps = {
   fastFlashcards: {
@@ -8825,7 +10315,6 @@ export const FastFlashcardPage = () => {
     sessionPace,
     sessionScore,
     sessionMultiplier,
-    vaultName,
     sessionHistory,
     topSessions,
     lastSessions,
@@ -8851,9 +10340,6 @@ export const FastFlashcardPage = () => {
         sessionPace={sessionPace}
         sessionScore={sessionScore}
         sessionMultiplier={sessionMultiplier}
-        vaultName={vaultName}
-        flashcardsCount={fastFlashcards.flashcards.length}
-        filteredFlashcardCount={fastFlashcards.filteredFlashcardCount}
         handleTimeToggle={handleTimeToggle}
       />
       <FastToolsPanel
@@ -8920,10 +10406,8 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { useAppState } from "../../../components/AppStateProvider";
 import { evaluateFlashcardResult } from "../../../features/flashcards/logic";
-import { vaultBaseName } from "../../../lib/path";
 
 export const fastFlashcardStatusLabel = "Not scanned yet";
-export const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
 
 export type FastFlashcardResult = "correct" | "incorrect" | "timeout";
 
@@ -8942,6 +10426,32 @@ export type FastFlashcardSessionSummary = {
 
 type FastFlashcardStorage = {
   sessions: FastFlashcardSessionSummary[];
+};
+
+type FastFlashcardHistoryResetListener = () => void;
+
+const fastFlashcardHistoryResetListeners =
+  new Set<FastFlashcardHistoryResetListener>();
+
+export const subscribeFastFlashcardHistoryReset = (
+  listener: FastFlashcardHistoryResetListener,
+) => {
+  fastFlashcardHistoryResetListeners.add(listener);
+  return () => {
+    fastFlashcardHistoryResetListeners.delete(listener);
+  };
+};
+
+export const resetFastFlashcardHistory = async () => {
+  try {
+    const storage: FastFlashcardStorage = { sessions: [] };
+    await invoke("save_fast_flashcard_data", { storage });
+    fastFlashcardHistoryResetListeners.forEach((listener) => listener());
+    return true;
+  } catch (error) {
+    console.warn("Failed to reset fast flashcard history", error);
+    return false;
+  }
 };
 
 export type FastFlashcardSessionStats = {
@@ -8997,8 +10507,7 @@ export const formatSessionPace = (pace: number) =>
   Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
 export const useFastSession = () => {
-  const { flashcards: appFlashcards, fastFlashcards, settings, vault } =
-    useAppState();
+  const { fastFlashcards, settings } = useAppState();
   const {
     flashcardSubmissions,
     handleFlashcardSelfGrade,
@@ -9006,7 +10515,8 @@ export const useFastSession = () => {
   } = fastFlashcards;
   const [fastCardPosition, setFastCardPosition] = useState(0);
   const [isTimeModeEnabled, setIsTimeModeEnabled] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState(6);
+  const selectedDuration = settings.fastFlashcardDuration;
+  const setSelectedDuration = settings.setFastFlashcardDuration;
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [sessionStats, setSessionStats] = useState<FastFlashcardSessionStats>({
     correct: 0,
@@ -9031,8 +10541,8 @@ export const useFastSession = () => {
   const currentCardIndex = currentEntry?.cardIndex;
   const hasScannedCards = fastFlashcards.flashcards.length > 0;
   const hasFilteredCards = orderedEntries.length > 0;
-  const statsCorrect = appFlashcards.correctCount;
-  const statsIncorrect = appFlashcards.incorrectCount;
+  const statsCorrect = fastFlashcards.correctCount;
+  const statsIncorrect = fastFlashcards.incorrectCount;
   const statsTotal = statsCorrect + statsIncorrect;
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
   const timeModeActive = isTimeModeEnabled;
@@ -9207,6 +10717,14 @@ export const useFastSession = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(
+    () =>
+      subscribeFastFlashcardHistoryReset(() => {
+        setSessionHistory([]);
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (!sessionHistoryLoaded) {
@@ -9479,16 +10997,16 @@ export const useFastSession = () => {
       validTokenIds: Set<string>,
       dragBlankIds: Set<string>,
     ) => {
-        fastFlashcards.handleCompositeClozeTokenDrop(
-          event,
-          cardIndex,
-          partIndex,
-          blankId,
-          validTokenIds,
-          dragBlankIds,
-        );
-      },
-      [fastFlashcards],
+      fastFlashcards.handleCompositeClozeTokenDrop(
+        event,
+        cardIndex,
+        partIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [fastFlashcards],
   );
 
   const handleCompositeClozeTokenRemove = useCallback(
@@ -9629,14 +11147,10 @@ export const useFastSession = () => {
   const sessionMinutes = sessionElapsedMs / 60000;
   const sessionPace =
     sessionMinutes > 0 ? (sessionCompleted / sessionMinutes).toFixed(1) : "0.0";
-  const vaultName = useMemo(
-    () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "ToDoList"),
-    [vault.vaultPath],
-  );
   const lastSessions = useMemo(() => {
     return [...sessionHistory]
       .sort((a, b) => getSessionTimeValue(b.endedAt) - getSessionTimeValue(a.endedAt))
-      .slice(0, 10);
+      .slice(0, 5);
   }, [sessionHistory]);
   const topSessions = useMemo(() => {
     return [...sessionHistory]
@@ -9697,7 +11211,6 @@ export const useFastSession = () => {
     sessionPace,
     sessionScore,
     sessionMultiplier,
-    vaultName,
     sessionHistory,
     topSessions,
     lastSessions,
@@ -10358,8 +11871,8 @@ export const APP_SECTION_GROUND_RULES: {
   bullets: LocalizedText[];
 } = {
   paragraph: {
-    en: "Start at the Dashboard to pick a note and scan its cards, then use the sections below to understand how each tool manages your reviews. This quick orientation helps you decide where to continue next.",
-    de: "Beginne im Dashboard, wähle eine Notiz und scanne sie, dann nutze die unten stehenden Sektionen, um zu verstehen, wie jedes Tool deine Wiederholungen steuert. Diese kurze Orientierung hilft dir, den naechsten Schritt sicher zu waehlen.",
+    en: "Start at Makedon to pick a note and scan its cards, then use the sections below to understand how each tool manages your reviews. This quick orientation helps you decide where to continue next.",
+    de: "Beginne in Makedon, wähle eine Notiz und scanne sie, dann nutze die unten stehenden Sektionen, um zu verstehen, wie jedes Tool deine Wiederholungen steuert. Diese kurze Orientierung hilft dir, den naechsten Schritt sicher zu waehlen.",
   },
   bullets: [
     {
@@ -10394,7 +11907,7 @@ export const APP_SECTION_LABELS = {
 
 export const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
   dashboard: {
-    title: { en: "Dashboard", de: "Dashboard" },
+    title: { en: "Makedon", de: "Makedon" },
     summary: {
       en: "Note list, scan status, and quick previews to orient you before review.",
       de: "Notizenliste mit Scan-Status und Vorschauen, damit du dich vor dem Review orientierst.",
@@ -10405,8 +11918,8 @@ export const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
     },
     detail: {
       whatIs: {
-        en: "Dashboard shows vault notes, scan health, and shortcuts before any review. It is the starting hub where you decide what to study next.",
-        de: "Das Dashboard zeigt Vault-Notizen, Scan-Status und Schnellaktionen vor jeder Wiederholung. Es ist der Startpunkt, an dem du entscheidest, was als naechstes dran ist.",
+        en: "Makedon shows vault notes, scan health, and shortcuts before any review. It is the starting hub where you decide what to study next.",
+        de: "Makedon zeigt Vault-Notizen, Scan-Status und Schnellaktionen vor jeder Wiederholung. Es ist der Startpunkt, an dem du entscheidest, was als naechstes dran ist.",
       },
       purpose: [
         {
@@ -10655,7 +12168,7 @@ export const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Can be combined with other syntaxes in the same #card block (if desired).",
         ],
         rulesNote:
-          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Dashboard -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition).",
+          "Cards must be wrapped with #card and #. The first non-empty line is the question. The remaining lines define the card type (options, blanks, or Answer/Antwort marker). Workflow: Makedon -> select note -> scan -> review (via Flashcard Tools or Spaced Repetition).",
         promptTemplate: joinLines([
           "Create one flashcard and optionally wrap it with markdown separators.",
           "Return only the #card block (and optional --- lines).",
@@ -10695,7 +12208,7 @@ export const flashcardSyntaxEntries: SyntaxEntry[] = [
           "Kann mit anderen Syntaxen im selben #card-Block kombiniert werden (falls gewuenscht).",
         ],
         rulesNote:
-          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Dashboard -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition).",
+          "Karten muessen mit #card und # umschlossen sein. Die erste nicht-leere Zeile ist die Frage. Die restlichen Zeilen definieren den Kartentyp (Optionen, Luecken oder Answer-/Antwort-Marker). Workflow: Makedon -> Notiz waehlen -> scannen -> wiederholen (ueber Flashcard Tools oder Spaced Repetition).",
         promptTemplate: joinLines([
           "Erstelle eine Karte und umrahme sie optional mit Markdown-Trennlinien.",
           "Antworte nur mit dem #card-Block (und optional ---).",
@@ -11499,8 +13012,8 @@ export const helpTopics: HelpTopic[] = [
         title: { en: "Select a vault", de: "Vault auswaehlen" },
         bullets: [
           {
-            en: "Use Dashboard to choose a folder and allow access when prompted; confirm the correct path.",
-            de: "Im Dashboard einen Ordner waehlen und Zugriff erlauben; den richtigen Pfad bestaetigen.",
+            en: "Use Makedon to choose a folder and allow access when prompted; confirm the correct path.",
+            de: "In Makedon einen Ordner waehlen und Zugriff erlauben; den richtigen Pfad bestaetigen.",
           },
           {
             en: "After loading, pick a note to preview and scan so cards populate the tools.",
@@ -11521,8 +13034,8 @@ export const helpTopics: HelpTopic[] = [
             de: "Bei leerer Liste Pfad, Markdown-Dateien und aktive Filter pruefen.",
           },
           {
-            en: "If the vault moved, reselect it in Dashboard and scan again.",
-            de: "Wenn der Vault verschoben wurde, neu auswaehlen und erneut scannen.",
+            en: "If the vault moved, reselect it in Makedon and scan again.",
+            de: "Wenn der Vault verschoben wurde, neu in Makedon auswaehlen und erneut scannen.",
           },
         ],
       },
@@ -12410,8 +13923,8 @@ import { HelpOverviewSection } from "./help/sections/HelpOverviewSection";
 import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
 
 export const HelpPage = () => {
-  const { settings } = useAppState();
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+  const { help, settings } = useAppState();
+  const { activeTopicId, setActiveTopicId } = help;
   const [activeSyntaxId, setActiveSyntaxId] = useState<string | null>(
     flashcardSyntaxEntries[0]?.id ?? null,
   );
@@ -12581,29 +14094,30 @@ export const HelpPage = () => {
 import { useCallback, useMemo, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
-import { FastFlashcardToolsSettings } from "../components/settings/FastFlashcardToolsSettings";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
-import { LanguageTabContent, DataSyncTabContent } from "../components/settings/DataSyncTabContent";
+import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
+import { LanguageTabContent } from "../components/settings/DataSyncTabContent";
 import { PerformanceTabContent } from "../components/settings/PerformanceTabContent";
 import { SpacedRepetitionSettingsSection } from "../components/settings/SpacedRepetitionSettingsSection";
 import { VaultIndexSection } from "../components/settings/VaultIndexSection";
+import { FAST_FLASHCARD_DURATIONS } from "../features/fast-flashcard/constants";
 import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
 import {
   SPACED_REPETITION_BOXES,
   SPACED_REPETITION_PAGE_SIZES,
 } from "../features/spaced-repetition/useSpacedRepetition";
-
-const SETTINGS_TABS = [
-  { id: "data-sync", label: "Data & Sync" },
-  { id: "performance", label: "Performance" },
-  { id: "language", label: "Language" },
-] as const;
-
-type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"];
+import { resetFastFlashcardHistory } from "./fast-flashcard/hooks/useFastSession";
 
 export const SettingsPage = () => {
-  const { actions, flashcards, preview, settings, spacedRepetition, vault } =
-    useAppState();
+  const {
+    actions,
+    flashcards,
+    preview,
+    settings,
+    settingsNav,
+    spacedRepetition,
+    vault,
+  } = useAppState();
   const { language, setLanguage } = settings;
   const lastOpenedFile = preview.selectedFile?.relative_path ?? null;
   const vaultIndexedComplete = useMemo(
@@ -12616,18 +14130,27 @@ export const SettingsPage = () => {
     },
     [setLanguage],
   );
-  const [activeSettingsTab, setActiveSettingsTab] =
-    useState<SettingsTabId>("data-sync");
+  const [isResetHistoryOpen, setIsResetHistoryOpen] = useState(false);
+  const [isResetHistoryPending, setIsResetHistoryPending] = useState(false);
+  const { activeSettingsPage } = settingsNav;
+
+  const handleResetHistoryConfirm = useCallback(async () => {
+    setIsResetHistoryPending(true);
+    const success = await resetFastFlashcardHistory();
+    setIsResetHistoryPending(false);
+    if (success) {
+      setIsResetHistoryOpen(false);
+    }
+  }, [setIsResetHistoryOpen, resetFastFlashcardHistory]);
 
   return (
     <>
       <header className="content-header">
         <div>
-          <p className="eyebrow">Settings</p>
-          <h1>Einstellungen</h1>
+          <p className="eyebrow">SETTINGS</p>
+          <h1>Settings</h1>
           <p className="muted">
-            Passe deinen Workflow an. Die naechsten Features bauen auf dieser
-            Vault-Basis auf.
+            Adjust your workflow. The next features build on this vault foundation.
           </p>
         </div>
         <div className="actions">
@@ -12636,136 +14159,220 @@ export const SettingsPage = () => {
           </button>
         </div>
       </header>
-      <div className="settings-grid">
-        <VaultIndexSection
-          lastOpenedFile={lastOpenedFile}
-          listState={vault.listState}
-          onCopyVaultPath={actions.handleCopyVaultPath}
-          onRescanVault={actions.handleRescanVault}
-          vaultIndexedComplete={vaultIndexedComplete}
-          vaultPath={vault.vaultPath}
-        />
-        <section className="panel settings-tabs-panel">
-          <div className="panel-header">
-            <div>
-              <h2>App Settings</h2>
-              <p className="muted">
-                Manage storage, performance, and language preferences here.
-              </p>
+      {activeSettingsPage === "app-settings" ? (
+        <div className="settings-page settings-app-grid" id="settings-page-app-settings">
+          <VaultIndexSection
+            lastOpenedFile={lastOpenedFile}
+            listState={vault.listState}
+            onCopyVaultPath={actions.handleCopyVaultPath}
+            onRescanVault={actions.handleRescanVault}
+            vaultIndexedComplete={vaultIndexedComplete}
+            vaultPath={vault.vaultPath}
+          />
+          <section className="panel settings-performance-panel">
+            <div className="panel-header">
+              <div>
+                <h2>Performance</h2>
+                <p className="muted">Tune vault scans for larger libraries.</p>
+              </div>
             </div>
-            <div className="pill-grid">
-              {SETTINGS_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={`pill pill-button ${
-                    activeSettingsTab === tab.id ? "active" : ""
-                  }`}
-                  aria-pressed={activeSettingsTab === tab.id}
-                  onClick={() => setActiveSettingsTab(tab.id)}
+            <div className="panel-body">
+              <PerformanceTabContent
+                maxFilesPerScan={settings.maxFilesPerScan}
+                onMaxFilesPerScanChange={actions.handleMaxFilesPerScanChange}
+                scanParallelism={settings.scanParallelism}
+                setScanParallelism={settings.setScanParallelism}
+              />
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {activeSettingsPage === "review-tools" ? (
+        <div className="settings-page settings-review-grid" id="settings-page-review-tools">
+          <FlashcardsSettingsSection
+            flashcardMode={flashcards.flashcardMode}
+            flashcardOrder={flashcards.flashcardOrder}
+            flashcardPageSize={flashcards.flashcardPageSize}
+            flashcardPageSizes={FLASHCARD_PAGE_SIZES}
+            flashcardScope={flashcards.flashcardScope}
+            setFlashcardMode={flashcards.setFlashcardMode}
+            setFlashcardOrder={flashcards.setFlashcardOrder}
+            setFlashcardPageSize={flashcards.setFlashcardPageSize}
+            setFlashcardScope={flashcards.setFlashcardScope}
+            setStatsResetMode={flashcards.setStatsResetMode}
+            statsResetMode={flashcards.statsResetMode}
+          />
+          <section className="panel fast-flashcard-tools-panel">
+            <div className="panel-header">
+              <div>
+                <h2>Fast Flashcard Tools</h2>
+                <p className="muted">Control fast flashcard ordering rules.</p>
+              </div>
+            </div>
+            <div className="panel-body">
+              <div className="setting-row">
+                <span className="label">DEFAULT ORDER</span>
+                <div className="pill-grid">
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      settings.fastFlashcardOrder === "in-order" ? "active" : ""
+                    }`}
+                    aria-pressed={settings.fastFlashcardOrder === "in-order"}
+                    onClick={() => settings.setFastFlashcardOrder("in-order")}
+                  >
+                    In order
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      settings.fastFlashcardOrder === "random" ? "active" : ""
+                    }`}
+                    aria-pressed={settings.fastFlashcardOrder === "random"}
+                    onClick={() => settings.setFastFlashcardOrder("random")}
+                  >
+                    Random
+                  </button>
+                </div>
+              </div>
+              <div className="setting-row">
+                <span className="label">MODE</span>
+                <select
+                  className="text-input"
+                  value={settings.fastFlashcardMode}
+                  onChange={(event) =>
+                    settings.setFastFlashcardMode(
+                      event.target.value as typeof settings.fastFlashcardMode,
+                    )
+                  }
+                  aria-label="Select mode filter"
                 >
-                  {tab.label}
-                </button>
-              ))}
+                  <option value="all">All</option>
+                  <option value="qa">Q&amp;A</option>
+                  <option value="multiple-choice">Multiple Choice</option>
+                  <option value="fill-blank">Fill-in-the-blank</option>
+                  <option value="assignment">Assignment</option>
+                  <option value="true-false">True/False</option>
+                  <option value="mix">Mix</option>
+                </select>
+              </div>
+              <div className="setting-row">
+                <span className="label">DURATION</span>
+                <div className="pill-grid">
+                  {FAST_FLASHCARD_DURATIONS.map((duration) => (
+                    <button
+                      key={duration}
+                      type="button"
+                      className={`pill pill-button ${
+                        settings.fastFlashcardDuration === duration ? "active" : ""
+                      }`}
+                      aria-pressed={settings.fastFlashcardDuration === duration}
+                      onClick={() => settings.setFastFlashcardDuration(duration)}
+                    >
+                      {duration}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="setting-row">
+                <span className="label">DEFAULT SCOPE</span>
+                <div className="pill-grid">
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      settings.fastFlashcardScope === "current" ? "active" : ""
+                    }`}
+                    aria-pressed={settings.fastFlashcardScope === "current"}
+                    onClick={() => settings.setFastFlashcardScope("current")}
+                  >
+                    Current note
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      settings.fastFlashcardScope === "vault" ? "active" : ""
+                    }`}
+                    aria-pressed={settings.fastFlashcardScope === "vault"}
+                    onClick={() => settings.setFastFlashcardScope("vault")}
+                  >
+                    Whole vault
+                  </button>
+                </div>
+              </div>
+              <div className="setting-row">
+                <span className="label">SESSION HISTORY</span>
+                <div className="setting-actions">
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={() => setIsResetHistoryOpen(true)}
+                  >
+                    Reset history
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="panel-body">
-            <div className="settings-tab-content">
-              {activeSettingsTab === "data-sync" ? (
-                <DataSyncTabContent />
-              ) : activeSettingsTab === "performance" ? (
-                <PerformanceTabContent
-                  maxFilesPerScan={settings.maxFilesPerScan}
-                  onMaxFilesPerScanChange={actions.handleMaxFilesPerScanChange}
-                  scanParallelism={settings.scanParallelism}
-                  setScanParallelism={settings.setScanParallelism}
-                />
-              ) : (
-                <LanguageTabContent
-                  language={language}
-                  onLanguageChange={handleLanguageChange}
-                />
-              )}
+          </section>
+          <SpacedRepetitionSettingsSection
+            spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
+            spacedRepetitionBoxOptions={SPACED_REPETITION_BOXES}
+            spacedRepetitionOrder={spacedRepetition.spacedRepetitionOrder}
+            spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
+            spacedRepetitionPageSizes={SPACED_REPETITION_PAGE_SIZES}
+            spacedRepetitionRepetitionStrength={
+              spacedRepetition.spacedRepetitionRepetitionStrength
+            }
+            setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
+            setSpacedRepetitionOrder={spacedRepetition.setSpacedRepetitionOrder}
+            setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
+            setSpacedRepetitionRepetitionStrength={
+              spacedRepetition.setSpacedRepetitionRepetitionStrength
+            }
+          />
+        </div>
+      ) : null}
+      {activeSettingsPage === "appearance" ? (
+        <div className="settings-page settings-single-column" id="settings-page-appearance">
+          <AppearanceSection
+            accentColor={settings.accentColor}
+            accentDraft={settings.accentDraft}
+            accentError={settings.accentError}
+            editorExactColors={settings.editorExactColors}
+            editorBlueprintGrid={settings.editorBlueprintGrid}
+            editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
+            onAccentInputChange={actions.handleAccentInputChange}
+            onAccentPick={actions.handleAccentPick}
+            onCopyAccent={actions.handleCopyAccent}
+            onEditorExactColorsToggle={settings.setEditorExactColors}
+            onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
+            onEditorBlueprintGridIntensityChange={
+              settings.setEditorBlueprintGridIntensity
+            }
+            onThemeToggle={actions.handleThemeChange}
+            theme={settings.theme}
+          />
+          <section className="panel settings-language-panel">
+            <div className="panel-header">
+              <div>
+                <h2>Language</h2>
+                <p className="muted">Set the app language.</p>
+              </div>
             </div>
-          </div>
-        </section>
-        <FlashcardsSettingsSection
-          flashcardOrder={flashcards.flashcardOrder}
-          flashcardPageSize={flashcards.flashcardPageSize}
-          flashcardPageSizes={FLASHCARD_PAGE_SIZES}
-          flashcardScope={flashcards.flashcardScope}
-          setFlashcardOrder={flashcards.setFlashcardOrder}
-          setFlashcardPageSize={flashcards.setFlashcardPageSize}
-          setFlashcardScope={flashcards.setFlashcardScope}
-          setSolutionRevealEnabled={flashcards.setSolutionRevealEnabled}
-          setStatsResetMode={flashcards.setStatsResetMode}
-          solutionRevealEnabled={flashcards.solutionRevealEnabled}
-          statsResetMode={flashcards.statsResetMode}
-        />
-        <section className="panel fast-flashcard-tools-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Fast Flashcard Tools</h2>
-              <p className="muted">Control fast flashcard ordering rules.</p>
+            <div className="panel-body">
+              <LanguageTabContent
+                language={language}
+                onLanguageChange={handleLanguageChange}
+              />
             </div>
-          </div>
-          <div className="panel-body">
-            <FastFlashcardToolsSettings
-              fastFlashcardOrder={settings.fastFlashcardOrder}
-              fastFlashcardMode={settings.fastFlashcardMode}
-              fastFlashcardScope={settings.fastFlashcardScope}
-              setFastFlashcardOrder={settings.setFastFlashcardOrder}
-              setFastFlashcardMode={settings.setFastFlashcardMode}
-              setFastFlashcardScope={settings.setFastFlashcardScope}
-              showSectionDividers
-            />
-          </div>
-        </section>
-        <SpacedRepetitionSettingsSection
-          spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
-          spacedRepetitionBoxOptions={SPACED_REPETITION_BOXES}
-          spacedRepetitionOrder={spacedRepetition.spacedRepetitionOrder}
-          spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
-          spacedRepetitionPageSizes={SPACED_REPETITION_PAGE_SIZES}
-          spacedRepetitionRepetitionStrength={
-            spacedRepetition.spacedRepetitionRepetitionStrength
-          }
-          setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
-          setSpacedRepetitionOrder={spacedRepetition.setSpacedRepetitionOrder}
-          setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
-          setSpacedRepetitionRepetitionStrength={
-            spacedRepetition.setSpacedRepetitionRepetitionStrength
-          }
-        />
-        <section className="panel fast-flashcard-tools-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Fast Flashcard Tools</h2>
-              <p className="muted">Control fast flashcard ordering rules.</p>
-            </div>
-          </div>
-          <div className="panel-body">
-            <FastFlashcardToolsSettings
-              fastFlashcardOrder={settings.fastFlashcardOrder}
-              fastFlashcardMode={settings.fastFlashcardMode}
-              fastFlashcardScope={settings.fastFlashcardScope}
-              setFastFlashcardOrder={settings.setFastFlashcardOrder}
-              setFastFlashcardMode={settings.setFastFlashcardMode}
-              setFastFlashcardScope={settings.setFastFlashcardScope}
-            />
-          </div>
-        </section>
-        <AppearanceSection
-          accentColor={settings.accentColor}
-          accentDraft={settings.accentDraft}
-          accentError={settings.accentError}
-          onAccentInputChange={actions.handleAccentInputChange}
-          onAccentPick={actions.handleAccentPick}
-          onCopyAccent={actions.handleCopyAccent}
-          onThemeToggle={actions.handleThemeChange}
-          theme={settings.theme}
-        />
-      </div>
+          </section>
+        </div>
+      ) : null}
+      <ResetSessionHistoryModal
+        isOpen={isResetHistoryOpen}
+        isPending={isResetHistoryPending}
+        onCancel={() => setIsResetHistoryOpen(false)}
+        onConfirm={handleResetHistoryConfirm}
+      />
     </>
   );
 };
@@ -14429,7 +16036,7 @@ export { SpacedRepetitionPage } from "./spaced-repetition/SpacedRepetitionPage";
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg-gradient);
+  background: var(--page-bg);
   color: var(--ink);
 }
 
@@ -14521,6 +16128,8 @@ button {
   gap: 24px;
   animation: riseIn 0.6s ease both;
   animation-delay: 0.05s;
+  min-height: 0;
+  overflow: auto;
 }
 
 .mobile-nav-header {
@@ -14607,29 +16216,12 @@ h2 {
   box-shadow: var(--shadow-soft);
 }
 
-.vault-details summary {
-  list-style: none;
+.vault-details-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  cursor: pointer;
   font-weight: 600;
-}
-
-.vault-details summary::-webkit-details-marker {
-  display: none;
-}
-
-.vault-details summary::after {
-  content: ">";
-  font-size: 0.9rem;
-  color: var(--muted);
-  transition: transform 0.2s ease;
-}
-
-.vault-details[open] summary::after {
-  transform: rotate(90deg);
 }
 
 .vault-summary {
@@ -14648,25 +16240,50 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 100%;
+}
+
+.vault-tree-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+.vault-tree-scroll.vault-tree-scroll-wide {
+  overflow-x: auto;
 }
 
 .tree-dir {
-  border-radius: 12px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
 }
 
 .tree-item {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: var(--panel-warm);
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 5px 8px;
+  padding-left: calc(8px + var(--tree-indent, 0px));
+  border-radius: 6px;
+  background: var(--accent-weak-bg);
   border: 1px solid transparent;
   font-weight: 600;
+  font-size: 0.8rem;
   color: var(--ink);
   cursor: pointer;
+  text-align: left;
   transition: 0.2s ease;
+  min-width: 0;
 }
 
 .tree-item:hover {
@@ -14674,12 +16291,18 @@ h2 {
 }
 
 .tree-item.active {
-  border-color: var(--accent-strong);
-  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
+}
+
+.vault-tree-scroll.vault-tree-scroll-wide .tree-item {
+  min-width: calc(100% + var(--tree-overflow, 0px));
 }
 
 .tree-dir summary {
   list-style: none;
+  display: flex;
+  align-items: center;
 }
 
 .tree-dir summary::-webkit-details-marker {
@@ -14690,6 +16313,7 @@ h2 {
   content: ">";
   margin-left: auto;
   color: var(--muted);
+  font-size: 0.7rem;
   transition: transform 0.2s ease;
 }
 
@@ -14698,40 +16322,55 @@ h2 {
 }
 
 .tree-children {
-  margin-left: 16px;
-  padding-left: 12px;
-  border-left: 1px dashed var(--line);
+  margin-left: 0;
+  padding-left: 0;
+  padding-top: 6px;
+  border-left: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .tree-icon {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   color: var(--accent);
 }
 
 .tree-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
 }
 
 .tree-file {
-  background: var(--panel-warm);
+  background: var(--panel);
+  width: calc(100% - 8px);
+}
+
+.vault-tree-scroll.vault-tree-scroll-wide .tree-file {
+  min-width: calc(100% + var(--tree-overflow, 0px) - 8px);
 }
 
 .tree-name {
-  font-size: 0.9rem;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
+  max-height: calc(1.2em * 2);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr);
   gap: 24px;
   align-items: stretch;
   flex: 1;
@@ -14777,7 +16416,7 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 360px;
   grid-template-rows: auto auto;
   gap: 18px 24px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .spaced-repetition-layout {
@@ -14825,6 +16464,7 @@ body.focus-mode .sr-flashcards-panel {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .fast-tools-panel {
@@ -14856,6 +16496,13 @@ body.focus-mode .sr-flashcards-panel {
 .fast-history-panel {
   grid-column: 2;
   grid-row: 2;
+  min-height: 0;
+}
+
+.fast-history-panel .panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 body.focus-mode .flashcard-panel img,
@@ -14918,8 +16565,8 @@ body.focus-mode .sr-stats-panel {
 .flashcard-item {
   padding: 14px;
   border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  border: 1px solid var(--block-border);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -14988,7 +16635,7 @@ body.focus-mode .sr-stats-panel {
   border: 1px solid var(--line-soft);
   border-radius: 999px;
   padding: 6px 12px;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   color: var(--ink);
   font-weight: 600;
   cursor: pointer;
@@ -15073,12 +16720,12 @@ body.focus-mode .sr-stats-panel {
 
 .flashcard-option:hover {
   border-color: var(--accent-border);
-  background: var(--panel-warm);
+  background: var(--accent-hover-bg);
 }
 
 .flashcard-option.selected {
   border-color: var(--accent-strong);
-  background: var(--panel-warm);
+  background: var(--accent-active-bg);
 }
 
 .flashcard-option.correct {
@@ -15191,7 +16838,7 @@ body.focus-mode .sr-stats-panel {
 
 .cloze-blank.filled {
   border-style: solid;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
 }
 
 .cloze-blank.correct {
@@ -15206,7 +16853,7 @@ body.focus-mode .sr-stats-panel {
 
 .cloze-input {
   border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   color: var(--ink);
   border-radius: 8px;
   padding: 4px 6px;
@@ -15258,7 +16905,7 @@ body.focus-mode .sr-stats-panel {
   padding: 6px 10px;
   font-size: 0.8rem;
   font-weight: 600;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   color: var(--ink);
   cursor: grab;
   user-select: none;
@@ -15436,8 +17083,8 @@ body.focus-mode .sr-stats-panel {
   margin: 0;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
   font-family: var(--mono);
   font-size: 0.82rem;
   white-space: pre-wrap;
@@ -15455,8 +17102,8 @@ body.focus-mode .sr-stats-panel {
   gap: 12px;
   padding: 16px;
   border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--accent-weak-border);
   text-align: left;
   cursor: pointer;
   transition: 0.2s ease;
@@ -15469,7 +17116,7 @@ body.focus-mode .sr-stats-panel {
 }
 
 .help-topic-card:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
@@ -15576,8 +17223,8 @@ body.focus-mode .sr-stats-panel {
   gap: 6px;
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
   text-align: left;
   cursor: pointer;
   transition: 0.2s ease;
@@ -15589,13 +17236,13 @@ body.focus-mode .sr-stats-panel {
 }
 
 .help-syntax-card:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
 .help-syntax-card.active {
   border-color: var(--accent-border);
-  background: var(--accent-soft);
+  background: var(--accent-active-bg);
   box-shadow: var(--shadow-soft), inset 4px 0 0 var(--accent-strong);
 }
 
@@ -15662,8 +17309,8 @@ body.focus-mode .sr-stats-panel {
   gap: 12px;
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
   min-width: 0;
 }
 
@@ -15696,7 +17343,7 @@ body.focus-mode .sr-stats-panel {
 }
 
 .help-syntax-lang:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
@@ -15823,8 +17470,8 @@ body.focus-mode .sr-stats-panel {
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
   color: var(--ink);
   display: grid;
   place-items: center;
@@ -15834,17 +17481,18 @@ body.focus-mode .sr-stats-panel {
 
 .focus-toggle:hover {
   border-color: var(--accent-border);
+  background: var(--accent-hover-bg);
   color: var(--accent-strong);
 }
 
 .focus-toggle.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
+  border-color: var(--accent-weak-border);
   color: var(--accent-strong);
 }
 
 .focus-toggle:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
@@ -16015,7 +17663,7 @@ body.focus-mode .sr-stats-panel {
 }
 
 .pill-button:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
@@ -16046,7 +17694,7 @@ body.focus-mode .sr-stats-panel {
   text-align: left;
   padding: 10px 12px;
   border-radius: 12px;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   border: 1px solid transparent;
   cursor: pointer;
   transition: 0.2s ease;
@@ -16057,8 +17705,8 @@ body.focus-mode .sr-stats-panel {
 }
 
 .file-item.active {
-  border-color: var(--accent-strong);
-  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
 }
 
 .file-name {
@@ -16069,7 +17717,7 @@ body.focus-mode .sr-stats-panel {
 .preview {
   margin: 0;
   padding: 16px;
-  background: var(--preview-bg);
+  background-color: var(--md-surface-bg);
   color: var(--preview-ink);
   border-radius: 16px;
   flex: 1;
@@ -16085,12 +17733,85 @@ body.focus-mode .sr-stats-panel {
   min-height: 0;
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid var(--line-soft);
-  background: var(--preview-bg);
+  border: 1px solid var(--md-editor-border);
+  background-color: var(--md-editor-bg);
   color: var(--preview-ink);
   font-family: var(--mono);
   font-size: 0.85rem;
   resize: none;
+  caret-color: var(--md-editor-caret);
+}
+
+.preview.preview-editor.markdown {
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.preview-editor:hover {
+  border-color: var(--md-editor-border-hover);
+}
+
+.preview-editor:focus-visible {
+  outline: none;
+  border-color: var(--md-editor-focus-border);
+  box-shadow: 0 0 0 2px var(--md-editor-focus-glow);
+}
+
+.preview-editor::selection {
+  background: var(--md-editor-selection-bg);
+  color: var(--preview-ink);
+}
+
+:root[data-md-editor-grid="on"] .preview-editor,
+:root[data-md-editor-grid="on"] .preview.markdown,
+:root[data-md-editor-grid="on"] .preview.raw {
+  background-image:
+    radial-gradient(
+      circle at 50% 50%,
+      var(--md-grid-line-color) 0,
+      var(--md-grid-line-color) var(--md-grid-dot),
+      transparent calc(var(--md-grid-dot) + 0.5px)
+    ),
+    radial-gradient(
+      ellipse var(--md-grid-line) calc(var(--md-grid-stroke) / 2)
+        at 50% calc(50% - var(--md-grid-cross-offset)),
+      var(--md-grid-line-color) 0,
+      var(--md-grid-line-color) 100%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse var(--md-grid-line) calc(var(--md-grid-stroke) / 2)
+        at 50% calc(50% + var(--md-grid-cross-offset)),
+      var(--md-grid-line-color) 0,
+      var(--md-grid-line-color) 100%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line)
+        at calc(50% - var(--md-grid-cross-offset)) 50%,
+      var(--md-grid-line-color) 0,
+      var(--md-grid-line-color) 100%,
+      transparent 100%
+    ),
+    radial-gradient(
+      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line)
+        at calc(50% + var(--md-grid-cross-offset)) 50%,
+      var(--md-grid-line-color) 0,
+      var(--md-grid-line-color) 100%,
+      transparent 100%
+    );
+  background-size: var(--md-grid-size) var(--md-grid-size);
+  background-position: 0 0;
+  background-repeat: repeat;
+  background-attachment: local;
+}
+
+.preview.markdown ::selection,
+.preview.raw ::selection {
+  background: var(--md-selection-bg);
+  color: var(--preview-ink);
 }
 
 .preview.raw {
@@ -16141,12 +17862,12 @@ body.focus-mode .sr-stats-panel {
 }
 
 .preview.markdown a {
-  color: var(--accent);
+  color: var(--md-link);
   text-decoration: underline;
 }
 
 .preview.markdown a:hover {
-  color: var(--accent-strong);
+  color: var(--md-link-hover);
 }
 
 .preview.markdown code {
@@ -16176,9 +17897,47 @@ body.focus-mode .sr-stats-panel {
 .preview.markdown blockquote {
   margin: 0 0 0.8rem;
   padding-left: 12px;
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--md-blockquote-border);
   color: var(--preview-ink);
   opacity: 0.9;
+}
+
+.markdown-table {
+  width: 100%;
+  overflow-x: auto;
+  margin: 0 0 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--md-table-bg);
+}
+
+.preview.markdown table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.preview.markdown thead th {
+  background: var(--md-table-head-bg);
+  text-align: left;
+  font-weight: 600;
+}
+
+.preview.markdown th,
+.preview.markdown td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+}
+
+.preview.markdown tr > :last-child {
+  border-right: none;
+}
+
+.preview.markdown tbody tr:last-child th,
+.preview.markdown tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .preview.placeholder {
@@ -16337,53 +18096,85 @@ body.focus-mode .sr-stats-panel {
 ## 📝 settings.css — ./styles/components/settings.css
 
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(220px, 1fr));
-  grid-template-rows: auto auto;
-  gap: 20px;
-  align-items: start;
-  overflow-x: auto;
+.settings-nav .nav-item {
+  width: 100%;
 }
 
-.settings-grid .panel {
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   min-width: 0;
 }
 
-.settings-grid .vault-index-panel {
-  grid-column: 1 / span 2;
-  grid-row: 1;
+.settings-page .panel {
+  min-width: 0;
 }
 
-.settings-grid .settings-tabs-panel {
-  grid-column: 3 / span 2;
-  grid-row: 1;
+.settings-single-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.settings-grid .settings-flashcards-panel {
+.settings-app-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.settings-app-grid .vault-index-panel {
   grid-column: 1;
-  grid-row: 2;
 }
 
-.settings-grid .fast-flashcard-tools-panel {
+.settings-app-grid .settings-performance-panel {
   grid-column: 2;
-  grid-row: 2;
 }
 
-.settings-grid .spaced-repetition-panel {
-  grid-column: 3;
-  grid-row: 2;
+.settings-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  align-items: stretch;
 }
 
-.settings-tabs-panel .settings-tab-content {
+.settings-review-grid .panel {
+  height: 100%;
+}
+
+.settings-tab-content {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.settings-grid .appearance-panel {
-  grid-column: 4;
-  grid-row: 2;
+.settings-tab-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-tab-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .settings-app-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-app-grid .vault-index-panel,
+  .settings-app-grid .settings-performance-panel {
+    grid-column: 1;
+  }
 }
 
 .setting-row {
@@ -16393,6 +18184,14 @@ body.focus-mode .sr-stats-panel {
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
+
+.settings-flashcards-panel .setting-row:first-of-type,
+.fast-flashcard-tools-panel .setting-row:first-of-type,
+.spaced-repetition-panel .setting-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
 
 .setting-subrow {
   display: flex;
@@ -16453,6 +18252,58 @@ body.focus-mode .sr-stats-panel {
 .appearance-panel .setting-row:first-of-type {
   border-top: none;
   padding-top: 0;
+}
+
+.appearance-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  gap: 20px;
+  align-items: start;
+}
+
+.appearance-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.appearance-editor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
+}
+
+.appearance-editor-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.appearance-editor-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.appearance-grid-intensity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.appearance-grid-intensity .pill-grid {
+  gap: 6px;
+}
+
+@media (max-width: 960px) {
+  .appearance-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .theme-toggle {
@@ -16520,10 +18371,16 @@ body.focus-mode .sr-stats-panel {
   min-width: 140px;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   color: var(--ink);
   font-size: 0.85rem;
+}
+
+.text-input:focus-visible {
+  outline: none;
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 2px var(--field-glow);
 }
 
 .text-input:disabled {
@@ -16542,8 +18399,8 @@ body.focus-mode .sr-stats-panel {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   padding: 0;
   cursor: pointer;
   appearance: none;
@@ -16602,8 +18459,8 @@ body.focus-mode .sr-stats-panel {
   min-width: 120px;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   color: var(--ink);
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -16678,7 +18535,7 @@ body.focus-mode .sr-stats-panel {
 }
 
 .sr-box-column:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 3px;
 }
 
@@ -16735,8 +18592,8 @@ body.focus-mode .sr-stats-panel {
 .kpi-card {
   padding: 12px 14px;
   border-radius: 14px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  border: 1px solid var(--block-border);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -16760,8 +18617,8 @@ body.focus-mode .sr-stats-panel {
   gap: 12px;
   padding: 14px;
   border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  border: 1px solid var(--block-border);
 }
 
 .chart-header {
@@ -16834,8 +18691,8 @@ body.focus-mode .sr-stats-panel {
   gap: 8px;
   padding: 10px 12px;
   border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  border: 1px solid var(--block-border);
 }
 
 .fast-block-header {
@@ -16890,7 +18747,7 @@ body.focus-mode .sr-stats-panel {
   inset: 0;
   width: var(--fast-time-progress, 0%);
   background: linear-gradient(90deg, var(--accent) 0%, var(--accent-highlight) 100%);
-  box-shadow: 0 0 8px rgba(224, 122, 95, 0.35);
+  box-shadow: 0 0 8px var(--accent-glow);
   transition: width 0.2s ease;
 }
 
@@ -16939,8 +18796,8 @@ body.focus-mode .sr-stats-panel {
   gap: 4px;
   padding: 8px 10px;
   border-radius: 16px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--block-border);
+  background: var(--block-bg);
 }
 
 .fast-session-value {
@@ -16950,37 +18807,6 @@ body.focus-mode .sr-stats-panel {
 }
 
 .fast-session-sub {
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.fast-vault-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
-}
-
-.fast-vault-block .label {
-  font-size: 0.65rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.fast-vault-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: var(--ink);
-}
-
-.fast-vault-sep {
   font-size: 0.75rem;
   color: var(--muted);
 }
@@ -17130,8 +18956,8 @@ body.focus-mode .sr-stats-panel {
   gap: 12px;
   padding: 14px;
   border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  border: 1px solid var(--block-border);
 }
 
 .sr-box-chart-header {
@@ -17146,8 +18972,8 @@ body.focus-mode .sr-stats-panel {
   gap: 12px;
   padding: 14px;
   border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  border: 1px solid var(--block-border);
 }
 
 ---
@@ -17158,9 +18984,9 @@ body.focus-mode .sr-stats-panel {
 .empty-state {
   padding: 18px;
   border-radius: 16px;
-  border: 1px dashed var(--line);
+  border: 1px dashed var(--block-border);
   color: var(--muted);
-  background: var(--panel-warm);
+  background: var(--block-bg);
 }
 
 .error {
@@ -17183,19 +19009,23 @@ body.focus-mode .sr-stats-panel {
 
 ## 📝 layout.css — ./styles/layout.css
 
-
 .app-shell {
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 36px;
   position: relative;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: 24px;
   padding: 24px;
   min-height: 100vh;
+  height: 100vh;
   animation: riseIn 0.6s ease both;
+  transition: grid-template-columns 0.2s ease;
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 52px 1fr;
+  --sidebar-width: var(--sidebar-collapsed-width);
 }
 
 .app-shell.dashboard-active {
@@ -17227,6 +19057,7 @@ body.focus-mode .sr-stats-panel {
 }
 
 .sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -17235,76 +19066,86 @@ body.focus-mode .sr-stats-panel {
   padding: 24px;
   box-shadow: var(--shadow);
   border: 1px solid var(--line-soft);
+  transition: padding 0.2s ease;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .sidebar.collapsed {
-  padding: 12px 8px;
+  padding: 8px 6px;
   gap: 0;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.brand-mark {
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: linear-gradient(140deg, var(--accent), var(--accent-highlight));
-  color: var(--accent-contrast);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-}
-
-.sidebar-rail {
-  width: 100%;
-  min-height: 180px;
+.sidebar-handle {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
   border: none;
+  padding: 0;
+  margin: 0;
   background: transparent;
-  color: var(--ink);
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 24px 0 0 24px;
+  transition: background 0.2s ease, color 0.2s ease;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  border-radius: 16px;
-  transition: 0.2s ease;
+  z-index: 2;
 }
 
-.sidebar-rail:hover {
-  background: var(--panel-warm);
+.sidebar-handle:hover,
+.sidebar-handle:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--accent-strong);
 }
 
-.sidebar-rail:focus-visible {
-  outline: 2px solid var(--accent-border);
-  outline-offset: 4px;
+.sidebar-handle:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
 }
 
-.rail-arrow {
-  font-size: 1.2rem;
+.sidebar-handle-chevron {
+  font-size: 0.75rem;
   font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-.brand-text {
+.sidebar-handle:hover .sidebar-handle-chevron,
+.sidebar-handle:focus-visible .sidebar-handle-chevron {
+  opacity: 1;
+}
+
+.sidebar-head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 12px;
 }
 
-.brand-title {
-  font-size: 1.1rem;
-  font-weight: 700;
+.sidebar-divider {
+  height: 1px;
+  width: 100%;
+  background: var(--line-soft);
+  opacity: 0.6;
 }
 
-.brand-sub {
-  font-size: 0.85rem;
-  color: var(--muted);
+.sidebar-divider-muted {
+  opacity: 0.35;
+}
+
+.sidebar-icon-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sidebar-icon-button {
+  width: 100%;
+  height: 40px;
+  border-radius: 12px;
 }
 
 .nav {
@@ -17326,12 +19167,12 @@ body.focus-mode .sr-stats-panel {
 }
 
 .nav-item:hover {
-  background: var(--panel-warm);
+  background: var(--accent-hover-bg);
 }
 
 .nav-item.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
+  border-color: var(--accent-weak-border);
   color: var(--accent-strong);
 }
 
@@ -17352,19 +19193,11 @@ body.focus-mode .sr-stats-panel {
   color: var(--accent-strong);
 }
 
-.sidebar-footer {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .vault-status {
-  flex: 1;
   padding: 10px 12px;
   border-radius: 14px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--accent-weak-border);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -17379,7 +19212,7 @@ body.focus-mode .sr-stats-panel {
 }
 
 .vault-status:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
@@ -17387,8 +19220,8 @@ body.focus-mode .sr-stats-panel {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--accent-weak-border);
   display: grid;
   place-items: center;
   color: var(--ink);
@@ -17402,8 +19235,8 @@ body.focus-mode .sr-stats-panel {
 }
 
 .nav-icon.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
+  border-color: var(--accent-weak-border);
   color: var(--accent-strong);
 }
 
@@ -17412,14 +19245,87 @@ body.focus-mode .sr-stats-panel {
   height: 20px;
 }
 
+.sidebar-vault-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* FIX: this wrapper must fill the remaining height and allow inner scroll areas to work */
+.sidebar-mode-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+
+  flex: 1 1 auto;     /* added */
+  min-height: 0;      /* added */
+  overflow: hidden;   /* added: prevents “escape”, scroll happens in the inner list */
+}
+
+.sidebar .vault-details {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  max-height: none;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.sidebar .vault-details-header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+.sidebar .vault-summary {
+  display: block;
+  width: 100%;
+}
+
+.sidebar .vault-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 8px 0 0;
+}
+
+/* This is the ONLY vertical scroll container for the tree */
+.sidebar .vault-tree-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .sidebar-card {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   border-radius: 16px;
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--accent-weak-border);
+
+  min-height: 0; /* added: helps nested flex children shrink/scroll correctly */
 }
 
 .label {
@@ -17447,7 +19353,7 @@ body.focus-mode .sr-stats-panel {
 }
 
 .active-user-button:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -17481,17 +19387,38 @@ body.focus-mode .sr-stats-panel {
   color-scheme: light;
   --bg: #f3efe6;
   --bg-strong: #ece6da;
+  --page-bg-base: #f3efe6;
+  --page-bg-spot-base: #f7dccb;
+  --page-bg-edge-base: #e6f0ee;
+  --page-bg: var(--bg-gradient);
   --panel: #ffffff;
   --panel-warm: #f8f2e8;
   --ink: #141717;
   --muted: #5b6265;
   --line: rgba(18, 24, 27, 0.12);
   --line-soft: rgba(18, 24, 27, 0.08);
+  --block-bg-base: var(--panel);
+  --block-bg: var(--block-bg-base);
+  --block-border-base: var(--line-soft);
+  --block-border: var(--block-border-base);
+  --block-glow: transparent;
+  --field-bg-base: var(--panel);
+  --field-bg: var(--field-bg-base);
+  --field-border-base: var(--line-soft);
+  --field-border: var(--field-border-base);
+  --field-glow: transparent;
   --accent: #e07a5f;
+  --accent-rgb: 224, 122, 95;
   --accent-strong: #cc5c3f;
   --accent-soft: rgba(224, 122, 95, 0.14);
   --accent-highlight: #f2cc8f;
   --accent-border: rgba(224, 122, 95, 0.35);
+  --accent-weak-bg: rgba(var(--accent-rgb), 0.06);
+  --accent-hover-bg: rgba(var(--accent-rgb), 0.1);
+  --accent-active-bg: rgba(var(--accent-rgb), 0.14);
+  --accent-weak-border: rgba(var(--accent-rgb), 0.24);
+  --accent-focus-ring: rgba(var(--accent-rgb), 0.38);
+  --accent-glow: rgba(var(--accent-rgb), 0.28);
   --accent-contrast: #1a1a1a;
   --accent-contrast-strong: #ffffff;
   --shadow: 0 20px 40px rgba(19, 26, 28, 0.1);
@@ -17499,16 +19426,44 @@ body.focus-mode .sr-stats-panel {
   --mono: "JetBrains Mono", "Fira Code", "IBM Plex Mono", monospace;
   --bg-gradient: radial-gradient(
     circle at top left,
-    #f7dccb 0%,
-    #f3efe6 45%,
-    #e6f0ee 100%
+    var(--page-bg-spot-base) 0%,
+    var(--page-bg-base) 45%,
+    var(--page-bg-edge-base) 100%
   );
-  --preview-bg: #111616;
-  --preview-ink: #f5f1e6;
-  --preview-code-bg: rgba(255, 255, 255, 0.08);
-  --preview-code-border: rgba(255, 255, 255, 0.16);
+  --preview-bg: var(--panel);
+  --preview-ink: var(--ink);
+  --preview-code-bg: #ffffff;
+  --preview-code-border: var(--line-soft);
+  --md-surface-bg: var(--preview-bg);
+  --md-table-bg: var(--preview-bg);
+  --md-table-head-bg: var(--accent-weak-bg);
+  --md-link: var(--accent);
+  --md-link-hover: var(--accent-strong);
+  --md-blockquote-border: var(--accent);
+  --md-selection-bg: var(--accent-soft);
+  --md-editor-bg: var(--md-surface-bg);
+  --md-editor-border: var(--line-soft);
+  --md-editor-border-hover: var(--line);
+  --md-editor-focus-border: var(--accent-border);
+  --md-editor-focus-glow: transparent;
+  --md-editor-selection-bg: var(--md-selection-bg);
+  --md-editor-caret: var(--md-link);
+  --md-grid-size: 28px;
+  --md-grid-dot: 1px;
+  --md-grid-stroke: 6px;
+  --md-grid-cross-offset: 7px;
+  --md-grid-line: 1px;
+  --md-grid-line-neutral-light: rgba(20, 23, 23, 0.02);
+  --md-grid-line-neutral-medium: rgba(20, 23, 23, 0.035);
+  --md-grid-line-neutral-strong: rgba(20, 23, 23, 0.05);
+  --md-grid-line-accent-light: transparent;
+  --md-grid-line-accent-medium: transparent;
+  --md-grid-line-accent-strong: transparent;
+  --md-grid-line-accent: var(--md-grid-line-accent-medium);
+  --md-grid-line-neutral: var(--md-grid-line-neutral-medium);
+  --md-grid-line-color: var(--md-grid-line-accent);
   --chip-bg: rgba(20, 23, 23, 0.06);
-  --glow: radial-gradient(circle, rgba(47, 143, 131, 0.18), transparent 70%);
+  --glow: radial-gradient(circle, var(--accent-glow), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.12);
   --error-border: rgba(204, 92, 63, 0.3);
   --error-ink: #7a2e1c;
@@ -17518,29 +19473,163 @@ body.focus-mode .sr-stats-panel {
   color-scheme: dark;
   --bg: #0f1417;
   --bg-strong: #121a1f;
+  --page-bg-base: #0f1417;
+  --page-bg-spot-base: #1b2a33;
+  --page-bg-edge-base: #0b1012;
   --panel: #151c20;
   --panel-warm: #1b2429;
   --ink: #edf2f4;
   --muted: #a3abb0;
   --line: rgba(237, 242, 244, 0.16);
   --line-soft: rgba(237, 242, 244, 0.1);
+  --block-bg-base: var(--panel);
+  --block-bg: var(--block-bg-base);
+  --block-border-base: var(--line-soft);
+  --block-border: var(--block-border-base);
+  --block-glow: transparent;
   --shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
   --shadow-soft: 0 12px 24px rgba(0, 0, 0, 0.3);
   --bg-gradient: radial-gradient(
     circle at top left,
-    #1b2a33 0%,
-    #0f1417 55%,
-    #0b1012 100%
+    var(--page-bg-spot-base) 0%,
+    var(--page-bg-base) 55%,
+    var(--page-bg-edge-base) 100%
   );
-  --preview-bg: #0b0f12;
-  --preview-ink: #e7edf0;
-  --preview-code-bg: rgba(255, 255, 255, 0.12);
-  --preview-code-border: rgba(255, 255, 255, 0.24);
+  --preview-bg: var(--panel);
+  --preview-ink: var(--ink);
+  --preview-code-bg: #000000;
+  --preview-code-border: var(--line-soft);
+  --accent-weak-bg: rgba(var(--accent-rgb), 0.05);
+  --accent-hover-bg: rgba(var(--accent-rgb), 0.08);
+  --accent-active-bg: rgba(var(--accent-rgb), 0.12);
+  --accent-weak-border: rgba(var(--accent-rgb), 0.2);
+  --accent-focus-ring: rgba(var(--accent-rgb), 0.32);
+  --accent-glow: rgba(var(--accent-rgb), 0.24);
+  --md-grid-line-neutral-light: rgba(0, 0, 0, 0.035);
+  --md-grid-line-neutral-medium: rgba(0, 0, 0, 0.055);
+  --md-grid-line-neutral-strong: rgba(0, 0, 0, 0.07);
   --chip-bg: rgba(237, 242, 244, 0.08);
-  --glow: radial-gradient(circle, rgba(224, 122, 95, 0.18), transparent 70%);
+  --glow: radial-gradient(circle, var(--accent-glow), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.2);
   --error-border: rgba(204, 92, 63, 0.45);
   --error-ink: #f6c1b2;
+}
+
+@supports (color: color-mix(in srgb, white 50%, black)) {
+  :root {
+    --page-bg: radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--page-bg-spot-base) 94%, var(--accent) 6%) 0%,
+      color-mix(in srgb, var(--page-bg-base) 96%, var(--accent) 4%) 45%,
+      color-mix(in srgb, var(--page-bg-edge-base) 96%, var(--accent) 4%) 100%
+    );
+    --field-bg: color-mix(in srgb, var(--field-bg-base) 95%, var(--accent) 5%);
+    --field-border: color-mix(
+      in srgb,
+      var(--field-border-base) 90%,
+      var(--accent) 10%
+    );
+    --field-glow: color-mix(in srgb, var(--accent) 18%, transparent);
+    --block-bg: color-mix(in srgb, var(--block-bg-base) 95%, var(--accent) 5%);
+    --block-border: color-mix(
+      in srgb,
+      var(--block-border-base) 92%,
+      var(--accent) 8%
+    );
+    --block-glow: color-mix(in srgb, var(--accent) 12%, transparent);
+    --accent-weak-bg: color-mix(in srgb, var(--panel) 94%, var(--accent) 6%);
+    --accent-hover-bg: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
+    --accent-active-bg: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%);
+    --accent-weak-border: color-mix(
+      in srgb,
+      var(--line-soft) 70%,
+      var(--accent) 30%
+    );
+    --accent-focus-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+    --accent-glow: color-mix(in srgb, var(--accent) 26%, transparent);
+    --md-surface-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
+    --md-table-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
+    --md-table-head-bg: color-mix(in srgb, var(--preview-bg) 88%, var(--md-link) 12%);
+    --md-editor-focus-glow: color-mix(in srgb, var(--md-link) 22%, transparent);
+    --md-grid-line-accent-light: color-mix(
+      in srgb,
+      var(--md-link) 3%,
+      transparent
+    );
+    --md-grid-line-accent-medium: color-mix(
+      in srgb,
+      var(--md-link) 4%,
+      transparent
+    );
+    --md-grid-line-accent-strong: color-mix(
+      in srgb,
+      var(--md-link) 5%,
+      transparent
+    );
+  }
+
+  :root[data-theme="dark"] {
+    --block-bg: color-mix(in srgb, var(--block-bg-base) 94%, var(--accent) 6%);
+    --block-border: color-mix(
+      in srgb,
+      var(--block-border-base) 90%,
+      var(--accent) 10%
+    );
+    --block-glow: color-mix(in srgb, var(--accent) 14%, transparent);
+    --accent-weak-bg: color-mix(in srgb, var(--panel) 96%, var(--accent) 4%);
+    --accent-hover-bg: color-mix(in srgb, var(--panel) 93%, var(--accent) 7%);
+    --accent-active-bg: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
+    --accent-weak-border: color-mix(
+      in srgb,
+      var(--line-soft) 65%,
+      var(--accent) 35%
+    );
+    --accent-focus-ring: color-mix(in srgb, var(--accent) 50%, transparent);
+    --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
+    --md-grid-line-accent-light: color-mix(
+      in srgb,
+      var(--md-link) 4%,
+      transparent
+    );
+    --md-grid-line-accent-medium: color-mix(
+      in srgb,
+      var(--md-link) 6%,
+      transparent
+    );
+    --md-grid-line-accent-strong: color-mix(
+      in srgb,
+      var(--md-link) 7%,
+      transparent
+    );
+  }
+}
+
+:root[data-md-editor-grid-intensity="light"] {
+  --md-grid-line-accent: var(--md-grid-line-accent-light);
+  --md-grid-line-neutral: var(--md-grid-line-neutral-light);
+}
+
+:root[data-md-editor-grid-intensity="medium"] {
+  --md-grid-line-accent: var(--md-grid-line-accent-medium);
+  --md-grid-line-neutral: var(--md-grid-line-neutral-medium);
+}
+
+:root[data-md-editor-grid-intensity="strong"] {
+  --md-grid-line-accent: var(--md-grid-line-accent-strong);
+  --md-grid-line-neutral: var(--md-grid-line-neutral-strong);
+}
+
+:root[data-md-editor-colors="off"] {
+  --md-surface-bg: var(--preview-bg);
+  --md-table-bg: var(--preview-bg);
+  --md-table-head-bg: var(--panel-warm);
+  --md-link: var(--preview-ink);
+  --md-link-hover: var(--preview-ink);
+  --md-blockquote-border: var(--line);
+  --md-selection-bg: var(--line-soft);
+  --md-editor-focus-border: var(--line);
+  --md-editor-focus-glow: var(--line-soft);
+  --md-grid-line-color: var(--md-grid-line-neutral);
 }
 
 ---

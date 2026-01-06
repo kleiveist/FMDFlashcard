@@ -64,6 +64,13 @@
   caret-color: var(--md-editor-caret);
 }
 
+.preview.preview-editor.markdown {
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  white-space: normal;
+}
+
 .preview-editor:hover {
   border-color: var(--md-editor-border-hover);
 }
