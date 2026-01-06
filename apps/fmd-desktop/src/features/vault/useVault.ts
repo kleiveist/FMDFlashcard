@@ -52,7 +52,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
   }, []);
 
   const loadVault = useCallback(
-    async (path: string, options: LoadOptions) => {
+    async (path: string, options: LoadOptions): Promise<VaultFile[] | null> => {
       setListError("");
       setVaultPath(path);
       setFiles([]);
@@ -66,7 +66,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
         if (options.persist) {
           await persistSettings({ vaultPath: path });
         }
-        return true;
+        return results;
       } catch (error) {
         const message = asErrorMessage(error, "Failed to list markdown files.");
         setListError(options.errorMessage ?? message);
@@ -75,14 +75,14 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
           setVaultPath(null);
           await persistSettings({ vaultPath: null });
         }
-        return false;
+        return null;
       }
     },
     [persistSettings],
   );
 
   const pickVault = useCallback(
-    async (options?: PickOptions) => {
+    async (options?: PickOptions): Promise<VaultFile[] | null> => {
       setListError("");
       const selected = await open({
         directory: true,
@@ -91,7 +91,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
       });
 
       if (!selected || Array.isArray(selected)) {
-        return false;
+        return null;
       }
 
       const snapshot = takeSnapshot();
@@ -99,19 +99,19 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
 
       const errorMessage =
         options?.errorMessage ?? "Ausgewaehlter Vault ist nicht verfuegbar.";
-      const loaded = await loadVault(selected, {
+      const results = await loadVault(selected, {
         persist: true,
         clearOnFailure: false,
         errorMessage,
       });
 
-      if (!loaded) {
+      if (!results) {
         restoreSnapshot(snapshot);
         setListError(errorMessage);
         options?.onLoadFailed?.();
       }
 
-      return loaded;
+      return results;
     },
     [loadVault, restoreSnapshot, takeSnapshot],
   );

@@ -15,6 +15,7 @@ import { usePreview } from "../features/preview/usePreview";
 import { useAppSettings } from "../features/settings/useAppSettings";
 import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepetition";
 import { useVault } from "../features/vault/useVault";
+import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 
 type AppActions = {
   handlePickVault: () => Promise<boolean>;
@@ -44,11 +45,32 @@ type AppState = {
 
 const AppStateContext = createContext<AppState | null>(null);
 
+const LARGE_VAULT_WARNING_THRESHOLD = 50;
+
+const countMarkdownFiles = (files: VaultFile[]) =>
+  files.reduce((count, file) => {
+    const relativePath = file.relative_path.replace(/\\/g, "/");
+    if (
+      relativePath
+        .split("/")
+        .some((segment) => segment.startsWith("."))
+    ) {
+      return count;
+    }
+    if (relativePath.toLowerCase().endsWith(".md")) {
+      return count + 1;
+    }
+    return count;
+  }, 0);
+
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
   const [activeHelpTopicId, setActiveHelpTopicId] = useState<string | null>(
     null,
   );
+  const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<
+    number | null
+  >(null);
   const {
     activeNotePath,
     accentColor,
@@ -169,13 +191,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false;
 
     const restoreVault = async () => {
-      const loaded = await loadVault(storedVaultPath, {
+      const results = await loadVault(storedVaultPath, {
         persist: false,
         clearOnFailure: false,
         errorMessage:
           "Saved vault is unavailable. Please reselect.",
       });
-      if (!loaded && !cancelled) {
+      if (!results && !cancelled) {
         setVaultPath(null);
         await persistSettings({ vaultPath: null });
       }
@@ -260,7 +282,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     const previewSnapshot = takePreviewSnapshot();
     const flashcardsSnapshot = takeFlashcardsSnapshot();
 
-    const loaded = await pickVault({
+    const results = await pickVault({
       errorMessage: "Ausgewaehlter Vault ist nicht verfuegbar.",
       onBeforeLoad: () => {
         resetPreview();
@@ -272,7 +294,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       },
     });
 
-    return loaded;
+    if (results) {
+      const count = countMarkdownFiles(results);
+      if (count > LARGE_VAULT_WARNING_THRESHOLD) {
+        setLargeVaultWarningCount(count);
+      } else {
+        setLargeVaultWarningCount(null);
+      }
+    }
+
+    return Boolean(results);
   }, [
     pickVault,
     resetFlashcards,
@@ -282,6 +313,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setPreviewError,
     takeFlashcardsSnapshot,
     takePreviewSnapshot,
+    setLargeVaultWarningCount,
   ]);
 
   const handleSelectFile = useCallback(
@@ -363,6 +395,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     [setMaxFilesPerScan],
   );
 
+  const handleLargeVaultWarningDismiss = useCallback(() => {
+    setLargeVaultWarningCount(null);
+  }, [setLargeVaultWarningCount]);
+
   const value: AppState = {
     actions: {
       handlePickVault,
@@ -388,7 +424,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
+    <AppStateContext.Provider value={value}>
+      {children}
+      <LargeVaultWarningModal
+        count={largeVaultWarningCount}
+        onClose={handleLargeVaultWarningDismiss}
+      />
+    </AppStateContext.Provider>
   );
 };
 
