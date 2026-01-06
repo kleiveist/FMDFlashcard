@@ -176,8 +176,8 @@
   gap: 12px;
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
 }
 
 .appearance-editor-header h3 {
@@ -362,8 +362,8 @@
   min-width: 120px;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
   color: var(--ink);
   font-family: var(--mono);
   font-size: 0.85rem;

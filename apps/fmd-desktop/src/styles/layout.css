@@ -92,7 +92,7 @@
 }
 
 .sidebar-handle:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
@@ -156,12 +156,12 @@
 }
 
 .nav-item:hover {
-  background: var(--panel-warm);
+  background: var(--accent-hover-bg);
 }
 
 .nav-item.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
+  border-color: var(--accent-weak-border);
   color: var(--accent-strong);
 }
 
@@ -185,8 +185,8 @@
 .vault-status {
   padding: 10px 12px;
   border-radius: 14px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--accent-weak-border);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -201,7 +201,7 @@
 }
 
 .vault-status:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
@@ -209,8 +209,8 @@
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--accent-weak-border);
   display: grid;
   place-items: center;
   color: var(--ink);
@@ -224,8 +224,8 @@
 }
 
 .nav-icon.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
+  border-color: var(--accent-weak-border);
   color: var(--accent-strong);
 }
 
@@ -310,9 +310,9 @@
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   border-radius: 16px;
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--accent-weak-border);
 
   min-height: 0; /* added: helps nested flex children shrink/scroll correctly */
 }
@@ -342,7 +342,7 @@
 }
 
 .active-user-button:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
   border-radius: 6px;
 }

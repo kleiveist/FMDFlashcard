@@ -16,7 +16,7 @@
   text-align: left;
   padding: 10px 12px;
   border-radius: 12px;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   border: 1px solid transparent;
   cursor: pointer;
   transition: 0.2s ease;
@@ -27,8 +27,8 @@
 }
 
 .file-item.active {
-  border-color: var(--accent-strong);
-  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
 }
 
 .file-name {

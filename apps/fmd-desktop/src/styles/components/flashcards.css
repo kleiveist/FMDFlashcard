@@ -78,7 +78,7 @@
   border: 1px solid var(--line-soft);
   border-radius: 999px;
   padding: 6px 12px;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   color: var(--ink);
   font-weight: 600;
   cursor: pointer;
@@ -163,12 +163,12 @@
 
 .flashcard-option:hover {
   border-color: var(--accent-border);
-  background: var(--panel-warm);
+  background: var(--accent-hover-bg);
 }
 
 .flashcard-option.selected {
   border-color: var(--accent-strong);
-  background: var(--panel-warm);
+  background: var(--accent-active-bg);
 }
 
 .flashcard-option.correct {
@@ -281,7 +281,7 @@
 
 .cloze-blank.filled {
   border-style: solid;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
 }
 
 .cloze-blank.correct {
@@ -296,7 +296,7 @@
 
 .cloze-input {
   border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   color: var(--ink);
   border-radius: 8px;
   padding: 4px 6px;
@@ -348,7 +348,7 @@
   padding: 6px 10px;
   font-size: 0.8rem;
   font-weight: 600;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   color: var(--ink);
   cursor: grab;
   user-select: none;

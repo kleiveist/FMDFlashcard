@@ -11,6 +11,7 @@ export const applyTheme = (theme: ThemeMode) => {
 export const applyAccentColor = (value: string) => {
   const root = document.documentElement;
   const tokens = buildAccentTokens(value);
+  root.style.setProperty("--accent-rgb", tokens.accentRgb);
   root.style.setProperty("--accent", tokens.accent);
   root.style.setProperty("--accent-strong", tokens.accentStrong);
   root.style.setProperty("--accent-soft", tokens.accentSoft);

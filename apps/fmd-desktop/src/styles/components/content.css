@@ -152,7 +152,7 @@ h2 {
   padding: 5px 8px;
   padding-left: calc(8px + var(--tree-indent, 0px));
   border-radius: 6px;
-  background: var(--panel-warm);
+  background: var(--accent-weak-bg);
   border: 1px solid transparent;
   font-weight: 600;
   font-size: 0.8rem;
@@ -168,8 +168,8 @@ h2 {
 }
 
 .tree-item.active {
-  border-color: var(--accent-strong);
-  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
 }
 
 .vault-tree-scroll.vault-tree-scroll-wide .tree-item {

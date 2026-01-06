@@ -33,10 +33,17 @@
   --field-border: var(--field-border-base);
   --field-glow: transparent;
   --accent: #e07a5f;
+  --accent-rgb: 224, 122, 95;
   --accent-strong: #cc5c3f;
   --accent-soft: rgba(224, 122, 95, 0.14);
   --accent-highlight: #f2cc8f;
   --accent-border: rgba(224, 122, 95, 0.35);
+  --accent-weak-bg: rgba(var(--accent-rgb), 0.06);
+  --accent-hover-bg: rgba(var(--accent-rgb), 0.1);
+  --accent-active-bg: rgba(var(--accent-rgb), 0.14);
+  --accent-weak-border: rgba(var(--accent-rgb), 0.24);
+  --accent-focus-ring: rgba(var(--accent-rgb), 0.38);
+  --accent-glow: rgba(var(--accent-rgb), 0.28);
   --accent-contrast: #1a1a1a;
   --accent-contrast-strong: #ffffff;
   --shadow: 0 20px 40px rgba(19, 26, 28, 0.1);
@@ -50,11 +57,11 @@
   );
   --preview-bg: var(--panel);
   --preview-ink: var(--ink);
-  --preview-code-bg: var(--panel-warm);
+  --preview-code-bg: var(--accent-weak-bg);
   --preview-code-border: var(--line-soft);
   --md-surface-bg: var(--preview-bg);
   --md-table-bg: var(--preview-bg);
-  --md-table-head-bg: var(--panel-warm);
+  --md-table-head-bg: var(--accent-weak-bg);
   --md-link: var(--accent);
   --md-link-hover: var(--accent-strong);
   --md-blockquote-border: var(--accent);
@@ -81,7 +88,7 @@
   --md-grid-line-neutral: var(--md-grid-line-neutral-medium);
   --md-grid-line-color: var(--md-grid-line-accent);
   --chip-bg: rgba(20, 23, 23, 0.06);
-  --glow: radial-gradient(circle, rgba(47, 143, 131, 0.18), transparent 70%);
+  --glow: radial-gradient(circle, var(--accent-glow), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.12);
   --error-border: rgba(204, 92, 63, 0.3);
   --error-ink: #7a2e1c;
@@ -115,13 +122,19 @@
   );
   --preview-bg: var(--panel);
   --preview-ink: var(--ink);
-  --preview-code-bg: var(--panel-warm);
+  --preview-code-bg: var(--accent-weak-bg);
   --preview-code-border: var(--line-soft);
+  --accent-weak-bg: rgba(var(--accent-rgb), 0.05);
+  --accent-hover-bg: rgba(var(--accent-rgb), 0.08);
+  --accent-active-bg: rgba(var(--accent-rgb), 0.12);
+  --accent-weak-border: rgba(var(--accent-rgb), 0.2);
+  --accent-focus-ring: rgba(var(--accent-rgb), 0.32);
+  --accent-glow: rgba(var(--accent-rgb), 0.24);
   --md-grid-line-neutral-light: rgba(0, 0, 0, 0.035);
   --md-grid-line-neutral-medium: rgba(0, 0, 0, 0.055);
   --md-grid-line-neutral-strong: rgba(0, 0, 0, 0.07);
   --chip-bg: rgba(237, 242, 244, 0.08);
-  --glow: radial-gradient(circle, rgba(224, 122, 95, 0.18), transparent 70%);
+  --glow: radial-gradient(circle, var(--accent-glow), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.2);
   --error-border: rgba(204, 92, 63, 0.45);
   --error-ink: #f6c1b2;
@@ -149,6 +162,16 @@
       var(--accent) 8%
     );
     --block-glow: color-mix(in srgb, var(--accent) 12%, transparent);
+    --accent-weak-bg: color-mix(in srgb, var(--panel) 94%, var(--accent) 6%);
+    --accent-hover-bg: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
+    --accent-active-bg: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%);
+    --accent-weak-border: color-mix(
+      in srgb,
+      var(--line-soft) 70%,
+      var(--accent) 30%
+    );
+    --accent-focus-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+    --accent-glow: color-mix(in srgb, var(--accent) 26%, transparent);
     --md-surface-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
     --md-table-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
     --md-table-head-bg: color-mix(in srgb, var(--preview-bg) 88%, var(--md-link) 12%);
@@ -178,6 +201,16 @@
       var(--accent) 10%
     );
     --block-glow: color-mix(in srgb, var(--accent) 14%, transparent);
+    --accent-weak-bg: color-mix(in srgb, var(--panel) 96%, var(--accent) 4%);
+    --accent-hover-bg: color-mix(in srgb, var(--panel) 93%, var(--accent) 7%);
+    --accent-active-bg: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
+    --accent-weak-border: color-mix(
+      in srgb,
+      var(--line-soft) 65%,
+      var(--accent) 35%
+    );
+    --accent-focus-ring: color-mix(in srgb, var(--accent) 50%, transparent);
+    --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
     --md-grid-line-accent-light: color-mix(
       in srgb,
       var(--md-link) 4%,
@@ -215,6 +248,7 @@
   --md-surface-bg: var(--preview-bg);
   --md-table-bg: var(--preview-bg);
   --md-table-head-bg: var(--panel-warm);
+  --preview-code-bg: var(--panel-warm);
   --md-link: var(--preview-ink);
   --md-link-hover: var(--preview-ink);
   --md-blockquote-border: var(--line);

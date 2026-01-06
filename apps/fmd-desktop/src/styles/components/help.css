@@ -91,8 +91,8 @@
   margin: 0;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
   font-family: var(--mono);
   font-size: 0.82rem;
   white-space: pre-wrap;
@@ -110,8 +110,8 @@
   gap: 12px;
   padding: 16px;
   border-radius: 16px;
-  background: var(--panel-warm);
-  border: 1px solid var(--line-soft);
+  background: var(--accent-weak-bg);
+  border: 1px solid var(--accent-weak-border);
   text-align: left;
   cursor: pointer;
   transition: 0.2s ease;
@@ -124,7 +124,7 @@
 }
 
 .help-topic-card:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
@@ -231,8 +231,8 @@
   gap: 6px;
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
   text-align: left;
   cursor: pointer;
   transition: 0.2s ease;
@@ -244,13 +244,13 @@
 }
 
 .help-syntax-card:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 
 .help-syntax-card.active {
   border-color: var(--accent-border);
-  background: var(--accent-soft);
+  background: var(--accent-active-bg);
   box-shadow: var(--shadow-soft), inset 4px 0 0 var(--accent-strong);
 }
 
@@ -317,8 +317,8 @@
   gap: 12px;
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
   min-width: 0;
 }
 
@@ -351,7 +351,7 @@
 }
 
 .help-syntax-lang:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 

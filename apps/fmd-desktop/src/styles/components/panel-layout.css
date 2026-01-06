@@ -28,8 +28,8 @@
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel-warm);
+  border: 1px solid var(--accent-weak-border);
+  background: var(--accent-weak-bg);
   color: var(--ink);
   display: grid;
   place-items: center;
@@ -39,17 +39,18 @@
 
 .focus-toggle:hover {
   border-color: var(--accent-border);
+  background: var(--accent-hover-bg);
   color: var(--accent-strong);
 }
 
 .focus-toggle.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
+  border-color: var(--accent-weak-border);
   color: var(--accent-strong);
 }
 
 .focus-toggle:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
 }
 

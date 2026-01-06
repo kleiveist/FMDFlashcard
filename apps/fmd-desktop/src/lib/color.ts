@@ -54,6 +54,7 @@ export const buildAccentTokens = (value: string, fallback = DEFAULT_ACCENT) => {
   const strong = mixRgb(rgb, { r: 0, g: 0, b: 0 }, 0.18);
   const highlight = mixRgb(rgb, { r: 255, g: 255, b: 255 }, 0.28);
   return {
+    accentRgb: `${rgb.r}, ${rgb.g}, ${rgb.b}`,
     accent: rgbToHex(rgb.r, rgb.g, rgb.b),
     accentStrong: rgbToHex(strong.r, strong.g, strong.b),
     accentSoft: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`,
