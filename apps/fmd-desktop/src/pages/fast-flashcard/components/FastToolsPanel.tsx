@@ -1,5 +1,5 @@
 import { FastFlashcardToolsSettings } from "../../../components/settings/FastFlashcardToolsSettings";
-import { FAST_FLASHCARD_DURATIONS } from "../hooks/useFastSession";
+import { FAST_FLASHCARD_DURATIONS } from "../../../features/fast-flashcard/constants";
 
 type FastToolsPanelProps = {
   fastFlashcards: {

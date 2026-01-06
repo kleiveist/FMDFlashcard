@@ -31,6 +31,7 @@ struct AppSettings {
     fast_flashcard_order: Option<String>,
     fast_flashcard_mode: Option<String>,
     fast_flashcard_scope: Option<String>,
+    fast_flashcard_duration: Option<u32>,
     spaced_repetition_boxes: Option<u32>,
     spaced_repetition_order: Option<String>,
     spaced_repetition_page_size: Option<u32>,
@@ -114,6 +115,7 @@ impl AppSettings {
             && self.fast_flashcard_order.is_none()
             && self.fast_flashcard_mode.is_none()
             && self.fast_flashcard_scope.is_none()
+            && self.fast_flashcard_duration.is_none()
             && self.spaced_repetition_boxes.is_none()
             && self.spaced_repetition_order.is_none()
             && self.spaced_repetition_page_size.is_none()
@@ -257,6 +259,7 @@ fn save_app_settings(
     fast_flashcard_order: Option<String>,
     fast_flashcard_mode: Option<String>,
     fast_flashcard_scope: Option<String>,
+    fast_flashcard_duration: Option<u32>,
     spaced_repetition_boxes: Option<u32>,
     spaced_repetition_order: Option<String>,
     spaced_repetition_page_size: Option<u32>,
@@ -282,6 +285,7 @@ fn save_app_settings(
         fast_flashcard_order,
         fast_flashcard_mode,
         fast_flashcard_scope,
+        fast_flashcard_duration,
         spaced_repetition_boxes,
         spaced_repetition_order,
         spaced_repetition_page_size,

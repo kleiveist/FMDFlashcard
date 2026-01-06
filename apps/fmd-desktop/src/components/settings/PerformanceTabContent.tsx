@@ -12,7 +12,6 @@ export const PerformanceTabContent = ({
   setScanParallelism,
 }: PerformanceTabContentProps) => (
   <>
-    <p className="muted">Tune vault scans for larger libraries.</p>
     <div className="setting-row">
       <span className="label">Max files per vault scan</span>
       <input
@@ -25,7 +24,9 @@ export const PerformanceTabContent = ({
         placeholder="Optional"
         aria-label="Max files per vault scan"
       />
-      <span className="helper-text">Leave empty for no limit.</span>
+      <span className="helper-text">
+        Leave empty to disable the large vault warning.
+      </span>
     </div>
     <div className="setting-row">
       <span className="label">Scan parallelism</span>
@@ -42,16 +43,6 @@ export const PerformanceTabContent = ({
           </button>
         ))}
       </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Watcher debounce/throttle</span>
-      <input
-        type="text"
-        className="text-input"
-        value="Coming later"
-        disabled
-        aria-label="Watcher debounce or throttle (coming later)"
-      />
     </div>
   </>
 );

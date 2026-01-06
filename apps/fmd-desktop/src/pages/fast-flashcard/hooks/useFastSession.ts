@@ -12,7 +12,6 @@ import { useAppState } from "../../../components/AppStateProvider";
 import { evaluateFlashcardResult } from "../../../features/flashcards/logic";
 
 export const fastFlashcardStatusLabel = "Not scanned yet";
-export const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48];
 
 export type FastFlashcardResult = "correct" | "incorrect" | "timeout";
 
@@ -31,6 +30,32 @@ export type FastFlashcardSessionSummary = {
 
 type FastFlashcardStorage = {
   sessions: FastFlashcardSessionSummary[];
+};
+
+type FastFlashcardHistoryResetListener = () => void;
+
+const fastFlashcardHistoryResetListeners =
+  new Set<FastFlashcardHistoryResetListener>();
+
+export const subscribeFastFlashcardHistoryReset = (
+  listener: FastFlashcardHistoryResetListener,
+) => {
+  fastFlashcardHistoryResetListeners.add(listener);
+  return () => {
+    fastFlashcardHistoryResetListeners.delete(listener);
+  };
+};
+
+export const resetFastFlashcardHistory = async () => {
+  try {
+    const storage: FastFlashcardStorage = { sessions: [] };
+    await invoke("save_fast_flashcard_data", { storage });
+    fastFlashcardHistoryResetListeners.forEach((listener) => listener());
+    return true;
+  } catch (error) {
+    console.warn("Failed to reset fast flashcard history", error);
+    return false;
+  }
 };
 
 export type FastFlashcardSessionStats = {
@@ -94,7 +119,8 @@ export const useFastSession = () => {
   } = fastFlashcards;
   const [fastCardPosition, setFastCardPosition] = useState(0);
   const [isTimeModeEnabled, setIsTimeModeEnabled] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState(6);
+  const selectedDuration = settings.fastFlashcardDuration;
+  const setSelectedDuration = settings.setFastFlashcardDuration;
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [sessionStats, setSessionStats] = useState<FastFlashcardSessionStats>({
     correct: 0,
@@ -295,6 +321,14 @@ export const useFastSession = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(
+    () =>
+      subscribeFastFlashcardHistoryReset(() => {
+        setSessionHistory([]);
+      }),
+    [],
+  );
 
   useEffect(() => {
     if (!sessionHistoryLoaded) {
@@ -567,16 +601,16 @@ export const useFastSession = () => {
       validTokenIds: Set<string>,
       dragBlankIds: Set<string>,
     ) => {
-        fastFlashcards.handleCompositeClozeTokenDrop(
-          event,
-          cardIndex,
-          partIndex,
-          blankId,
-          validTokenIds,
-          dragBlankIds,
-        );
-      },
-      [fastFlashcards],
+      fastFlashcards.handleCompositeClozeTokenDrop(
+        event,
+        cardIndex,
+        partIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [fastFlashcards],
   );
 
   const handleCompositeClozeTokenRemove = useCallback(

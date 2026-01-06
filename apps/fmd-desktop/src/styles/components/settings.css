@@ -27,6 +27,15 @@
   align-items: start;
 }
 
+.settings-app-grid .vault-index-panel {
+  grid-column: 1;
+}
+
+.settings-app-grid .settings-tabs-panel,
+.settings-app-grid .settings-performance-panel {
+  grid-column: 2;
+}
+
 .settings-review-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -43,6 +52,12 @@
 @media (max-width: 1200px) {
   .settings-app-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-app-grid .vault-index-panel,
+  .settings-app-grid .settings-tabs-panel,
+  .settings-app-grid .settings-performance-panel {
+    grid-column: 1;
   }
 }
 

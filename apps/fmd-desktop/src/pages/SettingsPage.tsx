@@ -3,6 +3,7 @@ import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import { FastFlashcardToolsSettings } from "../components/settings/FastFlashcardToolsSettings";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
+import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
 import {
   LanguageTabContent,
   DataSyncTabContent,
@@ -10,18 +11,13 @@ import {
 import { PerformanceTabContent } from "../components/settings/PerformanceTabContent";
 import { SpacedRepetitionSettingsSection } from "../components/settings/SpacedRepetitionSettingsSection";
 import { VaultIndexSection } from "../components/settings/VaultIndexSection";
+import { FAST_FLASHCARD_DURATIONS } from "../features/fast-flashcard/constants";
 import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
 import {
   SPACED_REPETITION_BOXES,
   SPACED_REPETITION_PAGE_SIZES,
 } from "../features/spaced-repetition/useSpacedRepetition";
-
-const APP_SETTINGS_TABS = [
-  { id: "data-sync", label: "Data & Sync" },
-  { id: "performance", label: "Performance" },
-] as const;
-
-type SettingsTabId = (typeof APP_SETTINGS_TABS)[number]["id"];
+import { resetFastFlashcardHistory } from "./fast-flashcard/hooks/useFastSession";
 
 export const SettingsPage = () => {
   const {
@@ -45,19 +41,27 @@ export const SettingsPage = () => {
     },
     [setLanguage],
   );
-  const [activeSettingsTab, setActiveSettingsTab] =
-    useState<SettingsTabId>("data-sync");
+  const [isResetHistoryOpen, setIsResetHistoryOpen] = useState(false);
+  const [isResetHistoryPending, setIsResetHistoryPending] = useState(false);
   const { activeSettingsPage } = settingsNav;
+
+  const handleResetHistoryConfirm = useCallback(async () => {
+    setIsResetHistoryPending(true);
+    const success = await resetFastFlashcardHistory();
+    setIsResetHistoryPending(false);
+    if (success) {
+      setIsResetHistoryOpen(false);
+    }
+  }, [setIsResetHistoryOpen, resetFastFlashcardHistory]);
 
   return (
     <>
       <header className="content-header">
         <div>
-          <p className="eyebrow">Settings</p>
-          <h1>Einstellungen</h1>
+          <p className="eyebrow">SETTINGS</p>
+          <h1>Settings</h1>
           <p className="muted">
-            Passe deinen Workflow an. Die naechsten Features bauen auf dieser
-            Vault-Basis auf.
+            Adjust your workflow. The next features build on this vault foundation.
           </p>
         </div>
         <div className="actions">
@@ -80,39 +84,28 @@ export const SettingsPage = () => {
             <div className="panel-header">
               <div>
                 <h2>Data &amp; Sync</h2>
-                <p className="muted">
-                  Manage storage and performance preferences here.
-                </p>
-              </div>
-              <div className="pill-grid">
-                {APP_SETTINGS_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    className={`pill pill-button ${
-                      activeSettingsTab === tab.id ? "active" : ""
-                    }`}
-                    aria-pressed={activeSettingsTab === tab.id}
-                    onClick={() => setActiveSettingsTab(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
               </div>
             </div>
             <div className="panel-body">
               <div className="settings-tab-content">
-                {activeSettingsTab === "data-sync" ? (
-                  <DataSyncTabContent />
-                ) : (
-                  <PerformanceTabContent
-                    maxFilesPerScan={settings.maxFilesPerScan}
-                    onMaxFilesPerScanChange={actions.handleMaxFilesPerScanChange}
-                    scanParallelism={settings.scanParallelism}
-                    setScanParallelism={settings.setScanParallelism}
-                  />
-                )}
+                <DataSyncTabContent />
               </div>
+            </div>
+          </section>
+          <section className="panel settings-performance-panel">
+            <div className="panel-header">
+              <div>
+                <h2>Performance</h2>
+                <p className="muted">Tune vault scans for larger libraries.</p>
+              </div>
+            </div>
+            <div className="panel-body">
+              <PerformanceTabContent
+                maxFilesPerScan={settings.maxFilesPerScan}
+                onMaxFilesPerScanChange={actions.handleMaxFilesPerScanChange}
+                scanParallelism={settings.scanParallelism}
+                setScanParallelism={settings.setScanParallelism}
+              />
             </div>
           </section>
         </div>
@@ -140,6 +133,24 @@ export const SettingsPage = () => {
               </div>
             </div>
             <div className="panel-body">
+              <div className="toolbar-section">
+                <span className="label">Duration</span>
+                <div className="pill-grid">
+                  {FAST_FLASHCARD_DURATIONS.map((duration) => (
+                    <button
+                      key={duration}
+                      type="button"
+                      className={`pill pill-button ${
+                        settings.fastFlashcardDuration === duration ? "active" : ""
+                      }`}
+                      aria-pressed={settings.fastFlashcardDuration === duration}
+                      onClick={() => settings.setFastFlashcardDuration(duration)}
+                    >
+                      {duration}s
+                    </button>
+                  ))}
+                </div>
+              </div>
               <FastFlashcardToolsSettings
                 fastFlashcardOrder={settings.fastFlashcardOrder}
                 fastFlashcardMode={settings.fastFlashcardMode}
@@ -149,6 +160,18 @@ export const SettingsPage = () => {
                 setFastFlashcardScope={settings.setFastFlashcardScope}
                 showSectionDividers
               />
+              <div className="setting-row">
+                <span className="label">Session History</span>
+                <div className="setting-actions">
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={() => setIsResetHistoryOpen(true)}
+                  >
+                    Reset history
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
           <SpacedRepetitionSettingsSection
@@ -201,6 +224,12 @@ export const SettingsPage = () => {
           </section>
         </div>
       ) : null}
+      <ResetSessionHistoryModal
+        isOpen={isResetHistoryOpen}
+        isPending={isResetHistoryPending}
+        onCancel={() => setIsResetHistoryOpen(false)}
+        onConfirm={handleResetHistoryConfirm}
+      />
     </>
   );
 };

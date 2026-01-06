@@ -50,8 +50,6 @@ type AppState = {
 
 const AppStateContext = createContext<AppState | null>(null);
 
-const LARGE_VAULT_WARNING_THRESHOLD = 50;
-
 const countMarkdownFiles = (files: VaultFile[]) =>
   files.reduce((count, file) => {
     const relativePath = file.relative_path.replace(/\\/g, "/");
@@ -67,6 +65,15 @@ const countMarkdownFiles = (files: VaultFile[]) =>
     }
     return count;
   }, 0);
+
+const parseVaultWarningThreshold = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
@@ -86,6 +93,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
+    maxFilesPerScan,
     setMaxFilesPerScan,
     setTheme,
     settingsLoaded,
@@ -303,7 +311,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
 
     if (results) {
       const count = countMarkdownFiles(results);
-      if (count > LARGE_VAULT_WARNING_THRESHOLD) {
+      const threshold = parseVaultWarningThreshold(maxFilesPerScan);
+      if (threshold && count > threshold) {
         setLargeVaultWarningCount(count);
       } else {
         setLargeVaultWarningCount(null);
@@ -321,6 +330,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     takeFlashcardsSnapshot,
     takePreviewSnapshot,
     setLargeVaultWarningCount,
+    maxFilesPerScan,
   ]);
 
   const handleSelectFile = useCallback(
