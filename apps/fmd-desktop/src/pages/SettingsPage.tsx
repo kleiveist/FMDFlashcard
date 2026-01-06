@@ -246,11 +246,15 @@ export const SettingsPage = () => {
             accentError={settings.accentError}
             editorExactColors={settings.editorExactColors}
             editorBlueprintGrid={settings.editorBlueprintGrid}
+            editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
             onAccentInputChange={actions.handleAccentInputChange}
             onAccentPick={actions.handleAccentPick}
             onCopyAccent={actions.handleCopyAccent}
             onEditorExactColorsToggle={settings.setEditorExactColors}
             onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
+            onEditorBlueprintGridIntensityChange={
+              settings.setEditorBlueprintGridIntensity
+            }
             onThemeToggle={actions.handleThemeChange}
             theme={settings.theme}
           />

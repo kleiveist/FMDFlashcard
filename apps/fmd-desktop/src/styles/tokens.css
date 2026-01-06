@@ -71,8 +71,14 @@
   --md-grid-stroke: 6px;
   --md-grid-cross-offset: 7px;
   --md-grid-line: 1px;
-  --md-grid-line-neutral: rgba(20, 23, 23, 0.04);
-  --md-grid-line-accent: transparent;
+  --md-grid-line-neutral-light: rgba(20, 23, 23, 0.02);
+  --md-grid-line-neutral-medium: rgba(20, 23, 23, 0.035);
+  --md-grid-line-neutral-strong: rgba(20, 23, 23, 0.05);
+  --md-grid-line-accent-light: transparent;
+  --md-grid-line-accent-medium: transparent;
+  --md-grid-line-accent-strong: transparent;
+  --md-grid-line-accent: var(--md-grid-line-accent-medium);
+  --md-grid-line-neutral: var(--md-grid-line-neutral-medium);
   --md-grid-line-color: var(--md-grid-line-accent);
   --chip-bg: rgba(20, 23, 23, 0.06);
   --glow: radial-gradient(circle, rgba(47, 143, 131, 0.18), transparent 70%);
@@ -111,7 +117,9 @@
   --preview-ink: var(--ink);
   --preview-code-bg: var(--panel-warm);
   --preview-code-border: var(--line-soft);
-  --md-grid-line-neutral: rgba(0, 0, 0, 0.06);
+  --md-grid-line-neutral-light: rgba(0, 0, 0, 0.035);
+  --md-grid-line-neutral-medium: rgba(0, 0, 0, 0.055);
+  --md-grid-line-neutral-strong: rgba(0, 0, 0, 0.07);
   --chip-bg: rgba(237, 242, 244, 0.08);
   --glow: radial-gradient(circle, rgba(224, 122, 95, 0.18), transparent 70%);
   --error-bg: rgba(204, 92, 63, 0.2);
@@ -145,7 +153,21 @@
     --md-table-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
     --md-table-head-bg: color-mix(in srgb, var(--preview-bg) 88%, var(--md-link) 12%);
     --md-editor-focus-glow: color-mix(in srgb, var(--md-link) 22%, transparent);
-    --md-grid-line-accent: color-mix(in srgb, var(--md-link) 4%, transparent);
+    --md-grid-line-accent-light: color-mix(
+      in srgb,
+      var(--md-link) 3%,
+      transparent
+    );
+    --md-grid-line-accent-medium: color-mix(
+      in srgb,
+      var(--md-link) 4%,
+      transparent
+    );
+    --md-grid-line-accent-strong: color-mix(
+      in srgb,
+      var(--md-link) 5%,
+      transparent
+    );
   }
 
   :root[data-theme="dark"] {
@@ -156,8 +178,37 @@
       var(--accent) 10%
     );
     --block-glow: color-mix(in srgb, var(--accent) 14%, transparent);
-    --md-grid-line-accent: color-mix(in srgb, var(--md-link) 7%, transparent);
+    --md-grid-line-accent-light: color-mix(
+      in srgb,
+      var(--md-link) 4%,
+      transparent
+    );
+    --md-grid-line-accent-medium: color-mix(
+      in srgb,
+      var(--md-link) 6%,
+      transparent
+    );
+    --md-grid-line-accent-strong: color-mix(
+      in srgb,
+      var(--md-link) 7%,
+      transparent
+    );
   }
+}
+
+:root[data-md-editor-grid-intensity="light"] {
+  --md-grid-line-accent: var(--md-grid-line-accent-light);
+  --md-grid-line-neutral: var(--md-grid-line-neutral-light);
+}
+
+:root[data-md-editor-grid-intensity="medium"] {
+  --md-grid-line-accent: var(--md-grid-line-accent-medium);
+  --md-grid-line-neutral: var(--md-grid-line-neutral-medium);
+}
+
+:root[data-md-editor-grid-intensity="strong"] {
+  --md-grid-line-accent: var(--md-grid-line-accent-strong);
+  --md-grid-line-neutral: var(--md-grid-line-neutral-strong);
 }
 
 :root[data-md-editor-colors="off"] {

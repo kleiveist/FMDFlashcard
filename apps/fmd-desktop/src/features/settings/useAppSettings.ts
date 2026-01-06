@@ -26,6 +26,7 @@ import {
 } from "../spaced-repetition/useSpacedRepetition";
 
 type AppLanguage = "de" | "en";
+type EditorGridIntensity = "light" | "medium" | "strong";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 
 type AppSettings = {
@@ -35,6 +36,7 @@ type AppSettings = {
   accent_color?: string | null;
   editor_exact_colors?: boolean | null;
   editor_blueprint_grid?: boolean | null;
+  editor_blueprint_grid_intensity?: string | null;
   language?: AppLanguage | null;
   max_files_per_scan?: string | null;
   scan_parallelism?: string | null;
@@ -63,6 +65,7 @@ type PersistUpdates = {
   accentColor?: string;
   editorExactColors?: boolean;
   editorBlueprintGrid?: boolean;
+  editorBlueprintGridIntensity?: EditorGridIntensity;
   language?: AppLanguage;
   maxFilesPerScan?: string;
   scanParallelism?: "low" | "medium" | "high";
@@ -88,6 +91,7 @@ export const DEFAULT_THEME: ThemeMode = "light";
 export const DEFAULT_LANGUAGE: AppLanguage = "de";
 const DEFAULT_EDITOR_EXACT_COLORS = true;
 const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
+const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
@@ -116,6 +120,8 @@ export const useAppSettings = () => {
   const [editorBlueprintGrid, setEditorBlueprintGrid] = useState(
     DEFAULT_EDITOR_BLUEPRINT_GRID,
   );
+  const [editorBlueprintGridIntensity, setEditorBlueprintGridIntensity] =
+    useState<EditorGridIntensity>(DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
@@ -174,6 +180,7 @@ export const useAppSettings = () => {
       accentColor: string;
       editorExactColors: boolean;
       editorBlueprintGrid: boolean;
+      editorBlueprintGridIntensity: EditorGridIntensity;
       language: AppLanguage;
       maxFilesPerScan: string;
       scanParallelism: "low" | "medium" | "high";
@@ -202,6 +209,7 @@ export const useAppSettings = () => {
           accentColor: settings.accentColor,
           editorExactColors: settings.editorExactColors,
           editorBlueprintGrid: settings.editorBlueprintGrid,
+          editorBlueprintGridIntensity: settings.editorBlueprintGridIntensity,
           language: settings.language,
           maxFilesPerScan: settings.maxFilesPerScan,
           scanParallelism: settings.scanParallelism,
@@ -244,6 +252,8 @@ export const useAppSettings = () => {
         accentColor: updates.accentColor ?? accentColor,
         editorExactColors: updates.editorExactColors ?? editorExactColors,
         editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
+        editorBlueprintGridIntensity:
+          updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
         language: updates.language ?? language,
         maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
         scanParallelism: updates.scanParallelism ?? scanParallelism,
@@ -287,6 +297,7 @@ export const useAppSettings = () => {
       accentColor,
       editorExactColors,
       editorBlueprintGrid,
+      editorBlueprintGridIntensity,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -337,6 +348,12 @@ export const useAppSettings = () => {
           typeof settings.editor_blueprint_grid === "boolean"
             ? settings.editor_blueprint_grid
             : DEFAULT_EDITOR_BLUEPRINT_GRID;
+        const storedEditorBlueprintGridIntensity =
+          settings.editor_blueprint_grid_intensity === "light" ||
+          settings.editor_blueprint_grid_intensity === "strong" ||
+          settings.editor_blueprint_grid_intensity === "medium"
+            ? settings.editor_blueprint_grid_intensity
+            : DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY;
         const storedLanguage =
           settings.language === "en" ? "en" : DEFAULT_LANGUAGE;
         const maxFilesRaw = settings.max_files_per_scan;
@@ -481,6 +498,7 @@ export const useAppSettings = () => {
         setAccentError("");
         setEditorExactColors(storedEditorExactColors);
         setEditorBlueprintGrid(storedEditorBlueprintGrid);
+        setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
         setActiveNotePath(storedActiveNotePath);
         setVaultPath(settings.vault_path ?? null);
         setLanguage(storedLanguage);
@@ -539,6 +557,11 @@ export const useAppSettings = () => {
   }, [editorBlueprintGrid]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.mdEditorGridIntensity = editorBlueprintGridIntensity;
+  }, [editorBlueprintGridIntensity]);
+
+  useEffect(() => {
     if (!settingsLoaded) {
       return;
     }
@@ -557,6 +580,7 @@ export const useAppSettings = () => {
         accentColor,
         editorExactColors,
         editorBlueprintGrid,
+        editorBlueprintGridIntensity,
         language,
         maxFilesPerScan,
         scanParallelism,
@@ -589,6 +613,7 @@ export const useAppSettings = () => {
     activeNotePath,
     editorExactColors,
     editorBlueprintGrid,
+    editorBlueprintGridIntensity,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -621,6 +646,7 @@ export const useAppSettings = () => {
     accentError,
     editorExactColors,
     editorBlueprintGrid,
+    editorBlueprintGridIntensity,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -639,6 +665,7 @@ export const useAppSettings = () => {
     setActiveNotePath,
     setEditorExactColors,
     setEditorBlueprintGrid,
+    setEditorBlueprintGridIntensity,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,

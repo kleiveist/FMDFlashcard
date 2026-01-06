@@ -21,6 +21,7 @@ struct AppSettings {
     accent_color: Option<String>,
     editor_exact_colors: Option<bool>,
     editor_blueprint_grid: Option<bool>,
+    editor_blueprint_grid_intensity: Option<String>,
     language: Option<String>,
     max_files_per_scan: Option<String>,
     scan_parallelism: Option<String>,
@@ -107,6 +108,7 @@ impl AppSettings {
             && self.accent_color.is_none()
             && self.editor_exact_colors.is_none()
             && self.editor_blueprint_grid.is_none()
+            && self.editor_blueprint_grid_intensity.is_none()
             && self.language.is_none()
             && self.max_files_per_scan.is_none()
             && self.scan_parallelism.is_none()
@@ -253,6 +255,7 @@ fn save_app_settings(
     accent_color: Option<String>,
     editor_exact_colors: Option<bool>,
     editor_blueprint_grid: Option<bool>,
+    editor_blueprint_grid_intensity: Option<String>,
     language: Option<String>,
     max_files_per_scan: Option<String>,
     scan_parallelism: Option<String>,
@@ -281,6 +284,7 @@ fn save_app_settings(
         accent_color,
         editor_exact_colors,
         editor_blueprint_grid,
+        editor_blueprint_grid_intensity,
         language,
         max_files_per_scan,
         scan_parallelism,

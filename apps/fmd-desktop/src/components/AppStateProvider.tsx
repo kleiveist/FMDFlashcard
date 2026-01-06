@@ -84,7 +84,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     number | null
   >(null);
   const [activeSettingsPage, setActiveSettingsPage] =
-    useState<SettingsPageId>("app-settings");
+    useState<SettingsPageId>("appearance");
   const {
     activeNotePath,
     accentColor,
