@@ -2,6 +2,12 @@
 
 This documentation is split into two main tracks:
 
+## Section indexes
+
+- User docs index: `user/index.md`
+- Developer docs index: `dev/index.md`
+- ADR index: `adr/index.md`
+
 - **User documentation** (`docs/user/`): how to use the app and its workflows.
 - **Developer documentation** (`docs/dev/`): how to build, run, and contribute.
 

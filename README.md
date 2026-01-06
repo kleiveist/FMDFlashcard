@@ -14,6 +14,34 @@ while adding a dedicated review experience and study progress tracking.
 
 > Note: The UX and feature set are evolving. If something is unclear, check the in-app Help and the docs in `docs/`.
 
+## Documentation index (fast links)
+
+If GitHub’s repository navigation feels slow, use these direct links:
+
+### User docs
+- Docs home: `docs/index.md`
+- User docs index: `docs/user/index.md`
+- Getting started: `docs/user/getting-started.md`
+- Flashcard syntax: `docs/user/flashcard-syntax.md`
+- Spaced repetition: `docs/user/spaced-repetition.md`
+- Settings: `docs/user/settings.md`
+- Troubleshooting: `docs/user/troubleshooting.md`
+
+### Developer docs
+- Developer docs index: `docs/dev/index.md`
+- Setup (run from source): `docs/dev/setup.md`
+- Control script: `docs/dev/control-script.md`
+- Architecture: `docs/dev/architecture.md`
+- Testing: `docs/dev/testing.md`
+- Releases / packaging: `docs/dev/release.md`
+
+### Project meta
+- Contributing: `CONTRIBUTING.md`
+- Changelog: `CHANGELOG.md`
+- Security policy: `SECURITY.md`
+- ADR index: `docs/adr/index.md`
+
+
 ## Quickstart (run from source)
 
 If you want to run the desktop app from source, follow the full setup guide:
