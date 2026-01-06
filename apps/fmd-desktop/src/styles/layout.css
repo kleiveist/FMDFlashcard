@@ -274,23 +274,13 @@
   overflow: hidden;
 }
 
-/* FIX: summary needs display:flex; otherwise flex properties here are ignored */
-.sidebar .vault-details > summary {
-  display: flex; /* added */
-
-  position: relative;
+.sidebar .vault-details-header {
   flex: 0 0 auto;
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
   gap: 4px;
-  padding-right: 18px;
-}
-
-.sidebar .vault-details > summary::after {
-  position: absolute;
-  top: 2px;
-  right: 0;
 }
 
 .sidebar .vault-summary {

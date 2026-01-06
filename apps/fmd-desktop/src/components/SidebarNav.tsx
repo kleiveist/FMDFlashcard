@@ -240,7 +240,6 @@ export const SidebarNav = ({
                 onSelectFile={actions.handleSelectFile}
                 selectedFile={preview.selectedFile}
                 vaultPath={vault.vaultPath}
-                forceOpen
               />
             </div>
           ) : null}

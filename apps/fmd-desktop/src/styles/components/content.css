@@ -93,29 +93,12 @@ h2 {
   box-shadow: var(--shadow-soft);
 }
 
-.vault-details summary {
-  list-style: none;
+.vault-details-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  cursor: pointer;
   font-weight: 600;
-}
-
-.vault-details summary::-webkit-details-marker {
-  display: none;
-}
-
-.vault-details summary::after {
-  content: ">";
-  font-size: 0.9rem;
-  color: var(--muted);
-  transition: transform 0.2s ease;
-}
-
-.vault-details[open] summary::after {
-  transform: rotate(90deg);
 }
 
 .vault-summary {
