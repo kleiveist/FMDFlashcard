@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use tauri::Manager;
@@ -144,6 +144,29 @@ fn is_markdown(path: &Path) -> bool {
         }
         None => false,
     }
+}
+
+fn sanitize_relative_path(relative_path: &str) -> Result<PathBuf, String> {
+    if relative_path.trim().is_empty() {
+        return Err("Path is empty.".to_string());
+    }
+    let relative = Path::new(relative_path);
+    if relative.is_absolute() {
+        return Err("Path must be relative.".to_string());
+    }
+    for component in relative.components() {
+        match component {
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err("Path is not allowed.".to_string())
+            }
+            _ => {}
+        }
+    }
+    Ok(relative.to_path_buf())
+}
+
+fn format_relative_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
 }
 
 fn settings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -418,6 +441,63 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
     fs::write(path, contents).map_err(|err| err.to_string())
 }
 
+#[tauri::command]
+fn create_markdown_file(
+    vault_path: String,
+    relative_path: String,
+) -> Result<VaultFile, String> {
+    let root = PathBuf::from(&vault_path);
+    if !root.exists() {
+        return Err("Vault path does not exist.".to_string());
+    }
+    if !root.is_dir() {
+        return Err("Vault path is not a directory.".to_string());
+    }
+    let relative = sanitize_relative_path(&relative_path)?;
+    let full_path = root.join(&relative);
+    if !full_path.starts_with(&root) {
+        return Err("Path is outside the vault.".to_string());
+    }
+    if full_path.exists() {
+        return Err("File already exists.".to_string());
+    }
+    match full_path.extension().and_then(|ext| ext.to_str()) {
+        Some(ext) if ext.eq_ignore_ascii_case("md") => {}
+        _ => return Err("Only .md files are supported.".to_string()),
+    }
+    if let Some(parent) = full_path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    fs::write(&full_path, "").map_err(|err| err.to_string())?;
+    Ok(VaultFile {
+        path: full_path.to_string_lossy().to_string(),
+        relative_path: format_relative_path(&relative),
+    })
+}
+
+#[tauri::command]
+fn create_directory(vault_path: String, relative_path: String) -> Result<(), String> {
+    let root = PathBuf::from(&vault_path);
+    if !root.exists() {
+        return Err("Vault path does not exist.".to_string());
+    }
+    if !root.is_dir() {
+        return Err("Vault path is not a directory.".to_string());
+    }
+    let relative = sanitize_relative_path(&relative_path)?;
+    let full_path = root.join(&relative);
+    if !full_path.starts_with(&root) {
+        return Err("Path is outside the vault.".to_string());
+    }
+    if full_path.exists() {
+        return Err("Folder already exists.".to_string());
+    }
+    if let Some(parent) = full_path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    fs::create_dir(&full_path).map_err(|err| err.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -434,7 +514,9 @@ pub fn run() {
             save_vault_path,
             list_markdown_files,
             read_text_file,
-            write_text_file
+            write_text_file,
+            create_markdown_file,
+            create_directory
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

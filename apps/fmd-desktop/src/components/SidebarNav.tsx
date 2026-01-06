@@ -160,20 +160,6 @@ export const SidebarNav = ({
               <button
                 type="button"
                 className={`nav-icon sidebar-icon-button ${
-                  toolbarMode === "settings" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setToolbarMode("settings");
-                  onTabChange("settings");
-                }}
-                aria-label="Settings"
-                title="Settings"
-              >
-                <SettingsIcon />
-              </button>
-              <button
-                type="button"
-                className={`nav-icon sidebar-icon-button ${
                   toolbarMode === "help" ? "active" : ""
                 }`}
                 onClick={() => {
@@ -184,6 +170,20 @@ export const SidebarNav = ({
                 title="Help"
               >
                 <HelpIcon />
+              </button>
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  toolbarMode === "settings" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setToolbarMode("settings");
+                  onTabChange("settings");
+                }}
+                aria-label="Settings"
+                title="Settings"
+              >
+                <SettingsIcon />
               </button>
             </div>
             <div
@@ -237,6 +237,7 @@ export const SidebarNav = ({
                 listState={vault.listState}
                 onTogglePath={handleTogglePath}
                 onSelectFile={actions.handleSelectFile}
+                onRescanVault={actions.handleRescanVault}
                 selectedFile={preview.selectedFile}
                 vaultPath={vault.vaultPath}
               />
