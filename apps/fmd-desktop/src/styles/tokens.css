@@ -119,4 +119,14 @@
     );
     --block-glow: color-mix(in srgb, var(--accent) 12%, transparent);
   }
+
+  :root[data-theme="dark"] {
+    --block-bg: color-mix(in srgb, var(--block-bg-base) 94%, var(--accent) 6%);
+    --block-border: color-mix(
+      in srgb,
+      var(--block-border-base) 90%,
+      var(--accent) 10%
+    );
+    --block-glow: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
 }
