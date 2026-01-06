@@ -52,13 +52,20 @@
   --preview-ink: var(--ink);
   --preview-code-bg: var(--panel-warm);
   --preview-code-border: var(--line-soft);
-  --md-editor-bg: var(--preview-bg);
+  --md-surface-bg: var(--preview-bg);
+  --md-table-bg: var(--preview-bg);
+  --md-table-head-bg: var(--panel-warm);
+  --md-link: var(--accent);
+  --md-link-hover: var(--accent-strong);
+  --md-blockquote-border: var(--accent);
+  --md-selection-bg: var(--accent-soft);
+  --md-editor-bg: var(--md-surface-bg);
   --md-editor-border: var(--line-soft);
   --md-editor-border-hover: var(--line);
   --md-editor-focus-border: var(--accent-border);
   --md-editor-focus-glow: transparent;
-  --md-editor-selection-bg: var(--accent-soft);
-  --md-editor-caret: var(--accent);
+  --md-editor-selection-bg: var(--md-selection-bg);
+  --md-editor-caret: var(--md-link);
   --md-grid-size: 28px;
   --md-grid-dot: 1px;
   --md-grid-stroke: 6px;
@@ -134,9 +141,11 @@
       var(--accent) 8%
     );
     --block-glow: color-mix(in srgb, var(--accent) 12%, transparent);
-    --md-editor-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--accent) 6%);
-    --md-editor-focus-glow: color-mix(in srgb, var(--accent) 22%, transparent);
-    --md-grid-line-accent: color-mix(in srgb, var(--accent) 4%, transparent);
+    --md-surface-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
+    --md-table-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
+    --md-table-head-bg: color-mix(in srgb, var(--preview-bg) 88%, var(--md-link) 12%);
+    --md-editor-focus-glow: color-mix(in srgb, var(--md-link) 22%, transparent);
+    --md-grid-line-accent: color-mix(in srgb, var(--md-link) 4%, transparent);
   }
 
   :root[data-theme="dark"] {
@@ -147,15 +156,19 @@
       var(--accent) 10%
     );
     --block-glow: color-mix(in srgb, var(--accent) 14%, transparent);
-    --md-grid-line-accent: color-mix(in srgb, var(--accent) 7%, transparent);
+    --md-grid-line-accent: color-mix(in srgb, var(--md-link) 7%, transparent);
   }
 }
 
 :root[data-md-editor-colors="off"] {
-  --md-editor-bg: var(--preview-bg);
+  --md-surface-bg: var(--preview-bg);
+  --md-table-bg: var(--preview-bg);
+  --md-table-head-bg: var(--panel-warm);
+  --md-link: var(--preview-ink);
+  --md-link-hover: var(--preview-ink);
+  --md-blockquote-border: var(--line);
+  --md-selection-bg: var(--line-soft);
   --md-editor-focus-border: var(--line);
   --md-editor-focus-glow: var(--line-soft);
-  --md-editor-selection-bg: var(--line-soft);
-  --md-editor-caret: var(--preview-ink);
   --md-grid-line-color: var(--md-grid-line-neutral);
 }

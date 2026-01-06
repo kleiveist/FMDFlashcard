@@ -39,8 +39,7 @@
 .preview {
   margin: 0;
   padding: 16px;
-  background: var(--preview-bg);
-  background: color-mix(in srgb, var(--preview-bg) 94%, var(--accent) 6%);
+  background-color: var(--md-surface-bg);
   color: var(--preview-ink);
   border-radius: 16px;
   flex: 1;
@@ -80,7 +79,9 @@
   color: var(--preview-ink);
 }
 
-:root[data-md-editor-grid="on"] .preview-editor {
+:root[data-md-editor-grid="on"] .preview-editor,
+:root[data-md-editor-grid="on"] .preview.markdown,
+:root[data-md-editor-grid="on"] .preview.raw {
   background-image:
     radial-gradient(
       circle at 50% 50%,
@@ -123,7 +124,7 @@
 
 .preview.markdown ::selection,
 .preview.raw ::selection {
-  background: var(--accent-soft);
+  background: var(--md-selection-bg);
   color: var(--preview-ink);
 }
 
@@ -175,12 +176,12 @@
 }
 
 .preview.markdown a {
-  color: var(--accent);
+  color: var(--md-link);
   text-decoration: underline;
 }
 
 .preview.markdown a:hover {
-  color: var(--accent-strong);
+  color: var(--md-link-hover);
 }
 
 .preview.markdown code {
@@ -210,7 +211,7 @@
 .preview.markdown blockquote {
   margin: 0 0 0.8rem;
   padding-left: 12px;
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--md-blockquote-border);
   color: var(--preview-ink);
   opacity: 0.9;
 }
@@ -221,8 +222,7 @@
   margin: 0 0 0.8rem;
   border-radius: 12px;
   border: 1px solid var(--line-soft);
-  background: var(--preview-bg);
-  background: color-mix(in srgb, var(--preview-bg) 94%, var(--accent) 6%);
+  background: var(--md-table-bg);
 }
 
 .preview.markdown table {
@@ -233,8 +233,7 @@
 }
 
 .preview.markdown thead th {
-  background: var(--panel-warm);
-  background: color-mix(in srgb, var(--preview-bg) 88%, var(--accent) 12%);
+  background: var(--md-table-head-bg);
   text-align: left;
   font-weight: 600;
 }
