@@ -39,7 +39,11 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
+}
+
+.settings-review-grid .panel {
+  height: 100%;
 }
 
 .settings-tab-content {
@@ -65,6 +69,18 @@
   gap: 6px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
+}
+
+.settings-flashcards-panel .setting-row:first-of-type,
+.fast-flashcard-tools-panel .setting-row:first-of-type,
+.spaced-repetition-panel .setting-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.fast-flashcard-tools-panel .fast-flashcard-tools-settings {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
 }
 
 .setting-subrow {

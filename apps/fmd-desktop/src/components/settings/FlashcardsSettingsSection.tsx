@@ -1,4 +1,5 @@
 import type {
+  FlashcardMode,
   FlashcardOrder,
   FlashcardPageSize,
   FlashcardScope,
@@ -6,30 +7,30 @@ import type {
 } from "../../features/flashcards/useFlashcards";
 
 type FlashcardsSettingsSectionProps = {
+  flashcardMode: FlashcardMode;
   flashcardOrder: FlashcardOrder;
   flashcardPageSize: FlashcardPageSize;
   flashcardPageSizes: FlashcardPageSize[];
   flashcardScope: FlashcardScope;
+  setFlashcardMode: (value: FlashcardMode) => void;
   setFlashcardOrder: (value: FlashcardOrder) => void;
   setFlashcardPageSize: (value: FlashcardPageSize) => void;
   setFlashcardScope: (value: FlashcardScope) => void;
-  setSolutionRevealEnabled: (value: boolean) => void;
   setStatsResetMode: (value: StatsResetMode) => void;
-  solutionRevealEnabled: boolean;
   statsResetMode: StatsResetMode;
 };
 
 export const FlashcardsSettingsSection = ({
+  flashcardMode,
   flashcardOrder,
   flashcardPageSize,
   flashcardPageSizes,
   flashcardScope,
+  setFlashcardMode,
   setFlashcardOrder,
   setFlashcardPageSize,
   setFlashcardScope,
-  setSolutionRevealEnabled,
   setStatsResetMode,
-  solutionRevealEnabled,
   statsResetMode,
 }: FlashcardsSettingsSectionProps) => (
   <section className="panel settings-flashcards-panel">
@@ -82,6 +83,25 @@ export const FlashcardsSettingsSection = ({
       </div>
     </div>
     <div className="setting-row">
+      <span className="label">Mode</span>
+      <select
+        className="text-input"
+        value={flashcardMode}
+        onChange={(event) =>
+          setFlashcardMode(event.target.value as FlashcardMode)
+        }
+        aria-label="Select mode filter"
+      >
+        <option value="all">All</option>
+        <option value="qa">Q&amp;A</option>
+        <option value="multiple-choice">Multiple Choice</option>
+        <option value="fill-blank">Fill-in-the-blank</option>
+        <option value="assignment">Assignment</option>
+        <option value="true-false">True/False</option>
+        <option value="mix">Mix</option>
+      </select>
+    </div>
+    <div className="setting-row">
       <span className="label">Page size</span>
       <div className="pill-grid">
         {flashcardPageSizes.map((size) => (
@@ -97,21 +117,6 @@ export const FlashcardsSettingsSection = ({
             {size}
           </button>
         ))}
-      </div>
-    </div>
-    <div className="setting-row">
-      <span className="label">Solution reveal</span>
-      <div className="toggle-row">
-        <span className="toggle-label">{solutionRevealEnabled ? "On" : "Off"}</span>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={solutionRevealEnabled}
-            onChange={(event) => setSolutionRevealEnabled(event.target.checked)}
-            aria-label="Solution reveal"
-          />
-          <span className="slider" />
-        </label>
       </div>
     </div>
     <div className="setting-row">

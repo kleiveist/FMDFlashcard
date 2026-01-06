@@ -118,16 +118,16 @@ export const SettingsPage = () => {
       {activeSettingsPage === "review-tools" ? (
         <div className="settings-page settings-review-grid" id="settings-page-review-tools">
           <FlashcardsSettingsSection
+            flashcardMode={flashcards.flashcardMode}
             flashcardOrder={flashcards.flashcardOrder}
             flashcardPageSize={flashcards.flashcardPageSize}
             flashcardPageSizes={FLASHCARD_PAGE_SIZES}
             flashcardScope={flashcards.flashcardScope}
+            setFlashcardMode={flashcards.setFlashcardMode}
             setFlashcardOrder={flashcards.setFlashcardOrder}
             setFlashcardPageSize={flashcards.setFlashcardPageSize}
             setFlashcardScope={flashcards.setFlashcardScope}
-            setSolutionRevealEnabled={flashcards.setSolutionRevealEnabled}
             setStatsResetMode={flashcards.setStatsResetMode}
-            solutionRevealEnabled={flashcards.solutionRevealEnabled}
             statsResetMode={flashcards.statsResetMode}
           />
           <section className="panel fast-flashcard-tools-panel">
@@ -138,7 +138,7 @@ export const SettingsPage = () => {
               </div>
             </div>
             <div className="panel-body">
-              <div className="toolbar-section">
+              <div className="setting-row">
                 <span className="label">Duration</span>
                 <div className="pill-grid">
                   {FAST_FLASHCARD_DURATIONS.map((duration) => (
