@@ -28,6 +28,12 @@ import {
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
+type ExamAiProvider = "shared-gpt";
+
+export type ExamAiEvaluation = {
+  enabled: boolean;
+  provider: ExamAiProvider | null;
+};
 
 type AppSettings = {
   active_note_path?: string | null;
@@ -56,6 +62,10 @@ type AppSettings = {
   spaced_repetition_repetition_strength?: string | null;
   spaced_repetition_stats_view?: string | null;
   right_toolbar_collapsed?: boolean | null;
+  exam_max_total_points?: number | null;
+  exam_task_count?: number | null;
+  exam_task_points?: number[] | null;
+  exam_ai_evaluation?: ExamAiEvaluation | null;
 };
 
 type PersistUpdates = {
@@ -85,6 +95,10 @@ type PersistUpdates = {
   spacedRepetitionRepetitionStrength?: SpacedRepetitionRepetitionStrength;
   spacedRepetitionStatsView?: SpacedRepetitionStatsView;
   rightToolbarCollapsed?: boolean;
+  examMaxTotalPoints?: number;
+  examTaskCount?: number;
+  examTaskPoints?: number[];
+  examAiEvaluation?: ExamAiEvaluation;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -108,6 +122,87 @@ const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionS
   "medium";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
 const DEFAULT_RIGHT_TOOLBAR_COLLAPSED = false;
+const MAX_EXAM_TASK_COUNT = 20;
+const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
+const DEFAULT_EXAM_TASK_COUNT = 5;
+const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
+  enabled: false,
+  provider: null,
+};
+
+const parseInteger = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.floor(value);
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const clampExamTaskCount = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return DEFAULT_EXAM_TASK_COUNT;
+  }
+  return Math.min(MAX_EXAM_TASK_COUNT, Math.max(1, parsed));
+};
+
+const clampExamTotalPoints = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return DEFAULT_EXAM_MAX_TOTAL_POINTS;
+  }
+  return Math.max(0, parsed);
+};
+
+const clampExamTaskPointsValue = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return 0;
+  }
+  return Math.max(0, parsed);
+};
+
+const buildDefaultExamTaskPoints = (taskCount: number, maxTotalPoints: number) => {
+  if (taskCount <= 0) {
+    return [];
+  }
+  const even = Math.floor(maxTotalPoints / taskCount);
+  const remainder = maxTotalPoints % taskCount;
+  return Array.from({ length: taskCount }, (_, index) =>
+    even + (index < remainder ? 1 : 0),
+  );
+};
+
+const normalizeExamTaskPoints = (
+  value: unknown,
+  taskCount: number,
+  maxTotalPoints: number,
+) => {
+  if (!Array.isArray(value) || value.length === 0) {
+    return buildDefaultExamTaskPoints(taskCount, maxTotalPoints);
+  }
+  const normalized = value.map(clampExamTaskPointsValue).slice(0, taskCount);
+  while (normalized.length < taskCount) {
+    normalized.push(0);
+  }
+  return normalized;
+};
+
+const normalizeExamAiEvaluation = (value: unknown): ExamAiEvaluation => {
+  if (!value || typeof value !== "object") {
+    return DEFAULT_EXAM_AI_EVALUATION;
+  }
+  const candidate = value as { enabled?: unknown; provider?: unknown };
+  return {
+    enabled: typeof candidate.enabled === "boolean" ? candidate.enabled : false,
+    provider: candidate.provider === "shared-gpt" ? "shared-gpt" : null,
+  };
+};
 
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
@@ -169,8 +264,53 @@ export const useAppSettings = () => {
   const [rightToolbarCollapsed, setRightToolbarCollapsed] = useState(
     DEFAULT_RIGHT_TOOLBAR_COLLAPSED,
   );
+  const [examMaxTotalPoints, setExamMaxTotalPointsState] = useState(
+    DEFAULT_EXAM_MAX_TOTAL_POINTS,
+  );
+  const [examTaskCount, setExamTaskCountState] = useState(DEFAULT_EXAM_TASK_COUNT);
+  const [examTaskPoints, setExamTaskPointsState] = useState(() =>
+    buildDefaultExamTaskPoints(
+      DEFAULT_EXAM_TASK_COUNT,
+      DEFAULT_EXAM_MAX_TOTAL_POINTS,
+    ),
+  );
+  const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
+    DEFAULT_EXAM_AI_EVALUATION,
+  );
   const autoSaveReady = useRef(false);
   const autoSaveTimer = useRef<number | null>(null);
+
+  const setExamMaxTotalPoints = useCallback((value: number) => {
+    setExamMaxTotalPointsState(clampExamTotalPoints(value));
+  }, []);
+
+  const setExamTaskCount = useCallback((value: number) => {
+    const nextCount = clampExamTaskCount(value);
+    setExamTaskCountState(nextCount);
+    setExamTaskPointsState((prev) => {
+      const normalized = prev.map(clampExamTaskPointsValue).slice(0, nextCount);
+      while (normalized.length < nextCount) {
+        normalized.push(0);
+      }
+      return normalized;
+    });
+  }, []);
+
+  const setExamTaskPoints = useCallback(
+    (value: number[]) => {
+      setExamTaskPointsState(
+        normalizeExamTaskPoints(value, examTaskCount, examMaxTotalPoints),
+      );
+    },
+    [examMaxTotalPoints, examTaskCount],
+  );
+
+  const setExamAiEvaluation = useCallback((value: ExamAiEvaluation) => {
+    setExamAiEvaluationState({
+      enabled: Boolean(value?.enabled),
+      provider: value?.provider === "shared-gpt" ? "shared-gpt" : null,
+    });
+  }, []);
 
   const saveSettings = useCallback(
     async (settings: {
@@ -200,6 +340,10 @@ export const useAppSettings = () => {
       fastFlashcardMode: FlashcardMode;
       fastFlashcardScope: FlashcardScope;
       fastFlashcardDuration: number;
+      examMaxTotalPoints: number;
+      examTaskCount: number;
+      examTaskPoints: number[];
+      examAiEvaluation: ExamAiEvaluation;
     }) => {
       try {
         await invoke("save_app_settings", {
@@ -230,6 +374,10 @@ export const useAppSettings = () => {
             settings.spacedRepetitionRepetitionStrength,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
           rightToolbarCollapsed: settings.rightToolbarCollapsed,
+          examMaxTotalPoints: settings.examMaxTotalPoints,
+          examTaskCount: settings.examTaskCount,
+          examTaskPoints: settings.examTaskPoints,
+          examAiEvaluation: settings.examAiEvaluation,
         });
         return true;
       } catch (error) {
@@ -282,6 +430,10 @@ export const useAppSettings = () => {
           updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
         rightToolbarCollapsed:
           updates.rightToolbarCollapsed ?? rightToolbarCollapsed,
+        examMaxTotalPoints: updates.examMaxTotalPoints ?? examMaxTotalPoints,
+        examTaskCount: updates.examTaskCount ?? examTaskCount,
+        examTaskPoints: updates.examTaskPoints ?? examTaskPoints,
+        examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "activeNotePath" in updates) {
@@ -298,6 +450,10 @@ export const useAppSettings = () => {
       editorExactColors,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      examAiEvaluation,
+      examMaxTotalPoints,
+      examTaskCount,
+      examTaskPoints,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -492,6 +648,20 @@ export const useAppSettings = () => {
           typeof settings.right_toolbar_collapsed === "boolean"
             ? settings.right_toolbar_collapsed
             : DEFAULT_RIGHT_TOOLBAR_COLLAPSED;
+        const storedExamMaxTotalPoints = clampExamTotalPoints(
+          settings.exam_max_total_points ?? DEFAULT_EXAM_MAX_TOTAL_POINTS,
+        );
+        const storedExamTaskCount = clampExamTaskCount(
+          settings.exam_task_count ?? DEFAULT_EXAM_TASK_COUNT,
+        );
+        const storedExamTaskPoints = normalizeExamTaskPoints(
+          settings.exam_task_points,
+          storedExamTaskCount,
+          storedExamMaxTotalPoints,
+        );
+        const storedExamAiEvaluation = normalizeExamAiEvaluation(
+          settings.exam_ai_evaluation,
+        );
         setTheme(storedTheme);
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
@@ -522,6 +692,10 @@ export const useAppSettings = () => {
         );
         setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
         setRightToolbarCollapsed(storedRightToolbarCollapsed);
+        setExamMaxTotalPointsState(storedExamMaxTotalPoints);
+        setExamTaskCountState(storedExamTaskCount);
+        setExamTaskPointsState(storedExamTaskPoints);
+        setExamAiEvaluationState(storedExamAiEvaluation);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -600,6 +774,10 @@ export const useAppSettings = () => {
         fastFlashcardMode,
         fastFlashcardScope,
         fastFlashcardDuration,
+        examMaxTotalPoints,
+        examTaskCount,
+        examTaskPoints,
+        examAiEvaluation,
       });
     }, 300);
 
@@ -614,6 +792,10 @@ export const useAppSettings = () => {
     editorExactColors,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
+    examAiEvaluation,
+    examMaxTotalPoints,
+    examTaskCount,
+    examTaskPoints,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -647,6 +829,10 @@ export const useAppSettings = () => {
     editorExactColors,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
+    examAiEvaluation,
+    examMaxTotalPoints,
+    examTaskCount,
+    examTaskPoints,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -666,6 +852,10 @@ export const useAppSettings = () => {
     setEditorExactColors,
     setEditorBlueprintGrid,
     setEditorBlueprintGridIntensity,
+    setExamAiEvaluation,
+    setExamMaxTotalPoints,
+    setExamTaskCount,
+    setExamTaskPoints,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,

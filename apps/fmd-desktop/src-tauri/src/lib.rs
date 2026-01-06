@@ -13,6 +13,13 @@ struct VaultFile {
     relative_path: String,
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
+#[serde(default)]
+struct ExamAiEvaluation {
+    enabled: bool,
+    provider: Option<String>,
+}
+
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 struct AppSettings {
     active_note_path: Option<String>,
@@ -41,6 +48,10 @@ struct AppSettings {
     spaced_repetition_repetition_strength: Option<String>,
     spaced_repetition_stats_view: Option<String>,
     right_toolbar_collapsed: Option<bool>,
+    exam_max_total_points: Option<u32>,
+    exam_task_count: Option<u32>,
+    exam_task_points: Option<Vec<u32>>,
+    exam_ai_evaluation: Option<ExamAiEvaluation>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -128,6 +139,10 @@ impl AppSettings {
             && self.spaced_repetition_repetition_strength.is_none()
             && self.spaced_repetition_stats_view.is_none()
             && self.right_toolbar_collapsed.is_none()
+            && self.exam_max_total_points.is_none()
+            && self.exam_task_count.is_none()
+            && self.exam_task_points.is_none()
+            && self.exam_ai_evaluation.is_none()
     }
 }
 
@@ -298,6 +313,10 @@ fn save_app_settings(
     spaced_repetition_repetition_strength: Option<String>,
     spaced_repetition_stats_view: Option<String>,
     right_toolbar_collapsed: Option<bool>,
+    exam_max_total_points: Option<u32>,
+    exam_task_count: Option<u32>,
+    exam_task_points: Option<Vec<u32>>,
+    exam_ai_evaluation: Option<ExamAiEvaluation>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
     let settings = AppSettings {
@@ -327,6 +346,10 @@ fn save_app_settings(
         spaced_repetition_repetition_strength,
         spaced_repetition_stats_view,
         right_toolbar_collapsed,
+        exam_max_total_points,
+        exam_task_count,
+        exam_task_points,
+        exam_ai_evaluation,
     };
     write_settings(&path, &settings)
 }

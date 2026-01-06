@@ -8,6 +8,7 @@ import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
 
 type TabKey =
   | "dashboard"
+  | "exam"
   | "flashcard"
   | "spaced-repetition"
   | "fast-flashcard"
@@ -54,6 +55,7 @@ export const SidebarNav = ({
   const isCollapsed = isToolbarCollapsed && !isMobileNavOpen;
   const isCardsTab =
     activeTab === "dashboard" ||
+    activeTab === "exam" ||
     activeTab === "flashcard" ||
     activeTab === "fast-flashcard" ||
     activeTab === "spaced-repetition";
@@ -199,6 +201,13 @@ export const SidebarNav = ({
                 onClick={() => onTabChange("dashboard")}
               >
                 Makedon
+              </button>
+              <button
+                type="button"
+                className={`nav-item ${activeTab === "exam" ? "active" : ""}`}
+                onClick={() => onTabChange("exam")}
+              >
+                Exam
               </button>
               <button
                 type="button"

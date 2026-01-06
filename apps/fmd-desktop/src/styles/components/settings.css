@@ -46,6 +46,49 @@
   height: 100%;
 }
 
+.settings-review-grid .exam-settings-panel {
+  grid-column: 1 / -1;
+}
+
+.exam-settings-panel .panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.exam-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: center;
+}
+
+.exam-points-table {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 16px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.exam-points-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.exam-points-row .text-input {
+  width: 90px;
+}
+
+.exam-settings-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .settings-tab-content {
   display: flex;
   flex-direction: column;

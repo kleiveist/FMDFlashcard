@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
+import { ExamSettingsSection } from "../components/settings/ExamSettingsSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
 import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
 import { LanguageTabContent } from "../components/settings/DataSyncTabContent";
@@ -235,6 +236,15 @@ export const SettingsPage = () => {
             setSpacedRepetitionRepetitionStrength={
               spacedRepetition.setSpacedRepetitionRepetitionStrength
             }
+          />
+          <ExamSettingsSection
+            maxTotalPoints={settings.examMaxTotalPoints}
+            taskCount={settings.examTaskCount}
+            taskPoints={settings.examTaskPoints}
+            aiEvaluation={settings.examAiEvaluation}
+            setMaxTotalPoints={settings.setExamMaxTotalPoints}
+            setTaskCount={settings.setExamTaskCount}
+            setTaskPoints={settings.setExamTaskPoints}
           />
         </div>
       ) : null}

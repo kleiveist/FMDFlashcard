@@ -4,6 +4,7 @@ import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { SidebarNav } from "./components/SidebarNav";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
 import { FastFlashcardPage } from "./pages/FastFlashcardPage";
 import { HelpPage } from "./pages/HelpPage";
@@ -12,6 +13,7 @@ import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 
 type TabKey =
   | "dashboard"
+  | "exam"
   | "flashcard"
   | "spaced-repetition"
   | "fast-flashcard"
@@ -57,6 +59,8 @@ const AppContent = () => {
         </div>
         {activeTab === "dashboard" ? (
           <DashboardPage />
+        ) : activeTab === "exam" ? (
+          <ExamSimulationPage />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage />
         ) : activeTab === "spaced-repetition" ? (

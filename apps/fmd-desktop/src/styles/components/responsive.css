@@ -4,6 +4,10 @@
     grid-template-columns: 1fr;
   }
 
+  .exam-layout {
+    grid-template-columns: 1fr;
+  }
+
   .fast-flashcard-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;

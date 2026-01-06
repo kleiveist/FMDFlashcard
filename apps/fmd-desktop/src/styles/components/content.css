@@ -329,6 +329,13 @@ h2 {
   align-items: start;
 }
 
+.exam-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: start;
+}
+
 .fast-flashcard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -467,4 +474,112 @@ body.focus-mode .sr-stats-panel {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.exam-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.exam-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.exam-panel {
+  min-height: 0;
+}
+
+.exam-task {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exam-task-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.exam-task-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exam-warning {
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.exam-points-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exam-points-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.exam-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exam-results-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.exam-results-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.exam-results-percent {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.exam-conversion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.exam-conversion-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.exam-option-static {
+  cursor: default;
+}
+
+.exam-option-static:hover {
+  border-color: var(--line-soft);
+  background: var(--panel);
 }
