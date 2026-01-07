@@ -81,25 +81,60 @@ const isExamTaskStartLine = (line: string) => {
   }
 
   const number = Number.parseInt(numberRaw, 10);
-  return number >= 1 && number <= 20;
+  if (number < 1 || number > 20) {
+    return false;
+  }
+
+  let remainder = trimmed.slice(numberRaw.length);
+  if (remainder.startsWith(")")) {
+    remainder = remainder.slice(1);
+  }
+  if (remainder.startsWith("**")) {
+    remainder = remainder.slice(2);
+  }
+
+  return remainder.length === 0 || /^\s/.test(remainder);
 };
+
+const answerMarkerLinePattern =
+  /^\s*(\*\*)?\s*(answer|antwort)\s*:\s*(\*\*)?\s*$/i;
+const inlineAnswerTokenPattern =
+  /(\*\*)?\s*\b(answer|antwort)\b\s*:\s*(\*\*)?/i;
 const optionPattern = /^([a-z])\)\s+(.+)$/;
 const markerPattern = /^-([a-z])$/;
-const answerPattern = /^\s*(Answer|Antwort):\s*(.*)$/;
 
 const buildPrompt = (lines: string[]) =>
   trimEmptyLines(lines).join("\n").trim();
 
+const stripInlineAnswerMarker = (line: string) => {
+  if (answerMarkerLinePattern.test(line)) {
+    return line;
+  }
+  const match = inlineAnswerTokenPattern.exec(line);
+  if (!match || match.index === undefined) {
+    return line;
+  }
+  const before = line.slice(0, match.index);
+  const after = line.slice(match.index + match[0].length);
+  const needsSpacer =
+    before.length > 0 &&
+    after.length > 0 &&
+    !before.endsWith(" ") &&
+    !after.startsWith(" ");
+  const spacer = needsSpacer ? " " : "";
+  return `${before}${spacer}${after}`.trimEnd();
+};
+
 const parseAnswerBlock = (lines: string[]) => {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? "";
-    const match = line.match(answerPattern);
-    if (!match) {
+    if (!answerMarkerLinePattern.test(line)) {
       continue;
     }
-    const inlineAnswer = match[2]?.trimStart() ?? "";
-    const frontLines = trimEmptyLines(lines.slice(0, index));
-    const backLines = trimEmptyLines([inlineAnswer, ...lines.slice(index + 1)]);
+    const frontLines = trimEmptyLines(
+      lines.slice(0, index).map(stripInlineAnswerMarker),
+    );
+    const backLines = trimEmptyLines(lines.slice(index + 1));
     const prompt = buildPrompt(frontLines);
     const answer = buildPrompt(backLines);
     if (!prompt || !answer) {
@@ -148,7 +183,7 @@ const parseTaskChunk = (
   if (options.length > 0) {
     const answerMarkerIndices = new Set<number>();
     chunkLines.forEach((line, index) => {
-      if (answerPattern.test(line)) {
+      if (answerMarkerLinePattern.test(line)) {
         answerMarkerIndices.add(index);
       }
     });
@@ -163,7 +198,7 @@ const parseTaskChunk = (
         return false;
       }
       return true;
-    });
+    }).map(stripInlineAnswerMarker);
     let correctKey: string | null = null;
 
     if (markerKeys.length === 1) {
@@ -217,7 +252,7 @@ const parseTaskChunk = (
     index: taskIndex,
     rawLines: [...chunkLines],
     sourceRange,
-    prompt: buildPrompt(chunkLines),
+    prompt: buildPrompt(chunkLines.map(stripInlineAnswerMarker)),
     warnings,
     kind: "text",
     answer: null,

@@ -26,7 +26,6 @@ export const ExamSimulationPage = () => {
     activeTaskMaxPoints,
     activeTaskSelection,
     activeTaskAwardedPoints,
-    activeTaskRevealed,
     runTasks,
     remainingPoints,
     isSettingsValid,
@@ -39,10 +38,11 @@ export const ExamSimulationPage = () => {
     conversionError,
     handleStartExam,
     handleResetExam,
-    handleFinishExam,
+    handleSubmitExam,
+    handleStartScoring,
+    handleFinishScoring,
     handleStartConversion,
     handleTaskSelect,
-    handleRevealAnswer,
     handleAwardedPointsChange,
     handleTaskBack,
     handleTaskNext,
@@ -54,6 +54,8 @@ export const ExamSimulationPage = () => {
 
   const selectedConversionCount = Object.values(conversionDecisions).filter(Boolean)
     .length;
+  const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
+  const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
 
   return (
     <div className="exam-page">
@@ -78,18 +80,17 @@ export const ExamSimulationPage = () => {
               plannedMaxPoints={plannedMaxPoints}
               hasTaskCountMismatch={hasTaskCountMismatch}
             />
-          ) : stage === "running" ? (
+          ) : isRunnerStage ? (
             activeTask ? (
               <ExamTaskRunner
                 task={activeTask}
                 taskIndex={activeTaskIndex}
                 taskCount={runTasks.length}
                 maxPoints={activeTaskMaxPoints}
+                phase={activePhase}
                 selection={activeTaskSelection}
                 awardedPoints={activeTaskAwardedPoints}
-                revealed={activeTaskRevealed}
                 onSelect={handleTaskSelect}
-                onRevealAnswer={handleRevealAnswer}
                 onAwardedPointsChange={handleAwardedPointsChange}
                 onBack={handleTaskBack}
                 onNext={handleTaskNext}
@@ -147,7 +148,9 @@ export const ExamSimulationPage = () => {
             availableTaskCount={previewExamParse.tasks.length}
             expectedTaskCount={settings.examTaskCount}
             onStartExam={handleStartExam}
-            onFinishExam={handleFinishExam}
+            onSubmitExam={handleSubmitExam}
+            onStartScoring={handleStartScoring}
+            onFinishScoring={handleFinishScoring}
             onResetExam={handleResetExam}
           />
         </div>

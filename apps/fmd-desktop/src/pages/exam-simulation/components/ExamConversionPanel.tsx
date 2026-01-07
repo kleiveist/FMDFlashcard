@@ -1,4 +1,5 @@
 import type { ExamTask } from "../../../lib/exam";
+import { ExamMarkdown } from "./ExamMarkdown";
 
 type ExamConversionPanelProps = {
   task: ExamTask | null;
@@ -77,9 +78,10 @@ export const ExamConversionPanel = ({
         </div>
       ) : null}
 
-      <div className="flashcard-text-block">
-        {task.prompt || "No task content provided."}
-      </div>
+      <ExamMarkdown
+        className="flashcard-text-block"
+        content={task.prompt || "No task content provided."}
+      />
 
       {task.kind === "multiple-choice" ? (
         <ul className="flashcard-options">
@@ -97,7 +99,7 @@ export const ExamConversionPanel = ({
       {task.kind === "text" && task.answer ? (
         <div className="flashcard-answer">
           <span className="label">Answer</span>
-          <div className="flashcard-answer-text">{task.answer}</div>
+          <ExamMarkdown className="flashcard-answer-text" content={task.answer} />
         </div>
       ) : null}
 

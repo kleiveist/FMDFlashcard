@@ -1,17 +1,19 @@
 import type { ExamTask } from "../../../lib/exam";
+import { ExamMarkdown } from "./ExamMarkdown";
 
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
+
+type ExamTaskPhase = "exam" | "review" | "scoring";
 
 type ExamTaskRunnerProps = {
   task: ExamTask;
   taskIndex: number;
   taskCount: number;
   maxPoints: number;
+  phase: ExamTaskPhase;
   selection: string;
   awardedPoints: number | null;
-  revealed: boolean;
   onSelect: (taskIndex: number, key: string) => void;
-  onRevealAnswer: (taskIndex: number) => void;
   onAwardedPointsChange: (taskIndex: number, value: string, maxPoints: number) => void;
   onBack: () => void;
   onNext: () => void;
@@ -24,26 +26,29 @@ export const ExamTaskRunner = ({
   taskIndex,
   taskCount,
   maxPoints,
+  phase,
   selection,
   awardedPoints,
-  revealed,
   onSelect,
-  onRevealAnswer,
   onAwardedPointsChange,
   onBack,
   onNext,
   canGoBack,
   canGoNext,
 }: ExamTaskRunnerProps) => {
+  const isScoring = phase === "scoring";
+  const showAnswers = phase !== "exam";
   const isAutoGraded = task.kind === "multiple-choice" && Boolean(task.correctKey);
-  const canGrade =
-    !isAutoGraded && (task.kind !== "text" || task.answer === null || revealed);
+  const autoAwardedPoints =
+    isAutoGraded && selection === task.correctKey ? maxPoints : 0;
+  const phaseLabel =
+    phase === "exam" ? "PRÜFUNG" : phase === "review" ? "KONTROLLE" : "BEWERTUNG";
 
   return (
     <div className="exam-task">
       <header className="exam-task-header">
         <div>
-          <p className="eyebrow">EXAM</p>
+          <p className="eyebrow">{phaseLabel}</p>
           <h2>{formatTaskTitle(taskIndex + 1, taskCount)}</h2>
           <p className="muted">Max points: {maxPoints}</p>
         </div>
@@ -75,17 +80,21 @@ export const ExamTaskRunner = ({
         </div>
       ) : null}
 
-      <div className="flashcard-text-block">
-        {task.prompt || "No task content provided."}
-      </div>
+      <ExamMarkdown
+        className="flashcard-text-block"
+        content={task.prompt || "No task content provided."}
+      />
 
       {task.kind === "multiple-choice" ? (
         <ul className="flashcard-options">
           {task.options.map((option) => {
             const isSelected = selection === option.key;
+            const isCorrect = option.key === task.correctKey;
             const optionClasses = [
               "flashcard-option",
               isSelected ? "selected" : "",
+              showAnswers && isCorrect ? "correct" : "",
+              showAnswers && isSelected && !isCorrect && task.correctKey ? "incorrect" : "",
             ]
               .filter(Boolean)
               .join(" ");
@@ -107,24 +116,24 @@ export const ExamTaskRunner = ({
         </ul>
       ) : null}
 
-      {task.kind === "text" && task.answer && !revealed ? (
-        <button
-          type="button"
-          className="ghost small"
-          onClick={() => onRevealAnswer(taskIndex)}
-        >
-          Reveal answer
-        </button>
-      ) : null}
-
-      {task.kind === "text" && task.answer && revealed ? (
+      {task.kind === "text" && task.answer && showAnswers ? (
         <div className="flashcard-answer">
           <span className="label">Answer</span>
-          <div className="flashcard-answer-text">{task.answer}</div>
+          <ExamMarkdown className="flashcard-answer-text" content={task.answer} />
         </div>
       ) : null}
 
-      {isAutoGraded ? null : (
+      {isScoring && isAutoGraded ? (
+        <div className="exam-points-row">
+          <span className="label">AWARDED</span>
+          <div className="exam-points-input">
+            <span>{autoAwardedPoints}</span>
+            <span className="muted">/ {maxPoints}</span>
+          </div>
+        </div>
+      ) : null}
+
+      {isScoring && !isAutoGraded ? (
         <div className="exam-points-row">
           <span className="label">AWARDED</span>
           <div className="exam-points-input">
@@ -137,13 +146,12 @@ export const ExamTaskRunner = ({
               onChange={(event) =>
                 onAwardedPointsChange(taskIndex, event.target.value, maxPoints)
               }
-              disabled={!canGrade}
               aria-label="Awarded points"
             />
             <span className="muted">/ {maxPoints}</span>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

@@ -7,7 +7,13 @@ import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
 
-type ExamStage = "idle" | "running" | "finished" | "conversion";
+type ExamStage =
+  | "idle"
+  | "running"
+  | "review"
+  | "scoring"
+  | "finished"
+  | "conversion";
 
 type ExamSettingsSnapshot = {
   maxTotalPoints: number;
@@ -52,7 +58,6 @@ export const useExamSimulationViewModel = () => {
   const [awardedPoints, setAwardedPoints] = useState<Record<number, number | null>>(
     {},
   );
-  const [revealedAnswers, setRevealedAnswers] = useState<Record<number, boolean>>({});
   const [conversionIndex, setConversionIndex] = useState(0);
   const [conversionDecisions, setConversionDecisions] = useState<
     Record<number, boolean>
@@ -186,7 +191,6 @@ export const useExamSimulationViewModel = () => {
     setActiveSettings(null);
     setSelections({});
     setAwardedPoints({});
-    setRevealedAnswers({});
     setConversionIndex(0);
     setConversionDecisions({});
     setConversionPending(false);
@@ -215,7 +219,6 @@ export const useExamSimulationViewModel = () => {
     setActiveTaskIndex(0);
     setSelections({});
     setAwardedPoints({});
-    setRevealedAnswers({});
     setConversionIndex(0);
     setConversionDecisions({});
     setConversionError("");
@@ -233,8 +236,22 @@ export const useExamSimulationViewModel = () => {
     resetExamState();
   }, [resetExamState]);
 
-  const handleFinishExam = useCallback(() => {
+  const handleSubmitExam = useCallback(() => {
     if (stage !== "running") {
+      return;
+    }
+    setStage("review");
+  }, [stage]);
+
+  const handleStartScoring = useCallback(() => {
+    if (stage !== "review") {
+      return;
+    }
+    setStage("scoring");
+  }, [stage]);
+
+  const handleFinishScoring = useCallback(() => {
+    if (stage !== "scoring") {
       return;
     }
     setStage("finished");
@@ -252,12 +269,11 @@ export const useExamSimulationViewModel = () => {
     setSelections((prev) => ({ ...prev, [taskIndex]: key }));
   }, []);
 
-  const handleRevealAnswer = useCallback((taskIndex: number) => {
-    setRevealedAnswers((prev) => ({ ...prev, [taskIndex]: true }));
-  }, []);
-
   const handleAwardedPointsChange = useCallback(
     (taskIndex: number, value: string, maxPoints: number) => {
+      if (stage !== "scoring") {
+        return;
+      }
       if (value.trim() === "") {
         setAwardedPoints((prev) => ({ ...prev, [taskIndex]: null }));
         return;
@@ -269,7 +285,7 @@ export const useExamSimulationViewModel = () => {
       const clamped = clampNumber(parsed, 0, maxPoints);
       setAwardedPoints((prev) => ({ ...prev, [taskIndex]: clamped }));
     },
-    [],
+    [stage],
   );
 
   const handleTaskBack = useCallback(() => {
@@ -286,7 +302,7 @@ export const useExamSimulationViewModel = () => {
   }, [runTasks.length]);
 
   const results = useMemo(() => {
-    if (!activeExamSettings || runTasks.length === 0) {
+    if (!activeExamSettings || runTasks.length === 0 || stage !== "finished") {
       return null;
     }
 
@@ -330,6 +346,7 @@ export const useExamSimulationViewModel = () => {
     runTaskPoints,
     runTasks,
     selections,
+    stage,
   ]);
 
   const handleConversionDecision = useCallback(
@@ -417,9 +434,6 @@ export const useExamSimulationViewModel = () => {
   const activeTaskSelection = activeTask ? selections[activeTaskIndex] ?? "" : "";
   const activeTaskAwardedPoints =
     activeTask ? awardedPoints[activeTaskIndex] ?? null : null;
-  const activeTaskRevealed =
-    activeTask ? Boolean(revealedAnswers[activeTaskIndex]) : false;
-
   const examEmptyState = useMemo(() => {
     if (!selectedExamFile || preview.previewState !== "idle") {
       return null;
@@ -463,7 +477,6 @@ export const useExamSimulationViewModel = () => {
     activeTaskMaxPoints,
     activeTaskSelection,
     activeTaskAwardedPoints,
-    activeTaskRevealed,
     runTasks,
     runTaskPoints,
     runMaxPoints,
@@ -478,10 +491,11 @@ export const useExamSimulationViewModel = () => {
     conversionError,
     handleStartExam,
     handleResetExam,
-    handleFinishExam,
+    handleSubmitExam,
+    handleStartScoring,
+    handleFinishScoring,
     handleStartConversion,
     handleTaskSelect,
-    handleRevealAnswer,
     handleAwardedPointsChange,
     handleTaskBack,
     handleTaskNext,

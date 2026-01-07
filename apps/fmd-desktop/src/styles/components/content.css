@@ -508,6 +508,64 @@ body.focus-mode .sr-stats-panel {
   gap: 16px;
 }
 
+.exam-markdown {
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.exam-markdown > :first-child {
+  margin-top: 0;
+}
+
+.exam-markdown p {
+  margin: 0 0 0.8rem;
+}
+
+.exam-markdown ul,
+.exam-markdown ol {
+  margin: 0 0 0.8rem;
+  padding-left: 1.4rem;
+}
+
+.exam-markdown code {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.exam-markdown pre {
+  margin: 0 0 0.8rem;
+  padding: 12px;
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.exam-markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.exam-markdown blockquote {
+  margin: 0 0 0.8rem;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+}
+
+.flashcard-text-block.exam-markdown,
+.flashcard-answer-text.exam-markdown {
+  white-space: normal;
+  font-weight: 500;
+}
+
 .exam-task-header {
   display: flex;
   justify-content: space-between;

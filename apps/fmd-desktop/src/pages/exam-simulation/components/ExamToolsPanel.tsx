@@ -1,4 +1,4 @@
-type ExamStage = "idle" | "running" | "finished" | "conversion";
+type ExamStage = "idle" | "running" | "review" | "scoring" | "finished" | "conversion";
 
 type ExamToolsPanelProps = {
   stage: ExamStage;
@@ -10,7 +10,9 @@ type ExamToolsPanelProps = {
   availableTaskCount: number;
   expectedTaskCount: number;
   onStartExam: () => void;
-  onFinishExam: () => void;
+  onSubmitExam: () => void;
+  onStartScoring: () => void;
+  onFinishScoring: () => void;
   onResetExam: () => void;
 };
 
@@ -24,11 +26,15 @@ export const ExamToolsPanel = ({
   availableTaskCount,
   expectedTaskCount,
   onStartExam,
-  onFinishExam,
+  onSubmitExam,
+  onStartScoring,
+  onFinishScoring,
   onResetExam,
 }: ExamToolsPanelProps) => {
   const showStart = stage === "idle";
-  const showFinish = stage === "running";
+  const showSubmit = stage === "running";
+  const showReviewAdvance = stage === "review";
+  const showFinishScoring = stage === "scoring";
   const showSettingsHints = stage === "idle";
 
   return (
@@ -53,13 +59,19 @@ export const ExamToolsPanel = ({
                 Start Exam
               </button>
             ) : null}
-            {showFinish ? (
-              <button
-                type="button"
-                className="primary"
-                onClick={onFinishExam}
-              >
-                Finish Exam
+            {showSubmit ? (
+              <button type="button" className="primary" onClick={onSubmitExam}>
+                Abgabe
+              </button>
+            ) : null}
+            {showReviewAdvance ? (
+              <button type="button" className="primary" onClick={onStartScoring}>
+                Zur Bewertung
+              </button>
+            ) : null}
+            {showFinishScoring ? (
+              <button type="button" className="primary" onClick={onFinishScoring}>
+                Bewertung abschliessen
               </button>
             ) : null}
             <button type="button" className="ghost" onClick={onResetExam}>
