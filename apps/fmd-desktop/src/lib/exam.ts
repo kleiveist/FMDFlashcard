@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/lib/exam.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Exam.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Exam bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/exam.test.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 import {
   parseFlashcards,
   splitAnswerCard,

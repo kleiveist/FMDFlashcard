@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Cloze Card.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - ClozeCard: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { type DragEvent } from "react";
 import {
   isDragAnswerMatch,

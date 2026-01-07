@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/features/spaced-repetition/logic.ts
+ *
+ * Zweck:
+ * - Enthaelt domanenspezifische Logik fuer Spaced Repetition.
+ *
+ * Verantwortlichkeiten:
+ * - Kapselt Berechnungen und Auswertungen fuer das Feature.
+ * - Normalisiert Eingaben und Ergebnisse fuer die UI.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Typen.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen Auswertung und Bewertung im Feature.
+ */
+
 import type { Flashcard, FlashcardPart } from "../../lib/flashcards";
 import type {
   CompositePartState,

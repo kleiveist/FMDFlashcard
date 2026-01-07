@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTaskRunner.test.ts
+ *
+ * Zweck:
+ * - Testet Exam Task Runner.test und zugehoerige Logik.
+ *
+ * Verantwortlichkeiten:
+ * - Prueft erwartetes Verhalten und Randfaelle.
+ * - Sichert Regressionen fuer zentrale Szenarien.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/exam.ts: Typen.
+ * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamTaskRunner.tsx: UI-Komponente.
+ *
+ * Hinweise:
+ * - Nur fuer Testlauf; keine Produktivnutzung.
+ */
+
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";

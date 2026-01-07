@@ -1,3 +1,27 @@
+/**
+ * @file apps/fmd-desktop/src/features/flashcards/useFlashcards.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useFlashcards fuer Flashcards bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Flashcards.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - FLASHCARD_PAGE_SIZES: Zentrale Export-API.
+ * - DEFAULT_FLASHCARD_PAGE_SIZE: Zentrale Export-API.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {

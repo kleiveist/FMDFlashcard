@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useFastSession fuer Fast Flashcard bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Fast Flashcard.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - fastFlashcardStatusLabel: Zentrale Export-API.
+ * - subscribeFastFlashcardHistoryReset: Zentrale Export-API.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
 import {
   useCallback,
   useEffect,

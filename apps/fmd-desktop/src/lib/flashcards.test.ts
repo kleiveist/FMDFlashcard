@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/lib/flashcards.test.ts
+ *
+ * Zweck:
+ * - Testet flashcards.test und zugehoerige Logik.
+ *
+ * Verantwortlichkeiten:
+ * - Prueft erwartetes Verhalten und Randfaelle.
+ * - Sichert Regressionen fuer zentrale Szenarien.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - vitest: Externe Bibliothek.
+ *
+ * Hinweise:
+ * - Nur fuer Testlauf; keine Produktivnutzung.
+ */
+
 import { describe, expect, it } from "vitest";
 import {
   isDragAnswerMatch,

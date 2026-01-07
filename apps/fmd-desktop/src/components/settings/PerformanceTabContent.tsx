@@ -1,3 +1,24 @@
+/**
+ * @file apps/fmd-desktop/src/components/settings/PerformanceTabContent.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Performance Tab Content.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - PerformanceTabContent: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 type PerformanceTabContentProps = {
   maxFilesPerScan: string;
   onMaxFilesPerScanChange: (value: string) => void;

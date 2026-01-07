@@ -1,3 +1,27 @@
+/**
+ * @file apps/fmd-desktop/src/components/AppStateProvider.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente App State Provider.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/theme.ts: Typen.
+ *
+ * Exportiert:
+ * - AppStateProvider: React-Komponente.
+ * - useAppState: Hook fuer /.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import {
   createContext,
   useCallback,

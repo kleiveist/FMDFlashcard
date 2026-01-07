@@ -1,3 +1,24 @@
+/**
+ * @file apps/fmd-desktop/vite.config.ts
+ *
+ * Zweck:
+ * - Konfiguriert den Vite-Build fuer das Desktop-Frontend.
+ *
+ * Verantwortlichkeiten:
+ * - Definiert Build- und Tooling-Optionen.
+ * - Stellt zentrale Defaults fuer die Umgebung bereit.
+ *
+ * Verbunden mit:
+ * - vite: Externe Bibliothek.
+ * - @vitejs/plugin-react: Externe Bibliothek.
+ *
+ * Exportiert:
+ * - default: Tooling-Konfiguration.
+ *
+ * Hinweise:
+ * - Aenderungen wirken sich auf Build- oder Testprozesse aus.
+ */
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 

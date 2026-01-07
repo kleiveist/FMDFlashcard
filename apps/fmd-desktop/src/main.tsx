@@ -1,3 +1,22 @@
+/**
+ * @file apps/fmd-desktop/src/main.tsx
+ *
+ * Zweck:
+ * - Startet die React-App, mountet die Root-Komponente und setzt globale Handler.
+ *
+ * Verantwortlichkeiten:
+ * - Initialisiert globale Error- und Promise-Rejection-Handler.
+ * - Mountet die App in #root oder zeigt ein Fallback.
+ * - Startet das Rendering unter React.StrictMode.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.tsx: Direkte Abhaengigkeit.
+ * - react: React-API.
+ *
+ * Hinweise:
+ * - Enthaelt globale Side Effects ueber window.* Handler.
+ */
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";

@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/HelpOverviewSection.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help Overview Section.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - HelpOverviewSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { AppLanguage, HelpTopic, helpLabels, resolveText } from "../helpContent";
 
 type HelpOverviewSectionProps = {

@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help Detail Section.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.tsx: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/HelpTopicSections.tsx: Seiten-Komponente.
+ *
+ * Exportiert:
+ * - HelpDetailSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { AppLanguage, HelpTopic, SyntaxEntry, helpLabels, resolveText } from "../helpContent";
 import { AppSectionsGuidePanel } from "./AppSectionsGuidePanel";
 import { HelpTopicSections } from "./HelpTopicSections";

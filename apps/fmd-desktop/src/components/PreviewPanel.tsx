@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/PreviewPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Preview Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - PreviewPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import {
   type FocusEvent,
   type MouseEvent,

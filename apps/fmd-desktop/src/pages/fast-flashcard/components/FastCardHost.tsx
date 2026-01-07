@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastCardHost.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast Card Host.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - FastCardHost: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import type { DragEvent } from "react";
 import { ClozeCard } from "../../../components/flashcards/ClozeCard";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";

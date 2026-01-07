@@ -1,3 +1,20 @@
+/**
+ * @file apps/fmd-desktop/src/lib/chart.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Chart.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Chart bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsAndChart.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 export const buildLineChartPoints = (values: number[]) => {
   if (values.length === 0) {
     return "";

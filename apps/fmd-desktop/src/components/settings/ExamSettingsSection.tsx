@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/settings/ExamSettingsSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Exam Settings Section.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Typen.
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - ExamSettingsSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { useMemo } from "react";
 import type { ExamAiEvaluation } from "../../features/settings/useAppSettings";
 

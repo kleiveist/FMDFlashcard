@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/components/VaultTree.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Vault Tree.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/icons.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/VaultCreateModal.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/lib/errors.ts: Hilfsfunktionen oder Typen.
+ *
+ * Exportiert:
+ * - VaultTree: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import {
   useCallback,
   useEffect,

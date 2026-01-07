@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/HelpTopicSections.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help Topic Sections.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - HelpTopicSections: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import {
   AppLanguage,
   HelpTopic,

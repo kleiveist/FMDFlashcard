@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/components/SidebarNav.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Sidebar Nav.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/components/VaultTree.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - SidebarNav: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useAppState } from "./AppStateProvider";
 import { normalizeRelativePath, vaultBaseName } from "../lib/path";

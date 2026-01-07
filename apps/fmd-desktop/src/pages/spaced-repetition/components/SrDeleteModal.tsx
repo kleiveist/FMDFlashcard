@@ -1,3 +1,24 @@
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrDeleteModal.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Delete Modal.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - SrDeleteModal: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 type SrDeleteModalProps = {
   isDeleteDialogOpen: boolean;
   deleteTargetName: string;

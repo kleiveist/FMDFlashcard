@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/App.tsx
+ *
+ * Zweck:
+ * - Rendert die App-Shell und routet zwischen Hauptseiten.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/AppErrorBoundary.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/SidebarNav.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - App: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { useState } from "react";
 import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";

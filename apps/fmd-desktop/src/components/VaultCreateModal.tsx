@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/VaultCreateModal.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Vault Create Modal.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ * - react: React-API.
+ *
+ * Exportiert:
+ * - VaultCreateModal: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { useEffect, useRef } from "react";
 
 type VaultCreateModalProps = {

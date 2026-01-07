@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/settings/FastFlashcardToolsSettings.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Fast Flashcard Tools Settings.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastToolsPanel.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FastFlashcardToolsSettings: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { type FlashcardMode, type FlashcardOrder, type FlashcardScope } from "../../features/flashcards/useFlashcards";
 
 type FastFlashcardToolsSettingsProps = {

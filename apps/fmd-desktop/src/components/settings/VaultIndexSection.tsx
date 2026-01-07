@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/settings/VaultIndexSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Vault Index Section.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/components/settings/DataSyncTabContent.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - VaultIndexSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { useState } from "react";
 import { type LoadState } from "../../lib/types";
 import { DataSyncTabContent } from "./DataSyncTabContent";

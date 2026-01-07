@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Composite Card.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/MultipleChoiceCard.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - CompositeCard: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import type { DragEvent } from "react";
 import { ClozeCard } from "./ClozeCard";
 import { FreeTextCard } from "./FreeTextCard";

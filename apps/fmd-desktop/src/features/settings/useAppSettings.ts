@@ -1,3 +1,27 @@
+/**
+ * @file apps/fmd-desktop/src/features/settings/useAppSettings.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useAppSettings fuer Settings bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Settings.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/theme.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - DEFAULT_THEME: Zentrale Export-API.
+ * - DEFAULT_LANGUAGE: Zentrale Export-API.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color";

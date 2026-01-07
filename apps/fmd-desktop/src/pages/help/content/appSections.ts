@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/appSections.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 import { AppSectionData, AppSectionId, LocalizedText } from "./types";
 
 export const APP_SECTION_ORDER: AppSectionId[] = [

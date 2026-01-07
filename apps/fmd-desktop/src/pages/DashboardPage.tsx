@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/pages/DashboardPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Dashboard.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/FileList.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/PreviewPanel.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - DashboardPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";

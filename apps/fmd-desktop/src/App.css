@@ -1,3 +1,22 @@
+/*
+ * @file apps/fmd-desktop/src/App.css
+ *
+ * Zweck:
+ * - Bietet den zentralen Stylesheet-Entry fuer das Frontend.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer App.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/styles/tokens.css: Styles.
+ * - apps/fmd-desktop/src/styles/base.css: Styles.
+ * - apps/fmd-desktop/src/styles/layout.css: Styles.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/layout.css";

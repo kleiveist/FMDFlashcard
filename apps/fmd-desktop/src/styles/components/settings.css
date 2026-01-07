@@ -1,4 +1,22 @@
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/settings.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer settings.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer settings.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .settings-nav .nav-item {
   width: 100%;
 }

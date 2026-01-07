@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/pages/SettingsPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Settings.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/settings/AppearanceSection.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/settings/ExamSettingsSection.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - SettingsPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { useCallback, useMemo, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";

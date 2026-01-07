@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/AppErrorBoundary.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente App Error Boundary.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.tsx: Nutzt dieses Modul.
+ * - react: React-API.
+ *
+ * Exportiert:
+ * - AppErrorBoundary: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 type AppErrorBoundaryProps = {

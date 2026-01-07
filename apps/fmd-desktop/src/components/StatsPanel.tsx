@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/StatsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Stats Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/FlashcardPage.tsx: Nutzt dieses Modul.
+ * - react: React-API.
+ *
+ * Exportiert:
+ * - StatsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { useMemo, type CSSProperties } from "react";
 
 type StatsPanelProps = {

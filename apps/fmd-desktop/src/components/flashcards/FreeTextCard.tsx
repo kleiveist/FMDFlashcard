@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Free Text Card.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Typen.
+ *
+ * Exportiert:
+ * - FreeTextCard: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import type { FreeTextCard as FreeTextCardType } from "../../lib/flashcards";
 import type { FlashcardSelfGrade } from "../../features/flashcards/logic";
 

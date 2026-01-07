@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/FileList.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente File List.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - FileList: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
 

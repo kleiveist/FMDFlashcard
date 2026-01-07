@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/lib/flashcards.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Flashcards.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Flashcards bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcardKeywords.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 import { answerMarkers, falseTokens, trueTokens } from "./flashcardKeywords";
 
 /**

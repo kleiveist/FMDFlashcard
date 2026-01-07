@@ -1,3 +1,24 @@
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamToolsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Tools Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - ExamToolsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 type ExamStage = "idle" | "running" | "review" | "scoring" | "finished";
 
 type ExamToolsPanelProps = {

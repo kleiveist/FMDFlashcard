@@ -1,3 +1,20 @@
+/**
+ * @file apps/fmd-desktop/src/lib/flashcardKeywords.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer /.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer / bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 export const answerMarkers = [
   "Answer:",
   "Antwort:",

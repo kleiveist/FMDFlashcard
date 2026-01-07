@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/types.ts
+ *
+ * Zweck:
+ * - Definiert Typen und Schnittstellen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Definiert Typen fuer Datenstrukturen und APIs.
+ * - Sichert konsistente Verwendung in Features und Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/content/appSections.ts: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/pages/help/content/i18n.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Typanpassungen koennen mehrere Module betreffen.
+ */
+
 export type AppLanguage = "de" | "en";
 export type LocalizedText = { de?: string; en?: string };
 

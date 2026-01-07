@@ -1,3 +1,24 @@
+/**
+ * @file apps/fmd-desktop/src/components/LargeVaultWarningModal.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Large Vault Warning Modal.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - LargeVaultWarningModal: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 type LargeVaultWarningModalProps = {
   count: number | null;
   onClose: () => void;

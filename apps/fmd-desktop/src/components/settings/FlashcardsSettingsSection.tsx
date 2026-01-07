@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/components/settings/FlashcardsSettingsSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Flashcards Settings Section.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FlashcardsSettingsSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import type {
   FlashcardMode,
   FlashcardOrder,

@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/lib/theme.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Theme.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Theme bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 import { buildAccentTokens } from "./color";
 
 export type ThemeMode = "light" | "dark";

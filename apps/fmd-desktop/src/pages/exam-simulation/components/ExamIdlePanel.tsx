@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamIdlePanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Idle Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - ExamIdlePanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import type { LoadState } from "../../../lib/types";
 import type { VaultFile } from "../../../lib/tree";
 

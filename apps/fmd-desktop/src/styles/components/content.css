@@ -1,4 +1,22 @@
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/content.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer content.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer content.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .content {
   display: flex;
   flex-direction: column;

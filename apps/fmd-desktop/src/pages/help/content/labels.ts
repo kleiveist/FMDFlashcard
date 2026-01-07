@@ -1,3 +1,20 @@
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/labels.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 export const helpHeader = {
   eyebrow: { en: "Help", de: "Hilfe" },
   title: { en: "Help", de: "Hilfe" },

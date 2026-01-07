@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/features/flashcards/logic.test.ts
+ *
+ * Zweck:
+ * - Testet logic.test und zugehoerige Logik.
+ *
+ * Verantwortlichkeiten:
+ * - Prueft erwartetes Verhalten und Randfaelle.
+ * - Sichert Regressionen fuer zentrale Szenarien.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ *
+ * Hinweise:
+ * - Nur fuer Testlauf; keine Produktivnutzung.
+ */
+
 import { describe, expect, it } from "vitest";
 import type { Flashcard } from "../../lib/flashcards";
 import {

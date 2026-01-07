@@ -1,3 +1,27 @@
+/**
+ * @file apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useSpacedRepetition fuer Spaced Repetition bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Spaced Repetition.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ *
+ * Exportiert:
+ * - SPACED_REPETITION_PAGE_SIZES: Zentrale Export-API.
+ * - DEFAULT_SPACED_REPETITION_PAGE_SIZE: Zentrale Export-API.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {

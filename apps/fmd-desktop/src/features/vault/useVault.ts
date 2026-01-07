@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/features/vault/useVault.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useVault fuer Vault bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Vault.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/errors.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - useVault: Hook fuer Vault.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
 import { useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";

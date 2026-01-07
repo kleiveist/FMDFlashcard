@@ -1,3 +1,21 @@
+/**
+ * @file apps/fmd-desktop/src/lib/color.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Color.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Color bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 export const DEFAULT_ACCENT = "#E07A5F";
 
 export const normalizeHex = (value: string) => {

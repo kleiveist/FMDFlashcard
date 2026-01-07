@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Stats Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/KpiGrid.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - SrStatsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { KpiGrid } from "../../../components/KpiGrid";
 
 type SrStatsPanelProps = {

@@ -1,3 +1,24 @@
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamResultsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Results Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - ExamResultsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 type ExamTaskBreakdown = {
   index: number;
   awardedPoints: number;

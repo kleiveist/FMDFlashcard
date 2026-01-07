@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast Flashcard.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastCardHost.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastHeader.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastHistoryPanel.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - FastFlashcardPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { FastCardHost } from "./components/FastCardHost";
 import { FastHeader } from "./components/FastHeader";
 import { FastHistoryPanel } from "./components/FastHistoryPanel";

@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/hooks/useExamSimulationViewModel.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useExamSimulationViewModel fuer Exam Simulation bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Exam Simulation.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Typen.
+ *
+ * Exportiert:
+ * - useExamSimulationViewModel: Hook fuer Exam Simulation.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppState } from "../../../components/AppStateProvider";

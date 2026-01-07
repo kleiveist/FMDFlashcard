@@ -1,3 +1,26 @@
+/**
+ * @file apps/fmd-desktop/src/components/icons.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente icons.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/SidebarNav.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FolderIcon: React-Komponente.
+ * - FileIcon: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 export const FolderIcon = () => (
   <svg
     aria-hidden="true"

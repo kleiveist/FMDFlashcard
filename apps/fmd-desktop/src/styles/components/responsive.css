@@ -1,4 +1,22 @@
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/responsive.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer responsive.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer responsive.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 @media (max-width: 1200px) {
   .flashcard-layout {
     grid-template-columns: 1fr;

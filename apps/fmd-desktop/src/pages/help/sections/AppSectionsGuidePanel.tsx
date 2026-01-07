@@ -1,3 +1,25 @@
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite App Sections Guide Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - AppSectionsGuidePanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { useEffect, useState } from "react";
 import {
   APP_SECTION_DATA,

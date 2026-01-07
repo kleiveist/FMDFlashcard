@@ -1,3 +1,21 @@
+/*
+ * @file apps/fmd-desktop/src/styles/layout.css
+ *
+ * Zweck:
+ * - Definiert Layout- und Shell-Styles fuer die App.
+ *
+ * Verantwortlichkeiten:
+ * - Layout-, Grid- und Shell-Regeln fuer die App-Struktur.
+ * - Basis fuer Sidebar-, Content- und Panel-Anordnung.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .app-shell {
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 36px;

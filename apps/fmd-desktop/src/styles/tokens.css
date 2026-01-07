@@ -1,3 +1,21 @@
+/*
+ * @file apps/fmd-desktop/src/styles/tokens.css
+ *
+ * Zweck:
+ * - Definiert Design-Tokens und CSS-Variablen fuer das UI.
+ *
+ * Verantwortlichkeiten:
+ * - Definiert globale CSS-Variablen fuer Farben, Abstaende und Typografie.
+ * - Stellt Theme-spezifische Werte und Zustandsfarben bereit.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Zentraler Import des Stylesets.
+ * - apps/fmd-desktop/src/styles/base.css: Nutzt Variablen fuer Basis-Styles.
+ *
+ * Hinweise:
+ * - Zentrale Quelle fuer CSS-Variablen und Theme-Werte.
+ */
+
 :root {
   font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
   font-size: 16px;
