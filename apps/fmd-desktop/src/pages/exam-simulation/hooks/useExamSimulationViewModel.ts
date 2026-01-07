@@ -90,6 +90,9 @@ export const useExamSimulationViewModel = () => {
   const [awardedPoints, setAwardedPoints] = useState<Record<number, number | null>>(
     {},
   );
+  const [autoGradeDecisions, setAutoGradeDecisions] = useState<
+    Record<number, boolean>
+  >({});
   const [conversionDecisions, setConversionDecisions] = useState<
     Record<number, boolean>
   >({});
@@ -222,6 +225,7 @@ export const useExamSimulationViewModel = () => {
     setActiveSettings(null);
     setPartStates({});
     setAwardedPoints({});
+    setAutoGradeDecisions({});
     setConversionDecisions({});
     setConversionPending(false);
     setConversionError("");
@@ -249,6 +253,7 @@ export const useExamSimulationViewModel = () => {
     setActiveTaskIndex(0);
     setPartStates({});
     setAwardedPoints({});
+    setAutoGradeDecisions({});
     setConversionDecisions({});
     setConversionError("");
     setConversionPending(false);
@@ -499,6 +504,16 @@ export const useExamSimulationViewModel = () => {
     [stage],
   );
 
+  const handleAutoGradeDecision = useCallback(
+    (taskIndex: number, decision: boolean) => {
+      if (stage !== "scoring") {
+        return;
+      }
+      setAutoGradeDecisions((prev) => ({ ...prev, [taskIndex]: decision }));
+    },
+    [stage],
+  );
+
   const handleTaskBack = useCallback(() => {
     setActiveTaskIndex((prev) => Math.max(0, prev - 1));
   }, []);
@@ -521,11 +536,12 @@ export const useExamSimulationViewModel = () => {
       const maxPoints = runTaskPoints[index] ?? 0;
       if (isAutoGradedTask(task)) {
         const isCorrect = isTaskCorrect(task, partStates[index]);
+        const decidedCorrect = autoGradeDecisions[index] ?? isCorrect;
         return {
           index: index + 1,
-          awardedPoints: isCorrect ? maxPoints : 0,
+          awardedPoints: decidedCorrect ? maxPoints : 0,
           maxPoints,
-          isCorrect,
+          isCorrect: decidedCorrect,
         };
       }
       const awarded = normalizeAwardedPoints(awardedPoints[index] ?? null, maxPoints);
@@ -552,6 +568,7 @@ export const useExamSimulationViewModel = () => {
     };
   }, [
     activeExamSettings,
+    autoGradeDecisions,
     awardedPoints,
     partStates,
     runTaskPoints,
@@ -570,6 +587,8 @@ export const useExamSimulationViewModel = () => {
     activeTask ? partStates[activeTaskIndex] ?? [] : [];
   const activeTaskAwardedPoints =
     activeTask ? awardedPoints[activeTaskIndex] ?? null : null;
+  const activeTaskAutoDecision =
+    activeTask ? autoGradeDecisions[activeTaskIndex] : undefined;
   const examEmptyState = useMemo(() => {
     if (!selectedExamFile || preview.previewState !== "idle") {
       return null;
@@ -613,6 +632,7 @@ export const useExamSimulationViewModel = () => {
     activeTaskMaxPoints,
     activeTaskPartStates,
     activeTaskAwardedPoints,
+    activeTaskAutoDecision,
     runTasks,
     runTaskPoints,
     runMaxPoints,
@@ -638,6 +658,7 @@ export const useExamSimulationViewModel = () => {
     handleClozeBlankDragOver,
     handleClozeTokenDragStart,
     handleAwardedPointsChange,
+    handleAutoGradeDecision,
     handleTaskBack,
     handleTaskNext,
     handleConversionDecision,

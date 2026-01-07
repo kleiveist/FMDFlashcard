@@ -341,13 +341,19 @@ const parseTrueFalseItems = (lines: string[]) => {
 
 const findAnswerMarkerMatch = (line: string) => {
   const trimmedLine = line.trimStart();
+  if (!trimmedLine) {
+    return null;
+  }
   const hasBoldPrefix = trimmedLine.startsWith("**");
   const candidate = hasBoldPrefix ? trimmedLine.slice(2).trimStart() : trimmedLine;
   const colonIndex = candidate.indexOf(":");
   if (colonIndex < 0) {
     return null;
   }
-  const prefix = candidate.slice(0, colonIndex);
+  let prefix = candidate.slice(0, colonIndex).trimEnd();
+  if (hasBoldPrefix && prefix.endsWith("**")) {
+    prefix = prefix.slice(0, -2).trimEnd();
+  }
   const normalizedPrefix = normalizeAnswerToken(prefix);
   const match = normalizedAnswerMarkers.find(
     (marker) => normalizedPrefix === marker.normalized,

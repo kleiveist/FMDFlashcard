@@ -16,6 +16,7 @@ type ExamTaskRunnerProps = {
   phase: ExamTaskPhase;
   partStates: CompositePartState[];
   awardedPoints: number | null;
+  autoGradeDecision?: boolean;
   conversionDecision?: boolean;
   conversionPending: boolean;
   conversionError: string;
@@ -48,6 +49,7 @@ type ExamTaskRunnerProps = {
   onBlankDragOver: (event: DragEvent<HTMLElement>) => void;
   onTextInputChange: (taskIndex: number, partIndex: number, value: string) => void;
   onAwardedPointsChange: (taskIndex: number, value: string, maxPoints: number) => void;
+  onAutoGradeDecision: (taskIndex: number, decision: boolean) => void;
   onConversionDecision: (taskIndex: number, shouldConvert: boolean) => void;
   onBack: () => void;
   onNext: () => void;
@@ -92,6 +94,7 @@ export const ExamTaskRunner = ({
   phase,
   partStates,
   awardedPoints,
+  autoGradeDecision,
   conversionDecision,
   conversionPending,
   conversionError,
@@ -104,6 +107,7 @@ export const ExamTaskRunner = ({
   onBlankDragOver,
   onTextInputChange,
   onAwardedPointsChange,
+  onAutoGradeDecision,
   onConversionDecision,
   onBack,
   onNext,
@@ -114,7 +118,8 @@ export const ExamTaskRunner = ({
   const showAnswers = phase !== "exam";
   const isAutoGraded = isTaskAutoGraded(task);
   const taskIsCorrect = isAutoGraded ? isTaskCorrect(task, partStates) : false;
-  const autoAwardedPoints = isAutoGraded && taskIsCorrect ? maxPoints : 0;
+  const decidedCorrect = isAutoGraded ? autoGradeDecision ?? taskIsCorrect : null;
+  const autoAwardedPoints = isAutoGraded && decidedCorrect ? maxPoints : 0;
   const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
   const inputLocked = phase !== "exam" || conversionPending;
 
@@ -179,13 +184,50 @@ export const ExamTaskRunner = ({
       />
 
       {isScoring && isAutoGraded ? (
-        <div className="exam-points-row">
-          <span className="label">AWARDED</span>
-          <div className="exam-points-input">
-            <span>{autoAwardedPoints}</span>
-            <span className="muted">/ {maxPoints}</span>
+        <>
+          <div className="exam-points-row">
+            <span className="label">AUTO RESULT</span>
+            <div className="exam-points-input">
+              <span
+                className={`flashcard-result ${
+                  taskIsCorrect ? "correct" : "incorrect"
+                }`}
+              >
+                {taskIsCorrect ? "Correct" : "Incorrect"}
+              </span>
+            </div>
           </div>
-        </div>
+          <div className="exam-points-row">
+            <span className="label">CONFIRM</span>
+            <div className="exam-points-input">
+              <button
+                type="button"
+                className={`small ${decidedCorrect ? "primary" : "ghost"}`}
+                onClick={() => onAutoGradeDecision(taskIndex, true)}
+                aria-pressed={decidedCorrect === true}
+                disabled={conversionPending}
+              >
+                Correct
+              </button>
+              <button
+                type="button"
+                className={`small ${decidedCorrect ? "ghost" : "primary"}`}
+                onClick={() => onAutoGradeDecision(taskIndex, false)}
+                aria-pressed={decidedCorrect === false}
+                disabled={conversionPending}
+              >
+                Not correct
+              </button>
+            </div>
+          </div>
+          <div className="exam-points-row">
+            <span className="label">AWARDED</span>
+            <div className="exam-points-input">
+              <span>{autoAwardedPoints}</span>
+              <span className="muted">/ {maxPoints}</span>
+            </div>
+          </div>
+        </>
       ) : null}
 
       {isScoring && !isAutoGraded ? (
@@ -217,7 +259,7 @@ export const ExamTaskRunner = ({
             onChange={(event) => onConversionDecision(taskIndex, event.target.checked)}
             disabled={conversionPending}
           />
-          Convert this task into a flashcard
+          Convert to flashcard
         </label>
       ) : null}
 

@@ -190,6 +190,57 @@ Answer: SQL is used to define, manipulate, manage permissions, and handle transa
     }
   });
 
+  it("parses a front/back card with lowercase answer marker", () => {
+    const markdown = `#card
+What is DNS?
+answer: Domain name system.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is DNS?");
+      expect(part.back).toBe("Domain name system.");
+    }
+  });
+
+  it("parses a front/back card with bold Answer marker", () => {
+    const markdown = `#card
+What is RAM?
+**Answer:** Random access memory.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is RAM?");
+      expect(part.back).toBe("Random access memory.");
+    }
+  });
+
+  it("parses a front/back card with bold Answer marker and trailing colon", () => {
+    const markdown = `#card
+What is CPU?
+**Answer**: Central processing unit.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is CPU?");
+      expect(part.back).toBe("Central processing unit.");
+    }
+  });
+
   it("parses a front/back card with Antwort marker", () => {
     const markdown = `#card
 1. Was ist eine Transaktion?
@@ -370,6 +421,26 @@ c) Three
     expect(part.kind).toBe("multiple-choice");
     if (part.kind === "multiple-choice") {
       expect(part.correctKeys).toEqual(["a", "d"]);
+    }
+  });
+
+  it("parses correct markers after blank lines", () => {
+    const markdown = `#card
+Pick one.
+a) Alpha
+b) Beta
+c) Gamma
+
+-c
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.correctKeys).toEqual(["c"]);
     }
   });
 

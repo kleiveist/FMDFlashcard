@@ -25,6 +25,7 @@ export const ExamSimulationPage = () => {
     activeTaskMaxPoints,
     activeTaskPartStates,
     activeTaskAwardedPoints,
+    activeTaskAutoDecision,
     runTasks,
     remainingPoints,
     isSettingsValid,
@@ -48,6 +49,7 @@ export const ExamSimulationPage = () => {
     handleClozeBlankDragOver,
     handleClozeTokenDragStart,
     handleAwardedPointsChange,
+    handleAutoGradeDecision,
     handleTaskBack,
     handleTaskNext,
     handleConversionDecision,
@@ -89,6 +91,7 @@ export const ExamSimulationPage = () => {
                 phase={activePhase}
                 partStates={activeTaskPartStates}
                 awardedPoints={activeTaskAwardedPoints}
+                autoGradeDecision={activeTaskAutoDecision}
                 conversionDecision={conversionDecisions[activeTaskIndex]}
                 conversionPending={conversionPending}
                 conversionError={conversionError}
@@ -101,6 +104,7 @@ export const ExamSimulationPage = () => {
                 onBlankDragOver={handleClozeBlankDragOver}
                 onTextInputChange={handleTextInputChange}
                 onAwardedPointsChange={handleAwardedPointsChange}
+                onAutoGradeDecision={handleAutoGradeDecision}
                 onConversionDecision={handleConversionDecision}
                 onBack={handleTaskBack}
                 onNext={handleTaskNext}

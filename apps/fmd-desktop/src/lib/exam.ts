@@ -89,8 +89,17 @@ const isExamTaskStartLine = (line: string) => {
 const buildPrompt = (lines: string[]) =>
   trimEmptyLines(lines).join("\n").trim();
 
-const hasCardWrapper = (lines: string[]) =>
-  lines.some((line) => line.trim() === "#card");
+const normalizeTaskLines = (lines: string[]) => {
+  const trimmed = trimEmptyLines(lines);
+  if (
+    trimmed.length >= 2 &&
+    trimmed[0]?.trim() === "#card" &&
+    trimmed[trimmed.length - 1]?.trim() === "#"
+  ) {
+    return trimEmptyLines(trimmed.slice(1, -1));
+  }
+  return trimmed;
+};
 
 const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
   if (card.kind === "composite") {
@@ -125,10 +134,9 @@ const parseTaskChunk = (
   sourceRange: ExamTaskSourceRange,
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
-  const body = chunkLines.join("\n");
-  const cardSource = hasCardWrapper(chunkLines)
-    ? body
-    : `#card\n${body}\n#`;
+  const normalizedLines = normalizeTaskLines(chunkLines);
+  const body = normalizedLines.join("\n");
+  const cardSource = `#card\n${body}\n#`;
   const parsed = parseFlashcards(cardSource);
   let card: CompositeFlashcard | null = null;
 
@@ -136,7 +144,7 @@ const parseTaskChunk = (
     warnings.push({
       message: "No supported flashcard syntax found. Manual grading required.",
     });
-    card = buildFallbackCard(chunkLines);
+    card = buildFallbackCard(normalizedLines);
   } else {
     if (parsed.length > 1) {
       warnings.push({
