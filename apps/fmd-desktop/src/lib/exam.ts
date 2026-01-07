@@ -1,5 +1,6 @@
 import {
   parseFlashcards,
+  splitAnswerCard,
   type CompositeFlashcard,
   type Flashcard,
 } from "./flashcards";
@@ -114,19 +115,26 @@ const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
   };
 };
 
-const buildFallbackCard = (lines: string[]): CompositeFlashcard => ({
-  kind: "composite",
-  parts: [
-    {
-      kind: "free-text",
-      front: buildPrompt(lines) || "No task content provided.",
-      back: "",
-    },
-  ],
-  primaryType: "qa",
-  detectedTypes: ["qa"],
-  isMixed: false,
-});
+const buildFallbackCard = (lines: string[]): CompositeFlashcard => {
+  const answerSplit = splitAnswerCard(lines);
+  const front =
+    answerSplit?.front ?? (buildPrompt(lines) || "No task content provided.");
+  const back = answerSplit?.back ?? "";
+
+  return {
+    kind: "composite",
+    parts: [
+      {
+        kind: "free-text",
+        front,
+        back,
+      },
+    ],
+    primaryType: "qa",
+    detectedTypes: ["qa"],
+    isMixed: false,
+  };
+};
 
 const parseTaskChunk = (
   chunkLines: string[],

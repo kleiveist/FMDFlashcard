@@ -124,6 +124,12 @@ const normalizedAnswerMarkers = answerMarkers.map((marker) => ({
   raw: marker,
   normalized: normalizeAnswerToken(marker.replace(/:\\s*$/, "")),
 }));
+const normalizedAnswerMarkerSet = new Set(
+  normalizedAnswerMarkers.map((marker) => marker.normalized),
+);
+
+const isWordChar = (value: string) => /[\p{L}\p{N}\p{M}]/u.test(value);
+const isWhitespace = (value: string) => /\s/.test(value);
 
 const trimEmptyLines = (lines: string[]) => {
   let start = 0;
@@ -339,31 +345,87 @@ const parseTrueFalseItems = (lines: string[]) => {
   return items;
 };
 
+type AnswerMarkerMatch = {
+  line: string;
+  markerStartIndex: number;
+  markerEndIndex: number;
+};
+
+const findAnswerMarkerAtColon = (
+  line: string,
+  colonIndex: number,
+): AnswerMarkerMatch | null => {
+  let prefixEnd = colonIndex;
+  while (prefixEnd > 0 && isWhitespace(line[prefixEnd - 1] ?? "")) {
+    prefixEnd -= 1;
+  }
+  if (prefixEnd <= 0) {
+    return null;
+  }
+
+  let boldClosedBeforeColon = false;
+  if (prefixEnd >= 2 && line.slice(prefixEnd - 2, prefixEnd) === "**") {
+    boldClosedBeforeColon = true;
+    prefixEnd -= 2;
+    while (prefixEnd > 0 && isWhitespace(line[prefixEnd - 1] ?? "")) {
+      prefixEnd -= 1;
+    }
+  }
+
+  let wordEnd = prefixEnd;
+  let wordStart = wordEnd;
+  while (wordStart > 0 && isWordChar(line[wordStart - 1] ?? "")) {
+    wordStart -= 1;
+  }
+  if (wordStart === wordEnd) {
+    return null;
+  }
+  const word = line.slice(wordStart, wordEnd);
+  if (!normalizedAnswerMarkerSet.has(normalizeAnswerToken(word))) {
+    return null;
+  }
+
+  let markerStartIndex = wordStart;
+  let hasBoldPrefix = false;
+  if (wordStart >= 2 && line.slice(wordStart - 2, wordStart) === "**") {
+    hasBoldPrefix = true;
+    markerStartIndex = wordStart - 2;
+  }
+
+  const boundaryChar = line[markerStartIndex - 1];
+  if (boundaryChar && isWordChar(boundaryChar)) {
+    return null;
+  }
+
+  let markerEndIndex = colonIndex + 1;
+  if (hasBoldPrefix && !boldClosedBeforeColon) {
+    let suffixIndex = markerEndIndex;
+    while (suffixIndex < line.length && isWhitespace(line[suffixIndex] ?? "")) {
+      suffixIndex += 1;
+    }
+    if (line.slice(suffixIndex, suffixIndex + 2) === "**") {
+      markerEndIndex = suffixIndex + 2;
+    }
+  }
+
+  return { line, markerStartIndex, markerEndIndex };
+};
+
 const findAnswerMarkerMatch = (line: string) => {
-  const trimmedLine = line.trimStart();
-  if (!trimmedLine) {
+  if (!line.trim()) {
     return null;
   }
-  const hasBoldPrefix = trimmedLine.startsWith("**");
-  const candidate = hasBoldPrefix ? trimmedLine.slice(2).trimStart() : trimmedLine;
-  const colonIndex = candidate.indexOf(":");
-  if (colonIndex < 0) {
-    return null;
+  for (
+    let colonIndex = line.indexOf(":");
+    colonIndex !== -1;
+    colonIndex = line.indexOf(":", colonIndex + 1)
+  ) {
+    const match = findAnswerMarkerAtColon(line, colonIndex);
+    if (match) {
+      return match;
+    }
   }
-  let prefix = candidate.slice(0, colonIndex).trimEnd();
-  if (hasBoldPrefix && prefix.endsWith("**")) {
-    prefix = prefix.slice(0, -2).trimEnd();
-  }
-  const normalizedPrefix = normalizeAnswerToken(prefix);
-  const match = normalizedAnswerMarkers.find(
-    (marker) => normalizedPrefix === marker.normalized,
-  );
-  if (!match) {
-    return null;
-  }
-  const offset = trimmedLine.length - candidate.length;
-  const markerEndIndex = offset + colonIndex + 1;
-  return { trimmedLine, markerEndIndex, hasBoldPrefix };
+  return null;
 };
 
 const findAnswerMarkerLine = (lines: string[]) => {
@@ -376,25 +438,23 @@ const findAnswerMarkerLine = (lines: string[]) => {
   return null;
 };
 
-const splitAnswerCard = (lines: string[]) => {
+export const splitAnswerCard = (lines: string[]) => {
   const markerInfo = findAnswerMarkerLine(lines);
   if (!markerInfo) {
     return null;
   }
-  const frontLines = trimEmptyLines(lines.slice(0, markerInfo.index));
-  const inlineAnswerRaw = markerInfo.match.trimmedLine
-    .slice(markerInfo.match.markerEndIndex)
-    .trimStart();
-  const inlineAnswer =
-    markerInfo.match.hasBoldPrefix && inlineAnswerRaw.startsWith("**")
-      ? inlineAnswerRaw.slice(2).trimStart()
-      : inlineAnswerRaw;
-  const backLines = [inlineAnswer, ...lines.slice(markerInfo.index + 1)];
+  const markerLine = markerInfo.match.line;
+  const inlineFront = markerLine.slice(0, markerInfo.match.markerStartIndex);
+  const inlineBack = markerLine.slice(markerInfo.match.markerEndIndex).trimStart();
+
+  const frontLines = [...lines.slice(0, markerInfo.index)];
+  if (inlineFront.trim()) {
+    frontLines.push(inlineFront.trimEnd());
+  }
+
+  const backLines = [inlineBack, ...lines.slice(markerInfo.index + 1)];
   const normalizedFront = trimEmptyLines(frontLines).join("\n").trim();
   const normalizedBack = trimEmptyLines(backLines).join("\n").trim();
-  if (!normalizedFront || !normalizedBack) {
-    return null;
-  }
   return {
     front: normalizedFront,
     back: normalizedBack,

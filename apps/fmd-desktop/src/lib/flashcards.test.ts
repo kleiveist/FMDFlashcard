@@ -3,6 +3,7 @@ import {
   isDragAnswerMatch,
   isInputAnswerMatch,
   parseFlashcards,
+  splitAnswerCard,
   type Flashcard,
 } from "./flashcards";
 
@@ -144,6 +145,30 @@ Use %%token%% with \`drag\`.
     }
   });
 
+  it("parses inline answer parts inside a composite card", () => {
+    const markdown = `#card
+Inline question? Answer: Inline answer.
+
+Pick one.
+a) First
+b) Second
+-a
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts).toHaveLength(2);
+    const [freeText, multipleChoice] = parts;
+    expect(freeText.kind).toBe("free-text");
+    if (freeText.kind === "free-text") {
+      expect(freeText.front).toBe("Inline question?");
+      expect(freeText.back).toBe("Inline answer.");
+    }
+    expect(multipleChoice.kind).toBe("multiple-choice");
+  });
+
   it("splits parts on separators inside a block", () => {
     const markdown = `#card
 First question?
@@ -190,6 +215,22 @@ Answer: SQL is used to define, manipulate, manage permissions, and handle transa
     }
   });
 
+  it("parses a front/back card with inline Answer marker", () => {
+    const markdown = `#card
+Define foreign key. Answer: An attribute that references a primary key.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("Define foreign key.");
+      expect(part.back).toBe("An attribute that references a primary key.");
+    }
+  });
+
   it("parses a front/back card with lowercase answer marker", () => {
     const markdown = `#card
 What is DNS?
@@ -204,6 +245,39 @@ answer: Domain name system.
     if (part.kind === "free-text") {
       expect(part.front).toBe("What is DNS?");
       expect(part.back).toBe("Domain name system.");
+    }
+  });
+
+  it("parses a front/back card with Answer marker spacing", () => {
+    const markdown = `#card
+What is DNS?
+Answer : Domain name system.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is DNS?");
+      expect(part.back).toBe("Domain name system.");
+    }
+  });
+
+  it("parses answer-only cards", () => {
+    const markdown = `#card
+Answer: True.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("");
+      expect(part.back).toBe("True.");
     }
   });
 
@@ -260,6 +334,22 @@ Eine Transaktion ist eine atomare Einheit von Operationen.
         "Eine Transaktion ist eine atomare Einheit von Operationen.",
       );
     }
+  });
+
+  it("splits Answer markers in inline and block forms", () => {
+    const inlineSplit = splitAnswerCard([
+      "8) Define a foreign key. Answer: A foreign key is an attribute.",
+    ]);
+    expect(inlineSplit).toEqual({
+      front: "8) Define a foreign key.",
+      back: "A foreign key is an attribute.",
+    });
+
+    const blockSplit = splitAnswerCard(["What is RAM?", "Answer : Memory."]);
+    expect(blockSplit).toEqual({
+      front: "What is RAM?",
+      back: "Memory.",
+    });
   });
 
   it("parses a front/back card with Reponse marker", () => {

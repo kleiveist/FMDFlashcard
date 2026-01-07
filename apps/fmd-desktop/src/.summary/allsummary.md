@@ -1,6 +1,4 @@
-[← Back to Docs Home](../../../../docs/index.md)
-
-# Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/apps/fmd-desktop/src
+# Gesamtinhalte – Root: /home/kleif/Projects/FMDFlashcard/apps/fmd-desktop/src
 
 ## 📝 App.css — ./App.css
 
@@ -28,8 +26,10 @@
 import { useState } from "react";
 import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { SidebarNav } from "./components/SidebarNav";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
 import { FastFlashcardPage } from "./pages/FastFlashcardPage";
 import { HelpPage } from "./pages/HelpPage";
@@ -38,6 +38,7 @@ import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 
 type TabKey =
   | "dashboard"
+  | "exam"
   | "flashcard"
   | "spaced-repetition"
   | "fast-flashcard"
@@ -83,6 +84,8 @@ const AppContent = () => {
         </div>
         {activeTab === "dashboard" ? (
           <DashboardPage />
+        ) : activeTab === "exam" ? (
+          <ExamSimulationPage />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage />
         ) : activeTab === "spaced-repetition" ? (
@@ -108,13 +111,114 @@ const AppContent = () => {
 
 function App() {
   return (
-    <AppStateProvider>
-      <AppContent />
-    </AppStateProvider>
+    <AppErrorBoundary>
+      <AppStateProvider>
+        <AppContent />
+      </AppStateProvider>
+    </AppErrorBoundary>
   );
 }
 
 export default App;
+
+---
+
+## 📝 AppErrorBoundary.tsx — ./components/AppErrorBoundary.tsx
+
+import { Component, type ErrorInfo, type ReactNode } from "react";
+
+type AppErrorBoundaryProps = {
+  children: ReactNode;
+};
+
+type AppErrorBoundaryState = {
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+};
+
+const isDev = import.meta.env.DEV;
+
+export class AppErrorBoundary extends Component<
+  AppErrorBoundaryProps,
+  AppErrorBoundaryState
+> {
+  state: AppErrorBoundaryState = {
+    error: null,
+    errorInfo: null,
+  };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("App crashed during render", error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    const { error, errorInfo } = this.state;
+    if (!error) {
+      return this.props.children;
+    }
+
+    const stack =
+      (error && error.stack ? error.stack : "") ||
+      (errorInfo?.componentStack ? errorInfo.componentStack : "");
+
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "32px",
+          background: "#F7F5F2",
+          color: "#1B1B1B",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+        }}
+      >
+        <div style={{ maxWidth: 760, width: "100%" }}>
+          <h1 style={{ marginBottom: 12, fontSize: 20 }}>
+            App failed to render
+          </h1>
+          <p style={{ marginBottom: 16 }}>
+            An unexpected error occurred during startup. Check the console for
+            details.
+          </p>
+          <div
+            style={{
+              padding: "12px 16px",
+              border: "1px solid #E0DCD4",
+              borderRadius: 8,
+              background: "#FFFFFF",
+              wordBreak: "break-word",
+              marginBottom: isDev && stack ? 16 : 0,
+            }}
+          >
+            {error.message || String(error)}
+          </div>
+          {isDev && stack ? (
+            <pre
+              style={{
+                whiteSpace: "pre-wrap",
+                background: "#111827",
+                color: "#F9FAFB",
+                padding: "12px 16px",
+                borderRadius: 8,
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              {stack.trim()}
+            </pre>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+}
 
 ---
 
@@ -130,6 +234,7 @@ import {
   type ReactNode,
 } from "react";
 import { isValidHex, normalizeHex } from "../lib/color";
+import { normalizeRelativePath } from "../lib/path";
 import { type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
@@ -167,7 +272,10 @@ type AppState = {
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
   spacedRepetition: ReturnType<typeof useSpacedRepetition>;
-  vault: ReturnType<typeof useVault>;
+  vault: ReturnType<typeof useVault> & {
+    activeFolderPath: string | null;
+    setActiveFolderPath: (value: string | null) => void;
+  };
 };
 
 const AppStateContext = createContext<AppState | null>(null);
@@ -200,6 +308,9 @@ const parseVaultWarningThreshold = (value: string) => {
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
   const [activeHelpTopicId, setActiveHelpTopicId] = useState<string | null>(
+    null,
+  );
+  const [activeFolderPath, setActiveFolderPathState] = useState<string | null>(
     null,
   );
   const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<
@@ -316,6 +427,19 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     restoreSnapshot: restoreFlashcardsSnapshot,
     takeSnapshot: takeFlashcardsSnapshot,
   } = flashcards;
+
+  const setActiveFolderPath = useCallback((value: string | null) => {
+    if (value === null) {
+      setActiveFolderPathState(null);
+      return;
+    }
+    const normalized = normalizeRelativePath(value).replace(/\/+$/, "");
+    setActiveFolderPathState(normalized);
+  }, []);
+
+  useEffect(() => {
+    setActiveFolderPath(null);
+  }, [setActiveFolderPath, vault.vaultPath]);
 
   useEffect(() => {
     if (!settingsLoaded || hasRestoredVault.current) {
@@ -563,7 +687,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     preview,
     settings,
     spacedRepetition,
-    vault,
+    vault: {
+      ...vault,
+      activeFolderPath,
+      setActiveFolderPath,
+    },
   };
 
   return (
@@ -593,6 +721,7 @@ import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
 
 type FileListProps = {
+  activeFolderPath: string | null;
   fileCountLabel: string;
   files: VaultFile[];
   listError: string;
@@ -603,6 +732,7 @@ type FileListProps = {
 };
 
 export const FileList = ({
+  activeFolderPath,
   fileCountLabel,
   files,
   listError,
@@ -626,7 +756,11 @@ export const FileList = ({
         ) : null}
         {listError ? <div className="error">{listError}</div> : null}
         {vaultPath && listState === "idle" && files.length === 0 ? (
-          <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
+          <div className="empty-state">
+            {activeFolderPath
+              ? "Keine Markdown-Dateien in diesem Ordner."
+              : "Keine Markdown-Dateien in diesem Vault."}
+          </div>
         ) : null}
         {vaultPath && listState !== "error" ? (
           <ul className="file-list">
@@ -674,6 +808,9 @@ type ClozeCardProps = {
   submissionLocked?: boolean;
   partIndex?: number;
   showSubmit?: boolean;
+  showResult?: boolean;
+  revealCorrectness?: boolean;
+  showSolution?: boolean;
   onInputChange: (cardIndex: number, blankId: string, value: string) => void;
   onTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -699,6 +836,9 @@ export const ClozeCard = ({
   submissionLocked = false,
   partIndex,
   showSubmit = true,
+  showResult = true,
+  revealCorrectness,
+  showSolution,
   onBlankDragOver,
   onInputChange,
   onSubmit,
@@ -721,8 +861,10 @@ export const ClozeCard = ({
   const validTokenIds = new Set(card.dragTokens.map((token) => token.id));
   const canSubmit = areClozeBlanksComplete(card, responses);
   const isCorrect = isClozeCardCorrect(card, responses);
-  const resultLabel = submitted ? (isCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || submitted;
+  const reveal = revealCorrectness ?? submitted;
+  const shouldShowSolution = showSolution ?? submitted;
+  const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
+  const showActions = showSubmit || (submitted && showResult);
   let blankPosition = 0;
 
   return (
@@ -743,14 +885,14 @@ export const ClozeCard = ({
 
           if (segment.kind === "input") {
             const value = responses[segment.id] ?? "";
-            const isBlankCorrect = submitted
+            const isBlankCorrect = reveal
               ? isInputAnswerMatch(value, segment.solution)
               : false;
             const blankClasses = [
               "cloze-blank",
               "input",
               value.trim() ? "filled" : "",
-              submitted ? (isBlankCorrect ? "correct" : "incorrect") : "",
+              reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
             ]
               .filter(Boolean)
               .join(" ");
@@ -780,14 +922,14 @@ export const ClozeCard = ({
             ? tokenById.get(assignedTokenId) ?? ""
             : "";
           const hasToken = Boolean(assignedValue);
-          const isBlankCorrect = submitted
+          const isBlankCorrect = reveal
             ? isDragAnswerMatch(assignedValue, segment.solution)
             : false;
           const blankClasses = [
             "cloze-blank",
             "drag",
             hasToken ? "filled" : "",
-            submitted ? (isBlankCorrect ? "correct" : "incorrect") : "",
+            reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -877,14 +1019,14 @@ export const ClozeCard = ({
               Submit
             </button>
           ) : null}
-          {submitted ? (
+          {submitted && showResult ? (
             <span className={`flashcard-result ${isCorrect ? "correct" : "incorrect"}`}>
               {resultLabel}
             </span>
           ) : null}
         </div>
       ) : null}
-      {submitted ? (
+      {shouldShowSolution ? (
         <div className="token-solution">
           <span className="label">Solution</span>
           <div className="cloze-solution">
@@ -936,6 +1078,11 @@ type CompositeCardProps = {
   submitted: boolean;
   submissionLocked?: boolean;
   partStates: CompositePartState[];
+  showSubmit?: boolean;
+  showResult?: boolean;
+  revealCorrectness?: boolean;
+  showSolution?: boolean;
+  forceRevealText?: boolean;
   onOptionSelect: (cardIndex: number, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     cardIndex: number,
@@ -979,6 +1126,11 @@ export const CompositeCard = ({
   submitted,
   submissionLocked = false,
   partStates,
+  showSubmit = true,
+  showResult = true,
+  revealCorrectness,
+  showSolution,
+  forceRevealText = false,
   onBlankDragOver,
   onClozeInputChange,
   onClozeTokenDragStart,
@@ -1000,7 +1152,9 @@ export const CompositeCard = ({
     (part, index) =>
       evaluateFlashcardPartResult(part, partStates[index] ?? {}) === "correct",
   );
-  const resultLabel = submitted ? (allCorrect ? "Correct" : "Incorrect") : "";
+  const resultLabel =
+    submitted && showResult ? (allCorrect ? "Correct" : "Incorrect") : "";
+  const showActions = showSubmit || (submitted && showResult);
 
   return (
     <article className="flashcard-item composite-card">
@@ -1017,6 +1171,9 @@ export const CompositeCard = ({
                 submitted={submitted}
                 submissionLocked={submissionLocked}
                 responses={state.clozeResponses ?? {}}
+                showResult={showResult}
+                revealCorrectness={revealCorrectness}
+                showSolution={showSolution}
                 onInputChange={(index, blankId, value) =>
                   onClozeInputChange(index, partIndex, blankId, value)
                 }
@@ -1050,6 +1207,9 @@ export const CompositeCard = ({
                 submitted={submitted}
                 submissionLocked={submissionLocked}
                 selections={state.trueFalseSelections ?? {}}
+                showResult={showResult}
+                revealCorrectness={revealCorrectness}
+                showSolution={showSolution}
                 onSelect={(index, itemId, value) =>
                   onTrueFalseSelect(index, partIndex, itemId, value)
                 }
@@ -1068,8 +1228,9 @@ export const CompositeCard = ({
                 submitted={submitted}
                 submissionLocked={submissionLocked}
                 response={state.textResponse ?? ""}
-                revealed={state.textRevealed ?? false}
+                revealed={forceRevealText || state.textRevealed || false}
                 selfGrade={state.selfGrade}
+                showActions={showResult}
                 onInputChange={(index, value) =>
                   onTextInputChange(index, partIndex, value)
                 }
@@ -1080,37 +1241,45 @@ export const CompositeCard = ({
           }
 
           return (
-            <MultipleChoiceCard
-              key={`composite-${cardIndex}-${partIndex}`}
-              card={part}
-              cardIndex={cardIndex}
-              submitted={submitted}
-              submissionLocked={submissionLocked}
-              selectedKeys={state.selections ?? []}
-              onSelect={(index, keys) => onOptionSelect(index, partIndex, keys)}
-              onSubmit={onSubmit}
-              showSubmit={false}
-            />
+              <MultipleChoiceCard
+                key={`composite-${cardIndex}-${partIndex}`}
+                card={part}
+                cardIndex={cardIndex}
+                submitted={submitted}
+                submissionLocked={submissionLocked}
+                selectedKeys={state.selections ?? []}
+                showResult={showResult}
+                revealCorrectness={revealCorrectness}
+                onSelect={(index, keys) => onOptionSelect(index, partIndex, keys)}
+                onSubmit={onSubmit}
+                showSubmit={false}
+              />
           );
         })}
       </div>
-      <div className="flashcard-actions">
-        <button
-          type="button"
-          className="ghost small flashcard-submit"
-          onClick={() => onSubmit(cardIndex, canSubmit)}
-          disabled={!canSubmit || submitted || submissionLocked}
-        >
-          Submit
-        </button>
-        {submitted ? (
-          <span
-            className={`flashcard-result ${allCorrect ? "correct" : "incorrect"}`}
-          >
-            {resultLabel}
-          </span>
-        ) : null}
-      </div>
+      {showActions ? (
+        <div className="flashcard-actions">
+          {showSubmit ? (
+            <button
+              type="button"
+              className="ghost small flashcard-submit"
+              onClick={() => onSubmit(cardIndex, canSubmit)}
+              disabled={!canSubmit || submitted || submissionLocked}
+            >
+              Submit
+            </button>
+          ) : null}
+          {submitted && showResult ? (
+            <span
+              className={`flashcard-result ${
+                allCorrect ? "correct" : "incorrect"
+              }`}
+            >
+              {resultLabel}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 };
@@ -1130,6 +1299,7 @@ type FreeTextCardProps = {
   revealed: boolean;
   selfGrade?: FlashcardSelfGrade;
   submissionLocked?: boolean;
+  showActions?: boolean;
   onInputChange: (cardIndex: number, value: string) => void;
   onCheck: (cardIndex: number) => void;
   onSelfGrade: (cardIndex: number, grade: FlashcardSelfGrade) => void;
@@ -1143,6 +1313,7 @@ export const FreeTextCard = ({
   revealed,
   selfGrade,
   submissionLocked = false,
+  showActions = true,
   onInputChange,
   onCheck,
   onSelfGrade,
@@ -1165,46 +1336,48 @@ export const FreeTextCard = ({
         aria-label="Your answer"
         disabled={submitted || revealed}
       />
-      <div className="flashcard-actions">
-        {!revealed ? (
-          <button
-            type="button"
-            className="ghost small flashcard-submit"
-            onClick={() => onCheck(cardIndex)}
-            disabled={!hasInput || submitted || submissionLocked}
-          >
-            Check
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="primary small flashcard-submit"
-              onClick={() => onSelfGrade(cardIndex, "correct")}
-              disabled={submitted || submissionLocked}
-            >
-              Correct
-            </button>
+      {showActions ? (
+        <div className="flashcard-actions">
+          {!revealed ? (
             <button
               type="button"
               className="ghost small flashcard-submit"
-              onClick={() => onSelfGrade(cardIndex, "incorrect")}
-              disabled={submitted || submissionLocked}
+              onClick={() => onCheck(cardIndex)}
+              disabled={!hasInput || submitted || submissionLocked}
             >
-              Incorrect
+              Check
             </button>
-          </>
-        )}
-        {submitted ? (
-          <span
-            className={`flashcard-result ${
-              selfGrade === "correct" ? "correct" : "incorrect"
-            }`}
-          >
-            {resultLabel}
-          </span>
-        ) : null}
-      </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="primary small flashcard-submit"
+                onClick={() => onSelfGrade(cardIndex, "correct")}
+                disabled={submitted || submissionLocked}
+              >
+                Correct
+              </button>
+              <button
+                type="button"
+                className="ghost small flashcard-submit"
+                onClick={() => onSelfGrade(cardIndex, "incorrect")}
+                disabled={submitted || submissionLocked}
+              >
+                Incorrect
+              </button>
+            </>
+          )}
+          {submitted ? (
+            <span
+              className={`flashcard-result ${
+                selfGrade === "correct" ? "correct" : "incorrect"
+              }`}
+            >
+              {resultLabel}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {revealed ? (
         <div className="flashcard-answer">
           <span className="label">Answer</span>
@@ -1261,6 +1434,8 @@ type MultipleChoiceCardProps = {
   selectedKeys: string[];
   submissionLocked?: boolean;
   showSubmit?: boolean;
+  showResult?: boolean;
+  revealCorrectness?: boolean;
   onSelect: (cardIndex: number, keys: string[]) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -1272,6 +1447,8 @@ export const MultipleChoiceCard = ({
   selectedKeys,
   submissionLocked = false,
   showSubmit = true,
+  showResult = true,
+  revealCorrectness,
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
@@ -1281,7 +1458,8 @@ export const MultipleChoiceCard = ({
     hasSolutions && selectedKeys.length > 0
       ? isExactKeyMatch(selectedKeys, card.correctKeys)
       : false;
-  const resultLabel = submitted
+  const reveal = revealCorrectness ?? submitted;
+  const resultLabel = submitted && showResult
     ? hasSolutions
       ? selectionIsCorrect
         ? "Correct"
@@ -1305,7 +1483,7 @@ export const MultipleChoiceCard = ({
     [cardSignature],
   );
 
-  const showActions = showSubmit || submitted;
+  const showActions = showSubmit || (submitted && showResult);
 
   return (
     <article className="flashcard-item">
@@ -1314,12 +1492,12 @@ export const MultipleChoiceCard = ({
         {displayOptions.map(({ option, label }) => {
           const isSelected = selectedKeys.includes(option.key);
           const isCorrect = hasSolutions && card.correctKeys.includes(option.key);
-          const isIncorrect = hasSolutions && submitted && isSelected && !isCorrect;
+          const isIncorrect = hasSolutions && reveal && isSelected && !isCorrect;
           const optionClasses = [
             "flashcard-option",
             isSelected ? "selected" : "",
-            submitted && isCorrect ? "correct" : "",
-            isIncorrect ? "incorrect" : "",
+            reveal && isCorrect ? "correct" : "",
+            reveal && isIncorrect ? "incorrect" : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -1361,7 +1539,7 @@ export const MultipleChoiceCard = ({
               Submit
             </button>
           ) : null}
-          {submitted ? (
+          {submitted && showResult ? (
             <span
               className={`flashcard-result ${
                 hasSolutions ? (selectionIsCorrect ? "correct" : "incorrect") : "neutral"
@@ -1394,6 +1572,9 @@ type TrueFalseCardProps = {
   selections: Record<string, TrueFalseSelection>;
   submissionLocked?: boolean;
   showSubmit?: boolean;
+  showResult?: boolean;
+  revealCorrectness?: boolean;
+  showSolution?: boolean;
   onSelect: (cardIndex: number, itemId: string, value: TrueFalseSelection) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -1405,13 +1586,18 @@ export const TrueFalseCard = ({
   selections,
   submissionLocked = false,
   showSubmit = true,
+  showResult = true,
+  revealCorrectness,
+  showSolution,
   onSelect,
   onSubmit,
 }: TrueFalseCardProps) => {
   const canSubmit = areTrueFalseItemsComplete(card, selections);
   const isCorrect = isTrueFalseCardCorrect(card, selections);
-  const resultLabel = submitted ? (isCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || submitted;
+  const reveal = revealCorrectness ?? submitted;
+  const shouldShowSolution = showSolution ?? submitted;
+  const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
+  const showActions = showSubmit || (submitted && showResult);
 
   return (
     <article className="flashcard-item truefalse-card">
@@ -1419,21 +1605,21 @@ export const TrueFalseCard = ({
       <ul className="truefalse-list">
         {card.items.map((item) => {
           const selected = selections[item.id];
-          const isItemCorrect = submitted && selected === item.correct;
-          const isItemIncorrect = submitted && selected && selected !== item.correct;
+          const isItemCorrect = reveal && selected === item.correct;
+          const isItemIncorrect = reveal && selected && selected !== item.correct;
           const trueClasses = [
             "truefalse-option",
             selected === "wahr" ? "selected" : "",
-            submitted && item.correct === "wahr" ? "correct" : "",
-            submitted && selected === "wahr" && isItemIncorrect ? "incorrect" : "",
+            reveal && item.correct === "wahr" ? "correct" : "",
+            reveal && selected === "wahr" && isItemIncorrect ? "incorrect" : "",
           ]
             .filter(Boolean)
             .join(" ");
           const falseClasses = [
             "truefalse-option",
             selected === "falsch" ? "selected" : "",
-            submitted && item.correct === "falsch" ? "correct" : "",
-            submitted && selected === "falsch" && isItemIncorrect ? "incorrect" : "",
+            reveal && item.correct === "falsch" ? "correct" : "",
+            reveal && selected === "falsch" && isItemIncorrect ? "incorrect" : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -1461,7 +1647,7 @@ export const TrueFalseCard = ({
                   False
                 </button>
               </div>
-              {submitted ? (
+              {submitted && showResult ? (
                 <span
                   className={`truefalse-result ${
                     isItemCorrect ? "correct" : "incorrect"
@@ -1486,14 +1672,14 @@ export const TrueFalseCard = ({
               Submit
             </button>
           ) : null}
-          {submitted ? (
+          {submitted && showResult ? (
             <span className={`flashcard-result ${isCorrect ? "correct" : "incorrect"}`}>
               {resultLabel}
             </span>
           ) : null}
         </div>
       ) : null}
-      {submitted ? (
+      {shouldShowSolution ? (
         <div className="truefalse-solution">
           <span className="label">Solution</span>
           <ul className="truefalse-solution-list">
@@ -1666,7 +1852,14 @@ export const LargeVaultWarningModal = ({
 
 ## 📝 PreviewPanel.tsx — ./components/PreviewPanel.tsx
 
-import { type MouseEvent, useCallback, useEffect, useRef } from "react";
+import {
+  type FocusEvent,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
@@ -2094,10 +2287,10 @@ const escapeMarkdownText = (text: string) =>
     .replace(/~/g, "\\~");
 
 const escapeMarkdownLinkText = (text: string) =>
-  escapeMarkdownText(text).replace(/\[/g, "\\[").replace(/]/g, "\\]");
+  text.replace(/\[/g, "\\[").replace(/]/g, "\\]");
 
 const escapeMarkdownTableCell = (text: string) =>
-  escapeMarkdownText(text).replace(/\|/g, "\\|");
+  text.replace(/\|/g, "\\|");
 
 const wrapInlineCode = (text: string) => {
   const normalized = text.replace(/\u00a0/g, " ").replace(/\n+/g, " ");
@@ -2348,8 +2541,26 @@ export const PreviewPanel = ({
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
+  const scrollStateRef = useRef({ top: 0, left: 0 });
+  const lastCaretIndexRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  const captureScroll = useCallback((element: HTMLElement | null) => {
+    if (!element) {
+      return;
+    }
+    scrollStateRef.current.top = element.scrollTop;
+    scrollStateRef.current.left = element.scrollLeft;
+  }, []);
+
+  const restoreScroll = useCallback((element: HTMLElement | null) => {
+    if (!element) {
+      return;
+    }
+    element.scrollTop = scrollStateRef.current.top;
+    element.scrollLeft = scrollStateRef.current.left;
+  }, []);
+
+  useLayoutEffect(() => {
     if (!isEditing || rawPreview) {
       markdownEditorReadyRef.current = false;
       if (!isEditing) {
@@ -2364,6 +2575,18 @@ export const PreviewPanel = ({
     markdownEditorReadyRef.current = true;
   }, [isEditing, rawPreview]);
 
+  useLayoutEffect(() => {
+    if (isEditing) {
+      if (rawPreview) {
+        restoreScroll(editorRef.current);
+      } else {
+        restoreScroll(markdownEditorRef.current);
+      }
+      return;
+    }
+    restoreScroll(previewRef.current);
+  }, [isEditing, rawPreview, restoreScroll]);
+
   useEffect(() => {
     if (!isEditing || !rawPreview || !editorRef.current) {
       return;
@@ -2377,6 +2600,9 @@ export const PreviewPanel = ({
     const handle = window.requestAnimationFrame(() => {
       editor.focus();
       editor.setSelectionRange(nextIndex, nextIndex);
+      lastCaretIndexRef.current = nextIndex;
+      scrollStateRef.current.top = editor.scrollTop;
+      scrollStateRef.current.left = editor.scrollLeft;
       onEditCaretApplied();
     });
     return () => window.cancelAnimationFrame(handle);
@@ -2394,6 +2620,9 @@ export const PreviewPanel = ({
     const handle = window.requestAnimationFrame(() => {
       editor.focus();
       setCaretAtPlainOffset(editor, plainOffset);
+      lastCaretIndexRef.current = editCaretIndex;
+      scrollStateRef.current.top = editor.scrollTop;
+      scrollStateRef.current.left = editor.scrollLeft;
       onEditCaretApplied();
     });
     return () => window.cancelAnimationFrame(handle);
@@ -2404,32 +2633,74 @@ export const PreviewPanel = ({
       if (!canEdit || isEditing) {
         return;
       }
+      if (event.button !== 0) {
+        return;
+      }
       const origin = rawPreview ? "raw" : "markdown";
       let caretIndex = preview.length === 0 ? 0 : null;
       if (previewRef.current) {
-        const selection = getSelectionRange(previewRef.current);
+        const container = previewRef.current;
+        captureScroll(container);
+        const selection = getSelectionRange(container);
         if (selection && !selection.collapsed) {
           return;
         }
-        const range = getRangeFromEvent(event, previewRef.current);
+        const range = getRangeFromEvent(event, container);
         const resolvedIndex = rawPreview
-          ? resolveRawCaretIndex(previewRef.current, range)
-          : resolveMarkdownCaretIndex(previewRef.current, preview, range);
+          ? resolveRawCaretIndex(container, range)
+          : resolveMarkdownCaretIndex(container, preview, range);
         if (typeof resolvedIndex === "number") {
           caretIndex = resolvedIndex;
         }
         if (!rawPreview) {
-          markdownEditorHtmlRef.current = previewRef.current.innerHTML;
+          markdownEditorHtmlRef.current = container.innerHTML;
         }
       } else if (!rawPreview) {
         markdownEditorHtmlRef.current = "";
       }
-      if (caretIndex === null && preview.length > 0) {
-        caretIndex = preview.length;
+      if (caretIndex === null) {
+        if (typeof lastCaretIndexRef.current === "number") {
+          caretIndex = lastCaretIndexRef.current;
+        } else if (preview.length > 0) {
+          caretIndex = preview.length;
+        }
+      }
+      if (typeof caretIndex === "number") {
+        lastCaretIndexRef.current = caretIndex;
       }
       onEditStart({ caretIndex, origin });
     },
-    [canEdit, isEditing, onEditStart, preview, rawPreview],
+    [canEdit, captureScroll, isEditing, onEditStart, preview, rawPreview],
+  );
+
+  const handleRawEditorBlur = useCallback(
+    (event: FocusEvent<HTMLTextAreaElement>) => {
+      captureScroll(event.currentTarget);
+      const caretIndex = event.currentTarget.selectionStart;
+      if (typeof caretIndex === "number") {
+        lastCaretIndexRef.current = caretIndex;
+      } else {
+        lastCaretIndexRef.current = event.currentTarget.value.length;
+      }
+      onEditExit();
+    },
+    [captureScroll, onEditExit],
+  );
+
+  const handleMarkdownEditorBlur = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      captureScroll(event.currentTarget);
+      const caretIndex = resolveMarkdownCaretIndex(
+        event.currentTarget,
+        editDraft,
+        null,
+      );
+      if (typeof caretIndex === "number") {
+        lastCaretIndexRef.current = caretIndex;
+      }
+      onEditExit();
+    },
+    [captureScroll, editDraft, onEditExit],
   );
 
   const handleMarkdownInput = useCallback(() => {
@@ -2470,21 +2741,25 @@ export const PreviewPanel = ({
           {isEditing ? (
             rawPreview ? (
               <textarea
+                key="raw-edit"
                 ref={editorRef}
                 className="preview-editor"
                 value={editDraft}
                 onChange={(event) => onEditChange(event.target.value)}
-                onBlur={onEditExit}
+                onBlur={handleRawEditorBlur}
+                onScroll={(event) => captureScroll(event.currentTarget)}
                 aria-label="Edit markdown preview"
               />
             ) : (
               <div
+                key="markdown-edit"
                 ref={markdownEditorRef}
                 className="preview preview-editor markdown"
                 contentEditable
                 suppressContentEditableWarning
                 onInput={handleMarkdownInput}
-                onBlur={onEditExit}
+                onBlur={handleMarkdownEditorBlur}
+                onScroll={(event) => captureScroll(event.currentTarget)}
                 role="textbox"
                 aria-multiline="true"
                 aria-label="Edit markdown preview"
@@ -2492,8 +2767,10 @@ export const PreviewPanel = ({
             )
           ) : preview ? (
             <div
+              key={rawPreview ? "raw-view" : "markdown-view"}
               ref={previewRef}
               className={`preview ${rawPreview ? "raw" : "markdown"}`}
+              onScroll={(event) => captureScroll(event.currentTarget)}
             >
               {rawPreview ? (
                 <pre>{preview}</pre>
@@ -2514,7 +2791,9 @@ export const PreviewPanel = ({
               )}
             </div>
           ) : (
-            <div className="preview placeholder">{emptyPreview}</div>
+            <div key="preview-empty" className="preview placeholder">
+              {emptyPreview}
+            </div>
           )}
         </div>
         {editError ? <div className="error">{editError}</div> : null}
@@ -2812,6 +3091,131 @@ export const LanguageTabContent = ({
         <span className="helper-text">{labels.placeholder}</span>
       </div>
     </>
+  );
+};
+
+---
+
+## 📝 ExamSettingsSection.tsx — ./components/settings/ExamSettingsSection.tsx
+
+import { useMemo } from "react";
+import type { ExamAiEvaluation } from "../../features/settings/useAppSettings";
+
+type ExamSettingsSectionProps = {
+  maxTotalPoints: number;
+  taskCount: number;
+  taskPoints: number[];
+  aiEvaluation: ExamAiEvaluation;
+  setMaxTotalPoints: (value: number) => void;
+  setTaskCount: (value: number) => void;
+  setTaskPoints: (value: number[]) => void;
+};
+
+const clampInput = (value: string) => {
+  if (value.trim() === "") {
+    return 0;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export const ExamSettingsSection = ({
+  maxTotalPoints,
+  taskCount,
+  taskPoints,
+  aiEvaluation,
+  setMaxTotalPoints,
+  setTaskCount,
+  setTaskPoints,
+}: ExamSettingsSectionProps) => {
+  const sumAssigned = useMemo(
+    () => taskPoints.reduce((sum, value) => sum + value, 0),
+    [taskPoints],
+  );
+  const remaining = maxTotalPoints - sumAssigned;
+  const isValid = sumAssigned === maxTotalPoints;
+
+  const handleTaskPointChange = (index: number, value: string) => {
+    const nextPoints = [...taskPoints];
+    nextPoints[index] = clampInput(value);
+    setTaskPoints(nextPoints);
+  };
+
+  return (
+    <section className="panel exam-settings-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Exam Settings</h2>
+          <p className="muted">Define the max score and task point allocation.</p>
+        </div>
+      </div>
+      <div className="panel-body">
+        <div className="exam-settings-grid">
+          <label className="setting-inline">
+            <span className="label">MAX TOTAL POINTS</span>
+            <input
+              type="number"
+              min={0}
+              className="text-input exam-compact-input"
+              value={maxTotalPoints}
+              onChange={(event) => setMaxTotalPoints(clampInput(event.target.value))}
+            />
+          </label>
+          <label className="setting-inline">
+            <span className="label">NUMBER OF TASKS</span>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              className="text-input exam-compact-input"
+              value={taskCount}
+              onChange={(event) => setTaskCount(clampInput(event.target.value))}
+            />
+          </label>
+        </div>
+
+        <div className="exam-points-table">
+          {taskPoints.map((points, index) => (
+            <div key={`exam-task-point-${index}`} className="exam-points-row">
+              <span className="label">Task {index + 1}</span>
+              <input
+                type="number"
+                min={0}
+                className="text-input exam-compact-input"
+                value={points}
+                onChange={(event) => handleTaskPointChange(index, event.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="exam-settings-summary">
+          <div className="muted">
+            Sum assigned: {sumAssigned} / Max total: {maxTotalPoints}
+          </div>
+          <div className="muted">Remaining: {remaining}</div>
+        </div>
+
+        <div className="setting-row">
+          <span className="label">AI EVALUATION</span>
+          <div className="setting-inline">
+            <label className="switch">
+              <input type="checkbox" checked={aiEvaluation.enabled} disabled />
+              <span className="slider" />
+            </label>
+            <span className="muted">
+              Coming soon{aiEvaluation.provider ? ` (provider: ${aiEvaluation.provider})` : ""}.
+            </span>
+          </div>
+        </div>
+
+        {!isValid ? (
+          <div className="error">
+            Assigned points must match the max total before starting an exam.
+          </div>
+        ) : null}
+      </div>
+    </section>
   );
 };
 
@@ -3529,9 +3933,9 @@ export const VaultIndexSection = ({
 
 ## 📝 SidebarNav.tsx — ./components/SidebarNav.tsx
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppState } from "./AppStateProvider";
-import { vaultBaseName } from "../lib/path";
+import { normalizeRelativePath, vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
 import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons";
 import { helpTopics, resolveText } from "../pages/help/helpContent";
@@ -3539,6 +3943,7 @@ import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
 
 type TabKey =
   | "dashboard"
+  | "exam"
   | "flashcard"
   | "spaced-repetition"
   | "fast-flashcard"
@@ -3584,7 +3989,7 @@ export const SidebarNav = ({
   }, [vault.files.length, vault.vaultPath]);
   const isCollapsed = isToolbarCollapsed && !isMobileNavOpen;
   const isCardsTab =
-    activeTab === "dashboard" ||
+    activeTab === "exam" ||
     activeTab === "flashcard" ||
     activeTab === "fast-flashcard" ||
     activeTab === "spaced-repetition";
@@ -3612,6 +4017,26 @@ export const SidebarNav = ({
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!vault.activeFolderPath) {
+      return;
+    }
+    const normalized = normalizeRelativePath(vault.activeFolderPath).replace(/\/+$/, "");
+    if (!normalized) {
+      return;
+    }
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      const parts = normalized.split("/").filter(Boolean);
+      let current = "";
+      parts.forEach((part) => {
+        current = current ? `${current}/${part}` : part;
+        next.add(current);
+      });
+      return next;
+    });
+  }, [vault.activeFolderPath]);
 
   return (
     <aside
@@ -3662,7 +4087,7 @@ export const SidebarNav = ({
                 onClick={() => {
                   setToolbarMode("cards");
                   if (!isCardsTab) {
-                    onTabChange("flashcard");
+                    onTabChange("exam");
                   }
                 }}
                 aria-label="Study flashcards"
@@ -3691,20 +4116,6 @@ export const SidebarNav = ({
               <button
                 type="button"
                 className={`nav-icon sidebar-icon-button ${
-                  toolbarMode === "settings" ? "active" : ""
-                }`}
-                onClick={() => {
-                  setToolbarMode("settings");
-                  onTabChange("settings");
-                }}
-                aria-label="Settings"
-                title="Settings"
-              >
-                <SettingsIcon />
-              </button>
-              <button
-                type="button"
-                className={`nav-icon sidebar-icon-button ${
                   toolbarMode === "help" ? "active" : ""
                 }`}
                 onClick={() => {
@@ -3716,6 +4127,20 @@ export const SidebarNav = ({
               >
                 <HelpIcon />
               </button>
+              <button
+                type="button"
+                className={`nav-icon sidebar-icon-button ${
+                  toolbarMode === "settings" ? "active" : ""
+                }`}
+                onClick={() => {
+                  setToolbarMode("settings");
+                  onTabChange("settings");
+                }}
+                aria-label="Settings"
+                title="Settings"
+              >
+                <SettingsIcon />
+              </button>
             </div>
             <div
               className="sidebar-divider sidebar-divider-muted"
@@ -3726,10 +4151,10 @@ export const SidebarNav = ({
             <nav className="nav">
               <button
                 type="button"
-                className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
-                onClick={() => onTabChange("dashboard")}
+                className={`nav-item ${activeTab === "exam" ? "active" : ""}`}
+                onClick={() => onTabChange("exam")}
               >
-                Makedon
+                Exam
               </button>
               <button
                 type="button"
@@ -3761,13 +4186,16 @@ export const SidebarNav = ({
           {toolbarMode === "vault" ? (
             <div className="sidebar-vault-panel" id="sidebar-vault-panel">
               <VaultTree
+                activeFolderPath={vault.activeFolderPath}
                 expandedPaths={expandedPaths}
                 fileCountLabel={fileCountLabel}
                 files={vault.files}
                 listError={vault.listError}
                 listState={vault.listState}
+                onActiveFolderChange={vault.setActiveFolderPath}
                 onTogglePath={handleTogglePath}
                 onSelectFile={actions.handleSelectFile}
+                onRescanVault={actions.handleRescanVault}
                 selectedFile={preview.selectedFile}
                 vaultPath={vault.vaultPath}
               />
@@ -3894,16 +4322,142 @@ export const StatsPanel = ({
 
 ---
 
+## 📝 VaultCreateModal.tsx — ./components/VaultCreateModal.tsx
+
+import { useEffect, useRef } from "react";
+
+type VaultCreateModalProps = {
+  isOpen: boolean;
+  kind: "file" | "folder";
+  name: string;
+  error: string;
+  isPending?: boolean;
+  onNameChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+export const VaultCreateModal = ({
+  isOpen,
+  kind,
+  name,
+  error,
+  isPending = false,
+  onNameChange,
+  onCancel,
+  onConfirm,
+}: VaultCreateModalProps) => {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onCancel();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onCancel]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [isOpen]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const title = kind === "file" ? "Create New File" : "Create New Folder";
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div
+        className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vault-create-title"
+      >
+        <h3 id="vault-create-title">{title}</h3>
+        <form
+          className="modal-body"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!isPending) {
+              onConfirm();
+            }
+          }}
+        >
+          <label className="label" htmlFor="vault-create-input">
+            Name
+          </label>
+          <input
+            ref={inputRef}
+            id="vault-create-input"
+            className="text-input"
+            type="text"
+            value={name}
+            onChange={(event) => onNameChange(event.target.value)}
+            disabled={isPending}
+            aria-invalid={Boolean(error) || undefined}
+          />
+          {error ? <span className="helper-text error-text">{error}</span> : null}
+        </form>
+        <div className="modal-actions">
+          <button type="button" className="ghost" onClick={onCancel} disabled={isPending}>
+            Cancel
+          </button>
+          <button type="button" className="primary" onClick={onConfirm} disabled={isPending}>
+            {isPending ? "Creating..." : "Create"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+---
+
 ## 📝 VaultTree.tsx — ./components/VaultTree.tsx
 
-import { useMemo, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+} from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { openPath } from "@tauri-apps/plugin-opener";
 import { FileIcon, FolderIcon } from "./icons";
-import { vaultBaseName } from "../lib/path";
-import { buildTree, type TreeNode, type VaultFile } from "../lib/tree";
+import { VaultCreateModal } from "./VaultCreateModal";
+import { asErrorMessage } from "../lib/errors";
+import { normalizeRelativePath, vaultBaseName } from "../lib/path";
+import {
+  buildTree,
+  sortNodes,
+  type TreeNode,
+  type VaultFile,
+} from "../lib/tree";
 import { type LoadState } from "../lib/types";
 
 const INDENT_STEP = 12;
 const OVERFLOW_DEPTH = 4;
+const DEFAULT_FILE_NAME = "New Note.md";
+const DEFAULT_FOLDER_NAME = "New Folder";
+const NAME_FORBIDDEN_PATTERN = /[\\/]/;
 
 const getIndentVars = (depth: number): CSSProperties =>
   ({
@@ -3923,12 +4477,94 @@ const getMaxDepth = (nodes: TreeNode[], depth: number): number => {
   return maxDepth;
 };
 
+const getParentRelativePath = (value: string) => {
+  const normalized = normalizeRelativePath(value);
+  const lastSlash = normalized.lastIndexOf("/");
+  if (lastSlash <= 0) {
+    return "";
+  }
+  return normalized.slice(0, lastSlash);
+};
+
+const joinVaultPath = (vaultRoot: string, relativePath: string) => {
+  const separator = vaultRoot.includes("\\") ? "\\" : "/";
+  const trimmedRoot = vaultRoot.replace(/[\\/]+$/, "");
+  const normalizedRelative = normalizeRelativePath(relativePath).replace(/\//g, separator);
+  if (!normalizedRelative) {
+    return trimmedRoot;
+  }
+  return `${trimmedRoot}${separator}${normalizedRelative}`;
+};
+
+const findDirectoryNode = (nodes: TreeNode[], path: string): TreeNode | null => {
+  if (!path) {
+    return { name: "__root__", path: "", type: "dir", children: nodes };
+  }
+  const parts = normalizeRelativePath(path).split("/").filter(Boolean);
+  let current: TreeNode | null = { name: "__root__", path: "", type: "dir", children: nodes };
+  let currentPath = "";
+  for (const part of parts) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part;
+    const next =
+      current?.children?.find(
+        (child) => child.type === "dir" && child.path === currentPath,
+      ) ?? null;
+    if (!next) {
+      return null;
+    }
+    current = next;
+  }
+  return current;
+};
+
+const getChildNameSet = (nodes: TreeNode[], path: string) => {
+  const names = new Set<string>();
+  const node = findDirectoryNode(nodes, path);
+  if (!node?.children) {
+    return names;
+  }
+  node.children.forEach((child) => {
+    names.add(child.name.trim().toLowerCase());
+  });
+  return names;
+};
+
+const normalizeNewName = (value: string) => value.trim();
+
+const ensureMarkdownExtension = (value: string) =>
+  /\.md$/i.test(value) ? value : `${value}.md`;
+
+const ensureUniqueName = (
+  value: string,
+  existing: Set<string>,
+  kind: "file" | "folder",
+) => {
+  const trimmed = normalizeNewName(value);
+  const base = kind === "file" ? trimmed.replace(/\.md$/i, "") : trimmed;
+  const extension = kind === "file" ? ".md" : "";
+  let candidate = kind === "file" ? ensureMarkdownExtension(trimmed) : trimmed;
+  let index = 2;
+  while (existing.has(candidate.toLowerCase())) {
+    candidate = `${base} (${index})${extension}`;
+    index += 1;
+  }
+  return candidate;
+};
+
+type ContextMenuTarget =
+  | { kind: "file"; file: VaultFile; dirPath: string }
+  | { kind: "dir"; path: string }
+  | { kind: "empty"; path: string };
+
 type VaultTreeProps = {
+  activeFolderPath: string | null;
   expandedPaths: Set<string>;
   fileCountLabel: string;
   files: VaultFile[];
   listError: string;
   listState: LoadState;
+  onRescanVault: () => void;
+  onActiveFolderChange: (path: string | null) => void;
   onTogglePath: (path: string, isOpen: boolean) => void;
   onSelectFile: (file: VaultFile) => void;
   selectedFile: VaultFile | null;
@@ -3936,29 +4572,289 @@ type VaultTreeProps = {
 };
 
 export const VaultTree = ({
+  activeFolderPath,
   expandedPaths,
   fileCountLabel,
   files,
   listError,
   listState,
+  onRescanVault,
+  onActiveFolderChange,
   onTogglePath,
   onSelectFile,
   selectedFile,
   vaultPath,
 }: VaultTreeProps) => {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
-  const treeNodes = useMemo(() => buildTree(files), [files]);
+  const [extraDirs, setExtraDirs] = useState<string[]>([]);
+  const [contextMenu, setContextMenu] = useState<{
+    target: ContextMenuTarget;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [createKind, setCreateKind] = useState<"file" | "folder" | null>(null);
+  const [createDirPath, setCreateDirPath] = useState("");
+  const [createName, setCreateName] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
+  const treeNodes = useMemo(() => {
+    const nodes = buildTree(files);
+    if (!extraDirs.length) {
+      return nodes;
+    }
+    const nextNodes = [...nodes];
+    extraDirs.forEach((dirPath) => {
+      const normalized = normalizeRelativePath(dirPath);
+      if (!normalized) {
+        return;
+      }
+      const parts = normalized.split("/").filter(Boolean);
+      let currentNodes = nextNodes;
+      let currentPath = "";
+      for (const part of parts) {
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        let existing = currentNodes.find(
+          (node) => node.type === "dir" && node.name === part,
+        );
+        if (!existing) {
+          existing = {
+            name: part,
+            path: currentPath,
+            type: "dir",
+            children: [],
+          };
+          currentNodes.push(existing);
+        }
+        if (existing.type !== "dir") {
+          break;
+        }
+        existing.children = existing.children ?? [];
+        currentNodes = existing.children;
+      }
+    });
+    return sortNodes(nextNodes);
+  }, [extraDirs, files]);
   const maxDepth = useMemo(
     () => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0),
     [treeNodes],
   );
   const hasDeepIndent = maxDepth > OVERFLOW_DEPTH;
+  const normalizedActiveFolderPath = useMemo(
+    () => normalizeRelativePath(activeFolderPath ?? "").replace(/\/+$/, ""),
+    [activeFolderPath],
+  );
+
+  const getFolderState = useCallback(
+    (path: string) => {
+      const normalizedPath = normalizeRelativePath(path).replace(/\/+$/, "");
+      const isActiveFolder = normalizedPath === normalizedActiveFolderPath;
+      const isBreadcrumb =
+        normalizedActiveFolderPath !== "" &&
+        (normalizedPath === "" ||
+          normalizedActiveFolderPath.startsWith(`${normalizedPath}/`));
+      return {
+        isActiveFolder,
+        isBreadcrumb: isBreadcrumb && !isActiveFolder,
+      };
+    },
+    [normalizedActiveFolderPath],
+  );
+
+  useEffect(() => {
+    setExtraDirs([]);
+    onActiveFolderChange(null);
+    setContextMenu(null);
+  }, [onActiveFolderChange, vaultPath]);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setContextMenu(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [contextMenu]);
+
+  useLayoutEffect(() => {
+    if (!contextMenu || !menuRef.current) {
+      return;
+    }
+    const padding = 8;
+    const rect = menuRef.current.getBoundingClientRect();
+    let left = contextMenu.x;
+    let top = contextMenu.y;
+    if (left + rect.width > window.innerWidth - padding) {
+      left = window.innerWidth - rect.width - padding;
+    }
+    if (top + rect.height > window.innerHeight - padding) {
+      top = window.innerHeight - rect.height - padding;
+    }
+    setMenuStyle({
+      left: Math.max(padding, left),
+      top: Math.max(padding, top),
+    });
+  }, [contextMenu]);
+
+  const openContextMenu = useCallback(
+    (event: MouseEvent, target: ContextMenuTarget) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setContextMenu({ target, x: event.clientX, y: event.clientY });
+      setMenuStyle({ left: event.clientX, top: event.clientY });
+    },
+    [],
+  );
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const openCreateModal = useCallback(
+    (kind: "file" | "folder", dirPath: string) => {
+      setCreateKind(kind);
+      setCreateDirPath(dirPath);
+      setCreateName(kind === "file" ? DEFAULT_FILE_NAME : DEFAULT_FOLDER_NAME);
+      setCreateError("");
+      setContextMenu(null);
+    },
+    [],
+  );
+
+  const handleOpenDataFolder = useCallback(
+    async (dirPath: string) => {
+      if (!vaultPath) {
+        return;
+      }
+      try {
+        await openPath(joinVaultPath(vaultPath, dirPath));
+      } catch (error) {
+        console.error("Failed to open folder", error);
+      }
+    },
+    [vaultPath],
+  );
+
+  const handleOpenWithDefault = useCallback(async (file: VaultFile) => {
+    try {
+      await openPath(file.path);
+    } catch (error) {
+      console.error("Failed to open file", error);
+    }
+  }, []);
+
+  const handleCreateConfirm = useCallback(async () => {
+    if (!createKind || !vaultPath) {
+      return;
+    }
+    const trimmed = normalizeNewName(createName);
+    if (!trimmed) {
+      setCreateError("Name is required.");
+      return;
+    }
+    if (NAME_FORBIDDEN_PATTERN.test(trimmed) || trimmed === "." || trimmed === "..") {
+      setCreateError("Name cannot include / or \\ characters.");
+      return;
+    }
+    const existingNames = getChildNameSet(treeNodes, createDirPath);
+    const preparedName =
+      createKind === "file" ? ensureMarkdownExtension(trimmed) : trimmed;
+    const baseName = preparedName.replace(/\.md$/i, "").trim();
+    if (createKind === "file" && !baseName) {
+      setCreateError("Name is required.");
+      return;
+    }
+    const uniqueName = ensureUniqueName(preparedName, existingNames, createKind);
+    const relativePath = createDirPath
+      ? `${createDirPath}/${uniqueName}`
+      : uniqueName;
+    setIsCreating(true);
+    setCreateError("");
+    try {
+      if (createKind === "file") {
+        const created = await invoke<VaultFile>("create_markdown_file", {
+          vaultPath,
+          relativePath,
+        });
+        if (createDirPath && !expandedPaths.has(createDirPath)) {
+          onTogglePath(createDirPath, true);
+        }
+        onSelectFile(created);
+      } else {
+        await invoke("create_directory", {
+          vaultPath,
+          relativePath,
+        });
+        setExtraDirs((prev) =>
+          prev.includes(relativePath) ? prev : [...prev, relativePath],
+        );
+        if (createDirPath && !expandedPaths.has(createDirPath)) {
+          onTogglePath(createDirPath, true);
+        }
+        if (relativePath && !expandedPaths.has(relativePath)) {
+          onTogglePath(relativePath, true);
+        }
+      }
+      onRescanVault();
+      setCreateKind(null);
+      setCreateName("");
+    } catch (error) {
+      setCreateError(asErrorMessage(error, "Failed to create entry."));
+    } finally {
+      setIsCreating(false);
+    }
+  }, [
+    createDirPath,
+    createKind,
+    createName,
+    expandedPaths,
+    onRescanVault,
+    onSelectFile,
+    onTogglePath,
+    treeNodes,
+    vaultPath,
+  ]);
+
+  const handleCreateCancel = useCallback(() => {
+    if (isCreating) {
+      return;
+    }
+    setCreateKind(null);
+    setCreateName("");
+    setCreateError("");
+  }, [isCreating]);
+
+  const handleEmptyContextMenu = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (!vaultPath) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target?.closest(".tree-item")) {
+        return;
+      }
+      const dirPath = activeFolderPath ?? "";
+      openContextMenu(event, { kind: "empty", path: dirPath });
+    },
+    [activeFolderPath, openContextMenu, vaultPath],
+  );
+  const menuTarget = contextMenu?.target ?? null;
+  const fileTarget = menuTarget && menuTarget.kind === "file" ? menuTarget : null;
+  const menuDirPath = fileTarget ? fileTarget.dirPath : menuTarget?.path ?? "";
+  const rootFolderState = getFolderState("");
 
   const renderTreeNodes = (nodes: TreeNode[], depth: number) =>
     nodes.map((node) => {
       const indentStyle = getIndentVars(depth);
       if (node.type === "dir") {
         const isOpen = expandedPaths.has(node.path);
+        const { isActiveFolder, isBreadcrumb } = getFolderState(node.path);
         return (
           <details
             className="tree-dir"
@@ -3968,7 +4864,18 @@ export const VaultTree = ({
               onTogglePath(node.path, event.currentTarget.open);
             }}
           >
-            <summary className="tree-item" title={node.path} style={indentStyle}>
+            <summary
+              className={`tree-item${isActiveFolder ? " active-folder" : ""}${
+                isBreadcrumb ? " breadcrumb" : ""
+              }`}
+              title={node.path}
+              style={indentStyle}
+              onClick={() => onActiveFolderChange(node.path)}
+              onContextMenu={(event) => {
+                onActiveFolderChange(node.path);
+                openContextMenu(event, { kind: "dir", path: node.path });
+              }}
+            >
               <span className="tree-icon">
                 <FolderIcon />
               </span>
@@ -3991,10 +4898,22 @@ export const VaultTree = ({
           type="button"
           key={node.path}
           className={`tree-item tree-file ${isActive ? "active" : ""}`}
-          onClick={() => fileRef && onSelectFile(fileRef)}
+          onClick={() => {
+            if (!fileRef) {
+              return;
+            }
+            onSelectFile(fileRef);
+          }}
           title={node.path}
           disabled={!fileRef}
           style={indentStyle}
+          onContextMenu={(event) => {
+            if (!fileRef) {
+              return;
+            }
+            const dirPath = getParentRelativePath(fileRef.relative_path);
+            openContextMenu(event, { kind: "file", file: fileRef, dirPath });
+          }}
         >
           <span className="tree-icon">
             <FileIcon />
@@ -4013,6 +4932,7 @@ export const VaultTree = ({
       <div className="vault-body">
         <div
           className={`vault-tree-scroll${hasDeepIndent ? " vault-tree-scroll-wide" : ""}`}
+          onContextMenu={handleEmptyContextMenu}
         >
           {!vaultPath ? (
             <div className="empty-state">
@@ -4028,8 +4948,15 @@ export const VaultTree = ({
             <div className="vault-tree">
               <details className="tree-dir" open>
                 <summary
-                  className="tree-item"
+                  className={`tree-item${
+                    rootFolderState.isActiveFolder ? " active-folder" : ""
+                  }${rootFolderState.isBreadcrumb ? " breadcrumb" : ""}`}
                   style={getIndentVars(0)}
+                  onClick={() => onActiveFolderChange("")}
+                  onContextMenu={(event) => {
+                    onActiveFolderChange("");
+                    openContextMenu(event, { kind: "dir", path: "" });
+                  }}
                 >
                   <span className="tree-icon">
                     <FolderIcon />
@@ -4044,6 +4971,87 @@ export const VaultTree = ({
           ) : null}
         </div>
       </div>
+      {contextMenu ? (
+        <div
+          className="context-menu-backdrop"
+          role="presentation"
+          onMouseDown={closeContextMenu}
+        >
+          <div
+            ref={menuRef}
+            className="context-menu"
+            style={menuStyle ?? { left: contextMenu.x, top: contextMenu.y }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            {fileTarget ? (
+              <>
+                <button
+                  type="button"
+                  className="context-menu-item"
+                  onClick={() => {
+                    closeContextMenu();
+                    void handleOpenDataFolder(menuDirPath);
+                  }}
+                >
+                  Open Data Folder
+                </button>
+                <button
+                  type="button"
+                  className="context-menu-item"
+                  onClick={() => {
+                    closeContextMenu();
+                    void handleOpenWithDefault(fileTarget.file);
+                  }}
+                >
+                  Open with Default
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="context-menu-item"
+                  onClick={() => openCreateModal("file", menuDirPath)}
+                >
+                  New File
+                </button>
+                <button
+                  type="button"
+                  className="context-menu-item"
+                  onClick={() => openCreateModal("folder", menuDirPath)}
+                >
+                  New Folder
+                </button>
+                <button
+                  type="button"
+                  className="context-menu-item"
+                  onClick={() => {
+                    closeContextMenu();
+                    void handleOpenDataFolder(menuDirPath);
+                  }}
+                >
+                  Open Data Folder
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
+      <VaultCreateModal
+        isOpen={createKind !== null}
+        kind={createKind ?? "file"}
+        name={createName}
+        error={createError}
+        isPending={isCreating}
+        onNameChange={(value) => {
+          setCreateName(value);
+          if (createError) {
+            setCreateError("");
+          }
+        }}
+        onCancel={handleCreateCancel}
+        onConfirm={handleCreateConfirm}
+      />
     </div>
   );
 };
@@ -5384,6 +6392,7 @@ export const usePreview = () => {
 
 export const SETTINGS_PAGES = [
   { id: "app-settings", label: "App Settings" },
+  { id: "exam-settings", label: "Exam Settings" },
   { id: "review-tools", label: "Review Tools" },
   { id: "appearance", label: "Appearance" },
 ] as const;
@@ -5424,6 +6433,12 @@ import {
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
+type ExamAiProvider = "shared-gpt";
+
+export type ExamAiEvaluation = {
+  enabled: boolean;
+  provider: ExamAiProvider | null;
+};
 
 type AppSettings = {
   active_note_path?: string | null;
@@ -5452,6 +6467,10 @@ type AppSettings = {
   spaced_repetition_repetition_strength?: string | null;
   spaced_repetition_stats_view?: string | null;
   right_toolbar_collapsed?: boolean | null;
+  exam_max_total_points?: number | null;
+  exam_task_count?: number | null;
+  exam_task_points?: number[] | null;
+  exam_ai_evaluation?: ExamAiEvaluation | null;
 };
 
 type PersistUpdates = {
@@ -5481,6 +6500,10 @@ type PersistUpdates = {
   spacedRepetitionRepetitionStrength?: SpacedRepetitionRepetitionStrength;
   spacedRepetitionStatsView?: SpacedRepetitionStatsView;
   rightToolbarCollapsed?: boolean;
+  examMaxTotalPoints?: number;
+  examTaskCount?: number;
+  examTaskPoints?: number[];
+  examAiEvaluation?: ExamAiEvaluation;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -5504,6 +6527,113 @@ const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionS
   "medium";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
 const DEFAULT_RIGHT_TOOLBAR_COLLAPSED = false;
+const MAX_EXAM_TASK_COUNT = 20;
+const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
+const DEFAULT_EXAM_TASK_COUNT = 5;
+const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
+  enabled: false,
+  provider: null,
+};
+
+const parseInteger = (value: unknown) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.floor(value);
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const clampExamTaskCount = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return DEFAULT_EXAM_TASK_COUNT;
+  }
+  return Math.min(MAX_EXAM_TASK_COUNT, Math.max(1, parsed));
+};
+
+const clampExamTotalPoints = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return DEFAULT_EXAM_MAX_TOTAL_POINTS;
+  }
+  return Math.max(0, parsed);
+};
+
+const clampExamTaskPointsValue = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return 0;
+  }
+  return Math.max(0, parsed);
+};
+
+const buildDefaultExamTaskPoints = (taskCount: number, maxTotalPoints: number) => {
+  if (taskCount <= 0) {
+    return [];
+  }
+  const even = Math.floor(maxTotalPoints / taskCount);
+  const remainder = maxTotalPoints % taskCount;
+  return Array.from({ length: taskCount }, (_, index) =>
+    even + (index < remainder ? 1 : 0),
+  );
+};
+
+const normalizeExamTaskPointsAll = (
+  value: unknown,
+  taskCount: number,
+  maxTotalPoints: number,
+) => {
+  const defaults = buildDefaultExamTaskPoints(taskCount, maxTotalPoints);
+  const raw = Array.isArray(value) ? value : [];
+  const normalized: number[] = [];
+  for (let index = 0; index < MAX_EXAM_TASK_COUNT; index += 1) {
+    const candidate = raw[index];
+    if (typeof candidate !== "undefined") {
+      normalized.push(clampExamTaskPointsValue(candidate));
+    } else {
+      normalized.push(index < defaults.length ? defaults[index] : 0);
+    }
+  }
+  return normalized;
+};
+
+const mergeExamTaskPointsAll = (
+  current: unknown,
+  updates: unknown,
+  taskCount: number,
+  maxTotalPoints: number,
+) => {
+  const normalized = normalizeExamTaskPointsAll(
+    current,
+    taskCount,
+    maxTotalPoints,
+  );
+  if (!Array.isArray(updates)) {
+    return normalized;
+  }
+  const next = [...normalized];
+  const limit = Math.min(updates.length, taskCount);
+  for (let index = 0; index < limit; index += 1) {
+    next[index] = clampExamTaskPointsValue(updates[index]);
+  }
+  return next;
+};
+
+const normalizeExamAiEvaluation = (value: unknown): ExamAiEvaluation => {
+  if (!value || typeof value !== "object") {
+    return DEFAULT_EXAM_AI_EVALUATION;
+  }
+  const candidate = value as { enabled?: unknown; provider?: unknown };
+  return {
+    enabled: typeof candidate.enabled === "boolean" ? candidate.enabled : false,
+    provider: candidate.provider === "shared-gpt" ? "shared-gpt" : null,
+  };
+};
 
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
@@ -5565,8 +6695,55 @@ export const useAppSettings = () => {
   const [rightToolbarCollapsed, setRightToolbarCollapsed] = useState(
     DEFAULT_RIGHT_TOOLBAR_COLLAPSED,
   );
+  const [examMaxTotalPoints, setExamMaxTotalPointsState] = useState(
+    DEFAULT_EXAM_MAX_TOTAL_POINTS,
+  );
+  const [examTaskCount, setExamTaskCountState] = useState(DEFAULT_EXAM_TASK_COUNT);
+  const [examTaskPoints, setExamTaskPointsState] = useState(() =>
+    normalizeExamTaskPointsAll(
+      [],
+      DEFAULT_EXAM_TASK_COUNT,
+      DEFAULT_EXAM_MAX_TOTAL_POINTS,
+    ),
+  );
+  const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
+    DEFAULT_EXAM_AI_EVALUATION,
+  );
   const autoSaveReady = useRef(false);
   const autoSaveTimer = useRef<number | null>(null);
+
+  const setExamMaxTotalPoints = useCallback((value: number) => {
+    setExamMaxTotalPointsState(clampExamTotalPoints(value));
+  }, []);
+
+  const setExamTaskCount = useCallback((value: number) => {
+    const nextCount = clampExamTaskCount(value);
+    setExamTaskCountState(nextCount);
+    setExamTaskPointsState((prev) => {
+      return normalizeExamTaskPointsAll(prev, nextCount, examMaxTotalPoints);
+    });
+  }, [examMaxTotalPoints]);
+
+  const setExamTaskPoints = useCallback(
+    (value: number[]) => {
+      setExamTaskPointsState((prev) => {
+        return mergeExamTaskPointsAll(
+          prev,
+          value,
+          examTaskCount,
+          examMaxTotalPoints,
+        );
+      });
+    },
+    [examMaxTotalPoints, examTaskCount],
+  );
+
+  const setExamAiEvaluation = useCallback((value: ExamAiEvaluation) => {
+    setExamAiEvaluationState({
+      enabled: Boolean(value?.enabled),
+      provider: value?.provider === "shared-gpt" ? "shared-gpt" : null,
+    });
+  }, []);
 
   const saveSettings = useCallback(
     async (settings: {
@@ -5596,6 +6773,10 @@ export const useAppSettings = () => {
       fastFlashcardMode: FlashcardMode;
       fastFlashcardScope: FlashcardScope;
       fastFlashcardDuration: number;
+      examMaxTotalPoints: number;
+      examTaskCount: number;
+      examTaskPoints: number[];
+      examAiEvaluation: ExamAiEvaluation;
     }) => {
       try {
         await invoke("save_app_settings", {
@@ -5626,6 +6807,10 @@ export const useAppSettings = () => {
             settings.spacedRepetitionRepetitionStrength,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
           rightToolbarCollapsed: settings.rightToolbarCollapsed,
+          examMaxTotalPoints: settings.examMaxTotalPoints,
+          examTaskCount: settings.examTaskCount,
+          examTaskPoints: settings.examTaskPoints,
+          examAiEvaluation: settings.examAiEvaluation,
         });
         return true;
       } catch (error) {
@@ -5678,6 +6863,15 @@ export const useAppSettings = () => {
           updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
         rightToolbarCollapsed:
           updates.rightToolbarCollapsed ?? rightToolbarCollapsed,
+        examMaxTotalPoints: updates.examMaxTotalPoints ?? examMaxTotalPoints,
+        examTaskCount: updates.examTaskCount ?? examTaskCount,
+        examTaskPoints: mergeExamTaskPointsAll(
+          examTaskPoints,
+          updates.examTaskPoints,
+          updates.examTaskCount ?? examTaskCount,
+          updates.examMaxTotalPoints ?? examMaxTotalPoints,
+        ),
+        examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "activeNotePath" in updates) {
@@ -5694,6 +6888,10 @@ export const useAppSettings = () => {
       editorExactColors,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      examAiEvaluation,
+      examMaxTotalPoints,
+      examTaskCount,
+      examTaskPoints,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -5888,6 +7086,20 @@ export const useAppSettings = () => {
           typeof settings.right_toolbar_collapsed === "boolean"
             ? settings.right_toolbar_collapsed
             : DEFAULT_RIGHT_TOOLBAR_COLLAPSED;
+        const storedExamMaxTotalPoints = clampExamTotalPoints(
+          settings.exam_max_total_points ?? DEFAULT_EXAM_MAX_TOTAL_POINTS,
+        );
+        const storedExamTaskCount = clampExamTaskCount(
+          settings.exam_task_count ?? DEFAULT_EXAM_TASK_COUNT,
+        );
+        const storedExamTaskPoints = normalizeExamTaskPointsAll(
+          settings.exam_task_points,
+          storedExamTaskCount,
+          storedExamMaxTotalPoints,
+        );
+        const storedExamAiEvaluation = normalizeExamAiEvaluation(
+          settings.exam_ai_evaluation,
+        );
         setTheme(storedTheme);
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
@@ -5918,6 +7130,10 @@ export const useAppSettings = () => {
         );
         setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
         setRightToolbarCollapsed(storedRightToolbarCollapsed);
+        setExamMaxTotalPointsState(storedExamMaxTotalPoints);
+        setExamTaskCountState(storedExamTaskCount);
+        setExamTaskPointsState(storedExamTaskPoints);
+        setExamAiEvaluationState(storedExamAiEvaluation);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -5996,6 +7212,10 @@ export const useAppSettings = () => {
         fastFlashcardMode,
         fastFlashcardScope,
         fastFlashcardDuration,
+        examMaxTotalPoints,
+        examTaskCount,
+        examTaskPoints,
+        examAiEvaluation,
       });
     }, 300);
 
@@ -6010,6 +7230,10 @@ export const useAppSettings = () => {
     editorExactColors,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
+    examAiEvaluation,
+    examMaxTotalPoints,
+    examTaskCount,
+    examTaskPoints,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -6043,6 +7267,10 @@ export const useAppSettings = () => {
     editorExactColors,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
+    examAiEvaluation,
+    examMaxTotalPoints,
+    examTaskCount,
+    examTaskPoints,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -6062,6 +7290,10 @@ export const useAppSettings = () => {
     setEditorExactColors,
     setEditorBlueprintGrid,
     setEditorBlueprintGridIntensity,
+    setExamAiEvaluation,
+    setExamMaxTotalPoints,
+    setExamTaskCount,
+    setExamTaskPoints,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,
@@ -7900,6 +9132,281 @@ export const asErrorMessage = (error: unknown, fallback: string) => {
 
 ---
 
+## 📝 exam.test.ts — ./lib/exam.test.ts
+
+import { describe, expect, it } from "vitest";
+import { parseExamTasks } from "./exam";
+
+describe("parseExamTasks", () => {
+  it("splits inline Answer markers in exam tasks without flashcard syntax", () => {
+    const markdown = `#exam
+1) Define foreign key. Answer: A foreign key is an attribute.
+#`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const part = tasks[0]?.card.parts[0];
+    expect(part?.kind).toBe("free-text");
+    if (part && part.kind === "free-text") {
+      expect(part.front).toBe("1) Define foreign key.");
+      expect(part.back).toBe("A foreign key is an attribute.");
+    }
+  });
+});
+
+---
+
+## 📝 exam.ts — ./lib/exam.ts
+
+import {
+  parseFlashcards,
+  splitAnswerCard,
+  type CompositeFlashcard,
+  type Flashcard,
+} from "./flashcards";
+
+export type ExamTaskSourceRange = {
+  startLine: number;
+  endLine: number;
+};
+
+export type ExamTaskWarning = {
+  message: string;
+};
+
+export type ExamTaskBase = {
+  id: string;
+  index: number;
+  rawLines: string[];
+  sourceRange: ExamTaskSourceRange;
+  card: CompositeFlashcard;
+  warnings: ExamTaskWarning[];
+};
+
+export type ExamTask = ExamTaskBase;
+
+export type ExamParseResult = {
+  tasks: ExamTask[];
+  hasExamBlock: boolean;
+};
+
+const normalizeLines = (markdown: string) =>
+  markdown.replace(/\r\n?/g, "\n").split("\n");
+
+const trimEmptyLines = (lines: string[]) => {
+  let start = 0;
+  let end = lines.length;
+
+  while (start < end && lines[start]?.trim() === "") {
+    start += 1;
+  }
+  while (end > start && lines[end - 1]?.trim() === "") {
+    end -= 1;
+  }
+
+  return lines.slice(start, end);
+};
+
+const isExamTaskStartLine = (line: string) => {
+  let trimmed = line.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  if (trimmed.startsWith("**")) {
+    trimmed = trimmed.slice(2).trimStart();
+  }
+
+  if (trimmed.startsWith("-")) {
+    trimmed = trimmed.slice(1);
+  }
+
+  const numberMatch = trimmed.match(/^(\d+)/);
+  if (!numberMatch) {
+    return false;
+  }
+
+  const numberRaw = numberMatch[1] ?? "";
+  if (numberRaw.length > 1 && numberRaw.startsWith("0")) {
+    return false;
+  }
+
+  const number = Number.parseInt(numberRaw, 10);
+  if (number < 1 || number > 20) {
+    return false;
+  }
+
+  let remainder = trimmed.slice(numberRaw.length);
+  if (remainder.startsWith(")")) {
+    remainder = remainder.slice(1);
+  }
+  if (remainder.startsWith("**")) {
+    remainder = remainder.slice(2);
+  }
+
+  return remainder.length === 0 || /^\s/.test(remainder);
+};
+
+const buildPrompt = (lines: string[]) =>
+  trimEmptyLines(lines).join("\n").trim();
+
+const normalizeTaskLines = (lines: string[]) => {
+  const trimmed = trimEmptyLines(lines);
+  if (
+    trimmed.length >= 2 &&
+    trimmed[0]?.trim() === "#card" &&
+    trimmed[trimmed.length - 1]?.trim() === "#"
+  ) {
+    return trimEmptyLines(trimmed.slice(1, -1));
+  }
+  return trimmed;
+};
+
+const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
+  if (card.kind === "composite") {
+    return card;
+  }
+  return {
+    kind: "composite",
+    parts: [card],
+    primaryType: card.primaryType,
+    detectedTypes: card.detectedTypes,
+    isMixed: card.isMixed,
+  };
+};
+
+const buildFallbackCard = (lines: string[]): CompositeFlashcard => {
+  const answerSplit = splitAnswerCard(lines);
+  const front =
+    answerSplit?.front ?? (buildPrompt(lines) || "No task content provided.");
+  const back = answerSplit?.back ?? "";
+
+  return {
+    kind: "composite",
+    parts: [
+      {
+        kind: "free-text",
+        front,
+        back,
+      },
+    ],
+    primaryType: "qa",
+    detectedTypes: ["qa"],
+    isMixed: false,
+  };
+};
+
+const parseTaskChunk = (
+  chunkLines: string[],
+  taskIndex: number,
+  sourceRange: ExamTaskSourceRange,
+): ExamTask => {
+  const warnings: ExamTaskWarning[] = [];
+  const normalizedLines = normalizeTaskLines(chunkLines);
+  const body = normalizedLines.join("\n");
+  const cardSource = `#card\n${body}\n#`;
+  const parsed = parseFlashcards(cardSource);
+  let card: CompositeFlashcard | null = null;
+
+  if (parsed.length === 0) {
+    warnings.push({
+      message: "No supported flashcard syntax found. Manual grading required.",
+    });
+    card = buildFallbackCard(normalizedLines);
+  } else {
+    if (parsed.length > 1) {
+      warnings.push({
+        message: "Multiple cards detected in a single task. Using the first card.",
+      });
+    }
+    card = toCompositeCard(parsed[0]);
+  }
+
+  return {
+    id: `exam-task-${taskIndex + 1}`,
+    index: taskIndex,
+    rawLines: [...chunkLines],
+    sourceRange,
+    card,
+    warnings,
+  };
+};
+
+export const parseExamTasks = (markdown: string): ExamParseResult => {
+  const lines = normalizeLines(markdown);
+  const tasks: ExamTask[] = [];
+  let inExam = false;
+  let inCard = false;
+  let currentTaskStart: number | null = null;
+  let hasExamBlock = false;
+
+  const flushTask = (endLine: number) => {
+    if (currentTaskStart === null || endLine < currentTaskStart) {
+      currentTaskStart = null;
+      return;
+    }
+    const chunkLines = lines.slice(currentTaskStart, endLine + 1);
+    const task = parseTaskChunk(chunkLines, tasks.length, {
+      startLine: currentTaskStart,
+      endLine,
+    });
+    tasks.push(task);
+    currentTaskStart = null;
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (!inExam) {
+      if (trimmed === "#exam") {
+        inExam = true;
+        inCard = false;
+        currentTaskStart = null;
+        hasExamBlock = true;
+      }
+      return;
+    }
+
+    if (trimmed === "#card") {
+      inCard = true;
+      return;
+    }
+
+    if (trimmed === "#" && inCard) {
+      inCard = false;
+      return;
+    }
+
+    if (trimmed === "#" && !inCard) {
+      flushTask(index - 1);
+      inExam = false;
+      currentTaskStart = null;
+      return;
+    }
+
+    if (trimmed === "---" && !inCard) {
+      flushTask(index - 1);
+      currentTaskStart = null;
+      return;
+    }
+
+    if (isExamTaskStartLine(line)) {
+      if (currentTaskStart !== null) {
+        flushTask(index - 1);
+      }
+      currentTaskStart = index;
+    }
+  });
+
+  if (inExam && currentTaskStart !== null) {
+    flushTask(lines.length - 1);
+  }
+
+  return { tasks, hasExamBlock };
+};
+
+---
+
 ## 📝 flashcardKeywords.ts — ./lib/flashcardKeywords.ts
 
 export const answerMarkers = [
@@ -7978,6 +9485,7 @@ import {
   isDragAnswerMatch,
   isInputAnswerMatch,
   parseFlashcards,
+  splitAnswerCard,
   type Flashcard,
 } from "./flashcards";
 
@@ -8119,6 +9627,30 @@ Use %%token%% with \`drag\`.
     }
   });
 
+  it("parses inline answer parts inside a composite card", () => {
+    const markdown = `#card
+Inline question? Answer: Inline answer.
+
+Pick one.
+a) First
+b) Second
+-a
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts).toHaveLength(2);
+    const [freeText, multipleChoice] = parts;
+    expect(freeText.kind).toBe("free-text");
+    if (freeText.kind === "free-text") {
+      expect(freeText.front).toBe("Inline question?");
+      expect(freeText.back).toBe("Inline answer.");
+    }
+    expect(multipleChoice.kind).toBe("multiple-choice");
+  });
+
   it("splits parts on separators inside a block", () => {
     const markdown = `#card
 First question?
@@ -8165,6 +9697,106 @@ Answer: SQL is used to define, manipulate, manage permissions, and handle transa
     }
   });
 
+  it("parses a front/back card with inline Answer marker", () => {
+    const markdown = `#card
+Define foreign key. Answer: An attribute that references a primary key.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("Define foreign key.");
+      expect(part.back).toBe("An attribute that references a primary key.");
+    }
+  });
+
+  it("parses a front/back card with lowercase answer marker", () => {
+    const markdown = `#card
+What is DNS?
+answer: Domain name system.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is DNS?");
+      expect(part.back).toBe("Domain name system.");
+    }
+  });
+
+  it("parses a front/back card with Answer marker spacing", () => {
+    const markdown = `#card
+What is DNS?
+Answer : Domain name system.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is DNS?");
+      expect(part.back).toBe("Domain name system.");
+    }
+  });
+
+  it("parses answer-only cards", () => {
+    const markdown = `#card
+Answer: True.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("");
+      expect(part.back).toBe("True.");
+    }
+  });
+
+  it("parses a front/back card with bold Answer marker", () => {
+    const markdown = `#card
+What is RAM?
+**Answer:** Random access memory.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is RAM?");
+      expect(part.back).toBe("Random access memory.");
+    }
+  });
+
+  it("parses a front/back card with bold Answer marker and trailing colon", () => {
+    const markdown = `#card
+What is CPU?
+**Answer**: Central processing unit.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("What is CPU?");
+      expect(part.back).toBe("Central processing unit.");
+    }
+  });
+
   it("parses a front/back card with Antwort marker", () => {
     const markdown = `#card
 1. Was ist eine Transaktion?
@@ -8184,6 +9816,22 @@ Eine Transaktion ist eine atomare Einheit von Operationen.
         "Eine Transaktion ist eine atomare Einheit von Operationen.",
       );
     }
+  });
+
+  it("splits Answer markers in inline and block forms", () => {
+    const inlineSplit = splitAnswerCard([
+      "8) Define a foreign key. Answer: A foreign key is an attribute.",
+    ]);
+    expect(inlineSplit).toEqual({
+      front: "8) Define a foreign key.",
+      back: "A foreign key is an attribute.",
+    });
+
+    const blockSplit = splitAnswerCard(["What is RAM?", "Answer : Memory."]);
+    expect(blockSplit).toEqual({
+      front: "What is RAM?",
+      back: "Memory.",
+    });
   });
 
   it("parses a front/back card with Reponse marker", () => {
@@ -8345,6 +9993,26 @@ c) Three
     expect(part.kind).toBe("multiple-choice");
     if (part.kind === "multiple-choice") {
       expect(part.correctKeys).toEqual(["a", "d"]);
+    }
+  });
+
+  it("parses correct markers after blank lines", () => {
+    const markdown = `#card
+Pick one.
+a) Alpha
+b) Beta
+c) Gamma
+
+-c
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.correctKeys).toEqual(["c"]);
     }
   });
 
@@ -8758,10 +10426,19 @@ const normalizeKeyword = (value: string) =>
 
 const normalizedTrueTokens = new Set(trueTokens.map(normalizeKeyword));
 const normalizedFalseTokens = new Set(falseTokens.map(normalizeKeyword));
+const normalizeAnswerToken = (value: string) =>
+  normalizeKeyword(value).replace(/\s+/g, "");
+
 const normalizedAnswerMarkers = answerMarkers.map((marker) => ({
   raw: marker,
-  normalized: normalizeKeyword(marker),
+  normalized: normalizeAnswerToken(marker.replace(/:\\s*$/, "")),
 }));
+const normalizedAnswerMarkerSet = new Set(
+  normalizedAnswerMarkers.map((marker) => marker.normalized),
+);
+
+const isWordChar = (value: string) => /[\p{L}\p{N}\p{M}]/u.test(value);
+const isWhitespace = (value: string) => /\s/.test(value);
 
 const trimEmptyLines = (lines: string[]) => {
   let start = 0;
@@ -8977,14 +10654,84 @@ const parseTrueFalseItems = (lines: string[]) => {
   return items;
 };
 
+type AnswerMarkerMatch = {
+  line: string;
+  markerStartIndex: number;
+  markerEndIndex: number;
+};
+
+const findAnswerMarkerAtColon = (
+  line: string,
+  colonIndex: number,
+): AnswerMarkerMatch | null => {
+  let prefixEnd = colonIndex;
+  while (prefixEnd > 0 && isWhitespace(line[prefixEnd - 1] ?? "")) {
+    prefixEnd -= 1;
+  }
+  if (prefixEnd <= 0) {
+    return null;
+  }
+
+  let boldClosedBeforeColon = false;
+  if (prefixEnd >= 2 && line.slice(prefixEnd - 2, prefixEnd) === "**") {
+    boldClosedBeforeColon = true;
+    prefixEnd -= 2;
+    while (prefixEnd > 0 && isWhitespace(line[prefixEnd - 1] ?? "")) {
+      prefixEnd -= 1;
+    }
+  }
+
+  let wordEnd = prefixEnd;
+  let wordStart = wordEnd;
+  while (wordStart > 0 && isWordChar(line[wordStart - 1] ?? "")) {
+    wordStart -= 1;
+  }
+  if (wordStart === wordEnd) {
+    return null;
+  }
+  const word = line.slice(wordStart, wordEnd);
+  if (!normalizedAnswerMarkerSet.has(normalizeAnswerToken(word))) {
+    return null;
+  }
+
+  let markerStartIndex = wordStart;
+  let hasBoldPrefix = false;
+  if (wordStart >= 2 && line.slice(wordStart - 2, wordStart) === "**") {
+    hasBoldPrefix = true;
+    markerStartIndex = wordStart - 2;
+  }
+
+  const boundaryChar = line[markerStartIndex - 1];
+  if (boundaryChar && isWordChar(boundaryChar)) {
+    return null;
+  }
+
+  let markerEndIndex = colonIndex + 1;
+  if (hasBoldPrefix && !boldClosedBeforeColon) {
+    let suffixIndex = markerEndIndex;
+    while (suffixIndex < line.length && isWhitespace(line[suffixIndex] ?? "")) {
+      suffixIndex += 1;
+    }
+    if (line.slice(suffixIndex, suffixIndex + 2) === "**") {
+      markerEndIndex = suffixIndex + 2;
+    }
+  }
+
+  return { line, markerStartIndex, markerEndIndex };
+};
+
 const findAnswerMarkerMatch = (line: string) => {
-  const trimmedLine = line.trimStart();
-  const normalizedLine = normalizeKeyword(trimmedLine);
-  for (const marker of normalizedAnswerMarkers) {
-    if (normalizedLine.startsWith(marker.normalized)) {
-      const colonIndex = trimmedLine.indexOf(":");
-      const markerEndIndex = colonIndex >= 0 ? colonIndex + 1 : marker.raw.length;
-      return { trimmedLine, markerEndIndex };
+  if (!line.trim()) {
+    return null;
+  }
+  for (
+    let colonIndex = line.indexOf(":");
+    colonIndex !== -1;
+    colonIndex = line.indexOf(":", colonIndex + 1)
+  ) {
+    const match = findAnswerMarkerAtColon(line, colonIndex);
+    if (match) {
+      return match;
     }
   }
   return null;
@@ -9000,21 +10747,23 @@ const findAnswerMarkerLine = (lines: string[]) => {
   return null;
 };
 
-const splitAnswerCard = (lines: string[]) => {
+export const splitAnswerCard = (lines: string[]) => {
   const markerInfo = findAnswerMarkerLine(lines);
   if (!markerInfo) {
     return null;
   }
-  const frontLines = trimEmptyLines(lines.slice(0, markerInfo.index));
-  const inlineAnswer = markerInfo.match.trimmedLine
-    .slice(markerInfo.match.markerEndIndex)
-    .trimStart();
-  const backLines = [inlineAnswer, ...lines.slice(markerInfo.index + 1)];
+  const markerLine = markerInfo.match.line;
+  const inlineFront = markerLine.slice(0, markerInfo.match.markerStartIndex);
+  const inlineBack = markerLine.slice(markerInfo.match.markerEndIndex).trimStart();
+
+  const frontLines = [...lines.slice(0, markerInfo.index)];
+  if (inlineFront.trim()) {
+    frontLines.push(inlineFront.trimEnd());
+  }
+
+  const backLines = [inlineBack, ...lines.slice(markerInfo.index + 1)];
   const normalizedFront = trimEmptyLines(frontLines).join("\n").trim();
   const normalizedBack = trimEmptyLines(backLines).join("\n").trim();
-  if (!normalizedFront || !normalizedBack) {
-    return null;
-  }
   return {
     front: normalizedFront,
     back: normalizedBack,
@@ -9505,11 +11254,39 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+const existingOnError = window.onerror;
+window.onerror = (message, source, lineno, colno, error) => {
+  console.error("Unhandled error", { message, source, lineno, colno, error });
+  if (typeof existingOnError === "function") {
+    return existingOnError(message, source, lineno, colno, error);
+  }
+  return false;
+};
+
+const existingOnUnhandledRejection = window.onunhandledrejection;
+window.onunhandledrejection = (event) => {
+  console.error("Unhandled promise rejection", event.reason);
+  if (typeof existingOnUnhandledRejection === "function") {
+    return existingOnUnhandledRejection.call(window, event);
+  }
+  return undefined;
+};
+
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  console.error("App root element #root not found.");
+  const fallback = document.createElement("div");
+  fallback.style.cssText =
+    "font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; padding: 24px;";
+  fallback.textContent = "App failed to mount: #root element not found.";
+  document.body.appendChild(fallback);
+} else {
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+}
 
 ---
 
@@ -9521,6 +11298,7 @@ import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
+import { normalizeRelativePath } from "../lib/path";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 
@@ -9531,17 +11309,32 @@ export const DashboardPage = () => {
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+  const normalizedActiveFolderPath = useMemo(() => {
+    if (!vault.activeFolderPath) {
+      return "";
+    }
+    return normalizeRelativePath(vault.activeFolderPath).replace(/\/+$/, "");
+  }, [vault.activeFolderPath]);
+  const visibleFiles = useMemo(() => {
+    if (!normalizedActiveFolderPath) {
+      return vault.files;
+    }
+    const prefix = `${normalizedActiveFolderPath}/`;
+    return vault.files.filter((file) =>
+      normalizeRelativePath(file.relative_path).startsWith(prefix),
+    );
+  }, [normalizedActiveFolderPath, vault.files]);
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
       return "No vault selected";
     }
-    if (vault.files.length === 0) {
-      return "Keine Markdown-Dateien";
+    const count = visibleFiles.length;
+    const base = `${count} Markdown-Datei${count === 1 ? "" : "en"}`;
+    if (!normalizedActiveFolderPath) {
+      return base;
     }
-    return `${vault.files.length} Markdown-Datei${
-      vault.files.length === 1 ? "" : "en"
-    }`;
-  }, [vault.files.length, vault.vaultPath]);
+    return `${base} im Ordner ${normalizedActiveFolderPath}`;
+  }, [normalizedActiveFolderPath, visibleFiles.length, vault.vaultPath]);
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
 
@@ -9643,8 +11436,9 @@ export const DashboardPage = () => {
         />
 
         <FileList
+          activeFolderPath={normalizedActiveFolderPath || null}
           fileCountLabel={fileCountLabel}
-          files={vault.files}
+          files={visibleFiles}
           listError={vault.listError}
           listState={vault.listState}
           onSelectFile={actions.handleSelectFile}
@@ -9655,6 +11449,1618 @@ export const DashboardPage = () => {
     </div>
   );
 };
+
+---
+
+## 📝 ExamFilePanel.tsx — ./pages/exam-simulation/components/ExamFilePanel.tsx
+
+import type { LoadState } from "../../../lib/types";
+import type { VaultFile } from "../../../lib/tree";
+
+type ExamFilePanelProps = {
+  files: VaultFile[];
+  listState: LoadState;
+  listError: string;
+  selectedFile: VaultFile | null;
+  vaultPath: string | null;
+  onSelectFile: (file: VaultFile) => void;
+};
+
+export const ExamFilePanel = ({
+  files,
+  listState,
+  listError,
+  selectedFile,
+  vaultPath,
+  onSelectFile,
+}: ExamFilePanelProps) => {
+  const fileCountLabel = !vaultPath
+    ? "No vault selected"
+    : files.length === 0
+      ? "Keine Exam-Dateien"
+      : `${files.length} Exam-Datei${files.length === 1 ? "" : "en"}`;
+
+  return (
+    <section className="panel list-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Exam Files</h2>
+          <p className="muted">{fileCountLabel}</p>
+        </div>
+        {listState === "loading" ? <span className="chip">Scanne...</span> : null}
+      </div>
+      <div className="panel-body">
+        {!vaultPath ? (
+          <div className="empty-state">Waehle einen Vault, um die Liste zu fuellen.</div>
+        ) : null}
+        {listError ? <div className="error">{listError}</div> : null}
+        {vaultPath && listState === "idle" && files.length === 0 ? (
+          <div className="empty-state">
+            Keine Exam-Dateien gefunden. Fuege einen #exam ... # Block hinzu.
+          </div>
+        ) : null}
+        {vaultPath && listState !== "error" ? (
+          <ul className="file-list">
+            {files.map((file) => (
+              <li key={file.path}>
+                <button
+                  type="button"
+                  className={`file-item ${
+                    selectedFile?.path === file.path ? "active" : ""
+                  }`}
+                  onClick={() => onSelectFile(file)}
+                >
+                  <span className="file-name">{file.relative_path}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </section>
+  );
+};
+
+---
+
+## 📝 ExamIdlePanel.tsx — ./pages/exam-simulation/components/ExamIdlePanel.tsx
+
+import type { LoadState } from "../../../lib/types";
+import type { VaultFile } from "../../../lib/tree";
+
+type ExamEmptyState = {
+  title: string;
+  message: string;
+};
+
+type ExamIdlePanelProps = {
+  selectedFile: VaultFile | null;
+  previewState: LoadState;
+  previewError: string;
+  examEmptyState: ExamEmptyState | null;
+  availableTaskCount: number;
+  plannedTaskCount: number;
+  plannedMaxPoints: number;
+  hasTaskCountMismatch: boolean;
+};
+
+export const ExamIdlePanel = ({
+  selectedFile,
+  previewState,
+  previewError,
+  examEmptyState,
+  availableTaskCount,
+  plannedTaskCount,
+  plannedMaxPoints,
+  hasTaskCountMismatch,
+}: ExamIdlePanelProps) => {
+  if (!selectedFile) {
+    return (
+      <div className="empty-state">
+        Select an exam file to begin.
+      </div>
+    );
+  }
+
+  if (previewState === "loading") {
+    return <div className="empty-state">Loading exam file...</div>;
+  }
+
+  if (previewState === "error") {
+    return <div className="error">{previewError || "Failed to load file."}</div>;
+  }
+
+  if (examEmptyState) {
+    return (
+      <div className="empty-state">
+        <strong>{examEmptyState.title}</strong>
+        <p>{examEmptyState.message}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="exam-idle">
+      <p className="eyebrow">READY</p>
+      <h2>Exam ready to start</h2>
+      <p className="muted">
+        {availableTaskCount} tasks detected. Max points this run: {plannedMaxPoints}.
+      </p>
+      {hasTaskCountMismatch ? (
+        <p className="muted">
+          Only {availableTaskCount} tasks available. The exam will run {plannedTaskCount}.
+        </p>
+      ) : null}
+    </div>
+  );
+};
+
+---
+
+## 📝 ExamMarkdown.tsx — ./pages/exam-simulation/components/ExamMarkdown.tsx
+
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
+
+const markdownSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    table: [...(defaultSchema.attributes?.table ?? []), "className"],
+    th: [...(defaultSchema.attributes?.th ?? []), "align"],
+    td: [...(defaultSchema.attributes?.td ?? []), "align"],
+  },
+};
+
+type ExamMarkdownProps = {
+  content: string;
+  className?: string;
+};
+
+export const ExamMarkdown = ({ content, className }: ExamMarkdownProps) => {
+  const classes = ["exam-markdown", className].filter(Boolean).join(" ");
+
+  return (
+    <div className={classes}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+};
+
+---
+
+## 📝 ExamResultsPanel.tsx — ./pages/exam-simulation/components/ExamResultsPanel.tsx
+
+type ExamTaskBreakdown = {
+  index: number;
+  awardedPoints: number;
+  maxPoints: number;
+  isCorrect: boolean | null;
+};
+
+type ExamResults = {
+  breakdown: ExamTaskBreakdown[];
+  totalAwarded: number;
+  totalMax: number;
+  percentage: number;
+};
+
+type ExamResultsPanelProps = {
+  results: ExamResults;
+};
+
+export const ExamResultsPanel = ({ results }: ExamResultsPanelProps) => {
+  return (
+    <div className="exam-results">
+      <header className="exam-task-header">
+        <div>
+          <p className="eyebrow">RESULTS</p>
+          <h2>Exam results</h2>
+          <p className="muted">Final score and per-task breakdown.</p>
+        </div>
+      </header>
+
+      <div className="exam-results-summary">
+        <div className="exam-results-score">
+          <span className="value">{results.totalAwarded}</span>
+          <span className="muted">/ {results.totalMax} points</span>
+        </div>
+        <div className="exam-results-percent">{results.percentage}%</div>
+      </div>
+
+      <div className="status-list">
+        {results.breakdown.map((item) => {
+          const showCorrectness = item.isCorrect !== null;
+          return (
+            <div key={`exam-result-${item.index}`} className="status-item">
+              <div className="status-row">
+                <span>Task {item.index}</span>
+                <span>
+                  {item.awardedPoints} / {item.maxPoints}
+                </span>
+              </div>
+              {showCorrectness ? (
+                <div className="muted">
+                  {item.isCorrect ? "Correct" : "Incorrect"}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+---
+
+## 📝 ExamTaskRunner.test.ts — ./pages/exam-simulation/components/ExamTaskRunner.test.ts
+
+import { createElement, type ComponentProps } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import type { ExamTask } from "../../../lib/exam";
+import { ExamTaskRunner } from "./ExamTaskRunner";
+
+type ExamTaskRunnerProps = ComponentProps<typeof ExamTaskRunner>;
+
+const buildTask = (): ExamTask => ({
+  id: "exam-task-1",
+  index: 0,
+  rawLines: ["Define foreign key. Answer: A foreign key is an attribute."],
+  sourceRange: { startLine: 0, endLine: 0 },
+  warnings: [],
+  card: {
+    kind: "composite",
+    parts: [
+      {
+        kind: "free-text",
+        front: "Define foreign key.",
+        back: "A foreign key is an attribute.",
+      },
+    ],
+    primaryType: "qa",
+    detectedTypes: ["qa"],
+    isMixed: false,
+  },
+});
+
+const noopOptionSelect: ExamTaskRunnerProps["onOptionSelect"] = (...args) => {
+  void args;
+};
+const noopTrueFalseSelect: ExamTaskRunnerProps["onTrueFalseSelect"] = (...args) => {
+  void args;
+};
+const noopClozeInputChange: ExamTaskRunnerProps["onClozeInputChange"] = (
+  ...args
+) => {
+  void args;
+};
+const noopClozeTokenDrop: ExamTaskRunnerProps["onClozeTokenDrop"] = (...args) => {
+  void args;
+};
+const noopClozeTokenRemove: ExamTaskRunnerProps["onClozeTokenRemove"] = (
+  ...args
+) => {
+  void args;
+};
+const noopClozeTokenDragStart: ExamTaskRunnerProps["onClozeTokenDragStart"] = (
+  ...args
+) => {
+  void args;
+};
+const noopBlankDragOver: ExamTaskRunnerProps["onBlankDragOver"] = (...args) => {
+  void args;
+};
+const noopTextInputChange: ExamTaskRunnerProps["onTextInputChange"] = (
+  ...args
+) => {
+  void args;
+};
+const noopAwardedPointsChange: ExamTaskRunnerProps["onAwardedPointsChange"] = (
+  ...args
+) => {
+  void args;
+};
+const noopAutoGradeDecision: ExamTaskRunnerProps["onAutoGradeDecision"] = (
+  ...args
+) => {
+  void args;
+};
+const noopConversionDecision: ExamTaskRunnerProps["onConversionDecision"] = (
+  ...args
+) => {
+  void args;
+};
+
+const buildProps = (
+  phase: ExamTaskRunnerProps["phase"],
+): ExamTaskRunnerProps => ({
+  task: buildTask(),
+  taskIndex: 0,
+  taskCount: 1,
+  maxPoints: 5,
+  phase,
+  partStates: [{}],
+  awardedPoints: null,
+  conversionPending: false,
+  conversionError: "",
+  onOptionSelect: noopOptionSelect,
+  onTrueFalseSelect: noopTrueFalseSelect,
+  onClozeInputChange: noopClozeInputChange,
+  onClozeTokenDrop: noopClozeTokenDrop,
+  onClozeTokenRemove: noopClozeTokenRemove,
+  onClozeTokenDragStart: noopClozeTokenDragStart,
+  onBlankDragOver: noopBlankDragOver,
+  onTextInputChange: noopTextInputChange,
+  onAwardedPointsChange: noopAwardedPointsChange,
+  onAutoGradeDecision: noopAutoGradeDecision,
+  onConversionDecision: noopConversionDecision,
+  onBack: () => {},
+  onNext: () => {},
+  canGoBack: false,
+  canGoNext: false,
+});
+
+describe("ExamTaskRunner", () => {
+  it("hides free-text solutions during exam and reveals them after submit", () => {
+    const examMarkup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps("exam")),
+    );
+    expect(examMarkup).toContain("Define foreign key.");
+    expect(examMarkup).not.toContain("A foreign key is an attribute.");
+    expect(examMarkup).not.toContain("flashcard-answer");
+
+    const reviewMarkup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps("review")),
+    );
+    expect(reviewMarkup).toContain("Define foreign key.");
+    expect(reviewMarkup).toContain("A foreign key is an attribute.");
+    expect(reviewMarkup).toContain("flashcard-answer");
+  });
+});
+
+---
+
+## 📝 ExamTaskRunner.tsx — ./pages/exam-simulation/components/ExamTaskRunner.tsx
+
+import { type DragEvent } from "react";
+import { CompositeCard } from "../../../components/flashcards/CompositeCard";
+import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
+import type { ExamTask } from "../../../lib/exam";
+import type { FlashcardPart } from "../../../lib/flashcards";
+
+const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
+
+type ExamTaskPhase = "exam" | "review" | "scoring";
+
+type ExamTaskRunnerProps = {
+  task: ExamTask;
+  taskIndex: number;
+  taskCount: number;
+  maxPoints: number;
+  phase: ExamTaskPhase;
+  partStates: CompositePartState[];
+  awardedPoints: number | null;
+  autoGradeDecision?: boolean;
+  conversionDecision?: boolean;
+  conversionPending: boolean;
+  conversionError: string;
+  onOptionSelect: (taskIndex: number, partIndex: number, keys: string[]) => void;
+  onTrueFalseSelect: (
+    taskIndex: number,
+    partIndex: number,
+    itemId: string,
+    value: TrueFalseSelection,
+  ) => void;
+  onClozeInputChange: (
+    taskIndex: number,
+    partIndex: number,
+    blankId: string,
+    value: string,
+  ) => void;
+  onClozeTokenDrop: (
+    event: DragEvent<HTMLElement>,
+    taskIndex: number,
+    partIndex: number,
+    blankId: string,
+    validTokenIds: Set<string>,
+    dragBlankIds: Set<string>,
+  ) => void;
+  onClozeTokenRemove: (taskIndex: number, partIndex: number, blankId: string) => void;
+  onClozeTokenDragStart: (
+    event: DragEvent<HTMLElement>,
+    payload: { cardIndex: number; tokenId: string; partIndex?: number },
+  ) => void;
+  onBlankDragOver: (event: DragEvent<HTMLElement>) => void;
+  onTextInputChange: (taskIndex: number, partIndex: number, value: string) => void;
+  onAwardedPointsChange: (taskIndex: number, value: string, maxPoints: number) => void;
+  onAutoGradeDecision: (taskIndex: number, decision: boolean) => void;
+  onConversionDecision: (taskIndex: number, shouldConvert: boolean) => void;
+  onBack: () => void;
+  onNext: () => void;
+  canGoBack: boolean;
+  canGoNext: boolean;
+};
+
+const isAutoGradablePart = (part: FlashcardPart) => {
+  if (part.kind === "multiple-choice") {
+    return part.correctKeys.length > 0;
+  }
+  if (part.kind === "true-false") {
+    return part.items.length > 0;
+  }
+  if (part.kind === "cloze") {
+    return part.segments.some((segment) => segment.type === "blank");
+  }
+  return false;
+};
+
+const isTaskAutoGraded = (task: ExamTask) =>
+  task.card.parts.length > 0 && task.card.parts.every(isAutoGradablePart);
+
+const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
+  task.card.parts.every(
+    (part, index) => evaluateFlashcardPartResult(part, states[index] ?? {}) === "correct",
+  );
+
+const noopSubmit = (_cardIndex: number, _canSubmit: boolean) => {};
+const noopTextCheck = (_cardIndex: number, _partIndex: number) => {};
+const noopSelfGrade = (
+  _cardIndex: number,
+  _partIndex: number,
+  _grade: "correct" | "incorrect",
+) => {};
+
+export const ExamTaskRunner = ({
+  task,
+  taskIndex,
+  taskCount,
+  maxPoints,
+  phase,
+  partStates,
+  awardedPoints,
+  autoGradeDecision,
+  conversionDecision,
+  conversionPending,
+  conversionError,
+  onOptionSelect,
+  onTrueFalseSelect,
+  onClozeInputChange,
+  onClozeTokenDrop,
+  onClozeTokenRemove,
+  onClozeTokenDragStart,
+  onBlankDragOver,
+  onTextInputChange,
+  onAwardedPointsChange,
+  onAutoGradeDecision,
+  onConversionDecision,
+  onBack,
+  onNext,
+  canGoBack,
+  canGoNext,
+}: ExamTaskRunnerProps) => {
+  const isScoring = phase === "scoring";
+  const showAnswers = phase !== "exam";
+  const isAutoGraded = isTaskAutoGraded(task);
+  const taskIsCorrect = isAutoGraded ? isTaskCorrect(task, partStates) : false;
+  const decidedCorrect = isAutoGraded ? autoGradeDecision ?? taskIsCorrect : null;
+  const autoAwardedPoints = isAutoGraded && decidedCorrect ? maxPoints : 0;
+  const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
+  const inputLocked = phase !== "exam" || conversionPending;
+
+  return (
+    <div className="exam-task">
+      <header className="exam-task-header">
+        <div>
+          <p className="eyebrow">{phaseLabel}</p>
+          <h2>{formatTaskTitle(taskIndex + 1, taskCount)}</h2>
+          <p className="muted">Max points: {maxPoints}</p>
+        </div>
+        <div className="exam-task-nav">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={onBack}
+            disabled={!canGoBack}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={onNext}
+            disabled={!canGoNext}
+          >
+            Next
+          </button>
+        </div>
+      </header>
+
+      {task.warnings.length > 0 ? (
+        <div className="exam-warning">
+          {task.warnings.map((warning) => (
+            <div key={warning.message}>{warning.message}</div>
+          ))}
+        </div>
+      ) : null}
+
+      <CompositeCard
+        card={task.card}
+        cardIndex={taskIndex}
+        submitted={showAnswers}
+        submissionLocked={inputLocked}
+        partStates={partStates}
+        showSubmit={false}
+        showResult={false}
+        revealCorrectness={showAnswers}
+        showSolution={showAnswers}
+        forceRevealText={showAnswers}
+        onOptionSelect={onOptionSelect}
+        onTrueFalseSelect={onTrueFalseSelect}
+        onClozeInputChange={onClozeInputChange}
+        onClozeTokenDrop={onClozeTokenDrop}
+        onClozeTokenRemove={onClozeTokenRemove}
+        onClozeTokenDragStart={onClozeTokenDragStart}
+        onBlankDragOver={onBlankDragOver}
+        onTextInputChange={onTextInputChange}
+        onTextCheck={noopTextCheck}
+        onSelfGrade={noopSelfGrade}
+        onSubmit={noopSubmit}
+      />
+
+      {isScoring && isAutoGraded ? (
+        <>
+          <div className="exam-points-row">
+            <span className="label">AUTO RESULT</span>
+            <div className="exam-points-input">
+              <span
+                className={`flashcard-result ${
+                  taskIsCorrect ? "correct" : "incorrect"
+                }`}
+              >
+                {taskIsCorrect ? "Correct" : "Incorrect"}
+              </span>
+            </div>
+          </div>
+          <div className="exam-points-row">
+            <span className="label">CONFIRM</span>
+            <div className="exam-points-input">
+              <button
+                type="button"
+                className={`small ${decidedCorrect ? "primary" : "ghost"}`}
+                onClick={() => onAutoGradeDecision(taskIndex, true)}
+                aria-pressed={decidedCorrect === true}
+                disabled={conversionPending}
+              >
+                Correct
+              </button>
+              <button
+                type="button"
+                className={`small ${decidedCorrect ? "ghost" : "primary"}`}
+                onClick={() => onAutoGradeDecision(taskIndex, false)}
+                aria-pressed={decidedCorrect === false}
+                disabled={conversionPending}
+              >
+                Not correct
+              </button>
+            </div>
+          </div>
+          <div className="exam-points-row">
+            <span className="label">AWARDED</span>
+            <div className="exam-points-input">
+              <span>{autoAwardedPoints}</span>
+              <span className="muted">/ {maxPoints}</span>
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {isScoring && !isAutoGraded ? (
+        <div className="exam-points-row">
+          <span className="label">AWARDED</span>
+          <div className="exam-points-input">
+            <input
+              type="number"
+              min={0}
+              max={maxPoints}
+              className="text-input"
+              value={awardedPoints ?? ""}
+              onChange={(event) =>
+                onAwardedPointsChange(taskIndex, event.target.value, maxPoints)
+              }
+              aria-label="Awarded points"
+              disabled={conversionPending}
+            />
+            <span className="muted">/ {maxPoints}</span>
+          </div>
+        </div>
+      ) : null}
+
+      {isScoring ? (
+        <label className="exam-conversion-toggle">
+          <input
+            type="checkbox"
+            checked={conversionDecision ?? false}
+            onChange={(event) => onConversionDecision(taskIndex, event.target.checked)}
+            disabled={conversionPending}
+          />
+          Convert to flashcard
+        </label>
+      ) : null}
+
+      {isScoring && conversionError ? (
+        <div className="error">{conversionError}</div>
+      ) : null}
+    </div>
+  );
+};
+
+---
+
+## 📝 ExamToolsPanel.tsx — ./pages/exam-simulation/components/ExamToolsPanel.tsx
+
+type ExamStage = "idle" | "running" | "review" | "scoring" | "finished";
+
+type ExamToolsPanelProps = {
+  stage: ExamStage;
+  canStartExam: boolean;
+  isSettingsValid: boolean;
+  remainingPoints: number;
+  hasTaskCountMismatch: boolean;
+  plannedTaskCount: number;
+  availableTaskCount: number;
+  expectedTaskCount: number;
+  finishPending?: boolean;
+  onStartExam: () => void;
+  onSubmitExam: () => void;
+  onStartScoring: () => void;
+  onFinishScoring: () => void;
+  onResetExam: () => void;
+};
+
+export const ExamToolsPanel = ({
+  stage,
+  canStartExam,
+  isSettingsValid,
+  remainingPoints,
+  hasTaskCountMismatch,
+  plannedTaskCount,
+  availableTaskCount,
+  expectedTaskCount,
+  finishPending = false,
+  onStartExam,
+  onSubmitExam,
+  onStartScoring,
+  onFinishScoring,
+  onResetExam,
+}: ExamToolsPanelProps) => {
+  const showStart = stage === "idle";
+  const showSubmit = stage === "running";
+  const showReviewAdvance = stage === "review";
+  const showFinishScoring = stage === "scoring";
+  const showSettingsHints = stage === "idle";
+
+  return (
+    <section className="panel exam-tools-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Exam Tools</h2>
+          <p className="muted">Start, finish, or reset an exam run.</p>
+        </div>
+      </div>
+      <div className="panel-body">
+        <div className="setting-row">
+          <span className="label">CONTROLS</span>
+          <div className="setting-actions">
+            {showStart ? (
+              <button
+                type="button"
+                className="primary"
+                onClick={onStartExam}
+                disabled={!canStartExam}
+              >
+                Start Exam
+              </button>
+            ) : null}
+            {showSubmit ? (
+              <button type="button" className="primary" onClick={onSubmitExam}>
+                Submit
+              </button>
+            ) : null}
+            {showReviewAdvance ? (
+              <button type="button" className="primary" onClick={onStartScoring}>
+                Proceed to Scoring
+              </button>
+            ) : null}
+            {showFinishScoring ? (
+              <button
+                type="button"
+                className="primary"
+                onClick={onFinishScoring}
+                disabled={finishPending}
+              >
+                Finish Scoring
+              </button>
+            ) : null}
+            <button type="button" className="ghost" onClick={onResetExam}>
+              Reset
+            </button>
+          </div>
+        </div>
+        {showSettingsHints && !isSettingsValid ? (
+          <div className="exam-warning">
+            Assign points so the total matches the configured max score.
+          </div>
+        ) : null}
+        {showSettingsHints && remainingPoints !== 0 ? (
+          <div className="muted">Remaining points: {remainingPoints}</div>
+        ) : null}
+        {showSettingsHints && hasTaskCountMismatch ? (
+          <div className="muted">
+            Only {availableTaskCount} tasks found (expected {expectedTaskCount}). The
+            exam will run {plannedTaskCount}.
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+};
+
+---
+
+## 📝 ExamSimulationPage.tsx — ./pages/exam-simulation/ExamSimulationPage.tsx
+
+import { ExamFilePanel } from "./components/ExamFilePanel";
+import { ExamIdlePanel } from "./components/ExamIdlePanel";
+import { ExamResultsPanel } from "./components/ExamResultsPanel";
+import { ExamTaskRunner } from "./components/ExamTaskRunner";
+import { ExamToolsPanel } from "./components/ExamToolsPanel";
+import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
+
+export const ExamSimulationPage = () => {
+  const {
+    actions,
+    preview,
+    settings,
+    vault,
+    examFiles,
+    examFilesState,
+    examFilesError,
+    selectedExamFile,
+    previewExamParse,
+    plannedTaskCount,
+    plannedMaxPoints,
+    hasTaskCountMismatch,
+    stage,
+    activeTaskIndex,
+    activeTask,
+    activeTaskMaxPoints,
+    activeTaskPartStates,
+    activeTaskAwardedPoints,
+    activeTaskAutoDecision,
+    runTasks,
+    remainingPoints,
+    isSettingsValid,
+    canStartExam,
+    examEmptyState,
+    results,
+    conversionDecisions,
+    conversionPending,
+    conversionError,
+    handleStartExam,
+    handleResetExam,
+    handleSubmitExam,
+    handleStartScoring,
+    handleFinishScoring,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleClozeBlankDragOver,
+    handleClozeTokenDragStart,
+    handleAwardedPointsChange,
+    handleAutoGradeDecision,
+    handleTaskBack,
+    handleTaskNext,
+    handleConversionDecision,
+  } = useExamSimulationViewModel();
+
+  const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
+  const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
+
+  return (
+    <div className="exam-page">
+      <header className="content-header">
+        <div>
+          <p className="eyebrow">EXAM SIMULATION</p>
+          <h1>Exam</h1>
+          <p className="muted">Run a Punktaufgaben exam and convert tasks into cards.</p>
+        </div>
+      </header>
+
+      <div className="exam-layout">
+        <section className="panel exam-panel">
+          {stage === "idle" ? (
+            <ExamIdlePanel
+              selectedFile={selectedExamFile}
+              previewState={preview.previewState}
+              previewError={preview.previewError}
+              examEmptyState={examEmptyState}
+              availableTaskCount={previewExamParse.tasks.length}
+              plannedTaskCount={plannedTaskCount}
+              plannedMaxPoints={plannedMaxPoints}
+              hasTaskCountMismatch={hasTaskCountMismatch}
+            />
+          ) : isRunnerStage ? (
+            activeTask ? (
+              <ExamTaskRunner
+                task={activeTask}
+                taskIndex={activeTaskIndex}
+                taskCount={runTasks.length}
+                maxPoints={activeTaskMaxPoints}
+                phase={activePhase}
+                partStates={activeTaskPartStates}
+                awardedPoints={activeTaskAwardedPoints}
+                autoGradeDecision={activeTaskAutoDecision}
+                conversionDecision={conversionDecisions[activeTaskIndex]}
+                conversionPending={conversionPending}
+                conversionError={conversionError}
+                onOptionSelect={handleOptionSelect}
+                onTrueFalseSelect={handleTrueFalseSelect}
+                onClozeInputChange={handleClozeInputChange}
+                onClozeTokenDrop={handleClozeTokenDrop}
+                onClozeTokenRemove={handleClozeTokenRemove}
+                onClozeTokenDragStart={handleClozeTokenDragStart}
+                onBlankDragOver={handleClozeBlankDragOver}
+                onTextInputChange={handleTextInputChange}
+                onAwardedPointsChange={handleAwardedPointsChange}
+                onAutoGradeDecision={handleAutoGradeDecision}
+                onConversionDecision={handleConversionDecision}
+                onBack={handleTaskBack}
+                onNext={handleTaskNext}
+                canGoBack={activeTaskIndex > 0}
+                canGoNext={activeTaskIndex < runTasks.length - 1}
+              />
+            ) : (
+              <div className="empty-state">No tasks available for this exam.</div>
+            )
+          ) : stage === "finished" ? (
+            results ? (
+              <ExamResultsPanel
+                results={results}
+              />
+            ) : (
+              <div className="empty-state">No results available yet.</div>
+            )
+          ) : null}
+        </section>
+
+        <div className="exam-sidebar">
+          <ExamFilePanel
+            files={examFiles}
+            listState={examFilesState}
+            listError={examFilesError}
+            selectedFile={selectedExamFile}
+            vaultPath={vault.vaultPath}
+            onSelectFile={actions.handleSelectFile}
+          />
+          <ExamToolsPanel
+            stage={stage}
+            canStartExam={canStartExam}
+            isSettingsValid={isSettingsValid}
+            remainingPoints={remainingPoints}
+            hasTaskCountMismatch={hasTaskCountMismatch}
+            plannedTaskCount={plannedTaskCount}
+            availableTaskCount={previewExamParse.tasks.length}
+            expectedTaskCount={settings.examTaskCount}
+            onStartExam={handleStartExam}
+            onSubmitExam={handleSubmitExam}
+            onStartScoring={handleStartScoring}
+            onFinishScoring={handleFinishScoring}
+            finishPending={conversionPending}
+            onResetExam={handleResetExam}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+---
+
+## 📝 useExamSimulationViewModel.ts — ./pages/exam-simulation/hooks/useExamSimulationViewModel.ts
+
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { useAppState } from "../../../components/AppStateProvider";
+import {
+  evaluateFlashcardPartResult,
+  getClozeDragPayload,
+  handleClozeBlankDragOver,
+  handleClozeTokenDragStart,
+  type CompositePartState,
+  type TrueFalseSelection,
+} from "../../../features/flashcards/logic";
+import { type ExamAiEvaluation } from "../../../features/settings/useAppSettings";
+import { asErrorMessage } from "../../../lib/errors";
+import { parseExamTasks, type ExamTask } from "../../../lib/exam";
+import { type FlashcardPart } from "../../../lib/flashcards";
+import { type LoadState } from "../../../lib/types";
+import { type VaultFile } from "../../../lib/tree";
+
+type ExamStage =
+  | "idle"
+  | "running"
+  | "review"
+  | "scoring"
+  | "finished";
+
+type ExamSettingsSnapshot = {
+  maxTotalPoints: number;
+  taskCount: number;
+  taskPoints: number[];
+  aiEvaluation: ExamAiEvaluation;
+};
+
+type ExamTaskResult = {
+  index: number;
+  awardedPoints: number;
+  maxPoints: number;
+  isCorrect: boolean | null;
+};
+
+const clampNumber = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+const normalizeAwardedPoints = (value: number | null, maxPoints: number) => {
+  if (value === null || Number.isNaN(value)) {
+    return 0;
+  }
+  return clampNumber(Math.floor(value), 0, maxPoints);
+};
+
+const isAutoGradablePart = (part: FlashcardPart) => {
+  if (part.kind === "multiple-choice") {
+    return part.correctKeys.length > 0;
+  }
+  if (part.kind === "true-false") {
+    return part.items.length > 0;
+  }
+  if (part.kind === "cloze") {
+    return part.segments.some((segment) => segment.type === "blank");
+  }
+  return false;
+};
+
+const isAutoGradedTask = (task: ExamTask) =>
+  task.card.parts.length > 0 && task.card.parts.every(isAutoGradablePart);
+
+const isTaskCorrect = (
+  task: ExamTask,
+  states: CompositePartState[] | undefined,
+) =>
+  task.card.parts.every(
+    (part, index) =>
+      evaluateFlashcardPartResult(part, states?.[index] ?? {}) === "correct",
+  );
+
+export const useExamSimulationViewModel = () => {
+  const { actions, preview, settings, vault } = useAppState();
+  const [examFiles, setExamFiles] = useState<VaultFile[]>([]);
+  const [examFilesState, setExamFilesState] = useState<LoadState>("idle");
+  const [examFilesError, setExamFilesError] = useState("");
+  const [stage, setStage] = useState<ExamStage>("idle");
+  const [activeTaskIndex, setActiveTaskIndex] = useState(0);
+  const [activeExamTasks, setActiveExamTasks] = useState<ExamTask[]>([]);
+  const [activeExamFile, setActiveExamFile] = useState<VaultFile | null>(null);
+  const [activeSettings, setActiveSettings] = useState<ExamSettingsSnapshot | null>(
+    null,
+  );
+  const [partStates, setPartStates] = useState<Record<number, CompositePartState[]>>(
+    {},
+  );
+  const [awardedPoints, setAwardedPoints] = useState<Record<number, number | null>>(
+    {},
+  );
+  const [autoGradeDecisions, setAutoGradeDecisions] = useState<
+    Record<number, boolean>
+  >({});
+  const [conversionDecisions, setConversionDecisions] = useState<
+    Record<number, boolean>
+  >({});
+  const [conversionPending, setConversionPending] = useState(false);
+  const [conversionError, setConversionError] = useState("");
+
+  useEffect(() => {
+    if (!vault.vaultPath) {
+      setExamFiles([]);
+      setExamFilesState("idle");
+      setExamFilesError("");
+      return;
+    }
+    if (vault.files.length === 0) {
+      setExamFiles([]);
+      setExamFilesState("idle");
+      setExamFilesError("");
+      return;
+    }
+
+    let cancelled = false;
+    setExamFilesState("loading");
+    setExamFilesError("");
+
+    const scanFiles = async () => {
+      const results = await Promise.allSettled(
+        vault.files.map(async (file) => {
+          const contents = await invoke<string>("read_text_file", {
+            path: file.path,
+          });
+          const parsed = parseExamTasks(contents);
+          return parsed.hasExamBlock ? file : null;
+        }),
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      const nextExamFiles: VaultFile[] = [];
+      let failures = 0;
+
+      results.forEach((result) => {
+        if (result.status === "fulfilled") {
+          if (result.value) {
+            nextExamFiles.push(result.value);
+          }
+        } else {
+          failures += 1;
+          console.warn("Failed to scan exam file", result.reason);
+        }
+      });
+
+      if (failures > 0 && nextExamFiles.length === 0) {
+        setExamFilesError("Exam files could not be scanned.");
+      }
+
+      setExamFiles(nextExamFiles);
+      setExamFilesState("idle");
+    };
+
+    void scanFiles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [vault.files, vault.vaultPath]);
+
+  const selectedExamFile = useMemo(() => {
+    if (!preview.selectedFile) {
+      return null;
+    }
+    return examFiles.find((file) => file.path === preview.selectedFile?.path) ?? null;
+  }, [examFiles, preview.selectedFile]);
+
+  const previewExamParse = useMemo(() => {
+    if (!selectedExamFile || preview.previewState !== "idle") {
+      return { tasks: [], hasExamBlock: false };
+    }
+    return parseExamTasks(preview.preview);
+  }, [preview.preview, preview.previewState, selectedExamFile]);
+
+  const plannedTaskCount = Math.min(
+    previewExamParse.tasks.length,
+    settings.examTaskCount,
+  );
+  const activeTaskPoints = useMemo(
+    () => settings.examTaskPoints.slice(0, settings.examTaskCount),
+    [settings.examTaskCount, settings.examTaskPoints],
+  );
+  const plannedTaskPoints = activeTaskPoints.slice(0, plannedTaskCount);
+  const plannedMaxPoints = plannedTaskPoints.reduce((sum, value) => sum + value, 0);
+
+  const hasTaskCountMismatch = previewExamParse.tasks.length < settings.examTaskCount;
+
+  const activeTasks = stage === "idle" ? previewExamParse.tasks : activeExamTasks;
+  const activeExamSettings = stage === "idle" ? null : activeSettings;
+  const activeTaskCount = activeExamSettings
+    ? Math.min(activeTasks.length, activeExamSettings.taskCount)
+    : plannedTaskCount;
+  const runTasks = activeTasks.slice(0, activeTaskCount);
+  const runTaskPoints = (activeExamSettings
+    ? activeExamSettings.taskPoints
+    : activeTaskPoints
+  ).slice(0, activeTaskCount);
+  const runMaxPoints = runTaskPoints.reduce((sum, value) => sum + value, 0);
+
+  const activeTask = runTasks[activeTaskIndex] ?? null;
+  const activeTaskMaxPoints = runTaskPoints[activeTaskIndex] ?? 0;
+
+  const taskPointsSum = activeTaskPoints.reduce((sum, value) => sum + value, 0);
+  const remainingPoints = settings.examMaxTotalPoints - taskPointsSum;
+  const isSettingsValid =
+    activeTaskPoints.length === settings.examTaskCount &&
+    taskPointsSum === settings.examMaxTotalPoints &&
+    settings.examTaskCount >= 1 &&
+    settings.examTaskCount <= 20;
+
+  const canStartExam =
+    Boolean(selectedExamFile) &&
+    preview.previewState === "idle" &&
+    previewExamParse.tasks.length > 0 &&
+    isSettingsValid;
+
+  const resetExamState = useCallback(() => {
+    setStage("idle");
+    setActiveTaskIndex(0);
+    setActiveExamTasks([]);
+    setActiveExamFile(null);
+    setActiveSettings(null);
+    setPartStates({});
+    setAwardedPoints({});
+    setAutoGradeDecisions({});
+    setConversionDecisions({});
+    setConversionPending(false);
+    setConversionError("");
+  }, []);
+
+  useEffect(() => {
+    resetExamState();
+  }, [selectedExamFile?.path, resetExamState]);
+
+  const handleStartExam = useCallback(() => {
+    if (!canStartExam || !selectedExamFile) {
+      return;
+    }
+    const snapshot: ExamSettingsSnapshot = {
+      maxTotalPoints: settings.examMaxTotalPoints,
+      taskCount: settings.examTaskCount,
+      taskPoints: activeTaskPoints,
+      aiEvaluation: settings.examAiEvaluation,
+    };
+    // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
+    setActiveExamTasks(previewExamParse.tasks);
+    setActiveExamFile(selectedExamFile);
+    setActiveSettings(snapshot);
+    setStage("running");
+    setActiveTaskIndex(0);
+    setPartStates({});
+    setAwardedPoints({});
+    setAutoGradeDecisions({});
+    setConversionDecisions({});
+    setConversionError("");
+    setConversionPending(false);
+  }, [
+    canStartExam,
+    previewExamParse.tasks,
+    selectedExamFile,
+    settings.examAiEvaluation,
+    settings.examMaxTotalPoints,
+    settings.examTaskCount,
+    activeTaskPoints,
+  ]);
+
+  const handleResetExam = useCallback(() => {
+    resetExamState();
+  }, [resetExamState]);
+
+  const handleSubmitExam = useCallback(() => {
+    if (stage !== "running") {
+      return;
+    }
+    setStage("review");
+  }, [stage]);
+
+  const handleStartScoring = useCallback(() => {
+    if (stage !== "review") {
+      return;
+    }
+    setStage("scoring");
+  }, [stage]);
+
+  const handleFinishScoring = useCallback(() => {
+    if (stage !== "scoring" || conversionPending) {
+      return;
+    }
+    if (!activeExamFile) {
+      setStage("finished");
+      return;
+    }
+
+    const tasksToConvert = runTasks
+      .map((task, index) => ({ task, index }))
+      .filter((entry) => conversionDecisions[entry.index]);
+
+    if (tasksToConvert.length === 0) {
+      setStage("finished");
+      return;
+    }
+
+    setConversionPending(true);
+    setConversionError("");
+
+    const applyConversions = async () => {
+      try {
+        const contents = await invoke<string>("read_text_file", {
+          path: activeExamFile.path,
+        });
+        const lines = contents.replace(/\r\n?/g, "\n").split("\n");
+        const sorted = [...tasksToConvert].sort(
+          (a, b) => a.task.sourceRange.startLine - b.task.sourceRange.startLine,
+        );
+        let offset = 0;
+
+        sorted.forEach(({ task }) => {
+          const start = task.sourceRange.startLine + offset;
+          const end = task.sourceRange.endLine + offset;
+          const chunkHasCardMarker = lines
+            .slice(start, end + 1)
+            .some((line) => line.trim() === "#card");
+          const hasCardStart = lines[start - 1]?.trim() === "#card";
+          const isWrapped = hasCardStart || chunkHasCardMarker;
+
+          if (!isWrapped) {
+            lines.splice(start, 0, "#card");
+            offset += 1;
+            lines.splice(end + 2, 0, "#");
+            offset += 1;
+          }
+        });
+
+        const nextContents = lines.join("\n");
+        await invoke("write_text_file", {
+          path: activeExamFile.path,
+          contents: nextContents,
+        });
+
+        if (preview.selectedFile?.path === activeExamFile.path) {
+          preview.setPreview(nextContents);
+        }
+
+        setStage("finished");
+      } catch (error) {
+        setConversionError(asErrorMessage(error, "Failed to convert tasks."));
+      } finally {
+        setConversionPending(false);
+      }
+    };
+
+    void applyConversions();
+  }, [
+    activeExamFile,
+    conversionDecisions,
+    conversionPending,
+    preview,
+    runTasks,
+    stage,
+  ]);
+
+  const updatePartState = useCallback(
+    (
+      taskIndex: number,
+      partIndex: number,
+      updater: (current: CompositePartState) => CompositePartState,
+    ) => {
+      if (stage !== "running") {
+        return;
+      }
+      setPartStates((prev) => {
+        const nextParts = [...(prev[taskIndex] ?? [])];
+        const current = nextParts[partIndex] ?? {};
+        nextParts[partIndex] = updater(current);
+        return { ...prev, [taskIndex]: nextParts };
+      });
+    },
+    [stage],
+  );
+
+  const handleOptionSelect = useCallback(
+    (taskIndex: number, partIndex: number, keys: string[]) => {
+      const uniqueKeys = Array.from(new Set(keys));
+      updatePartState(taskIndex, partIndex, (current) => ({
+        ...current,
+        selections: uniqueKeys,
+      }));
+    },
+    [updatePartState],
+  );
+
+  const handleTrueFalseSelect = useCallback(
+    (
+      taskIndex: number,
+      partIndex: number,
+      itemId: string,
+      value: TrueFalseSelection,
+    ) => {
+      updatePartState(taskIndex, partIndex, (current) => ({
+        ...current,
+        trueFalseSelections: {
+          ...(current.trueFalseSelections ?? {}),
+          [itemId]: value,
+        },
+      }));
+    },
+    [updatePartState],
+  );
+
+  const handleClozeInputChange = useCallback(
+    (taskIndex: number, partIndex: number, blankId: string, value: string) => {
+      updatePartState(taskIndex, partIndex, (current) => ({
+        ...current,
+        clozeResponses: {
+          ...(current.clozeResponses ?? {}),
+          [blankId]: value,
+        },
+      }));
+    },
+    [updatePartState],
+  );
+
+  const handleClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      taskIndex: number,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      event.preventDefault();
+      if (stage !== "running") {
+        return;
+      }
+      const payload = getClozeDragPayload(event);
+      if (!payload || payload.cardIndex !== taskIndex || payload.partIndex !== partIndex) {
+        return;
+      }
+      if (payload.tokenId === blankId) {
+        return;
+      }
+      if (!validTokenIds.has(payload.tokenId)) {
+        return;
+      }
+
+      updatePartState(taskIndex, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        const existingBlankId = Object.entries(responses).find(
+          ([key, value]) => value === payload.tokenId && key !== blankId,
+        )?.[0];
+        if (existingBlankId) {
+          delete responses[existingBlankId];
+        }
+        if (dragBlankIds.has(blankId)) {
+          responses[blankId] = payload.tokenId;
+        }
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [stage, updatePartState],
+  );
+
+  const handleClozeTokenRemove = useCallback(
+    (taskIndex: number, partIndex: number, blankId: string) => {
+      updatePartState(taskIndex, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        delete responses[blankId];
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [updatePartState],
+  );
+
+  const handleTextInputChange = useCallback(
+    (taskIndex: number, partIndex: number, value: string) => {
+      updatePartState(taskIndex, partIndex, (current) => ({
+        ...current,
+        textResponse: value,
+      }));
+    },
+    [updatePartState],
+  );
+
+  const handleAwardedPointsChange = useCallback(
+    (taskIndex: number, value: string, maxPoints: number) => {
+      if (stage !== "scoring") {
+        return;
+      }
+      if (value.trim() === "") {
+        setAwardedPoints((prev) => ({ ...prev, [taskIndex]: null }));
+        return;
+      }
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed)) {
+        return;
+      }
+      const clamped = clampNumber(parsed, 0, maxPoints);
+      setAwardedPoints((prev) => ({ ...prev, [taskIndex]: clamped }));
+    },
+    [stage],
+  );
+
+  const handleAutoGradeDecision = useCallback(
+    (taskIndex: number, decision: boolean) => {
+      if (stage !== "scoring") {
+        return;
+      }
+      setAutoGradeDecisions((prev) => ({ ...prev, [taskIndex]: decision }));
+    },
+    [stage],
+  );
+
+  const handleTaskBack = useCallback(() => {
+    setActiveTaskIndex((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  const handleTaskNext = useCallback(() => {
+    if (runTasks.length === 0) {
+      return;
+    }
+    setActiveTaskIndex((prev) =>
+      Math.min(runTasks.length - 1, prev + 1),
+    );
+  }, [runTasks.length]);
+
+  const results = useMemo(() => {
+    if (!activeExamSettings || runTasks.length === 0 || stage !== "finished") {
+      return null;
+    }
+
+    const breakdown: ExamTaskResult[] = runTasks.map((task, index) => {
+      const maxPoints = runTaskPoints[index] ?? 0;
+      if (isAutoGradedTask(task)) {
+        const isCorrect = isTaskCorrect(task, partStates[index]);
+        const decidedCorrect = autoGradeDecisions[index] ?? isCorrect;
+        return {
+          index: index + 1,
+          awardedPoints: decidedCorrect ? maxPoints : 0,
+          maxPoints,
+          isCorrect: decidedCorrect,
+        };
+      }
+      const awarded = normalizeAwardedPoints(awardedPoints[index] ?? null, maxPoints);
+      return {
+        index: index + 1,
+        awardedPoints: awarded,
+        maxPoints,
+        isCorrect: null,
+      };
+    });
+
+    const totalAwarded = breakdown.reduce(
+      (sum, item) => sum + item.awardedPoints,
+      0,
+    );
+    const totalMax = breakdown.reduce((sum, item) => sum + item.maxPoints, 0);
+    const percentage = totalMax > 0 ? Math.round((totalAwarded / totalMax) * 100) : 0;
+
+    return {
+      breakdown,
+      totalAwarded,
+      totalMax,
+      percentage,
+    };
+  }, [
+    activeExamSettings,
+    autoGradeDecisions,
+    awardedPoints,
+    partStates,
+    runTaskPoints,
+    runTasks,
+    stage,
+  ]);
+
+  const handleConversionDecision = useCallback(
+    (taskIndex: number, shouldConvert: boolean) => {
+      setConversionDecisions((prev) => ({ ...prev, [taskIndex]: shouldConvert }));
+    },
+    [],
+  );
+
+  const activeTaskPartStates =
+    activeTask ? partStates[activeTaskIndex] ?? [] : [];
+  const activeTaskAwardedPoints =
+    activeTask ? awardedPoints[activeTaskIndex] ?? null : null;
+  const activeTaskAutoDecision =
+    activeTask ? autoGradeDecisions[activeTaskIndex] : undefined;
+  const examEmptyState = useMemo(() => {
+    if (!selectedExamFile || preview.previewState !== "idle") {
+      return null;
+    }
+    if (!previewExamParse.hasExamBlock) {
+      return {
+        title: "No exam block",
+        message: "This file does not include a #exam ... # wrapper.",
+      };
+    }
+    if (previewExamParse.tasks.length === 0) {
+      return {
+        title: "No tasks found",
+        message: "Add Punktaufgaben inside the exam block to start an exam.",
+      };
+    }
+    return null;
+  }, [
+    preview.previewState,
+    previewExamParse.hasExamBlock,
+    previewExamParse.tasks.length,
+    selectedExamFile,
+  ]);
+
+  return {
+    actions,
+    preview,
+    settings,
+    vault,
+    examFiles,
+    examFilesState,
+    examFilesError,
+    selectedExamFile,
+    previewExamParse,
+    plannedTaskCount,
+    plannedMaxPoints,
+    hasTaskCountMismatch,
+    stage,
+    activeTaskIndex,
+    activeTask,
+    activeTaskMaxPoints,
+    activeTaskPartStates,
+    activeTaskAwardedPoints,
+    activeTaskAutoDecision,
+    runTasks,
+    runTaskPoints,
+    runMaxPoints,
+    remainingPoints,
+    isSettingsValid,
+    canStartExam,
+    examEmptyState,
+    results,
+    conversionDecisions,
+    conversionPending,
+    conversionError,
+    handleStartExam,
+    handleResetExam,
+    handleSubmitExam,
+    handleStartScoring,
+    handleFinishScoring,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleClozeBlankDragOver,
+    handleClozeTokenDragStart,
+    handleAwardedPointsChange,
+    handleAutoGradeDecision,
+    handleTaskBack,
+    handleTaskNext,
+    handleConversionDecision,
+  };
+};
+
+---
+
+## 📝 ExamSimulationPage.tsx — ./pages/ExamSimulationPage.tsx
+
+export { ExamSimulationPage } from "./exam-simulation/ExamSimulationPage";
 
 ---
 
@@ -14096,6 +17502,7 @@ export const HelpPage = () => {
 import { useCallback, useMemo, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
+import { ExamSettingsSection } from "../components/settings/ExamSettingsSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
 import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
 import { LanguageTabContent } from "../components/settings/DataSyncTabContent";
@@ -14330,6 +17737,22 @@ export const SettingsPage = () => {
             setSpacedRepetitionRepetitionStrength={
               spacedRepetition.setSpacedRepetitionRepetitionStrength
             }
+          />
+        </div>
+      ) : null}
+      {activeSettingsPage === "exam-settings" ? (
+        <div
+          className="settings-page settings-single-column"
+          id="settings-page-exam-settings"
+        >
+          <ExamSettingsSection
+            maxTotalPoints={settings.examMaxTotalPoints}
+            taskCount={settings.examTaskCount}
+            taskPoints={settings.examTaskPoints.slice(0, settings.examTaskCount)}
+            aiEvaluation={settings.examAiEvaluation}
+            setMaxTotalPoints={settings.setExamMaxTotalPoints}
+            setTaskCount={settings.setExamTaskCount}
+            setTaskPoints={settings.setExamTaskPoints}
           />
         </div>
       ) : null}
@@ -16297,6 +19720,16 @@ h2 {
   background: var(--accent-active-bg);
 }
 
+.tree-item.breadcrumb {
+  border-color: var(--line-soft);
+}
+
+.tree-item.active-folder {
+  border-color: var(--accent-strong);
+  background: var(--accent-active-bg);
+  font-weight: 700;
+}
+
 .vault-tree-scroll.vault-tree-scroll-wide .tree-item {
   min-width: calc(100% + var(--tree-overflow, 0px));
 }
@@ -16370,6 +19803,47 @@ h2 {
   word-break: break-word;
 }
 
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+
+.context-menu {
+  position: fixed;
+  min-width: 180px;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.context-menu-item {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.context-menu-item:hover {
+  background: var(--accent-weak-bg);
+}
+
+.context-menu-item:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr);
@@ -16409,6 +19883,13 @@ h2 {
 .flashcard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.exam-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 24px;
   align-items: start;
 }
@@ -16551,6 +20032,180 @@ body.focus-mode .sr-stats-panel {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.exam-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.exam-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.exam-panel {
+  min-height: 0;
+}
+
+.exam-task {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exam-markdown {
+  color: var(--ink);
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: normal;
+}
+
+.exam-markdown > :first-child {
+  margin-top: 0;
+}
+
+.exam-markdown p {
+  margin: 0 0 0.8rem;
+}
+
+.exam-markdown ul,
+.exam-markdown ol {
+  margin: 0 0 0.8rem;
+  padding-left: 1.4rem;
+}
+
+.exam-markdown code {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.exam-markdown pre {
+  margin: 0 0 0.8rem;
+  padding: 12px;
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.exam-markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.exam-markdown blockquote {
+  margin: 0 0 0.8rem;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+}
+
+.flashcard-text-block.exam-markdown,
+.flashcard-answer-text.exam-markdown {
+  white-space: normal;
+  font-weight: 500;
+}
+
+.exam-task-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.exam-task-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exam-warning {
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.exam-points-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exam-points-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.exam-conversion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.exam-results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exam-results-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.exam-results-score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.exam-results-percent {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.exam-conversion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.exam-conversion-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.exam-option-static {
+  cursor: default;
+}
+
+.exam-option-static:hover {
+  border-color: var(--line-soft);
+  background: var(--panel);
 }
 
 ---
@@ -17964,6 +21619,10 @@ body.focus-mode .sr-stats-panel {
     grid-template-columns: 1fr;
   }
 
+  .exam-layout {
+    grid-template-columns: 1fr;
+  }
+
   .fast-flashcard-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
@@ -18143,6 +21802,81 @@ body.focus-mode .sr-stats-panel {
 
 .settings-review-grid .panel {
   height: 100%;
+}
+
+.settings-review-grid .exam-settings-panel {
+  grid-column: 1 / -1;
+}
+
+.exam-settings-panel .panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.exam-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: center;
+}
+
+.exam-settings-panel .exam-compact-input {
+  height: 36px;
+  padding: 4px 12px;
+  font-size: 0.9rem;
+  line-height: 1.1;
+}
+
+.exam-points-table {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 4px 4px;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.exam-points-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.exam-points-row .text-input {
+  width: 90px;
+}
+
+.exam-settings-panel .exam-points-row {
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 2px;
+}
+
+.exam-settings-panel .exam-points-row .label {
+  min-width: 6px;
+  text-align: right;
+}
+
+.exam-settings-panel .exam-points-row .exam-compact-input {
+  width: 70px;
+  min-width: 80px;
+  height: 32px;
+  padding: 0 6px;
+  font-size: 0.9rem;
+  line-height: 0;
+}
+
+.exam-settings-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.exam-settings-summary .muted {
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 
 .settings-tab-content {
