@@ -40,6 +40,8 @@ type MultipleChoiceCardProps = {
   selectedKeys: string[];
   submissionLocked?: boolean;
   showSubmit?: boolean;
+  showResult?: boolean;
+  revealCorrectness?: boolean;
   onSelect: (cardIndex: number, keys: string[]) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -51,6 +53,8 @@ export const MultipleChoiceCard = ({
   selectedKeys,
   submissionLocked = false,
   showSubmit = true,
+  showResult = true,
+  revealCorrectness,
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
@@ -60,7 +64,8 @@ export const MultipleChoiceCard = ({
     hasSolutions && selectedKeys.length > 0
       ? isExactKeyMatch(selectedKeys, card.correctKeys)
       : false;
-  const resultLabel = submitted
+  const reveal = revealCorrectness ?? submitted;
+  const resultLabel = submitted && showResult
     ? hasSolutions
       ? selectionIsCorrect
         ? "Correct"
@@ -84,7 +89,7 @@ export const MultipleChoiceCard = ({
     [cardSignature],
   );
 
-  const showActions = showSubmit || submitted;
+  const showActions = showSubmit || (submitted && showResult);
 
   return (
     <article className="flashcard-item">
@@ -93,12 +98,12 @@ export const MultipleChoiceCard = ({
         {displayOptions.map(({ option, label }) => {
           const isSelected = selectedKeys.includes(option.key);
           const isCorrect = hasSolutions && card.correctKeys.includes(option.key);
-          const isIncorrect = hasSolutions && submitted && isSelected && !isCorrect;
+          const isIncorrect = hasSolutions && reveal && isSelected && !isCorrect;
           const optionClasses = [
             "flashcard-option",
             isSelected ? "selected" : "",
-            submitted && isCorrect ? "correct" : "",
-            isIncorrect ? "incorrect" : "",
+            reveal && isCorrect ? "correct" : "",
+            reveal && isIncorrect ? "incorrect" : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -140,7 +145,7 @@ export const MultipleChoiceCard = ({
               Submit
             </button>
           ) : null}
-          {submitted ? (
+          {submitted && showResult ? (
             <span
               className={`flashcard-result ${
                 hasSolutions ? (selectionIsCorrect ? "correct" : "incorrect") : "neutral"

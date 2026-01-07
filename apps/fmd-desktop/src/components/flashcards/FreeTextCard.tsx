@@ -9,6 +9,7 @@ type FreeTextCardProps = {
   revealed: boolean;
   selfGrade?: FlashcardSelfGrade;
   submissionLocked?: boolean;
+  showActions?: boolean;
   onInputChange: (cardIndex: number, value: string) => void;
   onCheck: (cardIndex: number) => void;
   onSelfGrade: (cardIndex: number, grade: FlashcardSelfGrade) => void;
@@ -22,6 +23,7 @@ export const FreeTextCard = ({
   revealed,
   selfGrade,
   submissionLocked = false,
+  showActions = true,
   onInputChange,
   onCheck,
   onSelfGrade,
@@ -44,46 +46,48 @@ export const FreeTextCard = ({
         aria-label="Your answer"
         disabled={submitted || revealed}
       />
-      <div className="flashcard-actions">
-        {!revealed ? (
-          <button
-            type="button"
-            className="ghost small flashcard-submit"
-            onClick={() => onCheck(cardIndex)}
-            disabled={!hasInput || submitted || submissionLocked}
-          >
-            Check
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="primary small flashcard-submit"
-              onClick={() => onSelfGrade(cardIndex, "correct")}
-              disabled={submitted || submissionLocked}
-            >
-              Correct
-            </button>
+      {showActions ? (
+        <div className="flashcard-actions">
+          {!revealed ? (
             <button
               type="button"
               className="ghost small flashcard-submit"
-              onClick={() => onSelfGrade(cardIndex, "incorrect")}
-              disabled={submitted || submissionLocked}
+              onClick={() => onCheck(cardIndex)}
+              disabled={!hasInput || submitted || submissionLocked}
             >
-              Incorrect
+              Check
             </button>
-          </>
-        )}
-        {submitted ? (
-          <span
-            className={`flashcard-result ${
-              selfGrade === "correct" ? "correct" : "incorrect"
-            }`}
-          >
-            {resultLabel}
-          </span>
-        ) : null}
-      </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="primary small flashcard-submit"
+                onClick={() => onSelfGrade(cardIndex, "correct")}
+                disabled={submitted || submissionLocked}
+              >
+                Correct
+              </button>
+              <button
+                type="button"
+                className="ghost small flashcard-submit"
+                onClick={() => onSelfGrade(cardIndex, "incorrect")}
+                disabled={submitted || submissionLocked}
+              >
+                Incorrect
+              </button>
+            </>
+          )}
+          {submitted ? (
+            <span
+              className={`flashcard-result ${
+                selfGrade === "correct" ? "correct" : "incorrect"
+              }`}
+            >
+              {resultLabel}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {revealed ? (
         <div className="flashcard-answer">
           <span className="label">Answer</span>

@@ -1,5 +1,3 @@
-import type { ExamTask } from "../../../lib/exam";
-
 type ExamTaskBreakdown = {
   index: number;
   awardedPoints: number;
@@ -16,15 +14,9 @@ type ExamResults = {
 
 type ExamResultsPanelProps = {
   results: ExamResults;
-  tasks: ExamTask[];
-  onStartConversion: () => void;
 };
 
-export const ExamResultsPanel = ({
-  results,
-  tasks,
-  onStartConversion,
-}: ExamResultsPanelProps) => {
+export const ExamResultsPanel = ({ results }: ExamResultsPanelProps) => {
   return (
     <div className="exam-results">
       <header className="exam-task-header">
@@ -33,9 +25,6 @@ export const ExamResultsPanel = ({
           <h2>Exam results</h2>
           <p className="muted">Final score and per-task breakdown.</p>
         </div>
-        <button type="button" className="primary" onClick={onStartConversion}>
-          Review conversions
-        </button>
       </header>
 
       <div className="exam-results-summary">
@@ -47,9 +36,8 @@ export const ExamResultsPanel = ({
       </div>
 
       <div className="status-list">
-        {results.breakdown.map((item, index) => {
-          const task = tasks[index];
-          const showCorrectness = task?.kind === "multiple-choice" && item.isCorrect !== null;
+        {results.breakdown.map((item) => {
+          const showCorrectness = item.isCorrect !== null;
           return (
             <div key={`exam-result-${item.index}`} className="status-item">
               <div className="status-row">

@@ -12,6 +12,9 @@ type TrueFalseCardProps = {
   selections: Record<string, TrueFalseSelection>;
   submissionLocked?: boolean;
   showSubmit?: boolean;
+  showResult?: boolean;
+  revealCorrectness?: boolean;
+  showSolution?: boolean;
   onSelect: (cardIndex: number, itemId: string, value: TrueFalseSelection) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -23,13 +26,18 @@ export const TrueFalseCard = ({
   selections,
   submissionLocked = false,
   showSubmit = true,
+  showResult = true,
+  revealCorrectness,
+  showSolution,
   onSelect,
   onSubmit,
 }: TrueFalseCardProps) => {
   const canSubmit = areTrueFalseItemsComplete(card, selections);
   const isCorrect = isTrueFalseCardCorrect(card, selections);
-  const resultLabel = submitted ? (isCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || submitted;
+  const reveal = revealCorrectness ?? submitted;
+  const shouldShowSolution = showSolution ?? submitted;
+  const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
+  const showActions = showSubmit || (submitted && showResult);
 
   return (
     <article className="flashcard-item truefalse-card">
@@ -37,21 +45,21 @@ export const TrueFalseCard = ({
       <ul className="truefalse-list">
         {card.items.map((item) => {
           const selected = selections[item.id];
-          const isItemCorrect = submitted && selected === item.correct;
-          const isItemIncorrect = submitted && selected && selected !== item.correct;
+          const isItemCorrect = reveal && selected === item.correct;
+          const isItemIncorrect = reveal && selected && selected !== item.correct;
           const trueClasses = [
             "truefalse-option",
             selected === "wahr" ? "selected" : "",
-            submitted && item.correct === "wahr" ? "correct" : "",
-            submitted && selected === "wahr" && isItemIncorrect ? "incorrect" : "",
+            reveal && item.correct === "wahr" ? "correct" : "",
+            reveal && selected === "wahr" && isItemIncorrect ? "incorrect" : "",
           ]
             .filter(Boolean)
             .join(" ");
           const falseClasses = [
             "truefalse-option",
             selected === "falsch" ? "selected" : "",
-            submitted && item.correct === "falsch" ? "correct" : "",
-            submitted && selected === "falsch" && isItemIncorrect ? "incorrect" : "",
+            reveal && item.correct === "falsch" ? "correct" : "",
+            reveal && selected === "falsch" && isItemIncorrect ? "incorrect" : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -79,7 +87,7 @@ export const TrueFalseCard = ({
                   False
                 </button>
               </div>
-              {submitted ? (
+              {submitted && showResult ? (
                 <span
                   className={`truefalse-result ${
                     isItemCorrect ? "correct" : "incorrect"
@@ -104,14 +112,14 @@ export const TrueFalseCard = ({
               Submit
             </button>
           ) : null}
-          {submitted ? (
+          {submitted && showResult ? (
             <span className={`flashcard-result ${isCorrect ? "correct" : "incorrect"}`}>
               {resultLabel}
             </span>
           ) : null}
         </div>
       ) : null}
-      {submitted ? (
+      {shouldShowSolution ? (
         <div className="truefalse-solution">
           <span className="label">Solution</span>
           <ul className="truefalse-solution-list">

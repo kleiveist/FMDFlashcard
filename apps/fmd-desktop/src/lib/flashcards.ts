@@ -117,9 +117,12 @@ const normalizeKeyword = (value: string) =>
 
 const normalizedTrueTokens = new Set(trueTokens.map(normalizeKeyword));
 const normalizedFalseTokens = new Set(falseTokens.map(normalizeKeyword));
+const normalizeAnswerToken = (value: string) =>
+  normalizeKeyword(value).replace(/\s+/g, "");
+
 const normalizedAnswerMarkers = answerMarkers.map((marker) => ({
   raw: marker,
-  normalized: normalizeKeyword(marker),
+  normalized: normalizeAnswerToken(marker.replace(/:\\s*$/, "")),
 }));
 
 const trimEmptyLines = (lines: string[]) => {
@@ -338,15 +341,23 @@ const parseTrueFalseItems = (lines: string[]) => {
 
 const findAnswerMarkerMatch = (line: string) => {
   const trimmedLine = line.trimStart();
-  const normalizedLine = normalizeKeyword(trimmedLine);
-  for (const marker of normalizedAnswerMarkers) {
-    if (normalizedLine.startsWith(marker.normalized)) {
-      const colonIndex = trimmedLine.indexOf(":");
-      const markerEndIndex = colonIndex >= 0 ? colonIndex + 1 : marker.raw.length;
-      return { trimmedLine, markerEndIndex };
-    }
+  const hasBoldPrefix = trimmedLine.startsWith("**");
+  const candidate = hasBoldPrefix ? trimmedLine.slice(2).trimStart() : trimmedLine;
+  const colonIndex = candidate.indexOf(":");
+  if (colonIndex < 0) {
+    return null;
   }
-  return null;
+  const prefix = candidate.slice(0, colonIndex);
+  const normalizedPrefix = normalizeAnswerToken(prefix);
+  const match = normalizedAnswerMarkers.find(
+    (marker) => normalizedPrefix === marker.normalized,
+  );
+  if (!match) {
+    return null;
+  }
+  const offset = trimmedLine.length - candidate.length;
+  const markerEndIndex = offset + colonIndex + 1;
+  return { trimmedLine, markerEndIndex, hasBoldPrefix };
 };
 
 const findAnswerMarkerLine = (lines: string[]) => {
@@ -365,9 +376,13 @@ const splitAnswerCard = (lines: string[]) => {
     return null;
   }
   const frontLines = trimEmptyLines(lines.slice(0, markerInfo.index));
-  const inlineAnswer = markerInfo.match.trimmedLine
+  const inlineAnswerRaw = markerInfo.match.trimmedLine
     .slice(markerInfo.match.markerEndIndex)
     .trimStart();
+  const inlineAnswer =
+    markerInfo.match.hasBoldPrefix && inlineAnswerRaw.startsWith("**")
+      ? inlineAnswerRaw.slice(2).trimStart()
+      : inlineAnswerRaw;
   const backLines = [inlineAnswer, ...lines.slice(markerInfo.index + 1)];
   const normalizedFront = trimEmptyLines(frontLines).join("\n").trim();
   const normalizedBack = trimEmptyLines(backLines).join("\n").trim();

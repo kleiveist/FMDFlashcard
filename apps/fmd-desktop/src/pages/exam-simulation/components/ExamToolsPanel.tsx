@@ -1,4 +1,4 @@
-type ExamStage = "idle" | "running" | "review" | "scoring" | "finished" | "conversion";
+type ExamStage = "idle" | "running" | "review" | "scoring" | "finished";
 
 type ExamToolsPanelProps = {
   stage: ExamStage;
@@ -9,6 +9,7 @@ type ExamToolsPanelProps = {
   plannedTaskCount: number;
   availableTaskCount: number;
   expectedTaskCount: number;
+  finishPending?: boolean;
   onStartExam: () => void;
   onSubmitExam: () => void;
   onStartScoring: () => void;
@@ -25,6 +26,7 @@ export const ExamToolsPanel = ({
   plannedTaskCount,
   availableTaskCount,
   expectedTaskCount,
+  finishPending = false,
   onStartExam,
   onSubmitExam,
   onStartScoring,
@@ -70,7 +72,12 @@ export const ExamToolsPanel = ({
               </button>
             ) : null}
             {showFinishScoring ? (
-              <button type="button" className="primary" onClick={onFinishScoring}>
+              <button
+                type="button"
+                className="primary"
+                onClick={onFinishScoring}
+                disabled={finishPending}
+              >
                 Finish Scoring
               </button>
             ) : null}

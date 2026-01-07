@@ -1,3 +1,9 @@
+import {
+  parseFlashcards,
+  type CompositeFlashcard,
+  type Flashcard,
+} from "./flashcards";
+
 export type ExamTaskSourceRange = {
   startLine: number;
   endLine: number;
@@ -12,27 +18,11 @@ export type ExamTaskBase = {
   index: number;
   rawLines: string[];
   sourceRange: ExamTaskSourceRange;
-  prompt: string;
+  card: CompositeFlashcard;
   warnings: ExamTaskWarning[];
 };
 
-export type ExamOption = {
-  key: string;
-  text: string;
-};
-
-export type ExamMultipleChoiceTask = ExamTaskBase & {
-  kind: "multiple-choice";
-  options: ExamOption[];
-  correctKey: string | null;
-};
-
-export type ExamTextTask = ExamTaskBase & {
-  kind: "text";
-  answer: string | null;
-};
-
-export type ExamTask = ExamMultipleChoiceTask | ExamTextTask;
+export type ExamTask = ExamTaskBase;
 
 export type ExamParseResult = {
   tasks: ExamTask[];
@@ -96,131 +86,64 @@ const isExamTaskStartLine = (line: string) => {
   return remainder.length === 0 || /^\s/.test(remainder);
 };
 
-const answerMarkerPattern =
-  /^\s*(\*\*)?\s*(answer|antwort)\s*:\s*(\*\*)?\s*(.*)$/i;
-const optionPattern = /^([A-Za-z])\)\s+(.+)$/;
-const markerPattern = /^-([A-Za-z])$/;
-
 const buildPrompt = (lines: string[]) =>
   trimEmptyLines(lines).join("\n").trim();
 
-const parseAnswerBlock = (lines: string[]) => {
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    const match = line.match(answerMarkerPattern);
-    if (!match) {
-      continue;
-    }
-    const inlineAnswer = match[4]?.trimStart() ?? "";
-    const frontLines = trimEmptyLines(lines.slice(0, index));
-    const backLines = trimEmptyLines([inlineAnswer, ...lines.slice(index + 1)]);
-    const prompt = buildPrompt(frontLines);
-    const answer = buildPrompt(backLines);
-    return { prompt, answer };
+const hasCardWrapper = (lines: string[]) =>
+  lines.some((line) => line.trim() === "#card");
+
+const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
+  if (card.kind === "composite") {
+    return card;
   }
-  return null;
+  return {
+    kind: "composite",
+    parts: [card],
+    primaryType: card.primaryType,
+    detectedTypes: card.detectedTypes,
+    isMixed: card.isMixed,
+  };
 };
+
+const buildFallbackCard = (lines: string[]): CompositeFlashcard => ({
+  kind: "composite",
+  parts: [
+    {
+      kind: "free-text",
+      front: buildPrompt(lines) || "No task content provided.",
+      back: "",
+    },
+  ],
+  primaryType: "qa",
+  detectedTypes: ["qa"],
+  isMixed: false,
+});
 
 const parseTaskChunk = (
   chunkLines: string[],
   taskIndex: number,
   sourceRange: ExamTaskSourceRange,
 ): ExamTask => {
-  const options: ExamOption[] = [];
-  const markerKeys: string[] = [];
-  const optionLineIndices = new Set<number>();
-  const markerLineIndices = new Set<number>();
   const warnings: ExamTaskWarning[] = [];
+  const body = chunkLines.join("\n");
+  const cardSource = hasCardWrapper(chunkLines)
+    ? body
+    : `#card\n${body}\n#`;
+  const parsed = parseFlashcards(cardSource);
+  let card: CompositeFlashcard | null = null;
 
-  chunkLines.forEach((rawLine, index) => {
-    const trimmed = rawLine.trim();
-    if (!trimmed) {
-      return;
-    }
-    const optionMatch = trimmed.match(optionPattern);
-    if (optionMatch) {
-      const text = optionMatch[2]?.trim();
-      if (text) {
-        options.push({
-          key: optionMatch[1].toLowerCase(),
-          text,
-        });
-      }
-      optionLineIndices.add(index);
-      return;
-    }
-    const markerMatch = trimmed.match(markerPattern);
-    if (markerMatch) {
-      markerKeys.push(markerMatch[1].toLowerCase());
-      markerLineIndices.add(index);
-    }
-  });
-
-  if (options.length > 0) {
-    const answerMarkerIndices = new Set<number>();
-    chunkLines.forEach((line, index) => {
-      if (answerMarkerPattern.test(line)) {
-        answerMarkerIndices.add(index);
-      }
+  if (parsed.length === 0) {
+    warnings.push({
+      message: "No supported flashcard syntax found. Manual grading required.",
     });
-    const promptLines = chunkLines.filter((_, index) => {
-      if (optionLineIndices.has(index)) {
-        return false;
-      }
-      if (markerLineIndices.has(index)) {
-        return false;
-      }
-      if (answerMarkerIndices.has(index)) {
-        return false;
-      }
-      return true;
-    });
-    let correctKey: string | null = null;
-
-    if (markerKeys.length === 1) {
-      const candidate = markerKeys[0] ?? null;
-      if (candidate && options.some((option) => option.key === candidate)) {
-        correctKey = candidate;
-      } else {
-        warnings.push({
-          message: "Answer marker does not match any option. Manual grading required.",
-        });
-      }
-    } else if (markerKeys.length > 1) {
+    card = buildFallbackCard(chunkLines);
+  } else {
+    if (parsed.length > 1) {
       warnings.push({
-        message: "Multiple answer markers found. Manual grading required.",
+        message: "Multiple cards detected in a single task. Using the first card.",
       });
-    } else {
-      warnings.push({ message: "No answer marker found. Manual grading required." });
     }
-
-    const prompt = buildPrompt(promptLines);
-
-    return {
-      id: `exam-task-${taskIndex + 1}`,
-      index: taskIndex,
-      rawLines: [...chunkLines],
-      sourceRange,
-      prompt,
-      warnings,
-      kind: "multiple-choice",
-      options,
-      correctKey,
-    };
-  }
-
-  const answerBlock = parseAnswerBlock(chunkLines);
-  if (answerBlock) {
-    return {
-      id: `exam-task-${taskIndex + 1}`,
-      index: taskIndex,
-      rawLines: [...chunkLines],
-      sourceRange,
-      prompt: answerBlock.prompt,
-      warnings,
-      kind: "text",
-      answer: answerBlock.answer,
-    };
+    card = toCompositeCard(parsed[0]);
   }
 
   return {
@@ -228,10 +151,8 @@ const parseTaskChunk = (
     index: taskIndex,
     rawLines: [...chunkLines],
     sourceRange,
-    prompt: buildPrompt(chunkLines),
+    card,
     warnings,
-    kind: "text",
-    answer: null,
   };
 };
 

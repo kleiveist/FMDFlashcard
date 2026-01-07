@@ -1,5 +1,8 @@
+import { type DragEvent } from "react";
+import { CompositeCard } from "../../../components/flashcards/CompositeCard";
+import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
-import { ExamMarkdown } from "./ExamMarkdown";
+import type { FlashcardPart } from "../../../lib/flashcards";
 
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
 
@@ -11,17 +14,75 @@ type ExamTaskRunnerProps = {
   taskCount: number;
   maxPoints: number;
   phase: ExamTaskPhase;
-  selection: string;
-  response: string;
+  partStates: CompositePartState[];
   awardedPoints: number | null;
-  onSelect: (taskIndex: number, key: string) => void;
-  onResponseChange: (taskIndex: number, value: string) => void;
+  conversionDecision?: boolean;
+  conversionPending: boolean;
+  conversionError: string;
+  onOptionSelect: (taskIndex: number, partIndex: number, keys: string[]) => void;
+  onTrueFalseSelect: (
+    taskIndex: number,
+    partIndex: number,
+    itemId: string,
+    value: TrueFalseSelection,
+  ) => void;
+  onClozeInputChange: (
+    taskIndex: number,
+    partIndex: number,
+    blankId: string,
+    value: string,
+  ) => void;
+  onClozeTokenDrop: (
+    event: DragEvent<HTMLElement>,
+    taskIndex: number,
+    partIndex: number,
+    blankId: string,
+    validTokenIds: Set<string>,
+    dragBlankIds: Set<string>,
+  ) => void;
+  onClozeTokenRemove: (taskIndex: number, partIndex: number, blankId: string) => void;
+  onClozeTokenDragStart: (
+    event: DragEvent<HTMLElement>,
+    payload: { cardIndex: number; tokenId: string; partIndex?: number },
+  ) => void;
+  onBlankDragOver: (event: DragEvent<HTMLElement>) => void;
+  onTextInputChange: (taskIndex: number, partIndex: number, value: string) => void;
   onAwardedPointsChange: (taskIndex: number, value: string, maxPoints: number) => void;
+  onConversionDecision: (taskIndex: number, shouldConvert: boolean) => void;
   onBack: () => void;
   onNext: () => void;
   canGoBack: boolean;
   canGoNext: boolean;
 };
+
+const isAutoGradablePart = (part: FlashcardPart) => {
+  if (part.kind === "multiple-choice") {
+    return part.correctKeys.length > 0;
+  }
+  if (part.kind === "true-false") {
+    return part.items.length > 0;
+  }
+  if (part.kind === "cloze") {
+    return part.segments.some((segment) => segment.type === "blank");
+  }
+  return false;
+};
+
+const isTaskAutoGraded = (task: ExamTask) =>
+  task.card.parts.length > 0 && task.card.parts.every(isAutoGradablePart);
+
+const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
+  task.card.parts.every(
+    (part, index) => evaluateFlashcardPartResult(part, states[index] ?? {}) === "correct",
+  );
+
+const noopSubmit = (_cardIndex: number, _canSubmit: boolean) => {};
+const noopTextCheck = (_cardIndex: number, _partIndex: number) => {};
+const noopSelfGrade = (
+  _cardIndex: number,
+  _partIndex: number,
+  _grade: "correct" | "incorrect",
+) => {};
 
 export const ExamTaskRunner = ({
   task,
@@ -29,12 +90,21 @@ export const ExamTaskRunner = ({
   taskCount,
   maxPoints,
   phase,
-  selection,
-  response,
+  partStates,
   awardedPoints,
-  onSelect,
-  onResponseChange,
+  conversionDecision,
+  conversionPending,
+  conversionError,
+  onOptionSelect,
+  onTrueFalseSelect,
+  onClozeInputChange,
+  onClozeTokenDrop,
+  onClozeTokenRemove,
+  onClozeTokenDragStart,
+  onBlankDragOver,
+  onTextInputChange,
   onAwardedPointsChange,
+  onConversionDecision,
   onBack,
   onNext,
   canGoBack,
@@ -42,12 +112,11 @@ export const ExamTaskRunner = ({
 }: ExamTaskRunnerProps) => {
   const isScoring = phase === "scoring";
   const showAnswers = phase !== "exam";
-  const isAutoGraded = task.kind === "multiple-choice" && Boolean(task.correctKey);
-  const autoAwardedPoints =
-    isAutoGraded && selection === task.correctKey ? maxPoints : 0;
-  const phaseLabel =
-    phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
-  const inputLocked = phase !== "exam";
+  const isAutoGraded = isTaskAutoGraded(task);
+  const taskIsCorrect = isAutoGraded ? isTaskCorrect(task, partStates) : false;
+  const autoAwardedPoints = isAutoGraded && taskIsCorrect ? maxPoints : 0;
+  const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
+  const inputLocked = phase !== "exam" || conversionPending;
 
   return (
     <div className="exam-task">
@@ -85,60 +154,29 @@ export const ExamTaskRunner = ({
         </div>
       ) : null}
 
-      <ExamMarkdown
-        className="flashcard-text-block"
-        content={task.prompt || "No task content provided."}
+      <CompositeCard
+        card={task.card}
+        cardIndex={taskIndex}
+        submitted={showAnswers}
+        submissionLocked={inputLocked}
+        partStates={partStates}
+        showSubmit={false}
+        showResult={false}
+        revealCorrectness={showAnswers}
+        showSolution={showAnswers}
+        forceRevealText={showAnswers}
+        onOptionSelect={onOptionSelect}
+        onTrueFalseSelect={onTrueFalseSelect}
+        onClozeInputChange={onClozeInputChange}
+        onClozeTokenDrop={onClozeTokenDrop}
+        onClozeTokenRemove={onClozeTokenRemove}
+        onClozeTokenDragStart={onClozeTokenDragStart}
+        onBlankDragOver={onBlankDragOver}
+        onTextInputChange={onTextInputChange}
+        onTextCheck={noopTextCheck}
+        onSelfGrade={noopSelfGrade}
+        onSubmit={noopSubmit}
       />
-
-      {task.kind === "multiple-choice" ? (
-        <ul className="flashcard-options">
-          {task.options.map((option) => {
-            const isSelected = selection === option.key;
-            const isCorrect = option.key === task.correctKey;
-            const optionClasses = [
-              "flashcard-option",
-              isSelected ? "selected" : "",
-              showAnswers && isCorrect ? "correct" : "",
-              showAnswers && isSelected && !isCorrect && task.correctKey ? "incorrect" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-
-            return (
-              <li key={`${task.id}-${option.key}`}>
-                <button
-                  type="button"
-                  className={optionClasses}
-                  onClick={() => onSelect(taskIndex, option.key)}
-                  aria-pressed={isSelected}
-                  disabled={inputLocked}
-                >
-                  <span className="flashcard-key">{option.key}</span>
-                  <span className="flashcard-text">{option.text}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-
-      {task.kind === "text" ? (
-        <textarea
-          className="flashcard-input"
-          value={response}
-          onChange={(event) => onResponseChange(taskIndex, event.target.value)}
-          placeholder="Your answer"
-          aria-label="Your answer"
-          disabled={inputLocked}
-        />
-      ) : null}
-
-      {task.kind === "text" && task.answer !== null && showAnswers ? (
-        <div className="flashcard-answer">
-          <span className="label">Answer</span>
-          <ExamMarkdown className="flashcard-answer-text" content={task.answer} />
-        </div>
-      ) : null}
 
       {isScoring && isAutoGraded ? (
         <div className="exam-points-row">
@@ -164,10 +202,27 @@ export const ExamTaskRunner = ({
                 onAwardedPointsChange(taskIndex, event.target.value, maxPoints)
               }
               aria-label="Awarded points"
+              disabled={conversionPending}
             />
             <span className="muted">/ {maxPoints}</span>
           </div>
         </div>
+      ) : null}
+
+      {isScoring ? (
+        <label className="exam-conversion-toggle">
+          <input
+            type="checkbox"
+            checked={conversionDecision ?? false}
+            onChange={(event) => onConversionDecision(taskIndex, event.target.checked)}
+            disabled={conversionPending}
+          />
+          Convert this task into a flashcard
+        </label>
+      ) : null}
+
+      {isScoring && conversionError ? (
+        <div className="error">{conversionError}</div>
       ) : null}
     </div>
   );

@@ -603,6 +603,14 @@ body.focus-mode .sr-stats-panel {
   gap: 10px;
 }
 
+.exam-conversion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
 .exam-results {
   display: flex;
   flex-direction: column;

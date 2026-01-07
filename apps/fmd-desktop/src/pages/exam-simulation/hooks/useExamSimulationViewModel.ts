@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppState } from "../../../components/AppStateProvider";
+import {
+  evaluateFlashcardPartResult,
+  getClozeDragPayload,
+  handleClozeBlankDragOver,
+  handleClozeTokenDragStart,
+  type CompositePartState,
+  type TrueFalseSelection,
+} from "../../../features/flashcards/logic";
 import { type ExamAiEvaluation } from "../../../features/settings/useAppSettings";
 import { asErrorMessage } from "../../../lib/errors";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
+import { type FlashcardPart } from "../../../lib/flashcards";
 import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
 
@@ -12,8 +21,7 @@ type ExamStage =
   | "running"
   | "review"
   | "scoring"
-  | "finished"
-  | "conversion";
+  | "finished";
 
 type ExamSettingsSnapshot = {
   maxTotalPoints: number;
@@ -39,8 +47,30 @@ const normalizeAwardedPoints = (value: number | null, maxPoints: number) => {
   return clampNumber(Math.floor(value), 0, maxPoints);
 };
 
+const isAutoGradablePart = (part: FlashcardPart) => {
+  if (part.kind === "multiple-choice") {
+    return part.correctKeys.length > 0;
+  }
+  if (part.kind === "true-false") {
+    return part.items.length > 0;
+  }
+  if (part.kind === "cloze") {
+    return part.segments.some((segment) => segment.type === "blank");
+  }
+  return false;
+};
+
 const isAutoGradedTask = (task: ExamTask) =>
-  task.kind === "multiple-choice" && Boolean(task.correctKey);
+  task.card.parts.length > 0 && task.card.parts.every(isAutoGradablePart);
+
+const isTaskCorrect = (
+  task: ExamTask,
+  states: CompositePartState[] | undefined,
+) =>
+  task.card.parts.every(
+    (part, index) =>
+      evaluateFlashcardPartResult(part, states?.[index] ?? {}) === "correct",
+  );
 
 export const useExamSimulationViewModel = () => {
   const { actions, preview, settings, vault } = useAppState();
@@ -54,12 +84,12 @@ export const useExamSimulationViewModel = () => {
   const [activeSettings, setActiveSettings] = useState<ExamSettingsSnapshot | null>(
     null,
   );
-  const [selections, setSelections] = useState<Record<number, string>>({});
-  const [responses, setResponses] = useState<Record<number, string>>({});
+  const [partStates, setPartStates] = useState<Record<number, CompositePartState[]>>(
+    {},
+  );
   const [awardedPoints, setAwardedPoints] = useState<Record<number, number | null>>(
     {},
   );
-  const [conversionIndex, setConversionIndex] = useState(0);
   const [conversionDecisions, setConversionDecisions] = useState<
     Record<number, boolean>
   >({});
@@ -190,10 +220,8 @@ export const useExamSimulationViewModel = () => {
     setActiveExamTasks([]);
     setActiveExamFile(null);
     setActiveSettings(null);
-    setSelections({});
-    setResponses({});
+    setPartStates({});
     setAwardedPoints({});
-    setConversionIndex(0);
     setConversionDecisions({});
     setConversionPending(false);
     setConversionError("");
@@ -219,12 +247,11 @@ export const useExamSimulationViewModel = () => {
     setActiveSettings(snapshot);
     setStage("running");
     setActiveTaskIndex(0);
-    setSelections({});
-    setResponses({});
+    setPartStates({});
     setAwardedPoints({});
-    setConversionIndex(0);
     setConversionDecisions({});
     setConversionError("");
+    setConversionPending(false);
   }, [
     canStartExam,
     previewExamParse.tasks,
@@ -254,32 +281,203 @@ export const useExamSimulationViewModel = () => {
   }, [stage]);
 
   const handleFinishScoring = useCallback(() => {
-    if (stage !== "scoring") {
+    if (stage !== "scoring" || conversionPending) {
       return;
     }
-    setStage("finished");
-  }, [stage]);
-
-  const handleStartConversion = useCallback(() => {
-    if (stage !== "finished") {
+    if (!activeExamFile) {
+      setStage("finished");
       return;
     }
-    setStage("conversion");
-    setConversionIndex(0);
-  }, [stage]);
 
-  const handleTaskSelect = useCallback((taskIndex: number, key: string) => {
-    setSelections((prev) => ({ ...prev, [taskIndex]: key }));
-  }, []);
+    const tasksToConvert = runTasks
+      .map((task, index) => ({ task, index }))
+      .filter((entry) => conversionDecisions[entry.index]);
 
-  const handleResponseChange = useCallback(
-    (taskIndex: number, value: string) => {
+    if (tasksToConvert.length === 0) {
+      setStage("finished");
+      return;
+    }
+
+    setConversionPending(true);
+    setConversionError("");
+
+    const applyConversions = async () => {
+      try {
+        const contents = await invoke<string>("read_text_file", {
+          path: activeExamFile.path,
+        });
+        const lines = contents.replace(/\r\n?/g, "\n").split("\n");
+        const sorted = [...tasksToConvert].sort(
+          (a, b) => a.task.sourceRange.startLine - b.task.sourceRange.startLine,
+        );
+        let offset = 0;
+
+        sorted.forEach(({ task }) => {
+          const start = task.sourceRange.startLine + offset;
+          const end = task.sourceRange.endLine + offset;
+          const chunkHasCardMarker = lines
+            .slice(start, end + 1)
+            .some((line) => line.trim() === "#card");
+          const hasCardStart = lines[start - 1]?.trim() === "#card";
+          const isWrapped = hasCardStart || chunkHasCardMarker;
+
+          if (!isWrapped) {
+            lines.splice(start, 0, "#card");
+            offset += 1;
+            lines.splice(end + 2, 0, "#");
+            offset += 1;
+          }
+        });
+
+        const nextContents = lines.join("\n");
+        await invoke("write_text_file", {
+          path: activeExamFile.path,
+          contents: nextContents,
+        });
+
+        if (preview.selectedFile?.path === activeExamFile.path) {
+          preview.setPreview(nextContents);
+        }
+
+        setStage("finished");
+      } catch (error) {
+        setConversionError(asErrorMessage(error, "Failed to convert tasks."));
+      } finally {
+        setConversionPending(false);
+      }
+    };
+
+    void applyConversions();
+  }, [
+    activeExamFile,
+    conversionDecisions,
+    conversionPending,
+    preview,
+    runTasks,
+    stage,
+  ]);
+
+  const updatePartState = useCallback(
+    (
+      taskIndex: number,
+      partIndex: number,
+      updater: (current: CompositePartState) => CompositePartState,
+    ) => {
       if (stage !== "running") {
         return;
       }
-      setResponses((prev) => ({ ...prev, [taskIndex]: value }));
+      setPartStates((prev) => {
+        const nextParts = [...(prev[taskIndex] ?? [])];
+        const current = nextParts[partIndex] ?? {};
+        nextParts[partIndex] = updater(current);
+        return { ...prev, [taskIndex]: nextParts };
+      });
     },
     [stage],
+  );
+
+  const handleOptionSelect = useCallback(
+    (taskIndex: number, partIndex: number, keys: string[]) => {
+      const uniqueKeys = Array.from(new Set(keys));
+      updatePartState(taskIndex, partIndex, (current) => ({
+        ...current,
+        selections: uniqueKeys,
+      }));
+    },
+    [updatePartState],
+  );
+
+  const handleTrueFalseSelect = useCallback(
+    (
+      taskIndex: number,
+      partIndex: number,
+      itemId: string,
+      value: TrueFalseSelection,
+    ) => {
+      updatePartState(taskIndex, partIndex, (current) => ({
+        ...current,
+        trueFalseSelections: {
+          ...(current.trueFalseSelections ?? {}),
+          [itemId]: value,
+        },
+      }));
+    },
+    [updatePartState],
+  );
+
+  const handleClozeInputChange = useCallback(
+    (taskIndex: number, partIndex: number, blankId: string, value: string) => {
+      updatePartState(taskIndex, partIndex, (current) => ({
+        ...current,
+        clozeResponses: {
+          ...(current.clozeResponses ?? {}),
+          [blankId]: value,
+        },
+      }));
+    },
+    [updatePartState],
+  );
+
+  const handleClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      taskIndex: number,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      event.preventDefault();
+      if (stage !== "running") {
+        return;
+      }
+      const payload = getClozeDragPayload(event);
+      if (!payload || payload.cardIndex !== taskIndex || payload.partIndex !== partIndex) {
+        return;
+      }
+      if (payload.tokenId === blankId) {
+        return;
+      }
+      if (!validTokenIds.has(payload.tokenId)) {
+        return;
+      }
+
+      updatePartState(taskIndex, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        const existingBlankId = Object.entries(responses).find(
+          ([key, value]) => value === payload.tokenId && key !== blankId,
+        )?.[0];
+        if (existingBlankId) {
+          delete responses[existingBlankId];
+        }
+        if (dragBlankIds.has(blankId)) {
+          responses[blankId] = payload.tokenId;
+        }
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [stage, updatePartState],
+  );
+
+  const handleClozeTokenRemove = useCallback(
+    (taskIndex: number, partIndex: number, blankId: string) => {
+      updatePartState(taskIndex, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        delete responses[blankId];
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [updatePartState],
+  );
+
+  const handleTextInputChange = useCallback(
+    (taskIndex: number, partIndex: number, value: string) => {
+      updatePartState(taskIndex, partIndex, (current) => ({
+        ...current,
+        textResponse: value,
+      }));
+    },
+    [updatePartState],
   );
 
   const handleAwardedPointsChange = useCallback(
@@ -322,8 +520,7 @@ export const useExamSimulationViewModel = () => {
     const breakdown: ExamTaskResult[] = runTasks.map((task, index) => {
       const maxPoints = runTaskPoints[index] ?? 0;
       if (isAutoGradedTask(task)) {
-        const selected = selections[index];
-        const isCorrect = selected === task.correctKey;
+        const isCorrect = isTaskCorrect(task, partStates[index]);
         return {
           index: index + 1,
           awardedPoints: isCorrect ? maxPoints : 0,
@@ -356,9 +553,9 @@ export const useExamSimulationViewModel = () => {
   }, [
     activeExamSettings,
     awardedPoints,
+    partStates,
     runTaskPoints,
     runTasks,
-    selections,
     stage,
   ]);
 
@@ -369,83 +566,8 @@ export const useExamSimulationViewModel = () => {
     [],
   );
 
-  const handleConversionBack = useCallback(() => {
-    setConversionIndex((prev) => Math.max(0, prev - 1));
-  }, []);
-
-  const handleConversionNext = useCallback(() => {
-    if (runTasks.length === 0) {
-      return;
-    }
-    setConversionIndex((prev) => Math.min(runTasks.length - 1, prev + 1));
-  }, [runTasks.length]);
-
-  const handleApplyConversions = useCallback(async () => {
-    if (!activeExamFile) {
-      return;
-    }
-    const tasksToConvert = runTasks
-      .map((task, index) => ({ task, index }))
-      .filter((entry) => conversionDecisions[entry.index]);
-
-    if (tasksToConvert.length === 0) {
-      resetExamState();
-      return;
-    }
-
-    setConversionPending(true);
-    setConversionError("");
-
-    try {
-      const contents = await invoke<string>("read_text_file", {
-        path: activeExamFile.path,
-      });
-      const lines = contents.replace(/\r\n?/g, "\n").split("\n");
-      const sorted = [...tasksToConvert].sort(
-        (a, b) => a.task.sourceRange.startLine - b.task.sourceRange.startLine,
-      );
-      let offset = 0;
-
-      sorted.forEach(({ task }) => {
-        const start = task.sourceRange.startLine + offset;
-        const end = task.sourceRange.endLine + offset;
-        const isWrapped =
-          lines[start - 1]?.trim() === "#card" && lines[end + 1]?.trim() === "#";
-
-        if (!isWrapped) {
-          lines.splice(start, 0, "#card");
-          offset += 1;
-          lines.splice(end + 2, 0, "#");
-          offset += 1;
-        }
-      });
-
-      const nextContents = lines.join("\n");
-      await invoke("write_text_file", {
-        path: activeExamFile.path,
-        contents: nextContents,
-      });
-
-      if (preview.selectedFile?.path === activeExamFile.path) {
-        preview.setPreview(nextContents);
-      }
-
-      resetExamState();
-    } catch (error) {
-      setConversionError(asErrorMessage(error, "Failed to convert tasks."));
-    } finally {
-      setConversionPending(false);
-    }
-  }, [
-    activeExamFile,
-    conversionDecisions,
-    preview,
-    resetExamState,
-    runTasks,
-  ]);
-
-  const activeTaskSelection = activeTask ? selections[activeTaskIndex] ?? "" : "";
-  const activeTaskResponse = activeTask ? responses[activeTaskIndex] ?? "" : "";
+  const activeTaskPartStates =
+    activeTask ? partStates[activeTaskIndex] ?? [] : [];
   const activeTaskAwardedPoints =
     activeTask ? awardedPoints[activeTaskIndex] ?? null : null;
   const examEmptyState = useMemo(() => {
@@ -489,8 +611,7 @@ export const useExamSimulationViewModel = () => {
     activeTaskIndex,
     activeTask,
     activeTaskMaxPoints,
-    activeTaskSelection,
-    activeTaskResponse,
+    activeTaskPartStates,
     activeTaskAwardedPoints,
     runTasks,
     runTaskPoints,
@@ -500,7 +621,6 @@ export const useExamSimulationViewModel = () => {
     canStartExam,
     examEmptyState,
     results,
-    conversionIndex,
     conversionDecisions,
     conversionPending,
     conversionError,
@@ -509,15 +629,17 @@ export const useExamSimulationViewModel = () => {
     handleSubmitExam,
     handleStartScoring,
     handleFinishScoring,
-    handleStartConversion,
-    handleTaskSelect,
-    handleResponseChange,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleClozeBlankDragOver,
+    handleClozeTokenDragStart,
     handleAwardedPointsChange,
     handleTaskBack,
     handleTaskNext,
     handleConversionDecision,
-    handleConversionBack,
-    handleConversionNext,
-    handleApplyConversions,
   };
 };

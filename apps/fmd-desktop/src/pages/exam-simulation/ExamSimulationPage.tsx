@@ -1,4 +1,3 @@
-import { ExamConversionPanel } from "./components/ExamConversionPanel";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
 import { ExamResultsPanel } from "./components/ExamResultsPanel";
@@ -24,8 +23,7 @@ export const ExamSimulationPage = () => {
     activeTaskIndex,
     activeTask,
     activeTaskMaxPoints,
-    activeTaskSelection,
-    activeTaskResponse,
+    activeTaskPartStates,
     activeTaskAwardedPoints,
     runTasks,
     remainingPoints,
@@ -33,7 +31,6 @@ export const ExamSimulationPage = () => {
     canStartExam,
     examEmptyState,
     results,
-    conversionIndex,
     conversionDecisions,
     conversionPending,
     conversionError,
@@ -42,20 +39,20 @@ export const ExamSimulationPage = () => {
     handleSubmitExam,
     handleStartScoring,
     handleFinishScoring,
-    handleStartConversion,
-    handleTaskSelect,
-    handleResponseChange,
+    handleOptionSelect,
+    handleTrueFalseSelect,
+    handleClozeInputChange,
+    handleClozeTokenDrop,
+    handleClozeTokenRemove,
+    handleTextInputChange,
+    handleClozeBlankDragOver,
+    handleClozeTokenDragStart,
     handleAwardedPointsChange,
     handleTaskBack,
     handleTaskNext,
     handleConversionDecision,
-    handleConversionBack,
-    handleConversionNext,
-    handleApplyConversions,
   } = useExamSimulationViewModel();
 
-  const selectedConversionCount = Object.values(conversionDecisions).filter(Boolean)
-    .length;
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
 
@@ -90,12 +87,21 @@ export const ExamSimulationPage = () => {
                 taskCount={runTasks.length}
                 maxPoints={activeTaskMaxPoints}
                 phase={activePhase}
-                selection={activeTaskSelection}
-                response={activeTaskResponse}
+                partStates={activeTaskPartStates}
                 awardedPoints={activeTaskAwardedPoints}
-                onSelect={handleTaskSelect}
-                onResponseChange={handleResponseChange}
+                conversionDecision={conversionDecisions[activeTaskIndex]}
+                conversionPending={conversionPending}
+                conversionError={conversionError}
+                onOptionSelect={handleOptionSelect}
+                onTrueFalseSelect={handleTrueFalseSelect}
+                onClozeInputChange={handleClozeInputChange}
+                onClozeTokenDrop={handleClozeTokenDrop}
+                onClozeTokenRemove={handleClozeTokenRemove}
+                onClozeTokenDragStart={handleClozeTokenDragStart}
+                onBlankDragOver={handleClozeBlankDragOver}
+                onTextInputChange={handleTextInputChange}
                 onAwardedPointsChange={handleAwardedPointsChange}
+                onConversionDecision={handleConversionDecision}
                 onBack={handleTaskBack}
                 onNext={handleTaskNext}
                 canGoBack={activeTaskIndex > 0}
@@ -108,29 +114,11 @@ export const ExamSimulationPage = () => {
             results ? (
               <ExamResultsPanel
                 results={results}
-                tasks={runTasks}
-                onStartConversion={handleStartConversion}
               />
             ) : (
               <div className="empty-state">No results available yet.</div>
             )
-          ) : (
-            <ExamConversionPanel
-              task={runTasks[conversionIndex] ?? null}
-              taskIndex={conversionIndex}
-              taskCount={runTasks.length}
-              decision={conversionDecisions[conversionIndex]}
-              decisionsCount={selectedConversionCount}
-              pending={conversionPending}
-              error={conversionError}
-              canGoBack={conversionIndex > 0}
-              canGoNext={conversionIndex < runTasks.length - 1}
-              onDecision={handleConversionDecision}
-              onBack={handleConversionBack}
-              onNext={handleConversionNext}
-              onApply={handleApplyConversions}
-            />
-          )}
+          ) : null}
         </section>
 
         <div className="exam-sidebar">
@@ -155,6 +143,7 @@ export const ExamSimulationPage = () => {
             onSubmitExam={handleSubmitExam}
             onStartScoring={handleStartScoring}
             onFinishScoring={handleFinishScoring}
+            finishPending={conversionPending}
             onResetExam={handleResetExam}
           />
         </div>

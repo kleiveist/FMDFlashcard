@@ -18,6 +18,11 @@ type CompositeCardProps = {
   submitted: boolean;
   submissionLocked?: boolean;
   partStates: CompositePartState[];
+  showSubmit?: boolean;
+  showResult?: boolean;
+  revealCorrectness?: boolean;
+  showSolution?: boolean;
+  forceRevealText?: boolean;
   onOptionSelect: (cardIndex: number, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     cardIndex: number,
@@ -61,6 +66,11 @@ export const CompositeCard = ({
   submitted,
   submissionLocked = false,
   partStates,
+  showSubmit = true,
+  showResult = true,
+  revealCorrectness,
+  showSolution,
+  forceRevealText = false,
   onBlankDragOver,
   onClozeInputChange,
   onClozeTokenDragStart,
@@ -82,7 +92,9 @@ export const CompositeCard = ({
     (part, index) =>
       evaluateFlashcardPartResult(part, partStates[index] ?? {}) === "correct",
   );
-  const resultLabel = submitted ? (allCorrect ? "Correct" : "Incorrect") : "";
+  const resultLabel =
+    submitted && showResult ? (allCorrect ? "Correct" : "Incorrect") : "";
+  const showActions = showSubmit || (submitted && showResult);
 
   return (
     <article className="flashcard-item composite-card">
@@ -99,6 +111,9 @@ export const CompositeCard = ({
                 submitted={submitted}
                 submissionLocked={submissionLocked}
                 responses={state.clozeResponses ?? {}}
+                showResult={showResult}
+                revealCorrectness={revealCorrectness}
+                showSolution={showSolution}
                 onInputChange={(index, blankId, value) =>
                   onClozeInputChange(index, partIndex, blankId, value)
                 }
@@ -132,6 +147,9 @@ export const CompositeCard = ({
                 submitted={submitted}
                 submissionLocked={submissionLocked}
                 selections={state.trueFalseSelections ?? {}}
+                showResult={showResult}
+                revealCorrectness={revealCorrectness}
+                showSolution={showSolution}
                 onSelect={(index, itemId, value) =>
                   onTrueFalseSelect(index, partIndex, itemId, value)
                 }
@@ -150,8 +168,9 @@ export const CompositeCard = ({
                 submitted={submitted}
                 submissionLocked={submissionLocked}
                 response={state.textResponse ?? ""}
-                revealed={state.textRevealed ?? false}
+                revealed={forceRevealText || state.textRevealed || false}
                 selfGrade={state.selfGrade}
+                showActions={showResult}
                 onInputChange={(index, value) =>
                   onTextInputChange(index, partIndex, value)
                 }
@@ -162,37 +181,45 @@ export const CompositeCard = ({
           }
 
           return (
-            <MultipleChoiceCard
-              key={`composite-${cardIndex}-${partIndex}`}
-              card={part}
-              cardIndex={cardIndex}
-              submitted={submitted}
-              submissionLocked={submissionLocked}
-              selectedKeys={state.selections ?? []}
-              onSelect={(index, keys) => onOptionSelect(index, partIndex, keys)}
-              onSubmit={onSubmit}
-              showSubmit={false}
-            />
+              <MultipleChoiceCard
+                key={`composite-${cardIndex}-${partIndex}`}
+                card={part}
+                cardIndex={cardIndex}
+                submitted={submitted}
+                submissionLocked={submissionLocked}
+                selectedKeys={state.selections ?? []}
+                showResult={showResult}
+                revealCorrectness={revealCorrectness}
+                onSelect={(index, keys) => onOptionSelect(index, partIndex, keys)}
+                onSubmit={onSubmit}
+                showSubmit={false}
+              />
           );
         })}
       </div>
-      <div className="flashcard-actions">
-        <button
-          type="button"
-          className="ghost small flashcard-submit"
-          onClick={() => onSubmit(cardIndex, canSubmit)}
-          disabled={!canSubmit || submitted || submissionLocked}
-        >
-          Submit
-        </button>
-        {submitted ? (
-          <span
-            className={`flashcard-result ${allCorrect ? "correct" : "incorrect"}`}
-          >
-            {resultLabel}
-          </span>
-        ) : null}
-      </div>
+      {showActions ? (
+        <div className="flashcard-actions">
+          {showSubmit ? (
+            <button
+              type="button"
+              className="ghost small flashcard-submit"
+              onClick={() => onSubmit(cardIndex, canSubmit)}
+              disabled={!canSubmit || submitted || submissionLocked}
+            >
+              Submit
+            </button>
+          ) : null}
+          {submitted && showResult ? (
+            <span
+              className={`flashcard-result ${
+                allCorrect ? "correct" : "incorrect"
+              }`}
+            >
+              {resultLabel}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 };

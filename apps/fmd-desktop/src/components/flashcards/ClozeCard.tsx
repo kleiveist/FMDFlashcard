@@ -18,6 +18,9 @@ type ClozeCardProps = {
   submissionLocked?: boolean;
   partIndex?: number;
   showSubmit?: boolean;
+  showResult?: boolean;
+  revealCorrectness?: boolean;
+  showSolution?: boolean;
   onInputChange: (cardIndex: number, blankId: string, value: string) => void;
   onTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -43,6 +46,9 @@ export const ClozeCard = ({
   submissionLocked = false,
   partIndex,
   showSubmit = true,
+  showResult = true,
+  revealCorrectness,
+  showSolution,
   onBlankDragOver,
   onInputChange,
   onSubmit,
@@ -65,8 +71,10 @@ export const ClozeCard = ({
   const validTokenIds = new Set(card.dragTokens.map((token) => token.id));
   const canSubmit = areClozeBlanksComplete(card, responses);
   const isCorrect = isClozeCardCorrect(card, responses);
-  const resultLabel = submitted ? (isCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || submitted;
+  const reveal = revealCorrectness ?? submitted;
+  const shouldShowSolution = showSolution ?? submitted;
+  const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
+  const showActions = showSubmit || (submitted && showResult);
   let blankPosition = 0;
 
   return (
@@ -87,14 +95,14 @@ export const ClozeCard = ({
 
           if (segment.kind === "input") {
             const value = responses[segment.id] ?? "";
-            const isBlankCorrect = submitted
+            const isBlankCorrect = reveal
               ? isInputAnswerMatch(value, segment.solution)
               : false;
             const blankClasses = [
               "cloze-blank",
               "input",
               value.trim() ? "filled" : "",
-              submitted ? (isBlankCorrect ? "correct" : "incorrect") : "",
+              reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
             ]
               .filter(Boolean)
               .join(" ");
@@ -124,14 +132,14 @@ export const ClozeCard = ({
             ? tokenById.get(assignedTokenId) ?? ""
             : "";
           const hasToken = Boolean(assignedValue);
-          const isBlankCorrect = submitted
+          const isBlankCorrect = reveal
             ? isDragAnswerMatch(assignedValue, segment.solution)
             : false;
           const blankClasses = [
             "cloze-blank",
             "drag",
             hasToken ? "filled" : "",
-            submitted ? (isBlankCorrect ? "correct" : "incorrect") : "",
+            reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -221,14 +229,14 @@ export const ClozeCard = ({
               Submit
             </button>
           ) : null}
-          {submitted ? (
+          {submitted && showResult ? (
             <span className={`flashcard-result ${isCorrect ? "correct" : "incorrect"}`}>
               {resultLabel}
             </span>
           ) : null}
         </div>
       ) : null}
-      {submitted ? (
+      {shouldShowSolution ? (
         <div className="token-solution">
           <span className="label">Solution</span>
           <div className="cloze-solution">
