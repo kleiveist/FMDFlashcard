@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # User documentation
 
 This section explains how to use the app day-to-day.

@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Troubleshooting
 
 ## The app shows “0 cards loaded”

@@ -1,3 +1,5 @@
+[← Back to Docs Home](../../docs/index.md)
+
 # Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/tools
 
 ## 📝 control.py — ./control.py

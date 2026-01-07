@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Flashcard syntax reference
 
 The goal of the syntax is to keep Markdown readable while still being machine-parseable.

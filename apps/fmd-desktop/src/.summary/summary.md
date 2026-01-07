@@ -1,3 +1,5 @@
+[← Back to Docs Home](../../../../docs/index.md)
+
 Markdown-Scan – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/apps/fmd-desktop/src
 Erzeugt: 2026-01-06T18:41:11
 Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css, .ts

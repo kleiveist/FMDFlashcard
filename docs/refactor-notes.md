@@ -1,3 +1,5 @@
+[← Back to Docs Home](index.md)
+
 # Refactor notes
 
 ## Fast Flashcard

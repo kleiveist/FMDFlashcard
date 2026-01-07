@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Getting started
 
 This guide covers the shortest path from “I have Markdown notes” to “I can review cards”.

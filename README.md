@@ -1,3 +1,5 @@
+[← Back to Docs Home](docs/index.md)
+
 # FMDFlashcard
 
 Local-first, Markdown-based flashcards with built-in learning modes (including spaced repetition).

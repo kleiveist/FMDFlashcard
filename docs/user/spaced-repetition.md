@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Spaced repetition
 
 Spaced repetition helps you review cards at increasing intervals based on performance.

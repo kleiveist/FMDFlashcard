@@ -1,3 +1,5 @@
+[← Back to Docs Home](docs/index.md)
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

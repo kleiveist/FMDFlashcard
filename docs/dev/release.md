@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Releases / Packaging
 
 This project is packaged as a desktop app (commonly via Tauri).

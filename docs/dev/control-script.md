@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Control script (`tools/control.py`)
 
 The repository contains a Python control script intended to standardize common development tasks.

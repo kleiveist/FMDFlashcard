@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # ADR 0001: Documentation source of truth
 
 Date: 2026-01-06

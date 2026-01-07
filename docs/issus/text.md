@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 next step combinatzion von allen kartaikarten syntax 
 und noch zuküntige kommenden sytax 
 die kombinatzions sytax aus 

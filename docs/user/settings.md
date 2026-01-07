@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Settings
 
 Settings allow you to tune how the app behaves and how it scans your vault.

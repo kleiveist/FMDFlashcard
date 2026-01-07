@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Developer setup (run from source)
 
 This guide describes a “fast start” flow for running the desktop app locally.

@@ -1,3 +1,5 @@
+[← Back to Docs Home](docs/index.md)
+
 # Contributing
 
 Thanks for your interest in contributing.

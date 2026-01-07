@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Architecture Decision Records (ADRs)
 
 ADRs capture important engineering decisions and the reasons behind them.

@@ -1,3 +1,5 @@
+[← Back to Docs Home](../index.md)
+
 # Developer documentation
 
 This section explains how to build, run, and contribute to the project.

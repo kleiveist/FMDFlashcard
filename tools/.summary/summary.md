@@ -1,3 +1,5 @@
+[← Back to Docs Home](../../docs/index.md)
+
 Markdown-Scan – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/tools
 Erzeugt: 2026-01-06T21:32:33
 Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.py

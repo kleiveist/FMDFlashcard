@@ -1,4 +1,24 @@
-[← Back to Docs Home](../../../../docs/index.md)
+[← Back to Docs Home](../docs/index.md)
+
+# Gesamtinhalte – Root: /home/kleif/Projects/FMDFlashcard
+
+## 📝 allsummary.md — ./allsummary.md
+
+# Gesamtinhalte – Root: /home/kleif/Projects/FMDFlashcard
+
+## 📝 README.md — ./apps/fmd-desktop/README.md
+
+# Tauri + React + Typescript
+
+This template should help get you started developing with Tauri, React and Typescript in Vite.
+
+## Recommended IDE Setup
+
+- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+
+---
+
+## 📝 allsummary.md — ./apps/fmd-desktop/src/.summary/allsummary.md
 
 # Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/apps/fmd-desktop/src
 
@@ -19639,6 +19659,5832 @@ body.focus-mode .sr-stats-panel {
 ## 📝 vite-env.d.ts — ./vite-env.d.ts
 
 /// <reference types="vite/client" />
+
+---
+
+
+---
+
+## 📝 summary.md — ./apps/fmd-desktop/src/.summary/summary.md
+
+Markdown-Scan – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/apps/fmd-desktop/src
+Erzeugt: 2026-01-06T18:41:11
+Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css, .ts
+
+=== Dateien ===
+
+📁 .
+  📝 App.css
+     Pfad: 📝 App.css
+     Größe: 665 B (665 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 16, Wörter: 79, Zeichen: 665
+     Inhalt (Auszug): @import "./styles/tokens.css"; @import "./styles/base.css"; @import "./styles/layout.css"; @import "./styles/components/buttons.css"; @import "./styles/components/content.css"; @import "./styles/components/panels.css"; @import "./styles/components/flashcards.css"; @import "./styles/components/stats.css"; @import "./styles/components/help.css"; @import "./styles/components/spaced-repetition.css"; @import "./styles/components/panel-layout.css"; @import "./styles/components/modals.css"; @import "./styles/components/preview.css"; @import "./styles/components/utility.css"; @import "./styles/components/settings.css"; @import "./styles/components/responsive.css";
+
+  📝 App.tsx
+     Pfad: 📝 App.tsx
+     Größe: 2.54 KB (2605 B)
+     Geändert: 2026-01-04T14:07:00
+     Überschriften: 0, Zeilen: 90, Wörter: 189, Zeichen: 2605
+     Inhalt (Auszug): import { useState } from "react"; import "./App.css"; import { AppStateProvider, useAppState } from "./components/AppStateProvider"; import { SidebarNav } from "./components/SidebarNav"; import { DashboardPage } from "./pages/DashboardPage"; import { FlashcardPage } from "./pages/FlashcardPage"; import { FastFlashcardPage } from "./pages/FastFlashcardPage"; import { HelpPage } from "./pages/HelpPage"; import { SettingsPage } from "./pages/SettingsPage"; import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
+
+  📝 main.tsx
+     Pfad: 📝 main.tsx
+     Größe: 229 B (229 B)
+     Geändert: 2025-12-28T04:12:07
+     Überschriften: 0, Zeilen: 9, Wörter: 27, Zeichen: 229
+     Inhalt (Auszug): import React from "react"; import ReactDOM from "react-dom/client"; import App from "./App";
+
+  📝 vite-env.d.ts
+     Pfad: 📝 vite-env.d.ts
+     Größe: 38 B (38 B)
+     Geändert: 2025-12-28T04:12:07
+     Überschriften: 0, Zeilen: 1, Wörter: 4, Zeichen: 38
+     Inhalt (Auszug): /// <reference types="vite/client" />
+
+
+📁 components
+  📝 AppStateProvider.tsx
+     Pfad: 📁 components / 📝 AppStateProvider.tsx
+     Größe: 12.62 KB (12925 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 464, Wörter: 867, Zeichen: 12925
+     Inhalt (Auszug): import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, } from "react"; import { isValidHex, normalizeHex } from "../lib/color"; import { type ThemeMode } from "../lib/theme"; import { type VaultFile } from "../lib/tree"; import { useFlashcards } from "../features/flashcards/useFlashcards"; import { usePreview } from "../features/preview/usePreview"; import { useAppSettings } from "../features/settings/useAppSettings"; import { type SettingsPageId } from "../features/settings/settingsNavigation"; import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepetition"; import { useVault } from "../features/vault/useVault"; import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
+
+  📝 FileList.tsx
+     Pfad: 📁 components / 📝 FileList.tsx
+     Größe: 1.75 KB (1793 B)
+     Geändert: 2026-01-02T18:05:13
+     Überschriften: 0, Zeilen: 60, Wörter: 157, Zeichen: 1793
+     Inhalt (Auszug): import { type LoadState } from "../lib/types"; import { type VaultFile } from "../lib/tree";
+
+  📝 icons.tsx
+     Pfad: 📁 components / 📝 icons.tsx
+     Größe: 1.81 KB (1856 B)
+     Geändert: 2026-01-05T21:56:04
+     Überschriften: 0, Zeilen: 78, Wörter: 303, Zeichen: 1856
+     Inhalt (Auszug): export const FolderIcon = () => ( <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+
+  📝 KpiGrid.tsx
+     Pfad: 📁 components / 📝 KpiGrid.tsx
+     Größe: 402 B (402 B)
+     Geändert: 2026-01-02T17:53:21
+     Überschriften: 0, Zeilen: 19, Wörter: 45, Zeichen: 402
+     Inhalt (Auszug): type KpiItem = { label: string; value: number; };
+
+  📝 LargeVaultWarningModal.tsx
+     Pfad: 📁 components / 📝 LargeVaultWarningModal.tsx
+     Größe: 998 B (998 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 38, Wörter: 98, Zeichen: 998
+     Inhalt (Auszug): type LargeVaultWarningModalProps = { count: number | null; onClose: () => void; };
+
+  📝 PreviewPanel.tsx
+     Pfad: 📁 components / 📝 PreviewPanel.tsx
+     Größe: 22.99 KB (23539 B)
+     Geändert: 2026-01-06T18:40:13
+     Überschriften: 0, Zeilen: 856, Wörter: 1940, Zeichen: 23539
+     Inhalt (Auszug): import { type MouseEvent, useCallback, useEffect, useRef } from "react"; import ReactMarkdown from "react-markdown"; import rehypeSanitize, { defaultSchema } from "rehype-sanitize"; import remarkGfm from "remark-gfm"; import { type LoadState } from "../lib/types"; import { type VaultFile } from "../lib/tree";
+
+  📝 SidebarNav.tsx
+     Pfad: 📁 components / 📝 SidebarNav.tsx
+     Größe: 9.48 KB (9709 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 293, Wörter: 650, Zeichen: 9709
+     Inhalt (Auszug): import { useMemo, useState } from "react"; import { useAppState } from "./AppStateProvider"; import { vaultBaseName } from "../lib/path"; import { VaultTree } from "./VaultTree"; import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons"; import { helpTopics, resolveText } from "../pages/help/helpContent"; import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
+
+  📝 StatsPanel.tsx
+     Pfad: 📁 components / 📝 StatsPanel.tsx
+     Größe: 1.93 KB (1975 B)
+     Geändert: 2026-01-02T17:53:15
+     Überschriften: 0, Zeilen: 64, Wörter: 165, Zeichen: 1975
+     Inhalt (Auszug): import { useMemo, type CSSProperties } from "react";
+
+  📝 VaultTree.tsx
+     Pfad: 📁 components / 📝 VaultTree.tsx
+     Größe: 4.73 KB (4845 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 151, Wörter: 430, Zeichen: 4845
+     Inhalt (Auszug): import { useMemo, type CSSProperties } from "react"; import { FileIcon, FolderIcon } from "./icons"; import { vaultBaseName } from "../lib/path"; import { buildTree, type TreeNode, type VaultFile } from "../lib/tree"; import { type LoadState } from "../lib/types";
+
+
+📁 components/flashcards
+  📝 ClozeCard.tsx
+     Pfad: 📁 components / 📁 flashcards / 📝 ClozeCard.tsx
+     Größe: 8.12 KB (8317 B)
+     Geändert: 2026-01-04T23:06:42
+     Überschriften: 0, Zeilen: 257, Wörter: 573, Zeichen: 8317
+     Inhalt (Auszug): import { type DragEvent } from "react"; import { isDragAnswerMatch, isInputAnswerMatch, type ClozeCard as ClozeCardType, } from "../../lib/flashcards"; import { areClozeBlanksComplete, getClozeBlanks, isClozeCardCorrect, } from "../../features/flashcards/logic";
+
+  📝 CompositeCard.tsx
+     Pfad: 📁 components / 📁 flashcards / 📝 CompositeCard.tsx
+     Größe: 6.28 KB (6433 B)
+     Geändert: 2026-01-04T23:08:21
+     Überschriften: 0, Zeilen: 198, Wörter: 431, Zeichen: 6433
+     Inhalt (Auszug): import type { DragEvent } from "react"; import { ClozeCard } from "./ClozeCard"; import { FreeTextCard } from "./FreeTextCard"; import { MultipleChoiceCard } from "./MultipleChoiceCard"; import { TrueFalseCard } from "./TrueFalseCard"; import type { CompositeFlashcard } from "../../lib/flashcards"; import { evaluateFlashcardPartResult, isFlashcardPartComplete, type CompositePartState, type FlashcardSelfGrade, type TrueFalseSelection, } from "../../features/flashcards/logic";
+
+  📝 FreeTextCard.tsx
+     Pfad: 📁 components / 📁 flashcards / 📝 FreeTextCard.tsx
+     Größe: 2.65 KB (2713 B)
+     Geändert: 2026-01-04T15:09:19
+     Überschriften: 0, Zeilen: 95, Wörter: 204, Zeichen: 2713
+     Inhalt (Auszug): import type { FreeTextCard as FreeTextCardType } from "../../lib/flashcards"; import type { FlashcardSelfGrade } from "../../features/flashcards/logic";
+
+  📝 MultipleChoiceCard.tsx
+     Pfad: 📁 components / 📁 flashcards / 📝 MultipleChoiceCard.tsx
+     Größe: 4.71 KB (4824 B)
+     Geändert: 2026-01-04T23:06:17
+     Überschriften: 0, Zeilen: 156, Wörter: 383, Zeichen: 4824
+     Inhalt (Auszug): import { useMemo } from "react"; import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
+
+  📝 TrueFalseCard.tsx
+     Pfad: 📁 components / 📁 flashcards / 📝 TrueFalseCard.tsx
+     Größe: 4.42 KB (4524 B)
+     Geändert: 2026-01-04T23:06:28
+     Überschriften: 0, Zeilen: 131, Wörter: 320, Zeichen: 4524
+     Inhalt (Auszug): import { type TrueFalseCard as TrueFalseCardType } from "../../lib/flashcards"; import { areTrueFalseItemsComplete, isTrueFalseCardCorrect, type TrueFalseSelection, } from "../../features/flashcards/logic";
+
+
+📁 components/settings
+  📝 AppearanceSection.tsx
+     Pfad: 📁 components / 📁 settings / 📝 AppearanceSection.tsx
+     Größe: 6.23 KB (6384 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 187, Wörter: 471, Zeichen: 6384
+     Inhalt (Auszug): import { type ThemeMode } from "../../lib/theme";
+
+  📝 DataSyncTabContent.tsx
+     Pfad: 📁 components / 📁 settings / 📝 DataSyncTabContent.tsx
+     Größe: 2.46 KB (2516 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 95, Wörter: 221, Zeichen: 2514
+     Inhalt (Auszug): type AppLanguage = "de" | "en";
+
+  📝 FastFlashcardToolsSettings.tsx
+     Pfad: 📁 components / 📁 settings / 📝 FastFlashcardToolsSettings.tsx
+     Größe: 3.67 KB (3760 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 108, Wörter: 277, Zeichen: 3760
+     Inhalt (Auszug): import { type FlashcardMode, type FlashcardOrder, type FlashcardScope } from "../../features/flashcards/useFlashcards";
+
+  📝 FlashcardsSettingsSection.tsx
+     Pfad: 📁 components / 📁 settings / 📝 FlashcardsSettingsSection.tsx
+     Größe: 4.80 KB (4920 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 150, Wörter: 379, Zeichen: 4920
+     Inhalt (Auszug): import type { FlashcardMode, FlashcardOrder, FlashcardPageSize, FlashcardScope, StatsResetMode, } from "../../features/flashcards/useFlashcards";
+
+  📝 PerformanceTabContent.tsx
+     Pfad: 📁 components / 📁 settings / 📝 PerformanceTabContent.tsx
+     Größe: 1.47 KB (1508 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 48, Wörter: 131, Zeichen: 1508
+     Inhalt (Auszug): type PerformanceTabContentProps = { maxFilesPerScan: string; onMaxFilesPerScanChange: (value: string) => void; scanParallelism: "low" | "medium" | "high"; setScanParallelism: (value: "low" | "medium" | "high") => void; };
+
+  📝 ResetSessionHistoryModal.tsx
+     Pfad: 📁 components / 📁 settings / 📝 ResetSessionHistoryModal.tsx
+     Größe: 1.28 KB (1315 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 49, Wörter: 118, Zeichen: 1315
+     Inhalt (Auszug): type ResetSessionHistoryModalProps = { isOpen: boolean; isPending?: boolean; onCancel: () => void; onConfirm: () => void; };
+
+  📝 SpacedRepetitionSettingsSection.tsx
+     Pfad: 📁 components / 📁 settings / 📝 SpacedRepetitionSettingsSection.tsx
+     Größe: 5.32 KB (5452 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 153, Wörter: 340, Zeichen: 5452
+     Inhalt (Auszug): import type { SpacedRepetitionBoxes, SpacedRepetitionOrder, SpacedRepetitionPageSize, SpacedRepetitionRepetitionStrength, } from "../../features/spaced-repetition/useSpacedRepetition";
+
+  📝 VaultIndexSection.tsx
+     Pfad: 📁 components / 📁 settings / 📝 VaultIndexSection.tsx
+     Größe: 5.73 KB (5863 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 172, Wörter: 470, Zeichen: 5861
+     Inhalt (Auszug): import { useState } from "react"; import { type LoadState } from "../../lib/types"; import { DataSyncTabContent } from "./DataSyncTabContent";
+
+
+📁 features/fast-flashcard
+  📝 constants.ts
+     Pfad: 📁 features / 📁 fast-flashcard / 📝 constants.ts
+     Größe: 149 B (149 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 3, Wörter: 16, Zeichen: 149
+     Inhalt (Auszug): export const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48] as const;
+
+
+📁 features/flashcards
+  📝 logic.test.ts
+     Pfad: 📁 features / 📁 flashcards / 📝 logic.test.ts
+     Größe: 1.43 KB (1465 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 68, Wörter: 112, Zeichen: 1465
+     Inhalt (Auszug): import { describe, expect, it } from "vitest"; import type { Flashcard } from "../../lib/flashcards"; import { calculateFlashcardStats, evaluateFlashcardResult, type CompositePartState, } from "./logic";
+
+  📝 logic.ts
+     Pfad: 📁 features / 📁 flashcards / 📝 logic.ts
+     Größe: 8.44 KB (8640 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 296, Wörter: 800, Zeichen: 8640
+     Inhalt (Auszug): import type { DragEvent } from "react"; import { isDragAnswerMatch, isInputAnswerMatch, type ClozeSegment, type FlashcardPart, type Flashcard, } from "../../lib/flashcards";
+
+  📝 useFlashcards.ts
+     Pfad: 📁 features / 📁 flashcards / 📝 useFlashcards.ts
+     Größe: 24.85 KB (25448 B)
+     Geändert: 2026-01-04T23:05:16
+     Überschriften: 0, Zeilen: 857, Wörter: 1704, Zeichen: 25448
+     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react"; import { invoke } from "@tauri-apps/api/core"; import { parseFlashcards, type Flashcard, type FlashcardDetectedType, type FlashcardPart, } from "../../lib/flashcards"; import { evaluateFlashcardResult, getClozeDragPayload, handleClozeBlankDragOver, handleClozeTokenDragStart, shuffleFlashcards, type CompositePartState, type FlashcardSelfGrade, type TrueFalseSelection, } from "./logic"; import { type VaultFile } from "../../lib/tree";
+
+
+📁 features/preview
+  📝 usePreview.ts
+     Pfad: 📁 features / 📁 preview / 📝 usePreview.ts
+     Größe: 2.15 KB (2199 B)
+     Geändert: 2026-01-02T17:14:52
+     Überschriften: 0, Zeilen: 81, Wörter: 170, Zeichen: 2199
+     Inhalt (Auszug): import { useCallback, useState } from "react"; import { invoke } from "@tauri-apps/api/core"; import { asErrorMessage } from "../../lib/errors"; import { type LoadState } from "../../lib/types"; import { type VaultFile } from "../../lib/tree";
+
+
+📁 features/settings
+  📝 settingsNavigation.ts
+     Pfad: 📁 features / 📁 settings / 📝 settingsNavigation.ts
+     Größe: 256 B (256 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 7, Wörter: 28, Zeichen: 256
+     Inhalt (Auszug): export const SETTINGS_PAGES = [ { id: "app-settings", label: "App Settings" }, { id: "review-tools", label: "Review Tools" }, { id: "appearance", label: "Appearance" }, ] as const;
+
+  📝 useAppSettings.ts
+     Pfad: 📁 features / 📁 settings / 📝 useAppSettings.ts
+     Größe: 26.65 KB (27290 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 701, Wörter: 1451, Zeichen: 27290
+     Inhalt (Auszug): import { useCallback, useEffect, useRef, useState } from "react"; import { invoke } from "@tauri-apps/api/core"; import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color"; import { applyAccentColor, applyTheme, type ThemeMode } from "../../lib/theme"; import { DEFAULT_FLASHCARD_PAGE_SIZE, FLASHCARD_PAGE_SIZES, type FlashcardMode, type FlashcardOrder, type FlashcardPageSize, type FlashcardScope, type StatsResetMode, } from "../flashcards/useFlashcards"; import { FAST_FLASHCARD_DURATIONS, type FastFlashcardDuration, } from "../fast-flashcard/constants"; import { DEFAULT_SPACED_REPETITION_PAGE_SIZE, SPACED_REPETITION_BOXES, SPACED_REPETITION_PAGE_SIZES, type SpacedRepetitionBoxes, type SpacedRepetitionOrder, type SpacedRepetitionPageSize, type SpacedRepetitionRepetitionStreng …
+
+
+📁 features/spaced-repetition
+  📝 logic.ts
+     Pfad: 📁 features / 📁 spaced-repetition / 📝 logic.ts
+     Größe: 9.02 KB (9238 B)
+     Geändert: 2026-01-04T23:11:56
+     Überschriften: 0, Zeilen: 326, Wörter: 792, Zeichen: 9238
+     Inhalt (Auszug): import type { Flashcard, FlashcardPart } from "../../lib/flashcards"; import type { CompositePartState, FlashcardResult, FlashcardSelfGrade, TrueFalseSelection, } from "../flashcards/logic";
+
+  📝 useSpacedRepetition.ts
+     Pfad: 📁 features / 📁 spaced-repetition / 📝 useSpacedRepetition.ts
+     Größe: 39.59 KB (40539 B)
+     Geändert: 2026-01-04T23:12:50
+     Überschriften: 0, Zeilen: 1204, Wörter: 2364, Zeichen: 40539
+     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react"; import { invoke } from "@tauri-apps/api/core"; import { evaluateFlashcardResult, getClozeDragPayload, type CompositePartState, type FlashcardSelfGrade, type TrueFalseSelection, } from "../flashcards/logic"; import type { FlashcardOrder, FlashcardScope } from "../flashcards/useFlashcards"; import type { Flashcard } from "../../lib/flashcards"; import { buildSpacedRepetitionSession, createEmptySpacedRepetitionSession, createEmptySpacedRepetitionUserState, createSpacedRepetitionUserId, getFlashcardId, getSpacedRepetitionEffectiveBox, MAX_SPACED_REPETITION_BOX, normalizeSpacedRepetitionCardProgress, type SpacedRepetitionRepetitionStrength, type SpacedRepetitionSession, type SpacedRepetitionStorage, type SpacedRe …
+
+
+📁 features/vault
+  📝 useVault.ts
+     Pfad: 📁 features / 📁 vault / 📝 useVault.ts
+     Größe: 3.91 KB (4002 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 153, Wörter: 318, Zeichen: 4002
+     Inhalt (Auszug): import { useCallback, useState } from "react"; import { invoke } from "@tauri-apps/api/core"; import { open } from "@tauri-apps/plugin-dialog"; import { asErrorMessage } from "../../lib/errors"; import { type LoadState } from "../../lib/types"; import { type VaultFile } from "../../lib/tree";
+
+
+📁 lib
+  📝 chart.ts
+     Pfad: 📁 lib / 📝 chart.ts
+     Größe: 414 B (414 B)
+     Geändert: 2026-01-02T17:01:49
+     Überschriften: 0, Zeilen: 14, Wörter: 49, Zeichen: 414
+     Inhalt (Auszug): export const buildLineChartPoints = (values: number[]) => { if (values.length === 0) { return ""; } const maxValue = Math.max(1, ...values); const step = values.length === 1 ? 0 : 100 / (values.length - 1); return values .map((value, index) => { const x = index * step; const y = 40 - (value / maxValue) * 30; return `${x.toFixed(2)},${y.toFixed(2)}`; }) .join(" "); };
+
+  📝 color.ts
+     Pfad: 📁 lib / 📝 color.ts
+     Größe: 2.15 KB (2197 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 66, Wörter: 293, Zeichen: 2197
+     Inhalt (Auszug): export const DEFAULT_ACCENT = "#E07A5F";
+
+  📝 errors.ts
+     Pfad: 📁 lib / 📝 errors.ts
+     Größe: 211 B (211 B)
+     Geändert: 2026-01-02T17:00:59
+     Überschriften: 0, Zeilen: 9, Wörter: 22, Zeichen: 211
+     Inhalt (Auszug): export const asErrorMessage = (error: unknown, fallback: string) => { if (error instanceof Error) { return error.message; } if (typeof error === "string") { return error; } return fallback; };
+
+  📝 flashcardKeywords.ts
+     Pfad: 📁 lib / 📝 flashcardKeywords.ts
+     Größe: 850 B (850 B)
+     Geändert: 2026-01-04T21:08:44
+     Überschriften: 0, Zeilen: 66, Wörter: 67, Zeichen: 790
+     Inhalt (Auszug): export const answerMarkers = [ "Answer:", "Antwort:", "Réponse:", "Respuesta:", "Resposta:", "Risposta:", "Antwoord:", "Svar:", "Vastaus:", "Odpowiedź:", "Odpověď:", "Odpoveď:", "Válasz:", "Răspuns:", "Cevap:", "Ответ:", "Απάντηση:", "إجابة:", ];
+
+  📝 flashcards.test.ts
+     Pfad: 📁 lib / 📝 flashcards.test.ts
+     Größe: 17.45 KB (17867 B)
+     Geändert: 2026-01-04T23:16:21
+     Titel: `;
+     Überschriften: 32, Zeilen: 661, Wörter: 2004, Zeichen: 17867
+     Inhalt (Auszug): import { describe, expect, it } from "vitest"; import { isDragAnswerMatch, isInputAnswerMatch, parseFlashcards, type Flashcard, } from "./flashcards";
+
+  📝 flashcards.ts
+     Pfad: 📁 lib / 📝 flashcards.ts
+     Größe: 16.78 KB (17183 B)
+     Geändert: 2026-01-04T22:52:05
+     Überschriften: 0, Zeilen: 715, Wörter: 1542, Zeichen: 17183
+     Inhalt (Auszug): import { answerMarkers, falseTokens, trueTokens } from "./flashcardKeywords";
+
+  📝 path.ts
+     Pfad: 📁 lib / 📝 path.ts
+     Größe: 339 B (339 B)
+     Geändert: 2026-01-04T01:45:04
+     Überschriften: 0, Zeilen: 11, Wörter: 33, Zeichen: 339
+     Inhalt (Auszug): export const normalizeRelativePath = (value: string) => value.replace(/\\/g, "/").replace(/^\/+/, "");
+
+  📝 theme.ts
+     Pfad: 📁 lib / 📝 theme.ts
+     Größe: 920 B (920 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 22, Wörter: 95, Zeichen: 920
+     Inhalt (Auszug): import { buildAccentTokens } from "./color";
+
+  📝 tree.ts
+     Pfad: 📁 lib / 📝 tree.ts
+     Größe: 2.08 KB (2129 B)
+     Geändert: 2026-01-02T17:01:14
+     Überschriften: 0, Zeilen: 88, Wörter: 200, Zeichen: 2129
+     Inhalt (Auszug): import { normalizeRelativePath } from "./path";
+
+  📝 types.ts
+     Pfad: 📁 lib / 📝 types.ts
+     Größe: 54 B (54 B)
+     Geändert: 2026-01-02T17:13:17
+     Überschriften: 0, Zeilen: 1, Wörter: 6, Zeichen: 54
+     Inhalt (Auszug): export type LoadState = "idle" | "loading" | "error";
+
+
+📁 pages
+  📝 DashboardPage.tsx
+     Pfad: 📁 pages / 📝 DashboardPage.tsx
+     Größe: 4.25 KB (4354 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 140, Wörter: 348, Zeichen: 4354
+     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useState } from "react"; import { invoke } from "@tauri-apps/api/core"; import { FileList } from "../components/FileList"; import { PreviewPanel } from "../components/PreviewPanel"; import { useAppState } from "../components/AppStateProvider"; import { asErrorMessage } from "../lib/errors";
+
+  📝 FastFlashcardPage.tsx
+     Pfad: 📁 pages / 📝 FastFlashcardPage.tsx
+     Größe: 72 B (72 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 1, Wörter: 6, Zeichen: 72
+     Inhalt (Auszug): export { FastFlashcardPage } from "./fast-flashcard/FastFlashcardPage";
+
+  📝 FlashcardPage.tsx
+     Pfad: 📁 pages / 📝 FlashcardPage.tsx
+     Größe: 21.52 KB (22033 B)
+     Geändert: 2026-01-04T23:09:20
+     Überschriften: 0, Zeilen: 625, Wörter: 1418, Zeichen: 22033
+     Inhalt (Auszug): import { useCallback, useEffect, useState, type DragEvent } from "react"; import { ClozeCard } from "../components/flashcards/ClozeCard"; import { CompositeCard } from "../components/flashcards/CompositeCard"; import { FreeTextCard } from "../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../components/flashcards/TrueFalseCard"; import { StatsPanel } from "../components/StatsPanel"; import { useAppState } from "../components/AppStateProvider"; import { areClozeBlanksComplete, areTrueFalseItemsComplete, isFlashcardPartComplete, } from "../features/flashcards/logic"; import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
+
+  📝 HelpPage.tsx
+     Pfad: 📁 pages / 📝 HelpPage.tsx
+     Größe: 6.26 KB (6409 B)
+     Geändert: 2026-01-05T22:27:39
+     Überschriften: 0, Zeilen: 181, Wörter: 438, Zeichen: 6409
+     Inhalt (Auszug): import { useEffect, useRef, useState } from "react"; import { useAppState } from "../components/AppStateProvider"; import { AppLanguage, flashcardSyntaxEntries, flashcardSyntaxOverview, helpHeader, helpLabels, helpTopics, resolveList, resolveText, } from "./help/helpContent"; import { HelpDetailSection } from "./help/sections/HelpDetailSection"; import { HelpHeaderSection } from "./help/sections/HelpHeaderSection"; import { HelpOverviewSection } from "./help/sections/HelpOverviewSection"; import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
+
+  📝 SettingsPage.tsx
+     Pfad: 📁 pages / 📝 SettingsPage.tsx
+     Größe: 11.95 KB (12236 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 285, Wörter: 773, Zeichen: 12236
+     Inhalt (Auszug): import { useCallback, useMemo, useState } from "react"; import { useAppState } from "../components/AppStateProvider"; import { AppearanceSection } from "../components/settings/AppearanceSection"; import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection"; import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal"; import { LanguageTabContent } from "../components/settings/DataSyncTabContent"; import { PerformanceTabContent } from "../components/settings/PerformanceTabContent"; import { SpacedRepetitionSettingsSection } from "../components/settings/SpacedRepetitionSettingsSection"; import { VaultIndexSection } from "../components/settings/VaultIndexSection"; import { FAST_FLASHCARD_DURATIONS } from "../features/fast-flashcard …
+
+  📝 SpacedRepetitionPage.tsx
+     Pfad: 📁 pages / 📝 SpacedRepetitionPage.tsx
+     Größe: 81 B (81 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 1, Wörter: 6, Zeichen: 81
+     Inhalt (Auszug): export { SpacedRepetitionPage } from "./spaced-repetition/SpacedRepetitionPage";
+
+
+📁 pages/fast-flashcard
+  📝 FastFlashcardPage.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📝 FastFlashcardPage.tsx
+     Größe: 4.34 KB (4440 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 130, Wörter: 212, Zeichen: 4440
+     Inhalt (Auszug): import { FastCardHost } from "./components/FastCardHost"; import { FastHeader } from "./components/FastHeader"; import { FastHistoryPanel } from "./components/FastHistoryPanel"; import { FastStatsPanel } from "./components/FastStatsPanel"; import { FastToolsPanel } from "./components/FastToolsPanel"; import { useFastSession } from "./hooks/useFastSession";
+
+
+📁 pages/fast-flashcard/components
+  📝 FastCardHost.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastCardHost.tsx
+     Größe: 8.39 KB (8590 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 238, Wörter: 563, Zeichen: 8590
+     Inhalt (Auszug): import type { DragEvent } from "react"; import { ClozeCard } from "../../../components/flashcards/ClozeCard"; import { CompositeCard } from "../../../components/flashcards/CompositeCard"; import { FreeTextCard } from "../../../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
+
+  📝 FastHeader.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastHeader.tsx
+     Größe: 391 B (391 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 16, Wörter: 31, Zeichen: 391
+     Inhalt (Auszug): import { fastFlashcardStatusLabel } from "../hooks/useFastSession";
+
+  📝 FastHistoryPanel.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastHistoryPanel.tsx
+     Größe: 3.16 KB (3240 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 80, Wörter: 281, Zeichen: 3240
+     Inhalt (Auszug): import type { FastFlashcardSessionSummary } from "../hooks/useFastSession"; import { formatSessionPace, formatSessionTimestamp } from "../hooks/useFastSession";
+
+  📝 FastStatsPanel.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastStatsPanel.tsx
+     Größe: 5.51 KB (5641 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 165, Wörter: 503, Zeichen: 5639
+     Inhalt (Auszug): import type { CSSProperties } from "react"; import type { FastFlashcardSessionStats } from "../hooks/useFastSession";
+
+  📝 FastToolsPanel.tsx
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 components / 📝 FastToolsPanel.tsx
+     Größe: 2.58 KB (2645 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 77, Wörter: 179, Zeichen: 2645
+     Inhalt (Auszug): import { FastFlashcardToolsSettings } from "../../../components/settings/FastFlashcardToolsSettings"; import { FAST_FLASHCARD_DURATIONS } from "../../../features/fast-flashcard/constants";
+
+
+📁 pages/fast-flashcard/hooks
+  📝 useFastSession.ts
+     Pfad: 📁 pages / 📁 fast-flashcard / 📁 hooks / 📝 useFastSession.ts
+     Größe: 22.54 KB (23086 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 822, Wörter: 1628, Zeichen: 23086
+     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, } from "react"; import { invoke } from "@tauri-apps/api/core"; import { useAppState } from "../../../components/AppStateProvider"; import { evaluateFlashcardResult } from "../../../features/flashcards/logic";
+
+
+📁 pages/help
+  📝 helpContent.ts
+     Pfad: 📁 pages / 📁 help / 📝 helpContent.ts
+     Größe: 257 B (257 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 7, Wörter: 30, Zeichen: 257
+     Inhalt (Auszug): export * from "./content/types"; export * from "./content/i18n"; export * from "./content/labels"; export * from "./content/topics"; export * from "./content/appSections"; export * from "./content/syntax/overview"; export * from "./content/syntax/entries";
+
+
+📁 pages/help/content
+  📝 appSections.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 appSections.ts
+     Größe: 12.20 KB (12490 B)
+     Geändert: 2026-01-05T22:13:46
+     Überschriften: 0, Zeilen: 230, Wörter: 1561, Zeichen: 12425
+     Inhalt (Auszug): import { AppSectionData, AppSectionId, LocalizedText } from "./types";
+
+  📝 i18n.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 i18n.ts
+     Größe: 441 B (441 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 13, Wörter: 43, Zeichen: 441
+     Inhalt (Auszug): import { AppLanguage, LocalizedText } from "./types";
+
+  📝 labels.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 labels.ts
+     Größe: 941 B (941 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 24, Wörter: 116, Zeichen: 941
+     Inhalt (Auszug): export const helpHeader = { eyebrow: { en: "Help", de: "Hilfe" }, title: { en: "Help", de: "Hilfe" }, summary: { en: "Quick reminders for the workflow and syntax.", de: "Kurze Hinweise zum Workflow und zur Syntax.", }, };
+
+  📝 topics.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 topics.ts
+     Größe: 7.92 KB (8111 B)
+     Geändert: 2026-01-05T22:13:27
+     Überschriften: 0, Zeilen: 205, Wörter: 885, Zeichen: 8111
+     Inhalt (Auszug): import { HelpTopic } from "./types";
+
+  📝 types.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📝 types.ts
+     Größe: 1.29 KB (1318 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 66, Wörter: 120, Zeichen: 1318
+     Inhalt (Auszug): export type AppLanguage = "de" | "en"; export type LocalizedText = { de?: string; en?: string };
+
+
+📁 pages/help/content/syntax
+  📝 entries.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📁 syntax / 📝 entries.ts
+     Größe: 26.59 KB (27233 B)
+     Geändert: 2026-01-05T22:14:05
+     Überschriften: 0, Zeilen: 719, Wörter: 2800, Zeichen: 27233
+     Inhalt (Auszug): import { SyntaxEntry } from "../types";
+
+  📝 overview.ts
+     Pfad: 📁 pages / 📁 help / 📁 content / 📁 syntax / 📝 overview.ts
+     Größe: 683 B (683 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 17, Wörter: 89, Zeichen: 683
+     Inhalt (Auszug): export const flashcardSyntaxOverview = { title: { en: "Core rules", de: "Grundregeln" }, bullets: [ { en: "Wrap every card with #card and # on their own lines; content outside is ignored.", de: "Jede Karte mit #card und # auf eigenen Zeilen umschliessen; Inhalt ausserhalb wird ignoriert.", }, { en: "The first non-empty line is the prompt.", de: "Die erste nicht-leere Zeile ist die Frage.", }, { en: "Syntaxes can be combined in one #card block when desired; keep markers clear and consistent.", de: "Syntaxen koennen bei Bedarf in einem #card-Block kombiniert werden; Marker klar und konsistent halten.", }, ], };
+
+
+📁 pages/help/sections
+  📝 AppSectionsGuidePanel.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 AppSectionsGuidePanel.tsx
+     Größe: 6.28 KB (6433 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 174, Wörter: 462, Zeichen: 6433
+     Inhalt (Auszug): import { useEffect, useState } from "react"; import { APP_SECTION_DATA, APP_SECTION_GROUND_RULES, APP_SECTION_LABELS, APP_SECTION_ORDER, AppLanguage, AppSectionId, resolveText, } from "../helpContent";
+
+  📝 HelpDetailSection.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpDetailSection.tsx
+     Größe: 3.65 KB (3735 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 120, Wörter: 250, Zeichen: 3735
+     Inhalt (Auszug): import { AppLanguage, HelpTopic, SyntaxEntry, helpLabels, resolveText } from "../helpContent"; import { AppSectionsGuidePanel } from "./AppSectionsGuidePanel"; import { HelpTopicSections } from "./HelpTopicSections"; import { SyntaxSection } from "./SyntaxSection";
+
+  📝 HelpHeaderSection.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpHeaderSection.tsx
+     Größe: 407 B (407 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 19, Wörter: 35, Zeichen: 407
+     Inhalt (Auszug): type HelpHeaderSectionProps = { eyebrowText: string; titleText: string; summaryText: string; };
+
+  📝 HelpOverviewSection.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpOverviewSection.tsx
+     Größe: 1.26 KB (1295 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 42, Wörter: 114, Zeichen: 1295
+     Inhalt (Auszug): import { AppLanguage, HelpTopic, helpLabels, resolveText } from "../helpContent";
+
+  📝 HelpTopicHeadingsBlock.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpTopicHeadingsBlock.tsx
+     Größe: 779 B (779 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 29, Wörter: 63, Zeichen: 779
+     Inhalt (Auszug): import { AppLanguage, HelpTopic, resolveText } from "../helpContent";
+
+  📝 HelpTopicSections.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 HelpTopicSections.tsx
+     Größe: 2.93 KB (3002 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 89, Wörter: 217, Zeichen: 3002
+     Inhalt (Auszug): import { AppLanguage, HelpTopic, resolveList, resolveText, } from "../helpContent";
+
+  📝 SyntaxSection.tsx
+     Pfad: 📁 pages / 📁 help / 📁 sections / 📝 SyntaxSection.tsx
+     Größe: 7.55 KB (7732 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 219, Wörter: 549, Zeichen: 7732
+     Inhalt (Auszug): import { AppLanguage, SyntaxEntry, flashcardSyntaxEntries, flashcardSyntaxOverview, resolveText, } from "../helpContent";
+
+
+📁 pages/spaced-repetition
+  📝 SpacedRepetitionPage.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📝 SpacedRepetitionPage.tsx
+     Größe: 6.96 KB (7127 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 183, Wörter: 295, Zeichen: 7127
+     Inhalt (Auszug): import { SrCardHost } from "./components/SrCardHost"; import { SrDeleteModal } from "./components/SrDeleteModal"; import { SrHeader } from "./components/SrHeader"; import { SrStatsAndChart } from "./components/SrStatsAndChart"; import { SrStatsPanel } from "./components/SrStatsPanel"; import { SrToolsPanel } from "./components/SrToolsPanel"; import { SrUserPanel } from "./components/SrUserPanel"; import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
+
+
+📁 pages/spaced-repetition/components
+  📝 SrBoxesPanel.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrBoxesPanel.tsx
+     Größe: 1.48 KB (1515 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 48, Wörter: 134, Zeichen: 1515
+     Inhalt (Auszug): import type { CSSProperties } from "react";
+
+  📝 SrCardHost.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrCardHost.tsx
+     Größe: 8.22 KB (8416 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 228, Wörter: 476, Zeichen: 8416
+     Inhalt (Auszug): import type { DragEvent } from "react"; import { ClozeCard } from "../../../components/flashcards/ClozeCard"; import { CompositeCard } from "../../../components/flashcards/CompositeCard"; import { FreeTextCard } from "../../../components/flashcards/FreeTextCard"; import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard"; import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard"; import { SrReviewActions } from "./SrReviewActions";
+
+  📝 SrDeleteModal.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrDeleteModal.tsx
+     Größe: 1.79 KB (1829 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 60, Wörter: 149, Zeichen: 1829
+     Inhalt (Auszug): type SrDeleteModalProps = { isDeleteDialogOpen: boolean; deleteTargetName: string; deleteConfirmInput: string; setDeleteConfirmInput: (value: string) => void; handleDeleteCancel: () => void; handleDeleteConfirm: () => void; canConfirmDelete: boolean; };
+
+  📝 SrHeader.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrHeader.tsx
+     Größe: 1.17 KB (1193 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 45, Wörter: 124, Zeichen: 1193
+     Inhalt (Auszug): import type { Dispatch, SetStateAction } from "react";
+
+  📝 SrReviewActions.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrReviewActions.tsx
+     Größe: 813 B (813 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 32, Wörter: 47, Zeichen: 813
+     Inhalt (Auszug): type SrReviewActionsProps = { spacedRepetitionCanGoBack: boolean; spacedRepetitionCanGoNext: boolean; handleSpacedRepetitionPageBack: () => void; handleSpacedRepetitionPageNext: () => void; };
+
+  📝 SrStatsAndChart.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrStatsAndChart.tsx
+     Größe: 6.36 KB (6514 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 173, Wörter: 457, Zeichen: 6514
+     Inhalt (Auszug): import type { CSSProperties } from "react"; import { buildLineChartPoints } from "../../../lib/chart"; import { type SpacedRepetitionStatsView } from "../../../features/spaced-repetition/useSpacedRepetition"; import { SrBoxesPanel } from "./SrBoxesPanel";
+
+  📝 SrStatsPanel.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrStatsPanel.tsx
+     Größe: 453 B (453 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 18, Wörter: 44, Zeichen: 453
+     Inhalt (Auszug): import { KpiGrid } from "../../../components/KpiGrid";
+
+  📝 SrToolsPanel.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrToolsPanel.tsx
+     Größe: 3.53 KB (3613 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 108, Wörter: 247, Zeichen: 3613
+     Inhalt (Auszug): import { SPACED_REPETITION_BOXES, SPACED_REPETITION_PAGE_SIZES, type SpacedRepetitionBoxes, type SpacedRepetitionOrder, type SpacedRepetitionPageSize, } from "../../../features/spaced-repetition/useSpacedRepetition";
+
+  📝 SrUserPanel.tsx
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 components / 📝 SrUserPanel.tsx
+     Größe: 3.85 KB (3939 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 119, Wörter: 266, Zeichen: 3937
+     Inhalt (Auszug): type SrUserPanelProps = { flashcards: { isFlashcardScanning: boolean; }; spacedRepetition: { spacedRepetitionActiveUser: string | null; spacedRepetitionSelectedUserId: string; spacedRepetitionUsers: { id: string; name: string }[]; spacedRepetitionNewUserName: string; spacedRepetitionUserError: string; handleSpacedRepetitionActiveUserLoadCards: () => void; setSpacedRepetitionSelectedUserId: (value: string) => void; setSpacedRepetitionNewUserName: (value: string) => void; setSpacedRepetitionUserError: (value: string) => void; handleSpacedRepetitionCreateUser: () => void; handleSpacedRepetitionLoadUser: () => void; }; handleDeleteOpen: () => void; };
+
+
+📁 pages/spaced-repetition/hooks
+  📝 useSrSessionViewModel.ts
+     Pfad: 📁 pages / 📁 spaced-repetition / 📁 hooks / 📝 useSrSessionViewModel.ts
+     Größe: 16.56 KB (16957 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 572, Wörter: 1003, Zeichen: 16955
+     Inhalt (Auszug): import { useCallback, useEffect, useMemo, useState, type CSSProperties, type DragEvent, } from "react"; import { useAppState } from "../../../components/AppStateProvider"; import { vaultBaseName } from "../../../lib/path"; import { areClozeBlanksComplete, areTrueFalseItemsComplete, isFlashcardPartComplete, } from "../../../features/flashcards/logic"; import { getFlashcardId, getSpacedRepetitionEffectiveBox, normalizeSpacedRepetitionCardProgress, } from "../../../features/spaced-repetition/logic";
+
+
+📁 styles
+  📝 base.css
+     Pfad: 📁 styles / 📝 base.css
+     Größe: 302 B (302 B)
+     Geändert: 2026-01-06T18:18:43
+     Titel: root {
+     Überschriften: 1, Zeilen: 26, Wörter: 35, Zeichen: 302
+     Inhalt (Auszug): box-sizing: border-box; }
+
+  📝 layout.css
+     Pfad: 📁 styles / 📝 layout.css
+     Größe: 6.38 KB (6537 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 359, Wörter: 875, Zeichen: 6533
+     Inhalt (Auszug): .app-shell {
+
+  📝 tokens.css
+     Pfad: 📁 styles / 📝 tokens.css
+     Größe: 8.99 KB (9206 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 258, Wörter: 1412, Zeichen: 9206
+     Inhalt (Auszug): :root { font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5; font-weight: 400; color: var(--ink); background-color: var(--bg); font-synthesis: none; text-rendering: optimizeLegibility;
+
+
+📁 styles/components
+  📝 buttons.css
+     Pfad: 📁 styles / 📁 components / 📝 buttons.css
+     Größe: 861 B (861 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 57, Wörter: 108, Zeichen: 861
+     Inhalt (Auszug): button { border: none; font: inherit; }
+
+  📝 content.css
+     Pfad: 📁 styles / 📁 components / 📝 content.css
+     Größe: 7.01 KB (7181 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 429, Wörter: 998, Zeichen: 7181
+     Inhalt (Auszug): .content { display: flex; flex-direction: column; gap: 24px; animation: riseIn 0.6s ease both; animation-delay: 0.05s; min-height: 0; overflow: auto; }
+
+  📝 flashcards.css
+     Pfad: 📁 styles / 📁 components / 📝 flashcards.css
+     Größe: 6.87 KB (7035 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 430, Wörter: 907, Zeichen: 7035
+     Inhalt (Auszug): .flashcard-list { display: flex; flex-direction: column; gap: 12px; }
+
+  📝 help.css
+     Pfad: 📁 styles / 📁 components / 📝 help.css
+     Größe: 6.60 KB (6757 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 404, Wörter: 928, Zeichen: 6757
+     Inhalt (Auszug): .help-panel .panel-body { min-height: auto; }
+
+  📝 modals.css
+     Pfad: 📁 styles / 📁 components / 📝 modals.css
+     Größe: 595 B (595 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 36, Wörter: 79, Zeichen: 595
+     Inhalt (Auszug): .modal-backdrop { position: fixed; inset: 0; background: rgba(10, 12, 16, 0.45); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 20; }
+
+  📝 panel-layout.css
+     Pfad: 📁 styles / 📁 components / 📝 panel-layout.css
+     Größe: 1.63 KB (1666 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 107, Wörter: 224, Zeichen: 1666
+     Inhalt (Auszug): .workspace .panel:nth-child(1) { animation-delay: 0.1s; }
+
+  📝 panels.css
+     Pfad: 📁 styles / 📁 components / 📝 panels.css
+     Größe: 1.95 KB (1992 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 119, Wörter: 261, Zeichen: 1992
+     Inhalt (Auszug): .panel { background: var(--panel); border-radius: 20px; padding: 20px; box-shadow: var(--shadow-soft); border: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 16px; animation: riseIn 0.6s ease both; }
+
+  📝 preview.css
+     Pfad: 📁 styles / 📁 components / 📝 preview.css
+     Größe: 5.50 KB (5637 B)
+     Geändert: 2026-01-06T18:40:36
+     Überschriften: 0, Zeilen: 275, Wörter: 807, Zeichen: 5637
+     Inhalt (Auszug): .file-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; }
+
+  📝 responsive.css
+     Pfad: 📁 styles / 📁 components / 📝 responsive.css
+     Größe: 2.10 KB (2149 B)
+     Geändert: 2026-01-05T16:53:57
+     Überschriften: 0, Zeilen: 134, Wörter: 268, Zeichen: 2149
+     Inhalt (Auszug): @media (max-width: 1200px) { .flashcard-layout { grid-template-columns: 1fr; }
+
+  📝 settings.css
+     Pfad: 📁 styles / 📁 components / 📝 settings.css
+     Größe: 6.21 KB (6364 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 399, Wörter: 843, Zeichen: 6364
+     Inhalt (Auszug): .settings-nav .nav-item { width: 100%; }
+
+  📝 spaced-repetition.css
+     Pfad: 📁 styles / 📁 components / 📝 spaced-repetition.css
+     Größe: 1.43 KB (1463 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 74, Wörter: 207, Zeichen: 1463
+     Inhalt (Auszug): .sr-vault-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+  📝 stats.css
+     Pfad: 📁 styles / 📁 components / 📝 stats.css
+     Größe: 6.44 KB (6592 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 397, Wörter: 894, Zeichen: 6592
+     Inhalt (Auszug): .stats-panel .panel-body { min-height: auto; }
+
+  📝 utility.css
+     Pfad: 📁 styles / 📁 components / 📝 utility.css
+     Größe: 440 B (440 B)
+     Geändert: 2026-01-06T18:18:43
+     Überschriften: 0, Zeilen: 24, Wörter: 59, Zeichen: 440
+     Inhalt (Auszug): .empty-state { padding: 18px; border-radius: 16px; border: 1px dashed var(--block-border); color: var(--muted); background: var(--block-bg); }
+
+
+=== Ordnerbaum (Quelle, nur ausgewählte Typen) ===
+
+📁 .
+├── 📁 .info
+├── 📁 .summary
+├── 📁 assets
+├── 📁 components
+│   ├── 📁 flashcards
+│   │   ├── 📝 ClozeCard.tsx
+│   │   ├── 📝 CompositeCard.tsx
+│   │   ├── 📝 FreeTextCard.tsx
+│   │   ├── 📝 MultipleChoiceCard.tsx
+│   │   └── 📝 TrueFalseCard.tsx
+│   ├── 📁 settings
+│   │   ├── 📝 AppearanceSection.tsx
+│   │   ├── 📝 DataSyncTabContent.tsx
+│   │   ├── 📝 FastFlashcardToolsSettings.tsx
+│   │   ├── 📝 FlashcardsSettingsSection.tsx
+│   │   ├── 📝 PerformanceTabContent.tsx
+│   │   ├── 📝 ResetSessionHistoryModal.tsx
+│   │   ├── 📝 SpacedRepetitionSettingsSection.tsx
+│   │   └── 📝 VaultIndexSection.tsx
+│   ├── 📝 AppStateProvider.tsx
+│   ├── 📝 FileList.tsx
+│   ├── 📝 icons.tsx
+│   ├── 📝 KpiGrid.tsx
+│   ├── 📝 LargeVaultWarningModal.tsx
+│   ├── 📝 PreviewPanel.tsx
+│   ├── 📝 SidebarNav.tsx
+│   ├── 📝 StatsPanel.tsx
+│   └── 📝 VaultTree.tsx
+├── 📁 features
+│   ├── 📁 fast-flashcard
+│   │   └── 📝 constants.ts
+│   ├── 📁 flashcards
+│   │   ├── 📝 logic.test.ts
+│   │   ├── 📝 logic.ts
+│   │   └── 📝 useFlashcards.ts
+│   ├── 📁 preview
+│   │   └── 📝 usePreview.ts
+│   ├── 📁 settings
+│   │   ├── 📝 settingsNavigation.ts
+│   │   └── 📝 useAppSettings.ts
+│   ├── 📁 spaced-repetition
+│   │   ├── 📝 logic.ts
+│   │   └── 📝 useSpacedRepetition.ts
+│   └── 📁 vault
+│       └── 📝 useVault.ts
+├── 📁 lib
+│   ├── 📝 chart.ts
+│   ├── 📝 color.ts
+│   ├── 📝 errors.ts
+│   ├── 📝 flashcardKeywords.ts
+│   ├── 📝 flashcards.test.ts
+│   ├── 📝 flashcards.ts
+│   ├── 📝 path.ts
+│   ├── 📝 theme.ts
+│   ├── 📝 tree.ts
+│   └── 📝 types.ts
+├── 📁 pages
+│   ├── 📁 fast-flashcard
+│   │   ├── 📁 components
+│   │   │   ├── 📝 FastCardHost.tsx
+│   │   │   ├── 📝 FastHeader.tsx
+│   │   │   ├── 📝 FastHistoryPanel.tsx
+│   │   │   ├── 📝 FastStatsPanel.tsx
+│   │   │   └── 📝 FastToolsPanel.tsx
+│   │   ├── 📁 hooks
+│   │   │   └── 📝 useFastSession.ts
+│   │   └── 📝 FastFlashcardPage.tsx
+│   ├── 📁 help
+│   │   ├── 📁 content
+│   │   │   ├── 📁 syntax
+│   │   │   │   ├── 📝 entries.ts
+│   │   │   │   └── 📝 overview.ts
+│   │   │   ├── 📝 appSections.ts
+│   │   │   ├── 📝 i18n.ts
+│   │   │   ├── 📝 labels.ts
+│   │   │   ├── 📝 topics.ts
+│   │   │   └── 📝 types.ts
+│   │   ├── 📁 sections
+│   │   │   ├── 📝 AppSectionsGuidePanel.tsx
+│   │   │   ├── 📝 HelpDetailSection.tsx
+│   │   │   ├── 📝 HelpHeaderSection.tsx
+│   │   │   ├── 📝 HelpOverviewSection.tsx
+│   │   │   ├── 📝 HelpTopicHeadingsBlock.tsx
+│   │   │   ├── 📝 HelpTopicSections.tsx
+│   │   │   └── 📝 SyntaxSection.tsx
+│   │   └── 📝 helpContent.ts
+│   ├── 📁 spaced-repetition
+│   │   ├── 📁 components
+│   │   │   ├── 📝 SrBoxesPanel.tsx
+│   │   │   ├── 📝 SrCardHost.tsx
+│   │   │   ├── 📝 SrDeleteModal.tsx
+│   │   │   ├── 📝 SrHeader.tsx
+│   │   │   ├── 📝 SrReviewActions.tsx
+│   │   │   ├── 📝 SrStatsAndChart.tsx
+│   │   │   ├── 📝 SrStatsPanel.tsx
+│   │   │   ├── 📝 SrToolsPanel.tsx
+│   │   │   └── 📝 SrUserPanel.tsx
+│   │   ├── 📁 hooks
+│   │   │   └── 📝 useSrSessionViewModel.ts
+│   │   └── 📝 SpacedRepetitionPage.tsx
+│   ├── 📝 DashboardPage.tsx
+│   ├── 📝 FastFlashcardPage.tsx
+│   ├── 📝 FlashcardPage.tsx
+│   ├── 📝 HelpPage.tsx
+│   ├── 📝 SettingsPage.tsx
+│   └── 📝 SpacedRepetitionPage.tsx
+├── 📁 styles
+│   ├── 📁 components
+│   │   ├── 📝 buttons.css
+│   │   ├── 📝 content.css
+│   │   ├── 📝 flashcards.css
+│   │   ├── 📝 help.css
+│   │   ├── 📝 modals.css
+│   │   ├── 📝 panel-layout.css
+│   │   ├── 📝 panels.css
+│   │   ├── 📝 preview.css
+│   │   ├── 📝 responsive.css
+│   │   ├── 📝 settings.css
+│   │   ├── 📝 spaced-repetition.css
+│   │   ├── 📝 stats.css
+│   │   └── 📝 utility.css
+│   ├── 📝 base.css
+│   ├── 📝 layout.css
+│   └── 📝 tokens.css
+├── 📝 App.css
+├── 📝 App.tsx
+├── 📝 main.tsx
+└── 📝 vite-env.d.ts
+
+=== Ordnerbaum (Ausgabeordner) ===
+
+📁 .
+└── 📝 index.json
+
+---
+
+## 📝 CHANGELOG.md — ./CHANGELOG.md
+
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on Keep a Changelog, and this project aims to follow Semantic Versioning.
+
+## [Unreleased]
+
+### Added
+- Initial documentation structure (README + docs/user + docs/dev + ADRs)
+
+### Changed
+
+### Fixed
+
+## [0.1.0] - TBD
+
+- Initial public baseline (placeholder)
+
+---
+
+## 📝 CONTRIBUTING.md — ./CONTRIBUTING.md
+
+# Contributing
+
+Thanks for your interest in contributing.
+
+## Development quickstart
+
+Follow the full setup guide:
+
+- `docs/dev/setup.md`
+
+## Branch / PR workflow
+
+- Create a feature branch from the default branch.
+- Keep PRs focused (one feature/fix per PR).
+- Describe:
+  - what changed,
+  - why it changed,
+  - how you tested it.
+
+## Quality guidelines
+
+- If you change evaluation/scoring logic, add tests.
+- Avoid UI regressions: keep layout changes intentional and minimal.
+- Update documentation when behavior changes (especially parsing and review rules).
+
+## Reporting issues
+
+When reporting a bug, include:
+
+- OS and version
+- steps to reproduce
+- expected vs. actual behavior
+- a minimal example `#card` block if the issue is related to parsing/review
+
+---
+
+## 📝 0001-documentation-source-of-truth.md — ./docs/adr/0001-documentation-source-of-truth.md
+
+# ADR 0001: Documentation source of truth
+
+Date: 2026-01-06
+
+## Status
+
+Accepted
+
+## Context
+
+The project needs documentation that is:
+
+- easy to review in pull requests,
+- friendly to contributors,
+- usable for both end users and developers,
+- optionally publishable as a website and exportable as PDF.
+
+## Decision
+
+Use **Markdown** files in the repository as the single source of truth for documentation:
+
+- Short overview in `README.md`
+- Full docs in `docs/`
+- Contribution guidelines in `CONTRIBUTING.md`
+- Changelog in `CHANGELOG.md`
+
+Optionally, generate a docs website (MkDocs/Docusaurus) from the same Markdown content.
+
+## Consequences
+
+- Documentation changes are versioned, reviewable, and diff-friendly.
+- Website/PDF generation can be automated later via CI without duplicating content.
+
+---
+
+## 📝 index.md — ./docs/adr/index.md
+
+# Architecture Decision Records (ADRs)
+
+ADRs capture important engineering decisions and the reasons behind them.
+
+## Index
+
+- ADR 0001: [Documentation source of truth](0001-documentation-source-of-truth.md)
+
+---
+
+## 📝 architecture.md — ./docs/dev/architecture.md
+
+# Architecture overview
+
+This document is a high-level guide to how the project is structured. It is intended for contributors.
+
+## High-level components
+
+- **Desktop application:** a cross-platform desktop UI (commonly built with React/TypeScript and packaged via Tauri).
+- **Tooling:** helper scripts to standardize installation, checks, and local development (`tools/control.py`).
+- **Features:** application modules for flashcards, fast review, spaced repetition, settings, and help.
+
+## Design goals
+
+- Local-first workflow: the vault is a folder of Markdown files.
+- Keep Markdown readable: cards are embedded using simple markers.
+- Predictable review logic: identical rules across modes for correctness and statistics.
+
+## Where to look next
+
+- Setup: `setup.md`
+- Testing: `testing.md`
+- User-facing behavior: `../user/`
+
+---
+
+## 📝 control-script.md — ./docs/dev/control-script.md
+
+# Control script (`tools/control.py`)
+
+The repository contains a Python control script intended to standardize common development tasks.
+
+## Why it exists
+
+- Reduce setup friction across OSes
+- Provide a single entry point for “doctor”, installation, and local runs
+- Keep command sequences consistent across contributors
+
+## Common commands
+
+### Health check
+
+```bash
+python3 tools/control.py --doctor
+```
+
+### Install / setup
+
+```bash
+python3 tools/control.py --install
+```
+
+### Prepare / run Tauri tooling
+
+```bash
+python3 tools/control.py --tauri
+```
+
+### Start the app
+
+```bash
+python3 tools/control.py --start
+```
+
+### Build release bundles
+
+```bash
+python3 tools/control.py --build
+```
+
+Builds the desktop app release bundles by running `pnpm tauri build`.
+Produces platform-specific bundles/installers.
+
+Notes:
+- Working directory: `apps/fmd-desktop`.
+- Requires Node + pnpm dependencies and Tauri build prerequisites for the OS.
+- Outputs are produced by Tauri under the desktop app's release bundle directory (typically `apps/fmd-desktop/src-tauri/target/release/bundle`).
+
+## Suggested workflow
+
+1. `--doctor` to verify dependencies
+2. `--install` to install dependencies / bootstrap
+3. `--tauri` to prepare Tauri prerequisites
+4. `--start` to run the app
+
+For packaging, run `--build` after `--tauri`.
+
+## When to use
+
+- Use `--start` for day-to-day development and local testing.
+- Use `--build` when you need release bundles or installers for distribution.
+
+## Extending the control script
+
+If you add new flags, keep them:
+
+- Deterministic (same inputs -> same result)
+- Safe by default (no destructive behavior without explicit confirmation)
+- Documented here and in `docs/dev/setup.md` if it affects onboarding
+
+---
+
+## 📝 index.md — ./docs/dev/index.md
+
+# Developer documentation
+
+This section explains how to build, run, and contribute to the project.
+
+## Start here
+
+- [Setup](setup.md) (run from source)
+- [Control script guide](control-script.md) (use `--build` for release bundles)
+- [Architecture overview](architecture.md)
+- [Testing](testing.md)
+- [Releases / packaging](release.md)
+
+---
+
+## 📝 release.md — ./docs/dev/release.md
+
+# Releases / Packaging
+
+This project is packaged as a desktop app (commonly via Tauri).
+
+## Local release builds (conceptual)
+
+- Ensure `--doctor` passes
+- Run install/bootstrap (`--install`)
+- Use the standard packaging command for the desktop app (Tauri bundler)
+
+Because packaging commands vary by OS and CI environment, keep the authoritative steps in CI
+and update this document whenever the release pipeline changes.
+
+## Recommended local packaging workflow
+
+Use the control script as the standard entry point for local packaging:
+
+```bash
+python3 tools/control.py --build
+```
+
+Builds the desktop app release bundles by running `pnpm tauri build`.
+Produces platform-specific bundles/installers.
+
+Notes:
+- Packaging is OS-specific; build Windows artifacts on Windows, macOS artifacts on macOS, and Linux artifacts on Linux.
+- Requires Node + pnpm dependencies and Tauri build prerequisites for the OS.
+- Outputs are produced by Tauri under the desktop app's release bundle directory (typically `apps/fmd-desktop/src-tauri/target/release/bundle`).
+
+## Recommended: CI-driven releases
+
+- Tag-based releases
+- Automated build artifacts per OS
+- Release notes sourced from `CHANGELOG.md`
+
+---
+
+## 📝 setup.md — ./docs/dev/setup.md
+
+# Developer setup (run from source)
+
+This guide describes a “fast start” flow for running the desktop app locally.
+
+Note: Example commands for Linux/macOS (Terminal).
+On Windows, use PowerShell or Git Bash; the steps are the same, only the directory path may differ.
+
+## 1) Install Python + Git & check versions
+
+```bash
+# --- Check Python (or install if missing) ---
+python3 --version || true
+
+# Linux (Debian/Ubuntu)
+sudo apt update
+sudo apt install -y python3 python3-pip git
+
+# macOS (Homebrew, if available)
+# brew install python git
+
+# Verify versions
+python3 --version
+git --version
+```
+
+## 2) Clone the repo & switch to a standard project directory
+
+```bash
+# Standard project directory (works on all systems):
+# Linux/macOS: ~/Projects
+mkdir -p ~/Projects
+cd ~/Projects
+
+# Clone repository (replace URL if needed)
+git clone https://github.com/kleiveist/FMDFlashcard.git
+cd FMDFlashcard
+```
+
+## 3) Control script (doctor / health check)
+
+```bash
+cd ~/Projects/FMDFlashcard
+
+# optional: health check / doctor
+python3 tools/control.py --doctor
+```
+
+## 4) Install & start
+
+```bash
+cd ~/Projects/FMDFlashcard
+
+# installation / setup
+python3 tools/control.py --install
+```
+
+## 5) Tauri
+
+```bash
+python3 tools/control.py --tauri
+```
+
+## 6) Start
+
+```bash
+python3 tools/control.py --start
+```
+
+## 7) Build (release bundles / native packaging)
+```bash
+cd ~/Projects/FMDFlashcard
+# build desktop app bundles (runs: pnpm tauri build)
+python3 tools/control.py --build
+```
+## If something fails
+
+- Re-run `--doctor` and review the printed checks.
+- Confirm you have a supported Node.js/pnpm toolchain if the desktop app uses them.
+- Open an issue and paste the relevant terminal output.
+
+---
+
+## 📝 testing.md — ./docs/dev/testing.md
+
+# Testing
+
+## Running tests
+
+If the project uses a monorepo layout, tests are typically run from the app workspace.
+
+Examples (adjust to your workspace names):
+
+```bash
+# From repo root
+pnpm -C apps/fmd-desktop test
+```
+
+If you only changed logic in one file, prefer running targeted tests to shorten feedback loops.
+
+## Expectations for pull requests
+
+- Add or update tests when changing evaluation logic (e.g., composite cards, result summaries).
+- Ensure lint and typechecks pass before requesting review.
+
+---
+
+## 📝 index.md — ./docs/index.md
+
+# Documentation
+
+This documentation is split into two main tracks:
+
+> If GitHub's repository navigation feels slow, use these direct links:
+>
+> **User docs**
+> - [Docs home](index.md)
+> - [User docs index](user/index.md)
+> - [Getting started](user/getting-started.md)
+> - [Flashcard syntax](user/flashcard-syntax.md)
+> - [Spaced repetition](user/spaced-repetition.md)
+> - [Settings](user/settings.md)
+> - [Troubleshooting](user/troubleshooting.md)
+>
+> **Developer docs**
+> - [Developer docs index](dev/index.md)
+> - [Setup (run from source)](dev/setup.md)
+> - [Control script](dev/control-script.md)
+> - [Architecture](dev/architecture.md)
+> - [Testing](dev/testing.md)
+> - [Releases / packaging](dev/release.md)
+>
+> **Project meta**
+> - [Contributing](../CONTRIBUTING.md)
+> - [Changelog](../CHANGELOG.md)
+> - [Security policy](../SECURITY.md)
+> - [ADR index](adr/index.md)
+
+## Section indexes
+
+- [User docs index](user/index.md)
+- [Developer docs index](dev/index.md)
+- [ADR index](adr/index.md)
+
+- **User documentation:** [User docs](user/) for app workflows and day-to-day usage.
+- **Developer documentation:** [Developer docs](dev/) for build, run, and contribution details.
+
+## Start here
+
+### Users
+
+- [Getting started](user/getting-started.md)
+- [Flashcard syntax reference](user/flashcard-syntax.md)
+- [Spaced repetition](user/spaced-repetition.md)
+- [Settings overview](user/settings.md)
+- [Troubleshooting](user/troubleshooting.md)
+
+### Developers
+
+- [Setup (run from source)](dev/setup.md)
+- [Control script guide](dev/control-script.md) (script: [control.py](../tools/control.py))
+- [Architecture overview](dev/architecture.md)
+- [Testing](dev/testing.md)
+- [Release notes / packaging](dev/release.md)
+
+---
+
+## 📝 text.md — ./docs/issus/text.md
+
+next step combinatzion von allen kartaikarten syntax 
+und noch zuküntige kommenden sytax 
+die kombinatzions sytax aus 
+Cloze Input: %% ... %% → Eingabefeld
+Drag&Drop Token: `...` → Token-Pool + Drop-Zone
+funktzionirt schon es soll dann um 
+Multiple-Choice (A/B/C/D + -x Marker) (A/B + -x Marker)
+erwitert werden 
+und das system soll zu vorbereitet sein das 
+
+die kateikaten syntax soll innahelb eine block immer combinibar sein
+# 📍 Abschnitt 4 – Anwendungsfrage (10 Punkte)
+#card 
+
+7. Welche Aussage zu NoSQL-Systemen (Document Stores) trifft zu?  
+A) Sie erfordern streng atomare Attribute  
+B) Sie speichern strukturierte Dokumente wie JSON  
+C) Sie unterstützen ausschließlich ACID-Transaktionen  
+D) Sie benötigen zwingend fest definierte Schemata  
+-b
+
+8. Gegeben ist folgende Tabelle RECHNUNG:
+
+| RechnungID | KundeID | Betrag |
+| ---------- | ------- | ------ |
+| 1          | 1       | 100.5  |
+| 2          | 1       | 250    |
+| 3          | 2       | 75.99  |
+
+Formulieren Sie eine SQL-Abfrage, die alle Rechnungen mit einem Betrag größer als 100 ausgibt.  
+Es sollen die Spalten RechnungID, KundeID und Betrag ausgegeben und das Ergebnis nach Betrag absteigend sortiert werden.
+
+%% SELECT %% RechnungID, KundeID, Betrag
+%% FROM %% `RECHNUNG`
+%% WHERE %% `Betrag > 100`
+%% ORDER BY %% `Betrag DESC;`
+#
+
+eine aufgaebn promt einmal in de und in en erstellen
+
+---
+
+## 📝 refactor-notes.md — ./docs/refactor-notes.md
+
+# Refactor notes
+
+## Fast Flashcard
+- Moved page logic into `apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts`.
+- Extracted UI panels into `apps/fmd-desktop/src/pages/fast-flashcard/components/` and kept `FastFlashcardPage` as composition-only.
+- Kept `apps/fmd-desktop/src/pages/FastFlashcardPage.tsx` as a re-export to preserve routing/imports.
+
+## Spaced Repetition
+- Moved page logic into `apps/fmd-desktop/src/pages/spaced-repetition/hooks/useSrSessionViewModel.ts`.
+- Extracted UI panels into `apps/fmd-desktop/src/pages/spaced-repetition/components/` and kept `SpacedRepetitionPage` as composition-only.
+- Kept `apps/fmd-desktop/src/pages/SpacedRepetitionPage.tsx` as a re-export to preserve routing/imports.
+
+## Stylesheets
+- Split `apps/fmd-desktop/src/App.css` into layered files under `apps/fmd-desktop/src/styles/` (`tokens.css`, `base.css`, `layout.css`) plus component files in `apps/fmd-desktop/src/styles/components/`.
+- Kept `apps/fmd-desktop/src/App.css` as an import-only aggregator to preserve the existing import in `apps/fmd-desktop/src/App.tsx` and the original cascade order.
+
+---
+
+## 📝 flashcard-syntax.md — ./docs/user/flashcard-syntax.md
+
+# Flashcard syntax reference
+
+The goal of the syntax is to keep Markdown readable while still being machine-parseable.
+
+## Card blocks
+
+A card block starts with:
+
+```md
+#card
+```
+
+Everything that follows belongs to that card until the next card block starts or the file ends.
+
+## Question / answer pairs
+
+Inside a card block, each question is written as plain text.
+The answer is written on the next line, prefixed with a dash (`-`).
+
+Example:
+
+```md
+#card
+
+What is a primary key?
+- A primary key uniquely identifies a row in a table.
+```
+
+## Composite cards (multiple Q/A pairs in one block)
+
+You can place multiple Q/A pairs inside one `#card` block. The block forms one composite card.
+
+Example:
+
+```md
+#card
+
+2NF requires every non-key attribute depends on the whole composite key. True/False?
+- True
+
+Define a foreign key.
+- A foreign key references a primary key (or a unique key) of another table to enforce referential integrity.
+```
+
+**Composite scoring rule:** the card is considered correct only if *all* answers are correct.
+
+## Formatting tips
+
+- Keep questions short and unambiguous.
+- Put only the final answer after the dash line.
+- If you need longer answers, write them as a single paragraph after the dash (still one answer).
+
+## Notes
+
+The exact parsing rules may evolve. If you encounter differences between this doc and the current app behavior,
+prefer the in-app Help and open an issue to align documentation.
+
+---
+
+## 📝 getting-started.md — ./docs/user/getting-started.md
+
+# Getting started
+
+This guide covers the shortest path from “I have Markdown notes” to “I can review cards”.
+
+## 1) Create or choose a vault folder
+
+A *vault* is simply a folder that contains your Markdown files. The app scans this folder to find
+flashcards embedded in your notes.
+
+## 2) Add your first cards to a Markdown file
+
+Create a new `.md` file (or use an existing one) and add a `#card` block.
+
+Example:
+
+```md
+#card
+
+What is 2NF (Second Normal Form)?
+- 2NF requires that every non-key attribute depends on the whole of a composite key (if a composite key exists).
+
+Define “foreign key” and give a simple example.
+- A foreign key is an attribute (or set of attributes) that references the primary key of another table to enforce referential integrity.
+```
+
+## 3) Open the app and load the vault
+
+1. Open the app.
+2. Choose your vault folder.
+3. Let the app scan your Markdown files.
+
+## 4) Start a review
+
+Pick a review mode (standard, fast, spaced repetition) and start answering cards.
+If a card contains multiple Q/A pairs inside the same `#card` block, it is treated as a *composite card*:
+the card is correct only if all parts are correct.
+
+## 5) Iterate
+
+- Add cards as you learn.
+- Refactor notes as usual—your Markdown remains readable.
+- Use Settings to tune parsing markers, review behavior, and performance options.
+
+Next: read the full syntax reference in `flashcard-syntax.md`.
+
+---
+
+## 📝 index.md — ./docs/user/index.md
+
+# User documentation
+
+This section explains how to use the app day-to-day.
+
+## Start here
+
+- [Getting started](getting-started.md)
+- [Flashcard syntax reference](flashcard-syntax.md)
+- [Spaced repetition](spaced-repetition.md)
+- [Settings overview](settings.md)
+- [Troubleshooting](troubleshooting.md)
+
+---
+
+## 📝 settings.md — ./docs/user/settings.md
+
+# Settings
+
+Settings allow you to tune how the app behaves and how it scans your vault.
+
+## Common settings areas
+
+- **Data & Sync:** where your vault is selected, how scanning works, and data storage options.
+- **Language / UI:** localization and display preferences.
+- **Performance:** options intended for larger vaults and faster scanning.
+- **Flashcard / Fast Flashcard / Spaced Repetition tools:** review-mode specific behaviors.
+
+## Recommendations
+
+- Start with default values.
+- Only change scan markers (e.g., card prefix) if you have a clear reason.
+- If you see performance warnings, enable recommended performance options and rescan.
+
+---
+
+## 📝 spaced-repetition.md — ./docs/user/spaced-repetition.md
+
+# Spaced repetition
+
+Spaced repetition helps you review cards at increasing intervals based on performance.
+
+## Concepts
+
+- **Boxes / levels:** cards move through boxes based on correct/incorrect answers.
+- **Sessions:** you review a subset of cards (often based on box selection and scheduling).
+- **Progress tracking:** the app records outcomes to influence future scheduling.
+
+## Typical workflow
+
+1. Select a box (or a scheduled set).
+2. Review cards.
+3. Cards move forward on correct answers; they may move back on incorrect answers.
+
+## Practical guidance
+
+- If you have many cards, start with a smaller daily set.
+- Be consistent: small daily sessions are more effective than rare large sessions.
+- When you change flashcard syntax or refactor notes, re-scan your vault and verify card counts.
+
+---
+
+## 📝 troubleshooting.md — ./docs/user/troubleshooting.md
+
+# Troubleshooting
+
+## The app shows “0 cards loaded”
+
+- Confirm you selected the correct vault folder.
+- Confirm your cards use the expected markers (see `flashcard-syntax.md`).
+- Rescan / reload the vault.
+
+## Clicking a view shows no cards
+
+- Make sure your current filter/box selection contains cards.
+- Verify that the vault was fully scanned and indexing completed.
+
+## UI looks off after updates
+
+- Restart the app.
+- If you recently changed theme/accent settings, toggle the theme and return to your preferred mode.
+
+## Something is inconsistent between modes (Flashcard / Fast / Spaced)
+
+- Reproduce the issue in a minimal example file.
+- Open an issue and include:
+  - a small example `#card` block,
+  - which mode you used,
+  - expected vs. actual behavior.
+
+---
+
+## 📝 README.md — ./README.md
+
+# FMDFlashcard
+
+Local-first, Markdown-based flashcards with built-in learning modes (including spaced repetition).
+
+The project is designed to work with existing Markdown notes (similar in spirit to an Obsidian-style vault),
+while adding a dedicated review experience and study progress tracking.
+
+## What you can do
+
+- Use your existing Markdown files as the source of truth for learning content.
+- Extract flashcards from Markdown using simple, readable markers.
+- Review cards in multiple modes (e.g., standard flashcards, fast mode, spaced repetition).
+- Keep your learning workflow local-first.
+
+> Note: The UX and feature set are evolving. If something is unclear, check the in-app Help and the docs in [docs](docs/).
+
+## Documentation index (fast links)
+
+If GitHub’s repository navigation feels slow, use these direct links:
+
+### User docs
+- [Docs home](docs/index.md)
+- [User docs index](docs/user/index.md)
+- [Getting started](docs/user/getting-started.md)
+- [Flashcard syntax](docs/user/flashcard-syntax.md)
+- [Spaced repetition](docs/user/spaced-repetition.md)
+- [Settings](docs/user/settings.md)
+- [Troubleshooting](docs/user/troubleshooting.md)
+
+### Developer docs
+- [Developer docs index](docs/dev/index.md)
+- [Setup (run from source)](docs/dev/setup.md)
+- [Control script](docs/dev/control-script.md)
+- [Architecture](docs/dev/architecture.md)
+- [Testing](docs/dev/testing.md)
+- [Releases / packaging](docs/dev/release.md)
+
+### Project meta
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Security policy](SECURITY.md)
+- [ADR index](docs/adr/index.md)
+
+
+## Quickstart (run from source)
+
+If you want to run the desktop app from source, follow the full setup guide:
+
+- **Developer setup:** [Setup guide](docs/dev/setup.md)
+- **Control script guide:** [Control script guide](docs/dev/control-script.md)
+
+A typical flow looks like:
+
+1. Clone this repo
+2. `python3 tools/control.py --doctor`
+3. `python3 tools/control.py --install`
+4. `python3 tools/control.py --tauri`
+5. `python3 tools/control.py --start`
+
+## Documentation
+
+- **Docs home:** [Documentation index](docs/index.md)
+- **User docs:** [User documentation](docs/user/)
+- **Developer docs:** [Developer documentation](docs/dev/)
+- **Architecture decisions:** [ADRs](docs/adr/)
+
+## Contributing
+
+See the [Contributing guide](CONTRIBUTING.md) for development workflow and pull request guidelines.
+
+## License
+
+See [License](LICENSE) (if present in this repository).
+
+---
+
+## 📝 SECURITY.md — ./SECURITY.md
+
+# Security Policy
+
+## Supported Versions
+
+This project is under active development. Security fixes may be released without notice.
+
+## Reporting a Vulnerability
+
+If you believe you found a security issue:
+
+1. Do not open a public issue with sensitive details.
+2. Contact the maintainers via a private channel (if available) or open a minimal issue asking for a secure contact method.
+
+Please include:
+
+- a description of the issue,
+- steps to reproduce,
+- impact assessment (what an attacker could do),
+- any suggested mitigation.
+
+Thank you for reporting responsibly.
+
+---
+
+## 📝 allsummary.md — ./tools/.summary/allsummary.md
+
+# Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/tools
+
+## 📝 control.py — ./control.py
+
+#!/usr/bin/env python3
+"""
+Project control entry point.
+
+Examples:
+    ./control.py --doctor
+    ./control.py --doctor --json
+"""
+
+from __future__ import annotations
+
+import argparse
+import importlib
+import inspect
+import platform
+import sys
+from pathlib import Path
+from typing import Callable, cast
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+PY_DIR = SCRIPT_DIR / "inst"
+for extra_dir in (PY_DIR, PY_DIR / "linux", PY_DIR / "mac", PY_DIR / "win"):
+    if extra_dir.exists() and str(extra_dir) not in sys.path:
+        sys.path.insert(0, str(extra_dir))
+
+from doctor import run as run_doctor  # type: ignore
+
+RunInstall = Callable[[bool], int]
+RunVsCodeInstall = Callable[[], int]
+run_doctor = cast(Callable[[bool], int], run_doctor)
+
+
+def _detect_installer_module() -> str | None:
+    """Return installer module name (without .py) based on the current OS."""
+    sys_name = platform.system().lower()
+    if sys_name == "windows":
+        return "installwin"
+    if sys_name == "darwin":
+        return "installmac"
+    if sys_name == "linux":
+        return "installuix"
+    return None
+
+
+def _load_installer_run_install() -> RunInstall | None:
+    mod_name = _detect_installer_module()
+    if not mod_name:
+        return None
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load installer module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"Installer module '{mod_name}' has no run_install(dry_run=...) function.")
+        return None
+    return cast(RunInstall, fn)
+
+
+def _load_vscode_run_install() -> RunVsCodeInstall | None:
+    mod_name = "installuixvs"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load VS Code installer module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"VS Code installer module '{mod_name}' has no run_install() function.")
+        return None
+    return cast(RunVsCodeInstall, fn)
+
+
+def _load_tauri_run_install() -> Callable[..., int] | None:
+    mod_name = "installuixtauri"
+    if platform.system().lower() != "linux":
+        print("Tauri install routine is Linux-only.")
+        return None
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load Tauri installer module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(
+            "Tauri installer module "
+            f"'{mod_name}' has no run_install(dry_run=...) function."
+        )
+        return None
+    return cast(Callable[..., int], fn)
+
+
+def _load_run_runner() -> Callable[..., int] | None:
+    """Load tools/inst/run.py (runner for pnpm tauri dev)."""
+    mod_name = "run"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load run module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"Run module '{mod_name}' has no run_install(dry_run=...) function.")
+        return None
+    return cast(Callable[..., int], fn)
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Project toolbox launcher.")
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Runs the system/tooling check.",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Alias for --doctor.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Additional JSON output for --doctor.",
+    )
+    parser.add_argument(
+        "--install",
+        action="store_true",
+        help="Installs missing dependencies via the matching install script (win/uix/mac).",
+    )
+    parser.add_argument(
+        "--VScode",
+        "--vscode",
+        dest="vscode",
+        action="store_true",
+        help="Installs Visual Studio Code (Linux).",
+    )
+    parser.add_argument(
+        "--tauri",
+        action="store_true",
+        help="Installs Tauri prerequisites (Linux).",
+    )
+    parser.add_argument(
+        "--run",
+        "--start",
+        dest="run",
+        action="store_true",
+        help="Runs the Tauri desktop app (pnpm tauri dev).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Only show which commands would run.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv or sys.argv[1:])
+    exit_code = 0
+    handled = False
+
+    if args.install:
+        handled = True
+        run_install = _load_installer_run_install()
+        if not run_install:
+            print(
+                "No matching installation routine found. "
+                "Expected: tools/inst/win/installwin.py, "
+                "tools/inst/linux/installuix.py, or tools/inst/mac/installmac.py"
+            )
+            exit_code = max(exit_code, 1)
+        else:
+            exit_code = max(exit_code, run_install(args.dry_run))
+
+    if args.vscode:
+        handled = True
+        run_vscode = _load_vscode_run_install()
+        if not run_vscode:
+            print("No VS Code install routine found. Expected: tools/inst/linux/installuixvs.py")
+            exit_code = max(exit_code, 1)
+        else:
+            exit_code = max(exit_code, run_vscode())
+
+    if args.tauri:
+        handled = True
+        run_tauri = _load_tauri_run_install()
+        if not run_tauri:
+            print("No Tauri install routine found. Expected: tools/inst/linux/installuixtauri.py")
+            exit_code = max(exit_code, 1)
+        else:
+            # Accept run_install() or run_install(dry_run)
+            try:
+                sig = inspect.signature(run_tauri)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_tauri())
+                else:
+                    exit_code = max(exit_code, run_tauri(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_tauri(args.dry_run))
+
+    if args.run:
+        handled = True
+        run_runner = _load_run_runner()
+        if not run_runner:
+            print("No run routine found. Expected: tools/inst/run.py")
+            exit_code = max(exit_code, 1)
+        else:
+            try:
+                sig = inspect.signature(run_runner)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_runner())
+                else:
+                    exit_code = max(exit_code, run_runner(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_runner(args.dry_run))
+
+    if args.doctor or args.check:
+        handled = True
+        exit_code = max(exit_code, run_doctor(args.json))
+
+    if not handled:
+        print("Please specify a command (e.g. --doctor, --install, --tauri, or --start/--run).")
+        return 1
+
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+---
+
+## 📝 pacman_keyring_fix.py — ./fixes/pacman_keyring_fix.py
+
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+from typing import Sequence
+
+SIG_ERR = re.compile(
+    r"(Signatur von .* ist ungültig|Ungültiges oder beschädigtes Paket.*PGP|"
+    r"signature from .* is invalid|invalid or corrupted package.*PGP)",
+    re.IGNORECASE,
+)
+
+
+def should_apply(pacman_output: str) -> bool:
+    return bool(SIG_ERR.search(pacman_output or ""))
+
+
+def apply(dry_run: bool = False) -> int:
+    cmd: Sequence[str] = [
+        "sudo",
+        "pacman",
+        "-Syyu",
+        "archlinux-keyring",
+        "cachyos-keyring",
+    ]
+    print("▶", " ".join(cmd))
+    if dry_run:
+        return 0
+    p = subprocess.run(cmd)
+    return p.returncode
+
+
+if __name__ == "__main__":
+    dry_run = "--dry-run" in sys.argv
+    raise SystemExit(apply(dry_run=dry_run))
+
+---
+
+## 📝 doctor.py — ./inst/doctor.py
+
+#!/usr/bin/env python3
+"""
+Environment doctor/check script used by `tools/control.py`.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import platform
+import shutil
+import subprocess
+from pathlib import Path
+from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional
+
+
+@dataclass
+class Check:
+    name: str
+    ok: bool
+    details: str
+    category: str
+
+
+ICONS = {
+    "ok": "✅",
+    "miss": "❌",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "dot": "•",
+}
+
+CRITICAL_CATEGORIES = (
+    "Core Tools",
+    "Rust",
+    "Node",
+    "Tauri System Libs",
+)
+
+
+def run_cmd(cmd: List[str]) -> Optional[str]:
+    try:
+        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
+        return out.strip()
+    except Exception:
+        return None
+
+
+def which(cmd: str) -> Optional[str]:
+    return shutil.which(cmd)
+
+
+def _cargo_home() -> Path:
+    cargo_home = os.environ.get("CARGO_HOME")
+    if cargo_home:
+        return Path(cargo_home).expanduser()
+    return Path.home() / ".cargo"
+
+
+def _resolve_tool_with_cargo_bin(cmd: str, cargo_bin: Path) -> tuple[Optional[str], bool]:
+    found = which(cmd)
+    if found:
+        return found, False
+    candidate = cargo_bin / cmd
+    if candidate.exists() and os.access(candidate, os.X_OK):
+        return str(candidate), True
+    return None, False
+
+
+def _with_path_hint(details: str, from_cargo: bool, cargo_env: Path, cargo_bin: Path) -> str:
+    if not from_cargo:
+        return details
+    if cargo_env.exists():
+        return f"{details} (not in PATH; run 'source {cargo_env}')"
+    return f"{details} (not in PATH; add {cargo_bin} to PATH)"
+
+
+def header(title: str) -> None:
+    line = "═" * (len(title) + 2)
+    print(f"\n{line}\n {title}\n{line}")
+
+
+def print_checks(checks: List[Check]) -> None:
+    cats: Dict[str, List[Check]] = {}
+    for c in checks:
+        cats.setdefault(c.category, []).append(c)
+
+    for cat in cats:
+        print(f"\n{ICONS['dot']} {cat}")
+        for c in cats[cat]:
+            icon = ICONS["ok"] if c.ok else ICONS["miss"]
+            print(f"  {icon} {c.name:<18} {c.details}")
+
+
+def collect_checks() -> List[Check]:
+    checks: List[Check] = []
+
+    system = platform.system().lower()
+
+    shell = os.environ.get("SHELL", "unknown")
+    checks.append(Check("SHELL", True, shell, "Shell"))
+
+    path = os.environ.get("PATH", "")
+    path_entries = path.split(os.pathsep) if path else []
+    top = path_entries[:8]
+    checks.append(
+        Check(
+            "PATH (Top 8)",
+            True,
+            "\n" + "\n".join([f"    {i+1}. {p}" for i, p in enumerate(top)]),
+            "Shell",
+        )
+    )
+
+    for tool in ["git", "curl", "file", "pkg-config", "cmake", "make", "gcc", "g++"]:
+        p = which(tool)
+        if p:
+            checks.append(Check(tool, True, f"{p}", "Core Tools"))
+        else:
+            checks.append(Check(tool, False, "not found", "Core Tools"))
+
+    cargo_home = _cargo_home()
+    cargo_bin = cargo_home / "bin"
+    cargo_env = cargo_home / "env"
+    rustup, rustup_from_cargo = _resolve_tool_with_cargo_bin("rustup", cargo_bin)
+    rustc, rustc_from_cargo = _resolve_tool_with_cargo_bin("rustc", cargo_bin)
+    cargo, cargo_from_cargo = _resolve_tool_with_cargo_bin("cargo", cargo_bin)
+
+    if rustup:
+        v = run_cmd([rustup, "--version"]) or "version unavailable"
+        active = run_cmd([rustup, "show", "active-toolchain"]) or "(active toolchain unknown)"
+        checks.append(
+            Check(
+                "rustup",
+                True,
+                _with_path_hint(v, rustup_from_cargo, cargo_env, cargo_bin),
+                "Rust",
+            )
+        )
+        checks.append(
+            Check(
+                "toolchain",
+                True,
+                _with_path_hint(active, rustup_from_cargo, cargo_env, cargo_bin),
+                "Rust",
+            )
+        )
+    else:
+        checks.append(Check("rustup", False, "not found", "Rust"))
+
+    if rustc:
+        v = run_cmd([rustc, "-V"]) or "version unavailable"
+        checks.append(
+            Check("rustc", True, _with_path_hint(v, rustc_from_cargo, cargo_env, cargo_bin), "Rust")
+        )
+    else:
+        checks.append(Check("rustc", False, "not found", "Rust"))
+
+    if cargo:
+        v = run_cmd([cargo, "-V"]) or "version unavailable"
+        checks.append(
+            Check("cargo", True, _with_path_hint(v, cargo_from_cargo, cargo_env, cargo_bin), "Rust")
+        )
+    else:
+        checks.append(Check("cargo", False, "not found", "Rust"))
+
+    node = which("node")
+    npm = which("npm")
+    pnpm = which("pnpm")
+
+    if node:
+        checks.append(Check("node", True, run_cmd(["node", "-v"]) or node, "Node"))
+    else:
+        checks.append(Check("node", False, "not found", "Node"))
+
+    if npm:
+        checks.append(Check("npm", True, run_cmd(["npm", "-v"]) or npm, "Node"))
+    else:
+        checks.append(Check("npm", False, "not found", "Node"))
+
+    if pnpm:
+        checks.append(Check("pnpm", True, run_cmd(["pnpm", "-v"]) or pnpm, "Node"))
+    else:
+        checks.append(Check("pnpm", True, "not installed (optional)", "Node"))
+
+    # Tauri / WebView dependencies are OS + distro specific.
+    # We check them only on Linux, using the available package manager.
+    deps = ["gtk3", "webkit2gtk", "libappindicator-gtk3", "librsvg", "openssl"]
+    pacman = which("pacman")
+    dpkg_query = which("dpkg-query")
+
+    # Debian/Ubuntu package names for the above logical deps.
+    debian_pkg = {
+        "gtk3": ["libgtk-3-dev"],
+        "webkit2gtk": ["libwebkit2gtk-4.1-dev", "libwebkit2gtk-4.0-dev"],
+        "libappindicator-gtk3": ["libayatana-appindicator3-dev", "libappindicator3-dev"],
+        "librsvg": ["librsvg2-dev"],
+        "openssl": ["libssl-dev"],
+    }
+    arch_pkg = {
+        "gtk3": ["gtk3"],
+        "webkit2gtk": ["webkit2gtk-4.1", "webkit2gtk"],
+        "libappindicator-gtk3": ["libappindicator", "libappindicator-gtk3"],
+        "librsvg": ["librsvg"],
+        "openssl": ["openssl"],
+    }
+
+    if system == "linux" and pacman:
+        for d in deps:
+            found = None
+            for pkg in arch_pkg.get(d, [d]):
+                q = run_cmd(["pacman", "-Q", pkg])
+                if q:
+                    found = q
+                    break
+            if found:
+                checks.append(Check(d, True, found, "Tauri System Libs"))
+            else:
+                checks.append(Check(d, False, "not installed", "Tauri System Libs"))
+    elif system == "linux" and dpkg_query:
+        for d in deps:
+            pkgs = debian_pkg[d]
+            found_pkg = None
+            found_status = None
+            for pkg in pkgs:
+                q = run_cmd(["dpkg-query", "-W", "-f=${Status} ${Version}", pkg])
+                if q and "install ok installed" in q:
+                    found_pkg = pkg
+                    found_status = q
+                    break
+            if found_pkg:
+                checks.append(Check(d, True, f"{found_pkg}: {found_status}", "Tauri System Libs"))
+            else:
+                checks.append(
+                    Check(d, False, f"{'/'.join(pkgs)}: not installed", "Tauri System Libs")
+                )
+    else:
+        # Non-Linux systems or unknown Linux distros: don't fail the doctor on these.
+        for d in deps:
+            checks.append(Check(d, True, "skipped (Linux package check only)", "Tauri System Libs"))
+
+    sqlite = which("sqlite3")
+    if sqlite:
+        checks.append(Check("sqlite3", True, run_cmd(["sqlite3", "--version"]) or sqlite, "Optional"))
+    else:
+        checks.append(Check("sqlite3", True, "not installed (optional)", "Optional"))
+
+    return checks
+
+
+def summarize(checks: List[Check]) -> None:
+    header("Summary")
+    missing = missing_checks(checks, categories=CRITICAL_CATEGORIES)
+    if not missing:
+        print(f"{ICONS['ok']} All required tools are present.")
+    else:
+        print(f"{ICONS['warn']} Missing / required for Tauri:")
+        for c in missing:
+            print(f"  {ICONS['miss']} {c.name}  ({c.category})")
+
+
+def run(want_json: bool = False) -> int:
+    checks = collect_checks()
+    header("Terminal Checkup")
+    print_checks(checks)
+    summarize(checks)
+
+    if want_json:
+        print("\nJSON:")
+        payload = [asdict(c) for c in checks]
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+
+    return 0
+
+
+def missing_checks(
+    checks: List[Check], categories: Optional[List[str] | tuple[str, ...]] = None
+) -> List[Check]:
+    wanted = categories or CRITICAL_CATEGORIES
+    return [c for c in checks if (not c.ok) and (c.category in wanted)]
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())
+
+---
+
+## 📝 installuix.py — ./inst/linux/installuix.py
+
+#!/usr/bin/env python3
+"""
+Linux dispatcher installer.
+
+Selects a distro-specific installer module:
+- installuixarc.py (Arch/pacman)
+- installuixubu.py (Ubuntu/apt)
+- installuixdeb.py (Debian/apt)
+
+Exposes: run_install(dry_run: bool = False) -> int
+"""
+
+from __future__ import annotations
+
+import importlib
+import shutil
+from pathlib import Path
+from typing import Dict
+
+
+def _read_os_release() -> Dict[str, str]:
+    data: Dict[str, str] = {}
+    p = Path("/etc/os-release")
+    if not p.exists():
+        return data
+    for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        v = v.strip().strip('"').strip("'")
+        data[k.strip()] = v
+    return data
+
+
+def _pick_module() -> str:
+    # Prefer package manager detection first
+    if shutil.which("pacman"):
+        return "installuixarc"
+    if shutil.which("apt-get"):
+        osr = _read_os_release()
+        os_id = (osr.get("ID") or "").lower()
+        like = (osr.get("ID_LIKE") or "").lower()
+
+        if os_id == "ubuntu" or "ubuntu" in like:
+            return "installuixubu"
+        if os_id == "debian" or "debian" in like:
+            return "installuixdeb"
+
+        # apt-based fallback: choose Debian-style defaults
+        return "installuixdeb"
+
+    # Last fallback: try Debian-style anyway (will error nicely if apt-get is absent)
+    return "installuixdeb"
+
+
+def run_install(dry_run: bool = False) -> int:
+    mod_name = _pick_module()
+    mod = importlib.import_module(mod_name)
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        raise SystemExit(f"Installer module '{mod_name}' has no run_install(dry_run=...)")
+    return int(fn(dry_run))
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    raise SystemExit(run_install(dry_run=ap.parse_args().dry_run))
+
+---
+
+## 📝 installuixarc.py — ./inst/linux/installuixarc.py
+
+#!/usr/bin/env python3
+"""
+Arch Linux installer (pacman-based).
+
+Exposes: run_install(dry_run: bool = False) -> int
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Dict, Iterable, List, Set
+
+from doctor import Check, CRITICAL_CATEGORIES, collect_checks, missing_checks
+
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+}
+
+PackageMap = Dict[str, Iterable[str]]
+
+# Arch/pacman package mapping (dedup happens automatically).
+PACMAN_MAP: PackageMap = {
+    # Core tools
+    "git": ["git"],
+    "curl": ["curl"],
+    "file": ["file"],
+    "pkg-config": ["pkgconf"],
+    "cmake": ["cmake"],
+    "make": ["make"],
+    "gcc": ["gcc"],
+    "g++": ["gcc"],
+    # Rust
+    "rustup": ["rustup"],
+    "rustc": ["rust"],
+    "cargo": ["rust"],
+    # Node
+    "node": ["nodejs"],
+    "npm": ["npm"],
+    # Tauri / WebView deps
+    "gtk3": ["gtk3"],
+    "webkit2gtk": ["webkit2gtk"],
+    "libappindicator-gtk3": ["libappindicator-gtk3"],
+    "librsvg": ["librsvg"],
+    "openssl": ["openssl"],
+}
+
+# If you want fully interactive installs, set FMD_PACMAN_NOCONFIRM=0
+PACMAN_NOCONFIRM = os.environ.get("FMD_PACMAN_NOCONFIRM", "1") != "0"
+# Optional: do a full sync+upgrade before installing. Set FMD_PACMAN_UPGRADE=0 to disable.
+PACMAN_UPGRADE = os.environ.get("FMD_PACMAN_UPGRADE", "1") != "0"
+
+
+def _gather_missing_tool_names(checks: List[Check]) -> List[str]:
+    missing = missing_checks(checks, categories=CRITICAL_CATEGORIES)
+    return [m.name for m in missing]
+
+
+def _expand_packages(tools: Iterable[str]) -> tuple[list[str], list[str]]:
+    pkgs: Set[str] = set()
+    unknown: List[str] = []
+
+    for tool in tools:
+        entries = PACMAN_MAP.get(tool)
+        if entries is None:
+            unknown.append(tool)
+            continue
+        for pkg in entries:
+            if pkg:
+                pkgs.add(pkg)
+
+    return (sorted(pkgs), unknown)
+
+
+def _run_cmd(cmd: list[str], dry_run: bool) -> int:
+    print(f"{ICONS['run']} {' '.join(cmd)}")
+    if dry_run:
+        print(f"{ICONS['info']} Dry run: skipping execution.")
+        return 0
+    try:
+        subprocess.run(cmd, check=True)
+        return 0
+    except subprocess.CalledProcessError as e:
+        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
+        return int(e.returncode) if e.returncode is not None else 1
+
+
+def _run_capture(cmd: list[str], dry_run: bool) -> tuple[int, str]:
+    print(f"{ICONS['run']} {' '.join(cmd)}")
+    if dry_run:
+        print(f"{ICONS['info']} Dry run: skipping execution.")
+        return 0, ""
+    try:
+        p = subprocess.run(
+            cmd,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        return p.returncode, (p.stdout or "")
+    except OSError as e:
+        print(f"{ICONS['err']} Error running: {' '.join(cmd)} ({e})")
+        return 1, ""
+
+
+def _maybe_run_pacman_keyring_fix(pacman_output: str, dry_run: bool) -> bool:
+    # tools/fixes/pacman_keyring_fix.py
+    fix_script = Path(__file__).resolve().parents[2] / "fixes" / "pacman_keyring_fix.py"
+    if not fix_script.exists():
+        return False
+
+    spec = importlib.util.spec_from_file_location("pacman_keyring_fix", fix_script)
+    if spec is None or spec.loader is None:
+        print(f"{ICONS['warn']} Unable to load pacman keyring fix module spec.")
+        return False
+
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as e:
+        print(f"{ICONS['warn']} Unable to load pacman keyring fix: {e}")
+        return False
+
+    should_apply = getattr(module, "should_apply", None)
+    if not callable(should_apply):
+        print(f"{ICONS['warn']} pacman_keyring_fix missing should_apply().")
+        return False
+
+    if not should_apply(pacman_output):
+        return False
+
+    rc, _ = _run_capture([sys.executable, str(fix_script)], dry_run=dry_run)
+    return rc == 0
+
+
+def _install_pacman(packages: list[str], dry_run: bool) -> int:
+    if not packages:
+        print(f"{ICONS['ok']} Everything is already installed (per Doctor).")
+        return 0
+
+    if not shutil.which("pacman"):
+        print(f"{ICONS['err']} pacman not found. This installer is for Arch/pacman systems.")
+        return 1
+
+    base_flags = ["sudo", "pacman"]
+    if PACMAN_UPGRADE:
+        # Keep system consistent (avoids partial upgrades / dependency weirdness)
+        upgrade_cmd = [*base_flags, "-Syu"]
+        if PACMAN_NOCONFIRM:
+            upgrade_cmd.insert(3, "--noconfirm")
+        rc = _run_cmd(upgrade_cmd, dry_run=dry_run)
+        if rc != 0:
+            return rc
+
+    install_cmd = [*base_flags, "-S", "--needed"]
+    if PACMAN_NOCONFIRM:
+        install_cmd.append("--noconfirm")
+    install_cmd.extend(packages)
+
+    rc, out = _run_capture(install_cmd, dry_run)
+    if rc == 0:
+        return 0
+
+    # Try keyring fix if it looks like a signature/key issue
+    if _maybe_run_pacman_keyring_fix(out, dry_run=dry_run):
+        rc2, out2 = _run_capture(install_cmd, dry_run)
+        if rc2 == 0:
+            return 0
+        if out2:
+            print(out2)
+        return rc2
+
+    if out:
+        print(out)
+    return rc
+
+
+def run_install(dry_run: bool = False) -> int:
+    checks = collect_checks()
+    missing_tools = _gather_missing_tool_names(checks)
+    packages, unknown = _expand_packages(missing_tools)
+
+    if not missing_tools:
+        print(f"{ICONS['ok']} No missing tools per Doctor.")
+        return 0
+
+    print(f"{ICONS['info']} Installer: Arch/pacman")
+    print(f"{ICONS['warn']} Missing tools per Doctor: {', '.join(missing_tools)}")
+
+    if unknown:
+        print(f"{ICONS['warn']} No mapping for these tools (ignored): {', '.join(unknown)}")
+
+    print(f"{ICONS['info']} Installing packages: {', '.join(packages)}")
+    return _install_pacman(packages, dry_run=dry_run)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    raise SystemExit(run_install(dry_run=ap.parse_args().dry_run))
+
+---
+
+## 📝 installuixdeb.py — ./inst/linux/installuixdeb.py
+
+#!/usr/bin/env python3
+"""
+Debian installer (apt-get).
+
+Rust is installed via official rustup script to avoid apt conflicts and version drift.
+Exposes: run_install(dry_run: bool = False) -> int
+"""
+
+from __future__ import annotations
+
+# Debian == Ubuntu implementation for now (same logic, different defaults/fallbacks)
+from installuixubu import run_install  # re-export
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    raise SystemExit(run_install(dry_run=ap.parse_args().dry_run))
+
+---
+
+## 📝 installuixtauri.py — ./inst/linux/installuixtauri.py
+
+#!/usr/bin/env python3
+"""Linux-only: prepare Tauri dev env + scaffold a pnpm + React/TS Tauri app.
+
+Stages (order):
+1) WASD libs (WebKit2GTK + GUI deps)
+2) Build deps (cc/make/pkg-config)
+3) Node tooling (node/npm + pnpm)
+4) Rust toolchain (rustup + stable toolchain)
+5) Scaffold (create-tauri-app) + pnpm install (+ optional dev)
+
+Entry for tools/control.py: run_install(dry_run: bool=False) -> int
+"""
+
+from __future__ import annotations
+
+import argparse, os, platform, shutil, subprocess, sys
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+ICONS: Dict[str, str] = {
+    "ok": "✅", "info": "ℹ️", "warn": "⚠️", "err": "❌", "run": "▶️",
+    "step": "🧩", "box": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+}
+_DRY_RUN = False
+
+def eprint(*a: object) -> None: print(*a, file=sys.stderr)
+
+def section(title: str) -> None:
+    print(f"\n{ICONS['box']}\n{ICONS['step']} {title}\n{ICONS['box']}\n")
+
+def run(cmd: List[str], *, cwd: Optional[Path]=None, env: Optional[Dict[str,str]]=None, check: bool=True) -> subprocess.CompletedProcess:
+    cwd_txt = f" (cwd={cwd})" if cwd else ""
+    print(f"{ICONS['run']} {' '.join(cmd)}{cwd_txt}")
+    if _DRY_RUN:
+        return subprocess.CompletedProcess(cmd, 0)
+    proc = subprocess.run(cmd, cwd=str(cwd) if cwd else None, env=env, text=True)
+    if check and proc.returncode != 0:
+        raise RuntimeError(f"Command failed (exit {proc.returncode}): {' '.join(cmd)}")
+    return proc
+
+def cmd_ok(cmd: List[str]) -> bool:
+    if _DRY_RUN: return True
+    try: return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+    except Exception: return False
+
+def which(cmd: str) -> Optional[str]: return shutil.which(cmd)
+
+def display_available() -> bool:
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+def ensure_not_root() -> None:
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        raise RuntimeError("Please run as a normal user (not root).")
+
+def read_os_release() -> Dict[str, str]:
+    p = Path("/etc/os-release")
+    if not p.exists(): return {}
+    out: Dict[str, str] = {}
+    for line in p.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line: continue
+        k, v = line.split("=", 1)
+        out[k] = v.strip().strip('"')
+    return out
+
+def detect_linux_family() -> Tuple[str, Dict[str, str]]:
+    osr = read_os_release()
+    os_id = (osr.get("ID") or "").lower()
+    like = (osr.get("ID_LIKE") or "").lower().split()
+    if os_id in {"debian","ubuntu"} or "debian" in like or "ubuntu" in like: return "debian", osr
+    if os_id in {"arch","manjaro","endeavouros","cachyos"} or "arch" in like: return "arch", osr
+    if which("apt-get") or which("apt"): return "debian", osr
+    if which("pacman"): return "arch", osr
+    return "unknown", osr
+
+def pkg_config_exists(name: str) -> bool:
+    return which("pkg-config") is not None and cmd_ok(["pkg-config","--exists",name])
+
+def need_wasd_deps() -> bool:
+    for r in ["webkit2gtk-4.1","gtk+-3.0","openssl","librsvg-2.0"]:
+        if not pkg_config_exists(r): return True
+    return False
+
+def need_build_deps() -> bool:
+    return any(which(c) is None for c in ["cc","make","pkg-config"])
+
+def rust_ready() -> bool:
+    # which(rustc) may be a rustup shim; we require the toolchain to be active.
+    return cmd_ok(["rustc","--version"]) and cmd_ok(["cargo","--version"])
+
+def _install_apt(pkgs: List[str]) -> None:
+    env = dict(os.environ); env["DEBIAN_FRONTEND"] = "noninteractive"
+    run(["sudo","apt-get","update"], env=env)
+    run(["sudo","apt-get","install","-y",*pkgs], env=env)
+
+def _install_pacman(pkgs: List[str]) -> None:
+    run(["sudo","pacman","-S","--needed","--noconfirm",*pkgs])
+
+def install_wasd_deps(family: str) -> None:
+    if family == "debian":
+        pkgs = [
+            "libwebkit2gtk-4.1-dev","libgtk-3-dev","libssl-dev","libxdo-dev",
+            "librsvg2-dev","libayatana-appindicator3-dev","pkg-config"
+        ]
+        if not display_available():
+            pkgs.append("xvfb")
+        _install_apt(pkgs)
+        return
+    if family == "arch":
+        _install_pacman([
+            "webkit2gtk-4.1","gtk3","openssl","xdotool","librsvg",
+            "appmenu-gtk-module","libappindicator-gtk3","pkgconf"
+        ])
+        return
+    raise RuntimeError(f"Unsupported Linux family for auto-install: {family}")
+
+def install_build_deps(family: str) -> None:
+    if family == "debian": _install_apt(["build-essential","curl","wget","file","pkg-config"]); return
+    if family == "arch": _install_pacman(["base-devel","curl","wget","file","pkgconf"]); return
+    raise RuntimeError(f"Unsupported Linux family for auto-install: {family}")
+
+def install_node_deps(family: str) -> None:
+    if family == "debian": _install_apt(["nodejs","npm"]); return
+    if family == "arch": _install_pacman(["nodejs","npm","pnpm"]); return
+    raise RuntimeError(f"Unsupported Linux family for auto-install: {family}")
+
+def install_rustup_pkg(family: str) -> None:
+    if family == "debian": _install_apt(["rustup"]); return
+    if family == "arch": _install_pacman(["rustup"]); return
+    raise RuntimeError(f"Unsupported Linux family for auto-install: {family}")
+
+def ensure_pnpm(family: str) -> None:
+    if which("pnpm"): print(f"{ICONS['ok']} pnpm gefunden."); return
+    if _DRY_RUN: print(f"{ICONS['info']} pnpm fehlt; dry-run wuerde installieren."); return
+
+    # Arch: prefer pacman (avoids npm -g permission/EACCES).
+    if family == "arch" and which("pacman"):
+        try: _install_pacman(["pnpm"])
+        except Exception: pass
+        if which("pnpm"): print(f"{ICONS['ok']} pnpm installiert (pacman)."); return
+
+    # Prefer corepack when available.
+    if which("corepack"):
+        run(["corepack","enable"], check=False)
+        run(["corepack","prepare","pnpm@latest","--activate"], check=False)
+        if which("pnpm"): print(f"{ICONS['ok']} pnpm aktiviert (corepack)."); return
+
+    # Fallback: npm -g (may require sudo).
+    if which("npm"):
+        try: run(["npm","i","-g","pnpm"], check=True)
+        except Exception: run(["sudo","npm","i","-g","pnpm"], check=True)
+        if which("pnpm"): print(f"{ICONS['ok']} pnpm installiert (npm -g)."); return
+
+    raise RuntimeError("Could not install/enable pnpm automatically.")
+
+def ensure_rust(family: str) -> None:
+    if rust_ready(): print(f"{ICONS['ok']} Rust Toolchain aktiv."); return
+    if _DRY_RUN: print(f"{ICONS['info']} Rust fehlt/inaktiv; dry-run wuerde rustup+stable installieren."); return
+
+    if which("rustup") is None:
+        try: install_rustup_pkg(family)
+        except Exception: pass
+
+    if which("rustup") is None:
+        # Fallback: official installer
+        if which("bash") and which("curl"):
+            run(["bash","-lc","curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"])
+        else:
+            raise RuntimeError("Rust not found. Install rustup or rustc/cargo.")
+
+    # This fixes the log case: rustup installed but "no active toolchain".
+    run(["rustup","toolchain","install","stable"], check=False)
+    run(["rustup","default","stable"], check=False)
+
+    if not rust_ready():
+        raise RuntimeError("Rust installed but rustc/cargo still not usable. Open a new shell and re-run.")
+    print(f"{ICONS['ok']} Rust Toolchain aktiviert (stable).")
+
+def report_rust_status() -> None:
+    section("Rust Status")
+    def ver(cmd: str) -> str:
+        try:
+            p = subprocess.run([cmd,"--version"], capture_output=True, text=True)
+            return p.stdout.strip() if p.returncode == 0 else f"{cmd} not available"
+        except Exception:
+            return f"{cmd} not available"
+    print(f"{ICONS['info']} rustc: {which('rustc') or '-'} ({ver('rustc')})")
+    print(f"{ICONS['info']} cargo: {which('cargo') or '-'} ({ver('cargo')})")
+    if which("rustup"):
+        p = subprocess.run(["rustup","show"], capture_output=True, text=True)
+        if p.returncode == 0: print(f"{ICONS['info']} rustup show:\n{p.stdout.strip()}")
+    print(f"{ICONS['ok']} Rust bereit." if rust_ready() else f"{ICONS['warn']} Rust noch nicht bereit.")
+
+def ensure_target_dir(target_dir: Path, force: bool) -> bool:
+    if target_dir.exists():
+        if force or (target_dir.is_dir() and not any(target_dir.iterdir())): return True
+        print(f"{ICONS['warn']} Target exists and is not empty: {target_dir}")
+        print(f"{ICONS['info']} Skipping scaffold; continuing with install steps in that directory.")
+        return False
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    return True
+
+def scaffold_project(target_dir: Path, template: str, identifier: str) -> None:
+    section("Scaffold (create-tauri-app)")
+    # create-tauri-app supports: --manager, --template, --yes, --identifier
+    run([
+        "pnpm","create","tauri-app",
+        "--template",template,
+        "--manager","pnpm",
+        "--yes",
+        "--identifier",identifier,
+        str(target_dir)
+    ])
+
+def main(argv: Optional[List[str]] = None) -> int:
+    ap = argparse.ArgumentParser(description="Prepare Linux for Tauri (WASD libs, pnpm, rustup, scaffold).")
+    ap.add_argument("--target", default="apps/fmd-desktop")
+    ap.add_argument("--template", default="react-ts")
+    ap.add_argument("--identifier", default="com.fmd.flashcard")
+    ap.add_argument("--repo-root", default=None)
+    ap.add_argument("--skip-system-deps", action="store_true")
+    ap.add_argument("--full-upgrade-arch", action="store_true")
+    ap.add_argument("--skip-install", action="store_true")
+    ap.add_argument("--dev", action="store_true")
+    ap.add_argument("--force", action="store_true")
+    args = ap.parse_args(argv)
+
+    if platform.system().lower() != "linux":
+        eprint("This script is Linux-only."); return 2
+
+    try:
+        ensure_not_root()
+        family, osr = detect_linux_family()
+
+        # tools/inst/linux/installuixtauri.py -> parents[3] == repo root
+        repo_root = (
+            Path(args.repo_root).expanduser().resolve()
+            if args.repo_root
+            else Path(__file__).resolve().parents[3]
+        )
+        target_dir = (repo_root / args.target).resolve()
+
+        section("Context")
+        print(f"{ICONS['info']} Detected distro family: {family} (ID={osr.get('ID')})")
+        print(f"{ICONS['info']} Repo root: {repo_root}")
+        print(f"{ICONS['info']} Target dir: {target_dir}")
+
+        if not args.skip_system_deps and family != "unknown":
+            if family == "arch" and args.full_upgrade_arch:
+                section("Arch: Full upgrade"); run(["sudo","pacman","-Syu","--noconfirm"])
+
+            section("System deps: WASD libs (WebView/GUI)")
+            if need_wasd_deps():
+                print(f"{ICONS['warn']} Missing -> installing...")
+                install_wasd_deps(family)
+            else:
+                print(f"{ICONS['ok']} OK -> skipping.")
+
+            section("System deps: Build toolchain")
+            if need_build_deps():
+                print(f"{ICONS['warn']} Missing -> installing...")
+                install_build_deps(family)
+            else:
+                print(f"{ICONS['ok']} OK -> skipping.")
+
+            section("System deps: Node tooling")
+            if which("node") is None or which("npm") is None:
+                print(f"{ICONS['warn']} Missing -> installing...")
+                install_node_deps(family)
+            else:
+                print(f"{ICONS['ok']} OK -> skipping.")
+        else:
+            section("System deps")
+            print(f"{ICONS['info']} Skipped (requested or unknown distro).")
+
+        section("Ensure pnpm"); ensure_pnpm(family)
+        section("Ensure Rust toolchain"); ensure_rust(family); report_rust_status()
+
+        if ensure_target_dir(target_dir, force=args.force):
+            scaffold_project(target_dir, template=args.template, identifier=args.identifier)
+
+        if not args.skip_install:
+            section("pnpm install"); run(["pnpm","install"], cwd=target_dir)
+        if args.dev:
+            section("pnpm tauri dev"); run(["pnpm","tauri","dev"], cwd=target_dir)
+
+        section("Done")
+        print(f"{ICONS['ok']} Fertig.")
+        if not args.dev:
+            print(f"{ICONS['info']} Next:")
+            print("  python3 tools/control.py --start")
+            if not display_available():
+                print("  (headless) xvfb-run -a pnpm tauri dev")
+            print(f"  oder: cd {target_dir} && pnpm tauri dev")
+        return 0
+    except Exception as ex:
+        eprint(f"{ICONS['err']} {ex}"); return 1
+
+def run_install(dry_run: bool = False) -> int:
+    global _DRY_RUN
+    _DRY_RUN = dry_run
+    return main([])
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+---
+
+## 📝 installuixubu.py — ./inst/linux/installuixubu.py
+
+#!/usr/bin/env python3
+"""
+Ubuntu installer (apt-get).
+
+Rust is installed via official rustup script to avoid apt rustup/cargo/rustc conflicts.
+Exposes: run_install(dry_run: bool = False) -> int
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Dict, Iterable, List, Set
+
+from doctor import Check, CRITICAL_CATEGORIES, collect_checks, missing_checks
+
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+}
+
+PackageMap = Dict[str, Iterable[str]]
+
+APT_MAP: PackageMap = {
+    "git": ["git"],
+    "curl": ["curl"],
+    "file": ["file"],
+    "pkg-config": ["pkg-config"],
+    "cmake": ["cmake"],
+    # build chain
+    "make": ["build-essential"],
+    "gcc": ["build-essential"],
+    "g++": ["build-essential"],
+    # rust: handled via rustup script (no apt mapping)
+    "rustup": [],
+    "rustc": [],
+    "cargo": [],
+    # node
+    "node": ["nodejs"],
+    "npm": ["npm"],
+    # Tauri / WebView deps
+    "gtk3": ["libgtk-3-dev"],
+    "webkit2gtk": ["libwebkit2gtk-4.1-dev", "libwebkit2gtk-4.0-dev"],
+    "libappindicator-gtk3": ["libayatana-appindicator3-dev", "libappindicator3-dev"],
+    "librsvg": ["librsvg2-dev"],
+    "openssl": ["libssl-dev"],
+}
+
+
+def _gather_missing_tool_names(checks: List[Check]) -> List[str]:
+    missing = missing_checks(checks, categories=CRITICAL_CATEGORIES)
+    return [m.name for m in missing]
+
+
+def _run_cmd(cmd: list[str], dry_run: bool) -> int:
+    print(f"{ICONS['run']} {' '.join(cmd)}")
+    if dry_run:
+        print(f"{ICONS['info']} Dry run: skipping execution.")
+        return 0
+    try:
+        subprocess.run(cmd, check=True)
+        return 0
+    except subprocess.CalledProcessError as e:
+        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
+        return int(e.returncode) if e.returncode is not None else 1
+
+
+def _run_capture(cmd: list[str], dry_run: bool) -> tuple[int, str]:
+    print(f"{ICONS['run']} {' '.join(cmd)}")
+    if dry_run:
+        print(f"{ICONS['info']} Dry run: skipping execution.")
+        return 0, ""
+    p = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    return p.returncode, (p.stdout or "")
+
+
+def _apt_pkg_exists(pkg: str, dry_run: bool) -> bool:
+    # apt-cache is non-root and works for existence probing
+    rc, _ = _run_capture(["apt-cache", "show", pkg], dry_run=dry_run)
+    return rc == 0
+
+
+def _expand_packages(tools: Iterable[str], dry_run: bool) -> tuple[list[str], list[str]]:
+    pkgs: Set[str] = set()
+    unknown: List[str] = []
+
+    for tool in tools:
+        entries = APT_MAP.get(tool)
+        if entries is None:
+            unknown.append(tool)
+            continue
+
+        # pick first existing package from alternatives
+        chosen = None
+        for pkg in entries:
+            if not pkg:
+                continue
+            if _apt_pkg_exists(pkg, dry_run=dry_run):
+                chosen = pkg
+                break
+        if chosen:
+            pkgs.add(chosen)
+
+    return (sorted(pkgs), unknown)
+
+
+def _ensure_rustup(dry_run: bool) -> int:
+    # If rustup already present, assume toolchain is OK.
+    if shutil.which("rustup") and shutil.which("cargo") and shutil.which("rustc"):
+        return 0
+
+    # Install rustup via official script (non-apt)
+    cmd = [
+        "bash",
+        "-lc",
+        "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+    ]
+    rc = _run_cmd(cmd, dry_run=dry_run)
+    if rc != 0:
+        return rc
+
+    # Make it usable for subsequent commands in this same process
+    cargo_bin = str(Path.home() / ".cargo" / "bin")
+    os.environ["PATH"] = cargo_bin + ":" + os.environ.get("PATH", "")
+
+    # Ensure stable toolchain (cargo/rustc)
+    rustup = shutil.which("rustup") or str(Path.home() / ".cargo" / "bin" / "rustup")
+    rc2 = _run_cmd([rustup, "default", "stable"], dry_run=dry_run)
+    return rc2
+
+
+def run_install(dry_run: bool = False) -> int:
+    if not shutil.which("apt-get"):
+        print(f"{ICONS['err']} apt-get not found. This installer is for Ubuntu/apt systems.")
+        return 1
+
+    checks = collect_checks()
+    missing_tools = _gather_missing_tool_names(checks)
+
+    if not missing_tools:
+        print(f"{ICONS['ok']} No missing tools per Doctor.")
+        return 0
+
+    print(f"{ICONS['info']} Installer: Ubuntu/apt")
+    print(f"{ICONS['warn']} Missing tools per Doctor: {', '.join(missing_tools)}")
+
+    packages, unknown = _expand_packages(missing_tools, dry_run=dry_run)
+    if unknown:
+        print(f"{ICONS['warn']} No mapping for these tools (ignored): {', '.join(unknown)}")
+
+    # apt deps first
+    if packages:
+        rc = _run_cmd(["sudo", "apt-get", "update"], dry_run=dry_run)
+        if rc != 0:
+            return rc
+        rc = _run_cmd(["sudo", "apt-get", "install", "-y", *packages], dry_run=dry_run)
+        if rc != 0:
+            return rc
+
+    # rust via rustup if any rust-related tool is missing
+    if any(t in set(missing_tools) for t in ("rustup", "cargo", "rustc")):
+        rc = _ensure_rustup(dry_run=dry_run)
+        if rc != 0:
+            return rc
+
+    return 0
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    raise SystemExit(run_install(dry_run=ap.parse_args().dry_run))
+
+---
+
+## 📝 installuixvs.py — ./inst/linux/installuixvs.py
+
+#!/usr/bin/env python3
+"""
+Unified VS Code installer for Linux/Unix.
+
+Supports:
+- Arch and derivatives (pacman, optional AUR helper)
+- Debian/Ubuntu (official .deb download)
+"""
+
+from __future__ import annotations
+
+import os
+import platform
+import shutil
+import subprocess
+import sys
+from typing import List, Optional
+
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+}
+
+
+def read_os_release() -> dict:
+    data = {}
+    try:
+        with open("/etc/os-release", "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                data[k] = v.strip().strip('"')
+    except FileNotFoundError:
+        pass
+    return data
+
+
+def is_root() -> bool:
+    return hasattr(os, "geteuid") and os.geteuid() == 0
+
+
+def run(
+    cmd: List[str],
+    check: bool = True,
+    env: dict | None = None,
+    use_sudo: bool = True,
+) -> None:
+    if use_sudo and not is_root() and shutil.which("sudo"):
+        cmd = ["sudo"] + cmd
+    print("+", " ".join(cmd))
+    subprocess.run(cmd, check=check, env=env)
+
+
+def pacman_install(pkgs: List[str]) -> None:
+    run(["pacman", "-Syu", "--noconfirm"])
+    run(["pacman", "-S", "--needed", "--noconfirm", *pkgs])
+
+
+def aur_install(helper: str, pkg: str) -> None:
+    if is_root():
+        raise RuntimeError("AUR helper darf nicht als root laufen. Bitte ohne sudo ausfuehren.")
+    run([helper, "-S", "--needed", "--noconfirm", pkg], use_sudo=False)
+
+
+def ensure_pkg(pkg: str) -> None:
+    if shutil.which(pkg):
+        return
+    env = dict(os.environ)
+    env["DEBIAN_FRONTEND"] = "noninteractive"
+    run(["apt-get", "update"], env=env)
+    run(["apt-get", "install", "-y", pkg], env=env)
+
+
+def arch_to_vscode_deb_target() -> str:
+    m = platform.machine().lower()
+    if m in {"x86_64", "amd64"}:
+        return "linux-deb-x64"
+    if m in {"aarch64", "arm64"}:
+        return "linux-deb-arm64"
+    if m.startswith("armv7") or m in {"armhf"}:
+        return "linux-deb-armhf"
+    raise RuntimeError(f"Unsupported architecture for VS Code deb: {m}")
+
+
+def install_arch() -> int:
+    if shutil.which("code"):
+        print(f"{ICONS['info']} VS Code ist bereits installiert (binary: code).")
+        return 0
+
+    # Default: Microsoft-Build (AUR) wenn moeglich, sonst OSS-build aus pacman.
+    # Setze VSCODE_VARIANT=oss um immer pacman 'code' zu nehmen.
+    variant = os.environ.get("VSCODE_VARIANT", "ms").lower().strip()
+
+    if variant == "oss":
+        pacman_install(["code"])
+        print(f"{ICONS['ok']} Code - OSS installiert (pacman: code).")
+        return 0
+
+    helper: Optional[str] = None
+    for h in ("paru", "yay"):
+        if shutil.which(h):
+            helper = h
+            break
+
+    if helper:
+        # AUR helper muss bereits vorhanden sein; Skript installiert ihn bewusst nicht automatisch.
+        aur_install(helper, "visual-studio-code-bin")
+        print(
+            f"{ICONS['ok']} Visual Studio Code (Microsoft build) installiert "
+            "(AUR: visual-studio-code-bin)."
+        )
+        return 0
+
+    pacman_install(["code"])
+    print(
+        f"{ICONS['warn']} Kein AUR helper (paru/yay) gefunden -> "
+        "Code - OSS installiert (pacman: code)."
+    )
+    print(
+        f"{ICONS['info']} Wenn du den Microsoft-Build willst: installiere paru/yay "
+        "und dann VSCODE_VARIANT=ms ausfuehren."
+    )
+    return 0
+
+
+def install_deb_like() -> int:
+    if shutil.which("code"):
+        print(f"{ICONS['info']} VS Code ist bereits installiert (binary: code).")
+        return 0
+
+    ensure_pkg("curl")
+
+    target = arch_to_vscode_deb_target()
+    url = f"https://update.code.visualstudio.com/latest/{target}/stable"
+    deb_path = "/tmp/vscode-latest.deb"
+
+    print(f"Download: {url}")
+    run(["curl", "-L", "-o", deb_path, url])
+
+    env = dict(os.environ)
+    env["DEBIAN_FRONTEND"] = "noninteractive"
+    run(["apt-get", "update"], env=env)
+    run(["apt", "install", "-y", deb_path], env=env)
+
+    print(f"{ICONS['ok']} Visual Studio Code installiert.")
+    return 0
+
+
+def _main() -> int:
+    osr = read_os_release()
+    os_id = (osr.get("ID") or "").lower()
+    os_like = (osr.get("ID_LIKE") or "").lower().split()
+    has_pacman = shutil.which("pacman") is not None
+    has_apt = shutil.which("apt-get") is not None
+
+    if os_id in {"arch", "manjaro", "endeavouros", "cachyos"} or "arch" in os_like or has_pacman:
+        return install_arch()
+
+    if os_id in {"debian", "ubuntu"} or "debian" in os_like or "ubuntu" in os_like or has_apt:
+        return install_deb_like()
+
+    print(
+        f"{ICONS['err']} Dieses Skript ist fuer Arch/Derivate, Debian oder Ubuntu gedacht. "
+        f"Detected ID={os_id}, ID_LIKE={' '.join(os_like) if os_like else '-'}"
+    )
+    return 2
+
+
+def main() -> int:
+    try:
+        return _main()
+    except subprocess.CalledProcessError as e:
+        cmd = e.cmd
+        cmd_text = " ".join(str(c) for c in cmd) if isinstance(cmd, list) else str(cmd)
+        code = int(e.returncode) if e.returncode is not None else 1
+        print(f"{ICONS['err']} Fehler beim Ausfuehren (exit {code}): {cmd_text}")
+        return code
+    except Exception as e:
+        print(f"{ICONS['err']} Fehler: {e}")
+        return 1
+
+
+def run_install() -> int:
+    return main()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
+---
+
+## 📝 installmac.py — ./inst/mac/installmac.py
+
+#!/usr/bin/env python3
+"""macOS installer.
+
+Uses Homebrew where possible. Rust is installed via rustup (recommended).
+
+This module exposes: run_install(dry_run: bool = False) -> int
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+from typing import List, Set
+
+from doctor import CRITICAL_CATEGORIES, collect_checks, missing_checks
+
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+}
+
+
+# Tool-name -> brew formulae.
+# Notes:
+# - `file` and `curl` are typically preinstalled on macOS.
+# - `make`, `gcc`, `g++` on macOS usually come from Xcode Command Line Tools.
+BREW_MAP = {
+    "git": ["git"],
+    "pkg-config": ["pkg-config"],
+    "cmake": ["cmake"],
+    "node": ["node"],  # includes npm
+    "npm": ["node"],
+}
+
+
+def _run(cmd: List[str], dry_run: bool) -> int:
+    print(f"{ICONS['run']} {' '.join(cmd)}")
+    if dry_run:
+        print(f"{ICONS['info']} Dry run: skipping execution.")
+        return 0
+    try:
+        subprocess.run(cmd, check=True)
+        return 0
+    except subprocess.CalledProcessError as e:
+        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
+        return int(e.returncode) if e.returncode is not None else 1
+
+
+def _install_brew(formulae: List[str], dry_run: bool) -> int:
+    if not formulae:
+        return 0
+    # brew install supports multiple formulae at once.
+    return _run(["brew", "install", *formulae], dry_run)
+
+
+def _install_rustup(dry_run: bool) -> int:
+    # Standard rustup installer (non-interactive).
+    # It will add rust toolchain to your environment (shell profile may be updated).
+    cmd = [
+        "bash",
+        "-lc",
+        "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+    ]
+    return _run(cmd, dry_run)
+
+
+def run_install(dry_run: bool = False) -> int:
+    if not shutil.which("brew"):
+        print(
+            f"{ICONS['err']} Homebrew not found. Install Homebrew or install dependencies manually."
+        )
+        return 1
+
+    checks = collect_checks()
+    missing = missing_checks(checks, categories=CRITICAL_CATEGORIES)
+    missing_tools = [c.name for c in missing]
+
+    if not missing_tools:
+        print(f"{ICONS['ok']} No missing tools per Doctor.")
+        return 0
+
+    # Collect brew formulae.
+    formulae: Set[str] = set()
+    wants_rustup = False
+
+    for tool in missing_tools:
+        if tool in ("rustup", "rustc", "cargo"):
+            wants_rustup = True
+            continue
+        for f in BREW_MAP.get(tool, []):
+            if f:
+                formulae.add(f)
+
+    # Xcode Command Line Tools hint.
+    needs_xcode = any(t in ("make", "gcc", "g++") for t in missing_tools)
+    if needs_xcode:
+        print(
+            f"{ICONS['info']} For make/gcc/g++ you typically need Xcode Command Line Tools on macOS:"
+        )
+        print(f"{ICONS['run']} xcode-select --install")
+
+    # Brew install
+    rc = _install_brew(sorted(formulae), dry_run)
+    if rc != 0:
+        return rc
+
+    # Rust
+    if wants_rustup:
+        print(f"{ICONS['info']} Installing Rust via rustup...")
+        rc = _install_rustup(dry_run)
+        if rc != 0:
+            return rc
+
+    print(f"{ICONS['ok']} Installation completed (as far as supported).")
+    return 0
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    raise SystemExit(run_install(dry_run=ap.parse_args().dry_run))
+
+---
+
+## 📝 run.py — ./inst/run.py
+
+#!/usr/bin/env python3
+"""
+Run the Tauri desktop app in dev mode.
+
+control.py entry:
+  python3 tools/control.py --start (alias: --run)
+
+What it does (default):
+  cd <repo>/apps/fmd-desktop
+  (optional) pnpm install (if node_modules missing)
+  pnpm tauri dev
+"""
+
+from __future__ import annotations
+
+import os
+import platform
+import shutil
+import subprocess
+import sys
+import signal
+from pathlib import Path
+from typing import List, Optional
+
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+    "box": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+}
+
+_DRY_RUN = False
+
+
+def section(title: str) -> None:
+    print(f"\n{ICONS['box']}\n{ICONS['info']} {title}\n{ICONS['box']}")
+
+
+def which(cmd: str) -> Optional[str]:
+    return shutil.which(cmd)
+
+
+def display_available() -> bool:
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
+def ensure_xvfb() -> bool:
+    if which("xvfb-run"):
+        return True
+    if _DRY_RUN:
+        print(f"{ICONS['info']} Dry run: would install xvfb.")
+        return True
+
+    if which("apt-get"):
+        run(["sudo", "apt-get", "install", "-y", "xvfb"], check=False)
+        if which("xvfb-run"):
+            return True
+
+    if which("pacman"):
+        for pkg in ["xorg-server-xvfb", "xvfb"]:
+            run(["sudo", "pacman", "-S", "--needed", "--noconfirm", pkg], check=False)
+            if which("xvfb-run"):
+                return True
+
+    return False
+
+
+def run(cmd: List[str], *, cwd: Optional[Path] = None, check: bool = True) -> int:
+    cwd_txt = f" (cwd={cwd})" if cwd else ""
+    print(f"{ICONS['run']} {' '.join(cmd)}{cwd_txt}")
+    if _DRY_RUN:
+        return 0
+    p = subprocess.run(cmd, cwd=str(cwd) if cwd else None)
+    if check and p.returncode != 0:
+        raise RuntimeError(f"Command failed (exit {p.returncode}): {' '.join(cmd)}")
+    return p.returncode
+
+
+def run_with_interrupt_prompt(
+    cmd: List[str],
+    *,
+    cwd: Optional[Path] = None,
+    check: bool = True,
+) -> int:
+    if _DRY_RUN or not sys.stdin.isatty():
+        return run(cmd, cwd=cwd, check=check)
+    cwd_txt = f" (cwd={cwd})" if cwd else ""
+    print(f"{ICONS['run']} {' '.join(cmd)}{cwd_txt}")
+
+    popen_kwargs: dict = {}
+    if os.name == "posix":
+        popen_kwargs["start_new_session"] = True
+    elif sys.platform == "win32" and hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
+    p = subprocess.Popen(cmd, cwd=str(cwd) if cwd else None, **popen_kwargs)
+    while True:
+        try:
+            rc = p.wait()
+            break
+        except KeyboardInterrupt:
+            if p.poll() is not None:
+                rc = p.returncode
+                break
+            if _confirm_exit():
+                _signal_child(p, signal.SIGINT)
+                rc = p.wait()
+                break
+            print(f"{ICONS['info']} Weiter...")
+            continue
+
+    if check and rc != 0:
+        raise RuntimeError(f"Command failed (exit {rc}): {' '.join(cmd)}")
+    return rc
+
+
+def _confirm_exit() -> bool:
+    while True:
+        try:
+            answer = input("Beenden? (j/n) ").strip().lower()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return True
+        if answer in {"j", "ja", "y", "yes"}:
+            return True
+        if answer in {"n", "nein", ""}:
+            return False
+        print("Bitte 'j' oder 'n' eingeben.")
+
+
+def _signal_child(proc: subprocess.Popen, sig: int) -> None:
+    try:
+        if os.name == "posix":
+            os.killpg(proc.pid, sig)
+        else:
+            proc.send_signal(sig)
+    except ProcessLookupError:
+        return
+    except Exception:
+        try:
+            proc.send_signal(sig)
+        except Exception:
+            return
+
+
+def cmd_ok(cmd: List[str]) -> bool:
+    if _DRY_RUN:
+        return True
+    try:
+        return (
+            subprocess.run(
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            ).returncode
+            == 0
+        )
+    except Exception:
+        return False
+
+
+def repo_root_from_here() -> Path:
+    # tools/inst/run.py -> parents[2] == repo root
+    return Path(__file__).resolve().parents[2]
+
+
+def run_install(dry_run: bool = False) -> int:
+    """
+    Entry point used by control.py.
+    """
+    global _DRY_RUN
+    _DRY_RUN = dry_run
+
+    if platform.system().lower() != "linux":
+        print(
+            f"{ICONS['warn']} --start/--run is primarily intended for Linux Tauri dev; "
+            f"OS={platform.system()}."
+        )
+        # Still attempt to run in case pnpm/tauri is usable.
+    try:
+        repo_root = repo_root_from_here()
+        target_dir = (repo_root / "apps" / "fmd-desktop").resolve()
+        legacy_dir = (repo_root / "tools" / "apps" / "fmd-desktop").resolve()
+        if not target_dir.exists() and legacy_dir.exists():
+            print(
+                f"{ICONS['warn']} Found legacy path (tools/apps). "
+                "Consider re-running --tauri to scaffold into /apps."
+            )
+            target_dir = legacy_dir
+
+        section("Run Context")
+        print(f"{ICONS['info']} Repo root:  {repo_root}")
+        print(f"{ICONS['info']} Target dir: {target_dir}")
+
+        if not target_dir.exists():
+            print(f"{ICONS['err']} Target directory not found.")
+            print(f"{ICONS['info']} Create it first with: python3 tools/control.py --tauri")
+            return 1
+
+        if which("pnpm") is None:
+            print(f"{ICONS['err']} pnpm not found in PATH.")
+            print(f"{ICONS['info']} Fix with: python3 tools/control.py --tauri (or install pnpm)")
+            return 1
+
+        # Rust must be functional for Tauri.
+        if not (cmd_ok(["rustc", "--version"]) and cmd_ok(["cargo", "--version"])):
+            print(
+                f"{ICONS['err']} Rust toolchain not usable "
+                "(rustc/cargo missing or no active toolchain)."
+            )
+            print(f"{ICONS['info']} Fix with: python3 tools/control.py --tauri")
+            return 1
+        print(f"{ICONS['ok']} Rust toolchain OK.")
+
+        # If node_modules missing, install deps first.
+        node_modules = target_dir / "node_modules"
+        if not node_modules.exists():
+            section("Install JS dependencies")
+            run(["pnpm", "install"], cwd=target_dir)
+        else:
+            print(f"{ICONS['ok']} node_modules present -> skipping pnpm install.")
+
+        section("Start Tauri dev")
+        print(f"{ICONS['info']} Stop with Ctrl+C, then confirm with j/n.")
+        dev_cmd = ["pnpm", "tauri", "dev"]
+        rc = run_with_interrupt_prompt(dev_cmd, cwd=target_dir, check=False)
+        if rc == 0:
+            return 0
+
+        if platform.system().lower() == "linux" and not display_available():
+            print(f"{ICONS['warn']} Tauri dev exited (code {rc}); trying xvfb-run.")
+            if ensure_xvfb():
+                xvfb_run = which("xvfb-run")
+                if xvfb_run:
+                    print(f"{ICONS['info']} Using xvfb-run after failure.")
+                    return run([xvfb_run, "-a", *dev_cmd], cwd=target_dir, check=True)
+
+            print(f"{ICONS['err']} No display detected and xvfb-run not available.")
+            if which("apt-get"):
+                hint = "sudo apt-get install -y xvfb"
+            elif which("pacman"):
+                hint = "sudo pacman -S --needed xorg-server-xvfb"
+            else:
+                hint = "Install xvfb with your package manager"
+            print(f"{ICONS['info']} Fix with: {hint}")
+            print(f"{ICONS['info']} Then run: python3 tools/control.py --start")
+            return 1
+
+        return rc
+    except Exception as ex:
+        print(f"{ICONS['err']} {ex}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(run_install(False))
+
+---
+
+## 📝 installwin.py — ./inst/win/installwin.py
+
+#!/usr/bin/env python3
+"""Windows installer.
+
+Tries to install missing tools using one of:
+- winget (preferred)
+- choco
+- scoop
+
+This module exposes: run_install(dry_run: bool = False) -> int
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+from typing import List, Set, Tuple
+
+from doctor import CRITICAL_CATEGORIES, collect_checks, missing_checks
+
+ICONS = {
+    "ok": "✅",
+    "info": "ℹ️",
+    "warn": "⚠️",
+    "err": "❌",
+    "run": "▶️",
+}
+
+
+# Tool-name -> winget package IDs (exact match)
+WINGET_MAP = {
+    "git": ["Git.Git"],
+    "node": ["OpenJS.NodeJS.LTS"],
+    "npm": ["OpenJS.NodeJS.LTS"],
+    "rustup": ["Rustlang.Rustup"],
+    # `curl` is usually present on modern Windows; `file`, `make`, `gcc` are not handled here.
+}
+
+# Tool-name -> Chocolatey packages
+CHOCO_MAP = {
+    "git": ["git"],
+    "node": ["nodejs-lts"],
+    "npm": ["nodejs-lts"],
+    "rustup": ["rustup.install"],
+}
+
+# Tool-name -> Scoop apps
+SCOOP_MAP = {
+    "git": ["git"],
+    "node": ["nodejs-lts"],
+    "npm": ["nodejs-lts"],
+    "rustup": ["rustup"],
+}
+
+
+def _detect_manager() -> str | None:
+    if shutil.which("winget"):
+        return "winget"
+    if shutil.which("choco"):
+        return "choco"
+    if shutil.which("scoop"):
+        return "scoop"
+    return None
+
+
+def _run(cmd: List[str], dry_run: bool) -> int:
+    print(f"{ICONS['run']} {' '.join(cmd)}")
+    if dry_run:
+        print(f"{ICONS['info']} Dry run: skipping execution.")
+        return 0
+    try:
+        subprocess.run(cmd, check=True)
+        return 0
+    except subprocess.CalledProcessError as e:
+        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
+        return int(e.returncode) if e.returncode is not None else 1
+
+
+def _expand(manager: str, tools: List[str]) -> Tuple[List[str], List[str]]:
+    mapping = {
+        "winget": WINGET_MAP,
+        "choco": CHOCO_MAP,
+        "scoop": SCOOP_MAP,
+    }[manager]
+
+    pkgs: Set[str] = set()
+    unknown: List[str] = []
+    for t in tools:
+        entries = mapping.get(t)
+        if entries is None:
+            unknown.append(t)
+            continue
+        for p in entries:
+            if p:
+                pkgs.add(p)
+    return (sorted(pkgs), unknown)
+
+
+def _install(manager: str, packages: List[str], dry_run: bool) -> int:
+    if not packages:
+        print(f"{ICONS['ok']} Everything is already installed (per Doctor) or not supported.")
+        return 0
+
+    if manager == "winget":
+        # `-e` exact match, `--id` uses the package ID.
+        # Agreements flags avoid prompts.
+        rc = 0
+        for pkg_id in packages:
+            cmd = [
+                "winget",
+                "install",
+                "-e",
+                "--id",
+                pkg_id,
+                "--accept-package-agreements",
+                "--accept-source-agreements",
+            ]
+            rc = _run(cmd, dry_run)
+            if rc != 0:
+                return rc
+        return 0
+
+    if manager == "choco":
+        return _run(["choco", "install", "-y", *packages], dry_run)
+
+    # scoop
+    return _run(["scoop", "install", *packages], dry_run)
+
+
+def run_install(dry_run: bool = False) -> int:
+    manager = _detect_manager()
+    if not manager:
+        print(
+            f"{ICONS['err']} No package manager found (winget/choco/scoop).\n"
+            f"{ICONS['info']} winget is usually available on Windows 10/11\n"
+            f"{ICONS['info']} Alternatively install Chocolatey or Scoop"
+        )
+        return 1
+
+    checks = collect_checks()
+    missing = missing_checks(checks, categories=CRITICAL_CATEGORIES)
+    missing_tools = [c.name for c in missing]
+
+    if not missing_tools:
+        print(f"{ICONS['ok']} No missing tools per Doctor.")
+        return 0
+
+    packages, unknown = _expand(manager, missing_tools)
+
+    print(f"{ICONS['info']} Detected package manager: {manager}")
+    print(f"{ICONS['warn']} Missing tools per Doctor: {', '.join(missing_tools)}")
+
+    if unknown:
+        print(f"{ICONS['warn']} These tools cannot be installed automatically on Windows:")
+        print("\n".join([f"{ICONS['info']} {t}" for t in unknown]))
+        print(f"{ICONS['info']} (e.g. make/gcc/g++ usually come from MSVC/BuildTools or WSL)")
+
+    if not packages:
+        print(f"{ICONS['err']} No installable packages determined.")
+        return 1
+
+    print(f"{ICONS['info']} Installing packages: {', '.join(packages)}")
+    return _install(manager, packages, dry_run)
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    raise SystemExit(run_install(dry_run=ap.parse_args().dry_run))
+
+---
+
+
+---
+
+## 📝 summary.md — ./tools/.summary/summary.md
+
+Markdown-Scan – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/tools
+Erzeugt: 2026-01-06T21:32:33
+Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.py
+
+=== Dateien ===
+
+📁 .
+  📝 control.py
+     Pfad: 📝 control.py
+     Größe: 7.01 KB (7175 B)
+     Geändert: 2025-12-28T03:09:05
+     Titel: !/usr/bin/env python3
+     Überschriften: 2, Zeilen: 235, Wörter: 742, Zeichen: 7175
+     Inhalt (Auszug): """ Project control entry point.
+
+
+📁 fixes
+  📝 pacman_keyring_fix.py
+     Pfad: 📁 fixes / 📝 pacman_keyring_fix.py
+     Größe: 836 B (836 B)
+     Geändert: 2025-12-26T20:08:52
+     Titel: !/usr/bin/env python3
+     Überschriften: 1, Zeilen: 37, Wörter: 98, Zeichen: 831
+     Inhalt (Auszug): from __future__ import annotations
+
+
+📁 inst
+  📝 doctor.py
+     Pfad: 📁 inst / 📝 doctor.py
+     Größe: 8.49 KB (8689 B)
+     Geändert: 2025-12-28T20:30:42
+     Titel: !/usr/bin/env python3
+     Überschriften: 5, Zeilen: 285, Wörter: 954, Zeichen: 8673
+     Inhalt (Auszug): """ Environment doctor/check script used by `tools/control.py`. """
+
+  📝 run.py
+     Pfad: 📁 inst / 📝 run.py
+     Größe: 7.78 KB (7967 B)
+     Geändert: 2025-12-29T00:03:39
+     Titel: !/usr/bin/env python3
+     Überschriften: 5, Zeilen: 256, Wörter: 896, Zeichen: 7863
+     Inhalt (Auszug): """ Run the Tauri desktop app in dev mode.
+
+
+📁 inst/linux
+  📝 installuix.py
+     Pfad: 📁 inst / 📁 linux / 📝 installuix.py
+     Größe: 1.97 KB (2020 B)
+     Geändert: 2025-12-27T21:10:03
+     Titel: !/usr/bin/env python3
+     Überschriften: 4, Zeilen: 71, Wörter: 240, Zeichen: 2020
+     Inhalt (Auszug): """ Linux dispatcher installer.
+
+  📝 installuixarc.py
+     Pfad: 📁 inst / 📁 linux / 📝 installuixarc.py
+     Größe: 6.06 KB (6202 B)
+     Geändert: 2025-12-27T21:09:48
+     Titel: !/usr/bin/env python3
+     Überschriften: 11, Zeilen: 210, Wörter: 688, Zeichen: 6186
+     Inhalt (Auszug): """ Arch Linux installer (pacman-based).
+
+  📝 installuixdeb.py
+     Pfad: 📁 inst / 📁 linux / 📝 installuixdeb.py
+     Größe: 577 B (577 B)
+     Geändert: 2025-12-27T21:10:44
+     Titel: !/usr/bin/env python3
+     Überschriften: 2, Zeilen: 20, Wörter: 69, Zeichen: 577
+     Inhalt (Auszug): """ Debian installer (apt-get).
+
+  📝 installuixtauri.py
+     Pfad: 📁 inst / 📁 linux / 📝 installuixtauri.py
+     Größe: 12.59 KB (12890 B)
+     Geändert: 2025-12-28T03:28:22
+     Titel: !/usr/bin/env python3
+     Überschriften: 9, Zeilen: 305, Wörter: 1542, Zeichen: 12783
+     Inhalt (Auszug): """Linux-only: prepare Tauri dev env + scaffold a pnpm + React/TS Tauri app.
+
+  📝 installuixubu.py
+     Pfad: 📁 inst / 📁 linux / 📝 installuixubu.py
+     Größe: 5.27 KB (5392 B)
+     Geändert: 2025-12-27T21:10:38
+     Titel: !/usr/bin/env python3
+     Überschriften: 13, Zeilen: 179, Wörter: 643, Zeichen: 5376
+     Inhalt (Auszug): """ Ubuntu installer (apt-get).
+
+  📝 installuixvs.py
+     Pfad: 📁 inst / 📁 linux / 📝 installuixvs.py
+     Größe: 5.32 KB (5449 B)
+     Geändert: 2025-12-23T02:36:13
+     Titel: !/usr/bin/env python3
+     Überschriften: 4, Zeilen: 193, Wörter: 669, Zeichen: 5433
+     Inhalt (Auszug): """ Unified VS Code installer for Linux/Unix.
+
+
+📁 inst/mac
+  📝 installmac.py
+     Pfad: 📁 inst / 📁 mac / 📝 installmac.py
+     Größe: 3.41 KB (3491 B)
+     Geändert: 2025-12-23T01:36:13
+     Titel: !/usr/bin/env python3
+     Überschriften: 12, Zeilen: 126, Wörter: 414, Zeichen: 3475
+     Inhalt (Auszug): """macOS installer.
+
+
+📁 inst/win
+  📝 installwin.py
+     Pfad: 📁 inst / 📁 win / 📝 installwin.py
+     Größe: 4.57 KB (4684 B)
+     Geändert: 2025-12-23T01:36:13
+     Titel: !/usr/bin/env python3
+     Überschriften: 8, Zeilen: 170, Wörter: 535, Zeichen: 4668
+     Inhalt (Auszug): """Windows installer.
+
+
+=== Ordnerbaum (Quelle, nur ausgewählte Typen) ===
+
+📁 .
+├── 📁 .summary
+├── 📁 fixes
+│   ├── 📁 __pycache__
+│   └── 📝 pacman_keyring_fix.py
+├── 📁 inst
+│   ├── 📁 __pycache__
+│   ├── 📁 linux
+│   │   ├── 📁 __pycache__
+│   │   ├── 📝 installuix.py
+│   │   ├── 📝 installuixarc.py
+│   │   ├── 📝 installuixdeb.py
+│   │   ├── 📝 installuixtauri.py
+│   │   ├── 📝 installuixubu.py
+│   │   └── 📝 installuixvs.py
+│   ├── 📁 mac
+│   │   └── 📝 installmac.py
+│   ├── 📁 win
+│   │   └── 📝 installwin.py
+│   ├── 📝 doctor.py
+│   └── 📝 run.py
+└── 📝 control.py
+
+=== Ordnerbaum (Ausgabeordner) ===
+
+📁 .
+├── 📝 allsummary.md
+├── 📝 index.json
+└── 📝 summary.md
+
+---
+
+
+---
+
+## 📝 README.md — ./apps/fmd-desktop/README.md
+
+# Tauri + React + Typescript
+
+This template should help get you started developing with Tauri, React and Typescript in Vite.
+
+## Recommended IDE Setup
+
+- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+
+---
+
+## 📝 CHANGELOG.md — ./CHANGELOG.md
+
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on Keep a Changelog, and this project aims to follow Semantic Versioning.
+
+## [Unreleased]
+
+### Added
+- Initial documentation structure (README + docs/user + docs/dev + ADRs)
+
+### Changed
+
+### Fixed
+
+## [0.1.0] - TBD
+
+- Initial public baseline (placeholder)
+
+---
+
+## 📝 CONTRIBUTING.md — ./CONTRIBUTING.md
+
+# Contributing
+
+Thanks for your interest in contributing.
+
+## Development quickstart
+
+Follow the full setup guide:
+
+- `docs/dev/setup.md`
+
+## Branch / PR workflow
+
+- Create a feature branch from the default branch.
+- Keep PRs focused (one feature/fix per PR).
+- Describe:
+  - what changed,
+  - why it changed,
+  - how you tested it.
+
+## Quality guidelines
+
+- If you change evaluation/scoring logic, add tests.
+- Avoid UI regressions: keep layout changes intentional and minimal.
+- Update documentation when behavior changes (especially parsing and review rules).
+
+## Reporting issues
+
+When reporting a bug, include:
+
+- OS and version
+- steps to reproduce
+- expected vs. actual behavior
+- a minimal example `#card` block if the issue is related to parsing/review
+
+---
+
+## 📝 0001-documentation-source-of-truth.md — ./docs/adr/0001-documentation-source-of-truth.md
+
+# ADR 0001: Documentation source of truth
+
+Date: 2026-01-06
+
+## Status
+
+Accepted
+
+## Context
+
+The project needs documentation that is:
+
+- easy to review in pull requests,
+- friendly to contributors,
+- usable for both end users and developers,
+- optionally publishable as a website and exportable as PDF.
+
+## Decision
+
+Use **Markdown** files in the repository as the single source of truth for documentation:
+
+- Short overview in `README.md`
+- Full docs in `docs/`
+- Contribution guidelines in `CONTRIBUTING.md`
+- Changelog in `CHANGELOG.md`
+
+Optionally, generate a docs website (MkDocs/Docusaurus) from the same Markdown content.
+
+## Consequences
+
+- Documentation changes are versioned, reviewable, and diff-friendly.
+- Website/PDF generation can be automated later via CI without duplicating content.
+
+---
+
+## 📝 index.md — ./docs/adr/index.md
+
+# Architecture Decision Records (ADRs)
+
+ADRs capture important engineering decisions and the reasons behind them.
+
+## Index
+
+- ADR 0001: [Documentation source of truth](0001-documentation-source-of-truth.md)
+
+---
+
+## 📝 architecture.md — ./docs/dev/architecture.md
+
+# Architecture overview
+
+This document is a high-level guide to how the project is structured. It is intended for contributors.
+
+## High-level components
+
+- **Desktop application:** a cross-platform desktop UI (commonly built with React/TypeScript and packaged via Tauri).
+- **Tooling:** helper scripts to standardize installation, checks, and local development (`tools/control.py`).
+- **Features:** application modules for flashcards, fast review, spaced repetition, settings, and help.
+
+## Design goals
+
+- Local-first workflow: the vault is a folder of Markdown files.
+- Keep Markdown readable: cards are embedded using simple markers.
+- Predictable review logic: identical rules across modes for correctness and statistics.
+
+## Where to look next
+
+- Setup: `setup.md`
+- Testing: `testing.md`
+- User-facing behavior: `../user/`
+
+---
+
+## 📝 control-script.md — ./docs/dev/control-script.md
+
+# Control script (`tools/control.py`)
+
+The repository contains a Python control script intended to standardize common development tasks.
+
+## Why it exists
+
+- Reduce setup friction across OSes
+- Provide a single entry point for “doctor”, installation, and local runs
+- Keep command sequences consistent across contributors
+
+## Common commands
+
+### Health check
+
+```bash
+python3 tools/control.py --doctor
+```
+
+### Install / setup
+
+```bash
+python3 tools/control.py --install
+```
+
+### Prepare / run Tauri tooling
+
+```bash
+python3 tools/control.py --tauri
+```
+
+### Start the app
+
+```bash
+python3 tools/control.py --start
+```
+
+### Build release bundles
+
+```bash
+python3 tools/control.py --build
+```
+
+Builds the desktop app release bundles by running `pnpm tauri build`.
+Produces platform-specific bundles/installers.
+
+Notes:
+- Working directory: `apps/fmd-desktop`.
+- Requires Node + pnpm dependencies and Tauri build prerequisites for the OS.
+- Outputs are produced by Tauri under the desktop app's release bundle directory (typically `apps/fmd-desktop/src-tauri/target/release/bundle`).
+
+## Suggested workflow
+
+1. `--doctor` to verify dependencies
+2. `--install` to install dependencies / bootstrap
+3. `--tauri` to prepare Tauri prerequisites
+4. `--start` to run the app
+
+For packaging, run `--build` after `--tauri`.
+
+## When to use
+
+- Use `--start` for day-to-day development and local testing.
+- Use `--build` when you need release bundles or installers for distribution.
+
+## Extending the control script
+
+If you add new flags, keep them:
+
+- Deterministic (same inputs -> same result)
+- Safe by default (no destructive behavior without explicit confirmation)
+- Documented here and in `docs/dev/setup.md` if it affects onboarding
+
+---
+
+## 📝 index.md — ./docs/dev/index.md
+
+# Developer documentation
+
+This section explains how to build, run, and contribute to the project.
+
+## Start here
+
+- [Setup](setup.md) (run from source)
+- [Control script guide](control-script.md) (use `--build` for release bundles)
+- [Architecture overview](architecture.md)
+- [Testing](testing.md)
+- [Releases / packaging](release.md)
+
+---
+
+## 📝 release.md — ./docs/dev/release.md
+
+# Releases / Packaging
+
+This project is packaged as a desktop app (commonly via Tauri).
+
+## Local release builds (conceptual)
+
+- Ensure `--doctor` passes
+- Run install/bootstrap (`--install`)
+- Use the standard packaging command for the desktop app (Tauri bundler)
+
+Because packaging commands vary by OS and CI environment, keep the authoritative steps in CI
+and update this document whenever the release pipeline changes.
+
+## Recommended local packaging workflow
+
+Use the control script as the standard entry point for local packaging:
+
+```bash
+python3 tools/control.py --build
+```
+
+Builds the desktop app release bundles by running `pnpm tauri build`.
+Produces platform-specific bundles/installers.
+
+Notes:
+- Packaging is OS-specific; build Windows artifacts on Windows, macOS artifacts on macOS, and Linux artifacts on Linux.
+- Requires Node + pnpm dependencies and Tauri build prerequisites for the OS.
+- Outputs are produced by Tauri under the desktop app's release bundle directory (typically `apps/fmd-desktop/src-tauri/target/release/bundle`).
+
+## Recommended: CI-driven releases
+
+- Tag-based releases
+- Automated build artifacts per OS
+- Release notes sourced from `CHANGELOG.md`
+
+---
+
+## 📝 setup.md — ./docs/dev/setup.md
+
+# Developer setup (run from source)
+
+This guide describes a “fast start” flow for running the desktop app locally.
+
+Note: Example commands for Linux/macOS (Terminal).
+On Windows, use PowerShell or Git Bash; the steps are the same, only the directory path may differ.
+
+## 1) Install Python + Git & check versions
+
+```bash
+# --- Check Python (or install if missing) ---
+python3 --version || true
+
+# Linux (Debian/Ubuntu)
+sudo apt update
+sudo apt install -y python3 python3-pip git
+
+# macOS (Homebrew, if available)
+# brew install python git
+
+# Verify versions
+python3 --version
+git --version
+```
+
+## 2) Clone the repo & switch to a standard project directory
+
+```bash
+# Standard project directory (works on all systems):
+# Linux/macOS: ~/Projects
+mkdir -p ~/Projects
+cd ~/Projects
+
+# Clone repository (replace URL if needed)
+git clone https://github.com/kleiveist/FMDFlashcard.git
+cd FMDFlashcard
+```
+
+## 3) Control script (doctor / health check)
+
+```bash
+cd ~/Projects/FMDFlashcard
+
+# optional: health check / doctor
+python3 tools/control.py --doctor
+```
+
+## 4) Install & start
+
+```bash
+cd ~/Projects/FMDFlashcard
+
+# installation / setup
+python3 tools/control.py --install
+```
+
+## 5) Tauri
+
+```bash
+python3 tools/control.py --tauri
+```
+
+## 6) Start
+
+```bash
+python3 tools/control.py --start
+```
+
+## 7) Build (release bundles / native packaging)
+```bash
+cd ~/Projects/FMDFlashcard
+# build desktop app bundles (runs: pnpm tauri build)
+python3 tools/control.py --build
+```
+## If something fails
+
+- Re-run `--doctor` and review the printed checks.
+- Confirm you have a supported Node.js/pnpm toolchain if the desktop app uses them.
+- Open an issue and paste the relevant terminal output.
+
+---
+
+## 📝 testing.md — ./docs/dev/testing.md
+
+# Testing
+
+## Running tests
+
+If the project uses a monorepo layout, tests are typically run from the app workspace.
+
+Examples (adjust to your workspace names):
+
+```bash
+# From repo root
+pnpm -C apps/fmd-desktop test
+```
+
+If you only changed logic in one file, prefer running targeted tests to shorten feedback loops.
+
+## Expectations for pull requests
+
+- Add or update tests when changing evaluation logic (e.g., composite cards, result summaries).
+- Ensure lint and typechecks pass before requesting review.
+
+---
+
+## 📝 index.md — ./docs/index.md
+
+# Documentation
+
+This documentation is split into two main tracks:
+
+> If GitHub's repository navigation feels slow, use these direct links:
+>
+> **User docs**
+> - [Docs home](index.md)
+> - [User docs index](user/index.md)
+> - [Getting started](user/getting-started.md)
+> - [Flashcard syntax](user/flashcard-syntax.md)
+> - [Spaced repetition](user/spaced-repetition.md)
+> - [Settings](user/settings.md)
+> - [Troubleshooting](user/troubleshooting.md)
+>
+> **Developer docs**
+> - [Developer docs index](dev/index.md)
+> - [Setup (run from source)](dev/setup.md)
+> - [Control script](dev/control-script.md)
+> - [Architecture](dev/architecture.md)
+> - [Testing](dev/testing.md)
+> - [Releases / packaging](dev/release.md)
+>
+> **Project meta**
+> - [Contributing](../CONTRIBUTING.md)
+> - [Changelog](../CHANGELOG.md)
+> - [Security policy](../SECURITY.md)
+> - [ADR index](adr/index.md)
+
+## Section indexes
+
+- [User docs index](user/index.md)
+- [Developer docs index](dev/index.md)
+- [ADR index](adr/index.md)
+
+- **User documentation:** [User docs](user/) for app workflows and day-to-day usage.
+- **Developer documentation:** [Developer docs](dev/) for build, run, and contribution details.
+
+## Start here
+
+### Users
+
+- [Getting started](user/getting-started.md)
+- [Flashcard syntax reference](user/flashcard-syntax.md)
+- [Spaced repetition](user/spaced-repetition.md)
+- [Settings overview](user/settings.md)
+- [Troubleshooting](user/troubleshooting.md)
+
+### Developers
+
+- [Setup (run from source)](dev/setup.md)
+- [Control script guide](dev/control-script.md) (script: [control.py](../tools/control.py))
+- [Architecture overview](dev/architecture.md)
+- [Testing](dev/testing.md)
+- [Release notes / packaging](dev/release.md)
+
+---
+
+## 📝 text.md — ./docs/issus/text.md
+
+next step combinatzion von allen kartaikarten syntax 
+und noch zuküntige kommenden sytax 
+die kombinatzions sytax aus 
+Cloze Input: %% ... %% → Eingabefeld
+Drag&Drop Token: `...` → Token-Pool + Drop-Zone
+funktzionirt schon es soll dann um 
+Multiple-Choice (A/B/C/D + -x Marker) (A/B + -x Marker)
+erwitert werden 
+und das system soll zu vorbereitet sein das 
+
+die kateikaten syntax soll innahelb eine block immer combinibar sein
+# 📍 Abschnitt 4 – Anwendungsfrage (10 Punkte)
+#card 
+
+7. Welche Aussage zu NoSQL-Systemen (Document Stores) trifft zu?  
+A) Sie erfordern streng atomare Attribute  
+B) Sie speichern strukturierte Dokumente wie JSON  
+C) Sie unterstützen ausschließlich ACID-Transaktionen  
+D) Sie benötigen zwingend fest definierte Schemata  
+-b
+
+8. Gegeben ist folgende Tabelle RECHNUNG:
+
+| RechnungID | KundeID | Betrag |
+| ---------- | ------- | ------ |
+| 1          | 1       | 100.5  |
+| 2          | 1       | 250    |
+| 3          | 2       | 75.99  |
+
+Formulieren Sie eine SQL-Abfrage, die alle Rechnungen mit einem Betrag größer als 100 ausgibt.  
+Es sollen die Spalten RechnungID, KundeID und Betrag ausgegeben und das Ergebnis nach Betrag absteigend sortiert werden.
+
+%% SELECT %% RechnungID, KundeID, Betrag
+%% FROM %% `RECHNUNG`
+%% WHERE %% `Betrag > 100`
+%% ORDER BY %% `Betrag DESC;`
+#
+
+eine aufgaebn promt einmal in de und in en erstellen
+
+---
+
+## 📝 refactor-notes.md — ./docs/refactor-notes.md
+
+# Refactor notes
+
+## Fast Flashcard
+- Moved page logic into `apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts`.
+- Extracted UI panels into `apps/fmd-desktop/src/pages/fast-flashcard/components/` and kept `FastFlashcardPage` as composition-only.
+- Kept `apps/fmd-desktop/src/pages/FastFlashcardPage.tsx` as a re-export to preserve routing/imports.
+
+## Spaced Repetition
+- Moved page logic into `apps/fmd-desktop/src/pages/spaced-repetition/hooks/useSrSessionViewModel.ts`.
+- Extracted UI panels into `apps/fmd-desktop/src/pages/spaced-repetition/components/` and kept `SpacedRepetitionPage` as composition-only.
+- Kept `apps/fmd-desktop/src/pages/SpacedRepetitionPage.tsx` as a re-export to preserve routing/imports.
+
+## Stylesheets
+- Split `apps/fmd-desktop/src/App.css` into layered files under `apps/fmd-desktop/src/styles/` (`tokens.css`, `base.css`, `layout.css`) plus component files in `apps/fmd-desktop/src/styles/components/`.
+- Kept `apps/fmd-desktop/src/App.css` as an import-only aggregator to preserve the existing import in `apps/fmd-desktop/src/App.tsx` and the original cascade order.
+
+---
+
+## 📝 flashcard-syntax.md — ./docs/user/flashcard-syntax.md
+
+# Flashcard syntax reference
+
+The goal of the syntax is to keep Markdown readable while still being machine-parseable.
+
+## Card blocks
+
+A card block starts with:
+
+```md
+#card
+```
+
+Everything that follows belongs to that card until the next card block starts or the file ends.
+
+## Question / answer pairs
+
+Inside a card block, each question is written as plain text.
+The answer is written on the next line, prefixed with a dash (`-`).
+
+Example:
+
+```md
+#card
+
+What is a primary key?
+- A primary key uniquely identifies a row in a table.
+```
+
+## Composite cards (multiple Q/A pairs in one block)
+
+You can place multiple Q/A pairs inside one `#card` block. The block forms one composite card.
+
+Example:
+
+```md
+#card
+
+2NF requires every non-key attribute depends on the whole composite key. True/False?
+- True
+
+Define a foreign key.
+- A foreign key references a primary key (or a unique key) of another table to enforce referential integrity.
+```
+
+**Composite scoring rule:** the card is considered correct only if *all* answers are correct.
+
+## Formatting tips
+
+- Keep questions short and unambiguous.
+- Put only the final answer after the dash line.
+- If you need longer answers, write them as a single paragraph after the dash (still one answer).
+
+## Notes
+
+The exact parsing rules may evolve. If you encounter differences between this doc and the current app behavior,
+prefer the in-app Help and open an issue to align documentation.
+
+---
+
+## 📝 getting-started.md — ./docs/user/getting-started.md
+
+# Getting started
+
+This guide covers the shortest path from “I have Markdown notes” to “I can review cards”.
+
+## 1) Create or choose a vault folder
+
+A *vault* is simply a folder that contains your Markdown files. The app scans this folder to find
+flashcards embedded in your notes.
+
+## 2) Add your first cards to a Markdown file
+
+Create a new `.md` file (or use an existing one) and add a `#card` block.
+
+Example:
+
+```md
+#card
+
+What is 2NF (Second Normal Form)?
+- 2NF requires that every non-key attribute depends on the whole of a composite key (if a composite key exists).
+
+Define “foreign key” and give a simple example.
+- A foreign key is an attribute (or set of attributes) that references the primary key of another table to enforce referential integrity.
+```
+
+## 3) Open the app and load the vault
+
+1. Open the app.
+2. Choose your vault folder.
+3. Let the app scan your Markdown files.
+
+## 4) Start a review
+
+Pick a review mode (standard, fast, spaced repetition) and start answering cards.
+If a card contains multiple Q/A pairs inside the same `#card` block, it is treated as a *composite card*:
+the card is correct only if all parts are correct.
+
+## 5) Iterate
+
+- Add cards as you learn.
+- Refactor notes as usual—your Markdown remains readable.
+- Use Settings to tune parsing markers, review behavior, and performance options.
+
+Next: read the full syntax reference in `flashcard-syntax.md`.
+
+---
+
+## 📝 index.md — ./docs/user/index.md
+
+# User documentation
+
+This section explains how to use the app day-to-day.
+
+## Start here
+
+- [Getting started](getting-started.md)
+- [Flashcard syntax reference](flashcard-syntax.md)
+- [Spaced repetition](spaced-repetition.md)
+- [Settings overview](settings.md)
+- [Troubleshooting](troubleshooting.md)
+
+---
+
+## 📝 settings.md — ./docs/user/settings.md
+
+# Settings
+
+Settings allow you to tune how the app behaves and how it scans your vault.
+
+## Common settings areas
+
+- **Data & Sync:** where your vault is selected, how scanning works, and data storage options.
+- **Language / UI:** localization and display preferences.
+- **Performance:** options intended for larger vaults and faster scanning.
+- **Flashcard / Fast Flashcard / Spaced Repetition tools:** review-mode specific behaviors.
+
+## Recommendations
+
+- Start with default values.
+- Only change scan markers (e.g., card prefix) if you have a clear reason.
+- If you see performance warnings, enable recommended performance options and rescan.
+
+---
+
+## 📝 spaced-repetition.md — ./docs/user/spaced-repetition.md
+
+# Spaced repetition
+
+Spaced repetition helps you review cards at increasing intervals based on performance.
+
+## Concepts
+
+- **Boxes / levels:** cards move through boxes based on correct/incorrect answers.
+- **Sessions:** you review a subset of cards (often based on box selection and scheduling).
+- **Progress tracking:** the app records outcomes to influence future scheduling.
+
+## Typical workflow
+
+1. Select a box (or a scheduled set).
+2. Review cards.
+3. Cards move forward on correct answers; they may move back on incorrect answers.
+
+## Practical guidance
+
+- If you have many cards, start with a smaller daily set.
+- Be consistent: small daily sessions are more effective than rare large sessions.
+- When you change flashcard syntax or refactor notes, re-scan your vault and verify card counts.
+
+---
+
+## 📝 troubleshooting.md — ./docs/user/troubleshooting.md
+
+# Troubleshooting
+
+## The app shows “0 cards loaded”
+
+- Confirm you selected the correct vault folder.
+- Confirm your cards use the expected markers (see `flashcard-syntax.md`).
+- Rescan / reload the vault.
+
+## Clicking a view shows no cards
+
+- Make sure your current filter/box selection contains cards.
+- Verify that the vault was fully scanned and indexing completed.
+
+## UI looks off after updates
+
+- Restart the app.
+- If you recently changed theme/accent settings, toggle the theme and return to your preferred mode.
+
+## Something is inconsistent between modes (Flashcard / Fast / Spaced)
+
+- Reproduce the issue in a minimal example file.
+- Open an issue and include:
+  - a small example `#card` block,
+  - which mode you used,
+  - expected vs. actual behavior.
+
+---
+
+## 📝 README.md — ./README.md
+
+# FMDFlashcard
+
+Local-first, Markdown-based flashcards with built-in learning modes (including spaced repetition).
+
+The project is designed to work with existing Markdown notes (similar in spirit to an Obsidian-style vault),
+while adding a dedicated review experience and study progress tracking.
+
+## What you can do
+
+- Use your existing Markdown files as the source of truth for learning content.
+- Extract flashcards from Markdown using simple, readable markers.
+- Review cards in multiple modes (e.g., standard flashcards, fast mode, spaced repetition).
+- Keep your learning workflow local-first.
+
+> Note: The UX and feature set are evolving. If something is unclear, check the in-app Help and the docs in [docs](docs/).
+
+## Documentation index (fast links)
+
+If GitHub’s repository navigation feels slow, use these direct links:
+
+### User docs
+- [Docs home](docs/index.md)
+- [User docs index](docs/user/index.md)
+- [Getting started](docs/user/getting-started.md)
+- [Flashcard syntax](docs/user/flashcard-syntax.md)
+- [Spaced repetition](docs/user/spaced-repetition.md)
+- [Settings](docs/user/settings.md)
+- [Troubleshooting](docs/user/troubleshooting.md)
+
+### Developer docs
+- [Developer docs index](docs/dev/index.md)
+- [Setup (run from source)](docs/dev/setup.md)
+- [Control script](docs/dev/control-script.md)
+- [Architecture](docs/dev/architecture.md)
+- [Testing](docs/dev/testing.md)
+- [Releases / packaging](docs/dev/release.md)
+
+### Project meta
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Security policy](SECURITY.md)
+- [ADR index](docs/adr/index.md)
+
+
+## Quickstart (run from source)
+
+If you want to run the desktop app from source, follow the full setup guide:
+
+- **Developer setup:** [Setup guide](docs/dev/setup.md)
+- **Control script guide:** [Control script guide](docs/dev/control-script.md)
+
+A typical flow looks like:
+
+1. Clone this repo
+2. `python3 tools/control.py --doctor`
+3. `python3 tools/control.py --install`
+4. `python3 tools/control.py --tauri`
+5. `python3 tools/control.py --start`
+
+## Documentation
+
+- **Docs home:** [Documentation index](docs/index.md)
+- **User docs:** [User documentation](docs/user/)
+- **Developer docs:** [Developer documentation](docs/dev/)
+- **Architecture decisions:** [ADRs](docs/adr/)
+
+## Contributing
+
+See the [Contributing guide](CONTRIBUTING.md) for development workflow and pull request guidelines.
+
+## License
+
+See [License](LICENSE) (if present in this repository).
+
+---
+
+## 📝 SECURITY.md — ./SECURITY.md
+
+# Security Policy
+
+## Supported Versions
+
+This project is under active development. Security fixes may be released without notice.
+
+## Reporting a Vulnerability
+
+If you believe you found a security issue:
+
+1. Do not open a public issue with sensitive details.
+2. Contact the maintainers via a private channel (if available) or open a minimal issue asking for a secure contact method.
+
+Please include:
+
+- a description of the issue,
+- steps to reproduce,
+- impact assessment (what an attacker could do),
+- any suggested mitigation.
+
+Thank you for reporting responsibly.
+
+---
+
+## 📝 summary.md — ./summary.md
+
+Markdown-Scan – Root: /home/kleif/Projects/FMDFlashcard
+Erzeugt: 2026-01-07T06:54:53
+Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.md, .shipping
+
+=== Dateien ===
+
+📁 .
+  📝 CHANGELOG.md
+     Pfad: 📝 CHANGELOG.md
+     Größe: 361 B (361 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Changelog
+     Überschriften: 6, Zeilen: 18, Wörter: 50, Zeichen: 361
+     Gliederung:
+       • # Changelog
+       • ## [Unreleased]
+         • ### Added
+         • ### Changed
+         • ### Fixed
+       • ## [0.1.0] - TBD
+     Inhalt (Auszug): All notable changes to this project will be documented in this file.
+
+  📝 CONTRIBUTING.md
+     Pfad: 📝 CONTRIBUTING.md
+     Größe: 762 B (762 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Contributing
+     Überschriften: 5, Zeilen: 33, Wörter: 106, Zeichen: 762
+     Gliederung:
+       • # Contributing
+       • ## Development quickstart
+       • ## Branch / PR workflow
+       • ## Quality guidelines
+       • ## Reporting issues
+     Inhalt (Auszug): Thanks for your interest in contributing.
+
+  📝 README.md
+     Pfad: 📝 README.md
+     Größe: 2.40 KB (2454 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: FMDFlashcard
+     Überschriften: 10, Zeilen: 73, Wörter: 346, Zeichen: 2452
+     Gliederung:
+       • # FMDFlashcard
+       • ## What you can do
+       • ## Documentation index (fast links)
+         • ### User docs
+         • ### Developer docs
+         • ### Project meta
+       • ## Quickstart (run from source)
+       • ## Documentation
+       • ## Contributing
+       • ## License
+     Inhalt (Auszug): Local-first, Markdown-based flashcards with built-in learning modes (including spaced repetition).
+
+  📝 SECURITY.md
+     Pfad: 📝 SECURITY.md
+     Größe: 569 B (569 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Security Policy
+     Überschriften: 3, Zeilen: 21, Wörter: 84, Zeichen: 569
+     Gliederung:
+       • # Security Policy
+       • ## Supported Versions
+       • ## Reporting a Vulnerability
+     Inhalt (Auszug): This project is under active development. Security fixes may be released without notice.
+
+
+📁 apps/fmd-desktop
+  📝 README.md
+     Pfad: 📁 apps / 📁 fmd-desktop / 📝 README.md
+     Größe: 378 B (378 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Tauri + React + Typescript
+     Überschriften: 2, Zeilen: 7, Wörter: 50, Zeichen: 378
+     Gliederung:
+       • # Tauri + React + Typescript
+       • ## Recommended IDE Setup
+     Inhalt (Auszug): This template should help get you started developing with Tauri, React and Typescript in Vite.
+
+
+📁 apps/fmd-desktop/src/.summary
+  📝 allsummary.md
+     Pfad: 📁 apps / 📁 fmd-desktop / 📁 src / 📁 .summary / 📝 allsummary.md
+     Größe: 560.58 KB (574038 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/apps/fmd-desktop/src
+     Überschriften: 135, Zeilen: 19642, Wörter: 47852, Zeichen: 573392
+     Gliederung:
+       • # Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/apps/fmd-desktop/src
+       • ## 📝 App.css — ./App.css
+       • ## 📝 App.tsx — ./App.tsx
+       • ## 📝 AppStateProvider.tsx — ./components/AppStateProvider.tsx
+       • ## 📝 FileList.tsx — ./components/FileList.tsx
+       • ## 📝 ClozeCard.tsx — ./components/flashcards/ClozeCard.tsx
+       • ## 📝 CompositeCard.tsx — ./components/flashcards/CompositeCard.tsx
+       • ## 📝 FreeTextCard.tsx — ./components/flashcards/FreeTextCard.tsx
+       • ## 📝 MultipleChoiceCard.tsx — ./components/flashcards/MultipleChoiceCard.tsx
+       • ## 📝 TrueFalseCard.tsx — ./components/flashcards/TrueFalseCard.tsx
+       • ## 📝 icons.tsx — ./components/icons.tsx
+       • ## 📝 KpiGrid.tsx — ./components/KpiGrid.tsx
+       • ## 📝 LargeVaultWarningModal.tsx — ./components/LargeVaultWarningModal.tsx
+       • ## 📝 PreviewPanel.tsx — ./components/PreviewPanel.tsx
+       • ## 📝 AppearanceSection.tsx — ./components/settings/AppearanceSection.tsx
+       • ## 📝 DataSyncTabContent.tsx — ./components/settings/DataSyncTabContent.tsx
+       • ## 📝 FastFlashcardToolsSettings.tsx — ./components/settings/FastFlashcardToolsSettings.tsx
+       • ## 📝 FlashcardsSettingsSection.tsx — ./components/settings/FlashcardsSettingsSection.tsx
+       • ## 📝 PerformanceTabContent.tsx — ./components/settings/PerformanceTabContent.tsx
+       • ## 📝 ResetSessionHistoryModal.tsx — ./components/settings/ResetSessionHistoryModal.tsx
+       • ## 📝 SpacedRepetitionSettingsSection.tsx — ./components/settings/SpacedRepetitionSettingsSection.tsx
+       • ## 📝 VaultIndexSection.tsx — ./components/settings/VaultIndexSection.tsx
+       • ## 📝 SidebarNav.tsx — ./components/SidebarNav.tsx
+       • ## 📝 StatsPanel.tsx — ./components/StatsPanel.tsx
+       • ## 📝 VaultTree.tsx — ./components/VaultTree.tsx
+       • ## 📝 constants.ts — ./features/fast-flashcard/constants.ts
+       • ## 📝 logic.test.ts — ./features/flashcards/logic.test.ts
+       • ## 📝 logic.ts — ./features/flashcards/logic.ts
+       • ## 📝 useFlashcards.ts — ./features/flashcards/useFlashcards.ts
+       • ## 📝 usePreview.ts — ./features/preview/usePreview.ts
+       • ## 📝 settingsNavigation.ts — ./features/settings/settingsNavigation.ts
+       • ## 📝 useAppSettings.ts — ./features/settings/useAppSettings.ts
+       • ## 📝 logic.ts — ./features/spaced-repetition/logic.ts
+       • ## 📝 useSpacedRepetition.ts — ./features/spaced-repetition/useSpacedRepetition.ts
+       • ## 📝 useVault.ts — ./features/vault/useVault.ts
+       • ## 📝 chart.ts — ./lib/chart.ts
+       • ## 📝 color.ts — ./lib/color.ts
+       • ## 📝 errors.ts — ./lib/errors.ts
+       • ## 📝 flashcardKeywords.ts — ./lib/flashcardKeywords.ts
+       • ## 📝 flashcards.test.ts — ./lib/flashcards.test.ts
+       • ## 📝 flashcards.ts — ./lib/flashcards.ts
+       • ## 📝 path.ts — ./lib/path.ts
+       • ## 📝 theme.ts — ./lib/theme.ts
+       • ## 📝 tree.ts — ./lib/tree.ts
+       • ## 📝 types.ts — ./lib/types.ts
+       • ## 📝 main.tsx — ./main.tsx
+       • ## 📝 DashboardPage.tsx — ./pages/DashboardPage.tsx
+       • ## 📝 FastCardHost.tsx — ./pages/fast-flashcard/components/FastCardHost.tsx
+       • ## 📝 FastHeader.tsx — ./pages/fast-flashcard/components/FastHeader.tsx
+       • ## 📝 FastHistoryPanel.tsx — ./pages/fast-flashcard/components/FastHistoryPanel.tsx
+       • ## 📝 FastStatsPanel.tsx — ./pages/fast-flashcard/components/FastStatsPanel.tsx
+       • ## 📝 FastToolsPanel.tsx — ./pages/fast-flashcard/components/FastToolsPanel.tsx
+       • ## 📝 FastFlashcardPage.tsx — ./pages/fast-flashcard/FastFlashcardPage.tsx
+       • ## 📝 useFastSession.ts — ./pages/fast-flashcard/hooks/useFastSession.ts
+       • ## 📝 FastFlashcardPage.tsx — ./pages/FastFlashcardPage.tsx
+       • ## 📝 FlashcardPage.tsx — ./pages/FlashcardPage.tsx
+       • ## 📝 appSections.ts — ./pages/help/content/appSections.ts
+       • ## 📝 i18n.ts — ./pages/help/content/i18n.ts
+       • ## 📝 labels.ts — ./pages/help/content/labels.ts
+       • ## 📝 entries.ts — ./pages/help/content/syntax/entries.ts
+       • ## 📝 overview.ts — ./pages/help/content/syntax/overview.ts
+       • ## 📝 topics.ts — ./pages/help/content/topics.ts
+       • ## 📝 types.ts — ./pages/help/content/types.ts
+       • ## 📝 helpContent.ts — ./pages/help/helpContent.ts
+       • ## 📝 AppSectionsGuidePanel.tsx — ./pages/help/sections/AppSectionsGuidePanel.tsx
+       • ## 📝 HelpDetailSection.tsx — ./pages/help/sections/HelpDetailSection.tsx
+       • ## 📝 HelpHeaderSection.tsx — ./pages/help/sections/HelpHeaderSection.tsx
+       • ## 📝 HelpOverviewSection.tsx — ./pages/help/sections/HelpOverviewSection.tsx
+       • ## 📝 HelpTopicHeadingsBlock.tsx — ./pages/help/sections/HelpTopicHeadingsBlock.tsx
+       • ## 📝 HelpTopicSections.tsx — ./pages/help/sections/HelpTopicSections.tsx
+       • ## 📝 SyntaxSection.tsx — ./pages/help/sections/SyntaxSection.tsx
+       • ## 📝 HelpPage.tsx — ./pages/HelpPage.tsx
+       • ## 📝 SettingsPage.tsx — ./pages/SettingsPage.tsx
+       • ## 📝 SrBoxesPanel.tsx — ./pages/spaced-repetition/components/SrBoxesPanel.tsx
+       • ## 📝 SrCardHost.tsx — ./pages/spaced-repetition/components/SrCardHost.tsx
+       • ## 📝 SrDeleteModal.tsx — ./pages/spaced-repetition/components/SrDeleteModal.tsx
+       • ## 📝 SrHeader.tsx — ./pages/spaced-repetition/components/SrHeader.tsx
+       • ## 📝 SrReviewActions.tsx — ./pages/spaced-repetition/components/SrReviewActions.tsx
+       • ## 📝 SrStatsAndChart.tsx — ./pages/spaced-repetition/components/SrStatsAndChart.tsx
+       • ## 📝 SrStatsPanel.tsx — ./pages/spaced-repetition/components/SrStatsPanel.tsx
+       • ## 📝 SrToolsPanel.tsx — ./pages/spaced-repetition/components/SrToolsPanel.tsx
+       • ## 📝 SrUserPanel.tsx — ./pages/spaced-repetition/components/SrUserPanel.tsx
+       • ## 📝 useSrSessionViewModel.ts — ./pages/spaced-repetition/hooks/useSrSessionViewModel.ts
+       • ## 📝 SpacedRepetitionPage.tsx — ./pages/spaced-repetition/SpacedRepetitionPage.tsx
+       • ## 📝 SpacedRepetitionPage.tsx — ./pages/SpacedRepetitionPage.tsx
+       • ## 📝 base.css — ./styles/base.css
+       • ## 📝 buttons.css — ./styles/components/buttons.css
+       • ## 📝 content.css — ./styles/components/content.css
+       • ## 📝 flashcards.css — ./styles/components/flashcards.css
+       • ## 📝 help.css — ./styles/components/help.css
+       • ## 📝 modals.css — ./styles/components/modals.css
+       • ## 📝 panel-layout.css — ./styles/components/panel-layout.css
+       • ## 📝 panels.css — ./styles/components/panels.css
+       • ## 📝 preview.css — ./styles/components/preview.css
+       • ## 📝 responsive.css — ./styles/components/responsive.css
+       • ## 📝 settings.css — ./styles/components/settings.css
+       • ## 📝 spaced-repetition.css — ./styles/components/spaced-repetition.css
+       • ## 📝 stats.css — ./styles/components/stats.css
+       • ## 📝 utility.css — ./styles/components/utility.css
+       • ## 📝 layout.css — ./styles/layout.css
+       • ## 📝 tokens.css — ./styles/tokens.css
+       • ## 📝 vite-env.d.ts — ./vite-env.d.ts
+     Inhalt (Auszug): @import "./styles/tokens.css"; @import "./styles/base.css"; @import "./styles/layout.css"; @import "./styles/components/buttons.css"; @import "./styles/components/content.css"; @import "./styles/components/panels.css"; @import "./styles/components/flashcards.css"; @import "./styles/components/stats.css"; @import "./styles/components/help.css"; @import "./styles/components/spaced-repetition.css"; @import "./styles/components/panel-layout.css"; @import "./styles/components/modals.css"; @import "./styles/components/preview.css"; @import "./styles/components/utility.css"; @import "./styles/components/settings.css"; @import "./styles/components/responsive.css";
+
+  📝 summary.md
+     Pfad: 📁 apps / 📁 fmd-desktop / 📁 src / 📁 .summary / 📝 summary.md
+     Größe: 51.18 KB (52413 B)
+     Geändert: 2026-01-07T06:50:59
+     Überschriften: 0, Zeilen: 899, Wörter: 5366, Zeichen: 48987
+     Inhalt (Auszug): Markdown-Scan – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/apps/fmd-desktop/src Erzeugt: 2026-01-06T18:41:11 Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.tsx, .css, .ts
+
+
+📁 docs
+  📝 index.md
+     Pfad: 📁 docs / 📝 index.md
+     Größe: 1.67 KB (1714 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Documentation
+     Überschriften: 5, Zeilen: 55, Wörter: 219, Zeichen: 1714
+     Gliederung:
+       • # Documentation
+       • ## Section indexes
+       • ## Start here
+         • ### Users
+         • ### Developers
+     Inhalt (Auszug): This documentation is split into two main tracks:
+
+  📝 refactor-notes.md
+     Pfad: 📁 docs / 📝 refactor-notes.md
+     Größe: 1.09 KB (1117 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Refactor notes
+     Überschriften: 4, Zeilen: 15, Wörter: 164, Zeichen: 1117
+     Gliederung:
+       • # Refactor notes
+       • ## Fast Flashcard
+       • ## Spaced Repetition
+       • ## Stylesheets
+     Inhalt (Auszug): # Refactor notes  ## Fast Flashcard - Moved page logic into `apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts`. - Extracted UI panels into `apps/fmd-desktop/src/pages/fast-flashcard/components/` and kept `FastFlashcardPage` as composition-only. - Kept `apps/fmd-desktop/src/pages/FastFlashcardPage.tsx` as a re-export to preserve routing/imports.  ## Spaced Repetition - Moved page logic into `apps/fmd-desktop/src/pages/spaced-repetition/hooks/useSrSessionViewModel.ts`. - Extracted UI panels into `apps/fmd-desktop/src/pages/spaced-repetition/components/` and kept `SpacedRepetitionPage` as composition-only. - Kept `apps/fmd-desktop/src/pages/SpacedRepetitionPage.tsx` as a re-export to preserve routing/imports.  ## Stylesheets - Split `apps/fmd-desktop/src/App.css` into layered …
+
+
+📁 docs/adr
+  📝 0001-documentation-source-of-truth.md
+     Pfad: 📁 docs / 📁 adr / 📝 0001-documentation-source-of-truth.md
+     Größe: 802 B (802 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: ADR 0001: Documentation source of truth
+     Überschriften: 5, Zeilen: 32, Wörter: 110, Zeichen: 802
+     Gliederung:
+       • # ADR 0001: Documentation source of truth
+       • ## Status
+       • ## Context
+       • ## Decision
+       • ## Consequences
+     Inhalt (Auszug): Date: 2026-01-06
+
+  📝 index.md
+     Pfad: 📁 docs / 📁 adr / 📝 index.md
+     Größe: 208 B (208 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Architecture Decision Records (ADRs)
+     Überschriften: 2, Zeilen: 7, Wörter: 27, Zeichen: 208
+     Gliederung:
+       • # Architecture Decision Records (ADRs)
+       • ## Index
+     Inhalt (Auszug): ADRs capture important engineering decisions and the reasons behind them.
+
+
+📁 docs/dev
+  📝 architecture.md
+     Pfad: 📁 docs / 📁 dev / 📝 architecture.md
+     Größe: 830 B (830 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Architecture overview
+     Überschriften: 4, Zeilen: 21, Wörter: 111, Zeichen: 830
+     Gliederung:
+       • # Architecture overview
+       • ## High-level components
+       • ## Design goals
+       • ## Where to look next
+     Inhalt (Auszug): This document is a high-level guide to how the project is structured. It is intended for contributors.
+
+  📝 control-script.md
+     Pfad: 📁 docs / 📁 dev / 📝 control-script.md
+     Größe: 1.69 KB (1732 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Control script (`tools/control.py`)
+     Überschriften: 11, Zeilen: 71, Wörter: 236, Zeichen: 1728
+     Gliederung:
+       • # Control script (`tools/control.py`)
+       • ## Why it exists
+       • ## Common commands
+         • ### Health check
+         • ### Install / setup
+         • ### Prepare / run Tauri tooling
+         • ### Start the app
+         • ### Build release bundles
+       • ## Suggested workflow
+       • ## When to use
+       • ## Extending the control script
+     Inhalt (Auszug): The repository contains a Python control script intended to standardize common development tasks.
+
+  📝 index.md
+     Pfad: 📁 docs / 📁 dev / 📝 index.md
+     Größe: 337 B (337 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Developer documentation
+     Überschriften: 2, Zeilen: 11, Wörter: 44, Zeichen: 337
+     Gliederung:
+       • # Developer documentation
+       • ## Start here
+     Inhalt (Auszug): This section explains how to build, run, and contribute to the project.
+
+  📝 release.md
+     Pfad: 📁 docs / 📁 dev / 📝 release.md
+     Größe: 1.16 KB (1189 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Releases / Packaging
+     Überschriften: 4, Zeilen: 34, Wörter: 167, Zeichen: 1189
+     Gliederung:
+       • # Releases / Packaging
+       • ## Local release builds (conceptual)
+       • ## Recommended local packaging workflow
+       • ## Recommended: CI-driven releases
+     Inhalt (Auszug): This project is packaged as a desktop app (commonly via Tauri).
+
+  📝 setup.md
+     Pfad: 📁 docs / 📁 dev / 📝 setup.md
+     Größe: 1.65 KB (1687 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Developer setup (run from source)
+     Überschriften: 20, Zeilen: 79, Wörter: 236, Zeichen: 1683
+     Gliederung:
+       • # Developer setup (run from source)
+       • ## 1) Install Python + Git & check versions
+       • # --- Check Python (or install if missing) ---
+       • # Linux (Debian/Ubuntu)
+       • # macOS (Homebrew, if available)
+       • # brew install python git
+       • # Verify versions
+       • ## 2) Clone the repo & switch to a standard project directory
+       • # Standard project directory (works on all systems):
+       • # Linux/macOS: ~/Projects
+       • # Clone repository (replace URL if needed)
+       • ## 3) Control script (doctor / health check)
+       • # optional: health check / doctor
+       • ## 4) Install & start
+       • # installation / setup
+       • ## 5) Tauri
+       • ## 6) Start
+       • ## 7) Build (release bundles / native packaging)
+       • # build desktop app bundles (runs: pnpm tauri build)
+       • ## If something fails
+     Inhalt (Auszug): This guide describes a “fast start” flow for running the desktop app locally.
+
+  📝 testing.md
+     Pfad: 📁 docs / 📁 dev / 📝 testing.md
+     Größe: 509 B (509 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Testing
+     Überschriften: 4, Zeilen: 19, Wörter: 76, Zeichen: 509
+     Gliederung:
+       • # Testing
+       • ## Running tests
+       • # From repo root
+       • ## Expectations for pull requests
+     Inhalt (Auszug): If the project uses a monorepo layout, tests are typically run from the app workspace.
+
+
+📁 docs/issus
+  📝 text.md
+     Pfad: 📁 docs / 📁 issus / 📝 text.md
+     Größe: 1.35 KB (1382 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: 📍 Abschnitt 4 – Anwendungsfrage (10 Punkte)
+     Überschriften: 3, Zeilen: 39, Wörter: 182, Zeichen: 1367
+     Gliederung:
+       • # 📍 Abschnitt 4 – Anwendungsfrage (10 Punkte)
+     Inhalt (Auszug): next step combinatzion von allen kartaikarten syntax und noch zuküntige kommenden sytax die kombinatzions sytax aus Cloze Input: %% ... %% → Eingabefeld Drag&Drop Token: `...` → Token-Pool + Drop-Zone funktzionirt schon es soll dann um Multiple-Choice (A/B/C/D + -x Marker) (A/B + -x Marker) erwitert werden und das system soll zu vorbereitet sein das
+
+
+📁 docs/user
+  📝 flashcard-syntax.md
+     Pfad: 📁 docs / 📁 user / 📝 flashcard-syntax.md
+     Größe: 1.40 KB (1433 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Flashcard syntax reference
+     Überschriften: 9, Zeilen: 56, Wörter: 232, Zeichen: 1433
+     Gliederung:
+       • # Flashcard syntax reference
+       • ## Card blocks
+       • ## Question / answer pairs
+       • ## Composite cards (multiple Q/A pairs in one block)
+       • ## Formatting tips
+       • ## Notes
+     Inhalt (Auszug): The goal of the syntax is to keep Markdown readable while still being machine-parseable.
+
+  📝 getting-started.md
+     Pfad: 📁 docs / 📁 user / 📝 getting-started.md
+     Größe: 1.38 KB (1415 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Getting started
+     Überschriften: 7, Zeilen: 44, Wörter: 238, Zeichen: 1401
+     Gliederung:
+       • # Getting started
+       • ## 1) Create or choose a vault folder
+       • ## 2) Add your first cards to a Markdown file
+       • ## 3) Open the app and load the vault
+       • ## 4) Start a review
+       • ## 5) Iterate
+     Inhalt (Auszug): This guide covers the shortest path from “I have Markdown notes” to “I can review cards”.
+
+  📝 index.md
+     Pfad: 📁 docs / 📁 user / 📝 index.md
+     Größe: 302 B (302 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: User documentation
+     Überschriften: 2, Zeilen: 11, Wörter: 38, Zeichen: 302
+     Gliederung:
+       • # User documentation
+       • ## Start here
+     Inhalt (Auszug): This section explains how to use the app day-to-day.
+
+  📝 settings.md
+     Pfad: 📁 docs / 📁 user / 📝 settings.md
+     Größe: 647 B (647 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Settings
+     Überschriften: 3, Zeilen: 16, Wörter: 88, Zeichen: 647
+     Gliederung:
+       • # Settings
+       • ## Common settings areas
+       • ## Recommendations
+     Inhalt (Auszug): Settings allow you to tune how the app behaves and how it scans your vault.
+
+  📝 spaced-repetition.md
+     Pfad: 📁 docs / 📁 user / 📝 spaced-repetition.md
+     Größe: 801 B (801 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Spaced repetition
+     Überschriften: 4, Zeilen: 21, Wörter: 118, Zeichen: 801
+     Gliederung:
+       • # Spaced repetition
+       • ## Concepts
+       • ## Typical workflow
+       • ## Practical guidance
+     Inhalt (Auszug): Spaced repetition helps you review cards at increasing intervals based on performance.
+
+  📝 troubleshooting.md
+     Pfad: 📁 docs / 📁 user / 📝 troubleshooting.md
+     Größe: 772 B (772 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Troubleshooting
+     Überschriften: 5, Zeilen: 25, Wörter: 112, Zeichen: 768
+     Gliederung:
+       • # Troubleshooting
+       • ## The app shows “0 cards loaded”
+       • ## Clicking a view shows no cards
+       • ## UI looks off after updates
+       • ## Something is inconsistent between modes (Flashcard / Fast / Spaced)
+     Inhalt (Auszug): # Troubleshooting  ## The app shows “0 cards loaded”  - Confirm you selected the correct vault folder. - Confirm your cards use the expected markers (see `flashcard-syntax.md`). - Rescan / reload the vault.  ## Clicking a view shows no cards  - Make sure your current filter/box selection contains cards. - Verify that the vault was fully scanned and indexing completed.  ## UI looks off after updates  - Restart the app. - If you recently changed theme/accent settings, toggle the theme and return to your preferred mode.  ## Something is inconsistent between modes (Flashcard / Fast / Spaced)  - Reproduce the issue in a minimal example file. - Open an issue and include:   - a small example `#card` block,   - which mode you used,   - expected vs. actual behavior.
+
+
+📁 tools/.summary
+  📝 allsummary.md
+     Pfad: 📁 tools / 📁 .summary / 📝 allsummary.md
+     Größe: 64.61 KB (66164 B)
+     Geändert: 2026-01-07T06:50:59
+     Titel: Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/tools
+     Überschriften: 89, Zeilen: 2149, Wörter: 7566, Zeichen: 65790
+     Gliederung:
+       • # Gesamtinhalte – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/tools
+       • ## 📝 control.py — ./control.py
+       • # Accept run_install() or run_install(dry_run)
+       • ## 📝 pacman_keyring_fix.py — ./fixes/pacman_keyring_fix.py
+       • ## 📝 doctor.py — ./inst/doctor.py
+       • # Tauri / WebView dependencies are OS + distro specific.
+       • # We check them only on Linux, using the available package manager.
+       • # Debian/Ubuntu package names for the above logical deps.
+       • # Non-Linux systems or unknown Linux distros: don't fail the doctor on these.
+       • ## 📝 installuix.py — ./inst/linux/installuix.py
+       • # Prefer package manager detection first
+       • # apt-based fallback: choose Debian-style defaults
+       • # Last fallback: try Debian-style anyway (will error nicely if apt-get is absent)
+       • ## 📝 installuixarc.py — ./inst/linux/installuixarc.py
+       • # Arch/pacman package mapping (dedup happens automatically).
+       • # Core tools
+       • # Rust
+       • # Node
+       • # Tauri / WebView deps
+       • # If you want fully interactive installs, set FMD_PACMAN_NOCONFIRM=0
+       • # Optional: do a full sync+upgrade before installing. Set FMD_PACMAN_UPGRADE=0 to disable.
+       • # tools/fixes/pacman_keyring_fix.py
+       • # Keep system consistent (avoids partial upgrades / dependency weirdness)
+       • # Try keyring fix if it looks like a signature/key issue
+       • ## 📝 installuixdeb.py — ./inst/linux/installuixdeb.py
+       • # Debian == Ubuntu implementation for now (same logic, different defaults/fallbacks)
+       • ## 📝 installuixtauri.py — ./inst/linux/installuixtauri.py
+       • # which(rustc) may be a rustup shim; we require the toolchain to be active.
+       • # Arch: prefer pacman (avoids npm -g permission/EACCES).
+       • # Prefer corepack when available.
+       • # Fallback: npm -g (may require sudo).
+       • # Fallback: official installer
+       • # This fixes the log case: rustup installed but "no active toolchain".
+       • # create-tauri-app supports: --manager, --template, --yes, --identifier
+       • # tools/inst/linux/installuixtauri.py -> parents[3] == repo root
+       • ## 📝 installuixubu.py — ./inst/linux/installuixubu.py
+       • # build chain
+       • # rust: handled via rustup script (no apt mapping)
+       • # node
+       • # Tauri / WebView deps
+       • # apt-cache is non-root and works for existence probing
+       • # pick first existing package from alternatives
+       • # If rustup already present, assume toolchain is OK.
+       • # Install rustup via official script (non-apt)
+       • # Make it usable for subsequent commands in this same process
+       • # Ensure stable toolchain (cargo/rustc)
+       • # apt deps first
+       • # rust via rustup if any rust-related tool is missing
+       • ## 📝 installuixvs.py — ./inst/linux/installuixvs.py
+       • # Default: Microsoft-Build (AUR) wenn moeglich, sonst OSS-build aus pacman.
+       • # Setze VSCODE_VARIANT=oss um immer pacman 'code' zu nehmen.
+       • # AUR helper muss bereits vorhanden sein; Skript installiert ihn bewusst nicht automatisch.
+       • ## 📝 installmac.py — ./inst/mac/installmac.py
+       • # Tool-name -> brew formulae.
+       • # Notes:
+       • # - `file` and `curl` are typically preinstalled on macOS.
+       • # - `make`, `gcc`, `g++` on macOS usually come from Xcode Command Line Tools.
+       • # brew install supports multiple formulae at once.
+       • # Standard rustup installer (non-interactive).
+       • # It will add rust toolchain to your environment (shell profile may be updated).
+       • # Collect brew formulae.
+       • # Xcode Command Line Tools hint.
+       • # Brew install
+       • # Rust
+       • ## 📝 run.py — ./inst/run.py
+       • # tools/inst/run.py -> parents[2] == repo root
+       • # Still attempt to run in case pnpm/tauri is usable.
+       • # Rust must be functional for Tauri.
+       • # If node_modules missing, install deps first.
+       • ## 📝 installwin.py — ./inst/win/installwin.py
+       • # Tool-name -> winget package IDs (exact match)
+       • # `curl` is usually present on modern Windows; `file`, `make`, `gcc` are not handled here.
+       • # Tool-name -> Chocolatey packages
+       • # Tool-name -> Scoop apps
+       • # `-e` exact match, `--id` uses the package ID.
+       • # Agreements flags avoid prompts.
+       • # scoop
+     Inhalt (Auszug): """ Project control entry point.
+
+  📝 summary.md
+     Pfad: 📁 tools / 📁 .summary / 📝 summary.md
+     Größe: 4.68 KB (4792 B)
+     Geändert: 2026-01-07T06:50:59
+     Überschriften: 0, Zeilen: 145, Wörter: 546, Zeichen: 4308
+     Inhalt (Auszug): Markdown-Scan – Root: /mnt/daten/workspace/Blobbite/Develop/FMDFlashcard/tools Erzeugt: 2026-01-06T21:32:33 Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.py
+
+
+=== Ordnerbaum (Quelle, nur ausgewählte Typen) ===
+
+📁 .
+├── 📁 .git
+│   ├── 📁 hooks
+│   ├── 📁 info
+│   ├── 📁 logs
+│   │   └── 📁 refs
+│   │       ├── 📁 heads
+│   │       └── 📁 remotes
+│   │           └── 📁 origin
+│   ├── 📁 objects
+│   │   ├── 📁 info
+│   │   └── 📁 pack
+│   └── 📁 refs
+│       ├── 📁 heads
+│       ├── 📁 remotes
+│       │   └── 📁 origin
+│       └── 📁 tags
+├── 📁 .github
+│   └── 📁 workflows
+├── 📁 apps
+│   └── 📁 fmd-desktop
+│       ├── 📁 public
+│       ├── 📁 src
+│       │   ├── 📁 .summary
+│       │   │   ├── 📝 allsummary.md
+│       │   │   └── 📝 summary.md
+│       │   ├── 📁 assets
+│       │   ├── 📁 components
+│       │   │   ├── 📁 flashcards
+│       │   │   └── 📁 settings
+│       │   ├── 📁 features
+│       │   │   ├── 📁 fast-flashcard
+│       │   │   ├── 📁 flashcards
+│       │   │   ├── 📁 preview
+│       │   │   ├── 📁 settings
+│       │   │   ├── 📁 spaced-repetition
+│       │   │   └── 📁 vault
+│       │   ├── 📁 lib
+│       │   ├── 📁 pages
+│       │   │   ├── 📁 exam-simulation
+│       │   │   │   ├── 📁 components
+│       │   │   │   └── 📁 hooks
+│       │   │   ├── 📁 fast-flashcard
+│       │   │   │   ├── 📁 components
+│       │   │   │   └── 📁 hooks
+│       │   │   ├── 📁 help
+│       │   │   │   ├── 📁 content
+│       │   │   │   │   └── 📁 syntax
+│       │   │   │   └── 📁 sections
+│       │   │   └── 📁 spaced-repetition
+│       │   │       ├── 📁 components
+│       │   │       └── 📁 hooks
+│       │   └── 📁 styles
+│       │       └── 📁 components
+│       ├── 📁 src-tauri
+│       │   ├── 📁 capabilities
+│       │   ├── 📁 icons
+│       │   └── 📁 src
+│       └── 📝 README.md
+├── 📁 assets
+│   ├── 📁 brand
+│   └── 📁 svg
+├── 📁 docs
+│   ├── 📁 adr
+│   │   ├── 📝 0001-documentation-source-of-truth.md
+│   │   └── 📝 index.md
+│   ├── 📁 dev
+│   │   ├── 📝 architecture.md
+│   │   ├── 📝 control-script.md
+│   │   ├── 📝 index.md
+│   │   ├── 📝 release.md
+│   │   ├── 📝 setup.md
+│   │   └── 📝 testing.md
+│   ├── 📁 issus
+│   │   └── 📝 text.md
+│   ├── 📁 latex
+│   │   └── 📁 FMD
+│   │       ├── 📁 chapters
+│   │       │   ├── 📁 einleitung
+│   │       │   ├── 📁 hauptteil
+│   │       │   └── 📁 schluss
+│   │       └── 📁 image
+│   ├── 📁 user
+│   │   ├── 📝 flashcard-syntax.md
+│   │   ├── 📝 getting-started.md
+│   │   ├── 📝 index.md
+│   │   ├── 📝 settings.md
+│   │   ├── 📝 spaced-repetition.md
+│   │   └── 📝 troubleshooting.md
+│   ├── 📝 index.md
+│   └── 📝 refactor-notes.md
+├── 📁 tools
+│   ├── 📁 .summary
+│   │   ├── 📝 allsummary.md
+│   │   └── 📝 summary.md
+│   ├── 📁 fixes
+│   └── 📁 inst
+│       ├── 📁 linux
+│       ├── 📁 mac
+│       └── 📁 win
+├── 📝 CHANGELOG.md
+├── 📝 CONTRIBUTING.md
+├── 📝 README.md
+└── 📝 SECURITY.md
+
+=== Ordnerbaum (Ausgabeordner) ===
+
+📁 .
+├── 📁 .git
+│   ├── 📁 hooks
+│   │   ├── 📝 applypatch-msg.sample
+│   │   ├── 📝 commit-msg.sample
+│   │   ├── 📝 fsmonitor-watchman.sample
+│   │   ├── 📝 post-update.sample
+│   │   ├── 📝 pre-applypatch.sample
+│   │   ├── 📝 pre-commit.sample
+│   │   ├── 📝 pre-merge-commit.sample
+│   │   ├── 📝 pre-push.sample
+│   │   ├── 📝 pre-rebase.sample
+│   │   ├── 📝 pre-receive.sample
+│   │   ├── 📝 prepare-commit-msg.sample
+│   │   ├── 📝 push-to-checkout.sample
+│   │   ├── 📝 sendemail-validate.sample
+│   │   └── 📝 update.sample
+│   ├── 📁 info
+│   │   └── 📝 exclude
+│   ├── 📁 logs
+│   │   ├── 📁 refs
+│   │   │   ├── 📁 heads
+│   │   │   │   └── 📝 main
+│   │   │   └── 📁 remotes
+│   │   │       └── 📁 origin
+│   │   │           └── 📝 HEAD
+│   │   └── 📝 HEAD
+│   ├── 📁 objects
+│   │   ├── 📁 info
+│   │   └── 📁 pack
+│   │       ├── 📝 pack-f7bfdaebb2586e0c469ab93e4aac0ff6436301f7.idx
+│   │       ├── 📝 pack-f7bfdaebb2586e0c469ab93e4aac0ff6436301f7.pack
+│   │       └── 📝 pack-f7bfdaebb2586e0c469ab93e4aac0ff6436301f7.rev
+│   ├── 📁 refs
+│   │   ├── 📁 heads
+│   │   │   └── 📝 main
+│   │   ├── 📁 remotes
+│   │   │   └── 📁 origin
+│   │   │       └── 📝 HEAD
+│   │   └── 📁 tags
+│   ├── 📝 config
+│   ├── 📝 description
+│   ├── 📝 FETCH_HEAD
+│   ├── 📝 HEAD
+│   ├── 📝 index
+│   └── 📝 packed-refs
+├── 📁 .github
+│   └── 📁 workflows
+│       └── 📝 build-pdf.yml
+├── 📁 apps
+│   └── 📁 fmd-desktop
+│       ├── 📁 public
+│       │   ├── 📝 tauri.svg
+│       │   └── 📝 vite.svg
+│       ├── 📁 src
+│       │   ├── 📁 .summary
+│       │   │   ├── 📝 allsummary.md
+│       │   │   ├── 📝 index.json
+│       │   │   └── 📝 summary.md
+│       │   ├── 📁 assets
+│       │   │   └── 📝 react.svg
+│       │   ├── 📁 components
+│       │   │   ├── 📁 flashcards
+│       │   │   │   ├── 📝 ClozeCard.tsx
+│       │   │   │   ├── 📝 CompositeCard.tsx
+│       │   │   │   ├── 📝 FreeTextCard.tsx
+│       │   │   │   ├── 📝 MultipleChoiceCard.tsx
+│       │   │   │   └── 📝 TrueFalseCard.tsx
+│       │   │   ├── 📁 settings
+│       │   │   │   ├── 📝 AppearanceSection.tsx
+│       │   │   │   ├── 📝 DataSyncTabContent.tsx
+│       │   │   │   ├── 📝 ExamSettingsSection.tsx
+│       │   │   │   ├── 📝 FastFlashcardToolsSettings.tsx
+│       │   │   │   ├── 📝 FlashcardsSettingsSection.tsx
+│       │   │   │   ├── 📝 PerformanceTabContent.tsx
+│       │   │   │   ├── 📝 ResetSessionHistoryModal.tsx
+│       │   │   │   ├── 📝 SpacedRepetitionSettingsSection.tsx
+│       │   │   │   └── 📝 VaultIndexSection.tsx
+│       │   │   ├── 📝 AppErrorBoundary.tsx
+│       │   │   ├── 📝 AppStateProvider.tsx
+│       │   │   ├── 📝 FileList.tsx
+│       │   │   ├── 📝 icons.tsx
+│       │   │   ├── 📝 KpiGrid.tsx
+│       │   │   ├── 📝 LargeVaultWarningModal.tsx
+│       │   │   ├── 📝 PreviewPanel.tsx
+│       │   │   ├── 📝 SidebarNav.tsx
+│       │   │   ├── 📝 StatsPanel.tsx
+│       │   │   ├── 📝 VaultCreateModal.tsx
+│       │   │   └── 📝 VaultTree.tsx
+│       │   ├── 📁 features
+│       │   │   ├── 📁 fast-flashcard
+│       │   │   │   └── 📝 constants.ts
+│       │   │   ├── 📁 flashcards
+│       │   │   │   ├── 📝 logic.test.ts
+│       │   │   │   ├── 📝 logic.ts
+│       │   │   │   └── 📝 useFlashcards.ts
+│       │   │   ├── 📁 preview
+│       │   │   │   └── 📝 usePreview.ts
+│       │   │   ├── 📁 settings
+│       │   │   │   ├── 📝 settingsNavigation.ts
+│       │   │   │   └── 📝 useAppSettings.ts
+│       │   │   ├── 📁 spaced-repetition
+│       │   │   │   ├── 📝 logic.ts
+│       │   │   │   └── 📝 useSpacedRepetition.ts
+│       │   │   └── 📁 vault
+│       │   │       └── 📝 useVault.ts
+│       │   ├── 📁 lib
+│       │   │   ├── 📝 chart.ts
+│       │   │   ├── 📝 color.ts
+│       │   │   ├── 📝 errors.ts
+│       │   │   ├── 📝 exam.ts
+│       │   │   ├── 📝 flashcardKeywords.ts
+│       │   │   ├── 📝 flashcards.test.ts
+│       │   │   ├── 📝 flashcards.ts
+│       │   │   ├── 📝 path.ts
+│       │   │   ├── 📝 theme.ts
+│       │   │   ├── 📝 tree.ts
+│       │   │   └── 📝 types.ts
+│       │   ├── 📁 pages
+│       │   │   ├── 📁 exam-simulation
+│       │   │   │   ├── 📁 components
+│       │   │   │   │   ├── 📝 ExamConversionPanel.tsx
+│       │   │   │   │   ├── 📝 ExamFilePanel.tsx
+│       │   │   │   │   ├── 📝 ExamIdlePanel.tsx
+│       │   │   │   │   ├── 📝 ExamResultsPanel.tsx
+│       │   │   │   │   ├── 📝 ExamTaskRunner.tsx
+│       │   │   │   │   └── 📝 ExamToolsPanel.tsx
+│       │   │   │   ├── 📁 hooks
+│       │   │   │   │   └── 📝 useExamSimulationViewModel.ts
+│       │   │   │   └── 📝 ExamSimulationPage.tsx
+│       │   │   ├── 📁 fast-flashcard
+│       │   │   │   ├── 📁 components
+│       │   │   │   │   ├── 📝 FastCardHost.tsx
+│       │   │   │   │   ├── 📝 FastHeader.tsx
+│       │   │   │   │   ├── 📝 FastHistoryPanel.tsx
+│       │   │   │   │   ├── 📝 FastStatsPanel.tsx
+│       │   │   │   │   └── 📝 FastToolsPanel.tsx
+│       │   │   │   ├── 📁 hooks
+│       │   │   │   │   └── 📝 useFastSession.ts
+│       │   │   │   └── 📝 FastFlashcardPage.tsx
+│       │   │   ├── 📁 help
+│       │   │   │   ├── 📁 content
+│       │   │   │   │   ├── 📁 syntax
+│       │   │   │   │   │   ├── 📝 entries.ts
+│       │   │   │   │   │   └── 📝 overview.ts
+│       │   │   │   │   ├── 📝 appSections.ts
+│       │   │   │   │   ├── 📝 i18n.ts
+│       │   │   │   │   ├── 📝 labels.ts
+│       │   │   │   │   ├── 📝 topics.ts
+│       │   │   │   │   └── 📝 types.ts
+│       │   │   │   ├── 📁 sections
+│       │   │   │   │   ├── 📝 AppSectionsGuidePanel.tsx
+│       │   │   │   │   ├── 📝 HelpDetailSection.tsx
+│       │   │   │   │   ├── 📝 HelpHeaderSection.tsx
+│       │   │   │   │   ├── 📝 HelpOverviewSection.tsx
+│       │   │   │   │   ├── 📝 HelpTopicHeadingsBlock.tsx
+│       │   │   │   │   ├── 📝 HelpTopicSections.tsx
+│       │   │   │   │   └── 📝 SyntaxSection.tsx
+│       │   │   │   └── 📝 helpContent.ts
+│       │   │   ├── 📁 spaced-repetition
+│       │   │   │   ├── 📁 components
+│       │   │   │   │   ├── 📝 SrBoxesPanel.tsx
+│       │   │   │   │   ├── 📝 SrCardHost.tsx
+│       │   │   │   │   ├── 📝 SrDeleteModal.tsx
+│       │   │   │   │   ├── 📝 SrHeader.tsx
+│       │   │   │   │   ├── 📝 SrReviewActions.tsx
+│       │   │   │   │   ├── 📝 SrStatsAndChart.tsx
+│       │   │   │   │   ├── 📝 SrStatsPanel.tsx
+│       │   │   │   │   ├── 📝 SrToolsPanel.tsx
+│       │   │   │   │   └── 📝 SrUserPanel.tsx
+│       │   │   │   ├── 📁 hooks
+│       │   │   │   │   └── 📝 useSrSessionViewModel.ts
+│       │   │   │   └── 📝 SpacedRepetitionPage.tsx
+│       │   │   ├── 📝 DashboardPage.tsx
+│       │   │   ├── 📝 ExamSimulationPage.tsx
+│       │   │   ├── 📝 FastFlashcardPage.tsx
+│       │   │   ├── 📝 FlashcardPage.tsx
+│       │   │   ├── 📝 HelpPage.tsx
+│       │   │   ├── 📝 SettingsPage.tsx
+│       │   │   └── 📝 SpacedRepetitionPage.tsx
+│       │   ├── 📁 styles
+│       │   │   ├── 📁 components
+│       │   │   │   ├── 📝 buttons.css
+│       │   │   │   ├── 📝 content.css
+│       │   │   │   ├── 📝 flashcards.css
+│       │   │   │   ├── 📝 help.css
+│       │   │   │   ├── 📝 modals.css
+│       │   │   │   ├── 📝 panel-layout.css
+│       │   │   │   ├── 📝 panels.css
+│       │   │   │   ├── 📝 preview.css
+│       │   │   │   ├── 📝 responsive.css
+│       │   │   │   ├── 📝 settings.css
+│       │   │   │   ├── 📝 spaced-repetition.css
+│       │   │   │   ├── 📝 stats.css
+│       │   │   │   └── 📝 utility.css
+│       │   │   ├── 📝 base.css
+│       │   │   ├── 📝 layout.css
+│       │   │   └── 📝 tokens.css
+│       │   ├── 📝 App.css
+│       │   ├── 📝 App.tsx
+│       │   ├── 📝 main.tsx
+│       │   └── 📝 vite-env.d.ts
+│       ├── 📁 src-tauri
+│       │   ├── 📁 capabilities
+│       │   │   └── 📝 default.json
+│       │   ├── 📁 icons
+│       │   │   ├── 📝 128x128.png
+│       │   │   ├── 📝 128x128@2x.png
+│       │   │   ├── 📝 32x32.png
+│       │   │   ├── 📝 icon.icns
+│       │   │   ├── 📝 icon.ico
+│       │   │   ├── 📝 icon.png
+│       │   │   ├── 📝 Square107x107Logo.png
+│       │   │   ├── 📝 Square142x142Logo.png
+│       │   │   ├── 📝 Square150x150Logo.png
+│       │   │   ├── 📝 Square284x284Logo.png
+│       │   │   ├── 📝 Square30x30Logo.png
+│       │   │   ├── 📝 Square310x310Logo.png
+│       │   │   ├── 📝 Square44x44Logo.png
+│       │   │   ├── 📝 Square71x71Logo.png
+│       │   │   ├── 📝 Square89x89Logo.png
+│       │   │   └── 📝 StoreLogo.png
+│       │   ├── 📁 src
+│       │   │   ├── 📝 lib.rs
+│       │   │   └── 📝 main.rs
+│       │   ├── 📝 .gitignore
+│       │   ├── 📝 build.rs
+│       │   ├── 📝 Cargo.lock
+│       │   ├── 📝 Cargo.toml
+│       │   └── 📝 tauri.conf.json
+│       ├── 📝 .gitignore
+│       ├── 📝 index.html
+│       ├── 📝 package.json
+│       ├── 📝 pnpm-lock.yaml
+│       ├── 📝 README.md
+│       ├── 📝 tsconfig.json
+│       ├── 📝 tsconfig.node.json
+│       ├── 📝 vite.config.ts
+│       └── 📝 vitest.config.ts
+├── 📁 assets
+│   ├── 📁 brand
+│   │   └── 📝 fmd-flashcard.svg
+│   ├── 📁 svg
+│   │   ├── 📝 LayerDevelopDE.svg
+│   │   ├── 📝 LayerDevelopEN.svg
+│   │   └── 📝 terminal_checkup_light.svg
+│   └── 📝 FMDFlashcard.png
+├── 📁 docs
+│   ├── 📁 adr
+│   │   ├── 📝 0001-documentation-source-of-truth.md
+│   │   └── 📝 index.md
+│   ├── 📁 dev
+│   │   ├── 📝 architecture.md
+│   │   ├── 📝 control-script.md
+│   │   ├── 📝 index.md
+│   │   ├── 📝 release.md
+│   │   ├── 📝 setup.md
+│   │   └── 📝 testing.md
+│   ├── 📁 issus
+│   │   └── 📝 text.md
+│   ├── 📁 latex
+│   │   ├── 📁 FMD
+│   │   │   ├── 📁 chapters
+│   │   │   │   ├── 📁 einleitung
+│   │   │   │   │   └── 📝 100.tex
+│   │   │   │   ├── 📁 hauptteil
+│   │   │   │   │   ├── 📝 200.tex
+│   │   │   │   │   ├── 📝 201.tex
+│   │   │   │   │   ├── 📝 202.tex
+│   │   │   │   │   ├── 📝 203.tex
+│   │   │   │   │   ├── 📝 204.tex
+│   │   │   │   │   ├── 📝 205.tex
+│   │   │   │   │   ├── 📝 206.tex
+│   │   │   │   │   ├── 📝 207.tex
+│   │   │   │   │   └── 📝 299.tex
+│   │   │   │   └── 📁 schluss
+│   │   │   │       └── 📝 300.tex
+│   │   │   └── 📁 image
+│   │   │       ├── 📝 DesktopTauri.png
+│   │   │       ├── 📝 LayerDevelopDE.png
+│   │   │       ├── 📝 logo.png
+│   │   │       └── 📝 terminal_checkup_light.png
+│   │   ├── 📝 FMDFlashcard.pdf
+│   │   ├── 📝 FMDFlashcard.zip
+│   │   ├── 📝 name.tex
+│   │   ├── 📝 preamble.tex
+│   │   └── 📝 references.bib
+│   ├── 📁 user
+│   │   ├── 📝 flashcard-syntax.md
+│   │   ├── 📝 getting-started.md
+│   │   ├── 📝 index.md
+│   │   ├── 📝 settings.md
+│   │   ├── 📝 spaced-repetition.md
+│   │   └── 📝 troubleshooting.md
+│   ├── 📝 index.md
+│   └── 📝 refactor-notes.md
+├── 📁 tools
+│   ├── 📁 .summary
+│   │   ├── 📝 allsummary.md
+│   │   ├── 📝 index.json
+│   │   └── 📝 summary.md
+│   ├── 📁 fixes
+│   │   └── 📝 pacman_keyring_fix.py
+│   ├── 📁 inst
+│   │   ├── 📁 linux
+│   │   │   ├── 📝 installuix.py
+│   │   │   ├── 📝 installuixarc.py
+│   │   │   ├── 📝 installuixdeb.py
+│   │   │   ├── 📝 installuixtauri.py
+│   │   │   ├── 📝 installuixubu.py
+│   │   │   └── 📝 installuixvs.py
+│   │   ├── 📁 mac
+│   │   │   └── 📝 installmac.py
+│   │   ├── 📁 win
+│   │   │   └── 📝 installwin.py
+│   │   ├── 📝 doctor.py
+│   │   └── 📝 run.py
+│   ├── 📝 control.py
+│   └── 📝 FolderList.txt
+├── 📝 .gitignore
+├── 📝 CHANGELOG.md
+├── 📝 CONTRIBUTING.md
+├── 📝 FolderList.txt
+├── 📝 index.json
+├── 📝 mkdocs.yml
+├── 📝 README.md
+└── 📝 SECURITY.md
 
 ---
 

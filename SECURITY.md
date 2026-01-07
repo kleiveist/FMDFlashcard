@@ -1,3 +1,5 @@
+[← Back to Docs Home](docs/index.md)
+
 # Security Policy
 
 ## Supported Versions
