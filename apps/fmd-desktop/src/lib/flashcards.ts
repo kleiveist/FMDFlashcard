@@ -153,7 +153,7 @@ const normalizeAnswerToken = (value: string) =>
 
 const normalizedAnswerMarkers = answerMarkers.map((marker) => ({
   raw: marker,
-  normalized: normalizeAnswerToken(marker.replace(/:\\s*$/, "")),
+  normalized: normalizeAnswerToken(marker.replace(/:\s*$/, "")),
 }));
 const normalizedAnswerMarkerSet = new Set(
   normalizedAnswerMarkers.map((marker) => marker.normalized),
