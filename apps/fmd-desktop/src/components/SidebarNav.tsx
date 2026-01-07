@@ -54,7 +54,6 @@ export const SidebarNav = ({
   }, [vault.files.length, vault.vaultPath]);
   const isCollapsed = isToolbarCollapsed && !isMobileNavOpen;
   const isCardsTab =
-    activeTab === "dashboard" ||
     activeTab === "exam" ||
     activeTab === "flashcard" ||
     activeTab === "fast-flashcard" ||
@@ -133,7 +132,7 @@ export const SidebarNav = ({
                 onClick={() => {
                   setToolbarMode("cards");
                   if (!isCardsTab) {
-                    onTabChange("flashcard");
+                    onTabChange("exam");
                   }
                 }}
                 aria-label="Study flashcards"
@@ -195,13 +194,6 @@ export const SidebarNav = ({
           </div>
           {toolbarMode === "cards" ? (
             <nav className="nav">
-              <button
-                type="button"
-                className={`nav-item ${activeTab === "dashboard" ? "active" : ""}`}
-                onClick={() => onTabChange("dashboard")}
-              >
-                Makedon
-              </button>
               <button
                 type="button"
                 className={`nav-item ${activeTab === "exam" ? "active" : ""}`}

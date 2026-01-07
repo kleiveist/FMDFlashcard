@@ -63,13 +63,20 @@
   align-items: center;
 }
 
+.exam-settings-panel .exam-compact-input {
+  height: 36px;
+  padding: 4px 12px;
+  font-size: 0.9rem;
+  line-height: 1.1;
+}
+
 .exam-points-table {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 8px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 4px 4px;
   max-height: 220px;
   overflow: auto;
-  padding-right: 4px;
+  padding-right: 6px;
 }
 
 .exam-points-row {
@@ -83,10 +90,35 @@
   width: 90px;
 }
 
+.exam-settings-panel .exam-points-row {
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 2px;
+}
+
+.exam-settings-panel .exam-points-row .label {
+  min-width: 6px;
+  text-align: right;
+}
+
+.exam-settings-panel .exam-points-row .exam-compact-input {
+  width: 70px;
+  min-width: 80px;
+  height: 32px;
+  padding: 0 6px;
+  font-size: 0.9rem;
+  line-height: 0;
+}
+
 .exam-settings-summary {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+
+.exam-settings-summary .muted {
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 
 .settings-tab-content {

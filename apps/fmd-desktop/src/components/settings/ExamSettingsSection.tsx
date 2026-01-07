@@ -56,7 +56,7 @@ export const ExamSettingsSection = ({
             <input
               type="number"
               min={0}
-              className="text-input"
+              className="text-input exam-compact-input"
               value={maxTotalPoints}
               onChange={(event) => setMaxTotalPoints(clampInput(event.target.value))}
             />
@@ -67,7 +67,7 @@ export const ExamSettingsSection = ({
               type="number"
               min={1}
               max={20}
-              className="text-input"
+              className="text-input exam-compact-input"
               value={taskCount}
               onChange={(event) => setTaskCount(clampInput(event.target.value))}
             />
@@ -81,7 +81,7 @@ export const ExamSettingsSection = ({
               <input
                 type="number"
                 min={0}
-                className="text-input"
+                className="text-input exam-compact-input"
                 value={points}
                 onChange={(event) => handleTaskPointChange(index, event.target.value)}
               />
