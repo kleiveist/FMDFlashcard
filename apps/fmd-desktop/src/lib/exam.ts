@@ -56,7 +56,33 @@ const trimEmptyLines = (lines: string[]) => {
   return lines.slice(start, end);
 };
 
-const taskStartPattern = /^\s*(\d+|[A-Za-z])\s+Punkt\b.*$/;
+const isExamTaskStartLine = (line: string) => {
+  let trimmed = line.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  if (trimmed.startsWith("**")) {
+    trimmed = trimmed.slice(2).trimStart();
+  }
+
+  if (trimmed.startsWith("-")) {
+    trimmed = trimmed.slice(1);
+  }
+
+  const numberMatch = trimmed.match(/^(\d+)/);
+  if (!numberMatch) {
+    return false;
+  }
+
+  const numberRaw = numberMatch[1] ?? "";
+  if (numberRaw.length > 1 && numberRaw.startsWith("0")) {
+    return false;
+  }
+
+  const number = Number.parseInt(numberRaw, 10);
+  return number >= 1 && number <= 20;
+};
 const optionPattern = /^([a-z])\)\s+(.+)$/;
 const markerPattern = /^-([a-z])$/;
 const answerPattern = /^\s*(Answer|Antwort):\s*(.*)$/;
@@ -249,7 +275,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
       return;
     }
 
-    if (taskStartPattern.test(line)) {
+    if (isExamTaskStartLine(line)) {
       if (currentTaskStart !== null) {
         flushTask(index - 1);
       }
