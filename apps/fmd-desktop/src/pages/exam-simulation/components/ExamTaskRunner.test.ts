@@ -28,6 +28,8 @@ const buildTask = (): ExamTask => ({
   id: "exam-task-1",
   index: 0,
   rawLines: ["Define foreign key. Answer: A foreign key is an attribute."],
+  prompt: "Define foreign key.",
+  officialAnswer: "A foreign key is an attribute.",
   sourceRange: { startLine: 0, endLine: 0 },
   warnings: [],
   card: {

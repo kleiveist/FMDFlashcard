@@ -59,7 +59,9 @@ export const FreeTextCard = ({
 
   return (
     <article className="flashcard-item free-text-card">
-      <div className="flashcard-text-block">{card.front}</div>
+      {card.front.trim() ? (
+        <div className="flashcard-text-block">{card.front}</div>
+      ) : null}
       <textarea
         className="flashcard-input"
         value={response}

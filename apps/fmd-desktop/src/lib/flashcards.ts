@@ -108,6 +108,16 @@ export type FlashcardMetadata = {
 
 export type Flashcard = (FlashcardPart | CompositeFlashcard) & FlashcardMetadata;
 
+export type AnswerMatchMode = "anywhere" | "line-start";
+
+export type SplitAnswerCardOptions = {
+  answerMatch?: AnswerMatchMode;
+};
+
+export type ParseFlashcardsOptions = {
+  answerMatch?: AnswerMatchMode;
+};
+
 export const normalizeInputAnswer = (value: string) => value.trim().toLowerCase();
 
 export const isInputAnswerMatch = (input: string, solution: string) =>
@@ -120,6 +130,9 @@ export const isDragAnswerMatch = (tokenValue: string, solution: string) =>
 
 const normalizeLines = (markdown: string) =>
   markdown.replace(/\r\n?/g, "\n").split("\n");
+
+const resolveAnswerMatch = (options?: { answerMatch?: AnswerMatchMode }) =>
+  options?.answerMatch ?? "anywhere";
 
 const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
@@ -194,7 +207,8 @@ const isOptionLine = (line: string) => optionPattern.test(line.trim());
 const isCorrectMarkerLine = (line: string) => markerPattern.test(line.trim());
 const isTrueFalseMarkerLine = (line: string) =>
   normalizeTrueFalseMarker(line.trim()) !== null;
-const isAnswerMarkerLine = (line: string) => Boolean(findAnswerMarkerMatch(line));
+const isAnswerMarkerLine = (line: string, answerMatch: AnswerMatchMode) =>
+  Boolean(findAnswerMarkerMatch(line, answerMatch));
 const hasClozeMarker = (line: string) => line.includes("%%") || line.includes("`");
 
 const appendText = (segments: ClozeSegment[], text: string) => {
@@ -429,7 +443,10 @@ const findAnswerMarkerAtColon = (
   return { line, markerStartIndex, markerEndIndex };
 };
 
-const findAnswerMarkerMatch = (line: string) => {
+const findAnswerMarkerMatch = (
+  line: string,
+  answerMatch: AnswerMatchMode = "anywhere",
+) => {
   if (!line.trim()) {
     return null;
   }
@@ -440,15 +457,21 @@ const findAnswerMarkerMatch = (line: string) => {
   ) {
     const match = findAnswerMarkerAtColon(line, colonIndex);
     if (match) {
+      if (
+        answerMatch === "line-start" &&
+        line.slice(0, match.markerStartIndex).trim() !== ""
+      ) {
+        continue;
+      }
       return match;
     }
   }
   return null;
 };
 
-const findAnswerMarkerLine = (lines: string[]) => {
+const findAnswerMarkerLine = (lines: string[], answerMatch: AnswerMatchMode) => {
   for (let index = 0; index < lines.length; index += 1) {
-    const match = findAnswerMarkerMatch(lines[index] ?? "");
+    const match = findAnswerMarkerMatch(lines[index] ?? "", answerMatch);
     if (match) {
       return { index, match };
     }
@@ -456,8 +479,9 @@ const findAnswerMarkerLine = (lines: string[]) => {
   return null;
 };
 
-export const splitAnswerCard = (lines: string[]) => {
-  const markerInfo = findAnswerMarkerLine(lines);
+export const splitAnswerCard = (lines: string[], options?: SplitAnswerCardOptions) => {
+  const answerMatch = resolveAnswerMatch(options);
+  const markerInfo = findAnswerMarkerLine(lines, answerMatch);
   if (!markerInfo) {
     return null;
   }
@@ -505,7 +529,7 @@ const createSplitState = (): CardSplitState => ({
   hasAssignmentLine: false,
 });
 
-const splitCardLines = (lines: string[]) => {
+const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) => {
   const blocks: string[][] = [];
   let current: string[] = [];
   let state = createSplitState();
@@ -534,7 +558,7 @@ const splitCardLines = (lines: string[]) => {
     if (isCorrectMarkerLine(line)) {
       state.hasCorrectMarker = true;
     }
-    if (isAnswerMarkerLine(line)) {
+    if (isAnswerMarkerLine(line, answerMatch)) {
       state.hasAnswerMarker = true;
     }
     if (isTrueFalseMarkerLine(line)) {
@@ -608,6 +632,7 @@ const splitCardLines = (lines: string[]) => {
 
 const parseCardLines = (
   cardLines: string[],
+  answerMatch: AnswerMatchMode,
 ): { part: FlashcardPart; detectedTypes: FlashcardDetectedType[] } | null => {
   const questionIndex = cardLines.findIndex((entry) => entry.trim() !== "");
   if (questionIndex === -1) {
@@ -667,7 +692,7 @@ const parseCardLines = (
     pushUnique(detectedTypes, "true-false");
   }
 
-  const answerCard = splitAnswerCard(contentLines);
+  const answerCard = splitAnswerCard(contentLines, { answerMatch });
   if (answerCard) {
     pushUnique(detectedTypes, "qa");
   }
@@ -744,7 +769,11 @@ const parseCardLines = (
   return null;
 };
 
-export const parseFlashcards = (markdown: string): Flashcard[] => {
+export const parseFlashcards = (
+  markdown: string,
+  options?: ParseFlashcardsOptions,
+): Flashcard[] => {
+  const answerMatch = resolveAnswerMatch(options);
   const lines = normalizeLines(markdown);
   const cards: Flashcard[] = [];
   let index = 0;
@@ -779,12 +808,12 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
       continue;
     }
 
-    const blocks = splitCardLines(cardLines);
+    const blocks = splitCardLines(cardLines, answerMatch);
     const parts: FlashcardPart[] = [];
     const detectedTypes: FlashcardDetectedType[] = [];
 
     blocks.forEach((block) => {
-      const parsed = parseCardLines(block);
+      const parsed = parseCardLines(block, answerMatch);
       if (!parsed) {
         return;
       }

@@ -36,6 +36,8 @@ export type ExamTaskBase = {
   id: string;
   index: number;
   rawLines: string[];
+  prompt: string;
+  officialAnswer?: string;
   sourceRange: ExamTaskSourceRange;
   card: CompositeFlashcard;
   warnings: ExamTaskWarning[];
@@ -64,6 +66,38 @@ const trimEmptyLines = (lines: string[]) => {
 
   return lines.slice(start, end);
 };
+
+const wrapperLineTokens = new Set(["#exam", "#endexam", "#card", "#endcard", "#"]);
+
+const stripWrapperLines = (lines: string[]) =>
+  lines.filter((line) => !wrapperLineTokens.has(line.trim()));
+
+export const stripExamAndFlashcardWrapperLines = (text: string) =>
+  stripWrapperLines(normalizeLines(text)).join("\n");
+
+export type ExamAnswerSplit = {
+  prompt: string;
+  officialAnswer?: string;
+  hasAnswerMarker: boolean;
+};
+
+const splitAnswerBlockLines = (lines: string[]): ExamAnswerSplit => {
+  const answerSplit = splitAnswerCard(lines, { answerMatch: "line-start" });
+  if (!answerSplit) {
+    return {
+      prompt: trimEmptyLines(lines).join("\n").trim(),
+      hasAnswerMarker: false,
+    };
+  }
+  return {
+    prompt: answerSplit.front,
+    officialAnswer: answerSplit.back,
+    hasAnswerMarker: true,
+  };
+};
+
+export const splitAnswerBlock = (text: string): ExamAnswerSplit =>
+  splitAnswerBlockLines(normalizeLines(text));
 
 const isExamTaskStartLine = (line: string) => {
   let trimmed = line.trim();
@@ -105,19 +139,9 @@ const isExamTaskStartLine = (line: string) => {
   return remainder.length === 0 || /^\s/.test(remainder);
 };
 
-const buildPrompt = (lines: string[]) =>
-  trimEmptyLines(lines).join("\n").trim();
-
 const normalizeTaskLines = (lines: string[]) => {
-  const trimmed = trimEmptyLines(lines);
-  if (
-    trimmed.length >= 2 &&
-    trimmed[0]?.trim() === "#card" &&
-    trimmed[trimmed.length - 1]?.trim() === "#"
-  ) {
-    return trimEmptyLines(trimmed.slice(1, -1));
-  }
-  return trimmed;
+  const stripped = stripWrapperLines(lines);
+  return trimEmptyLines(stripped);
 };
 
 const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
@@ -133,11 +157,10 @@ const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
   };
 };
 
-const buildFallbackCard = (lines: string[]): CompositeFlashcard => {
-  const answerSplit = splitAnswerCard(lines);
+const buildFallbackCard = (split: ExamAnswerSplit): CompositeFlashcard => {
   const front =
-    answerSplit?.front ?? (buildPrompt(lines) || "No task content provided.");
-  const back = answerSplit?.back ?? "";
+    split.prompt || (split.hasAnswerMarker ? "" : "No task content provided.");
+  const back = split.hasAnswerMarker ? split.officialAnswer ?? "" : "";
 
   return {
     kind: "composite",
@@ -154,6 +177,31 @@ const buildFallbackCard = (lines: string[]): CompositeFlashcard => {
   };
 };
 
+const appendAnswerPart = (
+  card: CompositeFlashcard,
+  answer: string,
+): CompositeFlashcard => {
+  const detectedTypes = [...(card.detectedTypes ?? [])];
+  if (!detectedTypes.includes("qa")) {
+    detectedTypes.push("qa");
+  }
+
+  return {
+    ...card,
+    parts: [
+      ...card.parts,
+      {
+        kind: "free-text",
+        front: "",
+        back: answer,
+      },
+    ],
+    detectedTypes,
+    isMixed: detectedTypes.length >= 2,
+    primaryType: detectedTypes.length === 1 ? detectedTypes[0] : undefined,
+  };
+};
+
 const parseTaskChunk = (
   chunkLines: string[],
   taskIndex: number,
@@ -161,16 +209,17 @@ const parseTaskChunk = (
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
   const normalizedLines = normalizeTaskLines(chunkLines);
-  const body = normalizedLines.join("\n");
-  const cardSource = `#card\n${body}\n#`;
-  const parsed = parseFlashcards(cardSource);
+  const answerSplit = splitAnswerBlockLines(normalizedLines);
+  const prompt = answerSplit.prompt;
+  const cardSource = `#card\n${prompt}\n#`;
+  const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
   let card: CompositeFlashcard | null = null;
 
   if (parsed.length === 0) {
     warnings.push({
       message: "No supported flashcard syntax found. Manual grading required.",
     });
-    card = buildFallbackCard(normalizedLines);
+    card = buildFallbackCard(answerSplit);
   } else {
     if (parsed.length > 1) {
       warnings.push({
@@ -178,12 +227,17 @@ const parseTaskChunk = (
       });
     }
     card = toCompositeCard(parsed[0]);
+    if (answerSplit.hasAnswerMarker) {
+      card = appendAnswerPart(card, answerSplit.officialAnswer ?? "");
+    }
   }
 
   return {
     id: `exam-task-${taskIndex + 1}`,
     index: taskIndex,
     rawLines: [...chunkLines],
+    prompt: answerSplit.prompt,
+    officialAnswer: answerSplit.hasAnswerMarker ? answerSplit.officialAnswer ?? "" : undefined,
     sourceRange,
     card,
     warnings,
@@ -229,12 +283,12 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
       return;
     }
 
-    if (trimmed === "#" && inCard) {
+    if ((trimmed === "#" || trimmed === "#endcard") && inCard) {
       inCard = false;
       return;
     }
 
-    if (trimmed === "#" && !inCard) {
+    if ((trimmed === "#" || trimmed === "#endexam") && !inCard) {
       flushTask(index - 1);
       inExam = false;
       currentTaskStart = null;
