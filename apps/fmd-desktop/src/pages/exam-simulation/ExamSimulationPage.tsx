@@ -25,6 +25,7 @@ export const ExamSimulationPage = () => {
     activeTask,
     activeTaskMaxPoints,
     activeTaskSelection,
+    activeTaskResponse,
     activeTaskAwardedPoints,
     runTasks,
     remainingPoints,
@@ -43,6 +44,7 @@ export const ExamSimulationPage = () => {
     handleFinishScoring,
     handleStartConversion,
     handleTaskSelect,
+    handleResponseChange,
     handleAwardedPointsChange,
     handleTaskBack,
     handleTaskNext,
@@ -89,8 +91,10 @@ export const ExamSimulationPage = () => {
                 maxPoints={activeTaskMaxPoints}
                 phase={activePhase}
                 selection={activeTaskSelection}
+                response={activeTaskResponse}
                 awardedPoints={activeTaskAwardedPoints}
                 onSelect={handleTaskSelect}
+                onResponseChange={handleResponseChange}
                 onAwardedPointsChange={handleAwardedPointsChange}
                 onBack={handleTaskBack}
                 onNext={handleTaskNext}

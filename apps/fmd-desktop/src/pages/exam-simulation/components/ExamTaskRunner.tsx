@@ -12,8 +12,10 @@ type ExamTaskRunnerProps = {
   maxPoints: number;
   phase: ExamTaskPhase;
   selection: string;
+  response: string;
   awardedPoints: number | null;
   onSelect: (taskIndex: number, key: string) => void;
+  onResponseChange: (taskIndex: number, value: string) => void;
   onAwardedPointsChange: (taskIndex: number, value: string, maxPoints: number) => void;
   onBack: () => void;
   onNext: () => void;
@@ -28,8 +30,10 @@ export const ExamTaskRunner = ({
   maxPoints,
   phase,
   selection,
+  response,
   awardedPoints,
   onSelect,
+  onResponseChange,
   onAwardedPointsChange,
   onBack,
   onNext,
@@ -42,7 +46,8 @@ export const ExamTaskRunner = ({
   const autoAwardedPoints =
     isAutoGraded && selection === task.correctKey ? maxPoints : 0;
   const phaseLabel =
-    phase === "exam" ? "PRÜFUNG" : phase === "review" ? "KONTROLLE" : "BEWERTUNG";
+    phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
+  const inputLocked = phase !== "exam";
 
   return (
     <div className="exam-task">
@@ -106,6 +111,7 @@ export const ExamTaskRunner = ({
                   className={optionClasses}
                   onClick={() => onSelect(taskIndex, option.key)}
                   aria-pressed={isSelected}
+                  disabled={inputLocked}
                 >
                   <span className="flashcard-key">{option.key}</span>
                   <span className="flashcard-text">{option.text}</span>
@@ -116,7 +122,18 @@ export const ExamTaskRunner = ({
         </ul>
       ) : null}
 
-      {task.kind === "text" && task.answer && showAnswers ? (
+      {task.kind === "text" ? (
+        <textarea
+          className="flashcard-input"
+          value={response}
+          onChange={(event) => onResponseChange(taskIndex, event.target.value)}
+          placeholder="Your answer"
+          aria-label="Your answer"
+          disabled={inputLocked}
+        />
+      ) : null}
+
+      {task.kind === "text" && task.answer !== null && showAnswers ? (
         <div className="flashcard-answer">
           <span className="label">Answer</span>
           <ExamMarkdown className="flashcard-answer-text" content={task.answer} />

@@ -55,6 +55,7 @@ export const useExamSimulationViewModel = () => {
     null,
   );
   const [selections, setSelections] = useState<Record<number, string>>({});
+  const [responses, setResponses] = useState<Record<number, string>>({});
   const [awardedPoints, setAwardedPoints] = useState<Record<number, number | null>>(
     {},
   );
@@ -190,6 +191,7 @@ export const useExamSimulationViewModel = () => {
     setActiveExamFile(null);
     setActiveSettings(null);
     setSelections({});
+    setResponses({});
     setAwardedPoints({});
     setConversionIndex(0);
     setConversionDecisions({});
@@ -218,6 +220,7 @@ export const useExamSimulationViewModel = () => {
     setStage("running");
     setActiveTaskIndex(0);
     setSelections({});
+    setResponses({});
     setAwardedPoints({});
     setConversionIndex(0);
     setConversionDecisions({});
@@ -268,6 +271,16 @@ export const useExamSimulationViewModel = () => {
   const handleTaskSelect = useCallback((taskIndex: number, key: string) => {
     setSelections((prev) => ({ ...prev, [taskIndex]: key }));
   }, []);
+
+  const handleResponseChange = useCallback(
+    (taskIndex: number, value: string) => {
+      if (stage !== "running") {
+        return;
+      }
+      setResponses((prev) => ({ ...prev, [taskIndex]: value }));
+    },
+    [stage],
+  );
 
   const handleAwardedPointsChange = useCallback(
     (taskIndex: number, value: string, maxPoints: number) => {
@@ -432,6 +445,7 @@ export const useExamSimulationViewModel = () => {
   ]);
 
   const activeTaskSelection = activeTask ? selections[activeTaskIndex] ?? "" : "";
+  const activeTaskResponse = activeTask ? responses[activeTaskIndex] ?? "" : "";
   const activeTaskAwardedPoints =
     activeTask ? awardedPoints[activeTaskIndex] ?? null : null;
   const examEmptyState = useMemo(() => {
@@ -476,6 +490,7 @@ export const useExamSimulationViewModel = () => {
     activeTask,
     activeTaskMaxPoints,
     activeTaskSelection,
+    activeTaskResponse,
     activeTaskAwardedPoints,
     runTasks,
     runTaskPoints,
@@ -496,6 +511,7 @@ export const useExamSimulationViewModel = () => {
     handleFinishScoring,
     handleStartConversion,
     handleTaskSelect,
+    handleResponseChange,
     handleAwardedPointsChange,
     handleTaskBack,
     handleTaskNext,

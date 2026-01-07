@@ -96,7 +96,7 @@ export const ExamConversionPanel = ({
         </ul>
       ) : null}
 
-      {task.kind === "text" && task.answer ? (
+      {task.kind === "text" && task.answer !== null ? (
         <div className="flashcard-answer">
           <span className="label">Answer</span>
           <ExamMarkdown className="flashcard-answer-text" content={task.answer} />

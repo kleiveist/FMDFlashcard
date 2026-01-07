@@ -96,50 +96,26 @@ const isExamTaskStartLine = (line: string) => {
   return remainder.length === 0 || /^\s/.test(remainder);
 };
 
-const answerMarkerLinePattern =
-  /^\s*(\*\*)?\s*(answer|antwort)\s*:\s*(\*\*)?\s*$/i;
-const inlineAnswerTokenPattern =
-  /(\*\*)?\s*\b(answer|antwort)\b\s*:\s*(\*\*)?/i;
-const optionPattern = /^([a-z])\)\s+(.+)$/;
-const markerPattern = /^-([a-z])$/;
+const answerMarkerPattern =
+  /^\s*(\*\*)?\s*(answer|antwort)\s*:\s*(\*\*)?\s*(.*)$/i;
+const optionPattern = /^([A-Za-z])\)\s+(.+)$/;
+const markerPattern = /^-([A-Za-z])$/;
 
 const buildPrompt = (lines: string[]) =>
   trimEmptyLines(lines).join("\n").trim();
 
-const stripInlineAnswerMarker = (line: string) => {
-  if (answerMarkerLinePattern.test(line)) {
-    return line;
-  }
-  const match = inlineAnswerTokenPattern.exec(line);
-  if (!match || match.index === undefined) {
-    return line;
-  }
-  const before = line.slice(0, match.index);
-  const after = line.slice(match.index + match[0].length);
-  const needsSpacer =
-    before.length > 0 &&
-    after.length > 0 &&
-    !before.endsWith(" ") &&
-    !after.startsWith(" ");
-  const spacer = needsSpacer ? " " : "";
-  return `${before}${spacer}${after}`.trimEnd();
-};
-
 const parseAnswerBlock = (lines: string[]) => {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? "";
-    if (!answerMarkerLinePattern.test(line)) {
+    const match = line.match(answerMarkerPattern);
+    if (!match) {
       continue;
     }
-    const frontLines = trimEmptyLines(
-      lines.slice(0, index).map(stripInlineAnswerMarker),
-    );
-    const backLines = trimEmptyLines(lines.slice(index + 1));
+    const inlineAnswer = match[4]?.trimStart() ?? "";
+    const frontLines = trimEmptyLines(lines.slice(0, index));
+    const backLines = trimEmptyLines([inlineAnswer, ...lines.slice(index + 1)]);
     const prompt = buildPrompt(frontLines);
     const answer = buildPrompt(backLines);
-    if (!prompt || !answer) {
-      return null;
-    }
     return { prompt, answer };
   }
   return null;
@@ -183,7 +159,7 @@ const parseTaskChunk = (
   if (options.length > 0) {
     const answerMarkerIndices = new Set<number>();
     chunkLines.forEach((line, index) => {
-      if (answerMarkerLinePattern.test(line)) {
+      if (answerMarkerPattern.test(line)) {
         answerMarkerIndices.add(index);
       }
     });
@@ -198,7 +174,7 @@ const parseTaskChunk = (
         return false;
       }
       return true;
-    }).map(stripInlineAnswerMarker);
+    });
     let correctKey: string | null = null;
 
     if (markerKeys.length === 1) {
@@ -252,7 +228,7 @@ const parseTaskChunk = (
     index: taskIndex,
     rawLines: [...chunkLines],
     sourceRange,
-    prompt: buildPrompt(chunkLines.map(stripInlineAnswerMarker)),
+    prompt: buildPrompt(chunkLines),
     warnings,
     kind: "text",
     answer: null,
@@ -306,6 +282,12 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     if (trimmed === "#" && !inCard) {
       flushTask(index - 1);
       inExam = false;
+      currentTaskStart = null;
+      return;
+    }
+
+    if (trimmed === "---" && !inCard) {
+      flushTask(index - 1);
       currentTaskStart = null;
       return;
     }

@@ -61,17 +61,17 @@ export const ExamToolsPanel = ({
             ) : null}
             {showSubmit ? (
               <button type="button" className="primary" onClick={onSubmitExam}>
-                Abgabe
+                Submit
               </button>
             ) : null}
             {showReviewAdvance ? (
               <button type="button" className="primary" onClick={onStartScoring}>
-                Zur Bewertung
+                Proceed to Scoring
               </button>
             ) : null}
             {showFinishScoring ? (
               <button type="button" className="primary" onClick={onFinishScoring}>
-                Bewertung abschliessen
+                Finish Scoring
               </button>
             ) : null}
             <button type="button" className="ghost" onClick={onResetExam}>
