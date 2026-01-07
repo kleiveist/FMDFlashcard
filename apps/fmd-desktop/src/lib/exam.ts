@@ -21,12 +21,15 @@ import {
   splitAnswerCard,
   type CompositeFlashcard,
   type Flashcard,
+  type FlashcardPart,
 } from "./flashcards";
 
 export type ExamTaskSourceRange = {
   startLine: number;
   endLine: number;
 };
+
+export type ExamTaskGradingMode = "auto" | "manual" | "hybrid";
 
 export type ExamTaskWarning = {
   message: string;
@@ -38,6 +41,7 @@ export type ExamTaskBase = {
   rawLines: string[];
   prompt: string;
   officialAnswer?: string;
+  gradingMode: ExamTaskGradingMode;
   sourceRange: ExamTaskSourceRange;
   card: CompositeFlashcard;
   warnings: ExamTaskWarning[];
@@ -98,6 +102,34 @@ const splitAnswerBlockLines = (lines: string[]): ExamAnswerSplit => {
 
 export const splitAnswerBlock = (text: string): ExamAnswerSplit =>
   splitAnswerBlockLines(normalizeLines(text));
+
+const isAutoGradablePart = (part: FlashcardPart) => {
+  if (part.kind === "multiple-choice") {
+    return part.correctKeys.length > 0;
+  }
+  if (part.kind === "true-false") {
+    return part.items.length > 0;
+  }
+  if (part.kind === "cloze") {
+    return part.segments.some((segment) => segment.type === "blank");
+  }
+  return false;
+};
+
+const resolveTaskGradingMode = (
+  card: CompositeFlashcard,
+): ExamTaskGradingMode => {
+  const hasAuto = card.parts.some(isAutoGradablePart);
+  const hasManual = card.parts.some((part) => !isAutoGradablePart(part));
+
+  if (hasAuto && hasManual) {
+    return "hybrid";
+  }
+  if (hasManual) {
+    return "manual";
+  }
+  return "auto";
+};
 
 const isExamTaskStartLine = (line: string) => {
   let trimmed = line.trim();
@@ -231,6 +263,7 @@ const parseTaskChunk = (
       card = appendAnswerPart(card, answerSplit.officialAnswer ?? "");
     }
   }
+  const gradingMode = resolveTaskGradingMode(card);
 
   return {
     id: `exam-task-${taskIndex + 1}`,
@@ -238,6 +271,7 @@ const parseTaskChunk = (
     rawLines: [...chunkLines],
     prompt: answerSplit.prompt,
     officialAnswer: answerSplit.hasAnswerMarker ? answerSplit.officialAnswer ?? "" : undefined,
+    gradingMode,
     sourceRange,
     card,
     warnings,

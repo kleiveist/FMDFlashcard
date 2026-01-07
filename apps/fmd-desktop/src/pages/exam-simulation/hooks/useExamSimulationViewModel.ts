@@ -35,7 +35,6 @@ import {
 import { type ExamAiEvaluation } from "../../../features/settings/useAppSettings";
 import { asErrorMessage } from "../../../lib/errors";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
-import { type FlashcardPart } from "../../../lib/flashcards";
 import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
 
@@ -70,21 +69,8 @@ const normalizeAwardedPoints = (value: number | null, maxPoints: number) => {
   return clampNumber(Math.floor(value), 0, maxPoints);
 };
 
-const isAutoGradablePart = (part: FlashcardPart) => {
-  if (part.kind === "multiple-choice") {
-    return part.correctKeys.length > 0;
-  }
-  if (part.kind === "true-false") {
-    return part.items.length > 0;
-  }
-  if (part.kind === "cloze") {
-    return part.segments.some((segment) => segment.type === "blank");
-  }
-  return false;
-};
-
 const isAutoGradedTask = (task: ExamTask) =>
-  task.card.parts.length > 0 && task.card.parts.every(isAutoGradablePart);
+  task.gradingMode === "auto";
 
 const isTaskCorrect = (
   task: ExamTask,

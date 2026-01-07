@@ -30,6 +30,7 @@ const buildTask = (): ExamTask => ({
   rawLines: ["Define foreign key. Answer: A foreign key is an attribute."],
   prompt: "Define foreign key.",
   officialAnswer: "A foreign key is an attribute.",
+  gradingMode: "manual",
   sourceRange: { startLine: 0, endLine: 0 },
   warnings: [],
   card: {
@@ -44,6 +45,23 @@ const buildTask = (): ExamTask => ({
     primaryType: "qa",
     detectedTypes: ["qa"],
     isMixed: false,
+  },
+});
+
+const buildTaskWithParts = (
+  parts: ExamTask["card"]["parts"],
+  gradingMode: ExamTask["gradingMode"],
+): ExamTask => ({
+  id: "exam-task-1",
+  index: 0,
+  rawLines: ["Task line"],
+  prompt: "Task line",
+  gradingMode,
+  sourceRange: { startLine: 0, endLine: 0 },
+  warnings: [],
+  card: {
+    kind: "composite",
+    parts,
   },
 });
 
@@ -96,13 +114,13 @@ const noopConversionDecision: ExamTaskRunnerProps["onConversionDecision"] = (
 };
 
 const buildProps = (
-  phase: ExamTaskRunnerProps["phase"],
+  overrides: Partial<ExamTaskRunnerProps> = {},
 ): ExamTaskRunnerProps => ({
   task: buildTask(),
   taskIndex: 0,
   taskCount: 1,
   maxPoints: 5,
-  phase,
+  phase: "exam",
   partStates: [{}],
   awardedPoints: null,
   conversionPending: false,
@@ -122,22 +140,184 @@ const buildProps = (
   onNext: () => {},
   canGoBack: false,
   canGoNext: false,
+  ...overrides,
 });
+
+const autoScoringCases: Array<
+  [string, ExamTask, ExamTaskRunnerProps["partStates"]]
+> = [
+  [
+    "multiple-choice",
+    buildTaskWithParts(
+      [
+        {
+          kind: "multiple-choice",
+          question: "Pick one",
+          options: [{ key: "a", text: "Answer" }],
+          correctKeys: ["a"],
+        },
+      ],
+      "auto",
+    ),
+    [{ selections: ["a"] }],
+  ],
+  [
+    "true-false",
+    buildTaskWithParts(
+      [
+        {
+          kind: "true-false",
+          items: [
+            {
+              id: "tf-0",
+              question: "Statement",
+              correct: "wahr",
+            },
+          ],
+        },
+      ],
+      "auto",
+    ),
+    [{ trueFalseSelections: { "tf-0": "wahr" } }],
+  ],
+  [
+    "cloze-input",
+    buildTaskWithParts(
+      [
+        {
+          kind: "cloze",
+          question: "Fill the blank",
+          segments: [
+            { type: "text", value: "Answer is " },
+            { type: "blank", id: "blank-0", kind: "input", solution: "text" },
+          ],
+          dragTokens: [],
+        },
+      ],
+      "auto",
+    ),
+    [{ clozeResponses: { "blank-0": "text" } }],
+  ],
+  [
+    "cloze-drag",
+    buildTaskWithParts(
+      [
+        {
+          kind: "cloze",
+          question: "Drag the token",
+          segments: [
+            { type: "text", value: "Token is " },
+            { type: "blank", id: "blank-0", kind: "drag", solution: "token" },
+          ],
+          dragTokens: [{ id: "token-0", value: "token" }],
+        },
+      ],
+      "auto",
+    ),
+    [{ clozeResponses: { "blank-0": "token-0" } }],
+  ],
+];
 
 describe("ExamTaskRunner", () => {
   it("hides free-text solutions during exam and reveals them after submit", () => {
     const examMarkup = renderToStaticMarkup(
-      createElement(ExamTaskRunner, buildProps("exam")),
+      createElement(ExamTaskRunner, buildProps({ phase: "exam" })),
     );
     expect(examMarkup).toContain("Define foreign key.");
     expect(examMarkup).not.toContain("A foreign key is an attribute.");
     expect(examMarkup).not.toContain("flashcard-answer");
 
     const reviewMarkup = renderToStaticMarkup(
-      createElement(ExamTaskRunner, buildProps("review")),
+      createElement(ExamTaskRunner, buildProps({ phase: "review" })),
     );
     expect(reviewMarkup).toContain("Define foreign key.");
     expect(reviewMarkup).toContain("A foreign key is an attribute.");
     expect(reviewMarkup).toContain("flashcard-answer");
+
+    const scoringMarkup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "scoring" })),
+    );
+    expect(scoringMarkup).toContain("Define foreign key.");
+    expect(scoringMarkup).toContain("A foreign key is an attribute.");
+    expect(scoringMarkup).toContain("flashcard-answer");
+  });
+
+  it.each(autoScoringCases)(
+    "hides manual scoring controls for %s tasks",
+    (_label, task, partStates) => {
+      void _label;
+      const scoringMarkup = renderToStaticMarkup(
+        createElement(
+          ExamTaskRunner,
+          buildProps({ phase: "scoring", task, partStates }),
+      ),
+    );
+
+    expect(scoringMarkup).toContain("RESULT");
+    expect(scoringMarkup).toContain("POINTS");
+    expect(scoringMarkup).toContain("Correct");
+    expect(scoringMarkup).not.toContain("AUTO RESULT");
+    expect(scoringMarkup).not.toContain("CONFIRM");
+    expect(scoringMarkup).not.toContain("AWARDED");
+    },
+  );
+
+  it("shows manual scoring controls for free-text tasks", () => {
+    const task = buildTaskWithParts(
+      [
+        {
+          kind: "free-text",
+          front: "Explain",
+          back: "Response",
+        },
+      ],
+      "manual",
+    );
+
+    const scoringMarkup = renderToStaticMarkup(
+      createElement(
+        ExamTaskRunner,
+        buildProps({ phase: "scoring", task, partStates: [{}] }),
+      ),
+    );
+
+    expect(scoringMarkup).toContain("AWARDED");
+    expect(scoringMarkup).toContain('aria-label="Awarded points"');
+    expect(scoringMarkup).not.toContain("RESULT");
+    expect(scoringMarkup).not.toContain("POINTS");
+  });
+
+  it("shows manual scoring controls for hybrid tasks", () => {
+    const task = buildTaskWithParts(
+      [
+        {
+          kind: "multiple-choice",
+          question: "Pick one",
+          options: [{ key: "a", text: "Answer" }],
+          correctKeys: ["a"],
+        },
+        {
+          kind: "free-text",
+          front: "Explain",
+          back: "Response",
+        },
+      ],
+      "hybrid",
+    );
+
+    const scoringMarkup = renderToStaticMarkup(
+      createElement(
+        ExamTaskRunner,
+        buildProps({
+          phase: "scoring",
+          task,
+          partStates: [{ selections: ["a"] }, {}],
+        }),
+      ),
+    );
+
+    expect(scoringMarkup).toContain("AWARDED");
+    expect(scoringMarkup).not.toContain("RESULT");
+    expect(scoringMarkup).not.toContain("POINTS");
   });
 });

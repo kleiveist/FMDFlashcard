@@ -25,7 +25,6 @@ import { type DragEvent } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
-import type { FlashcardPart } from "../../../lib/flashcards";
 
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
 
@@ -80,22 +79,6 @@ type ExamTaskRunnerProps = {
   canGoNext: boolean;
 };
 
-const isAutoGradablePart = (part: FlashcardPart) => {
-  if (part.kind === "multiple-choice") {
-    return part.correctKeys.length > 0;
-  }
-  if (part.kind === "true-false") {
-    return part.items.length > 0;
-  }
-  if (part.kind === "cloze") {
-    return part.segments.some((segment) => segment.type === "blank");
-  }
-  return false;
-};
-
-const isTaskAutoGraded = (task: ExamTask) =>
-  task.card.parts.length > 0 && task.card.parts.every(isAutoGradablePart);
-
 const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
   task.card.parts.every(
     (part, index) => evaluateFlashcardPartResult(part, states[index] ?? {}) === "correct",
@@ -117,7 +100,6 @@ export const ExamTaskRunner = ({
   phase,
   partStates,
   awardedPoints,
-  autoGradeDecision,
   conversionDecision,
   conversionPending,
   conversionError,
@@ -130,7 +112,6 @@ export const ExamTaskRunner = ({
   onBlankDragOver,
   onTextInputChange,
   onAwardedPointsChange,
-  onAutoGradeDecision,
   onConversionDecision,
   onBack,
   onNext,
@@ -138,11 +119,10 @@ export const ExamTaskRunner = ({
   canGoNext,
 }: ExamTaskRunnerProps) => {
   const isScoring = phase === "scoring";
-  const showAnswers = phase !== "exam";
-  const isAutoGraded = isTaskAutoGraded(task);
+  const canRevealOfficialSolution = phase === "review" || phase === "scoring";
+  const isAutoGraded = task.gradingMode === "auto";
   const taskIsCorrect = isAutoGraded ? isTaskCorrect(task, partStates) : false;
-  const decidedCorrect = isAutoGraded ? autoGradeDecision ?? taskIsCorrect : null;
-  const autoAwardedPoints = isAutoGraded && decidedCorrect ? maxPoints : 0;
+  const autoAwardedPoints = isAutoGraded && taskIsCorrect ? maxPoints : 0;
   const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
   const inputLocked = phase !== "exam" || conversionPending;
 
@@ -185,14 +165,14 @@ export const ExamTaskRunner = ({
       <CompositeCard
         card={task.card}
         cardIndex={taskIndex}
-        submitted={showAnswers}
+        submitted={canRevealOfficialSolution}
         submissionLocked={inputLocked}
         partStates={partStates}
         showSubmit={false}
         showResult={false}
-        revealCorrectness={showAnswers}
-        showSolution={showAnswers}
-        forceRevealText={showAnswers}
+        revealCorrectness={canRevealOfficialSolution}
+        showSolution={canRevealOfficialSolution}
+        forceRevealText={canRevealOfficialSolution}
         onOptionSelect={onOptionSelect}
         onTrueFalseSelect={onTrueFalseSelect}
         onClozeInputChange={onClozeInputChange}
@@ -209,7 +189,7 @@ export const ExamTaskRunner = ({
       {isScoring && isAutoGraded ? (
         <>
           <div className="exam-points-row">
-            <span className="label">AUTO RESULT</span>
+            <span className="label">RESULT</span>
             <div className="exam-points-input">
               <span
                 className={`flashcard-result ${
@@ -221,30 +201,7 @@ export const ExamTaskRunner = ({
             </div>
           </div>
           <div className="exam-points-row">
-            <span className="label">CONFIRM</span>
-            <div className="exam-points-input">
-              <button
-                type="button"
-                className={`small ${decidedCorrect ? "primary" : "ghost"}`}
-                onClick={() => onAutoGradeDecision(taskIndex, true)}
-                aria-pressed={decidedCorrect === true}
-                disabled={conversionPending}
-              >
-                Correct
-              </button>
-              <button
-                type="button"
-                className={`small ${decidedCorrect ? "ghost" : "primary"}`}
-                onClick={() => onAutoGradeDecision(taskIndex, false)}
-                aria-pressed={decidedCorrect === false}
-                disabled={conversionPending}
-              >
-                Not correct
-              </button>
-            </div>
-          </div>
-          <div className="exam-points-row">
-            <span className="label">AWARDED</span>
+            <span className="label">POINTS</span>
             <div className="exam-points-input">
               <span>{autoAwardedPoints}</span>
               <span className="muted">/ {maxPoints}</span>
