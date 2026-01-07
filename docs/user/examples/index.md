@@ -1,4 +1,4 @@
-[← Back to Docs Home](../../index.md)
+← Back to [User docs index](../index.md)
 
 # Examples
 

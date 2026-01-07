@@ -1,4 +1,4 @@
-[← Back to Docs Home](../../index.md)
+← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)
 
 # Composite cards
 
