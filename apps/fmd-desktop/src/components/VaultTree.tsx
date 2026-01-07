@@ -126,12 +126,14 @@ type ContextMenuTarget =
   | { kind: "empty"; path: string };
 
 type VaultTreeProps = {
+  activeFolderPath: string | null;
   expandedPaths: Set<string>;
   fileCountLabel: string;
   files: VaultFile[];
   listError: string;
   listState: LoadState;
   onRescanVault: () => void;
+  onActiveFolderChange: (path: string | null) => void;
   onTogglePath: (path: string, isOpen: boolean) => void;
   onSelectFile: (file: VaultFile) => void;
   selectedFile: VaultFile | null;
@@ -139,12 +141,14 @@ type VaultTreeProps = {
 };
 
 export const VaultTree = ({
+  activeFolderPath,
   expandedPaths,
   fileCountLabel,
   files,
   listError,
   listState,
   onRescanVault,
+  onActiveFolderChange,
   onTogglePath,
   onSelectFile,
   selectedFile,
@@ -152,7 +156,6 @@ export const VaultTree = ({
 }: VaultTreeProps) => {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const [extraDirs, setExtraDirs] = useState<string[]>([]);
-  const [activeFolderPath, setActiveFolderPath] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     target: ContextMenuTarget;
     x: number;
@@ -208,25 +211,32 @@ export const VaultTree = ({
     [treeNodes],
   );
   const hasDeepIndent = maxDepth > OVERFLOW_DEPTH;
-  const selectedFileDir = useMemo(
-    () =>
-      selectedFile?.relative_path
-        ? getParentRelativePath(selectedFile.relative_path)
-        : "",
-    [selectedFile?.relative_path],
+  const normalizedActiveFolderPath = useMemo(
+    () => normalizeRelativePath(activeFolderPath ?? "").replace(/\/+$/, ""),
+    [activeFolderPath],
+  );
+
+  const getFolderState = useCallback(
+    (path: string) => {
+      const normalizedPath = normalizeRelativePath(path).replace(/\/+$/, "");
+      const isActiveFolder = normalizedPath === normalizedActiveFolderPath;
+      const isBreadcrumb =
+        normalizedActiveFolderPath !== "" &&
+        (normalizedPath === "" ||
+          normalizedActiveFolderPath.startsWith(`${normalizedPath}/`));
+      return {
+        isActiveFolder,
+        isBreadcrumb: isBreadcrumb && !isActiveFolder,
+      };
+    },
+    [normalizedActiveFolderPath],
   );
 
   useEffect(() => {
     setExtraDirs([]);
-    setActiveFolderPath(null);
+    onActiveFolderChange(null);
     setContextMenu(null);
-  }, [vaultPath]);
-
-  useEffect(() => {
-    if (selectedFile?.relative_path) {
-      setActiveFolderPath(getParentRelativePath(selectedFile.relative_path));
-    }
-  }, [selectedFile?.relative_path]);
+  }, [onActiveFolderChange, vaultPath]);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -345,7 +355,6 @@ export const VaultTree = ({
           onTogglePath(createDirPath, true);
         }
         onSelectFile(created);
-        setActiveFolderPath(createDirPath);
       } else {
         await invoke("create_directory", {
           vaultPath,
@@ -360,7 +369,6 @@ export const VaultTree = ({
         if (relativePath && !expandedPaths.has(relativePath)) {
           onTogglePath(relativePath, true);
         }
-        setActiveFolderPath(relativePath);
       }
       onRescanVault();
       setCreateKind(null);
@@ -400,22 +408,22 @@ export const VaultTree = ({
       if (target?.closest(".tree-item")) {
         return;
       }
-      const dirPath = activeFolderPath ?? selectedFileDir ?? "";
-      setActiveFolderPath(dirPath);
+      const dirPath = activeFolderPath ?? "";
       openContextMenu(event, { kind: "empty", path: dirPath });
     },
-    [activeFolderPath, openContextMenu, selectedFileDir, vaultPath],
+    [activeFolderPath, openContextMenu, vaultPath],
   );
   const menuTarget = contextMenu?.target ?? null;
   const fileTarget = menuTarget && menuTarget.kind === "file" ? menuTarget : null;
   const menuDirPath = fileTarget ? fileTarget.dirPath : menuTarget?.path ?? "";
+  const rootFolderState = getFolderState("");
 
   const renderTreeNodes = (nodes: TreeNode[], depth: number) =>
     nodes.map((node) => {
       const indentStyle = getIndentVars(depth);
       if (node.type === "dir") {
         const isOpen = expandedPaths.has(node.path);
-        const isActive = activeFolderPath === node.path;
+        const { isActiveFolder, isBreadcrumb } = getFolderState(node.path);
         return (
           <details
             className="tree-dir"
@@ -426,12 +434,14 @@ export const VaultTree = ({
             }}
           >
             <summary
-              className={`tree-item ${isActive ? "active" : ""}`}
+              className={`tree-item${isActiveFolder ? " active-folder" : ""}${
+                isBreadcrumb ? " breadcrumb" : ""
+              }`}
               title={node.path}
               style={indentStyle}
-              onClick={() => setActiveFolderPath(node.path)}
+              onClick={() => onActiveFolderChange(node.path)}
               onContextMenu={(event) => {
-                setActiveFolderPath(node.path);
+                onActiveFolderChange(node.path);
                 openContextMenu(event, { kind: "dir", path: node.path });
               }}
             >
@@ -461,7 +471,6 @@ export const VaultTree = ({
             if (!fileRef) {
               return;
             }
-            setActiveFolderPath(getParentRelativePath(fileRef.relative_path));
             onSelectFile(fileRef);
           }}
           title={node.path}
@@ -472,7 +481,6 @@ export const VaultTree = ({
               return;
             }
             const dirPath = getParentRelativePath(fileRef.relative_path);
-            setActiveFolderPath(dirPath);
             openContextMenu(event, { kind: "file", file: fileRef, dirPath });
           }}
         >
@@ -509,11 +517,13 @@ export const VaultTree = ({
             <div className="vault-tree">
               <details className="tree-dir" open>
                 <summary
-                  className={`tree-item ${activeFolderPath === "" ? "active" : ""}`}
+                  className={`tree-item${
+                    rootFolderState.isActiveFolder ? " active-folder" : ""
+                  }${rootFolderState.isBreadcrumb ? " breadcrumb" : ""}`}
                   style={getIndentVars(0)}
-                  onClick={() => setActiveFolderPath("")}
+                  onClick={() => onActiveFolderChange("")}
                   onContextMenu={(event) => {
-                    setActiveFolderPath("");
+                    onActiveFolderChange("");
                     openContextMenu(event, { kind: "dir", path: "" });
                   }}
                 >

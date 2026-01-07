@@ -4,6 +4,7 @@ import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
+import { normalizeRelativePath } from "../lib/path";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 
@@ -14,17 +15,32 @@ export const DashboardPage = () => {
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+  const normalizedActiveFolderPath = useMemo(() => {
+    if (!vault.activeFolderPath) {
+      return "";
+    }
+    return normalizeRelativePath(vault.activeFolderPath).replace(/\/+$/, "");
+  }, [vault.activeFolderPath]);
+  const visibleFiles = useMemo(() => {
+    if (!normalizedActiveFolderPath) {
+      return vault.files;
+    }
+    const prefix = `${normalizedActiveFolderPath}/`;
+    return vault.files.filter((file) =>
+      normalizeRelativePath(file.relative_path).startsWith(prefix),
+    );
+  }, [normalizedActiveFolderPath, vault.files]);
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
       return "No vault selected";
     }
-    if (vault.files.length === 0) {
-      return "Keine Markdown-Dateien";
+    const count = visibleFiles.length;
+    const base = `${count} Markdown-Datei${count === 1 ? "" : "en"}`;
+    if (!normalizedActiveFolderPath) {
+      return base;
     }
-    return `${vault.files.length} Markdown-Datei${
-      vault.files.length === 1 ? "" : "en"
-    }`;
-  }, [vault.files.length, vault.vaultPath]);
+    return `${base} im Ordner ${normalizedActiveFolderPath}`;
+  }, [normalizedActiveFolderPath, visibleFiles.length, vault.vaultPath]);
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
 
@@ -126,8 +142,9 @@ export const DashboardPage = () => {
         />
 
         <FileList
+          activeFolderPath={normalizedActiveFolderPath || null}
           fileCountLabel={fileCountLabel}
-          files={vault.files}
+          files={visibleFiles}
           listError={vault.listError}
           listState={vault.listState}
           onSelectFile={actions.handleSelectFile}

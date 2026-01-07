@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppState } from "./AppStateProvider";
-import { vaultBaseName } from "../lib/path";
+import { normalizeRelativePath, vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
 import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons";
 import { helpTopics, resolveText } from "../pages/help/helpContent";
@@ -82,6 +82,26 @@ export const SidebarNav = ({
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!vault.activeFolderPath) {
+      return;
+    }
+    const normalized = normalizeRelativePath(vault.activeFolderPath).replace(/\/+$/, "");
+    if (!normalized) {
+      return;
+    }
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      const parts = normalized.split("/").filter(Boolean);
+      let current = "";
+      parts.forEach((part) => {
+        current = current ? `${current}/${part}` : part;
+        next.add(current);
+      });
+      return next;
+    });
+  }, [vault.activeFolderPath]);
 
   return (
     <aside
@@ -231,11 +251,13 @@ export const SidebarNav = ({
           {toolbarMode === "vault" ? (
             <div className="sidebar-vault-panel" id="sidebar-vault-panel">
               <VaultTree
+                activeFolderPath={vault.activeFolderPath}
                 expandedPaths={expandedPaths}
                 fileCountLabel={fileCountLabel}
                 files={vault.files}
                 listError={vault.listError}
                 listState={vault.listState}
+                onActiveFolderChange={vault.setActiveFolderPath}
                 onTogglePath={handleTogglePath}
                 onSelectFile={actions.handleSelectFile}
                 onRescanVault={actions.handleRescanVault}

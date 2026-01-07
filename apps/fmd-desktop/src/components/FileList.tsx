@@ -2,6 +2,7 @@ import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
 
 type FileListProps = {
+  activeFolderPath: string | null;
   fileCountLabel: string;
   files: VaultFile[];
   listError: string;
@@ -12,6 +13,7 @@ type FileListProps = {
 };
 
 export const FileList = ({
+  activeFolderPath,
   fileCountLabel,
   files,
   listError,
@@ -35,7 +37,11 @@ export const FileList = ({
         ) : null}
         {listError ? <div className="error">{listError}</div> : null}
         {vaultPath && listState === "idle" && files.length === 0 ? (
-          <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
+          <div className="empty-state">
+            {activeFolderPath
+              ? "Keine Markdown-Dateien in diesem Ordner."
+              : "Keine Markdown-Dateien in diesem Vault."}
+          </div>
         ) : null}
         {vaultPath && listState !== "error" ? (
           <ul className="file-list">

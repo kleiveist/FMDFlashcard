@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { isValidHex, normalizeHex } from "../lib/color";
+import { normalizeRelativePath } from "../lib/path";
 import { type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
@@ -45,7 +46,10 @@ type AppState = {
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
   spacedRepetition: ReturnType<typeof useSpacedRepetition>;
-  vault: ReturnType<typeof useVault>;
+  vault: ReturnType<typeof useVault> & {
+    activeFolderPath: string | null;
+    setActiveFolderPath: (value: string | null) => void;
+  };
 };
 
 const AppStateContext = createContext<AppState | null>(null);
@@ -78,6 +82,9 @@ const parseVaultWarningThreshold = (value: string) => {
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
   const [activeHelpTopicId, setActiveHelpTopicId] = useState<string | null>(
+    null,
+  );
+  const [activeFolderPath, setActiveFolderPathState] = useState<string | null>(
     null,
   );
   const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<
@@ -194,6 +201,19 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     restoreSnapshot: restoreFlashcardsSnapshot,
     takeSnapshot: takeFlashcardsSnapshot,
   } = flashcards;
+
+  const setActiveFolderPath = useCallback((value: string | null) => {
+    if (value === null) {
+      setActiveFolderPathState(null);
+      return;
+    }
+    const normalized = normalizeRelativePath(value).replace(/\/+$/, "");
+    setActiveFolderPathState(normalized);
+  }, []);
+
+  useEffect(() => {
+    setActiveFolderPath(null);
+  }, [setActiveFolderPath, vault.vaultPath]);
 
   useEffect(() => {
     if (!settingsLoaded || hasRestoredVault.current) {
@@ -441,7 +461,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     preview,
     settings,
     spacedRepetition,
-    vault,
+    vault: {
+      ...vault,
+      activeFolderPath,
+      setActiveFolderPath,
+    },
   };
 
   return (

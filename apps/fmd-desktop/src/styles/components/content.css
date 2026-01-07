@@ -172,6 +172,16 @@ h2 {
   background: var(--accent-active-bg);
 }
 
+.tree-item.breadcrumb {
+  border-color: var(--line-soft);
+}
+
+.tree-item.active-folder {
+  border-color: var(--accent-strong);
+  background: var(--accent-active-bg);
+  font-weight: 700;
+}
+
 .vault-tree-scroll.vault-tree-scroll-wide .tree-item {
   min-width: calc(100% + var(--tree-overflow, 0px));
 }
