@@ -1,5 +1,6 @@
-[← Back to Docs Home](docs/index.md)
-
+<!-- AUTO-GENERATED:backlink START -->
+[← Back to README](README.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Contributing
 
 Thanks for your interest in contributing.

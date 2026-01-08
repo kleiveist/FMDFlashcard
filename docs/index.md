@@ -1,4 +1,4 @@
-# DOCS
+# Docs
 
 <!-- AUTO-GENERATED:docs-index START -->
 

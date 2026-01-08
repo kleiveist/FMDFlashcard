@@ -1,5 +1,4 @@
 
-[← Back to Docs Home](docs/index.md)
 
 # FMDFlashcard
 
@@ -19,19 +18,20 @@ while adding a dedicated review experience and study progress tracking.
 
 ## Documentation index (fast links)
 <!-- AUTO-GENERATED:docs-index START -->
+
 ## 📄 Files
 - 📝 [Changelog](CHANGELOG.md)
 - 📝 [Contributing](CONTRIBUTING.md)
 - 📝 [Security Policy](SECURITY.md)
----
+
 # DOCS
 - 📚 [Docs Home](docs/index.md)
 - 📝 [Refactor notes](docs/refactor-notes.md)
----
+
 ## 📁 ADR
 - 🗂️ [Overview](docs/adr/adr.md)
 - 📝 [ADR 0001: Documentation source of truth](docs/adr/0001-documentation-source-of-truth.md)
----
+
 ## 📁 DEV
 - 🗂️ [Overview](docs/dev/dev.md)
 - 📝 [Architecture overview](docs/dev/architecture.md)
@@ -39,11 +39,11 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Releases / Packaging](docs/dev/release.md)
 - 📝 [Developer setup (run from source)](docs/dev/setup.md)
 - 📝 [Testing](docs/dev/testing.md)
----
+
 ## 📁 Issus
 - 🗂️ [Overview](docs/issus/issus.md)
 - 📝 [Issustabel](docs/issus/issustabel.md)
----
+
 ## 📁 USER
 - 🗂️ [Overview](docs/user/user.md)
 - 📝 [Exam syntax](docs/user/exam-syntax.md)
@@ -52,6 +52,7 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Settings](docs/user/settings.md)
 - 📝 [Spaced repetition](docs/user/spaced-repetition.md)
 - 📝 [Troubleshooting](docs/user/troubleshooting.md)
+
 <!-- AUTO-GENERATED:docs-index END -->
 
 If GitHub’s repository navigation feels slow, use these direct links:

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CONTRIBUTING.md",
+                "file": "docs/index.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CONTRIBUTING"
+              "title": "index"
             }
           }
         ]
@@ -187,26 +187,27 @@
   "active": "c659e573ff3a73f9",
   "lastOpenFiles": [
     "README.md",
-    "CHANGELOG.md",
-    "CONTRIBUTING.md",
-    "docs/index.md",
-    "docs/user/examples/ea.md",
-    "docs/user/examples/examples.md",
-    "docs/user/user.md",
     "SECURITY.md",
+    "docs/index.md",
+    "CONTRIBUTING.md",
+    "docs/user/examples/examples.md",
+    "docs/user/test/test.md",
+    "docs/user/user.md",
+    "docs/issus/issus.md",
+    "docs/dev/testing.md",
+    "docs/dev/setup.md",
+    "docs/dev/release.md",
+    "docs/dev/dev.md",
+    "docs/adr/adr.md",
+    "CHANGELOG.md",
+    "docs/user/examples/ea.md",
     "docs/user/exam-syntax.md",
     "latex/latex.md",
     "latex",
     "docs/issus/issustabel.md",
-    "docs/issus/issus.md",
-    "docs/dev/setup.md",
-    "docs/dev/release.md",
-    "docs/dev/testing.md",
     "apps/fmd-desktop/vitest.config.ts.timestamp-1767881195612-5f06edff27f6e.mjs",
     "docs/dev/control-script.md",
     "docs/dev/architecture.md",
-    "docs/adr/adr.md",
-    "docs/dev/dev.md",
     "apps/fmd-desktop/src-tauri/target/debug/deps/homecodeprojectsfmdflashcardappsfmd_desktop-258ca6b0e0403dd8",
     "apps/fmd-desktop/src-tauri/target/debug/deps/homecodeprojectsfmdflashcardappsfmd_desktop-258ca6b0e0403dd8.tmp660a721",
     "apps/fmd-desktop/src-tauri/target/debug/incremental/homecodeprojectsfmdflashcardappsfmd_desktop-30hd2a0qhqyx3/s-hensfj7mfh-13p2jlu-2nfe3rtoybmlyqtz9wsh7ckp9/work-products.bin",
@@ -220,7 +221,6 @@
     "docs/user/troubleshooting.md",
     "docs/user/spaced-repetition.md",
     "docs/user/settings.md",
-    "docs/user/getting-started.md",
-    "docs/user/test/Testmatix.md"
+    "docs/user/getting-started.md"
   ]
 }
