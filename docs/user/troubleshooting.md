@@ -5,7 +5,7 @@
 ## The app shows “0 cards loaded”
 
 - Confirm you selected the correct vault folder.
-- Confirm your cards use the expected markers (see `flashcard-syntax.md`).
+- Confirm your cards use the expected markers (see `flashcard-syntax.md`), or review `exam-syntax.md` if the file should be scanned as an exam.
 - Rescan / reload the vault.
 
 ## Clicking a view shows no cards

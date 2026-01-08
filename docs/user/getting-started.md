@@ -43,4 +43,4 @@ the card is correct only if all parts are correct.
 - Refactor notes as usual—your Markdown remains readable.
 - Use Settings to tune parsing markers, review behavior, and performance options.
 
-Next: read the full syntax reference in `flashcard-syntax.md`.
+Next: read `flashcard-syntax.md` for the latest markers and `exam-syntax.md` when you want to author exam files with `#exam … #examend`.
