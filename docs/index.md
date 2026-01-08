@@ -1,3 +1,8 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](../README.md)
+<!-- AUTO-GENERATED:backlink END -->
+
+
 # Docs
 
 <!-- AUTO-GENERATED:docs-index START -->

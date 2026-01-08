@@ -1,24 +1,20 @@
 {
   "main": {
-    "id": "698631c6747126c1",
+    "id": "d788383fb28d733e",
     "type": "split",
     "children": [
       {
-        "id": "89ef2e0f4ba59d3b",
+        "id": "56d396464ffee305",
         "type": "tabs",
         "children": [
           {
-            "id": "c659e573ff3a73f9",
+            "id": "910b0701c408d231",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "docs/index.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "index"
+              "title": "Neuer Tab"
             }
           }
         ]
@@ -27,15 +23,15 @@
     "direction": "vertical"
   },
   "left": {
-    "id": "f19484301733bc22",
+    "id": "c11dff6f7be44552",
     "type": "split",
     "children": [
       {
-        "id": "a7dddba55adc246e",
+        "id": "cb20d3c5fb84c12c",
         "type": "tabs",
         "children": [
           {
-            "id": "53314029b16c9a0c",
+            "id": "2454d2796b71b1cd",
             "type": "leaf",
             "state": {
               "type": "file-explorer",
@@ -48,12 +44,12 @@
             }
           },
           {
-            "id": "7c883968c1396ba1",
+            "id": "6fb9f111ac9d7a25",
             "type": "leaf",
             "state": {
               "type": "search",
               "state": {
-                "query": "tag:#exam",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -65,7 +61,7 @@
             }
           },
           {
-            "id": "45802130cee8ceb8",
+            "id": "e7d4a01cf4851c90",
             "type": "leaf",
             "state": {
               "type": "bookmarks",
@@ -81,20 +77,19 @@
     "width": 300
   },
   "right": {
-    "id": "d0c29a9ee6c2bb29",
+    "id": "9b9f922d1d6c4636",
     "type": "split",
     "children": [
       {
-        "id": "0190cb94f32312a5",
+        "id": "30a65bce8b73f197",
         "type": "tabs",
         "children": [
           {
-            "id": "9e7ea7e4bdb28f29",
+            "id": "55dbe039732d5433",
             "type": "leaf",
             "state": {
               "type": "backlink",
               "state": {
-                "file": "docs/user/test/Test_cld.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,25 +99,24 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Rückverweise für Test_cld"
+              "title": "Rückverweis"
             }
           },
           {
-            "id": "14d034a7ac5f3680",
+            "id": "dc721e5bc0d67a56",
             "type": "leaf",
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "docs/user/test/Test_cld.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Ausgehende Links von Test_cld öffnen"
+              "title": "Ausgehende Links"
             }
           },
           {
-            "id": "a5db628e61e43dba",
+            "id": "6f7e48c28e9b7de7",
             "type": "leaf",
             "state": {
               "type": "tag",
@@ -137,7 +131,7 @@
             }
           },
           {
-            "id": "6704290e5bedfcbf",
+            "id": "5eeb25503409f6ab",
             "type": "leaf",
             "state": {
               "type": "all-properties",
@@ -151,22 +145,20 @@
             }
           },
           {
-            "id": "31bf39521a381185",
+            "id": "666b4e4d69a33b59",
             "type": "leaf",
             "state": {
               "type": "outline",
               "state": {
-                "file": "docs/user/test/Test_cld.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von Test_cld"
+              "title": "Gliederung"
             }
           }
-        ],
-        "currentTab": 4
+        ]
       }
     ],
     "direction": "horizontal",
@@ -184,43 +176,21 @@
       "bases:Create new base": false
     }
   },
-  "active": "c659e573ff3a73f9",
+  "active": "2454d2796b71b1cd",
   "lastOpenFiles": [
-    "README.md",
-    "SECURITY.md",
+    "docs/user/index.md",
+    "docs/user/settings.md",
     "docs/index.md",
-    "CONTRIBUTING.md",
-    "docs/user/examples/examples.md",
-    "docs/user/test/test.md",
-    "docs/user/user.md",
-    "docs/issus/issus.md",
-    "docs/dev/testing.md",
-    "docs/dev/setup.md",
-    "docs/dev/release.md",
-    "docs/dev/dev.md",
-    "docs/adr/adr.md",
-    "CHANGELOG.md",
-    "docs/user/examples/ea.md",
-    "docs/user/exam-syntax.md",
-    "latex/latex.md",
-    "latex",
-    "docs/issus/issustabel.md",
-    "apps/fmd-desktop/vitest.config.ts.timestamp-1767881195612-5f06edff27f6e.mjs",
-    "docs/dev/control-script.md",
-    "docs/dev/architecture.md",
-    "apps/fmd-desktop/src-tauri/target/debug/deps/homecodeprojectsfmdflashcardappsfmd_desktop-258ca6b0e0403dd8",
-    "apps/fmd-desktop/src-tauri/target/debug/deps/homecodeprojectsfmdflashcardappsfmd_desktop-258ca6b0e0403dd8.tmp660a721",
-    "apps/fmd-desktop/src-tauri/target/debug/incremental/homecodeprojectsfmdflashcardappsfmd_desktop-30hd2a0qhqyx3/s-hensfj7mfh-13p2jlu-2nfe3rtoybmlyqtz9wsh7ckp9/work-products.bin",
-    "apps/fmd-desktop/src-tauri/target/debug/incremental/homecodeprojectsfmdflashcardappsfmd_desktop-30hd2a0qhqyx3/s-hensfj7mfh-13p2jlu-2nfe3rtoybmlyqtz9wsh7ckp9/query-cache.bin",
-    "apps/fmd-desktop/src-tauri/target/debug/incremental/homecodeprojectsfmdflashcardappsfmd_desktop-30hd2a0qhqyx3/s-hensfj7mfh-13p2jlu-2nfe3rtoybmlyqtz9wsh7ckp9/dep-graph.bin",
-    "apps/fmd-desktop/src-tauri/target/debug/incremental/homecodeprojectsfmdflashcardappsfmd_desktop-30hd2a0qhqyx3/s-hensfj7mfh-13p2jlu-2nfe3rtoybmlyqtz9wsh7ckp9/dax6loqr8jauijhdyzwnc4od7.o",
-    "apps/fmd-desktop/src-tauri/target/debug/incremental/homecodeprojectsfmdflashcardappsfmd_desktop-30hd2a0qhqyx3/s-hensfj7mfh-13p2jlu-2nfe3rtoybmlyqtz9wsh7ckp9/6thamf5oh4p2gnsp7z6jkwnj0.o",
-    "apps/fmd-desktop/src-tauri/target/debug/incremental/homecodeprojectsfmdflashcardappsfmd_desktop-30hd2a0qhqyx3/s-hensfj7mfh-13p2jlu-2nfe3rtoybmlyqtz9wsh7ckp9/6j4ic2ahric4i60zvixakyjfj.o",
+    "docs/user/getting-started.md",
     "docs/user/flashcard-syntax.md",
     "docs/refactor-notes.md",
+    "docs/user/user.md",
     "docs/user/troubleshooting.md",
     "docs/user/spaced-repetition.md",
-    "docs/user/settings.md",
-    "docs/user/getting-started.md"
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "README.md",
+    "docs/dev/dev.md"
   ]
 }
