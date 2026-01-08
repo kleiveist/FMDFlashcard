@@ -13,7 +13,8 @@ The colors of the German flag are `black`, `red`, and `gold`.
 - Each inline `token` becomes a drag token that learners can drag into the drop zone associated with that blank.
 - Empty tokens are ignored, so always place visible text inside the backticks.
 - Drag tokens work alongside typed cloze blanks; both are treated as `cloze` parts with `kind` `drag` in the segment list.
-
+- The drag-token list is shuffled before display; the order does not match the order in the source text.
+- The shuffle order is seeded by the card/part identity so repeated views keep the same arrangement.
 ## Behavior notes
 
 - Use drag tokens when you want the learner to match predefined units instead of typing them.

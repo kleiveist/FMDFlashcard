@@ -20,7 +20,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { type DragEvent } from "react";
+import { type DragEvent, useMemo } from "react";
 import {
   isDragAnswerMatch,
   isInputAnswerMatch,
@@ -31,6 +31,7 @@ import {
   getClozeBlanks,
   isClozeCardCorrect,
 } from "../../features/flashcards/logic";
+import { resolveSeed, seededShuffle } from "../../lib/seededShuffle";
 
 type ClozeCardProps = {
   card: ClozeCardType;
@@ -84,12 +85,18 @@ export const ClozeCard = ({
   const tokenById = new Map(
     card.dragTokens.map((token) => [token.id, token.value]),
   );
+  const normalizedPartIndex = partIndex ?? 0;
+  const tokenBank = useMemo(() => {
+    const identifier = `${cardIndex}:${normalizedPartIndex}:${card.question}`;
+    const seed = resolveSeed(identifier);
+    return seededShuffle(card.dragTokens, seed);
+  }, [card.dragTokens, cardIndex, normalizedPartIndex, card.question]);
   const assignedTokenIds = new Set(
     dragBlanks
       .map((blank) => responses[blank.id])
       .filter((tokenId) => tokenById.has(tokenId)),
   );
-  const hasDragTokens = card.dragTokens.length > 0;
+  const hasDragTokens = tokenBank.length > 0;
   const validTokenIds = new Set(card.dragTokens.map((token) => token.id));
   const canSubmit = areClozeBlanksComplete(card, responses);
   const isCorrect = isClozeCardCorrect(card, responses);
@@ -215,7 +222,7 @@ export const ClozeCard = ({
         <div className="token-section">
           <span className="label">Tokens</span>
           <div className="token-pool">
-            {card.dragTokens.map((token) => {
+            {tokenBank.map((token) => {
               const isUsed = assignedTokenIds.has(token.id);
               return (
                 <button
