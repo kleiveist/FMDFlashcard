@@ -53,7 +53,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "tag:#exam",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "docs/user/test/Testmatix.md",
+                "file": "docs/user/test/Test_cld.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Rückverweise für Testmatix"
+              "title": "Rückverweise für Test_cld"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "docs/user/test/Testmatix.md",
+                "file": "docs/user/test/Test_cld.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Ausgehende Links von Testmatix öffnen"
+              "title": "Ausgehende Links von Test_cld öffnen"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "docs/user/test/Testmatix.md",
+                "file": "docs/user/test/Test_cld.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung von Testmatix"
+              "title": "Gliederung von Test_cld"
             }
           }
         ],
@@ -186,8 +186,14 @@
   },
   "active": "c659e573ff3a73f9",
   "lastOpenFiles": [
+    "docs/user/examples/examplestabel_de.md",
     "docs/user/examples/Examplesindex.md",
+    "docs/user/examples/cld.md",
+    "docs/user/examples/examplestabel_en.md",
     "docs/user/test/Testmatix.md",
+    "docs/user/test/Test_cld.md",
+    "docs/user/examples/cl.md",
+    "docs/user/examples/m1.md",
     "docs/user/test/Test_n2.md",
     "docs/user/test/Test_n1.md",
     "docs/user/examples/tf.md",
@@ -195,12 +201,8 @@
     "docs/user/examples/cd.md",
     "docs/user/examples/e.md",
     "docs/user/examples/ea.md",
-    "docs/user/examples/examplestabel_de.md",
-    "docs/user/examples/examplestabel_en.md",
-    "docs/user/examples/m1.md",
     "docs/user/examples/f.md",
     "docs/user/test/Test-Examenblock.md",
-    "docs/user/examples/cl.md",
     "docs/user/examples/qa.md",
     "docs/user/test/matrix_full_test.md",
     "docs/user/examples/m2.md",

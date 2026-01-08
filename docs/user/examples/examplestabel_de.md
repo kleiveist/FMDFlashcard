@@ -11,24 +11,24 @@
 | True/False-Marker <br>(2-Button-Karte)  | true/false? {text}<br>-true or<br>-false                             | ---  <br>#                                       | e-page <br>f-pages     | - UI: **2 Buttons (True/False)**- Validierung: Marker muss auf **nächster nicht-leerer Zeile** stehen. | tf     |
 | Multiple Choice (Single-Answer)         | - Options-Labels im Block,<br>`a)` `b)` `c)` …                       | aswahl endet mit<br>-a)<br>blog mit <br>#<br>--- | e-page <br>f-pages     | - UI: Auswahl Single Marker mindestens 1<br>-x = 1<br>-a)                                              | m1     |
 | Multiple Choice <br>(Multi-Answer)      | - Options-Labels im Block,<br>`a)` `b)` `c)` …                       | aswahl endet mit<br>-a)<br>blog mit <br>#<br>--- | e-page <br>f-pages     | Auswahl Multi Anzahl Marker mindestens 2<br>-x < 2<br>-a)<br>-b)                                       | m2     |
-| Cloze Lückentext:                       | - Typed blanks: `%%...%%` innerhalb                                  | ---  <br>#                                       | e-page <br>f-pages     | für Backticks- Validierung: jedes `%%...%%` enthält Text.                                              | cl     |
+| Cloze Lückentext:                       | -Typed blanks: `%%...%%` innerhalb                                   | ---  <br>#                                       | e-page <br>f-pages     | für Backticks- Validierung: jedes `%%...%%` enthält Text.                                              | cl     |
 | Cloze <br>Drag Tokens)                  | des Texts- Drag tokens: ``token``                                    | ---  <br>#                                       | e-page <br>f-pages     | - UI: Eingabefelder für ``token`` + Drag/Drop                                                          | cd     |
-|                                         |                                                                      |                                                  |                        |                                                                                                        |        |
+| Cloze Lückentext +Drag Tokens           | Typed blanks: `%%...%%` + tokens: ``token``innerhalb                 | ---  <br>#                                       | e-page <br>f-pages     | - UI: Eingabefelder  ``token`` und Drag/Drop<br> Backticks- Validierung: jedes `%%...%%`               | cld    |
 ## **Kombinierung Tabelle** 
 Legende: 💠 problemlos · ❕ mit Beachtung · ⚠️ mit Einschränkungen · ❌ nicht möglich
 
-|     | e   | ea  | f   | qa  | tf  | m1  | m2  | cl  | cd  |     |
+|     | e   | ea  | f   | qa  | tf  | m1  | m2  | cl  | cd  | cld |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| e   | ❌   | 💠  | ❌   | ❕   | ❕   | ❕   | ❕   | ❕   | ❕   |     |
-| ea  | 💠  | ❌   | ❌   | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  |     |
-| f   | ❌   | ❌   | ❌   | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  |     |
-| qa  | ❕   | 💠  | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  |     |
-| tf  | ❕   | 💠  | 💠  | ⚠️  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  |     |
-| m1  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | 💠  | ❕   | ⚠️  | ⚠️  |     |
-| m2  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ❕   | 💠  | ⚠️  | ⚠️  |     |
-| cl  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | 💠  | 💠  |     |
-| cd  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | 💠  | 💠  |     |
-|     |     |     |     |     |     |     |     |     |     |     |
+| e   | ❌   | 💠  | ❌   | ❕   | ❕   | ❕   | ❕   | ❕   | ❕   | ❕   |
+| ea  | 💠  | ❌   | ❌   | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  |
+| f   | ❌   | ❌   | ❌   | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  |
+| qa  | ❕   | 💠  | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  |
+| tf  | ❕   | 💠  | 💠  | ⚠️  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  |
+| m1  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | 💠  | ❕   | ⚠️  | ⚠️  | ⚠️  |
+| m2  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ❕   | 💠  | ⚠️  | ⚠️  | ⚠️  |
+| cl  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | 💠  | 💠  | ❕   |
+| cd  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | 💠  | 💠  | ❕   |
+| cld | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ❕   | ❕   | 💠  |
 
 ---
 ### Kurzregeln je Kürzel (Begründung für ❕/⚠️)
@@ -44,5 +44,7 @@ Legende: 💠 problemlos · ❕ mit Beachtung · ⚠️ mit Einschränkungen · 
 | m2     | ❕      | analog m2+m1.                                                                                                                                                             |
 | cl     | 💠     | cl+cd ist problemlos (Cloze-Text kann beides enthalten). Mit anderen Typen nur als Composite (⚠️).                                                                        |
 | cd     | 💠     | wie cl.                                                                                                                                                                   |
+| cld    |        | wie cl + cd                                                                                                                                                               |
 |        |        |                                                                                                                                                                           |
+
 

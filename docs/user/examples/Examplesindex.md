@@ -18,6 +18,7 @@ changed scan markers in Settings, update the snippets before scanning.
 - [`m2` – multi-answer multiple choice`](m2.md)  
 - [`cl` – typed cloze blanks (`%%…%%`)](cl.md)  
 - [`cd` – draggable cloze tokens (`` `…` ``)](cd.md)  
+- [`cdl` – draggable cloze tokens and typed cloze blanks (`` `…` ``)](cd.md)   
 ---
 ## Syntax test
 - [Testmatix](Testmatix.md)  
