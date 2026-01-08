@@ -25,6 +25,7 @@ while adding a dedicated review experience and study progress tracking.
 
 # DOCS
 - 📚 [Docs Home](docs/index.md)
+- 📝 [Folderlist](docs/folderlist.md)
 - 📝 [Refactor notes](docs/refactor-notes.md)
 
 ## 📁 ADR
@@ -41,7 +42,7 @@ while adding a dedicated review experience and study progress tracking.
 
 ## 📁 Issus
 - 🗂️ [Overview](docs/issus/issus.md)
-- 📝 [Issus note](docs/issus/issus_note.md)
+- 📝 [Issue Notes (Bug Report)](docs/issus/issus_note.md)
 - 📝 [Issustabel](docs/issus/issustabel.md)
 
 ## 📁 USER
@@ -51,6 +52,7 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Getting started](docs/user/getting-started.md)
 - 📝 [Settings](docs/user/settings.md)
 - 📝 [Spaced repetition](docs/user/spaced-repetition.md)
+- 📝 [Tables in Flashcards and Exams](docs/user/table-rendering.md)
 - 📝 [Troubleshooting](docs/user/troubleshooting.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

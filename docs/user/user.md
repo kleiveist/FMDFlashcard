@@ -13,6 +13,7 @@
 - 📝 [Getting started](getting-started.md)
 - 📝 [Settings](settings.md)
 - 📝 [Spaced repetition](spaced-repetition.md)
+- 📝 [Tables in Flashcards and Exams](table-rendering.md)
 - 📝 [Troubleshooting](troubleshooting.md)
 
 ## 📁 Examples

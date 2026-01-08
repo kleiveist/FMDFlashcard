@@ -8,6 +8,7 @@
 <!-- AUTO-GENERATED:docs-index START -->
 
 ## 📄 Pages
+- 📝 [Folderlist](folderlist.md)
 - 📝 [Refactor notes](refactor-notes.md)
 
 ## 📁 ADR
@@ -24,7 +25,7 @@
 
 ## 📁 Issus
 - 🗂️ [Overview](issus/issus.md)
-- 📝 [Issus note](issus/issus_note.md)
+- 📝 [Issue Notes (Bug Report)](issus/issus_note.md)
 - 📝 [Issustabel](issus/issustabel.md)
 
 ## 📁 USER
@@ -34,6 +35,7 @@
 - 📝 [Getting started](user/getting-started.md)
 - 📝 [Settings](user/settings.md)
 - 📝 [Spaced repetition](user/spaced-repetition.md)
+- 📝 [Tables in Flashcards and Exams](user/table-rendering.md)
 - 📝 [Troubleshooting](user/troubleshooting.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
