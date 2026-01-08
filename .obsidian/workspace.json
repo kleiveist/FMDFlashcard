@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/dev/dev.md",
+                "file": "docs/issus/issus_note.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "dev"
+              "title": "issus_note"
             }
           }
         ]
@@ -185,6 +185,7 @@
   },
   "active": "910b0701c408d231",
   "lastOpenFiles": [
+    "docs/dev/dev.md",
     "docs/issus/issus_note.md",
     "docs/dev/test/testmatix.md",
     "docs/dev/test/test_n2.md",
@@ -192,7 +193,6 @@
     "docs/dev/test/test_cld.md",
     "docs/dev/test/test_cld_tabel.md",
     "docs/index.md",
-    "docs/dev/dev.md",
     "docs/dev/testing.md",
     "README.md",
     "docs/refactor-notes.md",
