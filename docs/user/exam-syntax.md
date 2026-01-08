@@ -16,6 +16,7 @@ The Exams page treats blocks wrapped between `#exam` and `#examend` differently 
 - `#exam` and `#examend` must each appear on their own line. Do not show them in the UI—they exist only to signal exam parsing (`e`).
 - Everything between the wrappers is considered exam content. Free text is allowed, but only numbered tasks (`ea`) produce interactive items.
 - You can still embed `#card … #` blocks inside exam tasks; they behave the same as outside, but the Exams page uses them as prompts.
+- If your tasks include tables, follow `table-rendering.md` for the table syntax and layout rules.
 
 ## Numbered tasks (`ea`)
 

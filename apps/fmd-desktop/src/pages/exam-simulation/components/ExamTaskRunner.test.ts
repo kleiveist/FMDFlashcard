@@ -19,6 +19,7 @@
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { parseFlashcards } from "../../../lib/flashcards";
 import type { ExamTask } from "../../../lib/exam";
 import { ExamTaskRunner } from "./ExamTaskRunner";
 
@@ -64,6 +65,20 @@ const buildTaskWithParts = (
     parts,
   },
 });
+
+const buildTaskFromMarkdown = (
+  markdown: string,
+  gradingMode: ExamTask["gradingMode"] = "auto",
+) => {
+  const cards = parseFlashcards(markdown);
+  expect(cards).toHaveLength(1);
+  const card = cards[0];
+  expect(card?.kind).toBe("composite");
+  if (!card || card.kind !== "composite") {
+    throw new Error("Expected composite card");
+  }
+  return buildTaskWithParts(card.parts, gradingMode);
+};
 
 const noopOptionSelect: ExamTaskRunnerProps["onOptionSelect"] = (...args) => {
   void args;
@@ -240,6 +255,41 @@ describe("ExamTaskRunner", () => {
     expect(scoringMarkup).toContain("Define foreign key.");
     expect(scoringMarkup).toContain("A foreign key is an attribute.");
     expect(scoringMarkup).toContain("flashcard-answer");
+  });
+
+  it("renders tables for free-text parts with scroll fallback", () => {
+    const task = buildTaskFromMarkdown(`#card
+| Term | Answer |
+| --- | --- |
+| Alpha | Beta |
+Answer: Done
+#`, "manual");
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "review", task })),
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain("flashcard-table scrollable");
+  });
+
+  it("renders cloze tables without scroll wrappers and keeps tokens in cells", () => {
+    const task = buildTaskFromMarkdown(`#card
+| Term | Answer |
+| --- | --- |
+| Alpha | %%one%% |
+| Beta | \`two\` |
+#`);
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain("cloze-input");
+    expect(markup).toContain("cloze-placeholder");
+    expect(markup).toContain("flashcard-table no-scroll");
+    expect(markup).not.toContain("flashcard-table scrollable");
   });
 
   it.each(autoScoringCases)(

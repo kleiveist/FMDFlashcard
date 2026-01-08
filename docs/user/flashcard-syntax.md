@@ -18,6 +18,7 @@ Markdown flashcards keep your notes readable and the parser precise. The only re
 - A single file can contain multiple `#card … #` blocks; they can appear anywhere in your vault.
 - Use `---` inside the block to separate multiple interaction chunks (for example, QA followed by MC). Each chunk is treated independently but still scores as a single composite card.
 - For detailed explanations of each interaction type, see the short-code reference examples in `docs/user/examples/` (qa, tf, m1, m2, cl, cd, etc.).
+- For tables inside card prompts or answers, follow `table-rendering.md` (pipe tables, layout rules, token constraints).
 
 ## Interaction highlights
 

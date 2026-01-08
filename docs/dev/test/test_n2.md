@@ -3,10 +3,10 @@
 <!-- AUTO-GENERATED:backlink END -->
 #exam
 
-## test n2 – n²: erst (typ+typ), dann jede Kombination einmal
-## Regel: jede Kombination = 1 Aufgabe = 1x #card ... # (enthält beide Teilkarten)
+## test n2 – n²: first (type+type), then each combination once
+## Rule: each combination = 1 task = 1x #card ... # (contains both sub-cards)
 
-### Kombinationsmatrix (Zelle = Positionsnummer in dieser Datei)
+### Combination matrix (cell = position number in this file)
 | n²  | qa  | tf  | m1  | m2  | cl  | cd  |
 | --- | --- | --- | --- | --- | --- | --- |
 | qa  | 1   | 7   | 8   | 9   | 10  | 11  |
@@ -21,38 +21,38 @@
 1) qa + qa
 #card
 [qa]
-Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
-Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
+What does “least privilege” mean in the context of IT security?
+Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [qa]
-Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
-Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
+What does “least privilege” mean in the context of IT security?
+Answer: Users and systems receive only the minimum privileges required to perform their task.
 #
 ---
 2) tf + tf
 #card
 [tf]
-Aussage:
-„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
+Statement:
+“HTTPS encrypts the connection between client and server.”
 -true
 
 [tf]
-Aussage:
-„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
+Statement:
+“HTTPS encrypts the connection between client and server.”
 -true
 #
 ---
 3) m1 + m1
 #card
 [m1]
-Welche Zahl ist eine Primzahl?
+Which number is a prime number?
 a) 4
 b) 5
 c) 9
 -b
 
 [m1]
-Welche Zahl ist eine Primzahl?
+Which number is a prime number?
 a) 4
 b) 5
 c) 9
@@ -62,7 +62,7 @@ c) 9
 4) m2 + m2
 #card
 [m2]
-Welche Zahlen sind Primzahlen?
+Which numbers are prime numbers?
 a) 2
 b) 4
 c) 5
@@ -71,7 +71,7 @@ d) 9
 -c
 
 [m2]
-Welche Zahlen sind Primzahlen?
+Which numbers are prime numbers?
 a) 2
 b) 4
 c) 5
@@ -83,19 +83,19 @@ d) 9
 5) cl + cl
 #card
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+The capital of France is %%Paris%%.
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+The capital of France is %%Paris%%.
 #
 ---
 6) cd + cd
 #card
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+The colors of the German flag are `black`, `red` and `gold`.
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+The colors of the German flag are `black`, `red` and `gold`.
 #
 
 ---
@@ -103,23 +103,23 @@ Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 7) qa + tf
 #card
 [qa]
-Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
-Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
+What does “least privilege” mean in the context of IT security?
+Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [tf]
-Aussage:
-„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
+Statement:
+“HTTPS encrypts the connection between client and server.”
 -true
 #
 ---
 8) qa + m1
 #card
 [qa]
-Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
-Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
+What does “least privilege” mean in the context of IT security?
+Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [m1]
-Welche Zahl ist eine Primzahl?
+Which number is a prime number?
 a) 4
 b) 5
 c) 9
@@ -129,11 +129,11 @@ c) 9
 9) qa + m2
 #card
 [qa]
-Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
-Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
+What does “least privilege” mean in the context of IT security?
+Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [m2]
-Welche Zahlen sind Primzahlen?
+Which numbers are prime numbers?
 a) 2
 b) 4
 c) 5
@@ -145,32 +145,32 @@ d) 9
 10) qa + cl
 #card
 [qa]
-Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
-Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
+What does “least privilege” mean in the context of IT security?
+Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+The capital of France is %%Paris%%.
 #
 ---
 11) qa + cd
 #card
 [qa]
-Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
-Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
+What does “least privilege” mean in the context of IT security?
+Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+The colors of the German flag are `black`, `red` and `gold`.
 #
 ---
 12) tf + m1
 #card
 [tf]
-Aussage:
-„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
+Statement:
+“HTTPS encrypts the connection between client and server.”
 -true
 
 [m1]
-Welche Zahl ist eine Primzahl?
+Which number is a prime number?
 a) 4
 b) 5
 c) 9
@@ -180,12 +180,12 @@ c) 9
 13) tf + m2
 #card
 [tf]
-Aussage:
-„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
+Statement:
+“HTTPS encrypts the connection between client and server.”
 -true
 
 [m2]
-Welche Zahlen sind Primzahlen?
+Which numbers are prime numbers?
 a) 2
 b) 4
 c) 5
@@ -197,36 +197,36 @@ d) 9
 14) tf + cl
 #card
 [tf]
-Aussage:
-„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
+Statement:
+“HTTPS encrypts the connection between client and server.”
 -true
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+The capital of France is %%Paris%%.
 #
 ---
 15) tf + cd
 #card
 [tf]
-Aussage:
-„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
+Statement:
+“HTTPS encrypts the connection between client and server.”
 -true
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+The colors of the German flag are `black`, `red` and `gold`.
 #
 ---
 16) m1 + m2
 #card
 [m1]
-Welche Zahl ist eine Primzahl?
+Which number is a prime number?
 a) 4
 b) 5
 c) 9
 -b
 
 [m2]
-Welche Zahlen sind Primzahlen?
+Which numbers are prime numbers?
 a) 2
 b) 4
 c) 5
@@ -238,33 +238,33 @@ d) 9
 17) m1 + cl
 #card
 [m1]
-Welche Zahl ist eine Primzahl?
+Which number is a prime number?
 a) 4
 b) 5
 c) 9
 -b
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+The capital of France is %%Paris%%.
 #
 ---
 18) m1 + cd
 #card
 [m1]
-Welche Zahl ist eine Primzahl?
+Which number is a prime number?
 a) 4
 b) 5
 c) 9
 -b
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+The colors of the German flag are `black`, `red` and `gold`.
 #
 ---
 19) m2 + cl
 #card
 [m2]
-Welche Zahlen sind Primzahlen?
+Which numbers are prime numbers?
 a) 2
 b) 4
 c) 5
@@ -273,13 +273,13 @@ d) 9
 -c
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+The capital of France is %%Paris%%.
 #
 ---
 20) m2 + cd
 #card
 [m2]
-Welche Zahlen sind Primzahlen?
+Which numbers are prime numbers?
 a) 2
 b) 4
 c) 5
@@ -288,16 +288,16 @@ d) 9
 -c
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+The colors of the German flag are `black`, `red` and `gold`.
 #
 ---
 21) cl + cd
 #card
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+The capital of France is %%Paris%%.
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+The colors of the German flag are `black`, `red` and `gold`.
 #
 
 #examend

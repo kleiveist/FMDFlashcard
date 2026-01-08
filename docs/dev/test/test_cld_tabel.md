@@ -2,58 +2,76 @@
 [← Back](test.md)
 <!-- AUTO-GENERATED:backlink END -->
 #exam
-1) CL (2 Spalten) – Tippe die passenden JOIN-Typen in die Tabelle.
-|   |   |
-|---|---|
-| Nur Zeilen mit Match in beiden Tabellen | %%INNER JOIN%% |
-| Alle Zeilen links + passende rechts (sonst NULL) | %%LEFT JOIN%% |
-| Alle Zeilen rechts + passende links (sonst NULL) | %%RIGHT JOIN%% |
-| Alle Zeilen beider Seiten, Matches zusammen, sonst NULL | %%FULL OUTER JOIN%% |
+#card
+1) CL (2 columns) – Type the correct JOIN types into the table.
 
+| |   |
+|---|---|
+| Only rows with a match in both tables | %%INNER JOIN%% |
+| All rows on the left + matching on the right (otherwise NULL) | %%LEFT JOIN%% |
+| All rows on the right + matching on the left (otherwise NULL) | %%RIGHT JOIN%% |
+| All rows from both sides, matches combined, otherwise NULL | %%FULL OUTER JOIN%% |
+
+#
 ---
-2) CL (3 Spalten) – Tippe das richtige SQL-Keyword.
+#card
+2) CL (3 columns) – Type the correct SQL keyword.
+
 |   |   |   |
 |---|---|---|
-| Zeilen filtern (vor GROUP BY) | %%WHERE%% | SELECT * FROM users WHERE age > 18; |
-| Gruppieren | %%GROUP BY%% | SELECT country, COUNT(*) FROM users GROUP BY country; |
-| Gruppen filtern (nach GROUP BY) | %%HAVING%% | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
-| Sortieren | %%ORDER BY%% | SELECT * FROM users ORDER BY created_at DESC; |
-| Begrenzen | %%LIMIT%% | SELECT * FROM users ORDER BY id LIMIT 10; |
+| Filter rows (before GROUP BY) | %%WHERE%% | SELECT * FROM users WHERE age > 18; |
+| Group | %%GROUP BY%% | SELECT country, COUNT(*) FROM users GROUP BY country; |
+| Filter groups (after GROUP BY) | %%HAVING%% | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
+| Sort | %%ORDER BY%% | SELECT * FROM users ORDER BY created_at DESC; |
+| Limit | %%LIMIT%% | SELECT * FROM users ORDER BY id LIMIT 10; |
 
+#
 ---
-3) CD (2 Spalten) – Ziehe den richtigen JOIN in die rechte Zelle (Token-Bank).
+#card
+3) CD (2 columns) – Drag the correct JOIN into the right cell (token bank).
+
 |   |   |
 |---|---|
-| Nur Zeilen mit Match in beiden Tabellen | `INNER JOIN` |
-| Alle Zeilen links + passende rechts (sonst NULL) | `LEFT JOIN` |
-| Alle Zeilen rechts + passende links (sonst NULL) | `RIGHT JOIN` |
-| Alle Zeilen beider Seiten, Matches zusammen, sonst NULL | `FULL OUTER JOIN` |
+| Only rows with a match in both tables | `INNER JOIN` |
+| All rows on the left + matching on the right (otherwise NULL) | `LEFT JOIN` |
+| All rows on the right + matching on the left (otherwise NULL) | `RIGHT JOIN` |
+| All rows from both sides, matches combined, otherwise NULL | `FULL OUTER JOIN` |
 
+#
 ---
-4) CD (3 Spalten) – Ziehe das passende Keyword in die mittlere Spalte.
+#card
+4) CD (3 columns) – Drag the appropriate keyword into the middle column.
+
 |   |   |   |
 |---|---|---|
-| Zeilen filtern (vor GROUP BY) | `WHERE` | SELECT * FROM users WHERE age > 18; |
-| Gruppieren | `GROUP BY` | SELECT country, COUNT(*) FROM users GROUP BY country; |
-| Gruppen filtern (nach GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
-| Sortieren | `ORDER BY` | SELECT * FROM users ORDER BY created_at DESC; |
-| Begrenzen | `LIMIT` | SELECT * FROM users ORDER BY id LIMIT 10; |
+| Filter rows (before GROUP BY) | `WHERE` | SELECT * FROM users WHERE age > 18; |
+| Group | `GROUP BY` | SELECT country, COUNT(*) FROM users GROUP BY country; |
+| Filter groups (after GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
+| Sort | `ORDER BY` | SELECT * FROM users ORDER BY created_at DESC; |
+| Limit | `LIMIT` | SELECT * FROM users ORDER BY id LIMIT 10; |
 
+#
 ---
-5) CLD (2 Spalten) – Drag Keyword + tippe die fehlenden Werte.
+#card
+5) CLD (2 columns) – Drag keyword + type the missing values.
+
 |   |   |
 |---|---|
-| Zeilen filtern | `WHERE` SELECT * FROM users WHERE age > %%18%%; |
-| Sortieren | `ORDER BY` SELECT * FROM users ORDER BY created_at %%DESC%%; |
-| Begrenzen | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %%10%%; |
-| Gruppieren | `GROUP BY` SELECT country, COUNT(*) FROM users GROUP BY %%country%%; |
+| Filter rows | `WHERE` SELECT * FROM users WHERE age > %%18%%; |
+| Sort | `ORDER BY` SELECT * FROM users ORDER BY created_at %%DESC%%; |
+| Limit | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %%10%%; |
+| Group | `GROUP BY` SELECT country, COUNT(*) FROM users GROUP BY %%country%%; |
 
+#
 ---
-6) CLD (3 Spalten) – Drag Keyword + tippe die fehlenden Werte im Beispiel.
+#card
+6) CLD (3 columns) – Drag keyword + type the missing values in the example.
+
 |   |   |   |
 |---|---|---|
-| Zeilen filtern | `WHERE` | SELECT * FROM users WHERE age > %%18%%; |
-| Gruppen filtern (nach GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %%10%%; |
-| Sortieren | `ORDER BY` | SELECT * FROM users ORDER BY created_at %%DESC%%; |
-| Begrenzen | `LIMIT` | SELECT * FROM users ORDER BY id LIMIT %%10%%; |
+| Filter rows | `WHERE` | SELECT * FROM users WHERE age > %%18%%; |
+| Filter groups (after GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %%10%%; |
+| Sort | `ORDER BY` | SELECT * FROM users ORDER BY created_at %%DESC%%; |
+| Limit | `LIMIT` | SELECT * FROM users ORDER BY id LIMIT %%10%%; |
+#
 #examend

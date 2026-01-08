@@ -24,6 +24,7 @@ import {
   type Flashcard,
   type FlashcardPart,
 } from "./flashcards";
+import { findTableLineIndices } from "./markdownTables";
 
 export type ExamTaskSourceRange = {
   startLine: number;
@@ -272,6 +273,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   let inExam = false;
   let currentTaskStart: number | null = null;
   let hasExamBlock = false;
+  const tableLineIndices = findTableLineIndices(lines);
 
   const flushTask = (endLine: number) => {
     if (currentTaskStart === null || endLine < currentTaskStart) {
@@ -306,8 +308,10 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     }
 
     if (trimmed === "---") {
-      flushTask(index - 1);
-      currentTaskStart = null;
+      if (!tableLineIndices.has(index)) {
+        flushTask(index - 1);
+        currentTaskStart = null;
+      }
       return;
     }
 

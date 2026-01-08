@@ -32,6 +32,12 @@ import {
   isClozeCardCorrect,
 } from "../../features/flashcards/logic";
 import { resolveSeed, seededShuffle } from "../../lib/seededShuffle";
+import {
+  CLOZE_PLACEHOLDER_PREFIX,
+  CLOZE_PLACEHOLDER_SUFFIX,
+  MarkdownBlocks,
+} from "./MarkdownBlocks";
+import { findTableLineIndices } from "../../lib/markdownTables";
 
 type ClozeCardProps = {
   card: ClozeCardType;
@@ -85,6 +91,37 @@ export const ClozeCard = ({
   const tokenById = new Map(
     card.dragTokens.map((token) => [token.id, token.value]),
   );
+  const { placeholderText, blankById, blankOrderById } = useMemo(() => {
+    let text = "";
+    const blankMap = new Map<string, Extract<ClozeCardType["segments"][number], { type: "blank" }>>();
+    const orderMap = new Map<string, number>();
+    let blankIndex = 0;
+
+    card.segments.forEach((segment) => {
+      if (segment.type === "text") {
+        text += segment.value;
+        return;
+      }
+      blankMap.set(segment.id, segment);
+      blankIndex += 1;
+      orderMap.set(segment.id, blankIndex);
+      text += `${CLOZE_PLACEHOLDER_PREFIX}${segment.id}${CLOZE_PLACEHOLDER_SUFFIX}`;
+    });
+
+    return { placeholderText: text, blankById: blankMap, blankOrderById: orderMap };
+  }, [card.segments]);
+  const { markdownText, questionText } = useMemo(() => {
+    const trimmedQuestion = card.question.trim();
+    if (!trimmedQuestion) {
+      return { markdownText: placeholderText, questionText: "" };
+    }
+    const combinedText = `${card.question}\n${placeholderText}`;
+    const tableLineIndices = findTableLineIndices(combinedText.split("\n"));
+    if (tableLineIndices.has(0)) {
+      return { markdownText: combinedText, questionText: "" };
+    }
+    return { markdownText: placeholderText, questionText: card.question };
+  }, [card.question, placeholderText]);
   const normalizedPartIndex = partIndex ?? 0;
   const tokenBank = useMemo(() => {
     const identifier = `${cardIndex}:${normalizedPartIndex}:${card.question}`;
@@ -104,120 +141,125 @@ export const ClozeCard = ({
   const shouldShowSolution = showSolution ?? submitted;
   const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
   const showActions = showSubmit || (submitted && showResult);
-  let blankPosition = 0;
+
+  const renderBlank = (blankId: string) => {
+    const segment = blankById.get(blankId);
+    if (!segment) {
+      return null;
+    }
+    const blankNumber = blankOrderById.get(blankId) ?? 0;
+
+    if (segment.kind === "input") {
+      const value = responses[segment.id] ?? "";
+      const isBlankCorrect = reveal
+        ? isInputAnswerMatch(value, segment.solution)
+        : false;
+      const blankClasses = [
+        "cloze-blank",
+        "input",
+        value.trim() ? "filled" : "",
+        reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return (
+        <span className={blankClasses}>
+          <input
+            type="text"
+            className="cloze-input"
+            value={value}
+            onChange={(event) =>
+              onInputChange(cardIndex, segment.id, event.target.value)
+            }
+            disabled={submitted}
+            placeholder="____"
+            aria-label={`Blank ${blankNumber}`}
+          />
+        </span>
+      );
+    }
+
+    const assignedTokenId = responses[segment.id] ?? "";
+    const assignedValue = assignedTokenId
+      ? tokenById.get(assignedTokenId) ?? ""
+      : "";
+    const hasToken = Boolean(assignedValue);
+    const isBlankCorrect = reveal
+      ? isDragAnswerMatch(assignedValue, segment.solution)
+      : false;
+    const blankClasses = [
+      "cloze-blank",
+      "drag",
+      hasToken ? "filled" : "",
+      reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return (
+      <span
+        className={blankClasses}
+        aria-label={`Drop zone ${blankNumber}`}
+        onDragOver={onBlankDragOver}
+        onDrop={(event) =>
+          onTokenDrop(event, cardIndex, segment.id, validTokenIds, dragBlankIds)
+        }
+      >
+        {hasToken ? (
+          <span className="cloze-token">
+            <button
+              type="button"
+              className="token-chip"
+              draggable={!submitted}
+              onDragStart={(event) =>
+                onTokenDragStart(event, {
+                  cardIndex,
+                  tokenId: assignedTokenId,
+                  partIndex,
+                })
+              }
+              disabled={submitted}
+            >
+              {assignedValue}
+            </button>
+            {!submitted ? (
+              <button
+                type="button"
+                className="token-remove"
+                onClick={() => onTokenRemove(cardIndex, segment.id)}
+                aria-label="Remove token"
+              >
+                x
+              </button>
+            ) : null}
+          </span>
+        ) : (
+          <span className="cloze-placeholder">Drop token</span>
+        )}
+      </span>
+    );
+  };
+
+  const renderSolutionBlank = (blankId: string) => {
+    const segment = blankById.get(blankId);
+    if (!segment) {
+      return null;
+    }
+    return <span className="cloze-solution-token">{segment.solution}</span>;
+  };
 
   return (
     <article className="flashcard-item cloze-card">
-      <h3 className="flashcard-question">{card.question}</h3>
-      <div className="cloze-text">
-        {card.segments.map((segment, segmentIndex) => {
-          if (segment.type === "text") {
-            return (
-              <span key={`cloze-text-${cardIndex}-${segmentIndex}`}>
-                {segment.value}
-              </span>
-            );
-          }
-
-          blankPosition += 1;
-          const blankNumber = blankPosition;
-
-          if (segment.kind === "input") {
-            const value = responses[segment.id] ?? "";
-            const isBlankCorrect = reveal
-              ? isInputAnswerMatch(value, segment.solution)
-              : false;
-            const blankClasses = [
-              "cloze-blank",
-              "input",
-              value.trim() ? "filled" : "",
-              reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-
-            return (
-              <span
-                key={`cloze-blank-${cardIndex}-${segmentIndex}`}
-                className={blankClasses}
-              >
-                <input
-                  type="text"
-                  className="cloze-input"
-                  value={value}
-                  onChange={(event) =>
-                    onInputChange(cardIndex, segment.id, event.target.value)
-                  }
-                  disabled={submitted}
-                  placeholder="____"
-                  aria-label={`Blank ${blankNumber}`}
-                />
-              </span>
-            );
-          }
-
-          const assignedTokenId = responses[segment.id] ?? "";
-          const assignedValue = assignedTokenId
-            ? tokenById.get(assignedTokenId) ?? ""
-            : "";
-          const hasToken = Boolean(assignedValue);
-          const isBlankCorrect = reveal
-            ? isDragAnswerMatch(assignedValue, segment.solution)
-            : false;
-          const blankClasses = [
-            "cloze-blank",
-            "drag",
-            hasToken ? "filled" : "",
-            reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
-
-          return (
-            <span
-              key={`cloze-blank-${cardIndex}-${segmentIndex}`}
-              className={blankClasses}
-              aria-label={`Drop zone ${blankNumber}`}
-              onDragOver={onBlankDragOver}
-              onDrop={(event) =>
-                onTokenDrop(event, cardIndex, segment.id, validTokenIds, dragBlankIds)
-              }
-            >
-              {hasToken ? (
-                <span className="cloze-token">
-                  <button
-                    type="button"
-                    className="token-chip"
-                    draggable={!submitted}
-                    onDragStart={(event) =>
-                    onTokenDragStart(event, {
-                      cardIndex,
-                      tokenId: assignedTokenId,
-                      partIndex,
-                    })
-                  }
-                  disabled={submitted}
-                >
-                    {assignedValue}
-                  </button>
-                  {!submitted ? (
-                    <button
-                      type="button"
-                      className="token-remove"
-                      onClick={() => onTokenRemove(cardIndex, segment.id)}
-                      aria-label="Remove token"
-                    >
-                      x
-                    </button>
-                  ) : null}
-                </span>
-              ) : (
-                <span className="cloze-placeholder">Drop token</span>
-              )}
-            </span>
-          );
-        })}
-      </div>
+      {questionText.trim() ? (
+        <h3 className="flashcard-question">{questionText}</h3>
+      ) : null}
+      <MarkdownBlocks
+        text={markdownText}
+        className="cloze-text"
+        allowTableScroll={false}
+        renderPlaceholder={renderBlank}
+      />
       {hasDragTokens ? (
         <div className="token-section">
           <span className="label">Tokens</span>
@@ -268,25 +310,12 @@ export const ClozeCard = ({
       {shouldShowSolution ? (
         <div className="token-solution">
           <span className="label">Solution</span>
-          <div className="cloze-solution">
-            {card.segments.map((segment, segmentIndex) => {
-              if (segment.type === "text") {
-                return (
-                  <span key={`solution-text-${cardIndex}-${segmentIndex}`}>
-                    {segment.value}
-                  </span>
-                );
-              }
-              return (
-                <span
-                  key={`solution-blank-${cardIndex}-${segmentIndex}`}
-                  className="cloze-solution-token"
-                >
-                  {segment.solution}
-                </span>
-              );
-            })}
-          </div>
+          <MarkdownBlocks
+            text={markdownText}
+            className="cloze-solution"
+            allowTableScroll={false}
+            renderPlaceholder={renderSolutionBlank}
+          />
         </div>
       ) : null}
     </article>

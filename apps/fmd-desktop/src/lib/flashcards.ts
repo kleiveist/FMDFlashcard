@@ -17,6 +17,7 @@
  */
 
 import { answerMarkers, falseTokens, trueTokens } from "./flashcardKeywords";
+import { findTableLineIndices } from "./markdownTables";
 
 /**
  * Flashcard syntax:
@@ -533,6 +534,7 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
   const blocks: string[][] = [];
   let current: string[] = [];
   let state = createSplitState();
+  const tableLineIndices = findTableLineIndices(lines);
 
   const reset = () => {
     current = [];
@@ -582,7 +584,10 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
   const findNextNonEmpty = (startIndex: number) => {
     for (let i = startIndex; i < lines.length; i += 1) {
       const trimmed = lines[i].trim();
-      if (!trimmed || isSeparatorLine(lines[i])) {
+      if (!trimmed) {
+        continue;
+      }
+      if (isSeparatorLine(lines[i]) && !tableLineIndices.has(i)) {
         continue;
       }
       return trimmed;
@@ -594,7 +599,7 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
     const line = lines[index];
     const trimmed = line.trim();
 
-    if (isSeparatorLine(line)) {
+    if (isSeparatorLine(line) && !tableLineIndices.has(index)) {
       flush();
       continue;
     }

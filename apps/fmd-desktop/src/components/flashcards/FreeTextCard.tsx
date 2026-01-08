@@ -21,6 +21,7 @@
  */
 
 import type { FreeTextCard as FreeTextCardType } from "../../lib/flashcards";
+import { MarkdownBlocks } from "./MarkdownBlocks";
 import type { FlashcardSelfGrade } from "../../features/flashcards/logic";
 
 type FreeTextCardProps = {
@@ -60,7 +61,11 @@ export const FreeTextCard = ({
   return (
     <article className="flashcard-item free-text-card">
       {card.front.trim() ? (
-        <div className="flashcard-text-block">{card.front}</div>
+        <MarkdownBlocks
+          text={card.front}
+          className="flashcard-text-block"
+          allowTableScroll
+        />
       ) : null}
       <textarea
         className="flashcard-input"
@@ -115,7 +120,11 @@ export const FreeTextCard = ({
       {revealed ? (
         <div className="flashcard-answer">
           <span className="label">Answer</span>
-          <div className="flashcard-answer-text">{card.back}</div>
+          <MarkdownBlocks
+            text={card.back}
+            className="flashcard-answer-text"
+            allowTableScroll
+          />
         </div>
       ) : null}
     </article>

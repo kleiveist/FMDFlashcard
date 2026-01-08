@@ -7,49 +7,49 @@
 
 #exam
 
-## n2 – Ergänzung: alle Kombinationen mit cld (je Kombination = 1x #card ... #)
+## n2 – Addition: all combinations with cld (each combination = 1x #card ... #)
 
 2) qa + cld
 #card
 [qa]
-Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
-Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
+What does “least privilege” mean in the context of IT security?
+Answer: Users and systems are granted only the minimum necessary permissions to complete their task.
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
-[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+[cl] The capital of France is %%Paris%%.
+[cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
 3) tf + cld
 #card
 [tf]
-Aussage:
-„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
+Statement:
+“HTTPS encrypts the connection between client and server.”
 -true
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
-[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+[cl] The capital of France is %%Paris%%.
+[cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
 2) m1 + cld
 #card
 [m1]
-Welche Zahl ist eine Primzahl?
+Which number is a prime number?
 a) 4
 b) 5
 c) 9
 -b
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
-[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+[cl] The capital of France is %%Paris%%.
+[cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
 5) m2 + cld
 #card
 [m2]
-Welche Zahlen sind Primzahlen?
+Which numbers are prime numbers?
 a) 2
 b) 4
 c) 5
@@ -58,39 +58,39 @@ d) 9
 -c
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
-[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+[cl] The capital of France is %%Paris%%.
+[cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
 6) cl + cld
 #card
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+The capital of France is %%Paris%%.
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
-[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+[cl] The capital of France is %%Paris%%.
+[cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
 7) cd + cld
 #card
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+The colors of the German flag are `black`, `red`, and `gold`.
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
-[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+[cl] The capital of France is %%Paris%%.
+[cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
 8) cld + cld
 #card
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
-[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+[cl] The capital of France is %%Paris%%.
+[cd] The colors of the German flag are `black`, `red`, and `gold`.
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
-[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+[cl] The capital of France is %%Paris%%.
+[cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 
 #examend

@@ -286,6 +286,55 @@ Answer: Confirmed.
     }
   });
 
+  it("parses cloze tokens inside table cells", () => {
+    const markdown = `#card
+| Term | Answer |
+| --- | --- |
+| Alpha | %%first%% |
+| Beta | \`second\` |
+| Gamma | \`third\` and %%fourth%% |
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      expect(blanks).toHaveLength(4);
+      expect(blanks.map((blank) => blank.solution)).toEqual([
+        "first",
+        "second",
+        "third",
+        "fourth",
+      ]);
+      expect(part.dragTokens).toEqual([
+        { id: "token-0", value: "second" },
+        { id: "token-1", value: "third" },
+      ]);
+    }
+  });
+
+  it("keeps tables intact when splitting composite parts", () => {
+    const markdown = `#card
+| Term | Answer |
+| --- | --- |
+| Join | %%inner%% |
+---
+Second prompt?
+Answer: Table stays in the first part.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts).toHaveLength(2);
+    expect(parts[0].kind).toBe("cloze");
+    expect(parts[1].kind).toBe("free-text");
+  });
+
   it("parses a front/back card with Answer marker", () => {
     const markdown = `#card
 What is SQL used for as a common interface?

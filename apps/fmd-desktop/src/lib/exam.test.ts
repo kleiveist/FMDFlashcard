@@ -79,6 +79,21 @@ Answer: Secret solution
     expect(task?.officialAnswer).toBeUndefined();
   });
 
+  it("keeps table separators inside a task prompt", () => {
+    const markdown = `#exam
+1) Table task
+| Term | Answer |
+| --- | --- |
+| Alpha | %%one%% |
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.prompt).toContain("| --- | --- |");
+  });
+
   it("adds a free-text part for answer blocks alongside multiple choice", () => {
     const markdown = `#exam
   #card

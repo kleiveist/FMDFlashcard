@@ -35,3 +35,10 @@ Test Files  7 passed (7)
 
 - Add or update tests when changing evaluation logic (e.g., composite cards, result summaries).
 - Ensure lint and typechecks pass before requesting review.
+
+## Table rendering checklist
+
+- Flashcard tables render as real tables; non-token tables can scroll horizontally.
+- Exam tasks keep table prompts intact inside `#exam` blocks.
+- `cl`, `cd`, and `cld` tokens render inside table cells without scroll wrappers.
+- `---` separators do not split cards or tasks when they appear inside table blocks.

@@ -30,7 +30,7 @@ If you do **not** want visible headings, use an **empty header**:
 - Each table row must have the **same number of columns**.
 - Use `|` only as a table delimiter (avoid using `|` as normal text inside cells).
 - For line breaks inside a cell, prefer `<br>` instead of empty lines.
-- Avoid segment separators like `---` **inside** a table (it may be interpreted as a section divider).
+- Segment separators (`---`) are ignored inside table blocks, but keep them outside table rows to avoid ambiguity.
 ## Layout behavior and scrolling
 ### Card height
 - Flashcards that render tables **auto-expand in height** to fit the content.

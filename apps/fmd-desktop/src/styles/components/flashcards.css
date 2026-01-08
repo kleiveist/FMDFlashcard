@@ -236,6 +236,75 @@
   flex-wrap: wrap;
 }
 
+.flashcard-markdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.flashcard-markdown-text {
+  white-space: pre-wrap;
+}
+
+.flashcard-table {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--md-table-bg);
+}
+
+.flashcard-table.scrollable {
+  overflow-x: auto;
+}
+
+.flashcard-table.no-scroll {
+  overflow-x: visible;
+}
+
+.flashcard-table table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.flashcard-table.no-scroll table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.flashcard-table thead th {
+  background: var(--md-table-head-bg);
+  text-align: left;
+  font-weight: 600;
+}
+
+.flashcard-table th,
+.flashcard-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  vertical-align: top;
+  white-space: normal;
+}
+
+.flashcard-table.no-scroll th,
+.flashcard-table.no-scroll td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.flashcard-table tr > :last-child {
+  border-right: none;
+}
+
+.flashcard-table tbody tr:last-child th,
+.flashcard-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .flashcard-text-block {
   font-weight: 600;
   color: var(--ink);

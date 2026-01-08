@@ -7,24 +7,24 @@
 
 #exam
 
-## Test exam block – all card types (qa/tf/m1/m2/cl/cd)
+## Test-Examenblock – alle Kartentypen (qa/tf/m1/m2/cl/cd)
 
-1) QA (answer marker)
+1) QA (Antwort-Marker)
 #card
-What does “least privilege” mean in the context of IT security?
-Answer: Users and systems receive only the minimum privileges required to perform their task.
+Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
+Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
 #
 ---
 2) True/False (tf)
 #card
-Statement:
-“HTTPS encrypts the connection between client and server.”
+Aussage:
+„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“
 -true
 #
 ---
 3) Multiple Choice – Single-Answer (m1)
 #card
-Which number is a prime number?
+Welche Zahl ist eine Primzahl?
 a) 4
 b) 5
 c) 9
@@ -33,7 +33,7 @@ c) 9
 ---
 4) Multiple Choice – Multi-Answer (m2)
 #card
-Which numbers are prime numbers?
+Welche Zahlen sind Primzahlen?
 a) 2
 b) 4
 c) 5
@@ -44,12 +44,12 @@ d) 9
 ---
 5) Cloze – Typed blanks (cl)
 #card
-The capital of France is %%Paris%%.
+Die Hauptstadt von Frankreich ist %%Paris%%.
 #
 ---
 6) Cloze – Drag tokens (cd)
 #card
-The colors of the German flag are `black`, `red` and `gold`.
+Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 #
 
 #examend
