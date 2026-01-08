@@ -72,3 +72,5 @@ target/                # ignores any Rust target/ (incl. src-tauri/target)
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+
+
