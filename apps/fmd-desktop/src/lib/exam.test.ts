@@ -82,7 +82,7 @@ Answer: Secret solution
   it("adds a free-text part for answer blocks alongside multiple choice", () => {
     const markdown = `#exam
   #card
-1) Question line
+  1) Question line
 a) First
 b) Second
 -a
@@ -108,6 +108,113 @@ Answer: Secret solution
       expect(answerPart.front).toBe("");
       expect(answerPart.back).toBe("Secret solution");
     }
+  });
+});
+
+describe("exam QA composite parsing", () => {
+  const qaAnswer = "Minimal rights for users";
+  const qaAnswerSecond = "Extended rights for admins";
+  const qaBlock = `[qa]
+What is least privilege?
+Antwort: ${qaAnswer}`;
+  const qaBlockSecond = `[qa]
+Why is least privilege important?
+Antwort: ${qaAnswerSecond}`;
+  const tfBlock = `[tf]
+Aussage:
+HTTPS encrypts the connection.
+-true`;
+  const m1Block = `[m1]
+Which number is a prime?
+a) 4
+b) 5
+c) 9
+-b`;
+  const m2Block = `[m2]
+Which numbers are primes?
+a) 2
+b) 4
+c) 5
+d) 9
+-a
+-c`;
+  const clBlock = `[cl]
+The capital of France is %%Paris%%.`;
+  const cdBlock = `[cd]
+Colors: \`schwarz\`, \`rot\`, \`gold\`.`;
+  const cldBlock = `[cld]
+[cl] The capital of France is %%Paris%%.
+[cd] Colors: \`schwarz\`, \`rot\`, \`gold\`.`;
+
+  const buildCardBody = (...sections: string[]) => sections.join("\n\n");
+  const buildExamMarkdown = (title: string, body: string, index = 1) => `#exam
+${index}) ${title}
+#card
+${body}
+#
+#examend
+`;
+  const parseTask = (title: string, body: string) => {
+    const { tasks } = parseExamTasks(buildExamMarkdown(title, body));
+    expect(tasks).toHaveLength(1);
+    return tasks[0];
+  };
+
+  it("parses qa + qa combinations without swallowing the second part", () => {
+    const task = parseTask("qa + qa", buildCardBody(qaBlock, qaBlockSecond));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "free-text"]);
+    expect(task.officialAnswer).toBe(`${qaAnswer}\n\n${qaAnswerSecond}`);
+  });
+
+  it("parses qa + tf combinations", () => {
+    const task = parseTask("qa + tf", buildCardBody(qaBlock, tfBlock));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "true-false"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + m1 combinations", () => {
+    const task = parseTask("qa + m1", buildCardBody(qaBlock, m1Block));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "multiple-choice"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + m2 combinations", () => {
+    const task = parseTask("qa + m2", buildCardBody(qaBlock, m2Block));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "multiple-choice"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + cl combinations", () => {
+    const task = parseTask("qa + cl", buildCardBody(qaBlock, clBlock));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "cloze"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + cd combinations", () => {
+    const task = parseTask("qa + cd", buildCardBody(qaBlock, cdBlock));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "cloze"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + cld combinations", () => {
+    const task = parseTask("qa + cld", buildCardBody(qaBlock, cldBlock));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "cloze"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("still parses single qa tasks in exam mode", () => {
+    const task = parseTask("qa only", qaBlock);
+    const parts = task.card.parts;
+    expect(parts).toHaveLength(1);
+    expect(parts[0].kind).toBe("free-text");
+    expect(task.officialAnswer).toBe(qaAnswer);
   });
 });
 

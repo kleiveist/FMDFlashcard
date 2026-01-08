@@ -529,7 +529,7 @@ const createSplitState = (): CardSplitState => ({
   hasAssignmentLine: false,
 });
 
-const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) => {
+export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) => {
   const blocks: string[][] = [];
   let current: string[] = [];
   let state = createSplitState();

@@ -19,6 +19,7 @@
 import {
   parseFlashcards,
   splitAnswerCard,
+  splitCardLines,
   type CompositeFlashcard,
   type Flashcard,
   type FlashcardPart,
@@ -209,31 +210,6 @@ const buildFallbackCard = (split: ExamAnswerSplit): CompositeFlashcard => {
   };
 };
 
-const appendAnswerPart = (
-  card: CompositeFlashcard,
-  answer: string,
-): CompositeFlashcard => {
-  const detectedTypes = [...(card.detectedTypes ?? [])];
-  if (!detectedTypes.includes("qa")) {
-    detectedTypes.push("qa");
-  }
-
-  return {
-    ...card,
-    parts: [
-      ...card.parts,
-      {
-        kind: "free-text",
-        front: "",
-        back: answer,
-      },
-    ],
-    detectedTypes,
-    isMixed: detectedTypes.length >= 2,
-    primaryType: detectedTypes.length === 1 ? detectedTypes[0] : undefined,
-  };
-};
-
 const parseTaskChunk = (
   chunkLines: string[],
   taskIndex: number,
@@ -242,16 +218,19 @@ const parseTaskChunk = (
   const warnings: ExamTaskWarning[] = [];
   const normalizedLines = normalizeTaskLines(chunkLines);
   const answerSplit = splitAnswerBlockLines(normalizedLines);
-  const prompt = answerSplit.prompt;
-  const cardSource = `#card\n${prompt}\n#`;
+  const cardSource = `#card\n${normalizedLines.join("\n")}\n#`;
   const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
   let card: CompositeFlashcard | null = null;
+  let officialAnswer: string | undefined;
 
   if (parsed.length === 0) {
     warnings.push({
       message: "No supported flashcard syntax found. Manual grading required.",
     });
     card = buildFallbackCard(answerSplit);
+    if (answerSplit.hasAnswerMarker) {
+      officialAnswer = answerSplit.officialAnswer ?? "";
+    }
   } else {
     if (parsed.length > 1) {
       warnings.push({
@@ -259,8 +238,17 @@ const parseTaskChunk = (
       });
     }
     card = toCompositeCard(parsed[0]);
-    if (answerSplit.hasAnswerMarker) {
-      card = appendAnswerPart(card, answerSplit.officialAnswer ?? "");
+    const answerBlocks = splitCardLines(normalizedLines, "line-start");
+    const qaAnswers = answerBlocks
+      .map((block) => splitAnswerCard(block, { answerMatch: "line-start" }))
+      .filter(
+        (split): split is { front: string; back: string } => Boolean(split),
+      )
+      .map((split) => split.back);
+    if (qaAnswers.length > 0) {
+      officialAnswer = qaAnswers.join("\n\n");
+    } else if (answerSplit.hasAnswerMarker) {
+      officialAnswer = answerSplit.officialAnswer ?? "";
     }
   }
   const gradingMode = resolveTaskGradingMode(card);
@@ -270,7 +258,7 @@ const parseTaskChunk = (
     index: taskIndex,
     rawLines: [...chunkLines],
     prompt: answerSplit.prompt,
-    officialAnswer: answerSplit.hasAnswerMarker ? answerSplit.officialAnswer ?? "" : undefined,
+    officialAnswer,
     gradingMode,
     sourceRange,
     card,
