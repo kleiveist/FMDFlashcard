@@ -1,5 +1,8 @@
 ← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
 
+| n1  | qa  | tf  | m1  | m2  | cl  | cd  | cld |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| cld | 2   | 3   | 4   | 5   | 6   | 7   | 8   |
 
 #exam
 

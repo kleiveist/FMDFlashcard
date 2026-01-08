@@ -1,4 +1,10 @@
 ← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
+
+
+| n1  | qa  | tf  | m1  | m2  | cl  | cd  |
+| --- | --- | --- | --- | --- | --- | --- |
+|     | 1   | 2   | 3   | 4   | 5   | 6   |
+
 #exam
 
 ## Test-Examenblock – alle Kartentypen (qa/tf/m1/m2/cl/cd)
