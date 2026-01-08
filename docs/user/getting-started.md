@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back to Docs Home](../index.md)
+[← Back](user.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Getting started
 

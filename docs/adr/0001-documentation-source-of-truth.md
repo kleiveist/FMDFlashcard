@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back to Docs Home](../index.md)
+[← Back](adr.md)
 <!-- AUTO-GENERATED:backlink END -->
 # ADR 0001: Documentation source of truth
 

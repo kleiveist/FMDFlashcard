@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back to Docs Home](index.md)
+[← Back](index.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Refactor notes
 

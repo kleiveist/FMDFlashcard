@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back to Docs Home](../../index.md)
+[← Back](examples.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Code `cld`: Cloze (typed blanks + drag tokens)
 

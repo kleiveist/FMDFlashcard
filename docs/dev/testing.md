@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back to Docs Home](../index.md)
+[← Back](dev.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Testing
 
@@ -15,7 +15,22 @@ pnpm -C apps/fmd-desktop test
 ```
 
 If you only changed logic in one file, prefer running targeted tests to shorten feedback loops.
-
+```q
+DEV  v2.1.9 /home/kleif/Projects/FMDFlashcard/apps/fmd-desktop  
+  
+✓ src/lib/exam.test.ts (15)  
+✓ src/lib/flashcards.test.ts (40)  
+✓ src/lib/seededShuffle.test.ts (3)  
+✓ src/features/flashcards/logic.test.ts (5)  
+✓ src/features/spaced-repetition/logic.test.ts (3)  
+✓ src/pages/exam-simulation/components/ExamTaskRunner.test.ts (7)  
+✓ src/pages/fast-flashcard/hooks/useFastSession.test.ts (1)  
+  
+Test Files  7 passed (7)  
+     Tests  74 passed (74)  
+  Start at  15:06:35  
+  Duration  538ms (transform 548ms, setup 0ms, collect 963ms, tests 46ms, environment 1ms, prepare 1.21s)
+```
 ## Expectations for pull requests
 
 - Add or update tests when changing evaluation logic (e.g., composite cards, result summaries).
