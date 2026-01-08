@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../user.md)
+[← Back](../dev.md)
 <!-- AUTO-GENERATED:backlink END -->
 [← Back](../user.md)
 
@@ -8,9 +8,10 @@
 <!-- AUTO-GENERATED:docs-index START -->
 
 ## 📄 Pages
-- 📝 [Test cld](Test_cld.md)
-- 📝 [Test n1](Test_n1.md)
-- 📝 [Test n2](Test_n2.md)
-- 📝 [Testmatix](Testmatix.md)
+- 📝 [Test cld](test_cld.md)
+- 📝 [Test cld tabel](test_cld_tabel.md)
+- 📝 [Test n1](test_n1.md)
+- 📝 [Test n2](test_n2.md)
+- 📝 [Testmatix](testmatix.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

@@ -30,11 +30,4 @@
 - 📝 [Code `qa`: Answer marker (Q/A part)](examples/qa.md)
 - 📝 [Code `tf`: True/False marker (2-button card)](examples/tf.md)
 
-## 📁 TEST
-- 🗂️ [Overview](test/test.md)
-- 📝 [Test cld](test/Test_cld.md)
-- 📝 [Test n1](test/Test_n1.md)
-- 📝 [Test n2](test/Test_n2.md)
-- 📝 [Testmatix](test/Testmatix.md)
-
 <!-- AUTO-GENERATED:docs-index END -->

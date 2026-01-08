@@ -41,6 +41,7 @@ while adding a dedicated review experience and study progress tracking.
 
 ## 📁 Issus
 - 🗂️ [Overview](docs/issus/issus.md)
+- 📝 [Issus note](docs/issus/issus_note.md)
 - 📝 [Issustabel](docs/issus/issustabel.md)
 
 ## 📁 USER

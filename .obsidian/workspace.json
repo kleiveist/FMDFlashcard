@@ -11,10 +11,14 @@
             "id": "910b0701c408d231",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "docs/dev/dev.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "Neuer Tab"
+              "title": "dev"
             }
           }
         ]
@@ -90,6 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "docs/dev/testing.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -99,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Rückverweis"
+              "title": "Rückverweise für testing"
             }
           },
           {
@@ -108,11 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "docs/dev/testing.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Ausgehende Links"
+              "title": "Ausgehende Links von testing öffnen"
             }
           },
           {
@@ -150,12 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "docs/dev/testing.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Gliederung"
+              "title": "Gliederung von testing"
             }
           }
         ]
@@ -176,21 +183,29 @@
       "bases:Create new base": false
     }
   },
-  "active": "2454d2796b71b1cd",
+  "active": "910b0701c408d231",
   "lastOpenFiles": [
+    "docs/issus/issus_note.md",
+    "docs/dev/test/testmatix.md",
+    "docs/dev/test/test_n2.md",
+    "docs/dev/test/test_n1.md",
+    "docs/dev/test/test_cld.md",
+    "docs/dev/test/test_cld_tabel.md",
+    "docs/index.md",
+    "docs/dev/dev.md",
+    "docs/dev/testing.md",
+    "README.md",
+    "docs/refactor-notes.md",
+    "docs/dev/setup.md",
     "docs/user/index.md",
     "docs/user/settings.md",
-    "docs/index.md",
     "docs/user/getting-started.md",
     "docs/user/flashcard-syntax.md",
-    "docs/refactor-notes.md",
     "docs/user/user.md",
     "docs/user/troubleshooting.md",
     "docs/user/spaced-repetition.md",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
-    "SECURITY.md",
-    "README.md",
-    "docs/dev/dev.md"
+    "SECURITY.md"
   ]
 }

@@ -24,6 +24,7 @@
 
 ## 📁 Issus
 - 🗂️ [Overview](issus/issus.md)
+- 📝 [Issus note](issus/issus_note.md)
 - 📝 [Issustabel](issus/issustabel.md)
 
 ## 📁 USER

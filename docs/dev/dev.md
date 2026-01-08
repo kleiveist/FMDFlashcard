@@ -13,4 +13,12 @@
 - 📝 [Developer setup (run from source)](setup.md)
 - 📝 [Testing](testing.md)
 
+## 📁 TEST
+- 🗂️ [Overview](test/test.md)
+- 📝 [Test cld](test/test_cld.md)
+- 📝 [Test cld tabel](test/test_cld_tabel.md)
+- 📝 [Test n1](test/test_n1.md)
+- 📝 [Test n2](test/test_n2.md)
+- 📝 [Testmatix](test/testmatix.md)
+
 <!-- AUTO-GENERATED:docs-index END -->
