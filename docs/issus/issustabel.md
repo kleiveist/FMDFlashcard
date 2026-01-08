@@ -1,4 +1,6 @@
-
+<!-- AUTO-GENERATED:backlink START -->
+[← Back to Docs Home](../index.md)
+<!-- AUTO-GENERATED:backlink END -->
 |#|Titel|
 |--:|---|
 |27|📄 Master Documentation Issue: Markdown Syntax, Containers, Parts, and Scoring|

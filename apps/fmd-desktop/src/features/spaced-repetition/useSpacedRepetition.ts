@@ -35,13 +35,17 @@ import type { FlashcardOrder, FlashcardScope } from "../flashcards/useFlashcards
 import type { Flashcard } from "../../lib/flashcards";
 import {
   buildSpacedRepetitionSession,
+  buildActiveSpacedRepetitionCardIdSet,
   createEmptySpacedRepetitionSession,
   createEmptySpacedRepetitionUserState,
   createSpacedRepetitionUserId,
+  filterSpacedRepetitionCardStates,
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
+  hashString,
   MAX_SPACED_REPETITION_BOX,
   normalizeSpacedRepetitionCardProgress,
+  reconcileSpacedRepetitionUserStateById,
   type SpacedRepetitionRepetitionStrength,
   type SpacedRepetitionSession,
   type SpacedRepetitionStorage,
@@ -123,6 +127,7 @@ type UseSpacedRepetitionOptions = {
     orderOverride?: FlashcardOrder;
   }) => Promise<Flashcard[]>;
   setIsFlashcardScanning: (value: boolean) => void;
+  vaultPath: string | null;
   settings: {
     spacedRepetitionBoxes: SpacedRepetitionBoxes;
     spacedRepetitionOrder: SpacedRepetitionOrder;
@@ -143,6 +148,7 @@ export const useSpacedRepetition = ({
   isFlashcardScanning,
   scanFlashcards,
   setIsFlashcardScanning,
+  vaultPath,
   settings,
 }: UseSpacedRepetitionOptions) => {
   const {
@@ -151,12 +157,20 @@ export const useSpacedRepetition = ({
     spacedRepetitionPageSize,
     spacedRepetitionRepetitionStrength,
     spacedRepetitionStatsView,
-    setSpacedRepetitionBoxes,
-    setSpacedRepetitionOrder,
-    setSpacedRepetitionPageSize,
-    setSpacedRepetitionRepetitionStrength,
-    setSpacedRepetitionStatsView,
-  } = settings;
+  setSpacedRepetitionBoxes,
+  setSpacedRepetitionOrder,
+  setSpacedRepetitionPageSize,
+  setSpacedRepetitionRepetitionStrength,
+  setSpacedRepetitionStatsView,
+} = settings;
+const vaultId = useMemo(
+  () => (vaultPath ? hashString(vaultPath) : null),
+  [vaultPath],
+);
+const storageKey = useMemo(
+  () => (vaultId ? `spacedRepetition:${vaultId}` : null),
+  [vaultId],
+);
   const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<
     SpacedRepetitionUser[]
   >([]);
@@ -383,10 +397,29 @@ export const useSpacedRepetition = ({
   useEffect(() => {
     let cancelled = false;
 
+    const resetState = () => {
+      setSpacedRepetitionUsers([]);
+      setSpacedRepetitionUserStateById({});
+      setSpacedRepetitionActiveUserId(null);
+      setSpacedRepetitionSelectedUserId("");
+      setSpacedRepetitionSessions({});
+      setSpacedRepetitionDataLoaded(false);
+    };
+
+    if (!storageKey) {
+      resetState();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    resetState();
+
     const restoreSpacedRepetitionData = async () => {
       try {
         const storage = await invoke<SpacedRepetitionStorage>(
           "load_spaced_repetition_data",
+          { key: storageKey },
         );
         if (cancelled) {
           return;
@@ -468,10 +501,7 @@ export const useSpacedRepetition = ({
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load spaced repetition data", error);
-          setSpacedRepetitionUsers([]);
-          setSpacedRepetitionUserStateById({});
-          setSpacedRepetitionActiveUserId(null);
-          setSpacedRepetitionSelectedUserId("");
+          resetState();
         }
       } finally {
         if (!cancelled) {
@@ -485,10 +515,10 @@ export const useSpacedRepetition = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
-    if (!spacedRepetitionDataLoaded) {
+    if (!spacedRepetitionDataLoaded || !storageKey) {
       return;
     }
     const storage: SpacedRepetitionStorage = {
@@ -496,14 +526,17 @@ export const useSpacedRepetition = ({
       userStateById: spacedRepetitionUserStateById,
       lastActiveUserId: spacedRepetitionActiveUserId,
     };
-    void invoke("save_spaced_repetition_data", { storage }).catch((error) => {
-      console.error("Failed to save spaced repetition data", error);
-    });
+    void invoke("save_spaced_repetition_data", { key: storageKey, storage }).catch(
+      (error) => {
+        console.error("Failed to save spaced repetition data", error);
+      },
+    );
   }, [
     spacedRepetitionActiveUserId,
     spacedRepetitionDataLoaded,
     spacedRepetitionUserStateById,
     spacedRepetitionUsers,
+    storageKey,
   ]);
 
   useEffect(() => {
@@ -680,25 +713,41 @@ export const useSpacedRepetition = ({
         scopeOverride: "vault",
         orderOverride: "in-order",
       });
-      const storedCardStates =
-        spacedRepetitionUserStateById[activeUserId]?.cardStates ?? {};
-      const storedCompletedPerDay =
-        spacedRepetitionUserStateById[activeUserId]?.completedPerDay ?? {};
+      const cardIdContext = vaultId ? { vaultId } : undefined;
+      const activeCardIds = buildActiveSpacedRepetitionCardIdSet(
+        cards,
+        cardIdContext,
+      );
+      const normalizedUserStateById = reconcileSpacedRepetitionUserStateById(
+        spacedRepetitionUserStateById,
+        activeCardIds,
+      );
+      const currentUserState =
+        normalizedUserStateById[activeUserId] ??
+        createEmptySpacedRepetitionUserState();
+      const filteredStoredCardStates = filterSpacedRepetitionCardStates(
+        currentUserState.cardStates,
+        activeCardIds,
+      );
+      const storedCompletedPerDay = currentUserState.completedPerDay ?? {};
       const loadOrder =
         boxFilter && spacedRepetitionOrder === "repetition"
           ? "in-order"
           : spacedRepetitionOrder;
-      const nextSession = buildSpacedRepetitionSession(cards, storedCardStates, {
+      const nextSession = buildSpacedRepetitionSession(cards, filteredStoredCardStates, {
         order: loadOrder,
         boxCount: spacedRepetitionBoxes,
         repetitionStrength: spacedRepetitionRepetitionStrength,
+        vaultId,
       });
       const filteredSession =
         boxFilter === null
           ? nextSession
           : (() => {
               const entries = nextSession.flashcards.map((card, index) => {
-                const cardId = nextSession.cardIds[index] ?? getFlashcardId(card);
+                const cardId =
+                  nextSession.cardIds[index] ??
+                  getFlashcardId(card, cardIdContext);
                 const progress = normalizeSpacedRepetitionCardProgress(
                   nextSession.cardProgressById[cardId],
                 );
@@ -728,16 +777,14 @@ export const useSpacedRepetition = ({
           completedPerDay: storedCompletedPerDay,
         },
       }));
-      setSpacedRepetitionUserStateById((prev) => {
-        const current = prev[activeUserId] ?? createEmptySpacedRepetitionUserState();
-        return {
-          ...prev,
-          [activeUserId]: {
-            ...current,
-            cardStates: nextSession.cardProgressById,
-            lastLoadedAt: new Date().toISOString(),
-          },
-        };
+      setSpacedRepetitionUserStateById({
+        ...normalizedUserStateById,
+        [activeUserId]: {
+          ...currentUserState,
+          cardStates: nextSession.cardProgressById,
+          lastLoadedAt: new Date().toISOString(),
+          completedPerDay: storedCompletedPerDay,
+        },
       });
     } finally {
       setIsFlashcardScanning(false);
@@ -751,6 +798,7 @@ export const useSpacedRepetition = ({
     spacedRepetitionOrder,
     spacedRepetitionRepetitionStrength,
     spacedRepetitionUserStateById,
+    vaultId,
   ]);
 
   const handleSpacedRepetitionOptionSelect = useCallback(
@@ -845,18 +893,21 @@ export const useSpacedRepetition = ({
         return;
       }
       updateActiveSpacedRepetitionSession((session) => {
-        if (session.submissions[cardIndex]) {
-          return session;
-        }
-        const card = session.flashcards[cardIndex];
-        if (!card) {
-          return session;
-        }
-        const cardIds =
-          session.cardIds.length === session.flashcards.length
-            ? session.cardIds
-            : session.flashcards.map(getFlashcardId);
-        const cardId = cardIds[cardIndex] ?? getFlashcardId(card);
+    if (session.submissions[cardIndex]) {
+      return session;
+    }
+    const card = session.flashcards[cardIndex];
+    if (!card) {
+      return session;
+    }
+    const cardIdContext = vaultId ? { vaultId } : undefined;
+    const cardIds =
+      session.cardIds.length === session.flashcards.length
+        ? session.cardIds
+        : session.flashcards.map((candidate) =>
+            getFlashcardId(candidate, cardIdContext),
+          );
+    const cardId = cardIds[cardIndex] ?? getFlashcardId(card, cardIdContext);
         const nextSelfGrades = selfGrade
           ? { ...session.selfGrades, [cardIndex]: selfGrade }
           : session.selfGrades;

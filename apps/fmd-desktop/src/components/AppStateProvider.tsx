@@ -194,6 +194,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     isFlashcardScanning: flashcards.isFlashcardScanning,
     scanFlashcards: flashcards.scanFlashcards,
     setIsFlashcardScanning: flashcards.setIsFlashcardScanning,
+    vaultPath: vault.vaultPath,
     settings: {
       setSpacedRepetitionBoxes: settings.setSpacedRepetitionBoxes,
       setSpacedRepetitionOrder: settings.setSpacedRepetitionOrder,

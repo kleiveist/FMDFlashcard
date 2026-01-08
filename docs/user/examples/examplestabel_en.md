@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back to Docs Home](../../index.md)
+<!-- AUTO-GENERATED:backlink END -->
 ← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
 
 | Description                              | Syntax start                                                          | Syntax end                                                | Relevant for           | Action                                                                                           | Code |
@@ -47,4 +50,3 @@ Legend: 💠 works · ❕ works with care · ⚠️ works with limitations · �
 | cl   | 💠     | cl+cd is fine (one cloze text can contain both). With other types only as a composite (⚠️).                                                                |
 | cd   | 💠     | Same as cl.                                                                                                                                                |
 | cld  |        | Same as cl + cd                                                                                                                                            |
-

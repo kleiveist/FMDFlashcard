@@ -1,0 +1,1413 @@
+{
+  "scanned_root": "/home/kleif/Projects/FMDFlashcard/docs",
+  "generated_at": "2026-01-08T13:51:27",
+  "count_files": 43,
+  "content_mode": "snippet",
+  "types": [
+    ".md",
+    ".shipping"
+  ],
+  "items": [
+    {
+      "rel_path": "adr/0001-documentation-source-of-truth.md",
+      "name": "0001-documentation-source-of-truth.md",
+      "parent": "adr",
+      "size_bytes": 840,
+      "size_human": "840 B",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "ADR 0001: Documentation source of truth",
+      "headings": 5,
+      "lines": 34,
+      "words": 116,
+      "chars": 838,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "ADR 0001: Documentation source of truth"
+        ],
+        [
+          2,
+          "Status"
+        ],
+        [
+          2,
+          "Context"
+        ],
+        [
+          2,
+          "Decision"
+        ],
+        [
+          2,
+          "Consequences"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# ADR 0001: Documentation source of truth\n\nDate: 2026-01-06\n\n## Status\n\nAccepted\n\n## Context\n\nThe project needs documentation that is:\n\n- easy to review in pull requests,\n- friendly to contributors,\n- usable for both end users and developers,\n- optionally publishable as a website and exportable as PDF.\n\n## Decision\n\nUse **Markdown** files in the repository as the single source of truth for documentation:\n\n- Short overview in `README.md`\n- Full docs in `docs/`\n- Contribution guidelines in `CONTRIBUTING.md`\n- Changelog in `CHANGELOG.md`\n\nOptionally, generate a docs website (MkDocs/Docusaurus) from the same Markdown content.\n\n## Consequences\n\n- Documentation changes are versioned, reviewable, and diff-friendly.\n- Website/PDF generation can be automated later via CI without duplicating content.\n"
+    },
+    {
+      "rel_path": "adr/index.md",
+      "name": "index.md",
+      "parent": "adr",
+      "size_bytes": 246,
+      "size_human": "246 B",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "Architecture Decision Records (ADRs)",
+      "headings": 2,
+      "lines": 9,
+      "words": 33,
+      "chars": 244,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Architecture Decision Records (ADRs)"
+        ],
+        [
+          2,
+          "Index"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Architecture Decision Records (ADRs)\n\nADRs capture important engineering decisions and the reasons behind them.\n\n## Index\n\n- ADR 0001: [Documentation source of truth](0001-documentation-source-of-truth.md)\n"
+    },
+    {
+      "rel_path": "dev/architecture.md",
+      "name": "architecture.md",
+      "parent": "dev",
+      "size_bytes": 868,
+      "size_human": "868 B",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "Architecture overview",
+      "headings": 4,
+      "lines": 23,
+      "words": 117,
+      "chars": 866,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Architecture overview"
+        ],
+        [
+          2,
+          "High-level components"
+        ],
+        [
+          2,
+          "Design goals"
+        ],
+        [
+          2,
+          "Where to look next"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Architecture overview\n\nThis document is a high-level guide to how the project is structured. It is intended for contributors.\n\n## High-level components\n\n- **Desktop application:** a cross-platform desktop UI (commonly built with React/TypeScript and packaged via Tauri).\n- **Tooling:** helper scripts to standardize installation, checks, and local development (`tools/control.py`).\n- **Features:** application modules for flashcards, fast review, spaced repetition, settings, and help.\n\n## Design goals\n\n- Local-first workflow: the vault is a folder of Markdown files.\n- Keep Markdown readable: cards are embedded using simple markers.\n- Predictable review logic: identical rules across modes for correctness and statistics.\n\n## Where to look next\n\n- Setup: `setup.md`\n- Testing: `testing.md`\n- User-facing behavior: `../user/`\n"
+    },
+    {
+      "rel_path": "dev/control-script.md",
+      "name": "control-script.md",
+      "parent": "dev",
+      "size_bytes": 1770,
+      "size_human": "1.73 KB",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "Control script (`tools/control.py`)",
+      "headings": 11,
+      "lines": 73,
+      "words": 242,
+      "chars": 1764,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Control script (`tools/control.py`)"
+        ],
+        [
+          2,
+          "Why it exists"
+        ],
+        [
+          2,
+          "Common commands"
+        ],
+        [
+          3,
+          "Health check"
+        ],
+        [
+          3,
+          "Install / setup"
+        ],
+        [
+          3,
+          "Prepare / run Tauri tooling"
+        ],
+        [
+          3,
+          "Start the app"
+        ],
+        [
+          3,
+          "Build release bundles"
+        ],
+        [
+          2,
+          "Suggested workflow"
+        ],
+        [
+          2,
+          "When to use"
+        ],
+        [
+          2,
+          "Extending the control script"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Control script (`tools/control.py`)\n\nThe repository contains a Python control script intended to standardize common development tasks.\n\n## Why it exists\n\n- Reduce setup friction across OSes\n- Provide a single entry point for “doctor”, installation, and local runs\n- Keep command sequences consistent across contributors\n\n## Common commands\n\n### Health check\n\n```bash\npython3 tools/control.py --doctor\n```\n\n### Install / setup\n\n```bash\npython3 tools/control.py --install\n```\n\n### Prepare / run Tauri tooling\n\n```bash\npython3 tools/control.py --tauri\n```\n\n### Start the app\n\n```bash\npython3 tools/control.py --start\n```\n\n### Build release bundles\n\n```bash\npython3 tools/control.py --build\n```\n\nBuilds the desktop app release bundles by running `pnpm tauri build`.\nProduces platform-specific bundles/installers.\n\nNotes:\n- Working directory: `apps/fmd-desktop`.\n- Requires Node + pnpm dependencies and Tauri build prerequisites for the OS.\n- Outputs are produced by Tauri under the desktop app's release bundle directory (typically `apps/fmd-desktop/src-tauri/target/release/bundle`).\n\n## Suggested workflow\n\n1. `--doctor` to verify dependencies\n2. `--install` to install dependencies / bootstrap\n3. `--tauri` to prepare Tauri prerequisites\n4. `--start` to run the app\n\nFor packaging, run `--build` after `--tauri`.\n\n## When to use\n\n- Use `--start` for day-to-day development and local testing.\n- Use `--build` when you need release bundles or installers for distribution.\n\n## Extending the control script\n\nIf you add new flags, keep them:\n\n- Deterministic (same inputs -> same result)\n- Safe by default (no destructive behavior without explicit confirmation)\n- Documented here and in `docs/dev/setup.md` if it affects onboarding\n"
+    },
+    {
+      "rel_path": "dev/index.md",
+      "name": "index.md",
+      "parent": "dev",
+      "size_bytes": 375,
+      "size_human": "375 B",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "Developer documentation",
+      "headings": 2,
+      "lines": 13,
+      "words": 50,
+      "chars": 373,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Developer documentation"
+        ],
+        [
+          2,
+          "Start here"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Developer documentation\n\nThis section explains how to build, run, and contribute to the project.\n\n## Start here\n\n- [Setup](setup.md) (run from source)\n- [Control script guide](control-script.md) (use `--build` for release bundles)\n- [Architecture overview](architecture.md)\n- [Testing](testing.md)\n- [Releases / packaging](release.md)\n"
+    },
+    {
+      "rel_path": "dev/release.md",
+      "name": "release.md",
+      "parent": "dev",
+      "size_bytes": 1227,
+      "size_human": "1.20 KB",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "Releases / Packaging",
+      "headings": 4,
+      "lines": 36,
+      "words": 173,
+      "chars": 1225,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Releases / Packaging"
+        ],
+        [
+          2,
+          "Local release builds (conceptual)"
+        ],
+        [
+          2,
+          "Recommended local packaging workflow"
+        ],
+        [
+          2,
+          "Recommended: CI-driven releases"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Releases / Packaging\n\nThis project is packaged as a desktop app (commonly via Tauri).\n\n## Local release builds (conceptual)\n\n- Ensure `--doctor` passes\n- Run install/bootstrap (`--install`)\n- Use the standard packaging command for the desktop app (Tauri bundler)\n\nBecause packaging commands vary by OS and CI environment, keep the authoritative steps in CI\nand update this document whenever the release pipeline changes.\n\n## Recommended local packaging workflow\n\nUse the control script as the standard entry point for local packaging:\n\n```bash\npython3 tools/control.py --build\n```\n\nBuilds the desktop app release bundles by running `pnpm tauri build`.\nProduces platform-specific bundles/installers.\n\nNotes:\n- Packaging is OS-specific; build Windows artifacts on Windows, macOS artifacts on macOS, and Linux artifacts on Linux.\n- Requires Node + pnpm dependencies and Tauri build prerequisites for the OS.\n- Outputs are produced by Tauri under the desktop app's release bundle directory (typically `apps/fmd-desktop/src-tauri/target/release/bundle`).\n\n## Recommended: CI-driven releases\n\n- Tag-based releases\n- Automated build artifacts per OS\n- Release notes sourced from `CHANGELOG.md`\n"
+    },
+    {
+      "rel_path": "dev/setup.md",
+      "name": "setup.md",
+      "parent": "dev",
+      "size_bytes": 1725,
+      "size_human": "1.68 KB",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "Developer setup (run from source)",
+      "headings": 20,
+      "lines": 81,
+      "words": 242,
+      "chars": 1719,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Developer setup (run from source)"
+        ],
+        [
+          2,
+          "1) Install Python + Git & check versions"
+        ],
+        [
+          1,
+          "--- Check Python (or install if missing) ---"
+        ],
+        [
+          1,
+          "Linux (Debian/Ubuntu)"
+        ],
+        [
+          1,
+          "macOS (Homebrew, if available)"
+        ],
+        [
+          1,
+          "brew install python git"
+        ],
+        [
+          1,
+          "Verify versions"
+        ],
+        [
+          2,
+          "2) Clone the repo & switch to a standard project directory"
+        ],
+        [
+          1,
+          "Standard project directory (works on all systems):"
+        ],
+        [
+          1,
+          "Linux/macOS: ~/Projects"
+        ],
+        [
+          1,
+          "Clone repository (replace URL if needed)"
+        ],
+        [
+          2,
+          "3) Control script (doctor / health check)"
+        ],
+        [
+          1,
+          "optional: health check / doctor"
+        ],
+        [
+          2,
+          "4) Install & start"
+        ],
+        [
+          1,
+          "installation / setup"
+        ],
+        [
+          2,
+          "5) Tauri"
+        ],
+        [
+          2,
+          "6) Start"
+        ],
+        [
+          2,
+          "7) Build (release bundles / native packaging)"
+        ],
+        [
+          1,
+          "build desktop app bundles (runs: pnpm tauri build)"
+        ],
+        [
+          2,
+          "If something fails"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Developer setup (run from source)\n\nThis guide describes a “fast start” flow for running the desktop app locally.\n\nNote: Example commands for Linux/macOS (Terminal).\nOn Windows, use PowerShell or Git Bash; the steps are the same, only the directory path may differ.\n\n## 1) Install Python + Git & check versions\n\n```bash\n# --- Check Python (or install if missing) ---\npython3 --version || true\n\n# Linux (Debian/Ubuntu)\nsudo apt update\nsudo apt install -y python3 python3-pip git\n\n# macOS (Homebrew, if available)\n# brew install python git\n\n# Verify versions\npython3 --version\ngit --version\n```\n\n## 2) Clone the repo & switch to a standard project directory\n\n```bash\n# Standard project directory (works on all systems):\n# Linux/macOS: ~/Projects\nmkdir -p ~/Projects\ncd ~/Projects\n\n# Clone repository (replace URL if needed)\ngit clone https://github.com/kleiveist/FMDFlashcard.git\ncd FMDFlashcard\n```\n\n## 3) Control script (doctor / health check)\n\n```bash\ncd ~/Projects/FMDFlashcard\n\n# optional: health check / doctor\npython3 tools/control.py --doctor\n```\n\n## 4) Install & start\n\n```bash\ncd ~/Projects/FMDFlashcard\n\n# installation / setup\npython3 tools/control.py --install\n```\n\n## 5) Tauri\n\n```bash\npython3 tools/control.py --tauri\n```\n\n## 6) Start\n\n```bash\npython3 tools/control.py --start\n```\n\n## 7) Build (release bundles / native packaging)\n```bash\ncd ~/Projects/FMDFlashcard\n# build desktop app bundles (runs: pnpm tauri build)\npython3 tools/control.py --build\n```\n## If something fails\n\n- Re-run `--doctor` and review the printed checks.\n- Confirm you have a supported Node.js/pnpm toolchain if the desktop app uses them.\n- Open an issue and paste the relevant terminal output.\n"
+    },
+    {
+      "rel_path": "dev/testing.md",
+      "name": "testing.md",
+      "parent": "dev",
+      "size_bytes": 547,
+      "size_human": "547 B",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "Testing",
+      "headings": 4,
+      "lines": 21,
+      "words": 82,
+      "chars": 545,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Testing"
+        ],
+        [
+          2,
+          "Running tests"
+        ],
+        [
+          1,
+          "From repo root"
+        ],
+        [
+          2,
+          "Expectations for pull requests"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Testing\n\n## Running tests\n\nIf the project uses a monorepo layout, tests are typically run from the app workspace.\n\nExamples (adjust to your workspace names):\n\n```bash\n# From repo root\npnpm -C apps/fmd-desktop test\n```\n\nIf you only changed logic in one file, prefer running targeted tests to shorten feedback loops.\n\n## Expectations for pull requests\n\n- Add or update tests when changing evaluation logic (e.g., composite cards, result summaries).\n- Ensure lint and typechecks pass before requesting review.\n"
+    },
+    {
+      "rel_path": "index.md",
+      "name": "index.md",
+      "parent": "",
+      "size_bytes": 2234,
+      "size_human": "2.18 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Documentation",
+      "headings": 5,
+      "lines": 65,
+      "words": 290,
+      "chars": 2232,
+      "snippet": "[← Back to Repository Home](../README.md)",
+      "toc": [
+        [
+          1,
+          "Documentation"
+        ],
+        [
+          2,
+          "Section indexes"
+        ],
+        [
+          2,
+          "Start here"
+        ],
+        [
+          3,
+          "Users"
+        ],
+        [
+          3,
+          "Developers"
+        ]
+      ],
+      "content": "[← Back to Repository Home](../README.md)\n\n# Documentation\n\nThis documentation is split into two main tracks:\n\n> If GitHub's repository navigation feels slow, use these direct links:\n>\n> **User docs**\n> - [Docs home](docs/index.md)  \n> - [User docs index](user/index.md)  \n> - [Getting started](user/getting-started.md)  \n> - [Flashcard syntax](user/flashcard-syntax.md)  \n> - [Examples](Examplesindex.md)  \n> - [Spaced repetition](user/spaced-repetition.md)  \n> - [Settings](user/settings.md)  \n> - [Troubleshooting](user/troubleshooting.md)  \n>\n> **Developer docs**\n> - [Developer docs index](dev/index.md)\n> - [Setup (run from source)](dev/setup.md)\n> - [Control script](dev/control-script.md)\n> - [Architecture](dev/architecture.md)\n> - [Testing](dev/testing.md)\n> - [Releases / packaging](dev/release.md)\n>\n> **Project meta**\n> - [Contributing](../CONTRIBUTING.md)\n> - [Changelog](../CHANGELOG.md)\n> - [Security policy](../SECURITY.md)\n> - [ADR index](adr/index.md)\n\n## Section indexes\n\n- [User docs index](user/index.md)\n- [Developer docs index](dev/index.md)\n- [ADR index](adr/index.md)\n\n- **User documentation:** [User docs](user/) for app workflows and day-to-day usage.\n- **Developer documentation:** [Developer docs](dev/) for build, run, and contribution details.\n\n## Start here\n\n### Users\n\n- [Getting started](user/getting-started.md)  \n  Step-by-step from choosing a vault to your first review mode.\n- [Flashcard syntax reference](user/flashcard-syntax.md)  \n  How card blocks are structured and how composite cards work.\n- [Examples](Examplesindex.md)  \n  Copy/paste-ready card blocks, formatting patterns, and workflows.\n- [Spaced repetition](user/spaced-repetition.md)  \n  How spaced repetition works and how to build a daily routine.\n- [Settings overview](user/settings.md)  \n  What each setting controls, including scan markers and performance.\n- [Troubleshooting](user/troubleshooting.md)  \n  Fix common scanning and review issues quickly.\n\n### Developers\n\n- [Setup (run from source)](dev/setup.md)\n- [Control script guide](dev/control-script.md) (script: [control.py](../tools/control.py))\n- [Architecture overview](dev/architecture.md)\n- [Testing](dev/testing.md)\n- [Release notes / packaging](dev/release.md)\n"
+    },
+    {
+      "rel_path": "issus/issustabel.md",
+      "name": "issustabel.md",
+      "parent": "issus",
+      "size_bytes": 562,
+      "size_human": "562 B",
+      "mtime": "2026-01-08T13:30:50",
+      "title": null,
+      "headings": 0,
+      "lines": 10,
+      "words": 72,
+      "chars": 541,
+      "snippet": "|#|Titel| |--:|---| |27|📄 Master Documentation Issue: Markdown Syntax, Containers, Parts, and Scoring| |26|🐛 Master Bug Tracker (Umbrella Issue) — All Bug Reports & Triage Board| |25|🗃️ Structural Consolidation of the Codebase to Improve Clarity, Maintainability, and LLM Guidance| |24|🎓 Add Exam Mode with Automatic Evaluation| |23|Redesign Dashboard as a True Central Dashboard| |22|📐 Implement Full-Fledged Markdown Editor and Consistent Markdown Rendering| |21|UI Improvement in Smart Mode – Collapsible Tool Settings in Narrow Layout|",
+      "toc": [],
+      "content": "\n|#|Titel|\n|--:|---|\n|27|📄 Master Documentation Issue: Markdown Syntax, Containers, Parts, and Scoring|\n|26|🐛 Master Bug Tracker (Umbrella Issue) — All Bug Reports & Triage Board|\n|25|🗃️ Structural Consolidation of the Codebase to Improve Clarity, Maintainability, and LLM Guidance|\n|24|🎓 Add Exam Mode with Automatic Evaluation|\n|23|Redesign Dashboard as a True Central Dashboard|\n|22|📐 Implement Full-Fledged Markdown Editor and Consistent Markdown Rendering|\n|21|UI Improvement in Smart Mode – Collapsible Tool Settings in Narrow Layout|\n"
+    },
+    {
+      "rel_path": "refactor-notes.md",
+      "name": "refactor-notes.md",
+      "parent": "",
+      "size_bytes": 1157,
+      "size_human": "1.13 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Refactor notes",
+      "headings": 4,
+      "lines": 17,
+      "words": 171,
+      "chars": 1155,
+      "snippet": "[← Back to Docs Home](docs/index.md)",
+      "toc": [
+        [
+          1,
+          "Refactor notes"
+        ],
+        [
+          2,
+          "Fast Flashcard"
+        ],
+        [
+          2,
+          "Spaced Repetition"
+        ],
+        [
+          2,
+          "Stylesheets"
+        ]
+      ],
+      "content": "[← Back to Docs Home](docs/index.md)\n\n# Refactor notes\n\n## Fast Flashcard\n- Moved page logic into `apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts`.\n- Extracted UI panels into `apps/fmd-desktop/src/pages/fast-flashcard/components/` and kept `FastFlashcardPage` as composition-only.\n- Kept `apps/fmd-desktop/src/pages/FastFlashcardPage.tsx` as a re-export to preserve routing/imports.\n\n## Spaced Repetition\n- Moved page logic into `apps/fmd-desktop/src/pages/spaced-repetition/hooks/useSrSessionViewModel.ts`.\n- Extracted UI panels into `apps/fmd-desktop/src/pages/spaced-repetition/components/` and kept `SpacedRepetitionPage` as composition-only.\n- Kept `apps/fmd-desktop/src/pages/SpacedRepetitionPage.tsx` as a re-export to preserve routing/imports.\n\n## Stylesheets\n- Split `apps/fmd-desktop/src/App.css` into layered files under `apps/fmd-desktop/src/styles/` (`tokens.css`, `base.css`, `layout.css`) plus component files in `apps/fmd-desktop/src/styles/components/`.\n- Kept `apps/fmd-desktop/src/App.css` as an import-only aggregator to preserve the existing import in `apps/fmd-desktop/src/App.tsx` and the original cascade order.\n"
+    },
+    {
+      "rel_path": "user/exam-syntax.md",
+      "name": "exam-syntax.md",
+      "parent": "user",
+      "size_bytes": 2890,
+      "size_human": "2.82 KB",
+      "mtime": "2026-01-08T13:40:20",
+      "title": "Exam syntax",
+      "headings": 8,
+      "lines": 60,
+      "words": 448,
+      "chars": 2880,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Exam syntax"
+        ],
+        [
+          2,
+          "Wrapping an exam"
+        ],
+        [
+          2,
+          "Numbered tasks (`ea`)"
+        ],
+        [
+          2,
+          "Interactions inside exam tasks"
+        ],
+        [
+          2,
+          "Exam task output"
+        ],
+        [
+          2,
+          "Best practices"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Exam syntax\n\nThe Exams page treats blocks wrapped between `#exam` and `#examend` differently than the standard flashcard scan. This document covers the wrappers, task numbering, and how interaction types behave inside an exam file.\n\n## Wrapping an exam\n\n```md\n#exam\n... exam sections ...\n#examend\n```\n\n- `#exam` and `#examend` must each appear on their own line. Do not show them in the UI—they exist only to signal exam parsing (`e`).\n- Everything between the wrappers is considered exam content. Free text is allowed, but only numbered tasks (`ea`) produce interactive items.\n- You can still embed `#card … #` blocks inside exam tasks; they behave the same as outside, but the Exams page uses them as prompts.\n\n## Numbered tasks (`ea`)\n\nA task starts when a trimmed line begins with a number from 1 to 20. The parser accepts these variants:\n\n- `1. Question...`\n- `2)` or `2.)`\n- Bold numbering like `**3)**`\n- A leading `-` prior to the number, e.g., `-4. Section`\n\nAfter the numeric prefix, the parser expects whitespace (or closing punctuation) before the task prompt. Each task runs until one of:\n\n1. A line containing `---` (separator for composite tasks).\n2. The next numbered task line.\n3. `#examend`.\n\nUse tasks to wrap a single interaction type (qa/tf/m1/m2/cl/cd). If you need multiple interactions, separate them with `---` inside the `#card` block so the parser treats each chunk independently.\n\n## Interactions inside exam tasks\n\nOnce a task is detected, the parser reuses the same logic as the flashcard scan. The most common interaction codes are documented under `docs/user/examples/`:\n\n- QA parts: `examples/qa.md` (answer markers).\n- True/False: `examples/tf.md` (next-line markers).\n- Multiple choice: `examples/m1.md` and `examples/m2.md`.\n- Cloze typed blanks: `examples/cl.md`.\n- Drag tokens: `examples/cd.md`.\n- Card containers: `examples/f.md`.\n\nThe `examples/e.md` guide also lists the combination matrix and short rules per code when building exam content.\n\n## Exam task output\n\n- Each numbered task becomes an `ExamTask` object with a prompt, optional official answer, and metadata such as grading mode (`auto`, `manual`, `hybrid`).\n- Add answer markers to include official solutions that appear in the reveal area only after Submit.\n- True/false, multiple choice, and cloze interactions appear with their dedicated widgets in the Exams UI.\n\n## Best practices\n\n1. Keep each task focused on a single interaction type. Use `---` when composing mixed interactions.\n2. Only include `#card … #` blocks inside tasks when you need formatting or multiple Q/A segments.\n3. Avoid showing `#exam`, `#examend`, or numbered prefixes as visible text—the UI hides them.\n4. Mirror this doc when authoring exam material in other languages; the parser only relies on the numeric pattern and answer markers, not the language itself.\n"
+    },
+    {
+      "rel_path": "user/examples/.archive/basic-cards.md",
+      "name": "basic-cards.md",
+      "parent": "user/examples/.archive",
+      "size_bytes": 900,
+      "size_human": "900 B",
+      "mtime": "2026-01-07T07:49:40",
+      "title": "Basic cards",
+      "headings": 10,
+      "lines": 37,
+      "words": 150,
+      "chars": 898,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)",
+      "toc": [
+        [
+          1,
+          "Basic cards"
+        ],
+        [
+          2,
+          "Minimal Q/A card"
+        ],
+        [
+          2,
+          "Multiple cards in one file"
+        ],
+        [
+          2,
+          "Formatting tips"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)\n\n# Basic cards\n\nUse these minimal Q/A card blocks to get started. Copy/paste into a Markdown file in your vault,\nscan your vault, and open a review mode.\n\n## Minimal Q/A card\n\n```md\n#card\nWhat is a primary key?\nAnswer: A primary key uniquely identifies a row in a table.\n#\n```\n\n## Multiple cards in one file\n\n```md\n#card\nWhat does ACID stand for?\nAnswer: Atomicity, Consistency, Isolation, Durability.\n#\n\n#card\nWhat is a foreign key?\nAnswer: A field that references a primary key in another table.\n#\n```\n\n## Formatting tips\n\n- Keep the prompt on the first non-empty line of the card block.\n- Start the answer with the `Answer:` marker (or `Antwort:`) inside the block.\n- The answer can be inline or on the following lines.\n- Keep `#card` and `#` on their own lines.\n- Separate card blocks with at least one blank line for readability.\n"
+    },
+    {
+      "rel_path": "user/examples/.archive/cloze-cards.md",
+      "name": "cloze-cards.md",
+      "parent": "user/examples/.archive",
+      "size_bytes": 613,
+      "size_human": "613 B",
+      "mtime": "2026-01-07T07:49:40",
+      "title": "Cloze cards",
+      "headings": 11,
+      "lines": 37,
+      "words": 90,
+      "chars": 611,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)",
+      "toc": [
+        [
+          1,
+          "Cloze cards"
+        ],
+        [
+          2,
+          "Typed blanks (input)"
+        ],
+        [
+          2,
+          "Drag tokens (inline code)"
+        ],
+        [
+          2,
+          "Mixed typed + drag"
+        ],
+        [
+          2,
+          "Tips"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)\n\n# Cloze cards\n\nCloze cards hide parts of a sentence inside a card block. Typed blanks use %%...%%, and drag tokens\nuse backticks.\n\n## Typed blanks (input)\n\n```md\n#card\nFill in: The capital of France is %%Paris%%.\n#\n```\n\n## Drag tokens (inline code)\n\n```md\n#card\nComplete the command:\n`git` `status` shows changes.\n#\n```\n\n## Mixed typed + drag\n\n```md\n#card\nFill in: The capital of %%France%% is `Paris`.\n#\n```\n\n## Tips\n\n- Every %%...%% blank must contain text.\n- Use backticks around each drag token.\n- You can include multiple blanks in one line.\n"
+    },
+    {
+      "rel_path": "user/examples/.archive/composite-cards.md",
+      "name": "composite-cards.md",
+      "parent": "user/examples/.archive",
+      "size_bytes": 915,
+      "size_human": "915 B",
+      "mtime": "2026-01-07T07:49:40",
+      "title": "Composite cards",
+      "headings": 8,
+      "lines": 39,
+      "words": 150,
+      "chars": 913,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)",
+      "toc": [
+        [
+          1,
+          "Composite cards"
+        ],
+        [
+          2,
+          "Short composite (two parts)"
+        ],
+        [
+          2,
+          "Longer composite (three parts)"
+        ],
+        [
+          2,
+          "Notes"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)\n\n# Composite cards\n\nA composite card is a single card block that contains multiple parts. The card is marked correct only\nif every part is correct.\n\n## Short composite (two parts)\n\n```md\n#card\nWhat is 2NF?\nAnswer: Every non-key attribute depends on the whole key.\n\nWhat is 3NF?\nAnswer: No non-key attribute depends on another non-key attribute.\n#\n```\n\n## Longer composite (three parts)\n\n```md\n#card\nDefine \"primary key\".\nAnswer: A unique identifier for a row.\n\nDefine \"foreign key\".\nAnswer: A field that references a primary key in another table.\n\nDefine \"candidate key\".\nAnswer: Any key that could serve as the primary key.\n#\n```\n\n## Notes\n\n- Separate each part with at least one blank line inside the card block.\n- Use the same card type for every part (for example, all Q/A with `Answer:`).\n- Composite cards are graded as a whole in review mode.\n"
+    },
+    {
+      "rel_path": "user/examples/.archive/exam.md",
+      "name": "exam.md",
+      "parent": "user/examples/.archive",
+      "size_bytes": 949,
+      "size_human": "949 B",
+      "mtime": "2026-01-08T07:28:25",
+      "title": "Exams Page: Syntax and Rendering Breakdown",
+      "headings": 4,
+      "lines": 29,
+      "words": 138,
+      "chars": 939,
+      "snippet": "<!-- FILE: docs/user/examples/exams-syntax-and-rendering.md Purpose: User documentation (Examples) — explain Exam syntax and how the Exam page renders content by phase.",
+      "toc": [
+        [
+          1,
+          "Exams Page: Syntax and Rendering Breakdown"
+        ],
+        [
+          2,
+          "1) Core exam syntax: `#exam … #examend`"
+        ]
+      ],
+      "content": "<!--\nFILE: docs/user/examples/exams-syntax-and-rendering.md\nPurpose: User documentation (Examples) — explain Exam syntax and how the Exam page renders content by phase.\n-->\n\n← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)\n\n# Exams Page: Syntax and Rendering Breakdown\n\nThis page explains **how exam notes are structured in Markdown** and **how the Exams page renders them**\nin two phases:\n\n- **Phase 1 (Answering):** you see prompts and input controls, but **no official solutions**\n- **Phase 2 (Review after Submit):** official solutions become visible in the **reveal/solution** area\n\n> Important: In Exam mode, authoring wrappers like `#exam`, `#card`, and a standalone closing `#examend`\n> must never appear as visible text in the UI.\n\n---\n\n## 1) Core exam syntax: `#exam … #examend`\n\nAn exam block looks like this:\n\n```md\n#exam\n1) Question text…\nAnswer: (official solution — must not be visible before Submit)\n#examend\n"
+    },
+    {
+      "rel_path": "user/examples/.archive/formatting.md",
+      "name": "formatting.md",
+      "parent": "user/examples/.archive",
+      "size_bytes": 1059,
+      "size_human": "1.03 KB",
+      "mtime": "2026-01-07T07:49:40",
+      "title": "Formatting patterns",
+      "headings": 11,
+      "lines": 47,
+      "words": 160,
+      "chars": 1057,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)",
+      "toc": [
+        [
+          1,
+          "Formatting patterns"
+        ],
+        [
+          2,
+          "Code block in the question"
+        ],
+        [
+          2,
+          "List-style answer (plain text)"
+        ],
+        [
+          2,
+          "Definition-style answer"
+        ],
+        [
+          2,
+          "Supported vs. not supported"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)\n\n# Formatting patterns\n\nThese examples show how multi-line prompts and answers behave. The app displays text as plain text with\nline breaks preserved, so Markdown formatting (lists, code fences) is not rendered.\n\n## Code block in the question\n\n````md\n#card\nWhat does this Python function return?\n```python\ndef add(a, b):\n    return a + b\n```\nAnswer: It returns the sum of a and b.\n#\n````\n\n## List-style answer (plain text)\n\n```md\n#card\nName three SQL command categories.\nAnswer:\n- DDL\n- DML\n- DCL\n#\n```\n\n## Definition-style answer\n\n```md\n#card\nDefine \"idempotent\".\nAnswer: Idempotent - calling it multiple times has the same effect as calling it once.\n#\n```\n\n## Supported vs. not supported\n\n- Supported: multi-line prompts and answers; line breaks are preserved.\n- Supported: list or code block text inside a Q/A card block (displayed as plain text).\n- Not supported: Markdown rendering such as syntax highlighting or automatic lists.\n- Caution: a line that is exactly `#` ends the card block.\n"
+    },
+    {
+      "rel_path": "user/examples/.archive/multiple-choice.md",
+      "name": "multiple-choice.md",
+      "parent": "user/examples/.archive",
+      "size_bytes": 540,
+      "size_human": "540 B",
+      "mtime": "2026-01-07T07:49:40",
+      "title": "Multiple choice cards",
+      "headings": 8,
+      "lines": 38,
+      "words": 93,
+      "chars": 538,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)",
+      "toc": [
+        [
+          1,
+          "Multiple choice cards"
+        ],
+        [
+          2,
+          "Single-answer"
+        ],
+        [
+          2,
+          "Multiple-answer"
+        ],
+        [
+          2,
+          "Tips"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)\n\n# Multiple choice cards\n\nMultiple choice cards use option labels a), b), c) and one or more correct markers (-a, -b, ...)\ninside a card block.\n\n## Single-answer\n\n```md\n#card\nWhich planet is known as the Red Planet?\na) Earth\nb) Mars\nc) Venus\n-b\n#\n```\n\n## Multiple-answer\n\n```md\n#card\nWhich numbers are prime?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n#\n```\n\n## Tips\n\n- Use at least two options.\n- Each correct option must have its own marker line.\n- Keep `#card` and `#` on their own lines.\n"
+    },
+    {
+      "rel_path": "user/examples/.archive/true-false.md",
+      "name": "true-false.md",
+      "parent": "user/examples/.archive",
+      "size_bytes": 602,
+      "size_human": "602 B",
+      "mtime": "2026-01-07T07:49:40",
+      "title": "True/false cards",
+      "headings": 8,
+      "lines": 32,
+      "words": 94,
+      "chars": 600,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)",
+      "toc": [
+        [
+          1,
+          "True/false cards"
+        ],
+        [
+          2,
+          "Single statement"
+        ],
+        [
+          2,
+          "Multiple statements (composite)"
+        ],
+        [
+          2,
+          "Tips"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)\n\n# True/false cards\n\nTrue/false cards use a statement line followed by a marker line (`-true` or `-false`). You can\ninclude multiple statements in one card block to form a composite card.\n\n## Single statement\n\n```md\n#card\nThe Earth orbits the Sun.\n-true\n#\n```\n\n## Multiple statements (composite)\n\n```md\n#card\nPluto is a planet.\n-false\n\nWater freezes at 0 C.\n-true\n#\n```\n\n## Tips\n\n- Every statement must be followed by its marker on the next non-empty line.\n- Use `-true`/`-false` (or `-wahr`/`-falsch`) consistently within a card block.\n"
+    },
+    {
+      "rel_path": "user/examples/.archive/workflows.md",
+      "name": "workflows.md",
+      "parent": "user/examples/.archive",
+      "size_bytes": 996,
+      "size_human": "996 B",
+      "mtime": "2026-01-07T07:49:40",
+      "title": "Workflows",
+      "headings": 4,
+      "lines": 28,
+      "words": 175,
+      "chars": 994,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)",
+      "toc": [
+        [
+          1,
+          "Workflows"
+        ],
+        [
+          2,
+          "Create a vault, add cards, scan, review"
+        ],
+        [
+          2,
+          "Fix a parsing issue and rescan"
+        ],
+        [
+          2,
+          "Build a daily spaced repetition routine"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)\n\n# Workflows\n\nThese step-by-step workflows show typical ways to use a vault and review modes.\n\n## Create a vault, add cards, scan, review\n\n1. Create a vault folder and add a Markdown file.\n2. Paste a card block (see Basic cards or other examples).\n3. Open the app and select your vault.\n4. Run a scan from Flashcard Tools.\n5. Choose a review mode and start reviewing.\n\n## Fix a parsing issue and rescan\n\n1. Open the note in your vault and verify the markers (`#card`, `#`, `Answer:`).\n2. Make sure each card block has `#card` and `#` on their own lines.\n3. Remove stray text inside markers or fix option labels.\n4. Rescan the vault and confirm the card count.\n\n## Build a daily spaced repetition routine\n\n1. Open the Spaced Repetition review mode.\n2. Review due cards until the queue is empty.\n3. Add or edit cards after study sessions.\n4. Rescan the vault when you change card blocks.\n5. Repeat daily to keep the schedule stable.\n"
+    },
+    {
+      "rel_path": "user/examples/cd.md",
+      "name": "cd.md",
+      "parent": "user/examples",
+      "size_bytes": 1209,
+      "size_human": "1.18 KB",
+      "mtime": "2026-01-08T13:10:58",
+      "title": "Code `cd`: Cloze (drag tokens)",
+      "headings": 4,
+      "lines": 21,
+      "words": 199,
+      "chars": 1207,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `cd`: Cloze (drag tokens)"
+        ],
+        [
+          2,
+          "Behavior notes"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `cd`: Cloze (drag tokens)\n\nDrag tokens use backticks to create draggable pieces learners can drop into blanks. The parser reads ``token`` fragments as drag-and-drop solutions inside the same cloze pipeline.\n\n```md\n#card\nThe colors of the German flag are `black`, `red`, and `gold`.\n#\n```\n\n- Each inline `token` becomes a drag token that learners can drag into the drop zone associated with that blank.\n- Empty tokens are ignored, so always place visible text inside the backticks.\n- Drag tokens work alongside typed cloze blanks; both are treated as `cloze` parts with `kind` `drag` in the segment list.\n- The drag-token list is shuffled before display; the order does not match the order in the source text.\n- The shuffle order is seeded by the card/part identity so repeated views keep the same arrangement.\n## Behavior notes\n\n- Use drag tokens when you want the learner to match predefined units instead of typing them.\n- Drag and typed blanks render together on the same UI if they belong to the same block. If you need to mix drag tokens with other modes (TF or MC), separate them with `---` or split into different tasks.\n"
+    },
+    {
+      "rel_path": "user/examples/cl.md",
+      "name": "cl.md",
+      "parent": "user/examples",
+      "size_bytes": 1105,
+      "size_human": "1.08 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Code `cl`: Cloze (typed blanks)",
+      "headings": 4,
+      "lines": 20,
+      "words": 172,
+      "chars": 1101,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `cl`: Cloze (typed blanks)"
+        ],
+        [
+          2,
+          "Behavior notes"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `cl`: Cloze (typed blanks)\n\nTyped clozes use the `%%...%%` syntax to turn inline fragments into input fields (`cl`). The learner must type the missing words exactly as written (normalization is trim-and-lowercase by default).\n\n```md\n#card\nThe capital of France is %%Paris%%.\n#\n```\n\n- Each `%%…%%` pair becomes an input blank. The parser trims the text inside; blanks without any content are rejected.\n- You can combine cloze blanks and drag tokens in the same question as long as the interactions stay within one block. When cl and cd coexist, the parser spawns both blank and drag segments.\n- The blank solutions are case-insensitive and trimmed; punctuation inside the solution is preserved, so `%%Paris%%` differs from `%%Paris,%%`.\n\n## Behavior notes\n\n- Cloze blanks can appear in the prompt or in body text, and the parser splits them into segments for the UI.\n- If you need to mix typed blanks with other interactions (MC, TF), insert `---` between them or split them into separate tasks to keep scoring manageable.\n"
+    },
+    {
+      "rel_path": "user/examples/cld.md",
+      "name": "cld.md",
+      "parent": "user/examples",
+      "size_bytes": 830,
+      "size_human": "830 B",
+      "mtime": "2026-01-08T13:11:09",
+      "title": "Code `cld`: Cloze (typed blanks + drag tokens)",
+      "headings": 5,
+      "lines": 25,
+      "words": 126,
+      "chars": 828,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `cld`: Cloze (typed blanks + drag tokens)"
+        ],
+        [
+          2,
+          "Syntax"
+        ],
+        [
+          3,
+          "Typed blanks"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `cld`: Cloze (typed blanks + drag tokens)\n\n`cld` is the combined Cloze format that supports **both**:\n- **Typed blanks** using `%%...%%`\n- **Drag tokens** using backticks `` `token` ``\n\n- This lets you build a single cloze interaction where learners can either type answers (typed blanks) and/or use a token bank (drag tokens) within the same part.\n- The drag-token list is shuffled before display; the order does not match the order in the source text.\n- The shuffle sequence is seeded by the card/part identity so the same task keeps the same order within a session.\n---\n\n## Syntax\n\n### Typed blanks\nUse `%%...%%` to create an input field. The text inside is the **solution**.\n\nExample:\n```md\n#card\nThe `capital` of France is %%Paris%%.\n#\n```\n---\n"
+    },
+    {
+      "rel_path": "user/examples/e.md",
+      "name": "e.md",
+      "parent": "user/examples",
+      "size_bytes": 1700,
+      "size_human": "1.66 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Code `e`: Exam block container",
+      "headings": 3,
+      "lines": 24,
+      "words": 265,
+      "chars": 1694,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `e`: Exam block container"
+        ],
+        [
+          2,
+          "Syntax summary"
+        ],
+        [
+          2,
+          "Behavior reminders"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `e`: Exam block container\n\nUse `#exam` and `#examend` to wrap the section you want the Exams page to treat as a dedicated exam session. Anything between these markers runs through the exam parser and renders in the **Exam** view; outside the markers the content behaves like a regular deck.\n\n## Syntax summary\n\n| Component | Purpose |\n| --- | --- |\n| `#exam` | Stand-alone line that opens the exam block. It signals the Exams page and parser to expect numbered tasks (`ea`). |\n| Content between | Treated as an exam file. Free text is allowed, but actual interaction data only comes from the numbered tasks that follow exam numbering rules. |\n| `#examend` | Stand-alone line that closes the block. Ignore it in the UI; no flashcards are created past this point unless a new card block opens. |\n| `#` | Still closes a `#card` block inside an exam task just like everywhere else. The exam block itself is not closed by `#`. |\n\n## Behavior reminders\n\n- Do **not** display `#exam` / `#examend` as visible text—the Exams page keeps those wrappers out of the UI.\n- Mark the entire exam file or section as exam content so that scans treat it differently than standard flashcards.\n- Only numbered tasks (`ea`) yield cards; stray text between tasks is rendered as instructions or context.\n- You can still embed `#card … #` blocks inside a task, the parser merges them, and their interactions obey the usual flashcard rules.\n- `#exam` does not interfere with `#card`; every card still needs its own `#` terminator.\n\nFor details on each code, follow the respective files above (`ea`, `f`, `qa`, `tf`, `m1`, `m2`, `cl`, `cd`).\n"
+    },
+    {
+      "rel_path": "user/examples/ea.md",
+      "name": "ea.md",
+      "parent": "user/examples",
+      "size_bytes": 2146,
+      "size_human": "2.10 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Code `ea`: Exam task block",
+      "headings": 6,
+      "lines": 46,
+      "words": 352,
+      "chars": 2136,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `ea`: Exam task block"
+        ],
+        [
+          2,
+          "Recognizing the start"
+        ],
+        [
+          2,
+          "Ending a task"
+        ],
+        [
+          2,
+          "What to place inside"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `ea`: Exam task block\n\nAn exam task (`ea`) is the smallest unit that the Exams page turns into an interactive item. Each task starts with a numbered line and continues until the next break marker, a new number, or the end of the exam block.\n\n## Recognizing the start\n\nThe parser looks at every line between `#exam` and `#examend`. A new task begins when a trimmed line starts with a number from **1 to 20**. The following variations are all valid:\n\n- `1. Prompt text…`\n- `2)` or `2.)`\n- `**3)**` (it allows bold markers to highlight the heading)\n- `-4. Subtask` (a leading hyphen is stripped before checking the digits)\n\nAfter the number you can optionally continue with `)`, `.`, `)`, or bold markers; the parser only requires whitespace after the numeric part so that a line such as `5. Explain…` works.\n\n## Ending a task\n\nA task chunk is considered finished when one of these markers appears between the current line and the next:\n\n1. A line that contains exactly `---`. This is also the separator for composite tasks inside one `#card`.\n2. Another numbered start line (`ea`). The parser flushes the previous task when it sees the next number.\n3. `#examend`, which ensures the final task is emitted.\n\n## What to place inside\n\n- Write the prompt or context just beneath the numbering line.\n- Use a single interaction type per task (qa/tf/m1/m2/cl/cd) to keep grading predictable. If you mix types, insert `---` between them so the parser treats each part independently.\n- You can still wrap the task text inside a `#card … #` block; the parser adds the task prompt to a temporary card before detecting interactions.\n- The Exams page records the official answer when you add answer markers (`qa`) or any graded interaction (tf/m1/m2/cl/cd).\n\nExample:\n\n```md\n#exam\n1) Discuss the principle of least privilege.\nAnswer: The principle says …\n---\n2) Is the following statement true or false?\nThe principle of least privilege limits what users can do.\n-true\n#examend\n```\n\nEvery numbered heading above becomes one `ea` task, with its own prompt and answer chunk.\n"
+    },
+    {
+      "rel_path": "user/examples/Examplesindex.md",
+      "name": "Examplesindex.md",
+      "parent": "user/examples",
+      "size_bytes": 1093,
+      "size_human": "1.07 KB",
+      "mtime": "2026-01-08T09:26:32",
+      "title": "Examples Tabel",
+      "headings": 4,
+      "lines": 27,
+      "words": 143,
+      "chars": 1063,
+      "snippet": "← Back to [User docs index](../index.md)",
+      "toc": [
+        [
+          1,
+          "Examples Tabel"
+        ],
+        [
+          1,
+          "Examples"
+        ],
+        [
+          2,
+          "Syntax reference"
+        ],
+        [
+          2,
+          "Syntax test"
+        ]
+      ],
+      "content": "← Back to [User docs index](../index.md)\n\n# Examples Tabel\n- [examplestabel_de](examplestabel_de.md)  \n- [examplestabel_en](examplestabel_en.md)  \n# Examples\n\nThese examples are ready-to-use templates for your vault. Copy/paste a card block into any Markdown file,\nscan your vault, and start a review mode. Each example uses the default `#card` and `#` markers. If you\nchanged scan markers in Settings, update the snippets before scanning.\n## Syntax reference\n- [`e` – exam block container](e.md)  \n- [`ea` – numbered exam task](ea.md)  \n- [`f` – `#card … #` containers](f.md)  \n- [`qa` – answer markers and QA parts](qa.md)  \n- [`tf` – true/false interaction`](tf.md)  \n- [`m1` – single-answer multiple choice`](m1.md)  \n- [`m2` – multi-answer multiple choice`](m2.md)  \n- [`cl` – typed cloze blanks (`%%…%%`)](cl.md)  \n- [`cd` – draggable cloze tokens (`` `…` ``)](cd.md)  \n- [`cdl` – draggable cloze tokens and typed cloze blanks (`` `…` ``)](cd.md)   \n---\n## Syntax test\n- [Testmatix](Testmatix.md)  \n- [Test_n1](Test_n1.md)  \n-  [Test_n2](Test_n2.md)  \n----\n"
+    },
+    {
+      "rel_path": "user/examples/examplestabel_de.md",
+      "name": "examplestabel_de.md",
+      "parent": "user/examples",
+      "size_bytes": 8178,
+      "size_human": "7.99 KB",
+      "mtime": "2026-01-08T09:37:38",
+      "title": "**Kombinierung Tabelle**",
+      "headings": 2,
+      "lines": 50,
+      "words": 494,
+      "chars": 7779,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          2,
+          "**Kombinierung Tabelle**"
+        ],
+        [
+          3,
+          "Kurzregeln je Kürzel (Begründung für ❕/⚠️)"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n| Beschreibung                            | Syntax start                                                         | Sytax end                                        | Relewant für           | Aktion                                                                                                 | kürzel |\n| --------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------ | ------ |\n|                                         |                                                                      | WICHTIG #                                        | gilt nicht wenn        | # Überstich <br>## überschrift                                                                         |        |\n|                                         |                                                                      |                                                  | e = exam               | f = flashcard                                                                                          |        |\n| Examen-Blog (Container)                 | #exam                                                                | #examend                                         | e-page<br>Exam-Modus   | - Datei/Abschnitt als **Exam-Content** markieren- Inhalte **nicht als Flashcards**                     | e      |\n| Examen-Aufgabenblock                    | - Start Aufgabe  Nummerierung, <br>1.   2)   2.)    1.2.3 <br>n = 99 | ---  <br>1.2.3<br>#                              | e-page<br>Exam-Modus   | Aufgabe als Exam-Item                                                                                  | ea     |\n| Flashcard-Blog (Card-Block / Container) | #card                                                                | #                                                | f-pages Flashcard-Scan | - Block als Flashcard-Item <br>                                                                        | f      |\n| Antwort-Marker (Q/A-Teil)               | Answer:{text}<br>Antwort: {text}<br>answertocken:{text}              | ---  <br>#                                       | e-page <br>f-pages     | - Alles nach Marker als **Antworttext** speichern; Zeilenumbrüche beibehalten.                         | qa     |\n| True/False-Marker <br>(2-Button-Karte)  | true/false? {text}<br>-true or<br>-false                             | ---  <br>#                                       | e-page <br>f-pages     | - UI: **2 Buttons (True/False)**- Validierung: Marker muss auf **nächster nicht-leerer Zeile** stehen. | tf     |\n| Multiple Choice (Single-Answer)         | - Options-Labels im Block,<br>`a)` `b)` `c)` …                       | aswahl endet mit<br>-a)<br>blog mit <br>#<br>--- | e-page <br>f-pages     | - UI: Auswahl Single Marker mindestens 1<br>-x = 1<br>-a)                                              | m1     |\n| Multiple Choice <br>(Multi-Answer)      | - Options-Labels im Block,<br>`a)` `b)` `c)` …                       | aswahl endet mit<br>-a)<br>blog mit <br>#<br>--- | e-page <br>f-pages     | Auswahl Multi Anzahl Marker mindestens 2<br>-x < 2<br>-a)<br>-b)                                       | m2     |\n| Cloze Lückentext:                       | -Typed blanks: `%%...%%` innerhalb                                   | ---  <br>#                                       | e-page <br>f-pages     | für Backticks- Validierung: jedes `%%...%%` enthält Text.                                              | cl     |\n| Cloze <br>Drag Tokens)                  | des Texts- Drag tokens: ``token``                                    | ---  <br>#                                       | e-page <br>f-pages     | - UI: Eingabefelder für ``token`` + Drag/Drop                                                          | cd     |\n| Cloze Lückentext +Drag Tokens           | Typed blanks: `%%...%%` + tokens: ``token``innerhalb                 | ---  <br>#                                       | e-page <br>f-pages     | - UI: Eingabefelder  ``token`` und Drag/Drop<br> Backticks- Validierung: jedes `%%...%%`               | cld    |\n## **Kombinierung Tabelle** \nLegende: 💠 problemlos · ❕ mit Beachtung · ⚠️ mit Einschränkungen · ❌ nicht möglich\n\n|     | e   | ea  | f   | qa  | tf  | m1  | m2  | cl  | cd  | cld |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| e   | ❌   | 💠  | ❌   | ❕   | ❕   | ❕   | ❕   | ❕   | ❕   | ❕   |\n| ea  | 💠  | ❌   | ❌   | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  |\n| f   | ❌   | ❌   | ❌   | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  |\n| qa  | ❕   | 💠  | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  |\n| tf  | ❕   | 💠  | 💠  | ⚠️  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  |\n| m1  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | 💠  | ❕   | ⚠️  | ⚠️  | ⚠️  |\n| m2  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ❕   | 💠  | ⚠️  | ⚠️  | ⚠️  |\n| cl  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | 💠  | 💠  | ❕   |\n| cd  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | 💠  | 💠  | ❕   |\n| cld | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ❕   | ❕   | 💠  |\n\n---\n### Kurzregeln je Kürzel (Begründung für ❕/⚠️)\n\n| Kürzel | Status | Hinweis                                                                                                                                                                   |\n| ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| e      | ❕      | Innerhalb `#exam … #examend` sind Kartentypen **nur sinnvoll innerhalb** eines Aufgabenblocks (`ea`). Außerhalb davon: typischerweise **Freitext/ignored**.               |\n| ea     | 💠     | Aufgabenblock kann **genau einen** Interaktionstyp enthalten (qa/tf/m1/m2/cl/cd). Mehrere Typen in _einer_ Aufgabe nur als Composite (dann wie unten ⚠️).                 |\n| f      | 💠     | `#card … #` kann qa/tf/m1/m2/cl/cd tragen. Mehrere Typen in _einem_ `#card` nur als Composite (⚠️).                                                                       |\n| qa     | ⚠️     | Sobald qa mit interaktiven Typen gemischt wird (tf/m1/m2/cl/cd), sind Antworten häufig **nicht mehr sauber automatisch prüfbar** → ggf. nur Selbstkontrolle/Teil-Scoring. |\n| tf     | ⚠️     | Gemischt mit m1/m2/cl/cd erfordert pro Part **eigene UI/Logik** (Multi-Widget Composite). Wenn nicht implementiert: Einschränkung oder Fallback.                          |\n| m1     | ❕      | m1+m2 ist möglich, aber **nur als getrennte Parts** (klare Marker je Part).                                                                                               |\n| m2     | ❕      | analog m2+m1.                                                                                                                                                             |\n| cl     | 💠     | cl+cd ist problemlos (Cloze-Text kann beides enthalten). Mit anderen Typen nur als Composite (⚠️).                                                                        |\n| cd     | 💠     | wie cl.                                                                                                                                                                   |\n| cld    |        | wie cl + cd                                                                                                                                                               |\n|        |        |                                                                                                                                                                           |\n\n\n"
+    },
+    {
+      "rel_path": "user/examples/examplestabel_en.md",
+      "name": "examplestabel_en.md",
+      "parent": "user/examples",
+      "size_bytes": 7973,
+      "size_human": "7.79 KB",
+      "mtime": "2026-01-08T09:24:11",
+      "title": "**Combination matrix**",
+      "headings": 2,
+      "lines": 50,
+      "words": 556,
+      "chars": 7594,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          2,
+          "**Combination matrix**"
+        ],
+        [
+          3,
+          "Short rules per code (reasoning for ❕/⚠️)"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n| Description                              | Syntax start                                                          | Syntax end                                                | Relevant for           | Action                                                                                           | Code |\n| ---------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ | ---- |\n|                                          |                                                                       | IMPORTANT: `#`                                            | does not apply when    | `#` heading <br> `##` heading                                                                    |      |\n|                                          |                                                                       |                                                           | e = exam               | f = flashcard                                                                                    |      |\n| Exam block (container)                   | #exam                                                                 | #examend                                                  | e-page<br>Exam mode    | - Mark file/section as **exam content**<br>- Do **not** treat contents as flashcards             | e    |\n| Exam task block                          | - Start task numbering, <br>1.   2)   2.)    1.2.3 <br>n = 99         | ---  <br>1.2.3<br>#                                       | e-page<br>Exam mode    | Treat task as an exam item                                                                       | ea   |\n| Flashcard block (card block / container) | #card                                                                 | #                                                         | f-pages Flashcard scan | - Treat block as a flashcard item                                                                | f    |\n| Answer marker (Q/A part)                 | Answer:{text}<br>Antwort: {text}<br>answertocken:{text}               | ---  <br>#                                                | e-page <br>f-pages     | - Store everything after the marker as **answer text**; preserve line breaks.                    | qa   |\n| True/False marker <br>(2-button card)    | true/false? {text}<br>-true or<br>-false                              | ---  <br>#                                                | e-page <br>f-pages     | - UI: **2 buttons (True/False)**<br>- Validation: marker must be on the **next non-empty line**. | tf   |\n| Multiple choice (single-answer)          | - Option labels in the block,<br>`a)` `b)` `c)` …                     | selection ends with<br>-a)<br>block ends with<br>#<br>--- | e-page <br>f-pages     | - UI: single choice; at least 1 correct marker<br>-x = 1<br>-a)                                  | m1   |\n| Multiple choice <br>(multi-answer)       | - Option labels in the block,<br>`a)` `b)` `c)` …                     | selection ends with<br>-a)<br>block ends with<br>#<br>--- | e-page <br>f-pages     | Multi choice; at least 2 correct markers<br>-x < 2<br>-a)<br>-b)                                 | m2   |\n| Cloze (typed blanks)                     | Typed blanks: `%%...%%` inside                                        | ---  <br>#                                                | e-page <br>f-pages     | For typed blanks: validation requires every `%%...%%` to contain text.                           | cl   |\n| Cloze <br>(drag tokens)                  | in the text: drag tokens: ``token``                                   | ---  <br>#                                                | e-page <br>f-pages     | - UI: input fields for ``token`` + drag/drop                                                     | cd   |\n| Cloze <br>(drag tokens)                  | in the text: drag tokens: ``token``<br>Typed blanks: `%%...%%` inside | ---  <br>#                                                | e-page <br>f-pages     | - UI: input fields for ``token`` + drag/drop and  blanks: validation `%%...%%`                   | cd   |\n\n## **Combination matrix**\nLegend: 💠 works · ❕ works with care · ⚠️ works with limitations · ❌ not possible\n\n|     | e   | ea  | f   | qa  | tf  | m1  | m2  | cl  | cd  | cld |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| e   | ❌   | 💠  | ❕   | ❕   | ❕   | ❕   | ❕   | ❕   | ❕   | ❕   |\n| ea  | 💠  | ❌   | ❌   | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  |\n| f   | ❕   | ❌   | ❌   | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  | 💠  |\n| qa  | ❕   | 💠  | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  |\n| tf  | ❕   | 💠  | 💠  | ⚠️  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ⚠️  |\n| m1  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | 💠  | ❕   | ⚠️  | ⚠️  | ⚠️  |\n| m2  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ❕   | 💠  | ⚠️  | ⚠️  | ⚠️  |\n| cl  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | 💠  | 💠  | ❕   |\n| cd  | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | 💠  | 💠  | ❕   |\n| cld | ❕   | 💠  | 💠  | ⚠️  | ⚠️  | ⚠️  | ⚠️  | ❕   | ❕   | 💠  |\n\n---\n### Short rules per code (reasoning for ❕/⚠️)\n\n| Code | Status | Note                                                                                                                                                       |\n| ---- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| e    | ❕      | Inside `#exam … #`, card types are **only meaningful inside** a task block (`ea`). Outside of tasks: typically **free text / ignored**.                    |\n| f    | ❕      | `#exam` is not affected by `#card`; it ends with `#examend`.                                                                                               |\n| ea   | 💠     | A task block can contain **exactly one** interaction type (qa/tf/m1/m2/cl/cd). Multiple types in a _single_ task only as a composite (then like below ⚠️). |\n| f    | 💠     | A `#card … #` block can contain qa/tf/m1/m2/cl/cd. Multiple types in _one_ `#card` only as a composite (⚠️).                                               |\n| qa   | ⚠️     | Once Q/A is mixed with interactive types (tf/m1/m2/cl/cd), answers are often **no longer cleanly auto-checkable** → consider self-check / partial scoring. |\n| tf   | ⚠️     | Mixed with m1/m2/cl/cd requires **dedicated UI/logic per part** (multi-widget composite). If not implemented: limitation or fallback.                      |\n| m1   | ❕      | m1+m2 is possible, but **only as separate parts** (clear markers per part).                                                                                |\n| m2   | ❕      | Same as m2+m1.                                                                                                                                             |\n| cl   | 💠     | cl+cd is fine (one cloze text can contain both). With other types only as a composite (⚠️).                                                                |\n| cd   | 💠     | Same as cl.                                                                                                                                                |\n| cld  |        | Same as cl + cd                                                                                                                                            |\n\n"
+    },
+    {
+      "rel_path": "user/examples/f.md",
+      "name": "f.md",
+      "parent": "user/examples",
+      "size_bytes": 1055,
+      "size_human": "1.03 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Code `f`: Flashcard block container",
+      "headings": 4,
+      "lines": 21,
+      "words": 164,
+      "chars": 1051,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `f`: Flashcard block container"
+        ],
+        [
+          2,
+          "Syntax"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `f`: Flashcard block container\n\nA `#card … #` block (`f`) declares the flashcard boundaries that the parser scans. You can use it inside or outside exam content. Inside an exam, the block is only processed if it sits inside a numbered task (`ea`).\n\n## Syntax\n\n```md\n#card\nQuestion or prompt text\nAnswer: The answer text\n#\n```\n\n- The opening `#card` and the closing `#` must each sit on their own line.\n- Everything between those markers is split into sub-blocks (`splitCardLines`), which may become QA text, true/false pairs, MC options, or cloze parts.\n- You can host multiple interactions inside a single `#card` by separating them with `---`. Each segment contributes one detected interaction type.\n- `#card` is unaffected by `#exam`; the exam wrapper only changes which cards are surfaced in the Exams view.\n\nWhen you nest this pattern inside an `ea` task, it becomes the container for the official task prompt that the exam parser converts into an `ExamTask` object.\n"
+    },
+    {
+      "rel_path": "user/examples/m1.md",
+      "name": "m1.md",
+      "parent": "user/examples",
+      "size_bytes": 1089,
+      "size_human": "1.06 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Code `m1`: Single-answer multiple choice",
+      "headings": 5,
+      "lines": 27,
+      "words": 171,
+      "chars": 1087,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `m1`: Single-answer multiple choice"
+        ],
+        [
+          2,
+          "Syntax"
+        ],
+        [
+          2,
+          "Behavior"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `m1`: Single-answer multiple choice\n\nSingle-answer multiple choice blocks use option labels like `a)`, `b)`, `c)` and a correct marker line such as `-a`. The UI renders these as a radio-style selection.\n\n## Syntax\n\n```md\n#card\nWhich planet is known as the Red Planet?\na) Earth\nb) Mars\nc) Venus\n-b\n#\n```\n\n- Every option line must follow the pattern `<letter>) <text>` (case-insensitive letter). The parser normalizes the letter to lowercase.\n- Correct answers are marked with `-x` where `x` is the corresponding option letter. For single-answer MC, provide exactly one correct marker (`-x = 1`).\n- The card must contain at least two options to keep the UI meaningful.\n\n## Behavior\n\n- The UI presents a single choice with radio buttons.\n- The parser collects the question plus the options, then uses the `correctKeys` array from the `-x` lines to determine which answer is correct.\n- Combining m1 with other interactive codes (e.g., tf, cl) in the same task requires separators (`---`) and dedicated handling.\n"
+    },
+    {
+      "rel_path": "user/examples/m2.md",
+      "name": "m2.md",
+      "parent": "user/examples",
+      "size_bytes": 1108,
+      "size_human": "1.08 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Code `m2`: Multi-answer multiple choice",
+      "headings": 5,
+      "lines": 29,
+      "words": 180,
+      "chars": 1106,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `m2`: Multi-answer multiple choice"
+        ],
+        [
+          2,
+          "Syntax"
+        ],
+        [
+          2,
+          "Behavior"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `m2`: Multi-answer multiple choice\n\nMulti-answer multiple choice is similar to single-answer, but the learner may select several options. Each correct option gets its own `-x` marker line; there must be at least two correct markers to make this a multi-answer question.\n\n## Syntax\n\n```md\n#card\nWhich numbers are prime?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n#\n```\n\n- Provide option lines just like single-answer MC (`letter) text`).\n- Add a `-x` line for every correct option. The parser collects them into `correctKeys`. For multi-answer questions, include **two or more** `-x` lines.\n- `-x < 2` in the original notation means that you must supply more than one correct marker to float into the multi-answer mode.\n\n## Behavior\n\n- The UI shows checkboxes so learners can pick multiple answers.\n- The parser keeps the `correctKeys` list in the same structure as m1 and sets `detectedTypes` to `multiple-choice`.\n- When mixing m2 with other interactive codes in one task, separate them with `---` and treat each chunk as its own interaction.\n"
+    },
+    {
+      "rel_path": "user/examples/qa.md",
+      "name": "qa.md",
+      "parent": "user/examples",
+      "size_bytes": 1747,
+      "size_human": "1.71 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Code `qa`: Answer marker (Q/A part)",
+      "headings": 6,
+      "lines": 35,
+      "words": 258,
+      "chars": 1729,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `qa`: Answer marker (Q/A part)"
+        ],
+        [
+          2,
+          "Markers that are recognized"
+        ],
+        [
+          2,
+          "How answer text is captured"
+        ],
+        [
+          2,
+          "Exam-specific caution"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `qa`: Answer marker (Q/A part)\n\nAnswer markers signal that everything that follows belongs to the official solution. The parser pulls the marker line plus all subsequent text until the end of the card (`#`) and stores it as the answer/back side of a QA part.\n\n## Markers that are recognized\n\nExam tasks use the same `answerMarkers` list from `flashcardKeywords.ts`. Common entries include:\n\n- `Answer:` (English)\n- `Antwort:` (German)\n- `Réponse:`, `Respuesta:`, `Risposta:` (Romance languages)\n- `Antwoord:`, `Svar:`, `Odpověď:`, `Ответ:`, `Απάντηση:` (others)\n\nThe parser normalizes the marker (case, accents, whitespace) so you can also write the marker as bold text like `**Answer:**` as long as the marker still starts the line.\n\n## How answer text is captured\n\n- The marker must appear at the start of the line (except for optional leading `**` or a hyphen). Exam parsing uses `answerMatch: \"line-start\"` to enforce that behavior.\n- Everything after the colon on the same line becomes the beginning of the answer. Follow-up lines are appended until you hit the closing `#` or the next block separator (`---`).\n- Line breaks stay intact, so you can format diagrams or lists inside the answer.\n\nExample:\n\n```md\n#card\nExplain the principle of least privilege.\nAnswer: Keep permissions as tight as possible so users only see what they need.\n#\n```\n\n## Exam-specific caution\n\nMixing QA parts with interactive types (true/false, multiple choice, clozes) inside the same task can make automated scoring less reliable. If you combine them, consider splitting the task into composites (use `---`) or providing explicit instructions about manual scoring.\n"
+    },
+    {
+      "rel_path": "user/examples/tf.md",
+      "name": "tf.md",
+      "parent": "user/examples",
+      "size_bytes": 1497,
+      "size_human": "1.46 KB",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "Code `tf`: True/False marker (2-button card)",
+      "headings": 5,
+      "lines": 25,
+      "words": 237,
+      "chars": 1486,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          1,
+          "Code `tf`: True/False marker (2-button card)"
+        ],
+        [
+          2,
+          "Format"
+        ],
+        [
+          2,
+          "Behavior notes"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n# Code `tf`: True/False marker (2-button card)\n\nTrue/false interactions count as `tf` and render as two-button questions where the learner chooses between true and false. The parser recognizes them by pairing a prompt line with the next non-empty line that starts with a `-` and a truthy/falsy token.\n\n## Format\n\n```\n#card\nIs the following statement true?\nThe Sun is a star.\n-true\n#\n```\n\n- The question line(s) appear first, followed by a dedicated result marker on the next non-empty line (no blank line between question and marker is required but allowed).\n- The marker must begin with `-` and then a keyword. Valid true tokens include `true`, `yes`, `ja`, `wahr`, `vrai`, `verdadero`, `vero`, `waar`, `sant`, `právda`, etc. False tokens include `false`, `no`, `nein`, `falsch`, `falso`, `neh`, `falskt`, `epätosi`, `hakis`, `ложь`, `خطأ`, and their localized equivalents.\n- The parser strips punctuation at the end and matches the normalized keyword, so `-true.` and `-ja` both work.\n\n## Behavior notes\n\n- The marker must sit on the next non-empty line after the question; the parser skips blank lines between them.\n- The UI shows the question from the card prompt and then the `true/false` buttons. The correct button is governed by the marker.\n- Mixing `tf` with other interactive types (m1/m2/cl/cd) in the same task requires explicit multi-widget handling, so keep the block focused or split it with `---`.\n"
+    },
+    {
+      "rel_path": "user/flashcard-syntax.md",
+      "name": "flashcard-syntax.md",
+      "parent": "user",
+      "size_bytes": 2977,
+      "size_human": "2.91 KB",
+      "mtime": "2026-01-08T13:39:59",
+      "title": "Flashcard syntax reference",
+      "headings": 8,
+      "lines": 42,
+      "words": 450,
+      "chars": 2973,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Flashcard syntax reference"
+        ],
+        [
+          2,
+          "Card block basics"
+        ],
+        [
+          2,
+          "Interaction highlights"
+        ],
+        [
+          2,
+          "Composites and interactions"
+        ],
+        [
+          2,
+          "Exam content"
+        ],
+        [
+          2,
+          "Notes"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Flashcard syntax reference\n\nMarkdown flashcards keep your notes readable and the parser precise. The only required markers are the block wrappers and whatever interaction markers you need for the question type.\n\n## Card block basics\n\n```md\n#card\n...\n#\n```\n\n- `#card` opens a block.\n- Everything after `#card` up until a standalone `#` belongs to the same card.\n- A single file can contain multiple `#card … #` blocks; they can appear anywhere in your vault.\n- Use `---` inside the block to separate multiple interaction chunks (for example, QA followed by MC). Each chunk is treated independently but still scores as a single composite card.\n- For detailed explanations of each interaction type, see the short-code reference examples in `docs/user/examples/` (qa, tf, m1, m2, cl, cd, etc.).\n\n## Interaction highlights\n\n- **QA (free-text answers):** Place questions followed by an answer marker (`Answer:`, `Antwort:`, `answertocken:` etc.). Everything after the marker becomes the answer. Answers preserve line breaks, so multi-paragraph solutions are fine. Mixed QA + auto-graded parts use `---`.\n- **True/False:** Write the statement, then on the very next non-empty line add `-true` or `-false` (normalized to your language). The parser looks for the marker immediately after the question block.\n- **Multiple choice (single / multi):** Use option lines like `a) Text`. Mark correct options with `-a`, `-b`, etc. A single marker means single-answer (m1), two or more markers classify the block as multi-answer (m2).\n- **Cloze interactions:** `%%solution%%` produces text inputs. Inline `` `token` `` fragments become drag tokens (cd). You can mix typed blanks and drag tokens inside the same cloze chunk; just keep the actual tokens populated.\n\n## Composites and interactions\n\n- A `#card` can combine QA with any auto-graded type (tf, m1, m2, cl, cd) by inserting `---`. The order matters for the UI, so keep related parts together.\n- QA answers remain in a Pending state after Submit until you self-grade them. Auto-graded interactions show their final state immediately, but they still belong to the same composite card.\n- The parser keeps track of detected interaction types through metadata (`primaryType`, `detectedTypes`). Mixed cards (two or more detected types) are treated as composites and typically render a single Submit button.\n\n## Exam content\n\n- If you are authoring a dedicated exam file, wrap your tasks between `#exam` and `#examend` and refer to `docs/user/exam-syntax.md` for the exam-specific wrappers (`e`, `ea`, etc.).\n- `#exam` does not change how `#card` behaves; it only controls whether the Exams page includes the section.\n\n## Notes\n\n- The parser trims whitespace aggressively, so keep markers on their own lines and avoid extra characters before `#card`, `#`, or the interaction markers.\n- Prefer the in-app Help to confirm the latest parsing tweaks and file an issue if behavior drifts from this guide.\n"
+    },
+    {
+      "rel_path": "user/getting-started.md",
+      "name": "getting-started.md",
+      "parent": "user",
+      "size_bytes": 1529,
+      "size_human": "1.49 KB",
+      "mtime": "2026-01-08T13:40:02",
+      "title": "Getting started",
+      "headings": 7,
+      "lines": 46,
+      "words": 257,
+      "chars": 1511,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Getting started"
+        ],
+        [
+          2,
+          "1) Create or choose a vault folder"
+        ],
+        [
+          2,
+          "2) Add your first cards to a Markdown file"
+        ],
+        [
+          2,
+          "3) Open the app and load the vault"
+        ],
+        [
+          2,
+          "4) Start a review"
+        ],
+        [
+          2,
+          "5) Iterate"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Getting started\n\nThis guide covers the shortest path from “I have Markdown notes” to “I can review cards”.\n\n## 1) Create or choose a vault folder\n\nA *vault* is simply a folder that contains your Markdown files. The app scans this folder to find\nflashcards embedded in your notes.\n\n## 2) Add your first cards to a Markdown file\n\nCreate a new `.md` file (or use an existing one) and add a `#card` block.\n\nExample:\n\n```md\n#card\n\nWhat is 2NF (Second Normal Form)?\n- 2NF requires that every non-key attribute depends on the whole of a composite key (if a composite key exists).\n\nDefine “foreign key” and give a simple example.\n- A foreign key is an attribute (or set of attributes) that references the primary key of another table to enforce referential integrity.\n```\n\n## 3) Open the app and load the vault\n\n1. Open the app.\n2. Choose your vault folder.\n3. Let the app scan your Markdown files.\n\n## 4) Start a review\n\nPick a review mode (standard, fast, spaced repetition) and start answering cards.\nIf a card contains multiple Q/A pairs inside the same `#card` block, it is treated as a *composite card*:\nthe card is correct only if all parts are correct.\n\n## 5) Iterate\n\n- Add cards as you learn.\n- Refactor notes as usual—your Markdown remains readable.\n- Use Settings to tune parsing markers, review behavior, and performance options.\n\nNext: read `flashcard-syntax.md` for the latest markers and `exam-syntax.md` when you want to author exam files with `#exam … #examend`.\n"
+    },
+    {
+      "rel_path": "user/index.md",
+      "name": "index.md",
+      "parent": "user",
+      "size_bytes": 761,
+      "size_human": "761 B",
+      "mtime": "2026-01-08T08:31:03",
+      "title": "User documentation",
+      "headings": 2,
+      "lines": 20,
+      "words": 105,
+      "chars": 759,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "User documentation"
+        ],
+        [
+          2,
+          "Start here"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# User documentation\n\nThis section explains how to use the app day-to-day.\n\n## Start here\n\n- [Getting started](getting-started.md)  \n  Step-by-step from choosing a vault to your first review mode.\n- [Flashcard syntax reference](flashcard-syntax.md)  \n  How card blocks are structured and how composite cards work.\n- [Examples](Examplesindex.md)  \n  Copy/paste-ready card blocks, formatting patterns, and workflows.\n- [Spaced repetition](spaced-repetition.md)  \n  How spaced repetition works and how to build a daily routine.\n- [Settings overview](settings.md)  \n  What each setting controls, including scan markers and performance.\n- [Troubleshooting](troubleshooting.md)  \n  Fix common scanning and review issues quickly.\n"
+    },
+    {
+      "rel_path": "user/settings.md",
+      "name": "settings.md",
+      "parent": "user",
+      "size_bytes": 685,
+      "size_human": "685 B",
+      "mtime": "2026-01-07T07:00:36",
+      "title": "Settings",
+      "headings": 3,
+      "lines": 18,
+      "words": 94,
+      "chars": 683,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Settings"
+        ],
+        [
+          2,
+          "Common settings areas"
+        ],
+        [
+          2,
+          "Recommendations"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Settings\n\nSettings allow you to tune how the app behaves and how it scans your vault.\n\n## Common settings areas\n\n- **Data & Sync:** where your vault is selected, how scanning works, and data storage options.\n- **Language / UI:** localization and display preferences.\n- **Performance:** options intended for larger vaults and faster scanning.\n- **Flashcard / Fast Flashcard / Spaced Repetition tools:** review-mode specific behaviors.\n\n## Recommendations\n\n- Start with default values.\n- Only change scan markers (e.g., card prefix) if you have a clear reason.\n- If you see performance warnings, enable recommended performance options and rescan.\n"
+    },
+    {
+      "rel_path": "user/spaced-repetition.md",
+      "name": "spaced-repetition.md",
+      "parent": "user",
+      "size_bytes": 1241,
+      "size_human": "1.21 KB",
+      "mtime": "2026-01-08T13:19:04",
+      "title": "Spaced repetition",
+      "headings": 5,
+      "lines": 31,
+      "words": 146,
+      "chars": 1239,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Spaced repetition"
+        ],
+        [
+          2,
+          "Concepts"
+        ],
+        [
+          3,
+          "DEFAULT ORDER"
+        ],
+        [
+          2,
+          "Typical workflow"
+        ],
+        [
+          2,
+          "Practical guidance"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Spaced repetition\n\nSpaced repetition helps you review cards at increasing intervals based on performance.\n\n## Concepts\n\n### DEFAULT ORDER\n\n| In order                             | Random                             | Repetition                              |\n| ------------------------------------ | ---------------------------------- | --------------------------------------- |\n| flashcard after <br>loading sequence | flashcard randomly <br>distributed | flashcard Tracking <br>Boxen evaluation |\n\nRepetition Concepts\n- **Boxes / levels:** cards move through boxes based on correct/incorrect answers.\n- **Sessions:** you review a subset of cards (often based on box selection and scheduling).\n- **Progress tracking:** the app records outcomes to influence future scheduling.\n\n## Typical workflow\n\n1. Select a box (or a scheduled set). \n2. Review cards.\n3. Cards move forward on correct answers; they may move back on incorrect answers.\n\n## Practical guidance\n\n- If you have many cards, start with a smaller daily set.\n- Be consistent: small daily sessions are more effective than rare large sessions.\n- When you change flashcard syntax or refactor notes, re-scan your vault and verify card counts.\n\n"
+    },
+    {
+      "rel_path": "user/test/Test_cld.md",
+      "name": "Test_cld.md",
+      "parent": "user/test",
+      "size_bytes": 2016,
+      "size_human": "1.97 KB",
+      "mtime": "2026-01-08T11:16:10",
+      "title": "exam",
+      "headings": 17,
+      "lines": 95,
+      "words": 300,
+      "chars": 2001,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          2,
+          "n2 – Ergänzung: alle Kombinationen mit cld (je Kombination = 1x #card ... #)"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n| n1  | qa  | tf  | m1  | m2  | cl  | cd  | cld |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| cld | 2   | 3   | 4   | 5   | 6   | 7   | 8   |\n\n#exam\n\n## n2 – Ergänzung: alle Kombinationen mit cld (je Kombination = 1x #card ... #)\n\n2) qa + cld\n#card\n[qa]\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n\n[cld]\n[cl] Die Hauptstadt von Frankreich ist %%Paris%%.\n[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n3) tf + cld\n#card\n[tf]\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n\n[cld]\n[cl] Die Hauptstadt von Frankreich ist %%Paris%%.\n[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n2) m1 + cld\n#card\n[m1]\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n\n[cld]\n[cl] Die Hauptstadt von Frankreich ist %%Paris%%.\n[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n5) m2 + cld\n#card\n[m2]\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n\n[cld]\n[cl] Die Hauptstadt von Frankreich ist %%Paris%%.\n[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n6) cl + cld\n#card\n[cl]\nDie Hauptstadt von Frankreich ist %%Paris%%.\n\n[cld]\n[cl] Die Hauptstadt von Frankreich ist %%Paris%%.\n[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n7) cd + cld\n#card\n[cd]\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n\n[cld]\n[cl] Die Hauptstadt von Frankreich ist %%Paris%%.\n[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n8) cld + cld\n#card\n[cld]\n[cl] Die Hauptstadt von Frankreich ist %%Paris%%.\n[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n\n[cld]\n[cl] Die Hauptstadt von Frankreich ist %%Paris%%.\n[cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n\n#examend\n"
+    },
+    {
+      "rel_path": "user/test/Test_n1.md",
+      "name": "Test_n1.md",
+      "parent": "user/test",
+      "size_bytes": 1013,
+      "size_human": "1013 B",
+      "mtime": "2026-01-08T11:15:06",
+      "title": "exam",
+      "headings": 15,
+      "lines": 55,
+      "words": 147,
+      "chars": 991,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          2,
+          "Test-Examenblock – alle Kartentypen (qa/tf/m1/m2/cl/cd)"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n\n| n1  | qa  | tf  | m1  | m2  | cl  | cd  |\n| --- | --- | --- | --- | --- | --- | --- |\n|     | 1   | 2   | 3   | 4   | 5   | 6   |\n\n#exam\n\n## Test-Examenblock – alle Kartentypen (qa/tf/m1/m2/cl/cd)\n\n1) QA (Antwort-Marker)\n#card\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n#\n---\n2) True/False (tf)\n#card\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n#\n---\n3) Multiple Choice – Single-Answer (m1)\n#card\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n#\n---\n4) Multiple Choice – Multi-Answer (m2)\n#card\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n#\n---\n5) Cloze – Typed blanks (cl)\n#card\nDie Hauptstadt von Frankreich ist %%Paris%%.\n#\n---\n6) Cloze – Drag tokens (cd)\n#card\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n\n#examend\n"
+    },
+    {
+      "rel_path": "user/test/Test_n2.md",
+      "name": "Test_n2.md",
+      "parent": "user/test",
+      "size_bytes": 4694,
+      "size_human": "4.58 KB",
+      "mtime": "2026-01-08T09:12:54",
+      "title": "exam",
+      "headings": 47,
+      "lines": 303,
+      "words": 730,
+      "chars": 4617,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)",
+      "toc": [
+        [
+          2,
+          "test n2 – n²: erst (typ+typ), dann jede Kombination einmal"
+        ],
+        [
+          2,
+          "Regel: jede Kombination = 1 Aufgabe = 1x #card ... # (enthält beide Teilkarten)"
+        ],
+        [
+          3,
+          "Kombinationsmatrix (Zelle = Positionsnummer in dieser Datei)"
+        ]
+      ],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\n\n\n#exam\n\n## test n2 – n²: erst (typ+typ), dann jede Kombination einmal\n## Regel: jede Kombination = 1 Aufgabe = 1x #card ... # (enthält beide Teilkarten)\n\n### Kombinationsmatrix (Zelle = Positionsnummer in dieser Datei)\n| n²  | qa  | tf  | m1  | m2  | cl  | cd  |\n| --- | --- | --- | --- | --- | --- | --- |\n| qa  | 1   | 7   | 8   | 9   | 10  | 11  |\n| tf  |     | 2   | 12  | 13  | 14  | 15  |\n| m1  |     |     | 3   | 16  | 17  | 18  |\n| m2  |     |     |     | 4   | 19  | 20  |\n| cl  |     |     |     |     | 5   | 21  |\n| cd  |     |     |     |     |     | 6   |\n\n---\n\n1) qa + qa\n#card\n[qa]\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n\n[qa]\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n#\n---\n2) tf + tf\n#card\n[tf]\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n\n[tf]\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n#\n---\n3) m1 + m1\n#card\n[m1]\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n\n[m1]\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n#\n---\n4) m2 + m2\n#card\n[m2]\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n\n[m2]\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n#\n---\n5) cl + cl\n#card\n[cl]\nDie Hauptstadt von Frankreich ist %%Paris%%.\n\n[cl]\nDie Hauptstadt von Frankreich ist %%Paris%%.\n#\n---\n6) cd + cd\n#card\n[cd]\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n\n[cd]\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n\n---\n\n7) qa + tf\n#card\n[qa]\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n\n[tf]\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n#\n---\n8) qa + m1\n#card\n[qa]\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n\n[m1]\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n#\n---\n9) qa + m2\n#card\n[qa]\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n\n[m2]\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n#\n---\n10) qa + cl\n#card\n[qa]\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n\n[cl]\nDie Hauptstadt von Frankreich ist %%Paris%%.\n#\n---\n11) qa + cd\n#card\n[qa]\nWas bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?\nAntwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.\n\n[cd]\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n12) tf + m1\n#card\n[tf]\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n\n[m1]\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n#\n---\n13) tf + m2\n#card\n[tf]\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n\n[m2]\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n#\n---\n14) tf + cl\n#card\n[tf]\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n\n[cl]\nDie Hauptstadt von Frankreich ist %%Paris%%.\n#\n---\n15) tf + cd\n#card\n[tf]\nAussage:\n„HTTPS verschlüsselt die Verbindung zwischen Client und Server.“\n-true\n\n[cd]\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n16) m1 + m2\n#card\n[m1]\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n\n[m2]\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n#\n---\n17) m1 + cl\n#card\n[m1]\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n\n[cl]\nDie Hauptstadt von Frankreich ist %%Paris%%.\n#\n---\n18) m1 + cd\n#card\n[m1]\nWelche Zahl ist eine Primzahl?\na) 4\nb) 5\nc) 9\n-b\n\n[cd]\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n19) m2 + cl\n#card\n[m2]\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n\n[cl]\nDie Hauptstadt von Frankreich ist %%Paris%%.\n#\n---\n20) m2 + cd\n#card\n[m2]\nWelche Zahlen sind Primzahlen?\na) 2\nb) 4\nc) 5\nd) 9\n-a\n-c\n\n[cd]\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n---\n21) cl + cd\n#card\n[cl]\nDie Hauptstadt von Frankreich ist %%Paris%%.\n\n[cd]\nDie Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.\n#\n\n#examend\n"
+    },
+    {
+      "rel_path": "user/test/Testmatix.md",
+      "name": "Testmatix.md",
+      "parent": "user/test",
+      "size_bytes": 1749,
+      "size_human": "1.71 KB",
+      "mtime": "2026-01-08T11:16:33",
+      "title": null,
+      "headings": 0,
+      "lines": 27,
+      "words": 54,
+      "chars": 1305,
+      "snippet": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md) Ist Verhalten Bug Repro kombiecrads",
+      "toc": [],
+      "content": "← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)\nIst Verhalten Bug Repro kombiecrads\n\n| qa  | tf  | m1  | m2  | cl  | cd  |       |     |\n| --- | --- | --- | --- | --- | --- | ----- | --- |\n| ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | #exam |     |\n| ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | #card |     |\n\n| n²  | qa  | tf  | m1  | m2  | cl  | cd  |     | #exam |\n| --- | --- | --- | --- | --- | --- | --- | --- | ----- |\n| qa  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| tf  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| m1  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| m2  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| cl  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| cd  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| cld | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| n²  | qa  | tf  | m1  | m2  | cl  | cd  | cld | #card |\n| qa  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| tf  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| m1  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| m2  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| cl  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| cd  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n| cld | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |\n\n\n"
+    },
+    {
+      "rel_path": "user/troubleshooting.md",
+      "name": "troubleshooting.md",
+      "parent": "user",
+      "size_bytes": 879,
+      "size_human": "879 B",
+      "mtime": "2026-01-08T13:40:12",
+      "title": "Troubleshooting",
+      "headings": 5,
+      "lines": 27,
+      "words": 132,
+      "chars": 873,
+      "snippet": "[← Back to Docs Home](../index.md)",
+      "toc": [
+        [
+          1,
+          "Troubleshooting"
+        ],
+        [
+          2,
+          "The app shows “0 cards loaded”"
+        ],
+        [
+          2,
+          "Clicking a view shows no cards"
+        ],
+        [
+          2,
+          "UI looks off after updates"
+        ],
+        [
+          2,
+          "Something is inconsistent between modes (Flashcard / Fast / Spaced)"
+        ]
+      ],
+      "content": "[← Back to Docs Home](../index.md)\n\n# Troubleshooting\n\n## The app shows “0 cards loaded”\n\n- Confirm you selected the correct vault folder.\n- Confirm your cards use the expected markers (see `flashcard-syntax.md`), or review `exam-syntax.md` if the file should be scanned as an exam.\n- Rescan / reload the vault.\n\n## Clicking a view shows no cards\n\n- Make sure your current filter/box selection contains cards.\n- Verify that the vault was fully scanned and indexing completed.\n\n## UI looks off after updates\n\n- Restart the app.\n- If you recently changed theme/accent settings, toggle the theme and return to your preferred mode.\n\n## Something is inconsistent between modes (Flashcard / Fast / Spaced)\n\n- Reproduce the issue in a minimal example file.\n- Open an issue and include:\n  - a small example `#card` block,\n  - which mode you used,\n  - expected vs. actual behavior.\n"
+    }
+  ]
+}

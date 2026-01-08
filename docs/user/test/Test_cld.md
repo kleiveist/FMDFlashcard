@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back to Docs Home](../../index.md)
+<!-- AUTO-GENERATED:backlink END -->
 ← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
 
 | n1  | qa  | tf  | m1  | m2  | cl  | cd  | cld |

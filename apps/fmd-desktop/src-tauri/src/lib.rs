@@ -230,27 +230,44 @@ fn write_settings(path: &Path, settings: &AppSettings) -> Result<(), String> {
     fs::write(path, data).map_err(|err| err.to_string())
 }
 
-fn read_spaced_repetition_data(path: &Path) -> Result<SpacedRepetitionStorage, String> {
+const LEGACY_SPACED_REPETITION_KEY: &str = "spacedRepetition:legacy";
+
+fn read_spaced_repetition_file(
+    path: &Path,
+) -> Result<HashMap<String, SpacedRepetitionStorage>, String> {
     if !path.exists() {
-        return Ok(SpacedRepetitionStorage::default());
+        return Ok(HashMap::new());
     }
 
     let data = fs::read_to_string(path).map_err(|err| err.to_string())?;
-    match serde_json::from_str(&data) {
-        Ok(storage) => Ok(storage),
-        Err(_) => Ok(SpacedRepetitionStorage::default()),
+    if data.trim().is_empty() {
+        return Ok(HashMap::new());
     }
+
+    if let Ok(map) =
+        serde_json::from_str::<HashMap<String, SpacedRepetitionStorage>>(&data)
+    {
+        return Ok(map);
+    }
+
+    if let Ok(storage) = serde_json::from_str::<SpacedRepetitionStorage>(&data) {
+        let mut map = HashMap::new();
+        map.insert(LEGACY_SPACED_REPETITION_KEY.to_string(), storage);
+        return Ok(map);
+    }
+
+    Ok(HashMap::new())
 }
 
-fn write_spaced_repetition_data(
+fn write_spaced_repetition_file(
     path: &Path,
-    storage: &SpacedRepetitionStorage,
+    entries: &HashMap<String, SpacedRepetitionStorage>,
 ) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|err| err.to_string())?;
     }
 
-    let data = serde_json::to_string_pretty(storage).map_err(|err| err.to_string())?;
+    let data = serde_json::to_string_pretty(entries).map_err(|err| err.to_string())?;
     fs::write(path, data).map_err(|err| err.to_string())
 }
 
@@ -355,18 +372,30 @@ fn save_app_settings(
 }
 
 #[tauri::command]
-fn load_spaced_repetition_data(app: tauri::AppHandle) -> Result<SpacedRepetitionStorage, String> {
+fn load_spaced_repetition_data(
+    app: tauri::AppHandle,
+    key: String,
+) -> Result<SpacedRepetitionStorage, String> {
     let path = spaced_repetition_path(&app)?;
-    read_spaced_repetition_data(&path)
+    let entries = read_spaced_repetition_file(&path)?;
+    Ok(entries
+        .get(&key)
+        .cloned()
+        .or_else(|| entries.get(LEGACY_SPACED_REPETITION_KEY).cloned())
+        .unwrap_or_default())
 }
 
 #[tauri::command]
 fn save_spaced_repetition_data(
     app: tauri::AppHandle,
+    key: String,
     storage: SpacedRepetitionStorage,
 ) -> Result<(), String> {
     let path = spaced_repetition_path(&app)?;
-    write_spaced_repetition_data(&path, &storage)
+    let mut entries = read_spaced_repetition_file(&path)?;
+    entries.insert(key, storage);
+    entries.remove(LEGACY_SPACED_REPETITION_KEY);
+    write_spaced_repetition_file(&path, &entries)
 }
 
 #[tauri::command]

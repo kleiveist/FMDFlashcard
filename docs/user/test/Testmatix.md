@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back to Docs Home](../../index.md)
+<!-- AUTO-GENERATED:backlink END -->
 ← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
 Ist Verhalten Bug Repro kombiecrads
 
@@ -23,5 +26,3 @@ Ist Verhalten Bug Repro kombiecrads
 | cl  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |
 | cd  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |
 | cld | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |
-
-

@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back to Docs Home](../index.md)
+<!-- AUTO-GENERATED:backlink END -->
 [← Back to Docs Home](../index.md)
 
 # Spaced repetition
@@ -28,4 +31,3 @@ Repetition Concepts
 - If you have many cards, start with a smaller daily set.
 - Be consistent: small daily sessions are more effective than rare large sessions.
 - When you change flashcard syntax or refactor notes, re-scan your vault and verify card counts.
-

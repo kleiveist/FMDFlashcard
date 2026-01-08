@@ -96,6 +96,20 @@ export const hashString = (value: string) => {
   return (hash >>> 0).toString(16);
 };
 
+export type FlashcardIdContext = {
+  vaultId?: string | null;
+};
+
+const includeVaultIdPayload = <T extends Record<string, unknown>>(
+  payload: T,
+  context?: FlashcardIdContext,
+) => {
+  if (!context?.vaultId) {
+    return payload;
+  }
+  return { ...payload, vaultId: context.vaultId };
+};
+
 const getFlashcardPartIdentityPayload = (card: FlashcardPart) => {
   if (card.kind === "multiple-choice") {
     return {
@@ -162,14 +176,22 @@ const getFlashcardLegacyPartIdentityPayload = (card: FlashcardPart) => {
   };
 };
 
-const getFlashcardIdentityPayload = (card: Flashcard) => {
+const getFlashcardIdentityPayload = (
+  card: Flashcard,
+  context?: FlashcardIdContext,
+) => {
   if (card.kind === "composite") {
-    return {
+    return includeVaultIdPayload(
+      {
       kind: card.kind,
       parts: card.parts.map(getFlashcardPartIdentityPayload),
-    };
+      context,
+    );
   }
-  return getFlashcardPartIdentityPayload(card);
+  return includeVaultIdPayload(
+    getFlashcardPartIdentityPayload(card),
+    context,
+  );
 };
 
 const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
@@ -182,8 +204,13 @@ const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
   return getFlashcardLegacyPartIdentityPayload(card);
 };
 
-export const getFlashcardId = (card: Flashcard) =>
-  `card-${hashString(JSON.stringify(getFlashcardIdentityPayload(card)))}`;
+export const getFlashcardId = (
+  card: Flashcard,
+  context?: FlashcardIdContext,
+) =>
+  `card-${hashString(
+    JSON.stringify(getFlashcardIdentityPayload(card, context)),
+  )}`;
 
 const getFlashcardLegacyId = (card: Flashcard) =>
   `card-${hashString(JSON.stringify(getFlashcardLegacyIdentityPayload(card)))}`;
@@ -246,6 +273,63 @@ export const getSpacedRepetitionEffectiveBox = (
   boxCount: number,
 ) => Math.min(progress.boxCanonical, boxCount);
 
+export const filterSpacedRepetitionCardStates = (
+  cardStates: Record<string, SpacedRepetitionCardProgress>,
+  activeCardIds: Set<string>,
+) => {
+  let hasPruned = false;
+  const filtered: Record<string, SpacedRepetitionCardProgress> = {};
+  for (const [cardId, progress] of Object.entries(cardStates)) {
+    if (!activeCardIds.has(cardId)) {
+      hasPruned = true;
+      continue;
+    }
+    filtered[cardId] = progress;
+  }
+  if (!hasPruned) {
+    return cardStates;
+  }
+  return filtered;
+};
+
+export const reconcileSpacedRepetitionUserState = (
+  state: SpacedRepetitionUserState,
+  activeCardIds: Set<string>,
+) => {
+  const filtered = filterSpacedRepetitionCardStates(
+    state.cardStates,
+    activeCardIds,
+  );
+  if (filtered === state.cardStates) {
+    return state;
+  }
+  return { ...state, cardStates: filtered };
+};
+
+export const reconcileSpacedRepetitionUserStateById = (
+  userStateById: Record<string, SpacedRepetitionUserState>,
+  activeCardIds: Set<string>,
+) => {
+  let changed = false;
+  const entries = Object.entries(userStateById).map(([userId, state]) => {
+    const reconciled = reconcileSpacedRepetitionUserState(state, activeCardIds);
+    if (reconciled !== state) {
+      changed = true;
+    }
+    return [userId, reconciled];
+  });
+  if (!changed) {
+    return userStateById;
+  }
+  return Object.fromEntries(entries);
+};
+
+export const buildActiveSpacedRepetitionCardIdSet = (
+  flashcards: Flashcard[],
+  context?: FlashcardIdContext,
+) =>
+  new Set(flashcards.map((card) => getFlashcardId(card, context)));
+
 const shuffleEntries = <T>(entries: T[]) => {
   const copy = [...entries];
   for (let index = copy.length - 1; index > 0; index -= 1) {
@@ -294,6 +378,7 @@ export const buildSpacedRepetitionSession = (
     order?: "in-order" | "random" | "repetition";
     boxCount?: number;
     repetitionStrength?: SpacedRepetitionRepetitionStrength;
+    vaultId?: string | null;
   },
 ): SpacedRepetitionSession => {
   const nextCardStates = Object.fromEntries(
@@ -304,7 +389,10 @@ export const buildSpacedRepetitionSession = (
   );
 
   const cardIds = flashcards.map((card) => {
-    const cardId = getFlashcardId(card);
+    const idContext: FlashcardIdContext | undefined = options?.vaultId
+      ? { vaultId: options.vaultId }
+      : undefined;
+    const cardId = getFlashcardId(card, idContext);
     const legacyId = getFlashcardLegacyId(card);
     if (!nextCardStates[cardId]) {
       if (legacyId !== cardId && nextCardStates[legacyId]) {

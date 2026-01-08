@@ -39,6 +39,7 @@ import {
 import {
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
+  hashString,
   normalizeSpacedRepetitionCardProgress,
 } from "../../../features/spaced-repetition/logic";
 
@@ -64,6 +65,14 @@ export const useSrSessionViewModel = () => {
   const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
   const statsView = spacedRepetition.spacedRepetitionStatsView;
   const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
+  const vaultId = useMemo(
+    () => (vault.vaultPath ? hashString(vault.vaultPath) : null),
+    [vault.vaultPath],
+  );
+  const cardIdContext = useMemo(
+    () => (vaultId ? { vaultId } : undefined),
+    [vaultId],
+  );
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
@@ -119,7 +128,7 @@ export const useSrSessionViewModel = () => {
       return visibleFlashcardEntries;
     }
     return visibleFlashcardEntries.filter(({ card }) => {
-      const cardId = getFlashcardId(card);
+      const cardId = getFlashcardId(card, cardIdContext);
       const progress = spacedRepetition.spacedRepetitionCardStates[cardId] ?? null;
       const normalized = normalizeSpacedRepetitionCardProgress(progress);
       const effectiveBox = getSpacedRepetitionEffectiveBox(
@@ -134,6 +143,7 @@ export const useSrSessionViewModel = () => {
     spacedRepetition.spacedRepetitionBoxes,
     spacedRepetition.spacedRepetitionCardStates,
     visibleFlashcardEntries,
+    cardIdContext,
   ]);
   const toggleBoxFilter = useCallback(
     (boxNumber: number) => {
