@@ -28,7 +28,7 @@ import { MultipleChoiceCard } from "./MultipleChoiceCard";
 import { TrueFalseCard } from "./TrueFalseCard";
 import type { CompositeFlashcard } from "../../lib/flashcards";
 import {
-  evaluateFlashcardPartResult,
+  evaluateCompositeCardResult,
   isFlashcardPartComplete,
   type CompositePartState,
   type FlashcardSelfGrade,
@@ -108,15 +108,28 @@ export const CompositeCard = ({
 }: CompositeCardProps) => {
   const canSubmit =
     card.parts.length > 0 &&
-    card.parts.every((part, index) =>
-      isFlashcardPartComplete(part, partStates[index] ?? {}),
-    );
-  const allCorrect = card.parts.every(
-    (part, index) =>
-      evaluateFlashcardPartResult(part, partStates[index] ?? {}) === "correct",
-  );
-  const resultLabel =
-    submitted && showResult ? (allCorrect ? "Correct" : "Incorrect") : "";
+    card.parts.every((part, index) => {
+      if (part.kind === "free-text") {
+        return true;
+      }
+      return isFlashcardPartComplete(part, partStates[index] ?? {});
+    });
+  const cardResult = evaluateCompositeCardResult(card, partStates);
+  const showResultLabel = submitted && showResult;
+  const resultLabel = showResultLabel
+    ? cardResult === "pending"
+      ? "Pending"
+      : cardResult === "correct"
+        ? "Correct"
+        : "Incorrect"
+    : "";
+  const resultClass = `flashcard-result ${
+    cardResult === "pending"
+      ? "pending"
+      : cardResult === "correct"
+        ? "correct"
+        : "incorrect"
+  }`;
   const showActions = showSubmit || (submitted && showResult);
 
   return (
@@ -232,14 +245,8 @@ export const CompositeCard = ({
               Submit
             </button>
           ) : null}
-          {submitted && showResult ? (
-            <span
-              className={`flashcard-result ${
-                allCorrect ? "correct" : "incorrect"
-              }`}
-            >
-              {resultLabel}
-            </span>
+          {showResultLabel ? (
+            <span className={resultClass}>{resultLabel}</span>
           ) : null}
         </div>
       ) : null}

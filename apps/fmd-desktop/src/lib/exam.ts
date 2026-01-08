@@ -282,7 +282,6 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   const lines = normalizeLines(markdown);
   const tasks: ExamTask[] = [];
   let inExam = false;
-  let inCard = false;
   let currentTaskStart: number | null = null;
   let hasExamBlock = false;
 
@@ -305,31 +304,20 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     if (!inExam) {
       if (trimmed === "#exam") {
         inExam = true;
-        inCard = false;
         currentTaskStart = null;
         hasExamBlock = true;
       }
       return;
     }
 
-    if (trimmed === "#card") {
-      inCard = true;
-      return;
-    }
-
-    if ((trimmed === "#" || trimmed === "#endcard") && inCard) {
-      inCard = false;
-      return;
-    }
-
-    if ((trimmed === "#" || trimmed === "#endexam") && !inCard) {
+    if (trimmed === "#" || trimmed === "#endexam") {
       flushTask(index - 1);
       inExam = false;
       currentTaskStart = null;
       return;
     }
 
-    if (trimmed === "---" && !inCard) {
+    if (trimmed === "---") {
       flushTask(index - 1);
       currentTaskStart = null;
       return;

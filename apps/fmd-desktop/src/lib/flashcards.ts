@@ -644,7 +644,8 @@ const parseCardLines = (
 
   const options: FlashcardOption[] = [];
   const correctKeys: string[] = [];
-  const clozeLines: string[] = [];
+  const questionLine = cardLines[questionIndex];
+  const clozeLines: string[] = hasClozeMarker(questionLine) ? [questionLine] : [];
   let hasAssignmentLines = false;
 
   bodyLines.forEach((rawLine) => {
@@ -795,9 +796,6 @@ export const parseFlashcards = (
       if (trimmed === "#") {
         foundEnd = true;
         index += 1;
-        break;
-      }
-      if (trimmed === "#card") {
         break;
       }
       cardLines.push(lines[index]);

@@ -189,9 +189,9 @@ b) Second
 
   it("splits parts on separators inside a block", () => {
     const markdown = `#card
-First question?
-Answer: One
----
+    First question?
+    Answer: One
+    ---
 Second question?
 Answer: Two
 #`;
@@ -211,6 +211,78 @@ Answer: Two
     if (second.kind === "free-text") {
       expect(second.front).toBe("Second question?");
       expect(second.back).toBe("Two");
+    }
+  });
+
+  it("keeps '# Title' lines inside a card and uses '#' as the only terminator", () => {
+    const markdown = `#card
+# Heading inside
+Answer: heading text stays inside
+#
+`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+  });
+
+  it("treats '#exam' markers inside a card as plain text", () => {
+    const markdown = `#card
+#exam should be kept
+Answer: yep
+#
+`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toContain("#exam");
+    }
+  });
+
+  it("parses a mixed composite block split by explicit separators", () => {
+    const markdown = `#card
+True/False? \`tf\`
+-wahr
+---
+Pick two.
+a) One
+b) Two
+c) Three
+-a
+-c
+---
+Cloze chain: %%first%% and \`token\`.
+---
+QA check.
+Answer: Confirmed.
+#
+`;
+
+    const cards = parseFlashcards(markdown);
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts.map((part) => part.kind)).toEqual([
+      "true-false",
+      "multiple-choice",
+      "cloze",
+      "free-text",
+    ]);
+    const [tfPart, mcPart, clozePart] = parts;
+    expect(parts).toHaveLength(4);
+    if (tfPart.kind === "true-false") {
+      expect(tfPart.items).toHaveLength(1);
+    }
+    if (mcPart.kind === "multiple-choice") {
+      expect(mcPart.correctKeys).toEqual(["a", "c"]);
+    }
+    if (clozePart.kind === "cloze") {
+      expect(clozePart.dragTokens).toEqual([{ id: "token-0", value: "token" }]);
     }
   });
 

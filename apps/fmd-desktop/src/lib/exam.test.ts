@@ -25,13 +25,13 @@ import {
 
 describe("parseExamTasks", () => {
   it("strips wrapper lines while keeping markdown headings", () => {
-    const markdown = `#exam
+const markdown = `#exam
 #card
 # Title
 Answer: Secret solution
 #
-#endcard
-#endexam`;
+#
+`;
 
     const stripped = stripExamAndFlashcardWrapperLines(markdown).split("\n");
 
@@ -80,7 +80,7 @@ Answer: Secret solution
 
   it("adds a free-text part for answer blocks alongside multiple choice", () => {
     const markdown = `#exam
-#card
+  #card
 1) Question line
 a) First
 b) Second
@@ -107,5 +107,32 @@ Answer: Secret solution
       expect(answerPart.front).toBe("");
       expect(answerPart.back).toBe("Secret solution");
     }
+  });
+});
+
+describe("exam parser container rules", () => {
+  it("only '#' closes an exam block and headings are kept inside", () => {
+    const markdown = `#exam
+1) First question
+## Section title
+Answer: Keep it internal
+#
+`;
+
+    const { tasks, hasExamBlock } = parseExamTasks(markdown);
+    expect(hasExamBlock).toBe(true);
+    expect(tasks).toHaveLength(1);
+  });
+
+  it("ignores '#card' markers inside an exam block", () => {
+    const markdown = `#exam
+#card
+1) Nested card text
+Answer: Plain text remains
+#
+`;
+
+    const { tasks } = parseExamTasks(markdown);
+    expect(tasks).toHaveLength(1);
   });
 });

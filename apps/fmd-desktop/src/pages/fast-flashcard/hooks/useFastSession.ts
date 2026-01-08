@@ -133,6 +133,29 @@ export const formatSessionTimestamp = (value: string) => {
 export const formatSessionPace = (pace: number) =>
   Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
+export type SessionResultResolver = (
+  index: number,
+) => FastFlashcardResult | null;
+
+export const processSessionResults = (
+  indices: number[],
+  counted: Set<number>,
+  resolve: SessionResultResolver,
+  register: (index: number, result: FastFlashcardResult) => void,
+) => {
+  indices.forEach((index) => {
+    if (counted.has(index)) {
+      return;
+    }
+    const result = resolve(index);
+    if (!result) {
+      return;
+    }
+    register(index, result);
+    counted.add(index);
+  });
+};
+
 export const useFastSession = () => {
   const { fastFlashcards, settings } = useAppState();
   const {
@@ -304,14 +327,12 @@ export const useFastSession = () => {
       if (indices.length === 0) {
         return;
       }
-      const counted = sessionCountedRef.current;
-      indices.forEach((index) => counted.add(index));
-      indices.forEach((index) => {
-        const result = resolveSessionResult(index);
-        if (result) {
-          registerSessionResult(index, result);
-        }
-      });
+      processSessionResults(
+        indices,
+        sessionCountedRef.current,
+        resolveSessionResult,
+        registerSessionResult,
+      );
     },
     [registerSessionResult, resolveSessionResult],
   );

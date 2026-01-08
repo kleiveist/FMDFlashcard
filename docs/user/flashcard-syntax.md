@@ -56,3 +56,6 @@ Define a foreign key.
 
 The exact parsing rules may evolve. If you encounter differences between this doc and the current app behavior,
 prefer the in-app Help and open an issue to align documentation.
+
+- Mixed-type composite units can mix QA parts with auto-graded interactions (tf/m1/m2/cl/cd) by splitting them with `---`, and the entire block is treated as one submission.
+- QA parts stay in a Pending state after the shared Submit until you explicitly self-grade them, so the final result (Correct or Incorrect) is only shown once all QA answers are confirmed.

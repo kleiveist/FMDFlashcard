@@ -21,13 +21,14 @@ import {
   isDragAnswerMatch,
   isInputAnswerMatch,
   type ClozeSegment,
+  type CompositeFlashcard,
   type FlashcardPart,
   type Flashcard,
 } from "../../lib/flashcards";
 
 export type TrueFalseSelection = "wahr" | "falsch";
-export type FlashcardResult = "correct" | "incorrect" | "neutral";
-export type FlashcardSelfGrade = Exclude<FlashcardResult, "neutral">;
+export type FlashcardResult = "correct" | "incorrect" | "neutral" | "pending";
+export type FlashcardSelfGrade = "correct" | "incorrect";
 
 export type FlashcardStats = {
   correctCount: number;
@@ -227,7 +228,44 @@ export const evaluateFlashcardPartResult = (
     return isClozeCardCorrect(part, responses) ? "correct" : "incorrect";
   }
 
-  return state.selfGrade ?? "neutral";
+  return state.selfGrade ?? "pending";
+};
+
+export const evaluateCompositeCardResult = (
+  card: CompositeFlashcard,
+  partStates: CompositePartState[] = [],
+): FlashcardResult => {
+  if (card.parts.length === 0) {
+    return "neutral";
+  }
+
+  const partResults = card.parts.map((part, index) => ({
+    part,
+    state: partStates[index] ?? {},
+    result: evaluateFlashcardPartResult(part, partStates[index] ?? {}),
+  }));
+
+  const qaParts = partResults.filter((entry) => entry.part.kind === "free-text");
+  const autoParts = partResults.filter((entry) => entry.part.kind !== "free-text");
+  const autoCorrect = autoParts.every((entry) => entry.result === "correct");
+
+  if (qaParts.length === 0) {
+    return autoCorrect ? "correct" : "incorrect";
+  }
+
+  const hasPendingQa = qaParts.some(
+    (entry) =>
+      entry.state.selfGrade !== "correct" && entry.state.selfGrade !== "incorrect",
+  );
+  if (hasPendingQa) {
+    return "pending";
+  }
+
+  const allQaCorrect = qaParts.every(
+    (entry) => entry.state.selfGrade === "correct",
+  );
+
+  return autoCorrect && allQaCorrect ? "correct" : "incorrect";
 };
 
 export const evaluateFlashcardResult = (
@@ -241,10 +279,7 @@ export const evaluateFlashcardResult = (
 ): FlashcardResult => {
   if (card.kind === "composite") {
     const partStates = compositeStates?.[cardIndex] ?? [];
-    const allCorrect = card.parts.every((part, partIndex) =>
-      evaluateFlashcardPartResult(part, partStates[partIndex] ?? {}) === "correct",
-    );
-    return allCorrect ? "correct" : "incorrect";
+    return evaluateCompositeCardResult(card, partStates);
   }
 
   if (card.kind === "multiple-choice") {
@@ -273,7 +308,7 @@ export const evaluateFlashcardResult = (
   }
 
   const grade = selfGrades[cardIndex];
-  return grade ?? "neutral";
+  return grade ?? "pending";
 };
 
 export const calculateFlashcardStats = (

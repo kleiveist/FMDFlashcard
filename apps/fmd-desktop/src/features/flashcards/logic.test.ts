@@ -84,3 +84,79 @@ describe("calculateFlashcardStats", () => {
     });
   });
 });
+
+describe("evaluateFlashcardResult pending QA handling", () => {
+  const mixCard: Flashcard = {
+    kind: "composite",
+    parts: [
+      {
+        kind: "multiple-choice",
+        question: "Pick one",
+        options: [
+          { key: "a", text: "A" },
+          { key: "b", text: "B" },
+        ],
+        correctKeys: ["a"],
+      },
+      {
+        kind: "free-text",
+        front: "Free text?",
+        back: "Answer",
+      },
+    ],
+  };
+
+  it("returns pending when QA parts are still unconfirmed", () => {
+    const compositeStates: Record<number, CompositePartState[]> = {
+      0: [{ selections: ["a"] }, {}],
+    };
+
+    const result = evaluateFlashcardResult(
+      mixCard,
+      0,
+      {},
+      {},
+      {},
+      {},
+      compositeStates,
+    );
+
+    expect(result).toBe("pending");
+  });
+
+  it("counts correct only after QA confirmed", () => {
+    const compositeStates: Record<number, CompositePartState[]> = {
+      0: [{ selections: ["a"] }, { selfGrade: "correct" }],
+    };
+
+    const result = evaluateFlashcardResult(
+      mixCard,
+      0,
+      {},
+      {},
+      {},
+      {},
+      compositeStates,
+    );
+
+    expect(result).toBe("correct");
+  });
+
+  it("still reports incorrect when an auto part is wrong even after QA confirmed", () => {
+    const compositeStates: Record<number, CompositePartState[]> = {
+      0: [{ selections: ["b"] }, { selfGrade: "correct" }],
+    };
+
+    const result = evaluateFlashcardResult(
+      mixCard,
+      0,
+      {},
+      {},
+      {},
+      {},
+      compositeStates,
+    );
+
+    expect(result).toBe("incorrect");
+  });
+});

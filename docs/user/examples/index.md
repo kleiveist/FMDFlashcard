@@ -5,7 +5,8 @@
 These examples are ready-to-use templates for your vault. Copy/paste a card block into any Markdown file,
 scan your vault, and start a review mode. Each example uses the default `#card` and `#` markers. If you
 changed scan markers in Settings, update the snippets before scanning.
-
+## Example tabel
+- [Logic Example tabel](examplestabel_de.md)  
 ## Example index
 
 - [Basic cards](basic-cards.md)  
