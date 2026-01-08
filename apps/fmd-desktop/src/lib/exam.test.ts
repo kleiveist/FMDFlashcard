@@ -31,7 +31,7 @@ const markdown = `#exam
 Answer: Secret solution
 #
 #
-`;
+#examend`;
 
     const stripped = stripExamAndFlashcardWrapperLines(markdown).split("\n");
 
@@ -39,7 +39,7 @@ Answer: Secret solution
     expect(stripped).not.toContain("#exam");
     expect(stripped).not.toContain("#card");
     expect(stripped).not.toContain("#endcard");
-    expect(stripped).not.toContain("#endexam");
+    expect(stripped).not.toContain("#examend");
     expect(stripped).not.toContain("#");
   });
 
@@ -61,7 +61,8 @@ Answer: Secret solution
   it("keeps inline Answer markers as prompt text", () => {
     const markdown = `#exam
 1) Define foreign key. Answer: A foreign key is an attribute.
-#`;
+#
+#examend`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -87,7 +88,7 @@ b) Second
 -a
 Answer: Secret solution
 #
-#`;
+#examend`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -111,17 +112,28 @@ Answer: Secret solution
 });
 
 describe("exam parser container rules", () => {
-  it("only '#' closes an exam block and headings are kept inside", () => {
+  it("treats '#' lines as plain text and closes only at '#examend'", () => {
     const markdown = `#exam
 1) First question
+#
 ## Section title
 Answer: Keep it internal
 #
-`;
+#examend`;
 
     const { tasks, hasExamBlock } = parseExamTasks(markdown);
     expect(hasExamBlock).toBe(true);
     expect(tasks).toHaveLength(1);
+  });
+
+  it("ends the exam only when '#examend' is seen after '#'", () => {
+    const markdown = `#exam
+1) Alpha
+#
+2) Beta
+#examend`;
+    const { tasks } = parseExamTasks(markdown);
+    expect(tasks).toHaveLength(2);
   });
 
   it("ignores '#card' markers inside an exam block", () => {
@@ -130,7 +142,7 @@ Answer: Keep it internal
 1) Nested card text
 Answer: Plain text remains
 #
-`;
+#examend`;
 
     const { tasks } = parseExamTasks(markdown);
     expect(tasks).toHaveLength(1);

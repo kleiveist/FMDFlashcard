@@ -13,12 +13,12 @@ in two phases:
 - **Phase 1 (Answering):** you see prompts and input controls, but **no official solutions**
 - **Phase 2 (Review after Submit):** official solutions become visible in the **reveal/solution** area
 
-> Important: In Exam mode, authoring wrappers like `#exam`, `#card`, and a standalone closing `#`
+> Important: In Exam mode, authoring wrappers like `#exam`, `#card`, and a standalone closing `#examend`
 > must never appear as visible text in the UI.
 
 ---
 
-## 1) Core exam syntax: `#exam … #`
+## 1) Core exam syntax: `#exam … #examend`
 
 An exam block looks like this:
 
@@ -26,4 +26,4 @@ An exam block looks like this:
 #exam
 1) Question text…
 Answer: (official solution — must not be visible before Submit)
-#
+#examend

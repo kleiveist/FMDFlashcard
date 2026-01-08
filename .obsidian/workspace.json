@@ -53,7 +53,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "tag:#card",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -74,7 +74,8 @@
               "title": "Lesezeichen"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -183,8 +184,11 @@
       "bases:Create new base": false
     }
   },
-  "active": "c659e573ff3a73f9",
+  "active": "7c883968c1396ba1",
   "lastOpenFiles": [
+    "docs/user/examples/examplestabel_en.md",
+    "apps/fmd-desktop/vitest.config.ts.timestamp-1767853930044-a910813526874.mjs",
+    "docs/user/examples/examplestabel_de.md",
     "apps/fmd-desktop/vitest.config.ts.timestamp-1767852673522-e9d85fa774d31.mjs",
     "apps/fmd-desktop/vitest.config.ts.timestamp-1767852642420-de3ec81c03f28.mjs",
     "apps/fmd-desktop/vitest.config.ts.timestamp-1767852405414-e89ab40ed2bd38.mjs",
@@ -193,7 +197,6 @@
     "apps/fmd-desktop/vitest.config.ts.timestamp-1767852257067-bc3a01edf1718.mjs",
     "apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.test.ts",
     "docs/user/examples/index.md",
-    "docs/user/examples/examplestabel_de.md",
     "docs/user/examples/exam.md",
     "docs/user/examples/formatting.md",
     "docs/user/examples/basic-cards.md"

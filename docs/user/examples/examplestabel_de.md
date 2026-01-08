@@ -4,7 +4,7 @@
 | --------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------ | ------ |
 |                                         |                                                                      | WICHTIG #                                        | gilt nicht wenn        | # Überstich <br>## überschrift                                                                         |        |
 |                                         |                                                                      |                                                  | e = exam               | f = flashcard                                                                                          |        |
-| Examen-Blog (Container)                 | #exam                                                                | #                                                | e-page<br>Exam-Modus   | - Datei/Abschnitt als **Exam-Content** markieren- Inhalte **nicht als Flashcards**                     | e      |
+| Examen-Blog (Container)                 | #exam                                                                | #examend                                         | e-page<br>Exam-Modus   | - Datei/Abschnitt als **Exam-Content** markieren- Inhalte **nicht als Flashcards**                     | e      |
 | Examen-Aufgabenblock                    | - Start Aufgabe  Nummerierung, <br>1.   2)   2.)    1.2.3 <br>n = 99 | ---  <br>1.2.3<br>#                              | e-page<br>Exam-Modus   | Aufgabe als Exam-Item                                                                                  | ea     |
 | Flashcard-Blog (Card-Block / Container) | #card                                                                | #                                                | f-pages Flashcard-Scan | - Block als Flashcard-Item <br>                                                                        | f      |
 | Antwort-Marker (Q/A-Teil)               | Answer:{text}<br>Antwort: {text}<br>answertocken:{text}              | ---  <br>#                                       | e-page <br>f-pages     | - Alles nach Marker als **Antworttext** speichern; Zeilenumbrüche beibehalten.                         | qa     |
@@ -35,7 +35,7 @@ Legende: 💠 problemlos · ❕ mit Beachtung · ⚠️ mit Einschränkungen · 
 
 | Kürzel | Status | Hinweis                                                                                                                                                                   |
 | ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| e      | ❕      | Innerhalb `#exam … #` sind Kartentypen **nur sinnvoll innerhalb** eines Aufgabenblocks (`ea`). Außerhalb davon: typischerweise **Freitext/ignored**.                      |
+| e      | ❕      | Innerhalb `#exam … #examend` sind Kartentypen **nur sinnvoll innerhalb** eines Aufgabenblocks (`ea`). Außerhalb davon: typischerweise **Freitext/ignored**.               |
 | ea     | 💠     | Aufgabenblock kann **genau einen** Interaktionstyp enthalten (qa/tf/m1/m2/cl/cd). Mehrere Typen in _einer_ Aufgabe nur als Composite (dann wie unten ⚠️).                 |
 | f      | 💠     | `#card … #` kann qa/tf/m1/m2/cl/cd tragen. Mehrere Typen in _einem_ `#card` nur als Composite (⚠️).                                                                       |
 | qa     | ⚠️     | Sobald qa mit interaktiven Typen gemischt wird (tf/m1/m2/cl/cd), sind Antworten häufig **nicht mehr sauber automatisch prüfbar** → ggf. nur Selbstkontrolle/Teil-Scoring. |
@@ -46,3 +46,18 @@ Legende: 💠 problemlos · ❕ mit Beachtung · ⚠️ mit Einschränkungen · 
 | cd     | 💠     | wie cl.                                                                                                                                                                   |
 |        |        |                                                                                                                                                                           |
 
+Ist Verhalten Bug Repro kombiecrads
+
+| c²  | qa  | tf  | m1  | m2  | cl  | cd  | #card | #exam |
+| --- | --- | --- | --- | --- | --- | --- | ----- | ----- |
+| qa  |     |     |     |     |     |     |       |       |
+| tf  |     |     |     |     |     |     |       |       |
+| m1  |     |     |     |     |     |     |       |       |
+| m2  |     |     |     |     |     |     |       |       |
+| cl  |     |     |     |     |     |     |       |       |
+| cd  |     |     |     |     |     |     |       |       |
+|     |     |     |     |     |     |     |       |       |
+|     |     |     |     |     |     |     |       |       |
+|     |     |     |     |     |     |     |       |       |
+|     |     |     |     |     |     |     |       |       |
+|     |     |     |     |     |     |     |       |       |

@@ -71,7 +71,7 @@ const trimEmptyLines = (lines: string[]) => {
   return lines.slice(start, end);
 };
 
-const wrapperLineTokens = new Set(["#exam", "#endexam", "#card", "#endcard", "#"]);
+const wrapperLineTokens = new Set(["#exam", "#examend", "#card", "#endcard", "#"]);
 
 const stripWrapperLines = (lines: string[]) =>
   lines.filter((line) => !wrapperLineTokens.has(line.trim()));
@@ -310,7 +310,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
       return;
     }
 
-    if (trimmed === "#" || trimmed === "#endexam") {
+    if (trimmed === "#examend") {
       flushTask(index - 1);
       inExam = false;
       currentTaskStart = null;
