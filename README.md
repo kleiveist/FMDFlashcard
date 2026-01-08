@@ -1,3 +1,4 @@
+
 [← Back to Docs Home](docs/index.md)
 
 # FMDFlashcard
@@ -17,37 +18,44 @@ while adding a dedicated review experience and study progress tracking.
 > Note: The UX and feature set are evolving. If something is unclear, check the in-app Help and the docs in [docs](docs/).
 
 ## Documentation index (fast links)
+<!-- AUTO-GENERATED:docs-index START -->
+## 📄 Files
+- 📝 [Changelog](CHANGELOG.md)
+- 📝 [Contributing](CONTRIBUTING.md)
+- 📝 [Security Policy](SECURITY.md)
+---
+# DOCS
+- 📚 [Docs Home](docs/index.md)
+- 📝 [Refactor notes](docs/refactor-notes.md)
+---
+## 📁 ADR
+- 🗂️ [Overview](docs/adr/adr.md)
+- 📝 [ADR 0001: Documentation source of truth](docs/adr/0001-documentation-source-of-truth.md)
+---
+## 📁 DEV
+- 🗂️ [Overview](docs/dev/dev.md)
+- 📝 [Architecture overview](docs/dev/architecture.md)
+- 📝 [Control script (`tools/control.py`)](docs/dev/control-script.md)
+- 📝 [Releases / Packaging](docs/dev/release.md)
+- 📝 [Developer setup (run from source)](docs/dev/setup.md)
+- 📝 [Testing](docs/dev/testing.md)
+---
+## 📁 Issus
+- 🗂️ [Overview](docs/issus/issus.md)
+- 📝 [Issustabel](docs/issus/issustabel.md)
+---
+## 📁 USER
+- 🗂️ [Overview](docs/user/user.md)
+- 📝 [Exam syntax](docs/user/exam-syntax.md)
+- 📝 [Flashcard syntax reference](docs/user/flashcard-syntax.md)
+- 📝 [Getting started](docs/user/getting-started.md)
+- 📝 [Settings](docs/user/settings.md)
+- 📝 [Spaced repetition](docs/user/spaced-repetition.md)
+- 📝 [Troubleshooting](docs/user/troubleshooting.md)
+<!-- AUTO-GENERATED:docs-index END -->
 
 If GitHub’s repository navigation feels slow, use these direct links:
 
-## 📄 Pages
-- 📝 [Refactor notes](refactor-notes.md)
----
-## 📁 ADR
-- 🗂️ [Overview](adr/adr.md)
-- 📝 [ADR 0001: Documentation source of truth](adr/0001-documentation-source-of-truth.md)
----
-## 📁 DEV
-- 🗂️ [Overview](dev/dev.md)
-- 📝 [Architecture overview](dev/architecture.md)
-- 📝 [Control script (`tools/control.py`)](dev/control-script.md)
-- 📝 [Releases / Packaging](dev/release.md)
-- 📝 [Developer setup (run from source)](dev/setup.md)
-- 📝 [Testing](dev/testing.md)
----
-## 📁 Issus
-- 🗂️ [Overview](issus/issus.md)
-- 📝 [Issustabel](issus/issustabel.md)
----
-## 📁 USER
-- 🗂️ [Overview](user/user.md)
-- 📝 [Exam syntax](user/exam-syntax.md)
-- 📝 [Flashcard syntax reference](user/flashcard-syntax.md)
-- 📝 [Getting started](user/getting-started.md)
-- 📝 [Settings](user/settings.md)
-- 📝 [Spaced repetition](user/spaced-repetition.md)
-- 📝 [Troubleshooting](user/troubleshooting.md)
----
 ## Quickstart (run from source)
 
 If you want to run the desktop app from source, follow the full setup guide:
@@ -59,8 +67,6 @@ A typical flow looks like:
 3. `python3 tools/control.py --install`
 4. `python3 tools/control.py --tauri`
 5. `python3 tools/control.py --start`
-
-
 ## Contributing
 
 See the [Contributing guide](CONTRIBUTING.md) for development workflow and pull request guidelines.
