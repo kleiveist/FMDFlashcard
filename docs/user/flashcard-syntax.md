@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back to Docs Home](../index.md)
-
 # Flashcard syntax reference
 
 Markdown flashcards keep your notes readable and the parser precise. The only required markers are the block wrappers and whatever interaction markers you need for the question type.

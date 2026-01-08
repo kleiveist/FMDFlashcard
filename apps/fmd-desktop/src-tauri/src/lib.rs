@@ -20,7 +20,7 @@ struct ExamAiEvaluation {
     provider: Option<String>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 struct AppSettings {
     active_note_path: Option<String>,
     vault_path: Option<String>,
@@ -54,7 +54,7 @@ struct AppSettings {
     exam_ai_evaluation: Option<ExamAiEvaluation>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase", default)]
 struct SpacedRepetitionCardState {
     #[serde(rename = "box", skip_serializing_if = "Option::is_none")]
@@ -66,7 +66,7 @@ struct SpacedRepetitionCardState {
     last_reviewed_at: Option<String>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase", default)]
 struct SpacedRepetitionUserState {
     card_states: HashMap<String, SpacedRepetitionCardState>,
@@ -75,7 +75,7 @@ struct SpacedRepetitionUserState {
     completed_per_day: HashMap<String, u32>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 struct SpacedRepetitionUser {
     id: String,
@@ -83,7 +83,7 @@ struct SpacedRepetitionUser {
     created_at: String,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 struct SpacedRepetitionStorage {
     users: Vec<SpacedRepetitionUser>,

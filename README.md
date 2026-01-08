@@ -20,37 +20,40 @@ while adding a dedicated review experience and study progress tracking.
 
 If GitHub’s repository navigation feels slow, use these direct links:
 
-### User docs
-- [Docs home](docs/index.md)  
-- [User docs index](docs/user/index.md)  
-- [Getting started](docs/user/getting-started.md)  
-- [Flashcard syntax](docs/user/flashcard-syntax.md)  
-- [Examples](Examplesindex.md)  
-- [Spaced repetition](docs/user/spaced-repetition.md)  
-- [Settings](docs/user/settings.md)  
-- [Troubleshooting](docs/user/troubleshooting.md)  
+## Pages
+- [Refactor notes](refactor-notes.md)
 
-### Developer docs
-- [Developer docs index](docs/dev/index.md)
-- [Setup (run from source)](docs/dev/setup.md)
-- [Control script](docs/dev/control-script.md)
-- [Architecture](docs/dev/architecture.md)
-- [Testing](docs/dev/testing.md)
-- [Releases / packaging](docs/dev/release.md)
+## ADR
+- [Overview](adr/adr.md)
+- [ADR 0001: Documentation source of truth](adr/0001-documentation-source-of-truth.md)
 
-### Project meta
-- [Contributing](CONTRIBUTING.md)
-- [Changelog](CHANGELOG.md)
-- [Security policy](SECURITY.md)
-- [ADR index](docs/adr/index.md)
+## DEV
+- [Overview](dev/dev.md)
+- [Architecture overview](dev/architecture.md)
+- [Control script (`tools/control.py`)](dev/control-script.md)
+- [Releases / Packaging](dev/release.md)
+- [Developer setup (run from source)](dev/setup.md)
+- [Testing](dev/testing.md)
 
+## Issus
+- [Overview](issus/issus.md)
+- [Issustabel](issus/issustabel.md)
+
+## Latex
+- [Overview](latex/latex.md)
+
+## USER
+- [Overview](user/user.md)
+- [Exam syntax](user/exam-syntax.md)
+- [Flashcard syntax reference](user/flashcard-syntax.md)
+- [Getting started](user/getting-started.md)
+- [Settings](user/settings.md)
+- [Spaced repetition](user/spaced-repetition.md)
+- [Troubleshooting](user/troubleshooting.md)
 
 ## Quickstart (run from source)
 
 If you want to run the desktop app from source, follow the full setup guide:
-
-- **Developer setup:** [Setup guide](docs/dev/setup.md)
-- **Control script guide:** [Control script guide](docs/dev/control-script.md)
 
 A typical flow looks like:
 
@@ -60,12 +63,6 @@ A typical flow looks like:
 4. `python3 tools/control.py --tauri`
 5. `python3 tools/control.py --start`
 
-## Documentation
-
-- **Docs home:** [Documentation index](docs/index.md)
-- **User docs:** [User documentation](docs/user/)
-- **Developer docs:** [Developer documentation](docs/dev/)
-- **Architecture decisions:** [ADRs](docs/adr/)
 
 ## Contributing
 

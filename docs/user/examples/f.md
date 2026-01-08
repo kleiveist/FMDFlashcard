@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
-
 # Code `f`: Flashcard block container
 
 A `#card … #` block (`f`) declares the flashcard boundaries that the parser scans. You can use it inside or outside exam content. Inside an exam, the block is only processed if it sits inside a numbered task (`ea`).

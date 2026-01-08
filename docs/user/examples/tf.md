@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
-
 # Code `tf`: True/False marker (2-button card)
 
 True/false interactions count as `tf` and render as two-button questions where the learner chooses between true and false. The parser recognizes them by pairing a prompt line with the next non-empty line that starts with a `-` and a truthy/falsy token.

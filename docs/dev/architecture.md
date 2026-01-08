@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back to Docs Home](../index.md)
-
 # Architecture overview
 
 This document is a high-level guide to how the project is structured. It is intended for contributors.

@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back to Docs Home](../index.md)
-
 # Settings
 
 Settings allow you to tune how the app behaves and how it scans your vault.

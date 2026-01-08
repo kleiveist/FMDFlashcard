@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
-
 | Description                              | Syntax start                                                          | Syntax end                                                | Relevant for           | Action                                                                                           | Code |
 | ---------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ | ---- |
 |                                          |                                                                       | IMPORTANT: `#`                                            | does not apply when    | `#` heading <br> `##` heading                                                                    |      |

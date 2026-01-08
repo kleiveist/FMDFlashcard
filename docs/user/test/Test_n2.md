@@ -1,9 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
-
-
 #exam
 
 ## test n2 – n²: erst (typ+typ), dann jede Kombination einmal

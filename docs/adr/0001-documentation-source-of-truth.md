@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back to Docs Home](../index.md)
-
 # ADR 0001: Documentation source of truth
 
 Date: 2026-01-06

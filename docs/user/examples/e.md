@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
-
 # Code `e`: Exam block container
 
 Use `#exam` and `#examend` to wrap the section you want the Exams page to treat as a dedicated exam session. Anything between these markers runs through the exam parser and renders in the **Exam** view; outside the markers the content behaves like a regular deck.

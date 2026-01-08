@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back to Docs Home](../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back to Docs Home](../index.md)
-
 # Getting started
 
 This guide covers the shortest path from “I have Markdown notes” to “I can review cards”.

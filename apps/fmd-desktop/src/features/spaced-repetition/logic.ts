@@ -183,8 +183,9 @@ const getFlashcardIdentityPayload = (
   if (card.kind === "composite") {
     return includeVaultIdPayload(
       {
-      kind: card.kind,
-      parts: card.parts.map(getFlashcardPartIdentityPayload),
+        kind: card.kind,
+        parts: card.parts.map(getFlashcardPartIdentityPayload),
+      },
       context,
     );
   }
