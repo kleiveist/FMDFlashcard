@@ -25,7 +25,7 @@ If GitHub’s repository navigation feels slow, use these direct links:
 - [User docs index](docs/user/index.md)  
 - [Getting started](docs/user/getting-started.md)  
 - [Flashcard syntax](docs/user/flashcard-syntax.md)  
-- [Examples](docs/user/examples/index.md)  
+- [Examples](Examplesindex.md)  
 - [Spaced repetition](docs/user/spaced-repetition.md)  
 - [Settings](docs/user/settings.md)  
 - [Troubleshooting](docs/user/troubleshooting.md)  

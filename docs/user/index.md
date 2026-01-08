@@ -10,7 +10,7 @@ This section explains how to use the app day-to-day.
   Step-by-step from choosing a vault to your first review mode.
 - [Flashcard syntax reference](flashcard-syntax.md)  
   How card blocks are structured and how composite cards work.
-- [Examples](examples/index.md)  
+- [Examples](Examplesindex.md)  
   Copy/paste-ready card blocks, formatting patterns, and workflows.
 - [Spaced repetition](spaced-repetition.md)  
   How spaced repetition works and how to build a daily routine.

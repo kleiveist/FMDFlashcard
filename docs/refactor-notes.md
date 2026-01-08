@@ -1,4 +1,4 @@
-[← Back to Docs Home](index.md)
+[← Back to Docs Home](docs/index.md)
 
 # Refactor notes
 

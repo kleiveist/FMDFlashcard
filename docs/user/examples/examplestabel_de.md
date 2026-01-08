@@ -1,4 +1,4 @@
-← Back to [FMDFlashcard/docs/user/examples/index.md](index.md)
+← Back to [FMDFlashcard/docs/user/examples/index.md](Examplesindex.md)
 
 | Beschreibung                            | Syntax start                                                         | Sytax end                                        | Relewant für           | Aktion                                                                                                 | kürzel |
 | --------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------ | ------ |
@@ -46,18 +46,3 @@ Legende: 💠 problemlos · ❕ mit Beachtung · ⚠️ mit Einschränkungen · 
 | cd     | 💠     | wie cl.                                                                                                                                                                   |
 |        |        |                                                                                                                                                                           |
 
-Ist Verhalten Bug Repro kombiecrads
-
-| c²  | qa  | tf  | m1  | m2  | cl  | cd  | #card | #exam |
-| --- | --- | --- | --- | --- | --- | --- | ----- | ----- |
-| qa  |     |     |     |     |     |     |       |       |
-| tf  |     |     |     |     |     |     |       |       |
-| m1  |     |     |     |     |     |     |       |       |
-| m2  |     |     |     |     |     |     |       |       |
-| cl  |     |     |     |     |     |     |       |       |
-| cd  |     |     |     |     |     |     |       |       |
-|     |     |     |     |     |     |     |       |       |
-|     |     |     |     |     |     |     |       |       |
-|     |     |     |     |     |     |     |       |       |
-|     |     |     |     |     |     |     |       |       |
-|     |     |     |     |     |     |     |       |       |

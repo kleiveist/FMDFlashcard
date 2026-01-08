@@ -7,11 +7,11 @@ This documentation is split into two main tracks:
 > If GitHub's repository navigation feels slow, use these direct links:
 >
 > **User docs**
-> - [Docs home](index.md)  
+> - [Docs home](docs/index.md)  
 > - [User docs index](user/index.md)  
 > - [Getting started](user/getting-started.md)  
 > - [Flashcard syntax](user/flashcard-syntax.md)  
-> - [Examples](user/examples/index.md)  
+> - [Examples](Examplesindex.md)  
 > - [Spaced repetition](user/spaced-repetition.md)  
 > - [Settings](user/settings.md)  
 > - [Troubleshooting](user/troubleshooting.md)  
@@ -47,7 +47,7 @@ This documentation is split into two main tracks:
   Step-by-step from choosing a vault to your first review mode.
 - [Flashcard syntax reference](user/flashcard-syntax.md)  
   How card blocks are structured and how composite cards work.
-- [Examples](user/examples/index.md)  
+- [Examples](Examplesindex.md)  
   Copy/paste-ready card blocks, formatting patterns, and workflows.
 - [Spaced repetition](user/spaced-repetition.md)  
   How spaced repetition works and how to build a daily routine.
