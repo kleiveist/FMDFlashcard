@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/user/examples/cld.md",
+                "file": "docs/user/spaced-repetition.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "cld"
+              "title": "spaced-repetition"
             }
           }
         ]
@@ -186,11 +186,17 @@
   },
   "active": "c659e573ff3a73f9",
   "lastOpenFiles": [
+    "docs/user/flashcard-syntax.md",
+    "docs/user/getting-started.md",
+    "docs/user/examples/f.md",
+    "docs/user/spaced-repetition.md",
+    "docs/user/settings.md",
+    "docs/user/index.md",
+    "docs/user/examples/cld.md",
     "apps/fmd-desktop/src/lib/seededShuffle.ts",
     "apps/fmd-desktop/src/lib/seededShuffle.test.ts",
     "docs/user/examples/cl.md",
     "docs/user/examples/cd.md",
-    "docs/user/examples/cld.md",
     "docs/user/examples/examplestabel_de.md",
     "docs/user/examples/Examplesindex.md",
     "docs/user/test/Testmatix.md",
@@ -206,7 +212,6 @@
     "docs/index.md",
     "docs/user/examples/e.md",
     "docs/user/examples/ea.md",
-    "docs/user/examples/f.md",
     "docs/user/test/Test-Examenblock.md",
     "docs/user/examples/qa.md",
     "docs/user/test/matrix_full_test.md",
@@ -216,9 +221,6 @@
     "apps/fmd-desktop/vitest.config.ts.timestamp-1767852673522-e9d85fa774d31.mjs",
     "apps/fmd-desktop/vitest.config.ts.timestamp-1767852642420-de3ec81c03f28.mjs",
     "apps/fmd-desktop/vitest.config.ts.timestamp-1767852405414-e89ab40ed2bd38.mjs",
-    "apps/fmd-desktop/vitest.config.ts.timestamp-1767852343467-5273478e3f0b8.mjs",
-    "docs/user/examples/exam.md",
-    "docs/user/examples/formatting.md",
-    "docs/user/examples/basic-cards.md"
+    "docs/user/examples/exam.md"
   ]
 }
