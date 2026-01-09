@@ -1,14 +1,15 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](test.md)
 <!-- AUTO-GENERATED:backlink END -->
-Ist Verhalten Bug Repro kombiecrads
 
-| qa  | tf  | m1  | m2  | cl  | cd  |       |     |
-| --- | --- | --- | --- | --- | --- | ----- | --- |
-| ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | #exam |     |
-| ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | #card |     |
+Ist Verhalten Bug Repro kombiecrads ✔️❌
 
-| n²  | qa  | tf  | m1  | m2  | cl  | cd  |     | #exam |
+| qa  | tf  | m1  | m2  | cl  | cd  | cld |       |
+| --- | --- | --- | --- | --- | --- | --- | ----- |
+| ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | #exam |
+| ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | #card |
+
+| n²  | qa  | tf  | m1  | m2  | cl  | cd  | cld | #exam |
 | --- | --- | --- | --- | --- | --- | --- | --- | ----- |
 | qa  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |
 | tf  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |
@@ -25,3 +26,10 @@ Ist Verhalten Bug Repro kombiecrads
 | cl  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |
 | cd  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |
 | cld | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  | ✔️  |       |
+
+Tabellen Ränderring  ✔️❌
+
+| qa  | tf  | m1  | m2  | cl  | cd  | cld |       |
+| --- | --- | --- | --- | --- | --- | --- | ----- |
+| ✔️  | ❌   | ❌   | ❌   | ✔️  | ✔️  | ✔️  | #exam |
+| ✔️  | ❌   | ❌   | ❌   | ✔️  | ✔️  | ✔️  | #card |

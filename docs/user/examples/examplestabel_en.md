@@ -1,6 +1,8 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](examples.md)
 <!-- AUTO-GENERATED:backlink END -->
+
+
 | Description                              | Syntax start                                                          | Syntax end                                                | Relevant for           | Action                                                                                           | Code |
 | ---------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ | ---- |
 |                                          |                                                                       | IMPORTANT: `#`                                            | does not apply when    | `#` heading <br> `##` heading                                                                    |      |
@@ -15,6 +17,7 @@
 | Cloze (typed blanks)                     | Typed blanks: `%%...%%` inside                                        | ---  <br>#                                                | e-page <br>f-pages     | For typed blanks: validation requires every `%%...%%` to contain text.                           | cl   |
 | Cloze <br>(drag tokens)                  | in the text: drag tokens: ``token``                                   | ---  <br>#                                                | e-page <br>f-pages     | - UI: input fields for ``token`` + drag/drop                                                     | cd   |
 | Cloze <br>(drag tokens)                  | in the text: drag tokens: ``token``<br>Typed blanks: `%%...%%` inside | ---  <br>#                                                | e-page <br>f-pages     | - UI: input fields for ``token`` + drag/drop and  blanks: validation `%%...%%`                   | cd   |
+
 
 ## **Combination matrix**
 Legend: 💠 works · ❕ works with care · ⚠️ works with limitations · ❌ not possible
