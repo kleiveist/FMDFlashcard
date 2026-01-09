@@ -292,6 +292,49 @@ Answer: Done
     expect(markup).not.toContain("flashcard-table scrollable");
   });
 
+  it("renders tables in multiple-choice context blocks", () => {
+    const task = buildTaskFromMarkdown(`#card
+Pick one using the context table.
+
+| Method | Intent |
+| --- | --- |
+| GET | Read |
+| POST | Create |
+
+Which method reads data?
+a) POST
+b) GET
+-b
+#`);
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain("flashcard-table scrollable");
+  });
+
+  it("renders tables in true/false context blocks", () => {
+    const task = buildTaskFromMarkdown(`#card
+Decide if the statement is true or false.
+
+| Term | Meaning |
+| --- | --- |
+| Star | Produces its own light |
+
+Statement: The Sun is a star.
+-true
+#`);
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain("flashcard-table scrollable");
+  });
+
   it.each(autoScoringCases)(
     "hides manual scoring controls for %s tasks",
     (_label, task, partStates) => {

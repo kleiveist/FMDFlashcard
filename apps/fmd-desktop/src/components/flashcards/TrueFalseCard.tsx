@@ -21,6 +21,7 @@
  */
 
 import { type TrueFalseCard as TrueFalseCardType } from "../../lib/flashcards";
+import { MarkdownBlocks } from "./MarkdownBlocks";
 import {
   areTrueFalseItemsComplete,
   isTrueFalseCardCorrect,
@@ -64,6 +65,9 @@ export const TrueFalseCard = ({
   return (
     <article className="flashcard-item truefalse-card">
       <h3 className="flashcard-question">True/False</h3>
+      {card.context?.trim() ? (
+        <MarkdownBlocks text={card.context} allowTableScroll />
+      ) : null}
       <ul className="truefalse-list">
         {card.items.map((item) => {
           const selected = selections[item.id];

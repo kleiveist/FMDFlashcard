@@ -50,6 +50,7 @@ export type FlashcardOption = {
 export type MultipleChoiceCard = {
   kind: "multiple-choice";
   question: string;
+  context?: string;
   options: FlashcardOption[];
   correctKeys: string[];
 };
@@ -69,6 +70,7 @@ export type TrueFalseItem = {
 export type TrueFalseCard = {
   kind: "true-false";
   items: TrueFalseItem[];
+  context?: string;
 };
 
 export type ClozeSegment =
@@ -138,7 +140,9 @@ const resolveAnswerMatch = (options?: { answerMatch?: AnswerMatchMode }) =>
 const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
 const assignmentPattern = /^(.+?)=>\s*(.+)$/;
-const separatorLine = "---";
+const separatorLinePattern = /^\s*---\s*$/;
+const cardStartPattern = /^\s*#card\s*$/;
+const cardEndPattern = /^\s*#\s*$/;
 
 const normalizeKeyword = (value: string) =>
   value
@@ -177,7 +181,9 @@ const trimEmptyLines = (lines: string[]) => {
   return lines.slice(start, end);
 };
 
-const isSeparatorLine = (line: string) => line.trim() === separatorLine;
+const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
+const isCardStartLine = (line: string) => cardStartPattern.test(line);
+const isCardEndLine = (line: string) => cardEndPattern.test(line);
 
 const isAssignmentLine = (line: string) => {
   const match = line.match(assignmentPattern);
@@ -347,6 +353,7 @@ const normalizeTrueFalseMarker = (value: string) => {
 
 const parseTrueFalseItems = (lines: string[]) => {
   const items: TrueFalseItem[] = [];
+  let firstQuestionIndex: number | null = null;
 
   for (let index = 0; index < lines.length; index += 1) {
     const question = lines[index].trim();
@@ -372,10 +379,13 @@ const parseTrueFalseItems = (lines: string[]) => {
       question,
       correct: marker,
     });
+    if (firstQuestionIndex === null) {
+      firstQuestionIndex = index;
+    }
     index = markerIndex;
   }
 
-  return items;
+  return { items, firstQuestionIndex };
 };
 
 type AnswerMarkerMatch = {
@@ -693,7 +703,8 @@ const parseCardLines = (
     pushUnique(detectedTypes, "multiple-choice");
   }
 
-  const trueFalseItems = parseTrueFalseItems(cardLines.slice(questionIndex));
+  const { items: trueFalseItems, firstQuestionIndex } =
+    parseTrueFalseItems(contentLines);
   if (trueFalseItems.length > 0) {
     pushUnique(detectedTypes, "true-false");
   }
@@ -726,10 +737,21 @@ const parseCardLines = (
   }
 
   if (options.length > 0) {
+    let context: string | undefined;
+    const optionStartIndex = contentLines.findIndex((line) => isOptionLine(line));
+    if (optionStartIndex > 1) {
+      const contextLines = trimEmptyLines(
+        contentLines.slice(1, optionStartIndex),
+      );
+      if (contextLines.length > 0) {
+        context = contextLines.join("\n");
+      }
+    }
     return {
       part: {
         kind: "multiple-choice",
         question,
+        context,
         options,
         correctKeys,
       },
@@ -738,10 +760,20 @@ const parseCardLines = (
   }
 
   if (trueFalseItems.length > 0) {
+    let context: string | undefined;
+    if (firstQuestionIndex !== null) {
+      const contextLines = trimEmptyLines(
+        contentLines.slice(0, firstQuestionIndex),
+      );
+      if (contextLines.length > 0) {
+        context = contextLines.join("\n");
+      }
+    }
     return {
       part: {
         kind: "true-false",
         items: trueFalseItems,
+        context,
       },
       detectedTypes,
     };
@@ -785,8 +817,8 @@ export const parseFlashcards = (
   let index = 0;
 
   while (index < lines.length) {
-    const line = lines[index].trim();
-    if (line !== "#card") {
+    const line = lines[index];
+    if (!isCardStartLine(line)) {
       index += 1;
       continue;
     }
@@ -797,8 +829,8 @@ export const parseFlashcards = (
     index += 1;
 
     while (index < lines.length) {
-      const trimmed = lines[index].trim();
-      if (trimmed === "#") {
+      const currentLine = lines[index];
+      if (isCardEndLine(currentLine)) {
         foundEnd = true;
         index += 1;
         break;

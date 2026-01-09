@@ -73,10 +73,18 @@ const trimEmptyLines = (lines: string[]) => {
   return lines.slice(start, end);
 };
 
-const wrapperLineTokens = new Set(["#exam", "#examend", "#card", "#endcard", "#"]);
+const wrapperLinePattern = /^\s*#(?:examend|exam|card|endcard)?\s*$/;
+const examStartPattern = /^\s*#exam\s*$/;
+const examEndPattern = /^\s*#examend\s*$/;
+const separatorLinePattern = /^\s*---\s*$/;
+
+const isWrapperLine = (line: string) => wrapperLinePattern.test(line);
+const isExamStartLine = (line: string) => examStartPattern.test(line);
+const isExamEndLine = (line: string) => examEndPattern.test(line);
+const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 
 const stripWrapperLines = (lines: string[]) =>
-  lines.filter((line) => !wrapperLineTokens.has(line.trim()));
+  lines.filter((line) => !isWrapperLine(line));
 
 export const stripExamAndFlashcardWrapperLines = (text: string) =>
   stripWrapperLines(normalizeLines(text)).join("\n");
@@ -290,9 +298,8 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   };
 
   lines.forEach((line, index) => {
-    const trimmed = line.trim();
     if (!inExam) {
-      if (trimmed === "#exam") {
+      if (isExamStartLine(line)) {
         inExam = true;
         currentTaskStart = null;
         hasExamBlock = true;
@@ -300,14 +307,14 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
       return;
     }
 
-    if (trimmed === "#examend") {
+    if (isExamEndLine(line)) {
       flushTask(index - 1);
       inExam = false;
       currentTaskStart = null;
       return;
     }
 
-    if (trimmed === "---") {
+    if (isSeparatorLine(line)) {
       if (!tableLineIndices.has(index)) {
         flushTask(index - 1);
         currentTaskStart = null;

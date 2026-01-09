@@ -22,6 +22,7 @@
 
 import { useMemo } from "react";
 import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
+import { MarkdownBlocks } from "./MarkdownBlocks";
 
 const OPTION_LABELS = "abcdefghijklmnopqrstuvwxyz";
 
@@ -116,6 +117,9 @@ export const MultipleChoiceCard = ({
   return (
     <article className="flashcard-item">
       <h3 className="flashcard-question">{card.question}</h3>
+      {card.context?.trim() ? (
+        <MarkdownBlocks text={card.context} allowTableScroll />
+      ) : null}
       <ul className="flashcard-options">
         {displayOptions.map(({ option, label }) => {
           const isSelected = selectedKeys.includes(option.key);

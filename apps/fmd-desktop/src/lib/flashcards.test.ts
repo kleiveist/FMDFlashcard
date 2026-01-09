@@ -245,6 +245,30 @@ Answer: yep
     }
   });
 
+  it("preserves pipe tables with in-cell card/exam tags for multiple choice", () => {
+    const table = `| qa | tf | m1 | m2 | cl | cd | cld |       |
+| --- | --- | --- | --- | --- | --- | --- | ----- |
+| Y | N | N | N | Y | Y | Y | #exam |
+| Y | N | N | N | Y | Y | Y | #card |`;
+    const markdown = `#card
+Tabellen Raenderring ok/no
+
+${table}
+a) Alpha
+-a
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.context).toBeTruthy();
+      expect(part.context ?? "").toContain(table);
+    }
+  });
+
   it("parses a mixed composite block split by explicit separators", () => {
     const markdown = `#card
 True/False? \`tf\`
@@ -333,6 +357,88 @@ Answer: Table stays in the first part.
     expect(parts).toHaveLength(2);
     expect(parts[0].kind).toBe("cloze");
     expect(parts[1].kind).toBe("free-text");
+  });
+
+  it("keeps context tables for TF/M1/M2 example cards", () => {
+    const markdown = `#card
+2) Task (TF): Decide whether the statement is true or false. Use the context table below.
+
+| Term | Quick meaning |
+| --- | --- |
+| Star | Produces its own light via fusion |
+| Planet | Orbits a star and does not produce light via fusion |
+
+Statement: The Sun is a star.
+-true
+#
+
+#card
+3) Task (M1): Choose exactly one correct answer. Use the context table below.
+
+| HTTP method | Typical intent |
+| --- | --- |
+| GET | Retrieve a resource |
+| POST | Create or trigger processing |
+| DELETE | Remove a resource |
+
+Which HTTP method is typically used to retrieve (read) a resource?
+a) POST
+b) GET
+c) DELETE
+-b
+#
+
+#card
+4) Task (M2): Choose all correct answers. Use the context table below.
+
+| Permission class | Abbreviation |
+| --- | --- |
+| User (owner) | u |
+| Group | g |
+| Others | o |
+
+Which are permission classes in classic Unix permissions?
+a) User (owner)
+b) Group
+c) Others
+d) Process
+-a
+-b
+-c
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(3);
+
+    const tfPart = getSinglePart(cards[0]);
+    expect(tfPart.kind).toBe("true-false");
+    if (tfPart.kind === "true-false") {
+      expect(tfPart.context).toBeTruthy();
+      expect(tfPart.context ?? "").toContain("| Term | Quick meaning |");
+      expect(tfPart.context ?? "").toContain("| --- | --- |");
+      expect(tfPart.items[0]?.question).toBe("Statement: The Sun is a star.");
+    }
+
+    const m1Part = getSinglePart(cards[1]);
+    expect(m1Part.kind).toBe("multiple-choice");
+    if (m1Part.kind === "multiple-choice") {
+      expect(m1Part.context).toBeTruthy();
+      expect(m1Part.context ?? "").toContain("| HTTP method | Typical intent |");
+      expect(m1Part.context ?? "").toContain("| --- | --- |");
+      expect(m1Part.correctKeys).toEqual(["b"]);
+      expect(m1Part.options).toHaveLength(3);
+    }
+
+    const m2Part = getSinglePart(cards[2]);
+    expect(m2Part.kind).toBe("multiple-choice");
+    if (m2Part.kind === "multiple-choice") {
+      expect(m2Part.context).toBeTruthy();
+      expect(m2Part.context ?? "").toContain("| Permission class | Abbreviation |");
+      expect(m2Part.context ?? "").toContain("| --- | --- |");
+      expect(m2Part.correctKeys).toEqual(["a", "b", "c"]);
+      expect(m2Part.options).toHaveLength(4);
+    }
   });
 
   it("parses a front/back card with Answer marker", () => {

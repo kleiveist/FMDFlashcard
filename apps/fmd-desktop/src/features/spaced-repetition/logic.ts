@@ -115,6 +115,7 @@ const getFlashcardPartIdentityPayload = (card: FlashcardPart) => {
     return {
       kind: card.kind,
       question: card.question,
+      context: card.context,
       options: card.options,
       correctKeys: [...card.correctKeys].sort((a, b) => a.localeCompare(b)),
     };
@@ -123,6 +124,7 @@ const getFlashcardPartIdentityPayload = (card: FlashcardPart) => {
   if (card.kind === "true-false") {
     return {
       kind: card.kind,
+      context: card.context,
       items: card.items,
     };
   }

@@ -94,6 +94,23 @@ Answer: Secret solution
     expect(tasks[0]?.prompt).toContain("| --- | --- |");
   });
 
+  it("keeps card/exam tags inside table cells", () => {
+    const markdown = `#exam
+1) Table tags
+| Type | Tag |
+| --- | --- |
+| Alpha | #exam |
+| Beta | #card |
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.prompt).toContain("| Alpha | #exam |");
+    expect(tasks[0]?.prompt).toContain("| Beta | #card |");
+  });
+
   it("adds a free-text part for answer blocks alongside multiple choice", () => {
     const markdown = `#exam
   #card
