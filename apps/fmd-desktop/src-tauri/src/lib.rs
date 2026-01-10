@@ -13,6 +13,13 @@ struct VaultFile {
     relative_path: String,
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PathInfo {
+    exists: bool,
+    is_dir: bool,
+}
+
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 #[serde(default)]
 struct ExamAiEvaluation {
@@ -464,6 +471,22 @@ fn list_markdown_files(vault_path: String) -> Result<Vec<VaultFile>, String> {
 }
 
 #[tauri::command]
+fn get_path_info(path: String) -> Result<PathInfo, String> {
+    let path = PathBuf::from(path);
+    if !path.exists() {
+        return Ok(PathInfo {
+            exists: false,
+            is_dir: false,
+        });
+    }
+    let metadata = fs::metadata(&path).map_err(|err| err.to_string())?;
+    Ok(PathInfo {
+        exists: true,
+        is_dir: metadata.is_dir(),
+    })
+}
+
+#[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
     let path = PathBuf::from(path);
     if !path.exists() {
@@ -565,6 +588,7 @@ pub fn run() {
             load_vault_path,
             save_vault_path,
             list_markdown_files,
+            get_path_info,
             read_text_file,
             write_text_file,
             create_markdown_file,

@@ -89,6 +89,30 @@ const joinVaultPath = (vaultRoot: string, relativePath: string) => {
   return `${trimmedRoot}${separator}${normalizedRelative}`;
 };
 
+const resolveNodePaths = (
+  target: ContextMenuTarget,
+  vaultRoot: string,
+): ResolvedNodePaths => {
+  if (target.kind === "file") {
+    const relativeFilePath = normalizeRelativePath(target.file.relative_path);
+    const fileAbsPath = joinVaultPath(vaultRoot, relativeFilePath);
+    const folderRelativePath = getParentRelativePath(relativeFilePath);
+    const folderAbsPath = joinVaultPath(vaultRoot, folderRelativePath);
+    return {
+      kind: "file",
+      relativePath: relativeFilePath,
+      fileAbsPath,
+      folderAbsPath,
+    };
+  }
+  const relativeFolderPath = normalizeRelativePath(target.path ?? "");
+  return {
+    kind: "dir",
+    relativePath: relativeFolderPath,
+    folderAbsPath: joinVaultPath(vaultRoot, relativeFolderPath),
+  };
+};
+
 const findDirectoryNode = (nodes: TreeNode[], path: string): TreeNode | null => {
   if (!path) {
     return { name: "__root__", path: "", type: "dir", children: nodes };
@@ -149,6 +173,18 @@ type ContextMenuTarget =
   | { kind: "dir"; path: string }
   | { kind: "empty"; path: string };
 
+type PathInfo = {
+  exists: boolean;
+  isDir: boolean;
+};
+
+type ResolvedNodePaths = {
+  kind: "file" | "dir";
+  relativePath: string;
+  fileAbsPath?: string;
+  folderAbsPath: string;
+};
+
 type VaultTreeProps = {
   activeFolderPath: string | null;
   expandedPaths: Set<string>;
@@ -192,6 +228,7 @@ export const VaultTree = ({
   const [createDirPath, setCreateDirPath] = useState("");
   const [createName, setCreateName] = useState("");
   const [createError, setCreateError] = useState("");
+  const [openError, setOpenError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const portalTarget = typeof document === "undefined" ? null : document.body;
 
@@ -275,6 +312,7 @@ export const VaultTree = ({
   useEffect(() => {
     setExtraDirs([]);
     setPendingFiles([]);
+    setOpenError("");
     onActiveFolderChange(null);
     setContextMenu(null);
   }, [onActiveFolderChange, vaultPath]);
@@ -337,6 +375,11 @@ export const VaultTree = ({
     setContextMenu(null);
   }, []);
 
+  const reportOpenError = useCallback((message: string, details: Record<string, unknown>) => {
+    setOpenError(message);
+    console.error(message, details);
+  }, []);
+
   const openCreateModal = useCallback(
     (kind: "file" | "folder", dirPath: string) => {
       setCreateKind(kind);
@@ -349,26 +392,91 @@ export const VaultTree = ({
   );
 
   const handleOpenDataFolder = useCallback(
-    async (dirPath: string) => {
-      if (!vaultPath) {
+    async (target: ContextMenuTarget | null) => {
+      closeContextMenu();
+      if (!vaultPath || !target) {
+        if (!vaultPath) {
+          setOpenError("Select a vault to open folders.");
+        }
         return;
       }
+      const resolved = resolveNodePaths(target, vaultPath);
+      const { folderAbsPath, relativePath } = resolved;
+      setOpenError("");
       try {
-        await openPath(joinVaultPath(vaultPath, dirPath));
+        const info = await invoke<PathInfo>("get_path_info", {
+          path: folderAbsPath,
+        });
+        if (!info.exists || !info.isDir) {
+          reportOpenError("Folder not found on disk.", {
+            nodeKind: resolved.kind,
+            relativePath,
+            folderAbsPath,
+            fileAbsPath: resolved.fileAbsPath,
+            info,
+          });
+          return;
+        }
+        await openPath(folderAbsPath);
       } catch (error) {
-        console.error("Failed to open folder", error);
+        reportOpenError("Could not open in system explorer.", {
+          nodeKind: resolved.kind,
+          relativePath,
+          folderAbsPath,
+          fileAbsPath: resolved.fileAbsPath,
+          error,
+        });
       }
     },
-    [vaultPath],
+    [closeContextMenu, reportOpenError, vaultPath],
   );
 
-  const handleOpenWithDefault = useCallback(async (file: VaultFile) => {
-    try {
-      await openPath(file.path);
-    } catch (error) {
-      console.error("Failed to open file", error);
-    }
-  }, []);
+  const handleOpenWithDefault = useCallback(
+    async (file: VaultFile | null) => {
+      closeContextMenu();
+      if (!vaultPath || !file) {
+        if (!vaultPath) {
+          setOpenError("Select a vault to open files.");
+        }
+        return;
+      }
+      const resolved = resolveNodePaths(
+        {
+          kind: "file",
+          file,
+          dirPath: getParentRelativePath(file.relative_path),
+        },
+        vaultPath,
+      );
+      const fileAbsPath = resolved.fileAbsPath ?? file.path;
+      setOpenError("");
+      try {
+        const info = await invoke<PathInfo>("get_path_info", {
+          path: fileAbsPath,
+        });
+        if (!info.exists || info.isDir) {
+          reportOpenError("File not found on disk.", {
+            nodeKind: "file",
+            relativePath: resolved.relativePath,
+            fileAbsPath,
+            folderAbsPath: resolved.folderAbsPath,
+            info,
+          });
+          return;
+        }
+        await openPath(fileAbsPath);
+      } catch (error) {
+        reportOpenError("Could not open with the default app.", {
+          nodeKind: "file",
+          relativePath: resolved.relativePath,
+          fileAbsPath,
+          folderAbsPath: resolved.folderAbsPath,
+          error,
+        });
+      }
+    },
+    [closeContextMenu, reportOpenError, vaultPath],
+  );
 
   const handleCreateConfirm = useCallback(async () => {
     if (!createKind || !vaultPath) {
@@ -494,8 +602,7 @@ export const VaultTree = ({
               type="button"
               className="context-menu-item"
               onClick={() => {
-                closeContextMenu();
-                void handleOpenDataFolder(menuDirPath);
+                void handleOpenDataFolder(menuTarget);
               }}
             >
               Open Data Folder
@@ -504,7 +611,6 @@ export const VaultTree = ({
               type="button"
               className="context-menu-item"
               onClick={() => {
-                closeContextMenu();
                 void handleOpenWithDefault(fileTarget.file);
               }}
             >
@@ -531,8 +637,7 @@ export const VaultTree = ({
               type="button"
               className="context-menu-item"
               onClick={() => {
-                closeContextMenu();
-                void handleOpenDataFolder(menuDirPath);
+                void handleOpenDataFolder(menuTarget);
               }}
             >
               Open Data Folder
@@ -635,6 +740,7 @@ export const VaultTree = ({
           ) : null}
           {listState === "loading" ? <span className="chip">Scanne...</span> : null}
           {listError ? <div className="error">{listError}</div> : null}
+          {openError ? <div className="error">{openError}</div> : null}
           {vaultPath && listState === "idle" && treeNodes.length === 0 ? (
             <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
           ) : null}
