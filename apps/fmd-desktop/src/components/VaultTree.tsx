@@ -179,6 +179,7 @@ export const VaultTree = ({
 }: VaultTreeProps) => {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const [extraDirs, setExtraDirs] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<VaultFile[]>([]);
   const [contextMenu, setContextMenu] = useState<{
     target: ContextMenuTarget;
     x: number;
@@ -192,8 +193,22 @@ export const VaultTree = ({
   const [createError, setCreateError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
+  const mergedFiles = useMemo(() => {
+    if (pendingFiles.length === 0) {
+      return files;
+    }
+    const knownPaths = new Set(files.map((file) => file.path));
+    const next = [...files];
+    pendingFiles.forEach((file) => {
+      if (!knownPaths.has(file.path)) {
+        next.push(file);
+      }
+    });
+    return next;
+  }, [files, pendingFiles]);
+
   const treeNodes = useMemo(() => {
-    const nodes = buildTree(files);
+    const nodes = buildTree(mergedFiles);
     if (!extraDirs.length) {
       return nodes;
     }
@@ -228,7 +243,7 @@ export const VaultTree = ({
       }
     });
     return sortNodes(nextNodes);
-  }, [extraDirs, files]);
+  }, [extraDirs, mergedFiles]);
   const maxDepth = useMemo(
     () => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0),
     [treeNodes],
@@ -257,9 +272,21 @@ export const VaultTree = ({
 
   useEffect(() => {
     setExtraDirs([]);
+    setPendingFiles([]);
     onActiveFolderChange(null);
     setContextMenu(null);
   }, [onActiveFolderChange, vaultPath]);
+
+  useEffect(() => {
+    setPendingFiles((prev) => {
+      if (prev.length === 0) {
+        return prev;
+      }
+      const knownPaths = new Set(files.map((file) => file.path));
+      const next = prev.filter((file) => !knownPaths.has(file.path));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [files]);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -374,6 +401,11 @@ export const VaultTree = ({
           vaultPath,
           relativePath,
         });
+        setPendingFiles((prev) =>
+          prev.some((file) => file.path === created.path)
+            ? prev
+            : [...prev, created],
+        );
         if (createDirPath && !expandedPaths.has(createDirPath)) {
           onTogglePath(createDirPath, true);
         }
@@ -392,6 +424,7 @@ export const VaultTree = ({
         if (relativePath && !expandedPaths.has(relativePath)) {
           onTogglePath(relativePath, true);
         }
+        onActiveFolderChange(relativePath);
       }
       onRescanVault();
       setCreateKind(null);
@@ -409,6 +442,7 @@ export const VaultTree = ({
     onRescanVault,
     onSelectFile,
     onTogglePath,
+    onActiveFolderChange,
     treeNodes,
     vaultPath,
   ]);
