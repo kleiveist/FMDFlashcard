@@ -25,7 +25,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useAppState } from "./AppStateProvider";
 import { normalizeRelativePath, vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
-import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons";
+import {
+  CardsIcon,
+  FolderIcon,
+  HelpIcon,
+  RefreshIcon,
+  SettingsIcon,
+} from "./icons";
 import { helpTopics, resolveText } from "../pages/help/helpContent";
 import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
 
@@ -64,6 +70,7 @@ export const SidebarNav = ({
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
+  const isRescanningVault = vault.listState === "loading";
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
       return "No vault selected";
@@ -154,18 +161,36 @@ export const SidebarNav = ({
             >
               Close
             </button>
-            <button
-              type="button"
-              className="vault-status"
-              onClick={actions.handlePickVault}
-              title={vault.vaultPath ?? "Select vault"}
-              aria-label="Select vault"
-            >
-              <span className="label">Active Vault</span>
-              <span className="value">
-                Vault: {vault.vaultPath ? vaultRootName : "Not set"}
-              </span>
-            </button>
+            <div className="vault-status">
+              <button
+                type="button"
+                className="vault-status-main"
+                onClick={actions.handlePickVault}
+                title={vault.vaultPath ?? "Select vault"}
+                aria-label="Select vault"
+              >
+                <span className="label">Active Vault</span>
+                <span className="value">
+                  Vault: {vault.vaultPath ? vaultRootName : "Not set"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="vault-status-refresh"
+                onClick={actions.handleRescanVault}
+                title="Rescan vault"
+                aria-label="Rescan vault"
+                disabled={!vault.vaultPath || isRescanningVault}
+              >
+                <span
+                  className={`vault-status-refresh-icon${
+                    isRescanningVault ? " is-spinning" : ""
+                  }`}
+                >
+                  <RefreshIcon />
+                </span>
+              </button>
+            </div>
             <div className="sidebar-icon-row">
               <button
                 type="button"

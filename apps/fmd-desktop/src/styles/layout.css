@@ -206,10 +206,9 @@
   background: var(--accent-weak-bg);
   border: 1px solid var(--accent-weak-border);
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
   text-align: left;
-  cursor: pointer;
   transition: 0.2s ease;
 }
 
@@ -218,9 +217,75 @@
   color: var(--accent-strong);
 }
 
-.vault-status:focus-visible {
+.vault-status:focus-within {
   outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
+}
+
+.vault-status-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.vault-status-refresh {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: inherit;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.vault-status-refresh:hover:not(:disabled) {
+  border-color: var(--accent-weak-border);
+  background: var(--accent-active-bg);
+}
+
+.vault-status-refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vault-status-refresh-icon {
+  display: inline-flex;
+}
+
+.vault-status-refresh-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.vault-status-refresh-icon.is-spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-status-refresh-icon.is-spinning {
+    animation: none;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .nav-icon {

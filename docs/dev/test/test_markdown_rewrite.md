@@ -1,4 +1,4 @@
-# PreviewPanel Markdown Rewrite Repro (Testdatei)
+# 1) PreviewPanel Markdown Rewrite Repro (Testdatei)
 
 Ziel: Diese Datei dient dazu, das Verhalten **„Markdown-Editor schließen ⇒ Datei wird umgeschrieben und bekommt zusätzliche Leerzeilen“** zuverlässig zu prüfen.
 
@@ -27,7 +27,6 @@ Vierter Absatz.
 
 Zwischen diesem Absatz
 
-
 und diesem Absatz sind absichtlich **zwei** leere Zeilen.
 
 ---
@@ -44,13 +43,13 @@ und diesem Absatz sind absichtlich **zwei** leere Zeilen.
 
 - Punkt A
 - Punkt B
-  - Unterpunkt B.1
-  - Unterpunkt B.2
+    - Unterpunkt B.1
+    - Unterpunkt B.2
 
 1. Nummeriert 1
 2. Nummeriert 2
-   - Unterpunkt 2.a
-   - Unterpunkt 2.b
+    - Unterpunkt 2.a
+    - Unterpunkt 2.b
 
 ---
 
@@ -58,7 +57,7 @@ und diesem Absatz sind absichtlich **zwei** leere Zeilen.
 
 **Fett** und *kursiv* und ~~durchgestrichen~~.
 
-Sonderzeichen-Test: a_b * c_d ~~e~~ `inline code` und ein Backslash: \
+Sonderzeichen-Test: a\_b \* c\_d ~~e~~ `inline code` und ein Backslash: \\
 
 ---
 
@@ -70,7 +69,6 @@ Ein Link mit Klammern in der URL:
 [Test](https://example.com/path_(with)_parens)
 
 Ein Bild (nur Syntax, muss nicht existieren):
-![Alt-Text](./does-not-exist.png)
 
 ---
 
@@ -78,16 +76,17 @@ Ein Bild (nur Syntax, muss nicht existieren):
 
 | Spalte A | Spalte B | Spalte C |
 | --- | --- | --- |
-| normal | Text mit \| Pipe | Mehr   Spaces   |
+| normal | Text mit \| Pipe | Mehr   Spaces |
 | `code` | **bold** | *italic* |
-| Zeile mit <br> HTML | zweite Zelle | dritte Zelle |
+| Zeile mit  HTML | zweite Zelle | dritte Zelle |
 
 ---
 
 ## 8) Codeblöcke (Backticks, Fence-Länge, Leerzeilen)
 
-```ts
+````
 // Codeblock Test
 const x = "``` not a real fence inside string";
 const y = "`inline` and **bold** in string";
 console.log(x, y);
+````
