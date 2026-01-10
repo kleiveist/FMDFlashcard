@@ -47,12 +47,9 @@ while adding a dedicated review experience and study progress tracking.
 
 ## 📁 USER
 - 🗂️ [Overview](docs/user/user.md)
-- 📝 [Exam syntax](docs/user/exam-syntax.md)
-- 📝 [Flashcard syntax reference](docs/user/flashcard-syntax.md)
 - 📝 [Getting started](docs/user/getting-started.md)
 - 📝 [Settings](docs/user/settings.md)
 - 📝 [Spaced repetition](docs/user/spaced-repetition.md)
-- 📝 [Tables in Flashcards and Exams](docs/user/table-rendering.md)
 - 📝 [Troubleshooting](docs/user/troubleshooting.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

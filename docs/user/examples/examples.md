@@ -1,7 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](../user.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back](../user.md)
 
 # Examples
 

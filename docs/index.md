@@ -1,8 +1,3 @@
-<!-- AUTO-GENERATED:backlink START -->
-[← Back](../README.md)
-<!-- AUTO-GENERATED:backlink END -->
-
-
 # Docs
 
 <!-- AUTO-GENERATED:docs-index START -->
@@ -30,12 +25,9 @@
 
 ## 📁 USER
 - 🗂️ [Overview](user/user.md)
-- 📝 [Exam syntax](user/exam-syntax.md)
-- 📝 [Flashcard syntax reference](user/flashcard-syntax.md)
 - 📝 [Getting started](user/getting-started.md)
 - 📝 [Settings](user/settings.md)
 - 📝 [Spaced repetition](user/spaced-repetition.md)
-- 📝 [Tables in Flashcards and Exams](user/table-rendering.md)
 - 📝 [Troubleshooting](user/troubleshooting.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

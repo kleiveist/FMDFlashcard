@@ -1,19 +1,16 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back](../index.md)
+
 
 # USER
 
 <!-- AUTO-GENERATED:docs-index START -->
 
 ## 📄 Pages
-- 📝 [Exam syntax](exam-syntax.md)
-- 📝 [Flashcard syntax reference](flashcard-syntax.md)
 - 📝 [Getting started](getting-started.md)
 - 📝 [Settings](settings.md)
 - 📝 [Spaced repetition](spaced-repetition.md)
-- 📝 [Tables in Flashcards and Exams](table-rendering.md)
 - 📝 [Troubleshooting](troubleshooting.md)
 
 ## 📁 Examples
@@ -30,5 +27,24 @@
 - 📝 [Code `m2`: Multi-answer multiple choice](examples/m2.md)
 - 📝 [Code `qa`: Answer marker (Q/A part)](examples/qa.md)
 - 📝 [Code `tf`: True/False marker (2-button card)](examples/tf.md)
+
+## 📁 Pages
+- 🗂️ [Overview](pages/pages.md)
+- 📝 [Dashboard](pages/dashboard.md)
+- 📝 [Exams](pages/exams.md)
+- 📝 [Fast Flashcard](pages/fast-flashcard.md)
+- 📝 [Flashcards](pages/flashcards.md)
+- 📝 [Help / Docs](pages/help-and-docs.md)
+- 📝 [Keyboard shortcuts](pages/keyboard-shortcuts.md)
+- 📝 [Markdown Editor](pages/markdown-editor.md)
+- 📝 [Settings](pages/settings.md)
+- 📝 [Spaced Repetition](pages/spaced-repetition.md)
+- 📝 [Vault](pages/vault.md)
+
+## 📁 Syntax
+- 🗂️ [Overview](syntax/syntax.md)
+- 📝 [Exam syntax](syntax/exam-syntax.md)
+- 📝 [Flashcard syntax reference](syntax/flashcard-syntax.md)
+- 📝 [Tables in Flashcards and Exams](syntax/table-rendering.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

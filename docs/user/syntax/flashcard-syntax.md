@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](user.md)
+[← Back](syntax.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Flashcard syntax reference
 

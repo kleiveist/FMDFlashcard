@@ -19,6 +19,7 @@
 - 📝 [Test cld tabel](test/test_cld_tabel.md)
 - 📝 [Test n1](test/test_n1.md)
 - 📝 [Test n2](test/test_n2.md)
+- 📝 [Test table rendering](test/test_table_rendering.md)
 - 📝 [Testmatix](test/testmatix.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](README.md)
+[← Back to README](README.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Security Policy
 
