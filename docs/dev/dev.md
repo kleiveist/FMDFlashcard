@@ -14,11 +14,11 @@
 - 📝 [Testing](testing.md)
 
 ## 📁 TEST
-- 🗂️ [Overview](test/test.md)
-- 📝 [Test cld](test/test_cld.md)
-- 📝 [Test cld tabel](test/test_cld_tabel.md)
-- 📝 [Test n1](test/test_n1.md)
-- 📝 [Test n2](test/test_n2.md)
+- 🗂️ [Overview](test.md)
+- 📝 [Test cld](test_cld.md)
+- 📝 [Test cld tabel](test_cld_tabel.md)
+- 📝 [Test n1](test_n1.md)
+- 📝 [Test n2](test_n2.md)
 - 📝 [Test table rendering](test/test_table_rendering.md)
 - 📝 [Testmatix](test/testmatix.md)
 

@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../dev.md)
+[← Back](dev.md)
 <!-- AUTO-GENERATED:backlink END -->
 # TEST
 
