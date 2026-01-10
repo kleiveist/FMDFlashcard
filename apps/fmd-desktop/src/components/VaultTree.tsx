@@ -31,6 +31,7 @@ import {
   type CSSProperties,
   type MouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { FileIcon, FolderIcon } from "./icons";
@@ -192,6 +193,7 @@ export const VaultTree = ({
   const [createName, setCreateName] = useState("");
   const [createError, setCreateError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const portalTarget = typeof document === "undefined" ? null : document.body;
 
   const mergedFiles = useMemo(() => {
     if (pendingFiles.length === 0) {
@@ -474,6 +476,72 @@ export const VaultTree = ({
   const fileTarget = menuTarget && menuTarget.kind === "file" ? menuTarget : null;
   const menuDirPath = fileTarget ? fileTarget.dirPath : menuTarget?.path ?? "";
   const rootFolderState = getFolderState("");
+  const contextMenuLayer = contextMenu ? (
+    <div
+      className="context-menu-backdrop"
+      role="presentation"
+      onMouseDown={closeContextMenu}
+    >
+      <div
+        ref={menuRef}
+        className="context-menu"
+        style={menuStyle ?? { left: contextMenu.x, top: contextMenu.y }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {fileTarget ? (
+          <>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => {
+                closeContextMenu();
+                void handleOpenDataFolder(menuDirPath);
+              }}
+            >
+              Open Data Folder
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => {
+                closeContextMenu();
+                void handleOpenWithDefault(fileTarget.file);
+              }}
+            >
+              Open with Default
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => openCreateModal("file", menuDirPath)}
+            >
+              New File
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => openCreateModal("folder", menuDirPath)}
+            >
+              New Folder
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => {
+                closeContextMenu();
+                void handleOpenDataFolder(menuDirPath);
+              }}
+            >
+              Open Data Folder
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  ) : null;
 
   const renderTreeNodes = (nodes: TreeNode[], depth: number) =>
     nodes.map((node) => {
@@ -597,72 +665,11 @@ export const VaultTree = ({
           ) : null}
         </div>
       </div>
-      {contextMenu ? (
-        <div
-          className="context-menu-backdrop"
-          role="presentation"
-          onMouseDown={closeContextMenu}
-        >
-          <div
-            ref={menuRef}
-            className="context-menu"
-            style={menuStyle ?? { left: contextMenu.x, top: contextMenu.y }}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            {fileTarget ? (
-              <>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => {
-                    closeContextMenu();
-                    void handleOpenDataFolder(menuDirPath);
-                  }}
-                >
-                  Open Data Folder
-                </button>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => {
-                    closeContextMenu();
-                    void handleOpenWithDefault(fileTarget.file);
-                  }}
-                >
-                  Open with Default
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => openCreateModal("file", menuDirPath)}
-                >
-                  New File
-                </button>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => openCreateModal("folder", menuDirPath)}
-                >
-                  New Folder
-                </button>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => {
-                    closeContextMenu();
-                    void handleOpenDataFolder(menuDirPath);
-                  }}
-                >
-                  Open Data Folder
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
+      {contextMenuLayer
+        ? portalTarget
+          ? createPortal(contextMenuLayer, portalTarget)
+          : contextMenuLayer
+        : null}
       <VaultCreateModal
         isOpen={createKind !== null}
         kind={createKind ?? "file"}

@@ -21,6 +21,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 type VaultCreateModalProps = {
   isOpen: boolean;
@@ -74,8 +75,9 @@ export const VaultCreateModal = ({
   }
 
   const title = kind === "file" ? "Create New File" : "Create New Folder";
+  const portalTarget = typeof document === "undefined" ? null : document.body;
 
-  return (
+  const modal = (
     <div className="modal-backdrop" role="presentation">
       <div
         className="modal-panel"
@@ -119,4 +121,6 @@ export const VaultCreateModal = ({
       </div>
     </div>
   );
+
+  return portalTarget ? createPortal(modal, portalTarget) : modal;
 };
