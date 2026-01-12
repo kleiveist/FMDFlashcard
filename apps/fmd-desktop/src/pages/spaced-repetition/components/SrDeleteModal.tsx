@@ -19,6 +19,9 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
+import { useEffect } from "react";
+import { registerCloseLayer } from "../../../lib/shortcuts/closeOrBack";
+
 type SrDeleteModalProps = {
   isDeleteDialogOpen: boolean;
   deleteTargetName: string;
@@ -37,8 +40,24 @@ export const SrDeleteModal = ({
   handleDeleteCancel,
   handleDeleteConfirm,
   canConfirmDelete,
-}: SrDeleteModalProps) =>
-  isDeleteDialogOpen ? (
+}: SrDeleteModalProps) => {
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "sr-delete-modal",
+      priority: 300,
+      isActive: () => true,
+      onClose: handleDeleteCancel,
+    });
+  }, [handleDeleteCancel, isDeleteDialogOpen]);
+
+  if (!isDeleteDialogOpen) {
+    return null;
+  }
+
+  return (
     <div className="modal-backdrop" role="presentation">
       <div
         className="modal-panel"
@@ -78,4 +97,5 @@ export const SrDeleteModal = ({
         </div>
       </div>
     </div>
-  ) : null;
+  );
+};

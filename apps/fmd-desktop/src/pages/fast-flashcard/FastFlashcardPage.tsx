@@ -29,6 +29,11 @@ import { FastStatsPanel } from "./components/FastStatsPanel";
 import { FastToolsPanel } from "./components/FastToolsPanel";
 import { useFastSession } from "./hooks/useFastSession";
 import {
+  areClozeBlanksComplete,
+  areTrueFalseItemsComplete,
+  isFlashcardPartComplete,
+} from "../../features/flashcards/logic";
+import {
   formatBinding,
   getEffectiveBinding,
   getShortcutPlatform,
@@ -38,6 +43,9 @@ import {
 import { getShortcutById } from "../../lib/shortcuts/registry";
 
 const viewToggleCommand = getShortcutById("toggleViewMode");
+const studyPrevCommand = getShortcutById("studyPrevious");
+const studyNextCommand = getShortcutById("studyNext");
+const studySubmitCommand = getShortcutById("studySubmit");
 
 export const FastFlashcardPage = () => {
   const {
@@ -108,6 +116,20 @@ export const FastFlashcardPage = () => {
     ? formatBinding(viewBinding, platform)
     : null;
   const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
+  const studyBindings = useMemo(() => {
+    const bindings = settings.keyboardShortcuts.bindings;
+    return {
+      prev: studyPrevCommand
+        ? getEffectiveBinding(studyPrevCommand, bindings, platform)
+        : null,
+      next: studyNextCommand
+        ? getEffectiveBinding(studyNextCommand, bindings, platform)
+        : null,
+      submit: studySubmitCommand
+        ? getEffectiveBinding(studySubmitCommand, bindings, platform)
+        : null,
+    };
+  }, [platform, settings.keyboardShortcuts.bindings]);
 
   useEffect(() => {
     document.body.classList.toggle("focus-mode", isViewMode);
@@ -138,6 +160,101 @@ export const FastFlashcardPage = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [viewBinding]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      const isEditable = isEditableTarget(event.target);
+      const canTrigger = (
+        command:
+          | typeof studyPrevCommand
+          | typeof studyNextCommand
+          | typeof studySubmitCommand,
+        binding: string | null,
+      ) => {
+        if (!command || !binding) {
+          return false;
+        }
+        if (!command.allowInTextInputs && isEditable) {
+          return false;
+        }
+        return matchesBinding(event, binding);
+      };
+
+      if (canTrigger(studyPrevCommand, studyBindings.prev)) {
+        event.preventDefault();
+        if (canGoBack) {
+          setFastCardPosition((prev) => Math.max(0, prev - 1));
+        }
+        return;
+      }
+
+      if (canTrigger(studyNextCommand, studyBindings.next)) {
+        event.preventDefault();
+        if (canGoNext) {
+          setFastCardPosition((prev) => prev + 1);
+        }
+        return;
+      }
+
+      if (!canTrigger(studySubmitCommand, studyBindings.submit)) {
+        return;
+      }
+
+      if (!currentEntry || isCurrentSubmitted) {
+        return;
+      }
+
+      const { card, cardIndex } = currentEntry;
+      if (card.kind === "composite") {
+        const partStates = fastFlashcards.flashcardCompositeStates[cardIndex] ?? [];
+        const canSubmit =
+          card.parts.length > 0 &&
+          card.parts.every((part, partIndex) =>
+            isFlashcardPartComplete(part, partStates[partIndex] ?? {}),
+          );
+        if (!canSubmit) {
+          return;
+        }
+      } else if (card.kind === "multiple-choice") {
+        if ((fastFlashcards.flashcardSelections[cardIndex] ?? []).length === 0) {
+          return;
+        }
+      } else if (card.kind === "true-false") {
+        const selections = fastFlashcards.flashcardTrueFalseSelections[cardIndex] ?? {};
+        if (!areTrueFalseItemsComplete(card, selections)) {
+          return;
+        }
+      } else if (card.kind === "free-text") {
+        return;
+      } else {
+        const responses = fastFlashcards.flashcardClozeResponses[cardIndex] ?? {};
+        if (!areClozeBlanksComplete(card, responses)) {
+          return;
+        }
+      }
+
+      event.preventDefault();
+      handleFastSubmit(cardIndex, true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    canGoBack,
+    canGoNext,
+    currentEntry,
+    fastFlashcards.flashcardClozeResponses,
+    fastFlashcards.flashcardCompositeStates,
+    fastFlashcards.flashcardSelections,
+    fastFlashcards.flashcardTrueFalseSelections,
+    handleFastSubmit,
+    isCurrentSubmitted,
+    setFastCardPosition,
+    studyBindings,
+  ]);
 
   return (
     <div className={`fast-flashcard-layout ${isViewMode ? "focus-mode" : ""}`}>

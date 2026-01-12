@@ -46,9 +46,9 @@ import { getShortcutById } from "../lib/shortcuts/registry";
 
 const flashcardStatusLabel = "Not scanned yet";
 const flashcardToggleCommand = getShortcutById("toggleViewMode");
-const flashcardPrevCommand = getShortcutById("flashcards.focus.prev");
-const flashcardNextCommand = getShortcutById("flashcards.focus.next");
-const flashcardSubmitCommand = getShortcutById("flashcards.focus.submit");
+const flashcardPrevCommand = getShortcutById("studyPrevious");
+const flashcardNextCommand = getShortcutById("studyNext");
+const flashcardSubmitCommand = getShortcutById("studySubmit");
 
 export const FlashcardPage = () => {
   const { flashcards, settings } = useAppState();
@@ -84,10 +84,10 @@ export const FlashcardPage = () => {
     ? `${viewLabel} (${toggleShortcutLabel})`
     : viewLabel;
   const prevShortcutTitle = shortcutBindings.prev
-    ? `Back (View mode: ${formatBinding(shortcutBindings.prev, platform)})`
+    ? `Back (${formatBinding(shortcutBindings.prev, platform)})`
     : "Back";
   const nextShortcutTitle = shortcutBindings.next
-    ? `Next (View mode: ${formatBinding(shortcutBindings.next, platform)})`
+    ? `Next (${formatBinding(shortcutBindings.next, platform)})`
     : "Next";
 
   useEffect(() => {
@@ -120,10 +120,6 @@ export const FlashcardPage = () => {
       if (canTrigger(flashcardToggleCommand, shortcutBindings.toggle)) {
         event.preventDefault();
         setIsFocusMode((prev) => !prev);
-        return;
-      }
-
-      if (!isFocusMode) {
         return;
       }
 
@@ -247,7 +243,7 @@ export const FlashcardPage = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeCardIndex, flashcards, isFocusMode, shortcutBindings]);
+  }, [activeCardIndex, flashcards, shortcutBindings]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {

@@ -19,6 +19,9 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
+import { useEffect } from "react";
+import { registerCloseLayer } from "../../lib/shortcuts/closeOrBack";
+
 type ResetSessionHistoryModalProps = {
   isOpen: boolean;
   isPending?: boolean;
@@ -32,6 +35,18 @@ export const ResetSessionHistoryModal = ({
   onCancel,
   onConfirm,
 }: ResetSessionHistoryModalProps) => {
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "reset-session-history-modal",
+      priority: 300,
+      isActive: () => true,
+      onClose: onCancel,
+    });
+  }, [isOpen, onCancel]);
+
   if (!isOpen) {
     return null;
   }

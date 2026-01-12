@@ -101,6 +101,30 @@ describe("normalizeKeyboardShortcuts", () => {
     expect(needsMigration).toBe(true);
   });
 
+  it("migrates legacy study navigation bindings", () => {
+    const { settings, needsMigration } = normalizeKeyboardShortcuts({
+      bindings: {
+        "flashcards.focus.prev": "left",
+        "spaced-repetition.focus.next": "right",
+        "spaced-repetition.focus.submit": "enter",
+      },
+    });
+    expect(settings.bindings.studyPrevious).toBe("ArrowLeft");
+    expect(settings.bindings.studyNext).toBe("ArrowRight");
+    expect(settings.bindings.studySubmit).toBe("Enter");
+    expect(needsMigration).toBe(true);
+  });
+
+  it("migrates legacy close bindings into uiCloseOrBack", () => {
+    const { settings, needsMigration } = normalizeKeyboardShortcuts({
+      bindings: {
+        "vault.context-menu.close": "escape",
+      },
+    });
+    expect(settings.bindings.uiCloseOrBack).toBe("Escape");
+    expect(needsMigration).toBe(true);
+  });
+
   it("accepts current version", () => {
     const { settings, needsMigration } = normalizeKeyboardShortcuts({
       version: 1,

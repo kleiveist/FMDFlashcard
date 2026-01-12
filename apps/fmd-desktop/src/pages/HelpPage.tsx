@@ -21,10 +21,9 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
-import { getEffectiveBinding, isEditableTarget, matchesBinding } from "../lib/shortcuts/bindings";
-import { getShortcutById } from "../lib/shortcuts/registry";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import {
   AppLanguage,
   flashcardSyntaxEntries,
@@ -59,15 +58,6 @@ export const HelpPage = () => {
     flashcardSyntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
     flashcardSyntaxEntries[0] ??
     null;
-  const helpCloseCommand = useMemo(() => getShortcutById("help.topic.close"), []);
-  const helpCloseBinding = useMemo(
-    () =>
-      helpCloseCommand
-        ? getEffectiveBinding(helpCloseCommand, settings.keyboardShortcuts.bindings)
-        : null,
-    [helpCloseCommand, settings.keyboardShortcuts.bindings],
-  );
-
   const titleText = resolveText(helpHeader.title, language);
   const eyebrowText = resolveText(helpHeader.eyebrow, language);
   const summaryText = resolveText(helpHeader.summary, language);
@@ -134,24 +124,13 @@ export const HelpPage = () => {
     if (!activeTopicId) {
       return;
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!helpCloseCommand || !helpCloseBinding) {
-        return;
-      }
-      if (!helpCloseCommand.allowInTextInputs && isEditableTarget(event.target)) {
-        return;
-      }
-      if (!matchesBinding(event, helpCloseBinding)) {
-        return;
-      }
-      event.preventDefault();
-      setActiveTopicId(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [activeTopicId, helpCloseBinding, helpCloseCommand, setActiveTopicId]);
+    return registerCloseLayer({
+      id: "help-topic-detail",
+      priority: 100,
+      isActive: () => true,
+      onClose: () => setActiveTopicId(null),
+    });
+  }, [activeTopicId, setActiveTopicId]);
 
   useEffect(
     () => () => {

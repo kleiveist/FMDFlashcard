@@ -34,7 +34,6 @@ import {
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { useAppState } from "./AppStateProvider";
 import { FileIcon, FolderIcon } from "./icons";
 import { VaultCreateModal } from "./VaultCreateModal";
 import { asErrorMessage } from "../lib/errors";
@@ -47,8 +46,7 @@ import {
   type VaultFile,
 } from "../lib/tree";
 import { type LoadState } from "../lib/types";
-import { getEffectiveBinding, isEditableTarget, matchesBinding } from "../lib/shortcuts/bindings";
-import { getShortcutById } from "../lib/shortcuts/registry";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 
 const INDENT_STEP = 12;
 const OVERFLOW_DEPTH = 4;
@@ -220,19 +218,10 @@ export const VaultTree = ({
   selectedFile,
   vaultPath,
 }: VaultTreeProps) => {
-  const { settings } = useAppState();
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
-  const closeMenuCommand = useMemo(
-    () => getShortcutById("vault.context-menu.close"),
-    [],
-  );
-  const closeMenuBinding = useMemo(
-    () =>
-      closeMenuCommand
-        ? getEffectiveBinding(closeMenuCommand, settings.keyboardShortcuts.bindings)
-        : null,
-    [closeMenuCommand, settings.keyboardShortcuts.bindings],
-  );
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
   const [extraDirs, setExtraDirs] = useState<string[]>([]);
   const [pendingFiles, setPendingFiles] = useState<VaultFile[]>([]);
   const [contextMenu, setContextMenu] = useState<{
@@ -359,22 +348,13 @@ export const VaultTree = ({
     if (!contextMenu) {
       return;
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!closeMenuCommand || !closeMenuBinding) {
-        return;
-      }
-      if (!closeMenuCommand.allowInTextInputs && isEditableTarget(event.target)) {
-        return;
-      }
-      if (!matchesBinding(event, closeMenuBinding)) {
-        return;
-      }
-      event.preventDefault();
-      setContextMenu(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeMenuBinding, closeMenuCommand, contextMenu]);
+    return registerCloseLayer({
+      id: "vault-context-menu",
+      priority: 200,
+      isActive: () => true,
+      onClose: closeContextMenu,
+    });
+  }, [closeContextMenu, contextMenu]);
 
   useLayoutEffect(() => {
     if (!contextMenu || !menuRef.current) {
@@ -405,10 +385,6 @@ export const VaultTree = ({
     },
     [],
   );
-
-  const closeContextMenu = useCallback(() => {
-    setContextMenu(null);
-  }, []);
 
   const reportOpenError = useCallback((message: string, details: Record<string, unknown>) => {
     setOpenError(message);

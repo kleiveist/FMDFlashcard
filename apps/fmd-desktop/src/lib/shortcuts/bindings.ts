@@ -398,6 +398,25 @@ export const normalizeKeyboardShortcuts = (
     "spaced-repetition.focus.toggle",
   ];
   const legacyExitIds = ["flashcards.focus.exit", "spaced-repetition.focus.exit"];
+  const legacyStudyBindings = {
+    studyPrevious: [
+      "flashcards.focus.prev",
+      "spaced-repetition.focus.prev",
+    ],
+    studyNext: [
+      "flashcards.focus.next",
+      "spaced-repetition.focus.next",
+    ],
+    studySubmit: [
+      "flashcards.focus.submit",
+      "spaced-repetition.focus.submit",
+    ],
+  };
+  const legacyCloseBindings = [
+    "help.topic.close",
+    "vault.context-menu.close",
+    "vault.create-modal.cancel",
+  ];
 
   if (!Object.prototype.hasOwnProperty.call(normalizedBindings, "toggleViewMode")) {
     const legacyBinding = legacyToggleIds.find((id) =>
@@ -412,6 +431,48 @@ export const normalizeKeyboardShortcuts = (
   legacyToggleIds.concat(legacyExitIds).forEach((id) => {
     if (Object.prototype.hasOwnProperty.call(normalizedBindings, id)) {
       delete normalizedBindings[id];
+      needsMigration = true;
+    }
+  });
+
+  (Object.keys(legacyStudyBindings) as Array<
+    keyof typeof legacyStudyBindings
+  >).forEach((studyId) => {
+    if (Object.prototype.hasOwnProperty.call(normalizedBindings, studyId)) {
+      return;
+    }
+    const legacyIds = legacyStudyBindings[studyId];
+    const legacyBinding = legacyIds.find((id) =>
+      Object.prototype.hasOwnProperty.call(normalizedBindings, id),
+    );
+    if (legacyBinding) {
+      normalizedBindings[studyId] = normalizedBindings[legacyBinding] ?? null;
+      needsMigration = true;
+    }
+  });
+
+  Object.values(legacyStudyBindings)
+    .flat()
+    .forEach((legacyId) => {
+      if (Object.prototype.hasOwnProperty.call(normalizedBindings, legacyId)) {
+        delete normalizedBindings[legacyId];
+        needsMigration = true;
+      }
+    });
+
+  if (!Object.prototype.hasOwnProperty.call(normalizedBindings, "uiCloseOrBack")) {
+    const legacyCloseBinding = legacyCloseBindings.find((id) =>
+      Object.prototype.hasOwnProperty.call(normalizedBindings, id),
+    );
+    if (legacyCloseBinding) {
+      normalizedBindings.uiCloseOrBack = normalizedBindings[legacyCloseBinding] ?? null;
+      needsMigration = true;
+    }
+  }
+
+  legacyCloseBindings.forEach((legacyId) => {
+    if (Object.prototype.hasOwnProperty.call(normalizedBindings, legacyId)) {
+      delete normalizedBindings[legacyId];
       needsMigration = true;
     }
   });

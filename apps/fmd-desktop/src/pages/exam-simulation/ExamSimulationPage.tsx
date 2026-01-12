@@ -38,6 +38,9 @@ import {
 import { getShortcutById } from "../../lib/shortcuts/registry";
 
 const viewToggleCommand = getShortcutById("toggleViewMode");
+const studyPrevCommand = getShortcutById("studyPrevious");
+const studyNextCommand = getShortcutById("studyNext");
+const studySubmitCommand = getShortcutById("studySubmit");
 
 export const ExamSimulationPage = () => {
   const {
@@ -104,6 +107,20 @@ export const ExamSimulationPage = () => {
     ? formatBinding(viewBinding, platform)
     : null;
   const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
+  const studyBindings = useMemo(() => {
+    const bindings = settings.keyboardShortcuts.bindings;
+    return {
+      prev: studyPrevCommand
+        ? getEffectiveBinding(studyPrevCommand, bindings, platform)
+        : null,
+      next: studyNextCommand
+        ? getEffectiveBinding(studyNextCommand, bindings, platform)
+        : null,
+      submit: studySubmitCommand
+        ? getEffectiveBinding(studySubmitCommand, bindings, platform)
+        : null,
+    };
+  }, [platform, settings.keyboardShortcuts.bindings]);
 
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
@@ -121,22 +138,70 @@ export const ExamSimulationPage = () => {
         return;
       }
       const isEditable = isEditableTarget(event.target);
-      if (!viewToggleCommand || !viewBinding) {
+      const canTrigger = (
+        command:
+          | typeof viewToggleCommand
+          | typeof studyPrevCommand
+          | typeof studyNextCommand
+          | typeof studySubmitCommand,
+        binding: string | null,
+      ) => {
+        if (!command || !binding) {
+          return false;
+        }
+        if (!command.allowInTextInputs && isEditable) {
+          return false;
+        }
+        return matchesBinding(event, binding);
+      };
+
+      if (canTrigger(viewToggleCommand, viewBinding)) {
+        event.preventDefault();
+        setIsViewMode((prev) => !prev);
         return;
       }
-      if (!viewToggleCommand.allowInTextInputs && isEditable) {
+
+      if (!isRunnerStage || !activeTask) {
         return;
       }
-      if (!matchesBinding(event, viewBinding)) {
+
+      if (canTrigger(studyPrevCommand, studyBindings.prev)) {
+        event.preventDefault();
+        if (activeTaskIndex > 0) {
+          handleTaskBack();
+        }
         return;
       }
-      event.preventDefault();
-      setIsViewMode((prev) => !prev);
+
+      if (canTrigger(studyNextCommand, studyBindings.next)) {
+        event.preventDefault();
+        if (activeTaskIndex < runTasks.length - 1) {
+          handleTaskNext();
+        }
+        return;
+      }
+
+      if (!canTrigger(studySubmitCommand, studyBindings.submit)) {
+        return;
+      }
+      if (activeTaskIndex < runTasks.length - 1) {
+        event.preventDefault();
+        handleTaskNext();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [viewBinding]);
+  }, [
+    activeTask,
+    activeTaskIndex,
+    handleTaskBack,
+    handleTaskNext,
+    isRunnerStage,
+    runTasks.length,
+    studyBindings,
+    viewBinding,
+  ]);
 
   return (
     <div className="exam-page">

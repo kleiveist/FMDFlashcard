@@ -52,9 +52,9 @@ import {
 } from "../../../features/spaced-repetition/logic";
 
 const srToggleCommand = getShortcutById("toggleViewMode");
-const srPrevCommand = getShortcutById("spaced-repetition.focus.prev");
-const srNextCommand = getShortcutById("spaced-repetition.focus.next");
-const srSubmitCommand = getShortcutById("spaced-repetition.focus.submit");
+const srPrevCommand = getShortcutById("studyPrevious");
+const srNextCommand = getShortcutById("studyNext");
+const srSubmitCommand = getShortcutById("studySubmit");
 
 export const useSrSessionViewModel = () => {
   const { flashcards, settings, spacedRepetition, vault } = useAppState();
@@ -86,10 +86,10 @@ export const useSrSessionViewModel = () => {
     ? `${viewLabel} (${toggleShortcutLabel})`
     : viewLabel;
   const prevShortcutTitle = shortcutBindings.prev
-    ? `Back (View mode: ${formatBinding(shortcutBindings.prev, platform)})`
+    ? `Back (${formatBinding(shortcutBindings.prev, platform)})`
     : "Back";
   const nextShortcutTitle = shortcutBindings.next
-    ? `Next (View mode: ${formatBinding(shortcutBindings.next, platform)})`
+    ? `Next (${formatBinding(shortcutBindings.next, platform)})`
     : "Next";
   const vaultId = useMemo(
     () => (vault.vaultPath ? hashString(vault.vaultPath) : null),
@@ -247,10 +247,6 @@ export const useSrSessionViewModel = () => {
         return;
       }
 
-      if (!isFocusMode) {
-        return;
-      }
-
       if (canTrigger(srPrevCommand, shortcutBindings.prev)) {
         event.preventDefault();
         if (spacedRepetition.spacedRepetitionCanGoBack) {
@@ -383,7 +379,7 @@ export const useSrSessionViewModel = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeCardIndex, isFocusMode, shortcutBindings, spacedRepetition]);
+  }, [activeCardIndex, shortcutBindings, spacedRepetition]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {

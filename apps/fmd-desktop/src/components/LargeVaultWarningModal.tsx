@@ -19,6 +19,9 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
+import { useEffect } from "react";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
+
 type LargeVaultWarningModalProps = {
   count: number | null;
   onClose: () => void;
@@ -28,6 +31,18 @@ export const LargeVaultWarningModal = ({
   count,
   onClose,
 }: LargeVaultWarningModalProps) => {
+  useEffect(() => {
+    if (count === null) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "large-vault-warning-modal",
+      priority: 300,
+      isActive: () => true,
+      onClose,
+    });
+  }, [count, onClose]);
+
   if (count === null) {
     return null;
   }

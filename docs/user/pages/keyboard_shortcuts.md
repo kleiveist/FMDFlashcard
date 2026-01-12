@@ -15,37 +15,28 @@ This page lists all keyboard shortcuts and the contexts where they apply.
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| - | - | No global shortcuts are currently defined. | - |
+| Close / Back | Esc | Closes dialogs/menus or returns from help detail. | - |
 
-## Exam
-
-| Action | Shortcut | Description | Notes |
-| --- | --- | --- | --- |
-| Toggle View | F | Toggle View on/off (distraction-free layout). | Eye icon toggle. |
-
-## Fast Flashcard
+## Study (Exam/Flashcards/Fast Flashcards/Spaced Repetition)
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
 | Toggle View | F | Toggle View on/off (distraction-free layout). | Eye icon toggle. |
+| Previous card | Left | Go to the previous card or task in Study screens. | - |
+| Next card | Right | Go to the next card or task in Study screens. | - |
+| Submit card | Enter | Submit the current card when it is ready. | - |
 
 ## Flashcards
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| Toggle View | F | Toggle View on/off (distraction-free layout). | Eye icon toggle. |
-| Previous card | Left | Go to the previous flashcard in View mode. | View mode only. |
-| Next card | Right | Go to the next flashcard in View mode. | View mode only. |
-| Submit card | Enter | Submit the current card when it is ready. | View mode only. |
+| - | - | No Flashcards-only shortcuts are currently defined. | - |
 
 ## Spaced Repetition
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| Toggle View | F | Toggle View on/off (distraction-free layout). | Eye icon toggle. |
-| Previous card | Left | Go to the previous card in View mode. | View mode only. |
-| Next card | Right | Go to the next card in View mode. | View mode only. |
-| Submit card | Enter | Submit the current card when it is ready. | View mode only. |
+| - | - | No Spaced Repetition-only shortcuts are currently defined. | - |
 
 ## Markdown editor
 
@@ -57,16 +48,16 @@ This page lists all keyboard shortcuts and the contexts where they apply.
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| Close help topic | Esc | Return to the help overview. | Help detail view only. |
+| - | - | No Help shortcuts are currently defined. | - |
 
 ## Vault Tree
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| Close context menu | Esc | Dismiss the vault context menu. | Context menu only. |
+| - | - | No Vault Tree shortcuts are currently defined. | - |
 
 ## Dialogs & Modals
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| Cancel create dialog | Esc | Close the create file/folder dialog. | Create file/folder dialog. |
+| - | - | No dialog shortcuts are currently defined. | - |

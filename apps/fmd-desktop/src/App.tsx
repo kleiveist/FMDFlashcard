@@ -21,11 +21,19 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { SidebarNav } from "./components/SidebarNav";
+import {
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "./lib/shortcuts/bindings";
+import { getActiveCloseLayer } from "./lib/shortcuts/closeOrBack";
+import { getShortcutById } from "./lib/shortcuts/registry";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
@@ -48,10 +56,45 @@ const AppContent = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isDashboard = activeTab === "dashboard";
+  const platform = getShortcutPlatform();
+  const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
+  const closeBinding = useMemo(
+    () =>
+      closeCommand
+        ? getEffectiveBinding(closeCommand, settings.keyboardShortcuts.bindings, platform)
+        : null,
+    [closeCommand, platform, settings.keyboardShortcuts.bindings],
+  );
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
     setIsMobileNavOpen(false);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      if (!closeCommand || !closeBinding) {
+        return;
+      }
+      if (!closeCommand.allowInTextInputs && isEditableTarget(event.target)) {
+        return;
+      }
+      if (!matchesBinding(event, closeBinding)) {
+        return;
+      }
+      const layer = getActiveCloseLayer();
+      if (!layer) {
+        return;
+      }
+      event.preventDefault();
+      layer.onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeBinding, closeCommand]);
 
   return (
     <div

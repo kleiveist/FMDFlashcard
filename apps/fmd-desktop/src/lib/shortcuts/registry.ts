@@ -14,6 +14,7 @@
 
 export type ShortcutContextId =
   | "global"
+  | "study"
   | "exam"
   | "fast-flashcard"
   | "flashcards"
@@ -47,6 +48,7 @@ export type ShortcutCommand = {
 
 export const SHORTCUT_CONTEXTS: ShortcutContext[] = [
   { id: "global", label: "Global" },
+  { id: "study", label: "Study" },
   { id: "exam", label: "Exam" },
   { id: "fast-flashcard", label: "Fast Flashcard" },
   { id: "flashcards", label: "Flashcards" },
@@ -62,7 +64,7 @@ export const SHORTCUT_COMMANDS: ShortcutCommand[] = [
     id: "toggleViewMode",
     title: "Toggle View",
     description: "Toggle View on/off (distraction-free layout).",
-    contexts: ["flashcards", "spaced-repetition", "exam", "fast-flashcard"],
+    contexts: ["study"],
     defaultBinding: { winLinux: "F", mac: "F" },
     notes: "Toggles the eye icon view in supported pages.",
     discoverableUI: [
@@ -73,79 +75,33 @@ export const SHORTCUT_COMMANDS: ShortcutCommand[] = [
     ],
   },
   {
-    id: "flashcards.focus.prev",
+    id: "studyPrevious",
     title: "Previous card",
-    description: "Go to the previous flashcard in View mode.",
-    contexts: ["flashcards"],
+    description: "Go to the previous card or task in Study screens.",
+    contexts: ["study"],
     defaultBinding: { winLinux: "ArrowLeft", mac: "ArrowLeft" },
-    notes: "View mode only.",
   },
   {
-    id: "flashcards.focus.next",
+    id: "studyNext",
     title: "Next card",
-    description: "Go to the next flashcard in View mode.",
-    contexts: ["flashcards"],
+    description: "Go to the next card or task in Study screens.",
+    contexts: ["study"],
     defaultBinding: { winLinux: "ArrowRight", mac: "ArrowRight" },
-    notes: "View mode only.",
   },
   {
-    id: "flashcards.focus.submit",
+    id: "studySubmit",
     title: "Submit card",
     description: "Submit the current card when it is ready.",
-    contexts: ["flashcards"],
+    contexts: ["study"],
     defaultBinding: { winLinux: "Enter", mac: "Enter" },
-    notes: "View mode only.",
   },
   {
-    id: "spaced-repetition.focus.prev",
-    title: "Previous card",
-    description: "Go to the previous card in View mode.",
-    contexts: ["spaced-repetition"],
-    defaultBinding: { winLinux: "ArrowLeft", mac: "ArrowLeft" },
-    notes: "View mode only.",
-  },
-  {
-    id: "spaced-repetition.focus.next",
-    title: "Next card",
-    description: "Go to the next card in View mode.",
-    contexts: ["spaced-repetition"],
-    defaultBinding: { winLinux: "ArrowRight", mac: "ArrowRight" },
-    notes: "View mode only.",
-  },
-  {
-    id: "spaced-repetition.focus.submit",
-    title: "Submit card",
-    description: "Submit the current card when it is ready.",
-    contexts: ["spaced-repetition"],
-    defaultBinding: { winLinux: "Enter", mac: "Enter" },
-    notes: "View mode only.",
-  },
-  {
-    id: "help.topic.close",
-    title: "Close help topic",
-    description: "Return to the help overview.",
-    contexts: ["help"],
+    id: "uiCloseOrBack",
+    title: "Close / Back",
+    description: "Close dialogs/menus or return from help detail.",
+    contexts: ["global"],
     defaultBinding: { winLinux: "Escape", mac: "Escape" },
     allowInTextInputs: true,
-    notes: "Help detail view only.",
-  },
-  {
-    id: "vault.context-menu.close",
-    title: "Close context menu",
-    description: "Dismiss the vault context menu.",
-    contexts: ["vault-tree"],
-    defaultBinding: { winLinux: "Escape", mac: "Escape" },
-    allowInTextInputs: true,
-    notes: "Vault context menu only.",
-  },
-  {
-    id: "vault.create-modal.cancel",
-    title: "Cancel create dialog",
-    description: "Close the create file/folder dialog.",
-    contexts: ["modal"],
-    defaultBinding: { winLinux: "Escape", mac: "Escape" },
-    allowInTextInputs: true,
-    notes: "Create file/folder dialog.",
   },
 ];
 
