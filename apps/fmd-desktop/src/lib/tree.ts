@@ -91,9 +91,9 @@ export const buildTree = (files: VaultFile[]): TreeNode[] => {
 
 export const filterHiddenFiles = (
   files: VaultFile[],
-  hiddenFoldersLevel: number,
+  showHiddenFolders: boolean,
 ) => {
-  if (hiddenFoldersLevel > 0) {
+  if (showHiddenFolders) {
     return files;
   }
   return files.filter((file) => !isHiddenPath(file.relative_path));

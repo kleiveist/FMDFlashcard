@@ -97,11 +97,11 @@ export const SettingsPage = () => {
             lastOpenedFile={lastOpenedFile}
             listState={vault.listState}
             onCopyVaultPath={actions.handleCopyVaultPath}
-            onHiddenFoldersLevelChange={settings.setHiddenFoldersLevel}
+            onShowHiddenFoldersToggle={settings.setShowHiddenFolders}
             onRescanVault={actions.handleRescanVault}
             onResetIndex={actions.handleResetIndex}
             vaultIndexedComplete={vaultIndexedComplete}
-            hiddenFoldersLevel={settings.hiddenFoldersLevel}
+            showHiddenFolders={settings.showHiddenFolders}
             vaultPath={vault.vaultPath}
           />
           <section className="panel settings-performance-panel">

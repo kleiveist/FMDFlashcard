@@ -49,15 +49,15 @@ export type VaultSnapshot = {
 
 type UseVaultOptions = {
   persistSettings: (updates: { vaultPath?: string | null }) => Promise<boolean>;
-  hiddenFoldersLevel: number;
+  showHiddenFolders: boolean;
 };
 
-export const useVault = ({ persistSettings, hiddenFoldersLevel }: UseVaultOptions) => {
+export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions) => {
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [listState, setListState] = useState<LoadState>("idle");
   const [listError, setListError] = useState("");
-  const lastRescanHiddenLevel = useRef(hiddenFoldersLevel);
+  const lastRescanHiddenState = useRef(showHiddenFolders);
 
   const takeSnapshot = useCallback(
     (): VaultSnapshot => ({
@@ -85,7 +85,7 @@ export const useVault = ({ persistSettings, hiddenFoldersLevel }: UseVaultOption
       try {
         const results = await invoke<VaultFile[]>("list_markdown_files", {
           vaultPath: path,
-          hiddenFoldersLevel,
+          showHiddenFolders,
         });
         setFiles(results);
         setListState("idle");
@@ -104,7 +104,7 @@ export const useVault = ({ persistSettings, hiddenFoldersLevel }: UseVaultOption
         return null;
       }
     },
-    [hiddenFoldersLevel, persistSettings],
+    [persistSettings, showHiddenFolders],
   );
 
   const pickVault = useCallback(
@@ -151,7 +151,7 @@ export const useVault = ({ persistSettings, hiddenFoldersLevel }: UseVaultOption
     try {
       const results = await invoke<VaultFile[]>("list_markdown_files", {
         vaultPath,
-        hiddenFoldersLevel,
+        showHiddenFolders,
       });
       setFiles(results);
       setListState("idle");
@@ -160,18 +160,18 @@ export const useVault = ({ persistSettings, hiddenFoldersLevel }: UseVaultOption
       setListError(message);
       setListState("error");
     }
-  }, [hiddenFoldersLevel, listState, vaultPath]);
+  }, [listState, showHiddenFolders, vaultPath]);
 
   useEffect(() => {
     if (!vaultPath || listState === "loading") {
       return;
     }
-    if (lastRescanHiddenLevel.current === hiddenFoldersLevel) {
+    if (lastRescanHiddenState.current === showHiddenFolders) {
       return;
     }
-    lastRescanHiddenLevel.current = hiddenFoldersLevel;
+    lastRescanHiddenState.current = showHiddenFolders;
     void rescanVault();
-  }, [hiddenFoldersLevel, listState, rescanVault, vaultPath]);
+  }, [listState, rescanVault, showHiddenFolders, vaultPath]);
 
   return {
     files,

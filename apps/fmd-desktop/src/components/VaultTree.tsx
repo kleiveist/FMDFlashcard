@@ -191,7 +191,7 @@ type VaultTreeProps = {
   expandedPaths: Set<string>;
   fileCountLabel: string;
   files: VaultFile[];
-  hiddenFoldersLevel: number;
+  showHiddenFolders: boolean;
   listError: string;
   listState: LoadState;
   onRescanVault: () => void;
@@ -207,7 +207,7 @@ export const VaultTree = ({
   expandedPaths,
   fileCountLabel,
   files,
-  hiddenFoldersLevel,
+  showHiddenFolders,
   listError,
   listState,
   onRescanVault,
@@ -250,16 +250,15 @@ export const VaultTree = ({
   }, [files, pendingFiles]);
 
   const visibleFiles = useMemo(
-    () => filterHiddenFiles(mergedFiles, hiddenFoldersLevel),
-    [hiddenFoldersLevel, mergedFiles],
+    () => filterHiddenFiles(mergedFiles, showHiddenFolders),
+    [mergedFiles, showHiddenFolders],
   );
 
   const treeNodes = useMemo(() => {
     const nodes = buildTree(visibleFiles);
-    const visibleExtraDirs =
-      hiddenFoldersLevel > 0
-        ? extraDirs
-        : extraDirs.filter((dirPath) => !isHiddenPath(dirPath));
+    const visibleExtraDirs = showHiddenFolders
+      ? extraDirs
+      : extraDirs.filter((dirPath) => !isHiddenPath(dirPath));
     if (!visibleExtraDirs.length) {
       return nodes;
     }
@@ -294,7 +293,7 @@ export const VaultTree = ({
       }
     });
     return sortNodes(nextNodes);
-  }, [extraDirs, hiddenFoldersLevel, visibleFiles]);
+  }, [extraDirs, showHiddenFolders, visibleFiles]);
   const maxDepth = useMemo(
     () => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0),
     [treeNodes],
@@ -321,20 +320,6 @@ export const VaultTree = ({
     [normalizedActiveFolderPath],
   );
 
-  const hiddenItemOpacity = useMemo(() => {
-    if (hiddenFoldersLevel <= 0) {
-      return null;
-    }
-    const clamped = Math.min(90, Math.max(0, hiddenFoldersLevel));
-    return 0.35 + 0.65 * (clamped / 90);
-  }, [hiddenFoldersLevel]);
-
-  const hiddenItemStyle = useMemo(() => {
-    if (hiddenItemOpacity === null) {
-      return undefined;
-    }
-    return { "--hidden-item-opacity": hiddenItemOpacity.toFixed(2) } as CSSProperties;
-  }, [hiddenItemOpacity]);
 
   useEffect(() => {
     setExtraDirs([]);
@@ -773,7 +758,7 @@ export const VaultTree = ({
             <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
           ) : null}
           {vaultPath && listState === "idle" && treeNodes.length > 0 ? (
-            <div className="vault-tree" style={hiddenItemStyle}>
+            <div className="vault-tree">
               <details className="tree-dir" open>
                 <summary
                   className={`tree-item${

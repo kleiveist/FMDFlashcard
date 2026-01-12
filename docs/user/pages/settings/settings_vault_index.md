@@ -6,11 +6,11 @@
 
 ## Hidden folders
 
-- Range: 0..90 (step 1).
-- Value 0: hidden folders are excluded from the vault tree and indexing.
-- Value > 0: hidden folders are shown in the vault tree and included in indexing.
+- Toggle: Show hidden folders (default off).
+- Off: hidden folders are excluded from the vault tree and indexing.
+- On: hidden folders are shown in the vault tree and included in indexing.
 - Hidden folder definition: any path segment starting with "." (dot).
-- The Vault and Index controls share the same value.
+- One control applies to both vault tree visibility and indexing.
 
 ## Actions
 

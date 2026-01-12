@@ -36,12 +36,12 @@ describe("filterHiddenFiles", () => {
     { path: "/vault/visible/.hidden/file.md", relative_path: "visible/.hidden/file.md" },
   ];
 
-  it("filters hidden entries when level is 0", () => {
-    const visible = filterHiddenFiles(files, 0).map((file) => file.relative_path);
+  it("filters hidden entries when hidden folders are off", () => {
+    const visible = filterHiddenFiles(files, false).map((file) => file.relative_path);
     expect(visible).toEqual(["visible.md"]);
   });
 
-  it("keeps hidden entries when level is above 0", () => {
-    expect(filterHiddenFiles(files, 1)).toEqual(files);
+  it("keeps hidden entries when hidden folders are on", () => {
+    expect(filterHiddenFiles(files, true)).toEqual(files);
   });
 });

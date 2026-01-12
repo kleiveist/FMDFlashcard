@@ -79,10 +79,10 @@ type AppState = {
 
 const AppStateContext = createContext<AppState | null>(null);
 
-const countMarkdownFiles = (files: VaultFile[], hiddenFoldersLevel: number) =>
+const countMarkdownFiles = (files: VaultFile[], showHiddenFolders: boolean) =>
   files.reduce((count, file) => {
     const relativePath = normalizeRelativePath(file.relative_path);
-    if (hiddenFoldersLevel === 0 && isHiddenPath(relativePath)) {
+    if (!showHiddenFolders && isHiddenPath(relativePath)) {
       return count;
     }
     if (relativePath.toLowerCase().endsWith(".md")) {
@@ -121,7 +121,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
-    hiddenFoldersLevel,
+    showHiddenFolders,
     maxFilesPerScan,
     setMaxFilesPerScan,
     setTheme,
@@ -146,7 +146,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     solutionRevealEnabled,
     statsResetMode,
   } = settings;
-  const vault = useVault({ persistSettings, hiddenFoldersLevel });
+  const vault = useVault({ persistSettings, showHiddenFolders });
   const preview = usePreview();
   const flashcards = useFlashcards({
     files: vault.files,
@@ -363,7 +363,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (results) {
-      const count = countMarkdownFiles(results, hiddenFoldersLevel);
+      const count = countMarkdownFiles(results, showHiddenFolders);
       const threshold = parseVaultWarningThreshold(maxFilesPerScan);
       if (threshold && count > threshold) {
         setLargeVaultWarningCount(count);
@@ -384,7 +384,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     takePreviewSnapshot,
     setLargeVaultWarningCount,
     maxFilesPerScan,
-    hiddenFoldersLevel,
+    showHiddenFolders,
   ]);
 
   const handleSelectFile = useCallback(

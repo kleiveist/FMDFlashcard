@@ -39,7 +39,10 @@ struct AppSettings {
     language: Option<String>,
     max_files_per_scan: Option<String>,
     scan_parallelism: Option<String>,
+    show_hidden_folders: Option<bool>,
     hidden_folders_level: Option<u32>,
+    hidden_folders_level_vault: Option<u32>,
+    hidden_folders_level_index: Option<u32>,
     flashcard_order: Option<String>,
     flashcard_mode: Option<String>,
     flashcard_scope: Option<String>,
@@ -131,7 +134,10 @@ impl AppSettings {
             && self.language.is_none()
             && self.max_files_per_scan.is_none()
             && self.scan_parallelism.is_none()
+            && self.show_hidden_folders.is_none()
             && self.hidden_folders_level.is_none()
+            && self.hidden_folders_level_vault.is_none()
+            && self.hidden_folders_level_index.is_none()
             && self.flashcard_order.is_none()
             && self.flashcard_mode.is_none()
             && self.flashcard_scope.is_none()
@@ -323,7 +329,7 @@ fn save_app_settings(
     language: Option<String>,
     max_files_per_scan: Option<String>,
     scan_parallelism: Option<String>,
-    hidden_folders_level: Option<u32>,
+    show_hidden_folders: Option<bool>,
     flashcard_order: Option<String>,
     flashcard_mode: Option<String>,
     flashcard_scope: Option<String>,
@@ -357,7 +363,10 @@ fn save_app_settings(
         language,
         max_files_per_scan,
         scan_parallelism,
-        hidden_folders_level,
+        show_hidden_folders,
+        hidden_folders_level: None,
+        hidden_folders_level_vault: None,
+        hidden_folders_level_index: None,
         flashcard_order,
         flashcard_mode,
         flashcard_scope,
@@ -442,7 +451,7 @@ fn save_vault_path(app: tauri::AppHandle, vault_path: Option<String>) -> Result<
 #[tauri::command]
 fn list_markdown_files(
     vault_path: String,
-    hidden_folders_level: Option<u32>,
+    show_hidden_folders: Option<bool>,
 ) -> Result<Vec<VaultFile>, String> {
     let root = PathBuf::from(vault_path);
     if !root.exists() {
@@ -453,7 +462,7 @@ fn list_markdown_files(
     }
 
     let mut files = Vec::new();
-    let include_hidden = hidden_folders_level.unwrap_or(0) > 0;
+    let include_hidden = show_hidden_folders.unwrap_or(false);
     for entry in WalkDir::new(&root)
         .into_iter()
         .filter_entry(|entry| include_hidden || !is_hidden(entry))

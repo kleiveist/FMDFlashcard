@@ -389,11 +389,6 @@
   cursor: not-allowed;
 }
 
-.range-input {
-  width: min(240px, 100%);
-  accent-color: var(--accent);
-}
-
 .accent-controls {
   display: flex;
   align-items: center;
