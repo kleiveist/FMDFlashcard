@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[Back](pages.md)
+[← Back](settings.md)
 <!-- AUTO-GENERATED:backlink END -->
 
 # Vault and index settings

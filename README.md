@@ -32,9 +32,13 @@ while adding a dedicated review experience and study progress tracking.
 - 🗂️ [Overview](docs/adr/adr.md)
 - 📝 [ADR 0001: Documentation source of truth](docs/adr/0001-documentation-source-of-truth.md)
 
+## 📁 Assets
+- 🗂️ [Overview](docs/assets/assets.md)
+
 ## 📁 DEV
 - 🗂️ [Overview](docs/dev/dev.md)
 - 📝 [Architecture overview](docs/dev/architecture.md)
+- 📝 [Developer ↔ Codex Workflow](docs/dev/codex-workflow.md)
 - 📝 [Control script (`tools/control.py`)](docs/dev/control-script.md)
 - 📝 [Releases / Packaging](docs/dev/release.md)
 - 📝 [Developer setup (run from source)](docs/dev/setup.md)

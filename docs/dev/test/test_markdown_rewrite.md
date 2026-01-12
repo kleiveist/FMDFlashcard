@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](test.md)
+<!-- AUTO-GENERATED:backlink END -->
 # 1) PreviewPanel Markdown Rewrite Repro (Testdatei)
 
 Ziel: Diese Datei dient dazu, das Verhalten **„Markdown-Editor schließen ⇒ Datei wird umgeschrieben und bekommt zusätzliche Leerzeilen“** zuverlässig zu prüfen.

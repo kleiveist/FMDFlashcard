@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](pages.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Vault
 
 ## Purpose

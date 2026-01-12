@@ -10,9 +10,13 @@
 - 🗂️ [Overview](adr/adr.md)
 - 📝 [ADR 0001: Documentation source of truth](adr/0001-documentation-source-of-truth.md)
 
+## 📁 Assets
+- 🗂️ [Overview](assets/assets.md)
+
 ## 📁 DEV
 - 🗂️ [Overview](dev/dev.md)
 - 📝 [Architecture overview](dev/architecture.md)
+- 📝 [Developer ↔ Codex Workflow](dev/codex-workflow.md)
 - 📝 [Control script (`tools/control.py`)](dev/control-script.md)
 - 📝 [Releases / Packaging](dev/release.md)
 - 📝 [Developer setup (run from source)](dev/setup.md)

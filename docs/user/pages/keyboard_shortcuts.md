@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[<- Back](pages.md)
+[← Back](pages.md)
 <!-- AUTO-GENERATED:backlink END -->
 
 <!--

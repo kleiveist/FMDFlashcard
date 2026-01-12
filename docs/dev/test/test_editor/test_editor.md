@@ -1,16 +1,17 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](test_editor.md)
+[← Back](../test.md)
 <!-- AUTO-GENERATED:backlink END -->
-# TEST
+[← Back](../test.md)
+
+# Test editor
 
 <!-- AUTO-GENERATED:docs-index START -->
 
 ## 📄 Pages
+- 📝 [TEST](test.md)
 - 📝 [Test cld](test_cld.md)
 - 📝 [Test cld tabel](test_cld_tabel.md)
 - 📝 [Test n1](test_n1.md)
 - 📝 [Test n2](test_n2.md)
-- 📝 [Test table rendering](test_table_rendering.md)
-- 📝 [Testmatix](testmatix.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

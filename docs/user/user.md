@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-
+[← Back](../index.md)
 
 # USER
 
@@ -36,8 +36,8 @@
 - 📝 [Flashcards](pages/flashcards.md)
 - 📝 [Help / Docs](pages/help-and-docs.md)
 - 📝 [Keyboard shortcuts](pages/keyboard-shortcuts.md)
+- 📝 [Keyboard shortcuts](pages/keyboard_shortcuts.md)
 - 📝 [Markdown Editor](pages/markdown-editor.md)
-- 📝 [Settings](pages/settings.md)
 - 📝 [Spaced Repetition](pages/spaced-repetition.md)
 - 📝 [Vault](pages/vault.md)
 

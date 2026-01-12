@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](test.md)
+[← Back](test_editor.md)
 <!-- AUTO-GENERATED:backlink END -->
 #exam
 #card

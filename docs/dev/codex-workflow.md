@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](dev.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Developer ↔ Codex Workflow
 
 ## Purpose
