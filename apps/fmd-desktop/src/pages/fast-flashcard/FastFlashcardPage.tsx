@@ -27,6 +27,7 @@ import { FastHeader } from "./components/FastHeader";
 import { FastHistoryPanel } from "./components/FastHistoryPanel";
 import { FastStatsPanel } from "./components/FastStatsPanel";
 import { FastToolsPanel } from "./components/FastToolsPanel";
+import { StudyTimeBar } from "../../components/StudyTimeBar";
 import { useFastSession } from "./hooks/useFastSession";
 import {
   areClozeBlanksComplete,
@@ -57,6 +58,8 @@ export const FastFlashcardPage = () => {
     hasFilteredCards,
     isCurrentSubmitted,
     submissionLocked,
+    timeRemaining,
+    sessionElapsedMs,
     handleCompositeOptionSelect,
     handleCompositeTrueFalseSelect,
     handleCompositeClozeInputChange,
@@ -116,6 +119,11 @@ export const FastFlashcardPage = () => {
     ? formatBinding(viewBinding, platform)
     : null;
   const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
+  const maxTimeMs = selectedDuration * 1000;
+  const elapsedMs =
+    timeRemaining !== null
+      ? Math.max(0, (selectedDuration - timeRemaining) * 1000)
+      : sessionElapsedMs;
   const studyBindings = useMemo(() => {
     const bindings = settings.keyboardShortcuts.bindings;
     return {
@@ -291,6 +299,13 @@ export const FastFlashcardPage = () => {
         lastSessions={lastSessions}
       />
       <section className="panel fast-flashcard-panel">
+        {isViewMode ? (
+          <StudyTimeBar
+            elapsedMs={elapsedMs}
+            maxMs={maxTimeMs}
+            isRunning={timeModeActive}
+          />
+        ) : null}
         <FastHeader
           hasScannedCards={hasScannedCards}
           isViewMode={isViewMode}

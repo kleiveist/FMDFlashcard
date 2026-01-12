@@ -820,6 +820,8 @@ export const useFastSession = () => {
     hasFilteredCards,
     isCurrentSubmitted,
     submissionLocked,
+    timeRemaining,
+    sessionElapsedMs,
     handleCompositeOptionSelect,
     handleCompositeTrueFalseSelect,
     handleCompositeClozeInputChange,
