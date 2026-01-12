@@ -21,12 +21,13 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { UserToolsPanel } from "../../components/UserToolsPanel";
+import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
 import { ExamResultsPanel } from "./components/ExamResultsPanel";
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
-import { ExamToolsPanel } from "./components/ExamToolsPanel";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 import {
   formatBinding,
@@ -47,6 +48,7 @@ export const ExamSimulationPage = () => {
     actions,
     preview,
     settings,
+    spacedRepetition,
     vault,
     examFiles,
     examFilesState,
@@ -57,6 +59,7 @@ export const ExamSimulationPage = () => {
     plannedMaxPoints,
     hasTaskCountMismatch,
     stage,
+    examRunning,
     activeTaskIndex,
     activeTask,
     activeTaskMaxPoints,
@@ -64,8 +67,6 @@ export const ExamSimulationPage = () => {
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
     runTasks,
-    remainingPoints,
-    isSettingsValid,
     canStartExam,
     examEmptyState,
     results,
@@ -74,9 +75,6 @@ export const ExamSimulationPage = () => {
     conversionError,
     handleStartExam,
     handleResetExam,
-    handleSubmitExam,
-    handleStartScoring,
-    handleFinishScoring,
     handleOptionSelect,
     handleTrueFalseSelect,
     handleClozeInputChange,
@@ -92,6 +90,8 @@ export const ExamSimulationPage = () => {
     handleConversionDecision,
   } = useExamSimulationViewModel();
   const [isViewMode, setIsViewMode] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const platform = getShortcutPlatform();
   const viewBinding = useMemo(() => {
     if (!viewToggleCommand) {
@@ -124,6 +124,40 @@ export const ExamSimulationPage = () => {
 
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
+  const selectedUser = useMemo(
+    () =>
+      spacedRepetition.spacedRepetitionUsers.find(
+        (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
+      ),
+    [
+      spacedRepetition.spacedRepetitionSelectedUserId,
+      spacedRepetition.spacedRepetitionUsers,
+    ],
+  );
+  const deleteTargetName = selectedUser?.name ?? "";
+  const canConfirmDelete =
+    Boolean(deleteTargetName) && deleteConfirmInput.trim() === deleteTargetName;
+
+  const handleDeleteOpen = useCallback(() => {
+    if (!selectedUser) {
+      return;
+    }
+    setIsDeleteDialogOpen(true);
+  }, [selectedUser]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!canConfirmDelete) {
+      return;
+    }
+    spacedRepetition.handleSpacedRepetitionDeleteUser();
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  }, [canConfirmDelete, spacedRepetition]);
 
   useEffect(() => {
     document.body.classList.toggle("focus-mode", isViewMode);
@@ -131,6 +165,16 @@ export const ExamSimulationPage = () => {
       document.body.classList.remove("focus-mode");
     };
   }, [isViewMode]);
+
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return;
+    }
+    if (!selectedUser) {
+      setIsDeleteDialogOpen(false);
+      setDeleteConfirmInput("");
+    }
+  }, [isDeleteDialogOpen, selectedUser]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -274,6 +318,18 @@ export const ExamSimulationPage = () => {
         </section>
 
         <div className="exam-sidebar">
+          <UserToolsPanel
+            spacedRepetition={spacedRepetition}
+            handleDeleteOpen={handleDeleteOpen}
+            onStart={handleStartExam}
+            startDisabled={
+              !spacedRepetition.spacedRepetitionActiveUser ||
+              !canStartExam ||
+              examRunning
+            }
+            showReset={examRunning}
+            onReset={handleResetExam}
+          />
           <ExamFilePanel
             files={examFiles}
             listState={examFilesState}
@@ -282,24 +338,17 @@ export const ExamSimulationPage = () => {
             vaultPath={vault.vaultPath}
             onSelectFile={actions.handleSelectFile}
           />
-          <ExamToolsPanel
-            stage={stage}
-            canStartExam={canStartExam}
-            isSettingsValid={isSettingsValid}
-            remainingPoints={remainingPoints}
-            hasTaskCountMismatch={hasTaskCountMismatch}
-            plannedTaskCount={plannedTaskCount}
-            availableTaskCount={previewExamParse.tasks.length}
-            expectedTaskCount={settings.examTaskCount}
-            onStartExam={handleStartExam}
-            onSubmitExam={handleSubmitExam}
-            onStartScoring={handleStartScoring}
-            onFinishScoring={handleFinishScoring}
-            finishPending={conversionPending}
-            onResetExam={handleResetExam}
-          />
         </div>
       </div>
+      <SrDeleteModal
+        isDeleteDialogOpen={isDeleteDialogOpen}
+        deleteTargetName={deleteTargetName}
+        deleteConfirmInput={deleteConfirmInput}
+        setDeleteConfirmInput={setDeleteConfirmInput}
+        handleDeleteCancel={handleDeleteCancel}
+        handleDeleteConfirm={handleDeleteConfirm}
+        canConfirmDelete={canConfirmDelete}
+      />
     </div>
   );
 };

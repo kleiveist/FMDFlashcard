@@ -1,28 +1,15 @@
 /**
- * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrUserPanel.tsx
+ * @file apps/fmd-desktop/src/components/UserToolsPanel.tsx
  *
  * Zweck:
- * - Rendert die Seite Sr User Panel.
+ * - Rendert die User Tools fuer Study/Spaced Repetition und Exam.
  *
  * Verantwortlichkeiten:
- * - Komponiert Seitenlayout und Unterbereiche.
- * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
- * - Reicht App-State und Handler an Unterkomponenten weiter.
- *
- * Verbunden mit:
- * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
- *
- * Exportiert:
- * - SrUserPanel: React-Komponente.
- *
- * Hinweise:
- * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ * - Zeigt Active User, Start und User-Management an.
+ * - Teilt Layout und Logik zwischen Study und Exam.
  */
 
-type SrUserPanelProps = {
-  flashcards: {
-    isFlashcardScanning: boolean;
-  };
+type UserToolsPanelProps = {
   spacedRepetition: {
     spacedRepetitionActiveUser: string | null;
     spacedRepetitionSelectedUserId: string;
@@ -37,13 +24,20 @@ type SrUserPanelProps = {
     handleSpacedRepetitionLoadUser: () => void;
   };
   handleDeleteOpen: () => void;
+  onStart: () => void;
+  startDisabled: boolean;
+  showReset?: boolean;
+  onReset?: () => void;
 };
 
-export const SrUserPanel = ({
-  flashcards,
+export const UserToolsPanel = ({
   spacedRepetition,
   handleDeleteOpen,
-}: SrUserPanelProps) => (
+  onStart,
+  startDisabled,
+  showReset = false,
+  onReset,
+}: UserToolsPanelProps) => (
   <section className="panel sr-user-panel">
     <div className="panel-header">
       <div>
@@ -53,18 +47,30 @@ export const SrUserPanel = ({
     <div className="panel-body">
       <div className="setting-row">
         <span className="label">Active user</span>
-        <button
-          type="button"
-          className="value active-user-button"
-          onClick={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
-          disabled={
-            !spacedRepetition.spacedRepetitionActiveUser ||
-            flashcards.isFlashcardScanning
-          }
-          aria-label="Load flashcards for active user"
-        >
-          {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
-        </button>
+        <div className="setting-inline">
+          <span className="value">
+            {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
+          </span>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={onStart}
+            disabled={startDisabled}
+            aria-label="Start session for active user"
+          >
+            Start
+          </button>
+          {showReset ? (
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onReset}
+              aria-label="Reset session"
+            >
+              Reset
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="setting-row">
         <span className="label">User list</span>

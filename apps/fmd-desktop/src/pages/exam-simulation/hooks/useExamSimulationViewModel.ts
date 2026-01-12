@@ -82,7 +82,7 @@ const isTaskCorrect = (
   );
 
 export const useExamSimulationViewModel = () => {
-  const { actions, preview, settings, vault } = useAppState();
+  const { actions, preview, settings, spacedRepetition, vault } = useAppState();
   const [examFiles, setExamFiles] = useState<VaultFile[]>([]);
   const [examFilesState, setExamFilesState] = useState<LoadState>("idle");
   const [examFilesError, setExamFilesError] = useState("");
@@ -225,6 +225,7 @@ export const useExamSimulationViewModel = () => {
     preview.previewState === "idle" &&
     previewExamParse.tasks.length > 0 &&
     isSettingsValid;
+  const examRunning = stage !== "idle";
 
   const resetExamState = useCallback(() => {
     setStage("idle");
@@ -626,6 +627,7 @@ export const useExamSimulationViewModel = () => {
     actions,
     preview,
     settings,
+    spacedRepetition,
     vault,
     examFiles,
     examFilesState,
@@ -636,6 +638,7 @@ export const useExamSimulationViewModel = () => {
     plannedMaxPoints,
     hasTaskCountMismatch,
     stage,
+    examRunning,
     activeTaskIndex,
     activeTask,
     activeTaskMaxPoints,

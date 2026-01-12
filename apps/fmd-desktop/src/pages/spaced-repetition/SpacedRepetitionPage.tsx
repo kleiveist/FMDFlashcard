@@ -27,7 +27,7 @@ import { SrHeader } from "./components/SrHeader";
 import { SrStatsAndChart } from "./components/SrStatsAndChart";
 import { SrStatsPanel } from "./components/SrStatsPanel";
 import { SrToolsPanel } from "./components/SrToolsPanel";
-import { SrUserPanel } from "./components/SrUserPanel";
+import { UserToolsPanel } from "../../components/UserToolsPanel";
 import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
 
 export const SpacedRepetitionPage = () => {
@@ -112,10 +112,14 @@ export const SpacedRepetitionPage = () => {
       )}
 
       {isFocusMode ? null : (
-        <SrUserPanel
-          flashcards={flashcards}
+        <UserToolsPanel
           spacedRepetition={spacedRepetition}
           handleDeleteOpen={handleDeleteOpen}
+          onStart={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
+          startDisabled={
+            !spacedRepetition.spacedRepetitionActiveUser ||
+            flashcards.isFlashcardScanning
+          }
         />
       )}
 
