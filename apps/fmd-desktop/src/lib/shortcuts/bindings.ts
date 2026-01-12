@@ -1,0 +1,392 @@
+/**
+ * @file apps/fmd-desktop/src/lib/shortcuts/bindings.ts
+ *
+ * Zweck:
+ * - Normalisiert und vergleicht Shortcut-Bindings.
+ *
+ * Verantwortlichkeiten:
+ * - Canonicalisierung von Binding-Strings und KeyboardEvents.
+ * - Ableitung effektiver Bindings (Default vs Override).
+ * - Konflikterkennung fuer Shortcuts.
+ */
+
+import {
+  SHORTCUT_COMMANDS,
+  type ShortcutCommand,
+  type ShortcutContextId,
+} from "./registry";
+
+export type ShortcutPlatform = "mac" | "winLinux";
+
+export type ShortcutUserBindings = Record<string, string | null>;
+
+export type KeyboardShortcutSettings = {
+  version: number;
+  bindings: ShortcutUserBindings;
+};
+
+export const KEYBOARD_SHORTCUTS_VERSION = 1;
+
+export const DEFAULT_KEYBOARD_SHORTCUTS: KeyboardShortcutSettings = {
+  version: KEYBOARD_SHORTCUTS_VERSION,
+  bindings: {},
+};
+
+const MODIFIER_ORDER = ["Ctrl", "Alt", "Shift", "Meta"] as const;
+
+const MODIFIER_ALIASES: Record<string, string> = {
+  cmd: "Meta",
+  command: "Meta",
+  meta: "Meta",
+  win: "Meta",
+  super: "Meta",
+  control: "Ctrl",
+  ctrl: "Ctrl",
+  option: "Alt",
+  alt: "Alt",
+  shift: "Shift",
+};
+
+const KEY_ALIASES: Record<string, string> = {
+  esc: "Escape",
+  escape: "Escape",
+  return: "Enter",
+  enter: "Enter",
+  space: "Space",
+  spacebar: "Space",
+  left: "ArrowLeft",
+  right: "ArrowRight",
+  up: "ArrowUp",
+  down: "ArrowDown",
+};
+
+export const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tagName = target.tagName;
+  return (
+    target.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT"
+  );
+};
+
+export const getShortcutPlatform = (): ShortcutPlatform => {
+  if (typeof navigator === "undefined") {
+    return "winLinux";
+  }
+  return /mac/i.test(navigator.platform) ? "mac" : "winLinux";
+};
+
+const normalizeKeyToken = (token: string) => {
+  const trimmed = token.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const lower = trimmed.toLowerCase();
+  if (MODIFIER_ALIASES[lower]) {
+    return MODIFIER_ALIASES[lower];
+  }
+  if (KEY_ALIASES[lower]) {
+    return KEY_ALIASES[lower];
+  }
+  if (trimmed.length === 1) {
+    return trimmed.toUpperCase();
+  }
+  return trimmed;
+};
+
+const normalizeEventKey = (key: string) => {
+  if (!key) {
+    return null;
+  }
+  if (key === " ") {
+    return "Space";
+  }
+  if (key === "NumpadEnter") {
+    return "Enter";
+  }
+  const lower = key.toLowerCase();
+  if (KEY_ALIASES[lower]) {
+    return KEY_ALIASES[lower];
+  }
+  if (key.length === 1) {
+    return key.toUpperCase();
+  }
+  return key;
+};
+
+export const normalizeBinding = (binding: string | null | undefined) => {
+  if (!binding) {
+    return null;
+  }
+  const parts = binding
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const modifiers = new Set<string>();
+  let key: string | null = null;
+
+  parts.forEach((part) => {
+    const normalized = normalizeKeyToken(part);
+    if (!normalized) {
+      return;
+    }
+    if (MODIFIER_ORDER.includes(normalized as (typeof MODIFIER_ORDER)[number])) {
+      modifiers.add(normalized);
+      return;
+    }
+    key = normalized;
+  });
+
+  if (!key) {
+    return null;
+  }
+  const orderedModifiers = MODIFIER_ORDER.filter((modifier) => modifiers.has(modifier));
+  return [...orderedModifiers, key].join("+");
+};
+
+export const formatBinding = (
+  binding: string | null | undefined,
+  platform: ShortcutPlatform = getShortcutPlatform(),
+) => {
+  const normalized = normalizeBinding(binding);
+  if (!normalized) {
+    return "Unbound";
+  }
+  const parts = normalized.split("+");
+  const formatted = parts.map((part) => {
+    if (part === "Meta") {
+      return platform === "mac" ? "Cmd" : "Meta";
+    }
+    if (part === "Alt") {
+      return platform === "mac" ? "Option" : "Alt";
+    }
+    if (part === "Escape") {
+      return "Esc";
+    }
+    if (part === "ArrowLeft") {
+      return "Left";
+    }
+    if (part === "ArrowRight") {
+      return "Right";
+    }
+    if (part === "ArrowUp") {
+      return "Up";
+    }
+    if (part === "ArrowDown") {
+      return "Down";
+    }
+    return part;
+  });
+  return formatted.join("+");
+};
+
+export const eventToBinding = (event: KeyboardEvent) => {
+  if (
+    event.key === "Shift" ||
+    event.key === "Alt" ||
+    event.key === "Control" ||
+    event.key === "Meta"
+  ) {
+    return null;
+  }
+
+  const key = normalizeEventKey(event.key);
+  if (!key) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (event.ctrlKey) {
+    parts.push("Ctrl");
+  }
+  if (event.altKey) {
+    parts.push("Alt");
+  }
+  if (event.shiftKey) {
+    parts.push("Shift");
+  }
+  if (event.metaKey) {
+    parts.push("Meta");
+  }
+  parts.push(key);
+  return parts.join("+");
+};
+
+export const matchesBinding = (
+  event: KeyboardEvent,
+  binding: string | null | undefined,
+) => {
+  const normalizedBinding = normalizeBinding(binding);
+  if (!normalizedBinding) {
+    return false;
+  }
+  const normalizedEvent = eventToBinding(event);
+  return normalizedEvent === normalizedBinding;
+};
+
+export const getDefaultBinding = (
+  command: ShortcutCommand,
+  platform: ShortcutPlatform = getShortcutPlatform(),
+) => {
+  if (platform === "mac" && command.defaultBinding.mac) {
+    return command.defaultBinding.mac;
+  }
+  return command.defaultBinding.winLinux;
+};
+
+export const getEffectiveBinding = (
+  command: ShortcutCommand,
+  bindings: ShortcutUserBindings,
+  platform: ShortcutPlatform = getShortcutPlatform(),
+) => {
+  const override = bindings[command.id];
+  if (override === null) {
+    return null;
+  }
+  if (typeof override === "string") {
+    return override;
+  }
+  return getDefaultBinding(command, platform);
+};
+
+export const resolveCommandById = (commandId: string) =>
+  SHORTCUT_COMMANDS.find((command) => command.id === commandId) ?? null;
+
+export type ShortcutConflict = {
+  binding: string;
+  commandIds: string[];
+  contextIds: ShortcutContextId[];
+  kind: "context" | "global";
+};
+
+export const detectShortcutConflicts = (
+  commands: ShortcutCommand[],
+  bindings: ShortcutUserBindings,
+  platform: ShortcutPlatform = getShortcutPlatform(),
+) => {
+  const bindingByContext = new Map<string, ShortcutCommand[]>();
+  const globalBindings = new Map<string, ShortcutCommand[]>();
+
+  commands.forEach((command) => {
+    const binding = normalizeBinding(getEffectiveBinding(command, bindings, platform));
+    if (!binding) {
+      return;
+    }
+    if (command.context === "global") {
+      const existing = globalBindings.get(binding) ?? [];
+      existing.push(command);
+      globalBindings.set(binding, existing);
+      return;
+    }
+    const key = `${command.context}:${binding}`;
+    const existing = bindingByContext.get(key) ?? [];
+    existing.push(command);
+    bindingByContext.set(key, existing);
+  });
+
+  const conflicts: ShortcutConflict[] = [];
+
+  bindingByContext.forEach((group, key) => {
+    if (group.length < 2) {
+      return;
+    }
+    const [contextId, binding] = key.split(":");
+    conflicts.push({
+      binding,
+      commandIds: group.map((command) => command.id),
+      contextIds: group.map((command) => command.context),
+      kind: "context",
+    });
+  });
+
+  globalBindings.forEach((globalGroup, binding) => {
+    const globalCommandIds = globalGroup.map((command) => command.id);
+    const globalContextIds = globalGroup.map((command) => command.context);
+    if (globalGroup.length > 1) {
+      conflicts.push({
+        binding,
+        commandIds: globalCommandIds,
+        contextIds: globalContextIds,
+        kind: "global",
+      });
+    }
+    commands.forEach((command) => {
+      if (command.context === "global") {
+        return;
+      }
+      const commandBinding = normalizeBinding(
+        getEffectiveBinding(command, bindings, platform),
+      );
+      if (commandBinding && commandBinding === binding) {
+        conflicts.push({
+          binding,
+          commandIds: [...globalCommandIds, command.id],
+          contextIds: [...globalContextIds, command.context],
+          kind: "global",
+        });
+      }
+    });
+  });
+
+  return conflicts;
+};
+
+export const normalizeKeyboardShortcuts = (
+  value: unknown,
+): { settings: KeyboardShortcutSettings; needsMigration: boolean } => {
+  if (!value || typeof value !== "object") {
+    return { settings: DEFAULT_KEYBOARD_SHORTCUTS, needsMigration: true };
+  }
+
+  const candidate = value as {
+    version?: unknown;
+    bindings?: unknown;
+  };
+
+  const rawBindings = candidate.bindings;
+  const hasBindingsField = Object.prototype.hasOwnProperty.call(candidate, "bindings");
+  const useLegacyBindings =
+    !hasBindingsField && typeof candidate.version === "undefined";
+  const bindingsSource =
+    rawBindings && typeof rawBindings === "object"
+      ? rawBindings
+      : useLegacyBindings
+        ? (candidate as Record<string, unknown>)
+        : null;
+  const normalizedBindings: ShortcutUserBindings = {};
+
+  if (bindingsSource && typeof bindingsSource === "object") {
+    Object.entries(bindingsSource as Record<string, unknown>).forEach(
+      ([key, binding]) => {
+      if (binding === null) {
+        normalizedBindings[key] = null;
+        return;
+      }
+      if (typeof binding === "string") {
+        normalizedBindings[key] = normalizeBinding(binding) ?? binding;
+      }
+    },
+  );
+  }
+
+  const version =
+    typeof candidate.version === "number" && Number.isFinite(candidate.version)
+      ? candidate.version
+      : 0;
+
+  const settings: KeyboardShortcutSettings = {
+    version: KEYBOARD_SHORTCUTS_VERSION,
+    bindings: normalizedBindings,
+  };
+
+  const needsMigration =
+    version !== KEYBOARD_SHORTCUTS_VERSION ||
+    !bindingsSource ||
+    typeof bindingsSource !== "object";
+
+  return { settings, needsMigration };
+};

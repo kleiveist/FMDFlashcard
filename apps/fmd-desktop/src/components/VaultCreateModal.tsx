@@ -20,8 +20,11 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useAppState } from "./AppStateProvider";
+import { getEffectiveBinding, isEditableTarget, matchesBinding } from "../lib/shortcuts/bindings";
+import { getShortcutById } from "../lib/shortcuts/registry";
 
 type VaultCreateModalProps = {
   isOpen: boolean;
@@ -44,20 +47,40 @@ export const VaultCreateModal = ({
   onCancel,
   onConfirm,
 }: VaultCreateModalProps) => {
+  const { settings } = useAppState();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const cancelCommand = useMemo(
+    () => getShortcutById("vault.create-modal.cancel"),
+    [],
+  );
+  const cancelBinding = useMemo(
+    () =>
+      cancelCommand
+        ? getEffectiveBinding(cancelCommand, settings.keyboardShortcuts.bindings)
+        : null,
+    [cancelCommand, settings.keyboardShortcuts.bindings],
+  );
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onCancel();
+      if (!cancelCommand || !cancelBinding) {
+        return;
       }
+      if (!cancelCommand.allowInTextInputs && isEditableTarget(event.target)) {
+        return;
+      }
+      if (!matchesBinding(event, cancelBinding)) {
+        return;
+      }
+      event.preventDefault();
+      onCancel();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onCancel]);
+  }, [cancelBinding, cancelCommand, isOpen, onCancel]);
 
   useEffect(() => {
     if (!isOpen) {

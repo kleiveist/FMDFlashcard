@@ -255,6 +255,147 @@
   padding-top: 0;
 }
 
+.keyboard-shortcuts-panel .panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shortcut-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.shortcut-controls .text-input {
+  min-width: 200px;
+}
+
+.shortcut-conflicts {
+  border: 1px solid var(--error-border);
+  background: var(--error-bg);
+  color: var(--error-ink);
+  padding: 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shortcut-conflicts-title {
+  font-weight: 600;
+}
+
+.shortcut-conflict-binding {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.shortcut-conflict-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(160px, 0.6fr) auto;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.shortcut-row.is-conflict {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+}
+
+.shortcut-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shortcut-title {
+  font-weight: 600;
+}
+
+.shortcut-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shortcut-context {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.shortcut-binding {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.shortcut-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--field-bg-base);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.shortcut-capture {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.shortcut-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.shortcut-conflict-detail {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  color: var(--error-ink);
+}
+
+@media (max-width: 960px) {
+  .shortcut-row {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcut-actions {
+    justify-content: flex-start;
+  }
+}
+
 .appearance-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 320px);

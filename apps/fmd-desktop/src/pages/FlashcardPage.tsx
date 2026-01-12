@@ -21,7 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useCallback, useEffect, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { CompositeCard } from "../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../components/flashcards/FreeTextCard";
@@ -35,30 +35,70 @@ import {
   isFlashcardPartComplete,
 } from "../features/flashcards/logic";
 import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
+import {
+  formatBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "../lib/shortcuts/bindings";
+import { getShortcutById } from "../lib/shortcuts/registry";
 
 const flashcardStatusLabel = "Not scanned yet";
-
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-  const tagName = target.tagName;
-  return (
-    target.isContentEditable ||
-    tagName === "INPUT" ||
-    tagName === "TEXTAREA" ||
-    tagName === "SELECT"
-  );
-};
+const flashcardToggleCommand = getShortcutById("flashcards.focus.toggle");
+const flashcardExitCommand = getShortcutById("flashcards.focus.exit");
+const flashcardPrevCommand = getShortcutById("flashcards.focus.prev");
+const flashcardNextCommand = getShortcutById("flashcards.focus.next");
+const flashcardSubmitCommand = getShortcutById("flashcards.focus.submit");
 
 export const FlashcardPage = () => {
-  const { flashcards } = useAppState();
+  const { flashcards, settings } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const totalQuestions = flashcards.filteredFlashcardCount;
   const hasScannedCards = flashcards.flashcards.length > 0;
   const hasFilteredCards = flashcards.filteredFlashcardCount > 0;
-  const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
+  const platform = getShortcutPlatform();
+  const shortcutBindings = useMemo(() => {
+    const bindings = settings.keyboardShortcuts.bindings;
+    return {
+      toggle: flashcardToggleCommand
+        ? getEffectiveBinding(flashcardToggleCommand, bindings, platform)
+        : null,
+      exit: flashcardExitCommand
+        ? getEffectiveBinding(flashcardExitCommand, bindings, platform)
+        : null,
+      prev: flashcardPrevCommand
+        ? getEffectiveBinding(flashcardPrevCommand, bindings, platform)
+        : null,
+      next: flashcardNextCommand
+        ? getEffectiveBinding(flashcardNextCommand, bindings, platform)
+        : null,
+      submit: flashcardSubmitCommand
+        ? getEffectiveBinding(flashcardSubmitCommand, bindings, platform)
+        : null,
+    };
+  }, [platform, settings.keyboardShortcuts.bindings]);
+
+  const focusLabel = isFocusMode ? "Exit Live Mode" : "Enter Live Mode";
+  const toggleShortcutLabel = shortcutBindings.toggle
+    ? formatBinding(shortcutBindings.toggle, platform)
+    : null;
+  const exitShortcutLabel = shortcutBindings.exit
+    ? formatBinding(shortcutBindings.exit, platform)
+    : null;
+  const focusShortcutLabel = isFocusMode
+    ? [exitShortcutLabel, toggleShortcutLabel].filter(Boolean).join(" / ")
+    : toggleShortcutLabel;
+  const focusTitle = focusShortcutLabel
+    ? `${focusLabel} (Shortcut: ${focusShortcutLabel})`
+    : focusLabel;
+  const prevShortcutTitle = shortcutBindings.prev
+    ? `Back (Focus mode: ${formatBinding(shortcutBindings.prev, platform)})`
+    : "Back";
+  const nextShortcutTitle = shortcutBindings.next
+    ? `Next (Focus mode: ${formatBinding(shortcutBindings.next, platform)})`
+    : "Next";
 
   useEffect(() => {
     document.body.classList.toggle("focus-mode", isFocusMode);
@@ -68,27 +108,42 @@ export const FlashcardPage = () => {
   }, [isFocusMode]);
 
   useEffect(() => {
-    if (!isFocusMode) {
-      return;
-    }
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return;
       }
-      if (event.altKey || event.ctrlKey || event.metaKey) {
+      const isEditable = isEditableTarget(event.target);
+
+      const canTrigger = (
+        command: typeof flashcardToggleCommand,
+        binding: string | null,
+      ) => {
+        if (!command || !binding) {
+          return false;
+        }
+        if (!command.allowInTextInputs && isEditable) {
+          return false;
+        }
+        return matchesBinding(event, binding);
+      };
+
+      if (canTrigger(flashcardToggleCommand, shortcutBindings.toggle)) {
+        event.preventDefault();
+        setIsFocusMode((prev) => !prev);
         return;
       }
-      if (event.key === "Escape") {
+
+      if (!isFocusMode) {
+        return;
+      }
+
+      if (canTrigger(flashcardExitCommand, shortcutBindings.exit)) {
         event.preventDefault();
         setIsFocusMode(false);
         return;
       }
-      if (isEditableTarget(event.target)) {
-        return;
-      }
 
-      if (event.key === "ArrowLeft") {
+      if (canTrigger(flashcardPrevCommand, shortcutBindings.prev)) {
         event.preventDefault();
         if (flashcards.canGoBack) {
           flashcards.handleFlashcardPageBack();
@@ -96,7 +151,7 @@ export const FlashcardPage = () => {
         return;
       }
 
-      if (event.key === "ArrowRight") {
+      if (canTrigger(flashcardNextCommand, shortcutBindings.next)) {
         event.preventDefault();
         if (flashcards.canGoNext) {
           flashcards.handleFlashcardPageNext();
@@ -104,7 +159,7 @@ export const FlashcardPage = () => {
         return;
       }
 
-      if (event.key !== "Enter" && event.key !== "NumpadEnter") {
+      if (!canTrigger(flashcardSubmitCommand, shortcutBindings.submit)) {
         return;
       }
 
@@ -196,23 +251,19 @@ export const FlashcardPage = () => {
       } else if (card.kind === "free-text") {
         return;
       } else {
-      const responses = flashcards.flashcardClozeResponses[resolvedIndex] ?? {};
-      if (!areClozeBlanksComplete(card, responses)) {
-        return;
+        const responses = flashcards.flashcardClozeResponses[resolvedIndex] ?? {};
+        if (!areClozeBlanksComplete(card, responses)) {
+          return;
+        }
       }
-    }
 
-    event.preventDefault();
-    flashcards.handleFlashcardSubmit(resolvedIndex, true);
+      event.preventDefault();
+      flashcards.handleFlashcardSubmit(resolvedIndex, true);
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    activeCardIndex,
-    flashcards,
-    isFocusMode,
-  ]);
+  }, [activeCardIndex, flashcards, isFocusMode, shortcutBindings]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
@@ -384,8 +435,8 @@ export const FlashcardPage = () => {
               className={`focus-toggle ${isFocusMode ? "active" : ""}`}
               onClick={() => setIsFocusMode((prev) => !prev)}
               aria-pressed={isFocusMode}
-              aria-label={focusLabel}
-              title={focusLabel}
+              aria-label={focusTitle}
+              title={focusTitle}
             >
               <svg
                 aria-hidden="true"
@@ -508,6 +559,7 @@ export const FlashcardPage = () => {
               className="ghost small"
               onClick={flashcards.handleFlashcardPageBack}
               disabled={!flashcards.canGoBack}
+              title={prevShortcutTitle}
             >
               Back
             </button>
@@ -516,6 +568,7 @@ export const FlashcardPage = () => {
               className="ghost small"
               onClick={flashcards.handleFlashcardPageNext}
               disabled={!flashcards.canGoNext}
+              title={nextShortcutTitle}
             >
               Next
             </button>

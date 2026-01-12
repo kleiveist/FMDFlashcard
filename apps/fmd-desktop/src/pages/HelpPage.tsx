@@ -21,8 +21,10 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
+import { getEffectiveBinding, isEditableTarget, matchesBinding } from "../lib/shortcuts/bindings";
+import { getShortcutById } from "../lib/shortcuts/registry";
 import {
   AppLanguage,
   flashcardSyntaxEntries,
@@ -57,6 +59,14 @@ export const HelpPage = () => {
     flashcardSyntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
     flashcardSyntaxEntries[0] ??
     null;
+  const helpCloseCommand = useMemo(() => getShortcutById("help.topic.close"), []);
+  const helpCloseBinding = useMemo(
+    () =>
+      helpCloseCommand
+        ? getEffectiveBinding(helpCloseCommand, settings.keyboardShortcuts.bindings)
+        : null,
+    [helpCloseCommand, settings.keyboardShortcuts.bindings],
+  );
 
   const titleText = resolveText(helpHeader.title, language);
   const eyebrowText = resolveText(helpHeader.eyebrow, language);
@@ -125,7 +135,13 @@ export const HelpPage = () => {
       return;
     }
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
+      if (!helpCloseCommand || !helpCloseBinding) {
+        return;
+      }
+      if (!helpCloseCommand.allowInTextInputs && isEditableTarget(event.target)) {
+        return;
+      }
+      if (!matchesBinding(event, helpCloseBinding)) {
         return;
       }
       event.preventDefault();
@@ -135,7 +151,7 @@ export const HelpPage = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [activeTopicId]);
+  }, [activeTopicId, helpCloseBinding, helpCloseCommand, setActiveTopicId]);
 
   useEffect(
     () => () => {

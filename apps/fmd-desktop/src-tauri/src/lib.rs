@@ -28,6 +28,13 @@ struct ExamAiEvaluation {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
+#[serde(default)]
+struct KeyboardShortcutSettings {
+    version: Option<u32>,
+    bindings: HashMap<String, Option<String>>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 struct AppSettings {
     active_note_path: Option<String>,
     vault_path: Option<String>,
@@ -63,6 +70,7 @@ struct AppSettings {
     exam_task_count: Option<u32>,
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
+    keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
@@ -158,6 +166,7 @@ impl AppSettings {
             && self.exam_task_count.is_none()
             && self.exam_task_points.is_none()
             && self.exam_ai_evaluation.is_none()
+            && self.keyboard_shortcuts.is_none()
     }
 }
 
@@ -350,6 +359,7 @@ fn save_app_settings(
     exam_task_count: Option<u32>,
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
+    keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
     let settings = AppSettings {
@@ -387,6 +397,7 @@ fn save_app_settings(
         exam_task_count,
         exam_task_points,
         exam_ai_evaluation,
+        keyboard_shortcuts,
     };
     write_settings(&path, &settings)
 }

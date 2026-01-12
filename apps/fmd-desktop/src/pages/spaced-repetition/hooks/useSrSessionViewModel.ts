@@ -32,6 +32,14 @@ import {
 import { useAppState } from "../../../components/AppStateProvider";
 import { vaultBaseName } from "../../../lib/path";
 import {
+  formatBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "../../../lib/shortcuts/bindings";
+import { getShortcutById } from "../../../lib/shortcuts/registry";
+import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
   isFlashcardPartComplete,
@@ -43,28 +51,54 @@ import {
   normalizeSpacedRepetitionCardProgress,
 } from "../../../features/spaced-repetition/logic";
 
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-  const tagName = target.tagName;
-  return (
-    target.isContentEditable ||
-    tagName === "INPUT" ||
-    tagName === "TEXTAREA" ||
-    tagName === "SELECT"
-  );
-};
+const srToggleCommand = getShortcutById("spaced-repetition.focus.toggle");
+const srExitCommand = getShortcutById("spaced-repetition.focus.exit");
+const srPrevCommand = getShortcutById("spaced-repetition.focus.prev");
+const srNextCommand = getShortcutById("spaced-repetition.focus.next");
+const srSubmitCommand = getShortcutById("spaced-repetition.focus.submit");
 
 export const useSrSessionViewModel = () => {
-  const { flashcards, spacedRepetition, vault } = useAppState();
+  const { flashcards, settings, spacedRepetition, vault } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
   const statsView = spacedRepetition.spacedRepetitionStatsView;
-  const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
+  const platform = getShortcutPlatform();
+  const shortcutBindings = useMemo(() => {
+    const bindings = settings.keyboardShortcuts.bindings;
+    return {
+      toggle: srToggleCommand
+        ? getEffectiveBinding(srToggleCommand, bindings, platform)
+        : null,
+      exit: srExitCommand ? getEffectiveBinding(srExitCommand, bindings, platform) : null,
+      prev: srPrevCommand ? getEffectiveBinding(srPrevCommand, bindings, platform) : null,
+      next: srNextCommand ? getEffectiveBinding(srNextCommand, bindings, platform) : null,
+      submit: srSubmitCommand
+        ? getEffectiveBinding(srSubmitCommand, bindings, platform)
+        : null,
+    };
+  }, [platform, settings.keyboardShortcuts.bindings]);
+  const focusLabel = isFocusMode ? "Exit Live Mode" : "Enter Live Mode";
+  const toggleShortcutLabel = shortcutBindings.toggle
+    ? formatBinding(shortcutBindings.toggle, platform)
+    : null;
+  const exitShortcutLabel = shortcutBindings.exit
+    ? formatBinding(shortcutBindings.exit, platform)
+    : null;
+  const focusShortcutLabel = isFocusMode
+    ? [exitShortcutLabel, toggleShortcutLabel].filter(Boolean).join(" / ")
+    : toggleShortcutLabel;
+  const focusTitle = focusShortcutLabel
+    ? `${focusLabel} (Shortcut: ${focusShortcutLabel})`
+    : focusLabel;
+  const prevShortcutTitle = shortcutBindings.prev
+    ? `Back (Focus mode: ${formatBinding(shortcutBindings.prev, platform)})`
+    : "Back";
+  const nextShortcutTitle = shortcutBindings.next
+    ? `Next (Focus mode: ${formatBinding(shortcutBindings.next, platform)})`
+    : "Next";
   const vaultId = useMemo(
     () => (vault.vaultPath ? hashString(vault.vaultPath) : null),
     [vault.vaultPath],
@@ -196,27 +230,42 @@ export const useSrSessionViewModel = () => {
   }, [isFocusMode]);
 
   useEffect(() => {
-    if (!isFocusMode) {
-      return;
-    }
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return;
       }
-      if (event.altKey || event.ctrlKey || event.metaKey) {
+      const isEditable = isEditableTarget(event.target);
+
+      const canTrigger = (
+        command: typeof srToggleCommand,
+        binding: string | null,
+      ) => {
+        if (!command || !binding) {
+          return false;
+        }
+        if (!command.allowInTextInputs && isEditable) {
+          return false;
+        }
+        return matchesBinding(event, binding);
+      };
+
+      if (canTrigger(srToggleCommand, shortcutBindings.toggle)) {
+        event.preventDefault();
+        setIsFocusMode((prev) => !prev);
         return;
       }
-      if (event.key === "Escape") {
+
+      if (!isFocusMode) {
+        return;
+      }
+
+      if (canTrigger(srExitCommand, shortcutBindings.exit)) {
         event.preventDefault();
         setIsFocusMode(false);
         return;
       }
-      if (isEditableTarget(event.target)) {
-        return;
-      }
 
-      if (event.key === "ArrowLeft") {
+      if (canTrigger(srPrevCommand, shortcutBindings.prev)) {
         event.preventDefault();
         if (spacedRepetition.spacedRepetitionCanGoBack) {
           spacedRepetition.handleSpacedRepetitionPageBack();
@@ -224,7 +273,7 @@ export const useSrSessionViewModel = () => {
         return;
       }
 
-      if (event.key === "ArrowRight") {
+      if (canTrigger(srNextCommand, shortcutBindings.next)) {
         event.preventDefault();
         if (spacedRepetition.spacedRepetitionCanGoNext) {
           spacedRepetition.handleSpacedRepetitionPageNext();
@@ -232,7 +281,7 @@ export const useSrSessionViewModel = () => {
         return;
       }
 
-      if (event.key !== "Enter" && event.key !== "NumpadEnter") {
+      if (!canTrigger(srSubmitCommand, shortcutBindings.submit)) {
         return;
       }
 
@@ -348,7 +397,7 @@ export const useSrSessionViewModel = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeCardIndex, isFocusMode, spacedRepetition]);
+  }, [activeCardIndex, isFocusMode, shortcutBindings, spacedRepetition]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
@@ -568,7 +617,9 @@ export const useSrSessionViewModel = () => {
     setIsFocusMode,
     activeBoxFilter,
     statsView,
-    focusLabel,
+    focusLabel: focusTitle,
+    prevShortcutTitle,
+    nextShortcutTitle,
     vaultName,
     showBoxEmptyMessage,
     statsChartClass,

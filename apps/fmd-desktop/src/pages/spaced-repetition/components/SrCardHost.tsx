@@ -104,6 +104,8 @@ type SrCardHostProps = {
   spacedRepetitionCanGoNext: boolean;
   handleSpacedRepetitionPageBack: () => void;
   handleSpacedRepetitionPageNext: () => void;
+  prevShortcutTitle: string;
+  nextShortcutTitle: string;
 };
 
 export const SrCardHost = ({
@@ -142,6 +144,8 @@ export const SrCardHost = ({
   spacedRepetitionCanGoNext,
   handleSpacedRepetitionPageBack,
   handleSpacedRepetitionPageNext,
+  prevShortcutTitle,
+  nextShortcutTitle,
 }: SrCardHostProps) => (
   <div className="panel-body">
     {filteredFlashcardEntries.length === 0 ? (
@@ -246,6 +250,8 @@ export const SrCardHost = ({
       spacedRepetitionCanGoNext={spacedRepetitionCanGoNext}
       handleSpacedRepetitionPageBack={handleSpacedRepetitionPageBack}
       handleSpacedRepetitionPageNext={handleSpacedRepetitionPageNext}
+      prevShortcutTitle={prevShortcutTitle}
+      nextShortcutTitle={nextShortcutTitle}
     />
   </div>
 );

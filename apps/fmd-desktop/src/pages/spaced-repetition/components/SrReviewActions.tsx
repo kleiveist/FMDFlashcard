@@ -24,6 +24,8 @@ type SrReviewActionsProps = {
   spacedRepetitionCanGoNext: boolean;
   handleSpacedRepetitionPageBack: () => void;
   handleSpacedRepetitionPageNext: () => void;
+  prevShortcutTitle: string;
+  nextShortcutTitle: string;
 };
 
 export const SrReviewActions = ({
@@ -31,6 +33,8 @@ export const SrReviewActions = ({
   spacedRepetitionCanGoNext,
   handleSpacedRepetitionPageBack,
   handleSpacedRepetitionPageNext,
+  prevShortcutTitle,
+  nextShortcutTitle,
 }: SrReviewActionsProps) => (
   <div className="flashcard-pagination">
     <button
@@ -38,6 +42,7 @@ export const SrReviewActions = ({
       className="ghost small"
       onClick={handleSpacedRepetitionPageBack}
       disabled={!spacedRepetitionCanGoBack}
+      title={prevShortcutTitle}
     >
       Back
     </button>
@@ -46,6 +51,7 @@ export const SrReviewActions = ({
       className="ghost small"
       onClick={handleSpacedRepetitionPageNext}
       disabled={!spacedRepetitionCanGoNext}
+      title={nextShortcutTitle}
     >
       Next
     </button>

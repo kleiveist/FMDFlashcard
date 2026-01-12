@@ -40,6 +40,8 @@ export const SpacedRepetitionPage = () => {
     activeBoxFilter,
     statsView,
     focusLabel,
+    prevShortcutTitle,
+    nextShortcutTitle,
     vaultName,
     showBoxEmptyMessage,
     statsChartClass,
@@ -176,6 +178,8 @@ export const SpacedRepetitionPage = () => {
           handleSpacedRepetitionPageNext={
             spacedRepetition.handleSpacedRepetitionPageNext
           }
+          prevShortcutTitle={prevShortcutTitle}
+          nextShortcutTitle={nextShortcutTitle}
         />
       </section>
 

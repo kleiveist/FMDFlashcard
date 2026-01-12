@@ -20,6 +20,7 @@ export const SETTINGS_PAGES = [
   { id: "app-settings", label: "App Settings" },
   { id: "exam-settings", label: "Exam Settings" },
   { id: "review-tools", label: "Review Tools" },
+  { id: "keyboard-shortcuts", label: "Keyboard Shortcuts" },
   { id: "appearance", label: "Appearance" },
   { id: "markdown-editor", label: "Markdown editor" },
 ] as const;

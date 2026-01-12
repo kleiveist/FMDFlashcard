@@ -27,6 +27,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color";
 import { applyAccentColor, applyTheme, type ThemeMode } from "../../lib/theme";
 import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  normalizeKeyboardShortcuts,
+  type KeyboardShortcutSettings,
+} from "../../lib/shortcuts/bindings";
+import {
   DEFAULT_FLASHCARD_PAGE_SIZE,
   FLASHCARD_PAGE_SIZES,
   type FlashcardMode,
@@ -94,6 +99,7 @@ type AppSettings = {
   exam_task_count?: number | null;
   exam_task_points?: number[] | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
+  keyboard_shortcuts?: KeyboardShortcutSettings | null;
 };
 
 type PersistUpdates = {
@@ -128,6 +134,7 @@ type PersistUpdates = {
   examTaskCount?: number;
   examTaskPoints?: number[];
   examAiEvaluation?: ExamAiEvaluation;
+  keyboardShortcuts?: KeyboardShortcutSettings;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -352,9 +359,12 @@ export const useAppSettings = () => {
   const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
     DEFAULT_EXAM_AI_EVALUATION,
   );
+  const [keyboardShortcuts, setKeyboardShortcutsState] =
+    useState<KeyboardShortcutSettings>(DEFAULT_KEYBOARD_SHORTCUTS);
   const autoSaveReady = useRef(false);
   const autoSaveTimer = useRef<number | null>(null);
   const needsShowHiddenFoldersMigration = useRef(false);
+  const needsKeyboardShortcutsMigration = useRef(false);
 
   const setExamMaxTotalPoints = useCallback((value: number) => {
     setExamMaxTotalPointsState(clampExamTotalPoints(value));
@@ -387,6 +397,25 @@ export const useAppSettings = () => {
       enabled: Boolean(value?.enabled),
       provider: value?.provider === "shared-gpt" ? "shared-gpt" : null,
     });
+  }, []);
+
+  const setKeyboardShortcuts = useCallback((value: KeyboardShortcutSettings) => {
+    const { settings } = normalizeKeyboardShortcuts(value);
+    setKeyboardShortcutsState(settings);
+  }, []);
+
+  const setKeyboardShortcutBinding = useCallback(
+    (commandId: string, binding: string | null) => {
+      setKeyboardShortcutsState((prev) => ({
+        ...prev,
+        bindings: { ...prev.bindings, [commandId]: binding },
+      }));
+    },
+    [],
+  );
+
+  const resetKeyboardShortcuts = useCallback(() => {
+    setKeyboardShortcutsState(DEFAULT_KEYBOARD_SHORTCUTS);
   }, []);
 
   const setShowHiddenFolders = useCallback((value: boolean) => {
@@ -426,6 +455,7 @@ export const useAppSettings = () => {
       examTaskCount: number;
       examTaskPoints: number[];
       examAiEvaluation: ExamAiEvaluation;
+      keyboardShortcuts: KeyboardShortcutSettings;
     }) => {
       try {
         await invoke("save_app_settings", {
@@ -461,6 +491,7 @@ export const useAppSettings = () => {
           examTaskCount: settings.examTaskCount,
           examTaskPoints: settings.examTaskPoints,
           examAiEvaluation: settings.examAiEvaluation,
+          keyboardShortcuts: settings.keyboardShortcuts,
         });
         return true;
       } catch (error) {
@@ -523,6 +554,7 @@ export const useAppSettings = () => {
           updates.examMaxTotalPoints ?? examMaxTotalPoints,
         ),
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
+        keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "activeNotePath" in updates) {
@@ -543,6 +575,7 @@ export const useAppSettings = () => {
       examMaxTotalPoints,
       examTaskCount,
       examTaskPoints,
+      keyboardShortcuts,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -765,6 +798,13 @@ export const useAppSettings = () => {
         const storedExamAiEvaluation = normalizeExamAiEvaluation(
           settings.exam_ai_evaluation,
         );
+        const {
+          settings: storedKeyboardShortcuts,
+          needsMigration: shouldMigrateShortcuts,
+        } = normalizeKeyboardShortcuts(settings.keyboard_shortcuts);
+        if (shouldMigrateShortcuts) {
+          needsKeyboardShortcutsMigration.current = true;
+        }
         setTheme(storedTheme);
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
@@ -800,6 +840,7 @@ export const useAppSettings = () => {
         setExamTaskCountState(storedExamTaskCount);
         setExamTaskPointsState(storedExamTaskPoints);
         setExamAiEvaluationState(storedExamAiEvaluation);
+        setKeyboardShortcutsState(storedKeyboardShortcuts);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -848,6 +889,14 @@ export const useAppSettings = () => {
   }, [persistSettings, settingsLoaded, showHiddenFolders]);
 
   useEffect(() => {
+    if (!settingsLoaded || !needsKeyboardShortcutsMigration.current) {
+      return;
+    }
+    needsKeyboardShortcutsMigration.current = false;
+    void persistSettings({ keyboardShortcuts });
+  }, [keyboardShortcuts, persistSettings, settingsLoaded]);
+
+  useEffect(() => {
     if (!settingsLoaded) {
       return;
     }
@@ -891,6 +940,7 @@ export const useAppSettings = () => {
         examTaskCount,
         examTaskPoints,
         examAiEvaluation,
+        keyboardShortcuts,
       });
     }, 300);
 
@@ -909,6 +959,7 @@ export const useAppSettings = () => {
     examMaxTotalPoints,
     examTaskCount,
     examTaskPoints,
+    keyboardShortcuts,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -955,6 +1006,7 @@ export const useAppSettings = () => {
     fastFlashcardDuration,
     flashcardPageSize,
     flashcardScope,
+    keyboardShortcuts,
     showHiddenFolders,
     language,
     maxFilesPerScan,
@@ -979,6 +1031,9 @@ export const useAppSettings = () => {
     setFastFlashcardOrder,
     setFastFlashcardScope,
     setFastFlashcardDuration,
+    setKeyboardShortcuts,
+    setKeyboardShortcutBinding,
+    resetKeyboardShortcuts,
     setShowHiddenFolders,
     setLanguage,
     setMaxFilesPerScan,

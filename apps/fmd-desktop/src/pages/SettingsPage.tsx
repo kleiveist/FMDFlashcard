@@ -26,6 +26,7 @@ import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import { ExamSettingsSection } from "../components/settings/ExamSettingsSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
+import { KeyboardShortcutsSection } from "../components/settings/KeyboardShortcutsSection";
 import { MarkdownEditorSection } from "../components/settings/MarkdownEditorSection";
 import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
 import { LanguageTabContent } from "../components/settings/DataSyncTabContent";
@@ -263,6 +264,17 @@ export const SettingsPage = () => {
             setSpacedRepetitionRepetitionStrength={
               spacedRepetition.setSpacedRepetitionRepetitionStrength
             }
+          />
+        </div>
+      ) : null}
+      {activeSettingsPage === "keyboard-shortcuts" ? (
+        <div
+          className="settings-page settings-single-column"
+          id="settings-page-keyboard-shortcuts"
+        >
+          <KeyboardShortcutsSection
+            keyboardShortcuts={settings.keyboardShortcuts}
+            setKeyboardShortcuts={settings.setKeyboardShortcuts}
           />
         </div>
       ) : null}
