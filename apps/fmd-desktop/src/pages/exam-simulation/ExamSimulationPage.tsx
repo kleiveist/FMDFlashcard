@@ -28,6 +28,7 @@ import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
 import { ExamResultsPanel } from "./components/ExamResultsPanel";
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
+import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 import {
   formatBinding,
@@ -67,6 +68,9 @@ export const ExamSimulationPage = () => {
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
     runTasks,
+    examTimeLimitMs,
+    examTimeRemainingMs,
+    examTimeUp,
     canStartExam,
     examEmptyState,
     results,
@@ -124,6 +128,7 @@ export const ExamSimulationPage = () => {
 
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
+  const isExamTimerRunning = stage === "running" && !examTimeUp;
   const selectedUser = useMemo(
     () =>
       spacedRepetition.spacedRepetitionUsers.find(
@@ -256,9 +261,26 @@ export const ExamSimulationPage = () => {
           <p className="muted">Run a Punktaufgaben exam and convert tasks into cards.</p>
         </div>
       </header>
+      <div className="exam-timeline-block">
+        <ExamTimeBar
+          timeLimitMs={examTimeLimitMs}
+          timeRemainingMs={examTimeRemainingMs}
+          isRunning={isExamTimerRunning}
+          isTimeUp={examTimeUp}
+        />
+      </div>
 
       <div className="exam-layout">
         <section className="panel exam-panel">
+          {isViewMode ? (
+            <ExamTimeBar
+              className="exam-time-bar--view"
+              timeLimitMs={examTimeLimitMs}
+              timeRemainingMs={examTimeRemainingMs}
+              isRunning={isExamTimerRunning}
+              isTimeUp={examTimeUp}
+            />
+          ) : null}
           {stage === "idle" ? (
             <ExamIdlePanel
               selectedFile={selectedExamFile}

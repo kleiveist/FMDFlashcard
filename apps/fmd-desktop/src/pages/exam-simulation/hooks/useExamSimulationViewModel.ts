@@ -21,7 +21,7 @@
  * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
  */
 
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppState } from "../../../components/AppStateProvider";
 import {
@@ -49,6 +49,7 @@ type ExamSettingsSnapshot = {
   maxTotalPoints: number;
   taskCount: number;
   taskPoints: number[];
+  timeLimitMinutes: number;
   aiEvaluation: ExamAiEvaluation;
 };
 
@@ -107,6 +108,12 @@ export const useExamSimulationViewModel = () => {
   >({});
   const [conversionPending, setConversionPending] = useState(false);
   const [conversionError, setConversionError] = useState("");
+  const [examTimeRemainingMs, setExamTimeRemainingMs] = useState<number | null>(
+    null,
+  );
+  const [examTimeUp, setExamTimeUp] = useState(false);
+  const examTimerRef = useRef<number | null>(null);
+  const examTimerEndRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!vault.vaultPath) {
@@ -199,6 +206,10 @@ export const useExamSimulationViewModel = () => {
 
   const activeTasks = stage === "idle" ? previewExamParse.tasks : activeExamTasks;
   const activeExamSettings = stage === "idle" ? null : activeSettings;
+  const examTimeLimitMinutes = activeExamSettings
+    ? activeExamSettings.timeLimitMinutes
+    : settings.examTimeLimitMinutes;
+  const examTimeLimitMs = Math.max(1, examTimeLimitMinutes) * 60 * 1000;
   const activeTaskCount = activeExamSettings
     ? Math.min(activeTasks.length, activeExamSettings.taskCount)
     : plannedTaskCount;
@@ -239,6 +250,9 @@ export const useExamSimulationViewModel = () => {
     setConversionDecisions({});
     setConversionPending(false);
     setConversionError("");
+    setExamTimeRemainingMs(null);
+    setExamTimeUp(false);
+    examTimerEndRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -253,6 +267,7 @@ export const useExamSimulationViewModel = () => {
       maxTotalPoints: settings.examMaxTotalPoints,
       taskCount: settings.examTaskCount,
       taskPoints: activeTaskPoints,
+      timeLimitMinutes: settings.examTimeLimitMinutes,
       aiEvaluation: settings.examAiEvaluation,
     };
     // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
@@ -267,6 +282,9 @@ export const useExamSimulationViewModel = () => {
     setConversionDecisions({});
     setConversionError("");
     setConversionPending(false);
+    setExamTimeUp(false);
+    setExamTimeRemainingMs(examTimeLimitMs);
+    examTimerEndRef.current = Date.now() + examTimeLimitMs;
   }, [
     canStartExam,
     previewExamParse.tasks,
@@ -274,7 +292,9 @@ export const useExamSimulationViewModel = () => {
     settings.examAiEvaluation,
     settings.examMaxTotalPoints,
     settings.examTaskCount,
+    settings.examTimeLimitMinutes,
     activeTaskPoints,
+    examTimeLimitMs,
   ]);
 
   const handleResetExam = useCallback(() => {
@@ -287,6 +307,47 @@ export const useExamSimulationViewModel = () => {
     }
     setStage("review");
   }, [stage]);
+
+  useEffect(() => {
+    if (stage !== "running") {
+      if (examTimerRef.current !== null) {
+        window.clearInterval(examTimerRef.current);
+        examTimerRef.current = null;
+      }
+      return;
+    }
+
+    const endTime = examTimerEndRef.current ?? Date.now() + examTimeLimitMs;
+    examTimerEndRef.current = endTime;
+
+    const updateTimer = () => {
+      const remaining = Math.max(0, endTime - Date.now());
+      setExamTimeRemainingMs(remaining);
+      if (remaining <= 0) {
+        setExamTimeUp(true);
+        if (examTimerRef.current !== null) {
+          window.clearInterval(examTimerRef.current);
+          examTimerRef.current = null;
+        }
+        if (stage === "running") {
+          setStage("review");
+        }
+      }
+    };
+
+    updateTimer();
+    if (examTimerRef.current !== null) {
+      window.clearInterval(examTimerRef.current);
+    }
+    examTimerRef.current = window.setInterval(updateTimer, 1000);
+
+    return () => {
+      if (examTimerRef.current !== null) {
+        window.clearInterval(examTimerRef.current);
+        examTimerRef.current = null;
+      }
+    };
+  }, [examTimeLimitMs, stage]);
 
   const handleStartScoring = useCallback(() => {
     if (stage !== "review") {
@@ -648,6 +709,10 @@ export const useExamSimulationViewModel = () => {
     runTasks,
     runTaskPoints,
     runMaxPoints,
+    examTimeLimitMinutes,
+    examTimeLimitMs,
+    examTimeRemainingMs,
+    examTimeUp,
     remainingPoints,
     isSettingsValid,
     canStartExam,

@@ -68,6 +68,13 @@
   grid-column: 1 / -1;
 }
 
+.settings-exam-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
 .exam-settings-panel .panel-body {
   display: flex;
   flex-direction: column;
@@ -86,6 +93,12 @@
   padding: 4px 12px;
   font-size: 0.9rem;
   line-height: 1.1;
+}
+
+.exam-time-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .exam-points-table {

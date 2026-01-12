@@ -45,6 +45,7 @@ export const ExamFilePanel = ({
     : files.length === 0
       ? "Keine Exam-Dateien"
       : `${files.length} Exam-Datei${files.length === 1 ? "" : "en"}`;
+  const isScrollable = files.length > 5;
 
   return (
     <section className="panel list-panel">
@@ -66,21 +67,23 @@ export const ExamFilePanel = ({
           </div>
         ) : null}
         {vaultPath && listState !== "error" ? (
-          <ul className="file-list">
-            {files.map((file) => (
-              <li key={file.path}>
-                <button
-                  type="button"
-                  className={`file-item ${
-                    selectedFile?.path === file.path ? "active" : ""
-                  }`}
-                  onClick={() => onSelectFile(file)}
-                >
-                  <span className="file-name">{file.relative_path}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className={`exam-file-list ${isScrollable ? "is-scrollable" : ""}`}>
+            <ul className="file-list">
+              {files.map((file) => (
+                <li key={file.path}>
+                  <button
+                    type="button"
+                    className={`file-item ${
+                      selectedFile?.path === file.path ? "active" : ""
+                    }`}
+                    onClick={() => onSelectFile(file)}
+                  >
+                    <span className="file-name">{file.relative_path}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </div>
     </section>

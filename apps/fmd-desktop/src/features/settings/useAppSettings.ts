@@ -98,6 +98,7 @@ type AppSettings = {
   exam_max_total_points?: number | null;
   exam_task_count?: number | null;
   exam_task_points?: number[] | null;
+  exam_time_limit_minutes?: number | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
   keyboard_shortcuts?: KeyboardShortcutSettings | null;
 };
@@ -133,6 +134,7 @@ type PersistUpdates = {
   examMaxTotalPoints?: number;
   examTaskCount?: number;
   examTaskPoints?: number[];
+  examTimeLimitMinutes?: number;
   examAiEvaluation?: ExamAiEvaluation;
   keyboardShortcuts?: KeyboardShortcutSettings;
 };
@@ -162,6 +164,7 @@ const DEFAULT_RIGHT_TOOLBAR_COLLAPSED = false;
 const MAX_EXAM_TASK_COUNT = 20;
 const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
 const DEFAULT_EXAM_TASK_COUNT = 5;
+const DEFAULT_EXAM_TIME_LIMIT_MINUTES = 30;
 const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
   enabled: false,
   provider: null,
@@ -217,6 +220,14 @@ const clampExamTaskPointsValue = (value: unknown) => {
     return 0;
   }
   return Math.max(0, parsed);
+};
+
+const clampExamTimeLimitMinutes = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return DEFAULT_EXAM_TIME_LIMIT_MINUTES;
+  }
+  return Math.min(240, Math.max(1, parsed));
 };
 
 const buildDefaultExamTaskPoints = (taskCount: number, maxTotalPoints: number) => {
@@ -356,6 +367,9 @@ export const useAppSettings = () => {
       DEFAULT_EXAM_MAX_TOTAL_POINTS,
     ),
   );
+  const [examTimeLimitMinutes, setExamTimeLimitMinutesState] = useState(
+    DEFAULT_EXAM_TIME_LIMIT_MINUTES,
+  );
   const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
     DEFAULT_EXAM_AI_EVALUATION,
   );
@@ -391,6 +405,10 @@ export const useAppSettings = () => {
     },
     [examMaxTotalPoints, examTaskCount],
   );
+
+  const setExamTimeLimitMinutes = useCallback((value: number) => {
+    setExamTimeLimitMinutesState(clampExamTimeLimitMinutes(value));
+  }, []);
 
   const setExamAiEvaluation = useCallback((value: ExamAiEvaluation) => {
     setExamAiEvaluationState({
@@ -454,6 +472,7 @@ export const useAppSettings = () => {
       examMaxTotalPoints: number;
       examTaskCount: number;
       examTaskPoints: number[];
+      examTimeLimitMinutes: number;
       examAiEvaluation: ExamAiEvaluation;
       keyboardShortcuts: KeyboardShortcutSettings;
     }) => {
@@ -490,6 +509,7 @@ export const useAppSettings = () => {
           examMaxTotalPoints: settings.examMaxTotalPoints,
           examTaskCount: settings.examTaskCount,
           examTaskPoints: settings.examTaskPoints,
+          examTimeLimitMinutes: settings.examTimeLimitMinutes,
           examAiEvaluation: settings.examAiEvaluation,
           keyboardShortcuts: settings.keyboardShortcuts,
         });
@@ -553,6 +573,8 @@ export const useAppSettings = () => {
           updates.examTaskCount ?? examTaskCount,
           updates.examMaxTotalPoints ?? examMaxTotalPoints,
         ),
+        examTimeLimitMinutes:
+          updates.examTimeLimitMinutes ?? examTimeLimitMinutes,
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
         keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
       };
@@ -575,6 +597,7 @@ export const useAppSettings = () => {
       examMaxTotalPoints,
       examTaskCount,
       examTaskPoints,
+      examTimeLimitMinutes,
       keyboardShortcuts,
       flashcardMode,
       flashcardOrder,
@@ -582,6 +605,7 @@ export const useAppSettings = () => {
       fastFlashcardOrder,
       fastFlashcardScope,
       fastFlashcardDuration,
+      examTimeLimitMinutes,
       flashcardPageSize,
       flashcardScope,
       language,
@@ -795,6 +819,9 @@ export const useAppSettings = () => {
           storedExamTaskCount,
           storedExamMaxTotalPoints,
         );
+        const storedExamTimeLimitMinutes = clampExamTimeLimitMinutes(
+          settings.exam_time_limit_minutes ?? DEFAULT_EXAM_TIME_LIMIT_MINUTES,
+        );
         const storedExamAiEvaluation = normalizeExamAiEvaluation(
           settings.exam_ai_evaluation,
         );
@@ -839,6 +866,7 @@ export const useAppSettings = () => {
         setExamMaxTotalPointsState(storedExamMaxTotalPoints);
         setExamTaskCountState(storedExamTaskCount);
         setExamTaskPointsState(storedExamTaskPoints);
+        setExamTimeLimitMinutesState(storedExamTimeLimitMinutes);
         setExamAiEvaluationState(storedExamAiEvaluation);
         setKeyboardShortcutsState(storedKeyboardShortcuts);
         setSettingsLoaded(true);
@@ -939,6 +967,7 @@ export const useAppSettings = () => {
         examMaxTotalPoints,
         examTaskCount,
         examTaskPoints,
+        examTimeLimitMinutes,
         examAiEvaluation,
         keyboardShortcuts,
       });
@@ -959,6 +988,7 @@ export const useAppSettings = () => {
     examMaxTotalPoints,
     examTaskCount,
     examTaskPoints,
+    examTimeLimitMinutes,
     keyboardShortcuts,
     flashcardMode,
     flashcardOrder,
@@ -998,6 +1028,7 @@ export const useAppSettings = () => {
     examMaxTotalPoints,
     examTaskCount,
     examTaskPoints,
+    examTimeLimitMinutes,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -1023,6 +1054,8 @@ export const useAppSettings = () => {
     setExamMaxTotalPoints,
     setExamTaskCount,
     setExamTaskPoints,
+    setExamTimeLimitMinutes,
+    setExamTimeLimitMinutes,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,

@@ -25,6 +25,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import { ExamSettingsSection } from "../components/settings/ExamSettingsSection";
+import { ExamTimeSettingsPanel } from "../components/settings/ExamTimeSettingsPanel";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
 import { KeyboardShortcutsSection } from "../components/settings/KeyboardShortcutsSection";
 import { MarkdownEditorSection } from "../components/settings/MarkdownEditorSection";
@@ -280,7 +281,7 @@ export const SettingsPage = () => {
       ) : null}
       {activeSettingsPage === "exam-settings" ? (
         <div
-          className="settings-page settings-single-column"
+          className="settings-page settings-exam-grid"
           id="settings-page-exam-settings"
         >
           <ExamSettingsSection
@@ -291,6 +292,10 @@ export const SettingsPage = () => {
             setMaxTotalPoints={settings.setExamMaxTotalPoints}
             setTaskCount={settings.setExamTaskCount}
             setTaskPoints={settings.setExamTaskPoints}
+          />
+          <ExamTimeSettingsPanel
+            timeLimitMinutes={settings.examTimeLimitMinutes}
+            setTimeLimitMinutes={settings.setExamTimeLimitMinutes}
           />
         </div>
       ) : null}
