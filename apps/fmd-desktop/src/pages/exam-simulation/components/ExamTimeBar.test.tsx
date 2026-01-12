@@ -18,6 +18,7 @@ describe("ExamTimeBar", () => {
         timeRemainingMs: null,
         isRunning: false,
         isTimeUp: false,
+        isEnabled: true,
       }),
     );
     expect(markup).toContain("Time limit: 30 min");
@@ -30,6 +31,7 @@ describe("ExamTimeBar", () => {
         timeRemainingMs: 90 * 1000,
         isRunning: true,
         isTimeUp: false,
+        isEnabled: true,
       }),
     );
     expect(markup).toContain("Remaining: 1:30");
@@ -43,8 +45,22 @@ describe("ExamTimeBar", () => {
         timeRemainingMs: 0,
         isRunning: false,
         isTimeUp: true,
+        isEnabled: true,
       }),
     );
     expect(markup).toContain("Time up");
+  });
+
+  it("renders disabled label", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamTimeBar, {
+        timeLimitMs: 0,
+        timeRemainingMs: null,
+        isRunning: false,
+        isTimeUp: false,
+        isEnabled: false,
+      }),
+    );
+    expect(markup).toContain("Timer disabled");
   });
 });

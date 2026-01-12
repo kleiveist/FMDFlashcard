@@ -20,17 +20,19 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import type { ExamAiEvaluation } from "../../features/settings/useAppSettings";
 
 type ExamSettingsSectionProps = {
   maxTotalPoints: number;
   taskCount: number;
   taskPoints: number[];
+  durationMinutes: number;
   aiEvaluation: ExamAiEvaluation;
   setMaxTotalPoints: (value: number) => void;
   setTaskCount: (value: number) => void;
   setTaskPoints: (value: number[]) => void;
+  setDurationMinutes: (value: number) => void;
 };
 
 const clampInput = (value: string) => {
@@ -45,10 +47,12 @@ export const ExamSettingsSection = ({
   maxTotalPoints,
   taskCount,
   taskPoints,
+  durationMinutes,
   aiEvaluation,
   setMaxTotalPoints,
   setTaskCount,
   setTaskPoints,
+  setDurationMinutes,
 }: ExamSettingsSectionProps) => {
   const sumAssigned = useMemo(
     () => taskPoints.reduce((sum, value) => sum + value, 0),
@@ -56,12 +60,22 @@ export const ExamSettingsSection = ({
   );
   const remaining = maxTotalPoints - sumAssigned;
   const isValid = sumAssigned === maxTotalPoints;
+  const lastDurationRef = useRef<number>(durationMinutes > 0 ? durationMinutes : 30);
 
   const handleTaskPointChange = (index: number, value: string) => {
     const nextPoints = [...taskPoints];
     nextPoints[index] = clampInput(value);
     setTaskPoints(nextPoints);
   };
+  const handleDurationChange = (value: string) => {
+    const parsed = clampInput(value);
+    const clamped = Math.min(240, Math.max(0, parsed));
+    if (clamped > 0) {
+      lastDurationRef.current = clamped;
+    }
+    setDurationMinutes(clamped);
+  };
+  const timerEnabled = durationMinutes > 0;
 
   return (
     <section className="panel exam-settings-panel">
@@ -94,6 +108,20 @@ export const ExamSettingsSection = ({
               onChange={(event) => setTaskCount(clampInput(event.target.value))}
             />
           </label>
+          <label className="setting-inline">
+            <span className="label">DURATION</span>
+            <div className="exam-time-input">
+              <input
+                type="number"
+                min={0}
+                max={240}
+                className="text-input exam-compact-input"
+                value={durationMinutes}
+                onChange={(event) => handleDurationChange(event.target.value)}
+              />
+              <span className="muted">min</span>
+            </div>
+          </label>
         </div>
 
         <div className="exam-points-table">
@@ -116,6 +144,30 @@ export const ExamSettingsSection = ({
             Sum assigned: {sumAssigned} / Max total: {maxTotalPoints}
           </div>
           <div className="muted">Remaining: {remaining}</div>
+        </div>
+
+        <div className="setting-row">
+          <span className="label">TIME LIMIT</span>
+          <div className="setting-inline">
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={timerEnabled}
+                onChange={(event) => {
+                  if (event.target.checked) {
+                    const next = lastDurationRef.current > 0 ? lastDurationRef.current : 30;
+                    setDurationMinutes(next);
+                  } else {
+                    setDurationMinutes(0);
+                  }
+                }}
+              />
+              <span className="slider" />
+            </label>
+            <span className="muted">
+              {timerEnabled ? "Enabled" : "Disabled"}
+            </span>
+          </div>
         </div>
 
         <div className="setting-row">

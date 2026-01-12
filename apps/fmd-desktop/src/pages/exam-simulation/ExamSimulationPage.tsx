@@ -71,6 +71,7 @@ export const ExamSimulationPage = () => {
     examTimeLimitMs,
     examTimeRemainingMs,
     examTimeUp,
+    examTimerEnabled,
     canStartExam,
     examEmptyState,
     results,
@@ -128,7 +129,7 @@ export const ExamSimulationPage = () => {
 
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
-  const isExamTimerRunning = stage === "running" && !examTimeUp;
+  const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const selectedUser = useMemo(
     () =>
       spacedRepetition.spacedRepetitionUsers.find(
@@ -261,14 +262,17 @@ export const ExamSimulationPage = () => {
           <p className="muted">Run a Punktaufgaben exam and convert tasks into cards.</p>
         </div>
       </header>
-      <div className="exam-timeline-block">
-        <ExamTimeBar
-          timeLimitMs={examTimeLimitMs}
-          timeRemainingMs={examTimeRemainingMs}
-          isRunning={isExamTimerRunning}
-          isTimeUp={examTimeUp}
-        />
-      </div>
+      {!isViewMode ? (
+        <div className="exam-timeline-block">
+          <ExamTimeBar
+            timeLimitMs={examTimeLimitMs}
+            timeRemainingMs={examTimeRemainingMs}
+            isRunning={isExamTimerRunning}
+            isTimeUp={examTimeUp}
+            isEnabled={examTimerEnabled}
+          />
+        </div>
+      ) : null}
 
       <div className="exam-layout">
         <section className="panel exam-panel">
@@ -279,6 +283,7 @@ export const ExamSimulationPage = () => {
               timeRemainingMs={examTimeRemainingMs}
               isRunning={isExamTimerRunning}
               isTimeUp={examTimeUp}
+              isEnabled={examTimerEnabled}
             />
           ) : null}
           {stage === "idle" ? (

@@ -12,6 +12,7 @@ type ExamTimeBarProps = {
   timeRemainingMs: number | null;
   isRunning: boolean;
   isTimeUp: boolean;
+  isEnabled: boolean;
   className?: string;
 };
 
@@ -27,6 +28,7 @@ export const ExamTimeBar = ({
   timeRemainingMs,
   isRunning,
   isTimeUp,
+  isEnabled,
   className,
 }: ExamTimeBarProps) => {
   const limitMinutes = Math.max(1, Math.round(timeLimitMs / 60000));
@@ -41,20 +43,23 @@ export const ExamTimeBar = ({
     [progress],
   );
 
-  const label = isTimeUp
+  const label = !isEnabled
+    ? "Timer disabled"
+    : isTimeUp
     ? "Time up"
     : isRunning
       ? `Remaining: ${formatTime(remainingMs)}`
       : `Time limit: ${limitMinutes} min`;
-  const subLabel = isRunning ? `Total: ${limitMinutes} min` : null;
+  const subLabel = isRunning && isEnabled ? `Total: ${limitMinutes} min` : null;
 
   return (
     <div
       className={[
         "exam-time-bar",
         isRunning ? "is-running" : "is-idle",
-        isWarning ? "is-warning" : "",
+        isWarning && isEnabled ? "is-warning" : "",
         isTimeUp ? "is-time-up" : "",
+        !isEnabled ? "is-disabled" : "",
         className ?? "",
       ]
         .filter(Boolean)

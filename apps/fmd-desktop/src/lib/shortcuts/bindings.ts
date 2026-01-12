@@ -157,7 +157,15 @@ export const formatBinding = (
     return "Unbound";
   }
   const parts = normalized.split("+");
-  const formatted = parts.map((part) => {
+  const key = parts[parts.length - 1] ?? "";
+  const modifiers = parts.slice(0, -1);
+  const displayOrder =
+    platform === "mac" ? ["Meta", "Shift", "Alt", "Ctrl"] : [...MODIFIER_ORDER];
+  const orderedParts = [
+    ...displayOrder.filter((modifier) => modifiers.includes(modifier)),
+    key,
+  ].filter(Boolean);
+  const formatted = orderedParts.map((part) => {
     if (part === "Meta") {
       return platform === "mac" ? "Cmd" : "Meta";
     }

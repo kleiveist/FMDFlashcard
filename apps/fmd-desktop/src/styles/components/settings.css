@@ -68,12 +68,6 @@
   grid-column: 1 / -1;
 }
 
-.settings-exam-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-  align-items: start;
-}
 
 .exam-settings-panel .panel-body {
   display: flex;

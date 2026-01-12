@@ -49,7 +49,7 @@ type ExamSettingsSnapshot = {
   maxTotalPoints: number;
   taskCount: number;
   taskPoints: number[];
-  timeLimitMinutes: number;
+  durationMinutes: number;
   aiEvaluation: ExamAiEvaluation;
 };
 
@@ -206,10 +206,11 @@ export const useExamSimulationViewModel = () => {
 
   const activeTasks = stage === "idle" ? previewExamParse.tasks : activeExamTasks;
   const activeExamSettings = stage === "idle" ? null : activeSettings;
-  const examTimeLimitMinutes = activeExamSettings
-    ? activeExamSettings.timeLimitMinutes
-    : settings.examTimeLimitMinutes;
-  const examTimeLimitMs = Math.max(1, examTimeLimitMinutes) * 60 * 1000;
+  const examDurationMinutes = activeExamSettings
+    ? activeExamSettings.durationMinutes
+    : settings.examDurationMinutes;
+  const examTimerEnabled = examDurationMinutes > 0;
+  const examTimeLimitMs = examTimerEnabled ? examDurationMinutes * 60 * 1000 : 0;
   const activeTaskCount = activeExamSettings
     ? Math.min(activeTasks.length, activeExamSettings.taskCount)
     : plannedTaskCount;
@@ -267,7 +268,7 @@ export const useExamSimulationViewModel = () => {
       maxTotalPoints: settings.examMaxTotalPoints,
       taskCount: settings.examTaskCount,
       taskPoints: activeTaskPoints,
-      timeLimitMinutes: settings.examTimeLimitMinutes,
+      durationMinutes: settings.examDurationMinutes,
       aiEvaluation: settings.examAiEvaluation,
     };
     // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
@@ -283,8 +284,13 @@ export const useExamSimulationViewModel = () => {
     setConversionError("");
     setConversionPending(false);
     setExamTimeUp(false);
-    setExamTimeRemainingMs(examTimeLimitMs);
-    examTimerEndRef.current = Date.now() + examTimeLimitMs;
+    if (examTimerEnabled) {
+      setExamTimeRemainingMs(examTimeLimitMs);
+      examTimerEndRef.current = Date.now() + examTimeLimitMs;
+    } else {
+      setExamTimeRemainingMs(null);
+      examTimerEndRef.current = null;
+    }
   }, [
     canStartExam,
     previewExamParse.tasks,
@@ -292,9 +298,10 @@ export const useExamSimulationViewModel = () => {
     settings.examAiEvaluation,
     settings.examMaxTotalPoints,
     settings.examTaskCount,
-    settings.examTimeLimitMinutes,
+    settings.examDurationMinutes,
     activeTaskPoints,
     examTimeLimitMs,
+    examTimerEnabled,
   ]);
 
   const handleResetExam = useCallback(() => {
@@ -309,10 +316,13 @@ export const useExamSimulationViewModel = () => {
   }, [stage]);
 
   useEffect(() => {
-    if (stage !== "running") {
+    if (stage !== "running" || !examTimerEnabled) {
       if (examTimerRef.current !== null) {
         window.clearInterval(examTimerRef.current);
         examTimerRef.current = null;
+      }
+      if (!examTimerEnabled) {
+        setExamTimeRemainingMs(null);
       }
       return;
     }
@@ -347,7 +357,7 @@ export const useExamSimulationViewModel = () => {
         examTimerRef.current = null;
       }
     };
-  }, [examTimeLimitMs, stage]);
+  }, [examTimeLimitMs, examTimerEnabled, stage]);
 
   const handleStartScoring = useCallback(() => {
     if (stage !== "review") {
@@ -709,10 +719,11 @@ export const useExamSimulationViewModel = () => {
     runTasks,
     runTaskPoints,
     runMaxPoints,
-    examTimeLimitMinutes,
+    examDurationMinutes,
     examTimeLimitMs,
     examTimeRemainingMs,
     examTimeUp,
+    examTimerEnabled,
     remainingPoints,
     isSettingsValid,
     canStartExam,
