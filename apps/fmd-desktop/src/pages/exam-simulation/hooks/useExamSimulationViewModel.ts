@@ -50,6 +50,7 @@ type ExamSettingsSnapshot = {
   taskCount: number;
   taskPoints: number[];
   durationMinutes: number;
+  timeLimitEnabled: boolean;
   aiEvaluation: ExamAiEvaluation;
 };
 
@@ -209,7 +210,10 @@ export const useExamSimulationViewModel = () => {
   const examDurationMinutes = activeExamSettings
     ? activeExamSettings.durationMinutes
     : settings.examDurationMinutes;
-  const examTimerEnabled = examDurationMinutes > 0;
+  const examTimerEnabled = activeExamSettings
+    ? activeExamSettings.timeLimitEnabled && examDurationMinutes > 0
+    : settings.examTimeLimitEnabled && examDurationMinutes > 0;
+  const examShowTimeline = settings.examShowTimeline;
   const examTimeLimitMs = examTimerEnabled ? examDurationMinutes * 60 * 1000 : 0;
   const activeTaskCount = activeExamSettings
     ? Math.min(activeTasks.length, activeExamSettings.taskCount)
@@ -269,6 +273,7 @@ export const useExamSimulationViewModel = () => {
       taskCount: settings.examTaskCount,
       taskPoints: activeTaskPoints,
       durationMinutes: settings.examDurationMinutes,
+      timeLimitEnabled: settings.examTimeLimitEnabled,
       aiEvaluation: settings.examAiEvaluation,
     };
     // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
@@ -299,6 +304,7 @@ export const useExamSimulationViewModel = () => {
     settings.examMaxTotalPoints,
     settings.examTaskCount,
     settings.examDurationMinutes,
+    settings.examTimeLimitEnabled,
     activeTaskPoints,
     examTimeLimitMs,
     examTimerEnabled,
@@ -724,6 +730,7 @@ export const useExamSimulationViewModel = () => {
     examTimeRemainingMs,
     examTimeUp,
     examTimerEnabled,
+    examShowTimeline,
     remainingPoints,
     isSettingsValid,
     canStartExam,

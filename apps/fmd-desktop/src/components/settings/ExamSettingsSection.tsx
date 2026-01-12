@@ -28,11 +28,15 @@ type ExamSettingsSectionProps = {
   taskCount: number;
   taskPoints: number[];
   durationMinutes: number;
+  timeLimitEnabled: boolean;
+  showTimeline: boolean;
   aiEvaluation: ExamAiEvaluation;
   setMaxTotalPoints: (value: number) => void;
   setTaskCount: (value: number) => void;
   setTaskPoints: (value: number[]) => void;
   setDurationMinutes: (value: number) => void;
+  setTimeLimitEnabled: (value: boolean) => void;
+  setShowTimeline: (value: boolean) => void;
 };
 
 const clampInput = (value: string) => {
@@ -48,11 +52,15 @@ export const ExamSettingsSection = ({
   taskCount,
   taskPoints,
   durationMinutes,
+  timeLimitEnabled,
+  showTimeline,
   aiEvaluation,
   setMaxTotalPoints,
   setTaskCount,
   setTaskPoints,
   setDurationMinutes,
+  setTimeLimitEnabled,
+  setShowTimeline,
 }: ExamSettingsSectionProps) => {
   const sumAssigned = useMemo(
     () => taskPoints.reduce((sum, value) => sum + value, 0),
@@ -75,8 +83,6 @@ export const ExamSettingsSection = ({
     }
     setDurationMinutes(clamped);
   };
-  const timerEnabled = durationMinutes > 0;
-
   return (
     <section className="panel exam-settings-panel">
       <div className="panel-header">
@@ -108,20 +114,22 @@ export const ExamSettingsSection = ({
               onChange={(event) => setTaskCount(clampInput(event.target.value))}
             />
           </label>
-          <label className="setting-inline">
-            <span className="label">DURATION</span>
-            <div className="exam-time-input">
-              <input
-                type="number"
-                min={0}
-                max={240}
-                className="text-input exam-compact-input"
-                value={durationMinutes}
-                onChange={(event) => handleDurationChange(event.target.value)}
-              />
-              <span className="muted">min</span>
-            </div>
-          </label>
+          {timeLimitEnabled ? (
+            <label className="setting-inline">
+              <span className="label">DURATION</span>
+              <div className="exam-time-input">
+                <input
+                  type="number"
+                  min={0}
+                  max={240}
+                  className="text-input exam-compact-input"
+                  value={durationMinutes}
+                  onChange={(event) => handleDurationChange(event.target.value)}
+                />
+                <span className="muted">min</span>
+              </div>
+            </label>
+          ) : null}
         </div>
 
         <div className="exam-points-table">
@@ -152,20 +160,37 @@ export const ExamSettingsSection = ({
             <label className="switch">
               <input
                 type="checkbox"
-                checked={timerEnabled}
+                checked={timeLimitEnabled}
                 onChange={(event) => {
-                  if (event.target.checked) {
-                    const next = lastDurationRef.current > 0 ? lastDurationRef.current : 30;
-                    setDurationMinutes(next);
-                  } else {
-                    setDurationMinutes(0);
+                  const nextEnabled = event.target.checked;
+                  setTimeLimitEnabled(nextEnabled);
+                  if (nextEnabled && durationMinutes === 0) {
+                    const nextDuration =
+                      lastDurationRef.current > 0 ? lastDurationRef.current : 30;
+                    setDurationMinutes(nextDuration);
                   }
                 }}
               />
               <span className="slider" />
             </label>
             <span className="muted">
-              {timerEnabled ? "Enabled" : "Disabled"}
+              {timeLimitEnabled ? "Enabled" : "Disabled"}
+            </span>
+          </div>
+        </div>
+        <div className="setting-row">
+          <span className="label">TIMELINE</span>
+          <div className="setting-inline">
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={showTimeline}
+                onChange={(event) => setShowTimeline(event.target.checked)}
+              />
+              <span className="slider" />
+            </label>
+            <span className="muted">
+              {showTimeline ? "Shown" : "Hidden"}
             </span>
           </div>
         </div>

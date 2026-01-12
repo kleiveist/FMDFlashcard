@@ -72,6 +72,7 @@ export const ExamSimulationPage = () => {
     examTimeRemainingMs,
     examTimeUp,
     examTimerEnabled,
+    examShowTimeline,
     canStartExam,
     examEmptyState,
     results,
@@ -262,7 +263,7 @@ export const ExamSimulationPage = () => {
           <p className="muted">Run a Punktaufgaben exam and convert tasks into cards.</p>
         </div>
       </header>
-      {!isViewMode ? (
+      {!isViewMode && examTimerEnabled && examShowTimeline ? (
         <div className="exam-timeline-block">
           <ExamTimeBar
             timeLimitMs={examTimeLimitMs}
@@ -276,7 +277,7 @@ export const ExamSimulationPage = () => {
 
       <div className="exam-layout">
         <section className="panel exam-panel">
-          {isViewMode ? (
+          {isViewMode && examTimerEnabled && examShowTimeline ? (
             <ExamTimeBar
               className="exam-time-bar--view"
               timeLimitMs={examTimeLimitMs}

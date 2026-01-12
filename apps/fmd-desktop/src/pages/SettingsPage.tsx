@@ -288,11 +288,15 @@ export const SettingsPage = () => {
             taskCount={settings.examTaskCount}
             taskPoints={settings.examTaskPoints.slice(0, settings.examTaskCount)}
             durationMinutes={settings.examDurationMinutes}
+            timeLimitEnabled={settings.examTimeLimitEnabled}
+            showTimeline={settings.examShowTimeline}
             aiEvaluation={settings.examAiEvaluation}
             setMaxTotalPoints={settings.setExamMaxTotalPoints}
             setTaskCount={settings.setExamTaskCount}
             setTaskPoints={settings.setExamTaskPoints}
             setDurationMinutes={settings.setExamDurationMinutes}
+            setTimeLimitEnabled={settings.setExamTimeLimitEnabled}
+            setShowTimeline={settings.setExamShowTimeline}
           />
         </div>
       ) : null}

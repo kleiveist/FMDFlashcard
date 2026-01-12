@@ -116,6 +116,7 @@
   flex-wrap: wrap;
 }
 
+
 .fast-stats-blocks {
   display: grid;
   grid-template-columns: minmax(0, 0.6fr) minmax(0, 1fr);

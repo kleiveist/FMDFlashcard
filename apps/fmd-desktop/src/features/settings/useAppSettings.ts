@@ -89,6 +89,7 @@ type AppSettings = {
   fast_flashcard_mode?: string | null;
   fast_flashcard_scope?: string | null;
   fast_flashcard_duration?: number | null;
+  exam_show_timeline?: boolean | null;
   spaced_repetition_boxes?: number | null;
   spaced_repetition_order?: string | null;
   spaced_repetition_page_size?: number | null;
@@ -99,6 +100,7 @@ type AppSettings = {
   exam_task_count?: number | null;
   exam_task_points?: number[] | null;
   exam_duration_minutes?: number | null;
+  exam_time_limit_enabled?: boolean | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
   keyboard_shortcuts?: KeyboardShortcutSettings | null;
 };
@@ -125,6 +127,7 @@ type PersistUpdates = {
   fastFlashcardMode?: FlashcardMode;
   fastFlashcardScope?: FlashcardScope;
   fastFlashcardDuration?: number;
+  examShowTimeline?: boolean;
   spacedRepetitionBoxes?: SpacedRepetitionBoxes;
   spacedRepetitionOrder?: SpacedRepetitionOrder;
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
@@ -135,6 +138,7 @@ type PersistUpdates = {
   examTaskCount?: number;
   examTaskPoints?: number[];
   examDurationMinutes?: number;
+  examTimeLimitEnabled?: boolean;
   examAiEvaluation?: ExamAiEvaluation;
   keyboardShortcuts?: KeyboardShortcutSettings;
 };
@@ -155,6 +159,7 @@ const DEFAULT_FAST_FLASHCARD_ORDER: FlashcardOrder = DEFAULT_FLASHCARD_ORDER;
 const DEFAULT_FAST_FLASHCARD_MODE: FlashcardMode = DEFAULT_FLASHCARD_MODE;
 const DEFAULT_FAST_FLASHCARD_SCOPE: FlashcardScope = DEFAULT_FLASHCARD_SCOPE;
 const DEFAULT_FAST_FLASHCARD_DURATION = 6;
+const DEFAULT_EXAM_SHOW_TIMELINE = true;
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
@@ -165,6 +170,7 @@ const MAX_EXAM_TASK_COUNT = 20;
 const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
 const DEFAULT_EXAM_TASK_COUNT = 5;
 const DEFAULT_EXAM_DURATION_MINUTES = 30;
+const DEFAULT_EXAM_TIME_LIMIT_ENABLED = true;
 const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
   enabled: false,
   provider: null,
@@ -339,6 +345,9 @@ export const useAppSettings = () => {
   const [fastFlashcardDuration, setFastFlashcardDuration] = useState(
     DEFAULT_FAST_FLASHCARD_DURATION,
   );
+  const [examShowTimeline, setExamShowTimelineState] = useState(
+    DEFAULT_EXAM_SHOW_TIMELINE,
+  );
   const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
     useState<SpacedRepetitionBoxes>(DEFAULT_SPACED_REPETITION_BOXES);
   const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
@@ -369,6 +378,9 @@ export const useAppSettings = () => {
   );
   const [examDurationMinutes, setExamDurationMinutesState] = useState(
     DEFAULT_EXAM_DURATION_MINUTES,
+  );
+  const [examTimeLimitEnabled, setExamTimeLimitEnabledState] = useState(
+    DEFAULT_EXAM_TIME_LIMIT_ENABLED,
   );
   const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
     DEFAULT_EXAM_AI_EVALUATION,
@@ -408,6 +420,14 @@ export const useAppSettings = () => {
 
   const setExamDurationMinutes = useCallback((value: number) => {
     setExamDurationMinutesState(clampExamDurationMinutes(value));
+  }, []);
+
+  const setExamShowTimeline = useCallback((value: boolean) => {
+    setExamShowTimelineState(Boolean(value));
+  }, []);
+
+  const setExamTimeLimitEnabled = useCallback((value: boolean) => {
+    setExamTimeLimitEnabledState(Boolean(value));
   }, []);
 
   const setExamAiEvaluation = useCallback((value: ExamAiEvaluation) => {
@@ -469,10 +489,12 @@ export const useAppSettings = () => {
       fastFlashcardMode: FlashcardMode;
       fastFlashcardScope: FlashcardScope;
       fastFlashcardDuration: number;
+      examShowTimeline: boolean;
       examMaxTotalPoints: number;
       examTaskCount: number;
       examTaskPoints: number[];
       examDurationMinutes: number;
+      examTimeLimitEnabled: boolean;
       examAiEvaluation: ExamAiEvaluation;
       keyboardShortcuts: KeyboardShortcutSettings;
     }) => {
@@ -499,6 +521,7 @@ export const useAppSettings = () => {
           fastFlashcardMode: settings.fastFlashcardMode,
           fastFlashcardScope: settings.fastFlashcardScope,
           fastFlashcardDuration: settings.fastFlashcardDuration,
+          examShowTimeline: settings.examShowTimeline,
           spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
@@ -510,6 +533,7 @@ export const useAppSettings = () => {
           examTaskCount: settings.examTaskCount,
           examTaskPoints: settings.examTaskPoints,
           examDurationMinutes: settings.examDurationMinutes,
+          examTimeLimitEnabled: settings.examTimeLimitEnabled,
           examAiEvaluation: settings.examAiEvaluation,
           keyboardShortcuts: settings.keyboardShortcuts,
         });
@@ -548,6 +572,8 @@ export const useAppSettings = () => {
         fastFlashcardScope: updates.fastFlashcardScope ?? fastFlashcardScope,
         fastFlashcardDuration:
           updates.fastFlashcardDuration ?? fastFlashcardDuration,
+        examShowTimeline:
+          updates.examShowTimeline ?? examShowTimeline,
         flashcardPageSize: updates.flashcardPageSize ?? flashcardPageSize,
         solutionRevealEnabled:
           updates.solutionRevealEnabled ?? solutionRevealEnabled,
@@ -575,6 +601,8 @@ export const useAppSettings = () => {
         ),
         examDurationMinutes:
           updates.examDurationMinutes ?? examDurationMinutes,
+        examTimeLimitEnabled:
+          updates.examTimeLimitEnabled ?? examTimeLimitEnabled,
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
         keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
       };
@@ -744,6 +772,10 @@ export const useAppSettings = () => {
           )
             ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
             : DEFAULT_FAST_FLASHCARD_DURATION;
+        const storedExamShowTimeline =
+          typeof settings.exam_show_timeline === "boolean"
+            ? settings.exam_show_timeline
+            : DEFAULT_EXAM_SHOW_TIMELINE;
         const storedFlashcardPageSizeRaw = settings.flashcard_page_size;
         const migratedFlashcardPageSize =
           storedFlashcardPageSizeRaw === 10
@@ -822,6 +854,10 @@ export const useAppSettings = () => {
         const storedExamDurationMinutes = clampExamDurationMinutes(
           settings.exam_duration_minutes ?? DEFAULT_EXAM_DURATION_MINUTES,
         );
+        const storedExamTimeLimitEnabled =
+          typeof settings.exam_time_limit_enabled === "boolean"
+            ? settings.exam_time_limit_enabled
+            : DEFAULT_EXAM_TIME_LIMIT_ENABLED;
         const storedExamAiEvaluation = normalizeExamAiEvaluation(
           settings.exam_ai_evaluation,
         );
@@ -852,6 +888,7 @@ export const useAppSettings = () => {
         setFastFlashcardMode(storedFastFlashcardMode);
         setFastFlashcardScope(storedFastFlashcardScope);
         setFastFlashcardDuration(storedFastFlashcardDuration);
+        setExamShowTimelineState(storedExamShowTimeline);
         setFlashcardPageSize(storedFlashcardPageSize);
         setSolutionRevealEnabled(storedSolutionRevealEnabled);
         setStatsResetMode(storedStatsResetMode);
@@ -867,6 +904,7 @@ export const useAppSettings = () => {
         setExamTaskCountState(storedExamTaskCount);
         setExamTaskPointsState(storedExamTaskPoints);
         setExamDurationMinutesState(storedExamDurationMinutes);
+        setExamTimeLimitEnabledState(storedExamTimeLimitEnabled);
         setExamAiEvaluationState(storedExamAiEvaluation);
         setKeyboardShortcutsState(storedKeyboardShortcuts);
         setSettingsLoaded(true);
@@ -964,10 +1002,12 @@ export const useAppSettings = () => {
         fastFlashcardMode,
         fastFlashcardScope,
         fastFlashcardDuration,
+        examShowTimeline,
         examMaxTotalPoints,
         examTaskCount,
         examTaskPoints,
         examDurationMinutes,
+        examTimeLimitEnabled,
         examAiEvaluation,
         keyboardShortcuts,
       });
@@ -989,6 +1029,7 @@ export const useAppSettings = () => {
     examTaskCount,
     examTaskPoints,
     examDurationMinutes,
+    examTimeLimitEnabled,
     keyboardShortcuts,
     flashcardMode,
     flashcardOrder,
@@ -996,6 +1037,7 @@ export const useAppSettings = () => {
     fastFlashcardOrder,
     fastFlashcardScope,
     fastFlashcardDuration,
+    examShowTimeline,
     flashcardPageSize,
     flashcardScope,
     language,
@@ -1029,12 +1071,14 @@ export const useAppSettings = () => {
     examTaskCount,
     examTaskPoints,
     examDurationMinutes,
+    examTimeLimitEnabled,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
     fastFlashcardOrder,
     fastFlashcardScope,
     fastFlashcardDuration,
+    examShowTimeline,
     flashcardPageSize,
     flashcardScope,
     keyboardShortcuts,
@@ -1055,6 +1099,7 @@ export const useAppSettings = () => {
     setExamTaskCount,
     setExamTaskPoints,
     setExamDurationMinutes,
+    setExamTimeLimitEnabled,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,
@@ -1063,6 +1108,7 @@ export const useAppSettings = () => {
     setFastFlashcardOrder,
     setFastFlashcardScope,
     setFastFlashcardDuration,
+    setExamShowTimeline,
     setKeyboardShortcuts,
     setKeyboardShortcutBinding,
     resetKeyboardShortcuts,
