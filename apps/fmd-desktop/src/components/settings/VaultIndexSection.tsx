@@ -20,7 +20,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { type LoadState } from "../../lib/types";
 import { DataSyncTabContent } from "./DataSyncTabContent";
 
@@ -30,8 +30,10 @@ type VaultIndexSectionProps = {
   lastOpenedFile: string | null;
   listState: LoadState;
   onCopyVaultPath: () => void;
+  onHiddenFoldersLevelChange: (value: number) => void;
   onRescanVault: () => void;
   vaultIndexedComplete: boolean;
+  hiddenFoldersLevel: number;
   vaultPath: string | null;
 };
 
@@ -39,12 +41,40 @@ export const VaultIndexSection = ({
   lastOpenedFile,
   listState,
   onCopyVaultPath,
+  onHiddenFoldersLevelChange,
   onRescanVault,
   vaultIndexedComplete,
+  hiddenFoldersLevel,
   vaultPath,
 }: VaultIndexSectionProps) => {
   const [activeTab, setActiveTab] = useState<VaultIndexTab>("vault");
   const isVaultTab = activeTab === "vault";
+  const handleHiddenFoldersChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onHiddenFoldersLevelChange(Number(event.target.value));
+  };
+  const renderHiddenFoldersControl = (
+    label: string,
+    ariaLabel: string,
+    helperText: string,
+  ) => (
+    <div className="setting-row">
+      <span className="label">{label}</span>
+      <div className="setting-inline">
+        <input
+          type="range"
+          className="range-input"
+          min={0}
+          max={90}
+          step={1}
+          value={hiddenFoldersLevel}
+          onChange={handleHiddenFoldersChange}
+          aria-label={ariaLabel}
+        />
+        <span className="value">{hiddenFoldersLevel}</span>
+      </div>
+      <span className="helper-text">{helperText}</span>
+    </div>
+  );
 
   return (
     <section className="panel vault-index-panel">
@@ -105,6 +135,11 @@ export const VaultIndexSection = ({
               {lastOpenedFile ?? "Not loaded yet"}
             </span>
           </div>
+          {renderHiddenFoldersControl(
+            "Hidden folders (Vault)",
+            "Hidden folders level for vault tree",
+            "0 hides hidden folders in the vault tree. Values above 0 show them.",
+          )}
           <div className="setting-row">
             <span className="label">Status indicators</span>
             <div className="status-list">
@@ -158,6 +193,11 @@ export const VaultIndexSection = ({
               </div>
             </div>
           </div>
+          {renderHiddenFoldersControl(
+            "Hidden folders (Index)",
+            "Hidden folders level for index",
+            "0 excludes hidden folders from indexing. Values above 0 include them.",
+          )}
           <div className="setting-row">
             <span className="label">Actions</span>
             <div className="setting-actions">

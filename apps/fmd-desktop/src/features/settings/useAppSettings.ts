@@ -70,6 +70,7 @@ type AppSettings = {
   language?: AppLanguage | null;
   max_files_per_scan?: string | null;
   scan_parallelism?: string | null;
+  hidden_folders_level?: number | null;
   flashcard_order?: string | null;
   flashcard_mode?: string | null;
   flashcard_scope?: string | null;
@@ -103,6 +104,7 @@ type PersistUpdates = {
   language?: AppLanguage;
   maxFilesPerScan?: string;
   scanParallelism?: "low" | "medium" | "high";
+  hiddenFoldersLevel?: number;
   flashcardOrder?: FlashcardOrder;
   flashcardMode?: FlashcardMode;
   flashcardScope?: FlashcardScope;
@@ -132,6 +134,8 @@ const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
+const MAX_HIDDEN_FOLDERS_LEVEL = 90;
+const DEFAULT_HIDDEN_FOLDERS_LEVEL = 0;
 const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
 const DEFAULT_FLASHCARD_MODE: FlashcardMode = "all";
 const DEFAULT_FLASHCARD_SCOPE: FlashcardScope = "current";
@@ -165,6 +169,14 @@ const parseInteger = (value: unknown) => {
     }
   }
   return null;
+};
+
+const clampHiddenFoldersLevel = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return DEFAULT_HIDDEN_FOLDERS_LEVEL;
+  }
+  return Math.min(MAX_HIDDEN_FOLDERS_LEVEL, Math.max(0, parsed));
 };
 
 const clampExamTaskCount = (value: unknown) => {
@@ -277,6 +289,9 @@ export const useAppSettings = () => {
   const [scanParallelism, setScanParallelism] = useState<
     "low" | "medium" | "high"
   >(DEFAULT_SCAN_PARALLELISM);
+  const [hiddenFoldersLevel, setHiddenFoldersLevelState] = useState(
+    DEFAULT_HIDDEN_FOLDERS_LEVEL,
+  );
   const [flashcardOrder, setFlashcardOrder] =
     useState<FlashcardOrder>(DEFAULT_FLASHCARD_ORDER);
   const [flashcardMode, setFlashcardMode] =
@@ -364,6 +379,10 @@ export const useAppSettings = () => {
     });
   }, []);
 
+  const setHiddenFoldersLevel = useCallback((value: number) => {
+    setHiddenFoldersLevelState(clampHiddenFoldersLevel(value));
+  }, []);
+
   const saveSettings = useCallback(
     async (settings: {
       activeNotePath: string | null;
@@ -376,6 +395,7 @@ export const useAppSettings = () => {
       language: AppLanguage;
       maxFilesPerScan: string;
       scanParallelism: "low" | "medium" | "high";
+      hiddenFoldersLevel: number;
       flashcardOrder: FlashcardOrder;
       flashcardMode: FlashcardMode;
       flashcardScope: FlashcardScope;
@@ -409,6 +429,7 @@ export const useAppSettings = () => {
           language: settings.language,
           maxFilesPerScan: settings.maxFilesPerScan,
           scanParallelism: settings.scanParallelism,
+          hiddenFoldersLevel: settings.hiddenFoldersLevel,
           flashcardOrder: settings.flashcardOrder,
           flashcardMode: settings.flashcardMode,
           flashcardScope: settings.flashcardScope,
@@ -457,6 +478,7 @@ export const useAppSettings = () => {
         language: updates.language ?? language,
         maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
         scanParallelism: updates.scanParallelism ?? scanParallelism,
+        hiddenFoldersLevel: updates.hiddenFoldersLevel ?? hiddenFoldersLevel,
         flashcardOrder: updates.flashcardOrder ?? flashcardOrder,
         flashcardMode: updates.flashcardMode ?? flashcardMode,
         flashcardScope: updates.flashcardScope ?? flashcardScope,
@@ -523,6 +545,7 @@ export const useAppSettings = () => {
       maxFilesPerScan,
       saveSettings,
       scanParallelism,
+      hiddenFoldersLevel,
       settingsLoaded,
       solutionRevealEnabled,
       spacedRepetitionBoxes,
@@ -588,6 +611,9 @@ export const useAppSettings = () => {
           settings.scan_parallelism === "medium"
             ? settings.scan_parallelism
             : DEFAULT_SCAN_PARALLELISM;
+        const storedHiddenFoldersLevel = clampHiddenFoldersLevel(
+          settings.hidden_folders_level ?? DEFAULT_HIDDEN_FOLDERS_LEVEL,
+        );
         const storedFlashcardOrder =
           settings.flashcard_order === "random"
             ? "random"
@@ -731,6 +757,7 @@ export const useAppSettings = () => {
         setLanguage(storedLanguage);
         setMaxFilesPerScan(storedMaxFilesPerScan);
         setScanParallelism(storedScanParallelism);
+        setHiddenFoldersLevelState(storedHiddenFoldersLevel);
         setFlashcardOrder(storedFlashcardOrder);
         setFlashcardMode(storedFlashcardMode);
         setFlashcardScope(storedFlashcardScope);
@@ -815,6 +842,7 @@ export const useAppSettings = () => {
         language,
         maxFilesPerScan,
         scanParallelism,
+        hiddenFoldersLevel,
         flashcardOrder,
         flashcardMode,
         flashcardScope,
@@ -865,6 +893,7 @@ export const useAppSettings = () => {
     maxFilesPerScan,
     saveSettings,
     scanParallelism,
+    hiddenFoldersLevel,
     settingsLoaded,
     solutionRevealEnabled,
     spacedRepetitionBoxes,
@@ -898,6 +927,7 @@ export const useAppSettings = () => {
     fastFlashcardDuration,
     flashcardPageSize,
     flashcardScope,
+    hiddenFoldersLevel,
     language,
     maxFilesPerScan,
     persistSettings,
@@ -921,6 +951,7 @@ export const useAppSettings = () => {
     setFastFlashcardOrder,
     setFastFlashcardScope,
     setFastFlashcardDuration,
+    setHiddenFoldersLevel,
     setLanguage,
     setMaxFilesPerScan,
     setRightToolbarCollapsed,

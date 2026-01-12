@@ -19,6 +19,14 @@
 export const normalizeRelativePath = (value: string) =>
   value.replace(/\\/g, "/").replace(/^\/+/, "");
 
+export const isHiddenPath = (value: string) => {
+  const normalized = normalizeRelativePath(value);
+  if (!normalized) {
+    return false;
+  }
+  return normalized.split("/").some((segment) => segment.startsWith("."));
+};
+
 export const vaultBaseName = (value: string | null) => {
   if (!value) {
     return "Vault";

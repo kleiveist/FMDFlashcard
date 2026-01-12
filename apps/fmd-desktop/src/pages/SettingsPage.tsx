@@ -26,6 +26,7 @@ import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import { ExamSettingsSection } from "../components/settings/ExamSettingsSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
+import { MarkdownEditorSection } from "../components/settings/MarkdownEditorSection";
 import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
 import { LanguageTabContent } from "../components/settings/DataSyncTabContent";
 import { PerformanceTabContent } from "../components/settings/PerformanceTabContent";
@@ -96,8 +97,10 @@ export const SettingsPage = () => {
             lastOpenedFile={lastOpenedFile}
             listState={vault.listState}
             onCopyVaultPath={actions.handleCopyVaultPath}
+            onHiddenFoldersLevelChange={settings.setHiddenFoldersLevel}
             onRescanVault={actions.handleRescanVault}
             vaultIndexedComplete={vaultIndexedComplete}
+            hiddenFoldersLevel={settings.hiddenFoldersLevel}
             vaultPath={vault.vaultPath}
           />
           <section className="panel settings-performance-panel">
@@ -284,17 +287,9 @@ export const SettingsPage = () => {
             accentColor={settings.accentColor}
             accentDraft={settings.accentDraft}
             accentError={settings.accentError}
-            editorExactColors={settings.editorExactColors}
-            editorBlueprintGrid={settings.editorBlueprintGrid}
-            editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
             onAccentInputChange={actions.handleAccentInputChange}
             onAccentPick={actions.handleAccentPick}
             onCopyAccent={actions.handleCopyAccent}
-            onEditorExactColorsToggle={settings.setEditorExactColors}
-            onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
-            onEditorBlueprintGridIntensityChange={
-              settings.setEditorBlueprintGridIntensity
-            }
             onThemeToggle={actions.handleThemeChange}
             theme={settings.theme}
           />
@@ -312,6 +307,23 @@ export const SettingsPage = () => {
               />
             </div>
           </section>
+        </div>
+      ) : null}
+      {activeSettingsPage === "markdown-editor" ? (
+        <div
+          className="settings-page settings-single-column"
+          id="settings-page-markdown-editor"
+        >
+          <MarkdownEditorSection
+            editorExactColors={settings.editorExactColors}
+            editorBlueprintGrid={settings.editorBlueprintGrid}
+            editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
+            onEditorExactColorsToggle={settings.setEditorExactColors}
+            onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
+            onEditorBlueprintGridIntensityChange={
+              settings.setEditorBlueprintGridIntensity
+            }
+          />
         </div>
       ) : null}
       <ResetSessionHistoryModal

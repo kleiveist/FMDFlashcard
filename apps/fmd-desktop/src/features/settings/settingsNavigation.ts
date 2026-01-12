@@ -21,6 +21,7 @@ export const SETTINGS_PAGES = [
   { id: "exam-settings", label: "Exam Settings" },
   { id: "review-tools", label: "Review Tools" },
   { id: "appearance", label: "Appearance" },
+  { id: "markdown-editor", label: "Markdown editor" },
 ] as const;
 
 export type SettingsPageId = (typeof SETTINGS_PAGES)[number]["id"];

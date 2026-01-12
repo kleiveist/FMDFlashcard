@@ -303,6 +303,7 @@ export const SidebarNav = ({
                 expandedPaths={expandedPaths}
                 fileCountLabel={fileCountLabel}
                 files={vault.files}
+                hiddenFoldersLevel={settings.hiddenFoldersLevel}
                 listError={vault.listError}
                 listState={vault.listState}
                 onActiveFolderChange={vault.setActiveFolderPath}

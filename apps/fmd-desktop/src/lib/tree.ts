@@ -16,7 +16,7 @@
  * - Aenderungen beeinflussen alle nutzenden Module.
  */
 
-import { normalizeRelativePath } from "./path";
+import { isHiddenPath, normalizeRelativePath } from "./path";
 
 export type VaultFile = {
   path: string;
@@ -87,6 +87,16 @@ export const buildTree = (files: VaultFile[]): TreeNode[] => {
   }
 
   return sortNodes(root.children ?? []);
+};
+
+export const filterHiddenFiles = (
+  files: VaultFile[],
+  hiddenFoldersLevel: number,
+) => {
+  if (hiddenFoldersLevel > 0) {
+    return files;
+  }
+  return files.filter((file) => !isHiddenPath(file.relative_path));
 };
 
 export const sortNodes = (nodes: TreeNode[]): TreeNode[] => {

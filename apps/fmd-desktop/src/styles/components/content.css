@@ -181,6 +181,10 @@ h2 {
   min-width: 0;
 }
 
+.tree-item.is-hidden {
+  opacity: var(--hidden-item-opacity, 0.6);
+}
+
 .tree-item:hover {
   border-color: var(--accent-border);
 }

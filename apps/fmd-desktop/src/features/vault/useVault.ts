@@ -21,7 +21,7 @@
  * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
@@ -49,13 +49,15 @@ export type VaultSnapshot = {
 
 type UseVaultOptions = {
   persistSettings: (updates: { vaultPath?: string | null }) => Promise<boolean>;
+  hiddenFoldersLevel: number;
 };
 
-export const useVault = ({ persistSettings }: UseVaultOptions) => {
+export const useVault = ({ persistSettings, hiddenFoldersLevel }: UseVaultOptions) => {
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [listState, setListState] = useState<LoadState>("idle");
   const [listError, setListError] = useState("");
+  const lastRescanHiddenLevel = useRef(hiddenFoldersLevel);
 
   const takeSnapshot = useCallback(
     (): VaultSnapshot => ({
@@ -83,6 +85,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
       try {
         const results = await invoke<VaultFile[]>("list_markdown_files", {
           vaultPath: path,
+          hiddenFoldersLevel,
         });
         setFiles(results);
         setListState("idle");
@@ -101,7 +104,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
         return null;
       }
     },
-    [persistSettings],
+    [hiddenFoldersLevel, persistSettings],
   );
 
   const pickVault = useCallback(
@@ -148,6 +151,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
     try {
       const results = await invoke<VaultFile[]>("list_markdown_files", {
         vaultPath,
+        hiddenFoldersLevel,
       });
       setFiles(results);
       setListState("idle");
@@ -156,7 +160,18 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
       setListError(message);
       setListState("error");
     }
-  }, [listState, vaultPath]);
+  }, [hiddenFoldersLevel, listState, vaultPath]);
+
+  useEffect(() => {
+    if (!vaultPath || listState === "loading") {
+      return;
+    }
+    if (lastRescanHiddenLevel.current === hiddenFoldersLevel) {
+      return;
+    }
+    lastRescanHiddenLevel.current = hiddenFoldersLevel;
+    void rescanVault();
+  }, [hiddenFoldersLevel, listState, rescanVault, vaultPath]);
 
   return {
     files,

@@ -32,7 +32,7 @@ import {
   type ReactNode,
 } from "react";
 import { isValidHex, normalizeHex } from "../lib/color";
-import { normalizeRelativePath } from "../lib/path";
+import { isHiddenPath, normalizeRelativePath } from "../lib/path";
 import { type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
@@ -78,14 +78,10 @@ type AppState = {
 
 const AppStateContext = createContext<AppState | null>(null);
 
-const countMarkdownFiles = (files: VaultFile[]) =>
+const countMarkdownFiles = (files: VaultFile[], hiddenFoldersLevel: number) =>
   files.reduce((count, file) => {
-    const relativePath = file.relative_path.replace(/\\/g, "/");
-    if (
-      relativePath
-        .split("/")
-        .some((segment) => segment.startsWith("."))
-    ) {
+    const relativePath = normalizeRelativePath(file.relative_path);
+    if (hiddenFoldersLevel === 0 && isHiddenPath(relativePath)) {
       return count;
     }
     if (relativePath.toLowerCase().endsWith(".md")) {
@@ -124,6 +120,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
+    hiddenFoldersLevel,
     maxFilesPerScan,
     setMaxFilesPerScan,
     setTheme,
@@ -148,7 +145,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     solutionRevealEnabled,
     statsResetMode,
   } = settings;
-  const vault = useVault({ persistSettings });
+  const vault = useVault({ persistSettings, hiddenFoldersLevel });
   const preview = usePreview();
   const flashcards = useFlashcards({
     files: vault.files,
@@ -355,7 +352,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (results) {
-      const count = countMarkdownFiles(results);
+      const count = countMarkdownFiles(results, hiddenFoldersLevel);
       const threshold = parseVaultWarningThreshold(maxFilesPerScan);
       if (threshold && count > threshold) {
         setLargeVaultWarningCount(count);
@@ -376,6 +373,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     takePreviewSnapshot,
     setLargeVaultWarningCount,
     maxFilesPerScan,
+    hiddenFoldersLevel,
   ]);
 
   const handleSelectFile = useCallback(

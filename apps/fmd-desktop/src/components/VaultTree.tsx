@@ -37,9 +37,10 @@ import { openPath } from "@tauri-apps/plugin-opener";
 import { FileIcon, FolderIcon } from "./icons";
 import { VaultCreateModal } from "./VaultCreateModal";
 import { asErrorMessage } from "../lib/errors";
-import { normalizeRelativePath, vaultBaseName } from "../lib/path";
+import { isHiddenPath, normalizeRelativePath, vaultBaseName } from "../lib/path";
 import {
   buildTree,
+  filterHiddenFiles,
   sortNodes,
   type TreeNode,
   type VaultFile,
@@ -190,6 +191,7 @@ type VaultTreeProps = {
   expandedPaths: Set<string>;
   fileCountLabel: string;
   files: VaultFile[];
+  hiddenFoldersLevel: number;
   listError: string;
   listState: LoadState;
   onRescanVault: () => void;
@@ -205,6 +207,7 @@ export const VaultTree = ({
   expandedPaths,
   fileCountLabel,
   files,
+  hiddenFoldersLevel,
   listError,
   listState,
   onRescanVault,
@@ -246,13 +249,22 @@ export const VaultTree = ({
     return next;
   }, [files, pendingFiles]);
 
+  const visibleFiles = useMemo(
+    () => filterHiddenFiles(mergedFiles, hiddenFoldersLevel),
+    [hiddenFoldersLevel, mergedFiles],
+  );
+
   const treeNodes = useMemo(() => {
-    const nodes = buildTree(mergedFiles);
-    if (!extraDirs.length) {
+    const nodes = buildTree(visibleFiles);
+    const visibleExtraDirs =
+      hiddenFoldersLevel > 0
+        ? extraDirs
+        : extraDirs.filter((dirPath) => !isHiddenPath(dirPath));
+    if (!visibleExtraDirs.length) {
       return nodes;
     }
     const nextNodes = [...nodes];
-    extraDirs.forEach((dirPath) => {
+    visibleExtraDirs.forEach((dirPath) => {
       const normalized = normalizeRelativePath(dirPath);
       if (!normalized) {
         return;
@@ -282,7 +294,7 @@ export const VaultTree = ({
       }
     });
     return sortNodes(nextNodes);
-  }, [extraDirs, mergedFiles]);
+  }, [extraDirs, hiddenFoldersLevel, visibleFiles]);
   const maxDepth = useMemo(
     () => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0),
     [treeNodes],
@@ -308,6 +320,21 @@ export const VaultTree = ({
     },
     [normalizedActiveFolderPath],
   );
+
+  const hiddenItemOpacity = useMemo(() => {
+    if (hiddenFoldersLevel <= 0) {
+      return null;
+    }
+    const clamped = Math.min(90, Math.max(0, hiddenFoldersLevel));
+    return 0.35 + 0.65 * (clamped / 90);
+  }, [hiddenFoldersLevel]);
+
+  const hiddenItemStyle = useMemo(() => {
+    if (hiddenItemOpacity === null) {
+      return undefined;
+    }
+    return { "--hidden-item-opacity": hiddenItemOpacity.toFixed(2) } as CSSProperties;
+  }, [hiddenItemOpacity]);
 
   useEffect(() => {
     setExtraDirs([]);
@@ -651,6 +678,7 @@ export const VaultTree = ({
   const renderTreeNodes = (nodes: TreeNode[], depth: number) =>
     nodes.map((node) => {
       const indentStyle = getIndentVars(depth);
+      const hiddenClass = isHiddenPath(node.path) ? " is-hidden" : "";
       if (node.type === "dir") {
         const isOpen = expandedPaths.has(node.path);
         const { isActiveFolder, isBreadcrumb } = getFolderState(node.path);
@@ -666,7 +694,7 @@ export const VaultTree = ({
             <summary
               className={`tree-item${isActiveFolder ? " active-folder" : ""}${
                 isBreadcrumb ? " breadcrumb" : ""
-              }`}
+              }${hiddenClass}`}
               title={node.path}
               style={indentStyle}
               onClick={() => onActiveFolderChange(node.path)}
@@ -696,7 +724,7 @@ export const VaultTree = ({
         <button
           type="button"
           key={node.path}
-          className={`tree-item tree-file ${isActive ? "active" : ""}`}
+          className={`tree-item tree-file ${isActive ? "active" : ""}${hiddenClass}`}
           onClick={() => {
             if (!fileRef) {
               return;
@@ -745,7 +773,7 @@ export const VaultTree = ({
             <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
           ) : null}
           {vaultPath && listState === "idle" && treeNodes.length > 0 ? (
-            <div className="vault-tree">
+            <div className="vault-tree" style={hiddenItemStyle}>
               <details className="tree-dir" open>
                 <summary
                   className={`tree-item${
