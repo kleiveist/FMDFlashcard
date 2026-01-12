@@ -174,7 +174,10 @@ export const KeyboardShortcutsSection = ({
   const filteredCommands = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return SHORTCUT_COMMANDS.filter((command) => {
-      if (contextFilter !== "all" && command.context !== contextFilter) {
+      if (
+        contextFilter !== "all" &&
+        !command.contexts.includes(contextFilter as ShortcutContextId)
+      ) {
         return false;
       }
       if (!normalizedQuery) {
@@ -347,6 +350,9 @@ export const KeyboardShortcutsSection = ({
                   .map((id) => commandById.get(id)?.title)
                   .filter(Boolean)
               : [];
+            const contextLabels = SHORTCUT_CONTEXTS.filter((context) =>
+              command.contexts.includes(context.id),
+            ).map((context) => context.label);
 
             return (
               <div
@@ -358,11 +364,17 @@ export const KeyboardShortcutsSection = ({
                 <div className="shortcut-main">
                   <div className="shortcut-title">{command.title}</div>
                   <div className="shortcut-meta">
-                    <span className="shortcut-context">
-                      {SHORTCUT_CONTEXTS.find(
-                        (context) => context.id === command.context,
-                      )?.label ?? command.context}
-                    </span>
+                    <div className="shortcut-contexts">
+                      {contextLabels.length > 0 ? (
+                        contextLabels.map((label) => (
+                          <span key={label} className="shortcut-context">
+                            {label}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="shortcut-context">Unknown</span>
+                      )}
+                    </div>
                     <span className="muted">{command.description}</span>
                     {command.notes ? (
                       <span className="muted">Note: {command.notes}</span>

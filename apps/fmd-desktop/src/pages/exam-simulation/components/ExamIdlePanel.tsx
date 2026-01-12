@@ -37,6 +37,9 @@ type ExamIdlePanelProps = {
   plannedTaskCount: number;
   plannedMaxPoints: number;
   hasTaskCountMismatch: boolean;
+  isViewMode: boolean;
+  onToggleView: () => void;
+  viewLabel: string;
 };
 
 export const ExamIdlePanel = ({
@@ -48,6 +51,9 @@ export const ExamIdlePanel = ({
   plannedTaskCount,
   plannedMaxPoints,
   hasTaskCountMismatch,
+  isViewMode,
+  onToggleView,
+  viewLabel,
 }: ExamIdlePanelProps) => {
   if (!selectedFile) {
     return (
@@ -76,7 +82,30 @@ export const ExamIdlePanel = ({
 
   return (
     <div className="exam-idle">
-      <p className="eyebrow">READY</p>
+      <div className="exam-idle-header">
+        <p className="eyebrow">READY</p>
+        <button
+          type="button"
+          className={`focus-toggle ${isViewMode ? "active" : ""}`}
+          onClick={onToggleView}
+          aria-pressed={isViewMode}
+          aria-label={viewLabel}
+          title={viewLabel}
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+            <circle cx="12" cy="12" r="3.5" />
+          </svg>
+        </button>
+      </div>
       <h2>Exam ready to start</h2>
       <p className="muted">
         {availableTaskCount} tasks detected. Max points this run: {plannedMaxPoints}.

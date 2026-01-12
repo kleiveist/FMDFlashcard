@@ -268,7 +268,10 @@ export const detectShortcutConflicts = (
   bindings: ShortcutUserBindings,
   platform: ShortcutPlatform = getShortcutPlatform(),
 ) => {
-  const bindingByContext = new Map<string, ShortcutCommand[]>();
+  const bindingByContext = new Map<
+    string,
+    { command: ShortcutCommand; contextId: ShortcutContextId }[]
+  >();
   const globalBindings = new Map<string, ShortcutCommand[]>();
 
   commands.forEach((command) => {
@@ -276,16 +279,19 @@ export const detectShortcutConflicts = (
     if (!binding) {
       return;
     }
-    if (command.context === "global") {
+    if (command.contexts.includes("global")) {
       const existing = globalBindings.get(binding) ?? [];
       existing.push(command);
       globalBindings.set(binding, existing);
-      return;
     }
-    const key = `${command.context}:${binding}`;
-    const existing = bindingByContext.get(key) ?? [];
-    existing.push(command);
-    bindingByContext.set(key, existing);
+    command.contexts
+      .filter((contextId) => contextId !== "global")
+      .forEach((contextId) => {
+        const key = `${contextId}:${binding}`;
+        const existing = bindingByContext.get(key) ?? [];
+        existing.push({ command, contextId });
+        bindingByContext.set(key, existing);
+      });
   });
 
   const conflicts: ShortcutConflict[] = [];
@@ -295,40 +301,39 @@ export const detectShortcutConflicts = (
       return;
     }
     const [contextId, binding] = key.split(":");
+    const commandIds = Array.from(
+      new Set(group.map((entry) => entry.command.id)),
+    );
     conflicts.push({
       binding,
-      commandIds: group.map((command) => command.id),
-      contextIds: group.map((command) => command.context),
+      commandIds,
+      contextIds: [contextId as ShortcutContextId],
       kind: "context",
     });
   });
 
   globalBindings.forEach((globalGroup, binding) => {
     const globalCommandIds = globalGroup.map((command) => command.id);
-    const globalContextIds = globalGroup.map((command) => command.context);
     if (globalGroup.length > 1) {
       conflicts.push({
         binding,
         commandIds: globalCommandIds,
-        contextIds: globalContextIds,
+        contextIds: ["global"],
         kind: "global",
       });
     }
-    commands.forEach((command) => {
-      if (command.context === "global") {
+    bindingByContext.forEach((group, key) => {
+      const [contextId, contextBinding] = key.split(":");
+      if (contextBinding !== binding) {
         return;
       }
-      const commandBinding = normalizeBinding(
-        getEffectiveBinding(command, bindings, platform),
-      );
-      if (commandBinding && commandBinding === binding) {
-        conflicts.push({
-          binding,
-          commandIds: [...globalCommandIds, command.id],
-          contextIds: [...globalContextIds, command.context],
-          kind: "global",
-        });
-      }
+      const contextCommandIds = group.map((entry) => entry.command.id);
+      conflicts.push({
+        binding,
+        commandIds: Array.from(new Set([...globalCommandIds, ...contextCommandIds])),
+        contextIds: ["global", contextId as ShortcutContextId],
+        kind: "global",
+      });
     });
   });
 
@@ -383,10 +388,33 @@ export const normalizeKeyboardShortcuts = (
     bindings: normalizedBindings,
   };
 
-  const needsMigration =
+  let needsMigration =
     version !== KEYBOARD_SHORTCUTS_VERSION ||
     !bindingsSource ||
     typeof bindingsSource !== "object";
+
+  const legacyToggleIds = [
+    "flashcards.focus.toggle",
+    "spaced-repetition.focus.toggle",
+  ];
+  const legacyExitIds = ["flashcards.focus.exit", "spaced-repetition.focus.exit"];
+
+  if (!Object.prototype.hasOwnProperty.call(normalizedBindings, "toggleViewMode")) {
+    const legacyBinding = legacyToggleIds.find((id) =>
+      Object.prototype.hasOwnProperty.call(normalizedBindings, id),
+    );
+    if (legacyBinding) {
+      normalizedBindings.toggleViewMode = normalizedBindings[legacyBinding] ?? null;
+      needsMigration = true;
+    }
+  }
+
+  legacyToggleIds.concat(legacyExitIds).forEach((id) => {
+    if (Object.prototype.hasOwnProperty.call(normalizedBindings, id)) {
+      delete normalizedBindings[id];
+      needsMigration = true;
+    }
+  });
 
   return { settings, needsMigration };
 };

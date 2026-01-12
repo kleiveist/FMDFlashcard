@@ -21,12 +21,23 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
+import { useEffect, useMemo, useState } from "react";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
 import { ExamResultsPanel } from "./components/ExamResultsPanel";
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
 import { ExamToolsPanel } from "./components/ExamToolsPanel";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
+import {
+  formatBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "../../lib/shortcuts/bindings";
+import { getShortcutById } from "../../lib/shortcuts/registry";
+
+const viewToggleCommand = getShortcutById("toggleViewMode");
 
 export const ExamSimulationPage = () => {
   const {
@@ -77,9 +88,55 @@ export const ExamSimulationPage = () => {
     handleTaskNext,
     handleConversionDecision,
   } = useExamSimulationViewModel();
+  const [isViewMode, setIsViewMode] = useState(false);
+  const platform = getShortcutPlatform();
+  const viewBinding = useMemo(() => {
+    if (!viewToggleCommand) {
+      return null;
+    }
+    return getEffectiveBinding(
+      viewToggleCommand,
+      settings.keyboardShortcuts.bindings,
+      platform,
+    );
+  }, [platform, settings.keyboardShortcuts.bindings]);
+  const viewShortcutLabel = viewBinding
+    ? formatBinding(viewBinding, platform)
+    : null;
+  const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
 
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
+
+  useEffect(() => {
+    document.body.classList.toggle("focus-mode", isViewMode);
+    return () => {
+      document.body.classList.remove("focus-mode");
+    };
+  }, [isViewMode]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      const isEditable = isEditableTarget(event.target);
+      if (!viewToggleCommand || !viewBinding) {
+        return;
+      }
+      if (!viewToggleCommand.allowInTextInputs && isEditable) {
+        return;
+      }
+      if (!matchesBinding(event, viewBinding)) {
+        return;
+      }
+      event.preventDefault();
+      setIsViewMode((prev) => !prev);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [viewBinding]);
 
   return (
     <div className="exam-page">
@@ -103,6 +160,9 @@ export const ExamSimulationPage = () => {
               plannedTaskCount={plannedTaskCount}
               plannedMaxPoints={plannedMaxPoints}
               hasTaskCountMismatch={hasTaskCountMismatch}
+              isViewMode={isViewMode}
+              onToggleView={() => setIsViewMode((prev) => !prev)}
+              viewLabel={viewLabel}
             />
           ) : isRunnerStage ? (
             activeTask ? (

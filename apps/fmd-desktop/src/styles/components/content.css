@@ -395,11 +395,19 @@ body.focus-mode .sidebar {
 }
 
 body.focus-mode .flashcard-layout,
-body.focus-mode .spaced-repetition-layout {
+body.focus-mode .spaced-repetition-layout,
+body.focus-mode .exam-layout,
+body.focus-mode .fast-flashcard-layout {
   grid-template-columns: 1fr;
 }
 
-body.focus-mode .flashcard-panel {
+body.focus-mode .fast-flashcard-layout {
+  grid-template-rows: auto;
+}
+
+body.focus-mode .flashcard-panel,
+body.focus-mode .exam-panel,
+body.focus-mode .fast-flashcard-panel {
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -410,6 +418,11 @@ body.focus-mode .sr-flashcards-panel {
   width: 100%;
   max-width: 100%;
   margin: 0;
+}
+
+body.focus-mode .fast-flashcard-panel {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .fast-stats-panel {
@@ -470,10 +483,14 @@ body.focus-mode .sr-flashcards-panel img {
 }
 
 body.focus-mode .flashcard-sidebar,
+body.focus-mode .exam-sidebar,
 body.focus-mode .sr-diagram-panel,
 body.focus-mode .sr-user-panel,
 body.focus-mode .sr-tools-panel,
-body.focus-mode .sr-stats-panel {
+body.focus-mode .sr-stats-panel,
+body.focus-mode .fast-stats-panel,
+body.focus-mode .fast-tools-panel,
+body.focus-mode .fast-history-panel {
   display: none;
 }
 
@@ -522,6 +539,18 @@ body.focus-mode .sr-stats-panel {
 
 .exam-panel {
   min-height: 0;
+}
+
+.exam-idle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.exam-idle-header .eyebrow {
+  margin: 0;
 }
 
 .exam-task {

@@ -21,12 +21,23 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
+import { useEffect, useMemo, useState } from "react";
 import { FastCardHost } from "./components/FastCardHost";
 import { FastHeader } from "./components/FastHeader";
 import { FastHistoryPanel } from "./components/FastHistoryPanel";
 import { FastStatsPanel } from "./components/FastStatsPanel";
 import { FastToolsPanel } from "./components/FastToolsPanel";
 import { useFastSession } from "./hooks/useFastSession";
+import {
+  formatBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "../../lib/shortcuts/bindings";
+import { getShortcutById } from "../../lib/shortcuts/registry";
+
+const viewToggleCommand = getShortcutById("toggleViewMode");
 
 export const FastFlashcardPage = () => {
   const {
@@ -81,9 +92,55 @@ export const FastFlashcardPage = () => {
     topSessions,
     lastSessions,
   } = useFastSession();
+  const [isViewMode, setIsViewMode] = useState(false);
+  const platform = getShortcutPlatform();
+  const viewBinding = useMemo(() => {
+    if (!viewToggleCommand) {
+      return null;
+    }
+    return getEffectiveBinding(
+      viewToggleCommand,
+      settings.keyboardShortcuts.bindings,
+      platform,
+    );
+  }, [platform, settings.keyboardShortcuts.bindings]);
+  const viewShortcutLabel = viewBinding
+    ? formatBinding(viewBinding, platform)
+    : null;
+  const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
+
+  useEffect(() => {
+    document.body.classList.toggle("focus-mode", isViewMode);
+    return () => {
+      document.body.classList.remove("focus-mode");
+    };
+  }, [isViewMode]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      const isEditable = isEditableTarget(event.target);
+      if (!viewToggleCommand || !viewBinding) {
+        return;
+      }
+      if (!viewToggleCommand.allowInTextInputs && isEditable) {
+        return;
+      }
+      if (!matchesBinding(event, viewBinding)) {
+        return;
+      }
+      event.preventDefault();
+      setIsViewMode((prev) => !prev);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [viewBinding]);
 
   return (
-    <div className="fast-flashcard-layout">
+    <div className={`fast-flashcard-layout ${isViewMode ? "focus-mode" : ""}`}>
       <FastStatsPanel
         isTimeModeEnabled={isTimeModeEnabled}
         timeModeActive={timeModeActive}
@@ -117,7 +174,12 @@ export const FastFlashcardPage = () => {
         lastSessions={lastSessions}
       />
       <section className="panel fast-flashcard-panel">
-        <FastHeader hasScannedCards={hasScannedCards} />
+        <FastHeader
+          hasScannedCards={hasScannedCards}
+          isViewMode={isViewMode}
+          onToggleView={() => setIsViewMode((prev) => !prev)}
+          viewLabel={viewLabel}
+        />
         <FastCardHost
           hasScannedCards={hasScannedCards}
           hasFilteredCards={hasFilteredCards}

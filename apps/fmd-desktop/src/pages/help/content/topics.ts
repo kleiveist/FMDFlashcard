@@ -176,21 +176,21 @@ export const helpTopics: HelpTopic[] = [
     id: "extras",
     title: { en: "Additional features", de: "Weitere Funktionsbereiche" },
     summary: {
-      en: "Focus mode, shortcuts, and optional tooling to speed up review and reduce distractions.",
-      de: "Fokusmodus, Shortcuts und optionale Funktionen fuer schnelleres Review und weniger Ablenkung.",
+      en: "View mode, shortcuts, and optional tooling to speed up review and reduce distractions.",
+      de: "Ansichtsmodus, Shortcuts und optionale Funktionen fuer schnelleres Review und weniger Ablenkung.",
     },
     sections: [
       {
         id: "extras-focus",
-        title: { en: "Focus mode", de: "Fokusmodus" },
+        title: { en: "View mode", de: "Ansichtsmodus" },
         bullets: [
           {
-            en: "Use the eye icon to focus on the card and hide the rest of the UI for distraction-free review.",
-            de: "Mit dem Auge-Icon nur die Karte anzeigen und den Rest fuer konzentriertes Review ausblenden.",
+            en: "Use the eye icon to toggle View and hide the rest of the UI for distraction-free review.",
+            de: "Mit dem Auge-Icon den Ansichtsmodus umschalten und den Rest fuer konzentriertes Review ausblenden.",
           },
           {
-            en: "Press Esc to exit focus mode and restore the full layout.",
-            de: "Mit Esc den Fokusmodus verlassen und das volle Layout wiederherstellen.",
+            en: "Press F again to exit View and restore the full layout.",
+            de: "Mit F den Ansichtsmodus wieder verlassen und das volle Layout wiederherstellen.",
           },
         ],
       },
@@ -199,8 +199,8 @@ export const helpTopics: HelpTopic[] = [
         title: { en: "Shortcuts", de: "Shortcuts" },
         bullets: [
           {
-            en: "In focus mode: Left/Right for Back/Next, Enter to submit when possible, keeping hands on the keyboard.",
-            de: "Im Fokusmodus: Links/Rechts fuer Zurueck/Weiter, Enter zum Abgeben; Haende bleiben auf der Tastatur.",
+            en: "In View mode: Left/Right for Back/Next, Enter to submit when possible, keeping hands on the keyboard.",
+            de: "Im Ansichtsmodus: Links/Rechts fuer Zurueck/Weiter, Enter zum Abgeben; Haende bleiben auf der Tastatur.",
           },
           {
             en: "Shortcuts are ignored while typing in inputs to avoid accidental submissions.",

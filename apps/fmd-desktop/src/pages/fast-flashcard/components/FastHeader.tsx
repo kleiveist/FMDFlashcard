@@ -24,15 +24,46 @@ import { fastFlashcardStatusLabel } from "../hooks/useFastSession";
 
 type FastHeaderProps = {
   hasScannedCards: boolean;
+  isViewMode: boolean;
+  onToggleView: () => void;
+  viewLabel: string;
 };
 
-export const FastHeader = ({ hasScannedCards }: FastHeaderProps) => (
+export const FastHeader = ({
+  hasScannedCards,
+  isViewMode,
+  onToggleView,
+  viewLabel,
+}: FastHeaderProps) => (
   <div className="panel-header">
     <div>
       <h2>Flashcard</h2>
       {!hasScannedCards ? (
         <p className="muted">{fastFlashcardStatusLabel}</p>
       ) : null}
+    </div>
+    <div className="panel-actions">
+      <button
+        type="button"
+        className={`focus-toggle ${isViewMode ? "active" : ""}`}
+        onClick={onToggleView}
+        aria-pressed={isViewMode}
+        aria-label={viewLabel}
+        title={viewLabel}
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+          <circle cx="12" cy="12" r="3.5" />
+        </svg>
+      </button>
     </div>
   </div>
 );

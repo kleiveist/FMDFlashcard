@@ -42,28 +42,28 @@ describe("detectShortcutConflicts", () => {
         id: "global.open",
         title: "Global action",
         description: "",
-        context: "global",
+        contexts: ["global"],
         defaultBinding: { winLinux: "Ctrl+K" },
       },
       {
         id: "flashcards.next",
         title: "Next",
         description: "",
-        context: "flashcards",
+        contexts: ["flashcards"],
         defaultBinding: { winLinux: "Ctrl+K" },
       },
       {
         id: "flashcards.prev",
         title: "Prev",
         description: "",
-        context: "flashcards",
+        contexts: ["flashcards"],
         defaultBinding: { winLinux: "ArrowLeft" },
       },
       {
         id: "flashcards.prev-alt",
         title: "Prev alt",
         description: "",
-        context: "flashcards",
+        contexts: ["flashcards"],
         defaultBinding: { winLinux: "ArrowLeft" },
       },
     ];
@@ -88,7 +88,7 @@ describe("normalizeKeyboardShortcuts", () => {
     const { settings, needsMigration } = normalizeKeyboardShortcuts({
       bindings: { "flashcards.focus.toggle": "ctrl+f" },
     });
-    expect(settings.bindings["flashcards.focus.toggle"]).toBe("Ctrl+F");
+    expect(settings.bindings.toggleViewMode).toBe("Ctrl+F");
     expect(settings.version).toBe(1);
     expect(needsMigration).toBe(true);
   });
@@ -97,16 +97,16 @@ describe("normalizeKeyboardShortcuts", () => {
     const { settings, needsMigration } = normalizeKeyboardShortcuts({
       "flashcards.focus.toggle": "ctrl+f",
     });
-    expect(settings.bindings["flashcards.focus.toggle"]).toBe("Ctrl+F");
+    expect(settings.bindings.toggleViewMode).toBe("Ctrl+F");
     expect(needsMigration).toBe(true);
   });
 
   it("accepts current version", () => {
     const { settings, needsMigration } = normalizeKeyboardShortcuts({
       version: 1,
-      bindings: { "flashcards.focus.toggle": "Ctrl+F" },
+      bindings: { toggleViewMode: "Ctrl+F" },
     });
-    expect(settings.bindings["flashcards.focus.toggle"]).toBe("Ctrl+F");
+    expect(settings.bindings.toggleViewMode).toBe("Ctrl+F");
     expect(needsMigration).toBe(false);
   });
 });

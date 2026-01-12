@@ -335,6 +335,12 @@
   gap: 4px;
 }
 
+.shortcut-contexts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .shortcut-context {
   display: inline-flex;
   align-self: flex-start;

@@ -45,8 +45,7 @@ import {
 import { getShortcutById } from "../lib/shortcuts/registry";
 
 const flashcardStatusLabel = "Not scanned yet";
-const flashcardToggleCommand = getShortcutById("flashcards.focus.toggle");
-const flashcardExitCommand = getShortcutById("flashcards.focus.exit");
+const flashcardToggleCommand = getShortcutById("toggleViewMode");
 const flashcardPrevCommand = getShortcutById("flashcards.focus.prev");
 const flashcardNextCommand = getShortcutById("flashcards.focus.next");
 const flashcardSubmitCommand = getShortcutById("flashcards.focus.submit");
@@ -65,9 +64,6 @@ export const FlashcardPage = () => {
       toggle: flashcardToggleCommand
         ? getEffectiveBinding(flashcardToggleCommand, bindings, platform)
         : null,
-      exit: flashcardExitCommand
-        ? getEffectiveBinding(flashcardExitCommand, bindings, platform)
-        : null,
       prev: flashcardPrevCommand
         ? getEffectiveBinding(flashcardPrevCommand, bindings, platform)
         : null,
@@ -80,24 +76,18 @@ export const FlashcardPage = () => {
     };
   }, [platform, settings.keyboardShortcuts.bindings]);
 
-  const focusLabel = isFocusMode ? "Exit Live Mode" : "Enter Live Mode";
+  const viewLabel = "View";
   const toggleShortcutLabel = shortcutBindings.toggle
     ? formatBinding(shortcutBindings.toggle, platform)
     : null;
-  const exitShortcutLabel = shortcutBindings.exit
-    ? formatBinding(shortcutBindings.exit, platform)
-    : null;
-  const focusShortcutLabel = isFocusMode
-    ? [exitShortcutLabel, toggleShortcutLabel].filter(Boolean).join(" / ")
-    : toggleShortcutLabel;
-  const focusTitle = focusShortcutLabel
-    ? `${focusLabel} (Shortcut: ${focusShortcutLabel})`
-    : focusLabel;
+  const focusTitle = toggleShortcutLabel
+    ? `${viewLabel} (${toggleShortcutLabel})`
+    : viewLabel;
   const prevShortcutTitle = shortcutBindings.prev
-    ? `Back (Focus mode: ${formatBinding(shortcutBindings.prev, platform)})`
+    ? `Back (View mode: ${formatBinding(shortcutBindings.prev, platform)})`
     : "Back";
   const nextShortcutTitle = shortcutBindings.next
-    ? `Next (Focus mode: ${formatBinding(shortcutBindings.next, platform)})`
+    ? `Next (View mode: ${formatBinding(shortcutBindings.next, platform)})`
     : "Next";
 
   useEffect(() => {
@@ -134,12 +124,6 @@ export const FlashcardPage = () => {
       }
 
       if (!isFocusMode) {
-        return;
-      }
-
-      if (canTrigger(flashcardExitCommand, shortcutBindings.exit)) {
-        event.preventDefault();
-        setIsFocusMode(false);
         return;
       }
 

@@ -51,8 +51,7 @@ import {
   normalizeSpacedRepetitionCardProgress,
 } from "../../../features/spaced-repetition/logic";
 
-const srToggleCommand = getShortcutById("spaced-repetition.focus.toggle");
-const srExitCommand = getShortcutById("spaced-repetition.focus.exit");
+const srToggleCommand = getShortcutById("toggleViewMode");
 const srPrevCommand = getShortcutById("spaced-repetition.focus.prev");
 const srNextCommand = getShortcutById("spaced-repetition.focus.next");
 const srSubmitCommand = getShortcutById("spaced-repetition.focus.submit");
@@ -72,7 +71,6 @@ export const useSrSessionViewModel = () => {
       toggle: srToggleCommand
         ? getEffectiveBinding(srToggleCommand, bindings, platform)
         : null,
-      exit: srExitCommand ? getEffectiveBinding(srExitCommand, bindings, platform) : null,
       prev: srPrevCommand ? getEffectiveBinding(srPrevCommand, bindings, platform) : null,
       next: srNextCommand ? getEffectiveBinding(srNextCommand, bindings, platform) : null,
       submit: srSubmitCommand
@@ -80,24 +78,18 @@ export const useSrSessionViewModel = () => {
         : null,
     };
   }, [platform, settings.keyboardShortcuts.bindings]);
-  const focusLabel = isFocusMode ? "Exit Live Mode" : "Enter Live Mode";
+  const viewLabel = "View";
   const toggleShortcutLabel = shortcutBindings.toggle
     ? formatBinding(shortcutBindings.toggle, platform)
     : null;
-  const exitShortcutLabel = shortcutBindings.exit
-    ? formatBinding(shortcutBindings.exit, platform)
-    : null;
-  const focusShortcutLabel = isFocusMode
-    ? [exitShortcutLabel, toggleShortcutLabel].filter(Boolean).join(" / ")
-    : toggleShortcutLabel;
-  const focusTitle = focusShortcutLabel
-    ? `${focusLabel} (Shortcut: ${focusShortcutLabel})`
-    : focusLabel;
+  const focusTitle = toggleShortcutLabel
+    ? `${viewLabel} (${toggleShortcutLabel})`
+    : viewLabel;
   const prevShortcutTitle = shortcutBindings.prev
-    ? `Back (Focus mode: ${formatBinding(shortcutBindings.prev, platform)})`
+    ? `Back (View mode: ${formatBinding(shortcutBindings.prev, platform)})`
     : "Back";
   const nextShortcutTitle = shortcutBindings.next
-    ? `Next (Focus mode: ${formatBinding(shortcutBindings.next, platform)})`
+    ? `Next (View mode: ${formatBinding(shortcutBindings.next, platform)})`
     : "Next";
   const vaultId = useMemo(
     () => (vault.vaultPath ? hashString(vault.vaultPath) : null),
@@ -256,12 +248,6 @@ export const useSrSessionViewModel = () => {
       }
 
       if (!isFocusMode) {
-        return;
-      }
-
-      if (canTrigger(srExitCommand, shortcutBindings.exit)) {
-        event.preventDefault();
-        setIsFocusMode(false);
         return;
       }
 

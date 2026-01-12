@@ -17,31 +17,35 @@ This page lists all keyboard shortcuts and the contexts where they apply.
 | --- | --- | --- | --- |
 | - | - | No global shortcuts are currently defined. | - |
 
-## Examen
+## Exam
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| - | - | No Examen shortcuts are currently defined. | - |
+| Toggle View | F | Toggle View on/off (distraction-free layout). | Eye icon toggle. |
+
+## Fast Flashcard
+
+| Action | Shortcut | Description | Notes |
+| --- | --- | --- | --- |
+| Toggle View | F | Toggle View on/off (distraction-free layout). | Eye icon toggle. |
 
 ## Flashcards
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| Toggle Live Mode | F | Enter or exit focus mode (eye icon). | Flashcards page. |
-| Exit Live Mode | Esc | Leave focus mode and restore the full layout. | Focus mode only. |
-| Previous card | Left | Go to the previous flashcard. | Focus mode only. |
-| Next card | Right | Go to the next flashcard. | Focus mode only. |
-| Submit card | Enter | Submit the current card when it is ready. | Focus mode only. |
+| Toggle View | F | Toggle View on/off (distraction-free layout). | Eye icon toggle. |
+| Previous card | Left | Go to the previous flashcard in View mode. | View mode only. |
+| Next card | Right | Go to the next flashcard in View mode. | View mode only. |
+| Submit card | Enter | Submit the current card when it is ready. | View mode only. |
 
 ## Spaced Repetition
 
 | Action | Shortcut | Description | Notes |
 | --- | --- | --- | --- |
-| Toggle Live Mode | F | Enter or exit focus mode (eye icon). | Spaced Repetition page. |
-| Exit Live Mode | Esc | Leave focus mode and restore the full layout. | Focus mode only. |
-| Previous card | Left | Go to the previous card. | Focus mode only. |
-| Next card | Right | Go to the next card. | Focus mode only. |
-| Submit card | Enter | Submit the current card when it is ready. | Focus mode only. |
+| Toggle View | F | Toggle View on/off (distraction-free layout). | Eye icon toggle. |
+| Previous card | Left | Go to the previous card in View mode. | View mode only. |
+| Next card | Right | Go to the next card in View mode. | View mode only. |
+| Submit card | Enter | Submit the current card when it is ready. | View mode only. |
 
 ## Markdown editor
 
