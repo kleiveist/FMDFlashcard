@@ -32,6 +32,7 @@ type VaultIndexSectionProps = {
   onCopyVaultPath: () => void;
   onHiddenFoldersLevelChange: (value: number) => void;
   onRescanVault: () => void;
+  onResetIndex: () => void;
   vaultIndexedComplete: boolean;
   hiddenFoldersLevel: number;
   vaultPath: string | null;
@@ -43,6 +44,7 @@ export const VaultIndexSection = ({
   onCopyVaultPath,
   onHiddenFoldersLevelChange,
   onRescanVault,
+  onResetIndex,
   vaultIndexedComplete,
   hiddenFoldersLevel,
   vaultPath,
@@ -56,9 +58,10 @@ export const VaultIndexSection = ({
     label: string,
     ariaLabel: string,
     helperText: string,
+    controlId: string,
   ) => (
     <div className="setting-row">
-      <span className="label">{label}</span>
+      <span className="label">{`${label} (${hiddenFoldersLevel})`}</span>
       <div className="setting-inline">
         <input
           type="range"
@@ -68,9 +71,9 @@ export const VaultIndexSection = ({
           step={1}
           value={hiddenFoldersLevel}
           onChange={handleHiddenFoldersChange}
+          id={controlId}
           aria-label={ariaLabel}
         />
-        <span className="value">{hiddenFoldersLevel}</span>
       </div>
       <span className="helper-text">{helperText}</span>
     </div>
@@ -139,6 +142,7 @@ export const VaultIndexSection = ({
             "Hidden folders (Vault)",
             "Hidden folders level for vault tree",
             "0 hides hidden folders in the vault tree. Values above 0 show them.",
+            "hidden-folders-vault",
           )}
           <div className="setting-row">
             <span className="label">Status indicators</span>
@@ -157,46 +161,13 @@ export const VaultIndexSection = ({
                   All notes have been scanned and indexed.
                 </span>
               </div>
-              <div className="status-item">
-                <div className="status-row">
-                  <span>Watcher active</span>
-                  <div className="toggle-row">
-                    <span className="toggle-label">Coming later</span>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        disabled
-                        aria-label="Watcher active (coming later)"
-                      />
-                      <span className="slider" />
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div className="status-item">
-                <div className="status-row">
-                  <span>Auto-scan</span>
-                  <div className="toggle-row">
-                    <span className="toggle-label">Coming later</span>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        disabled
-                        aria-label="Auto-scan (coming later)"
-                      />
-                      <span className="slider" />
-                    </label>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
           {renderHiddenFoldersControl(
             "Hidden folders (Index)",
             "Hidden folders level for index",
             "0 excludes hidden folders from indexing. Values above 0 include them.",
+            "hidden-folders-index",
           )}
           <div className="setting-row">
             <span className="label">Actions</span>
@@ -209,11 +180,18 @@ export const VaultIndexSection = ({
               >
                 Rescan vault
               </button>
-              <button type="button" className="ghost small" disabled>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={onResetIndex}
+                disabled={!vaultPath || listState === "loading"}
+              >
                 Reset index
               </button>
             </div>
-            <span className="helper-text">Reset index is coming later.</span>
+            <span className="helper-text">
+              Reset index clears the current vault registration.
+            </span>
           </div>
         </div>
       ) : (

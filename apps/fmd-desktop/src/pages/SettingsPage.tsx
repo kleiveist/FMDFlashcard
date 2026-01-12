@@ -99,6 +99,7 @@ export const SettingsPage = () => {
             onCopyVaultPath={actions.handleCopyVaultPath}
             onHiddenFoldersLevelChange={settings.setHiddenFoldersLevel}
             onRescanVault={actions.handleRescanVault}
+            onResetIndex={actions.handleResetIndex}
             vaultIndexedComplete={vaultIndexedComplete}
             hiddenFoldersLevel={settings.hiddenFoldersLevel}
             vaultPath={vault.vaultPath}

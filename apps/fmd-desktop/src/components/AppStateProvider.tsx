@@ -52,6 +52,7 @@ type AppActions = {
   handleCopyAccent: () => Promise<void>;
   handleCopyVaultPath: () => Promise<void>;
   handleRescanVault: () => void;
+  handleResetIndex: () => void;
   handleMaxFilesPerScanChange: (value: string) => void;
 };
 
@@ -210,7 +211,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const hasRestoredVault = useRef(false);
   const isRestoringActiveNote = useRef(false);
   const hasResolvedActiveNote = useRef(false);
-  const { loadVault, pickVault, rescanVault, setVaultPath, vaultPath } = vault;
+  const {
+    loadVault,
+    pickVault,
+    rescanVault,
+    setFiles,
+    setListError,
+    setListState,
+    setVaultPath,
+    vaultPath,
+  } = vault;
   const {
     resetPreview,
     restoreSnapshot: restorePreviewSnapshot,
@@ -223,6 +233,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     restoreSnapshot: restoreFlashcardsSnapshot,
     takeSnapshot: takeFlashcardsSnapshot,
   } = flashcards;
+  const { resetFlashcards: resetFastFlashcards } = fastFlashcards;
 
   const setActiveFolderPath = useCallback((value: string | null) => {
     if (value === null) {
@@ -445,6 +456,34 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     void rescanVault();
   }, [rescanVault]);
 
+  const handleResetIndex = useCallback(() => {
+    if (!vaultPath) {
+      return;
+    }
+    resetPreview();
+    resetFlashcards();
+    resetFastFlashcards();
+    setActiveFolderPath(null);
+    setLargeVaultWarningCount(null);
+    setFiles([]);
+    setListError("");
+    setListState("idle");
+    setVaultPath(null);
+    void persistSettings({ vaultPath: null, activeNotePath: null });
+  }, [
+    persistSettings,
+    resetFastFlashcards,
+    resetFlashcards,
+    resetPreview,
+    setActiveFolderPath,
+    setFiles,
+    setLargeVaultWarningCount,
+    setListError,
+    setListState,
+    setVaultPath,
+    vaultPath,
+  ]);
+
   const handleMaxFilesPerScanChange = useCallback(
     (value: string) => {
       const nextValue = value.trim();
@@ -469,6 +508,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleCopyAccent,
       handleCopyVaultPath,
       handleRescanVault,
+      handleResetIndex,
       handleMaxFilesPerScanChange,
     },
     flashcards,
