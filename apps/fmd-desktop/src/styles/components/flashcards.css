@@ -248,6 +248,23 @@
   white-space: pre-wrap;
 }
 
+.flashcard-code-block {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: var(--preview-code-bg);
+  color: var(--ink);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.flashcard-code-block code {
+  font-family: inherit;
+}
+
 .flashcard-table {
   width: 100%;
   border-radius: 12px;

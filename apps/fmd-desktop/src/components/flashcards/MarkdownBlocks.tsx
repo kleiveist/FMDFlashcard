@@ -10,7 +10,7 @@
  */
 
 import { Fragment, type ReactNode } from "react";
-import { splitMarkdownBlocks } from "../../lib/markdownTables";
+import { splitMarkdownBlocks, type MarkdownBlock } from "../../lib/markdownTables";
 
 export const CLOZE_PLACEHOLDER_PREFIX = "@@@CLOZE:";
 export const CLOZE_PLACEHOLDER_SUFFIX = "@@@";
@@ -78,6 +78,65 @@ const renderTokens = (
     return <Fragment key={key}>{rendered}</Fragment>;
   });
 
+type MarkdownFenceBlock =
+  | { type: "code"; text: string; language: string }
+  | { type: "text"; text: string };
+
+const normalizeLineBreaks = (value: string) => value.replace(/\r\n?/g, "\n");
+
+const splitFenceBlocks = (rawText: string): MarkdownFenceBlock[] => {
+  const lines = normalizeLineBreaks(rawText).split("\n");
+  const blocks: MarkdownFenceBlock[] = [];
+  const textBuffer: string[] = [];
+  const codeBuffer: string[] = [];
+  let inFence = false;
+  let fenceLanguage = "";
+  const fencePattern = /^(```|~~~)(.*)$/;
+
+  const flushText = () => {
+    if (textBuffer.length === 0) {
+      return;
+    }
+    blocks.push({ type: "text", text: textBuffer.join("\n") });
+    textBuffer.length = 0;
+  };
+
+  const flushCode = () => {
+    blocks.push({ type: "code", text: codeBuffer.join("\n"), language: fenceLanguage });
+    codeBuffer.length = 0;
+    fenceLanguage = "";
+  };
+
+  lines.forEach((line) => {
+    const trimmed = line.trimStart();
+    const match = trimmed.match(fencePattern);
+    if (match) {
+      if (inFence) {
+        flushCode();
+        inFence = false;
+      } else {
+        flushText();
+        inFence = true;
+        fenceLanguage = match[2]?.trim() ?? "";
+      }
+      return;
+    }
+    if (inFence) {
+      codeBuffer.push(line);
+    } else {
+      textBuffer.push(line);
+    }
+  });
+
+  if (inFence) {
+    flushCode();
+  } else {
+    flushText();
+  }
+
+  return blocks;
+};
+
 type MarkdownBlocksProps = {
   text: string;
   className?: string;
@@ -91,7 +150,17 @@ export const MarkdownBlocks = ({
   allowTableScroll = true,
   renderPlaceholder,
 }: MarkdownBlocksProps) => {
-  const blocks = splitMarkdownBlocks(text);
+  const fencedBlocks = splitFenceBlocks(text);
+  const blocks: Array<MarkdownBlock | MarkdownFenceBlock> = [];
+  fencedBlocks.forEach((block) => {
+    if (block.type === "code") {
+      blocks.push(block);
+      return;
+    }
+    splitMarkdownBlocks(block.text).forEach((nested) => {
+      blocks.push(nested);
+    });
+  });
   const containerClass = ["flashcard-markdown", className]
     .filter(Boolean)
     .join(" ");
@@ -137,6 +206,22 @@ export const MarkdownBlocks = ({
                 </tbody>
               </table>
             </div>
+          );
+        }
+
+        if (block.type === "code") {
+          const codeClass = [
+            "flashcard-code-block",
+            block.language ? `language-${block.language}` : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <pre className={codeClass} key={`code-${blockIndex}`}>
+              <code>
+                {renderTokens(block.text, renderPlaceholder, `code-${blockIndex}`)}
+              </code>
+            </pre>
           );
         }
 

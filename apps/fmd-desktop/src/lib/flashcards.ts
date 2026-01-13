@@ -82,8 +82,11 @@ export type ClozeDragToken = {
   value: string;
 };
 
+export type ClozeSubtype = "cl" | "cd" | "cld";
+
 export type ClozeCard = {
   kind: "cloze";
+  subtype: ClozeSubtype;
   question: string;
   segments: ClozeSegment[];
   dragTokens: ClozeDragToken[];
@@ -235,7 +238,6 @@ const parseClozeSegments = (lines: string[]) => {
   const dragTokens: ClozeDragToken[] = [];
   let blankIndex = 0;
   let tokenIndex = 0;
-  let inFence = false;
   const fencePattern = /^(```|~~~)/;
 
   const handleLine = (line: string) => {
@@ -312,9 +314,6 @@ const parseClozeSegments = (lines: string[]) => {
     const line = trimmedLines[lineIndex];
     const trimmed = line.trimStart();
     if (fencePattern.test(trimmed)) {
-      inFence = !inFence;
-      appendText(segments, line);
-    } else if (inFence) {
       appendText(segments, line);
     } else {
       const parsed = handleLine(line);
@@ -329,6 +328,16 @@ const parseClozeSegments = (lines: string[]) => {
   }
 
   return { segments, dragTokens };
+};
+
+const resolveClozeSubtype = (hasInput: boolean, hasDrag: boolean): ClozeSubtype => {
+  if (hasInput && hasDrag) {
+    return "cld";
+  }
+  if (hasInput) {
+    return "cl";
+  }
+  return "cd";
 };
 
 const normalizeTrueFalseMarker = (value: string) => {
@@ -729,10 +738,11 @@ const parseCardLines = (
       }
     });
   }
+  const hasDragContent = hasDragBlanks || hasAssignmentLines;
   if (hasInputBlanks) {
     pushUnique(detectedTypes, "fill-blank");
   }
-  if (hasDragBlanks || hasAssignmentLines) {
+  if (hasDragContent) {
     pushUnique(detectedTypes, "assignment");
   }
 
@@ -792,10 +802,11 @@ const parseCardLines = (
   if (!parsed) {
     return null;
   }
-  if (hasInputBlanks || hasDragBlanks || hasAssignmentLines) {
+  if (hasInputBlanks || hasDragContent) {
     return {
       part: {
         kind: "cloze",
+        subtype: resolveClozeSubtype(hasInputBlanks, hasDragContent),
         question,
         segments: parsed.segments,
         dragTokens: parsed.dragTokens,

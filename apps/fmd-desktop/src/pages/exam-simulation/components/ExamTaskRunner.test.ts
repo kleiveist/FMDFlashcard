@@ -201,6 +201,7 @@ const autoScoringCases: Array<
       [
         {
           kind: "cloze",
+          subtype: "cl",
           question: "Fill the blank",
           segments: [
             { type: "text", value: "Answer is " },
@@ -219,6 +220,7 @@ const autoScoringCases: Array<
       [
         {
           kind: "cloze",
+          subtype: "cd",
           question: "Drag the token",
           segments: [
             { type: "text", value: "Token is " },

@@ -340,6 +340,49 @@ Answer: Confirmed.
     }
   });
 
+  it("detects cloze markers inside fenced code blocks", () => {
+    const markdown = `#card
+SQL cld example.
+\`\`\`sql
+\`SELECT\` a.PLZ, a.ORT
+\`FROM\` ADRESSE a
+\`JOIN\` KUNDE k \`ON\` a.KUNDEID = k.KUNDEID
+\`WHERE\` k.NAME = %%Nachname%% \`AND\` k.VORNAME = %%Vorname%%
+\`AND\` a.TYP = %%Adresstyp%%
+\`ORDER\` \`BY\` a.%%Sortierattribut%%;
+\`\`\`
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.subtype).toBe("cld");
+      const inputBlanks = part.segments.filter(
+        (segment) => segment.type === "blank" && segment.kind === "input",
+      );
+      expect(inputBlanks.map((blank) => blank.solution)).toEqual([
+        "Nachname",
+        "Vorname",
+        "Adresstyp",
+        "Sortierattribut",
+      ]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual([
+        "SELECT",
+        "FROM",
+        "JOIN",
+        "ON",
+        "WHERE",
+        "AND",
+        "AND",
+        "ORDER",
+        "BY",
+      ]);
+    }
+  });
+
   it("keeps tables intact when splitting composite parts", () => {
     const markdown = `#card
 | Term | Answer |
@@ -860,6 +903,7 @@ A foreign key is an %% attribute or attribute set %% that references a %%primary
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
+      expect(part.subtype).toBe("cl");
       expect(part.question).toBe("Define foreign key.");
       expect(part.dragTokens).toEqual([]);
       expect(part.segments).toEqual([
@@ -914,6 +958,7 @@ Use %%blank%% with \`alpha\` and \`beta\`.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
+      expect(part.subtype).toBe("cld");
       expect(part.dragTokens).toEqual([
         { id: "token-0", value: "alpha" },
         { id: "token-1", value: "beta" },
@@ -942,6 +987,7 @@ Use \`alpha\` and \`beta\` here.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
+      expect(part.subtype).toBe("cd");
       expect(part.dragTokens).toEqual([
         { id: "token-0", value: "alpha" },
         { id: "token-1", value: "beta" },
@@ -1017,7 +1063,7 @@ Valid %%answer%% and \`unfinished.
     }
   });
 
-  it("ignores markers inside fenced code blocks", () => {
+  it("parses markers inside fenced code blocks", () => {
     const markdown = `#card
 Question.
 Code:
@@ -1034,11 +1080,16 @@ Outside \`token\` and %%blank%%.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
-      expect(part.dragTokens).toEqual([{ id: "token-0", value: "token" }]);
+      expect(part.dragTokens).toEqual([
+        { id: "token-0", value: "ignored" },
+        { id: "token-1", value: "token" },
+      ]);
       const blanks = part.segments.filter((segment) => segment.type === "blank");
       expect(blanks).toEqual([
-        { type: "blank", id: "blank-0", kind: "drag", solution: "token" },
-        { type: "blank", id: "blank-1", kind: "input", solution: "blank" },
+        { type: "blank", id: "blank-0", kind: "drag", solution: "ignored" },
+        { type: "blank", id: "blank-1", kind: "input", solution: "not" },
+        { type: "blank", id: "blank-2", kind: "drag", solution: "token" },
+        { type: "blank", id: "blank-3", kind: "input", solution: "blank" },
       ]);
     }
   });
