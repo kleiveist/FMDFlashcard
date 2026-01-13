@@ -625,6 +625,35 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn delete_markdown_file(
+    vault_path: String,
+    relative_path: String,
+) -> Result<(), String> {
+    let root = PathBuf::from(&vault_path);
+    if !root.exists() {
+        return Err("Vault path does not exist.".to_string());
+    }
+    if !root.is_dir() {
+        return Err("Vault path is not a directory.".to_string());
+    }
+    let relative = sanitize_relative_path(&relative_path)?;
+    let full_path = root.join(&relative);
+    if !full_path.starts_with(&root) {
+        return Err("Path is outside the vault.".to_string());
+    }
+    if !full_path.exists() {
+        return Err("File not found.".to_string());
+    }
+    if !full_path.is_file() {
+        return Err("Path is not a file.".to_string());
+    }
+    if !is_markdown(&full_path) {
+        return Err("Only markdown files are supported.".to_string());
+    }
+    fs::remove_file(&full_path).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 fn create_markdown_file(
     vault_path: String,
     relative_path: String,
@@ -701,6 +730,7 @@ pub fn run() {
             get_path_info,
             read_text_file,
             write_text_file,
+            delete_markdown_file,
             create_markdown_file,
             create_directory
         ])

@@ -686,6 +686,117 @@ const resolveMarkdownCaretIndex = (
   return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset);
 };
 
+const isInteractionMarkerLine = (line: string) => {
+  const trimmed = line.trim().toLowerCase();
+  return trimmed === "-true" ||
+    trimmed === "-false" ||
+    (trimmed.length === 2 &&
+      trimmed[0] === "-" &&
+      trimmed[1] >= "a" &&
+      trimmed[1] <= "d");
+};
+
+const shouldExpandInlineExamLine = (line: string) => {
+  const lowered = line.toLowerCase();
+  return lowered.includes("#card") ||
+    /\s-[a-d]\b/.test(lowered) ||
+    /\s-(true|false)\b/.test(lowered) ||
+    /\b[a-d]\)\s+\S/.test(lowered);
+};
+
+const ensureHardBreakSpacing = (value: string) => {
+  if (!value) {
+    return value;
+  }
+  const match = value.match(/[ \t]+$/);
+  const trailingLength = match ? match[0].length : 0;
+  if (trailingLength >= 2) {
+    return value;
+  }
+  return `${value}${" ".repeat(2 - trailingLength)}`;
+};
+
+const splitExpandedExamLine = (expanded: string) => {
+  const parts = expanded.split("\n");
+  if (parts.length <= 1) {
+    return parts;
+  }
+  return parts.map((part, index) => {
+    if (index === parts.length - 1 || part === "") {
+      return part;
+    }
+    return ensureHardBreakSpacing(part);
+  });
+};
+
+const expandInlineExamLine = (line: string) => {
+  if (!line || !shouldExpandInlineExamLine(line)) {
+    return [line];
+  }
+
+  let expanded = line;
+  expanded = expanded.replace(/\s*#card\s*/gi, "\n#card\n");
+  expanded = expanded.replace(/\s-((?:true|false)|[a-d])\b/gi, "\n-$1");
+  expanded = expanded.replace(/\s([a-d]\))\s*/gi, "\n$1 ");
+  if (expanded.toLowerCase().includes("#card")) {
+    expanded = expanded.replace(/\s#\s*/g, "\n#\n");
+  }
+
+  return splitExpandedExamLine(expanded);
+};
+
+export const applyInteractionSpacing = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+  // Preserve hard breaks and marker lines because exam/flashcard parsing is line-based.
+  const sourceLines = markdown.split("\n");
+  const expandedLines: string[] = [];
+  let inCodeFence = false;
+
+  for (let i = 0; i < sourceLines.length; i += 1) {
+    const line = sourceLines[i] ?? "";
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      expandedLines.push(line);
+      continue;
+    }
+    if (inCodeFence) {
+      expandedLines.push(line);
+      continue;
+    }
+    expandedLines.push(...expandInlineExamLine(line));
+  }
+
+  const result: string[] = [];
+  inCodeFence = false;
+
+  for (let i = 0; i < expandedLines.length; i += 1) {
+    const line = expandedLines[i] ?? "";
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      result.push(line);
+      continue;
+    }
+
+    result.push(line);
+    if (inCodeFence || !isInteractionMarkerLine(trimmed)) {
+      continue;
+    }
+
+    const nextLine = expandedLines[i + 1] ?? "";
+    const nextTrimmed = nextLine.trim();
+    if (nextTrimmed === "" || isInteractionMarkerLine(nextTrimmed)) {
+      continue;
+    }
+    result.push("");
+  }
+
+  return result.join("\n");
+};
+
 export const PreviewPanel = ({
   editDraft,
   editError,
@@ -879,6 +990,8 @@ export const PreviewPanel = ({
     onEditChange(nextValue);
   }, [onEditChange]);
 
+  const renderedPreview = rawPreview ? preview : applyInteractionSpacing(preview);
+
   return (
     <section className="panel preview-panel">
       <div className="panel-header">
@@ -954,7 +1067,7 @@ export const PreviewPanel = ({
                     ),
                   }}
                 >
-                  {preview}
+                  {renderedPreview}
                 </ReactMarkdown>
               )}
             </div>

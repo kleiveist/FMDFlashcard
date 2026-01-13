@@ -310,6 +310,7 @@ export const SidebarNav = ({
                 onTogglePath={handleTogglePath}
                 onSelectFile={actions.handleSelectFile}
                 onRescanVault={actions.handleRescanVault}
+                onClearSelection={preview.resetPreview}
                 selectedFile={preview.selectedFile}
                 vaultPath={vault.vaultPath}
               />

@@ -29,6 +29,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent,
   type MouseEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -36,6 +37,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { FileIcon, FolderIcon } from "./icons";
 import { VaultCreateModal } from "./VaultCreateModal";
+import { VaultDeleteModal } from "./VaultDeleteModal";
 import { asErrorMessage } from "../lib/errors";
 import { isHiddenPath, normalizeRelativePath, vaultBaseName } from "../lib/path";
 import {
@@ -53,6 +55,30 @@ const OVERFLOW_DEPTH = 4;
 const DEFAULT_FILE_NAME = "New Note.md";
 const DEFAULT_FOLDER_NAME = "New Folder";
 const NAME_FORBIDDEN_PATTERN = /[\\/]/;
+const MARKDOWN_FILE_PATTERN = /\.(md|markdown|mdx)$/i;
+
+const isMarkdownFilePath = (value: string) => MARKDOWN_FILE_PATTERN.test(value);
+
+type DeleteShortcutEvent = {
+  key: string;
+  currentTarget: { contains?: (node: unknown) => boolean } | null;
+  target: unknown;
+};
+
+export const shouldHandleVaultDeleteShortcut = (
+  event: DeleteShortcutEvent,
+) => {
+  if (event.key !== "Delete") {
+    return false;
+  }
+  if (!event.currentTarget || !event.target) {
+    return false;
+  }
+  if (typeof event.currentTarget.contains !== "function") {
+    return false;
+  }
+  return event.currentTarget.contains(event.target);
+};
 
 const getIndentVars = (depth: number): CSSProperties =>
   ({
@@ -170,6 +196,57 @@ const ensureUniqueName = (
   return candidate;
 };
 
+type VaultDeleteHandlerOptions = {
+  vaultPath: string | null;
+  deleteTarget: VaultFile | null;
+  selectedFile: VaultFile | null;
+  isDeleting: boolean;
+  invokeDelete: (vaultPath: string, relativePath: string) => Promise<void>;
+  onRescanVault: () => void;
+  onClose: () => void;
+  onClearSelection?: () => void;
+  setError: (message: string) => void;
+  setIsDeleting: (value: boolean) => void;
+};
+
+export const buildVaultDeleteHandlers = (options: VaultDeleteHandlerOptions) => {
+  const handleCancel = () => {
+    if (options.isDeleting) {
+      return;
+    }
+    options.onClose();
+  };
+
+  const handleConfirm = async () => {
+    if (options.isDeleting || !options.vaultPath || !options.deleteTarget) {
+      return;
+    }
+    if (!isMarkdownFilePath(options.deleteTarget.relative_path)) {
+      options.setError("Only markdown files can be deleted.");
+      return;
+    }
+    options.setIsDeleting(true);
+    options.setError("");
+    try {
+      await options.invokeDelete(
+        options.vaultPath,
+        options.deleteTarget.relative_path,
+      );
+      options.onRescanVault();
+      if (options.selectedFile?.path === options.deleteTarget.path) {
+        options.onClearSelection?.();
+      }
+      options.onClose();
+    } catch (error) {
+      options.setError(asErrorMessage(error, "Failed to delete file."));
+    } finally {
+      options.setIsDeleting(false);
+    }
+  };
+
+  return { handleCancel, handleConfirm };
+};
+
 type ContextMenuTarget =
   | { kind: "file"; file: VaultFile; dirPath: string }
   | { kind: "dir"; path: string }
@@ -199,6 +276,7 @@ type VaultTreeProps = {
   onActiveFolderChange: (path: string | null) => void;
   onTogglePath: (path: string, isOpen: boolean) => void;
   onSelectFile: (file: VaultFile) => void;
+  onClearSelection?: () => void;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
 };
@@ -215,6 +293,7 @@ export const VaultTree = ({
   onActiveFolderChange,
   onTogglePath,
   onSelectFile,
+  onClearSelection,
   selectedFile,
   vaultPath,
 }: VaultTreeProps) => {
@@ -237,6 +316,9 @@ export const VaultTree = ({
   const [createError, setCreateError] = useState("");
   const [openError, setOpenError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<VaultFile | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const portalTarget = typeof document === "undefined" ? null : document.body;
 
   const mergedFiles = useMemo(() => {
@@ -329,6 +411,9 @@ export const VaultTree = ({
     setExtraDirs([]);
     setPendingFiles([]);
     setOpenError("");
+    setDeleteTarget(null);
+    setDeleteError("");
+    setIsDeleting(false);
     onActiveFolderChange(null);
     setContextMenu(null);
   }, [onActiveFolderChange, vaultPath]);
@@ -401,6 +486,20 @@ export const VaultTree = ({
     },
     [],
   );
+
+  const closeDeleteModal = useCallback(() => {
+    if (isDeleting) {
+      return;
+    }
+    setDeleteTarget(null);
+    setDeleteError("");
+  }, [isDeleting]);
+
+  const requestDelete = useCallback((file: VaultFile) => {
+    setDeleteTarget(file);
+    setDeleteError("");
+    setContextMenu(null);
+  }, []);
 
   const handleOpenDataFolder = useCallback(
     async (target: ContextMenuTarget | null) => {
@@ -487,6 +586,56 @@ export const VaultTree = ({
       }
     },
     [closeContextMenu, reportOpenError, vaultPath],
+  );
+
+  const invokeDelete = useCallback(
+    (vaultRoot: string, relativePath: string) =>
+      invoke("delete_markdown_file", { vaultPath: vaultRoot, relativePath }),
+    [],
+  );
+
+  const { handleCancel: handleDeleteCancel, handleConfirm: handleDeleteConfirm } = useMemo(
+    () =>
+      buildVaultDeleteHandlers({
+        vaultPath,
+        deleteTarget,
+        selectedFile,
+        isDeleting,
+        invokeDelete,
+        onRescanVault,
+        onClose: closeDeleteModal,
+        onClearSelection,
+        setError: setDeleteError,
+        setIsDeleting,
+      }),
+    [
+      closeDeleteModal,
+      deleteTarget,
+      invokeDelete,
+      isDeleting,
+      onClearSelection,
+      onRescanVault,
+      selectedFile,
+      vaultPath,
+    ],
+  );
+
+  const handleVaultKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (!shouldHandleVaultDeleteShortcut(event)) {
+        return;
+      }
+      if (!selectedFile) {
+        return;
+      }
+      if (!isMarkdownFilePath(selectedFile.relative_path)) {
+        setDeleteError("Only markdown files can be deleted.");
+        return;
+      }
+      event.preventDefault();
+      requestDelete(selectedFile);
+    },
+    [requestDelete, selectedFile],
   );
 
   const handleCreateConfirm = useCallback(async () => {
@@ -594,6 +743,12 @@ export const VaultTree = ({
   const menuTarget = contextMenu?.target ?? null;
   const fileTarget = menuTarget && menuTarget.kind === "file" ? menuTarget : null;
   const menuDirPath = fileTarget ? fileTarget.dirPath : menuTarget?.path ?? "";
+  const canDeleteFile = fileTarget
+    ? isMarkdownFilePath(fileTarget.file.relative_path)
+    : false;
+  const deleteFileName = deleteTarget
+    ? deleteTarget.relative_path.split("/").pop() ?? deleteTarget.relative_path
+    : "";
   const rootFolderState = getFolderState("");
   const contextMenuLayer = contextMenu ? (
     <div
@@ -616,7 +771,7 @@ export const VaultTree = ({
                 void handleOpenDataFolder(menuTarget);
               }}
             >
-              Open Data Folder
+              View Folder
             </button>
             <button
               type="button"
@@ -625,8 +780,19 @@ export const VaultTree = ({
                 void handleOpenWithDefault(fileTarget.file);
               }}
             >
-              Open with Default
+              View Files
             </button>
+            {canDeleteFile ? (
+              <button
+                type="button"
+                className="context-menu-item"
+                onClick={() => {
+                  requestDelete(fileTarget.file);
+                }}
+              >
+                Delete
+              </button>
+            ) : null}
           </>
         ) : (
           <>
@@ -651,7 +817,7 @@ export const VaultTree = ({
                 void handleOpenDataFolder(menuTarget);
               }}
             >
-              Open Data Folder
+              View Folder
             </button>
           </>
         )}
@@ -744,6 +910,8 @@ export const VaultTree = ({
         <div
           className={`vault-tree-scroll${hasDeepIndent ? " vault-tree-scroll-wide" : ""}`}
           onContextMenu={handleEmptyContextMenu}
+          onKeyDown={handleVaultKeyDown}
+          tabIndex={0}
         >
           {!vaultPath ? (
             <div className="empty-state">
@@ -753,6 +921,7 @@ export const VaultTree = ({
           {listState === "loading" ? <span className="chip">Scanne...</span> : null}
           {listError ? <div className="error">{listError}</div> : null}
           {openError ? <div className="error">{openError}</div> : null}
+          {deleteError ? <div className="error">{deleteError}</div> : null}
           {vaultPath && listState === "idle" && treeNodes.length === 0 ? (
             <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
           ) : null}
@@ -788,6 +957,14 @@ export const VaultTree = ({
           ? createPortal(contextMenuLayer, portalTarget)
           : contextMenuLayer
         : null}
+      <VaultDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        fileName={deleteFileName}
+        error={deleteError}
+        isPending={isDeleting}
+        onCancel={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+      />
       <VaultCreateModal
         isOpen={createKind !== null}
         kind={createKind ?? "file"}
