@@ -9,12 +9,20 @@ d) Ein SQL-Statement zum Abfragen von Daten
 -b
 ---
 
+
 2) Welche Eigenschaft muss ein Primärschlüssel in einer relationalen Tabelle erfüllen?
+
 a) Er darf NULL-Werte enthalten, wenn ein Default definiert ist
+
 b) Er muss eindeutig sein und darf nicht NULL sein
+
 c) Er ist immer ein zusammengesetzter Schlüssel aus mehreren Spalten
+
 d) Er referenziert immer einen Primärschlüssel in einer anderen Tabelle
+
 -b
+
+
 ---
 
 3) [m1] Wie wird eine N:M-Beziehung (Viele-zu-Viele) in relationalen Datenbanken typischerweise umgesetzt?
@@ -146,3 +154,6 @@ Beispiel:
 - Ein Film mit Artikel.Verfuegbarkeit = 'sofort' erscheint in der View; ein Film „in 3 Tagen“ wird ausgeschlossen.
 ---
 #examend
+
+
+``
