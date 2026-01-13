@@ -30,6 +30,8 @@ type ExamSettingsSectionProps = {
   durationMinutes: number;
   timeLimitEnabled: boolean;
   showTimeline: boolean;
+  autoCardsEnabled: boolean;
+  autoCardsReturnOnCorrect: boolean;
   aiEvaluation: ExamAiEvaluation;
   setMaxTotalPoints: (value: number) => void;
   setTaskCount: (value: number) => void;
@@ -37,6 +39,8 @@ type ExamSettingsSectionProps = {
   setDurationMinutes: (value: number) => void;
   setTimeLimitEnabled: (value: boolean) => void;
   setShowTimeline: (value: boolean) => void;
+  setAutoCardsEnabled: (value: boolean) => void;
+  setAutoCardsReturnOnCorrect: (value: boolean) => void;
 };
 
 const clampInput = (value: string) => {
@@ -54,6 +58,8 @@ export const ExamSettingsSection = ({
   durationMinutes,
   timeLimitEnabled,
   showTimeline,
+  autoCardsEnabled,
+  autoCardsReturnOnCorrect,
   aiEvaluation,
   setMaxTotalPoints,
   setTaskCount,
@@ -61,6 +67,8 @@ export const ExamSettingsSection = ({
   setDurationMinutes,
   setTimeLimitEnabled,
   setShowTimeline,
+  setAutoCardsEnabled,
+  setAutoCardsReturnOnCorrect,
 }: ExamSettingsSectionProps) => {
   const sumAssigned = useMemo(
     () => taskPoints.reduce((sum, value) => sum + value, 0),
@@ -192,6 +200,37 @@ export const ExamSettingsSection = ({
             <span className="muted">
               {showTimeline ? "Shown" : "Hidden"}
             </span>
+          </div>
+        </div>
+
+        <div className="setting-row">
+          <span className="label">AUTO CARDS</span>
+          <div className="setting-inline">
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={autoCardsEnabled}
+                onChange={(event) => setAutoCardsEnabled(event.target.checked)}
+              />
+              <span className="slider" />
+            </label>
+            <span className="muted">Auto add cards after grading.</span>
+          </div>
+        </div>
+        <div className="setting-row">
+          <span className="label">RETURN CARD</span>
+          <div className="setting-inline">
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={autoCardsReturnOnCorrect}
+                onChange={(event) =>
+                  setAutoCardsReturnOnCorrect(event.target.checked)
+                }
+              />
+              <span className="slider" />
+            </label>
+            <span className="muted">Remove cards again when correct.</span>
           </div>
         </div>
 

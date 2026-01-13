@@ -84,6 +84,9 @@ export const ExamSimulationPage = () => {
     conversionError,
     handleStartExam,
     handleResetExam,
+    handleSubmitExam,
+    handleStartScoring,
+    handleFinishScoring,
     handleOptionSelect,
     handleTrueFalseSelect,
     handleClozeInputChange,
@@ -447,6 +450,16 @@ export const ExamSimulationPage = () => {
             }
             showReset={examRunning}
             onReset={handleResetExam}
+            examStageControls={{
+              stage,
+              canStartExam,
+              finishPending: conversionPending,
+              onStartExam: handleStartExam,
+              onSubmitExam: handleSubmitExam,
+              onStartScoring: handleStartScoring,
+              onFinishScoring: handleFinishScoring,
+              onResetExam: handleResetExam,
+            }}
           />
           <ExamFilePanel
             files={examFiles}

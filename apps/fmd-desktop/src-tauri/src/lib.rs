@@ -70,6 +70,8 @@ struct AppSettings {
     exam_task_count: Option<u32>,
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
+    exam_auto_cards_enabled: Option<bool>,
+    exam_auto_cards_return_on_correct: Option<bool>,
     exam_grade_scale: Option<String>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 }
@@ -192,6 +194,8 @@ impl AppSettings {
             && self.exam_task_count.is_none()
             && self.exam_task_points.is_none()
             && self.exam_ai_evaluation.is_none()
+            && self.exam_auto_cards_enabled.is_none()
+            && self.exam_auto_cards_return_on_correct.is_none()
             && self.exam_grade_scale.is_none()
             && self.keyboard_shortcuts.is_none()
     }
@@ -414,6 +418,8 @@ fn save_app_settings(
     exam_task_count: Option<u32>,
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
+    exam_auto_cards_enabled: Option<bool>,
+    exam_auto_cards_return_on_correct: Option<bool>,
     exam_grade_scale: Option<String>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 ) -> Result<(), String> {
@@ -453,6 +459,8 @@ fn save_app_settings(
         exam_task_count,
         exam_task_points,
         exam_ai_evaluation,
+        exam_auto_cards_enabled,
+        exam_auto_cards_return_on_correct,
         exam_grade_scale,
         keyboard_shortcuts,
     };

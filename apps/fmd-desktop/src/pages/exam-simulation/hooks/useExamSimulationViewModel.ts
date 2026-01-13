@@ -43,6 +43,10 @@ import {
   type ExamRun,
   type ExamRunStorage,
 } from "../../../lib/examRuns";
+import {
+  applyExamCardWrapperActions,
+  type ExamCardWrapperAction,
+} from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
@@ -434,12 +438,15 @@ export const useExamSimulationViewModel = () => {
       setStage("finished");
       return;
     }
+    const autoCardsEnabled = settings.examAutoCardsEnabled;
+    const autoCardsReturnOnCorrect = settings.examAutoCardsReturnOnCorrect;
+    const hasManualConversions = runTasks.some(
+      (_task, index) => conversionDecisions[index],
+    );
+    const shouldApplyCards =
+      autoCardsEnabled || autoCardsReturnOnCorrect || hasManualConversions;
 
-    const tasksToConvert = runTasks
-      .map((task, index) => ({ task, index }))
-      .filter((entry) => conversionDecisions[entry.index]);
-
-    if (tasksToConvert.length === 0) {
+    if (!shouldApplyCards) {
       setStage("finished");
       return;
     }
@@ -447,47 +454,62 @@ export const useExamSimulationViewModel = () => {
     setConversionPending(true);
     setConversionError("");
 
+    const resolveWrapperAction = (
+      task: ExamTask,
+      index: number,
+    ): ExamCardWrapperAction => {
+      const isCorrect = autoCardsReturnOnCorrect
+        ? task.gradingMode === "auto"
+          ? isTaskCorrect(task, partStates[index] ?? [])
+          : (() => {
+              const maxPoints = runTaskPoints[index] ?? 0;
+              if (maxPoints <= 0) {
+                return false;
+              }
+              const awarded = normalizeAwardedPoints(
+                awardedPoints[index] ?? null,
+                maxPoints,
+              );
+              return awarded >= maxPoints;
+            })()
+        : false;
+
+      if (autoCardsReturnOnCorrect && isCorrect) {
+        return "remove";
+      }
+      if (autoCardsEnabled) {
+        return "add";
+      }
+      return conversionDecisions[index] ? "add" : "keep";
+    };
+
     const applyConversions = async () => {
       try {
         const contents = await invoke<string>("read_text_file", {
           path: activeExamFile.path,
         });
-        const lines = contents.replace(/\r\n?/g, "\n").split("\n");
-        const sorted = [...tasksToConvert].sort(
-          (a, b) => a.task.sourceRange.startLine - b.task.sourceRange.startLine,
+        const { content: nextContents, changed } = applyExamCardWrapperActions(
+          contents,
+          runTasks,
+          resolveWrapperAction,
         );
-        let offset = 0;
 
-        sorted.forEach(({ task }) => {
-          const start = task.sourceRange.startLine + offset;
-          const end = task.sourceRange.endLine + offset;
-          const chunkHasCardMarker = lines
-            .slice(start, end + 1)
-            .some((line) => line.trim() === "#card");
-          const hasCardStart = lines[start - 1]?.trim() === "#card";
-          const isWrapped = hasCardStart || chunkHasCardMarker;
+        if (changed) {
+          await invoke("write_text_file", {
+            path: activeExamFile.path,
+            contents: nextContents,
+          });
 
-          if (!isWrapped) {
-            lines.splice(start, 0, "#card");
-            offset += 1;
-            lines.splice(end + 2, 0, "#");
-            offset += 1;
+          if (preview.selectedFile?.path === activeExamFile.path) {
+            preview.setPreview(nextContents);
           }
-        });
 
-        const nextContents = lines.join("\n");
-        await invoke("write_text_file", {
-          path: activeExamFile.path,
-          contents: nextContents,
-        });
-
-        if (preview.selectedFile?.path === activeExamFile.path) {
-          preview.setPreview(nextContents);
+          actions.handleRescanVault();
         }
 
         setStage("finished");
       } catch (error) {
-        setConversionError(asErrorMessage(error, "Failed to convert tasks."));
+        setConversionError(asErrorMessage(error, "Failed to update cards."));
       } finally {
         setConversionPending(false);
       }
@@ -496,10 +518,16 @@ export const useExamSimulationViewModel = () => {
     void applyConversions();
   }, [
     activeExamFile,
+    actions,
+    awardedPoints,
     conversionDecisions,
     conversionPending,
+    partStates,
     preview,
     runTasks,
+    runTaskPoints,
+    settings.examAutoCardsEnabled,
+    settings.examAutoCardsReturnOnCorrect,
     stage,
   ]);
 

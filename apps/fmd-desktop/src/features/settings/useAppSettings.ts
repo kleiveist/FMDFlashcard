@@ -102,6 +102,8 @@ type AppSettings = {
   exam_task_points?: number[] | null;
   exam_duration_minutes?: number | null;
   exam_time_limit_enabled?: boolean | null;
+  exam_auto_cards_enabled?: boolean | null;
+  exam_auto_cards_return_on_correct?: boolean | null;
   exam_grade_scale?: string | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
   keyboard_shortcuts?: KeyboardShortcutSettings | null;
@@ -141,6 +143,8 @@ type PersistUpdates = {
   examTaskPoints?: number[];
   examDurationMinutes?: number;
   examTimeLimitEnabled?: boolean;
+  examAutoCardsEnabled?: boolean;
+  examAutoCardsReturnOnCorrect?: boolean;
   examGradeScale?: ExamGradeScale;
   examAiEvaluation?: ExamAiEvaluation;
   keyboardShortcuts?: KeyboardShortcutSettings;
@@ -174,6 +178,8 @@ const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
 const DEFAULT_EXAM_TASK_COUNT = 5;
 const DEFAULT_EXAM_DURATION_MINUTES = 30;
 const DEFAULT_EXAM_TIME_LIMIT_ENABLED = true;
+const DEFAULT_EXAM_AUTO_CARDS_ENABLED = false;
+const DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT = false;
 const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
   enabled: false,
   provider: null,
@@ -386,6 +392,11 @@ export const useAppSettings = () => {
   const [examTimeLimitEnabled, setExamTimeLimitEnabledState] = useState(
     DEFAULT_EXAM_TIME_LIMIT_ENABLED,
   );
+  const [examAutoCardsEnabled, setExamAutoCardsEnabledState] = useState(
+    DEFAULT_EXAM_AUTO_CARDS_ENABLED,
+  );
+  const [examAutoCardsReturnOnCorrect, setExamAutoCardsReturnOnCorrectState] =
+    useState(DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT);
   const [examGradeScale, setExamGradeScaleState] = useState<ExamGradeScale>(
     DEFAULT_EXAM_GRADE_SCALE,
   );
@@ -435,6 +446,14 @@ export const useAppSettings = () => {
 
   const setExamTimeLimitEnabled = useCallback((value: boolean) => {
     setExamTimeLimitEnabledState(Boolean(value));
+  }, []);
+
+  const setExamAutoCardsEnabled = useCallback((value: boolean) => {
+    setExamAutoCardsEnabledState(Boolean(value));
+  }, []);
+
+  const setExamAutoCardsReturnOnCorrect = useCallback((value: boolean) => {
+    setExamAutoCardsReturnOnCorrectState(Boolean(value));
   }, []);
 
   const setExamAiEvaluation = useCallback((value: ExamAiEvaluation) => {
@@ -506,6 +525,8 @@ export const useAppSettings = () => {
       examTaskPoints: number[];
       examDurationMinutes: number;
       examTimeLimitEnabled: boolean;
+      examAutoCardsEnabled: boolean;
+      examAutoCardsReturnOnCorrect: boolean;
       examGradeScale: ExamGradeScale;
       examAiEvaluation: ExamAiEvaluation;
       keyboardShortcuts: KeyboardShortcutSettings;
@@ -546,6 +567,8 @@ export const useAppSettings = () => {
           examTaskPoints: settings.examTaskPoints,
           examDurationMinutes: settings.examDurationMinutes,
           examTimeLimitEnabled: settings.examTimeLimitEnabled,
+          examAutoCardsEnabled: settings.examAutoCardsEnabled,
+          examAutoCardsReturnOnCorrect: settings.examAutoCardsReturnOnCorrect,
           examGradeScale: settings.examGradeScale,
           examAiEvaluation: settings.examAiEvaluation,
           keyboardShortcuts: settings.keyboardShortcuts,
@@ -616,6 +639,10 @@ export const useAppSettings = () => {
           updates.examDurationMinutes ?? examDurationMinutes,
         examTimeLimitEnabled:
           updates.examTimeLimitEnabled ?? examTimeLimitEnabled,
+        examAutoCardsEnabled:
+          updates.examAutoCardsEnabled ?? examAutoCardsEnabled,
+        examAutoCardsReturnOnCorrect:
+          updates.examAutoCardsReturnOnCorrect ?? examAutoCardsReturnOnCorrect,
         examGradeScale:
           updates.examGradeScale ?? examGradeScale,
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
@@ -643,6 +670,8 @@ export const useAppSettings = () => {
       examTaskPoints,
       examDurationMinutes,
       examTimeLimitEnabled,
+      examAutoCardsEnabled,
+      examAutoCardsReturnOnCorrect,
       keyboardShortcuts,
       flashcardMode,
       flashcardOrder,
@@ -874,6 +903,14 @@ export const useAppSettings = () => {
           typeof settings.exam_time_limit_enabled === "boolean"
             ? settings.exam_time_limit_enabled
             : DEFAULT_EXAM_TIME_LIMIT_ENABLED;
+        const storedExamAutoCardsEnabled =
+          typeof settings.exam_auto_cards_enabled === "boolean"
+            ? settings.exam_auto_cards_enabled
+            : DEFAULT_EXAM_AUTO_CARDS_ENABLED;
+        const storedExamAutoCardsReturnOnCorrect =
+          typeof settings.exam_auto_cards_return_on_correct === "boolean"
+            ? settings.exam_auto_cards_return_on_correct
+            : DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT;
         const storedExamGradeScale =
           settings.exam_grade_scale === "standard-1-6"
             ? settings.exam_grade_scale
@@ -925,6 +962,8 @@ export const useAppSettings = () => {
         setExamTaskPointsState(storedExamTaskPoints);
         setExamDurationMinutesState(storedExamDurationMinutes);
         setExamTimeLimitEnabledState(storedExamTimeLimitEnabled);
+        setExamAutoCardsEnabledState(storedExamAutoCardsEnabled);
+        setExamAutoCardsReturnOnCorrectState(storedExamAutoCardsReturnOnCorrect);
         setExamGradeScaleState(storedExamGradeScale);
         setExamAiEvaluationState(storedExamAiEvaluation);
         setKeyboardShortcutsState(storedKeyboardShortcuts);
@@ -1029,6 +1068,8 @@ export const useAppSettings = () => {
         examTaskPoints,
         examDurationMinutes,
         examTimeLimitEnabled,
+        examAutoCardsEnabled,
+        examAutoCardsReturnOnCorrect,
         examGradeScale,
         examAiEvaluation,
         keyboardShortcuts,
@@ -1052,6 +1093,8 @@ export const useAppSettings = () => {
     examTaskPoints,
     examDurationMinutes,
     examTimeLimitEnabled,
+    examAutoCardsEnabled,
+    examAutoCardsReturnOnCorrect,
     examGradeScale,
     keyboardShortcuts,
     flashcardMode,
@@ -1095,6 +1138,8 @@ export const useAppSettings = () => {
     examTaskPoints,
     examDurationMinutes,
     examTimeLimitEnabled,
+    examAutoCardsEnabled,
+    examAutoCardsReturnOnCorrect,
     examGradeScale,
     flashcardMode,
     flashcardOrder,
@@ -1124,6 +1169,8 @@ export const useAppSettings = () => {
     setExamTaskPoints,
     setExamDurationMinutes,
     setExamTimeLimitEnabled,
+    setExamAutoCardsEnabled,
+    setExamAutoCardsReturnOnCorrect,
     setExamGradeScale,
     setFlashcardMode,
     setFlashcardOrder,

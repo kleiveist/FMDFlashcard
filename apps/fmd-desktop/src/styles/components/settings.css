@@ -215,6 +215,11 @@
   flex-wrap: wrap;
 }
 
+.exam-stage-control .pill-button {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
 .setting-actions {
   display: flex;
   flex-wrap: wrap;

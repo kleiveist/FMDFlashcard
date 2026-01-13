@@ -290,6 +290,8 @@ export const SettingsPage = () => {
             durationMinutes={settings.examDurationMinutes}
             timeLimitEnabled={settings.examTimeLimitEnabled}
             showTimeline={settings.examShowTimeline}
+            autoCardsEnabled={settings.examAutoCardsEnabled}
+            autoCardsReturnOnCorrect={settings.examAutoCardsReturnOnCorrect}
             aiEvaluation={settings.examAiEvaluation}
             setMaxTotalPoints={settings.setExamMaxTotalPoints}
             setTaskCount={settings.setExamTaskCount}
@@ -297,6 +299,8 @@ export const SettingsPage = () => {
             setDurationMinutes={settings.setExamDurationMinutes}
             setTimeLimitEnabled={settings.setExamTimeLimitEnabled}
             setShowTimeline={settings.setExamShowTimeline}
+            setAutoCardsEnabled={settings.setExamAutoCardsEnabled}
+            setAutoCardsReturnOnCorrect={settings.setExamAutoCardsReturnOnCorrect}
           />
         </div>
       ) : null}
