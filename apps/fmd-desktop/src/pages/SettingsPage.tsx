@@ -40,6 +40,7 @@ import {
   SPACED_REPETITION_PAGE_SIZES,
 } from "../features/spaced-repetition/useSpacedRepetition";
 import { resetFastFlashcardHistory } from "./fast-flashcard/hooks/useFastSession";
+import { resetExamRunHistory } from "../lib/examRuns";
 
 export const SettingsPage = () => {
   const {
@@ -65,6 +66,7 @@ export const SettingsPage = () => {
   );
   const [isResetHistoryOpen, setIsResetHistoryOpen] = useState(false);
   const [isResetHistoryPending, setIsResetHistoryPending] = useState(false);
+  const [isResetExamStatsPending, setIsResetExamStatsPending] = useState(false);
   const { activeSettingsPage } = settingsNav;
 
   const handleResetHistoryConfirm = useCallback(async () => {
@@ -75,6 +77,12 @@ export const SettingsPage = () => {
       setIsResetHistoryOpen(false);
     }
   }, [setIsResetHistoryOpen, resetFastFlashcardHistory]);
+
+  const handleResetExamStatistics = useCallback(async () => {
+    setIsResetExamStatsPending(true);
+    await resetExamRunHistory();
+    setIsResetExamStatsPending(false);
+  }, [resetExamRunHistory]);
 
   return (
     <>
@@ -293,6 +301,7 @@ export const SettingsPage = () => {
             autoCardsEnabled={settings.examAutoCardsEnabled}
             autoCardsReturnOnCorrect={settings.examAutoCardsReturnOnCorrect}
             aiEvaluation={settings.examAiEvaluation}
+            resetStatisticsPending={isResetExamStatsPending}
             setMaxTotalPoints={settings.setExamMaxTotalPoints}
             setTaskCount={settings.setExamTaskCount}
             setTaskPoints={settings.setExamTaskPoints}
@@ -301,6 +310,7 @@ export const SettingsPage = () => {
             setShowTimeline={settings.setExamShowTimeline}
             setAutoCardsEnabled={settings.setExamAutoCardsEnabled}
             setAutoCardsReturnOnCorrect={settings.setExamAutoCardsReturnOnCorrect}
+            onResetStatistics={handleResetExamStatistics}
           />
         </div>
       ) : null}

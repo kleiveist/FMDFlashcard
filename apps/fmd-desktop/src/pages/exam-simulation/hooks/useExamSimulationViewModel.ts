@@ -39,6 +39,7 @@ import {
   calculateExamPercent,
   isExamPassed,
   resolveExamGrade,
+  subscribeExamRunHistoryReset,
   sortExamRunsByDateDesc,
   type ExamRun,
   type ExamRunStorage,
@@ -220,6 +221,13 @@ export const useExamSimulationViewModel = () => {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeExamRunHistoryReset(() => {
+      setExamRuns([]);
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {

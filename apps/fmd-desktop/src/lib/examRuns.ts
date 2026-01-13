@@ -5,6 +5,8 @@
  * - Typen und Hilfsfunktionen fuer Exam-Run Historien.
  */
 
+import { invoke } from "@tauri-apps/api/core";
+
 export type ExamGradeScaleId = "standard-1-6";
 
 export type ExamRun = {
@@ -26,6 +28,31 @@ export type ExamRun = {
 
 export type ExamRunStorage = {
   runs: ExamRun[];
+};
+
+type ExamRunHistoryResetListener = () => void;
+
+const examRunHistoryResetListeners = new Set<ExamRunHistoryResetListener>();
+
+export const subscribeExamRunHistoryReset = (
+  listener: ExamRunHistoryResetListener,
+) => {
+  examRunHistoryResetListeners.add(listener);
+  return () => {
+    examRunHistoryResetListeners.delete(listener);
+  };
+};
+
+export const resetExamRunHistory = async () => {
+  try {
+    const storage: ExamRunStorage = { runs: [] };
+    await invoke("save_exam_run_data", { storage });
+    examRunHistoryResetListeners.forEach((listener) => listener());
+    return true;
+  } catch (error) {
+    console.warn("Failed to reset exam run history", error);
+    return false;
+  }
 };
 
 export type ExamRunStatusFilter = "all" | "passed" | "failed";

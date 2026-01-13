@@ -33,6 +33,7 @@ type ExamSettingsSectionProps = {
   autoCardsEnabled: boolean;
   autoCardsReturnOnCorrect: boolean;
   aiEvaluation: ExamAiEvaluation;
+  resetStatisticsPending?: boolean;
   setMaxTotalPoints: (value: number) => void;
   setTaskCount: (value: number) => void;
   setTaskPoints: (value: number[]) => void;
@@ -41,6 +42,7 @@ type ExamSettingsSectionProps = {
   setShowTimeline: (value: boolean) => void;
   setAutoCardsEnabled: (value: boolean) => void;
   setAutoCardsReturnOnCorrect: (value: boolean) => void;
+  onResetStatistics: () => void;
 };
 
 const clampInput = (value: string) => {
@@ -61,6 +63,7 @@ export const ExamSettingsSection = ({
   autoCardsEnabled,
   autoCardsReturnOnCorrect,
   aiEvaluation,
+  resetStatisticsPending,
   setMaxTotalPoints,
   setTaskCount,
   setTaskPoints,
@@ -69,6 +72,7 @@ export const ExamSettingsSection = ({
   setShowTimeline,
   setAutoCardsEnabled,
   setAutoCardsReturnOnCorrect,
+  onResetStatistics,
 }: ExamSettingsSectionProps) => {
   const sumAssigned = useMemo(
     () => taskPoints.reduce((sum, value) => sum + value, 0),
@@ -159,6 +163,17 @@ export const ExamSettingsSection = ({
               Sum assigned: {sumAssigned} / Max total: {maxTotalPoints}
             </div>
             <div className="muted">Remaining: {remaining}</div>
+          </div>
+
+          <div className="exam-settings-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onResetStatistics}
+              disabled={resetStatisticsPending}
+            >
+              Reset Statistics
+            </button>
           </div>
 
           {!isValid ? (

@@ -718,6 +718,11 @@ body.focus-mode .fast-history-panel {
   background: var(--block-bg);
 }
 
+.exam-stats-card.is-empty {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
 .exam-stats-label {
   font-size: 0.75rem;
   letter-spacing: 0.08em;

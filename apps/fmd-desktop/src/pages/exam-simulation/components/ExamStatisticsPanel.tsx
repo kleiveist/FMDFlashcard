@@ -26,6 +26,28 @@ type ExamStatisticsPanelProps = {
 
 type StatsTab = "last" | "history";
 
+const getStatusToken = (percent: number) => {
+  if (percent === 100) {
+    return "💎 1";
+  }
+  if (percent >= 91) {
+    return "🔵 1";
+  }
+  if (percent >= 82) {
+    return "🟢 2";
+  }
+  if (percent >= 76) {
+    return "🟡 3";
+  }
+  if (percent >= 51) {
+    return "🟠 4";
+  }
+  if (percent >= 1) {
+    return "🔴 5";
+  }
+  return "⚪ 0";
+};
+
 export const ExamStatisticsPanel = ({
   runs,
   gradeScaleId,
@@ -65,22 +87,23 @@ export const ExamStatisticsPanel = ({
   );
 
   const renderLastSession = () => {
-    if (!lastRun) {
-      return <div className="empty-state">No exam runs recorded yet.</div>;
-    }
-    const statusLabel = lastRun.passed ? "Passed" : "Not passed";
+    const hasLastRun = Boolean(lastRun);
+    const scoreLabel = lastRun
+      ? `${lastRun.achievedPoints} / ${lastRun.maxPoints}`
+      : "—";
+    const percentLabel = lastRun ? `${lastRun.percent}%` : "—";
+    const statusLabel = lastRun ? getStatusToken(lastRun.percent) : "—";
+    const gradeLabel = lastRun?.grade ?? "—";
     return (
       <div className="exam-last-session">
         <div className="exam-stats-grid">
-          <div className="exam-stats-card">
+          <div className={`exam-stats-card${hasLastRun ? "" : " is-empty"}`}>
             <span className="exam-stats-label">Score</span>
-            <span className="exam-stats-value">
-              {lastRun.achievedPoints} / {lastRun.maxPoints}
-            </span>
+            <span className="exam-stats-value">{scoreLabel}</span>
           </div>
-          <div className="exam-stats-card">
+          <div className={`exam-stats-card${hasLastRun ? "" : " is-empty"}`}>
             <span className="exam-stats-label">Percent</span>
-            <span className="exam-stats-value">{lastRun.percent}%</span>
+            <span className="exam-stats-value">{percentLabel}</span>
           </div>
           <div className="exam-stats-card">
             <span className="exam-stats-label">Status</span>
@@ -88,33 +111,43 @@ export const ExamStatisticsPanel = ({
           </div>
           <div className="exam-stats-card">
             <span className="exam-stats-label">Grade</span>
-            <span className="exam-stats-value">{lastRun.grade ?? "—"}</span>
+            <span className="exam-stats-value">{gradeLabel}</span>
           </div>
         </div>
-        <div className="exam-stats-meta">
-          <div className="exam-stats-meta-row">
-            <span className="label">User</span>
-            <span className="value">{lastRun.userName || "Unknown"}</span>
+        {hasLastRun ? (
+          <div className="exam-stats-meta">
+            <div className="exam-stats-meta-row">
+              <span className="label">User</span>
+              <span className="value">{lastRun?.userName || "Unknown"}</span>
+            </div>
+            <div className="exam-stats-meta-row">
+              <span className="label">Exam file</span>
+              <span className="value" title={lastRun?.examFilePath}>
+                {lastRun ? getExamFileName(lastRun.examFilePath) : "—"}
+              </span>
+            </div>
+            <div className="exam-stats-meta-row">
+              <span className="label">Started</span>
+              <span className="value">
+                {lastRun ? formatExamTimestamp(lastRun.startedAt) : "—"}
+              </span>
+            </div>
+            <div className="exam-stats-meta-row">
+              <span className="label">Ended</span>
+              <span className="value">
+                {lastRun ? formatExamTimestamp(lastRun.endedAt) : "—"}
+              </span>
+            </div>
+            <div className="exam-stats-meta-row">
+              <span className="label">Duration</span>
+              <span className="value">
+                {lastRun ? formatExamDuration(lastRun.durationMs) : "—"}
+              </span>
+            </div>
           </div>
-          <div className="exam-stats-meta-row">
-            <span className="label">Exam file</span>
-            <span className="value" title={lastRun.examFilePath}>
-              {getExamFileName(lastRun.examFilePath)}
-            </span>
-          </div>
-          <div className="exam-stats-meta-row">
-            <span className="label">Started</span>
-            <span className="value">{formatExamTimestamp(lastRun.startedAt)}</span>
-          </div>
-          <div className="exam-stats-meta-row">
-            <span className="label">Ended</span>
-            <span className="value">{formatExamTimestamp(lastRun.endedAt)}</span>
-          </div>
-          <div className="exam-stats-meta-row">
-            <span className="label">Duration</span>
-            <span className="value">{formatExamDuration(lastRun.durationMs)}</span>
-          </div>
-        </div>
+        ) : (
+          <div className="empty-state">No exam runs recorded yet.</div>
+        )}
         <span className="helper-text">Notenskala: {gradeScaleLabel}</span>
       </div>
     );
@@ -197,7 +230,7 @@ export const ExamStatisticsPanel = ({
                 </span>
                 <span className="exam-history-cell">{run.percent}%</span>
                 <span className="exam-history-cell">
-                  {run.passed ? "Passed" : "Not passed"}
+                  {getStatusToken(run.percent)}
                 </span>
                 <span className="exam-history-cell">
                   {formatExamDuration(run.durationMs)}

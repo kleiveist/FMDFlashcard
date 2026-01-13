@@ -159,6 +159,11 @@
   line-height: 1.2;
 }
 
+.exam-settings-actions {
+  display: flex;
+  align-items: center;
+}
+
 .settings-tab-content {
   display: flex;
   flex-direction: column;
