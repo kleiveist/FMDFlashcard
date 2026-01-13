@@ -11,7 +11,6 @@
 - The drag-token list is shuffled before display; the order does not match the order in the source text.
 - The shuffle sequence is seeded by the card/part identity so the same task keeps the same order within a session.
 ---
-
 ## Syntax
 
 ### Typed blanks
@@ -24,3 +23,13 @@ The `capital` of France is %%Paris%%.
 #
 ```
 ---
+### Typed mit codeblock
+
+#card
+```c#
+The `capital` of France is %%Paris%%.
+```
+#
+
+
+

@@ -20,3 +20,9 @@ The colors of the German flag are `black`, `red`, and `gold`.
 
 - Use drag tokens when you want the learner to match predefined units instead of typing them.
 - Drag and typed blanks render together on the same UI if they belong to the same block. If you need to mix drag tokens with other modes (TF or MC), separate them with `---` or split into different tasks.
+### Typed mit codeblock
+#card
+```q
+The colors of the German flag are `black`, `red`, and `gold`.
+```
+#

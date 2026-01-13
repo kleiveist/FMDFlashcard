@@ -19,3 +19,10 @@ The capital of France is %%Paris%%.
 
 - Cloze blanks can appear in the prompt or in body text, and the parser splits them into segments for the UI.
 - If you need to mix typed blanks with other interactions (MC, TF), insert `---` between them or split them into separate tasks to keep scoring manageable.
+
+### Typed mit codeblock
+#card
+```sql
+The capital of France is %%Paris%%.
+```
+#
