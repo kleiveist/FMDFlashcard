@@ -1236,6 +1236,7 @@ const storageKey = useMemo(
     setSpacedRepetitionStatsView,
     setSpacedRepetitionUserError,
     spacedRepetitionActiveUser,
+    spacedRepetitionActiveUserId,
     spacedRepetitionBoxes,
     spacedRepetitionBoxCounts,
     spacedRepetitionCanGoBack,

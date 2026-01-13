@@ -58,6 +58,7 @@ type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 type ExamAiProvider = "shared-gpt";
+type ExamGradeScale = "standard-1-6";
 
 export type ExamAiEvaluation = {
   enabled: boolean;
@@ -101,6 +102,7 @@ type AppSettings = {
   exam_task_points?: number[] | null;
   exam_duration_minutes?: number | null;
   exam_time_limit_enabled?: boolean | null;
+  exam_grade_scale?: string | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
   keyboard_shortcuts?: KeyboardShortcutSettings | null;
 };
@@ -139,6 +141,7 @@ type PersistUpdates = {
   examTaskPoints?: number[];
   examDurationMinutes?: number;
   examTimeLimitEnabled?: boolean;
+  examGradeScale?: ExamGradeScale;
   examAiEvaluation?: ExamAiEvaluation;
   keyboardShortcuts?: KeyboardShortcutSettings;
 };
@@ -175,6 +178,7 @@ const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
   enabled: false,
   provider: null,
 };
+const DEFAULT_EXAM_GRADE_SCALE: ExamGradeScale = "standard-1-6";
 
 const parseInteger = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -382,6 +386,9 @@ export const useAppSettings = () => {
   const [examTimeLimitEnabled, setExamTimeLimitEnabledState] = useState(
     DEFAULT_EXAM_TIME_LIMIT_ENABLED,
   );
+  const [examGradeScale, setExamGradeScaleState] = useState<ExamGradeScale>(
+    DEFAULT_EXAM_GRADE_SCALE,
+  );
   const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
     DEFAULT_EXAM_AI_EVALUATION,
   );
@@ -435,6 +442,10 @@ export const useAppSettings = () => {
       enabled: Boolean(value?.enabled),
       provider: value?.provider === "shared-gpt" ? "shared-gpt" : null,
     });
+  }, []);
+
+  const setExamGradeScale = useCallback((value: ExamGradeScale) => {
+    setExamGradeScaleState(value);
   }, []);
 
   const setKeyboardShortcuts = useCallback((value: KeyboardShortcutSettings) => {
@@ -495,6 +506,7 @@ export const useAppSettings = () => {
       examTaskPoints: number[];
       examDurationMinutes: number;
       examTimeLimitEnabled: boolean;
+      examGradeScale: ExamGradeScale;
       examAiEvaluation: ExamAiEvaluation;
       keyboardShortcuts: KeyboardShortcutSettings;
     }) => {
@@ -534,6 +546,7 @@ export const useAppSettings = () => {
           examTaskPoints: settings.examTaskPoints,
           examDurationMinutes: settings.examDurationMinutes,
           examTimeLimitEnabled: settings.examTimeLimitEnabled,
+          examGradeScale: settings.examGradeScale,
           examAiEvaluation: settings.examAiEvaluation,
           keyboardShortcuts: settings.keyboardShortcuts,
         });
@@ -603,6 +616,8 @@ export const useAppSettings = () => {
           updates.examDurationMinutes ?? examDurationMinutes,
         examTimeLimitEnabled:
           updates.examTimeLimitEnabled ?? examTimeLimitEnabled,
+        examGradeScale:
+          updates.examGradeScale ?? examGradeScale,
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
         keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
       };
@@ -622,10 +637,12 @@ export const useAppSettings = () => {
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
       examAiEvaluation,
+      examGradeScale,
       examMaxTotalPoints,
       examTaskCount,
       examTaskPoints,
       examDurationMinutes,
+      examTimeLimitEnabled,
       keyboardShortcuts,
       flashcardMode,
       flashcardOrder,
@@ -633,7 +650,6 @@ export const useAppSettings = () => {
       fastFlashcardOrder,
       fastFlashcardScope,
       fastFlashcardDuration,
-      examDurationMinutes,
       flashcardPageSize,
       flashcardScope,
       language,
@@ -858,6 +874,10 @@ export const useAppSettings = () => {
           typeof settings.exam_time_limit_enabled === "boolean"
             ? settings.exam_time_limit_enabled
             : DEFAULT_EXAM_TIME_LIMIT_ENABLED;
+        const storedExamGradeScale =
+          settings.exam_grade_scale === "standard-1-6"
+            ? settings.exam_grade_scale
+            : DEFAULT_EXAM_GRADE_SCALE;
         const storedExamAiEvaluation = normalizeExamAiEvaluation(
           settings.exam_ai_evaluation,
         );
@@ -905,6 +925,7 @@ export const useAppSettings = () => {
         setExamTaskPointsState(storedExamTaskPoints);
         setExamDurationMinutesState(storedExamDurationMinutes);
         setExamTimeLimitEnabledState(storedExamTimeLimitEnabled);
+        setExamGradeScaleState(storedExamGradeScale);
         setExamAiEvaluationState(storedExamAiEvaluation);
         setKeyboardShortcutsState(storedKeyboardShortcuts);
         setSettingsLoaded(true);
@@ -1008,6 +1029,7 @@ export const useAppSettings = () => {
         examTaskPoints,
         examDurationMinutes,
         examTimeLimitEnabled,
+        examGradeScale,
         examAiEvaluation,
         keyboardShortcuts,
       });
@@ -1030,6 +1052,7 @@ export const useAppSettings = () => {
     examTaskPoints,
     examDurationMinutes,
     examTimeLimitEnabled,
+    examGradeScale,
     keyboardShortcuts,
     flashcardMode,
     flashcardOrder,
@@ -1072,6 +1095,7 @@ export const useAppSettings = () => {
     examTaskPoints,
     examDurationMinutes,
     examTimeLimitEnabled,
+    examGradeScale,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
@@ -1100,6 +1124,7 @@ export const useAppSettings = () => {
     setExamTaskPoints,
     setExamDurationMinutes,
     setExamTimeLimitEnabled,
+    setExamGradeScale,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,

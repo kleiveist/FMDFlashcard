@@ -70,6 +70,7 @@ struct AppSettings {
     exam_task_count: Option<u32>,
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
+    exam_grade_scale: Option<String>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 }
 
@@ -130,6 +131,31 @@ struct FastFlashcardStorage {
     sessions: Vec<FastFlashcardSession>,
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
+#[serde(rename_all = "camelCase", default)]
+struct ExamRun {
+    id: String,
+    started_at: String,
+    ended_at: String,
+    duration_ms: u64,
+    user_id: Option<String>,
+    user_name: String,
+    exam_file_path: String,
+    tasks_detected: u32,
+    max_points: u32,
+    achieved_points: u32,
+    percent: u32,
+    passed: bool,
+    grade: Option<String>,
+    grade_scale_id: Option<String>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
+#[serde(rename_all = "camelCase", default)]
+struct ExamRunStorage {
+    runs: Vec<ExamRun>,
+}
+
 impl AppSettings {
     fn is_empty(&self) -> bool {
         self.vault_path.is_none()
@@ -166,6 +192,7 @@ impl AppSettings {
             && self.exam_task_count.is_none()
             && self.exam_task_points.is_none()
             && self.exam_ai_evaluation.is_none()
+            && self.exam_grade_scale.is_none()
             && self.keyboard_shortcuts.is_none()
     }
 }
@@ -227,6 +254,13 @@ fn fast_flashcard_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .app_data_dir()
         .map_err(|err| err.to_string())
         .map(|dir| dir.join("fast_flashcard.json"))
+}
+
+fn exam_runs_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map_err(|err| err.to_string())
+        .map(|dir| dir.join("exam_runs.json"))
 }
 
 fn read_settings(path: &Path) -> Result<AppSettings, String> {
@@ -319,6 +353,27 @@ fn write_fast_flashcard_data(
     fs::write(path, data).map_err(|err| err.to_string())
 }
 
+fn read_exam_runs_data(path: &Path) -> Result<ExamRunStorage, String> {
+    if !path.exists() {
+        return Ok(ExamRunStorage::default());
+    }
+
+    let data = fs::read_to_string(path).map_err(|err| err.to_string())?;
+    match serde_json::from_str(&data) {
+        Ok(storage) => Ok(storage),
+        Err(_) => Ok(ExamRunStorage::default()),
+    }
+}
+
+fn write_exam_runs_data(path: &Path, storage: &ExamRunStorage) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+
+    let data = serde_json::to_string_pretty(storage).map_err(|err| err.to_string())?;
+    fs::write(path, data).map_err(|err| err.to_string())
+}
+
 #[tauri::command]
 fn load_app_settings(app: tauri::AppHandle) -> Result<AppSettings, String> {
     let path = settings_path(&app)?;
@@ -359,6 +414,7 @@ fn save_app_settings(
     exam_task_count: Option<u32>,
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
+    exam_grade_scale: Option<String>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
@@ -397,6 +453,7 @@ fn save_app_settings(
         exam_task_count,
         exam_task_points,
         exam_ai_evaluation,
+        exam_grade_scale,
         keyboard_shortcuts,
     };
     write_settings(&path, &settings)
@@ -442,6 +499,21 @@ fn save_fast_flashcard_data(
 ) -> Result<(), String> {
     let path = fast_flashcard_path(&app)?;
     write_fast_flashcard_data(&path, &storage)
+}
+
+#[tauri::command]
+fn load_exam_run_data(app: tauri::AppHandle) -> Result<ExamRunStorage, String> {
+    let path = exam_runs_path(&app)?;
+    read_exam_runs_data(&path)
+}
+
+#[tauri::command]
+fn save_exam_run_data(
+    app: tauri::AppHandle,
+    storage: ExamRunStorage,
+) -> Result<(), String> {
+    let path = exam_runs_path(&app)?;
+    write_exam_runs_data(&path, &storage)
 }
 
 #[tauri::command]
@@ -613,6 +685,8 @@ pub fn run() {
             save_spaced_repetition_data,
             load_fast_flashcard_data,
             save_fast_flashcard_data,
+            load_exam_run_data,
+            save_exam_run_data,
             load_vault_path,
             save_vault_path,
             list_markdown_files,

@@ -34,6 +34,15 @@ import {
 } from "../../../features/flashcards/logic";
 import { type ExamAiEvaluation } from "../../../features/settings/useAppSettings";
 import { asErrorMessage } from "../../../lib/errors";
+import {
+  buildExamRunId,
+  calculateExamPercent,
+  isExamPassed,
+  resolveExamGrade,
+  sortExamRunsByDateDesc,
+  type ExamRun,
+  type ExamRunStorage,
+} from "../../../lib/examRuns";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
@@ -88,6 +97,8 @@ export const useExamSimulationViewModel = () => {
   const [examFiles, setExamFiles] = useState<VaultFile[]>([]);
   const [examFilesState, setExamFilesState] = useState<LoadState>("idle");
   const [examFilesError, setExamFilesError] = useState("");
+  const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
+  const [examRunsLoaded, setExamRunsLoaded] = useState(false);
   const [stage, setStage] = useState<ExamStage>("idle");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [activeExamTasks, setActiveExamTasks] = useState<ExamTask[]>([]);
@@ -115,6 +126,8 @@ export const useExamSimulationViewModel = () => {
   const [examTimeUp, setExamTimeUp] = useState(false);
   const examTimerRef = useRef<number | null>(null);
   const examTimerEndRef = useRef<number | null>(null);
+  const examStartTimeRef = useRef<number | null>(null);
+  const examRunRecordedRef = useRef(false);
 
   useEffect(() => {
     if (!vault.vaultPath) {
@@ -177,6 +190,43 @@ export const useExamSimulationViewModel = () => {
       cancelled = true;
     };
   }, [vault.files, vault.vaultPath]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRuns = async () => {
+      try {
+        const storage = await invoke<ExamRunStorage>("load_exam_run_data");
+        if (cancelled) {
+          return;
+        }
+        const runs = Array.isArray(storage?.runs) ? storage.runs : [];
+        setExamRuns(sortExamRunsByDateDesc(runs));
+      } catch (error) {
+        console.warn("Failed to load exam runs", error);
+      } finally {
+        if (!cancelled) {
+          setExamRunsLoaded(true);
+        }
+      }
+    };
+
+    void loadRuns();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!examRunsLoaded) {
+      return;
+    }
+    const storage: ExamRunStorage = { runs: examRuns };
+    void invoke("save_exam_run_data", { storage }).catch((error) => {
+      console.warn("Failed to save exam runs", error);
+    });
+  }, [examRuns, examRunsLoaded]);
 
   const selectedExamFile = useMemo(() => {
     if (!preview.selectedFile) {
@@ -258,6 +308,8 @@ export const useExamSimulationViewModel = () => {
     setExamTimeRemainingMs(null);
     setExamTimeUp(false);
     examTimerEndRef.current = null;
+    examStartTimeRef.current = null;
+    examRunRecordedRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -277,6 +329,8 @@ export const useExamSimulationViewModel = () => {
       aiEvaluation: settings.examAiEvaluation,
     };
     // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
+    examStartTimeRef.current = Date.now();
+    examRunRecordedRef.current = false;
     setActiveExamTasks(previewExamParse.tasks);
     setActiveExamFile(selectedExamFile);
     setActiveSettings(snapshot);
@@ -663,6 +717,59 @@ export const useExamSimulationViewModel = () => {
     stage,
   ]);
 
+  useEffect(() => {
+    if (stage !== "finished") {
+      examRunRecordedRef.current = false;
+      return;
+    }
+    if (!results || !activeExamFile || !examRunsLoaded) {
+      return;
+    }
+    if (examRunRecordedRef.current) {
+      return;
+    }
+
+    const finishedAt = new Date().toISOString();
+    const startedAt = examStartTimeRef.current
+      ? new Date(examStartTimeRef.current).toISOString()
+      : finishedAt;
+    const durationMs = examStartTimeRef.current
+      ? Math.max(0, Date.now() - examStartTimeRef.current)
+      : 0;
+    const percent = calculateExamPercent(results.totalAwarded, results.totalMax);
+    const passed = isExamPassed(percent);
+    const grade = resolveExamGrade(settings.examGradeScale, percent);
+
+    const run: ExamRun = {
+      id: buildExamRunId(),
+      startedAt,
+      endedAt: finishedAt,
+      durationMs,
+      userId: spacedRepetition.spacedRepetitionActiveUserId ?? null,
+      userName: spacedRepetition.spacedRepetitionActiveUser ?? "Unknown",
+      examFilePath: activeExamFile.relative_path || activeExamFile.path,
+      tasksDetected: runTasks.length,
+      maxPoints: results.totalMax,
+      achievedPoints: results.totalAwarded,
+      percent,
+      passed,
+      grade,
+      gradeScaleId: settings.examGradeScale,
+    };
+
+    setExamRuns((prev) => sortExamRunsByDateDesc([run, ...prev]));
+    examRunRecordedRef.current = true;
+  }, [
+    activeExamFile,
+    examRunsLoaded,
+    results,
+    runTasks.length,
+    settings.examGradeScale,
+    spacedRepetition.spacedRepetitionActiveUser,
+    spacedRepetition.spacedRepetitionActiveUserId,
+    stage,
+  ]);
+
   const handleConversionDecision = useCallback(
     (taskIndex: number, shouldConvert: boolean) => {
       setConversionDecisions((prev) => ({ ...prev, [taskIndex]: shouldConvert }));
@@ -709,6 +816,7 @@ export const useExamSimulationViewModel = () => {
     examFiles,
     examFilesState,
     examFilesError,
+    examRuns,
     selectedExamFile,
     previewExamParse,
     plannedTaskCount,

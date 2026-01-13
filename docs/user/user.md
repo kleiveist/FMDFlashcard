@@ -41,6 +41,10 @@
 - 📝 [Spaced Repetition](pages/spaced-repetition.md)
 - 📝 [Vault](pages/vault.md)
 
+## 📁 Prombt
+- 🗂️ [Overview](prombt/prombt.md)
+- 📝 [Fdm exam en](prombt/fdm_exam_en.md)
+
 ## 📁 Syntax
 - 🗂️ [Overview](syntax/syntax.md)
 - 📝 [Exam syntax](syntax/exam-syntax.md)

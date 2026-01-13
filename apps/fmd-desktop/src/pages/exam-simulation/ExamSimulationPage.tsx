@@ -27,6 +27,7 @@ import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
 import { ExamResultsPanel } from "./components/ExamResultsPanel";
+import { ExamStatisticsPanel } from "./components/ExamStatisticsPanel";
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
 import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
@@ -54,6 +55,7 @@ export const ExamSimulationPage = () => {
     examFiles,
     examFilesState,
     examFilesError,
+    examRuns,
     selectedExamFile,
     previewExamParse,
     plannedTaskCount,
@@ -68,6 +70,7 @@ export const ExamSimulationPage = () => {
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
     runTasks,
+    examDurationMinutes,
     examTimeLimitMs,
     examTimeRemainingMs,
     examTimeUp,
@@ -96,6 +99,7 @@ export const ExamSimulationPage = () => {
     handleConversionDecision,
   } = useExamSimulationViewModel();
   const [isViewMode, setIsViewMode] = useState(false);
+  const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const platform = getShortcutPlatform();
@@ -131,6 +135,17 @@ export const ExamSimulationPage = () => {
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
+  const showTimelineBlock = !isViewMode && examTimerEnabled && examShowTimeline;
+  const showOverviewLayout = stage === "idle" && !isViewMode;
+  const showOverviewTimeline = showOverviewLayout && showTimelineBlock;
+  const showTimeLimitRow = showOverviewLayout && examTimerEnabled;
+  const timeLimitMinutes = Math.max(1, Math.round(examDurationMinutes));
+  const examLayoutClassName = [
+    "exam-layout",
+    showOverviewLayout ? "exam-layout--overview" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   const selectedUser = useMemo(
     () =>
       spacedRepetition.spacedRepetitionUsers.find(
@@ -182,6 +197,12 @@ export const ExamSimulationPage = () => {
       setDeleteConfirmInput("");
     }
   }, [isDeleteDialogOpen, selectedUser]);
+
+  useEffect(() => {
+    if (stage !== "idle" && overviewTab !== "ready") {
+      setOverviewTab("ready");
+    }
+  }, [overviewTab, stage]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -256,14 +277,7 @@ export const ExamSimulationPage = () => {
 
   return (
     <div className="exam-page">
-      <header className="content-header">
-        <div>
-          <p className="eyebrow">EXAM SIMULATION</p>
-          <h1>Exam</h1>
-          <p className="muted">Run a Punktaufgaben exam and convert tasks into cards.</p>
-        </div>
-      </header>
-      {!isViewMode && examTimerEnabled && examShowTimeline ? (
+      {showTimelineBlock && !showOverviewLayout ? (
         <div className="exam-timeline-block">
           <ExamTimeBar
             timeLimitMs={examTimeLimitMs}
@@ -275,76 +289,152 @@ export const ExamSimulationPage = () => {
         </div>
       ) : null}
 
-      <div className="exam-layout">
-        <section className="panel exam-panel">
-          {isViewMode && examTimerEnabled && examShowTimeline ? (
-            <ExamTimeBar
-              className="exam-time-bar--view"
-              timeLimitMs={examTimeLimitMs}
-              timeRemainingMs={examTimeRemainingMs}
-              isRunning={isExamTimerRunning}
-              isTimeUp={examTimeUp}
-              isEnabled={examTimerEnabled}
-            />
+      <div className={examLayoutClassName}>
+        <div className="exam-overview-stack">
+          {showTimeLimitRow ? (
+            <div className="exam-time-limit">
+              <span className="label">TIME LIMIT:</span>
+              <span className="value">{timeLimitMinutes} MIN</span>
+            </div>
           ) : null}
-          {stage === "idle" ? (
-            <ExamIdlePanel
-              selectedFile={selectedExamFile}
-              previewState={preview.previewState}
-              previewError={preview.previewError}
-              examEmptyState={examEmptyState}
-              availableTaskCount={previewExamParse.tasks.length}
-              plannedTaskCount={plannedTaskCount}
-              plannedMaxPoints={plannedMaxPoints}
-              hasTaskCountMismatch={hasTaskCountMismatch}
-              isViewMode={isViewMode}
-              onToggleView={() => setIsViewMode((prev) => !prev)}
-              viewLabel={viewLabel}
-            />
-          ) : isRunnerStage ? (
-            activeTask ? (
-              <ExamTaskRunner
-                task={activeTask}
-                taskIndex={activeTaskIndex}
-                taskCount={runTasks.length}
-                maxPoints={activeTaskMaxPoints}
-                phase={activePhase}
-                partStates={activeTaskPartStates}
-                awardedPoints={activeTaskAwardedPoints}
-                autoGradeDecision={activeTaskAutoDecision}
-                conversionDecision={conversionDecisions[activeTaskIndex]}
-                conversionPending={conversionPending}
-                conversionError={conversionError}
-                onOptionSelect={handleOptionSelect}
-                onTrueFalseSelect={handleTrueFalseSelect}
-                onClozeInputChange={handleClozeInputChange}
-                onClozeTokenDrop={handleClozeTokenDrop}
-                onClozeTokenRemove={handleClozeTokenRemove}
-                onClozeTokenDragStart={handleClozeTokenDragStart}
-                onBlankDragOver={handleClozeBlankDragOver}
-                onTextInputChange={handleTextInputChange}
-                onAwardedPointsChange={handleAwardedPointsChange}
-                onAutoGradeDecision={handleAutoGradeDecision}
-                onConversionDecision={handleConversionDecision}
-                onBack={handleTaskBack}
-                onNext={handleTaskNext}
-                canGoBack={activeTaskIndex > 0}
-                canGoNext={activeTaskIndex < runTasks.length - 1}
+          <section className="panel exam-panel">
+            {isViewMode && examTimerEnabled && examShowTimeline ? (
+              <ExamTimeBar
+                className="exam-time-bar--view"
+                timeLimitMs={examTimeLimitMs}
+                timeRemainingMs={examTimeRemainingMs}
+                isRunning={isExamTimerRunning}
+                isTimeUp={examTimeUp}
+                isEnabled={examTimerEnabled}
               />
-            ) : (
-              <div className="empty-state">No tasks available for this exam.</div>
-            )
-          ) : stage === "finished" ? (
-            results ? (
-              <ExamResultsPanel
-                results={results}
-              />
-            ) : (
-              <div className="empty-state">No results available yet.</div>
-            )
-          ) : null}
-        </section>
-
+            ) : null}
+            {stage === "idle" ? (
+              <div className="exam-overview">
+                <div className="exam-overview-header">
+                  <div
+                    className="pill-grid exam-overview-tabs"
+                    role="tablist"
+                    aria-label="Exam overview tabs"
+                  >
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        overviewTab === "ready" ? "active" : ""
+                      }`}
+                      onClick={() => setOverviewTab("ready")}
+                      role="tab"
+                      aria-selected={overviewTab === "ready"}
+                    >
+                      Ready
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        overviewTab === "statistics" ? "active" : ""
+                      }`}
+                      onClick={() => setOverviewTab("statistics")}
+                      role="tab"
+                      aria-selected={overviewTab === "statistics"}
+                    >
+                      Statistics
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className={`focus-toggle ${isViewMode ? "active" : ""}`}
+                    onClick={() => setIsViewMode((prev) => !prev)}
+                    aria-pressed={isViewMode}
+                    aria-label={viewLabel}
+                    title={viewLabel}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                      <circle cx="12" cy="12" r="3.5" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="exam-overview-body">
+                  {overviewTab === "ready" ? (
+                    <ExamIdlePanel
+                      selectedFile={selectedExamFile}
+                      previewState={preview.previewState}
+                      previewError={preview.previewError}
+                      examEmptyState={examEmptyState}
+                      availableTaskCount={previewExamParse.tasks.length}
+                      plannedTaskCount={plannedTaskCount}
+                      plannedMaxPoints={plannedMaxPoints}
+                      hasTaskCountMismatch={hasTaskCountMismatch}
+                    />
+                  ) : (
+                    <ExamStatisticsPanel
+                      runs={examRuns}
+                      gradeScaleId={settings.examGradeScale}
+                    />
+                  )}
+                </div>
+              </div>
+            ) : isRunnerStage ? (
+              activeTask ? (
+                <ExamTaskRunner
+                  task={activeTask}
+                  taskIndex={activeTaskIndex}
+                  taskCount={runTasks.length}
+                  maxPoints={activeTaskMaxPoints}
+                  phase={activePhase}
+                  partStates={activeTaskPartStates}
+                  awardedPoints={activeTaskAwardedPoints}
+                  autoGradeDecision={activeTaskAutoDecision}
+                  conversionDecision={conversionDecisions[activeTaskIndex]}
+                  conversionPending={conversionPending}
+                  conversionError={conversionError}
+                  onOptionSelect={handleOptionSelect}
+                  onTrueFalseSelect={handleTrueFalseSelect}
+                  onClozeInputChange={handleClozeInputChange}
+                  onClozeTokenDrop={handleClozeTokenDrop}
+                  onClozeTokenRemove={handleClozeTokenRemove}
+                  onClozeTokenDragStart={handleClozeTokenDragStart}
+                  onBlankDragOver={handleClozeBlankDragOver}
+                  onTextInputChange={handleTextInputChange}
+                  onAwardedPointsChange={handleAwardedPointsChange}
+                  onAutoGradeDecision={handleAutoGradeDecision}
+                  onConversionDecision={handleConversionDecision}
+                  onBack={handleTaskBack}
+                  onNext={handleTaskNext}
+                  canGoBack={activeTaskIndex > 0}
+                  canGoNext={activeTaskIndex < runTasks.length - 1}
+                />
+              ) : (
+                <div className="empty-state">No tasks available for this exam.</div>
+              )
+            ) : stage === "finished" ? (
+              results ? (
+                <ExamResultsPanel
+                  results={results}
+                />
+              ) : (
+                <div className="empty-state">No results available yet.</div>
+              )
+            ) : null}
+          </section>
+        </div>
+        {showOverviewTimeline ? (
+          <ExamTimeBar
+            className="exam-time-bar--overview"
+            timeLimitMs={examTimeLimitMs}
+            timeRemainingMs={examTimeRemainingMs}
+            isRunning={isExamTimerRunning}
+            isTimeUp={examTimeUp}
+            isEnabled={examTimerEnabled}
+          />
+        ) : null}
         <div className="exam-sidebar">
           <UserToolsPanel
             spacedRepetition={spacedRepetition}

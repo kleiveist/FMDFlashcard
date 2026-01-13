@@ -26,6 +26,32 @@
     grid-template-columns: 1fr;
   }
 
+  .exam-layout--overview {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .exam-layout--overview .exam-time-limit {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .exam-layout--overview .exam-time-bar--overview {
+    grid-column: 1;
+    grid-row: 2;
+    height: auto;
+  }
+
+  .exam-layout--overview .exam-panel {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .exam-layout--overview .exam-sidebar {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
   .fast-flashcard-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
