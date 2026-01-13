@@ -92,37 +92,37 @@ export const ExamSettingsSection = ({
     setDurationMinutes(clamped);
   };
   return (
-    <section className="panel exam-settings-panel">
-      <div className="panel-header">
-        <div>
-          <h2>Exam Settings</h2>
-          <p className="muted">Define the max score and task point allocation.</p>
+    <div className="exam-settings-layout">
+      <section className="panel exam-settings-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Exam Settings</h2>
+            <p className="muted">Define the max score and task point allocation.</p>
+          </div>
         </div>
-      </div>
-      <div className="panel-body">
-        <div className="exam-settings-grid">
-          <label className="setting-inline">
-            <span className="label">MAX TOTAL POINTS</span>
-            <input
-              type="number"
-              min={0}
-              className="text-input exam-compact-input"
-              value={maxTotalPoints}
-              onChange={(event) => setMaxTotalPoints(clampInput(event.target.value))}
-            />
-          </label>
-          <label className="setting-inline">
-            <span className="label">NUMBER OF TASKS</span>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              className="text-input exam-compact-input"
-              value={taskCount}
-              onChange={(event) => setTaskCount(clampInput(event.target.value))}
-            />
-          </label>
-          {timeLimitEnabled ? (
+        <div className="panel-body">
+          <div className="exam-settings-grid">
+            <label className="setting-inline">
+              <span className="label">MAX TOTAL POINTS</span>
+              <input
+                type="number"
+                min={0}
+                className="text-input exam-compact-input"
+                value={maxTotalPoints}
+                onChange={(event) => setMaxTotalPoints(clampInput(event.target.value))}
+              />
+            </label>
+            <label className="setting-inline">
+              <span className="label">NUMBER OF TASKS</span>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                className="text-input exam-compact-input"
+                value={taskCount}
+                onChange={(event) => setTaskCount(clampInput(event.target.value))}
+              />
+            </label>
             <label className="setting-inline">
               <span className="label">DURATION</span>
               <div className="exam-time-input">
@@ -137,122 +137,129 @@ export const ExamSettingsSection = ({
                 <span className="muted">min</span>
               </div>
             </label>
+          </div>
+
+          <div className="exam-points-table">
+            {taskPoints.map((points, index) => (
+              <div key={`exam-task-point-${index}`} className="exam-points-row">
+                <span className="label">Task {index + 1}</span>
+                <input
+                  type="number"
+                  min={0}
+                  className="text-input exam-compact-input"
+                  value={points}
+                  onChange={(event) => handleTaskPointChange(index, event.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="exam-settings-summary">
+            <div className="muted">
+              Sum assigned: {sumAssigned} / Max total: {maxTotalPoints}
+            </div>
+            <div className="muted">Remaining: {remaining}</div>
+          </div>
+
+          {!isValid ? (
+            <div className="error">
+              Assigned points must match the max total before starting an exam.
+            </div>
           ) : null}
         </div>
+      </section>
 
-        <div className="exam-points-table">
-          {taskPoints.map((points, index) => (
-            <div key={`exam-task-point-${index}`} className="exam-points-row">
-              <span className="label">Task {index + 1}</span>
-              <input
-                type="number"
-                min={0}
-                className="text-input exam-compact-input"
-                value={points}
-                onChange={(event) => handleTaskPointChange(index, event.target.value)}
-              />
+      <section className="panel exam-settings-toggles-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Exam Toggles</h2>
+          </div>
+        </div>
+        <div className="panel-body">
+          <div className="setting-row">
+            <span className="label">TIME LIMIT</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={timeLimitEnabled}
+                  onChange={(event) => {
+                    const nextEnabled = event.target.checked;
+                    setTimeLimitEnabled(nextEnabled);
+                    if (nextEnabled && durationMinutes === 0) {
+                      const nextDuration =
+                        lastDurationRef.current > 0 ? lastDurationRef.current : 30;
+                      setDurationMinutes(nextDuration);
+                    }
+                  }}
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">
+                {timeLimitEnabled ? "Enabled" : "Disabled"}
+              </span>
             </div>
-          ))}
-        </div>
-
-        <div className="exam-settings-summary">
-          <div className="muted">
-            Sum assigned: {sumAssigned} / Max total: {maxTotalPoints}
           </div>
-          <div className="muted">Remaining: {remaining}</div>
-        </div>
+          <div className="setting-row">
+            <span className="label">TIMELINE</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={showTimeline}
+                  onChange={(event) => setShowTimeline(event.target.checked)}
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">
+                {showTimeline ? "Shown" : "Hidden"}
+              </span>
+            </div>
+          </div>
 
-        <div className="setting-row">
-          <span className="label">TIME LIMIT</span>
-          <div className="setting-inline">
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={timeLimitEnabled}
-                onChange={(event) => {
-                  const nextEnabled = event.target.checked;
-                  setTimeLimitEnabled(nextEnabled);
-                  if (nextEnabled && durationMinutes === 0) {
-                    const nextDuration =
-                      lastDurationRef.current > 0 ? lastDurationRef.current : 30;
-                    setDurationMinutes(nextDuration);
+          <div className="setting-row">
+            <span className="label">AUTO CARDS</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={autoCardsEnabled}
+                  onChange={(event) => setAutoCardsEnabled(event.target.checked)}
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">Auto add cards after grading.</span>
+            </div>
+          </div>
+          <div className="setting-row">
+            <span className="label">RETURN CARD</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={autoCardsReturnOnCorrect}
+                  onChange={(event) =>
+                    setAutoCardsReturnOnCorrect(event.target.checked)
                   }
-                }}
-              />
-              <span className="slider" />
-            </label>
-            <span className="muted">
-              {timeLimitEnabled ? "Enabled" : "Disabled"}
-            </span>
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">Remove cards again when correct.</span>
+            </div>
           </div>
-        </div>
-        <div className="setting-row">
-          <span className="label">TIMELINE</span>
-          <div className="setting-inline">
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={showTimeline}
-                onChange={(event) => setShowTimeline(event.target.checked)}
-              />
-              <span className="slider" />
-            </label>
-            <span className="muted">
-              {showTimeline ? "Shown" : "Hidden"}
-            </span>
-          </div>
-        </div>
 
-        <div className="setting-row">
-          <span className="label">AUTO CARDS</span>
-          <div className="setting-inline">
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={autoCardsEnabled}
-                onChange={(event) => setAutoCardsEnabled(event.target.checked)}
-              />
-              <span className="slider" />
-            </label>
-            <span className="muted">Auto add cards after grading.</span>
+          <div className="setting-row">
+            <span className="label">AI EVALUATION</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input type="checkbox" checked={aiEvaluation.enabled} disabled />
+                <span className="slider" />
+              </label>
+              <span className="muted">Coming soon.</span>
+            </div>
           </div>
         </div>
-        <div className="setting-row">
-          <span className="label">RETURN CARD</span>
-          <div className="setting-inline">
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={autoCardsReturnOnCorrect}
-                onChange={(event) =>
-                  setAutoCardsReturnOnCorrect(event.target.checked)
-                }
-              />
-              <span className="slider" />
-            </label>
-            <span className="muted">Remove cards again when correct.</span>
-          </div>
-        </div>
-
-        <div className="setting-row">
-          <span className="label">AI EVALUATION</span>
-          <div className="setting-inline">
-            <label className="switch">
-              <input type="checkbox" checked={aiEvaluation.enabled} disabled />
-              <span className="slider" />
-            </label>
-            <span className="muted">
-              Coming soon{aiEvaluation.provider ? ` (provider: ${aiEvaluation.provider})` : ""}.
-            </span>
-          </div>
-        </div>
-
-        {!isValid ? (
-          <div className="error">
-            Assigned points must match the max total before starting an exam.
-          </div>
-        ) : null}
-      </div>
-    </section>
+      </section>
+    </div>
   );
 };

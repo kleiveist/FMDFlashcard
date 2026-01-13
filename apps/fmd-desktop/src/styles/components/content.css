@@ -368,38 +368,6 @@ h2 {
   align-items: start;
 }
 
-.exam-layout--overview {
-  grid-template-columns: minmax(0, 1fr) 340px;
-  grid-template-rows: auto auto auto;
-  align-items: start;
-}
-
-.exam-overview-stack {
-  display: contents;
-}
-
-.exam-layout--overview .exam-time-limit {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.exam-layout--overview .exam-panel {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.exam-layout--overview .exam-time-bar--overview {
-  grid-column: 1;
-  grid-row: 2;
-  height: 100%;
-  align-self: stretch;
-}
-
-.exam-layout--overview .exam-sidebar {
-  grid-column: 2;
-  grid-row: 3;
-}
-
 .fast-flashcard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -614,6 +582,19 @@ body.focus-mode .fast-history-panel {
 
 .exam-timeline-block {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.exam-timeline-block .exam-time-bar {
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .exam-time-bar {
@@ -670,32 +651,10 @@ body.focus-mode .fast-history-panel {
   border-radius: 20px 20px 14px 14px;
 }
 
-.exam-time-bar--overview {
-  border-radius: 16px;
-}
-
-.exam-time-limit {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 16px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel);
-}
-
 .exam-overview {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.exam-overview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
 }
 
 .exam-overview-tabs {
@@ -708,6 +667,29 @@ body.focus-mode .fast-history-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.exam-overview-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exam-overview-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.exam-overview-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exam-overview-summary-title {
+  font-weight: 600;
 }
 
 .exam-stats {

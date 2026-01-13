@@ -69,10 +69,23 @@
 }
 
 
-.exam-settings-panel .panel-body {
+.exam-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.exam-settings-panel .panel-body,
+.exam-settings-toggles-panel .panel-body {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.exam-settings-toggles-panel .setting-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
 }
 
 .exam-settings-grid {
@@ -178,6 +191,10 @@
   .settings-app-grid .settings-performance-panel {
     grid-column: 1;
   }
+
+  .exam-settings-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .setting-row {
@@ -213,11 +230,6 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-}
-
-.exam-stage-control .pill-button {
-  padding: 4px 8px;
-  font-size: 0.75rem;
 }
 
 .setting-actions {

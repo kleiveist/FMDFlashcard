@@ -70,7 +70,6 @@ export const ExamSimulationPage = () => {
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
     runTasks,
-    examDurationMinutes,
     examTimeLimitMs,
     examTimeRemainingMs,
     examTimeUp,
@@ -138,17 +137,10 @@ export const ExamSimulationPage = () => {
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
-  const showTimelineBlock = !isViewMode && examTimerEnabled && examShowTimeline;
-  const showOverviewLayout = stage === "idle" && !isViewMode;
-  const showOverviewTimeline = showOverviewLayout && showTimelineBlock;
-  const showTimeLimitRow = showOverviewLayout && examTimerEnabled;
-  const timeLimitMinutes = Math.max(1, Math.round(examDurationMinutes));
-  const examLayoutClassName = [
-    "exam-layout",
-    showOverviewLayout ? "exam-layout--overview" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const isOverviewStage = stage === "idle";
+  const showOverviewLayout = isOverviewStage && !isViewMode;
+  const timelineVisible = examTimerEnabled && examShowTimeline;
+  const showTimelineBlock = !isViewMode && (timelineVisible || isOverviewStage);
   const selectedUser = useMemo(
     () =>
       spacedRepetition.spacedRepetitionUsers.find(
@@ -162,6 +154,112 @@ export const ExamSimulationPage = () => {
   const deleteTargetName = selectedUser?.name ?? "";
   const canConfirmDelete =
     Boolean(deleteTargetName) && deleteConfirmInput.trim() === deleteTargetName;
+  const readySummary = useMemo(() => {
+    if (!selectedExamFile) {
+      return { state: "empty", title: "Select an exam file to begin." };
+    }
+    if (preview.previewState === "loading") {
+      return { state: "loading", title: "Loading exam file..." };
+    }
+    if (preview.previewState === "error") {
+      return {
+        state: "error",
+        title: preview.previewError || "Failed to load file.",
+      };
+    }
+    if (examEmptyState) {
+      return {
+        state: "empty",
+        title: examEmptyState.title,
+        detail: examEmptyState.message,
+      };
+    }
+    return {
+      state: "ready",
+      title: "Exam ready to start",
+      detail: `${previewExamParse.tasks.length} tasks detected. Max points this run: ${plannedMaxPoints}.`,
+      extra: hasTaskCountMismatch
+        ? `Only ${previewExamParse.tasks.length} tasks available. The exam will run ${plannedTaskCount}.`
+        : null,
+    };
+  }, [
+    examEmptyState,
+    hasTaskCountMismatch,
+    plannedMaxPoints,
+    plannedTaskCount,
+    preview.previewError,
+    preview.previewState,
+    previewExamParse.tasks.length,
+    selectedExamFile,
+  ]);
+  const renderOverviewToggle = () => (
+    <div className="exam-overview-toggle">
+      <div className="exam-overview-toggle-header">
+        <div
+          className="pill-grid exam-overview-tabs"
+          role="tablist"
+          aria-label="Exam overview tabs"
+        >
+          <button
+            type="button"
+            className={`pill pill-button ${overviewTab === "ready" ? "active" : ""}`}
+            onClick={() => setOverviewTab("ready")}
+            role="tab"
+            aria-selected={overviewTab === "ready"}
+          >
+            READY
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${
+              overviewTab === "statistics" ? "active" : ""
+            }`}
+            onClick={() => setOverviewTab("statistics")}
+            role="tab"
+            aria-selected={overviewTab === "statistics"}
+          >
+            Statistics
+          </button>
+        </div>
+        <button
+          type="button"
+          className={`focus-toggle ${isViewMode ? "active" : ""}`}
+          onClick={() => setIsViewMode((prev) => !prev)}
+          aria-pressed={isViewMode}
+          aria-label={viewLabel}
+          title={viewLabel}
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+            <circle cx="12" cy="12" r="3.5" />
+          </svg>
+        </button>
+      </div>
+      {overviewTab === "ready" ? (
+        readySummary.state === "error" ? (
+          <div className="error">{readySummary.title}</div>
+        ) : (
+          <div className="exam-overview-summary">
+            <div className="exam-overview-summary-title">{readySummary.title}</div>
+            {readySummary.detail ? (
+              <div className="muted">{readySummary.detail}</div>
+            ) : null}
+            {readySummary.extra ? (
+              <div className="muted">{readySummary.extra}</div>
+            ) : null}
+          </div>
+        )
+      ) : null}
+    </div>
+  );
 
   const handleDeleteOpen = useCallback(() => {
     if (!selectedUser) {
@@ -280,111 +378,57 @@ export const ExamSimulationPage = () => {
 
   return (
     <div className="exam-page">
-      {showTimelineBlock && !showOverviewLayout ? (
+      {showTimelineBlock ? (
         <div className="exam-timeline-block">
-          <ExamTimeBar
-            timeLimitMs={examTimeLimitMs}
-            timeRemainingMs={examTimeRemainingMs}
-            isRunning={isExamTimerRunning}
-            isTimeUp={examTimeUp}
-            isEnabled={examTimerEnabled}
-          />
+          {timelineVisible ? (
+            <ExamTimeBar
+              timeLimitMs={examTimeLimitMs}
+              timeRemainingMs={examTimeRemainingMs}
+              isRunning={isExamTimerRunning}
+              isTimeUp={examTimeUp}
+              isEnabled={examTimerEnabled}
+            />
+          ) : null}
+          {showOverviewLayout ? renderOverviewToggle() : null}
         </div>
       ) : null}
 
-      <div className={examLayoutClassName}>
-        <div className="exam-overview-stack">
-          {showTimeLimitRow ? (
-            <div className="exam-time-limit">
-              <span className="label">TIME LIMIT:</span>
-              <span className="value">{timeLimitMinutes} MIN</span>
-            </div>
+      <div className="exam-layout">
+        <section className="panel exam-panel">
+          {isViewMode && timelineVisible ? (
+            <ExamTimeBar
+              className="exam-time-bar--view"
+              timeLimitMs={examTimeLimitMs}
+              timeRemainingMs={examTimeRemainingMs}
+              isRunning={isExamTimerRunning}
+              isTimeUp={examTimeUp}
+              isEnabled={examTimerEnabled}
+            />
           ) : null}
-          <section className="panel exam-panel">
-            {isViewMode && examTimerEnabled && examShowTimeline ? (
-              <ExamTimeBar
-                className="exam-time-bar--view"
-                timeLimitMs={examTimeLimitMs}
-                timeRemainingMs={examTimeRemainingMs}
-                isRunning={isExamTimerRunning}
-                isTimeUp={examTimeUp}
-                isEnabled={examTimerEnabled}
-              />
-            ) : null}
-            {stage === "idle" ? (
-              <div className="exam-overview">
-                <div className="exam-overview-header">
-                  <div
-                    className="pill-grid exam-overview-tabs"
-                    role="tablist"
-                    aria-label="Exam overview tabs"
-                  >
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        overviewTab === "ready" ? "active" : ""
-                      }`}
-                      onClick={() => setOverviewTab("ready")}
-                      role="tab"
-                      aria-selected={overviewTab === "ready"}
-                    >
-                      Ready
-                    </button>
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        overviewTab === "statistics" ? "active" : ""
-                      }`}
-                      onClick={() => setOverviewTab("statistics")}
-                      role="tab"
-                      aria-selected={overviewTab === "statistics"}
-                    >
-                      Statistics
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    className={`focus-toggle ${isViewMode ? "active" : ""}`}
-                    onClick={() => setIsViewMode((prev) => !prev)}
-                    aria-pressed={isViewMode}
-                    aria-label={viewLabel}
-                    title={viewLabel}
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-                      <circle cx="12" cy="12" r="3.5" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="exam-overview-body">
-                  {overviewTab === "ready" ? (
-                    <ExamIdlePanel
-                      selectedFile={selectedExamFile}
-                      previewState={preview.previewState}
-                      previewError={preview.previewError}
-                      examEmptyState={examEmptyState}
-                      availableTaskCount={previewExamParse.tasks.length}
-                      plannedTaskCount={plannedTaskCount}
-                      plannedMaxPoints={plannedMaxPoints}
-                      hasTaskCountMismatch={hasTaskCountMismatch}
-                    />
-                  ) : (
-                    <ExamStatisticsPanel
-                      runs={examRuns}
-                      gradeScaleId={settings.examGradeScale}
-                    />
-                  )}
-                </div>
+          {stage === "idle" ? (
+            <div className="exam-overview">
+              {isViewMode && isOverviewStage ? renderOverviewToggle() : null}
+              <div className="exam-overview-body">
+                {overviewTab === "ready" ? (
+                  <ExamIdlePanel
+                    selectedFile={selectedExamFile}
+                    previewState={preview.previewState}
+                    previewError={preview.previewError}
+                    examEmptyState={examEmptyState}
+                    availableTaskCount={previewExamParse.tasks.length}
+                    plannedTaskCount={plannedTaskCount}
+                    plannedMaxPoints={plannedMaxPoints}
+                    hasTaskCountMismatch={hasTaskCountMismatch}
+                  />
+                ) : (
+                  <ExamStatisticsPanel
+                    runs={examRuns}
+                    gradeScaleId={settings.examGradeScale}
+                  />
+                )}
               </div>
-            ) : isRunnerStage ? (
+            </div>
+          ) : isRunnerStage ? (
               activeTask ? (
                 <ExamTaskRunner
                   task={activeTask}
@@ -426,18 +470,7 @@ export const ExamSimulationPage = () => {
                 <div className="empty-state">No results available yet.</div>
               )
             ) : null}
-          </section>
-        </div>
-        {showOverviewTimeline ? (
-          <ExamTimeBar
-            className="exam-time-bar--overview"
-            timeLimitMs={examTimeLimitMs}
-            timeRemainingMs={examTimeRemainingMs}
-            isRunning={isExamTimerRunning}
-            isTimeUp={examTimeUp}
-            isEnabled={examTimerEnabled}
-          />
-        ) : null}
+        </section>
         <div className="exam-sidebar">
           <UserToolsPanel
             spacedRepetition={spacedRepetition}

@@ -73,3 +73,8 @@ button {
   padding: 8px 12px;
   font-size: 0.85rem;
 }
+
+.primary.small {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
