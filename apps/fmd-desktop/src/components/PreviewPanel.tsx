@@ -877,7 +877,7 @@ const expandInlineExamLine = (line: string) => {
   expanded = expanded.replace(/\s-((?:true|false)|[a-d])\b/gi, "\n-$1");
   expanded = expanded.replace(/\s([a-d]\))\s*/gi, "\n$1 ");
   if (expanded.toLowerCase().includes("#card")) {
-    expanded = expanded.replace(/\s#\s*/g, "\n#\n");
+    expanded = expanded.replace(/\s#(?![A-Za-z0-9_])\s*/g, "\n#\n");
   }
 
   return splitExpandedExamLine(expanded);

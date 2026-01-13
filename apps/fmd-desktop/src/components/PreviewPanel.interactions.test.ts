@@ -7,12 +7,22 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createElement, useCallback, useState, type ReactElement } from "react";
+import {
+  act,
+  createElement,
+  useCallback,
+  useState,
+  type ReactElement,
+} from "react";
 import { createRoot } from "react-dom/client";
-import { act } from "react-dom/test-utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { PreviewPanel } from "./PreviewPanel";
 import { type VaultFile } from "../lib/tree";
+
+const testEnv = globalThis as typeof globalThis & {
+  IS_REACT_ACT_ENVIRONMENT?: boolean;
+};
+testEnv.IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("@tauri-apps/plugin-opener", () => ({
   openUrl: vi.fn().mockResolvedValue(undefined),
