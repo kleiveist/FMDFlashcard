@@ -883,7 +883,7 @@ export const PreviewPanel = ({
     <section className="panel preview-panel">
       <div className="panel-header">
         <div>
-          <h2>Vorschau</h2>
+          <h2>Preview</h2>
           <p className="muted">
             {selectedFile?.relative_path ?? "Keine Datei ausgewaehlt"}
           </p>

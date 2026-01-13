@@ -718,6 +718,61 @@ body.focus-mode .fast-history-panel {
   background: var(--block-bg);
 }
 
+.exam-stats-card.is-filled {
+  position: relative;
+  overflow: hidden;
+}
+
+.exam-stats-card.is-filled::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--stat-fill, 0%);
+  background: color-mix(
+    in srgb,
+    var(--stat-fill-color, var(--accent)) 24%,
+    transparent
+  );
+  border-top: 1px solid
+    color-mix(in srgb, var(--stat-fill-color, var(--accent)) 36%, transparent);
+  transition: height 0.25s ease;
+}
+
+.exam-stats-card.is-filled > * {
+  position: relative;
+  z-index: 1;
+}
+
+.exam-stats-card.status-zero {
+  --stat-fill-color: #94a3b8;
+}
+
+.exam-stats-card.status-red {
+  --stat-fill-color: #d14b4b;
+}
+
+.exam-stats-card.status-orange {
+  --stat-fill-color: #e28a2f;
+}
+
+.exam-stats-card.status-yellow {
+  --stat-fill-color: #e2c14b;
+}
+
+.exam-stats-card.status-green {
+  --stat-fill-color: #2f9e5b;
+}
+
+.exam-stats-card.status-blue {
+  --stat-fill-color: #3b6fff;
+}
+
+.exam-stats-card.status-diamond {
+  --stat-fill-color: #6bcfff;
+}
+
 .exam-stats-card.is-empty {
   border-style: dashed;
   opacity: 0.6;

@@ -5,7 +5,7 @@
  * - Rendert Statistikbereiche fuer Exam Runs.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   filterExamRuns,
   formatExamDuration,
@@ -26,26 +26,35 @@ type ExamStatisticsPanelProps = {
 
 type StatsTab = "last" | "history";
 
-const getStatusToken = (percent: number) => {
+type StatusTone =
+  | "zero"
+  | "red"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "diamond";
+
+const getStatusDescriptor = (percent: number) => {
   if (percent === 100) {
-    return "💎 1";
+    return { token: "💎 1", tone: "diamond" as StatusTone };
   }
   if (percent >= 91) {
-    return "🔵 1";
+    return { token: "🔵 1", tone: "blue" as StatusTone };
   }
   if (percent >= 82) {
-    return "🟢 2";
+    return { token: "🟢 2", tone: "green" as StatusTone };
   }
   if (percent >= 76) {
-    return "🟡 3";
+    return { token: "🟡 3", tone: "yellow" as StatusTone };
   }
   if (percent >= 51) {
-    return "🟠 4";
+    return { token: "🟠 4", tone: "orange" as StatusTone };
   }
   if (percent >= 1) {
-    return "🔴 5";
+    return { token: "🔴 5", tone: "red" as StatusTone };
   }
-  return "⚪ 0";
+  return { token: "⚪ 0", tone: "zero" as StatusTone };
 };
 
 export const ExamStatisticsPanel = ({
@@ -92,16 +101,37 @@ export const ExamStatisticsPanel = ({
       ? `${lastRun.achievedPoints} / ${lastRun.maxPoints}`
       : "—";
     const percentLabel = lastRun ? `${lastRun.percent}%` : "—";
-    const statusLabel = lastRun ? getStatusToken(lastRun.percent) : "—";
+    const statusDescriptor = lastRun ? getStatusDescriptor(lastRun.percent) : null;
+    const statusLabel = statusDescriptor ? statusDescriptor.token : "—";
     const gradeLabel = lastRun?.grade ?? "—";
+    const scoreFill =
+      lastRun && lastRun.maxPoints > 0
+        ? Math.min(1, Math.max(0, lastRun.achievedPoints / lastRun.maxPoints))
+        : 0;
+    const percentFill = lastRun
+      ? Math.min(1, Math.max(0, lastRun.percent / 100))
+      : 0;
+    const scoreStyle = hasLastRun
+      ? ({ "--stat-fill": `${scoreFill * 100}%` } as CSSProperties)
+      : undefined;
+    const percentStyle = hasLastRun
+      ? ({ "--stat-fill": `${percentFill * 100}%` } as CSSProperties)
+      : undefined;
+    const statusToneClass = statusDescriptor ? ` status-${statusDescriptor.tone}` : "";
     return (
       <div className="exam-last-session">
         <div className="exam-stats-grid">
-          <div className={`exam-stats-card${hasLastRun ? "" : " is-empty"}`}>
+          <div
+            className={`exam-stats-card${hasLastRun ? " is-filled" : " is-empty"}${statusToneClass}`}
+            style={scoreStyle}
+          >
             <span className="exam-stats-label">Score</span>
             <span className="exam-stats-value">{scoreLabel}</span>
           </div>
-          <div className={`exam-stats-card${hasLastRun ? "" : " is-empty"}`}>
+          <div
+            className={`exam-stats-card${hasLastRun ? " is-filled" : " is-empty"}${statusToneClass}`}
+            style={percentStyle}
+          >
             <span className="exam-stats-label">Percent</span>
             <span className="exam-stats-value">{percentLabel}</span>
           </div>
@@ -230,7 +260,7 @@ export const ExamStatisticsPanel = ({
                 </span>
                 <span className="exam-history-cell">{run.percent}%</span>
                 <span className="exam-history-cell">
-                  {getStatusToken(run.percent)}
+                  {getStatusDescriptor(run.percent).token}
                 </span>
                 <span className="exam-history-cell">
                   {formatExamDuration(run.durationMs)}
