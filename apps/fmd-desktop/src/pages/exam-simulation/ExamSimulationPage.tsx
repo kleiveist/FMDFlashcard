@@ -154,44 +154,6 @@ export const ExamSimulationPage = () => {
   const deleteTargetName = selectedUser?.name ?? "";
   const canConfirmDelete =
     Boolean(deleteTargetName) && deleteConfirmInput.trim() === deleteTargetName;
-  const readySummary = useMemo(() => {
-    if (!selectedExamFile) {
-      return { state: "empty", title: "Select an exam file to begin." };
-    }
-    if (preview.previewState === "loading") {
-      return { state: "loading", title: "Loading exam file..." };
-    }
-    if (preview.previewState === "error") {
-      return {
-        state: "error",
-        title: preview.previewError || "Failed to load file.",
-      };
-    }
-    if (examEmptyState) {
-      return {
-        state: "empty",
-        title: examEmptyState.title,
-        detail: examEmptyState.message,
-      };
-    }
-    return {
-      state: "ready",
-      title: "Exam ready to start",
-      detail: `${previewExamParse.tasks.length} tasks detected. Max points this run: ${plannedMaxPoints}.`,
-      extra: hasTaskCountMismatch
-        ? `Only ${previewExamParse.tasks.length} tasks available. The exam will run ${plannedTaskCount}.`
-        : null,
-    };
-  }, [
-    examEmptyState,
-    hasTaskCountMismatch,
-    plannedMaxPoints,
-    plannedTaskCount,
-    preview.previewError,
-    preview.previewState,
-    previewExamParse.tasks.length,
-    selectedExamFile,
-  ]);
   const renderOverviewToggle = () => (
     <div className="exam-overview-toggle">
       <div className="exam-overview-toggle-header">
@@ -243,21 +205,6 @@ export const ExamSimulationPage = () => {
           </svg>
         </button>
       </div>
-      {overviewTab === "ready" ? (
-        readySummary.state === "error" ? (
-          <div className="error">{readySummary.title}</div>
-        ) : (
-          <div className="exam-overview-summary">
-            <div className="exam-overview-summary-title">{readySummary.title}</div>
-            {readySummary.detail ? (
-              <div className="muted">{readySummary.detail}</div>
-            ) : null}
-            {readySummary.extra ? (
-              <div className="muted">{readySummary.extra}</div>
-            ) : null}
-          </div>
-        )
-      ) : null}
     </div>
   );
 
