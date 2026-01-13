@@ -37,7 +37,7 @@ while adding a dedicated review experience and study progress tracking.
 
 ## 📁 DEV
 - 🗂️ [Overview](docs/dev/dev.md)
-- 📝 [Architecture overview](docs/dev/architecture.md)
+- 📝 [Architecture overview](architecture.md)
 - 📝 [Developer ↔ Codex Workflow](docs/dev/codex-workflow.md)
 - 📝 [Control script (`tools/control.py`)](docs/dev/control-script.md)
 - 📝 [Releases / Packaging](docs/dev/release.md)

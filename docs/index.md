@@ -15,7 +15,7 @@
 
 ## 📁 DEV
 - 🗂️ [Overview](dev/dev.md)
-- 📝 [Architecture overview](dev/architecture.md)
+- 📝 [Architecture overview](architecture.md)
 - 📝 [Developer ↔ Codex Workflow](dev/codex-workflow.md)
 - 📝 [Control script (`tools/control.py`)](dev/control-script.md)
 - 📝 [Releases / Packaging](dev/release.md)

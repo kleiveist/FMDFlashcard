@@ -29,11 +29,14 @@ describe("applyInteractionSpacing", () => {
     expect(lines.some((line) => line.trim() === "#card")).toBe(true);
     expect(lines.some((line) => line.trim() === "#")).toBe(true);
 
+    const promptLine = lines.find((line) => line.startsWith("1\\) Prompt line"));
+    expect(promptLine).toBe("1\\) Prompt line  ");
+
     const optionLine = lines.find((line) => line.startsWith("a) Option A"));
     expect(optionLine).toBe("a) Option A  ");
 
     const inlineIndex = lines.findIndex((line) =>
-      line.startsWith("2) Inline markers"),
+      line.startsWith("2\\) Inline markers"),
     );
     expect(inlineIndex).toBeGreaterThan(-1);
     expect(lines[inlineIndex].endsWith("  ")).toBe(true);

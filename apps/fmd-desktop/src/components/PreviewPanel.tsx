@@ -696,6 +696,61 @@ const isInteractionMarkerLine = (line: string) => {
       trimmed[1] <= "d");
 };
 
+const isExamTaskStartLine = (line: string) => {
+  let trimmed = line.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  if (trimmed.startsWith("**")) {
+    trimmed = trimmed.slice(2).trimStart();
+  }
+
+  if (trimmed.startsWith("-")) {
+    trimmed = trimmed.slice(1);
+  }
+
+  const numberMatch = trimmed.match(/^(\d+)/);
+  if (!numberMatch) {
+    return false;
+  }
+
+  const numberRaw = numberMatch[1] ?? "";
+  if (numberRaw.length > 1 && numberRaw.startsWith("0")) {
+    return false;
+  }
+
+  const number = Number.parseInt(numberRaw, 10);
+  if (number < 1 || number > 20) {
+    return false;
+  }
+
+  let remainder = trimmed.slice(numberRaw.length);
+  if (remainder.startsWith(")")) {
+    remainder = remainder.slice(1);
+  }
+  if (remainder.startsWith("**")) {
+    remainder = remainder.slice(2);
+  }
+
+  return remainder.length === 0 || /^\s/.test(remainder);
+};
+
+const isExamOptionLine = (line: string) =>
+  /^[a-d]\)\s+\S/i.test(line.trim());
+
+// Keep exam task numbering like "1)" editable by avoiding ordered-list parsing.
+const escapeExamTaskListMarker = (line: string) => {
+  if (!isExamTaskStartLine(line)) {
+    return line;
+  }
+  const match = line.match(/^(\s*)(\d+)\)/);
+  if (!match) {
+    return line;
+  }
+  return `${match[1]}${match[2]}\\)${line.slice(match[0].length)}`;
+};
+
 const shouldExpandInlineExamLine = (line: string) => {
   const lowered = line.toLowerCase();
   return lowered.includes("#card") ||
@@ -794,7 +849,35 @@ export const applyInteractionSpacing = (markdown: string) => {
     result.push("");
   }
 
-  return result.join("\n");
+  const normalized: string[] = [];
+  inCodeFence = false;
+
+  for (let i = 0; i < result.length; i += 1) {
+    const line = result[i] ?? "";
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      normalized.push(line);
+      continue;
+    }
+    if (inCodeFence) {
+      normalized.push(line);
+      continue;
+    }
+
+    let nextLine = line;
+    if (trimmed) {
+      if (isExamTaskStartLine(nextLine)) {
+        nextLine = escapeExamTaskListMarker(nextLine);
+        nextLine = ensureHardBreakSpacing(nextLine);
+      } else if (isExamOptionLine(nextLine)) {
+        nextLine = ensureHardBreakSpacing(nextLine);
+      }
+    }
+    normalized.push(nextLine);
+  }
+
+  return normalized.join("\n");
 };
 
 export const PreviewPanel = ({
