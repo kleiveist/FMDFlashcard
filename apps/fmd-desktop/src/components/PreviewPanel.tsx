@@ -28,7 +28,9 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { type LoadState } from "../lib/types";
@@ -38,6 +40,11 @@ const markdownSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames ?? []),
+    "br",
+    "kbd",
+    "span",
+    "sub",
+    "sup",
     "table",
     "thead",
     "tbody",
@@ -51,8 +58,47 @@ const markdownSchema = {
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
     th: [...(defaultSchema.attributes?.th ?? []), "align"],
     td: [...(defaultSchema.attributes?.td ?? []), "align"],
+    span: [...(defaultSchema.attributes?.span ?? []), "className"],
   },
 };
+
+const safeLinkProtocols = new Set(["http:", "https:", "mailto:"]);
+
+const resolveSafeHref = (href: string) => {
+  if (!href) {
+    return null;
+  }
+  try {
+    const parsed = new URL(href);
+    if (!safeLinkProtocols.has(parsed.protocol)) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};
+
+const resolveEventElement = (target: EventTarget | null) => {
+  if (!target) {
+    return null;
+  }
+  if (target instanceof Element) {
+    return target;
+  }
+  if (target instanceof Node && target.parentElement) {
+    return target.parentElement;
+  }
+  return null;
+};
+
+const resolveAnchorTarget = (target: EventTarget | null) => {
+  const element = resolveEventElement(target);
+  return element?.closest("a[href]") as HTMLAnchorElement | null;
+};
+
+const isModifierClick = (event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlKey">) =>
+  event.metaKey || event.ctrlKey;
 
 type PreviewPanelProps = {
   editDraft: string;
@@ -141,6 +187,7 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
   let inLinkText = false;
   let inLinkUrl = false;
   let lineStart = true;
+  let escapeNext = false;
 
   const skipToLineEnd = () => {
     while (rawIndex < rawMarkdown.length && rawMarkdown[rawIndex] !== "\n") {
@@ -151,7 +198,7 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
   while (rawIndex < rawMarkdown.length) {
     const char = rawMarkdown[rawIndex];
 
-    if (lineStart && rawMarkdown.startsWith("```", rawIndex)) {
+    if (lineStart && !escapeNext && rawMarkdown.startsWith("```", rawIndex)) {
       inFence = !inFence;
       skipToLineEnd();
       continue;
@@ -159,6 +206,7 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
 
     if (char === "\n") {
       lineStart = true;
+      escapeNext = false;
       if (plainIndex >= plainOffset) {
         return rawIndex;
       }
@@ -167,7 +215,19 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
       continue;
     }
 
-    if (lineStart && !inFence) {
+    const isEscaped = escapeNext;
+    if (escapeNext) {
+      escapeNext = false;
+    }
+
+    if (!inFence && !isEscaped && char === "\\") {
+      lineStart = false;
+      escapeNext = true;
+      rawIndex += 1;
+      continue;
+    }
+
+    if (!isEscaped && lineStart && !inFence) {
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -217,33 +277,35 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
         rawIndex += 1;
         continue;
       }
-      if (char === "`") {
-        inInlineCode = !inInlineCode;
-        rawIndex += 1;
-        continue;
-      }
-      if (!inInlineCode && (char === "*" || char === "_")) {
-        rawIndex += 1;
-        continue;
-      }
-      if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
-        rawIndex += 1;
-        continue;
-      }
-      if (char === "[") {
-        inLinkText = true;
-        rawIndex += 1;
-        continue;
-      }
-      if (inLinkText && char === "]") {
-        inLinkText = false;
-        if (rawMarkdown[rawIndex + 1] === "(") {
-          inLinkUrl = true;
-          rawIndex += 2;
+      if (!isEscaped) {
+        if (char === "`") {
+          inInlineCode = !inInlineCode;
+          rawIndex += 1;
           continue;
         }
-        rawIndex += 1;
-        continue;
+        if (!inInlineCode && (char === "*" || char === "_")) {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "[") {
+          inLinkText = true;
+          rawIndex += 1;
+          continue;
+        }
+        if (inLinkText && char === "]") {
+          inLinkText = false;
+          if (rawMarkdown[rawIndex + 1] === "(") {
+            inLinkUrl = true;
+            rawIndex += 2;
+            continue;
+          }
+          rawIndex += 1;
+          continue;
+        }
       }
     }
 
@@ -269,6 +331,7 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
   let inLinkText = false;
   let inLinkUrl = false;
   let lineStart = true;
+  let escapeNext = false;
 
   const skipToLineEnd = () => {
     while (rawIndex < rawMarkdown.length && rawMarkdown[rawIndex] !== "\n") {
@@ -279,7 +342,7 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
   while (rawIndex < rawMarkdown.length && rawIndex < target) {
     const char = rawMarkdown[rawIndex];
 
-    if (lineStart && rawMarkdown.startsWith("```", rawIndex)) {
+    if (lineStart && !escapeNext && rawMarkdown.startsWith("```", rawIndex)) {
       inFence = !inFence;
       skipToLineEnd();
       continue;
@@ -287,12 +350,25 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
 
     if (char === "\n") {
       lineStart = true;
+      escapeNext = false;
       plainIndex += 1;
       rawIndex += 1;
       continue;
     }
 
-    if (lineStart && !inFence) {
+    const isEscaped = escapeNext;
+    if (escapeNext) {
+      escapeNext = false;
+    }
+
+    if (!inFence && !isEscaped && char === "\\") {
+      lineStart = false;
+      escapeNext = true;
+      rawIndex += 1;
+      continue;
+    }
+
+    if (!isEscaped && lineStart && !inFence) {
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -342,33 +418,35 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
         rawIndex += 1;
         continue;
       }
-      if (char === "`") {
-        inInlineCode = !inInlineCode;
-        rawIndex += 1;
-        continue;
-      }
-      if (!inInlineCode && (char === "*" || char === "_")) {
-        rawIndex += 1;
-        continue;
-      }
-      if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
-        rawIndex += 1;
-        continue;
-      }
-      if (char === "[") {
-        inLinkText = true;
-        rawIndex += 1;
-        continue;
-      }
-      if (inLinkText && char === "]") {
-        inLinkText = false;
-        if (rawMarkdown[rawIndex + 1] === "(") {
-          inLinkUrl = true;
-          rawIndex += 2;
+      if (!isEscaped) {
+        if (char === "`") {
+          inInlineCode = !inInlineCode;
+          rawIndex += 1;
           continue;
         }
-        rawIndex += 1;
-        continue;
+        if (!inInlineCode && (char === "*" || char === "_")) {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "[") {
+          inLinkText = true;
+          rawIndex += 1;
+          continue;
+        }
+        if (inLinkText && char === "]") {
+          inLinkText = false;
+          if (rawMarkdown[rawIndex + 1] === "(") {
+            inLinkUrl = true;
+            rawIndex += 2;
+            continue;
+          }
+          rawIndex += 1;
+          continue;
+        }
       }
     }
 
@@ -445,14 +523,19 @@ const setCaretAtPlainOffset = (container: HTMLElement, offset: number) => {
   selection.addRange(range);
 };
 
-const escapeMarkdownText = (text: string) =>
-  text
+const escapeMarkdownText = (text: string, escapePipes = true) => {
+  let next = text
     .replace(/\u00a0/g, " ")
     .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
     .replace(/\*/g, "\\*")
     .replace(/_/g, "\\_")
     .replace(/~/g, "\\~");
+  if (escapePipes) {
+    next = next.replace(/\|/g, "\\|");
+  }
+  return next.replace(/(^|[\n\r])([ \t]*)([#-])/g, "$1$2\\$3");
+};
 
 const escapeMarkdownLinkText = (text: string) =>
   text.replace(/\[/g, "\\[").replace(/]/g, "\\]");
@@ -486,6 +569,7 @@ const wrapCodeBlock = (text: string) => {
 
 type MarkdownSerializeContext = {
   listDepth: number;
+  escapePipes: boolean;
 };
 
 const serializeMarkdownChildren = (
@@ -501,7 +585,7 @@ const serializeMarkdownNode = (
   context: MarkdownSerializeContext,
 ): string => {
   if (node.nodeType === Node.TEXT_NODE) {
-    return escapeMarkdownText(node.nodeValue ?? "");
+    return escapeMarkdownText(node.nodeValue ?? "", context.escapePipes);
   }
   if (node.nodeType !== Node.ELEMENT_NODE) {
     return "";
@@ -552,9 +636,7 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "blockquote") {
-    const content = serializeMarkdownChildren(element, context)
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+    const content = serializeMarkdownChildren(element, context).trim();
     const lines = content.split("\n");
     return `${lines.map((line) => (line ? `> ${line}` : ">")).join("\n")}\n\n`;
   }
@@ -607,7 +689,6 @@ const serializeMarkdownList = (
       ...context,
       listDepth: context.listDepth + 1,
     })
-      .replace(/\n{3,}/g, "\n\n")
       .trim();
     const marker = isOrdered ? `${index + itemIndex}. ` : "- ";
     const itemLines = content ? content.split("\n") : [""];
@@ -651,15 +732,17 @@ const serializeTableCell = (
   element: HTMLElement,
   context: MarkdownSerializeContext,
 ) => {
-  const text = serializeMarkdownChildren(element, context)
+  const text = serializeMarkdownChildren(element, {
+    ...context,
+    escapePipes: false,
+  })
     .replace(/\n+/g, " ")
     .trim();
   return escapeMarkdownTableCell(text);
 };
 
 const serializeMarkdownFromHtml = (container: HTMLElement) => {
-  const markdown = serializeMarkdownChildren(container, { listDepth: 0 });
-  return markdown.replace(/\n{3,}/g, "\n\n").trimEnd();
+  return serializeMarkdownChildren(container, { listDepth: 0, escapePipes: true });
 };
 
 const resolveRawCaretIndex = (container: HTMLElement, range: Range | null) => {
@@ -990,6 +1073,31 @@ export const PreviewPanel = ({
     return () => window.cancelAnimationFrame(handle);
   }, [editCaretIndex, editDraft, isEditing, onEditCaretApplied, rawPreview]);
 
+  const handlePreviewLinkClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const link = resolveAnchorTarget(event.target);
+      if (!link) {
+        return;
+      }
+      const href = link.getAttribute("href")?.trim() ?? "";
+      if (event.button !== 0) {
+        event.preventDefault();
+        return;
+      }
+      if (isModifierClick(event)) {
+        const safeHref = resolveSafeHref(href);
+        if (safeHref) {
+          event.preventDefault();
+          event.stopPropagation();
+          void openUrl(safeHref);
+          return;
+        }
+      }
+      event.preventDefault();
+    },
+    [],
+  );
+
   const handlePreviewClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       if (!canEdit || isEditing) {
@@ -997,6 +1105,15 @@ export const PreviewPanel = ({
       }
       if (event.button !== 0) {
         return;
+      }
+      if (isModifierClick(event)) {
+        const link = resolveAnchorTarget(event.target);
+        const safeHref = link
+          ? resolveSafeHref(link.getAttribute("href")?.trim() ?? "")
+          : null;
+        if (safeHref) {
+          return;
+        }
       }
       const origin = rawPreview ? "raw" : "markdown";
       let caretIndex = preview.length === 0 ? 0 : null;
@@ -1101,7 +1218,12 @@ export const PreviewPanel = ({
         {previewState === "error" ? (
           <div className="error">{previewError}</div>
         ) : null}
-        <div className="preview-content" onMouseUp={handlePreviewClick}>
+        <div
+          className="preview-content"
+          onClick={handlePreviewLinkClick}
+          onAuxClick={handlePreviewLinkClick}
+          onMouseUp={handlePreviewClick}
+        >
           {isEditing ? (
             rawPreview ? (
               <textarea
@@ -1141,12 +1263,15 @@ export const PreviewPanel = ({
               ) : (
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+                  rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
                   components={{
                     table: ({ node: _node, ...props }) => (
                       <div className="markdown-table">
                         <table {...props} />
                       </div>
+                    ),
+                    img: ({ node: _node, ...props }) => (
+                      <img {...props} draggable={false} />
                     ),
                   }}
                 >

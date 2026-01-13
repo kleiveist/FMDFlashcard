@@ -89,6 +89,15 @@
   white-space: normal;
 }
 
+.preview.preview-editor.markdown a {
+  cursor: text;
+}
+
+.preview.preview-editor.markdown img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
 .preview-editor:hover {
   border-color: var(--md-editor-border-hover);
 }
