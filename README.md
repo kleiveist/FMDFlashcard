@@ -25,7 +25,6 @@ while adding a dedicated review experience and study progress tracking.
 
 # DOCS
 - 📚 [Docs Home](docs/index.md)
-- 📝 [Folderlist](docs/folderlist.md)
 - 📝 [Refactor notes](docs/refactor-notes.md)
 
 ## 📁 ADR
@@ -37,17 +36,13 @@ while adding a dedicated review experience and study progress tracking.
 
 ## 📁 DEV
 - 🗂️ [Overview](docs/dev/dev.md)
-- 📝 [Architecture overview](architecture.md)
+- 📝 [Architecture overview](docs/dev/architecture.md)
 - 📝 [Developer ↔ Codex Workflow](docs/dev/codex-workflow.md)
 - 📝 [Control script (`tools/control.py`)](docs/dev/control-script.md)
 - 📝 [Releases / Packaging](docs/dev/release.md)
 - 📝 [Developer setup (run from source)](docs/dev/setup.md)
 - 📝 [Testing](docs/dev/testing.md)
-
-## 📁 Issus
-- 🗂️ [Overview](issus.md)
-- 📝 [Issue Notes (Bug Report)](issus_note.md)
-- 📝 [Issustabel](issustabel.md)
+- 📝 [User Vault (Dev Notes)](docs/dev/user-vault.md)
 
 ## 📁 USER
 - 🗂️ [Overview](docs/user/user.md)
@@ -55,6 +50,7 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Settings](docs/user/settings.md)
 - 📝 [Spaced repetition](docs/user/spaced-repetition.md)
 - 📝 [Troubleshooting](docs/user/troubleshooting.md)
+- 📝 [User Vault (Statistiken)](docs/user/user-vault.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
 

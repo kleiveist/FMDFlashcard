@@ -4,6 +4,13 @@
 
 # Settings
 
+<!-- AUTO-GENERATED:docs-index START -->
+
+## 📄 Pages
+- 📝 [Vault and index settings](settings_vault_index.md)
+
+<!-- AUTO-GENERATED:docs-index END -->
+
 ## Purpose
 
 Settings control how the app scans the vault, renders content, and runs study modes. Prefer defaults unless you have a concrete reason to change behavior.

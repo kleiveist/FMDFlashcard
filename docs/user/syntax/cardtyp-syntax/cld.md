@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](examples.md)
+[← Back](cardtyp-syntax.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Code `cld`: Cloze (typed blanks + drag tokens)
 

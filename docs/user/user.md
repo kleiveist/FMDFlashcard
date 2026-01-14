@@ -12,21 +12,7 @@
 - 📝 [Settings](settings.md)
 - 📝 [Spaced repetition](spaced-repetition.md)
 - 📝 [Troubleshooting](troubleshooting.md)
-
-## 📁 Examples
-- 🗂️ [Overview](examples.md)
-- 📝 [Code `cd`: Cloze (drag tokens)](cd.md)
-- 📝 [Code `cl`: Cloze (typed blanks)](cl.md)
-- 📝 [Code `cld`: Cloze (typed blanks + drag tokens)](cld.md)
-- 📝 [Code `e`: Exam block container](e.md)
-- 📝 [Code `ea`: Exam task block](ea.md)
-- 📝 [Examplestabel de](examplestabel_de.md)
-- 📝 [Examplestabel en](rendering_tabelcard.md)
-- 📝 [Code `f`: Flashcard block container](f.md)
-- 📝 [Code `m1`: Single-answer multiple choice](m1.md)
-- 📝 [Code `m2`: Multi-answer multiple choice](m2.md)
-- 📝 [Code `qa`: Answer marker (Q/A part)](qa.md)
-- 📝 [Code `tf`: True/False marker (2-button card)](tf.md)
+- 📝 [User Vault (Statistiken)](user-vault.md)
 
 ## 📁 Pages
 - 🗂️ [Overview](pages/pages.md)
@@ -44,6 +30,11 @@
 ## 📁 Prombt
 - 🗂️ [Overview](prombt/prombt.md)
 - 📝 [Fdm exam en](prombt/fdm_exam_en.md)
+
+## 📁 Rendering
+- 🗂️ [Overview](rendering/rendering.md)
+- 📝 [Rendering markdown tabel](rendering/rendering_markdown_tabel.md)
+- 📝 [Recommendation: Extend your table by 3 meta columns](rendering/rendering_markdown_types.md)
 
 ## 📁 Syntax
 - 🗂️ [Overview](syntax/syntax.md)

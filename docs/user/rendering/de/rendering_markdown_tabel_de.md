@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](de.md)
+<!-- AUTO-GENERATED:backlink END -->
 Unten findest du **konkrete, sinnvolle Ergänzungen**, die fehlen, um mit **gerenderten Markdown-Tabellen wirklich „ideal“ zu arbeiten**, ohne den Markdown-Charakter zu verlieren.
 
 Ich gliedere das in:

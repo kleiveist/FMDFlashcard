@@ -1,4 +1,6 @@
-
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](de.md)
+<!-- AUTO-GENERATED:backlink END -->
 ---
 ## 4) Ergänzte Tabelle – „Tabellen-Interaktion vollständig“
 Hier deine Tabelle **sauber erweitert**, ohne Implementierungsdetails:

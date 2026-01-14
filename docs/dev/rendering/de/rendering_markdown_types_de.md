@@ -1,4 +1,6 @@
-
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](de.md)
+<!-- AUTO-GENERATED:backlink END -->
 ---
 ### Tabelle 1 – Markdown-Typen & Editfaktor (vollständig)
 

@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](de.md)
+<!-- AUTO-GENERATED:backlink END -->
 ## 1) Links und Bilder (sehr häufig, hoher UX-Impact)
 
 **Warum wichtig:** Links/Bilder sind oft der erste Bereich, der in Render-Ansicht „klickbar“ wird und Editieren verhindert.

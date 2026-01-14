@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](examples.md)
+[← Back](cardtyp-syntax.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Code `tf`: True/False marker (2-button card)
 

@@ -1,9 +1,26 @@
 # Gesamtinhalte – Root: /home/kleif/Projects/FMDFlashcard/docs/user/syntax/cardtyp-syntax
 
+<!-- AUTO-GENERATED:docs-index START -->
+
+## 📄 Pages
+- 📝 [Code `cd`: Cloze (drag tokens)](cd.md)
+- 📝 [Code `cl`: Cloze (typed blanks)](cl.md)
+- 📝 [Code `cld`: Cloze (typed blanks + drag tokens)](cld.md)
+- 📝 [Code `e`: Exam block container](e.md)
+- 📝 [Code `ea`: Exam task block](ea.md)
+- 📝 [Code `f`: Flashcard block container](f.md)
+- 📝 [Code `h`: Help / Hint block (compatible with all card types)](h.md)
+- 📝 [Code `m1`: Single-answer multiple choice](m1.md)
+- 📝 [Code `m2`: Multi-answer multiple choice](m2.md)
+- 📝 [Code `qa`: Answer marker (Q/A part)](qa.md)
+- 📝 [Code `tf`: True/False marker (2-button card)](tf.md)
+
+<!-- AUTO-GENERATED:docs-index END -->
+
 ## 📝 cd.md — ./cd.md
 
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](examples.md)
+[← Back](../syntax.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Code `cd`: Cloze (drag tokens)
 
@@ -397,4 +414,3 @@ The Sun is a star.
 - Mixing `tf` with other interactive types (m1/m2/cl/cd) in the same task requires explicit multi-widget handling, so keep the block focused or split it with `---`.
 
 ---
-

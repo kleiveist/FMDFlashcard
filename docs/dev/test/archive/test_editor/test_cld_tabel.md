@@ -1,4 +1,6 @@
-
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](test_editor.md)
+<!-- AUTO-GENERATED:backlink END -->
 [← Back](test_editor.md)
 
 

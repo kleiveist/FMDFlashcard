@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](rendering.md)
+<!-- AUTO-GENERATED:backlink END -->
 Below you’ll find **concrete, practical additions** that are missing if you want to work with **rendered Markdown tables in a truly “ideal” way**—without losing the Markdown nature.
 
 I’m structuring this into:

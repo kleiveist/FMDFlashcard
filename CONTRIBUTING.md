@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back to README](README.md)
+[← Back](README.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Contributing
 

@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](test_editor.md)
+<!-- AUTO-GENERATED:backlink END -->
 \#exam
 📍 Abschnitt 1: Multiple Choice (m1)
 

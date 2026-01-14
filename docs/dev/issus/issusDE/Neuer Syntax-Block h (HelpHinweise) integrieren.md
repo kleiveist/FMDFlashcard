@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](issusDE.md)
+<!-- AUTO-GENERATED:backlink END -->
 #30
 ## Master Issue: Neuer Syntax-Block `h` (Help/Hinweise) integrieren (`#help … #`)
 ### Ziel

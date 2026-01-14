@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](cardtyp-syntax.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Code `h`: Help / Hint block (compatible with all card types)
 
 A `#help … #helpend` block (`h`) declares a **non-graded help/hint container** that can be embedded anywhere a flashcard task is parsed. It is designed to provide optional guidance (hints, reminders, definitions, mini-cheat-sheets) **without changing the detected interaction type** (qa/tf/m1/m2/cl/cd/cld) and without affecting scoring.

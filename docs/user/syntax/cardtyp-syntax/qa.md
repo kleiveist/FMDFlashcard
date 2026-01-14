@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](examples.md)
+[← Back](cardtyp-syntax.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Code `qa`: Answer marker (Q/A part)
 

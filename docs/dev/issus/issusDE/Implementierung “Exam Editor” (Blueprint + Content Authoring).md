@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](issusDE.md)
+<!-- AUTO-GENERATED:backlink END -->
 #29
 ## Master Issue (DE): Implementierung “Exam Editor” (Blueprint + Content Authoring)
 ### Hintergrund / Motivation

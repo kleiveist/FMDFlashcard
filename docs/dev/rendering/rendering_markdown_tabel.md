@@ -1,4 +1,6 @@
-
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](rendering.md)
+<!-- AUTO-GENERATED:backlink END -->
 ---
 ## 4) Extended table – “Table interaction complete”
 Here is your table **cleanly extended**, without implementation details:

@@ -4,9 +4,8 @@ tags:
   - preview
   - qa
 ---
-
 <!-- AUTO-GENERATED:backlink START -->
-[<- Back](docs/dev/test/test.md)
+[← Back](archive.md)
 <!-- AUTO-GENERATED:backlink END -->
 
 # Edit-Safe Preview QA

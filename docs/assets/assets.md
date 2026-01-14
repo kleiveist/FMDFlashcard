@@ -7,6 +7,9 @@
 
 <!-- AUTO-GENERATED:docs-index START -->
 
+## 📄 Pages
+- ⏭️ (keine Seiten)
+
 ## 📁 PNG
 - 🗂️ [Overview](png/png.md)
 

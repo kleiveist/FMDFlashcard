@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](rendering.md)
+<!-- AUTO-GENERATED:backlink END -->
 ## 1) Links and Images (very common, high UX impact)
 
 **Why it matters:** Links/images are often the first area that becomes “clickable” in the render view and then prevents editing.

@@ -12,6 +12,10 @@ Settings allow you to tune how the app behaves and how it scans your vault.
 - **Performance:** options intended for larger vaults and faster scanning.
 - **Flashcard / Fast Flashcard / Spaced Repetition tools:** review-mode specific behaviors.
 
+## User Vault
+
+User Vault stores your stats locally per profile. See `docs/user/user-vault.md`.
+
 ## Recommendations
 
 - Start with default values.

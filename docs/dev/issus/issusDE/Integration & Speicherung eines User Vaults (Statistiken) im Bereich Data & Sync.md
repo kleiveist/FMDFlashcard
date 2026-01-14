@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](issusDE.md)
+<!-- AUTO-GENERATED:backlink END -->
 #31
 ## Master Issue (DE): Integration & Speicherung eines **User Vaults** (Statistiken) im Bereich **Data & Sync**
 ### Kontext / Motivation
