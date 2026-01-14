@@ -30,6 +30,7 @@ import { asErrorMessage } from "../lib/errors";
 import { normalizeRelativePath } from "../lib/path";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
+const notePanelStorageKey = "fmd.notePanelCollapsed";
 
 export const DashboardPage = () => {
   const { actions, preview, vault } = useAppState();
@@ -38,6 +39,16 @@ export const DashboardPage = () => {
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+  const [noteCollapsed, setNoteCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    try {
+      return window.localStorage.getItem(notePanelStorageKey) === "true";
+    } catch {
+      return false;
+    }
+  });
   const normalizedActiveFolderPath = useMemo(() => {
     if (!vault.activeFolderPath) {
       return "";
@@ -74,6 +85,21 @@ export const DashboardPage = () => {
     setIsSaving(false);
     setEditCaretIndex(null);
   }, [preview.selectedFile?.path]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.localStorage.setItem(notePanelStorageKey, String(noteCollapsed));
+    } catch {
+      // Ignore storage failures (e.g. privacy mode).
+    }
+  }, [noteCollapsed]);
+
+  const handleToggleNoteCollapsed = useCallback(() => {
+    setNoteCollapsed((current) => !current);
+  }, []);
 
   const handleEditStart = useCallback(
     (options?: { caretIndex?: number | null; origin?: "raw" | "markdown" }) => {
@@ -144,7 +170,7 @@ export const DashboardPage = () => {
         </div>
       </header>
 
-      <div className="workspace">
+      <div className={`workspace${noteCollapsed ? " note-collapsed" : ""}`}>
         <PreviewPanel
           emptyPreview={emptyPreview}
           editDraft={editDraft}
@@ -168,9 +194,11 @@ export const DashboardPage = () => {
           activeFolderPath={normalizedActiveFolderPath || null}
           fileCountLabel={fileCountLabel}
           files={visibleFiles}
+          isCollapsed={noteCollapsed}
           listError={vault.listError}
           listState={vault.listState}
           onSelectFile={actions.handleSelectFile}
+          onToggleCollapsed={handleToggleNoteCollapsed}
           selectedFile={preview.selectedFile}
           vaultPath={vault.vaultPath}
         />

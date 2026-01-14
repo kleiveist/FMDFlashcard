@@ -27,9 +27,11 @@ type FileListProps = {
   activeFolderPath: string | null;
   fileCountLabel: string;
   files: VaultFile[];
+  isCollapsed: boolean;
   listError: string;
   listState: LoadState;
   onSelectFile: (file: VaultFile) => void;
+  onToggleCollapsed: () => void;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
 };
@@ -38,22 +40,39 @@ export const FileList = ({
   activeFolderPath,
   fileCountLabel,
   files,
+  isCollapsed,
   listError,
   listState,
   onSelectFile,
+  onToggleCollapsed,
   selectedFile,
   vaultPath,
 }: FileListProps) => {
   return (
-    <section className="panel list-panel">
-      <div className="panel-header">
-        <div>
-          <h2>Notizen</h2>
-          <p className="muted">{fileCountLabel}</p>
-        </div>
-        {listState === "loading" ? <span className="chip">Scanne...</span> : null}
-      </div>
-      <div className="panel-body">
+    <section
+      className={`panel list-panel note-panel ${isCollapsed ? "is-collapsed" : ""}`}
+    >
+      <button
+        type="button"
+        className="panel-header note-toggle"
+        onClick={onToggleCollapsed}
+        aria-expanded={!isCollapsed}
+        aria-controls="note-panel-body"
+      >
+        <span className="note-heading">
+          <span className="note-title">Note</span>
+          <span className="muted note-meta">{fileCountLabel}</span>
+        </span>
+        {listState === "loading" ? (
+          <span className="chip note-meta">Scanne...</span>
+        ) : null}
+      </button>
+      <div
+        className="panel-body"
+        id="note-panel-body"
+        hidden={isCollapsed}
+        aria-hidden={isCollapsed}
+      >
         {!vaultPath ? (
           <div className="empty-state">Waehle einen Vault, um die Liste zu fuellen.</div>
         ) : null}

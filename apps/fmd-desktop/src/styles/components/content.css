@@ -319,12 +319,19 @@ h2 {
 }
 
 .workspace {
+  --note-panel-width: 320px;
+  --note-panel-collapsed-width: 32px;
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--note-panel-width));
   gap: 24px;
   align-items: stretch;
   flex: 1;
   min-height: 0;
+  transition: grid-template-columns 220ms ease;
+}
+
+.workspace.note-collapsed {
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--note-panel-collapsed-width));
 }
 
 .dashboard-page {

@@ -36,6 +36,73 @@
   gap: 12px;
 }
 
+.note-panel {
+  overflow: hidden;
+  transition: padding 200ms ease;
+}
+
+.note-toggle {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.note-toggle:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.note-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-title {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.note-panel.is-collapsed {
+  padding: 12px 6px;
+  gap: 0;
+}
+
+.note-panel.is-collapsed .panel-body {
+  display: none;
+}
+
+.note-panel.is-collapsed .note-toggle {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  gap: 6px;
+}
+
+.note-panel.is-collapsed .note-heading {
+  align-items: center;
+}
+
+.note-panel.is-collapsed .note-title {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.note-panel.is-collapsed .note-meta {
+  display: none;
+}
+
 .panel-actions {
   display: flex;
   align-items: center;

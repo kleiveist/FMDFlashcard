@@ -141,6 +141,10 @@
     flex: 0 0 auto;
   }
 
+  .workspace.note-collapsed {
+    grid-template-columns: 1fr;
+  }
+
   .workspace .panel,
   .workspace .vault-details {
     height: auto;
