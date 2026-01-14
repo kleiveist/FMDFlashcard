@@ -33,27 +33,20 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { useAppState } from "../../../components/AppStateProvider";
 import { evaluateFlashcardResult } from "../../../features/flashcards/logic";
+import type {
+  FastFlashcardResult,
+  FastFlashcardSessionSummary,
+  FastFlashcardStorage,
+} from "../../../lib/fastFlashcard";
+import {
+  createEmptyFastFlashcardStore,
+  loadFastFlashcardStore,
+  saveFastFlashcardStore,
+} from "../../../features/user-vault/storage";
 
 export const fastFlashcardStatusLabel = "Not scanned yet";
 
-export type FastFlashcardResult = "correct" | "incorrect" | "timeout";
-
-export type FastFlashcardSessionSummary = {
-  id: string;
-  endedAt: string;
-  score: number;
-  correct: number;
-  incorrect: number;
-  timeout?: number;
-  total: number;
-  accuracy: number;
-  pace: number;
-  durationMs: number;
-};
-
-type FastFlashcardStorage = {
-  sessions: FastFlashcardSessionSummary[];
-};
+export type { FastFlashcardResult, FastFlashcardSessionSummary, FastFlashcardStorage };
 
 type FastFlashcardHistoryResetListener = () => void;
 
@@ -69,10 +62,17 @@ export const subscribeFastFlashcardHistoryReset = (
   };
 };
 
-export const resetFastFlashcardHistory = async () => {
+export const resetFastFlashcardHistory = async (profilePath?: string | null) => {
   try {
-    const storage: FastFlashcardStorage = { sessions: [] };
-    await invoke("save_fast_flashcard_data", { storage });
+    if (profilePath) {
+      await saveFastFlashcardStore(profilePath, {
+        ...createEmptyFastFlashcardStore(),
+        migratedFromAppData: true,
+      });
+    } else {
+      const storage: FastFlashcardStorage = { sessions: [] };
+      await invoke("save_fast_flashcard_data", { storage });
+    }
     fastFlashcardHistoryResetListeners.forEach((listener) => listener());
     return true;
   } catch (error) {
@@ -157,7 +157,7 @@ export const processSessionResults = (
 };
 
 export const useFastSession = () => {
-  const { fastFlashcards, settings } = useAppState();
+  const { fastFlashcards, settings, userVault } = useAppState();
   const {
     flashcardSubmissions,
     handleFlashcardSelfGrade,
@@ -178,6 +178,8 @@ export const useFastSession = () => {
     FastFlashcardSessionSummary[]
   >([]);
   const [sessionHistoryLoaded, setSessionHistoryLoaded] = useState(false);
+  const [fastFlashcardMigratedFromLegacy, setFastFlashcardMigratedFromLegacy] =
+    useState(false);
   const timerRef = useRef<number | null>(null);
   const sessionTimerRef = useRef<number | null>(null);
   const sessionStartRef = useRef<number | null>(null);
@@ -339,17 +341,41 @@ export const useFastSession = () => {
 
   useEffect(() => {
     let cancelled = false;
+    setSessionHistory([]);
+    setSessionHistoryLoaded(false);
 
     const loadSessions = async () => {
       try {
-        const storage = await invoke<FastFlashcardStorage>(
-          "load_fast_flashcard_data",
-        );
+        if (userVault.activeProfilePath) {
+          const store = await loadFastFlashcardStore(userVault.activeProfilePath);
+          let sessions = store.sessions;
+          let migrated = store.migratedFromAppData;
+          if (!migrated && sessions.length === 0) {
+            const legacy = await invoke<FastFlashcardStorage>(
+              "load_fast_flashcard_data",
+            );
+            sessions = Array.isArray(legacy?.sessions) ? legacy.sessions : [];
+            migrated = true;
+            await saveFastFlashcardStore(userVault.activeProfilePath, {
+              ...store,
+              sessions,
+              migratedFromAppData: migrated,
+            });
+          }
+          if (cancelled) {
+            return;
+          }
+          setSessionHistory(sessions);
+          setFastFlashcardMigratedFromLegacy(migrated);
+          return;
+        }
+        const storage = await invoke<FastFlashcardStorage>("load_fast_flashcard_data");
         if (cancelled) {
           return;
         }
         const sessions = Array.isArray(storage?.sessions) ? storage.sessions : [];
         setSessionHistory(sessions);
+        setFastFlashcardMigratedFromLegacy(false);
       } catch (error) {
         console.warn("Failed to load fast flashcard sessions", error);
       } finally {
@@ -364,27 +390,41 @@ export const useFastSession = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userVault.activeProfilePath, userVault.revision]);
 
   useEffect(
     () =>
       subscribeFastFlashcardHistoryReset(() => {
         setSessionHistory([]);
+        if (userVault.activeProfilePath) {
+          setFastFlashcardMigratedFromLegacy(true);
+        }
       }),
-    [],
+    [userVault.activeProfilePath],
   );
 
   useEffect(() => {
     if (!sessionHistoryLoaded) {
       return;
     }
-    const storage: FastFlashcardStorage = {
-      sessions: sessionHistory,
-    };
+    if (userVault.activeProfilePath) {
+      void saveFastFlashcardStore(userVault.activeProfilePath, {
+        ...createEmptyFastFlashcardStore(),
+        sessions: sessionHistory,
+        migratedFromAppData: fastFlashcardMigratedFromLegacy,
+      });
+      return;
+    }
+    const storage: FastFlashcardStorage = { sessions: sessionHistory };
     void invoke("save_fast_flashcard_data", { storage }).catch((error) => {
       console.warn("Failed to save fast flashcard sessions", error);
     });
-  }, [sessionHistory, sessionHistoryLoaded]);
+  }, [
+    fastFlashcardMigratedFromLegacy,
+    sessionHistory,
+    sessionHistoryLoaded,
+    userVault.activeProfilePath,
+  ]);
 
   useEffect(() => {
     if (fastCardPosition < orderedEntries.length) {

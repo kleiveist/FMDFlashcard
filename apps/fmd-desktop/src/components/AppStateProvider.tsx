@@ -40,6 +40,7 @@ import { usePreview } from "../features/preview/usePreview";
 import { useAppSettings } from "../features/settings/useAppSettings";
 import { type SettingsPageId } from "../features/settings/settingsNavigation";
 import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepetition";
+import { useUserVault } from "../features/user-vault/useUserVault";
 import { useVault } from "../features/vault/useVault";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 
@@ -71,6 +72,7 @@ type AppState = {
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
   spacedRepetition: ReturnType<typeof useSpacedRepetition>;
+  userVault: ReturnType<typeof useUserVault>;
   vault: ReturnType<typeof useVault> & {
     activeFolderPath: string | null;
     setActiveFolderPath: (value: string | null) => void;
@@ -147,6 +149,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     statsResetMode,
   } = settings;
   const vault = useVault({ persistSettings, showHiddenFolders });
+  const userVault = useUserVault({
+    vaultPath: vault.vaultPath,
+    mode: settings.userVaultMode,
+    setMode: settings.setUserVaultMode,
+    customPath: settings.userVaultCustomPath,
+    setCustomPath: settings.setUserVaultCustomPath,
+  });
   const preview = usePreview();
   const flashcards = useFlashcards({
     files: vault.files,
@@ -192,6 +201,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     isFlashcardScanning: flashcards.isFlashcardScanning,
     scanFlashcards: flashcards.scanFlashcards,
     setIsFlashcardScanning: flashcards.setIsFlashcardScanning,
+    userVaultProfilePath: userVault.activeProfilePath,
+    userVaultRevision: userVault.revision,
     vaultPath: vault.vaultPath,
     settings: {
       setSpacedRepetitionBoxes: settings.setSpacedRepetitionBoxes,
@@ -524,6 +535,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     preview,
     settings,
     spacedRepetition,
+    userVault,
     vault: {
       ...vault,
       activeFolderPath,

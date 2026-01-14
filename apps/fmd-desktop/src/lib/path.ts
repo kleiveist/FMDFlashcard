@@ -35,3 +35,17 @@ export const vaultBaseName = (value: string | null) => {
   const parts = trimmed.split(/[\\/]/);
   return parts[parts.length - 1] || "Vault";
 };
+
+export const joinPath = (root: string, ...segments: string[]) => {
+  const separator = root.includes("\\") ? "\\" : "/";
+  const normalizedRoot = root.replace(/[\\/]+$/, "");
+  const normalizedSegments = segments
+    .map((segment) =>
+      segment
+        .replace(/[\\/]+/g, separator)
+        .replace(/^[/\\]+/, "")
+        .replace(/[/\\]+$/, ""),
+    )
+    .filter(Boolean);
+  return [normalizedRoot, ...normalizedSegments].filter(Boolean).join(separator);
+};

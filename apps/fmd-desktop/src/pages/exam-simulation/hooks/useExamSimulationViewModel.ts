@@ -51,6 +51,11 @@ import {
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
+import {
+  createEmptyExamRunStore,
+  loadExamRunStore,
+  saveExamRunStore,
+} from "../../../features/user-vault/storage";
 
 type ExamStage =
   | "idle"
@@ -98,12 +103,15 @@ const isTaskCorrect = (
   );
 
 export const useExamSimulationViewModel = () => {
-  const { actions, preview, settings, spacedRepetition, vault } = useAppState();
+  const { actions, preview, settings, spacedRepetition, userVault, vault } =
+    useAppState();
   const [examFiles, setExamFiles] = useState<VaultFile[]>([]);
   const [examFilesState, setExamFilesState] = useState<LoadState>("idle");
   const [examFilesError, setExamFilesError] = useState("");
   const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
   const [examRunsLoaded, setExamRunsLoaded] = useState(false);
+  const [examRunsMigratedFromLegacy, setExamRunsMigratedFromLegacy] =
+    useState(false);
   const [stage, setStage] = useState<ExamStage>("idle");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [activeExamTasks, setActiveExamTasks] = useState<ExamTask[]>([]);
@@ -198,15 +206,39 @@ export const useExamSimulationViewModel = () => {
 
   useEffect(() => {
     let cancelled = false;
+    setExamRuns([]);
+    setExamRunsLoaded(false);
 
     const loadRuns = async () => {
       try {
+        if (userVault.activeProfilePath) {
+          const store = await loadExamRunStore(userVault.activeProfilePath);
+          let runs = Array.isArray(store.runs) ? store.runs : [];
+          let migrated = store.migratedFromAppData;
+          if (!migrated && runs.length === 0) {
+            const legacy = await invoke<ExamRunStorage>("load_exam_run_data");
+            runs = Array.isArray(legacy?.runs) ? legacy.runs : [];
+            migrated = true;
+            await saveExamRunStore(userVault.activeProfilePath, {
+              ...store,
+              runs,
+              migratedFromAppData: migrated,
+            });
+          }
+          if (cancelled) {
+            return;
+          }
+          setExamRuns(sortExamRunsByDateDesc(runs));
+          setExamRunsMigratedFromLegacy(migrated);
+          return;
+        }
         const storage = await invoke<ExamRunStorage>("load_exam_run_data");
         if (cancelled) {
           return;
         }
         const runs = Array.isArray(storage?.runs) ? storage.runs : [];
         setExamRuns(sortExamRunsByDateDesc(runs));
+        setExamRunsMigratedFromLegacy(false);
       } catch (error) {
         console.warn("Failed to load exam runs", error);
       } finally {
@@ -221,24 +253,40 @@ export const useExamSimulationViewModel = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userVault.activeProfilePath, userVault.revision]);
 
   useEffect(() => {
     const unsubscribe = subscribeExamRunHistoryReset(() => {
       setExamRuns([]);
+      if (userVault.activeProfilePath) {
+        setExamRunsMigratedFromLegacy(true);
+      }
     });
     return unsubscribe;
-  }, []);
+  }, [userVault.activeProfilePath]);
 
   useEffect(() => {
     if (!examRunsLoaded) {
+      return;
+    }
+    if (userVault.activeProfilePath) {
+      void saveExamRunStore(userVault.activeProfilePath, {
+        ...createEmptyExamRunStore(),
+        runs: examRuns,
+        migratedFromAppData: examRunsMigratedFromLegacy,
+      });
       return;
     }
     const storage: ExamRunStorage = { runs: examRuns };
     void invoke("save_exam_run_data", { storage }).catch((error) => {
       console.warn("Failed to save exam runs", error);
     });
-  }, [examRuns, examRunsLoaded]);
+  }, [
+    examRuns,
+    examRunsLoaded,
+    examRunsMigratedFromLegacy,
+    userVault.activeProfilePath,
+  ]);
 
   const selectedExamFile = useMemo(() => {
     if (!preview.selectedFile) {

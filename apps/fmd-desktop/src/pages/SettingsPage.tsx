@@ -50,6 +50,7 @@ export const SettingsPage = () => {
     settings,
     settingsNav,
     spacedRepetition,
+    userVault,
     vault,
   } = useAppState();
   const { language, setLanguage } = settings;
@@ -71,18 +72,18 @@ export const SettingsPage = () => {
 
   const handleResetHistoryConfirm = useCallback(async () => {
     setIsResetHistoryPending(true);
-    const success = await resetFastFlashcardHistory();
+    const success = await resetFastFlashcardHistory(userVault.activeProfilePath);
     setIsResetHistoryPending(false);
     if (success) {
       setIsResetHistoryOpen(false);
     }
-  }, [setIsResetHistoryOpen, resetFastFlashcardHistory]);
+  }, [setIsResetHistoryOpen, userVault.activeProfilePath, resetFastFlashcardHistory]);
 
   const handleResetExamStatistics = useCallback(async () => {
     setIsResetExamStatsPending(true);
-    await resetExamRunHistory();
+    await resetExamRunHistory(userVault.activeProfilePath);
     setIsResetExamStatsPending(false);
-  }, [resetExamRunHistory]);
+  }, [resetExamRunHistory, userVault.activeProfilePath]);
 
   return (
     <>
@@ -109,6 +110,7 @@ export const SettingsPage = () => {
             onShowHiddenFoldersToggle={settings.setShowHiddenFolders}
             onRescanVault={actions.handleRescanVault}
             onResetIndex={actions.handleResetIndex}
+            userVault={userVault}
             vaultIndexedComplete={vaultIndexedComplete}
             showHiddenFolders={settings.showHiddenFolders}
             vaultPath={vault.vaultPath}

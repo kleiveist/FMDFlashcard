@@ -38,6 +38,8 @@ struct KeyboardShortcutSettings {
 struct AppSettings {
     active_note_path: Option<String>,
     vault_path: Option<String>,
+    user_vault_mode: Option<String>,
+    user_vault_custom_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
     editor_exact_colors: Option<bool>,
@@ -165,6 +167,8 @@ struct ExamRunStorage {
 impl AppSettings {
     fn is_empty(&self) -> bool {
         self.vault_path.is_none()
+            && self.user_vault_mode.is_none()
+            && self.user_vault_custom_path.is_none()
             && self.active_note_path.is_none()
             && self.theme.is_none()
             && self.accent_color.is_none()
@@ -220,6 +224,13 @@ fn is_markdown(path: &Path) -> bool {
                 || ext.eq_ignore_ascii_case("markdown")
                 || ext.eq_ignore_ascii_case("mdx")
         }
+        None => false,
+    }
+}
+
+fn is_json(path: &Path) -> bool {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some(ext) => ext.eq_ignore_ascii_case("json"),
         None => false,
     }
 }
@@ -397,6 +408,8 @@ fn save_app_settings(
     app: tauri::AppHandle,
     active_note_path: Option<String>,
     vault_path: Option<String>,
+    user_vault_mode: Option<String>,
+    user_vault_custom_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
     editor_exact_colors: Option<bool>,
@@ -439,6 +452,8 @@ fn save_app_settings(
     let settings = AppSettings {
         active_note_path,
         vault_path,
+        user_vault_mode,
+        user_vault_custom_path,
         theme,
         accent_color,
         editor_exact_colors,
@@ -611,6 +626,63 @@ fn get_path_info(path: String) -> Result<PathInfo, String> {
 }
 
 #[tauri::command]
+fn list_directories(path: String) -> Result<Vec<String>, String> {
+    let path = PathBuf::from(path);
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    if !path.is_dir() {
+        return Err("Path is not a directory.".to_string());
+    }
+    let mut entries = Vec::new();
+    for entry in fs::read_dir(path).map_err(|err| err.to_string())? {
+        let entry = entry.map_err(|err| err.to_string())?;
+        let file_type = entry.file_type().map_err(|err| err.to_string())?;
+        if file_type.is_dir() {
+            entries.push(entry.file_name().to_string_lossy().to_string());
+        }
+    }
+    entries.sort();
+    Ok(entries)
+}
+
+#[tauri::command]
+fn ensure_directory(path: String) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    if path.exists() && !path.is_dir() {
+        return Err("Path is not a directory.".to_string());
+    }
+    fs::create_dir_all(path).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn read_json_file(path: String) -> Result<String, String> {
+    let path = PathBuf::from(path);
+    if !path.exists() {
+        return Err("File not found.".to_string());
+    }
+    if !path.is_file() {
+        return Err("Path is not a file.".to_string());
+    }
+    if !is_json(&path) {
+        return Err("Only JSON files are supported.".to_string());
+    }
+    fs::read_to_string(path).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn write_json_file(path: String, contents: String) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    if !is_json(&path) {
+        return Err("Only JSON files are supported.".to_string());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    fs::write(path, contents).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
     let path = PathBuf::from(path);
     if !path.exists() {
@@ -744,6 +816,10 @@ pub fn run() {
             save_vault_path,
             list_markdown_files,
             get_path_info,
+            list_directories,
+            ensure_directory,
+            read_json_file,
+            write_json_file,
             read_text_file,
             write_text_file,
             delete_markdown_file,

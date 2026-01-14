@@ -6,6 +6,10 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
+import {
+  createEmptyExamRunStore,
+  saveExamRunStore,
+} from "../features/user-vault/storage";
 
 export type ExamGradeScaleId = "standard-1-6";
 
@@ -43,10 +47,17 @@ export const subscribeExamRunHistoryReset = (
   };
 };
 
-export const resetExamRunHistory = async () => {
+export const resetExamRunHistory = async (profilePath?: string | null) => {
   try {
-    const storage: ExamRunStorage = { runs: [] };
-    await invoke("save_exam_run_data", { storage });
+    if (profilePath) {
+      await saveExamRunStore(profilePath, {
+        ...createEmptyExamRunStore(),
+        migratedFromAppData: true,
+      });
+    } else {
+      const storage: ExamRunStorage = { runs: [] };
+      await invoke("save_exam_run_data", { storage });
+    }
     examRunHistoryResetListeners.forEach((listener) => listener());
     return true;
   } catch (error) {

@@ -53,6 +53,7 @@ import {
   type SpacedRepetitionPageSize,
   type SpacedRepetitionRepetitionStrength,
 } from "../spaced-repetition/useSpacedRepetition";
+import type { UserVaultMode } from "../../lib/userVault";
 
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
@@ -68,6 +69,8 @@ export type ExamAiEvaluation = {
 type AppSettings = {
   active_note_path?: string | null;
   vault_path?: string | null;
+  user_vault_mode?: string | null;
+  user_vault_custom_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
   editor_exact_colors?: boolean | null;
@@ -116,6 +119,8 @@ type AppSettings = {
 type PersistUpdates = {
   activeNotePath?: string | null;
   vaultPath?: string | null;
+  userVaultMode?: UserVaultMode;
+  userVaultCustomPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
   editorExactColors?: boolean;
@@ -166,6 +171,7 @@ const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_SHOW_HIDDEN_FOLDERS = false;
+const DEFAULT_USER_VAULT_MODE: UserVaultMode = "auto";
 const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
 const DEFAULT_FLASHCARD_MODE: FlashcardMode = "all";
 const DEFAULT_FLASHCARD_SCOPE: FlashcardScope = "current";
@@ -337,6 +343,12 @@ export const useAppSettings = () => {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
+  const [userVaultMode, setUserVaultModeState] = useState<UserVaultMode>(
+    DEFAULT_USER_VAULT_MODE,
+  );
+  const [userVaultCustomPath, setUserVaultCustomPathState] = useState<
+    string | null
+  >(null);
   const [language, setLanguage] = useState<AppLanguage>(DEFAULT_LANGUAGE);
   const [maxFilesPerScan, setMaxFilesPerScan] = useState(
     DEFAULT_MAX_FILES_PER_SCAN,
@@ -513,6 +525,15 @@ export const useAppSettings = () => {
     setShowHiddenFoldersState(Boolean(value));
   }, []);
 
+  const setUserVaultMode = useCallback((value: UserVaultMode) => {
+    setUserVaultModeState(value);
+  }, []);
+
+  const setUserVaultCustomPath = useCallback((value: string | null) => {
+    const next = value?.trim() ?? null;
+    setUserVaultCustomPathState(next || null);
+  }, []);
+
   const setFlashcardHelpEnabled = useCallback((value: boolean) => {
     setFlashcardHelpEnabledState(Boolean(value));
   }, []);
@@ -533,6 +554,8 @@ export const useAppSettings = () => {
     async (settings: {
       activeNotePath: string | null;
       vaultPath: string | null;
+      userVaultMode: UserVaultMode;
+      userVaultCustomPath: string | null;
       theme: ThemeMode;
       accentColor: string;
       editorExactColors: boolean;
@@ -578,6 +601,8 @@ export const useAppSettings = () => {
         await invoke("save_app_settings", {
           activeNotePath: settings.activeNotePath,
           vaultPath: settings.vaultPath,
+          userVaultMode: settings.userVaultMode,
+          userVaultCustomPath: settings.userVaultCustomPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
           editorExactColors: settings.editorExactColors,
@@ -637,6 +662,8 @@ export const useAppSettings = () => {
       const nextSettings = {
         activeNotePath: updates.activeNotePath ?? activeNotePath,
         vaultPath: updates.vaultPath ?? vaultPath,
+        userVaultMode: updates.userVaultMode ?? userVaultMode,
+        userVaultCustomPath: updates.userVaultCustomPath ?? userVaultCustomPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
         editorExactColors: updates.editorExactColors ?? editorExactColors,
@@ -753,6 +780,8 @@ export const useAppSettings = () => {
       spacedRepetitionStatsView,
       statsResetMode,
       theme,
+      userVaultCustomPath,
+      userVaultMode,
       vaultPath,
       rightToolbarCollapsed,
     ],
@@ -822,6 +851,12 @@ export const useAppSettings = () => {
             : legacyHiddenFoldersLevel !== null
               ? legacyHiddenFoldersLevel > 0
               : DEFAULT_SHOW_HIDDEN_FOLDERS;
+        const storedUserVaultMode =
+          settings.user_vault_mode === "custom" ? "custom" : DEFAULT_USER_VAULT_MODE;
+        const storedUserVaultCustomPath =
+          typeof settings.user_vault_custom_path === "string"
+            ? settings.user_vault_custom_path.trim() || null
+            : null;
         const storedFlashcardOrder =
           settings.flashcard_order === "random"
             ? "random"
@@ -1008,6 +1043,8 @@ export const useAppSettings = () => {
         setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
         setActiveNotePath(storedActiveNotePath);
         setVaultPath(settings.vault_path ?? null);
+        setUserVaultModeState(storedUserVaultMode);
+        setUserVaultCustomPathState(storedUserVaultCustomPath);
         setLanguage(storedLanguage);
         setMaxFilesPerScan(storedMaxFilesPerScan);
         setScanParallelism(storedScanParallelism);
@@ -1115,6 +1152,8 @@ export const useAppSettings = () => {
       void saveSettings({
         activeNotePath,
         vaultPath,
+        userVaultMode,
+        userVaultCustomPath,
         theme,
         accentColor,
         editorExactColors,
@@ -1206,6 +1245,8 @@ export const useAppSettings = () => {
     spacedRepetitionStatsView,
     statsResetMode,
     theme,
+    userVaultCustomPath,
+    userVaultMode,
     vaultPath,
     rightToolbarCollapsed,
   ]);
@@ -1276,6 +1317,8 @@ export const useAppSettings = () => {
     setKeyboardShortcutBinding,
     resetKeyboardShortcuts,
     setShowHiddenFolders,
+    setUserVaultCustomPath,
+    setUserVaultMode,
     setLanguage,
     setMaxFilesPerScan,
     setRightToolbarCollapsed,
@@ -1300,6 +1343,8 @@ export const useAppSettings = () => {
     spacedRepetitionStatsView,
     statsResetMode,
     theme,
+    userVaultCustomPath,
+    userVaultMode,
     vaultPath,
     rightToolbarCollapsed,
   };

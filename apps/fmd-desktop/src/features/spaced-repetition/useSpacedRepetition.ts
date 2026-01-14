@@ -22,7 +22,14 @@
  * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
  */
 
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   evaluateFlashcardResult,
@@ -52,6 +59,12 @@ import {
   type SpacedRepetitionUser,
   type SpacedRepetitionUserState,
 } from "./logic";
+import {
+  createEmptySpacedRepetitionStore,
+  loadSpacedRepetitionStore,
+  saveSpacedRepetitionStore,
+  type SpacedRepetitionProfileStore,
+} from "../user-vault/storage";
 
 export type SpacedRepetitionPageSize = 1 | 2 | 3 | 5;
 export type SpacedRepetitionBoxes = 3 | 5 | 8;
@@ -127,6 +140,8 @@ type UseSpacedRepetitionOptions = {
     orderOverride?: FlashcardOrder;
   }) => Promise<Flashcard[]>;
   setIsFlashcardScanning: (value: boolean) => void;
+  userVaultProfilePath: string | null;
+  userVaultRevision: number;
   vaultPath: string | null;
   settings: {
     spacedRepetitionBoxes: SpacedRepetitionBoxes;
@@ -148,6 +163,8 @@ export const useSpacedRepetition = ({
   isFlashcardScanning,
   scanFlashcards,
   setIsFlashcardScanning,
+  userVaultProfilePath,
+  userVaultRevision,
   vaultPath,
   settings,
 }: UseSpacedRepetitionOptions) => {
@@ -189,6 +206,7 @@ const storageKey = useMemo(
   const [spacedRepetitionSessions, setSpacedRepetitionSessions] = useState<
     Record<string, SpacedRepetitionSession>
   >({});
+  const spacedRepetitionStoreRef = useRef<SpacedRepetitionProfileStore | null>(null);
 
   const spacedRepetitionActiveUser = spacedRepetitionActiveUserId
     ? spacedRepetitionUsers.find((user) => user.id === spacedRepetitionActiveUserId)
@@ -394,6 +412,82 @@ const storageKey = useMemo(
     [spacedRepetitionActiveUserId],
   );
 
+  const hydrateFromStorage = (storage: SpacedRepetitionStorage) => {
+    const users = Array.isArray(storage.users)
+      ? storage.users
+          .map((user) => {
+            if (!user || typeof user !== "object") {
+              return null;
+            }
+            const id = "id" in user && typeof user.id === "string" ? user.id : "";
+            const name = "name" in user && typeof user.name === "string" ? user.name : "";
+            if (!id || !name) {
+              return null;
+            }
+            const createdAt =
+              "createdAt" in user && typeof user.createdAt === "string"
+                ? user.createdAt
+                : new Date().toISOString();
+            return { id, name, createdAt };
+          })
+          .filter((user): user is SpacedRepetitionUser => Boolean(user))
+      : [];
+    const userStateByIdRaw =
+      storage.userStateById && typeof storage.userStateById === "object"
+        ? storage.userStateById
+        : {};
+    const userIds = new Set(users.map((user) => user.id));
+    const userStateById = Object.fromEntries(
+      Object.entries(userStateByIdRaw)
+        .filter(([userId]) => userIds.has(userId))
+        .map(([userId, state]) => {
+          const cardStatesRaw =
+            state && typeof state === "object" && "cardStates" in state
+              ? (state as SpacedRepetitionUserState).cardStates
+              : {};
+          const normalizedCardStates = Object.fromEntries(
+            Object.entries(cardStatesRaw ?? {}).map(([cardId, progress]) => [
+              cardId,
+              normalizeSpacedRepetitionCardProgress(progress),
+            ]),
+          );
+          const completedPerDayRaw =
+            state && typeof state === "object" && "completedPerDay" in state
+              ? (state as SpacedRepetitionUserState).completedPerDay
+              : {};
+          const completedPerDay = normalizeCompletedPerDay(completedPerDayRaw);
+          const lastLoadedAt =
+            state &&
+            typeof state === "object" &&
+            "lastLoadedAt" in state &&
+            typeof (state as SpacedRepetitionUserState).lastLoadedAt === "string"
+              ? (state as SpacedRepetitionUserState).lastLoadedAt
+              : null;
+          return [
+            userId,
+            {
+              cardStates: normalizedCardStates,
+              completedPerDay,
+              lastLoadedAt,
+            },
+          ];
+        }),
+    );
+    const lastActiveUserId =
+      storage.lastActiveUserId &&
+      users.some((user) => user.id === storage.lastActiveUserId)
+        ? storage.lastActiveUserId
+        : null;
+
+    setSpacedRepetitionUsers(users);
+    setSpacedRepetitionUserStateById(userStateById);
+
+    if (lastActiveUserId && users.some((user) => user.id === lastActiveUserId)) {
+      setSpacedRepetitionActiveUserId(lastActiveUserId);
+      setSpacedRepetitionSelectedUserId(lastActiveUserId);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -408,6 +502,7 @@ const storageKey = useMemo(
 
     if (!storageKey) {
       resetState();
+      spacedRepetitionStoreRef.current = null;
       return () => {
         cancelled = true;
       };
@@ -417,6 +512,40 @@ const storageKey = useMemo(
 
     const restoreSpacedRepetitionData = async () => {
       try {
+        if (userVaultProfilePath) {
+          const store = await loadSpacedRepetitionStore(userVaultProfilePath);
+          let nextStore: SpacedRepetitionProfileStore = store;
+          let storage = vaultId ? store.byVaultId[vaultId] ?? null : null;
+          const migratedVaultIds = store.migratedVaultIds ?? [];
+          if (vaultId && !storage && !migratedVaultIds.includes(vaultId)) {
+            const legacy = await invoke<SpacedRepetitionStorage>(
+              "load_spaced_repetition_data",
+              { key: storageKey },
+            );
+            const hasLegacyData =
+              (Array.isArray(legacy?.users) && legacy.users.length > 0) ||
+              (legacy?.userStateById &&
+                Object.keys(legacy.userStateById).length > 0);
+            storage = hasLegacyData ? legacy : null;
+            const migrated = new Set([...migratedVaultIds, vaultId]);
+            nextStore = {
+              ...store,
+              byVaultId: storage
+                ? { ...store.byVaultId, [vaultId]: storage }
+                : store.byVaultId,
+              migratedVaultIds: Array.from(migrated),
+            };
+            await saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
+          }
+          spacedRepetitionStoreRef.current = nextStore;
+          if (cancelled) {
+            return;
+          }
+          if (storage) {
+            hydrateFromStorage(storage);
+          }
+          return;
+        }
         const storage = await invoke<SpacedRepetitionStorage>(
           "load_spaced_repetition_data",
           { key: storageKey },
@@ -424,80 +553,7 @@ const storageKey = useMemo(
         if (cancelled) {
           return;
         }
-        const users = Array.isArray(storage.users)
-          ? storage.users
-              .map((user) => {
-                if (!user || typeof user !== "object") {
-                  return null;
-                }
-                const id = "id" in user && typeof user.id === "string" ? user.id : "";
-                const name =
-                  "name" in user && typeof user.name === "string" ? user.name : "";
-                if (!id || !name) {
-                  return null;
-                }
-                const createdAt =
-                  "createdAt" in user && typeof user.createdAt === "string"
-                    ? user.createdAt
-                    : new Date().toISOString();
-                return { id, name, createdAt };
-              })
-              .filter((user): user is SpacedRepetitionUser => Boolean(user))
-          : [];
-        const userStateByIdRaw =
-          storage.userStateById && typeof storage.userStateById === "object"
-            ? storage.userStateById
-            : {};
-        const userIds = new Set(users.map((user) => user.id));
-        const userStateById = Object.fromEntries(
-          Object.entries(userStateByIdRaw)
-            .filter(([userId]) => userIds.has(userId))
-            .map(([userId, state]) => {
-              const cardStatesRaw =
-                state && typeof state === "object" && "cardStates" in state
-                  ? (state as SpacedRepetitionUserState).cardStates
-                  : {};
-              const normalizedCardStates = Object.fromEntries(
-                Object.entries(cardStatesRaw ?? {}).map(([cardId, progress]) => [
-                  cardId,
-                  normalizeSpacedRepetitionCardProgress(progress),
-                ]),
-              );
-              const completedPerDayRaw =
-                state && typeof state === "object" && "completedPerDay" in state
-                  ? (state as SpacedRepetitionUserState).completedPerDay
-                  : {};
-              const completedPerDay = normalizeCompletedPerDay(completedPerDayRaw);
-              const lastLoadedAt =
-                state &&
-                typeof state === "object" &&
-                "lastLoadedAt" in state &&
-                typeof (state as SpacedRepetitionUserState).lastLoadedAt === "string"
-                  ? (state as SpacedRepetitionUserState).lastLoadedAt
-                  : null;
-              return [
-                userId,
-                {
-                  cardStates: normalizedCardStates,
-                  completedPerDay,
-                  lastLoadedAt,
-                },
-              ];
-            }),
-        );
-        const lastActiveUserId =
-          storage.lastActiveUserId &&
-          users.some((user) => user.id === storage.lastActiveUserId)
-            ? storage.lastActiveUserId
-            : null;
-
-        setSpacedRepetitionUsers(users);
-        setSpacedRepetitionUserStateById(userStateById);
-
-        if (lastActiveUserId && users.some((user) => user.id === lastActiveUserId)) {
-          setSpacedRepetitionActiveUserId(lastActiveUserId);
-          setSpacedRepetitionSelectedUserId(lastActiveUserId);
-        }
+        hydrateFromStorage(storage);
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load spaced repetition data", error);
@@ -515,7 +571,7 @@ const storageKey = useMemo(
     return () => {
       cancelled = true;
     };
-  }, [storageKey]);
+  }, [storageKey, userVaultProfilePath, userVaultRevision, vaultId]);
 
   useEffect(() => {
     if (!spacedRepetitionDataLoaded || !storageKey) {
@@ -526,6 +582,16 @@ const storageKey = useMemo(
       userStateById: spacedRepetitionUserStateById,
       lastActiveUserId: spacedRepetitionActiveUserId,
     };
+    if (userVaultProfilePath && vaultId) {
+      const store = spacedRepetitionStoreRef.current ?? createEmptySpacedRepetitionStore();
+      const nextStore = {
+        ...store,
+        byVaultId: { ...store.byVaultId, [vaultId]: storage },
+      };
+      spacedRepetitionStoreRef.current = nextStore;
+      void saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
+      return;
+    }
     void invoke("save_spaced_repetition_data", { key: storageKey, storage }).catch(
       (error) => {
         console.error("Failed to save spaced repetition data", error);
@@ -537,6 +603,8 @@ const storageKey = useMemo(
     spacedRepetitionUserStateById,
     spacedRepetitionUsers,
     storageKey,
+    userVaultProfilePath,
+    vaultId,
   ]);
 
   useEffect(() => {

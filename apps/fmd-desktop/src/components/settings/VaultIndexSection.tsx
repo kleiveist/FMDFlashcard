@@ -23,6 +23,7 @@
 import { useState, type ChangeEvent } from "react";
 import { type LoadState } from "../../lib/types";
 import { DataSyncTabContent } from "./DataSyncTabContent";
+import type { UserVaultState } from "../../features/user-vault/useUserVault";
 
 type VaultIndexTab = "vault" | "data-sync";
 
@@ -33,6 +34,7 @@ type VaultIndexSectionProps = {
   onShowHiddenFoldersToggle: (value: boolean) => void;
   onRescanVault: () => void;
   onResetIndex: () => void;
+  userVault: UserVaultState;
   vaultIndexedComplete: boolean;
   showHiddenFolders: boolean;
   vaultPath: string | null;
@@ -45,6 +47,7 @@ export const VaultIndexSection = ({
   onShowHiddenFoldersToggle,
   onRescanVault,
   onResetIndex,
+  userVault,
   vaultIndexedComplete,
   showHiddenFolders,
   vaultPath,
@@ -184,9 +187,9 @@ export const VaultIndexSection = ({
           id="data-sync-tab-panel"
           aria-labelledby="data-sync-tab"
         >
-          <p className="muted">Storage and sync options will land here later.</p>
+          <p className="muted">Manage local stats storage and profiles.</p>
           <div className="settings-tab-content">
-            <DataSyncTabContent />
+            <DataSyncTabContent userVault={userVault} />
           </div>
         </div>
       )}
