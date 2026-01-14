@@ -52,21 +52,39 @@ export const FileList = ({
     <section
       className={`panel list-panel note-panel ${isCollapsed ? "is-collapsed" : ""}`}
     >
-      <button
-        type="button"
-        className="panel-header note-toggle"
-        onClick={onToggleCollapsed}
-        aria-expanded={!isCollapsed}
-        aria-controls="note-panel-body"
-      >
-        <span className="note-heading">
-          <span className="note-title">Note</span>
-          <span className="muted note-meta">{fileCountLabel}</span>
-        </span>
-        {listState === "loading" ? (
-          <span className="chip note-meta">Scanne...</span>
-        ) : null}
-      </button>
+      {isCollapsed ? (
+        <button
+          type="button"
+          className="panel-header note-toggle note-handle"
+          onClick={onToggleCollapsed}
+          aria-expanded={!isCollapsed}
+          aria-controls="note-panel-body"
+          aria-label="Expand Note panel"
+        >
+          <span className="note-handle-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="panel-header note-toggle"
+          onClick={onToggleCollapsed}
+          aria-expanded={!isCollapsed}
+          aria-controls="note-panel-body"
+          aria-label="Collapse Note panel"
+        >
+          <span className="note-heading">
+            <span className="note-title">Note</span>
+            <span className="muted note-meta">{fileCountLabel}</span>
+          </span>
+          {listState === "loading" ? (
+            <span className="chip note-meta">Scanne...</span>
+          ) : null}
+        </button>
+      )}
       <div
         className="panel-body"
         id="note-panel-body"

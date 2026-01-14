@@ -80,27 +80,23 @@
 
 .note-panel.is-collapsed .note-toggle {
   flex: 1;
-  justify-content: center;
-  align-items: center;
+  display: grid;
+  place-items: center;
   text-align: center;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  gap: 6px;
 }
 
-.note-panel.is-collapsed .note-heading {
+.note-handle-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 
-.note-panel.is-collapsed .note-title {
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.note-panel.is-collapsed .note-meta {
-  display: none;
+.note-handle-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .panel-actions {
