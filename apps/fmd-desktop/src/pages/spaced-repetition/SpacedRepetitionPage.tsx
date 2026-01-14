@@ -74,6 +74,7 @@ export const SpacedRepetitionPage = () => {
     setDeleteConfirmInput,
     deleteTargetName,
     canConfirmDelete,
+    spacedRepetitionHelpEnabled,
   } = useSrSessionViewModel();
 
   return (
@@ -136,6 +137,7 @@ export const SpacedRepetitionPage = () => {
           activeBoxFilter={activeBoxFilter}
           spacedRepetitionEmptyState={spacedRepetition.spacedRepetitionEmptyState}
           spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
+          helpEnabled={spacedRepetitionHelpEnabled}
           spacedRepetitionCompositeStates={
             spacedRepetition.spacedRepetitionCompositeStates
           }

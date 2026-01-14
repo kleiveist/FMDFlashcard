@@ -181,6 +181,78 @@
   font-weight: 700;
 }
 
+.help-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.help-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.help-modal-panel {
+  width: min(560px, 100%);
+}
+
+.help-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.help-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.help-modal-section:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.help-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--md-table-bg);
+  display: block;
+  overflow-x: auto;
+}
+
+.help-markdown table thead th {
+  background: var(--md-table-head-bg);
+  text-align: left;
+  font-weight: 600;
+}
+
+.help-markdown table th,
+.help-markdown table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  vertical-align: top;
+  white-space: normal;
+}
+
+.help-markdown table tr > :last-child {
+  border-right: none;
+}
+
+.help-markdown table tbody tr:last-child th,
+.help-markdown table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .help-detail-header {
   display: flex;
   align-items: center;

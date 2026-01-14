@@ -110,6 +110,7 @@ export type FlashcardMetadata = {
   primaryType?: FlashcardDetectedType;
   detectedTypes?: FlashcardDetectedType[];
   isMixed?: boolean;
+  helpText?: string[];
 };
 
 export type Flashcard = (FlashcardPart | CompositeFlashcard) & FlashcardMetadata;
@@ -146,6 +147,8 @@ const assignmentPattern = /^(.+?)=>\s*(.+)$/;
 const separatorLinePattern = /^\s*---\s*$/;
 const cardStartPattern = /^\s*#card\s*$/;
 const cardEndPattern = /^\s*#\s*$/;
+const helpStartPattern = /^\s*#help\s*$/;
+const helpEndPattern = /^\s*#helpend\s*$/;
 
 const normalizeKeyword = (value: string) =>
   value
@@ -187,6 +190,63 @@ const trimEmptyLines = (lines: string[]) => {
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 const isCardStartLine = (line: string) => cardStartPattern.test(line);
 const isCardEndLine = (line: string) => cardEndPattern.test(line);
+const isHelpStartLine = (line: string) => helpStartPattern.test(line);
+const isHelpEndLine = (line: string) => helpEndPattern.test(line);
+
+export type HelpBlockExtraction = {
+  helpText: string[];
+  contentLines: string[];
+};
+
+export const extractHelpBlocksFromLines = (
+  lines: string[],
+): HelpBlockExtraction => {
+  const helpText: string[] = [];
+  const contentLines: string[] = [];
+  let inHelp = false;
+  let currentBlock: string[] = [];
+
+  const flushHelp = () => {
+    const trimmed = trimEmptyLines(currentBlock);
+    if (trimmed.length > 0) {
+      helpText.push(trimmed.join("\n"));
+    }
+    currentBlock = [];
+  };
+
+  lines.forEach((line) => {
+    if (!inHelp) {
+      if (isHelpStartLine(line)) {
+        inHelp = true;
+        currentBlock = [];
+        return;
+      }
+      contentLines.push(line);
+      return;
+    }
+
+    if (isHelpEndLine(line)) {
+      inHelp = false;
+      flushHelp();
+      return;
+    }
+
+    if (isSeparatorLine(line)) {
+      inHelp = false;
+      flushHelp();
+      contentLines.push(line);
+      return;
+    }
+
+    currentBlock.push(line);
+  });
+
+  if (inHelp) {
+    flushHelp();
+  }
+
+  return { helpText, contentLines };
+};
 
 const isAssignmentLine = (line: string) => {
   const match = line.match(assignmentPattern);
@@ -854,7 +914,8 @@ export const parseFlashcards = (
       continue;
     }
 
-    const blocks = splitCardLines(cardLines, answerMatch);
+    const { helpText, contentLines } = extractHelpBlocksFromLines(cardLines);
+    const blocks = splitCardLines(contentLines, answerMatch);
     const parts: FlashcardPart[] = [];
     const detectedTypes: FlashcardDetectedType[] = [];
 
@@ -882,6 +943,7 @@ export const parseFlashcards = (
       primaryType,
       detectedTypes,
       isMixed,
+      helpText: helpText.length > 0 ? helpText : undefined,
     });
   }
 

@@ -23,6 +23,7 @@
 import { useMemo } from "react";
 import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
 import { MarkdownBlocks } from "./MarkdownBlocks";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 const OPTION_LABELS = "abcdefghijklmnopqrstuvwxyz";
 
@@ -65,6 +66,8 @@ type MultipleChoiceCardProps = {
   showSubmit?: boolean;
   showResult?: boolean;
   revealCorrectness?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onSelect: (cardIndex: number, keys: string[]) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -78,6 +81,8 @@ export const MultipleChoiceCard = ({
   showSubmit = true,
   showResult = true,
   revealCorrectness,
+  helpText,
+  helpEnabled,
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
@@ -112,7 +117,8 @@ export const MultipleChoiceCard = ({
     [cardSignature],
   );
 
-  const showActions = showSubmit || (submitted && showResult);
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActions = showSubmit || (submitted && showResult) || hasHelp;
 
   return (
     <article className="flashcard-item">
@@ -180,6 +186,11 @@ export const MultipleChoiceCard = ({
               {resultLabel}
             </span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
     </article>

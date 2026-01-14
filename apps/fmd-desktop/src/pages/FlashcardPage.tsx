@@ -57,6 +57,7 @@ export const FlashcardPage = () => {
   const totalQuestions = flashcards.filteredFlashcardCount;
   const hasScannedCards = flashcards.flashcards.length > 0;
   const hasFilteredCards = flashcards.filteredFlashcardCount > 0;
+  const helpEnabled = settings.flashcardHelpEnabled;
   const platform = getShortcutPlatform();
   const shortcutBindings = useMemo(() => {
     const bindings = settings.keyboardShortcuts.bindings;
@@ -454,6 +455,8 @@ export const FlashcardPage = () => {
                       card={card}
                       cardIndex={cardIndex}
                       submitted={submitted}
+                      helpText={card.helpText}
+                      helpEnabled={helpEnabled}
                       partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
                       onOptionSelect={handleCompositeOptionSelect}
                       onTrueFalseSelect={handleCompositeTrueFalseSelect}
@@ -477,6 +480,8 @@ export const FlashcardPage = () => {
                       card={card}
                       cardIndex={cardIndex}
                       submitted={submitted}
+                      helpText={card.helpText}
+                      helpEnabled={helpEnabled}
                       responses={flashcards.flashcardClozeResponses[cardIndex] ?? {}}
                       onInputChange={handleClozeInputChange}
                       onTokenDrop={handleClozeTokenDrop}
@@ -495,6 +500,8 @@ export const FlashcardPage = () => {
                       card={card}
                       cardIndex={cardIndex}
                       submitted={submitted}
+                      helpText={card.helpText}
+                      helpEnabled={helpEnabled}
                       selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
                       onSelect={handleTrueFalseSelect}
                       onSubmit={flashcards.handleFlashcardSubmit}
@@ -509,6 +516,8 @@ export const FlashcardPage = () => {
                       card={card}
                       cardIndex={cardIndex}
                       submitted={submitted}
+                      helpText={card.helpText}
+                      helpEnabled={helpEnabled}
                       response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
                       revealed={flashcards.flashcardTextRevealed[cardIndex] ?? false}
                       selfGrade={flashcards.flashcardSelfGrades[cardIndex]}
@@ -525,6 +534,8 @@ export const FlashcardPage = () => {
                     card={card}
                     cardIndex={cardIndex}
                     submitted={submitted}
+                    helpText={card.helpText}
+                    helpEnabled={helpEnabled}
                     selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}
                     onSelect={handleOptionSelect}
                     onSubmit={flashcards.handleFlashcardSubmit}

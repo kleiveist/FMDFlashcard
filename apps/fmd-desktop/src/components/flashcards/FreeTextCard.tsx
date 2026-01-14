@@ -23,6 +23,7 @@
 import type { FreeTextCard as FreeTextCardType } from "../../lib/flashcards";
 import { MarkdownBlocks } from "./MarkdownBlocks";
 import type { FlashcardSelfGrade } from "../../features/flashcards/logic";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 type FreeTextCardProps = {
   card: FreeTextCardType;
@@ -33,6 +34,8 @@ type FreeTextCardProps = {
   selfGrade?: FlashcardSelfGrade;
   submissionLocked?: boolean;
   showActions?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onInputChange: (cardIndex: number, value: string) => void;
   onCheck: (cardIndex: number) => void;
   onSelfGrade: (cardIndex: number, grade: FlashcardSelfGrade) => void;
@@ -47,6 +50,8 @@ export const FreeTextCard = ({
   selfGrade,
   submissionLocked = false,
   showActions = true,
+  helpText,
+  helpEnabled,
   onInputChange,
   onCheck,
   onSelfGrade,
@@ -57,6 +62,8 @@ export const FreeTextCard = ({
       ? "Correct"
       : "Incorrect"
     : "";
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActionsResolved = showActions || hasHelp;
 
   return (
     <article className="flashcard-item free-text-card">
@@ -75,7 +82,7 @@ export const FreeTextCard = ({
         aria-label="Your answer"
         disabled={submitted || revealed}
       />
-      {showActions ? (
+      {showActionsResolved ? (
         <div className="flashcard-actions">
           {!revealed ? (
             <button
@@ -115,6 +122,11 @@ export const FreeTextCard = ({
               {resultLabel}
             </span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
       {revealed ? (

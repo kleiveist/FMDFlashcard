@@ -404,6 +404,7 @@ export const ExamSimulationPage = () => {
                   onNext={handleTaskNext}
                   canGoBack={activeTaskIndex > 0}
                   canGoNext={activeTaskIndex < runTasks.length - 1}
+                  helpEnabled={settings.examHelpEnabled}
                 />
               ) : (
                 <div className="empty-state">No tasks available for this exam.</div>

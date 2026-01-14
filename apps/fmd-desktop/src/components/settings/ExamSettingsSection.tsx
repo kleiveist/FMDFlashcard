@@ -30,6 +30,7 @@ type ExamSettingsSectionProps = {
   durationMinutes: number;
   timeLimitEnabled: boolean;
   showTimeline: boolean;
+  helpEnabled: boolean;
   autoCardsEnabled: boolean;
   autoCardsReturnOnCorrect: boolean;
   aiEvaluation: ExamAiEvaluation;
@@ -40,6 +41,7 @@ type ExamSettingsSectionProps = {
   setDurationMinutes: (value: number) => void;
   setTimeLimitEnabled: (value: boolean) => void;
   setShowTimeline: (value: boolean) => void;
+  setHelpEnabled: (value: boolean) => void;
   setAutoCardsEnabled: (value: boolean) => void;
   setAutoCardsReturnOnCorrect: (value: boolean) => void;
   onResetStatistics: () => void;
@@ -60,6 +62,7 @@ export const ExamSettingsSection = ({
   durationMinutes,
   timeLimitEnabled,
   showTimeline,
+  helpEnabled,
   autoCardsEnabled,
   autoCardsReturnOnCorrect,
   aiEvaluation,
@@ -70,6 +73,7 @@ export const ExamSettingsSection = ({
   setDurationMinutes,
   setTimeLimitEnabled,
   setShowTimeline,
+  setHelpEnabled,
   setAutoCardsEnabled,
   setAutoCardsReturnOnCorrect,
   onResetStatistics,
@@ -228,6 +232,22 @@ export const ExamSettingsSection = ({
               </label>
               <span className="muted">
                 {showTimeline ? "Shown" : "Hidden"}
+              </span>
+            </div>
+          </div>
+          <div className="setting-row">
+            <span className="label">HELP / HINTS</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={helpEnabled}
+                  onChange={(event) => setHelpEnabled(event.target.checked)}
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">
+                {helpEnabled ? "Enabled" : "Disabled"}
               </span>
             </div>
           </div>

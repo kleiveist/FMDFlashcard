@@ -40,6 +40,8 @@ type FlashcardsSettingsSectionProps = {
   setFlashcardScope: (value: FlashcardScope) => void;
   setStatsResetMode: (value: StatsResetMode) => void;
   statsResetMode: StatsResetMode;
+  helpEnabled: boolean;
+  setHelpEnabled: (value: boolean) => void;
 };
 
 export const FlashcardsSettingsSection = ({
@@ -54,6 +56,8 @@ export const FlashcardsSettingsSection = ({
   setFlashcardScope,
   setStatsResetMode,
   statsResetMode,
+  helpEnabled,
+  setHelpEnabled,
 }: FlashcardsSettingsSectionProps) => (
   <section className="panel settings-flashcards-panel">
     <div className="panel-header">
@@ -165,6 +169,20 @@ export const FlashcardsSettingsSection = ({
           >
             Per session
           </button>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">HELP / HINTS</span>
+        <div className="setting-inline">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={helpEnabled}
+              onChange={(event) => setHelpEnabled(event.target.checked)}
+            />
+            <span className="slider" />
+          </label>
+          <span className="muted">{helpEnabled ? "Enabled" : "Disabled"}</span>
         </div>
       </div>
     </div>

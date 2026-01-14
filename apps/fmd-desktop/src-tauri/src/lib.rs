@@ -56,15 +56,18 @@ struct AppSettings {
     flashcard_page_size: Option<u32>,
     flashcard_solution_reveal_enabled: Option<bool>,
     flashcard_stats_reset_mode: Option<String>,
+    flashcard_help_enabled: Option<bool>,
     fast_flashcard_order: Option<String>,
     fast_flashcard_mode: Option<String>,
     fast_flashcard_scope: Option<String>,
     fast_flashcard_duration: Option<u32>,
+    fast_flashcard_help_enabled: Option<bool>,
     spaced_repetition_boxes: Option<u32>,
     spaced_repetition_order: Option<String>,
     spaced_repetition_page_size: Option<u32>,
     spaced_repetition_repetition_strength: Option<String>,
     spaced_repetition_stats_view: Option<String>,
+    spaced_repetition_help_enabled: Option<bool>,
     right_toolbar_collapsed: Option<bool>,
     exam_max_total_points: Option<u32>,
     exam_task_count: Option<u32>,
@@ -73,6 +76,7 @@ struct AppSettings {
     exam_auto_cards_enabled: Option<bool>,
     exam_auto_cards_return_on_correct: Option<bool>,
     exam_grade_scale: Option<String>,
+    exam_help_enabled: Option<bool>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 }
 
@@ -180,15 +184,18 @@ impl AppSettings {
             && self.flashcard_page_size.is_none()
             && self.flashcard_solution_reveal_enabled.is_none()
             && self.flashcard_stats_reset_mode.is_none()
+            && self.flashcard_help_enabled.is_none()
             && self.fast_flashcard_order.is_none()
             && self.fast_flashcard_mode.is_none()
             && self.fast_flashcard_scope.is_none()
             && self.fast_flashcard_duration.is_none()
+            && self.fast_flashcard_help_enabled.is_none()
             && self.spaced_repetition_boxes.is_none()
             && self.spaced_repetition_order.is_none()
             && self.spaced_repetition_page_size.is_none()
             && self.spaced_repetition_repetition_strength.is_none()
             && self.spaced_repetition_stats_view.is_none()
+            && self.spaced_repetition_help_enabled.is_none()
             && self.right_toolbar_collapsed.is_none()
             && self.exam_max_total_points.is_none()
             && self.exam_task_count.is_none()
@@ -197,6 +204,7 @@ impl AppSettings {
             && self.exam_auto_cards_enabled.is_none()
             && self.exam_auto_cards_return_on_correct.is_none()
             && self.exam_grade_scale.is_none()
+            && self.exam_help_enabled.is_none()
             && self.keyboard_shortcuts.is_none()
     }
 }
@@ -404,15 +412,18 @@ fn save_app_settings(
     flashcard_page_size: Option<u32>,
     flashcard_solution_reveal_enabled: Option<bool>,
     flashcard_stats_reset_mode: Option<String>,
+    flashcard_help_enabled: Option<bool>,
     fast_flashcard_order: Option<String>,
     fast_flashcard_mode: Option<String>,
     fast_flashcard_scope: Option<String>,
     fast_flashcard_duration: Option<u32>,
+    fast_flashcard_help_enabled: Option<bool>,
     spaced_repetition_boxes: Option<u32>,
     spaced_repetition_order: Option<String>,
     spaced_repetition_page_size: Option<u32>,
     spaced_repetition_repetition_strength: Option<String>,
     spaced_repetition_stats_view: Option<String>,
+    spaced_repetition_help_enabled: Option<bool>,
     right_toolbar_collapsed: Option<bool>,
     exam_max_total_points: Option<u32>,
     exam_task_count: Option<u32>,
@@ -421,6 +432,7 @@ fn save_app_settings(
     exam_auto_cards_enabled: Option<bool>,
     exam_auto_cards_return_on_correct: Option<bool>,
     exam_grade_scale: Option<String>,
+    exam_help_enabled: Option<bool>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
@@ -445,15 +457,18 @@ fn save_app_settings(
         flashcard_page_size,
         flashcard_solution_reveal_enabled,
         flashcard_stats_reset_mode,
+        flashcard_help_enabled,
         fast_flashcard_order,
         fast_flashcard_mode,
         fast_flashcard_scope,
         fast_flashcard_duration,
+        fast_flashcard_help_enabled,
         spaced_repetition_boxes,
         spaced_repetition_order,
         spaced_repetition_page_size,
         spaced_repetition_repetition_strength,
         spaced_repetition_stats_view,
+        spaced_repetition_help_enabled,
         right_toolbar_collapsed,
         exam_max_total_points,
         exam_task_count,
@@ -462,6 +477,7 @@ fn save_app_settings(
         exam_auto_cards_enabled,
         exam_auto_cards_return_on_correct,
         exam_grade_scale,
+        exam_help_enabled,
         keyboard_shortcuts,
     };
     write_settings(&path, &settings)

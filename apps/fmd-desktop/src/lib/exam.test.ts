@@ -79,6 +79,28 @@ Answer: Secret solution
     expect(task?.officialAnswer).toBeUndefined();
   });
 
+  it("extracts help blocks without affecting answers", () => {
+    const markdown = `#exam
+1) Explain HTTP status codes.
+#help
+-true
+Answer: Decoy
+#helpend
+Answer: Real
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.helpText?.length).toBe(1);
+    expect(task?.helpText?.[0]).toContain("Answer: Decoy");
+    expect(task?.prompt).toContain("1) Explain HTTP status codes.");
+    expect(task?.prompt).not.toContain("Decoy");
+    expect(task?.officialAnswer).toBe("Real");
+  });
+
   it("keeps table separators inside a task prompt", () => {
     const markdown = `#exam
 1) Table task

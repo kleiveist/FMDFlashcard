@@ -40,6 +40,8 @@ type SpacedRepetitionSettingsSectionProps = {
   setSpacedRepetitionRepetitionStrength: (
     value: SpacedRepetitionRepetitionStrength,
   ) => void;
+  helpEnabled: boolean;
+  setHelpEnabled: (value: boolean) => void;
 };
 
 export const SpacedRepetitionSettingsSection = ({
@@ -53,6 +55,8 @@ export const SpacedRepetitionSettingsSection = ({
   setSpacedRepetitionOrder,
   setSpacedRepetitionPageSize,
   setSpacedRepetitionRepetitionStrength,
+  helpEnabled,
+  setHelpEnabled,
 }: SpacedRepetitionSettingsSectionProps) => (
   <section className="panel spaced-repetition-panel">
     <div className="panel-header">
@@ -168,6 +172,20 @@ export const SpacedRepetitionSettingsSection = ({
           >
             Strong
           </button>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">HELP / HINTS</span>
+        <div className="setting-inline">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={helpEnabled}
+              onChange={(event) => setHelpEnabled(event.target.checked)}
+            />
+            <span className="slider" />
+          </label>
+          <span className="muted">{helpEnabled ? "Enabled" : "Disabled"}</span>
         </div>
       </div>
     </div>

@@ -34,6 +34,7 @@ type FastCardHostProps = {
   currentEntry: { card: any; cardIndex: number } | null;
   isCurrentSubmitted: boolean;
   submissionLocked: boolean;
+  helpEnabled: boolean;
   fastFlashcards: {
     flashcardCompositeStates: Record<number, any[]>;
     flashcardClozeResponses: Record<number, Record<string, string>>;
@@ -117,6 +118,7 @@ export const FastCardHost = ({
   currentEntry,
   isCurrentSubmitted,
   submissionLocked,
+  helpEnabled,
   fastFlashcards,
   orderedEntries,
   canGoBack,
@@ -156,6 +158,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             partStates={
               fastFlashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
             }
@@ -178,6 +182,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             responses={
               fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ?? {}
             }
@@ -195,6 +201,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             selections={
               fastFlashcards.flashcardTrueFalseSelections[currentEntry.cardIndex] ?? {}
             }
@@ -208,6 +216,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             response={fastFlashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""}
             revealed={
               fastFlashcards.flashcardTextRevealed[currentEntry.cardIndex] ?? false
@@ -224,6 +234,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             selectedKeys={
               fastFlashcards.flashcardSelections[currentEntry.cardIndex] ?? []
             }

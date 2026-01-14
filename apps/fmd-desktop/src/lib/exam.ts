@@ -17,6 +17,7 @@
  */
 
 import {
+  extractHelpBlocksFromLines,
   parseFlashcards,
   splitAnswerCard,
   splitCardLines,
@@ -43,6 +44,7 @@ export type ExamTaskBase = {
   rawLines: string[];
   prompt: string;
   officialAnswer?: string;
+  helpText?: string[];
   gradingMode: ExamTaskGradingMode;
   sourceRange: ExamTaskSourceRange;
   card: CompositeFlashcard;
@@ -226,8 +228,9 @@ const parseTaskChunk = (
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
   const normalizedLines = normalizeTaskLines(chunkLines);
-  const answerSplit = splitAnswerBlockLines(normalizedLines);
-  const cardSource = `#card\n${normalizedLines.join("\n")}\n#`;
+  const { helpText, contentLines } = extractHelpBlocksFromLines(normalizedLines);
+  const answerSplit = splitAnswerBlockLines(contentLines);
+  const cardSource = `#card\n${contentLines.join("\n")}\n#`;
   const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
   let card: CompositeFlashcard | null = null;
   let officialAnswer: string | undefined;
@@ -247,7 +250,7 @@ const parseTaskChunk = (
       });
     }
     card = toCompositeCard(parsed[0]);
-    const answerBlocks = splitCardLines(normalizedLines, "line-start");
+    const answerBlocks = splitCardLines(contentLines, "line-start");
     const qaAnswers = answerBlocks
       .map((block) => splitAnswerCard(block, { answerMatch: "line-start" }))
       .filter(
@@ -272,6 +275,7 @@ const parseTaskChunk = (
     sourceRange,
     card,
     warnings,
+    helpText: helpText.length > 0 ? helpText : undefined,
   };
 };
 

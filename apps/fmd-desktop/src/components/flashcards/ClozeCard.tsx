@@ -38,6 +38,7 @@ import {
   MarkdownBlocks,
 } from "./MarkdownBlocks";
 import { findTableLineIndices } from "../../lib/markdownTables";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 type ClozeCardProps = {
   card: ClozeCardType;
@@ -50,6 +51,8 @@ type ClozeCardProps = {
   showResult?: boolean;
   revealCorrectness?: boolean;
   showSolution?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onInputChange: (cardIndex: number, blankId: string, value: string) => void;
   onTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -78,6 +81,8 @@ export const ClozeCard = ({
   showResult = true,
   revealCorrectness,
   showSolution,
+  helpText,
+  helpEnabled,
   onBlankDragOver,
   onInputChange,
   onSubmit,
@@ -140,7 +145,8 @@ export const ClozeCard = ({
   const reveal = revealCorrectness ?? submitted;
   const shouldShowSolution = showSolution ?? submitted;
   const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || (submitted && showResult);
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActions = showSubmit || (submitted && showResult) || hasHelp;
 
   const renderBlank = (blankId: string) => {
     const segment = blankById.get(blankId);
@@ -305,6 +311,11 @@ export const ClozeCard = ({
               {resultLabel}
             </span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
       {shouldShowSolution ? (

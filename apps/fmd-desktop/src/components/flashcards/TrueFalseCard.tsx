@@ -27,6 +27,7 @@ import {
   isTrueFalseCardCorrect,
   type TrueFalseSelection,
 } from "../../features/flashcards/logic";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 type TrueFalseCardProps = {
   card: TrueFalseCardType;
@@ -38,6 +39,8 @@ type TrueFalseCardProps = {
   showResult?: boolean;
   revealCorrectness?: boolean;
   showSolution?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onSelect: (cardIndex: number, itemId: string, value: TrueFalseSelection) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -52,6 +55,8 @@ export const TrueFalseCard = ({
   showResult = true,
   revealCorrectness,
   showSolution,
+  helpText,
+  helpEnabled,
   onSelect,
   onSubmit,
 }: TrueFalseCardProps) => {
@@ -60,7 +65,8 @@ export const TrueFalseCard = ({
   const reveal = revealCorrectness ?? submitted;
   const shouldShowSolution = showSolution ?? submitted;
   const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || (submitted && showResult);
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActions = showSubmit || (submitted && showResult) || hasHelp;
 
   return (
     <article className="flashcard-item truefalse-card">
@@ -143,6 +149,11 @@ export const TrueFalseCard = ({
               {resultLabel}
             </span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
       {shouldShowSolution ? (

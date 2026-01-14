@@ -318,6 +318,7 @@ export const FastFlashcardPage = () => {
           currentEntry={currentEntry}
           isCurrentSubmitted={isCurrentSubmitted}
           submissionLocked={submissionLocked}
+          helpEnabled={settings.fastFlashcardHelpEnabled}
           fastFlashcards={fastFlashcards}
           orderedEntries={orderedEntries}
           canGoBack={canGoBack}

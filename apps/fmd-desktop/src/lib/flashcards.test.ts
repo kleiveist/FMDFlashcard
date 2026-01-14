@@ -1105,6 +1105,30 @@ Empty blank.
     expect(cards).toHaveLength(0);
   });
 
+  it("stores help blocks without affecting detection", () => {
+    const markdown = `#card
+Question?
+#help
+-true
+Answer: decoy
+#helpend
+Answer: Real answer
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.helpText?.length).toBe(1);
+    expect(cards[0]?.helpText?.[0]).toContain("-true");
+    expect(cards[0]?.helpText?.[0]).toContain("Answer: decoy");
+    expect(cards[0]?.detectedTypes).toEqual(["qa"]);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.back).toBe("Real answer");
+    }
+  });
+
   it("matches input blanks case-insensitively with trim", () => {
     expect(isInputAnswerMatch(" Atomic Values ", "atomic values")).toBe(true);
     expect(isInputAnswerMatch("Atomic", "atom")).toBe(false);

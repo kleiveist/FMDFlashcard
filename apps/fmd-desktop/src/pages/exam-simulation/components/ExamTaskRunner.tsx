@@ -25,6 +25,7 @@ import { type DragEvent } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
+import { HelpButton, hasHelpContent } from "../../../components/HelpButton";
 
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
 
@@ -77,6 +78,7 @@ type ExamTaskRunnerProps = {
   onNext: () => void;
   canGoBack: boolean;
   canGoNext: boolean;
+  helpEnabled?: boolean;
 };
 
 const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
@@ -117,6 +119,7 @@ export const ExamTaskRunner = ({
   onNext,
   canGoBack,
   canGoNext,
+  helpEnabled = false,
 }: ExamTaskRunnerProps) => {
   const isScoring = phase === "scoring";
   const canRevealOfficialSolution = phase === "review" || phase === "scoring";
@@ -125,6 +128,7 @@ export const ExamTaskRunner = ({
   const autoAwardedPoints = isAutoGraded && taskIsCorrect ? maxPoints : 0;
   const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
   const inputLocked = phase !== "exam" || conversionPending;
+  const hasHelp = helpEnabled && hasHelpContent(task.helpText);
 
   return (
     <div className="exam-task">
@@ -245,6 +249,12 @@ export const ExamTaskRunner = ({
 
       {isScoring && conversionError ? (
         <div className="error">{conversionError}</div>
+      ) : null}
+
+      {hasHelp ? (
+        <div className="exam-help-actions">
+          <HelpButton helpText={task.helpText} enabled={helpEnabled} />
+        </div>
       ) : null}
     </div>
   );

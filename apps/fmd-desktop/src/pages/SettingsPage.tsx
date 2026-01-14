@@ -145,6 +145,8 @@ export const SettingsPage = () => {
             setFlashcardScope={flashcards.setFlashcardScope}
             setStatsResetMode={flashcards.setStatsResetMode}
             statsResetMode={flashcards.statsResetMode}
+            helpEnabled={settings.flashcardHelpEnabled}
+            setHelpEnabled={settings.setFlashcardHelpEnabled}
           />
           <section className="panel fast-flashcard-tools-panel">
             <div className="panel-header">
@@ -244,6 +246,24 @@ export const SettingsPage = () => {
                 </div>
               </div>
               <div className="setting-row">
+                <span className="label">HELP / HINTS</span>
+                <div className="setting-inline">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={settings.fastFlashcardHelpEnabled}
+                      onChange={(event) =>
+                        settings.setFastFlashcardHelpEnabled(event.target.checked)
+                      }
+                    />
+                    <span className="slider" />
+                  </label>
+                  <span className="muted">
+                    {settings.fastFlashcardHelpEnabled ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+              </div>
+              <div className="setting-row">
                 <span className="label">SESSION HISTORY</span>
                 <div className="setting-actions">
                   <button
@@ -272,6 +292,8 @@ export const SettingsPage = () => {
             setSpacedRepetitionRepetitionStrength={
               spacedRepetition.setSpacedRepetitionRepetitionStrength
             }
+            helpEnabled={settings.spacedRepetitionHelpEnabled}
+            setHelpEnabled={settings.setSpacedRepetitionHelpEnabled}
           />
         </div>
       ) : null}
@@ -298,6 +320,7 @@ export const SettingsPage = () => {
             durationMinutes={settings.examDurationMinutes}
             timeLimitEnabled={settings.examTimeLimitEnabled}
             showTimeline={settings.examShowTimeline}
+            helpEnabled={settings.examHelpEnabled}
             autoCardsEnabled={settings.examAutoCardsEnabled}
             autoCardsReturnOnCorrect={settings.examAutoCardsReturnOnCorrect}
             aiEvaluation={settings.examAiEvaluation}
@@ -308,6 +331,7 @@ export const SettingsPage = () => {
             setDurationMinutes={settings.setExamDurationMinutes}
             setTimeLimitEnabled={settings.setExamTimeLimitEnabled}
             setShowTimeline={settings.setExamShowTimeline}
+            setHelpEnabled={settings.setExamHelpEnabled}
             setAutoCardsEnabled={settings.setExamAutoCardsEnabled}
             setAutoCardsReturnOnCorrect={settings.setExamAutoCardsReturnOnCorrect}
             onResetStatistics={handleResetExamStatistics}

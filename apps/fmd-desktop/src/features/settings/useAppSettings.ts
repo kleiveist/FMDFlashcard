@@ -86,16 +86,20 @@ type AppSettings = {
   flashcard_page_size?: number | null;
   flashcard_solution_reveal_enabled?: boolean | null;
   flashcard_stats_reset_mode?: string | null;
+  flashcard_help_enabled?: boolean | null;
   fast_flashcard_order?: string | null;
   fast_flashcard_mode?: string | null;
   fast_flashcard_scope?: string | null;
   fast_flashcard_duration?: number | null;
+  fast_flashcard_help_enabled?: boolean | null;
   exam_show_timeline?: boolean | null;
+  exam_help_enabled?: boolean | null;
   spaced_repetition_boxes?: number | null;
   spaced_repetition_order?: string | null;
   spaced_repetition_page_size?: number | null;
   spaced_repetition_repetition_strength?: string | null;
   spaced_repetition_stats_view?: string | null;
+  spaced_repetition_help_enabled?: boolean | null;
   right_toolbar_collapsed?: boolean | null;
   exam_max_total_points?: number | null;
   exam_task_count?: number | null;
@@ -127,16 +131,20 @@ type PersistUpdates = {
   flashcardPageSize?: FlashcardPageSize;
   solutionRevealEnabled?: boolean;
   statsResetMode?: StatsResetMode;
+  flashcardHelpEnabled?: boolean;
   fastFlashcardOrder?: FlashcardOrder;
   fastFlashcardMode?: FlashcardMode;
   fastFlashcardScope?: FlashcardScope;
   fastFlashcardDuration?: number;
+  fastFlashcardHelpEnabled?: boolean;
   examShowTimeline?: boolean;
+  examHelpEnabled?: boolean;
   spacedRepetitionBoxes?: SpacedRepetitionBoxes;
   spacedRepetitionOrder?: SpacedRepetitionOrder;
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
   spacedRepetitionRepetitionStrength?: SpacedRepetitionRepetitionStrength;
   spacedRepetitionStatsView?: SpacedRepetitionStatsView;
+  spacedRepetitionHelpEnabled?: boolean;
   rightToolbarCollapsed?: boolean;
   examMaxTotalPoints?: number;
   examTaskCount?: number;
@@ -162,16 +170,20 @@ const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
 const DEFAULT_FLASHCARD_MODE: FlashcardMode = "all";
 const DEFAULT_FLASHCARD_SCOPE: FlashcardScope = "current";
 const DEFAULT_STATS_RESET_MODE: StatsResetMode = "scan";
+const DEFAULT_FLASHCARD_HELP_ENABLED = true;
 const DEFAULT_FAST_FLASHCARD_ORDER: FlashcardOrder = DEFAULT_FLASHCARD_ORDER;
 const DEFAULT_FAST_FLASHCARD_MODE: FlashcardMode = DEFAULT_FLASHCARD_MODE;
 const DEFAULT_FAST_FLASHCARD_SCOPE: FlashcardScope = DEFAULT_FLASHCARD_SCOPE;
 const DEFAULT_FAST_FLASHCARD_DURATION = 6;
+const DEFAULT_FAST_FLASHCARD_HELP_ENABLED = true;
 const DEFAULT_EXAM_SHOW_TIMELINE = true;
+const DEFAULT_EXAM_HELP_ENABLED = true;
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
   "medium";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
+const DEFAULT_SPACED_REPETITION_HELP_ENABLED = true;
 const DEFAULT_RIGHT_TOOLBAR_COLLAPSED = false;
 const MAX_EXAM_TASK_COUNT = 20;
 const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
@@ -346,6 +358,9 @@ export const useAppSettings = () => {
   const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
   const [statsResetMode, setStatsResetMode] =
     useState<StatsResetMode>(DEFAULT_STATS_RESET_MODE);
+  const [flashcardHelpEnabled, setFlashcardHelpEnabledState] = useState(
+    DEFAULT_FLASHCARD_HELP_ENABLED,
+  );
   const [fastFlashcardOrder, setFastFlashcardOrder] =
     useState<FlashcardOrder>(DEFAULT_FAST_FLASHCARD_ORDER);
   const [fastFlashcardMode, setFastFlashcardMode] =
@@ -355,8 +370,14 @@ export const useAppSettings = () => {
   const [fastFlashcardDuration, setFastFlashcardDuration] = useState(
     DEFAULT_FAST_FLASHCARD_DURATION,
   );
+  const [fastFlashcardHelpEnabled, setFastFlashcardHelpEnabledState] = useState(
+    DEFAULT_FAST_FLASHCARD_HELP_ENABLED,
+  );
   const [examShowTimeline, setExamShowTimelineState] = useState(
     DEFAULT_EXAM_SHOW_TIMELINE,
+  );
+  const [examHelpEnabled, setExamHelpEnabledState] = useState(
+    DEFAULT_EXAM_HELP_ENABLED,
   );
   const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
     useState<SpacedRepetitionBoxes>(DEFAULT_SPACED_REPETITION_BOXES);
@@ -372,6 +393,8 @@ export const useAppSettings = () => {
   );
   const [spacedRepetitionStatsView, setSpacedRepetitionStatsView] =
     useState<SpacedRepetitionStatsView>(DEFAULT_SPACED_REPETITION_STATS_VIEW);
+  const [spacedRepetitionHelpEnabled, setSpacedRepetitionHelpEnabledState] =
+    useState(DEFAULT_SPACED_REPETITION_HELP_ENABLED);
   const [rightToolbarCollapsed, setRightToolbarCollapsed] = useState(
     DEFAULT_RIGHT_TOOLBAR_COLLAPSED,
   );
@@ -490,6 +513,22 @@ export const useAppSettings = () => {
     setShowHiddenFoldersState(Boolean(value));
   }, []);
 
+  const setFlashcardHelpEnabled = useCallback((value: boolean) => {
+    setFlashcardHelpEnabledState(Boolean(value));
+  }, []);
+
+  const setFastFlashcardHelpEnabled = useCallback((value: boolean) => {
+    setFastFlashcardHelpEnabledState(Boolean(value));
+  }, []);
+
+  const setExamHelpEnabled = useCallback((value: boolean) => {
+    setExamHelpEnabledState(Boolean(value));
+  }, []);
+
+  const setSpacedRepetitionHelpEnabled = useCallback((value: boolean) => {
+    setSpacedRepetitionHelpEnabledState(Boolean(value));
+  }, []);
+
   const saveSettings = useCallback(
     async (settings: {
       activeNotePath: string | null;
@@ -509,17 +548,21 @@ export const useAppSettings = () => {
       flashcardPageSize: FlashcardPageSize;
       solutionRevealEnabled: boolean;
       statsResetMode: StatsResetMode;
+      flashcardHelpEnabled: boolean;
       spacedRepetitionBoxes: SpacedRepetitionBoxes;
       spacedRepetitionOrder: SpacedRepetitionOrder;
       spacedRepetitionPageSize: SpacedRepetitionPageSize;
       spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
       spacedRepetitionStatsView: SpacedRepetitionStatsView;
+      spacedRepetitionHelpEnabled: boolean;
       rightToolbarCollapsed: boolean;
       fastFlashcardOrder: FlashcardOrder;
       fastFlashcardMode: FlashcardMode;
       fastFlashcardScope: FlashcardScope;
       fastFlashcardDuration: number;
+      fastFlashcardHelpEnabled: boolean;
       examShowTimeline: boolean;
+      examHelpEnabled: boolean;
       examMaxTotalPoints: number;
       examTaskCount: number;
       examTaskPoints: number[];
@@ -550,17 +593,21 @@ export const useAppSettings = () => {
           flashcardPageSize: settings.flashcardPageSize,
           flashcardSolutionRevealEnabled: settings.solutionRevealEnabled,
           flashcardStatsResetMode: settings.statsResetMode,
+          flashcardHelpEnabled: settings.flashcardHelpEnabled,
           fastFlashcardOrder: settings.fastFlashcardOrder,
           fastFlashcardMode: settings.fastFlashcardMode,
           fastFlashcardScope: settings.fastFlashcardScope,
           fastFlashcardDuration: settings.fastFlashcardDuration,
+          fastFlashcardHelpEnabled: settings.fastFlashcardHelpEnabled,
           examShowTimeline: settings.examShowTimeline,
+          examHelpEnabled: settings.examHelpEnabled,
           spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
           spacedRepetitionRepetitionStrength:
             settings.spacedRepetitionRepetitionStrength,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
+          spacedRepetitionHelpEnabled: settings.spacedRepetitionHelpEnabled,
           rightToolbarCollapsed: settings.rightToolbarCollapsed,
           examMaxTotalPoints: settings.examMaxTotalPoints,
           examTaskCount: settings.examTaskCount,
@@ -608,12 +655,16 @@ export const useAppSettings = () => {
         fastFlashcardScope: updates.fastFlashcardScope ?? fastFlashcardScope,
         fastFlashcardDuration:
           updates.fastFlashcardDuration ?? fastFlashcardDuration,
+        fastFlashcardHelpEnabled:
+          updates.fastFlashcardHelpEnabled ?? fastFlashcardHelpEnabled,
         examShowTimeline:
           updates.examShowTimeline ?? examShowTimeline,
         flashcardPageSize: updates.flashcardPageSize ?? flashcardPageSize,
         solutionRevealEnabled:
           updates.solutionRevealEnabled ?? solutionRevealEnabled,
         statsResetMode: updates.statsResetMode ?? statsResetMode,
+        flashcardHelpEnabled:
+          updates.flashcardHelpEnabled ?? flashcardHelpEnabled,
         spacedRepetitionBoxes:
           updates.spacedRepetitionBoxes ?? spacedRepetitionBoxes,
         spacedRepetitionOrder:
@@ -625,6 +676,8 @@ export const useAppSettings = () => {
           spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView:
           updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
+        spacedRepetitionHelpEnabled:
+          updates.spacedRepetitionHelpEnabled ?? spacedRepetitionHelpEnabled,
         rightToolbarCollapsed:
           updates.rightToolbarCollapsed ?? rightToolbarCollapsed,
         examMaxTotalPoints: updates.examMaxTotalPoints ?? examMaxTotalPoints,
@@ -639,6 +692,7 @@ export const useAppSettings = () => {
           updates.examDurationMinutes ?? examDurationMinutes,
         examTimeLimitEnabled:
           updates.examTimeLimitEnabled ?? examTimeLimitEnabled,
+        examHelpEnabled: updates.examHelpEnabled ?? examHelpEnabled,
         examAutoCardsEnabled:
           updates.examAutoCardsEnabled ?? examAutoCardsEnabled,
         examAutoCardsReturnOnCorrect:
@@ -679,8 +733,10 @@ export const useAppSettings = () => {
       fastFlashcardOrder,
       fastFlashcardScope,
       fastFlashcardDuration,
+      fastFlashcardHelpEnabled,
       flashcardPageSize,
       flashcardScope,
+      flashcardHelpEnabled,
       language,
       maxFilesPerScan,
       saveSettings,
@@ -688,7 +744,9 @@ export const useAppSettings = () => {
       showHiddenFolders,
       settingsLoaded,
       solutionRevealEnabled,
+      examHelpEnabled,
       spacedRepetitionBoxes,
+      spacedRepetitionHelpEnabled,
       spacedRepetitionOrder,
       spacedRepetitionPageSize,
       spacedRepetitionRepetitionStrength,
@@ -817,10 +875,18 @@ export const useAppSettings = () => {
           )
             ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
             : DEFAULT_FAST_FLASHCARD_DURATION;
+        const storedFastFlashcardHelpEnabled =
+          typeof settings.fast_flashcard_help_enabled === "boolean"
+            ? settings.fast_flashcard_help_enabled
+            : DEFAULT_FAST_FLASHCARD_HELP_ENABLED;
         const storedExamShowTimeline =
           typeof settings.exam_show_timeline === "boolean"
             ? settings.exam_show_timeline
             : DEFAULT_EXAM_SHOW_TIMELINE;
+        const storedExamHelpEnabled =
+          typeof settings.exam_help_enabled === "boolean"
+            ? settings.exam_help_enabled
+            : DEFAULT_EXAM_HELP_ENABLED;
         const storedFlashcardPageSizeRaw = settings.flashcard_page_size;
         const migratedFlashcardPageSize =
           storedFlashcardPageSizeRaw === 10
@@ -841,6 +907,10 @@ export const useAppSettings = () => {
           settings.flashcard_stats_reset_mode === "session"
             ? "session"
             : DEFAULT_STATS_RESET_MODE;
+        const storedFlashcardHelpEnabled =
+          typeof settings.flashcard_help_enabled === "boolean"
+            ? settings.flashcard_help_enabled
+            : DEFAULT_FLASHCARD_HELP_ENABLED;
         const storedSpacedRepetitionBoxes =
           typeof settings.spaced_repetition_boxes === "number" &&
           SPACED_REPETITION_BOXES.includes(
@@ -877,6 +947,10 @@ export const useAppSettings = () => {
           settings.spaced_repetition_stats_view === "completed"
             ? settings.spaced_repetition_stats_view
             : DEFAULT_SPACED_REPETITION_STATS_VIEW;
+        const storedSpacedRepetitionHelpEnabled =
+          typeof settings.spaced_repetition_help_enabled === "boolean"
+            ? settings.spaced_repetition_help_enabled
+            : DEFAULT_SPACED_REPETITION_HELP_ENABLED;
         const storedActiveNotePath =
           typeof settings.active_note_path === "string"
             ? settings.active_note_path
@@ -945,10 +1019,13 @@ export const useAppSettings = () => {
         setFastFlashcardMode(storedFastFlashcardMode);
         setFastFlashcardScope(storedFastFlashcardScope);
         setFastFlashcardDuration(storedFastFlashcardDuration);
+        setFastFlashcardHelpEnabledState(storedFastFlashcardHelpEnabled);
         setExamShowTimelineState(storedExamShowTimeline);
+        setExamHelpEnabledState(storedExamHelpEnabled);
         setFlashcardPageSize(storedFlashcardPageSize);
         setSolutionRevealEnabled(storedSolutionRevealEnabled);
         setStatsResetMode(storedStatsResetMode);
+        setFlashcardHelpEnabledState(storedFlashcardHelpEnabled);
         setSpacedRepetitionBoxes(storedSpacedRepetitionBoxes);
         setSpacedRepetitionOrder(storedSpacedRepetitionOrder);
         setSpacedRepetitionPageSize(storedSpacedRepetitionPageSize);
@@ -956,6 +1033,7 @@ export const useAppSettings = () => {
           storedSpacedRepetitionRepetitionStrength,
         );
         setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
+        setSpacedRepetitionHelpEnabledState(storedSpacedRepetitionHelpEnabled);
         setRightToolbarCollapsed(storedRightToolbarCollapsed);
         setExamMaxTotalPointsState(storedExamMaxTotalPoints);
         setExamTaskCountState(storedExamTaskCount);
@@ -1052,17 +1130,21 @@ export const useAppSettings = () => {
         flashcardPageSize,
         solutionRevealEnabled,
         statsResetMode,
+        flashcardHelpEnabled,
         spacedRepetitionBoxes,
         spacedRepetitionOrder,
         spacedRepetitionPageSize,
         spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView,
+        spacedRepetitionHelpEnabled,
         rightToolbarCollapsed,
         fastFlashcardOrder,
         fastFlashcardMode,
         fastFlashcardScope,
         fastFlashcardDuration,
+        fastFlashcardHelpEnabled,
         examShowTimeline,
+        examHelpEnabled,
         examMaxTotalPoints,
         examTaskCount,
         examTaskPoints,
@@ -1096,6 +1178,7 @@ export const useAppSettings = () => {
     examAutoCardsEnabled,
     examAutoCardsReturnOnCorrect,
     examGradeScale,
+    examHelpEnabled,
     keyboardShortcuts,
     flashcardMode,
     flashcardOrder,
@@ -1103,9 +1186,11 @@ export const useAppSettings = () => {
     fastFlashcardOrder,
     fastFlashcardScope,
     fastFlashcardDuration,
+    fastFlashcardHelpEnabled,
     examShowTimeline,
     flashcardPageSize,
     flashcardScope,
+    flashcardHelpEnabled,
     language,
     maxFilesPerScan,
     saveSettings,
@@ -1117,6 +1202,7 @@ export const useAppSettings = () => {
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
     spacedRepetitionRepetitionStrength,
+    spacedRepetitionHelpEnabled,
     spacedRepetitionStatsView,
     statsResetMode,
     theme,
@@ -1147,7 +1233,9 @@ export const useAppSettings = () => {
     fastFlashcardOrder,
     fastFlashcardScope,
     fastFlashcardDuration,
+    fastFlashcardHelpEnabled,
     examShowTimeline,
+    examHelpEnabled,
     flashcardPageSize,
     flashcardScope,
     keyboardShortcuts,
@@ -1176,11 +1264,14 @@ export const useAppSettings = () => {
     setFlashcardOrder,
     setFlashcardPageSize,
     setFlashcardScope,
+    setFlashcardHelpEnabled,
     setFastFlashcardMode,
     setFastFlashcardOrder,
     setFastFlashcardScope,
     setFastFlashcardDuration,
+    setFastFlashcardHelpEnabled,
     setExamShowTimeline,
+    setExamHelpEnabled,
     setKeyboardShortcuts,
     setKeyboardShortcutBinding,
     resetKeyboardShortcuts,
@@ -1194,15 +1285,18 @@ export const useAppSettings = () => {
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
     setSpacedRepetitionRepetitionStrength,
+    setSpacedRepetitionHelpEnabled,
     setSpacedRepetitionStatsView,
     setStatsResetMode,
     setTheme,
     settingsLoaded,
     solutionRevealEnabled,
+    flashcardHelpEnabled,
     spacedRepetitionBoxes,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
     spacedRepetitionRepetitionStrength,
+    spacedRepetitionHelpEnabled,
     spacedRepetitionStatsView,
     statsResetMode,
     theme,

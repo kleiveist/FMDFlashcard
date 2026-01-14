@@ -900,6 +900,11 @@ body.focus-mode .fast-history-panel {
   gap: 16px;
 }
 
+.exam-help-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .exam-markdown {
   color: var(--ink);
   font-weight: 500;

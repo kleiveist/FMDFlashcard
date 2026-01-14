@@ -236,6 +236,10 @@
   flex-wrap: wrap;
 }
 
+.flashcard-help-button {
+  margin-left: auto;
+}
+
 .flashcard-markdown {
   display: flex;
   flex-direction: column;

@@ -35,6 +35,7 @@ type SrCardHostProps = {
   activeBoxFilter: number | null;
   spacedRepetitionEmptyState: string;
   spacedRepetitionSubmissions: Record<number, boolean>;
+  helpEnabled: boolean;
   spacedRepetitionCompositeStates?: Record<number, any[]>;
   spacedRepetitionClozeResponses: Record<number, Record<string, string>>;
   spacedRepetitionTrueFalseSelections: Record<number, Record<string, any>>;
@@ -114,6 +115,7 @@ export const SrCardHost = ({
   activeBoxFilter,
   spacedRepetitionEmptyState,
   spacedRepetitionSubmissions,
+  helpEnabled,
   spacedRepetitionCompositeStates,
   spacedRepetitionClozeResponses,
   spacedRepetitionTrueFalseSelections,
@@ -166,6 +168,8 @@ export const SrCardHost = ({
                 card={card}
                 cardIndex={cardIndex}
                 submitted={submitted}
+                helpText={card.helpText}
+                helpEnabled={helpEnabled}
                 partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
                 onOptionSelect={handleCompositeOptionSelect}
                 onTrueFalseSelect={handleCompositeTrueFalseSelect}
@@ -189,6 +193,8 @@ export const SrCardHost = ({
                 card={card}
                 cardIndex={cardIndex}
                 submitted={submitted}
+                helpText={card.helpText}
+                helpEnabled={helpEnabled}
                 responses={spacedRepetitionClozeResponses[cardIndex] ?? {}}
                 onInputChange={handleClozeInputChange}
                 onTokenDrop={handleClozeTokenDrop}
@@ -207,6 +213,8 @@ export const SrCardHost = ({
                 card={card}
                 cardIndex={cardIndex}
                 submitted={submitted}
+                helpText={card.helpText}
+                helpEnabled={helpEnabled}
                 selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
                 onSelect={handleTrueFalseSelect}
                 onSubmit={handleSpacedRepetitionSubmit}
@@ -221,6 +229,8 @@ export const SrCardHost = ({
                 card={card}
                 cardIndex={cardIndex}
                 submitted={submitted}
+                helpText={card.helpText}
+                helpEnabled={helpEnabled}
                 response={spacedRepetitionTextResponses[cardIndex] ?? ""}
                 revealed={spacedRepetitionTextRevealed[cardIndex] ?? false}
                 selfGrade={spacedRepetitionSelfGrades[cardIndex]}
@@ -237,6 +247,8 @@ export const SrCardHost = ({
               card={card}
               cardIndex={cardIndex}
               submitted={submitted}
+              helpText={card.helpText}
+              helpEnabled={helpEnabled}
               selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}
               onSelect={handleOptionSelect}
               onSubmit={handleSpacedRepetitionSubmit}

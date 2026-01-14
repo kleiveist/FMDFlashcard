@@ -34,6 +34,7 @@ import {
   type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "../../features/flashcards/logic";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 type CompositeCardProps = {
   card: CompositeFlashcard;
@@ -46,6 +47,8 @@ type CompositeCardProps = {
   revealCorrectness?: boolean;
   showSolution?: boolean;
   forceRevealText?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onOptionSelect: (cardIndex: number, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     cardIndex: number,
@@ -94,6 +97,8 @@ export const CompositeCard = ({
   revealCorrectness,
   showSolution,
   forceRevealText = false,
+  helpText,
+  helpEnabled,
   onBlankDragOver,
   onClozeInputChange,
   onClozeTokenDragStart,
@@ -130,7 +135,8 @@ export const CompositeCard = ({
         ? "correct"
         : "incorrect"
   }`;
-  const showActions = showSubmit || (submitted && showResult);
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActions = showSubmit || (submitted && showResult) || hasHelp;
 
   return (
     <article className="flashcard-item composite-card">
@@ -248,6 +254,11 @@ export const CompositeCard = ({
           {showResultLabel ? (
             <span className={resultClass}>{resultLabel}</span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
     </article>

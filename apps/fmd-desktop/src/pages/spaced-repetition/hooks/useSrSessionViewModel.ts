@@ -58,6 +58,7 @@ const srSubmitCommand = getShortcutById("studySubmit");
 
 export const useSrSessionViewModel = () => {
   const { flashcards, settings, spacedRepetition, vault } = useAppState();
+  const spacedRepetitionHelpEnabled = settings.spacedRepetitionHelpEnabled;
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -634,5 +635,6 @@ export const useSrSessionViewModel = () => {
     setDeleteConfirmInput,
     deleteTargetName,
     canConfirmDelete,
+    spacedRepetitionHelpEnabled,
   };
 };
