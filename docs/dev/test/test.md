@@ -13,11 +13,11 @@
 - 📝 [Testmatix](testmatix.md)
 
 ## 📁 Test editor
-- 🗂️ [Overview](test_editor/test_editor.md)
-- 📝 [TEST](test_editor/test.md)
-- 📝 [Test cld](test_editor/test_cld.md)
-- 📝 [Test cld tabel](test_editor/test_cld_tabel.md)
-- 📝 [Test n1](test_editor/test_n1.md)
-- 📝 [Test n2](test_editor/test_n2.md)
+- 🗂️ [Overview](test_editor.md)
+- 📝 [TEST](docs/dev/test/archive/test_editor/test.md)
+- 📝 [Test cld](test_cld.md)
+- 📝 [Test cld tabel](test_cld_tabel.md)
+- 📝 [Test n1](test_n1.md)
+- 📝 [Test n2](test_n2.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

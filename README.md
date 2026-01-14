@@ -45,9 +45,9 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Testing](docs/dev/testing.md)
 
 ## 📁 Issus
-- 🗂️ [Overview](docs/issus/issus.md)
-- 📝 [Issue Notes (Bug Report)](docs/issus/issus_note.md)
-- 📝 [Issustabel](docs/issus/issustabel.md)
+- 🗂️ [Overview](issus.md)
+- 📝 [Issue Notes (Bug Report)](issus_note.md)
+- 📝 [Issustabel](issustabel.md)
 
 ## 📁 USER
 - 🗂️ [Overview](docs/user/user.md)

@@ -6,7 +6,7 @@ tags:
 ---
 
 <!-- AUTO-GENERATED:backlink START -->
-[<- Back](test.md)
+[<- Back](docs/dev/test/test.md)
 <!-- AUTO-GENERATED:backlink END -->
 
 # Edit-Safe Preview QA

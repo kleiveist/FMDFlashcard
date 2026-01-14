@@ -17,8 +17,8 @@
 
 ## 📁 TEST
 - 🗂️ [Overview](test/test.md)
-- 📝 [1) PreviewPanel Markdown Rewrite Repro (Testdatei)](test/test_markdown_rewrite.md)
-- 📝 [Test table rendering](test/test_table_rendering.md)
-- 📝 [Testmatix](test/testmatix.md)
+- 📝 [1) PreviewPanel Markdown Rewrite Repro (Testdatei)](test_markdown_rewrite.md)
+- 📝 [Test table rendering](test_table_rendering.md)
+- 📝 [Testmatix](testmatix.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

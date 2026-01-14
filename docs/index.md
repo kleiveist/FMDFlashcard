@@ -23,9 +23,9 @@
 - 📝 [Testing](dev/testing.md)
 
 ## 📁 Issus
-- 🗂️ [Overview](issus/issus.md)
-- 📝 [Issue Notes (Bug Report)](issus/issus_note.md)
-- 📝 [Issustabel](issus/issustabel.md)
+- 🗂️ [Overview](issus.md)
+- 📝 [Issue Notes (Bug Report)](issus_note.md)
+- 📝 [Issustabel](issustabel.md)
 
 ## 📁 USER
 - 🗂️ [Overview](user/user.md)

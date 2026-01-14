@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](test.md)
+[← Back](docs/dev/test/test.md)
 <!-- AUTO-GENERATED:backlink END -->
 
 #card

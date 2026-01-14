@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../index.md)
+[← Back](index.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back](../index.md)
+[← Back](index.md)
 
 # Issus
 
