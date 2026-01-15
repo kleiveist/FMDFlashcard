@@ -289,31 +289,13 @@ export const VaultManagerModal = ({
     userVault,
   ]);
 
-  const handleRefreshVault = useCallback(
-    async (path: string) => {
-      const normalized = normalizeVaultPath(path);
-      if (!normalized) {
-        return;
-      }
-      if (normalized === activeVaultKey) {
-        onRescanVault();
-        return;
-      }
-      setActionError("");
-      setIsBusy(true);
-      try {
-        const switched = await onSwitchVault(path);
-        if (!switched) {
-          setActionError("Vault could not be refreshed.");
-          return;
-        }
-        onRescanVault();
-      } finally {
-        setIsBusy(false);
-      }
-    },
-    [activeVaultKey, onRescanVault, onSwitchVault],
-  );
+  const handleRefreshActiveVault = useCallback(() => {
+    if (!activeVaultKey) {
+      return;
+    }
+    setActionError("");
+    onRescanVault();
+  }, [activeVaultKey, onRescanVault]);
 
   const openContextMenu = useCallback(
     (event: MouseEvent<HTMLButtonElement>, path: string) => {
@@ -405,8 +387,7 @@ export const VaultManagerModal = ({
   const canManageProfiles = Boolean(resolvedUserVaultPath) && !selectedVaultMissing;
   const canLoadProfile = canManageProfiles && isProfileReady && profileCount > 0;
   const canCreateProfile = canManageProfiles && isProfileReady && profileCount === 0;
-  const contextInfo = contextMenu ? pathInfo[contextMenu.path] : null;
-  const contextMissing = contextInfo ? !contextInfo.exists || !contextInfo.isDir : false;
+  const hasActiveVault = Boolean(activeVaultKey);
   const pendingRemoveName = pendingRemovePath
     ? vaultBaseName(pendingRemovePath)
     : "";
@@ -569,11 +550,11 @@ export const VaultManagerModal = ({
                 className="context-menu-item"
                 onClick={() => {
                   closeContextMenu();
-                  void handleRefreshVault(contextMenu.path);
+                  handleRefreshActiveVault();
                 }}
-                disabled={contextMissing || isBusy}
+                disabled={!hasActiveVault || isBusy}
               >
-                Refresh
+                Refresh Active Vault
               </button>
               <button
                 type="button"
