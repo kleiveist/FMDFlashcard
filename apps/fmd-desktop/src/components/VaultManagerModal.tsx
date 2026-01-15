@@ -5,7 +5,7 @@
  * - Rendert das Vault Manager Modal.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { asErrorMessage } from "../lib/errors";
 import { normalizeVaultPath, vaultBaseName } from "../lib/path";
@@ -29,6 +29,12 @@ type ProfileState = {
   activeProfileId: string | null;
 };
 
+type ContextMenuState = {
+  x: number;
+  y: number;
+  path: string;
+};
+
 type VaultManagerModalProps = {
   isOpen: boolean;
   vaults: RecentVaultEntry[];
@@ -36,8 +42,10 @@ type VaultManagerModalProps = {
   userVault: UserVaultState;
   onClose: () => void;
   onOpenVault: () => Promise<boolean>;
+  onRescanVault: () => void;
   onSwitchVault: (path: string) => Promise<boolean>;
   onRemoveVault: (path: string) => void;
+  onClearVault: () => void;
 };
 
 const emptyProfileState: ProfileState = {
@@ -54,13 +62,17 @@ export const VaultManagerModal = ({
   userVault,
   onClose,
   onOpenVault,
+  onRescanVault,
   onSwitchVault,
   onRemoveVault,
+  onClearVault,
 }: VaultManagerModalProps) => {
   const [selectedVaultPath, setSelectedVaultPath] = useState<string | null>(null);
   const [profileState, setProfileState] = useState<ProfileState>(emptyProfileState);
   const [actionError, setActionError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [pendingRemovePath, setPendingRemovePath] = useState<string | null>(null);
 
   const vaultPaths = useMemo(() => vaults.map((entry) => entry.path), [vaults]);
   const pathInfo = useVaultPathInfo(vaultPaths, isOpen);
@@ -137,6 +149,8 @@ export const VaultManagerModal = ({
     if (!isOpen) {
       setActionError("");
       setProfileState(emptyProfileState);
+      setContextMenu(null);
+      setPendingRemovePath(null);
       return;
     }
     setActionError("");
@@ -154,6 +168,32 @@ export const VaultManagerModal = ({
       onClose,
     });
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete") {
+        return;
+      }
+      if (pendingRemovePath) {
+        return;
+      }
+      const activeEntry = vaults.find(
+        (entry) => normalizeVaultPath(entry.path) === activeVaultKey,
+      );
+      if (!activeEntry) {
+        return;
+      }
+      event.preventDefault();
+      setPendingRemovePath(activeEntry.path);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeVaultKey, isOpen, pendingRemovePath, vaults]);
 
   const ensureVaultActive = useCallback(async () => {
     if (!selectedVaultPath) {
@@ -249,6 +289,108 @@ export const VaultManagerModal = ({
     userVault,
   ]);
 
+  const handleRefreshVault = useCallback(
+    async (path: string) => {
+      const normalized = normalizeVaultPath(path);
+      if (!normalized) {
+        return;
+      }
+      if (normalized === activeVaultKey) {
+        onRescanVault();
+        return;
+      }
+      setActionError("");
+      setIsBusy(true);
+      try {
+        const switched = await onSwitchVault(path);
+        if (!switched) {
+          setActionError("Vault could not be refreshed.");
+          return;
+        }
+        onRescanVault();
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [activeVaultKey, onRescanVault, onSwitchVault],
+  );
+
+  const openContextMenu = useCallback(
+    (event: MouseEvent<HTMLButtonElement>, path: string) => {
+      event.preventDefault();
+      setSelectedVaultPath(path);
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        path,
+      });
+    },
+    [],
+  );
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const requestRemoveVault = useCallback((path: string) => {
+    setPendingRemovePath(path);
+    setContextMenu(null);
+  }, []);
+
+  const handleConfirmRemove = useCallback(async () => {
+    if (!pendingRemovePath) {
+      return;
+    }
+    const targetPath = pendingRemovePath;
+    setPendingRemovePath(null);
+    setActionError("");
+    setIsBusy(true);
+    try {
+      const normalizedTarget = normalizeVaultPath(targetPath);
+      const remaining = vaults.filter(
+        (entry) => normalizeVaultPath(entry.path) !== normalizedTarget,
+      );
+      const fallbackPath = remaining[0]?.path ?? null;
+      onRemoveVault(targetPath);
+      if (normalizedTarget && normalizedTarget === activeVaultKey) {
+        if (fallbackPath) {
+          const switched = await onSwitchVault(fallbackPath);
+          if (switched) {
+            setSelectedVaultPath(fallbackPath);
+          } else {
+            setActionError("Vault could not be opened.");
+            onClearVault();
+            setSelectedVaultPath(null);
+          }
+        } else {
+          onClearVault();
+          setSelectedVaultPath(null);
+        }
+        return;
+      }
+      if (
+        selectedVaultPath &&
+        normalizeVaultPath(selectedVaultPath) === normalizedTarget
+      ) {
+        setSelectedVaultPath(fallbackPath);
+      }
+    } finally {
+      setIsBusy(false);
+    }
+  }, [
+    activeVaultKey,
+    onClearVault,
+    onRemoveVault,
+    onSwitchVault,
+    pendingRemovePath,
+    selectedVaultPath,
+    vaults,
+  ]);
+
+  const handleCancelRemove = useCallback(() => {
+    setPendingRemovePath(null);
+  }, []);
+
   if (!isOpen) {
     return null;
   }
@@ -263,6 +405,11 @@ export const VaultManagerModal = ({
   const canManageProfiles = Boolean(resolvedUserVaultPath) && !selectedVaultMissing;
   const canLoadProfile = canManageProfiles && isProfileReady && profileCount > 0;
   const canCreateProfile = canManageProfiles && isProfileReady && profileCount === 0;
+  const contextInfo = contextMenu ? pathInfo[contextMenu.path] : null;
+  const contextMissing = contextInfo ? !contextInfo.exists || !contextInfo.isDir : false;
+  const pendingRemoveName = pendingRemovePath
+    ? vaultBaseName(pendingRemovePath)
+    : "";
 
   const modal = (
     <div className="modal-backdrop" role="presentation">
@@ -273,7 +420,7 @@ export const VaultManagerModal = ({
         aria-labelledby="vault-manager-title"
       >
         <div className="vault-manager-header">
-          <h3 id="vault-manager-title">Vault verwalten</h3>
+          <h3 id="vault-manager-title">Manage Vaults</h3>
           <button type="button" className="ghost small" onClick={onClose}>
             Close
           </button>
@@ -300,6 +447,7 @@ export const VaultManagerModal = ({
                       setSelectedVaultPath(entry.path);
                       setActionError("");
                     }}
+                    onContextMenu={(event) => openContextMenu(event, entry.path)}
                     aria-pressed={isSelected}
                     title={entry.path}
                   >
@@ -392,7 +540,7 @@ export const VaultManagerModal = ({
                     <button
                       type="button"
                       className="ghost small"
-                      onClick={() => onRemoveVault(selectedEntry.path)}
+                      onClick={() => requestRemoveVault(selectedEntry.path)}
                       disabled={isBusy}
                     >
                       Remove from recents
@@ -405,6 +553,77 @@ export const VaultManagerModal = ({
             )}
           </section>
         </div>
+        {contextMenu ? (
+          <div
+            className="context-menu-backdrop vault-manager-context-backdrop"
+            role="presentation"
+            onMouseDown={closeContextMenu}
+          >
+            <div
+              className="context-menu vault-manager-context-menu"
+              style={{ left: contextMenu.x, top: contextMenu.y }}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="context-menu-item"
+                onClick={() => {
+                  closeContextMenu();
+                  void handleRefreshVault(contextMenu.path);
+                }}
+                disabled={contextMissing || isBusy}
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                className="context-menu-item"
+                onClick={() => requestRemoveVault(contextMenu.path)}
+                disabled={isBusy}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {pendingRemovePath ? (
+          <div
+            className="modal-backdrop vault-manager-confirm-backdrop"
+            role="presentation"
+            onMouseDown={handleCancelRemove}
+          >
+            <div
+              className="modal-panel vault-manager-confirm"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="vault-manager-remove-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <h3 id="vault-manager-remove-title">
+                Remove vault "{pendingRemoveName}" from list?
+              </h3>
+              <p className="muted">This will not delete files from disk.</p>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={handleCancelRemove}
+                  disabled={isBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => void handleConfirmRemove()}
+                  disabled={isBusy}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

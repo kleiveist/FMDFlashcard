@@ -328,7 +328,7 @@ export const SidebarNav = ({
                       actions.handleOpenVaultManager();
                     }}
                   >
-                    Vault verwalten
+                    Manage Vaults
                   </button>
                 </div>
               ) : null}

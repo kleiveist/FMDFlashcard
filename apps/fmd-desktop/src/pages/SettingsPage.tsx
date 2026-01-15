@@ -101,7 +101,7 @@ export const SettingsPage = () => {
             className="primary"
             onClick={actions.handleOpenVaultManager}
           >
-            Vault verwalten
+            Manage Vaults
           </button>
         </div>
       </header>

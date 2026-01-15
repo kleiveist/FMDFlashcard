@@ -141,6 +141,22 @@
   color: var(--error-ink);
 }
 
+.vault-manager-context-backdrop {
+  z-index: 90;
+}
+
+.vault-manager-context-menu {
+  z-index: 91;
+}
+
+.vault-manager-confirm-backdrop {
+  z-index: 100;
+}
+
+.vault-manager-confirm {
+  width: min(420px, 100%);
+}
+
 @media (max-width: 720px) {
   .vault-manager-panel {
     max-height: none;

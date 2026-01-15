@@ -50,6 +50,7 @@ type AppActions = {
   handleSwitchVault: (path: string) => Promise<boolean>;
   handleRemoveRecentVault: (path: string) => void;
   handleOpenVaultManager: () => void;
+  handleClearVault: () => void;
   handleSelectFile: (file: VaultFile) => void;
   handleThemeChange: (nextTheme: ThemeMode) => void;
   handleAccentPick: (value: string) => void;
@@ -632,6 +633,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     vaultPath,
   ]);
 
+  const handleClearVault = useCallback(() => {
+    handleResetIndex();
+  }, [handleResetIndex]);
+
   const handleMaxFilesPerScanChange = useCallback(
     (value: string) => {
       const nextValue = value.trim();
@@ -652,6 +657,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleSwitchVault,
       handleRemoveRecentVault,
       handleOpenVaultManager,
+      handleClearVault,
       handleSelectFile,
       handleThemeChange,
       handleAccentPick,
@@ -693,8 +699,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         userVault={userVault}
         onClose={handleCloseVaultManager}
         onOpenVault={handlePickVault}
+        onRescanVault={handleRescanVault}
         onSwitchVault={handleSwitchVault}
         onRemoveVault={handleRemoveRecentVault}
+        onClearVault={handleClearVault}
       />
       <LargeVaultWarningModal
         count={largeVaultWarningCount}
