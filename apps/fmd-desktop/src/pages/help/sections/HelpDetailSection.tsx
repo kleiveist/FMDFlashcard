@@ -24,6 +24,7 @@
 import { AppLanguage, HelpTopic, SyntaxEntry, helpLabels, resolveText } from "../helpContent";
 import { AppSectionsGuidePanel } from "./AppSectionsGuidePanel";
 import { HelpTopicSections } from "./HelpTopicSections";
+import { LoadVaultGuidePanel } from "./LoadVaultGuidePanel";
 import { SyntaxSection } from "./SyntaxSection";
 
 type HelpDetailSectionProps = {
@@ -32,6 +33,7 @@ type HelpDetailSectionProps = {
   language: AppLanguage;
   isSyntaxTopic: boolean;
   isAppSectionsTopic: boolean;
+  isLoadVaultTopic: boolean;
   activeSyntax: SyntaxEntry | null;
   setActiveTopicId: (value: string | null) => void;
   setActiveSyntaxId: (value: string | null) => void;
@@ -59,6 +61,7 @@ export const HelpDetailSection = ({
   language,
   isSyntaxTopic,
   isAppSectionsTopic,
+  isLoadVaultTopic,
   activeSyntax,
   setActiveTopicId,
   setActiveSyntaxId,
@@ -129,6 +132,8 @@ export const HelpDetailSection = ({
       />
     ) : isAppSectionsTopic ? (
       <AppSectionsGuidePanel language={language} />
+    ) : isLoadVaultTopic ? (
+      <LoadVaultGuidePanel language={language} />
     ) : (
       <HelpTopicSections
         activeTopic={activeTopic}

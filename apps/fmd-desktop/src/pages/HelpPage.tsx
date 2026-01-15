@@ -54,6 +54,7 @@ export const HelpPage = () => {
   const activeTopic = helpTopics.find((topic) => topic.id === activeTopicId) ?? null;
   const isSyntaxTopic = activeTopic?.id === "flashcard-syntax";
   const isAppSectionsTopic = activeTopic?.id === "app-sections";
+  const isLoadVaultTopic = activeTopic?.id === "vault";
   const activeSyntax =
     flashcardSyntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
     flashcardSyntaxEntries[0] ??
@@ -164,6 +165,7 @@ export const HelpPage = () => {
                 language={language}
                 isSyntaxTopic={isSyntaxTopic}
                 isAppSectionsTopic={isAppSectionsTopic}
+                isLoadVaultTopic={isLoadVaultTopic}
                 activeSyntax={activeSyntax}
                 setActiveTopicId={setActiveTopicId}
                 setActiveSyntaxId={setActiveSyntaxId}

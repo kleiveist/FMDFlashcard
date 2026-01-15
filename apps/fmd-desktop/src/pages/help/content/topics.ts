@@ -135,42 +135,9 @@ export const helpTopics: HelpTopic[] = [
     title: { en: "Load a vault", de: "Vault laden" },
     summary: {
       en: "Select a vault, confirm permissions, and troubleshoot common issues when lists stay empty.",
-      de: "Vault auswaehlen, Berechtigungen bestaetigen und typische Probleme bei leeren Listen beheben.",
+      de: "Waehle einen Vault aus, bestaetige Berechtigungen und loese typische Probleme, wenn Listen leer bleiben.",
     },
-    sections: [
-      {
-        id: "vault-select",
-        title: { en: "Select a vault", de: "Vault auswaehlen" },
-        bullets: [
-          {
-            en: "Use Makedon to choose a folder and allow access when prompted; confirm the correct path.",
-            de: "In Makedon einen Ordner waehlen und Zugriff erlauben; den richtigen Pfad bestaetigen.",
-          },
-          {
-            en: "After loading, pick a note to preview and scan so cards populate the tools.",
-            de: "Nach dem Laden eine Notiz waehlen, Vorschau pruefen und scannen, damit Karten geladen werden.",
-          },
-        ],
-      },
-      {
-        id: "vault-issues",
-        title: { en: "Common issues", de: "Haeufige Probleme" },
-        bullets: [
-          {
-            en: "Missing permissions can block the file list or previews; re-approve access if needed.",
-            de: "Fehlende Berechtigungen blockieren Dateiliste oder Vorschau; Zugriff ggf. erneut erlauben.",
-          },
-          {
-            en: "If the list is empty, verify the path, markdown file types, and any active filters.",
-            de: "Bei leerer Liste Pfad, Markdown-Dateien und aktive Filter pruefen.",
-          },
-          {
-            en: "If the vault moved, reselect it in Makedon and scan again.",
-            de: "Wenn der Vault verschoben wurde, neu in Makedon auswaehlen und erneut scannen.",
-          },
-        ],
-      },
-    ],
+    sections: [],
   },
   {
     id: "extras",

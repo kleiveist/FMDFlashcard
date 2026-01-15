@@ -9,7 +9,7 @@
  * - Sichert konsistente Verwendung in Features und Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/appSections.ts: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/pages/help/content/appSections/index.ts: Nutzt dieses Modul.
  * - apps/fmd-desktop/src/pages/help/content/i18n.ts: Nutzt dieses Modul.
  *
  * Hinweise:
@@ -62,10 +62,10 @@ export type HelpTopic = {
 };
 
 export type AppSectionId =
-  | "dashboard"
   | "flashcard"
   | "fast-flashcard"
-  | "spaced-repetition";
+  | "spaced-repetition"
+  | "exam";
 
 export type AppSectionDetail = {
   whatIs: LocalizedText;
@@ -81,4 +81,19 @@ export type AppSectionData = {
   summary: LocalizedText;
   action: LocalizedText;
   detail: AppSectionDetail;
+};
+
+export type LoadVaultTabId = "vault-and-index" | "data-and-sync";
+
+export type LoadVaultDetailBlock = {
+  id: string;
+  title: LocalizedText;
+  text?: LocalizedText;
+  bullets?: LocalizedText[];
+};
+
+export type LoadVaultTabData = {
+  title: LocalizedText;
+  summary: LocalizedText;
+  blocks: LoadVaultDetailBlock[];
 };

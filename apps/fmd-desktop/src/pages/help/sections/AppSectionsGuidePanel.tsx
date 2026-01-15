@@ -35,15 +35,61 @@ type AppSectionsGuidePanelProps = {
   language: AppLanguage;
 };
 
+const APP_SECTION_STORAGE_KEY = "help:app-sections:selected-section";
+
+const isValidSectionId = (value: unknown): value is AppSectionId =>
+  typeof value === "string" &&
+  (APP_SECTION_ORDER.includes(value as AppSectionId) ||
+    Object.prototype.hasOwnProperty.call(APP_SECTION_DATA, value));
+
 export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) => {
-  const [selectedSectionId, setSelectedSectionId] =
-    useState<AppSectionId>("dashboard");
+  const defaultSectionId = APP_SECTION_ORDER[0] as AppSectionId;
+  const [selectedSectionId, setSelectedSectionId] = useState<AppSectionId>(() => {
+    if (typeof window === "undefined") {
+      return defaultSectionId;
+    }
+    try {
+      const storedSectionId = window.localStorage.getItem(
+        APP_SECTION_STORAGE_KEY,
+      );
+      if (isValidSectionId(storedSectionId)) {
+        return storedSectionId;
+      }
+      if (storedSectionId && defaultSectionId) {
+        window.localStorage.setItem(APP_SECTION_STORAGE_KEY, defaultSectionId);
+      }
+    } catch {
+      // Ignore storage failures to keep the panel usable.
+    }
+    return defaultSectionId;
+  });
   const [sectionLanguage, setSectionLanguage] = useState<AppLanguage>(language);
-  const selectedSection = APP_SECTION_DATA[selectedSectionId];
+  const selectedSection =
+    APP_SECTION_DATA[selectedSectionId] ?? APP_SECTION_DATA[defaultSectionId];
+  const selectionError =
+    !selectedSection ||
+    !defaultSectionId ||
+    !APP_SECTION_DATA[defaultSectionId];
 
   useEffect(() => {
     setSectionLanguage(language);
   }, [language]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      if (!isValidSectionId(selectedSectionId) && defaultSectionId) {
+        window.localStorage.setItem(APP_SECTION_STORAGE_KEY, defaultSectionId);
+        setSelectedSectionId(defaultSectionId);
+        return;
+      }
+      window.localStorage.setItem(APP_SECTION_STORAGE_KEY, selectedSectionId);
+    } catch {
+      // Ignore storage failures to keep the panel usable.
+    }
+  }, [defaultSectionId, selectedSectionId]);
 
   return (
     <div className="help-detail-sections">
@@ -98,97 +144,120 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
           })}
         </div>
         <div className="help-syntax-detail">
-          <div className="help-syntax-detail-header">
-            <div className="help-syntax-detail-title">
-              {resolveText(selectedSection.title, sectionLanguage)}
-            </div>
-            <div className="help-syntax-lang-tabs">
-              <button
-                type="button"
-                className={`help-syntax-lang${
-                  sectionLanguage === "en" ? " active" : ""
-                }`}
-                onClick={() => setSectionLanguage("en")}
-              >
-                EN
-              </button>
-              <button
-                type="button"
-                className={`help-syntax-lang${
-                  sectionLanguage === "de" ? " active" : ""
-                }`}
-                onClick={() => setSectionLanguage("de")}
-              >
-                DE
-              </button>
-            </div>
-          </div>
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">
-                {resolveText(APP_SECTION_LABELS.whatIs, sectionLanguage)}
-              </span>
-            </div>
-            <p className="help-syntax-text">
-              {resolveText(selectedSection.detail.whatIs, sectionLanguage)}
-            </p>
-          </div>
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">
-                {resolveText(APP_SECTION_LABELS.purpose, sectionLanguage)}
-              </span>
-            </div>
-            <ul className="help-syntax-list">
-              {selectedSection.detail.purpose.map((item, index) => (
-                <li key={`${selectedSectionId}-purpose-${index}`}>
-                  {resolveText(item, sectionLanguage)}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">
-                {resolveText(APP_SECTION_LABELS.whatYouSee, sectionLanguage)}
-              </span>
-            </div>
-            <p className="help-syntax-text">
-              {resolveText(selectedSection.detail.whatYouSee, sectionLanguage)}
-            </p>
-          </div>
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">
-                {resolveText(APP_SECTION_LABELS.showCards, sectionLanguage)}
-              </span>
-            </div>
-            <p className="help-syntax-text">
-              {resolveText(selectedSection.detail.showCards, sectionLanguage)}
-            </p>
-          </div>
-          {selectedSection.detail.tips ? (
+          {selectionError ? (
             <div className="help-syntax-section">
               <div className="help-syntax-section-header">
-                <span className="label">
-                  {resolveText(APP_SECTION_LABELS.tips, sectionLanguage)}
-                </span>
+                <span className="label">Missing section</span>
               </div>
               <p className="help-syntax-text">
-                {resolveText(selectedSection.detail.tips, sectionLanguage)}
+                The App Sections guide is misconfigured. Check APP_SECTION_ORDER
+                and APP_SECTION_DATA.
               </p>
             </div>
-          ) : null}
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">
-                {resolveText(APP_SECTION_LABELS.workflow, sectionLanguage)}
-              </span>
-            </div>
-            <p className="help-syntax-text">
-              {resolveText(selectedSection.detail.workflow, sectionLanguage)}
-            </p>
-          </div>
+          ) : (
+            <>
+              <div className="help-syntax-detail-header">
+                <div className="help-syntax-detail-title">
+                  {resolveText(selectedSection.title, sectionLanguage)}
+                </div>
+                <div className="help-syntax-lang-tabs">
+                  <button
+                    type="button"
+                    className={`help-syntax-lang${
+                      sectionLanguage === "en" ? " active" : ""
+                    }`}
+                    onClick={() => setSectionLanguage("en")}
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    className={`help-syntax-lang${
+                      sectionLanguage === "de" ? " active" : ""
+                    }`}
+                    onClick={() => setSectionLanguage("de")}
+                  >
+                    DE
+                  </button>
+                </div>
+              </div>
+              <div className="help-syntax-section">
+                <div className="help-syntax-section-header">
+                  <span className="label">
+                    {resolveText(APP_SECTION_LABELS.whatIs, sectionLanguage)}
+                  </span>
+                </div>
+                <p className="help-syntax-text">
+                  {resolveText(selectedSection.detail.whatIs, sectionLanguage)}
+                </p>
+              </div>
+              <div className="help-syntax-section">
+                <div className="help-syntax-section-header">
+                  <span className="label">
+                    {resolveText(APP_SECTION_LABELS.purpose, sectionLanguage)}
+                  </span>
+                </div>
+                <ul className="help-syntax-list">
+                  {selectedSection.detail.purpose.map((item, index) => (
+                    <li key={`${selectedSectionId}-purpose-${index}`}>
+                      {resolveText(item, sectionLanguage)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="help-syntax-section">
+                <div className="help-syntax-section-header">
+                  <span className="label">
+                    {resolveText(APP_SECTION_LABELS.whatYouSee, sectionLanguage)}
+                  </span>
+                </div>
+                <p className="help-syntax-text">
+                  {resolveText(
+                    selectedSection.detail.whatYouSee,
+                    sectionLanguage,
+                  )}
+                </p>
+              </div>
+              <div className="help-syntax-section">
+                <div className="help-syntax-section-header">
+                  <span className="label">
+                    {resolveText(APP_SECTION_LABELS.showCards, sectionLanguage)}
+                  </span>
+                </div>
+                <p className="help-syntax-text">
+                  {resolveText(
+                    selectedSection.detail.showCards,
+                    sectionLanguage,
+                  )}
+                </p>
+              </div>
+              {selectedSection.detail.tips ? (
+                <div className="help-syntax-section">
+                  <div className="help-syntax-section-header">
+                    <span className="label">
+                      {resolveText(APP_SECTION_LABELS.tips, sectionLanguage)}
+                    </span>
+                  </div>
+                  <p className="help-syntax-text">
+                    {resolveText(selectedSection.detail.tips, sectionLanguage)}
+                  </p>
+                </div>
+              ) : null}
+              <div className="help-syntax-section">
+                <div className="help-syntax-section-header">
+                  <span className="label">
+                    {resolveText(APP_SECTION_LABELS.workflow, sectionLanguage)}
+                  </span>
+                </div>
+                <p className="help-syntax-text">
+                  {resolveText(
+                    selectedSection.detail.workflow,
+                    sectionLanguage,
+                  )}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
