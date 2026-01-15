@@ -30,5 +30,9 @@ export const flashcardSyntaxOverview = {
       en: "Syntaxes can be combined in one #card block when desired; keep markers clear and consistent.",
       de: "Syntaxen koennen bei Bedarf in einem #card-Block kombiniert werden; Marker klar und konsistent halten.",
     },
+    {
+      en: "Optional #help/#helpend blocks add hints without changing card type or scoring.",
+      de: "Optionale #help/#helpend-Bloecke liefern Hinweise ohne Kartentyp oder Bewertung zu aendern.",
+    },
   ],
 };

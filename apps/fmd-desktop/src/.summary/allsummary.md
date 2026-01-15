@@ -2,6 +2,25 @@
 
 ## 📝 App.css — ./App.css
 
+/*
+ * @file apps/fmd-desktop/src/App.css
+ *
+ * Zweck:
+ * - Bietet den zentralen Stylesheet-Entry fuer das Frontend.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer App.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/styles/tokens.css: Styles.
+ * - apps/fmd-desktop/src/styles/base.css: Styles.
+ * - apps/fmd-desktop/src/styles/layout.css: Styles.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/layout.css";
@@ -14,6 +33,7 @@
 @import "./styles/components/spaced-repetition.css";
 @import "./styles/components/panel-layout.css";
 @import "./styles/components/modals.css";
+@import "./styles/components/vault-manager.css";
 @import "./styles/components/preview.css";
 @import "./styles/components/utility.css";
 @import "./styles/components/settings.css";
@@ -23,11 +43,42 @@
 
 ## 📝 App.tsx — ./App.tsx
 
-import { useState } from "react";
+/**
+ * @file apps/fmd-desktop/src/App.tsx
+ *
+ * Zweck:
+ * - Rendert die App-Shell und routet zwischen Hauptseiten.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/AppErrorBoundary.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/SidebarNav.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - App: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { SidebarNav } from "./components/SidebarNav";
+import {
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "./lib/shortcuts/bindings";
+import { getActiveCloseLayer } from "./lib/shortcuts/closeOrBack";
+import { getShortcutById } from "./lib/shortcuts/registry";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
@@ -50,10 +101,45 @@ const AppContent = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isDashboard = activeTab === "dashboard";
+  const platform = getShortcutPlatform();
+  const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
+  const closeBinding = useMemo(
+    () =>
+      closeCommand
+        ? getEffectiveBinding(closeCommand, settings.keyboardShortcuts.bindings, platform)
+        : null,
+    [closeCommand, platform, settings.keyboardShortcuts.bindings],
+  );
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
     setIsMobileNavOpen(false);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      if (!closeCommand || !closeBinding) {
+        return;
+      }
+      if (!closeCommand.allowInTextInputs && isEditableTarget(event.target)) {
+        return;
+      }
+      if (!matchesBinding(event, closeBinding)) {
+        return;
+      }
+      const layer = getActiveCloseLayer();
+      if (!layer) {
+        return;
+      }
+      event.preventDefault();
+      layer.onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeBinding, closeCommand]);
 
   return (
     <div
@@ -124,6 +210,28 @@ export default App;
 ---
 
 ## 📝 AppErrorBoundary.tsx — ./components/AppErrorBoundary.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/AppErrorBoundary.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente App Error Boundary.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.tsx: Nutzt dieses Modul.
+ * - react: React-API.
+ *
+ * Exportiert:
+ * - AppErrorBoundary: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
@@ -224,6 +332,30 @@ export class AppErrorBoundary extends Component<
 
 ## 📝 AppStateProvider.tsx — ./components/AppStateProvider.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/AppStateProvider.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente App State Provider.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/theme.ts: Typen.
+ *
+ * Exportiert:
+ * - AppStateProvider: React-Komponente.
+ * - useAppState: Hook fuer /.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import {
   createContext,
   useCallback,
@@ -234,7 +366,7 @@ import {
   type ReactNode,
 } from "react";
 import { isValidHex, normalizeHex } from "../lib/color";
-import { normalizeRelativePath } from "../lib/path";
+import { isHiddenPath, normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
@@ -242,11 +374,17 @@ import { usePreview } from "../features/preview/usePreview";
 import { useAppSettings } from "../features/settings/useAppSettings";
 import { type SettingsPageId } from "../features/settings/settingsNavigation";
 import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepetition";
+import { useUserVault } from "../features/user-vault/useUserVault";
 import { useVault } from "../features/vault/useVault";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
+import { VaultManagerModal } from "./VaultManagerModal";
 
 type AppActions = {
   handlePickVault: () => Promise<boolean>;
+  handleSwitchVault: (path: string) => Promise<boolean>;
+  handleRemoveRecentVault: (path: string) => void;
+  handleOpenVaultManager: () => void;
+  handleClearVault: () => void;
   handleSelectFile: (file: VaultFile) => void;
   handleThemeChange: (nextTheme: ThemeMode) => void;
   handleAccentPick: (value: string) => void;
@@ -254,6 +392,7 @@ type AppActions = {
   handleCopyAccent: () => Promise<void>;
   handleCopyVaultPath: () => Promise<void>;
   handleRescanVault: () => void;
+  handleResetIndex: () => void;
   handleMaxFilesPerScanChange: (value: string) => void;
 };
 
@@ -272,6 +411,7 @@ type AppState = {
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
   spacedRepetition: ReturnType<typeof useSpacedRepetition>;
+  userVault: ReturnType<typeof useUserVault>;
   vault: ReturnType<typeof useVault> & {
     activeFolderPath: string | null;
     setActiveFolderPath: (value: string | null) => void;
@@ -280,14 +420,10 @@ type AppState = {
 
 const AppStateContext = createContext<AppState | null>(null);
 
-const countMarkdownFiles = (files: VaultFile[]) =>
+const countMarkdownFiles = (files: VaultFile[], showHiddenFolders: boolean) =>
   files.reduce((count, file) => {
-    const relativePath = file.relative_path.replace(/\\/g, "/");
-    if (
-      relativePath
-        .split("/")
-        .some((segment) => segment.startsWith("."))
-    ) {
+    const relativePath = normalizeRelativePath(file.relative_path);
+    if (!showHiddenFolders && isHiddenPath(relativePath)) {
       return count;
     }
     if (relativePath.toLowerCase().endsWith(".md")) {
@@ -305,6 +441,8 @@ const parseVaultWarningThreshold = (value: string) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
+const MAX_RECENT_VAULTS = 10;
+
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
   const [activeHelpTopicId, setActiveHelpTopicId] = useState<string | null>(
@@ -316,6 +454,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<
     number | null
   >(null);
+  const [isVaultManagerOpen, setIsVaultManagerOpen] = useState(false);
   const [activeSettingsPage, setActiveSettingsPage] =
     useState<SettingsPageId>("appearance");
   const {
@@ -326,11 +465,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
+    showHiddenFolders,
     maxFilesPerScan,
     setMaxFilesPerScan,
     setTheme,
     settingsLoaded,
     vaultPath: storedVaultPath,
+    recentVaults,
     flashcardMode,
     flashcardOrder,
     flashcardPageSize,
@@ -350,7 +491,14 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     solutionRevealEnabled,
     statsResetMode,
   } = settings;
-  const vault = useVault({ persistSettings });
+  const vault = useVault({ persistSettings, showHiddenFolders });
+  const userVault = useUserVault({
+    vaultPath: vault.vaultPath,
+    mode: settings.userVaultMode,
+    setMode: settings.setUserVaultMode,
+    customPath: settings.userVaultCustomPath,
+    setCustomPath: settings.setUserVaultCustomPath,
+  });
   const preview = usePreview();
   const flashcards = useFlashcards({
     files: vault.files,
@@ -396,6 +544,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     isFlashcardScanning: flashcards.isFlashcardScanning,
     scanFlashcards: flashcards.scanFlashcards,
     setIsFlashcardScanning: flashcards.setIsFlashcardScanning,
+    userVaultProfilePath: userVault.activeProfilePath,
+    userVaultRevision: userVault.revision,
+    vaultPath: vault.vaultPath,
     settings: {
       setSpacedRepetitionBoxes: settings.setSpacedRepetitionBoxes,
       setSpacedRepetitionOrder: settings.setSpacedRepetitionOrder,
@@ -412,9 +563,21 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     },
   });
   const hasRestoredVault = useRef(false);
+  const lastRecentVaultRef = useRef<string | null>(null);
   const isRestoringActiveNote = useRef(false);
   const hasResolvedActiveNote = useRef(false);
-  const { loadVault, pickVault, rescanVault, setVaultPath, vaultPath } = vault;
+  const {
+    loadVault,
+    pickVault,
+    rescanVault,
+    restoreSnapshot: restoreVaultSnapshot,
+    setFiles,
+    setListError,
+    setListState,
+    setVaultPath,
+    takeSnapshot: takeVaultSnapshot,
+    vaultPath,
+  } = vault;
   const {
     resetPreview,
     restoreSnapshot: restorePreviewSnapshot,
@@ -427,6 +590,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     restoreSnapshot: restoreFlashcardsSnapshot,
     takeSnapshot: takeFlashcardsSnapshot,
   } = flashcards;
+  const { resetFlashcards: resetFastFlashcards } = fastFlashcards;
 
   const setActiveFolderPath = useCallback((value: string | null) => {
     if (value === null) {
@@ -556,7 +720,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (results) {
-      const count = countMarkdownFiles(results);
+      const count = countMarkdownFiles(results, showHiddenFolders);
       const threshold = parseVaultWarningThreshold(maxFilesPerScan);
       if (threshold && count > threshold) {
         setLargeVaultWarningCount(count);
@@ -577,7 +741,134 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     takePreviewSnapshot,
     setLargeVaultWarningCount,
     maxFilesPerScan,
+    showHiddenFolders,
   ]);
+
+  const handleSwitchVault = useCallback(
+    async (path: string) => {
+      if (!path) {
+        return false;
+      }
+      setPreviewError("");
+      const previewSnapshot = takePreviewSnapshot();
+      const flashcardsSnapshot = takeFlashcardsSnapshot();
+      const vaultSnapshot = takeVaultSnapshot();
+
+      resetPreview();
+      resetFlashcards();
+
+      const errorMessage = "Ausgewaehlter Vault ist nicht verfuegbar.";
+      const results = await loadVault(path, {
+        persist: true,
+        clearOnFailure: false,
+        errorMessage,
+      });
+
+      if (!results) {
+        restoreVaultSnapshot(vaultSnapshot);
+        setListError(errorMessage);
+        restorePreviewSnapshot(previewSnapshot);
+        restoreFlashcardsSnapshot(flashcardsSnapshot);
+        return false;
+      }
+
+      const count = countMarkdownFiles(results, showHiddenFolders);
+      const threshold = parseVaultWarningThreshold(maxFilesPerScan);
+      if (threshold && count > threshold) {
+        setLargeVaultWarningCount(count);
+      } else {
+        setLargeVaultWarningCount(null);
+      }
+
+      return true;
+    },
+    [
+      loadVault,
+      maxFilesPerScan,
+      resetFlashcards,
+      resetPreview,
+      restoreFlashcardsSnapshot,
+      restorePreviewSnapshot,
+      restoreVaultSnapshot,
+      setLargeVaultWarningCount,
+      setListError,
+      setPreviewError,
+      showHiddenFolders,
+      takeFlashcardsSnapshot,
+      takePreviewSnapshot,
+      takeVaultSnapshot,
+    ],
+  );
+
+  const updateRecentVaults = useCallback(
+    async (path: string) => {
+      if (!settingsLoaded) {
+        return;
+      }
+      const normalized = normalizeVaultPath(path);
+      if (!normalized) {
+        return;
+      }
+      const next = [
+        { path, lastOpenedAt: new Date().toISOString() },
+        ...recentVaults.filter(
+          (entry) => normalizeVaultPath(entry.path) !== normalized,
+        ),
+      ].slice(0, MAX_RECENT_VAULTS);
+      await persistSettings({ recentVaults: next });
+    },
+    [persistSettings, recentVaults, settingsLoaded],
+  );
+
+  const handleRemoveRecentVault = useCallback(
+    (path: string) => {
+      const normalized = normalizeVaultPath(path);
+      if (!normalized) {
+        return;
+      }
+      if (lastRecentVaultRef.current === normalized) {
+        lastRecentVaultRef.current = null;
+      }
+      const next = recentVaults.filter(
+        (entry) => normalizeVaultPath(entry.path) !== normalized,
+      );
+      if (next.length === recentVaults.length) {
+        return;
+      }
+      void persistSettings({ recentVaults: next });
+    },
+    [persistSettings, recentVaults],
+  );
+
+  useEffect(() => {
+    if (!settingsLoaded) {
+      return;
+    }
+    if (!vault.vaultPath) {
+      lastRecentVaultRef.current = null;
+      return;
+    }
+    if (vault.listState !== "idle") {
+      return;
+    }
+    const normalized = normalizeVaultPath(vault.vaultPath);
+    if (!normalized) {
+      return;
+    }
+    if (lastRecentVaultRef.current === normalized) {
+      return;
+    }
+    lastRecentVaultRef.current = normalized;
+    void updateRecentVaults(vault.vaultPath);
+  }, [settingsLoaded, updateRecentVaults, vault.listState, vault.vaultPath]);
+
+  const handleOpenVaultManager = useCallback(() => {
+    setIsVaultManagerOpen(true);
+  }, []);
+
+  const handleCloseVaultManager = useCallback(() => {
+    setIsVaultManagerOpen(false);
+  }, []);
 
   const handleSelectFile = useCallback(
     (file: VaultFile) => {
@@ -648,6 +939,38 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     void rescanVault();
   }, [rescanVault]);
 
+  const handleResetIndex = useCallback(() => {
+    if (!vaultPath) {
+      return;
+    }
+    resetPreview();
+    resetFlashcards();
+    resetFastFlashcards();
+    setActiveFolderPath(null);
+    setLargeVaultWarningCount(null);
+    setFiles([]);
+    setListError("");
+    setListState("idle");
+    setVaultPath(null);
+    void persistSettings({ vaultPath: null, activeNotePath: null });
+  }, [
+    persistSettings,
+    resetFastFlashcards,
+    resetFlashcards,
+    resetPreview,
+    setActiveFolderPath,
+    setFiles,
+    setLargeVaultWarningCount,
+    setListError,
+    setListState,
+    setVaultPath,
+    vaultPath,
+  ]);
+
+  const handleClearVault = useCallback(() => {
+    handleResetIndex();
+  }, [handleResetIndex]);
+
   const handleMaxFilesPerScanChange = useCallback(
     (value: string) => {
       const nextValue = value.trim();
@@ -665,6 +988,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const value: AppState = {
     actions: {
       handlePickVault,
+      handleSwitchVault,
+      handleRemoveRecentVault,
+      handleOpenVaultManager,
+      handleClearVault,
       handleSelectFile,
       handleThemeChange,
       handleAccentPick,
@@ -672,6 +999,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleCopyAccent,
       handleCopyVaultPath,
       handleRescanVault,
+      handleResetIndex,
       handleMaxFilesPerScanChange,
     },
     flashcards,
@@ -687,6 +1015,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     preview,
     settings,
     spacedRepetition,
+    userVault,
     vault: {
       ...vault,
       activeFolderPath,
@@ -697,6 +1026,18 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppStateContext.Provider value={value}>
       {children}
+      <VaultManagerModal
+        isOpen={isVaultManagerOpen}
+        vaults={recentVaults}
+        activeVaultPath={vault.vaultPath}
+        userVault={userVault}
+        onClose={handleCloseVaultManager}
+        onOpenVault={handlePickVault}
+        onRescanVault={handleRescanVault}
+        onSwitchVault={handleSwitchVault}
+        onRemoveVault={handleRemoveRecentVault}
+        onClearVault={handleClearVault}
+      />
       <LargeVaultWarningModal
         count={largeVaultWarningCount}
         onClose={handleLargeVaultWarningDismiss}
@@ -717,6 +1058,28 @@ export const useAppState = () => {
 
 ## 📝 FileList.tsx — ./components/FileList.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/FileList.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente File List.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - FileList: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
 
@@ -724,9 +1087,11 @@ type FileListProps = {
   activeFolderPath: string | null;
   fileCountLabel: string;
   files: VaultFile[];
+  isCollapsed: boolean;
   listError: string;
   listState: LoadState;
   onSelectFile: (file: VaultFile) => void;
+  onToggleCollapsed: () => void;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
 };
@@ -735,22 +1100,57 @@ export const FileList = ({
   activeFolderPath,
   fileCountLabel,
   files,
+  isCollapsed,
   listError,
   listState,
   onSelectFile,
+  onToggleCollapsed,
   selectedFile,
   vaultPath,
 }: FileListProps) => {
   return (
-    <section className="panel list-panel">
-      <div className="panel-header">
-        <div>
-          <h2>Notizen</h2>
-          <p className="muted">{fileCountLabel}</p>
-        </div>
-        {listState === "loading" ? <span className="chip">Scanne...</span> : null}
-      </div>
-      <div className="panel-body">
+    <section
+      className={`panel list-panel note-panel ${isCollapsed ? "is-collapsed" : ""}`}
+    >
+      {isCollapsed ? (
+        <button
+          type="button"
+          className="panel-header note-toggle note-handle"
+          onClick={onToggleCollapsed}
+          aria-expanded={!isCollapsed}
+          aria-controls="note-panel-body"
+          aria-label="Expand Note panel"
+        >
+          <span className="note-handle-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="panel-header note-toggle"
+          onClick={onToggleCollapsed}
+          aria-expanded={!isCollapsed}
+          aria-controls="note-panel-body"
+          aria-label="Collapse Note panel"
+        >
+          <span className="note-heading">
+            <span className="note-title">Note</span>
+            <span className="muted note-meta">{fileCountLabel}</span>
+          </span>
+          {listState === "loading" ? (
+            <span className="chip note-meta">Scanne...</span>
+          ) : null}
+        </button>
+      )}
+      <div
+        className="panel-body"
+        id="note-panel-body"
+        hidden={isCollapsed}
+        aria-hidden={isCollapsed}
+      >
         {!vaultPath ? (
           <div className="empty-state">Waehle einen Vault, um die Liste zu fuellen.</div>
         ) : null}
@@ -786,9 +1186,90 @@ export const FileList = ({
 
 ---
 
+## 📝 ClozeCard.test.tsx — ./components/flashcards/ClozeCard.test.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/ClozeCard.test.tsx
+ *
+ * Zweck:
+ * - Testet Rendering und Feedback fuer Cloze-Karten.
+ */
+
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { ClozeCard } from "./ClozeCard";
+import type { ClozeCard as ClozeCardType } from "../../lib/flashcards";
+
+const buildClozeCard = (): ClozeCardType => ({
+  kind: "cloze",
+  subtype: "cld",
+  question: "Mixed cloze",
+  segments: [
+    { type: "text", value: "Answer " },
+    { type: "blank", id: "blank-0", kind: "input", solution: "one" },
+    { type: "text", value: " then " },
+    { type: "blank", id: "blank-1", kind: "drag", solution: "two" },
+    { type: "text", value: "." },
+  ],
+  dragTokens: [
+    { id: "token-0", value: "two" },
+    { id: "token-1", value: "three" },
+  ],
+});
+
+describe("ClozeCard", () => {
+  it("renders per-blank correctness and overall result after submit", () => {
+    const card = buildClozeCard();
+    const markup = renderToStaticMarkup(
+      createElement(ClozeCard, {
+        card,
+        cardIndex: 0,
+        submitted: true,
+        responses: { "blank-0": "ONE", "blank-1": "token-1" },
+        onInputChange: () => {},
+        onTokenDrop: () => {},
+        onTokenRemove: () => {},
+        onTokenDragStart: () => {},
+        onBlankDragOver: () => {},
+        onSubmit: () => {},
+      }),
+    );
+
+    expect(markup).toContain("cloze-card");
+    expect(markup).toContain("cloze-blank input filled correct");
+    expect(markup).toContain("cloze-blank drag filled incorrect");
+    expect(markup).toContain("flashcard-result incorrect");
+  });
+});
+
+---
+
 ## 📝 ClozeCard.tsx — ./components/flashcards/ClozeCard.tsx
 
-import { type DragEvent } from "react";
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Cloze Card.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - ClozeCard: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { type DragEvent, useMemo } from "react";
 import {
   isDragAnswerMatch,
   isInputAnswerMatch,
@@ -799,6 +1280,14 @@ import {
   getClozeBlanks,
   isClozeCardCorrect,
 } from "../../features/flashcards/logic";
+import { resolveSeed, seededShuffle } from "../../lib/seededShuffle";
+import {
+  CLOZE_PLACEHOLDER_PREFIX,
+  CLOZE_PLACEHOLDER_SUFFIX,
+  MarkdownBlocks,
+} from "./MarkdownBlocks";
+import { findTableLineIndices } from "../../lib/markdownTables";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 type ClozeCardProps = {
   card: ClozeCardType;
@@ -811,6 +1300,8 @@ type ClozeCardProps = {
   showResult?: boolean;
   revealCorrectness?: boolean;
   showSolution?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onInputChange: (cardIndex: number, blankId: string, value: string) => void;
   onTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -839,6 +1330,8 @@ export const ClozeCard = ({
   showResult = true,
   revealCorrectness,
   showSolution,
+  helpText,
+  helpEnabled,
   onBlankDragOver,
   onInputChange,
   onSubmit,
@@ -852,138 +1345,181 @@ export const ClozeCard = ({
   const tokenById = new Map(
     card.dragTokens.map((token) => [token.id, token.value]),
   );
+  const { placeholderText, blankById, blankOrderById } = useMemo(() => {
+    let text = "";
+    const blankMap = new Map<string, Extract<ClozeCardType["segments"][number], { type: "blank" }>>();
+    const orderMap = new Map<string, number>();
+    let blankIndex = 0;
+
+    card.segments.forEach((segment) => {
+      if (segment.type === "text") {
+        text += segment.value;
+        return;
+      }
+      blankMap.set(segment.id, segment);
+      blankIndex += 1;
+      orderMap.set(segment.id, blankIndex);
+      text += `${CLOZE_PLACEHOLDER_PREFIX}${segment.id}${CLOZE_PLACEHOLDER_SUFFIX}`;
+    });
+
+    return { placeholderText: text, blankById: blankMap, blankOrderById: orderMap };
+  }, [card.segments]);
+  const { markdownText, questionText } = useMemo(() => {
+    const trimmedQuestion = card.question.trim();
+    if (!trimmedQuestion) {
+      return { markdownText: placeholderText, questionText: "" };
+    }
+    const combinedText = `${card.question}\n${placeholderText}`;
+    const tableLineIndices = findTableLineIndices(combinedText.split("\n"));
+    if (tableLineIndices.has(0)) {
+      return { markdownText: combinedText, questionText: "" };
+    }
+    return { markdownText: placeholderText, questionText: card.question };
+  }, [card.question, placeholderText]);
+  const normalizedPartIndex = partIndex ?? 0;
+  const tokenBank = useMemo(() => {
+    const identifier = `${cardIndex}:${normalizedPartIndex}:${card.question}`;
+    const seed = resolveSeed(identifier);
+    return seededShuffle(card.dragTokens, seed);
+  }, [card.dragTokens, cardIndex, normalizedPartIndex, card.question]);
   const assignedTokenIds = new Set(
     dragBlanks
       .map((blank) => responses[blank.id])
       .filter((tokenId) => tokenById.has(tokenId)),
   );
-  const hasDragTokens = card.dragTokens.length > 0;
+  const hasDragTokens = tokenBank.length > 0;
   const validTokenIds = new Set(card.dragTokens.map((token) => token.id));
   const canSubmit = areClozeBlanksComplete(card, responses);
   const isCorrect = isClozeCardCorrect(card, responses);
   const reveal = revealCorrectness ?? submitted;
   const shouldShowSolution = showSolution ?? submitted;
   const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || (submitted && showResult);
-  let blankPosition = 0;
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActions = showSubmit || (submitted && showResult) || hasHelp;
+
+  const renderBlank = (blankId: string) => {
+    const segment = blankById.get(blankId);
+    if (!segment) {
+      return null;
+    }
+    const blankNumber = blankOrderById.get(blankId) ?? 0;
+
+    if (segment.kind === "input") {
+      const value = responses[segment.id] ?? "";
+      const isBlankCorrect = reveal
+        ? isInputAnswerMatch(value, segment.solution)
+        : false;
+      const blankClasses = [
+        "cloze-blank",
+        "input",
+        value.trim() ? "filled" : "",
+        reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return (
+        <span className={blankClasses}>
+          <input
+            type="text"
+            className="cloze-input"
+            value={value}
+            onChange={(event) =>
+              onInputChange(cardIndex, segment.id, event.target.value)
+            }
+            disabled={submitted}
+            placeholder="____"
+            aria-label={`Blank ${blankNumber}`}
+          />
+        </span>
+      );
+    }
+
+    const assignedTokenId = responses[segment.id] ?? "";
+    const assignedValue = assignedTokenId
+      ? tokenById.get(assignedTokenId) ?? ""
+      : "";
+    const hasToken = Boolean(assignedValue);
+    const isBlankCorrect = reveal
+      ? isDragAnswerMatch(assignedValue, segment.solution)
+      : false;
+    const blankClasses = [
+      "cloze-blank",
+      "drag",
+      hasToken ? "filled" : "",
+      reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return (
+      <span
+        className={blankClasses}
+        aria-label={`Drop zone ${blankNumber}`}
+        onDragOver={onBlankDragOver}
+        onDrop={(event) =>
+          onTokenDrop(event, cardIndex, segment.id, validTokenIds, dragBlankIds)
+        }
+      >
+        {hasToken ? (
+          <span className="cloze-token">
+            <button
+              type="button"
+              className="token-chip"
+              draggable={!submitted}
+              onDragStart={(event) =>
+                onTokenDragStart(event, {
+                  cardIndex,
+                  tokenId: assignedTokenId,
+                  partIndex,
+                })
+              }
+              disabled={submitted}
+            >
+              {assignedValue}
+            </button>
+            {!submitted ? (
+              <button
+                type="button"
+                className="token-remove"
+                onClick={() => onTokenRemove(cardIndex, segment.id)}
+                aria-label="Remove token"
+              >
+                x
+              </button>
+            ) : null}
+          </span>
+        ) : (
+          <span className="cloze-placeholder">Drop token</span>
+        )}
+      </span>
+    );
+  };
+
+  const renderSolutionBlank = (blankId: string) => {
+    const segment = blankById.get(blankId);
+    if (!segment) {
+      return null;
+    }
+    return <span className="cloze-solution-token">{segment.solution}</span>;
+  };
 
   return (
     <article className="flashcard-item cloze-card">
-      <h3 className="flashcard-question">{card.question}</h3>
-      <div className="cloze-text">
-        {card.segments.map((segment, segmentIndex) => {
-          if (segment.type === "text") {
-            return (
-              <span key={`cloze-text-${cardIndex}-${segmentIndex}`}>
-                {segment.value}
-              </span>
-            );
-          }
-
-          blankPosition += 1;
-          const blankNumber = blankPosition;
-
-          if (segment.kind === "input") {
-            const value = responses[segment.id] ?? "";
-            const isBlankCorrect = reveal
-              ? isInputAnswerMatch(value, segment.solution)
-              : false;
-            const blankClasses = [
-              "cloze-blank",
-              "input",
-              value.trim() ? "filled" : "",
-              reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-
-            return (
-              <span
-                key={`cloze-blank-${cardIndex}-${segmentIndex}`}
-                className={blankClasses}
-              >
-                <input
-                  type="text"
-                  className="cloze-input"
-                  value={value}
-                  onChange={(event) =>
-                    onInputChange(cardIndex, segment.id, event.target.value)
-                  }
-                  disabled={submitted}
-                  placeholder="____"
-                  aria-label={`Blank ${blankNumber}`}
-                />
-              </span>
-            );
-          }
-
-          const assignedTokenId = responses[segment.id] ?? "";
-          const assignedValue = assignedTokenId
-            ? tokenById.get(assignedTokenId) ?? ""
-            : "";
-          const hasToken = Boolean(assignedValue);
-          const isBlankCorrect = reveal
-            ? isDragAnswerMatch(assignedValue, segment.solution)
-            : false;
-          const blankClasses = [
-            "cloze-blank",
-            "drag",
-            hasToken ? "filled" : "",
-            reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
-
-          return (
-            <span
-              key={`cloze-blank-${cardIndex}-${segmentIndex}`}
-              className={blankClasses}
-              aria-label={`Drop zone ${blankNumber}`}
-              onDragOver={onBlankDragOver}
-              onDrop={(event) =>
-                onTokenDrop(event, cardIndex, segment.id, validTokenIds, dragBlankIds)
-              }
-            >
-              {hasToken ? (
-                <span className="cloze-token">
-                  <button
-                    type="button"
-                    className="token-chip"
-                    draggable={!submitted}
-                    onDragStart={(event) =>
-                    onTokenDragStart(event, {
-                      cardIndex,
-                      tokenId: assignedTokenId,
-                      partIndex,
-                    })
-                  }
-                  disabled={submitted}
-                >
-                    {assignedValue}
-                  </button>
-                  {!submitted ? (
-                    <button
-                      type="button"
-                      className="token-remove"
-                      onClick={() => onTokenRemove(cardIndex, segment.id)}
-                      aria-label="Remove token"
-                    >
-                      x
-                    </button>
-                  ) : null}
-                </span>
-              ) : (
-                <span className="cloze-placeholder">Drop token</span>
-              )}
-            </span>
-          );
-        })}
-      </div>
+      {questionText.trim() ? (
+        <h3 className="flashcard-question">{questionText}</h3>
+      ) : null}
+      <MarkdownBlocks
+        text={markdownText}
+        className="cloze-text"
+        allowTableScroll={false}
+        renderPlaceholder={renderBlank}
+      />
       {hasDragTokens ? (
         <div className="token-section">
           <span className="label">Tokens</span>
           <div className="token-pool">
-            {card.dragTokens.map((token) => {
+            {tokenBank.map((token) => {
               const isUsed = assignedTokenIds.has(token.id);
               return (
                 <button
@@ -1024,30 +1560,22 @@ export const ClozeCard = ({
               {resultLabel}
             </span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
       {shouldShowSolution ? (
         <div className="token-solution">
           <span className="label">Solution</span>
-          <div className="cloze-solution">
-            {card.segments.map((segment, segmentIndex) => {
-              if (segment.type === "text") {
-                return (
-                  <span key={`solution-text-${cardIndex}-${segmentIndex}`}>
-                    {segment.value}
-                  </span>
-                );
-              }
-              return (
-                <span
-                  key={`solution-blank-${cardIndex}-${segmentIndex}`}
-                  className="cloze-solution-token"
-                >
-                  {segment.solution}
-                </span>
-              );
-            })}
-          </div>
+          <MarkdownBlocks
+            text={markdownText}
+            className="cloze-solution"
+            allowTableScroll={false}
+            renderPlaceholder={renderSolutionBlank}
+          />
         </div>
       ) : null}
     </article>
@@ -1058,6 +1586,29 @@ export const ClozeCard = ({
 
 ## 📝 CompositeCard.tsx — ./components/flashcards/CompositeCard.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Composite Card.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/MultipleChoiceCard.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - CompositeCard: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import type { DragEvent } from "react";
 import { ClozeCard } from "./ClozeCard";
 import { FreeTextCard } from "./FreeTextCard";
@@ -1065,12 +1616,13 @@ import { MultipleChoiceCard } from "./MultipleChoiceCard";
 import { TrueFalseCard } from "./TrueFalseCard";
 import type { CompositeFlashcard } from "../../lib/flashcards";
 import {
-  evaluateFlashcardPartResult,
+  evaluateCompositeCardResult,
   isFlashcardPartComplete,
   type CompositePartState,
   type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "../../features/flashcards/logic";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 type CompositeCardProps = {
   card: CompositeFlashcard;
@@ -1083,6 +1635,8 @@ type CompositeCardProps = {
   revealCorrectness?: boolean;
   showSolution?: boolean;
   forceRevealText?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onOptionSelect: (cardIndex: number, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     cardIndex: number,
@@ -1131,6 +1685,8 @@ export const CompositeCard = ({
   revealCorrectness,
   showSolution,
   forceRevealText = false,
+  helpText,
+  helpEnabled,
   onBlankDragOver,
   onClozeInputChange,
   onClozeTokenDragStart,
@@ -1145,16 +1701,30 @@ export const CompositeCard = ({
 }: CompositeCardProps) => {
   const canSubmit =
     card.parts.length > 0 &&
-    card.parts.every((part, index) =>
-      isFlashcardPartComplete(part, partStates[index] ?? {}),
-    );
-  const allCorrect = card.parts.every(
-    (part, index) =>
-      evaluateFlashcardPartResult(part, partStates[index] ?? {}) === "correct",
-  );
-  const resultLabel =
-    submitted && showResult ? (allCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || (submitted && showResult);
+    card.parts.every((part, index) => {
+      if (part.kind === "free-text") {
+        return true;
+      }
+      return isFlashcardPartComplete(part, partStates[index] ?? {});
+    });
+  const cardResult = evaluateCompositeCardResult(card, partStates);
+  const showResultLabel = submitted && showResult;
+  const resultLabel = showResultLabel
+    ? cardResult === "pending"
+      ? "Pending"
+      : cardResult === "correct"
+        ? "Correct"
+        : "Incorrect"
+    : "";
+  const resultClass = `flashcard-result ${
+    cardResult === "pending"
+      ? "pending"
+      : cardResult === "correct"
+        ? "correct"
+        : "incorrect"
+  }`;
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActions = showSubmit || (submitted && showResult) || hasHelp;
 
   return (
     <article className="flashcard-item composite-card">
@@ -1269,15 +1839,14 @@ export const CompositeCard = ({
               Submit
             </button>
           ) : null}
-          {submitted && showResult ? (
-            <span
-              className={`flashcard-result ${
-                allCorrect ? "correct" : "incorrect"
-              }`}
-            >
-              {resultLabel}
-            </span>
+          {showResultLabel ? (
+            <span className={resultClass}>{resultLabel}</span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
     </article>
@@ -1288,8 +1857,32 @@ export const CompositeCard = ({
 
 ## 📝 FreeTextCard.tsx — ./components/flashcards/FreeTextCard.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Free Text Card.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Typen.
+ *
+ * Exportiert:
+ * - FreeTextCard: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import type { FreeTextCard as FreeTextCardType } from "../../lib/flashcards";
+import { MarkdownBlocks } from "./MarkdownBlocks";
 import type { FlashcardSelfGrade } from "../../features/flashcards/logic";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 type FreeTextCardProps = {
   card: FreeTextCardType;
@@ -1300,6 +1893,8 @@ type FreeTextCardProps = {
   selfGrade?: FlashcardSelfGrade;
   submissionLocked?: boolean;
   showActions?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onInputChange: (cardIndex: number, value: string) => void;
   onCheck: (cardIndex: number) => void;
   onSelfGrade: (cardIndex: number, grade: FlashcardSelfGrade) => void;
@@ -1314,6 +1909,8 @@ export const FreeTextCard = ({
   selfGrade,
   submissionLocked = false,
   showActions = true,
+  helpText,
+  helpEnabled,
   onInputChange,
   onCheck,
   onSelfGrade,
@@ -1324,10 +1921,20 @@ export const FreeTextCard = ({
       ? "Correct"
       : "Incorrect"
     : "";
+  const isCorrectSelected = selfGrade === "correct";
+  const isIncorrectSelected = selfGrade === "incorrect";
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActionsResolved = showActions || hasHelp;
 
   return (
     <article className="flashcard-item free-text-card">
-      <div className="flashcard-text-block">{card.front}</div>
+      {card.front.trim() ? (
+        <MarkdownBlocks
+          text={card.front}
+          className="flashcard-text-block"
+          allowTableScroll
+        />
+      ) : null}
       <textarea
         className="flashcard-input"
         value={response}
@@ -1336,7 +1943,7 @@ export const FreeTextCard = ({
         aria-label="Your answer"
         disabled={submitted || revealed}
       />
-      {showActions ? (
+      {showActionsResolved ? (
         <div className="flashcard-actions">
           {!revealed ? (
             <button
@@ -1351,16 +1958,22 @@ export const FreeTextCard = ({
             <>
               <button
                 type="button"
-                className="primary small flashcard-submit"
+                className={`${
+                  isCorrectSelected ? "primary" : "ghost"
+                } small flashcard-submit`}
                 onClick={() => onSelfGrade(cardIndex, "correct")}
+                aria-pressed={isCorrectSelected}
                 disabled={submitted || submissionLocked}
               >
                 Correct
               </button>
               <button
                 type="button"
-                className="ghost small flashcard-submit"
+                className={`${
+                  isIncorrectSelected ? "primary" : "ghost"
+                } small flashcard-submit`}
                 onClick={() => onSelfGrade(cardIndex, "incorrect")}
+                aria-pressed={isIncorrectSelected}
                 disabled={submitted || submissionLocked}
               >
                 Incorrect
@@ -1376,12 +1989,21 @@ export const FreeTextCard = ({
               {resultLabel}
             </span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
       {revealed ? (
         <div className="flashcard-answer">
           <span className="label">Answer</span>
-          <div className="flashcard-answer-text">{card.back}</div>
+          <MarkdownBlocks
+            text={card.back}
+            className="flashcard-answer-text"
+            allowTableScroll
+          />
         </div>
       ) : null}
     </article>
@@ -1390,10 +2012,275 @@ export const FreeTextCard = ({
 
 ---
 
+## 📝 MarkdownBlocks.tsx — ./components/flashcards/MarkdownBlocks.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/MarkdownBlocks.tsx
+ *
+ * Zweck:
+ * - Rendert einfache Markdown-Bloecke mit Tabellenunterstuetzung.
+ *
+ * Hinweise:
+ * - Tabellen werden als pipe tables erkannt.
+ * - Platzhalter fuer Cloze-Token koennen via renderPlaceholder ersetzt werden.
+ */
+
+import { Fragment, type ReactNode } from "react";
+import { splitMarkdownBlocks, type MarkdownBlock } from "../../lib/markdownTables";
+
+export const CLOZE_PLACEHOLDER_PREFIX = "@@@CLOZE:";
+export const CLOZE_PLACEHOLDER_SUFFIX = "@@@";
+
+const buildPlaceholder = (id: string) =>
+  `${CLOZE_PLACEHOLDER_PREFIX}${id}${CLOZE_PLACEHOLDER_SUFFIX}`;
+
+type Token =
+  | { type: "text"; value: string }
+  | { type: "br" }
+  | { type: "placeholder"; id: string };
+
+const tokenRegex = /@@@CLOZE:([^@]+?)@@@|<br\s*\/?>/gi;
+
+const tokenizeText = (value: string) => {
+  const tokens: Token[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null = null;
+  tokenRegex.lastIndex = 0;
+
+  while ((match = tokenRegex.exec(value)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push({
+        type: "text",
+        value: value.slice(lastIndex, match.index),
+      });
+    }
+
+    if (match[1]) {
+      tokens.push({ type: "placeholder", id: match[1] });
+    } else {
+      tokens.push({ type: "br" });
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < value.length) {
+    tokens.push({ type: "text", value: value.slice(lastIndex) });
+  }
+
+  return tokens;
+};
+
+const renderTokens = (
+  value: string,
+  renderPlaceholder: ((id: string) => ReactNode) | undefined,
+  keyPrefix: string,
+) =>
+  tokenizeText(value).map((token, index) => {
+    const key = `${keyPrefix}-${index}`;
+    if (token.type === "text") {
+      return token.value;
+    }
+    if (token.type === "br") {
+      return <br key={key} />;
+    }
+    if (!renderPlaceholder) {
+      return buildPlaceholder(token.id);
+    }
+    const rendered = renderPlaceholder(token.id);
+    if (rendered === null || rendered === undefined) {
+      return buildPlaceholder(token.id);
+    }
+    return <Fragment key={key}>{rendered}</Fragment>;
+  });
+
+type MarkdownFenceBlock =
+  | { type: "code"; text: string; language: string }
+  | { type: "text"; text: string };
+
+const normalizeLineBreaks = (value: string) => value.replace(/\r\n?/g, "\n");
+
+const splitFenceBlocks = (rawText: string): MarkdownFenceBlock[] => {
+  const lines = normalizeLineBreaks(rawText).split("\n");
+  const blocks: MarkdownFenceBlock[] = [];
+  const textBuffer: string[] = [];
+  const codeBuffer: string[] = [];
+  let inFence = false;
+  let fenceLanguage = "";
+  const fencePattern = /^(```|~~~)(.*)$/;
+
+  const flushText = () => {
+    if (textBuffer.length === 0) {
+      return;
+    }
+    blocks.push({ type: "text", text: textBuffer.join("\n") });
+    textBuffer.length = 0;
+  };
+
+  const flushCode = () => {
+    blocks.push({ type: "code", text: codeBuffer.join("\n"), language: fenceLanguage });
+    codeBuffer.length = 0;
+    fenceLanguage = "";
+  };
+
+  lines.forEach((line) => {
+    const trimmed = line.trimStart();
+    const match = trimmed.match(fencePattern);
+    if (match) {
+      if (inFence) {
+        flushCode();
+        inFence = false;
+      } else {
+        flushText();
+        inFence = true;
+        fenceLanguage = match[2]?.trim() ?? "";
+      }
+      return;
+    }
+    if (inFence) {
+      codeBuffer.push(line);
+    } else {
+      textBuffer.push(line);
+    }
+  });
+
+  if (inFence) {
+    flushCode();
+  } else {
+    flushText();
+  }
+
+  return blocks;
+};
+
+type MarkdownBlocksProps = {
+  text: string;
+  className?: string;
+  allowTableScroll?: boolean;
+  renderPlaceholder?: (id: string) => ReactNode;
+};
+
+export const MarkdownBlocks = ({
+  text,
+  className,
+  allowTableScroll = true,
+  renderPlaceholder,
+}: MarkdownBlocksProps) => {
+  const fencedBlocks = splitFenceBlocks(text);
+  const blocks: Array<MarkdownBlock | MarkdownFenceBlock> = [];
+  fencedBlocks.forEach((block) => {
+    if (block.type === "code") {
+      blocks.push(block);
+      return;
+    }
+    splitMarkdownBlocks(block.text).forEach((nested) => {
+      blocks.push(nested);
+    });
+  });
+  const containerClass = ["flashcard-markdown", className]
+    .filter(Boolean)
+    .join(" ");
+  const tableClass = [
+    "flashcard-table",
+    allowTableScroll ? "scrollable" : "no-scroll",
+  ].join(" ");
+
+  return (
+    <div className={containerClass}>
+      {blocks.map((block, blockIndex) => {
+        if (block.type === "table") {
+          return (
+            <div className={tableClass} key={`table-${blockIndex}`}>
+              <table>
+                <thead>
+                  <tr>
+                    {block.header.map((cell, cellIndex) => (
+                      <th key={`head-${blockIndex}-${cellIndex}`}>
+                        {renderTokens(
+                          cell,
+                          renderPlaceholder,
+                          `table-head-${blockIndex}-${cellIndex}`,
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rowIndex) => (
+                    <tr key={`row-${blockIndex}-${rowIndex}`}>
+                      {row.map((cell, cellIndex) => (
+                        <td key={`cell-${blockIndex}-${rowIndex}-${cellIndex}`}>
+                          {renderTokens(
+                            cell,
+                            renderPlaceholder,
+                            `table-cell-${blockIndex}-${rowIndex}-${cellIndex}`,
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+
+        if (block.type === "code") {
+          const codeClass = [
+            "flashcard-code-block",
+            block.language ? `language-${block.language}` : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          return (
+            <pre className={codeClass} key={`code-${blockIndex}`}>
+              <code>
+                {renderTokens(block.text, renderPlaceholder, `code-${blockIndex}`)}
+              </code>
+            </pre>
+          );
+        }
+
+        return (
+          <div className="flashcard-markdown-text" key={`text-${blockIndex}`}>
+            {renderTokens(block.text, renderPlaceholder, `text-${blockIndex}`)}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+---
+
 ## 📝 MultipleChoiceCard.tsx — ./components/flashcards/MultipleChoiceCard.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/MultipleChoiceCard.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Multiple Choice Card.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - MultipleChoiceCard: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 import { useMemo } from "react";
 import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
+import { MarkdownBlocks } from "./MarkdownBlocks";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 const OPTION_LABELS = "abcdefghijklmnopqrstuvwxyz";
 
@@ -1436,6 +2323,8 @@ type MultipleChoiceCardProps = {
   showSubmit?: boolean;
   showResult?: boolean;
   revealCorrectness?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onSelect: (cardIndex: number, keys: string[]) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -1449,6 +2338,8 @@ export const MultipleChoiceCard = ({
   showSubmit = true,
   showResult = true,
   revealCorrectness,
+  helpText,
+  helpEnabled,
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
@@ -1483,11 +2374,15 @@ export const MultipleChoiceCard = ({
     [cardSignature],
   );
 
-  const showActions = showSubmit || (submitted && showResult);
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActions = showSubmit || (submitted && showResult) || hasHelp;
 
   return (
     <article className="flashcard-item">
       <h3 className="flashcard-question">{card.question}</h3>
+      {card.context?.trim() ? (
+        <MarkdownBlocks text={card.context} allowTableScroll />
+      ) : null}
       <ul className="flashcard-options">
         {displayOptions.map(({ option, label }) => {
           const isSelected = selectedKeys.includes(option.key);
@@ -1548,6 +2443,11 @@ export const MultipleChoiceCard = ({
               {resultLabel}
             </span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
     </article>
@@ -1558,12 +2458,36 @@ export const MultipleChoiceCard = ({
 
 ## 📝 TrueFalseCard.tsx — ./components/flashcards/TrueFalseCard.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/flashcards/TrueFalseCard.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente True False Card.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - TrueFalseCard: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { type TrueFalseCard as TrueFalseCardType } from "../../lib/flashcards";
+import { MarkdownBlocks } from "./MarkdownBlocks";
 import {
   areTrueFalseItemsComplete,
   isTrueFalseCardCorrect,
   type TrueFalseSelection,
 } from "../../features/flashcards/logic";
+import { HelpButton, hasHelpContent } from "../HelpButton";
 
 type TrueFalseCardProps = {
   card: TrueFalseCardType;
@@ -1575,6 +2499,8 @@ type TrueFalseCardProps = {
   showResult?: boolean;
   revealCorrectness?: boolean;
   showSolution?: boolean;
+  helpText?: string[] | string;
+  helpEnabled?: boolean;
   onSelect: (cardIndex: number, itemId: string, value: TrueFalseSelection) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -1589,6 +2515,8 @@ export const TrueFalseCard = ({
   showResult = true,
   revealCorrectness,
   showSolution,
+  helpText,
+  helpEnabled,
   onSelect,
   onSubmit,
 }: TrueFalseCardProps) => {
@@ -1597,11 +2525,15 @@ export const TrueFalseCard = ({
   const reveal = revealCorrectness ?? submitted;
   const shouldShowSolution = showSolution ?? submitted;
   const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
-  const showActions = showSubmit || (submitted && showResult);
+  const hasHelp = helpEnabled && hasHelpContent(helpText);
+  const showActions = showSubmit || (submitted && showResult) || hasHelp;
 
   return (
     <article className="flashcard-item truefalse-card">
       <h3 className="flashcard-question">True/False</h3>
+      {card.context?.trim() ? (
+        <MarkdownBlocks text={card.context} allowTableScroll />
+      ) : null}
       <ul className="truefalse-list">
         {card.items.map((item) => {
           const selected = selections[item.id];
@@ -1677,6 +2609,11 @@ export const TrueFalseCard = ({
               {resultLabel}
             </span>
           ) : null}
+          <HelpButton
+            helpText={helpText}
+            enabled={helpEnabled}
+            className="flashcard-help-button"
+          />
         </div>
       ) : null}
       {shouldShowSolution ? (
@@ -1700,7 +2637,260 @@ export const TrueFalseCard = ({
 
 ---
 
+## 📝 HelpButton.test.tsx — ./components/HelpButton.test.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/HelpButton.test.tsx
+ *
+ * Zweck:
+ * - Testet HelpButton Rendering und HelpPanel Markdown-Ausgabe.
+ */
+
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { HelpButton, HelpPanel } from "./HelpButton";
+
+describe("HelpButton", () => {
+  it("renders the help icon when enabled and content exists", () => {
+    const markup = renderToStaticMarkup(
+      createElement(HelpButton, { enabled: true, helpText: ["Hint text"] }),
+    );
+
+    expect(markup).toContain("help-button");
+  });
+
+  it("hides the help icon when disabled", () => {
+    const markup = renderToStaticMarkup(
+      createElement(HelpButton, { enabled: false, helpText: ["Hint text"] }),
+    );
+
+    expect(markup).toBe("");
+  });
+
+  it("renders markdown lists and tables in the help panel", () => {
+    const helpContent = `- Item one
+- Item two
+
+| Key | Value |
+| --- | --- |
+| A | 1 |`;
+    const markup = renderToStaticMarkup(
+      createElement(HelpPanel, { helpBlocks: [helpContent] }),
+    );
+
+    expect(markup).toContain("<ul>");
+    expect(markup).toContain("<table>");
+  });
+});
+
+---
+
+## 📝 HelpButton.tsx — ./components/HelpButton.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/HelpButton.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Help Button samt Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Zeigt einen Hilfe-Button an, wenn Inhalt vorhanden ist.
+ * - Rendert Hilfe-Text als Markdown in einem Modal.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useEffect, useId, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
+import { HelpIcon } from "./icons";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
+
+const markdownSchema = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    table: [...(defaultSchema.attributes?.table ?? []), "className"],
+    th: [...(defaultSchema.attributes?.th ?? []), "align"],
+    td: [...(defaultSchema.attributes?.td ?? []), "align"],
+  },
+};
+
+const normalizeHelpBlocks = (
+  helpText?: string[] | string | null,
+  helpMarkdown?: string | null,
+) => {
+  const blocks = Array.isArray(helpText)
+    ? helpText
+    : typeof helpText === "string" && helpText.trim()
+      ? [helpText]
+      : typeof helpMarkdown === "string" && helpMarkdown.trim()
+        ? [helpMarkdown]
+        : [];
+  return blocks
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0);
+};
+
+export const hasHelpContent = (
+  helpText?: string[] | string | null,
+  helpMarkdown?: string | null,
+) => normalizeHelpBlocks(helpText, helpMarkdown).length > 0;
+
+type HelpPanelProps = {
+  helpBlocks: string[];
+  title?: string;
+  onClose?: () => void;
+};
+
+export const HelpPanel = ({
+  helpBlocks,
+  title = "Help / Hints",
+  onClose,
+}: HelpPanelProps) => {
+  const titleId = useId();
+
+  return (
+    <div
+      className="modal-panel help-modal-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
+      <h3 id={titleId}>{title}</h3>
+      <div className="help-modal-body">
+        {helpBlocks.map((block, index) => (
+          <section
+            key={`help-block-${index}`}
+            className="help-modal-section"
+          >
+            {helpBlocks.length > 1 ? (
+              <span className="label">Hint {index + 1}</span>
+            ) : null}
+            <div className="help-markdown exam-markdown">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+              >
+                {block}
+              </ReactMarkdown>
+            </div>
+          </section>
+        ))}
+      </div>
+      {onClose ? (
+        <div className="modal-actions">
+          <button type="button" className="ghost" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+type HelpButtonProps = {
+  helpText?: string[] | string | null;
+  helpMarkdown?: string | null;
+  enabled?: boolean;
+  className?: string;
+  label?: string;
+};
+
+export const HelpButton = ({
+  helpText,
+  helpMarkdown,
+  enabled = true,
+  className,
+  label = "Help / Hints",
+}: HelpButtonProps) => {
+  const helpBlocks = useMemo(
+    () => normalizeHelpBlocks(helpText, helpMarkdown),
+    [helpMarkdown, helpText],
+  );
+  const [isOpen, setIsOpen] = useState(false);
+  const modalId = useId();
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: `help-modal-${modalId}`,
+      priority: 300,
+      isActive: () => true,
+      onClose: () => setIsOpen(false),
+    });
+  }, [isOpen, modalId]);
+
+  if (!enabled || helpBlocks.length === 0) {
+    return null;
+  }
+
+  const portalTarget = typeof document === "undefined" ? null : document.body;
+  const modal = (
+    <div className="modal-backdrop" role="presentation">
+      <HelpPanel helpBlocks={helpBlocks} title={label} onClose={() => setIsOpen(false)} />
+    </div>
+  );
+  const buttonClass = ["ghost small help-button", className].filter(Boolean).join(" ");
+
+  return (
+    <>
+      <button
+        type="button"
+        className={buttonClass}
+        onClick={() => setIsOpen(true)}
+        aria-label={label}
+        title={label}
+      >
+        <HelpIcon />
+      </button>
+      {isOpen ? (portalTarget ? createPortal(modal, portalTarget) : modal) : null}
+    </>
+  );
+};
+
+---
+
 ## 📝 icons.tsx — ./components/icons.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/icons.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente icons.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/SidebarNav.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FolderIcon: React-Komponente.
+ * - FileIcon: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 export const FolderIcon = () => (
   <svg
@@ -1781,9 +2971,73 @@ export const SettingsIcon = () => (
   </svg>
 );
 
+export const RefreshIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+    <polyline points="21 3 21 9 15 9" />
+  </svg>
+);
+
+export const ChevronDownIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+export const CheckIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
 ---
 
 ## 📝 KpiGrid.tsx — ./components/KpiGrid.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/KpiGrid.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Kpi Grid.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsPanel.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - KpiGrid: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 type KpiItem = {
   label: string;
@@ -1809,6 +3063,30 @@ export const KpiGrid = ({ items }: KpiGridProps) => (
 
 ## 📝 LargeVaultWarningModal.tsx — ./components/LargeVaultWarningModal.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/LargeVaultWarningModal.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Large Vault Warning Modal.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - LargeVaultWarningModal: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useEffect } from "react";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
+
 type LargeVaultWarningModalProps = {
   count: number | null;
   onClose: () => void;
@@ -1818,6 +3096,18 @@ export const LargeVaultWarningModal = ({
   count,
   onClose,
 }: LargeVaultWarningModalProps) => {
+  useEffect(() => {
+    if (count === null) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "large-vault-warning-modal",
+      priority: 300,
+      isActive: () => true,
+      onClose,
+    });
+  }, [count, onClose]);
+
   if (count === null) {
     return null;
   }
@@ -1850,7 +3140,280 @@ export const LargeVaultWarningModal = ({
 
 ---
 
+## 📝 PreviewPanel.interactions.test.ts — ./components/PreviewPanel.interactions.test.ts
+
+// @vitest-environment jsdom
+/**
+ * @file apps/fmd-desktop/src/components/PreviewPanel.interactions.test.ts
+ *
+ * Zweck:
+ * - Tests fuer edit-sichere Preview-Interaktionen und HTML-Sanitizing.
+ */
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  createElement,
+  useCallback,
+  useState,
+  type ReactElement,
+} from "react";
+import { createRoot } from "react-dom/client";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { PreviewPanel } from "./PreviewPanel";
+import { type VaultFile } from "../lib/tree";
+
+const testEnv = globalThis as typeof globalThis & {
+  IS_REACT_ACT_ENVIRONMENT?: boolean;
+};
+testEnv.IS_REACT_ACT_ENVIRONMENT = true;
+
+vi.mock("@tauri-apps/plugin-opener", () => ({
+  openUrl: vi.fn().mockResolvedValue(undefined),
+}));
+
+const openUrlMock = vi.mocked(openUrl);
+
+const baseFile: VaultFile = {
+  path: "/vault/Note.md",
+  relative_path: "Note.md",
+};
+
+const render = (element: ReactElement) => {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  act(() => {
+    root.render(element);
+  });
+  return {
+    container,
+    cleanup: () => {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    },
+  };
+};
+
+const buildHarness = (markdown: string) => {
+  const onEditExit = vi.fn();
+
+  const Harness = () => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editDraft, setEditDraft] = useState(markdown);
+    const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+
+    const handleEditStart = useCallback(
+      (options?: { caretIndex?: number | null }) => {
+        setEditDraft(markdown);
+        setEditCaretIndex(
+          typeof options?.caretIndex === "number" ? options.caretIndex : null,
+        );
+        setIsEditing(true);
+      },
+      [markdown],
+    );
+
+    return createElement(PreviewPanel, {
+      editDraft,
+      editError: "",
+      editCaretIndex,
+      isEditing,
+      emptyPreview: "",
+      preview: markdown,
+      previewError: "",
+      previewState: "idle",
+      rawPreview: false,
+      selectedFile: baseFile,
+      canEdit: true,
+      onEditChange: setEditDraft,
+      onEditCaretApplied: () => setEditCaretIndex(null),
+      onEditExit,
+      onEditStart: handleEditStart,
+      onToggleRawPreview: () => {},
+    });
+  };
+
+  const rendered = render(createElement(Harness));
+  return { ...rendered, onEditExit };
+};
+
+let cleanup: (() => void) | null = null;
+
+afterEach(() => {
+  if (cleanup) {
+    cleanup();
+    cleanup = null;
+  }
+  openUrlMock.mockClear();
+});
+
+describe("PreviewPanel edit-safe interactions", () => {
+  it("prevents normal link clicks from navigating while editing", () => {
+    const { container, cleanup: localCleanup, onEditExit } = buildHarness(
+      "Link: [Example](https://example.com)",
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    expect(previewContent).toBeTruthy();
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editor = container.querySelector(".preview.preview-editor.markdown");
+    expect(editor).toBeTruthy();
+    const editorLink = editor?.querySelector("a");
+    expect(editorLink).toBeTruthy();
+
+    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+    const dispatched = editorLink?.dispatchEvent(clickEvent);
+
+    expect(dispatched).toBe(false);
+    expect(openUrlMock).not.toHaveBeenCalled();
+    expect(onEditExit).not.toHaveBeenCalled();
+  });
+
+  it("opens links with ctrl/cmd click", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      "Link: [Example](https://example.com)",
+    );
+    cleanup = localCleanup;
+
+    const previewLink = container.querySelector(".preview.markdown a");
+    expect(previewLink).toBeTruthy();
+
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: true,
+    });
+    const dispatched = previewLink?.dispatchEvent(clickEvent);
+
+    expect(dispatched).toBe(false);
+    expect(openUrlMock).toHaveBeenCalledWith("https://example.com/");
+  });
+
+  it("keeps image interactions from ending the edit session", () => {
+    const { container, cleanup: localCleanup, onEditExit } = buildHarness(
+      "![Alt](https://example.com/image.png)",
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editor = container.querySelector(".preview.preview-editor.markdown");
+    const image = editor?.querySelector("img");
+
+    expect(editor).toBeTruthy();
+    expect(image).toBeTruthy();
+    expect(image?.getAttribute("draggable")).toBe("false");
+
+    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+    image?.dispatchEvent(clickEvent);
+
+    expect(openUrlMock).not.toHaveBeenCalled();
+    expect(onEditExit).not.toHaveBeenCalled();
+  });
+
+  it("renders inline HTML tags after sanitization", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      "Inline <span class=\"tag\">Span</span><br>Line <sup>sup</sup> <sub>sub</sub> <kbd>Ctrl</kbd>",
+    );
+    cleanup = localCleanup;
+
+    expect(container.querySelector("span")).toBeTruthy();
+    expect(container.querySelector("br")).toBeTruthy();
+    expect(container.querySelector("sup")).toBeTruthy();
+    expect(container.querySelector("sub")).toBeTruthy();
+    expect(container.querySelector("kbd")).toBeTruthy();
+  });
+});
+
+---
+
+## 📝 PreviewPanel.test.ts — ./components/PreviewPanel.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/components/PreviewPanel.test.ts
+ *
+ * Zweck:
+ * - Tests fuer PreviewPanel Markdown-Hilfslogik.
+ */
+
+import { describe, expect, it } from "vitest";
+import { applyInteractionSpacing } from "./PreviewPanel";
+
+describe("applyInteractionSpacing", () => {
+  it("preserves hard breaks and keeps markers on their own lines", () => {
+    const source = [
+      "#exam",
+      "1) Prompt line",
+      "a) Option A  ",
+      "b) Option B  ",
+      "-b",
+      "---",
+      "2) Inline markers -a #card final #",
+      "#examend",
+    ].join("\n");
+
+    const output = applyInteractionSpacing(source);
+    const lines = output.split("\n");
+
+    expect(lines).toContain("---");
+    expect(lines).toContain("-b");
+    expect(lines.some((line) => line.trim() === "#card")).toBe(true);
+    expect(lines.some((line) => line.trim() === "#")).toBe(true);
+
+    const promptLine = lines.find((line) => line.startsWith("1\\) Prompt line"));
+    expect(promptLine).toBe("1\\) Prompt line  ");
+
+    const optionLine = lines.find((line) => line.startsWith("a) Option A"));
+    expect(optionLine).toBe("a) Option A  ");
+
+    const inlineIndex = lines.findIndex((line) =>
+      line.startsWith("2\\) Inline markers"),
+    );
+    expect(inlineIndex).toBeGreaterThan(-1);
+    expect(lines[inlineIndex].endsWith("  ")).toBe(true);
+    expect(lines[inlineIndex + 1].trim()).toBe("-a");
+  });
+});
+
+---
+
 ## 📝 PreviewPanel.tsx — ./components/PreviewPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/PreviewPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Preview Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - PreviewPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 import {
   type FocusEvent,
@@ -1860,7 +3423,9 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { type LoadState } from "../lib/types";
@@ -1870,6 +3435,11 @@ const markdownSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames ?? []),
+    "br",
+    "kbd",
+    "span",
+    "sub",
+    "sup",
     "table",
     "thead",
     "tbody",
@@ -1883,8 +3453,47 @@ const markdownSchema = {
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
     th: [...(defaultSchema.attributes?.th ?? []), "align"],
     td: [...(defaultSchema.attributes?.td ?? []), "align"],
+    span: [...(defaultSchema.attributes?.span ?? []), "className"],
   },
 };
+
+const safeLinkProtocols = new Set(["http:", "https:", "mailto:"]);
+
+const resolveSafeHref = (href: string) => {
+  if (!href) {
+    return null;
+  }
+  try {
+    const parsed = new URL(href);
+    if (!safeLinkProtocols.has(parsed.protocol)) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+};
+
+const resolveEventElement = (target: EventTarget | null) => {
+  if (!target) {
+    return null;
+  }
+  if (target instanceof Element) {
+    return target;
+  }
+  if (target instanceof Node && target.parentElement) {
+    return target.parentElement;
+  }
+  return null;
+};
+
+const resolveAnchorTarget = (target: EventTarget | null) => {
+  const element = resolveEventElement(target);
+  return element?.closest("a[href]") as HTMLAnchorElement | null;
+};
+
+const isModifierClick = (event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlKey">) =>
+  event.metaKey || event.ctrlKey;
 
 type PreviewPanelProps = {
   editDraft: string;
@@ -1973,6 +3582,7 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
   let inLinkText = false;
   let inLinkUrl = false;
   let lineStart = true;
+  let escapeNext = false;
 
   const skipToLineEnd = () => {
     while (rawIndex < rawMarkdown.length && rawMarkdown[rawIndex] !== "\n") {
@@ -1983,7 +3593,7 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
   while (rawIndex < rawMarkdown.length) {
     const char = rawMarkdown[rawIndex];
 
-    if (lineStart && rawMarkdown.startsWith("```", rawIndex)) {
+    if (lineStart && !escapeNext && rawMarkdown.startsWith("```", rawIndex)) {
       inFence = !inFence;
       skipToLineEnd();
       continue;
@@ -1991,6 +3601,7 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
 
     if (char === "\n") {
       lineStart = true;
+      escapeNext = false;
       if (plainIndex >= plainOffset) {
         return rawIndex;
       }
@@ -1999,7 +3610,19 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
       continue;
     }
 
-    if (lineStart && !inFence) {
+    const isEscaped = escapeNext;
+    if (escapeNext) {
+      escapeNext = false;
+    }
+
+    if (!inFence && !isEscaped && char === "\\") {
+      lineStart = false;
+      escapeNext = true;
+      rawIndex += 1;
+      continue;
+    }
+
+    if (!isEscaped && lineStart && !inFence) {
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -2049,33 +3672,35 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
         rawIndex += 1;
         continue;
       }
-      if (char === "`") {
-        inInlineCode = !inInlineCode;
-        rawIndex += 1;
-        continue;
-      }
-      if (!inInlineCode && (char === "*" || char === "_")) {
-        rawIndex += 1;
-        continue;
-      }
-      if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
-        rawIndex += 1;
-        continue;
-      }
-      if (char === "[") {
-        inLinkText = true;
-        rawIndex += 1;
-        continue;
-      }
-      if (inLinkText && char === "]") {
-        inLinkText = false;
-        if (rawMarkdown[rawIndex + 1] === "(") {
-          inLinkUrl = true;
-          rawIndex += 2;
+      if (!isEscaped) {
+        if (char === "`") {
+          inInlineCode = !inInlineCode;
+          rawIndex += 1;
           continue;
         }
-        rawIndex += 1;
-        continue;
+        if (!inInlineCode && (char === "*" || char === "_")) {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "[") {
+          inLinkText = true;
+          rawIndex += 1;
+          continue;
+        }
+        if (inLinkText && char === "]") {
+          inLinkText = false;
+          if (rawMarkdown[rawIndex + 1] === "(") {
+            inLinkUrl = true;
+            rawIndex += 2;
+            continue;
+          }
+          rawIndex += 1;
+          continue;
+        }
       }
     }
 
@@ -2101,6 +3726,7 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
   let inLinkText = false;
   let inLinkUrl = false;
   let lineStart = true;
+  let escapeNext = false;
 
   const skipToLineEnd = () => {
     while (rawIndex < rawMarkdown.length && rawMarkdown[rawIndex] !== "\n") {
@@ -2111,7 +3737,7 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
   while (rawIndex < rawMarkdown.length && rawIndex < target) {
     const char = rawMarkdown[rawIndex];
 
-    if (lineStart && rawMarkdown.startsWith("```", rawIndex)) {
+    if (lineStart && !escapeNext && rawMarkdown.startsWith("```", rawIndex)) {
       inFence = !inFence;
       skipToLineEnd();
       continue;
@@ -2119,12 +3745,25 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
 
     if (char === "\n") {
       lineStart = true;
+      escapeNext = false;
       plainIndex += 1;
       rawIndex += 1;
       continue;
     }
 
-    if (lineStart && !inFence) {
+    const isEscaped = escapeNext;
+    if (escapeNext) {
+      escapeNext = false;
+    }
+
+    if (!inFence && !isEscaped && char === "\\") {
+      lineStart = false;
+      escapeNext = true;
+      rawIndex += 1;
+      continue;
+    }
+
+    if (!isEscaped && lineStart && !inFence) {
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -2174,33 +3813,35 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
         rawIndex += 1;
         continue;
       }
-      if (char === "`") {
-        inInlineCode = !inInlineCode;
-        rawIndex += 1;
-        continue;
-      }
-      if (!inInlineCode && (char === "*" || char === "_")) {
-        rawIndex += 1;
-        continue;
-      }
-      if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
-        rawIndex += 1;
-        continue;
-      }
-      if (char === "[") {
-        inLinkText = true;
-        rawIndex += 1;
-        continue;
-      }
-      if (inLinkText && char === "]") {
-        inLinkText = false;
-        if (rawMarkdown[rawIndex + 1] === "(") {
-          inLinkUrl = true;
-          rawIndex += 2;
+      if (!isEscaped) {
+        if (char === "`") {
+          inInlineCode = !inInlineCode;
+          rawIndex += 1;
           continue;
         }
-        rawIndex += 1;
-        continue;
+        if (!inInlineCode && (char === "*" || char === "_")) {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "[") {
+          inLinkText = true;
+          rawIndex += 1;
+          continue;
+        }
+        if (inLinkText && char === "]") {
+          inLinkText = false;
+          if (rawMarkdown[rawIndex + 1] === "(") {
+            inLinkUrl = true;
+            rawIndex += 2;
+            continue;
+          }
+          rawIndex += 1;
+          continue;
+        }
       }
     }
 
@@ -2277,14 +3918,19 @@ const setCaretAtPlainOffset = (container: HTMLElement, offset: number) => {
   selection.addRange(range);
 };
 
-const escapeMarkdownText = (text: string) =>
-  text
+const escapeMarkdownText = (text: string, escapePipes = true) => {
+  let next = text
     .replace(/\u00a0/g, " ")
     .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
     .replace(/\*/g, "\\*")
     .replace(/_/g, "\\_")
     .replace(/~/g, "\\~");
+  if (escapePipes) {
+    next = next.replace(/\|/g, "\\|");
+  }
+  return next.replace(/(^|[\n\r])([ \t]*)([#-])/g, "$1$2\\$3");
+};
 
 const escapeMarkdownLinkText = (text: string) =>
   text.replace(/\[/g, "\\[").replace(/]/g, "\\]");
@@ -2318,6 +3964,7 @@ const wrapCodeBlock = (text: string) => {
 
 type MarkdownSerializeContext = {
   listDepth: number;
+  escapePipes: boolean;
 };
 
 const serializeMarkdownChildren = (
@@ -2333,7 +3980,7 @@ const serializeMarkdownNode = (
   context: MarkdownSerializeContext,
 ): string => {
   if (node.nodeType === Node.TEXT_NODE) {
-    return escapeMarkdownText(node.nodeValue ?? "");
+    return escapeMarkdownText(node.nodeValue ?? "", context.escapePipes);
   }
   if (node.nodeType !== Node.ELEMENT_NODE) {
     return "";
@@ -2384,9 +4031,7 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "blockquote") {
-    const content = serializeMarkdownChildren(element, context)
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
+    const content = serializeMarkdownChildren(element, context).trim();
     const lines = content.split("\n");
     return `${lines.map((line) => (line ? `> ${line}` : ">")).join("\n")}\n\n`;
   }
@@ -2439,7 +4084,6 @@ const serializeMarkdownList = (
       ...context,
       listDepth: context.listDepth + 1,
     })
-      .replace(/\n{3,}/g, "\n\n")
       .trim();
     const marker = isOrdered ? `${index + itemIndex}. ` : "- ";
     const itemLines = content ? content.split("\n") : [""];
@@ -2483,15 +4127,17 @@ const serializeTableCell = (
   element: HTMLElement,
   context: MarkdownSerializeContext,
 ) => {
-  const text = serializeMarkdownChildren(element, context)
+  const text = serializeMarkdownChildren(element, {
+    ...context,
+    escapePipes: false,
+  })
     .replace(/\n+/g, " ")
     .trim();
   return escapeMarkdownTableCell(text);
 };
 
 const serializeMarkdownFromHtml = (container: HTMLElement) => {
-  const markdown = serializeMarkdownChildren(container, { listDepth: 0 });
-  return markdown.replace(/\n{3,}/g, "\n\n").trimEnd();
+  return serializeMarkdownChildren(container, { listDepth: 0, escapePipes: true });
 };
 
 const resolveRawCaretIndex = (container: HTMLElement, range: Range | null) => {
@@ -2516,6 +4162,200 @@ const resolveMarkdownCaretIndex = (
     return 0;
   }
   return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset);
+};
+
+const isInteractionMarkerLine = (line: string) => {
+  const trimmed = line.trim().toLowerCase();
+  return trimmed === "-true" ||
+    trimmed === "-false" ||
+    (trimmed.length === 2 &&
+      trimmed[0] === "-" &&
+      trimmed[1] >= "a" &&
+      trimmed[1] <= "d");
+};
+
+const isExamTaskStartLine = (line: string) => {
+  let trimmed = line.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  if (trimmed.startsWith("**")) {
+    trimmed = trimmed.slice(2).trimStart();
+  }
+
+  if (trimmed.startsWith("-")) {
+    trimmed = trimmed.slice(1);
+  }
+
+  const numberMatch = trimmed.match(/^(\d+)/);
+  if (!numberMatch) {
+    return false;
+  }
+
+  const numberRaw = numberMatch[1] ?? "";
+  if (numberRaw.length > 1 && numberRaw.startsWith("0")) {
+    return false;
+  }
+
+  const number = Number.parseInt(numberRaw, 10);
+  if (number < 1 || number > 20) {
+    return false;
+  }
+
+  let remainder = trimmed.slice(numberRaw.length);
+  if (remainder.startsWith(")")) {
+    remainder = remainder.slice(1);
+  }
+  if (remainder.startsWith("**")) {
+    remainder = remainder.slice(2);
+  }
+
+  return remainder.length === 0 || /^\s/.test(remainder);
+};
+
+const isExamOptionLine = (line: string) =>
+  /^[a-d]\)\s+\S/i.test(line.trim());
+
+// Keep exam task numbering like "1)" editable by avoiding ordered-list parsing.
+const escapeExamTaskListMarker = (line: string) => {
+  if (!isExamTaskStartLine(line)) {
+    return line;
+  }
+  const match = line.match(/^(\s*)(\d+)\)/);
+  if (!match) {
+    return line;
+  }
+  return `${match[1]}${match[2]}\\)${line.slice(match[0].length)}`;
+};
+
+const shouldExpandInlineExamLine = (line: string) => {
+  const lowered = line.toLowerCase();
+  return lowered.includes("#card") ||
+    /\s-[a-d]\b/.test(lowered) ||
+    /\s-(true|false)\b/.test(lowered) ||
+    /\b[a-d]\)\s+\S/.test(lowered);
+};
+
+const ensureHardBreakSpacing = (value: string) => {
+  if (!value) {
+    return value;
+  }
+  const match = value.match(/[ \t]+$/);
+  const trailingLength = match ? match[0].length : 0;
+  if (trailingLength >= 2) {
+    return value;
+  }
+  return `${value}${" ".repeat(2 - trailingLength)}`;
+};
+
+const splitExpandedExamLine = (expanded: string) => {
+  const parts = expanded.split("\n");
+  if (parts.length <= 1) {
+    return parts;
+  }
+  return parts.map((part, index) => {
+    if (index === parts.length - 1 || part === "") {
+      return part;
+    }
+    return ensureHardBreakSpacing(part);
+  });
+};
+
+const expandInlineExamLine = (line: string) => {
+  if (!line || !shouldExpandInlineExamLine(line)) {
+    return [line];
+  }
+
+  let expanded = line;
+  expanded = expanded.replace(/\s*#card\s*/gi, "\n#card\n");
+  expanded = expanded.replace(/\s-((?:true|false)|[a-d])\b/gi, "\n-$1");
+  expanded = expanded.replace(/\s([a-d]\))\s*/gi, "\n$1 ");
+  if (expanded.toLowerCase().includes("#card")) {
+    expanded = expanded.replace(/\s#(?![A-Za-z0-9_])\s*/g, "\n#\n");
+  }
+
+  return splitExpandedExamLine(expanded);
+};
+
+export const applyInteractionSpacing = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+  // Preserve hard breaks and marker lines because exam/flashcard parsing is line-based.
+  const sourceLines = markdown.split("\n");
+  const expandedLines: string[] = [];
+  let inCodeFence = false;
+
+  for (let i = 0; i < sourceLines.length; i += 1) {
+    const line = sourceLines[i] ?? "";
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      expandedLines.push(line);
+      continue;
+    }
+    if (inCodeFence) {
+      expandedLines.push(line);
+      continue;
+    }
+    expandedLines.push(...expandInlineExamLine(line));
+  }
+
+  const result: string[] = [];
+  inCodeFence = false;
+
+  for (let i = 0; i < expandedLines.length; i += 1) {
+    const line = expandedLines[i] ?? "";
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      result.push(line);
+      continue;
+    }
+
+    result.push(line);
+    if (inCodeFence || !isInteractionMarkerLine(trimmed)) {
+      continue;
+    }
+
+    const nextLine = expandedLines[i + 1] ?? "";
+    const nextTrimmed = nextLine.trim();
+    if (nextTrimmed === "" || isInteractionMarkerLine(nextTrimmed)) {
+      continue;
+    }
+    result.push("");
+  }
+
+  const normalized: string[] = [];
+  inCodeFence = false;
+
+  for (let i = 0; i < result.length; i += 1) {
+    const line = result[i] ?? "";
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      normalized.push(line);
+      continue;
+    }
+    if (inCodeFence) {
+      normalized.push(line);
+      continue;
+    }
+
+    let nextLine = line;
+    if (trimmed) {
+      if (isExamTaskStartLine(nextLine)) {
+        nextLine = escapeExamTaskListMarker(nextLine);
+        nextLine = ensureHardBreakSpacing(nextLine);
+      } else if (isExamOptionLine(nextLine)) {
+        nextLine = ensureHardBreakSpacing(nextLine);
+      }
+    }
+    normalized.push(nextLine);
+  }
+
+  return normalized.join("\n");
 };
 
 export const PreviewPanel = ({
@@ -2628,6 +4468,31 @@ export const PreviewPanel = ({
     return () => window.cancelAnimationFrame(handle);
   }, [editCaretIndex, editDraft, isEditing, onEditCaretApplied, rawPreview]);
 
+  const handlePreviewLinkClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const link = resolveAnchorTarget(event.target);
+      if (!link) {
+        return;
+      }
+      const href = link.getAttribute("href")?.trim() ?? "";
+      if (event.button !== 0) {
+        event.preventDefault();
+        return;
+      }
+      if (isModifierClick(event)) {
+        const safeHref = resolveSafeHref(href);
+        if (safeHref) {
+          event.preventDefault();
+          event.stopPropagation();
+          void openUrl(safeHref);
+          return;
+        }
+      }
+      event.preventDefault();
+    },
+    [],
+  );
+
   const handlePreviewClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       if (!canEdit || isEditing) {
@@ -2635,6 +4500,15 @@ export const PreviewPanel = ({
       }
       if (event.button !== 0) {
         return;
+      }
+      if (isModifierClick(event)) {
+        const link = resolveAnchorTarget(event.target);
+        const safeHref = link
+          ? resolveSafeHref(link.getAttribute("href")?.trim() ?? "")
+          : null;
+        if (safeHref) {
+          return;
+        }
       }
       const origin = rawPreview ? "raw" : "markdown";
       let caretIndex = preview.length === 0 ? 0 : null;
@@ -2711,11 +4585,13 @@ export const PreviewPanel = ({
     onEditChange(nextValue);
   }, [onEditChange]);
 
+  const renderedPreview = rawPreview ? preview : applyInteractionSpacing(preview);
+
   return (
     <section className="panel preview-panel">
       <div className="panel-header">
         <div>
-          <h2>Vorschau</h2>
+          <h2>Preview</h2>
           <p className="muted">
             {selectedFile?.relative_path ?? "Keine Datei ausgewaehlt"}
           </p>
@@ -2737,7 +4613,12 @@ export const PreviewPanel = ({
         {previewState === "error" ? (
           <div className="error">{previewError}</div>
         ) : null}
-        <div className="preview-content" onMouseUp={handlePreviewClick}>
+        <div
+          className="preview-content"
+          onClick={handlePreviewLinkClick}
+          onAuxClick={handlePreviewLinkClick}
+          onMouseUp={handlePreviewClick}
+        >
           {isEditing ? (
             rawPreview ? (
               <textarea
@@ -2777,16 +4658,19 @@ export const PreviewPanel = ({
               ) : (
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+                  rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
                   components={{
                     table: ({ node: _node, ...props }) => (
                       <div className="markdown-table">
                         <table {...props} />
                       </div>
                     ),
+                    img: ({ node: _node, ...props }) => (
+                      <img {...props} draggable={false} />
+                    ),
                   }}
                 >
-                  {preview}
+                  {renderedPreview}
                 </ReactMarkdown>
               )}
             </div>
@@ -2806,23 +4690,37 @@ export const PreviewPanel = ({
 
 ## 📝 AppearanceSection.tsx — ./components/settings/AppearanceSection.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/settings/AppearanceSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Appearance Section.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/theme.ts: Typen.
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - AppearanceSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { type ThemeMode } from "../../lib/theme";
 
 type AppearanceSectionProps = {
   accentColor: string;
   accentDraft: string;
   accentError: string;
-  editorExactColors: boolean;
-  editorBlueprintGrid: boolean;
-  editorBlueprintGridIntensity: "light" | "medium" | "strong";
   onAccentInputChange: (value: string) => void;
   onAccentPick: (value: string) => void;
   onCopyAccent: () => void;
-  onEditorExactColorsToggle: (value: boolean) => void;
-  onEditorBlueprintGridToggle: (value: boolean) => void;
-  onEditorBlueprintGridIntensityChange: (
-    value: "light" | "medium" | "strong",
-  ) => void;
   onThemeToggle: (nextTheme: ThemeMode) => void;
   theme: ThemeMode;
 };
@@ -2835,25 +4733,14 @@ const ACCENT_PALETTE = [
   "#D97706",
   "#DC2626",
 ];
-const GRID_INTENSITY_OPTIONS: Array<"light" | "medium" | "strong"> = [
-  "light",
-  "medium",
-  "strong",
-];
 
 export const AppearanceSection = ({
   accentColor,
   accentDraft,
   accentError,
-  editorExactColors,
-  editorBlueprintGrid,
-  editorBlueprintGridIntensity,
   onAccentInputChange,
   onAccentPick,
   onCopyAccent,
-  onEditorExactColorsToggle,
-  onEditorBlueprintGridToggle,
-  onEditorBlueprintGridIntensityChange,
   onThemeToggle,
   theme,
 }: AppearanceSectionProps) => (
@@ -2862,133 +4749,67 @@ export const AppearanceSection = ({
     <p className="muted">
       Theme und Akzentfarbe praegen die Oberflaeche und bleiben gespeichert.
     </p>
-    <div className="appearance-layout">
-      <div className="appearance-main">
-        <div className="setting-row">
-          <span className="label">Theme</span>
-          <div className="theme-toggle">
-            <span className="toggle-label">Hell</span>
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={theme === "dark"}
-                onChange={(event) =>
-                  onThemeToggle(event.target.checked ? "dark" : "light")
-                }
-                aria-label="Theme umschalten"
-              />
-              <span className="slider" />
-            </label>
-            <span className="toggle-label">Dunkel</span>
-          </div>
-          <span className="helper-text">
-            Wechselt Hintergrund, Kontrast und Panels.
-          </span>
-        </div>
-        <div className="setting-row">
-          <span className="label">Akzentfarbe</span>
-          <div className="accent-controls">
+    <div className="appearance-main">
+      <div className="setting-row">
+        <span className="label">Theme</span>
+        <div className="theme-toggle">
+          <span className="toggle-label">Hell</span>
+          <label className="switch">
             <input
-              type="color"
-              className="color-wheel"
-              value={accentColor}
-              onChange={(event) => onAccentPick(event.target.value)}
-              aria-label="Akzentfarbe auswaehlen"
+              type="checkbox"
+              checked={theme === "dark"}
+              onChange={(event) =>
+                onThemeToggle(event.target.checked ? "dark" : "light")
+              }
+              aria-label="Theme umschalten"
             />
-            <div className="accent-palette">
-              {ACCENT_PALETTE.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`accent-swatch ${
-                    accentColor === color ? "active" : ""
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => onAccentPick(color)}
-                  aria-label={`Akzentfarbe ${color}`}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="accent-hex">
-            <input
-              type="text"
-              className="hex-input"
-              value={accentDraft}
-              onChange={(event) => onAccentInputChange(event.target.value)}
-              placeholder="#RRGGBB"
-              aria-label="Akzentfarbe als HEX"
-            />
-            <button type="button" className="ghost small" onClick={onCopyAccent}>
-              Kopieren
-            </button>
-          </div>
-          <span className={`helper-text ${accentError ? "error-text" : ""}`}>
-            {accentError || "HEX Wert der Akzentfarbe (#RRGGBB)."}
-          </span>
+            <span className="slider" />
+          </label>
+          <span className="toggle-label">Dunkel</span>
         </div>
+        <span className="helper-text">
+          Wechselt Hintergrund, Kontrast und Panels.
+        </span>
       </div>
-      <div className="appearance-editor-panel">
-        <header className="appearance-editor-header">
-          <h3>Markdown Editor</h3>
-        </header>
-        <div className="setting-row">
-          <span className="label">EXACT COLORS (MARKDOWN EDITOR)</span>
-          <div className="theme-toggle">
-            <span className="toggle-label">Off</span>
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={editorExactColors}
-                onChange={(event) =>
-                  onEditorExactColorsToggle(event.target.checked)
-                }
-                aria-label="Exact markdown editor colors"
+      <div className="setting-row">
+        <span className="label">Akzentfarbe</span>
+        <div className="accent-controls">
+          <input
+            type="color"
+            className="color-wheel"
+            value={accentColor}
+            onChange={(event) => onAccentPick(event.target.value)}
+            aria-label="Akzentfarbe auswaehlen"
+          />
+          <div className="accent-palette">
+            {ACCENT_PALETTE.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`accent-swatch ${accentColor === color ? "active" : ""}`}
+                style={{ backgroundColor: color }}
+                onClick={() => onAccentPick(color)}
+                aria-label={`Akzentfarbe ${color}`}
               />
-              <span className="slider" />
-            </label>
-            <span className="toggle-label">On</span>
+            ))}
           </div>
         </div>
-        <div className="setting-row">
-          <span className="label">BLUEPRINT GRID (MARKDOWN EDITOR)</span>
-          <div className="appearance-editor-inline">
-            <div className="theme-toggle">
-              <span className="toggle-label">Off</span>
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  checked={editorBlueprintGrid}
-                  onChange={(event) =>
-                    onEditorBlueprintGridToggle(event.target.checked)
-                  }
-                  aria-label="Blueprint grid for markdown editor"
-                />
-                <span className="slider" />
-              </label>
-              <span className="toggle-label">On</span>
-            </div>
-            <div className="appearance-grid-intensity">
-              <span className="toggle-label">Intensity</span>
-              <div className="pill-grid">
-                {GRID_INTENSITY_OPTIONS.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={`pill pill-button ${
-                      editorBlueprintGridIntensity === option ? "active" : ""
-                    }`}
-                    aria-pressed={editorBlueprintGridIntensity === option}
-                    onClick={() => onEditorBlueprintGridIntensityChange(option)}
-                  >
-                    {option.charAt(0).toUpperCase()}
-                    {option.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+        <div className="accent-hex">
+          <input
+            type="text"
+            className="hex-input"
+            value={accentDraft}
+            onChange={(event) => onAccentInputChange(event.target.value)}
+            placeholder="#RRGGBB"
+            aria-label="Akzentfarbe als HEX"
+          />
+          <button type="button" className="ghost small" onClick={onCopyAccent}>
+            Kopieren
+          </button>
         </div>
+        <span className={`helper-text ${accentError ? "error-text" : ""}`}>
+          {accentError || "HEX Wert der Akzentfarbe (#RRGGBB)."}
+        </span>
       </div>
     </div>
   </section>
@@ -2997,6 +4818,33 @@ export const AppearanceSection = ({
 ---
 
 ## 📝 DataSyncTabContent.tsx — ./components/settings/DataSyncTabContent.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/settings/DataSyncTabContent.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Data Sync Tab Content.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/settings/VaultIndexSection.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - DataSyncTabContent: React-Komponente.
+ * - LanguageTabContent: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useEffect, useState } from "react";
+import type { UserVaultImportStrategy } from "../../lib/userVault";
+import type { UserVaultState } from "../../features/user-vault/useUserVault";
 
 type AppLanguage = "de" | "en";
 
@@ -3018,42 +4866,236 @@ const LANGUAGE_LABELS: Record<
   },
 };
 
-export const DataSyncTabContent = () => (
-  <>
-    <div className="setting-row">
-      <span className="label">Local storage path</span>
-      <input
-        type="text"
-        className="text-input"
-        value="—"
-        disabled
-        aria-label="Local storage path"
-      />
-    </div>
-    <div className="setting-row">
-      <span className="label">Export / Import (JSON)</span>
-      <div className="setting-actions">
-        <button type="button" className="ghost small" disabled>
-          Export JSON
-        </button>
-        <button type="button" className="ghost small" disabled>
-          Import JSON
-        </button>
+type DataSyncTabContentProps = {
+  userVault: UserVaultState;
+};
+
+export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
+  const [newProfileName, setNewProfileName] = useState("");
+  const [selectedProfileId, setSelectedProfileId] = useState("");
+  const [importStrategy, setImportStrategy] =
+    useState<UserVaultImportStrategy>("merge");
+  const isCustomMode = userVault.mode === "custom";
+  const canManageVault = Boolean(userVault.resolvedPath);
+  const canManageProfiles = canManageVault && userVault.profiles.length > 0;
+  const canExportActive = canManageVault && Boolean(userVault.activeProfileId);
+
+  useEffect(() => {
+    if (userVault.activeProfileId) {
+      setSelectedProfileId(userVault.activeProfileId);
+      return;
+    }
+    setSelectedProfileId("");
+  }, [userVault.activeProfileId]);
+
+  const handleCreateProfile = async () => {
+    if (!newProfileName.trim()) {
+      return;
+    }
+    await userVault.handleCreateProfile(newProfileName);
+    setNewProfileName("");
+  };
+
+  const handleLoadProfile = async () => {
+    if (!selectedProfileId) {
+      return;
+    }
+    await userVault.handleSelectProfile(selectedProfileId);
+  };
+
+  const handleExportActive = async () => {
+    await userVault.handleExport("active");
+  };
+
+  const handleExportAll = async () => {
+    await userVault.handleExport("all");
+  };
+
+  const handleImport = async () => {
+    await userVault.handleImport(importStrategy);
+  };
+
+  return (
+    <>
+      <div className="setting-row">
+        <span className="label">User Vault Mode</span>
+        <div className="pill-grid">
+          <button
+            type="button"
+            className={`pill pill-button ${userVault.mode === "auto" ? "active" : ""}`}
+            aria-pressed={userVault.mode === "auto"}
+            onClick={() => userVault.handleModeChange("auto")}
+          >
+            Auto (Vault/user)
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${userVault.mode === "custom" ? "active" : ""}`}
+            aria-pressed={userVault.mode === "custom"}
+            onClick={() => userVault.handleModeChange("custom")}
+          >
+            Custom path
+          </button>
+          <button type="button" className="pill pill-button" disabled>
+            Sync provider
+          </button>
+        </div>
+        <span className="helper-text">
+          Auto uses the current vault path. Custom stays fixed across vault switches.
+        </span>
       </div>
-      <span className="helper-text">Coming later.</span>
-    </div>
-    <div className="setting-row">
-      <span className="label">Sync provider</span>
-      <input
-        type="text"
-        className="text-input"
-        value="Coming later."
-        disabled
-        aria-label="Sync provider"
-      />
-    </div>
-  </>
-);
+      <div className="setting-row">
+        <span className="label">Active path</span>
+        <div className="setting-inline">
+          <span className="value path-value">{userVault.resolvedPath ?? "—"}</span>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={userVault.handlePickCustomPath}
+            disabled={!isCustomMode || userVault.isBusy}
+          >
+            Change
+          </button>
+        </div>
+        <span className="helper-text">
+          {isCustomMode
+            ? "Pick a folder outside the vault if you prefer."
+            : "Set a vault to enable Auto mode."}
+        </span>
+      </div>
+      <div className="setting-row">
+        <span className="label">Profiles</span>
+        <div className="status-list">
+          <div className="status-row">
+            <span className="value">Found profiles: {userVault.profiles.length}</span>
+            <span className="value">
+              Active profile: {userVault.activeProfile?.name ?? "—"}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">Create profile</span>
+        <div className="setting-inline">
+          <input
+            type="text"
+            className="text-input"
+            value={newProfileName}
+            onChange={(event) => setNewProfileName(event.target.value)}
+            placeholder="Profile name"
+            aria-label="Profile name"
+            disabled={!canManageVault || userVault.isBusy}
+          />
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleCreateProfile}
+            disabled={!canManageVault || userVault.isBusy || !newProfileName.trim()}
+          >
+            Create
+          </button>
+        </div>
+        <span className="helper-text">Date is added automatically.</span>
+      </div>
+      <div className="setting-row">
+        <span className="label">Load profile</span>
+        <div className="setting-inline">
+          <select
+            className="text-input"
+            value={selectedProfileId}
+            onChange={(event) => setSelectedProfileId(event.target.value)}
+            disabled={!canManageProfiles || userVault.isBusy}
+            aria-label="Select profile"
+          >
+            <option value="" disabled>
+              Select profile
+            </option>
+            {userVault.profiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleLoadProfile}
+            disabled={
+              !canManageProfiles ||
+              userVault.isBusy ||
+              !selectedProfileId ||
+              selectedProfileId === userVault.activeProfileId
+            }
+          >
+            Load
+          </button>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">Export / Import (JSON)</span>
+        <div className="setting-actions">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleExportActive}
+            disabled={!canExportActive || userVault.isBusy}
+          >
+            Export profile
+          </button>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleExportAll}
+            disabled={!canManageProfiles || userVault.isBusy}
+          >
+            Export all profiles
+          </button>
+        </div>
+        <div className="setting-inline">
+          <select
+            className="text-input"
+            value={importStrategy}
+            onChange={(event) =>
+              setImportStrategy(event.target.value as UserVaultImportStrategy)
+            }
+            disabled={!canExportActive || userVault.isBusy}
+            aria-label="Import strategy"
+          >
+            <option value="merge">Merge</option>
+            <option value="overwrite">Overwrite</option>
+          </select>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleImport}
+            disabled={!canExportActive || userVault.isBusy}
+          >
+            Import JSON
+          </button>
+        </div>
+        <span className="helper-text">
+          Merge keeps existing entries and adds new ones. Overwrite replaces data.
+        </span>
+      </div>
+      <div className="setting-row">
+        <span className="label">Sync provider</span>
+        <input
+          type="text"
+          className="text-input"
+          value="Coming later."
+          disabled
+          aria-label="Sync provider"
+        />
+      </div>
+      {userVault.error ? (
+        <div className="setting-row">
+          <span className="label">Status</span>
+          <span className="helper-text">{userVault.error}</span>
+        </div>
+      ) : null}
+    </>
+  );
+};
 
 type LanguageTabContentProps = {
   language: AppLanguage;
@@ -3098,17 +5140,53 @@ export const LanguageTabContent = ({
 
 ## 📝 ExamSettingsSection.tsx — ./components/settings/ExamSettingsSection.tsx
 
-import { useMemo } from "react";
+/**
+ * @file apps/fmd-desktop/src/components/settings/ExamSettingsSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Exam Settings Section.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Typen.
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - ExamSettingsSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useMemo, useRef } from "react";
 import type { ExamAiEvaluation } from "../../features/settings/useAppSettings";
 
 type ExamSettingsSectionProps = {
   maxTotalPoints: number;
   taskCount: number;
   taskPoints: number[];
+  durationMinutes: number;
+  timeLimitEnabled: boolean;
+  showTimeline: boolean;
+  helpEnabled: boolean;
+  autoCardsEnabled: boolean;
+  autoCardsReturnOnCorrect: boolean;
   aiEvaluation: ExamAiEvaluation;
+  resetStatisticsPending?: boolean;
   setMaxTotalPoints: (value: number) => void;
   setTaskCount: (value: number) => void;
   setTaskPoints: (value: number[]) => void;
+  setDurationMinutes: (value: number) => void;
+  setTimeLimitEnabled: (value: boolean) => void;
+  setShowTimeline: (value: boolean) => void;
+  setHelpEnabled: (value: boolean) => void;
+  setAutoCardsEnabled: (value: boolean) => void;
+  setAutoCardsReturnOnCorrect: (value: boolean) => void;
+  onResetStatistics: () => void;
 };
 
 const clampInput = (value: string) => {
@@ -3123,10 +5201,24 @@ export const ExamSettingsSection = ({
   maxTotalPoints,
   taskCount,
   taskPoints,
+  durationMinutes,
+  timeLimitEnabled,
+  showTimeline,
+  helpEnabled,
+  autoCardsEnabled,
+  autoCardsReturnOnCorrect,
   aiEvaluation,
+  resetStatisticsPending,
   setMaxTotalPoints,
   setTaskCount,
   setTaskPoints,
+  setDurationMinutes,
+  setTimeLimitEnabled,
+  setShowTimeline,
+  setHelpEnabled,
+  setAutoCardsEnabled,
+  setAutoCardsReturnOnCorrect,
+  onResetStatistics,
 }: ExamSettingsSectionProps) => {
   const sumAssigned = useMemo(
     () => taskPoints.reduce((sum, value) => sum + value, 0),
@@ -3134,94 +5226,246 @@ export const ExamSettingsSection = ({
   );
   const remaining = maxTotalPoints - sumAssigned;
   const isValid = sumAssigned === maxTotalPoints;
+  const lastDurationRef = useRef<number>(durationMinutes > 0 ? durationMinutes : 30);
 
   const handleTaskPointChange = (index: number, value: string) => {
     const nextPoints = [...taskPoints];
     nextPoints[index] = clampInput(value);
     setTaskPoints(nextPoints);
   };
-
+  const handleDurationChange = (value: string) => {
+    const parsed = clampInput(value);
+    const clamped = Math.min(240, Math.max(0, parsed));
+    if (clamped > 0) {
+      lastDurationRef.current = clamped;
+    }
+    setDurationMinutes(clamped);
+  };
   return (
-    <section className="panel exam-settings-panel">
-      <div className="panel-header">
-        <div>
-          <h2>Exam Settings</h2>
-          <p className="muted">Define the max score and task point allocation.</p>
+    <div className="exam-settings-layout">
+      <section className="panel exam-settings-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Exam Settings</h2>
+            <p className="muted">Define the max score and task point allocation.</p>
+          </div>
         </div>
-      </div>
-      <div className="panel-body">
-        <div className="exam-settings-grid">
-          <label className="setting-inline">
-            <span className="label">MAX TOTAL POINTS</span>
-            <input
-              type="number"
-              min={0}
-              className="text-input exam-compact-input"
-              value={maxTotalPoints}
-              onChange={(event) => setMaxTotalPoints(clampInput(event.target.value))}
-            />
-          </label>
-          <label className="setting-inline">
-            <span className="label">NUMBER OF TASKS</span>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              className="text-input exam-compact-input"
-              value={taskCount}
-              onChange={(event) => setTaskCount(clampInput(event.target.value))}
-            />
-          </label>
-        </div>
-
-        <div className="exam-points-table">
-          {taskPoints.map((points, index) => (
-            <div key={`exam-task-point-${index}`} className="exam-points-row">
-              <span className="label">Task {index + 1}</span>
+        <div className="panel-body">
+          <div className="exam-settings-grid">
+            <label className="setting-inline">
+              <span className="label">MAX TOTAL POINTS</span>
               <input
                 type="number"
                 min={0}
                 className="text-input exam-compact-input"
-                value={points}
-                onChange={(event) => handleTaskPointChange(index, event.target.value)}
+                value={maxTotalPoints}
+                onChange={(event) => setMaxTotalPoints(clampInput(event.target.value))}
               />
-            </div>
-          ))}
-        </div>
-
-        <div className="exam-settings-summary">
-          <div className="muted">
-            Sum assigned: {sumAssigned} / Max total: {maxTotalPoints}
-          </div>
-          <div className="muted">Remaining: {remaining}</div>
-        </div>
-
-        <div className="setting-row">
-          <span className="label">AI EVALUATION</span>
-          <div className="setting-inline">
-            <label className="switch">
-              <input type="checkbox" checked={aiEvaluation.enabled} disabled />
-              <span className="slider" />
             </label>
-            <span className="muted">
-              Coming soon{aiEvaluation.provider ? ` (provider: ${aiEvaluation.provider})` : ""}.
-            </span>
+            <label className="setting-inline">
+              <span className="label">NUMBER OF TASKS</span>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                className="text-input exam-compact-input"
+                value={taskCount}
+                onChange={(event) => setTaskCount(clampInput(event.target.value))}
+              />
+            </label>
+            <label className="setting-inline">
+              <span className="label">DURATION</span>
+              <div className="exam-time-input">
+                <input
+                  type="number"
+                  min={0}
+                  max={240}
+                  className="text-input exam-compact-input"
+                  value={durationMinutes}
+                  onChange={(event) => handleDurationChange(event.target.value)}
+                />
+                <span className="muted">min</span>
+              </div>
+            </label>
+          </div>
+
+          <div className="exam-points-table">
+            {taskPoints.map((points, index) => (
+              <div key={`exam-task-point-${index}`} className="exam-points-row">
+                <span className="label">Task {index + 1}</span>
+                <input
+                  type="number"
+                  min={0}
+                  className="text-input exam-compact-input"
+                  value={points}
+                  onChange={(event) => handleTaskPointChange(index, event.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="exam-settings-summary">
+            <div className="muted">
+              Sum assigned: {sumAssigned} / Max total: {maxTotalPoints}
+            </div>
+            <div className="muted">Remaining: {remaining}</div>
+          </div>
+
+          <div className="exam-settings-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onResetStatistics}
+              disabled={resetStatisticsPending}
+            >
+              Reset Statistics
+            </button>
+          </div>
+
+          {!isValid ? (
+            <div className="error">
+              Assigned points must match the max total before starting an exam.
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="panel exam-settings-toggles-panel">
+        <div className="panel-header">
+          <div>
+            <h2>Exam Toggles</h2>
           </div>
         </div>
-
-        {!isValid ? (
-          <div className="error">
-            Assigned points must match the max total before starting an exam.
+        <div className="panel-body">
+          <div className="setting-row">
+            <span className="label">TIME LIMIT</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={timeLimitEnabled}
+                  onChange={(event) => {
+                    const nextEnabled = event.target.checked;
+                    setTimeLimitEnabled(nextEnabled);
+                    if (nextEnabled && durationMinutes === 0) {
+                      const nextDuration =
+                        lastDurationRef.current > 0 ? lastDurationRef.current : 30;
+                      setDurationMinutes(nextDuration);
+                    }
+                  }}
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">
+                {timeLimitEnabled ? "Enabled" : "Disabled"}
+              </span>
+            </div>
           </div>
-        ) : null}
-      </div>
-    </section>
+          <div className="setting-row">
+            <span className="label">TIMELINE</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={showTimeline}
+                  onChange={(event) => setShowTimeline(event.target.checked)}
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">
+                {showTimeline ? "Shown" : "Hidden"}
+              </span>
+            </div>
+          </div>
+          <div className="setting-row">
+            <span className="label">HELP / HINTS</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={helpEnabled}
+                  onChange={(event) => setHelpEnabled(event.target.checked)}
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">
+                {helpEnabled ? "Enabled" : "Disabled"}
+              </span>
+            </div>
+          </div>
+
+          <div className="setting-row">
+            <span className="label">AUTO CARDS</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={autoCardsEnabled}
+                  onChange={(event) => setAutoCardsEnabled(event.target.checked)}
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">Auto add cards after grading.</span>
+            </div>
+          </div>
+          <div className="setting-row">
+            <span className="label">RETURN CARD</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={autoCardsReturnOnCorrect}
+                  onChange={(event) =>
+                    setAutoCardsReturnOnCorrect(event.target.checked)
+                  }
+                />
+                <span className="slider" />
+              </label>
+              <span className="muted">Remove cards again when correct.</span>
+            </div>
+          </div>
+
+          <div className="setting-row">
+            <span className="label">AI EVALUATION</span>
+            <div className="setting-inline">
+              <label className="switch">
+                <input type="checkbox" checked={aiEvaluation.enabled} disabled />
+                <span className="slider" />
+              </label>
+              <span className="muted">Coming soon.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 };
 
 ---
 
 ## 📝 FastFlashcardToolsSettings.tsx — ./components/settings/FastFlashcardToolsSettings.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/settings/FastFlashcardToolsSettings.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Fast Flashcard Tools Settings.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastToolsPanel.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FastFlashcardToolsSettings: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 import { type FlashcardMode, type FlashcardOrder, type FlashcardScope } from "../../features/flashcards/useFlashcards";
 
@@ -3336,6 +5580,28 @@ export const FastFlashcardToolsSettings = ({
 
 ## 📝 FlashcardsSettingsSection.tsx — ./components/settings/FlashcardsSettingsSection.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/settings/FlashcardsSettingsSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Flashcards Settings Section.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FlashcardsSettingsSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import type {
   FlashcardMode,
   FlashcardOrder,
@@ -3356,6 +5622,8 @@ type FlashcardsSettingsSectionProps = {
   setFlashcardScope: (value: FlashcardScope) => void;
   setStatsResetMode: (value: StatsResetMode) => void;
   statsResetMode: StatsResetMode;
+  helpEnabled: boolean;
+  setHelpEnabled: (value: boolean) => void;
 };
 
 export const FlashcardsSettingsSection = ({
@@ -3370,6 +5638,8 @@ export const FlashcardsSettingsSection = ({
   setFlashcardScope,
   setStatsResetMode,
   statsResetMode,
+  helpEnabled,
+  setHelpEnabled,
 }: FlashcardsSettingsSectionProps) => (
   <section className="panel settings-flashcards-panel">
     <div className="panel-header">
@@ -3483,6 +5753,575 @@ export const FlashcardsSettingsSection = ({
           </button>
         </div>
       </div>
+      <div className="setting-row">
+        <span className="label">HELP / HINTS</span>
+        <div className="setting-inline">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={helpEnabled}
+              onChange={(event) => setHelpEnabled(event.target.checked)}
+            />
+            <span className="slider" />
+          </label>
+          <span className="muted">{helpEnabled ? "Enabled" : "Disabled"}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+---
+
+## 📝 KeyboardShortcutsSection.tsx — ./components/settings/KeyboardShortcutsSection.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/settings/KeyboardShortcutsSection.tsx
+ *
+ * Zweck:
+ * - Rendert die Keyboard Shortcuts Settings Seite.
+ *
+ * Verantwortlichkeiten:
+ * - Auflisten, Filtern und Rebinding von Shortcuts.
+ * - Konflikte erkennen und Speichern blockieren.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  detectShortcutConflicts,
+  eventToBinding,
+  formatBinding,
+  getDefaultBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  normalizeBinding,
+  type KeyboardShortcutSettings,
+} from "../../lib/shortcuts/bindings";
+import {
+  SHORTCUT_COMMANDS,
+  SHORTCUT_CONTEXTS,
+  type ShortcutCommand,
+  type ShortcutContextId,
+} from "../../lib/shortcuts/registry";
+
+type KeyboardShortcutsSectionProps = {
+  keyboardShortcuts: KeyboardShortcutSettings;
+  setKeyboardShortcuts: (settings: KeyboardShortcutSettings) => void;
+};
+
+const buildRowId = (commandId: string) =>
+  `shortcut-row-${commandId.replace(/[^a-z0-9_-]/gi, "-")}`;
+
+const areBindingsEqual = (
+  left: KeyboardShortcutSettings["bindings"],
+  right: KeyboardShortcutSettings["bindings"],
+) => {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+  return leftKeys.every((key) => left[key] === right[key]);
+};
+
+export const KeyboardShortcutsSection = ({
+  keyboardShortcuts,
+  setKeyboardShortcuts,
+}: KeyboardShortcutsSectionProps) => {
+  const platform = getShortcutPlatform();
+  const [draftShortcuts, setDraftShortcuts] =
+    useState<KeyboardShortcutSettings>(keyboardShortcuts);
+  const [editingCommandId, setEditingCommandId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [contextFilter, setContextFilter] =
+    useState<ShortcutContextId | "all">("all");
+
+  const commandById = useMemo(() => {
+    return new Map(SHORTCUT_COMMANDS.map((command) => [command.id, command]));
+  }, []);
+
+  const hasChanges = useMemo(
+    () => !areBindingsEqual(draftShortcuts.bindings, keyboardShortcuts.bindings),
+    [draftShortcuts.bindings, keyboardShortcuts.bindings],
+  );
+
+  useEffect(() => {
+    if (!hasChanges) {
+      setDraftShortcuts(keyboardShortcuts);
+    }
+  }, [hasChanges, keyboardShortcuts]);
+
+  const handleRestoreDefaults = useCallback(() => {
+    setDraftShortcuts(DEFAULT_KEYBOARD_SHORTCUTS);
+    setEditingCommandId(null);
+  }, []);
+
+  const updateBinding = useCallback(
+    (command: ShortcutCommand, nextBinding: string | null) => {
+      const normalizedDefault = normalizeBinding(
+        getDefaultBinding(command, platform),
+      );
+      const normalizedNext =
+        nextBinding === null ? null : normalizeBinding(nextBinding);
+      setDraftShortcuts((prev) => {
+        const nextBindings = { ...prev.bindings };
+        if (normalizedNext === null) {
+          nextBindings[command.id] = null;
+        } else if (normalizedDefault && normalizedNext === normalizedDefault) {
+          delete nextBindings[command.id];
+        } else if (normalizedNext) {
+          nextBindings[command.id] = normalizedNext;
+        }
+        return { ...prev, bindings: nextBindings };
+      });
+    },
+    [platform],
+  );
+
+  const handleRestoreDefault = useCallback(
+    (command: ShortcutCommand) => {
+      setDraftShortcuts((prev) => {
+        const nextBindings = { ...prev.bindings };
+        delete nextBindings[command.id];
+        return { ...prev, bindings: nextBindings };
+      });
+      if (editingCommandId === command.id) {
+        setEditingCommandId(null);
+      }
+    },
+    [editingCommandId],
+  );
+
+  const handleClearBinding = useCallback(
+    (command: ShortcutCommand) => {
+      updateBinding(command, null);
+      if (editingCommandId === command.id) {
+        setEditingCommandId(null);
+      }
+    },
+    [editingCommandId, updateBinding],
+  );
+
+  const handleStartEditing = useCallback((commandId: string) => {
+    setEditingCommandId(commandId);
+  }, []);
+
+  const handleCancelEditing = useCallback(() => {
+    setEditingCommandId(null);
+  }, []);
+
+  const handleSaveChanges = useCallback(() => {
+    setKeyboardShortcuts(draftShortcuts);
+    setEditingCommandId(null);
+  }, [draftShortcuts, setKeyboardShortcuts]);
+
+  const handleDiscardChanges = useCallback(() => {
+    setDraftShortcuts(keyboardShortcuts);
+    setEditingCommandId(null);
+  }, [keyboardShortcuts]);
+
+  useEffect(() => {
+    if (!editingCommandId) {
+      return;
+    }
+    const command = commandById.get(editingCommandId);
+    if (!command) {
+      setEditingCommandId(null);
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const binding = eventToBinding(event);
+      if (!binding) {
+        return;
+      }
+      updateBinding(command, binding);
+      setEditingCommandId(null);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+    };
+  }, [commandById, editingCommandId, updateBinding]);
+
+  const filteredCommands = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return SHORTCUT_COMMANDS.filter((command) => {
+      if (
+        contextFilter !== "all" &&
+        !command.contexts.includes(contextFilter as ShortcutContextId)
+      ) {
+        return false;
+      }
+      if (!normalizedQuery) {
+        return true;
+      }
+      return (
+        command.title.toLowerCase().includes(normalizedQuery) ||
+        command.description.toLowerCase().includes(normalizedQuery) ||
+        command.id.toLowerCase().includes(normalizedQuery)
+      );
+    });
+  }, [contextFilter, query]);
+
+  const conflicts = useMemo(
+    () => detectShortcutConflicts(SHORTCUT_COMMANDS, draftShortcuts.bindings, platform),
+    [draftShortcuts.bindings, platform],
+  );
+
+  const conflictSummary = useMemo(() => {
+    const summary = new Map<string, { binding: string; commandIds: string[] }>();
+    conflicts.forEach((conflict) => {
+      const uniqueIds = Array.from(new Set(conflict.commandIds));
+      const key = `${conflict.binding}:${uniqueIds.sort().join(",")}`;
+      if (!summary.has(key)) {
+        summary.set(key, { binding: conflict.binding, commandIds: uniqueIds });
+      }
+    });
+    return Array.from(summary.values());
+  }, [conflicts]);
+
+  const conflictsByCommand = useMemo(() => {
+    const map = new Map<string, { bindings: Set<string>; related: Set<string> }>();
+    conflicts.forEach((conflict) => {
+      conflict.commandIds.forEach((commandId) => {
+        const entry = map.get(commandId) ?? {
+          bindings: new Set<string>(),
+          related: new Set<string>(),
+        };
+        entry.bindings.add(conflict.binding);
+        conflict.commandIds
+          .filter((id) => id !== commandId)
+          .forEach((id) => entry.related.add(id));
+        map.set(commandId, entry);
+      });
+    });
+    return map;
+  }, [conflicts]);
+
+  const handleJumpToCommand = useCallback((commandId: string) => {
+    const row = document.getElementById(buildRowId(commandId));
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.focus({ preventScroll: true });
+    }
+  }, []);
+
+  return (
+    <section className="panel keyboard-shortcuts-panel">
+      <div className="panel-header settings-tab-header">
+        <div>
+          <h2>Keyboard Shortcuts</h2>
+          <p className="muted">
+            Rebind shortcuts per context. Conflicts must be resolved before saving.
+          </p>
+        </div>
+        <div className="panel-actions">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleDiscardChanges}
+            disabled={!hasChanges}
+          >
+            Discard
+          </button>
+          <button
+            type="button"
+            className="primary small"
+            onClick={handleSaveChanges}
+            disabled={!hasChanges || conflictSummary.length > 0}
+          >
+            Save changes
+          </button>
+        </div>
+      </div>
+      <div className="panel-body">
+        <div className="shortcut-controls">
+          <input
+            className="text-input"
+            type="search"
+            placeholder="Search actions"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            aria-label="Search shortcuts"
+          />
+          <select
+            className="text-input"
+            value={contextFilter}
+            onChange={(event) =>
+              setContextFilter(event.target.value as ShortcutContextId | "all")
+            }
+            aria-label="Filter by context"
+          >
+            <option value="all">All contexts</option>
+            {SHORTCUT_CONTEXTS.map((context) => (
+              <option key={context.id} value={context.id}>
+                {context.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleRestoreDefaults}
+          >
+            Restore defaults
+          </button>
+        </div>
+
+        {conflictSummary.length > 0 ? (
+          <div className="shortcut-conflicts" role="alert" aria-live="polite">
+            <p className="shortcut-conflicts-title">
+              Resolve {conflictSummary.length} conflict
+              {conflictSummary.length === 1 ? "" : "s"} before saving.
+            </p>
+            {conflictSummary.map((conflict) => (
+              <div key={`${conflict.binding}-${conflict.commandIds.join("-")}`}>
+                <span className="shortcut-conflict-binding">
+                  {formatBinding(conflict.binding, platform)}
+                </span>
+                <span className="shortcut-conflict-links">
+                  {conflict.commandIds.map((commandId) => {
+                    const command = commandById.get(commandId);
+                    if (!command) {
+                      return null;
+                    }
+                    return (
+                      <button
+                        key={commandId}
+                        type="button"
+                        className="ghost small"
+                        onClick={() => handleJumpToCommand(commandId)}
+                      >
+                        {command.title}
+                      </button>
+                    );
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="shortcut-list">
+          {filteredCommands.map((command) => {
+            const effectiveBinding = getEffectiveBinding(
+              command,
+              draftShortcuts.bindings,
+              platform,
+            );
+            const conflictInfo = conflictsByCommand.get(command.id);
+            const isEditing = editingCommandId === command.id;
+            const isConflicting = Boolean(conflictInfo?.bindings.size);
+            const conflictBindings = conflictInfo
+              ? Array.from(conflictInfo.bindings).map((binding) =>
+                  formatBinding(binding, platform),
+                )
+              : [];
+            const relatedCommands = conflictInfo
+              ? Array.from(conflictInfo.related)
+                  .map((id) => commandById.get(id)?.title)
+                  .filter(Boolean)
+              : [];
+            const contextLabels = SHORTCUT_CONTEXTS.filter((context) =>
+              command.contexts.includes(context.id),
+            ).map((context) => context.label);
+
+            return (
+              <div
+                key={command.id}
+                id={buildRowId(command.id)}
+                className={`shortcut-row ${isConflicting ? "is-conflict" : ""}`}
+                tabIndex={-1}
+              >
+                <div className="shortcut-main">
+                  <div className="shortcut-title">{command.title}</div>
+                  <div className="shortcut-meta">
+                    <div className="shortcut-contexts">
+                      {contextLabels.length > 0 ? (
+                        contextLabels.map((label) => (
+                          <span key={label} className="shortcut-context">
+                            {label}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="shortcut-context">Unknown</span>
+                      )}
+                    </div>
+                    <span className="muted">{command.description}</span>
+                    {command.notes ? (
+                      <span className="muted">Note: {command.notes}</span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="shortcut-binding">
+                  <span className="shortcut-chip">
+                    {formatBinding(effectiveBinding, platform)}
+                  </span>
+                  {isEditing ? (
+                    <span className="shortcut-capture">Press new keys...</span>
+                  ) : null}
+                </div>
+                <div className="shortcut-actions">
+                  {isEditing ? (
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleCancelEditing}
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={() => handleStartEditing(command.id)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={() => handleClearBinding(command)}
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={() => handleRestoreDefault(command)}
+                  >
+                    Restore default
+                  </button>
+                </div>
+                {isConflicting ? (
+                  <div className="shortcut-conflict-detail">
+                    Conflict: {conflictBindings.join(", ")} with{" "}
+                    {relatedCommands.join(", ")}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+---
+
+## 📝 MarkdownEditorSection.tsx — ./components/settings/MarkdownEditorSection.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/settings/MarkdownEditorSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente fuer Markdown-Editor-Settings.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur fuer Editor-Settings auf.
+ * - Verdrahtet Props und Callbacks mit Controls.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - MarkdownEditorSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+type MarkdownEditorSectionProps = {
+  editorExactColors: boolean;
+  editorBlueprintGrid: boolean;
+  editorBlueprintGridIntensity: "light" | "medium" | "strong";
+  onEditorExactColorsToggle: (value: boolean) => void;
+  onEditorBlueprintGridToggle: (value: boolean) => void;
+  onEditorBlueprintGridIntensityChange: (
+    value: "light" | "medium" | "strong",
+  ) => void;
+};
+
+const GRID_INTENSITY_OPTIONS: Array<"light" | "medium" | "strong"> = [
+  "light",
+  "medium",
+  "strong",
+];
+
+export const MarkdownEditorSection = ({
+  editorExactColors,
+  editorBlueprintGrid,
+  editorBlueprintGridIntensity,
+  onEditorExactColorsToggle,
+  onEditorBlueprintGridToggle,
+  onEditorBlueprintGridIntensityChange,
+}: MarkdownEditorSectionProps) => (
+  <section className="panel markdown-editor-panel">
+    <div>
+      <h2>Markdown editor</h2>
+      <p className="muted">Tune editor colors and grid helpers.</p>
+    </div>
+    <div className="setting-row">
+      <span className="label">Exact colors (markdown editor)</span>
+      <div className="theme-toggle">
+        <span className="toggle-label">Off</span>
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={editorExactColors}
+            onChange={(event) => onEditorExactColorsToggle(event.target.checked)}
+            aria-label="Exact markdown editor colors"
+          />
+          <span className="slider" />
+        </label>
+        <span className="toggle-label">On</span>
+      </div>
+    </div>
+    <div className="setting-row">
+      <span className="label">Blueprint grid (markdown editor)</span>
+      <div className="appearance-editor-inline">
+        <div className="theme-toggle">
+          <span className="toggle-label">Off</span>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={editorBlueprintGrid}
+              onChange={(event) =>
+                onEditorBlueprintGridToggle(event.target.checked)
+              }
+              aria-label="Blueprint grid for markdown editor"
+            />
+            <span className="slider" />
+          </label>
+          <span className="toggle-label">On</span>
+        </div>
+        <div className="appearance-grid-intensity">
+          <span className="toggle-label">Intensity</span>
+          <div className="pill-grid">
+            {GRID_INTENSITY_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={`pill pill-button ${
+                  editorBlueprintGridIntensity === option ? "active" : ""
+                }`}
+                aria-pressed={editorBlueprintGridIntensity === option}
+                onClick={() => onEditorBlueprintGridIntensityChange(option)}
+              >
+                {option.charAt(0).toUpperCase()}
+                {option.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 );
@@ -3490,6 +6329,27 @@ export const FlashcardsSettingsSection = ({
 ---
 
 ## 📝 PerformanceTabContent.tsx — ./components/settings/PerformanceTabContent.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/settings/PerformanceTabContent.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Performance Tab Content.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - PerformanceTabContent: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 type PerformanceTabContentProps = {
   maxFilesPerScan: string;
@@ -3544,6 +6404,30 @@ export const PerformanceTabContent = ({
 
 ## 📝 ResetSessionHistoryModal.tsx — ./components/settings/ResetSessionHistoryModal.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/settings/ResetSessionHistoryModal.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Reset Session History Modal.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - ResetSessionHistoryModal: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useEffect } from "react";
+import { registerCloseLayer } from "../../lib/shortcuts/closeOrBack";
+
 type ResetSessionHistoryModalProps = {
   isOpen: boolean;
   isPending?: boolean;
@@ -3557,6 +6441,18 @@ export const ResetSessionHistoryModal = ({
   onCancel,
   onConfirm,
 }: ResetSessionHistoryModalProps) => {
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "reset-session-history-modal",
+      priority: 300,
+      isActive: () => true,
+      onClose: onCancel,
+    });
+  }, [isOpen, onCancel]);
+
   if (!isOpen) {
     return null;
   }
@@ -3598,6 +6494,28 @@ export const ResetSessionHistoryModal = ({
 
 ## 📝 SpacedRepetitionSettingsSection.tsx — ./components/settings/SpacedRepetitionSettingsSection.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/settings/SpacedRepetitionSettingsSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Spaced Repetition Settings Section.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts: Typen.
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - SpacedRepetitionSettingsSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import type {
   SpacedRepetitionBoxes,
   SpacedRepetitionOrder,
@@ -3618,6 +6536,8 @@ type SpacedRepetitionSettingsSectionProps = {
   setSpacedRepetitionRepetitionStrength: (
     value: SpacedRepetitionRepetitionStrength,
   ) => void;
+  helpEnabled: boolean;
+  setHelpEnabled: (value: boolean) => void;
 };
 
 export const SpacedRepetitionSettingsSection = ({
@@ -3631,6 +6551,8 @@ export const SpacedRepetitionSettingsSection = ({
   setSpacedRepetitionOrder,
   setSpacedRepetitionPageSize,
   setSpacedRepetitionRepetitionStrength,
+  helpEnabled,
+  setHelpEnabled,
 }: SpacedRepetitionSettingsSectionProps) => (
   <section className="panel spaced-repetition-panel">
     <div className="panel-header">
@@ -3748,6 +6670,20 @@ export const SpacedRepetitionSettingsSection = ({
           </button>
         </div>
       </div>
+      <div className="setting-row">
+        <span className="label">HELP / HINTS</span>
+        <div className="setting-inline">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={helpEnabled}
+              onChange={(event) => setHelpEnabled(event.target.checked)}
+            />
+            <span className="slider" />
+          </label>
+          <span className="muted">{helpEnabled ? "Enabled" : "Disabled"}</span>
+        </div>
+      </div>
     </div>
   </section>
 );
@@ -3756,9 +6692,32 @@ export const SpacedRepetitionSettingsSection = ({
 
 ## 📝 VaultIndexSection.tsx — ./components/settings/VaultIndexSection.tsx
 
-import { useState } from "react";
+/**
+ * @file apps/fmd-desktop/src/components/settings/VaultIndexSection.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Vault Index Section.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/components/settings/DataSyncTabContent.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - VaultIndexSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useState, type ChangeEvent } from "react";
 import { type LoadState } from "../../lib/types";
 import { DataSyncTabContent } from "./DataSyncTabContent";
+import type { UserVaultState } from "../../features/user-vault/useUserVault";
 
 type VaultIndexTab = "vault" | "data-sync";
 
@@ -3766,8 +6725,12 @@ type VaultIndexSectionProps = {
   lastOpenedFile: string | null;
   listState: LoadState;
   onCopyVaultPath: () => void;
+  onShowHiddenFoldersToggle: (value: boolean) => void;
   onRescanVault: () => void;
+  onResetIndex: () => void;
+  userVault: UserVaultState;
   vaultIndexedComplete: boolean;
+  showHiddenFolders: boolean;
   vaultPath: string | null;
 };
 
@@ -3775,12 +6738,19 @@ export const VaultIndexSection = ({
   lastOpenedFile,
   listState,
   onCopyVaultPath,
+  onShowHiddenFoldersToggle,
   onRescanVault,
+  onResetIndex,
+  userVault,
   vaultIndexedComplete,
+  showHiddenFolders,
   vaultPath,
 }: VaultIndexSectionProps) => {
   const [activeTab, setActiveTab] = useState<VaultIndexTab>("vault");
   const isVaultTab = activeTab === "vault";
+  const handleShowHiddenFoldersChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onShowHiddenFoldersToggle(event.target.checked);
+  };
 
   return (
     <section className="panel vault-index-panel">
@@ -3842,6 +6812,25 @@ export const VaultIndexSection = ({
             </span>
           </div>
           <div className="setting-row">
+            <span className="label">Show hidden folders</span>
+            <div className="theme-toggle">
+              <span className="toggle-label">Off</span>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={showHiddenFolders}
+                  onChange={handleShowHiddenFoldersChange}
+                  aria-label="Show hidden folders"
+                />
+                <span className="slider" />
+              </label>
+              <span className="toggle-label">On</span>
+            </div>
+            <span className="helper-text">
+              Folders starting with a dot (e.g., .git, .obsidian).
+            </span>
+          </div>
+          <div className="setting-row">
             <span className="label">Status indicators</span>
             <div className="status-list">
               <div className="status-item">
@@ -3858,40 +6847,6 @@ export const VaultIndexSection = ({
                   All notes have been scanned and indexed.
                 </span>
               </div>
-              <div className="status-item">
-                <div className="status-row">
-                  <span>Watcher active</span>
-                  <div className="toggle-row">
-                    <span className="toggle-label">Coming later</span>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        disabled
-                        aria-label="Watcher active (coming later)"
-                      />
-                      <span className="slider" />
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div className="status-item">
-                <div className="status-row">
-                  <span>Auto-scan</span>
-                  <div className="toggle-row">
-                    <span className="toggle-label">Coming later</span>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        disabled
-                        aria-label="Auto-scan (coming later)"
-                      />
-                      <span className="slider" />
-                    </label>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
           <div className="setting-row">
@@ -3905,11 +6860,18 @@ export const VaultIndexSection = ({
               >
                 Rescan vault
               </button>
-              <button type="button" className="ghost small" disabled>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={onResetIndex}
+                disabled={!vaultPath || listState === "loading"}
+              >
                 Reset index
               </button>
             </div>
-            <span className="helper-text">Reset index is coming later.</span>
+            <span className="helper-text">
+              Reset index clears the current vault registration.
+            </span>
           </div>
         </div>
       ) : (
@@ -3919,9 +6881,9 @@ export const VaultIndexSection = ({
           id="data-sync-tab-panel"
           aria-labelledby="data-sync-tab"
         >
-          <p className="muted">Storage and sync options will land here later.</p>
+          <p className="muted">Manage local stats storage and profiles.</p>
           <div className="settings-tab-content">
-            <DataSyncTabContent />
+            <DataSyncTabContent userVault={userVault} />
           </div>
         </div>
       )}
@@ -3933,13 +6895,46 @@ export const VaultIndexSection = ({
 
 ## 📝 SidebarNav.tsx — ./components/SidebarNav.tsx
 
-import { useEffect, useMemo, useState } from "react";
+/**
+ * @file apps/fmd-desktop/src/components/SidebarNav.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Sidebar Nav.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/components/VaultTree.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - SidebarNav: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppState } from "./AppStateProvider";
-import { normalizeRelativePath, vaultBaseName } from "../lib/path";
+import { normalizeRelativePath, normalizeVaultPath, vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
-import { CardsIcon, FolderIcon, HelpIcon, SettingsIcon } from "./icons";
+import {
+  CardsIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  FolderIcon,
+  HelpIcon,
+  RefreshIcon,
+  SettingsIcon,
+} from "./icons";
 import { helpTopics, resolveText } from "../pages/help/helpContent";
 import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
+import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
 
 type TabKey =
   | "dashboard"
@@ -3970,12 +6965,26 @@ export const SidebarNav = ({
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => new Set(),
   );
+  const [isVaultMenuOpen, setIsVaultMenuOpen] = useState(false);
+  const vaultMenuRef = useRef<HTMLDivElement | null>(null);
+  const vaultButtonRef = useRef<HTMLButtonElement | null>(null);
   const { activeSettingsPage, setActiveSettingsPage } = settingsNav;
   const isToolbarCollapsed = settings.rightToolbarCollapsed;
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
+  const activeVaultKey = useMemo(
+    () => normalizeVaultPath(vault.vaultPath ?? ""),
+    [vault.vaultPath],
+  );
+  const recentVaults = settings.recentVaults ?? [];
+  const recentVaultPaths = useMemo(
+    () => recentVaults.map((entry) => entry.path),
+    [recentVaults],
+  );
+  const recentVaultInfo = useVaultPathInfo(recentVaultPaths, isVaultMenuOpen);
+  const isRescanningVault = vault.listState === "loading";
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
       return "No vault selected";
@@ -4038,6 +7047,41 @@ export const SidebarNav = ({
     });
   }, [vault.activeFolderPath]);
 
+  useEffect(() => {
+    if (!isVaultMenuOpen) {
+      return;
+    }
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+      if (vaultMenuRef.current?.contains(target)) {
+        return;
+      }
+      if (vaultButtonRef.current?.contains(target)) {
+        return;
+      }
+      setIsVaultMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+    };
+  }, [isVaultMenuOpen]);
+
+  useEffect(() => {
+    if (!isVaultMenuOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "vault-recent-menu",
+      priority: 200,
+      isActive: () => isVaultMenuOpen,
+      onClose: () => setIsVaultMenuOpen(false),
+    });
+  }, [isVaultMenuOpen]);
+
   return (
     <aside
       id="app-sidebar"
@@ -4066,18 +7110,126 @@ export const SidebarNav = ({
             >
               Close
             </button>
-            <button
-              type="button"
-              className="vault-status"
-              onClick={actions.handlePickVault}
-              title={vault.vaultPath ?? "Select vault"}
-              aria-label="Select vault"
-            >
-              <span className="label">Active Vault</span>
-              <span className="value">
-                Vault: {vault.vaultPath ? vaultRootName : "Not set"}
-              </span>
-            </button>
+            <div className="vault-status">
+              <button
+                ref={vaultButtonRef}
+                type="button"
+                className="vault-status-main"
+                onClick={() => setIsVaultMenuOpen((prev) => !prev)}
+                title={vault.vaultPath ?? "Select vault"}
+                aria-label="Select vault"
+                aria-haspopup="menu"
+                aria-expanded={isVaultMenuOpen}
+                aria-controls="vault-recents-menu"
+              >
+                <span className="label">ACTIVE VAULT</span>
+                <span className="value vault-status-value">
+                  <span className="vault-status-value-text">
+                    Vault: {vault.vaultPath ? vaultRootName : "Not set"}
+                  </span>
+                  <span
+                    className={`vault-status-caret${
+                      isVaultMenuOpen ? " is-open" : ""
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <ChevronDownIcon />
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="vault-status-refresh"
+                onClick={actions.handleRescanVault}
+                title="Rescan vault"
+                aria-label="Rescan vault"
+                disabled={!vault.vaultPath || isRescanningVault}
+              >
+                <span
+                  className={`vault-status-refresh-icon${
+                    isRescanningVault ? " is-spinning" : ""
+                  }`}
+                >
+                  <RefreshIcon />
+                </span>
+              </button>
+              {isVaultMenuOpen ? (
+                <div
+                  ref={vaultMenuRef}
+                  id="vault-recents-menu"
+                  className="vault-status-menu"
+                  role="menu"
+                  aria-label="Recent vaults"
+                >
+                  {recentVaults.length === 0 ? (
+                    <div className="vault-status-menu-empty muted">
+                      No recent vaults.
+                    </div>
+                  ) : (
+                    recentVaults.map((entry) => {
+                      const info = recentVaultInfo[entry.path];
+                      const isMissing = info ? !info.exists || !info.isDir : false;
+                      const isActive =
+                        normalizeVaultPath(entry.path) === activeVaultKey;
+                      return (
+                        <div className="vault-status-menu-row" key={entry.path}>
+                          <button
+                            type="button"
+                            className="vault-status-menu-item"
+                            role="menuitem"
+                            disabled={isMissing}
+                            onClick={() => {
+                              setIsVaultMenuOpen(false);
+                              if (isActive) {
+                                return;
+                              }
+                              void actions.handleSwitchVault(entry.path);
+                            }}
+                            title={entry.path}
+                          >
+                            <span className="vault-status-menu-name">
+                              {vaultBaseName(entry.path)}
+                            </span>
+                            {isMissing ? <span className="chip">Missing</span> : null}
+                          </button>
+                          <div className="vault-status-menu-actions">
+                            {isActive ? (
+                              <span
+                                className="vault-status-menu-check"
+                                aria-hidden="true"
+                              >
+                                <CheckIcon />
+                              </span>
+                            ) : null}
+                            {isMissing ? (
+                              <button
+                                type="button"
+                                className="vault-status-menu-remove"
+                                onClick={() => actions.handleRemoveRecentVault(entry.path)}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div className="vault-status-menu-divider" role="separator" />
+                  <button
+                    type="button"
+                    className="vault-status-menu-item vault-status-menu-manage"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsVaultMenuOpen(false);
+                      actions.handleOpenVaultManager();
+                    }}
+                  >
+                    Manage Vaults
+                  </button>
+                </div>
+              ) : null}
+            </div>
             <div className="sidebar-icon-row">
               <button
                 type="button"
@@ -4190,12 +7342,14 @@ export const SidebarNav = ({
                 expandedPaths={expandedPaths}
                 fileCountLabel={fileCountLabel}
                 files={vault.files}
+                showHiddenFolders={settings.showHiddenFolders}
                 listError={vault.listError}
                 listState={vault.listState}
                 onActiveFolderChange={vault.setActiveFolderPath}
                 onTogglePath={handleTogglePath}
                 onSelectFile={actions.handleSelectFile}
                 onRescanVault={actions.handleRescanVault}
+                onClearSelection={preview.resetPreview}
                 selectedFile={preview.selectedFile}
                 vaultPath={vault.vaultPath}
               />
@@ -4242,7 +7396,7 @@ export const SidebarNav = ({
                 >
                   {resolveText(topic.title, settings.language)}
                 </button>
-              ))}
+                ))}
             </nav>
           ) : null}
         </>
@@ -4254,6 +7408,28 @@ export const SidebarNav = ({
 ---
 
 ## 📝 StatsPanel.tsx — ./components/StatsPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/StatsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Stats Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/FlashcardPage.tsx: Nutzt dieses Modul.
+ * - react: React-API.
+ *
+ * Exportiert:
+ * - StatsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 import { useMemo, type CSSProperties } from "react";
 
@@ -4322,9 +7498,303 @@ export const StatsPanel = ({
 
 ---
 
+## 📝 StudyTimeBar.tsx — ./components/StudyTimeBar.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/StudyTimeBar.tsx
+ *
+ * Zweck:
+ * - Schlanker Progress-Bar fuer Study-View-Header.
+ */
+
+import { useMemo, type CSSProperties } from "react";
+
+type StudyTimeBarProps = {
+  elapsedMs: number;
+  maxMs: number | null;
+  isRunning: boolean;
+};
+
+export const StudyTimeBar = ({ elapsedMs, maxMs, isRunning }: StudyTimeBarProps) => {
+  const progressStyle = useMemo(() => {
+    if (!maxMs || maxMs <= 0) {
+      return undefined;
+    }
+    const progress = Math.max(0, Math.min(1, elapsedMs / maxMs));
+    return { "--study-time-progress": `${Math.round(progress * 100)}%` } as CSSProperties;
+  }, [elapsedMs, maxMs]);
+
+  const isIndeterminate = !maxMs || maxMs <= 0;
+  const className = [
+    "study-time-bar",
+    isIndeterminate ? "is-indeterminate" : "",
+    !isRunning ? "is-paused" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return <div className={className} style={progressStyle} aria-hidden="true" />;
+};
+
+---
+
+## 📝 UserToolsPanel.tsx — ./components/UserToolsPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/UserToolsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die User Tools fuer Study/Spaced Repetition und Exam.
+ *
+ * Verantwortlichkeiten:
+ * - Zeigt Active User, Start und User-Management an.
+ * - Teilt Layout und Logik zwischen Study und Exam.
+ */
+
+type UserToolsPanelProps = {
+  spacedRepetition: {
+    spacedRepetitionActiveUser: string | null;
+    spacedRepetitionSelectedUserId: string;
+    spacedRepetitionUsers: { id: string; name: string }[];
+    spacedRepetitionNewUserName: string;
+    spacedRepetitionUserError: string;
+    handleSpacedRepetitionActiveUserLoadCards: () => void;
+    setSpacedRepetitionSelectedUserId: (value: string) => void;
+    setSpacedRepetitionNewUserName: (value: string) => void;
+    setSpacedRepetitionUserError: (value: string) => void;
+    handleSpacedRepetitionCreateUser: () => void;
+    handleSpacedRepetitionLoadUser: () => void;
+  };
+  handleDeleteOpen: () => void;
+  onStart: () => void;
+  startDisabled: boolean;
+  showReset?: boolean;
+  onReset?: () => void;
+  examStageControls?: {
+    stage: "idle" | "running" | "review" | "scoring" | "finished";
+    canStartExam: boolean;
+    finishPending?: boolean;
+    onStartExam: () => void;
+    onSubmitExam: () => void;
+    onStartScoring: () => void;
+    onFinishScoring: () => void;
+    onResetExam: () => void;
+  };
+};
+
+export const UserToolsPanel = ({
+  spacedRepetition,
+  handleDeleteOpen,
+  onStart,
+  startDisabled,
+  showReset = false,
+  onReset,
+  examStageControls,
+}: UserToolsPanelProps) => {
+  const phaseButton = examStageControls
+    ? (() => {
+        switch (examStageControls.stage) {
+          case "idle":
+            return {
+              label: "Start",
+              onClick: examStageControls.onStartExam,
+              disabled: !examStageControls.canStartExam,
+            };
+          case "running":
+            return {
+              label: "Submit",
+              onClick: examStageControls.onSubmitExam,
+              disabled: false,
+            };
+          case "review":
+            return {
+              label: "Exam",
+              onClick: examStageControls.onStartScoring,
+              disabled: false,
+            };
+          case "scoring":
+            return {
+              label: "Grading",
+              onClick: examStageControls.onFinishScoring,
+              disabled: Boolean(examStageControls.finishPending),
+            };
+          case "finished":
+          default:
+            return {
+              label: "Grading",
+              onClick: examStageControls.onFinishScoring,
+              disabled: true,
+            };
+        }
+      })()
+    : null;
+
+  return (
+    <section className="panel sr-user-panel">
+      <div className="panel-header">
+        <div>
+          <h2>User Tools</h2>
+        </div>
+      </div>
+      <div className="panel-body">
+        <div className="setting-row">
+          <span className="label">Active user</span>
+          <div className="setting-inline">
+            <span className="value">
+              {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
+            </span>
+          </div>
+        </div>
+        <div className="setting-row">
+          <span className="label">User</span>
+          <div className="setting-inline">
+            {phaseButton ? (
+              <>
+                <button
+                  type="button"
+                  className="primary small"
+                  onClick={phaseButton.onClick}
+                  disabled={phaseButton.disabled}
+                >
+                  {phaseButton.label}
+                </button>
+                <button
+                  type="button"
+                  className="ghost small"
+                  onClick={examStageControls?.onResetExam}
+                  aria-label="Reset session"
+                >
+                  Reset
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="ghost small"
+                  onClick={onStart}
+                  disabled={startDisabled}
+                  aria-label="Start session for active user"
+                >
+                  Start
+                </button>
+                {showReset ? (
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={onReset}
+                    aria-label="Reset session"
+                  >
+                    Reset
+                  </button>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
+      <div className="setting-row">
+        <span className="label">User list</span>
+        <select
+          className="text-input"
+          value={spacedRepetition.spacedRepetitionSelectedUserId}
+          onChange={(event) =>
+            spacedRepetition.setSpacedRepetitionSelectedUserId(event.target.value)
+          }
+          aria-label="Select user"
+        >
+          <option value="">Select user</option>
+          {spacedRepetition.spacedRepetitionUsers.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="setting-row">
+        <span className="label">New user</span>
+        <div className="setting-inline">
+          <input
+            type="text"
+            className="text-input"
+            value={spacedRepetition.spacedRepetitionNewUserName}
+            onChange={(event) => {
+              spacedRepetition.setSpacedRepetitionNewUserName(event.target.value);
+              if (spacedRepetition.spacedRepetitionUserError) {
+                spacedRepetition.setSpacedRepetitionUserError("");
+              }
+            }}
+            placeholder="User name"
+            aria-label="New user name"
+          />
+          <button
+            type="button"
+            className="ghost small"
+            onClick={spacedRepetition.handleSpacedRepetitionCreateUser}
+          >
+            Create
+          </button>
+        </div>
+        {spacedRepetition.spacedRepetitionUserError ? (
+          <span className="helper-text error-text">
+            {spacedRepetition.spacedRepetitionUserError}
+          </span>
+        ) : null}
+      </div>
+      <div className="setting-row">
+        <span className="label">Actions</span>
+        <div className="setting-actions">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={spacedRepetition.handleSpacedRepetitionLoadUser}
+            disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
+          >
+            Load
+          </button>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={handleDeleteOpen}
+            disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+    </section>
+  );
+};
+
+---
+
 ## 📝 VaultCreateModal.tsx — ./components/VaultCreateModal.tsx
 
+/**
+ * @file apps/fmd-desktop/src/components/VaultCreateModal.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Vault Create Modal.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ * - react: React-API.
+ *
+ * Exportiert:
+ * - VaultCreateModal: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 
 type VaultCreateModalProps = {
   isOpen: boolean;
@@ -4353,13 +7823,12 @@ export const VaultCreateModal = ({
     if (!isOpen) {
       return;
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onCancel();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return registerCloseLayer({
+      id: "vault-create-modal",
+      priority: 300,
+      isActive: () => true,
+      onClose: onCancel,
+    });
   }, [isOpen, onCancel]);
 
   useEffect(() => {
@@ -4378,8 +7847,9 @@ export const VaultCreateModal = ({
   }
 
   const title = kind === "file" ? "Create New File" : "Create New Folder";
+  const portalTarget = typeof document === "undefined" ? null : document.body;
 
-  return (
+  const modal = (
     <div className="modal-backdrop" role="presentation">
       <div
         className="modal-panel"
@@ -4423,11 +7893,866 @@ export const VaultCreateModal = ({
       </div>
     </div>
   );
+
+  return portalTarget ? createPortal(modal, portalTarget) : modal;
 };
 
 ---
 
+## 📝 VaultDeleteModal.tsx — ./components/VaultDeleteModal.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/VaultDeleteModal.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Vault Delete Modal.
+ *
+ * Verantwortlichkeiten:
+ * - Bietet eine Bestaetigung zum Loeschen von Dateien an.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - VaultDeleteModal: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
+
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
+
+type VaultDeleteModalProps = {
+  isOpen: boolean;
+  fileName: string;
+  error: string;
+  isPending?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+export const VaultDeleteModal = ({
+  isOpen,
+  fileName,
+  error,
+  isPending = false,
+  onCancel,
+  onConfirm,
+}: VaultDeleteModalProps) => {
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "vault-delete-modal",
+      priority: 300,
+      isActive: () => true,
+      onClose: onCancel,
+    });
+  }, [isOpen, onCancel]);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const portalTarget = typeof document === "undefined" ? null : document.body;
+
+  const modal = (
+    <div className="modal-backdrop" role="presentation">
+      <div
+        className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vault-delete-title"
+      >
+        <h3 id="vault-delete-title">Delete file?</h3>
+        <p className="muted">
+          Do you really want to delete <strong>{fileName}</strong>?
+        </p>
+        {error ? <div className="error">{error}</div> : null}
+        <div className="modal-actions">
+          <button type="button" className="ghost" onClick={onCancel} disabled={isPending}>
+            Cancel
+          </button>
+          <button type="button" className="primary" onClick={onConfirm} disabled={isPending}>
+            {isPending ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return portalTarget ? createPortal(modal, portalTarget) : modal;
+};
+
+---
+
+## 📝 VaultManagerModal.tsx — ./components/VaultManagerModal.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/VaultManagerModal.tsx
+ *
+ * Zweck:
+ * - Rendert das Vault Manager Modal.
+ */
+
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
+import { asErrorMessage } from "../lib/errors";
+import { normalizeVaultPath, vaultBaseName } from "../lib/path";
+import { resolveUserVaultPath } from "../lib/userVault";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
+import {
+  createUserVaultProfile,
+  listUserVaultProfiles,
+  loadUserVaultMeta,
+  setActiveProfileId,
+  type UserVaultProfileSummary,
+} from "../features/user-vault/storage";
+import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
+import type { RecentVaultEntry } from "../features/settings/useAppSettings";
+import type { UserVaultState } from "../features/user-vault/useUserVault";
+
+type ProfileState = {
+  status: "idle" | "loading" | "error";
+  error: string;
+  profiles: UserVaultProfileSummary[];
+  activeProfileId: string | null;
+};
+
+type ContextMenuState = {
+  x: number;
+  y: number;
+  path: string;
+};
+
+type VaultManagerModalProps = {
+  isOpen: boolean;
+  vaults: RecentVaultEntry[];
+  activeVaultPath: string | null;
+  userVault: UserVaultState;
+  onClose: () => void;
+  onOpenVault: () => Promise<boolean>;
+  onRescanVault: () => void;
+  onSwitchVault: (path: string) => Promise<boolean>;
+  onRemoveVault: (path: string) => void;
+  onClearVault: () => void;
+};
+
+const emptyProfileState: ProfileState = {
+  status: "idle",
+  error: "",
+  profiles: [],
+  activeProfileId: null,
+};
+
+export const VaultManagerModal = ({
+  isOpen,
+  vaults,
+  activeVaultPath,
+  userVault,
+  onClose,
+  onOpenVault,
+  onRescanVault,
+  onSwitchVault,
+  onRemoveVault,
+  onClearVault,
+}: VaultManagerModalProps) => {
+  const [selectedVaultPath, setSelectedVaultPath] = useState<string | null>(null);
+  const [profileState, setProfileState] = useState<ProfileState>(emptyProfileState);
+  const [actionError, setActionError] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [pendingRemovePath, setPendingRemovePath] = useState<string | null>(null);
+
+  const vaultPaths = useMemo(() => vaults.map((entry) => entry.path), [vaults]);
+  const pathInfo = useVaultPathInfo(vaultPaths, isOpen);
+  const activeVaultKey = useMemo(
+    () => normalizeVaultPath(activeVaultPath ?? ""),
+    [activeVaultPath],
+  );
+
+  const resolvedUserVaultPath = useMemo(
+    () => resolveUserVaultPath(userVault.mode, selectedVaultPath, userVault.customPath),
+    [selectedVaultPath, userVault.customPath, userVault.mode],
+  );
+
+  const selectedPathInfo = selectedVaultPath
+    ? pathInfo[selectedVaultPath] ?? null
+    : null;
+  const selectedVaultMissing =
+    Boolean(selectedPathInfo) &&
+    (!selectedPathInfo?.exists || !selectedPathInfo?.isDir);
+
+  const reloadProfileState = useCallback(async () => {
+    if (!resolvedUserVaultPath) {
+      setProfileState(emptyProfileState);
+      return;
+    }
+    setProfileState({
+      status: "loading",
+      error: "",
+      profiles: [],
+      activeProfileId: null,
+    });
+    try {
+      const [profiles, meta] = await Promise.all([
+        listUserVaultProfiles(resolvedUserVaultPath),
+        loadUserVaultMeta(resolvedUserVaultPath),
+      ]);
+      const activeProfileId = profiles.some(
+        (profile) => profile.id === meta.activeProfileId,
+      )
+        ? meta.activeProfileId
+        : null;
+      setProfileState({
+        status: "idle",
+        error: "",
+        profiles,
+        activeProfileId,
+      });
+    } catch (error) {
+      setProfileState({
+        status: "error",
+        error: asErrorMessage(error, "Profile status could not be loaded."),
+        profiles: [],
+        activeProfileId: null,
+      });
+    }
+  }, [resolvedUserVaultPath]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    setSelectedVaultPath((current) => {
+      if (activeVaultPath) {
+        return activeVaultPath;
+      }
+      if (current && vaults.some((entry) => entry.path === current)) {
+        return current;
+      }
+      return vaults[0]?.path ?? null;
+    });
+  }, [activeVaultPath, isOpen, vaults]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setActionError("");
+      setProfileState(emptyProfileState);
+      setContextMenu(null);
+      setPendingRemovePath(null);
+      return;
+    }
+    setActionError("");
+    void reloadProfileState();
+  }, [isOpen, reloadProfileState, selectedVaultPath]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "vault-manager-modal",
+      priority: 300,
+      isActive: () => isOpen,
+      onClose,
+    });
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete") {
+        return;
+      }
+      if (pendingRemovePath) {
+        return;
+      }
+      const activeEntry = vaults.find(
+        (entry) => normalizeVaultPath(entry.path) === activeVaultKey,
+      );
+      if (!activeEntry) {
+        return;
+      }
+      event.preventDefault();
+      setPendingRemovePath(activeEntry.path);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeVaultKey, isOpen, pendingRemovePath, vaults]);
+
+  const ensureVaultActive = useCallback(async () => {
+    if (!selectedVaultPath) {
+      return false;
+    }
+    const selectedKey = normalizeVaultPath(selectedVaultPath);
+    if (!selectedKey || selectedKey === activeVaultKey) {
+      return true;
+    }
+    const switched = await onSwitchVault(selectedVaultPath);
+    if (!switched) {
+      setActionError("Vault could not be opened.");
+    }
+    return switched;
+  }, [activeVaultKey, onSwitchVault, selectedVaultPath]);
+
+  const handleOpenVault = useCallback(async () => {
+    setActionError("");
+    setIsBusy(true);
+    try {
+      await onOpenVault();
+    } catch (error) {
+      setActionError(asErrorMessage(error, "Vault could not be opened."));
+    } finally {
+      setIsBusy(false);
+    }
+  }, [onOpenVault]);
+
+  const handleLoadProfile = useCallback(async () => {
+    if (!resolvedUserVaultPath) {
+      return;
+    }
+    if (profileState.profiles.length === 0) {
+      return;
+    }
+    setActionError("");
+    setIsBusy(true);
+    try {
+      if (!(await ensureVaultActive())) {
+        return;
+      }
+      const targetProfileId =
+        profileState.activeProfileId ?? profileState.profiles[0]?.id ?? null;
+      if (!targetProfileId) {
+        return;
+      }
+      await setActiveProfileId(resolvedUserVaultPath, targetProfileId);
+      await reloadProfileState();
+      if (userVault.resolvedPath === resolvedUserVaultPath) {
+        await userVault.refreshProfiles();
+      }
+    } catch (error) {
+      setActionError(asErrorMessage(error, "Profile could not be loaded."));
+    } finally {
+      setIsBusy(false);
+    }
+  }, [
+    ensureVaultActive,
+    profileState.activeProfileId,
+    profileState.profiles,
+    reloadProfileState,
+    resolvedUserVaultPath,
+    userVault,
+  ]);
+
+  const handleCreateProfile = useCallback(async () => {
+    if (!resolvedUserVaultPath || !selectedVaultPath) {
+      return;
+    }
+    setActionError("");
+    setIsBusy(true);
+    try {
+      if (!(await ensureVaultActive())) {
+        return;
+      }
+      const profileName = vaultBaseName(selectedVaultPath);
+      const profile = await createUserVaultProfile(resolvedUserVaultPath, profileName);
+      await setActiveProfileId(resolvedUserVaultPath, profile.id);
+      await reloadProfileState();
+      if (userVault.resolvedPath === resolvedUserVaultPath) {
+        await userVault.refreshProfiles();
+      }
+    } catch (error) {
+      setActionError(asErrorMessage(error, "Profile could not be created."));
+    } finally {
+      setIsBusy(false);
+    }
+  }, [
+    ensureVaultActive,
+    reloadProfileState,
+    resolvedUserVaultPath,
+    selectedVaultPath,
+    userVault,
+  ]);
+
+  const handleRefreshActiveVault = useCallback(() => {
+    if (!activeVaultKey) {
+      return;
+    }
+    setActionError("");
+    onRescanVault();
+  }, [activeVaultKey, onRescanVault]);
+
+  const openContextMenu = useCallback(
+    (event: MouseEvent<HTMLButtonElement>, path: string) => {
+      event.preventDefault();
+      setSelectedVaultPath(path);
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        path,
+      });
+    },
+    [],
+  );
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const requestRemoveVault = useCallback((path: string) => {
+    setPendingRemovePath(path);
+    setContextMenu(null);
+  }, []);
+
+  const handleConfirmRemove = useCallback(async () => {
+    if (!pendingRemovePath) {
+      return;
+    }
+    const targetPath = pendingRemovePath;
+    setPendingRemovePath(null);
+    setActionError("");
+    setIsBusy(true);
+    try {
+      const normalizedTarget = normalizeVaultPath(targetPath);
+      const remaining = vaults.filter(
+        (entry) => normalizeVaultPath(entry.path) !== normalizedTarget,
+      );
+      const fallbackPath = remaining[0]?.path ?? null;
+      onRemoveVault(targetPath);
+      if (normalizedTarget && normalizedTarget === activeVaultKey) {
+        if (fallbackPath) {
+          const switched = await onSwitchVault(fallbackPath);
+          if (switched) {
+            setSelectedVaultPath(fallbackPath);
+          } else {
+            setActionError("Vault could not be opened.");
+            onClearVault();
+            setSelectedVaultPath(null);
+          }
+        } else {
+          onClearVault();
+          setSelectedVaultPath(null);
+        }
+        return;
+      }
+      if (
+        selectedVaultPath &&
+        normalizeVaultPath(selectedVaultPath) === normalizedTarget
+      ) {
+        setSelectedVaultPath(fallbackPath);
+      }
+    } finally {
+      setIsBusy(false);
+    }
+  }, [
+    activeVaultKey,
+    onClearVault,
+    onRemoveVault,
+    onSwitchVault,
+    pendingRemovePath,
+    selectedVaultPath,
+    vaults,
+  ]);
+
+  const handleCancelRemove = useCallback(() => {
+    setPendingRemovePath(null);
+  }, []);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const portalTarget = typeof document === "undefined" ? null : document.body;
+  const selectedEntry = selectedVaultPath
+    ? vaults.find((entry) => entry.path === selectedVaultPath) ?? null
+    : null;
+  const profileCount = profileState.profiles.length;
+  const isProfileLoading = profileState.status === "loading";
+  const isProfileReady = profileState.status === "idle";
+  const canManageProfiles = Boolean(resolvedUserVaultPath) && !selectedVaultMissing;
+  const canLoadProfile = canManageProfiles && isProfileReady && profileCount > 0;
+  const canCreateProfile = canManageProfiles && isProfileReady && profileCount === 0;
+  const hasActiveVault = Boolean(activeVaultKey);
+  const pendingRemoveName = pendingRemovePath
+    ? vaultBaseName(pendingRemovePath)
+    : "";
+
+  const modal = (
+    <div className="modal-backdrop" role="presentation">
+      <div
+        className="modal-panel vault-manager-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vault-manager-title"
+      >
+        <div className="vault-manager-header">
+          <h3 id="vault-manager-title">Manage Vaults</h3>
+          <button type="button" className="ghost small" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="vault-manager-content">
+          <aside className="vault-manager-list" aria-label="Vault list">
+            {vaults.length === 0 ? (
+              <div className="empty-state">No vaults found.</div>
+            ) : (
+              vaults.map((entry) => {
+                const entryKey = normalizeVaultPath(entry.path);
+                const isActive = entryKey === activeVaultKey;
+                const isSelected = entry.path === selectedVaultPath;
+                const info = pathInfo[entry.path];
+                const isMissing = info ? !info.exists || !info.isDir : false;
+                return (
+                  <button
+                    key={entry.path}
+                    type="button"
+                    className={`vault-manager-item${
+                      isSelected ? " active" : ""
+                    }`}
+                    onClick={() => {
+                      setSelectedVaultPath(entry.path);
+                      setActionError("");
+                    }}
+                    onContextMenu={(event) => openContextMenu(event, entry.path)}
+                    aria-pressed={isSelected}
+                    title={entry.path}
+                  >
+                    <span className="vault-manager-item-main">
+                      <span className="vault-manager-item-name">
+                        {vaultBaseName(entry.path)}
+                      </span>
+                      <span className="vault-manager-item-path">{entry.path}</span>
+                    </span>
+                    <span className="vault-manager-item-meta">
+                      {isActive ? <span className="chip">Active</span> : null}
+                      {isMissing ? <span className="chip">Missing</span> : null}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </aside>
+          <section className="vault-manager-details" aria-live="polite">
+            <div className="vault-manager-details-header">
+              <span className="label">Actions</span>
+              <div className="vault-manager-actions">
+                <button
+                  type="button"
+                  className="primary small"
+                  onClick={handleOpenVault}
+                  disabled={isBusy}
+                >
+                  Open Vault
+                </button>
+              </div>
+            </div>
+            {actionError ? (
+              <div className="error" role="status">
+                {actionError}
+              </div>
+            ) : null}
+            {selectedEntry ? (
+              <>
+                <div className="vault-manager-section">
+                  <span className="label">Path</span>
+                  <span className="vault-manager-path">{selectedEntry.path}</span>
+                </div>
+                {selectedVaultMissing ? (
+                  <div className="vault-manager-warning">
+                    Vault folder is missing. Remove it from the list if it is no
+                    longer available.
+                  </div>
+                ) : null}
+                <div className="vault-manager-section">
+                  <span className="value">Found profiles: {profileCount}</span>
+                  <div className="vault-manager-profile-actions">
+                    {profileState.status === "loading" ? (
+                      <span className="muted">Loading profiles...</span>
+                    ) : null}
+                    {canLoadProfile ? (
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={handleLoadProfile}
+                        disabled={isBusy}
+                      >
+                        LOAD PROFILE
+                      </button>
+                    ) : null}
+                    {canCreateProfile ? (
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={handleCreateProfile}
+                        disabled={isBusy}
+                      >
+                        CREATE PROFILE
+                      </button>
+                    ) : null}
+                  </div>
+                  {profileState.error ? (
+                    <div className="error" role="status">
+                      {profileState.error}
+                    </div>
+                  ) : null}
+                  {canCreateProfile ? (
+                    <div className="vault-manager-warning">
+                      Warning: Without a profile, statistics cannot be saved.
+                    </div>
+                  ) : null}
+                </div>
+                {selectedVaultMissing ? (
+                  <div className="vault-manager-section">
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={() => requestRemoveVault(selectedEntry.path)}
+                      disabled={isBusy}
+                    >
+                      Remove from recents
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="empty-state">Select a vault to see details.</div>
+            )}
+          </section>
+        </div>
+        {contextMenu ? (
+          <div
+            className="context-menu-backdrop vault-manager-context-backdrop"
+            role="presentation"
+            onMouseDown={closeContextMenu}
+          >
+            <div
+              className="context-menu vault-manager-context-menu"
+              style={{ left: contextMenu.x, top: contextMenu.y }}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="context-menu-item"
+                onClick={() => {
+                  closeContextMenu();
+                  handleRefreshActiveVault();
+                }}
+                disabled={!hasActiveVault || isBusy}
+              >
+                Refresh Active Vault
+              </button>
+              <button
+                type="button"
+                className="context-menu-item"
+                onClick={() => requestRemoveVault(contextMenu.path)}
+                disabled={isBusy}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {pendingRemovePath ? (
+          <div
+            className="modal-backdrop vault-manager-confirm-backdrop"
+            role="presentation"
+            onMouseDown={handleCancelRemove}
+          >
+            <div
+              className="modal-panel vault-manager-confirm"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="vault-manager-remove-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <h3 id="vault-manager-remove-title">
+                Remove vault "{pendingRemoveName}" from list?
+              </h3>
+              <p className="muted">This will not delete files from disk.</p>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={handleCancelRemove}
+                  disabled={isBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => void handleConfirmRemove()}
+                  disabled={isBusy}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  return portalTarget ? createPortal(modal, portalTarget) : modal;
+};
+
+---
+
+## 📝 VaultTree.test.ts — ./components/VaultTree.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/components/VaultTree.test.ts
+ *
+ * Zweck:
+ * - Tests fuer VaultTree Hilfsfunktionen.
+ */
+
+import { describe, expect, it, vi } from "vitest";
+import {
+  buildVaultDeleteHandlers,
+  shouldHandleVaultDeleteShortcut,
+} from "./VaultTree";
+import { type VaultFile } from "../lib/tree";
+
+describe("buildVaultDeleteHandlers", () => {
+  const target: VaultFile = {
+    path: "/vault/Note.md",
+    relative_path: "Note.md",
+  };
+
+  it("confirms deletion and triggers rescan", async () => {
+    const invokeDelete = vi.fn().mockResolvedValue(undefined);
+    const onRescanVault = vi.fn();
+    const onClose = vi.fn();
+    const onClearSelection = vi.fn();
+    const setError = vi.fn();
+    const setIsDeleting = vi.fn();
+
+    const { handleConfirm } = buildVaultDeleteHandlers({
+      vaultPath: "/vault",
+      deleteTarget: target,
+      selectedFile: target,
+      isDeleting: false,
+      invokeDelete,
+      onRescanVault,
+      onClose,
+      onClearSelection,
+      setError,
+      setIsDeleting,
+    });
+
+    await handleConfirm();
+
+    expect(invokeDelete).toHaveBeenCalledWith("/vault", "Note.md");
+    expect(onRescanVault).toHaveBeenCalled();
+    expect(onClearSelection).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("cancels without deleting or rescanning", () => {
+    const invokeDelete = vi.fn();
+    const onRescanVault = vi.fn();
+    const onClose = vi.fn();
+    const onClearSelection = vi.fn();
+    const setError = vi.fn();
+    const setIsDeleting = vi.fn();
+
+    const { handleCancel } = buildVaultDeleteHandlers({
+      vaultPath: "/vault",
+      deleteTarget: target,
+      selectedFile: null,
+      isDeleting: false,
+      invokeDelete,
+      onRescanVault,
+      onClose,
+      onClearSelection,
+      setError,
+      setIsDeleting,
+    });
+
+    handleCancel();
+
+    expect(invokeDelete).not.toHaveBeenCalled();
+    expect(onRescanVault).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe("shouldHandleVaultDeleteShortcut", () => {
+  it("returns true when Delete is pressed inside the vault tree", () => {
+    const insideTarget = {};
+    const currentTarget = {
+      contains: (node: unknown) => node === insideTarget,
+    };
+
+    expect(
+      shouldHandleVaultDeleteShortcut({
+        key: "Delete",
+        currentTarget,
+        target: insideTarget,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when target is outside or key is different", () => {
+    const insideTarget = {};
+    const currentTarget = {
+      contains: (node: unknown) => node === insideTarget,
+    };
+
+    expect(
+      shouldHandleVaultDeleteShortcut({
+        key: "Backspace",
+        currentTarget,
+        target: insideTarget,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldHandleVaultDeleteShortcut({
+        key: "Delete",
+        currentTarget,
+        target: {},
+      }),
+    ).toBe(false);
+  });
+});
+
+---
+
 ## 📝 VaultTree.tsx — ./components/VaultTree.tsx
+
+/**
+ * @file apps/fmd-desktop/src/components/VaultTree.tsx
+ *
+ * Zweck:
+ * - Rendert die UI-Komponente Vault Tree.
+ *
+ * Verantwortlichkeiten:
+ * - Baut die UI-Struktur und zugehoerige Klassen auf.
+ * - Verdrahtet Props und Callbacks mit Unterkomponenten.
+ * - Stellt Inhalts- und Statusvarianten dar.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/icons.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/VaultCreateModal.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/lib/errors.ts: Hilfsfunktionen oder Typen.
+ *
+ * Exportiert:
+ * - VaultTree: React-Komponente.
+ *
+ * Hinweise:
+ * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
+ */
 
 import {
   useCallback,
@@ -4437,27 +8762,56 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent,
   type MouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { FileIcon, FolderIcon } from "./icons";
 import { VaultCreateModal } from "./VaultCreateModal";
+import { VaultDeleteModal } from "./VaultDeleteModal";
 import { asErrorMessage } from "../lib/errors";
-import { normalizeRelativePath, vaultBaseName } from "../lib/path";
+import { isHiddenPath, normalizeRelativePath, vaultBaseName } from "../lib/path";
 import {
   buildTree,
+  filterHiddenFiles,
   sortNodes,
   type TreeNode,
   type VaultFile,
 } from "../lib/tree";
 import { type LoadState } from "../lib/types";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 
 const INDENT_STEP = 12;
 const OVERFLOW_DEPTH = 4;
 const DEFAULT_FILE_NAME = "New Note.md";
 const DEFAULT_FOLDER_NAME = "New Folder";
 const NAME_FORBIDDEN_PATTERN = /[\\/]/;
+const MARKDOWN_FILE_PATTERN = /\.(md|markdown|mdx)$/i;
+
+const isMarkdownFilePath = (value: string) => MARKDOWN_FILE_PATTERN.test(value);
+
+type DeleteShortcutEvent = {
+  key: string;
+  currentTarget: { contains?: (node: unknown) => boolean } | null;
+  target: unknown;
+};
+
+export const shouldHandleVaultDeleteShortcut = (
+  event: DeleteShortcutEvent,
+) => {
+  if (event.key !== "Delete") {
+    return false;
+  }
+  if (!event.currentTarget || !event.target) {
+    return false;
+  }
+  if (typeof event.currentTarget.contains !== "function") {
+    return false;
+  }
+  return event.currentTarget.contains(event.target);
+};
 
 const getIndentVars = (depth: number): CSSProperties =>
   ({
@@ -4494,6 +8848,30 @@ const joinVaultPath = (vaultRoot: string, relativePath: string) => {
     return trimmedRoot;
   }
   return `${trimmedRoot}${separator}${normalizedRelative}`;
+};
+
+const resolveNodePaths = (
+  target: ContextMenuTarget,
+  vaultRoot: string,
+): ResolvedNodePaths => {
+  if (target.kind === "file") {
+    const relativeFilePath = normalizeRelativePath(target.file.relative_path);
+    const fileAbsPath = joinVaultPath(vaultRoot, relativeFilePath);
+    const folderRelativePath = getParentRelativePath(relativeFilePath);
+    const folderAbsPath = joinVaultPath(vaultRoot, folderRelativePath);
+    return {
+      kind: "file",
+      relativePath: relativeFilePath,
+      fileAbsPath,
+      folderAbsPath,
+    };
+  }
+  const relativeFolderPath = normalizeRelativePath(target.path ?? "");
+  return {
+    kind: "dir",
+    relativePath: relativeFolderPath,
+    folderAbsPath: joinVaultPath(vaultRoot, relativeFolderPath),
+  };
 };
 
 const findDirectoryNode = (nodes: TreeNode[], path: string): TreeNode | null => {
@@ -4551,22 +8929,87 @@ const ensureUniqueName = (
   return candidate;
 };
 
+type VaultDeleteHandlerOptions = {
+  vaultPath: string | null;
+  deleteTarget: VaultFile | null;
+  selectedFile: VaultFile | null;
+  isDeleting: boolean;
+  invokeDelete: (vaultPath: string, relativePath: string) => Promise<void>;
+  onRescanVault: () => void;
+  onClose: () => void;
+  onClearSelection?: () => void;
+  setError: (message: string) => void;
+  setIsDeleting: (value: boolean) => void;
+};
+
+export const buildVaultDeleteHandlers = (options: VaultDeleteHandlerOptions) => {
+  const handleCancel = () => {
+    if (options.isDeleting) {
+      return;
+    }
+    options.onClose();
+  };
+
+  const handleConfirm = async () => {
+    if (options.isDeleting || !options.vaultPath || !options.deleteTarget) {
+      return;
+    }
+    if (!isMarkdownFilePath(options.deleteTarget.relative_path)) {
+      options.setError("Only markdown files can be deleted.");
+      return;
+    }
+    options.setIsDeleting(true);
+    options.setError("");
+    try {
+      await options.invokeDelete(
+        options.vaultPath,
+        options.deleteTarget.relative_path,
+      );
+      options.onRescanVault();
+      if (options.selectedFile?.path === options.deleteTarget.path) {
+        options.onClearSelection?.();
+      }
+      options.onClose();
+    } catch (error) {
+      options.setError(asErrorMessage(error, "Failed to delete file."));
+    } finally {
+      options.setIsDeleting(false);
+    }
+  };
+
+  return { handleCancel, handleConfirm };
+};
+
 type ContextMenuTarget =
   | { kind: "file"; file: VaultFile; dirPath: string }
   | { kind: "dir"; path: string }
   | { kind: "empty"; path: string };
+
+type PathInfo = {
+  exists: boolean;
+  isDir: boolean;
+};
+
+type ResolvedNodePaths = {
+  kind: "file" | "dir";
+  relativePath: string;
+  fileAbsPath?: string;
+  folderAbsPath: string;
+};
 
 type VaultTreeProps = {
   activeFolderPath: string | null;
   expandedPaths: Set<string>;
   fileCountLabel: string;
   files: VaultFile[];
+  showHiddenFolders: boolean;
   listError: string;
   listState: LoadState;
   onRescanVault: () => void;
   onActiveFolderChange: (path: string | null) => void;
   onTogglePath: (path: string, isOpen: boolean) => void;
   onSelectFile: (file: VaultFile) => void;
+  onClearSelection?: () => void;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
 };
@@ -4576,17 +9019,23 @@ export const VaultTree = ({
   expandedPaths,
   fileCountLabel,
   files,
+  showHiddenFolders,
   listError,
   listState,
   onRescanVault,
   onActiveFolderChange,
   onTogglePath,
   onSelectFile,
+  onClearSelection,
   selectedFile,
   vaultPath,
 }: VaultTreeProps) => {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
   const [extraDirs, setExtraDirs] = useState<string[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<VaultFile[]>([]);
   const [contextMenu, setContextMenu] = useState<{
     target: ContextMenuTarget;
     x: number;
@@ -4598,15 +9047,42 @@ export const VaultTree = ({
   const [createDirPath, setCreateDirPath] = useState("");
   const [createName, setCreateName] = useState("");
   const [createError, setCreateError] = useState("");
+  const [openError, setOpenError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<VaultFile | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const portalTarget = typeof document === "undefined" ? null : document.body;
+
+  const mergedFiles = useMemo(() => {
+    if (pendingFiles.length === 0) {
+      return files;
+    }
+    const knownPaths = new Set(files.map((file) => file.path));
+    const next = [...files];
+    pendingFiles.forEach((file) => {
+      if (!knownPaths.has(file.path)) {
+        next.push(file);
+      }
+    });
+    return next;
+  }, [files, pendingFiles]);
+
+  const visibleFiles = useMemo(
+    () => filterHiddenFiles(mergedFiles, showHiddenFolders),
+    [mergedFiles, showHiddenFolders],
+  );
 
   const treeNodes = useMemo(() => {
-    const nodes = buildTree(files);
-    if (!extraDirs.length) {
+    const nodes = buildTree(visibleFiles);
+    const visibleExtraDirs = showHiddenFolders
+      ? extraDirs
+      : extraDirs.filter((dirPath) => !isHiddenPath(dirPath));
+    if (!visibleExtraDirs.length) {
       return nodes;
     }
     const nextNodes = [...nodes];
-    extraDirs.forEach((dirPath) => {
+    visibleExtraDirs.forEach((dirPath) => {
       const normalized = normalizeRelativePath(dirPath);
       if (!normalized) {
         return;
@@ -4636,7 +9112,7 @@ export const VaultTree = ({
       }
     });
     return sortNodes(nextNodes);
-  }, [extraDirs, files]);
+  }, [extraDirs, showHiddenFolders, visibleFiles]);
   const maxDepth = useMemo(
     () => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0),
     [treeNodes],
@@ -4663,24 +9139,40 @@ export const VaultTree = ({
     [normalizedActiveFolderPath],
   );
 
+
   useEffect(() => {
     setExtraDirs([]);
+    setPendingFiles([]);
+    setOpenError("");
+    setDeleteTarget(null);
+    setDeleteError("");
+    setIsDeleting(false);
     onActiveFolderChange(null);
     setContextMenu(null);
   }, [onActiveFolderChange, vaultPath]);
 
   useEffect(() => {
+    setPendingFiles((prev) => {
+      if (prev.length === 0) {
+        return prev;
+      }
+      const knownPaths = new Set(files.map((file) => file.path));
+      const next = prev.filter((file) => !knownPaths.has(file.path));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [files]);
+
+  useEffect(() => {
     if (!contextMenu) {
       return;
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setContextMenu(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [contextMenu]);
+    return registerCloseLayer({
+      id: "vault-context-menu",
+      priority: 200,
+      isActive: () => true,
+      onClose: closeContextMenu,
+    });
+  }, [closeContextMenu, contextMenu]);
 
   useLayoutEffect(() => {
     if (!contextMenu || !menuRef.current) {
@@ -4712,8 +9204,9 @@ export const VaultTree = ({
     [],
   );
 
-  const closeContextMenu = useCallback(() => {
-    setContextMenu(null);
+  const reportOpenError = useCallback((message: string, details: Record<string, unknown>) => {
+    setOpenError(message);
+    console.error(message, details);
   }, []);
 
   const openCreateModal = useCallback(
@@ -4727,27 +9220,156 @@ export const VaultTree = ({
     [],
   );
 
+  const closeDeleteModal = useCallback(() => {
+    if (isDeleting) {
+      return;
+    }
+    setDeleteTarget(null);
+    setDeleteError("");
+  }, [isDeleting]);
+
+  const requestDelete = useCallback((file: VaultFile) => {
+    setDeleteTarget(file);
+    setDeleteError("");
+    setContextMenu(null);
+  }, []);
+
   const handleOpenDataFolder = useCallback(
-    async (dirPath: string) => {
-      if (!vaultPath) {
+    async (target: ContextMenuTarget | null) => {
+      closeContextMenu();
+      if (!vaultPath || !target) {
+        if (!vaultPath) {
+          setOpenError("Select a vault to open folders.");
+        }
         return;
       }
+      const resolved = resolveNodePaths(target, vaultPath);
+      const { folderAbsPath, relativePath } = resolved;
+      setOpenError("");
       try {
-        await openPath(joinVaultPath(vaultPath, dirPath));
+        const info = await invoke<PathInfo>("get_path_info", {
+          path: folderAbsPath,
+        });
+        if (!info.exists || !info.isDir) {
+          reportOpenError("Folder not found on disk.", {
+            nodeKind: resolved.kind,
+            relativePath,
+            folderAbsPath,
+            fileAbsPath: resolved.fileAbsPath,
+            info,
+          });
+          return;
+        }
+        await openPath(folderAbsPath);
       } catch (error) {
-        console.error("Failed to open folder", error);
+        reportOpenError("Could not open in system explorer.", {
+          nodeKind: resolved.kind,
+          relativePath,
+          folderAbsPath,
+          fileAbsPath: resolved.fileAbsPath,
+          error,
+        });
       }
     },
-    [vaultPath],
+    [closeContextMenu, reportOpenError, vaultPath],
   );
 
-  const handleOpenWithDefault = useCallback(async (file: VaultFile) => {
-    try {
-      await openPath(file.path);
-    } catch (error) {
-      console.error("Failed to open file", error);
-    }
-  }, []);
+  const handleOpenWithDefault = useCallback(
+    async (file: VaultFile | null) => {
+      closeContextMenu();
+      if (!vaultPath || !file) {
+        if (!vaultPath) {
+          setOpenError("Select a vault to open files.");
+        }
+        return;
+      }
+      const resolved = resolveNodePaths(
+        {
+          kind: "file",
+          file,
+          dirPath: getParentRelativePath(file.relative_path),
+        },
+        vaultPath,
+      );
+      const fileAbsPath = resolved.fileAbsPath ?? file.path;
+      setOpenError("");
+      try {
+        const info = await invoke<PathInfo>("get_path_info", {
+          path: fileAbsPath,
+        });
+        if (!info.exists || info.isDir) {
+          reportOpenError("File not found on disk.", {
+            nodeKind: "file",
+            relativePath: resolved.relativePath,
+            fileAbsPath,
+            folderAbsPath: resolved.folderAbsPath,
+            info,
+          });
+          return;
+        }
+        await openPath(fileAbsPath);
+      } catch (error) {
+        reportOpenError("Could not open with the default app.", {
+          nodeKind: "file",
+          relativePath: resolved.relativePath,
+          fileAbsPath,
+          folderAbsPath: resolved.folderAbsPath,
+          error,
+        });
+      }
+    },
+    [closeContextMenu, reportOpenError, vaultPath],
+  );
+
+  const invokeDelete = useCallback(
+    (vaultRoot: string, relativePath: string) =>
+      invoke("delete_markdown_file", { vaultPath: vaultRoot, relativePath }),
+    [],
+  );
+
+  const { handleCancel: handleDeleteCancel, handleConfirm: handleDeleteConfirm } = useMemo(
+    () =>
+      buildVaultDeleteHandlers({
+        vaultPath,
+        deleteTarget,
+        selectedFile,
+        isDeleting,
+        invokeDelete,
+        onRescanVault,
+        onClose: closeDeleteModal,
+        onClearSelection,
+        setError: setDeleteError,
+        setIsDeleting,
+      }),
+    [
+      closeDeleteModal,
+      deleteTarget,
+      invokeDelete,
+      isDeleting,
+      onClearSelection,
+      onRescanVault,
+      selectedFile,
+      vaultPath,
+    ],
+  );
+
+  const handleVaultKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (!shouldHandleVaultDeleteShortcut(event)) {
+        return;
+      }
+      if (!selectedFile) {
+        return;
+      }
+      if (!isMarkdownFilePath(selectedFile.relative_path)) {
+        setDeleteError("Only markdown files can be deleted.");
+        return;
+      }
+      event.preventDefault();
+      requestDelete(selectedFile);
+    },
+    [requestDelete, selectedFile],
+  );
 
   const handleCreateConfirm = useCallback(async () => {
     if (!createKind || !vaultPath) {
@@ -4782,6 +9404,11 @@ export const VaultTree = ({
           vaultPath,
           relativePath,
         });
+        setPendingFiles((prev) =>
+          prev.some((file) => file.path === created.path)
+            ? prev
+            : [...prev, created],
+        );
         if (createDirPath && !expandedPaths.has(createDirPath)) {
           onTogglePath(createDirPath, true);
         }
@@ -4800,6 +9427,7 @@ export const VaultTree = ({
         if (relativePath && !expandedPaths.has(relativePath)) {
           onTogglePath(relativePath, true);
         }
+        onActiveFolderChange(relativePath);
       }
       onRescanVault();
       setCreateKind(null);
@@ -4817,6 +9445,7 @@ export const VaultTree = ({
     onRescanVault,
     onSelectFile,
     onTogglePath,
+    onActiveFolderChange,
     treeNodes,
     vaultPath,
   ]);
@@ -4847,11 +9476,92 @@ export const VaultTree = ({
   const menuTarget = contextMenu?.target ?? null;
   const fileTarget = menuTarget && menuTarget.kind === "file" ? menuTarget : null;
   const menuDirPath = fileTarget ? fileTarget.dirPath : menuTarget?.path ?? "";
+  const canDeleteFile = fileTarget
+    ? isMarkdownFilePath(fileTarget.file.relative_path)
+    : false;
+  const deleteFileName = deleteTarget
+    ? deleteTarget.relative_path.split("/").pop() ?? deleteTarget.relative_path
+    : "";
   const rootFolderState = getFolderState("");
+  const contextMenuLayer = contextMenu ? (
+    <div
+      className="context-menu-backdrop"
+      role="presentation"
+      onMouseDown={closeContextMenu}
+    >
+      <div
+        ref={menuRef}
+        className="context-menu"
+        style={menuStyle ?? { left: contextMenu.x, top: contextMenu.y }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        {fileTarget ? (
+          <>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => {
+                void handleOpenDataFolder(menuTarget);
+              }}
+            >
+              View Folder
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => {
+                void handleOpenWithDefault(fileTarget.file);
+              }}
+            >
+              View Files
+            </button>
+            {canDeleteFile ? (
+              <button
+                type="button"
+                className="context-menu-item"
+                onClick={() => {
+                  requestDelete(fileTarget.file);
+                }}
+              >
+                Delete
+              </button>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => openCreateModal("file", menuDirPath)}
+            >
+              New File
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => openCreateModal("folder", menuDirPath)}
+            >
+              New Folder
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => {
+                void handleOpenDataFolder(menuTarget);
+              }}
+            >
+              View Folder
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  ) : null;
 
   const renderTreeNodes = (nodes: TreeNode[], depth: number) =>
     nodes.map((node) => {
       const indentStyle = getIndentVars(depth);
+      const hiddenClass = isHiddenPath(node.path) ? " is-hidden" : "";
       if (node.type === "dir") {
         const isOpen = expandedPaths.has(node.path);
         const { isActiveFolder, isBreadcrumb } = getFolderState(node.path);
@@ -4867,7 +9577,7 @@ export const VaultTree = ({
             <summary
               className={`tree-item${isActiveFolder ? " active-folder" : ""}${
                 isBreadcrumb ? " breadcrumb" : ""
-              }`}
+              }${hiddenClass}`}
               title={node.path}
               style={indentStyle}
               onClick={() => onActiveFolderChange(node.path)}
@@ -4897,7 +9607,7 @@ export const VaultTree = ({
         <button
           type="button"
           key={node.path}
-          className={`tree-item tree-file ${isActive ? "active" : ""}`}
+          className={`tree-item tree-file ${isActive ? "active" : ""}${hiddenClass}`}
           onClick={() => {
             if (!fileRef) {
               return;
@@ -4933,6 +9643,8 @@ export const VaultTree = ({
         <div
           className={`vault-tree-scroll${hasDeepIndent ? " vault-tree-scroll-wide" : ""}`}
           onContextMenu={handleEmptyContextMenu}
+          onKeyDown={handleVaultKeyDown}
+          tabIndex={0}
         >
           {!vaultPath ? (
             <div className="empty-state">
@@ -4941,6 +9653,8 @@ export const VaultTree = ({
           ) : null}
           {listState === "loading" ? <span className="chip">Scanne...</span> : null}
           {listError ? <div className="error">{listError}</div> : null}
+          {openError ? <div className="error">{openError}</div> : null}
+          {deleteError ? <div className="error">{deleteError}</div> : null}
           {vaultPath && listState === "idle" && treeNodes.length === 0 ? (
             <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
           ) : null}
@@ -4971,72 +9685,19 @@ export const VaultTree = ({
           ) : null}
         </div>
       </div>
-      {contextMenu ? (
-        <div
-          className="context-menu-backdrop"
-          role="presentation"
-          onMouseDown={closeContextMenu}
-        >
-          <div
-            ref={menuRef}
-            className="context-menu"
-            style={menuStyle ?? { left: contextMenu.x, top: contextMenu.y }}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            {fileTarget ? (
-              <>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => {
-                    closeContextMenu();
-                    void handleOpenDataFolder(menuDirPath);
-                  }}
-                >
-                  Open Data Folder
-                </button>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => {
-                    closeContextMenu();
-                    void handleOpenWithDefault(fileTarget.file);
-                  }}
-                >
-                  Open with Default
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => openCreateModal("file", menuDirPath)}
-                >
-                  New File
-                </button>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => openCreateModal("folder", menuDirPath)}
-                >
-                  New Folder
-                </button>
-                <button
-                  type="button"
-                  className="context-menu-item"
-                  onClick={() => {
-                    closeContextMenu();
-                    void handleOpenDataFolder(menuDirPath);
-                  }}
-                >
-                  Open Data Folder
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
+      {contextMenuLayer
+        ? portalTarget
+          ? createPortal(contextMenuLayer, portalTarget)
+          : contextMenuLayer
+        : null}
+      <VaultDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        fileName={deleteFileName}
+        error={deleteError}
+        isPending={isDeleting}
+        onCancel={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+      />
       <VaultCreateModal
         isOpen={createKind !== null}
         kind={createKind ?? "file"}
@@ -5060,6 +9721,24 @@ export const VaultTree = ({
 
 ## 📝 constants.ts — ./features/fast-flashcard/constants.ts
 
+/**
+ * @file apps/fmd-desktop/src/features/fast-flashcard/constants.ts
+ *
+ * Zweck:
+ * - Definiert zentrale Konstanten fuer Fast Flashcard.
+ *
+ * Verantwortlichkeiten:
+ * - Definiert wiederverwendbare Werte und Defaults.
+ * - Sichert konsistente Nutzung ueber Module hinweg.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen wirken sich auf mehrere Module aus.
+ */
+
 export const FAST_FLASHCARD_DURATIONS = [3, 6, 12, 24, 48] as const;
 
 export type FastFlashcardDuration = (typeof FAST_FLASHCARD_DURATIONS)[number];
@@ -5067,6 +9746,24 @@ export type FastFlashcardDuration = (typeof FAST_FLASHCARD_DURATIONS)[number];
 ---
 
 ## 📝 logic.test.ts — ./features/flashcards/logic.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/features/flashcards/logic.test.ts
+ *
+ * Zweck:
+ * - Testet logic.test und zugehoerige Logik.
+ *
+ * Verantwortlichkeiten:
+ * - Prueft erwartetes Verhalten und Randfaelle.
+ * - Sichert Regressionen fuer zentrale Szenarien.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ *
+ * Hinweise:
+ * - Nur fuer Testlauf; keine Produktivnutzung.
+ */
 
 import { describe, expect, it } from "vitest";
 import type { Flashcard } from "../../lib/flashcards";
@@ -5137,22 +9834,117 @@ describe("calculateFlashcardStats", () => {
   });
 });
 
+describe("evaluateFlashcardResult pending QA handling", () => {
+  const mixCard: Flashcard = {
+    kind: "composite",
+    parts: [
+      {
+        kind: "multiple-choice",
+        question: "Pick one",
+        options: [
+          { key: "a", text: "A" },
+          { key: "b", text: "B" },
+        ],
+        correctKeys: ["a"],
+      },
+      {
+        kind: "free-text",
+        front: "Free text?",
+        back: "Answer",
+      },
+    ],
+  };
+
+  it("returns pending when QA parts are still unconfirmed", () => {
+    const compositeStates: Record<number, CompositePartState[]> = {
+      0: [{ selections: ["a"] }, {}],
+    };
+
+    const result = evaluateFlashcardResult(
+      mixCard,
+      0,
+      {},
+      {},
+      {},
+      {},
+      compositeStates,
+    );
+
+    expect(result).toBe("pending");
+  });
+
+  it("counts correct only after QA confirmed", () => {
+    const compositeStates: Record<number, CompositePartState[]> = {
+      0: [{ selections: ["a"] }, { selfGrade: "correct" }],
+    };
+
+    const result = evaluateFlashcardResult(
+      mixCard,
+      0,
+      {},
+      {},
+      {},
+      {},
+      compositeStates,
+    );
+
+    expect(result).toBe("correct");
+  });
+
+  it("still reports incorrect when an auto part is wrong even after QA confirmed", () => {
+    const compositeStates: Record<number, CompositePartState[]> = {
+      0: [{ selections: ["b"] }, { selfGrade: "correct" }],
+    };
+
+    const result = evaluateFlashcardResult(
+      mixCard,
+      0,
+      {},
+      {},
+      {},
+      {},
+      compositeStates,
+    );
+
+    expect(result).toBe("incorrect");
+  });
+});
+
 ---
 
 ## 📝 logic.ts — ./features/flashcards/logic.ts
+
+/**
+ * @file apps/fmd-desktop/src/features/flashcards/logic.ts
+ *
+ * Zweck:
+ * - Enthaelt domanenspezifische Logik fuer Flashcards.
+ *
+ * Verantwortlichkeiten:
+ * - Kapselt Berechnungen und Auswertungen fuer das Feature.
+ * - Normalisiert Eingaben und Ergebnisse fuer die UI.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen Auswertung und Bewertung im Feature.
+ */
 
 import type { DragEvent } from "react";
 import {
   isDragAnswerMatch,
   isInputAnswerMatch,
   type ClozeSegment,
+  type CompositeFlashcard,
   type FlashcardPart,
   type Flashcard,
 } from "../../lib/flashcards";
 
 export type TrueFalseSelection = "wahr" | "falsch";
-export type FlashcardResult = "correct" | "incorrect" | "neutral";
-export type FlashcardSelfGrade = Exclude<FlashcardResult, "neutral">;
+export type FlashcardResult = "correct" | "incorrect" | "neutral" | "pending";
+export type FlashcardSelfGrade = "correct" | "incorrect";
 
 export type FlashcardStats = {
   correctCount: number;
@@ -5352,7 +10144,44 @@ export const evaluateFlashcardPartResult = (
     return isClozeCardCorrect(part, responses) ? "correct" : "incorrect";
   }
 
-  return state.selfGrade ?? "neutral";
+  return state.selfGrade ?? "pending";
+};
+
+export const evaluateCompositeCardResult = (
+  card: CompositeFlashcard,
+  partStates: CompositePartState[] = [],
+): FlashcardResult => {
+  if (card.parts.length === 0) {
+    return "neutral";
+  }
+
+  const partResults = card.parts.map((part, index) => ({
+    part,
+    state: partStates[index] ?? {},
+    result: evaluateFlashcardPartResult(part, partStates[index] ?? {}),
+  }));
+
+  const qaParts = partResults.filter((entry) => entry.part.kind === "free-text");
+  const autoParts = partResults.filter((entry) => entry.part.kind !== "free-text");
+  const autoCorrect = autoParts.every((entry) => entry.result === "correct");
+
+  if (qaParts.length === 0) {
+    return autoCorrect ? "correct" : "incorrect";
+  }
+
+  const hasPendingQa = qaParts.some(
+    (entry) =>
+      entry.state.selfGrade !== "correct" && entry.state.selfGrade !== "incorrect",
+  );
+  if (hasPendingQa) {
+    return "pending";
+  }
+
+  const allQaCorrect = qaParts.every(
+    (entry) => entry.state.selfGrade === "correct",
+  );
+
+  return autoCorrect && allQaCorrect ? "correct" : "incorrect";
 };
 
 export const evaluateFlashcardResult = (
@@ -5366,10 +10195,7 @@ export const evaluateFlashcardResult = (
 ): FlashcardResult => {
   if (card.kind === "composite") {
     const partStates = compositeStates?.[cardIndex] ?? [];
-    const allCorrect = card.parts.every((part, partIndex) =>
-      evaluateFlashcardPartResult(part, partStates[partIndex] ?? {}) === "correct",
-    );
-    return allCorrect ? "correct" : "incorrect";
+    return evaluateCompositeCardResult(card, partStates);
   }
 
   if (card.kind === "multiple-choice") {
@@ -5398,7 +10224,7 @@ export const evaluateFlashcardResult = (
   }
 
   const grade = selfGrades[cardIndex];
-  return grade ?? "neutral";
+  return grade ?? "pending";
 };
 
 export const calculateFlashcardStats = (
@@ -5441,6 +10267,30 @@ export const calculateFlashcardStats = (
 ---
 
 ## 📝 useFlashcards.ts — ./features/flashcards/useFlashcards.ts
+
+/**
+ * @file apps/fmd-desktop/src/features/flashcards/useFlashcards.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useFlashcards fuer Flashcards bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Flashcards.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - FLASHCARD_PAGE_SIZES: Zentrale Export-API.
+ * - DEFAULT_FLASHCARD_PAGE_SIZE: Zentrale Export-API.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
 
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
@@ -6304,6 +11154,29 @@ export const useFlashcards = ({
 
 ## 📝 usePreview.ts — ./features/preview/usePreview.ts
 
+/**
+ * @file apps/fmd-desktop/src/features/preview/usePreview.ts
+ *
+ * Zweck:
+ * - Stellt den Hook usePreview fuer Preview bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Preview.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/errors.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - usePreview: Hook fuer Preview.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
 import { useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { asErrorMessage } from "../../lib/errors";
@@ -6390,11 +11263,31 @@ export const usePreview = () => {
 
 ## 📝 settingsNavigation.ts — ./features/settings/settingsNavigation.ts
 
+/**
+ * @file apps/fmd-desktop/src/features/settings/settingsNavigation.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Settings.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Settings bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/components/SidebarNav.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 export const SETTINGS_PAGES = [
   { id: "app-settings", label: "App Settings" },
   { id: "exam-settings", label: "Exam Settings" },
   { id: "review-tools", label: "Review Tools" },
+  { id: "keyboard-shortcuts", label: "Keyboard Shortcuts" },
   { id: "appearance", label: "Appearance" },
+  { id: "markdown-editor", label: "Markdown editor" },
 ] as const;
 
 export type SettingsPageId = (typeof SETTINGS_PAGES)[number]["id"];
@@ -6403,10 +11296,40 @@ export type SettingsPageId = (typeof SETTINGS_PAGES)[number]["id"];
 
 ## 📝 useAppSettings.ts — ./features/settings/useAppSettings.ts
 
+/**
+ * @file apps/fmd-desktop/src/features/settings/useAppSettings.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useAppSettings fuer Settings bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Settings.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/theme.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - DEFAULT_THEME: Zentrale Export-API.
+ * - DEFAULT_LANGUAGE: Zentrale Export-API.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color";
 import { applyAccentColor, applyTheme, type ThemeMode } from "../../lib/theme";
+import { normalizeVaultPath } from "../../lib/path";
+import {
+  DEFAULT_KEYBOARD_SHORTCUTS,
+  normalizeKeyboardShortcuts,
+  type KeyboardShortcutSettings,
+} from "../../lib/shortcuts/bindings";
 import {
   DEFAULT_FLASHCARD_PAGE_SIZE,
   FLASHCARD_PAGE_SIZES,
@@ -6429,20 +11352,30 @@ import {
   type SpacedRepetitionPageSize,
   type SpacedRepetitionRepetitionStrength,
 } from "../spaced-repetition/useSpacedRepetition";
+import type { UserVaultMode } from "../../lib/userVault";
 
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 type ExamAiProvider = "shared-gpt";
+type ExamGradeScale = "standard-1-6";
 
 export type ExamAiEvaluation = {
   enabled: boolean;
   provider: ExamAiProvider | null;
 };
 
+export type RecentVaultEntry = {
+  path: string;
+  lastOpenedAt: string;
+};
+
 type AppSettings = {
   active_note_path?: string | null;
   vault_path?: string | null;
+  recent_vaults?: RecentVaultEntry[] | null;
+  user_vault_mode?: string | null;
+  user_vault_custom_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
   editor_exact_colors?: boolean | null;
@@ -6451,31 +11384,49 @@ type AppSettings = {
   language?: AppLanguage | null;
   max_files_per_scan?: string | null;
   scan_parallelism?: string | null;
+  show_hidden_folders?: boolean | null;
+  hidden_folders_level?: number | null;
+  hidden_folders_level_vault?: number | null;
+  hidden_folders_level_index?: number | null;
   flashcard_order?: string | null;
   flashcard_mode?: string | null;
   flashcard_scope?: string | null;
   flashcard_page_size?: number | null;
   flashcard_solution_reveal_enabled?: boolean | null;
   flashcard_stats_reset_mode?: string | null;
+  flashcard_help_enabled?: boolean | null;
   fast_flashcard_order?: string | null;
   fast_flashcard_mode?: string | null;
   fast_flashcard_scope?: string | null;
   fast_flashcard_duration?: number | null;
+  fast_flashcard_help_enabled?: boolean | null;
+  exam_show_timeline?: boolean | null;
+  exam_help_enabled?: boolean | null;
   spaced_repetition_boxes?: number | null;
   spaced_repetition_order?: string | null;
   spaced_repetition_page_size?: number | null;
   spaced_repetition_repetition_strength?: string | null;
   spaced_repetition_stats_view?: string | null;
+  spaced_repetition_help_enabled?: boolean | null;
   right_toolbar_collapsed?: boolean | null;
   exam_max_total_points?: number | null;
   exam_task_count?: number | null;
   exam_task_points?: number[] | null;
+  exam_duration_minutes?: number | null;
+  exam_time_limit_enabled?: boolean | null;
+  exam_auto_cards_enabled?: boolean | null;
+  exam_auto_cards_return_on_correct?: boolean | null;
+  exam_grade_scale?: string | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
+  keyboard_shortcuts?: KeyboardShortcutSettings | null;
 };
 
 type PersistUpdates = {
   activeNotePath?: string | null;
   vaultPath?: string | null;
+  recentVaults?: RecentVaultEntry[];
+  userVaultMode?: UserVaultMode;
+  userVaultCustomPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
   editorExactColors?: boolean;
@@ -6484,26 +11435,38 @@ type PersistUpdates = {
   language?: AppLanguage;
   maxFilesPerScan?: string;
   scanParallelism?: "low" | "medium" | "high";
+  showHiddenFolders?: boolean;
   flashcardOrder?: FlashcardOrder;
   flashcardMode?: FlashcardMode;
   flashcardScope?: FlashcardScope;
   flashcardPageSize?: FlashcardPageSize;
   solutionRevealEnabled?: boolean;
   statsResetMode?: StatsResetMode;
+  flashcardHelpEnabled?: boolean;
   fastFlashcardOrder?: FlashcardOrder;
   fastFlashcardMode?: FlashcardMode;
   fastFlashcardScope?: FlashcardScope;
   fastFlashcardDuration?: number;
+  fastFlashcardHelpEnabled?: boolean;
+  examShowTimeline?: boolean;
+  examHelpEnabled?: boolean;
   spacedRepetitionBoxes?: SpacedRepetitionBoxes;
   spacedRepetitionOrder?: SpacedRepetitionOrder;
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
   spacedRepetitionRepetitionStrength?: SpacedRepetitionRepetitionStrength;
   spacedRepetitionStatsView?: SpacedRepetitionStatsView;
+  spacedRepetitionHelpEnabled?: boolean;
   rightToolbarCollapsed?: boolean;
   examMaxTotalPoints?: number;
   examTaskCount?: number;
   examTaskPoints?: number[];
+  examDurationMinutes?: number;
+  examTimeLimitEnabled?: boolean;
+  examAutoCardsEnabled?: boolean;
+  examAutoCardsReturnOnCorrect?: boolean;
+  examGradeScale?: ExamGradeScale;
   examAiEvaluation?: ExamAiEvaluation;
+  keyboardShortcuts?: KeyboardShortcutSettings;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -6513,27 +11476,41 @@ const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
+const DEFAULT_SHOW_HIDDEN_FOLDERS = false;
+const DEFAULT_USER_VAULT_MODE: UserVaultMode = "auto";
 const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
 const DEFAULT_FLASHCARD_MODE: FlashcardMode = "all";
 const DEFAULT_FLASHCARD_SCOPE: FlashcardScope = "current";
 const DEFAULT_STATS_RESET_MODE: StatsResetMode = "scan";
+const DEFAULT_FLASHCARD_HELP_ENABLED = true;
 const DEFAULT_FAST_FLASHCARD_ORDER: FlashcardOrder = DEFAULT_FLASHCARD_ORDER;
 const DEFAULT_FAST_FLASHCARD_MODE: FlashcardMode = DEFAULT_FLASHCARD_MODE;
 const DEFAULT_FAST_FLASHCARD_SCOPE: FlashcardScope = DEFAULT_FLASHCARD_SCOPE;
 const DEFAULT_FAST_FLASHCARD_DURATION = 6;
+const DEFAULT_FAST_FLASHCARD_HELP_ENABLED = true;
+const DEFAULT_EXAM_SHOW_TIMELINE = true;
+const DEFAULT_EXAM_HELP_ENABLED = true;
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
   "medium";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
+const DEFAULT_SPACED_REPETITION_HELP_ENABLED = true;
 const DEFAULT_RIGHT_TOOLBAR_COLLAPSED = false;
+const MAX_RECENT_VAULTS = 10;
+const FALLBACK_RECENT_OPENED_AT = new Date(0).toISOString();
 const MAX_EXAM_TASK_COUNT = 20;
 const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
 const DEFAULT_EXAM_TASK_COUNT = 5;
+const DEFAULT_EXAM_DURATION_MINUTES = 30;
+const DEFAULT_EXAM_TIME_LIMIT_ENABLED = true;
+const DEFAULT_EXAM_AUTO_CARDS_ENABLED = false;
+const DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT = false;
 const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
   enabled: false,
   provider: null,
 };
+const DEFAULT_EXAM_GRADE_SCALE: ExamGradeScale = "standard-1-6";
 
 const parseInteger = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -6542,6 +11519,21 @@ const parseInteger = (value: unknown) => {
   if (typeof value === "string" && value.trim() !== "") {
     const parsed = Number.parseInt(value, 10);
     if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const resolveLegacyHiddenFoldersLevel = (settings: AppSettings) => {
+  const candidates = [
+    settings.hidden_folders_level,
+    settings.hidden_folders_level_vault,
+    settings.hidden_folders_level_index,
+  ];
+  for (const candidate of candidates) {
+    const parsed = parseInteger(candidate);
+    if (parsed !== null) {
       return parsed;
     }
   }
@@ -6570,6 +11562,14 @@ const clampExamTaskPointsValue = (value: unknown) => {
     return 0;
   }
   return Math.max(0, parsed);
+};
+
+const clampExamDurationMinutes = (value: unknown) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return DEFAULT_EXAM_DURATION_MINUTES;
+  }
+  return Math.min(240, Math.max(0, parsed));
 };
 
 const buildDefaultExamTaskPoints = (taskCount: number, maxTotalPoints: number) => {
@@ -6635,6 +11635,44 @@ const normalizeExamAiEvaluation = (value: unknown): ExamAiEvaluation => {
   };
 };
 
+const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const entries: RecentVaultEntry[] = [];
+  const seen = new Set<string>();
+  value.forEach((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return;
+    }
+    const candidate = entry as {
+      path?: unknown;
+      lastOpenedAt?: unknown;
+      last_opened_at?: unknown;
+    };
+    if (typeof candidate.path !== "string") {
+      return;
+    }
+    const trimmedPath = candidate.path.trim();
+    if (!trimmedPath) {
+      return;
+    }
+    const normalized = normalizeVaultPath(trimmedPath);
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    const lastOpenedAt =
+      typeof candidate.lastOpenedAt === "string"
+        ? candidate.lastOpenedAt
+        : typeof candidate.last_opened_at === "string"
+          ? candidate.last_opened_at
+          : FALLBACK_RECENT_OPENED_AT;
+    entries.push({ path: trimmedPath, lastOpenedAt });
+  });
+  return entries.slice(0, MAX_RECENT_VAULTS);
+};
+
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
@@ -6651,6 +11689,13 @@ export const useAppSettings = () => {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
+  const [recentVaults, setRecentVaults] = useState<RecentVaultEntry[]>([]);
+  const [userVaultMode, setUserVaultModeState] = useState<UserVaultMode>(
+    DEFAULT_USER_VAULT_MODE,
+  );
+  const [userVaultCustomPath, setUserVaultCustomPathState] = useState<
+    string | null
+  >(null);
   const [language, setLanguage] = useState<AppLanguage>(DEFAULT_LANGUAGE);
   const [maxFilesPerScan, setMaxFilesPerScan] = useState(
     DEFAULT_MAX_FILES_PER_SCAN,
@@ -6658,6 +11703,9 @@ export const useAppSettings = () => {
   const [scanParallelism, setScanParallelism] = useState<
     "low" | "medium" | "high"
   >(DEFAULT_SCAN_PARALLELISM);
+  const [showHiddenFolders, setShowHiddenFoldersState] = useState(
+    DEFAULT_SHOW_HIDDEN_FOLDERS,
+  );
   const [flashcardOrder, setFlashcardOrder] =
     useState<FlashcardOrder>(DEFAULT_FLASHCARD_ORDER);
   const [flashcardMode, setFlashcardMode] =
@@ -6669,6 +11717,9 @@ export const useAppSettings = () => {
   const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
   const [statsResetMode, setStatsResetMode] =
     useState<StatsResetMode>(DEFAULT_STATS_RESET_MODE);
+  const [flashcardHelpEnabled, setFlashcardHelpEnabledState] = useState(
+    DEFAULT_FLASHCARD_HELP_ENABLED,
+  );
   const [fastFlashcardOrder, setFastFlashcardOrder] =
     useState<FlashcardOrder>(DEFAULT_FAST_FLASHCARD_ORDER);
   const [fastFlashcardMode, setFastFlashcardMode] =
@@ -6677,6 +11728,15 @@ export const useAppSettings = () => {
     useState<FlashcardScope>(DEFAULT_FAST_FLASHCARD_SCOPE);
   const [fastFlashcardDuration, setFastFlashcardDuration] = useState(
     DEFAULT_FAST_FLASHCARD_DURATION,
+  );
+  const [fastFlashcardHelpEnabled, setFastFlashcardHelpEnabledState] = useState(
+    DEFAULT_FAST_FLASHCARD_HELP_ENABLED,
+  );
+  const [examShowTimeline, setExamShowTimelineState] = useState(
+    DEFAULT_EXAM_SHOW_TIMELINE,
+  );
+  const [examHelpEnabled, setExamHelpEnabledState] = useState(
+    DEFAULT_EXAM_HELP_ENABLED,
   );
   const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
     useState<SpacedRepetitionBoxes>(DEFAULT_SPACED_REPETITION_BOXES);
@@ -6692,6 +11752,8 @@ export const useAppSettings = () => {
   );
   const [spacedRepetitionStatsView, setSpacedRepetitionStatsView] =
     useState<SpacedRepetitionStatsView>(DEFAULT_SPACED_REPETITION_STATS_VIEW);
+  const [spacedRepetitionHelpEnabled, setSpacedRepetitionHelpEnabledState] =
+    useState(DEFAULT_SPACED_REPETITION_HELP_ENABLED);
   const [rightToolbarCollapsed, setRightToolbarCollapsed] = useState(
     DEFAULT_RIGHT_TOOLBAR_COLLAPSED,
   );
@@ -6706,11 +11768,29 @@ export const useAppSettings = () => {
       DEFAULT_EXAM_MAX_TOTAL_POINTS,
     ),
   );
+  const [examDurationMinutes, setExamDurationMinutesState] = useState(
+    DEFAULT_EXAM_DURATION_MINUTES,
+  );
+  const [examTimeLimitEnabled, setExamTimeLimitEnabledState] = useState(
+    DEFAULT_EXAM_TIME_LIMIT_ENABLED,
+  );
+  const [examAutoCardsEnabled, setExamAutoCardsEnabledState] = useState(
+    DEFAULT_EXAM_AUTO_CARDS_ENABLED,
+  );
+  const [examAutoCardsReturnOnCorrect, setExamAutoCardsReturnOnCorrectState] =
+    useState(DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT);
+  const [examGradeScale, setExamGradeScaleState] = useState<ExamGradeScale>(
+    DEFAULT_EXAM_GRADE_SCALE,
+  );
   const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
     DEFAULT_EXAM_AI_EVALUATION,
   );
+  const [keyboardShortcuts, setKeyboardShortcutsState] =
+    useState<KeyboardShortcutSettings>(DEFAULT_KEYBOARD_SHORTCUTS);
   const autoSaveReady = useRef(false);
   const autoSaveTimer = useRef<number | null>(null);
+  const needsShowHiddenFoldersMigration = useRef(false);
+  const needsKeyboardShortcutsMigration = useRef(false);
 
   const setExamMaxTotalPoints = useCallback((value: number) => {
     setExamMaxTotalPointsState(clampExamTotalPoints(value));
@@ -6738,6 +11818,26 @@ export const useAppSettings = () => {
     [examMaxTotalPoints, examTaskCount],
   );
 
+  const setExamDurationMinutes = useCallback((value: number) => {
+    setExamDurationMinutesState(clampExamDurationMinutes(value));
+  }, []);
+
+  const setExamShowTimeline = useCallback((value: boolean) => {
+    setExamShowTimelineState(Boolean(value));
+  }, []);
+
+  const setExamTimeLimitEnabled = useCallback((value: boolean) => {
+    setExamTimeLimitEnabledState(Boolean(value));
+  }, []);
+
+  const setExamAutoCardsEnabled = useCallback((value: boolean) => {
+    setExamAutoCardsEnabledState(Boolean(value));
+  }, []);
+
+  const setExamAutoCardsReturnOnCorrect = useCallback((value: boolean) => {
+    setExamAutoCardsReturnOnCorrectState(Boolean(value));
+  }, []);
+
   const setExamAiEvaluation = useCallback((value: ExamAiEvaluation) => {
     setExamAiEvaluationState({
       enabled: Boolean(value?.enabled),
@@ -6745,10 +11845,65 @@ export const useAppSettings = () => {
     });
   }, []);
 
+  const setExamGradeScale = useCallback((value: ExamGradeScale) => {
+    setExamGradeScaleState(value);
+  }, []);
+
+  const setKeyboardShortcuts = useCallback((value: KeyboardShortcutSettings) => {
+    const { settings } = normalizeKeyboardShortcuts(value);
+    setKeyboardShortcutsState(settings);
+  }, []);
+
+  const setKeyboardShortcutBinding = useCallback(
+    (commandId: string, binding: string | null) => {
+      setKeyboardShortcutsState((prev) => ({
+        ...prev,
+        bindings: { ...prev.bindings, [commandId]: binding },
+      }));
+    },
+    [],
+  );
+
+  const resetKeyboardShortcuts = useCallback(() => {
+    setKeyboardShortcutsState(DEFAULT_KEYBOARD_SHORTCUTS);
+  }, []);
+
+  const setShowHiddenFolders = useCallback((value: boolean) => {
+    setShowHiddenFoldersState(Boolean(value));
+  }, []);
+
+  const setUserVaultMode = useCallback((value: UserVaultMode) => {
+    setUserVaultModeState(value);
+  }, []);
+
+  const setUserVaultCustomPath = useCallback((value: string | null) => {
+    const next = value?.trim() ?? null;
+    setUserVaultCustomPathState(next || null);
+  }, []);
+
+  const setFlashcardHelpEnabled = useCallback((value: boolean) => {
+    setFlashcardHelpEnabledState(Boolean(value));
+  }, []);
+
+  const setFastFlashcardHelpEnabled = useCallback((value: boolean) => {
+    setFastFlashcardHelpEnabledState(Boolean(value));
+  }, []);
+
+  const setExamHelpEnabled = useCallback((value: boolean) => {
+    setExamHelpEnabledState(Boolean(value));
+  }, []);
+
+  const setSpacedRepetitionHelpEnabled = useCallback((value: boolean) => {
+    setSpacedRepetitionHelpEnabledState(Boolean(value));
+  }, []);
+
   const saveSettings = useCallback(
     async (settings: {
       activeNotePath: string | null;
       vaultPath: string | null;
+      recentVaults: RecentVaultEntry[];
+      userVaultMode: UserVaultMode;
+      userVaultCustomPath: string | null;
       theme: ThemeMode;
       accentColor: string;
       editorExactColors: boolean;
@@ -6757,31 +11912,46 @@ export const useAppSettings = () => {
       language: AppLanguage;
       maxFilesPerScan: string;
       scanParallelism: "low" | "medium" | "high";
+      showHiddenFolders: boolean;
       flashcardOrder: FlashcardOrder;
       flashcardMode: FlashcardMode;
       flashcardScope: FlashcardScope;
       flashcardPageSize: FlashcardPageSize;
       solutionRevealEnabled: boolean;
       statsResetMode: StatsResetMode;
+      flashcardHelpEnabled: boolean;
       spacedRepetitionBoxes: SpacedRepetitionBoxes;
       spacedRepetitionOrder: SpacedRepetitionOrder;
       spacedRepetitionPageSize: SpacedRepetitionPageSize;
       spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
       spacedRepetitionStatsView: SpacedRepetitionStatsView;
+      spacedRepetitionHelpEnabled: boolean;
       rightToolbarCollapsed: boolean;
       fastFlashcardOrder: FlashcardOrder;
       fastFlashcardMode: FlashcardMode;
       fastFlashcardScope: FlashcardScope;
       fastFlashcardDuration: number;
+      fastFlashcardHelpEnabled: boolean;
+      examShowTimeline: boolean;
+      examHelpEnabled: boolean;
       examMaxTotalPoints: number;
       examTaskCount: number;
       examTaskPoints: number[];
+      examDurationMinutes: number;
+      examTimeLimitEnabled: boolean;
+      examAutoCardsEnabled: boolean;
+      examAutoCardsReturnOnCorrect: boolean;
+      examGradeScale: ExamGradeScale;
       examAiEvaluation: ExamAiEvaluation;
+      keyboardShortcuts: KeyboardShortcutSettings;
     }) => {
       try {
         await invoke("save_app_settings", {
           activeNotePath: settings.activeNotePath,
           vaultPath: settings.vaultPath,
+          recentVaults: settings.recentVaults,
+          userVaultMode: settings.userVaultMode,
+          userVaultCustomPath: settings.userVaultCustomPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
           editorExactColors: settings.editorExactColors,
@@ -6790,27 +11960,39 @@ export const useAppSettings = () => {
           language: settings.language,
           maxFilesPerScan: settings.maxFilesPerScan,
           scanParallelism: settings.scanParallelism,
+          showHiddenFolders: settings.showHiddenFolders,
           flashcardOrder: settings.flashcardOrder,
           flashcardMode: settings.flashcardMode,
           flashcardScope: settings.flashcardScope,
           flashcardPageSize: settings.flashcardPageSize,
           flashcardSolutionRevealEnabled: settings.solutionRevealEnabled,
           flashcardStatsResetMode: settings.statsResetMode,
+          flashcardHelpEnabled: settings.flashcardHelpEnabled,
           fastFlashcardOrder: settings.fastFlashcardOrder,
           fastFlashcardMode: settings.fastFlashcardMode,
           fastFlashcardScope: settings.fastFlashcardScope,
           fastFlashcardDuration: settings.fastFlashcardDuration,
+          fastFlashcardHelpEnabled: settings.fastFlashcardHelpEnabled,
+          examShowTimeline: settings.examShowTimeline,
+          examHelpEnabled: settings.examHelpEnabled,
           spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
           spacedRepetitionRepetitionStrength:
             settings.spacedRepetitionRepetitionStrength,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
+          spacedRepetitionHelpEnabled: settings.spacedRepetitionHelpEnabled,
           rightToolbarCollapsed: settings.rightToolbarCollapsed,
           examMaxTotalPoints: settings.examMaxTotalPoints,
           examTaskCount: settings.examTaskCount,
           examTaskPoints: settings.examTaskPoints,
+          examDurationMinutes: settings.examDurationMinutes,
+          examTimeLimitEnabled: settings.examTimeLimitEnabled,
+          examAutoCardsEnabled: settings.examAutoCardsEnabled,
+          examAutoCardsReturnOnCorrect: settings.examAutoCardsReturnOnCorrect,
+          examGradeScale: settings.examGradeScale,
           examAiEvaluation: settings.examAiEvaluation,
+          keyboardShortcuts: settings.keyboardShortcuts,
         });
         return true;
       } catch (error) {
@@ -6829,6 +12011,9 @@ export const useAppSettings = () => {
       const nextSettings = {
         activeNotePath: updates.activeNotePath ?? activeNotePath,
         vaultPath: updates.vaultPath ?? vaultPath,
+        recentVaults: updates.recentVaults ?? recentVaults,
+        userVaultMode: updates.userVaultMode ?? userVaultMode,
+        userVaultCustomPath: updates.userVaultCustomPath ?? userVaultCustomPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
         editorExactColors: updates.editorExactColors ?? editorExactColors,
@@ -6838,6 +12023,7 @@ export const useAppSettings = () => {
         language: updates.language ?? language,
         maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
         scanParallelism: updates.scanParallelism ?? scanParallelism,
+        showHiddenFolders: updates.showHiddenFolders ?? showHiddenFolders,
         flashcardOrder: updates.flashcardOrder ?? flashcardOrder,
         flashcardMode: updates.flashcardMode ?? flashcardMode,
         flashcardScope: updates.flashcardScope ?? flashcardScope,
@@ -6846,10 +12032,16 @@ export const useAppSettings = () => {
         fastFlashcardScope: updates.fastFlashcardScope ?? fastFlashcardScope,
         fastFlashcardDuration:
           updates.fastFlashcardDuration ?? fastFlashcardDuration,
+        fastFlashcardHelpEnabled:
+          updates.fastFlashcardHelpEnabled ?? fastFlashcardHelpEnabled,
+        examShowTimeline:
+          updates.examShowTimeline ?? examShowTimeline,
         flashcardPageSize: updates.flashcardPageSize ?? flashcardPageSize,
         solutionRevealEnabled:
           updates.solutionRevealEnabled ?? solutionRevealEnabled,
         statsResetMode: updates.statsResetMode ?? statsResetMode,
+        flashcardHelpEnabled:
+          updates.flashcardHelpEnabled ?? flashcardHelpEnabled,
         spacedRepetitionBoxes:
           updates.spacedRepetitionBoxes ?? spacedRepetitionBoxes,
         spacedRepetitionOrder:
@@ -6861,6 +12053,8 @@ export const useAppSettings = () => {
           spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView:
           updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
+        spacedRepetitionHelpEnabled:
+          updates.spacedRepetitionHelpEnabled ?? spacedRepetitionHelpEnabled,
         rightToolbarCollapsed:
           updates.rightToolbarCollapsed ?? rightToolbarCollapsed,
         examMaxTotalPoints: updates.examMaxTotalPoints ?? examMaxTotalPoints,
@@ -6871,7 +12065,19 @@ export const useAppSettings = () => {
           updates.examTaskCount ?? examTaskCount,
           updates.examMaxTotalPoints ?? examMaxTotalPoints,
         ),
+        examDurationMinutes:
+          updates.examDurationMinutes ?? examDurationMinutes,
+        examTimeLimitEnabled:
+          updates.examTimeLimitEnabled ?? examTimeLimitEnabled,
+        examHelpEnabled: updates.examHelpEnabled ?? examHelpEnabled,
+        examAutoCardsEnabled:
+          updates.examAutoCardsEnabled ?? examAutoCardsEnabled,
+        examAutoCardsReturnOnCorrect:
+          updates.examAutoCardsReturnOnCorrect ?? examAutoCardsReturnOnCorrect,
+        examGradeScale:
+          updates.examGradeScale ?? examGradeScale,
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
+        keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "activeNotePath" in updates) {
@@ -6879,6 +12085,9 @@ export const useAppSettings = () => {
       }
       if (saved && "vaultPath" in updates) {
         setVaultPath(nextSettings.vaultPath ?? null);
+      }
+      if (saved && "recentVaults" in updates) {
+        setRecentVaults(nextSettings.recentVaults ?? []);
       }
       return saved;
     },
@@ -6889,31 +12098,45 @@ export const useAppSettings = () => {
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
       examAiEvaluation,
+      examGradeScale,
       examMaxTotalPoints,
       examTaskCount,
       examTaskPoints,
+      examDurationMinutes,
+      examTimeLimitEnabled,
+      examAutoCardsEnabled,
+      examAutoCardsReturnOnCorrect,
+      keyboardShortcuts,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
       fastFlashcardOrder,
       fastFlashcardScope,
       fastFlashcardDuration,
+      fastFlashcardHelpEnabled,
       flashcardPageSize,
       flashcardScope,
+      flashcardHelpEnabled,
       language,
       maxFilesPerScan,
       saveSettings,
       scanParallelism,
+      showHiddenFolders,
       settingsLoaded,
       solutionRevealEnabled,
+      examHelpEnabled,
       spacedRepetitionBoxes,
+      spacedRepetitionHelpEnabled,
       spacedRepetitionOrder,
       spacedRepetitionPageSize,
       spacedRepetitionRepetitionStrength,
       spacedRepetitionStatsView,
       statsResetMode,
       theme,
+      userVaultCustomPath,
+      userVaultMode,
       vaultPath,
+      recentVaults,
       rightToolbarCollapsed,
     ],
   );
@@ -6969,6 +12192,25 @@ export const useAppSettings = () => {
           settings.scan_parallelism === "medium"
             ? settings.scan_parallelism
             : DEFAULT_SCAN_PARALLELISM;
+        const legacyHiddenFoldersLevel = resolveLegacyHiddenFoldersLevel(settings);
+        const shouldMigrateShowHiddenFolders =
+          typeof settings.show_hidden_folders !== "boolean" &&
+          legacyHiddenFoldersLevel !== null;
+        if (shouldMigrateShowHiddenFolders) {
+          needsShowHiddenFoldersMigration.current = true;
+        }
+        const storedShowHiddenFolders =
+          typeof settings.show_hidden_folders === "boolean"
+            ? settings.show_hidden_folders
+            : legacyHiddenFoldersLevel !== null
+              ? legacyHiddenFoldersLevel > 0
+              : DEFAULT_SHOW_HIDDEN_FOLDERS;
+        const storedUserVaultMode =
+          settings.user_vault_mode === "custom" ? "custom" : DEFAULT_USER_VAULT_MODE;
+        const storedUserVaultCustomPath =
+          typeof settings.user_vault_custom_path === "string"
+            ? settings.user_vault_custom_path.trim() || null
+            : null;
         const storedFlashcardOrder =
           settings.flashcard_order === "random"
             ? "random"
@@ -7022,6 +12264,18 @@ export const useAppSettings = () => {
           )
             ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
             : DEFAULT_FAST_FLASHCARD_DURATION;
+        const storedFastFlashcardHelpEnabled =
+          typeof settings.fast_flashcard_help_enabled === "boolean"
+            ? settings.fast_flashcard_help_enabled
+            : DEFAULT_FAST_FLASHCARD_HELP_ENABLED;
+        const storedExamShowTimeline =
+          typeof settings.exam_show_timeline === "boolean"
+            ? settings.exam_show_timeline
+            : DEFAULT_EXAM_SHOW_TIMELINE;
+        const storedExamHelpEnabled =
+          typeof settings.exam_help_enabled === "boolean"
+            ? settings.exam_help_enabled
+            : DEFAULT_EXAM_HELP_ENABLED;
         const storedFlashcardPageSizeRaw = settings.flashcard_page_size;
         const migratedFlashcardPageSize =
           storedFlashcardPageSizeRaw === 10
@@ -7042,6 +12296,10 @@ export const useAppSettings = () => {
           settings.flashcard_stats_reset_mode === "session"
             ? "session"
             : DEFAULT_STATS_RESET_MODE;
+        const storedFlashcardHelpEnabled =
+          typeof settings.flashcard_help_enabled === "boolean"
+            ? settings.flashcard_help_enabled
+            : DEFAULT_FLASHCARD_HELP_ENABLED;
         const storedSpacedRepetitionBoxes =
           typeof settings.spaced_repetition_boxes === "number" &&
           SPACED_REPETITION_BOXES.includes(
@@ -7078,10 +12336,15 @@ export const useAppSettings = () => {
           settings.spaced_repetition_stats_view === "completed"
             ? settings.spaced_repetition_stats_view
             : DEFAULT_SPACED_REPETITION_STATS_VIEW;
+        const storedSpacedRepetitionHelpEnabled =
+          typeof settings.spaced_repetition_help_enabled === "boolean"
+            ? settings.spaced_repetition_help_enabled
+            : DEFAULT_SPACED_REPETITION_HELP_ENABLED;
         const storedActiveNotePath =
           typeof settings.active_note_path === "string"
             ? settings.active_note_path
             : null;
+        const storedRecentVaults = normalizeRecentVaults(settings.recent_vaults);
         const storedRightToolbarCollapsed =
           typeof settings.right_toolbar_collapsed === "boolean"
             ? settings.right_toolbar_collapsed
@@ -7097,9 +12360,35 @@ export const useAppSettings = () => {
           storedExamTaskCount,
           storedExamMaxTotalPoints,
         );
+        const storedExamDurationMinutes = clampExamDurationMinutes(
+          settings.exam_duration_minutes ?? DEFAULT_EXAM_DURATION_MINUTES,
+        );
+        const storedExamTimeLimitEnabled =
+          typeof settings.exam_time_limit_enabled === "boolean"
+            ? settings.exam_time_limit_enabled
+            : DEFAULT_EXAM_TIME_LIMIT_ENABLED;
+        const storedExamAutoCardsEnabled =
+          typeof settings.exam_auto_cards_enabled === "boolean"
+            ? settings.exam_auto_cards_enabled
+            : DEFAULT_EXAM_AUTO_CARDS_ENABLED;
+        const storedExamAutoCardsReturnOnCorrect =
+          typeof settings.exam_auto_cards_return_on_correct === "boolean"
+            ? settings.exam_auto_cards_return_on_correct
+            : DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT;
+        const storedExamGradeScale =
+          settings.exam_grade_scale === "standard-1-6"
+            ? settings.exam_grade_scale
+            : DEFAULT_EXAM_GRADE_SCALE;
         const storedExamAiEvaluation = normalizeExamAiEvaluation(
           settings.exam_ai_evaluation,
         );
+        const {
+          settings: storedKeyboardShortcuts,
+          needsMigration: shouldMigrateShortcuts,
+        } = normalizeKeyboardShortcuts(settings.keyboard_shortcuts);
+        if (shouldMigrateShortcuts) {
+          needsKeyboardShortcutsMigration.current = true;
+        }
         setTheme(storedTheme);
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
@@ -7109,9 +12398,13 @@ export const useAppSettings = () => {
         setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
         setActiveNotePath(storedActiveNotePath);
         setVaultPath(settings.vault_path ?? null);
+        setRecentVaults(storedRecentVaults);
+        setUserVaultModeState(storedUserVaultMode);
+        setUserVaultCustomPathState(storedUserVaultCustomPath);
         setLanguage(storedLanguage);
         setMaxFilesPerScan(storedMaxFilesPerScan);
         setScanParallelism(storedScanParallelism);
+        setShowHiddenFoldersState(storedShowHiddenFolders);
         setFlashcardOrder(storedFlashcardOrder);
         setFlashcardMode(storedFlashcardMode);
         setFlashcardScope(storedFlashcardScope);
@@ -7119,9 +12412,13 @@ export const useAppSettings = () => {
         setFastFlashcardMode(storedFastFlashcardMode);
         setFastFlashcardScope(storedFastFlashcardScope);
         setFastFlashcardDuration(storedFastFlashcardDuration);
+        setFastFlashcardHelpEnabledState(storedFastFlashcardHelpEnabled);
+        setExamShowTimelineState(storedExamShowTimeline);
+        setExamHelpEnabledState(storedExamHelpEnabled);
         setFlashcardPageSize(storedFlashcardPageSize);
         setSolutionRevealEnabled(storedSolutionRevealEnabled);
         setStatsResetMode(storedStatsResetMode);
+        setFlashcardHelpEnabledState(storedFlashcardHelpEnabled);
         setSpacedRepetitionBoxes(storedSpacedRepetitionBoxes);
         setSpacedRepetitionOrder(storedSpacedRepetitionOrder);
         setSpacedRepetitionPageSize(storedSpacedRepetitionPageSize);
@@ -7129,11 +12426,18 @@ export const useAppSettings = () => {
           storedSpacedRepetitionRepetitionStrength,
         );
         setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
+        setSpacedRepetitionHelpEnabledState(storedSpacedRepetitionHelpEnabled);
         setRightToolbarCollapsed(storedRightToolbarCollapsed);
         setExamMaxTotalPointsState(storedExamMaxTotalPoints);
         setExamTaskCountState(storedExamTaskCount);
         setExamTaskPointsState(storedExamTaskPoints);
+        setExamDurationMinutesState(storedExamDurationMinutes);
+        setExamTimeLimitEnabledState(storedExamTimeLimitEnabled);
+        setExamAutoCardsEnabledState(storedExamAutoCardsEnabled);
+        setExamAutoCardsReturnOnCorrectState(storedExamAutoCardsReturnOnCorrect);
+        setExamGradeScaleState(storedExamGradeScale);
         setExamAiEvaluationState(storedExamAiEvaluation);
+        setKeyboardShortcutsState(storedKeyboardShortcuts);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -7174,6 +12478,22 @@ export const useAppSettings = () => {
   }, [editorBlueprintGridIntensity]);
 
   useEffect(() => {
+    if (!settingsLoaded || !needsShowHiddenFoldersMigration.current) {
+      return;
+    }
+    needsShowHiddenFoldersMigration.current = false;
+    void persistSettings({ showHiddenFolders });
+  }, [persistSettings, settingsLoaded, showHiddenFolders]);
+
+  useEffect(() => {
+    if (!settingsLoaded || !needsKeyboardShortcutsMigration.current) {
+      return;
+    }
+    needsKeyboardShortcutsMigration.current = false;
+    void persistSettings({ keyboardShortcuts });
+  }, [keyboardShortcuts, persistSettings, settingsLoaded]);
+
+  useEffect(() => {
     if (!settingsLoaded) {
       return;
     }
@@ -7188,6 +12508,9 @@ export const useAppSettings = () => {
       void saveSettings({
         activeNotePath,
         vaultPath,
+        recentVaults,
+        userVaultMode,
+        userVaultCustomPath,
         theme,
         accentColor,
         editorExactColors,
@@ -7196,26 +12519,38 @@ export const useAppSettings = () => {
         language,
         maxFilesPerScan,
         scanParallelism,
+        showHiddenFolders,
         flashcardOrder,
         flashcardMode,
         flashcardScope,
         flashcardPageSize,
         solutionRevealEnabled,
         statsResetMode,
+        flashcardHelpEnabled,
         spacedRepetitionBoxes,
         spacedRepetitionOrder,
         spacedRepetitionPageSize,
         spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView,
+        spacedRepetitionHelpEnabled,
         rightToolbarCollapsed,
         fastFlashcardOrder,
         fastFlashcardMode,
         fastFlashcardScope,
         fastFlashcardDuration,
+        fastFlashcardHelpEnabled,
+        examShowTimeline,
+        examHelpEnabled,
         examMaxTotalPoints,
         examTaskCount,
         examTaskPoints,
+        examDurationMinutes,
+        examTimeLimitEnabled,
+        examAutoCardsEnabled,
+        examAutoCardsReturnOnCorrect,
+        examGradeScale,
         examAiEvaluation,
+        keyboardShortcuts,
       });
     }, 300);
 
@@ -7234,28 +12569,43 @@ export const useAppSettings = () => {
     examMaxTotalPoints,
     examTaskCount,
     examTaskPoints,
+    examDurationMinutes,
+    examTimeLimitEnabled,
+    examAutoCardsEnabled,
+    examAutoCardsReturnOnCorrect,
+    examGradeScale,
+    examHelpEnabled,
+    keyboardShortcuts,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
     fastFlashcardOrder,
     fastFlashcardScope,
     fastFlashcardDuration,
+    fastFlashcardHelpEnabled,
+    examShowTimeline,
     flashcardPageSize,
     flashcardScope,
+    flashcardHelpEnabled,
     language,
     maxFilesPerScan,
     saveSettings,
     scanParallelism,
+    showHiddenFolders,
     settingsLoaded,
     solutionRevealEnabled,
     spacedRepetitionBoxes,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
     spacedRepetitionRepetitionStrength,
+    spacedRepetitionHelpEnabled,
     spacedRepetitionStatsView,
     statsResetMode,
     theme,
+    userVaultCustomPath,
+    userVaultMode,
     vaultPath,
+    recentVaults,
     rightToolbarCollapsed,
   ]);
 
@@ -7271,14 +12621,24 @@ export const useAppSettings = () => {
     examMaxTotalPoints,
     examTaskCount,
     examTaskPoints,
+    examDurationMinutes,
+    examTimeLimitEnabled,
+    examAutoCardsEnabled,
+    examAutoCardsReturnOnCorrect,
+    examGradeScale,
     flashcardMode,
     flashcardOrder,
     fastFlashcardMode,
     fastFlashcardOrder,
     fastFlashcardScope,
     fastFlashcardDuration,
+    fastFlashcardHelpEnabled,
+    examShowTimeline,
+    examHelpEnabled,
     flashcardPageSize,
     flashcardScope,
+    keyboardShortcuts,
+    showHiddenFolders,
     language,
     maxFilesPerScan,
     persistSettings,
@@ -7294,14 +12654,29 @@ export const useAppSettings = () => {
     setExamMaxTotalPoints,
     setExamTaskCount,
     setExamTaskPoints,
+    setExamDurationMinutes,
+    setExamTimeLimitEnabled,
+    setExamAutoCardsEnabled,
+    setExamAutoCardsReturnOnCorrect,
+    setExamGradeScale,
     setFlashcardMode,
     setFlashcardOrder,
     setFlashcardPageSize,
     setFlashcardScope,
+    setFlashcardHelpEnabled,
     setFastFlashcardMode,
     setFastFlashcardOrder,
     setFastFlashcardScope,
     setFastFlashcardDuration,
+    setFastFlashcardHelpEnabled,
+    setExamShowTimeline,
+    setExamHelpEnabled,
+    setKeyboardShortcuts,
+    setKeyboardShortcutBinding,
+    resetKeyboardShortcuts,
+    setShowHiddenFolders,
+    setUserVaultCustomPath,
+    setUserVaultMode,
     setLanguage,
     setMaxFilesPerScan,
     setRightToolbarCollapsed,
@@ -7311,26 +12686,117 @@ export const useAppSettings = () => {
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
     setSpacedRepetitionRepetitionStrength,
+    setSpacedRepetitionHelpEnabled,
     setSpacedRepetitionStatsView,
     setStatsResetMode,
     setTheme,
     settingsLoaded,
     solutionRevealEnabled,
+    flashcardHelpEnabled,
     spacedRepetitionBoxes,
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
     spacedRepetitionRepetitionStrength,
+    spacedRepetitionHelpEnabled,
     spacedRepetitionStatsView,
     statsResetMode,
     theme,
+    userVaultCustomPath,
+    userVaultMode,
     vaultPath,
+    recentVaults,
     rightToolbarCollapsed,
   };
 };
 
 ---
 
+## 📝 logic.test.ts — ./features/spaced-repetition/logic.test.ts
+
+import { describe, expect, it } from "vitest";
+import type { Flashcard } from "../../lib/flashcards";
+import {
+  buildActiveSpacedRepetitionCardIdSet,
+  filterSpacedRepetitionCardStates,
+  reconcileSpacedRepetitionUserStateById,
+  type SpacedRepetitionCardProgress,
+  type SpacedRepetitionUserState,
+} from "./logic";
+
+const baseProgress: SpacedRepetitionCardProgress = {
+  boxCanonical: 1,
+  attempts: 1,
+  lastResult: "neutral",
+  lastReviewedAt: null,
+};
+
+describe("spaced repetition helpers", () => {
+  it("prunes ghost cards from stored card states", () => {
+    const cardStates = {
+      ghost: baseProgress,
+      live: { ...baseProgress, attempts: 2 },
+    };
+    const filtered = filterSpacedRepetitionCardStates(
+      cardStates,
+      new Set(["live"]),
+    );
+    expect(Object.keys(filtered)).toEqual(["live"]);
+    expect(filtered.live).toBe(cardStates.live);
+  });
+
+  it("reconciles every user state to the current card set", () => {
+    const userState: SpacedRepetitionUserState = {
+      cardStates: {
+        ghost: baseProgress,
+        live: { ...baseProgress, attempts: 3 },
+      },
+      completedPerDay: {},
+      lastLoadedAt: null,
+    };
+    const reconciled = reconcileSpacedRepetitionUserStateById(
+      { alice: userState },
+      new Set(["live"]),
+    );
+    expect(Object.keys(reconciled.alice.cardStates)).toEqual(["live"]);
+  });
+
+  it("generates different IDs for the same card across vaults", () => {
+    const card: Flashcard = {
+      kind: "free-text",
+      front: "Question",
+      back: "Answer",
+    };
+    const setA = buildActiveSpacedRepetitionCardIdSet([card], {
+      vaultId: "vault-a",
+    });
+    const setB = buildActiveSpacedRepetitionCardIdSet([card], {
+      vaultId: "vault-b",
+    });
+    expect([...setA][0]).not.toBe([...setB][0]);
+  });
+});
+
+---
+
 ## 📝 logic.ts — ./features/spaced-repetition/logic.ts
+
+/**
+ * @file apps/fmd-desktop/src/features/spaced-repetition/logic.ts
+ *
+ * Zweck:
+ * - Enthaelt domanenspezifische Logik fuer Spaced Repetition.
+ *
+ * Verantwortlichkeiten:
+ * - Kapselt Berechnungen und Auswertungen fuer das Feature.
+ * - Normalisiert Eingaben und Ergebnisse fuer die UI.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Typen.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen Auswertung und Bewertung im Feature.
+ */
 
 import type { Flashcard, FlashcardPart } from "../../lib/flashcards";
 import type {
@@ -7412,11 +12878,26 @@ export const hashString = (value: string) => {
   return (hash >>> 0).toString(16);
 };
 
+export type FlashcardIdContext = {
+  vaultId?: string | null;
+};
+
+const includeVaultIdPayload = <T extends Record<string, unknown>>(
+  payload: T,
+  context?: FlashcardIdContext,
+) => {
+  if (!context?.vaultId) {
+    return payload;
+  }
+  return { ...payload, vaultId: context.vaultId };
+};
+
 const getFlashcardPartIdentityPayload = (card: FlashcardPart) => {
   if (card.kind === "multiple-choice") {
     return {
       kind: card.kind,
       question: card.question,
+      context: card.context,
       options: card.options,
       correctKeys: [...card.correctKeys].sort((a, b) => a.localeCompare(b)),
     };
@@ -7425,6 +12906,7 @@ const getFlashcardPartIdentityPayload = (card: FlashcardPart) => {
   if (card.kind === "true-false") {
     return {
       kind: card.kind,
+      context: card.context,
       items: card.items,
     };
   }
@@ -7478,14 +12960,23 @@ const getFlashcardLegacyPartIdentityPayload = (card: FlashcardPart) => {
   };
 };
 
-const getFlashcardIdentityPayload = (card: Flashcard) => {
+const getFlashcardIdentityPayload = (
+  card: Flashcard,
+  context?: FlashcardIdContext,
+) => {
   if (card.kind === "composite") {
-    return {
-      kind: card.kind,
-      parts: card.parts.map(getFlashcardPartIdentityPayload),
-    };
+    return includeVaultIdPayload(
+      {
+        kind: card.kind,
+        parts: card.parts.map(getFlashcardPartIdentityPayload),
+      },
+      context,
+    );
   }
-  return getFlashcardPartIdentityPayload(card);
+  return includeVaultIdPayload(
+    getFlashcardPartIdentityPayload(card),
+    context,
+  );
 };
 
 const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
@@ -7498,8 +12989,13 @@ const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
   return getFlashcardLegacyPartIdentityPayload(card);
 };
 
-export const getFlashcardId = (card: Flashcard) =>
-  `card-${hashString(JSON.stringify(getFlashcardIdentityPayload(card)))}`;
+export const getFlashcardId = (
+  card: Flashcard,
+  context?: FlashcardIdContext,
+) =>
+  `card-${hashString(
+    JSON.stringify(getFlashcardIdentityPayload(card, context)),
+  )}`;
 
 const getFlashcardLegacyId = (card: Flashcard) =>
   `card-${hashString(JSON.stringify(getFlashcardLegacyIdentityPayload(card)))}`;
@@ -7562,6 +13058,63 @@ export const getSpacedRepetitionEffectiveBox = (
   boxCount: number,
 ) => Math.min(progress.boxCanonical, boxCount);
 
+export const filterSpacedRepetitionCardStates = (
+  cardStates: Record<string, SpacedRepetitionCardProgress>,
+  activeCardIds: Set<string>,
+) => {
+  let hasPruned = false;
+  const filtered: Record<string, SpacedRepetitionCardProgress> = {};
+  for (const [cardId, progress] of Object.entries(cardStates)) {
+    if (!activeCardIds.has(cardId)) {
+      hasPruned = true;
+      continue;
+    }
+    filtered[cardId] = progress;
+  }
+  if (!hasPruned) {
+    return cardStates;
+  }
+  return filtered;
+};
+
+export const reconcileSpacedRepetitionUserState = (
+  state: SpacedRepetitionUserState,
+  activeCardIds: Set<string>,
+) => {
+  const filtered = filterSpacedRepetitionCardStates(
+    state.cardStates,
+    activeCardIds,
+  );
+  if (filtered === state.cardStates) {
+    return state;
+  }
+  return { ...state, cardStates: filtered };
+};
+
+export const reconcileSpacedRepetitionUserStateById = (
+  userStateById: Record<string, SpacedRepetitionUserState>,
+  activeCardIds: Set<string>,
+) => {
+  let changed = false;
+  const entries = Object.entries(userStateById).map(([userId, state]) => {
+    const reconciled = reconcileSpacedRepetitionUserState(state, activeCardIds);
+    if (reconciled !== state) {
+      changed = true;
+    }
+    return [userId, reconciled];
+  });
+  if (!changed) {
+    return userStateById;
+  }
+  return Object.fromEntries(entries);
+};
+
+export const buildActiveSpacedRepetitionCardIdSet = (
+  flashcards: Flashcard[],
+  context?: FlashcardIdContext,
+) =>
+  new Set(flashcards.map((card) => getFlashcardId(card, context)));
+
 const shuffleEntries = <T>(entries: T[]) => {
   const copy = [...entries];
   for (let index = copy.length - 1; index > 0; index -= 1) {
@@ -7610,6 +13163,7 @@ export const buildSpacedRepetitionSession = (
     order?: "in-order" | "random" | "repetition";
     boxCount?: number;
     repetitionStrength?: SpacedRepetitionRepetitionStrength;
+    vaultId?: string | null;
   },
 ): SpacedRepetitionSession => {
   const nextCardStates = Object.fromEntries(
@@ -7620,7 +13174,10 @@ export const buildSpacedRepetitionSession = (
   );
 
   const cardIds = flashcards.map((card) => {
-    const cardId = getFlashcardId(card);
+    const idContext: FlashcardIdContext | undefined = options?.vaultId
+      ? { vaultId: options.vaultId }
+      : undefined;
+    const cardId = getFlashcardId(card, idContext);
     const legacyId = getFlashcardLegacyId(card);
     if (!nextCardStates[cardId]) {
       if (legacyId !== cardId && nextCardStates[legacyId]) {
@@ -7663,7 +13220,38 @@ export const buildSpacedRepetitionSession = (
 
 ## 📝 useSpacedRepetition.ts — ./features/spaced-repetition/useSpacedRepetition.ts
 
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+/**
+ * @file apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useSpacedRepetition fuer Spaced Repetition bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Spaced Repetition.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ *
+ * Exportiert:
+ * - SPACED_REPETITION_PAGE_SIZES: Zentrale Export-API.
+ * - DEFAULT_SPACED_REPETITION_PAGE_SIZE: Zentrale Export-API.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   evaluateFlashcardResult,
@@ -7676,19 +13264,29 @@ import type { FlashcardOrder, FlashcardScope } from "../flashcards/useFlashcards
 import type { Flashcard } from "../../lib/flashcards";
 import {
   buildSpacedRepetitionSession,
+  buildActiveSpacedRepetitionCardIdSet,
   createEmptySpacedRepetitionSession,
   createEmptySpacedRepetitionUserState,
   createSpacedRepetitionUserId,
+  filterSpacedRepetitionCardStates,
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
+  hashString,
   MAX_SPACED_REPETITION_BOX,
   normalizeSpacedRepetitionCardProgress,
+  reconcileSpacedRepetitionUserStateById,
   type SpacedRepetitionRepetitionStrength,
   type SpacedRepetitionSession,
   type SpacedRepetitionStorage,
   type SpacedRepetitionUser,
   type SpacedRepetitionUserState,
 } from "./logic";
+import {
+  createEmptySpacedRepetitionStore,
+  loadSpacedRepetitionStore,
+  saveSpacedRepetitionStore,
+  type SpacedRepetitionProfileStore,
+} from "../user-vault/storage";
 
 export type SpacedRepetitionPageSize = 1 | 2 | 3 | 5;
 export type SpacedRepetitionBoxes = 3 | 5 | 8;
@@ -7764,6 +13362,9 @@ type UseSpacedRepetitionOptions = {
     orderOverride?: FlashcardOrder;
   }) => Promise<Flashcard[]>;
   setIsFlashcardScanning: (value: boolean) => void;
+  userVaultProfilePath: string | null;
+  userVaultRevision: number;
+  vaultPath: string | null;
   settings: {
     spacedRepetitionBoxes: SpacedRepetitionBoxes;
     spacedRepetitionOrder: SpacedRepetitionOrder;
@@ -7784,6 +13385,9 @@ export const useSpacedRepetition = ({
   isFlashcardScanning,
   scanFlashcards,
   setIsFlashcardScanning,
+  userVaultProfilePath,
+  userVaultRevision,
+  vaultPath,
   settings,
 }: UseSpacedRepetitionOptions) => {
   const {
@@ -7792,12 +13396,20 @@ export const useSpacedRepetition = ({
     spacedRepetitionPageSize,
     spacedRepetitionRepetitionStrength,
     spacedRepetitionStatsView,
-    setSpacedRepetitionBoxes,
-    setSpacedRepetitionOrder,
-    setSpacedRepetitionPageSize,
-    setSpacedRepetitionRepetitionStrength,
-    setSpacedRepetitionStatsView,
-  } = settings;
+  setSpacedRepetitionBoxes,
+  setSpacedRepetitionOrder,
+  setSpacedRepetitionPageSize,
+  setSpacedRepetitionRepetitionStrength,
+  setSpacedRepetitionStatsView,
+} = settings;
+const vaultId = useMemo(
+  () => (vaultPath ? hashString(vaultPath) : null),
+  [vaultPath],
+);
+const storageKey = useMemo(
+  () => (vaultId ? `spacedRepetition:${vaultId}` : null),
+  [vaultId],
+);
   const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<
     SpacedRepetitionUser[]
   >([]);
@@ -7816,6 +13428,7 @@ export const useSpacedRepetition = ({
   const [spacedRepetitionSessions, setSpacedRepetitionSessions] = useState<
     Record<string, SpacedRepetitionSession>
   >({});
+  const spacedRepetitionStoreRef = useRef<SpacedRepetitionProfileStore | null>(null);
 
   const spacedRepetitionActiveUser = spacedRepetitionActiveUserId
     ? spacedRepetitionUsers.find((user) => user.id === spacedRepetitionActiveUserId)
@@ -8021,98 +13634,152 @@ export const useSpacedRepetition = ({
     [spacedRepetitionActiveUserId],
   );
 
+  const hydrateFromStorage = (storage: SpacedRepetitionStorage) => {
+    const users = Array.isArray(storage.users)
+      ? storage.users
+          .map((user) => {
+            if (!user || typeof user !== "object") {
+              return null;
+            }
+            const id = "id" in user && typeof user.id === "string" ? user.id : "";
+            const name = "name" in user && typeof user.name === "string" ? user.name : "";
+            if (!id || !name) {
+              return null;
+            }
+            const createdAt =
+              "createdAt" in user && typeof user.createdAt === "string"
+                ? user.createdAt
+                : new Date().toISOString();
+            return { id, name, createdAt };
+          })
+          .filter((user): user is SpacedRepetitionUser => Boolean(user))
+      : [];
+    const userStateByIdRaw =
+      storage.userStateById && typeof storage.userStateById === "object"
+        ? storage.userStateById
+        : {};
+    const userIds = new Set(users.map((user) => user.id));
+    const userStateById = Object.fromEntries(
+      Object.entries(userStateByIdRaw)
+        .filter(([userId]) => userIds.has(userId))
+        .map(([userId, state]) => {
+          const cardStatesRaw =
+            state && typeof state === "object" && "cardStates" in state
+              ? (state as SpacedRepetitionUserState).cardStates
+              : {};
+          const normalizedCardStates = Object.fromEntries(
+            Object.entries(cardStatesRaw ?? {}).map(([cardId, progress]) => [
+              cardId,
+              normalizeSpacedRepetitionCardProgress(progress),
+            ]),
+          );
+          const completedPerDayRaw =
+            state && typeof state === "object" && "completedPerDay" in state
+              ? (state as SpacedRepetitionUserState).completedPerDay
+              : {};
+          const completedPerDay = normalizeCompletedPerDay(completedPerDayRaw);
+          const lastLoadedAt =
+            state &&
+            typeof state === "object" &&
+            "lastLoadedAt" in state &&
+            typeof (state as SpacedRepetitionUserState).lastLoadedAt === "string"
+              ? (state as SpacedRepetitionUserState).lastLoadedAt
+              : null;
+          return [
+            userId,
+            {
+              cardStates: normalizedCardStates,
+              completedPerDay,
+              lastLoadedAt,
+            },
+          ];
+        }),
+    );
+    const lastActiveUserId =
+      storage.lastActiveUserId &&
+      users.some((user) => user.id === storage.lastActiveUserId)
+        ? storage.lastActiveUserId
+        : null;
+
+    setSpacedRepetitionUsers(users);
+    setSpacedRepetitionUserStateById(userStateById);
+
+    if (lastActiveUserId && users.some((user) => user.id === lastActiveUserId)) {
+      setSpacedRepetitionActiveUserId(lastActiveUserId);
+      setSpacedRepetitionSelectedUserId(lastActiveUserId);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
+    const resetState = () => {
+      setSpacedRepetitionUsers([]);
+      setSpacedRepetitionUserStateById({});
+      setSpacedRepetitionActiveUserId(null);
+      setSpacedRepetitionSelectedUserId("");
+      setSpacedRepetitionSessions({});
+      setSpacedRepetitionDataLoaded(false);
+    };
+
+    if (!storageKey) {
+      resetState();
+      spacedRepetitionStoreRef.current = null;
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    resetState();
+
     const restoreSpacedRepetitionData = async () => {
       try {
+        if (userVaultProfilePath) {
+          const store = await loadSpacedRepetitionStore(userVaultProfilePath);
+          let nextStore: SpacedRepetitionProfileStore = store;
+          let storage = vaultId ? store.byVaultId[vaultId] ?? null : null;
+          const migratedVaultIds = store.migratedVaultIds ?? [];
+          if (vaultId && !storage && !migratedVaultIds.includes(vaultId)) {
+            const legacy = await invoke<SpacedRepetitionStorage>(
+              "load_spaced_repetition_data",
+              { key: storageKey },
+            );
+            const hasLegacyData =
+              (Array.isArray(legacy?.users) && legacy.users.length > 0) ||
+              (legacy?.userStateById &&
+                Object.keys(legacy.userStateById).length > 0);
+            storage = hasLegacyData ? legacy : null;
+            const migrated = new Set([...migratedVaultIds, vaultId]);
+            nextStore = {
+              ...store,
+              byVaultId: storage
+                ? { ...store.byVaultId, [vaultId]: storage }
+                : store.byVaultId,
+              migratedVaultIds: Array.from(migrated),
+            };
+            await saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
+          }
+          spacedRepetitionStoreRef.current = nextStore;
+          if (cancelled) {
+            return;
+          }
+          if (storage) {
+            hydrateFromStorage(storage);
+          }
+          return;
+        }
         const storage = await invoke<SpacedRepetitionStorage>(
           "load_spaced_repetition_data",
+          { key: storageKey },
         );
         if (cancelled) {
           return;
         }
-        const users = Array.isArray(storage.users)
-          ? storage.users
-              .map((user) => {
-                if (!user || typeof user !== "object") {
-                  return null;
-                }
-                const id = "id" in user && typeof user.id === "string" ? user.id : "";
-                const name =
-                  "name" in user && typeof user.name === "string" ? user.name : "";
-                if (!id || !name) {
-                  return null;
-                }
-                const createdAt =
-                  "createdAt" in user && typeof user.createdAt === "string"
-                    ? user.createdAt
-                    : new Date().toISOString();
-                return { id, name, createdAt };
-              })
-              .filter((user): user is SpacedRepetitionUser => Boolean(user))
-          : [];
-        const userStateByIdRaw =
-          storage.userStateById && typeof storage.userStateById === "object"
-            ? storage.userStateById
-            : {};
-        const userIds = new Set(users.map((user) => user.id));
-        const userStateById = Object.fromEntries(
-          Object.entries(userStateByIdRaw)
-            .filter(([userId]) => userIds.has(userId))
-            .map(([userId, state]) => {
-              const cardStatesRaw =
-                state && typeof state === "object" && "cardStates" in state
-                  ? (state as SpacedRepetitionUserState).cardStates
-                  : {};
-              const normalizedCardStates = Object.fromEntries(
-                Object.entries(cardStatesRaw ?? {}).map(([cardId, progress]) => [
-                  cardId,
-                  normalizeSpacedRepetitionCardProgress(progress),
-                ]),
-              );
-              const completedPerDayRaw =
-                state && typeof state === "object" && "completedPerDay" in state
-                  ? (state as SpacedRepetitionUserState).completedPerDay
-                  : {};
-              const completedPerDay = normalizeCompletedPerDay(completedPerDayRaw);
-              const lastLoadedAt =
-                state &&
-                typeof state === "object" &&
-                "lastLoadedAt" in state &&
-                typeof (state as SpacedRepetitionUserState).lastLoadedAt === "string"
-                  ? (state as SpacedRepetitionUserState).lastLoadedAt
-                  : null;
-              return [
-                userId,
-                {
-                  cardStates: normalizedCardStates,
-                  completedPerDay,
-                  lastLoadedAt,
-                },
-              ];
-            }),
-        );
-        const lastActiveUserId =
-          storage.lastActiveUserId &&
-          users.some((user) => user.id === storage.lastActiveUserId)
-            ? storage.lastActiveUserId
-            : null;
-
-        setSpacedRepetitionUsers(users);
-        setSpacedRepetitionUserStateById(userStateById);
-
-        if (lastActiveUserId && users.some((user) => user.id === lastActiveUserId)) {
-          setSpacedRepetitionActiveUserId(lastActiveUserId);
-          setSpacedRepetitionSelectedUserId(lastActiveUserId);
-        }
+        hydrateFromStorage(storage);
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load spaced repetition data", error);
-          setSpacedRepetitionUsers([]);
-          setSpacedRepetitionUserStateById({});
-          setSpacedRepetitionActiveUserId(null);
-          setSpacedRepetitionSelectedUserId("");
+          resetState();
         }
       } finally {
         if (!cancelled) {
@@ -8126,10 +13793,10 @@ export const useSpacedRepetition = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [storageKey, userVaultProfilePath, userVaultRevision, vaultId]);
 
   useEffect(() => {
-    if (!spacedRepetitionDataLoaded) {
+    if (!spacedRepetitionDataLoaded || !storageKey) {
       return;
     }
     const storage: SpacedRepetitionStorage = {
@@ -8137,14 +13804,29 @@ export const useSpacedRepetition = ({
       userStateById: spacedRepetitionUserStateById,
       lastActiveUserId: spacedRepetitionActiveUserId,
     };
-    void invoke("save_spaced_repetition_data", { storage }).catch((error) => {
-      console.error("Failed to save spaced repetition data", error);
-    });
+    if (userVaultProfilePath && vaultId) {
+      const store = spacedRepetitionStoreRef.current ?? createEmptySpacedRepetitionStore();
+      const nextStore = {
+        ...store,
+        byVaultId: { ...store.byVaultId, [vaultId]: storage },
+      };
+      spacedRepetitionStoreRef.current = nextStore;
+      void saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
+      return;
+    }
+    void invoke("save_spaced_repetition_data", { key: storageKey, storage }).catch(
+      (error) => {
+        console.error("Failed to save spaced repetition data", error);
+      },
+    );
   }, [
     spacedRepetitionActiveUserId,
     spacedRepetitionDataLoaded,
     spacedRepetitionUserStateById,
     spacedRepetitionUsers,
+    storageKey,
+    userVaultProfilePath,
+    vaultId,
   ]);
 
   useEffect(() => {
@@ -8321,25 +14003,41 @@ export const useSpacedRepetition = ({
         scopeOverride: "vault",
         orderOverride: "in-order",
       });
-      const storedCardStates =
-        spacedRepetitionUserStateById[activeUserId]?.cardStates ?? {};
-      const storedCompletedPerDay =
-        spacedRepetitionUserStateById[activeUserId]?.completedPerDay ?? {};
+      const cardIdContext = vaultId ? { vaultId } : undefined;
+      const activeCardIds = buildActiveSpacedRepetitionCardIdSet(
+        cards,
+        cardIdContext,
+      );
+      const normalizedUserStateById = reconcileSpacedRepetitionUserStateById(
+        spacedRepetitionUserStateById,
+        activeCardIds,
+      );
+      const currentUserState =
+        normalizedUserStateById[activeUserId] ??
+        createEmptySpacedRepetitionUserState();
+      const filteredStoredCardStates = filterSpacedRepetitionCardStates(
+        currentUserState.cardStates,
+        activeCardIds,
+      );
+      const storedCompletedPerDay = currentUserState.completedPerDay ?? {};
       const loadOrder =
         boxFilter && spacedRepetitionOrder === "repetition"
           ? "in-order"
           : spacedRepetitionOrder;
-      const nextSession = buildSpacedRepetitionSession(cards, storedCardStates, {
+      const nextSession = buildSpacedRepetitionSession(cards, filteredStoredCardStates, {
         order: loadOrder,
         boxCount: spacedRepetitionBoxes,
         repetitionStrength: spacedRepetitionRepetitionStrength,
+        vaultId,
       });
       const filteredSession =
         boxFilter === null
           ? nextSession
           : (() => {
               const entries = nextSession.flashcards.map((card, index) => {
-                const cardId = nextSession.cardIds[index] ?? getFlashcardId(card);
+                const cardId =
+                  nextSession.cardIds[index] ??
+                  getFlashcardId(card, cardIdContext);
                 const progress = normalizeSpacedRepetitionCardProgress(
                   nextSession.cardProgressById[cardId],
                 );
@@ -8369,16 +14067,14 @@ export const useSpacedRepetition = ({
           completedPerDay: storedCompletedPerDay,
         },
       }));
-      setSpacedRepetitionUserStateById((prev) => {
-        const current = prev[activeUserId] ?? createEmptySpacedRepetitionUserState();
-        return {
-          ...prev,
-          [activeUserId]: {
-            ...current,
-            cardStates: nextSession.cardProgressById,
-            lastLoadedAt: new Date().toISOString(),
-          },
-        };
+      setSpacedRepetitionUserStateById({
+        ...normalizedUserStateById,
+        [activeUserId]: {
+          ...currentUserState,
+          cardStates: nextSession.cardProgressById,
+          lastLoadedAt: new Date().toISOString(),
+          completedPerDay: storedCompletedPerDay,
+        },
       });
     } finally {
       setIsFlashcardScanning(false);
@@ -8392,6 +14088,7 @@ export const useSpacedRepetition = ({
     spacedRepetitionOrder,
     spacedRepetitionRepetitionStrength,
     spacedRepetitionUserStateById,
+    vaultId,
   ]);
 
   const handleSpacedRepetitionOptionSelect = useCallback(
@@ -8486,18 +14183,21 @@ export const useSpacedRepetition = ({
         return;
       }
       updateActiveSpacedRepetitionSession((session) => {
-        if (session.submissions[cardIndex]) {
-          return session;
-        }
-        const card = session.flashcards[cardIndex];
-        if (!card) {
-          return session;
-        }
-        const cardIds =
-          session.cardIds.length === session.flashcards.length
-            ? session.cardIds
-            : session.flashcards.map(getFlashcardId);
-        const cardId = cardIds[cardIndex] ?? getFlashcardId(card);
+    if (session.submissions[cardIndex]) {
+      return session;
+    }
+    const card = session.flashcards[cardIndex];
+    if (!card) {
+      return session;
+    }
+    const cardIdContext = vaultId ? { vaultId } : undefined;
+    const cardIds =
+      session.cardIds.length === session.flashcards.length
+        ? session.cardIds
+        : session.flashcards.map((candidate) =>
+            getFlashcardId(candidate, cardIdContext),
+          );
+    const cardId = cardIds[cardIndex] ?? getFlashcardId(card, cardIdContext);
         const nextSelfGrades = selfGrade
           ? { ...session.selfGrades, [cardIndex]: selfGrade }
           : session.selfGrades;
@@ -8826,6 +14526,7 @@ export const useSpacedRepetition = ({
     setSpacedRepetitionStatsView,
     setSpacedRepetitionUserError,
     spacedRepetitionActiveUser,
+    spacedRepetitionActiveUserId,
     spacedRepetitionBoxes,
     spacedRepetitionBoxCounts,
     spacedRepetitionCanGoBack,
@@ -8870,9 +14571,752 @@ export const useSpacedRepetition = ({
 
 ---
 
+## 📝 storage.ts — ./features/user-vault/storage.ts
+
+/**
+ * @file apps/fmd-desktop/src/features/user-vault/storage.ts
+ *
+ * Zweck:
+ * - Dateizugriff fuer den User Vault.
+ */
+
+import { invoke } from "@tauri-apps/api/core";
+import { asErrorMessage } from "../../lib/errors";
+import { joinPath } from "../../lib/path";
+import {
+  USER_VAULT_SCHEMA_VERSION,
+  buildProfileId,
+  buildUserVaultProfilePath,
+  parseProfileId,
+  sanitizeProfileName,
+  type UserVaultProfileData,
+  type UserVaultProfileMeta,
+} from "../../lib/userVault";
+import type { FastFlashcardSessionSummary } from "../../lib/fastFlashcard";
+import type { ExamRun } from "../../lib/examRuns";
+import type { SpacedRepetitionStorage } from "../spaced-repetition/logic";
+
+type PathInfo = {
+  exists: boolean;
+  isDir: boolean;
+};
+
+export type UserVaultMetaStore = {
+  schemaVersion: number;
+  activeProfileId: string | null;
+};
+
+export type UserVaultProfileSummary = UserVaultProfileMeta & {
+  path: string;
+};
+
+export type SpacedRepetitionProfileStore = {
+  schemaVersion: number;
+  byVaultId: Record<string, SpacedRepetitionStorage>;
+  migratedVaultIds: string[];
+};
+
+export type FastFlashcardProfileStore = {
+  schemaVersion: number;
+  sessions: FastFlashcardSessionSummary[];
+  migratedFromAppData: boolean;
+};
+
+export type ExamRunProfileStore = {
+  schemaVersion: number;
+  runs: ExamRun[];
+  migratedFromAppData: boolean;
+};
+
+const USER_VAULT_META_FILE = "user-vault.json";
+const USER_VAULT_PROFILES_DIR = "profiles";
+const USER_VAULT_PROFILE_FILE = "profile.json";
+const USER_VAULT_SPACED_REPETITION_FILE = "spaced-repetition.json";
+const USER_VAULT_FAST_FLASHCARD_FILE = "fast-flashcard.json";
+const USER_VAULT_EXAM_RUNS_FILE = "exam-runs.json";
+
+const readJsonFile = async <T,>(path: string, fallback: T): Promise<T> => {
+  try {
+    const raw = await invoke<string>("read_json_file", { path });
+    const parsed = JSON.parse(raw) as T;
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeJsonFile = async (path: string, payload: unknown) => {
+  const contents = JSON.stringify(payload, null, 2);
+  await invoke("write_json_file", { path, contents });
+};
+
+const ensureDirectory = async (path: string) => {
+  await invoke("ensure_directory", { path });
+};
+
+const listDirectories = async (path: string) => {
+  const entries = await invoke<string[]>("list_directories", { path });
+  return entries ?? [];
+};
+
+const resolveUserVaultMetaPath = (userVaultPath: string) =>
+  joinPath(userVaultPath, USER_VAULT_META_FILE);
+
+const resolveProfilesRootPath = (userVaultPath: string) =>
+  joinPath(userVaultPath, USER_VAULT_PROFILES_DIR);
+
+const resolveProfileMetaPath = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_PROFILE_FILE);
+
+const resolveSpacedRepetitionPath = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_SPACED_REPETITION_FILE);
+
+const resolveFastFlashcardPath = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_FAST_FLASHCARD_FILE);
+
+const resolveExamRunsPath = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_EXAM_RUNS_FILE);
+
+const createEmptyUserVaultMeta = (): UserVaultMetaStore => ({
+  schemaVersion: USER_VAULT_SCHEMA_VERSION,
+  activeProfileId: null,
+});
+
+export const createEmptySpacedRepetitionStore = (): SpacedRepetitionProfileStore => ({
+  schemaVersion: USER_VAULT_SCHEMA_VERSION,
+  byVaultId: {},
+  migratedVaultIds: [],
+});
+
+export const createEmptyFastFlashcardStore = (): FastFlashcardProfileStore => ({
+  schemaVersion: USER_VAULT_SCHEMA_VERSION,
+  sessions: [],
+  migratedFromAppData: false,
+});
+
+export const createEmptyExamRunStore = (): ExamRunProfileStore => ({
+  schemaVersion: USER_VAULT_SCHEMA_VERSION,
+  runs: [],
+  migratedFromAppData: false,
+});
+
+const normalizeProfileMeta = (
+  fallbackId: string,
+  meta: UserVaultProfileMeta | null,
+): UserVaultProfileMeta => {
+  if (
+    meta &&
+    typeof meta.id === "string" &&
+    typeof meta.name === "string" &&
+    typeof meta.createdAt === "string"
+  ) {
+    return meta;
+  }
+  const fallback = parseProfileId(fallbackId);
+  const createdAt = fallback.dateStamp
+    ? `${fallback.dateStamp}T00:00:00.000Z`
+    : new Date().toISOString();
+  return { id: fallbackId, name: fallback.name, createdAt };
+};
+
+const normalizeSpacedRepetitionStore = (
+  value: unknown,
+): SpacedRepetitionProfileStore => {
+  if (!value || typeof value !== "object") {
+    return createEmptySpacedRepetitionStore();
+  }
+  const candidate = value as Partial<SpacedRepetitionProfileStore>;
+  const byVaultId =
+    candidate.byVaultId && typeof candidate.byVaultId === "object"
+      ? (candidate.byVaultId as Record<string, SpacedRepetitionStorage>)
+      : {};
+  const migratedVaultIds = Array.isArray(candidate.migratedVaultIds)
+    ? candidate.migratedVaultIds.filter((id) => typeof id === "string")
+    : [];
+  return {
+    schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    byVaultId,
+    migratedVaultIds,
+  };
+};
+
+const normalizeFastFlashcardStore = (value: unknown): FastFlashcardProfileStore => {
+  if (!value || typeof value !== "object") {
+    return createEmptyFastFlashcardStore();
+  }
+  const candidate = value as Partial<FastFlashcardProfileStore>;
+  const sessions = Array.isArray(candidate.sessions)
+    ? (candidate.sessions as FastFlashcardSessionSummary[])
+    : [];
+  const migratedFromAppData =
+    typeof candidate.migratedFromAppData === "boolean"
+      ? candidate.migratedFromAppData
+      : false;
+  return {
+    schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    sessions,
+    migratedFromAppData,
+  };
+};
+
+const normalizeExamRunStore = (value: unknown): ExamRunProfileStore => {
+  if (!value || typeof value !== "object") {
+    return createEmptyExamRunStore();
+  }
+  const candidate = value as Partial<ExamRunProfileStore>;
+  const runs = Array.isArray(candidate.runs) ? (candidate.runs as ExamRun[]) : [];
+  const migratedFromAppData =
+    typeof candidate.migratedFromAppData === "boolean"
+      ? candidate.migratedFromAppData
+      : false;
+  return {
+    schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    runs,
+    migratedFromAppData,
+  };
+};
+
+export const loadUserVaultMeta = async (
+  userVaultPath: string,
+): Promise<UserVaultMetaStore> => {
+  const metaPath = resolveUserVaultMetaPath(userVaultPath);
+  const meta = await readJsonFile<UserVaultMetaStore>(metaPath, createEmptyUserVaultMeta());
+  return {
+    schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    activeProfileId:
+      typeof meta.activeProfileId === "string" ? meta.activeProfileId : null,
+  };
+};
+
+export const saveUserVaultMeta = async (
+  userVaultPath: string,
+  meta: UserVaultMetaStore,
+) => {
+  const metaPath = resolveUserVaultMetaPath(userVaultPath);
+  await writeJsonFile(metaPath, {
+    schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    activeProfileId: meta.activeProfileId ?? null,
+  });
+};
+
+export const listUserVaultProfiles = async (
+  userVaultPath: string,
+): Promise<UserVaultProfileSummary[]> => {
+  const profilesRoot = resolveProfilesRootPath(userVaultPath);
+  const entries = await listDirectories(profilesRoot);
+  const profiles = await Promise.all(
+    entries.map(async (profileId) => {
+      const profilePath = buildUserVaultProfilePath(userVaultPath, profileId);
+      const metaPath = resolveProfileMetaPath(profilePath);
+      const meta = await readJsonFile<UserVaultProfileMeta | null>(metaPath, null);
+      return { ...normalizeProfileMeta(profileId, meta), path: profilePath };
+    }),
+  );
+  return profiles.sort((a, b) => a.id.localeCompare(b.id));
+};
+
+export const createUserVaultProfile = async (
+  userVaultPath: string,
+  name: string,
+): Promise<UserVaultProfileSummary> => {
+  const sanitized = sanitizeProfileName(name);
+  if (!sanitized) {
+    throw new Error("Profile name is required.");
+  }
+  const baseId = buildProfileId(sanitized) ?? sanitized;
+  const profilesRoot = resolveProfilesRootPath(userVaultPath);
+  await ensureDirectory(profilesRoot);
+  let candidate = baseId;
+  let suffix = 1;
+  while (true) {
+    const profilePath = buildUserVaultProfilePath(userVaultPath, candidate);
+    const info = await invoke<PathInfo>("get_path_info", { path: profilePath });
+    if (!info.exists) {
+      break;
+    }
+    candidate = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+  const profilePath = buildUserVaultProfilePath(userVaultPath, candidate);
+  await ensureDirectory(profilePath);
+  const meta: UserVaultProfileMeta = {
+    id: candidate,
+    name: sanitized,
+    createdAt: new Date().toISOString(),
+  };
+  await writeJsonFile(resolveProfileMetaPath(profilePath), meta);
+  return { ...meta, path: profilePath };
+};
+
+export const setActiveProfileId = async (
+  userVaultPath: string,
+  profileId: string | null,
+) => {
+  await saveUserVaultMeta(userVaultPath, {
+    schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    activeProfileId: profileId,
+  });
+};
+
+export const loadProfileData = async (
+  profilePath: string,
+): Promise<UserVaultProfileData> => {
+  const spacedRepetition = await loadSpacedRepetitionStore(profilePath);
+  const fastFlashcard = await loadFastFlashcardStore(profilePath);
+  const examRuns = await loadExamRunStore(profilePath);
+  return {
+    spacedRepetitionByVaultId: spacedRepetition.byVaultId,
+    fastFlashcardSessions: fastFlashcard.sessions,
+    examRuns: examRuns.runs,
+  };
+};
+
+export const loadSpacedRepetitionStore = async (
+  profilePath: string,
+): Promise<SpacedRepetitionProfileStore> => {
+  const path = resolveSpacedRepetitionPath(profilePath);
+  const store = await readJsonFile<SpacedRepetitionProfileStore>(
+    path,
+    createEmptySpacedRepetitionStore(),
+  );
+  return normalizeSpacedRepetitionStore(store);
+};
+
+export const saveSpacedRepetitionStore = async (
+  profilePath: string,
+  store: SpacedRepetitionProfileStore,
+) => {
+  try {
+    await writeJsonFile(resolveSpacedRepetitionPath(profilePath), {
+      ...store,
+      schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to save spaced repetition user vault data",
+      asErrorMessage(error, "Unknown error"),
+    );
+  }
+};
+
+export const loadFastFlashcardStore = async (
+  profilePath: string,
+): Promise<FastFlashcardProfileStore> => {
+  const path = resolveFastFlashcardPath(profilePath);
+  const store = await readJsonFile<FastFlashcardProfileStore>(
+    path,
+    createEmptyFastFlashcardStore(),
+  );
+  return normalizeFastFlashcardStore(store);
+};
+
+export const saveFastFlashcardStore = async (
+  profilePath: string,
+  store: FastFlashcardProfileStore,
+) => {
+  try {
+    await writeJsonFile(resolveFastFlashcardPath(profilePath), {
+      ...store,
+      schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to save fast flashcard user vault data",
+      asErrorMessage(error, "Unknown error"),
+    );
+  }
+};
+
+export const loadExamRunStore = async (
+  profilePath: string,
+): Promise<ExamRunProfileStore> => {
+  const path = resolveExamRunsPath(profilePath);
+  const store = await readJsonFile<ExamRunProfileStore>(
+    path,
+    createEmptyExamRunStore(),
+  );
+  return normalizeExamRunStore(store);
+};
+
+export const saveExamRunStore = async (
+  profilePath: string,
+  store: ExamRunProfileStore,
+) => {
+  try {
+    await writeJsonFile(resolveExamRunsPath(profilePath), {
+      ...store,
+      schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to save exam run user vault data",
+      asErrorMessage(error, "Unknown error"),
+    );
+  }
+};
+
+---
+
+## 📝 useUserVault.ts — ./features/user-vault/useUserVault.ts
+
+/**
+ * @file apps/fmd-desktop/src/features/user-vault/useUserVault.ts
+ *
+ * Zweck:
+ * - Verwaltet User Vault State und Aktionen fuer die UI.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { asErrorMessage } from "../../lib/errors";
+import {
+  USER_VAULT_SCHEMA_VERSION,
+  buildUserVaultProfilePath,
+  createEmptyProfileData,
+  mergeProfileData,
+  resolveUserVaultPath,
+  selectProfileFromExport,
+  type UserVaultExportPayload,
+  type UserVaultImportStrategy,
+  type UserVaultMode,
+} from "../../lib/userVault";
+import {
+  createEmptyExamRunStore,
+  createEmptyFastFlashcardStore,
+  createEmptySpacedRepetitionStore,
+  createUserVaultProfile,
+  listUserVaultProfiles,
+  loadProfileData,
+  loadUserVaultMeta,
+  saveExamRunStore,
+  saveFastFlashcardStore,
+  saveSpacedRepetitionStore,
+  setActiveProfileId,
+  type UserVaultProfileSummary,
+} from "./storage";
+
+type UseUserVaultOptions = {
+  vaultPath: string | null;
+  mode: UserVaultMode;
+  setMode: (value: UserVaultMode) => void;
+  customPath: string | null;
+  setCustomPath: (value: string | null) => void;
+};
+
+type ExportScope = "active" | "all";
+
+const readJsonFile = async (path: string) => {
+  const raw = await invoke<string>("read_json_file", { path });
+  return JSON.parse(raw) as UserVaultExportPayload;
+};
+
+const writeJsonFile = async (path: string, payload: unknown) => {
+  const contents = JSON.stringify(payload, null, 2);
+  await invoke("write_json_file", { path, contents });
+};
+
+const ensureJsonExtension = (path: string) =>
+  path.toLowerCase().endsWith(".json") ? path : `${path}.json`;
+
+export const useUserVault = ({
+  vaultPath,
+  mode,
+  setMode,
+  customPath,
+  setCustomPath,
+}: UseUserVaultOptions) => {
+  const [profiles, setProfiles] = useState<UserVaultProfileSummary[]>([]);
+  const [activeProfileId, setActiveProfileIdState] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [error, setError] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
+  const [revision, setRevision] = useState(0);
+
+  const resolvedPath = useMemo(
+    () => resolveUserVaultPath(mode, vaultPath, customPath),
+    [customPath, mode, vaultPath],
+  );
+
+  const activeProfile = useMemo(
+    () => profiles.find((profile) => profile.id === activeProfileId) ?? null,
+    [activeProfileId, profiles],
+  );
+
+  const activeProfilePath = useMemo(() => {
+    if (!resolvedPath || !activeProfileId) {
+      return null;
+    }
+    return buildUserVaultProfilePath(resolvedPath, activeProfileId);
+  }, [activeProfileId, resolvedPath]);
+
+  const refreshProfiles = useCallback(async () => {
+    if (!resolvedPath) {
+      setProfiles([]);
+      setActiveProfileIdState(null);
+      setStatus("idle");
+      return;
+    }
+    setStatus("loading");
+    setError("");
+    const [nextProfiles, meta] = await Promise.all([
+      listUserVaultProfiles(resolvedPath),
+      loadUserVaultMeta(resolvedPath),
+    ]);
+    let nextActive = meta.activeProfileId;
+    if (nextActive && !nextProfiles.some((profile) => profile.id === nextActive)) {
+      nextActive = null;
+    }
+    if (!nextActive && nextProfiles.length > 0) {
+      nextActive = nextProfiles[0]?.id ?? null;
+      if (nextActive) {
+        await setActiveProfileId(resolvedPath, nextActive);
+      }
+    }
+    setProfiles(nextProfiles);
+    setActiveProfileIdState(nextActive);
+    setStatus("idle");
+  }, [resolvedPath]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        await refreshProfiles();
+      } catch (loadError) {
+        if (!cancelled) {
+          setStatus("error");
+          setError(asErrorMessage(loadError, "User vault could not be loaded."));
+        }
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshProfiles]);
+
+  const handleModeChange = useCallback(
+    (value: UserVaultMode) => {
+      setMode(value);
+    },
+    [setMode],
+  );
+
+  const handlePickCustomPath = useCallback(async () => {
+    const selected = await open({
+      title: "Select User Vault",
+      directory: true,
+      multiple: false,
+    });
+    if (typeof selected === "string") {
+      setCustomPath(selected);
+    }
+  }, [setCustomPath]);
+
+  const handleCreateProfile = useCallback(
+    async (name: string) => {
+      if (!resolvedPath) {
+        return;
+      }
+      setIsBusy(true);
+      setError("");
+      try {
+        const profile = await createUserVaultProfile(resolvedPath, name);
+        await setActiveProfileId(resolvedPath, profile.id);
+        setActiveProfileIdState(profile.id);
+        setProfiles((prev) => {
+          const next = [...prev.filter((item) => item.id !== profile.id), profile];
+          return next.sort((a, b) => a.id.localeCompare(b.id));
+        });
+      } catch (loadError) {
+        setError(asErrorMessage(loadError, "Profile could not be created."));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [resolvedPath],
+  );
+
+  const handleSelectProfile = useCallback(
+    async (profileId: string) => {
+      if (!resolvedPath) {
+        return;
+      }
+      setIsBusy(true);
+      setError("");
+      try {
+        await setActiveProfileId(resolvedPath, profileId);
+        setActiveProfileIdState(profileId);
+      } catch (loadError) {
+        setError(asErrorMessage(loadError, "Profile could not be loaded."));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [resolvedPath],
+  );
+
+  const handleExport = useCallback(
+    async (scope: ExportScope) => {
+      if (!resolvedPath) {
+        return;
+      }
+      setIsBusy(true);
+      setError("");
+      try {
+        const targetPath = await save({
+          title: "Export User Vault",
+          filters: [{ name: "JSON", extensions: ["json"] }],
+        });
+        if (!targetPath) {
+          return;
+        }
+        const resolvedTarget = ensureJsonExtension(targetPath);
+        if (scope === "active") {
+          if (!activeProfile) {
+            throw new Error("No active profile selected.");
+          }
+          const data = await loadProfileData(activeProfile.path);
+          const payload: UserVaultExportPayload = {
+            schemaVersion: USER_VAULT_SCHEMA_VERSION,
+            exportedAt: new Date().toISOString(),
+            profile: {
+              id: activeProfile.id,
+              name: activeProfile.name,
+              createdAt: activeProfile.createdAt,
+            },
+            data,
+          };
+          await writeJsonFile(resolvedTarget, payload);
+          return;
+        }
+        const entries = await Promise.all(
+          profiles.map(async (profile) => ({
+            profile: {
+              id: profile.id,
+              name: profile.name,
+              createdAt: profile.createdAt,
+            },
+            data: await loadProfileData(profile.path),
+          })),
+        );
+        const payload: UserVaultExportPayload = {
+          schemaVersion: USER_VAULT_SCHEMA_VERSION,
+          exportedAt: new Date().toISOString(),
+          profiles: entries,
+        };
+        await writeJsonFile(resolvedTarget, payload);
+      } catch (loadError) {
+        setError(asErrorMessage(loadError, "Export failed."));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [activeProfile, profiles, resolvedPath],
+  );
+
+  const handleImport = useCallback(
+    async (strategy: UserVaultImportStrategy) => {
+      if (!activeProfilePath || !activeProfile) {
+        return;
+      }
+      setIsBusy(true);
+      setError("");
+      try {
+        const selected = await open({
+          title: "Import User Vault",
+          filters: [{ name: "JSON", extensions: ["json"] }],
+          multiple: false,
+        });
+        if (!selected || typeof selected !== "string") {
+          return;
+        }
+        const payload = await readJsonFile(selected);
+        const selectedEntry = selectProfileFromExport(payload, activeProfile.id);
+        if (!selectedEntry) {
+          throw new Error("No profile data found in import.");
+        }
+        const current = await loadProfileData(activeProfilePath);
+        const incoming = selectedEntry.data ?? createEmptyProfileData();
+        const merged = mergeProfileData(current, incoming, strategy);
+        await saveSpacedRepetitionStore(activeProfilePath, {
+          ...createEmptySpacedRepetitionStore(),
+          byVaultId: merged.spacedRepetitionByVaultId,
+          migratedVaultIds: Object.keys(merged.spacedRepetitionByVaultId),
+        });
+        await saveFastFlashcardStore(activeProfilePath, {
+          ...createEmptyFastFlashcardStore(),
+          sessions: merged.fastFlashcardSessions,
+          migratedFromAppData: true,
+        });
+        await saveExamRunStore(activeProfilePath, {
+          ...createEmptyExamRunStore(),
+          runs: merged.examRuns,
+          migratedFromAppData: true,
+        });
+        setRevision((value) => value + 1);
+      } catch (loadError) {
+        setError(asErrorMessage(loadError, "Import failed."));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [activeProfile, activeProfilePath],
+  );
+
+  return {
+    activeProfile,
+    activeProfileId,
+    activeProfilePath,
+    customPath,
+    error,
+    handleCreateProfile,
+    handleExport,
+    handleImport,
+    handleModeChange,
+    handlePickCustomPath,
+    handleSelectProfile,
+    isBusy,
+    mode,
+    profiles,
+    refreshProfiles,
+    resolvedPath,
+    revision,
+    status,
+  };
+};
+
+export type UserVaultState = ReturnType<typeof useUserVault>;
+
+---
+
 ## 📝 useVault.ts — ./features/vault/useVault.ts
 
-import { useCallback, useState } from "react";
+/**
+ * @file apps/fmd-desktop/src/features/vault/useVault.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useVault fuer Vault bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Vault.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/errors.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - useVault: Hook fuer Vault.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
@@ -8900,13 +15344,15 @@ export type VaultSnapshot = {
 
 type UseVaultOptions = {
   persistSettings: (updates: { vaultPath?: string | null }) => Promise<boolean>;
+  showHiddenFolders: boolean;
 };
 
-export const useVault = ({ persistSettings }: UseVaultOptions) => {
+export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions) => {
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [listState, setListState] = useState<LoadState>("idle");
   const [listError, setListError] = useState("");
+  const lastRescanHiddenState = useRef(showHiddenFolders);
 
   const takeSnapshot = useCallback(
     (): VaultSnapshot => ({
@@ -8934,6 +15380,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
       try {
         const results = await invoke<VaultFile[]>("list_markdown_files", {
           vaultPath: path,
+          showHiddenFolders,
         });
         setFiles(results);
         setListState("idle");
@@ -8952,7 +15399,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
         return null;
       }
     },
-    [persistSettings],
+    [persistSettings, showHiddenFolders],
   );
 
   const pickVault = useCallback(
@@ -8999,6 +15446,7 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
     try {
       const results = await invoke<VaultFile[]>("list_markdown_files", {
         vaultPath,
+        showHiddenFolders,
       });
       setFiles(results);
       setListState("idle");
@@ -9007,7 +15455,18 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
       setListError(message);
       setListState("error");
     }
-  }, [listState, vaultPath]);
+  }, [listState, showHiddenFolders, vaultPath]);
+
+  useEffect(() => {
+    if (!vaultPath || listState === "loading") {
+      return;
+    }
+    if (lastRescanHiddenState.current === showHiddenFolders) {
+      return;
+    }
+    lastRescanHiddenState.current = showHiddenFolders;
+    void rescanVault();
+  }, [listState, rescanVault, showHiddenFolders, vaultPath]);
 
   return {
     files,
@@ -9028,7 +15487,86 @@ export const useVault = ({ persistSettings }: UseVaultOptions) => {
 
 ---
 
+## 📝 useVaultPathInfo.ts — ./features/vault/useVaultPathInfo.ts
+
+/**
+ * @file apps/fmd-desktop/src/features/vault/useVaultPathInfo.ts
+ *
+ * Zweck:
+ * - Stellt Pfad-Infos fuer Vaults bereit.
+ */
+
+import { useEffect, useMemo, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+
+export type VaultPathInfo = {
+  exists: boolean;
+  isDir: boolean;
+};
+
+export const useVaultPathInfo = (paths: string[], isActive: boolean) => {
+  const [infoByPath, setInfoByPath] = useState<Record<string, VaultPathInfo>>({});
+  const pathsKey = useMemo(() => paths.join("|"), [paths]);
+
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      if (paths.length === 0) {
+        setInfoByPath({});
+        return;
+      }
+      const entries = await Promise.all(
+        paths.map(async (path) => {
+          try {
+            const info = await invoke<VaultPathInfo>("get_path_info", { path });
+            return [path, info] as const;
+          } catch {
+            return [path, { exists: false, isDir: false }] as const;
+          }
+        }),
+      );
+      if (cancelled) {
+        return;
+      }
+      const next: Record<string, VaultPathInfo> = {};
+      entries.forEach(([path, info]) => {
+        next[path] = info;
+      });
+      setInfoByPath(next);
+    };
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isActive, paths, pathsKey]);
+
+  return infoByPath;
+};
+
+---
+
 ## 📝 chart.ts — ./lib/chart.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/chart.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Chart.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Chart bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsAndChart.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 export const buildLineChartPoints = (values: number[]) => {
   if (values.length === 0) {
@@ -9048,6 +15586,24 @@ export const buildLineChartPoints = (values: number[]) => {
 ---
 
 ## 📝 color.ts — ./lib/color.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/color.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Color.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Color bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 export const DEFAULT_ACCENT = "#E07A5F";
 
@@ -9120,6 +15676,24 @@ export const buildAccentTokens = (value: string, fallback = DEFAULT_ACCENT) => {
 
 ## 📝 errors.ts — ./lib/errors.ts
 
+/**
+ * @file apps/fmd-desktop/src/lib/errors.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Errors.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Errors bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/features/preview/usePreview.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 export const asErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error) {
     return error.message;
@@ -9134,24 +15708,336 @@ export const asErrorMessage = (error: unknown, fallback: string) => {
 
 ## 📝 exam.test.ts — ./lib/exam.test.ts
 
+/**
+ * @file apps/fmd-desktop/src/lib/exam.test.ts
+ *
+ * Zweck:
+ * - Testet exam.test und zugehoerige Logik.
+ *
+ * Verantwortlichkeiten:
+ * - Prueft erwartetes Verhalten und Randfaelle.
+ * - Sichert Regressionen fuer zentrale Szenarien.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/exam.ts: Hilfsfunktionen oder Typen.
+ * - vitest: Externe Bibliothek.
+ *
+ * Hinweise:
+ * - Nur fuer Testlauf; keine Produktivnutzung.
+ */
+
 import { describe, expect, it } from "vitest";
-import { parseExamTasks } from "./exam";
+import {
+  parseExamTasks,
+  splitAnswerBlock,
+  stripExamAndFlashcardWrapperLines,
+} from "./exam";
 
 describe("parseExamTasks", () => {
-  it("splits inline Answer markers in exam tasks without flashcard syntax", () => {
+  it("strips wrapper lines while keeping markdown headings", () => {
+const markdown = `#exam
+#card
+# Title
+Answer: Secret solution
+#
+#
+#examend`;
+
+    const stripped = stripExamAndFlashcardWrapperLines(markdown).split("\n");
+
+    expect(stripped).toContain("# Title");
+    expect(stripped).not.toContain("#exam");
+    expect(stripped).not.toContain("#card");
+    expect(stripped).not.toContain("#endcard");
+    expect(stripped).not.toContain("#examend");
+    expect(stripped).not.toContain("#");
+  });
+
+  it("splits answer blocks only at line start markers", () => {
+    const split = splitAnswerBlock("Answer: Secret solution");
+    expect(split.hasAnswerMarker).toBe(true);
+    expect(split.prompt).toBe("");
+    expect(split.officialAnswer).toBe("Secret solution");
+
+    const boldSplit = splitAnswerBlock("**Answer:** Secret");
+    expect(boldSplit.hasAnswerMarker).toBe(true);
+    expect(boldSplit.officialAnswer).toBe("Secret");
+
+    const inlineSplit = splitAnswerBlock("This is the answer: maybe");
+    expect(inlineSplit.hasAnswerMarker).toBe(false);
+    expect(inlineSplit.prompt).toBe("This is the answer: maybe");
+  });
+
+  it("keeps inline Answer markers as prompt text", () => {
     const markdown = `#exam
 1) Define foreign key. Answer: A foreign key is an attribute.
-#`;
+#
+#examend`;
 
     const { tasks } = parseExamTasks(markdown);
 
     expect(tasks).toHaveLength(1);
-    const part = tasks[0]?.card.parts[0];
+    const task = tasks[0];
+    const part = task?.card.parts[0];
     expect(part?.kind).toBe("free-text");
     if (part && part.kind === "free-text") {
-      expect(part.front).toBe("1) Define foreign key.");
-      expect(part.back).toBe("A foreign key is an attribute.");
+      expect(part.front).toBe(
+        "1) Define foreign key. Answer: A foreign key is an attribute.",
+      );
+      expect(part.back).toBe("");
     }
+    expect(task?.officialAnswer).toBeUndefined();
+  });
+
+  it("extracts help blocks without affecting answers", () => {
+    const markdown = `#exam
+1) Explain HTTP status codes.
+#help
+-true
+Answer: Decoy
+#helpend
+Answer: Real
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.helpText?.length).toBe(1);
+    expect(task?.helpText?.[0]).toContain("Answer: Decoy");
+    expect(task?.prompt).toContain("1) Explain HTTP status codes.");
+    expect(task?.prompt).not.toContain("Decoy");
+    expect(task?.officialAnswer).toBe("Real");
+  });
+
+  it("keeps table separators inside a task prompt", () => {
+    const markdown = `#exam
+1) Table task
+| Term | Answer |
+| --- | --- |
+| Alpha | %%one%% |
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.prompt).toContain("| --- | --- |");
+  });
+
+  it("ends tasks only on standalone separators", () => {
+    const markdown = `#exam
+1) First task
+| Key | Value |
+| --- | --- |
+| Row | --- |
+--- not a separator
+Still first task
+---
+2) Second task
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(2);
+    expect(tasks[0]?.prompt).toContain("| Row | --- |");
+    expect(tasks[0]?.prompt).toContain("--- not a separator");
+    expect(tasks[1]?.prompt).toContain("2) Second task");
+  });
+
+  it("keeps card/exam tags inside table cells", () => {
+    const markdown = `#exam
+1) Table tags
+| Type | Tag |
+| --- | --- |
+| Alpha | #exam |
+| Beta | #card |
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.prompt).toContain("| Alpha | #exam |");
+    expect(tasks[0]?.prompt).toContain("| Beta | #card |");
+  });
+
+  it("adds a free-text part for answer blocks alongside multiple choice", () => {
+    const markdown = `#exam
+  #card
+  1) Question line
+a) First
+b) Second
+-a
+Answer: Secret solution
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.prompt).toContain("1) Question line");
+    expect(task?.prompt).toContain("a) First");
+    expect(task?.prompt).not.toContain("Answer:");
+    expect(task?.prompt).not.toContain("#card");
+    expect(task?.officialAnswer).toBe("Secret solution");
+
+    const parts = task?.card.parts ?? [];
+    expect(parts.some((part) => part.kind === "multiple-choice")).toBe(true);
+    const answerPart = parts.find((part) => part.kind === "free-text");
+    expect(answerPart).toBeTruthy();
+    if (answerPart && answerPart.kind === "free-text") {
+      expect(answerPart.front).toBe("");
+      expect(answerPart.back).toBe("Secret solution");
+    }
+  });
+});
+
+describe("exam QA composite parsing", () => {
+  const qaAnswer = "Minimal rights for users";
+  const qaAnswerSecond = "Extended rights for admins";
+  const qaBlock = `[qa]
+What is least privilege?
+Antwort: ${qaAnswer}`;
+  const qaBlockSecond = `[qa]
+Why is least privilege important?
+Antwort: ${qaAnswerSecond}`;
+  const tfBlock = `[tf]
+Aussage:
+HTTPS encrypts the connection.
+-true`;
+  const m1Block = `[m1]
+Which number is a prime?
+a) 4
+b) 5
+c) 9
+-b`;
+  const m2Block = `[m2]
+Which numbers are primes?
+a) 2
+b) 4
+c) 5
+d) 9
+-a
+-c`;
+  const clBlock = `[cl]
+The capital of France is %%Paris%%.`;
+  const cdBlock = `[cd]
+Colors: \`schwarz\`, \`rot\`, \`gold\`.`;
+  const cldBlock = `[cld]
+[cl] The capital of France is %%Paris%%.
+[cd] Colors: \`schwarz\`, \`rot\`, \`gold\`.`;
+
+  const buildCardBody = (...sections: string[]) => sections.join("\n\n");
+  const buildExamMarkdown = (title: string, body: string, index = 1) => `#exam
+${index}) ${title}
+#card
+${body}
+#
+#examend
+`;
+  const parseTask = (title: string, body: string) => {
+    const { tasks } = parseExamTasks(buildExamMarkdown(title, body));
+    expect(tasks).toHaveLength(1);
+    return tasks[0];
+  };
+
+  it("parses qa + qa combinations without swallowing the second part", () => {
+    const task = parseTask("qa + qa", buildCardBody(qaBlock, qaBlockSecond));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "free-text"]);
+    expect(task.officialAnswer).toBe(`${qaAnswer}\n\n${qaAnswerSecond}`);
+  });
+
+  it("parses qa + tf combinations", () => {
+    const task = parseTask("qa + tf", buildCardBody(qaBlock, tfBlock));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "true-false"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + m1 combinations", () => {
+    const task = parseTask("qa + m1", buildCardBody(qaBlock, m1Block));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "multiple-choice"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + m2 combinations", () => {
+    const task = parseTask("qa + m2", buildCardBody(qaBlock, m2Block));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "multiple-choice"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + cl combinations", () => {
+    const task = parseTask("qa + cl", buildCardBody(qaBlock, clBlock));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "cloze"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + cd combinations", () => {
+    const task = parseTask("qa + cd", buildCardBody(qaBlock, cdBlock));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "cloze"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("parses qa + cld combinations", () => {
+    const task = parseTask("qa + cld", buildCardBody(qaBlock, cldBlock));
+    const parts = task.card.parts;
+    expect(parts.map((part) => part.kind)).toEqual(["free-text", "cloze"]);
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+
+  it("still parses single qa tasks in exam mode", () => {
+    const task = parseTask("qa only", qaBlock);
+    const parts = task.card.parts;
+    expect(parts).toHaveLength(1);
+    expect(parts[0].kind).toBe("free-text");
+    expect(task.officialAnswer).toBe(qaAnswer);
+  });
+});
+
+describe("exam parser container rules", () => {
+  it("treats '#' lines as plain text and closes only at '#examend'", () => {
+    const markdown = `#exam
+1) First question
+#
+## Section title
+Answer: Keep it internal
+#
+#examend`;
+
+    const { tasks, hasExamBlock } = parseExamTasks(markdown);
+    expect(hasExamBlock).toBe(true);
+    expect(tasks).toHaveLength(1);
+  });
+
+  it("ends the exam only when '#examend' is seen after '#'", () => {
+    const markdown = `#exam
+1) Alpha
+#
+2) Beta
+#examend`;
+    const { tasks } = parseExamTasks(markdown);
+    expect(tasks).toHaveLength(2);
+  });
+
+  it("ignores '#card' markers inside an exam block", () => {
+    const markdown = `#exam
+#card
+1) Nested card text
+Answer: Plain text remains
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+    expect(tasks).toHaveLength(1);
   });
 });
 
@@ -9159,17 +16045,41 @@ describe("parseExamTasks", () => {
 
 ## 📝 exam.ts — ./lib/exam.ts
 
+/**
+ * @file apps/fmd-desktop/src/lib/exam.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Exam.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Exam bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/lib/exam.test.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 import {
+  extractHelpBlocksFromLines,
   parseFlashcards,
   splitAnswerCard,
+  splitCardLines,
   type CompositeFlashcard,
   type Flashcard,
+  type FlashcardPart,
 } from "./flashcards";
+import { findTableLineIndices } from "./markdownTables";
 
 export type ExamTaskSourceRange = {
   startLine: number;
   endLine: number;
 };
+
+export type ExamTaskGradingMode = "auto" | "manual" | "hybrid";
 
 export type ExamTaskWarning = {
   message: string;
@@ -9179,6 +16089,10 @@ export type ExamTaskBase = {
   id: string;
   index: number;
   rawLines: string[];
+  prompt: string;
+  officialAnswer?: string;
+  helpText?: string[];
+  gradingMode: ExamTaskGradingMode;
   sourceRange: ExamTaskSourceRange;
   card: CompositeFlashcard;
   warnings: ExamTaskWarning[];
@@ -9206,6 +16120,74 @@ const trimEmptyLines = (lines: string[]) => {
   }
 
   return lines.slice(start, end);
+};
+
+const wrapperLinePattern = /^\s*#(?:examend|exam|card|endcard)?\s*$/;
+const examStartPattern = /^\s*#exam\s*$/;
+const examEndPattern = /^\s*#examend\s*$/;
+const separatorLinePattern = /^\s*---\s*$/;
+
+const isWrapperLine = (line: string) => wrapperLinePattern.test(line);
+const isExamStartLine = (line: string) => examStartPattern.test(line);
+const isExamEndLine = (line: string) => examEndPattern.test(line);
+const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
+
+const stripWrapperLines = (lines: string[]) =>
+  lines.filter((line) => !isWrapperLine(line));
+
+export const stripExamAndFlashcardWrapperLines = (text: string) =>
+  stripWrapperLines(normalizeLines(text)).join("\n");
+
+export type ExamAnswerSplit = {
+  prompt: string;
+  officialAnswer?: string;
+  hasAnswerMarker: boolean;
+};
+
+const splitAnswerBlockLines = (lines: string[]): ExamAnswerSplit => {
+  const answerSplit = splitAnswerCard(lines, { answerMatch: "line-start" });
+  if (!answerSplit) {
+    return {
+      prompt: trimEmptyLines(lines).join("\n").trim(),
+      hasAnswerMarker: false,
+    };
+  }
+  return {
+    prompt: answerSplit.front,
+    officialAnswer: answerSplit.back,
+    hasAnswerMarker: true,
+  };
+};
+
+export const splitAnswerBlock = (text: string): ExamAnswerSplit =>
+  splitAnswerBlockLines(normalizeLines(text));
+
+const isAutoGradablePart = (part: FlashcardPart) => {
+  if (part.kind === "multiple-choice") {
+    return part.correctKeys.length > 0;
+  }
+  if (part.kind === "true-false") {
+    return part.items.length > 0;
+  }
+  if (part.kind === "cloze") {
+    return part.segments.some((segment) => segment.type === "blank");
+  }
+  return false;
+};
+
+const resolveTaskGradingMode = (
+  card: CompositeFlashcard,
+): ExamTaskGradingMode => {
+  const hasAuto = card.parts.some(isAutoGradablePart);
+  const hasManual = card.parts.some((part) => !isAutoGradablePart(part));
+
+  if (hasAuto && hasManual) {
+    return "hybrid";
+  }
+  if (hasManual) {
+    return "manual";
+  }
+  return "auto";
 };
 
 const isExamTaskStartLine = (line: string) => {
@@ -9248,19 +16230,9 @@ const isExamTaskStartLine = (line: string) => {
   return remainder.length === 0 || /^\s/.test(remainder);
 };
 
-const buildPrompt = (lines: string[]) =>
-  trimEmptyLines(lines).join("\n").trim();
-
 const normalizeTaskLines = (lines: string[]) => {
-  const trimmed = trimEmptyLines(lines);
-  if (
-    trimmed.length >= 2 &&
-    trimmed[0]?.trim() === "#card" &&
-    trimmed[trimmed.length - 1]?.trim() === "#"
-  ) {
-    return trimEmptyLines(trimmed.slice(1, -1));
-  }
-  return trimmed;
+  const stripped = stripWrapperLines(lines);
+  return trimEmptyLines(stripped);
 };
 
 const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
@@ -9276,11 +16248,10 @@ const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
   };
 };
 
-const buildFallbackCard = (lines: string[]): CompositeFlashcard => {
-  const answerSplit = splitAnswerCard(lines);
+const buildFallbackCard = (split: ExamAnswerSplit): CompositeFlashcard => {
   const front =
-    answerSplit?.front ?? (buildPrompt(lines) || "No task content provided.");
-  const back = answerSplit?.back ?? "";
+    split.prompt || (split.hasAnswerMarker ? "" : "No task content provided.");
+  const back = split.hasAnswerMarker ? split.officialAnswer ?? "" : "";
 
   return {
     kind: "composite",
@@ -9304,16 +16275,21 @@ const parseTaskChunk = (
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
   const normalizedLines = normalizeTaskLines(chunkLines);
-  const body = normalizedLines.join("\n");
-  const cardSource = `#card\n${body}\n#`;
-  const parsed = parseFlashcards(cardSource);
+  const { helpText, contentLines } = extractHelpBlocksFromLines(normalizedLines);
+  const answerSplit = splitAnswerBlockLines(contentLines);
+  const cardSource = `#card\n${contentLines.join("\n")}\n#`;
+  const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
   let card: CompositeFlashcard | null = null;
+  let officialAnswer: string | undefined;
 
   if (parsed.length === 0) {
     warnings.push({
       message: "No supported flashcard syntax found. Manual grading required.",
     });
-    card = buildFallbackCard(normalizedLines);
+    card = buildFallbackCard(answerSplit);
+    if (answerSplit.hasAnswerMarker) {
+      officialAnswer = answerSplit.officialAnswer ?? "";
+    }
   } else {
     if (parsed.length > 1) {
       warnings.push({
@@ -9321,15 +16297,32 @@ const parseTaskChunk = (
       });
     }
     card = toCompositeCard(parsed[0]);
+    const answerBlocks = splitCardLines(contentLines, "line-start");
+    const qaAnswers = answerBlocks
+      .map((block) => splitAnswerCard(block, { answerMatch: "line-start" }))
+      .filter(
+        (split): split is { front: string; back: string } => Boolean(split),
+      )
+      .map((split) => split.back);
+    if (qaAnswers.length > 0) {
+      officialAnswer = qaAnswers.join("\n\n");
+    } else if (answerSplit.hasAnswerMarker) {
+      officialAnswer = answerSplit.officialAnswer ?? "";
+    }
   }
+  const gradingMode = resolveTaskGradingMode(card);
 
   return {
     id: `exam-task-${taskIndex + 1}`,
     index: taskIndex,
     rawLines: [...chunkLines],
+    prompt: answerSplit.prompt,
+    officialAnswer,
+    gradingMode,
     sourceRange,
     card,
     warnings,
+    helpText: helpText.length > 0 ? helpText : undefined,
   };
 };
 
@@ -9337,9 +16330,9 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   const lines = normalizeLines(markdown);
   const tasks: ExamTask[] = [];
   let inExam = false;
-  let inCard = false;
   let currentTaskStart: number | null = null;
   let hasExamBlock = false;
+  const tableLineIndices = findTableLineIndices(lines);
 
   const flushTask = (endLine: number) => {
     if (currentTaskStart === null || endLine < currentTaskStart) {
@@ -9356,37 +16349,27 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   };
 
   lines.forEach((line, index) => {
-    const trimmed = line.trim();
     if (!inExam) {
-      if (trimmed === "#exam") {
+      if (isExamStartLine(line)) {
         inExam = true;
-        inCard = false;
         currentTaskStart = null;
         hasExamBlock = true;
       }
       return;
     }
 
-    if (trimmed === "#card") {
-      inCard = true;
-      return;
-    }
-
-    if (trimmed === "#" && inCard) {
-      inCard = false;
-      return;
-    }
-
-    if (trimmed === "#" && !inCard) {
+    if (isExamEndLine(line)) {
       flushTask(index - 1);
       inExam = false;
       currentTaskStart = null;
       return;
     }
 
-    if (trimmed === "---" && !inCard) {
-      flushTask(index - 1);
-      currentTaskStart = null;
+    if (isSeparatorLine(line)) {
+      if (!tableLineIndices.has(index)) {
+        flushTask(index - 1);
+        currentTaskStart = null;
+      }
       return;
     }
 
@@ -9407,7 +16390,622 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
 
 ---
 
+## 📝 autoCards.test.ts — ./lib/exam/autoCards.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/exam/autoCards.test.ts
+ *
+ * Zweck:
+ * - Tests fuer Auto-Card Wrapper Utilities.
+ */
+
+import { describe, expect, it } from "vitest";
+import { parseExamTasks } from "../exam";
+import {
+  applyExamCardWrapperActions,
+  removeExamTaskWrapper,
+} from "./autoCards";
+
+const baseExamContent = [
+  "#exam",
+  "1) First task",
+  "---",
+  "2) Second task",
+  "#examend",
+].join("\n");
+
+describe("addExamTaskWrapper", () => {
+  it("is idempotent when applied twice", () => {
+    const tasks = parseExamTasks(baseExamContent).tasks;
+    const firstPass = applyExamCardWrapperActions(
+      baseExamContent,
+      tasks,
+      () => "add",
+    ).content;
+    const secondPass = applyExamCardWrapperActions(
+      firstPass,
+      parseExamTasks(firstPass).tasks,
+      () => "add",
+    ).content;
+
+    expect(secondPass).toBe(firstPass);
+  });
+});
+
+describe("removeExamTaskWrapper", () => {
+  it("does nothing when no wrapper exists", () => {
+    const tasks = parseExamTasks(baseExamContent).tasks;
+    const result = removeExamTaskWrapper(
+      baseExamContent.split("\n"),
+      tasks[0].sourceRange,
+    );
+
+    expect(result.changed).toBe(false);
+    expect(result.lines.join("\n")).toBe(baseExamContent);
+  });
+});
+
+describe("auto cards return-on-correct", () => {
+  it("keeps only incorrect tasks wrapped", () => {
+    const tasks = parseExamTasks(baseExamContent).tasks;
+    const incorrectOnly = applyExamCardWrapperActions(
+      baseExamContent,
+      tasks,
+      (_task, index) => (index === 0 ? "remove" : "add"),
+    ).content;
+
+    const wrapperCount = (incorrectOnly.match(/^#card$/gm) ?? []).length;
+    expect(wrapperCount).toBe(1);
+    expect(incorrectOnly).toContain("#card\n2) Second task");
+    expect(incorrectOnly).not.toContain("#card\n1) First task");
+  });
+});
+
+describe("markdown tables", () => {
+  it("keeps table row structure intact when wrapping", () => {
+    const tableContent = [
+      "#exam",
+      "1) Table task",
+      "| A | B |",
+      "| - | - |",
+      "| 1 | 2 |",
+      "#examend",
+    ].join("\n");
+    const tasks = parseExamTasks(tableContent).tasks;
+    const wrapped = applyExamCardWrapperActions(tableContent, tasks, () => "add").content;
+
+    const tableBlock = ["| A | B |", "| - | - |", "| 1 | 2 |"].join("\n");
+    expect(wrapped).toContain(tableBlock);
+  });
+});
+
+---
+
+## 📝 autoCards.ts — ./lib/exam/autoCards.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/exam/autoCards.ts
+ *
+ * Zweck:
+ * - Utilities zum Hinzufuegen/Entfernen von #card Wrappern in Exam-Tasks.
+ */
+
+import type { ExamTask, ExamTaskSourceRange } from "../exam";
+
+export type ExamCardWrapperAction = "add" | "remove" | "keep";
+
+type WrapperMatch = {
+  startIndex: number;
+  endIndex: number;
+};
+
+const normalizeLines = (content: string) => content.replace(/\r\n?/g, "\n").split("\n");
+
+const isWrapperStart = (line: string) => line.trim() === "#card";
+const isWrapperEnd = (line: string) => line.trim() === "#";
+
+const findPreviousNonEmptyIndex = (lines: string[], startIndex: number) => {
+  for (let i = startIndex - 1; i >= 0; i -= 1) {
+    if (lines[i]?.trim() !== "") {
+      return i;
+    }
+  }
+  return null;
+};
+
+const findNextNonEmptyIndex = (lines: string[], startIndex: number) => {
+  for (let i = startIndex + 1; i < lines.length; i += 1) {
+    if (lines[i]?.trim() !== "") {
+      return i;
+    }
+  }
+  return null;
+};
+
+const findFirstNonEmptyInRange = (
+  lines: string[],
+  startIndex: number,
+  endIndex: number,
+) => {
+  for (let i = startIndex; i <= endIndex; i += 1) {
+    if (lines[i]?.trim() !== "") {
+      return i;
+    }
+  }
+  return null;
+};
+
+const findLastNonEmptyInRange = (
+  lines: string[],
+  startIndex: number,
+  endIndex: number,
+) => {
+  for (let i = endIndex; i >= startIndex; i -= 1) {
+    if (lines[i]?.trim() !== "") {
+      return i;
+    }
+  }
+  return null;
+};
+
+export const findExamTaskWrapper = (
+  lines: string[],
+  range: ExamTaskSourceRange,
+): WrapperMatch | null => {
+  if (!lines.length) {
+    return null;
+  }
+  const startLine = Math.max(0, range.startLine);
+  const endLine = Math.min(lines.length - 1, range.endLine);
+  if (startLine > endLine) {
+    return null;
+  }
+
+  const beforeIndex = findPreviousNonEmptyIndex(lines, startLine);
+  const afterIndex = findNextNonEmptyIndex(lines, endLine);
+  const firstInside = findFirstNonEmptyInRange(lines, startLine, endLine);
+  const lastInside = findLastNonEmptyInRange(lines, startLine, endLine);
+
+  const startIndex =
+    (beforeIndex !== null && isWrapperStart(lines[beforeIndex])
+      ? beforeIndex
+      : null) ??
+    (firstInside !== null && isWrapperStart(lines[firstInside])
+      ? firstInside
+      : null);
+  const endIndex =
+    (afterIndex !== null && isWrapperEnd(lines[afterIndex])
+      ? afterIndex
+      : null) ??
+    (lastInside !== null && isWrapperEnd(lines[lastInside]) ? lastInside : null);
+
+  if (startIndex === null || endIndex === null || startIndex >= endIndex) {
+    return null;
+  }
+
+  return { startIndex, endIndex };
+};
+
+export const addExamTaskWrapper = (
+  lines: string[],
+  range: ExamTaskSourceRange,
+) => {
+  const match = findExamTaskWrapper(lines, range);
+  if (match) {
+    return { lines, delta: 0, changed: false };
+  }
+  const next = [...lines];
+  const start = Math.max(0, Math.min(next.length, range.startLine));
+  const end = Math.max(start, Math.min(next.length - 1, range.endLine));
+  next.splice(start, 0, "#card");
+  next.splice(end + 2, 0, "#");
+  return { lines: next, delta: 2, changed: true };
+};
+
+export const removeExamTaskWrapper = (
+  lines: string[],
+  range: ExamTaskSourceRange,
+) => {
+  const match = findExamTaskWrapper(lines, range);
+  if (!match) {
+    return { lines, delta: 0, changed: false };
+  }
+  const next = [...lines];
+  next.splice(match.endIndex, 1);
+  next.splice(match.startIndex, 1);
+  return { lines: next, delta: -2, changed: true };
+};
+
+export const applyExamCardWrapperActions = (
+  content: string,
+  tasks: ExamTask[],
+  getAction: (task: ExamTask, index: number) => ExamCardWrapperAction,
+) => {
+  const sortedTasks = [...tasks].sort(
+    (a, b) => a.sourceRange.startLine - b.sourceRange.startLine,
+  );
+  let lines = normalizeLines(content);
+  let offset = 0;
+  let changed = false;
+
+  sortedTasks.forEach((task) => {
+    const action = getAction(task, task.index);
+    if (action === "keep") {
+      return;
+    }
+    const startLine = task.sourceRange.startLine + offset;
+    const endLine = task.sourceRange.endLine + offset;
+    const range = { startLine, endLine };
+    if (action === "add") {
+      const result = addExamTaskWrapper(lines, range);
+      lines = result.lines;
+      offset += result.delta;
+      changed = changed || result.changed;
+      return;
+    }
+    const result = removeExamTaskWrapper(lines, range);
+    lines = result.lines;
+    offset += result.delta;
+    changed = changed || result.changed;
+  });
+
+  return { content: lines.join("\n"), changed };
+};
+
+---
+
+## 📝 examRuns.test.ts — ./lib/examRuns.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/examRuns.test.ts
+ *
+ * Zweck:
+ * - Testet Exam-Run Hilfsfunktionen fuer Prozent, Status und Filter.
+ */
+
+import { describe, expect, it } from "vitest";
+import {
+  calculateExamPercent,
+  filterExamRuns,
+  isExamPassed,
+  type ExamRun,
+} from "./examRuns";
+
+const buildRun = (overrides: Partial<ExamRun>): ExamRun => ({
+  id: "run",
+  startedAt: "2024-01-01T10:00:00.000Z",
+  endedAt: "2024-01-01T10:10:00.000Z",
+  durationMs: 600000,
+  userId: "user",
+  userName: "User",
+  examFilePath: "exam.md",
+  tasksDetected: 5,
+  maxPoints: 20,
+  achievedPoints: 10,
+  percent: 50,
+  passed: true,
+  grade: "5",
+  gradeScaleId: "standard-1-6",
+  ...overrides,
+});
+
+describe("calculateExamPercent", () => {
+  it("rounds percentage based on achieved points", () => {
+    expect(calculateExamPercent(9, 20)).toBe(45);
+    expect(calculateExamPercent(10, 20)).toBe(50);
+  });
+
+  it("returns 0 when max points is zero", () => {
+    expect(calculateExamPercent(5, 0)).toBe(0);
+  });
+});
+
+describe("isExamPassed", () => {
+  it("passes at 50 percent or higher", () => {
+    expect(isExamPassed(50)).toBe(true);
+    expect(isExamPassed(49)).toBe(false);
+  });
+});
+
+describe("filterExamRuns", () => {
+  const runs = [
+    buildRun({
+      id: "run-1",
+      userId: "user-a",
+      userName: "Alice",
+      examFilePath: "math.md",
+      passed: true,
+      endedAt: "2024-01-02T10:00:00.000Z",
+    }),
+    buildRun({
+      id: "run-2",
+      userId: "user-b",
+      userName: "Bob",
+      examFilePath: "chemistry.md",
+      passed: false,
+      endedAt: "2024-01-03T10:00:00.000Z",
+    }),
+  ];
+
+  it("filters by user id", () => {
+    const filtered = filterExamRuns(runs, {
+      userId: "user-a",
+      status: "all",
+      query: "",
+    });
+    expect(filtered.map((run) => run.id)).toEqual(["run-1"]);
+  });
+
+  it("filters by status and sorts by newest", () => {
+    const filtered = filterExamRuns(runs, {
+      userId: "",
+      status: "failed",
+      query: "",
+    });
+    expect(filtered.map((run) => run.id)).toEqual(["run-2"]);
+  });
+
+  it("filters by exam file query", () => {
+    const filtered = filterExamRuns(runs, {
+      userId: "",
+      status: "all",
+      query: "math",
+    });
+    expect(filtered.map((run) => run.id)).toEqual(["run-1"]);
+  });
+});
+
+---
+
+## 📝 examRuns.ts — ./lib/examRuns.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/examRuns.ts
+ *
+ * Zweck:
+ * - Typen und Hilfsfunktionen fuer Exam-Run Historien.
+ */
+
+import { invoke } from "@tauri-apps/api/core";
+import {
+  createEmptyExamRunStore,
+  saveExamRunStore,
+} from "../features/user-vault/storage";
+
+export type ExamGradeScaleId = "standard-1-6";
+
+export type ExamRun = {
+  id: string;
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+  userId: string | null;
+  userName: string;
+  examFilePath: string;
+  tasksDetected: number;
+  maxPoints: number;
+  achievedPoints: number;
+  percent: number;
+  passed: boolean;
+  grade: string | null;
+  gradeScaleId: ExamGradeScaleId;
+};
+
+export type ExamRunStorage = {
+  runs: ExamRun[];
+};
+
+type ExamRunHistoryResetListener = () => void;
+
+const examRunHistoryResetListeners = new Set<ExamRunHistoryResetListener>();
+
+export const subscribeExamRunHistoryReset = (
+  listener: ExamRunHistoryResetListener,
+) => {
+  examRunHistoryResetListeners.add(listener);
+  return () => {
+    examRunHistoryResetListeners.delete(listener);
+  };
+};
+
+export const resetExamRunHistory = async (profilePath?: string | null) => {
+  try {
+    if (profilePath) {
+      await saveExamRunStore(profilePath, {
+        ...createEmptyExamRunStore(),
+        migratedFromAppData: true,
+      });
+    } else {
+      const storage: ExamRunStorage = { runs: [] };
+      await invoke("save_exam_run_data", { storage });
+    }
+    examRunHistoryResetListeners.forEach((listener) => listener());
+    return true;
+  } catch (error) {
+    console.warn("Failed to reset exam run history", error);
+    return false;
+  }
+};
+
+export type ExamRunStatusFilter = "all" | "passed" | "failed";
+
+export type ExamRunFilters = {
+  userId: string;
+  status: ExamRunStatusFilter;
+  query: string;
+};
+
+type ExamGradeScale = {
+  id: ExamGradeScaleId;
+  label: string;
+  ranges: Array<{ minPercent: number; grade: string }>;
+};
+
+export const DEFAULT_EXAM_GRADE_SCALE: ExamGradeScaleId = "standard-1-6";
+
+const EXAM_GRADE_SCALES: Record<ExamGradeScaleId, ExamGradeScale> = {
+  "standard-1-6": {
+    id: "standard-1-6",
+    label: "Standard (1-6)",
+    ranges: [
+      { minPercent: 90, grade: "1" },
+      { minPercent: 80, grade: "2" },
+      { minPercent: 70, grade: "3" },
+      { minPercent: 60, grade: "4" },
+      { minPercent: 50, grade: "5" },
+      { minPercent: 0, grade: "6" },
+    ],
+  },
+};
+
+export const buildExamRunId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `exam-run-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+export const calculateExamPercent = (achievedPoints: number, maxPoints: number) =>
+  maxPoints > 0 ? Math.round((achievedPoints / maxPoints) * 100) : 0;
+
+export const isExamPassed = (percent: number) => percent >= 50;
+
+export const resolveExamGradeScale = (scaleId?: ExamGradeScaleId) =>
+  EXAM_GRADE_SCALES[scaleId ?? DEFAULT_EXAM_GRADE_SCALE] ??
+  EXAM_GRADE_SCALES[DEFAULT_EXAM_GRADE_SCALE];
+
+export const resolveExamGrade = (scaleId: ExamGradeScaleId, percent: number) => {
+  const scale = resolveExamGradeScale(scaleId);
+  const normalized = Math.max(0, Math.min(100, percent));
+  const match = scale.ranges.find((range) => normalized >= range.minPercent);
+  return match ? match.grade : null;
+};
+
+export const formatExamGradeScale = (scaleId: ExamGradeScaleId) => {
+  const scale = resolveExamGradeScale(scaleId);
+  const ranges = scale.ranges
+    .map((range, index) => {
+      const next = scale.ranges[index - 1];
+      const max = next ? next.minPercent - 1 : 100;
+      return `${range.grade}: ${range.minPercent}-${max}%`;
+    })
+    .join(", ");
+  return `${scale.label} (${ranges})`;
+};
+
+export const formatExamDuration = (durationMs: number) => {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return "0:00";
+  }
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
+
+const getTimestampValue = (value: string) => {
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+export const formatExamTimestamp = (value: string) => {
+  const timestamp = getTimestampValue(value);
+  if (!timestamp) {
+    return value;
+  }
+  return new Date(timestamp).toLocaleString("en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+export const getExamRunUserKey = (run: ExamRun) =>
+  run.userId || run.userName || "";
+
+export const getExamFileName = (path: string) => {
+  const normalized = path.replace(/\\/g, "/");
+  const parts = normalized.split("/");
+  return parts[parts.length - 1] || path;
+};
+
+export const sortExamRunsByDateDesc = (runs: ExamRun[]) =>
+  [...runs].sort(
+    (a, b) => getTimestampValue(b.endedAt) - getTimestampValue(a.endedAt),
+  );
+
+export const filterExamRuns = (runs: ExamRun[], filters: ExamRunFilters) => {
+  const query = filters.query.trim().toLowerCase();
+  const filtered = runs.filter((run) => {
+    if (filters.userId && getExamRunUserKey(run) !== filters.userId) {
+      return false;
+    }
+    if (filters.status === "passed" && !run.passed) {
+      return false;
+    }
+    if (filters.status === "failed" && run.passed) {
+      return false;
+    }
+    if (query && !run.examFilePath.toLowerCase().includes(query)) {
+      return false;
+    }
+    return true;
+  });
+  return sortExamRunsByDateDesc(filtered);
+};
+
+---
+
+## 📝 fastFlashcard.ts — ./lib/fastFlashcard.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/fastFlashcard.ts
+ *
+ * Zweck:
+ * - Typen fuer Fast Flashcard Sessions und Storage.
+ */
+
+export type FastFlashcardResult = "correct" | "incorrect" | "timeout";
+
+export type FastFlashcardSessionSummary = {
+  id: string;
+  endedAt: string;
+  score: number;
+  correct: number;
+  incorrect: number;
+  timeout?: number;
+  total: number;
+  accuracy: number;
+  pace: number;
+  durationMs: number;
+};
+
+export type FastFlashcardStorage = {
+  sessions: FastFlashcardSessionSummary[];
+};
+
+---
+
 ## 📝 flashcardKeywords.ts — ./lib/flashcardKeywords.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/flashcardKeywords.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer /.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer / bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 export const answerMarkers = [
   "Answer:",
@@ -9479,6 +17077,24 @@ export const falseTokens = [
 ---
 
 ## 📝 flashcards.test.ts — ./lib/flashcards.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/flashcards.test.ts
+ *
+ * Zweck:
+ * - Testet flashcards.test und zugehoerige Logik.
+ *
+ * Verantwortlichkeiten:
+ * - Prueft erwartetes Verhalten und Randfaelle.
+ * - Sichert Regressionen fuer zentrale Szenarien.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - vitest: Externe Bibliothek.
+ *
+ * Hinweise:
+ * - Nur fuer Testlauf; keine Produktivnutzung.
+ */
 
 import { describe, expect, it } from "vitest";
 import {
@@ -9653,9 +17269,9 @@ b) Second
 
   it("splits parts on separators inside a block", () => {
     const markdown = `#card
-First question?
-Answer: One
----
+    First question?
+    Answer: One
+    ---
 Second question?
 Answer: Two
 #`;
@@ -9675,6 +17291,276 @@ Answer: Two
     if (second.kind === "free-text") {
       expect(second.front).toBe("Second question?");
       expect(second.back).toBe("Two");
+    }
+  });
+
+  it("keeps '# Title' lines inside a card and uses '#' as the only terminator", () => {
+    const markdown = `#card
+# Heading inside
+Answer: heading text stays inside
+#
+`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+  });
+
+  it("treats '#exam' markers inside a card as plain text", () => {
+    const markdown = `#card
+#exam should be kept
+Answer: yep
+#
+`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toContain("#exam");
+    }
+  });
+
+  it("preserves pipe tables with in-cell card/exam tags for multiple choice", () => {
+    const table = `| qa | tf | m1 | m2 | cl | cd | cld |       |
+| --- | --- | --- | --- | --- | --- | --- | ----- |
+| Y | N | N | N | Y | Y | Y | #exam |
+| Y | N | N | N | Y | Y | Y | #card |`;
+    const markdown = `#card
+Tabellen Raenderring ok/no
+
+${table}
+a) Alpha
+-a
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.context).toBeTruthy();
+      expect(part.context ?? "").toContain(table);
+    }
+  });
+
+  it("parses a mixed composite block split by explicit separators", () => {
+    const markdown = `#card
+True/False? \`tf\`
+-wahr
+---
+Pick two.
+a) One
+b) Two
+c) Three
+-a
+-c
+---
+Cloze chain: %%first%% and \`token\`.
+---
+QA check.
+Answer: Confirmed.
+#
+`;
+
+    const cards = parseFlashcards(markdown);
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts.map((part) => part.kind)).toEqual([
+      "true-false",
+      "multiple-choice",
+      "cloze",
+      "free-text",
+    ]);
+    const [tfPart, mcPart, clozePart] = parts;
+    expect(parts).toHaveLength(4);
+    if (tfPart.kind === "true-false") {
+      expect(tfPart.items).toHaveLength(1);
+    }
+    if (mcPart.kind === "multiple-choice") {
+      expect(mcPart.correctKeys).toEqual(["a", "c"]);
+    }
+    if (clozePart.kind === "cloze") {
+      expect(clozePart.dragTokens).toEqual([{ id: "token-0", value: "token" }]);
+    }
+  });
+
+  it("parses cloze tokens inside table cells", () => {
+    const markdown = `#card
+| Term | Answer |
+| --- | --- |
+| Alpha | %%first%% |
+| Beta | \`second\` |
+| Gamma | \`third\` and %%fourth%% |
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      expect(blanks).toHaveLength(4);
+      expect(blanks.map((blank) => blank.solution)).toEqual([
+        "first",
+        "second",
+        "third",
+        "fourth",
+      ]);
+      expect(part.dragTokens).toEqual([
+        { id: "token-0", value: "second" },
+        { id: "token-1", value: "third" },
+      ]);
+    }
+  });
+
+  it("detects cloze markers inside fenced code blocks", () => {
+    const markdown = `#card
+SQL cld example.
+\`\`\`sql
+\`SELECT\` a.PLZ, a.ORT
+\`FROM\` ADRESSE a
+\`JOIN\` KUNDE k \`ON\` a.KUNDEID = k.KUNDEID
+\`WHERE\` k.NAME = %%Nachname%% \`AND\` k.VORNAME = %%Vorname%%
+\`AND\` a.TYP = %%Adresstyp%%
+\`ORDER\` \`BY\` a.%%Sortierattribut%%;
+\`\`\`
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.subtype).toBe("cld");
+      const inputBlanks = part.segments.filter(
+        (segment) => segment.type === "blank" && segment.kind === "input",
+      );
+      expect(inputBlanks.map((blank) => blank.solution)).toEqual([
+        "Nachname",
+        "Vorname",
+        "Adresstyp",
+        "Sortierattribut",
+      ]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual([
+        "SELECT",
+        "FROM",
+        "JOIN",
+        "ON",
+        "WHERE",
+        "AND",
+        "AND",
+        "ORDER",
+        "BY",
+      ]);
+    }
+  });
+
+  it("keeps tables intact when splitting composite parts", () => {
+    const markdown = `#card
+| Term | Answer |
+| --- | --- |
+| Join | %%inner%% |
+---
+Second prompt?
+Answer: Table stays in the first part.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts).toHaveLength(2);
+    expect(parts[0].kind).toBe("cloze");
+    expect(parts[1].kind).toBe("free-text");
+  });
+
+  it("keeps context tables for TF/M1/M2 example cards", () => {
+    const markdown = `#card
+2) Task (TF): Decide whether the statement is true or false. Use the context table below.
+
+| Term | Quick meaning |
+| --- | --- |
+| Star | Produces its own light via fusion |
+| Planet | Orbits a star and does not produce light via fusion |
+
+Statement: The Sun is a star.
+-true
+#
+
+#card
+3) Task (M1): Choose exactly one correct answer. Use the context table below.
+
+| HTTP method | Typical intent |
+| --- | --- |
+| GET | Retrieve a resource |
+| POST | Create or trigger processing |
+| DELETE | Remove a resource |
+
+Which HTTP method is typically used to retrieve (read) a resource?
+a) POST
+b) GET
+c) DELETE
+-b
+#
+
+#card
+4) Task (M2): Choose all correct answers. Use the context table below.
+
+| Permission class | Abbreviation |
+| --- | --- |
+| User (owner) | u |
+| Group | g |
+| Others | o |
+
+Which are permission classes in classic Unix permissions?
+a) User (owner)
+b) Group
+c) Others
+d) Process
+-a
+-b
+-c
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(3);
+
+    const tfPart = getSinglePart(cards[0]);
+    expect(tfPart.kind).toBe("true-false");
+    if (tfPart.kind === "true-false") {
+      expect(tfPart.context).toBeTruthy();
+      expect(tfPart.context ?? "").toContain("| Term | Quick meaning |");
+      expect(tfPart.context ?? "").toContain("| --- | --- |");
+      expect(tfPart.items[0]?.question).toBe("Statement: The Sun is a star.");
+    }
+
+    const m1Part = getSinglePart(cards[1]);
+    expect(m1Part.kind).toBe("multiple-choice");
+    if (m1Part.kind === "multiple-choice") {
+      expect(m1Part.context).toBeTruthy();
+      expect(m1Part.context ?? "").toContain("| HTTP method | Typical intent |");
+      expect(m1Part.context ?? "").toContain("| --- | --- |");
+      expect(m1Part.correctKeys).toEqual(["b"]);
+      expect(m1Part.options).toHaveLength(3);
+    }
+
+    const m2Part = getSinglePart(cards[2]);
+    expect(m2Part.kind).toBe("multiple-choice");
+    if (m2Part.kind === "multiple-choice") {
+      expect(m2Part.context).toBeTruthy();
+      expect(m2Part.context ?? "").toContain("| Permission class | Abbreviation |");
+      expect(m2Part.context ?? "").toContain("| --- | --- |");
+      expect(m2Part.correctKeys).toEqual(["a", "b", "c"]);
+      expect(m2Part.options).toHaveLength(4);
     }
   });
 
@@ -10097,6 +17983,7 @@ A foreign key is an %% attribute or attribute set %% that references a %%primary
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
+      expect(part.subtype).toBe("cl");
       expect(part.question).toBe("Define foreign key.");
       expect(part.dragTokens).toEqual([]);
       expect(part.segments).toEqual([
@@ -10151,6 +18038,7 @@ Use %%blank%% with \`alpha\` and \`beta\`.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
+      expect(part.subtype).toBe("cld");
       expect(part.dragTokens).toEqual([
         { id: "token-0", value: "alpha" },
         { id: "token-1", value: "beta" },
@@ -10179,6 +18067,7 @@ Use \`alpha\` and \`beta\` here.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
+      expect(part.subtype).toBe("cd");
       expect(part.dragTokens).toEqual([
         { id: "token-0", value: "alpha" },
         { id: "token-1", value: "beta" },
@@ -10254,7 +18143,7 @@ Valid %%answer%% and \`unfinished.
     }
   });
 
-  it("ignores markers inside fenced code blocks", () => {
+  it("parses markers inside fenced code blocks", () => {
     const markdown = `#card
 Question.
 Code:
@@ -10271,11 +18160,16 @@ Outside \`token\` and %%blank%%.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
-      expect(part.dragTokens).toEqual([{ id: "token-0", value: "token" }]);
+      expect(part.dragTokens).toEqual([
+        { id: "token-0", value: "ignored" },
+        { id: "token-1", value: "token" },
+      ]);
       const blanks = part.segments.filter((segment) => segment.type === "blank");
       expect(blanks).toEqual([
-        { type: "blank", id: "blank-0", kind: "drag", solution: "token" },
-        { type: "blank", id: "blank-1", kind: "input", solution: "blank" },
+        { type: "blank", id: "blank-0", kind: "drag", solution: "ignored" },
+        { type: "blank", id: "blank-1", kind: "input", solution: "not" },
+        { type: "blank", id: "blank-2", kind: "drag", solution: "token" },
+        { type: "blank", id: "blank-3", kind: "input", solution: "blank" },
       ]);
     }
   });
@@ -10289,6 +18183,30 @@ Empty blank.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(0);
+  });
+
+  it("stores help blocks without affecting detection", () => {
+    const markdown = `#card
+Question?
+#help
+-true
+Answer: decoy
+#helpend
+Answer: Real answer
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0]?.helpText?.length).toBe(1);
+    expect(cards[0]?.helpText?.[0]).toContain("-true");
+    expect(cards[0]?.helpText?.[0]).toContain("Answer: decoy");
+    expect(cards[0]?.detectedTypes).toEqual(["qa"]);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.back).toBe("Real answer");
+    }
   });
 
   it("matches input blanks case-insensitively with trim", () => {
@@ -10307,7 +18225,26 @@ Empty blank.
 
 ## 📝 flashcards.ts — ./lib/flashcards.ts
 
+/**
+ * @file apps/fmd-desktop/src/lib/flashcards.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Flashcards.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Flashcards bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/flashcardKeywords.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 import { answerMarkers, falseTokens, trueTokens } from "./flashcardKeywords";
+import { findTableLineIndices } from "./markdownTables";
 
 /**
  * Flashcard syntax:
@@ -10340,6 +18277,7 @@ export type FlashcardOption = {
 export type MultipleChoiceCard = {
   kind: "multiple-choice";
   question: string;
+  context?: string;
   options: FlashcardOption[];
   correctKeys: string[];
 };
@@ -10359,6 +18297,7 @@ export type TrueFalseItem = {
 export type TrueFalseCard = {
   kind: "true-false";
   items: TrueFalseItem[];
+  context?: string;
 };
 
 export type ClozeSegment =
@@ -10370,8 +18309,11 @@ export type ClozeDragToken = {
   value: string;
 };
 
+export type ClozeSubtype = "cl" | "cd" | "cld";
+
 export type ClozeCard = {
   kind: "cloze";
+  subtype: ClozeSubtype;
   question: string;
   segments: ClozeSegment[];
   dragTokens: ClozeDragToken[];
@@ -10395,9 +18337,20 @@ export type FlashcardMetadata = {
   primaryType?: FlashcardDetectedType;
   detectedTypes?: FlashcardDetectedType[];
   isMixed?: boolean;
+  helpText?: string[];
 };
 
 export type Flashcard = (FlashcardPart | CompositeFlashcard) & FlashcardMetadata;
+
+export type AnswerMatchMode = "anywhere" | "line-start";
+
+export type SplitAnswerCardOptions = {
+  answerMatch?: AnswerMatchMode;
+};
+
+export type ParseFlashcardsOptions = {
+  answerMatch?: AnswerMatchMode;
+};
 
 export const normalizeInputAnswer = (value: string) => value.trim().toLowerCase();
 
@@ -10412,10 +18365,17 @@ export const isDragAnswerMatch = (tokenValue: string, solution: string) =>
 const normalizeLines = (markdown: string) =>
   markdown.replace(/\r\n?/g, "\n").split("\n");
 
+const resolveAnswerMatch = (options?: { answerMatch?: AnswerMatchMode }) =>
+  options?.answerMatch ?? "anywhere";
+
 const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
 const assignmentPattern = /^(.+?)=>\s*(.+)$/;
-const separatorLine = "---";
+const separatorLinePattern = /^\s*---\s*$/;
+const cardStartPattern = /^\s*#card\s*$/;
+const cardEndPattern = /^\s*#\s*$/;
+const helpStartPattern = /^\s*#help\s*$/;
+const helpEndPattern = /^\s*#helpend\s*$/;
 
 const normalizeKeyword = (value: string) =>
   value
@@ -10431,7 +18391,7 @@ const normalizeAnswerToken = (value: string) =>
 
 const normalizedAnswerMarkers = answerMarkers.map((marker) => ({
   raw: marker,
-  normalized: normalizeAnswerToken(marker.replace(/:\\s*$/, "")),
+  normalized: normalizeAnswerToken(marker.replace(/:\s*$/, "")),
 }));
 const normalizedAnswerMarkerSet = new Set(
   normalizedAnswerMarkers.map((marker) => marker.normalized),
@@ -10454,7 +18414,66 @@ const trimEmptyLines = (lines: string[]) => {
   return lines.slice(start, end);
 };
 
-const isSeparatorLine = (line: string) => line.trim() === separatorLine;
+const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
+const isCardStartLine = (line: string) => cardStartPattern.test(line);
+const isCardEndLine = (line: string) => cardEndPattern.test(line);
+const isHelpStartLine = (line: string) => helpStartPattern.test(line);
+const isHelpEndLine = (line: string) => helpEndPattern.test(line);
+
+export type HelpBlockExtraction = {
+  helpText: string[];
+  contentLines: string[];
+};
+
+export const extractHelpBlocksFromLines = (
+  lines: string[],
+): HelpBlockExtraction => {
+  const helpText: string[] = [];
+  const contentLines: string[] = [];
+  let inHelp = false;
+  let currentBlock: string[] = [];
+
+  const flushHelp = () => {
+    const trimmed = trimEmptyLines(currentBlock);
+    if (trimmed.length > 0) {
+      helpText.push(trimmed.join("\n"));
+    }
+    currentBlock = [];
+  };
+
+  lines.forEach((line) => {
+    if (!inHelp) {
+      if (isHelpStartLine(line)) {
+        inHelp = true;
+        currentBlock = [];
+        return;
+      }
+      contentLines.push(line);
+      return;
+    }
+
+    if (isHelpEndLine(line)) {
+      inHelp = false;
+      flushHelp();
+      return;
+    }
+
+    if (isSeparatorLine(line)) {
+      inHelp = false;
+      flushHelp();
+      contentLines.push(line);
+      return;
+    }
+
+    currentBlock.push(line);
+  });
+
+  if (inHelp) {
+    flushHelp();
+  }
+
+  return { helpText, contentLines };
+};
 
 const isAssignmentLine = (line: string) => {
   const match = line.match(assignmentPattern);
@@ -10485,7 +18504,8 @@ const isOptionLine = (line: string) => optionPattern.test(line.trim());
 const isCorrectMarkerLine = (line: string) => markerPattern.test(line.trim());
 const isTrueFalseMarkerLine = (line: string) =>
   normalizeTrueFalseMarker(line.trim()) !== null;
-const isAnswerMarkerLine = (line: string) => Boolean(findAnswerMarkerMatch(line));
+const isAnswerMarkerLine = (line: string, answerMatch: AnswerMatchMode) =>
+  Boolean(findAnswerMarkerMatch(line, answerMatch));
 const hasClozeMarker = (line: string) => line.includes("%%") || line.includes("`");
 
 const appendText = (segments: ClozeSegment[], text: string) => {
@@ -10505,7 +18525,6 @@ const parseClozeSegments = (lines: string[]) => {
   const dragTokens: ClozeDragToken[] = [];
   let blankIndex = 0;
   let tokenIndex = 0;
-  let inFence = false;
   const fencePattern = /^(```|~~~)/;
 
   const handleLine = (line: string) => {
@@ -10582,9 +18601,6 @@ const parseClozeSegments = (lines: string[]) => {
     const line = trimmedLines[lineIndex];
     const trimmed = line.trimStart();
     if (fencePattern.test(trimmed)) {
-      inFence = !inFence;
-      appendText(segments, line);
-    } else if (inFence) {
       appendText(segments, line);
     } else {
       const parsed = handleLine(line);
@@ -10599,6 +18615,16 @@ const parseClozeSegments = (lines: string[]) => {
   }
 
   return { segments, dragTokens };
+};
+
+const resolveClozeSubtype = (hasInput: boolean, hasDrag: boolean): ClozeSubtype => {
+  if (hasInput && hasDrag) {
+    return "cld";
+  }
+  if (hasInput) {
+    return "cl";
+  }
+  return "cd";
 };
 
 const normalizeTrueFalseMarker = (value: string) => {
@@ -10623,6 +18649,7 @@ const normalizeTrueFalseMarker = (value: string) => {
 
 const parseTrueFalseItems = (lines: string[]) => {
   const items: TrueFalseItem[] = [];
+  let firstQuestionIndex: number | null = null;
 
   for (let index = 0; index < lines.length; index += 1) {
     const question = lines[index].trim();
@@ -10648,10 +18675,13 @@ const parseTrueFalseItems = (lines: string[]) => {
       question,
       correct: marker,
     });
+    if (firstQuestionIndex === null) {
+      firstQuestionIndex = index;
+    }
     index = markerIndex;
   }
 
-  return items;
+  return { items, firstQuestionIndex };
 };
 
 type AnswerMarkerMatch = {
@@ -10720,7 +18750,10 @@ const findAnswerMarkerAtColon = (
   return { line, markerStartIndex, markerEndIndex };
 };
 
-const findAnswerMarkerMatch = (line: string) => {
+const findAnswerMarkerMatch = (
+  line: string,
+  answerMatch: AnswerMatchMode = "anywhere",
+) => {
   if (!line.trim()) {
     return null;
   }
@@ -10731,15 +18764,21 @@ const findAnswerMarkerMatch = (line: string) => {
   ) {
     const match = findAnswerMarkerAtColon(line, colonIndex);
     if (match) {
+      if (
+        answerMatch === "line-start" &&
+        line.slice(0, match.markerStartIndex).trim() !== ""
+      ) {
+        continue;
+      }
       return match;
     }
   }
   return null;
 };
 
-const findAnswerMarkerLine = (lines: string[]) => {
+const findAnswerMarkerLine = (lines: string[], answerMatch: AnswerMatchMode) => {
   for (let index = 0; index < lines.length; index += 1) {
-    const match = findAnswerMarkerMatch(lines[index] ?? "");
+    const match = findAnswerMarkerMatch(lines[index] ?? "", answerMatch);
     if (match) {
       return { index, match };
     }
@@ -10747,8 +18786,9 @@ const findAnswerMarkerLine = (lines: string[]) => {
   return null;
 };
 
-export const splitAnswerCard = (lines: string[]) => {
-  const markerInfo = findAnswerMarkerLine(lines);
+export const splitAnswerCard = (lines: string[], options?: SplitAnswerCardOptions) => {
+  const answerMatch = resolveAnswerMatch(options);
+  const markerInfo = findAnswerMarkerLine(lines, answerMatch);
   if (!markerInfo) {
     return null;
   }
@@ -10796,10 +18836,11 @@ const createSplitState = (): CardSplitState => ({
   hasAssignmentLine: false,
 });
 
-const splitCardLines = (lines: string[]) => {
+export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) => {
   const blocks: string[][] = [];
   let current: string[] = [];
   let state = createSplitState();
+  const tableLineIndices = findTableLineIndices(lines);
 
   const reset = () => {
     current = [];
@@ -10825,7 +18866,7 @@ const splitCardLines = (lines: string[]) => {
     if (isCorrectMarkerLine(line)) {
       state.hasCorrectMarker = true;
     }
-    if (isAnswerMarkerLine(line)) {
+    if (isAnswerMarkerLine(line, answerMatch)) {
       state.hasAnswerMarker = true;
     }
     if (isTrueFalseMarkerLine(line)) {
@@ -10849,7 +18890,10 @@ const splitCardLines = (lines: string[]) => {
   const findNextNonEmpty = (startIndex: number) => {
     for (let i = startIndex; i < lines.length; i += 1) {
       const trimmed = lines[i].trim();
-      if (!trimmed || isSeparatorLine(lines[i])) {
+      if (!trimmed) {
+        continue;
+      }
+      if (isSeparatorLine(lines[i]) && !tableLineIndices.has(i)) {
         continue;
       }
       return trimmed;
@@ -10861,7 +18905,7 @@ const splitCardLines = (lines: string[]) => {
     const line = lines[index];
     const trimmed = line.trim();
 
-    if (isSeparatorLine(line)) {
+    if (isSeparatorLine(line) && !tableLineIndices.has(index)) {
       flush();
       continue;
     }
@@ -10899,6 +18943,7 @@ const splitCardLines = (lines: string[]) => {
 
 const parseCardLines = (
   cardLines: string[],
+  answerMatch: AnswerMatchMode,
 ): { part: FlashcardPart; detectedTypes: FlashcardDetectedType[] } | null => {
   const questionIndex = cardLines.findIndex((entry) => entry.trim() !== "");
   if (questionIndex === -1) {
@@ -10910,7 +18955,8 @@ const parseCardLines = (
 
   const options: FlashcardOption[] = [];
   const correctKeys: string[] = [];
-  const clozeLines: string[] = [];
+  const questionLine = cardLines[questionIndex];
+  const clozeLines: string[] = hasClozeMarker(questionLine) ? [questionLine] : [];
   let hasAssignmentLines = false;
 
   bodyLines.forEach((rawLine) => {
@@ -10953,12 +18999,13 @@ const parseCardLines = (
     pushUnique(detectedTypes, "multiple-choice");
   }
 
-  const trueFalseItems = parseTrueFalseItems(cardLines.slice(questionIndex));
+  const { items: trueFalseItems, firstQuestionIndex } =
+    parseTrueFalseItems(contentLines);
   if (trueFalseItems.length > 0) {
     pushUnique(detectedTypes, "true-false");
   }
 
-  const answerCard = splitAnswerCard(contentLines);
+  const answerCard = splitAnswerCard(contentLines, { answerMatch });
   if (answerCard) {
     pushUnique(detectedTypes, "qa");
   }
@@ -10978,18 +19025,30 @@ const parseCardLines = (
       }
     });
   }
+  const hasDragContent = hasDragBlanks || hasAssignmentLines;
   if (hasInputBlanks) {
     pushUnique(detectedTypes, "fill-blank");
   }
-  if (hasDragBlanks || hasAssignmentLines) {
+  if (hasDragContent) {
     pushUnique(detectedTypes, "assignment");
   }
 
   if (options.length > 0) {
+    let context: string | undefined;
+    const optionStartIndex = contentLines.findIndex((line) => isOptionLine(line));
+    if (optionStartIndex > 1) {
+      const contextLines = trimEmptyLines(
+        contentLines.slice(1, optionStartIndex),
+      );
+      if (contextLines.length > 0) {
+        context = contextLines.join("\n");
+      }
+    }
     return {
       part: {
         kind: "multiple-choice",
         question,
+        context,
         options,
         correctKeys,
       },
@@ -10998,10 +19057,20 @@ const parseCardLines = (
   }
 
   if (trueFalseItems.length > 0) {
+    let context: string | undefined;
+    if (firstQuestionIndex !== null) {
+      const contextLines = trimEmptyLines(
+        contentLines.slice(0, firstQuestionIndex),
+      );
+      if (contextLines.length > 0) {
+        context = contextLines.join("\n");
+      }
+    }
     return {
       part: {
         kind: "true-false",
         items: trueFalseItems,
+        context,
       },
       detectedTypes,
     };
@@ -11020,10 +19089,11 @@ const parseCardLines = (
   if (!parsed) {
     return null;
   }
-  if (hasInputBlanks || hasDragBlanks || hasAssignmentLines) {
+  if (hasInputBlanks || hasDragContent) {
     return {
       part: {
         kind: "cloze",
+        subtype: resolveClozeSubtype(hasInputBlanks, hasDragContent),
         question,
         segments: parsed.segments,
         dragTokens: parsed.dragTokens,
@@ -11035,14 +19105,18 @@ const parseCardLines = (
   return null;
 };
 
-export const parseFlashcards = (markdown: string): Flashcard[] => {
+export const parseFlashcards = (
+  markdown: string,
+  options?: ParseFlashcardsOptions,
+): Flashcard[] => {
+  const answerMatch = resolveAnswerMatch(options);
   const lines = normalizeLines(markdown);
   const cards: Flashcard[] = [];
   let index = 0;
 
   while (index < lines.length) {
-    const line = lines[index].trim();
-    if (line !== "#card") {
+    const line = lines[index];
+    if (!isCardStartLine(line)) {
       index += 1;
       continue;
     }
@@ -11053,13 +19127,10 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
     index += 1;
 
     while (index < lines.length) {
-      const trimmed = lines[index].trim();
-      if (trimmed === "#") {
+      const currentLine = lines[index];
+      if (isCardEndLine(currentLine)) {
         foundEnd = true;
         index += 1;
-        break;
-      }
-      if (trimmed === "#card") {
         break;
       }
       cardLines.push(lines[index]);
@@ -11070,12 +19141,13 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
       continue;
     }
 
-    const blocks = splitCardLines(cardLines);
+    const { helpText, contentLines } = extractHelpBlocksFromLines(cardLines);
+    const blocks = splitCardLines(contentLines, answerMatch);
     const parts: FlashcardPart[] = [];
     const detectedTypes: FlashcardDetectedType[] = [];
 
     blocks.forEach((block) => {
-      const parsed = parseCardLines(block);
+      const parsed = parseCardLines(block, answerMatch);
       if (!parsed) {
         return;
       }
@@ -11098,6 +19170,7 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
       primaryType,
       detectedTypes,
       isMixed,
+      helpText: helpText.length > 0 ? helpText : undefined,
     });
   }
 
@@ -11106,10 +19179,230 @@ export const parseFlashcards = (markdown: string): Flashcard[] => {
 
 ---
 
+## 📝 markdownTables.ts — ./lib/markdownTables.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/markdownTables.ts
+ *
+ * Zweck:
+ * - Hilfsfunktionen fuer Markdown-Tabellen und -Blockaufteilung.
+ *
+ * Verantwortlichkeiten:
+ * - Erkennt pipe-basierte Markdown-Tabellen.
+ * - Liefert Blockstrukturen fuer Renderer und Parser.
+ *
+ * Hinweise:
+ * - Implementiert bewusst nur pipe tables (| ... |) fuer stabile Erkennung.
+ */
+
+export type MarkdownTableBlock = {
+  type: "table";
+  header: string[];
+  rows: string[][];
+  startLine: number;
+  endLine: number;
+};
+
+export type MarkdownTextBlock = {
+  type: "text";
+  text: string;
+  startLine: number;
+  endLine: number;
+};
+
+export type MarkdownBlock = MarkdownTableBlock | MarkdownTextBlock;
+
+const normalizeLineBreaks = (value: string) => value.replace(/\r\n?/g, "\n");
+
+const splitTableRow = (line: string) => {
+  if (!line.includes("|")) {
+    return null;
+  }
+  let trimmed = line.trim();
+  if (trimmed.startsWith("|")) {
+    trimmed = trimmed.slice(1);
+  }
+  if (trimmed.endsWith("|")) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  return trimmed.split("|").map((cell) => cell.trim());
+};
+
+const isTableSeparatorRow = (line: string) => {
+  const cells = splitTableRow(line);
+  if (!cells || cells.length === 0) {
+    return false;
+  }
+  return cells.every((cell) => /^:?-+:?$/.test(cell));
+};
+
+const parseTableAt = (lines: string[], startIndex: number) => {
+  const header = splitTableRow(lines[startIndex] ?? "");
+  if (!header || header.length === 0) {
+    return null;
+  }
+  const separator = lines[startIndex + 1];
+  if (!separator || !isTableSeparatorRow(separator)) {
+    return null;
+  }
+  const columnCount = header.length;
+  const rows: string[][] = [];
+  let cursor = startIndex + 2;
+
+  while (cursor < lines.length) {
+    const row = splitTableRow(lines[cursor] ?? "");
+    if (!row || row.length !== columnCount) {
+      break;
+    }
+    rows.push(row);
+    cursor += 1;
+  }
+
+  return {
+    type: "table" as const,
+    header,
+    rows,
+    startLine: startIndex,
+    endLine: Math.max(startIndex + 1, cursor - 1),
+  };
+};
+
+export const findTableLineIndices = (lines: string[]) => {
+  const tableLines = new Set<number>();
+  for (let index = 0; index < lines.length; index += 1) {
+    const parsed = parseTableAt(lines, index);
+    if (!parsed) {
+      continue;
+    }
+    for (let lineIndex = parsed.startLine; lineIndex <= parsed.endLine; lineIndex += 1) {
+      tableLines.add(lineIndex);
+    }
+    index = parsed.endLine;
+  }
+  return tableLines;
+};
+
+export const splitMarkdownBlocks = (rawText: string) => {
+  const lines = normalizeLineBreaks(rawText).split("\n");
+  const blocks: MarkdownBlock[] = [];
+  let textStart = 0;
+  let textBuffer: string[] = [];
+
+  const flushText = (endIndex: number) => {
+    if (textBuffer.length === 0) {
+      textStart = endIndex + 1;
+      return;
+    }
+    blocks.push({
+      type: "text",
+      text: textBuffer.join("\n"),
+      startLine: textStart,
+      endLine: endIndex,
+    });
+    textBuffer = [];
+    textStart = endIndex + 1;
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const parsed = parseTableAt(lines, index);
+    if (parsed) {
+      flushText(index - 1);
+      blocks.push(parsed);
+      index = parsed.endLine;
+      textStart = index + 1;
+      continue;
+    }
+    textBuffer.push(lines[index] ?? "");
+  }
+
+  flushText(lines.length - 1);
+  return blocks;
+};
+
+---
+
+## 📝 path.test.ts — ./lib/path.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/path.test.ts
+ *
+ * Zweck:
+ * - Testet die Hidden-Path-Logik fuer Vault-Dateien.
+ *
+ * Verantwortlichkeiten:
+ * - Sichert Hidden-Erkennung und Filterverhalten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Filter fuer Vault-Dateien.
+ *
+ * Hinweise:
+ * - Nur fuer Testlauf; keine Produktivnutzung.
+ */
+
+import { describe, expect, it } from "vitest";
+import { isHiddenPath } from "./path";
+import { filterHiddenFiles, type VaultFile } from "./tree";
+
+describe("isHiddenPath", () => {
+  it("detects dot-prefixed segments", () => {
+    expect(isHiddenPath(".git/config")).toBe(true);
+    expect(isHiddenPath("vault/.hidden/note.md")).toBe(true);
+    expect(isHiddenPath("visible/.hidden/file.md")).toBe(true);
+    expect(isHiddenPath("visible/file.md")).toBe(false);
+    expect(isHiddenPath("")).toBe(false);
+  });
+});
+
+describe("filterHiddenFiles", () => {
+  const files: VaultFile[] = [
+    { path: "/vault/.hidden/note.md", relative_path: ".hidden/note.md" },
+    { path: "/vault/visible.md", relative_path: "visible.md" },
+    { path: "/vault/visible/.hidden/file.md", relative_path: "visible/.hidden/file.md" },
+  ];
+
+  it("filters hidden entries when hidden folders are off", () => {
+    const visible = filterHiddenFiles(files, false).map((file) => file.relative_path);
+    expect(visible).toEqual(["visible.md"]);
+  });
+
+  it("keeps hidden entries when hidden folders are on", () => {
+    expect(filterHiddenFiles(files, true)).toEqual(files);
+  });
+});
+
+---
+
 ## 📝 path.ts — ./lib/path.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/path.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Path.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Path bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/components/SidebarNav.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 export const normalizeRelativePath = (value: string) =>
   value.replace(/\\/g, "/").replace(/^\/+/, "");
+
+export const isHiddenPath = (value: string) => {
+  const normalized = normalizeRelativePath(value);
+  if (!normalized) {
+    return false;
+  }
+  return normalized.split("/").some((segment) => segment.startsWith("."));
+};
 
 export const vaultBaseName = (value: string | null) => {
   if (!value) {
@@ -11120,9 +19413,930 @@ export const vaultBaseName = (value: string | null) => {
   return parts[parts.length - 1] || "Vault";
 };
 
+export const normalizeVaultPath = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const normalized = trimmed.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (/^[A-Za-z]:\//.test(normalized)) {
+    return normalized.replace(/^([A-Za-z]):\//, (_, drive) => `${drive.toLowerCase()}:/`);
+  }
+  return normalized;
+};
+
+export const joinPath = (root: string, ...segments: string[]) => {
+  const separator = root.includes("\\") ? "\\" : "/";
+  const normalizedRoot = root.replace(/[\\/]+$/, "");
+  const normalizedSegments = segments
+    .map((segment) =>
+      segment
+        .replace(/[\\/]+/g, separator)
+        .replace(/^[/\\]+/, "")
+        .replace(/[/\\]+$/, ""),
+    )
+    .filter(Boolean);
+  return [normalizedRoot, ...normalizedSegments].filter(Boolean).join(separator);
+};
+
+---
+
+## 📝 seededShuffle.test.ts — ./lib/seededShuffle.test.ts
+
+import { describe, expect, it } from "vitest";
+import { resolveSeed, seededShuffle } from "./seededShuffle";
+
+describe("seeded shuffle helper", () => {
+  it("produces a predictable permutation for a seed", () => {
+    const tokens = ["a", "b", "c", "d"];
+    const seed = resolveSeed("card:0");
+    const first = seededShuffle(tokens, seed);
+    expect(first).toEqual(["c", "b", "a", "d"]);
+    expect(seededShuffle(tokens, seed)).toEqual(first);
+  });
+
+  it("produces different permutations for different seeds", () => {
+    const tokens = ["a", "b", "c", "d"];
+    const first = seededShuffle(tokens, resolveSeed("card:0"));
+    const second = seededShuffle(tokens, resolveSeed("card:1"));
+    expect(second).toEqual(["b", "c", "a", "d"]);
+    expect(second).not.toEqual(first);
+  });
+
+  it("does not mutate the original token array", () => {
+    const tokens = ["a", "b", "c", "d"];
+    const snapshot = [...tokens];
+    seededShuffle(tokens, resolveSeed("card:2"));
+    expect(tokens).toEqual(snapshot);
+  });
+});
+
+---
+
+## 📝 seededShuffle.ts — ./lib/seededShuffle.ts
+
+const hashString = (value: string): number => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return hash >>> 0;
+};
+
+const mulberry32 = (seed: number) => {
+  let value = seed >>> 0;
+  return () => {
+    value += 0x6d2b79f5;
+    let t = value;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+export const seededShuffle = <T>(items: readonly T[], seed: number): T[] => {
+  if (items.length <= 1) {
+    return [...items];
+  }
+  const random = mulberry32(seed >>> 0);
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(random() * (index + 1));
+    [result[index], result[randomIndex]] = [result[randomIndex], result[index]];
+  }
+  return result;
+};
+
+export const resolveSeed = (identifier: string): number => {
+  return hashString(identifier) || 1;
+};
+
+export const hashIdentifier = (identifier: string): number => hashString(identifier);
+
+---
+
+## 📝 bindings.test.ts — ./lib/shortcuts/bindings.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/shortcuts/bindings.test.ts
+ *
+ * Zweck:
+ * - Tests fuer Shortcut-Normalisierung, Konflikte und Migration.
+ */
+
+import { describe, expect, it } from "vitest";
+import {
+  detectShortcutConflicts,
+  formatBinding,
+  normalizeBinding,
+  normalizeKeyboardShortcuts,
+} from "./bindings";
+import type { ShortcutCommand } from "./registry";
+
+describe("normalizeBinding", () => {
+  it("normalizes modifiers and key casing", () => {
+    expect(normalizeBinding("ctrl+shift+k")).toBe("Ctrl+Shift+K");
+  });
+
+  it("normalizes aliases", () => {
+    expect(normalizeBinding("Cmd+Option+Esc")).toBe("Alt+Meta+Escape");
+  });
+});
+
+describe("formatBinding", () => {
+  it("formats bindings for mac labels", () => {
+    expect(formatBinding("Meta+Shift+K", "mac")).toBe("Cmd+Shift+K");
+  });
+
+  it("formats arrows and escape", () => {
+    expect(formatBinding("ArrowLeft")).toBe("Left");
+    expect(formatBinding("Escape")).toBe("Esc");
+  });
+});
+
+describe("detectShortcutConflicts", () => {
+  it("detects conflicts within context and global overlaps", () => {
+    const commands: ShortcutCommand[] = [
+      {
+        id: "global.open",
+        title: "Global action",
+        description: "",
+        contexts: ["global"],
+        defaultBinding: { winLinux: "Ctrl+K" },
+      },
+      {
+        id: "flashcards.next",
+        title: "Next",
+        description: "",
+        contexts: ["flashcards"],
+        defaultBinding: { winLinux: "Ctrl+K" },
+      },
+      {
+        id: "flashcards.prev",
+        title: "Prev",
+        description: "",
+        contexts: ["flashcards"],
+        defaultBinding: { winLinux: "ArrowLeft" },
+      },
+      {
+        id: "flashcards.prev-alt",
+        title: "Prev alt",
+        description: "",
+        contexts: ["flashcards"],
+        defaultBinding: { winLinux: "ArrowLeft" },
+      },
+    ];
+
+    const conflicts = detectShortcutConflicts(commands, {}, "winLinux");
+    const bindings = conflicts.map((conflict) => conflict.binding);
+
+    expect(bindings).toContain("ArrowLeft");
+    expect(bindings).toContain("Ctrl+K");
+  });
+});
+
+describe("normalizeKeyboardShortcuts", () => {
+  it("returns defaults when empty", () => {
+    const { settings, needsMigration } = normalizeKeyboardShortcuts(null);
+    expect(settings.bindings).toEqual({});
+    expect(settings.version).toBe(1);
+    expect(needsMigration).toBe(true);
+  });
+
+  it("migrates legacy bindings shape", () => {
+    const { settings, needsMigration } = normalizeKeyboardShortcuts({
+      bindings: { "flashcards.focus.toggle": "ctrl+f" },
+    });
+    expect(settings.bindings.toggleViewMode).toBe("Ctrl+F");
+    expect(settings.version).toBe(1);
+    expect(needsMigration).toBe(true);
+  });
+
+  it("migrates bare bindings map", () => {
+    const { settings, needsMigration } = normalizeKeyboardShortcuts({
+      "flashcards.focus.toggle": "ctrl+f",
+    });
+    expect(settings.bindings.toggleViewMode).toBe("Ctrl+F");
+    expect(needsMigration).toBe(true);
+  });
+
+  it("migrates legacy study navigation bindings", () => {
+    const { settings, needsMigration } = normalizeKeyboardShortcuts({
+      bindings: {
+        "flashcards.focus.prev": "left",
+        "spaced-repetition.focus.next": "right",
+        "spaced-repetition.focus.submit": "enter",
+      },
+    });
+    expect(settings.bindings.studyPrevious).toBe("ArrowLeft");
+    expect(settings.bindings.studyNext).toBe("ArrowRight");
+    expect(settings.bindings.studySubmit).toBe("Enter");
+    expect(needsMigration).toBe(true);
+  });
+
+  it("migrates legacy close bindings into uiCloseOrBack", () => {
+    const { settings, needsMigration } = normalizeKeyboardShortcuts({
+      bindings: {
+        "vault.context-menu.close": "escape",
+      },
+    });
+    expect(settings.bindings.uiCloseOrBack).toBe("Escape");
+    expect(needsMigration).toBe(true);
+  });
+
+  it("accepts current version", () => {
+    const { settings, needsMigration } = normalizeKeyboardShortcuts({
+      version: 1,
+      bindings: { toggleViewMode: "Ctrl+F" },
+    });
+    expect(settings.bindings.toggleViewMode).toBe("Ctrl+F");
+    expect(needsMigration).toBe(false);
+  });
+});
+
+---
+
+## 📝 bindings.ts — ./lib/shortcuts/bindings.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/shortcuts/bindings.ts
+ *
+ * Zweck:
+ * - Normalisiert und vergleicht Shortcut-Bindings.
+ *
+ * Verantwortlichkeiten:
+ * - Canonicalisierung von Binding-Strings und KeyboardEvents.
+ * - Ableitung effektiver Bindings (Default vs Override).
+ * - Konflikterkennung fuer Shortcuts.
+ */
+
+import {
+  SHORTCUT_COMMANDS,
+  type ShortcutCommand,
+  type ShortcutContextId,
+} from "./registry";
+
+export type ShortcutPlatform = "mac" | "winLinux";
+
+export type ShortcutUserBindings = Record<string, string | null>;
+
+export type KeyboardShortcutSettings = {
+  version: number;
+  bindings: ShortcutUserBindings;
+};
+
+export const KEYBOARD_SHORTCUTS_VERSION = 1;
+
+export const DEFAULT_KEYBOARD_SHORTCUTS: KeyboardShortcutSettings = {
+  version: KEYBOARD_SHORTCUTS_VERSION,
+  bindings: {},
+};
+
+const MODIFIER_ORDER = ["Ctrl", "Alt", "Shift", "Meta"] as const;
+
+const MODIFIER_ALIASES: Record<string, string> = {
+  cmd: "Meta",
+  command: "Meta",
+  meta: "Meta",
+  win: "Meta",
+  super: "Meta",
+  control: "Ctrl",
+  ctrl: "Ctrl",
+  option: "Alt",
+  alt: "Alt",
+  shift: "Shift",
+};
+
+const KEY_ALIASES: Record<string, string> = {
+  esc: "Escape",
+  escape: "Escape",
+  return: "Enter",
+  enter: "Enter",
+  space: "Space",
+  spacebar: "Space",
+  left: "ArrowLeft",
+  right: "ArrowRight",
+  up: "ArrowUp",
+  down: "ArrowDown",
+};
+
+export const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const tagName = target.tagName;
+  return (
+    target.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT"
+  );
+};
+
+export const getShortcutPlatform = (): ShortcutPlatform => {
+  if (typeof navigator === "undefined") {
+    return "winLinux";
+  }
+  return /mac/i.test(navigator.platform) ? "mac" : "winLinux";
+};
+
+const normalizeKeyToken = (token: string) => {
+  const trimmed = token.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const lower = trimmed.toLowerCase();
+  if (MODIFIER_ALIASES[lower]) {
+    return MODIFIER_ALIASES[lower];
+  }
+  if (KEY_ALIASES[lower]) {
+    return KEY_ALIASES[lower];
+  }
+  if (trimmed.length === 1) {
+    return trimmed.toUpperCase();
+  }
+  return trimmed;
+};
+
+const normalizeEventKey = (key: string) => {
+  if (!key) {
+    return null;
+  }
+  if (key === " ") {
+    return "Space";
+  }
+  if (key === "NumpadEnter") {
+    return "Enter";
+  }
+  const lower = key.toLowerCase();
+  if (KEY_ALIASES[lower]) {
+    return KEY_ALIASES[lower];
+  }
+  if (key.length === 1) {
+    return key.toUpperCase();
+  }
+  return key;
+};
+
+export const normalizeBinding = (binding: string | null | undefined) => {
+  if (!binding) {
+    return null;
+  }
+  const parts = binding
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const modifiers = new Set<string>();
+  let key: string | null = null;
+
+  parts.forEach((part) => {
+    const normalized = normalizeKeyToken(part);
+    if (!normalized) {
+      return;
+    }
+    if (MODIFIER_ORDER.includes(normalized as (typeof MODIFIER_ORDER)[number])) {
+      modifiers.add(normalized);
+      return;
+    }
+    key = normalized;
+  });
+
+  if (!key) {
+    return null;
+  }
+  const orderedModifiers = MODIFIER_ORDER.filter((modifier) => modifiers.has(modifier));
+  return [...orderedModifiers, key].join("+");
+};
+
+export const formatBinding = (
+  binding: string | null | undefined,
+  platform: ShortcutPlatform = getShortcutPlatform(),
+) => {
+  const normalized = normalizeBinding(binding);
+  if (!normalized) {
+    return "Unbound";
+  }
+  const parts = normalized.split("+");
+  const key = parts[parts.length - 1] ?? "";
+  const modifiers = parts.slice(0, -1);
+  const displayOrder =
+    platform === "mac" ? ["Meta", "Shift", "Alt", "Ctrl"] : [...MODIFIER_ORDER];
+  const orderedParts = [
+    ...displayOrder.filter((modifier) => modifiers.includes(modifier)),
+    key,
+  ].filter(Boolean);
+  const formatted = orderedParts.map((part) => {
+    if (part === "Meta") {
+      return platform === "mac" ? "Cmd" : "Meta";
+    }
+    if (part === "Alt") {
+      return platform === "mac" ? "Option" : "Alt";
+    }
+    if (part === "Escape") {
+      return "Esc";
+    }
+    if (part === "ArrowLeft") {
+      return "Left";
+    }
+    if (part === "ArrowRight") {
+      return "Right";
+    }
+    if (part === "ArrowUp") {
+      return "Up";
+    }
+    if (part === "ArrowDown") {
+      return "Down";
+    }
+    return part;
+  });
+  return formatted.join("+");
+};
+
+export const eventToBinding = (event: KeyboardEvent) => {
+  if (
+    event.key === "Shift" ||
+    event.key === "Alt" ||
+    event.key === "Control" ||
+    event.key === "Meta"
+  ) {
+    return null;
+  }
+
+  const key = normalizeEventKey(event.key);
+  if (!key) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (event.ctrlKey) {
+    parts.push("Ctrl");
+  }
+  if (event.altKey) {
+    parts.push("Alt");
+  }
+  if (event.shiftKey) {
+    parts.push("Shift");
+  }
+  if (event.metaKey) {
+    parts.push("Meta");
+  }
+  parts.push(key);
+  return parts.join("+");
+};
+
+export const matchesBinding = (
+  event: KeyboardEvent,
+  binding: string | null | undefined,
+) => {
+  const normalizedBinding = normalizeBinding(binding);
+  if (!normalizedBinding) {
+    return false;
+  }
+  const normalizedEvent = eventToBinding(event);
+  return normalizedEvent === normalizedBinding;
+};
+
+export const getDefaultBinding = (
+  command: ShortcutCommand,
+  platform: ShortcutPlatform = getShortcutPlatform(),
+) => {
+  if (platform === "mac" && command.defaultBinding.mac) {
+    return command.defaultBinding.mac;
+  }
+  return command.defaultBinding.winLinux;
+};
+
+export const getEffectiveBinding = (
+  command: ShortcutCommand,
+  bindings: ShortcutUserBindings,
+  platform: ShortcutPlatform = getShortcutPlatform(),
+) => {
+  const override = bindings[command.id];
+  if (override === null) {
+    return null;
+  }
+  if (typeof override === "string") {
+    return override;
+  }
+  return getDefaultBinding(command, platform);
+};
+
+export const resolveCommandById = (commandId: string) =>
+  SHORTCUT_COMMANDS.find((command) => command.id === commandId) ?? null;
+
+export type ShortcutConflict = {
+  binding: string;
+  commandIds: string[];
+  contextIds: ShortcutContextId[];
+  kind: "context" | "global";
+};
+
+export const detectShortcutConflicts = (
+  commands: ShortcutCommand[],
+  bindings: ShortcutUserBindings,
+  platform: ShortcutPlatform = getShortcutPlatform(),
+) => {
+  const bindingByContext = new Map<
+    string,
+    { command: ShortcutCommand; contextId: ShortcutContextId }[]
+  >();
+  const globalBindings = new Map<string, ShortcutCommand[]>();
+
+  commands.forEach((command) => {
+    const binding = normalizeBinding(getEffectiveBinding(command, bindings, platform));
+    if (!binding) {
+      return;
+    }
+    if (command.contexts.includes("global")) {
+      const existing = globalBindings.get(binding) ?? [];
+      existing.push(command);
+      globalBindings.set(binding, existing);
+    }
+    command.contexts
+      .filter((contextId) => contextId !== "global")
+      .forEach((contextId) => {
+        const key = `${contextId}:${binding}`;
+        const existing = bindingByContext.get(key) ?? [];
+        existing.push({ command, contextId });
+        bindingByContext.set(key, existing);
+      });
+  });
+
+  const conflicts: ShortcutConflict[] = [];
+
+  bindingByContext.forEach((group, key) => {
+    if (group.length < 2) {
+      return;
+    }
+    const [contextId, binding] = key.split(":");
+    const commandIds = Array.from(
+      new Set(group.map((entry) => entry.command.id)),
+    );
+    conflicts.push({
+      binding,
+      commandIds,
+      contextIds: [contextId as ShortcutContextId],
+      kind: "context",
+    });
+  });
+
+  globalBindings.forEach((globalGroup, binding) => {
+    const globalCommandIds = globalGroup.map((command) => command.id);
+    if (globalGroup.length > 1) {
+      conflicts.push({
+        binding,
+        commandIds: globalCommandIds,
+        contextIds: ["global"],
+        kind: "global",
+      });
+    }
+    bindingByContext.forEach((group, key) => {
+      const [contextId, contextBinding] = key.split(":");
+      if (contextBinding !== binding) {
+        return;
+      }
+      const contextCommandIds = group.map((entry) => entry.command.id);
+      conflicts.push({
+        binding,
+        commandIds: Array.from(new Set([...globalCommandIds, ...contextCommandIds])),
+        contextIds: ["global", contextId as ShortcutContextId],
+        kind: "global",
+      });
+    });
+  });
+
+  return conflicts;
+};
+
+export const normalizeKeyboardShortcuts = (
+  value: unknown,
+): { settings: KeyboardShortcutSettings; needsMigration: boolean } => {
+  if (!value || typeof value !== "object") {
+    return { settings: DEFAULT_KEYBOARD_SHORTCUTS, needsMigration: true };
+  }
+
+  const candidate = value as {
+    version?: unknown;
+    bindings?: unknown;
+  };
+
+  const rawBindings = candidate.bindings;
+  const hasBindingsField = Object.prototype.hasOwnProperty.call(candidate, "bindings");
+  const useLegacyBindings =
+    !hasBindingsField && typeof candidate.version === "undefined";
+  const bindingsSource =
+    rawBindings && typeof rawBindings === "object"
+      ? rawBindings
+      : useLegacyBindings
+        ? (candidate as Record<string, unknown>)
+        : null;
+  const normalizedBindings: ShortcutUserBindings = {};
+
+  if (bindingsSource && typeof bindingsSource === "object") {
+    Object.entries(bindingsSource as Record<string, unknown>).forEach(
+      ([key, binding]) => {
+      if (binding === null) {
+        normalizedBindings[key] = null;
+        return;
+      }
+      if (typeof binding === "string") {
+        normalizedBindings[key] = normalizeBinding(binding) ?? binding;
+      }
+    },
+  );
+  }
+
+  const version =
+    typeof candidate.version === "number" && Number.isFinite(candidate.version)
+      ? candidate.version
+      : 0;
+
+  const settings: KeyboardShortcutSettings = {
+    version: KEYBOARD_SHORTCUTS_VERSION,
+    bindings: normalizedBindings,
+  };
+
+  let needsMigration =
+    version !== KEYBOARD_SHORTCUTS_VERSION ||
+    !bindingsSource ||
+    typeof bindingsSource !== "object";
+
+  const legacyToggleIds = [
+    "flashcards.focus.toggle",
+    "spaced-repetition.focus.toggle",
+  ];
+  const legacyExitIds = ["flashcards.focus.exit", "spaced-repetition.focus.exit"];
+  const legacyStudyBindings = {
+    studyPrevious: [
+      "flashcards.focus.prev",
+      "spaced-repetition.focus.prev",
+    ],
+    studyNext: [
+      "flashcards.focus.next",
+      "spaced-repetition.focus.next",
+    ],
+    studySubmit: [
+      "flashcards.focus.submit",
+      "spaced-repetition.focus.submit",
+    ],
+  };
+  const legacyCloseBindings = [
+    "help.topic.close",
+    "vault.context-menu.close",
+    "vault.create-modal.cancel",
+  ];
+
+  if (!Object.prototype.hasOwnProperty.call(normalizedBindings, "toggleViewMode")) {
+    const legacyBinding = legacyToggleIds.find((id) =>
+      Object.prototype.hasOwnProperty.call(normalizedBindings, id),
+    );
+    if (legacyBinding) {
+      normalizedBindings.toggleViewMode = normalizedBindings[legacyBinding] ?? null;
+      needsMigration = true;
+    }
+  }
+
+  legacyToggleIds.concat(legacyExitIds).forEach((id) => {
+    if (Object.prototype.hasOwnProperty.call(normalizedBindings, id)) {
+      delete normalizedBindings[id];
+      needsMigration = true;
+    }
+  });
+
+  (Object.keys(legacyStudyBindings) as Array<
+    keyof typeof legacyStudyBindings
+  >).forEach((studyId) => {
+    if (Object.prototype.hasOwnProperty.call(normalizedBindings, studyId)) {
+      return;
+    }
+    const legacyIds = legacyStudyBindings[studyId];
+    const legacyBinding = legacyIds.find((id) =>
+      Object.prototype.hasOwnProperty.call(normalizedBindings, id),
+    );
+    if (legacyBinding) {
+      normalizedBindings[studyId] = normalizedBindings[legacyBinding] ?? null;
+      needsMigration = true;
+    }
+  });
+
+  Object.values(legacyStudyBindings)
+    .flat()
+    .forEach((legacyId) => {
+      if (Object.prototype.hasOwnProperty.call(normalizedBindings, legacyId)) {
+        delete normalizedBindings[legacyId];
+        needsMigration = true;
+      }
+    });
+
+  if (!Object.prototype.hasOwnProperty.call(normalizedBindings, "uiCloseOrBack")) {
+    const legacyCloseBinding = legacyCloseBindings.find((id) =>
+      Object.prototype.hasOwnProperty.call(normalizedBindings, id),
+    );
+    if (legacyCloseBinding) {
+      normalizedBindings.uiCloseOrBack = normalizedBindings[legacyCloseBinding] ?? null;
+      needsMigration = true;
+    }
+  }
+
+  legacyCloseBindings.forEach((legacyId) => {
+    if (Object.prototype.hasOwnProperty.call(normalizedBindings, legacyId)) {
+      delete normalizedBindings[legacyId];
+      needsMigration = true;
+    }
+  });
+
+  return { settings, needsMigration };
+};
+
+---
+
+## 📝 closeOrBack.ts — ./lib/shortcuts/closeOrBack.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/shortcuts/closeOrBack.ts
+ *
+ * Zweck:
+ * - Registriert schliessbare UI-Layer fuer den zentralen Esc-Handler.
+ *
+ * Verantwortlichkeiten:
+ * - Verwalten einer Prioritaetsliste fuer Close/Back-Aktionen.
+ * - Liefert den aktuell hoechsten aktiven Layer.
+ */
+
+type CloseLayer = {
+  id: string;
+  priority: number;
+  isActive: () => boolean;
+  onClose: () => void;
+};
+
+type RegisteredCloseLayer = CloseLayer & { order: number };
+
+const closeLayers = new Map<string, RegisteredCloseLayer>();
+let closeLayerOrder = 0;
+
+export const registerCloseLayer = (layer: CloseLayer) => {
+  const order = closeLayerOrder;
+  closeLayerOrder += 1;
+  closeLayers.set(layer.id, { ...layer, order });
+  return () => {
+    closeLayers.delete(layer.id);
+  };
+};
+
+export const getActiveCloseLayer = () => {
+  const active = Array.from(closeLayers.values()).filter((layer) => layer.isActive());
+  if (active.length === 0) {
+    return null;
+  }
+  active.sort((left, right) => {
+    if (right.priority !== left.priority) {
+      return right.priority - left.priority;
+    }
+    return right.order - left.order;
+  });
+  return active[0];
+};
+
+---
+
+## 📝 registry.ts — ./lib/shortcuts/registry.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/shortcuts/registry.ts
+ *
+ * Zweck:
+ * - Zentrale Quelle fuer Shortcut-Definitionen.
+ *
+ * Verantwortlichkeiten:
+ * - Listet alle Commands inkl. Kontext, Beschreibung und Default-Bindings.
+ * - Liefert Kontext-Metadaten fuer UI/Docs.
+ *
+ * Hinweise:
+ * - UI und Dokumentation sollen nur aus diesem Registry-Modul lesen.
+ */
+
+export type ShortcutContextId =
+  | "global"
+  | "study"
+  | "exam"
+  | "fast-flashcard"
+  | "flashcards"
+  | "spaced-repetition"
+  | "markdown-editor"
+  | "help"
+  | "vault-tree"
+  | "modal";
+
+export type ShortcutContext = {
+  id: ShortcutContextId;
+  label: string;
+  description?: string;
+};
+
+export type ShortcutBindingSpec = {
+  winLinux: string;
+  mac?: string;
+};
+
+export type ShortcutCommand = {
+  id: string;
+  title: string;
+  description: string;
+  contexts: ShortcutContextId[];
+  defaultBinding: ShortcutBindingSpec;
+  allowInTextInputs?: boolean;
+  notes?: string;
+  discoverableUI?: string[];
+};
+
+export const SHORTCUT_CONTEXTS: ShortcutContext[] = [
+  { id: "global", label: "Global" },
+  { id: "study", label: "Study" },
+  { id: "exam", label: "Exam" },
+  { id: "fast-flashcard", label: "Fast Flashcard" },
+  { id: "flashcards", label: "Flashcards" },
+  { id: "spaced-repetition", label: "Spaced Repetition" },
+  { id: "markdown-editor", label: "Markdown editor" },
+  { id: "help", label: "Help / Docs" },
+  { id: "vault-tree", label: "Vault Tree" },
+  { id: "modal", label: "Dialogs & Modals" },
+];
+
+export const SHORTCUT_COMMANDS: ShortcutCommand[] = [
+  {
+    id: "toggleViewMode",
+    title: "Toggle View",
+    description: "Toggle View on/off (distraction-free layout).",
+    contexts: ["study"],
+    defaultBinding: { winLinux: "F", mac: "F" },
+    notes: "Toggles the eye icon view in supported pages.",
+    discoverableUI: [
+      "flashcards.view-toggle",
+      "spaced-repetition.view-toggle",
+      "exam.view-toggle",
+      "fast-flashcard.view-toggle",
+    ],
+  },
+  {
+    id: "studyPrevious",
+    title: "Previous card",
+    description: "Go to the previous card or task in Study screens.",
+    contexts: ["study"],
+    defaultBinding: { winLinux: "ArrowLeft", mac: "ArrowLeft" },
+  },
+  {
+    id: "studyNext",
+    title: "Next card",
+    description: "Go to the next card or task in Study screens.",
+    contexts: ["study"],
+    defaultBinding: { winLinux: "ArrowRight", mac: "ArrowRight" },
+  },
+  {
+    id: "studySubmit",
+    title: "Submit card",
+    description: "Submit the current card when it is ready.",
+    contexts: ["study"],
+    defaultBinding: { winLinux: "Enter", mac: "Enter" },
+  },
+  {
+    id: "uiCloseOrBack",
+    title: "Close / Back",
+    description: "Close dialogs/menus or return from help detail.",
+    contexts: ["global"],
+    defaultBinding: { winLinux: "Escape", mac: "Escape" },
+    allowInTextInputs: true,
+  },
+];
+
+export const SHORTCUTS_BY_ID = new Map(
+  SHORTCUT_COMMANDS.map((command) => [command.id, command]),
+);
+
+export const getShortcutById = (id: string) => SHORTCUTS_BY_ID.get(id) ?? null;
+
 ---
 
 ## 📝 theme.ts — ./lib/theme.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/theme.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Theme.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Theme bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 import { buildAccentTokens } from "./color";
 
@@ -11151,7 +20365,25 @@ export const applyAccentColor = (value: string) => {
 
 ## 📝 tree.ts — ./lib/tree.ts
 
-import { normalizeRelativePath } from "./path";
+/**
+ * @file apps/fmd-desktop/src/lib/tree.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Tree.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Tree bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
+import { isHiddenPath, normalizeRelativePath } from "./path";
 
 export type VaultFile = {
   path: string;
@@ -11224,6 +20456,16 @@ export const buildTree = (files: VaultFile[]): TreeNode[] => {
   return sortNodes(root.children ?? []);
 };
 
+export const filterHiddenFiles = (
+  files: VaultFile[],
+  showHiddenFolders: boolean,
+) => {
+  if (showHiddenFolders) {
+    return files;
+  }
+  return files.filter((file) => !isHiddenPath(file.relative_path));
+};
+
 export const sortNodes = (nodes: TreeNode[]): TreeNode[] => {
   const sorted = [...nodes].sort((a, b) => {
     if (a.type !== b.type) {
@@ -11244,11 +20486,463 @@ export const sortNodes = (nodes: TreeNode[]): TreeNode[] => {
 
 ## 📝 types.ts — ./lib/types.ts
 
+/**
+ * @file apps/fmd-desktop/src/lib/types.ts
+ *
+ * Zweck:
+ * - Definiert Typen und Schnittstellen fuer /.
+ *
+ * Verantwortlichkeiten:
+ * - Definiert Typen fuer Datenstrukturen und APIs.
+ * - Sichert konsistente Verwendung in Features und Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/FileList.tsx: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/components/PreviewPanel.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Typanpassungen koennen mehrere Module betreffen.
+ */
+
 export type LoadState = "idle" | "loading" | "error";
 
 ---
 
+## 📝 userVault.test.ts — ./lib/userVault.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/userVault.test.ts
+ *
+ * Zweck:
+ * - Tests fuer User Vault Hilfsfunktionen.
+ */
+
+import { describe, expect, it } from "vitest";
+import {
+  buildProfileId,
+  createEmptyProfileData,
+  formatDateStamp,
+  mergeProfileData,
+  parseProfileId,
+  resolveUserVaultPath,
+  sanitizeProfileName,
+  selectProfileFromExport,
+  type UserVaultExportPayload,
+} from "./userVault";
+
+describe("sanitizeProfileName", () => {
+  it("normalizes whitespace and strips invalid path characters", () => {
+    expect(sanitizeProfileName("  Jane Doe ")).toBe("Jane-Doe");
+    expect(sanitizeProfileName("Dev/Prod")).toBe("Dev-Prod");
+    expect(sanitizeProfileName("Test:Run*")).toBe("Test-Run");
+  });
+});
+
+describe("buildProfileId", () => {
+  it("combines date stamp and sanitized name", () => {
+    const date = new Date(Date.UTC(2026, 0, 14, 12, 0, 0));
+    const dateStamp = formatDateStamp(date);
+    expect(buildProfileId("Mein Loard", date)).toBe(`${dateStamp}_Mein-Loard`);
+  });
+});
+
+describe("parseProfileId", () => {
+  it("extracts date stamp and name", () => {
+    expect(parseProfileId("2026-01-14_MeinLoard")).toEqual({
+      dateStamp: "2026-01-14",
+      name: "MeinLoard",
+    });
+  });
+
+  it("falls back to raw value if no date prefix exists", () => {
+    expect(parseProfileId("LegacyUser")).toEqual({ dateStamp: "", name: "LegacyUser" });
+  });
+});
+
+describe("resolveUserVaultPath", () => {
+  it("resolves auto mode to vault/user", () => {
+    expect(resolveUserVaultPath("auto", "/vault/main", null)).toBe("/vault/main/user");
+    expect(resolveUserVaultPath("auto", "C:\\Vault\\Main", null)).toBe(
+      "C:\\Vault\\Main\\user",
+    );
+  });
+
+  it("returns custom path when set", () => {
+    expect(resolveUserVaultPath("custom", "/vault/main", "  /data/user ")).toBe(
+      "/data/user",
+    );
+  });
+});
+
+describe("mergeProfileData", () => {
+  const base = {
+    ...createEmptyProfileData(),
+    spacedRepetitionByVaultId: {
+      vault1: {
+        users: [{ id: "u1", name: "User 1", createdAt: "2026-01-14" }],
+        userStateById: {
+          u1: { cardStates: {}, lastLoadedAt: null, completedPerDay: {} },
+        },
+        lastActiveUserId: "u1",
+      },
+    },
+    fastFlashcardSessions: [{ id: "s1", endedAt: "2026-01-14", score: 10, correct: 1, incorrect: 0, total: 1, accuracy: 100, pace: 1, durationMs: 1000 }],
+    examRuns: [
+      {
+        id: "e1",
+        startedAt: "2026-01-14",
+        endedAt: "2026-01-14",
+        durationMs: 1000,
+        userId: null,
+        userName: "User",
+        examFilePath: "/vault/exam.md",
+        tasksDetected: 1,
+        maxPoints: 10,
+        achievedPoints: 10,
+        percent: 100,
+        passed: true,
+        grade: "1",
+        gradeScaleId: "standard-1-6",
+      },
+    ],
+  };
+
+  const incoming = {
+    ...createEmptyProfileData(),
+    spacedRepetitionByVaultId: {
+      vault1: {
+        users: [{ id: "u2", name: "User 2", createdAt: "2026-01-15" }],
+        userStateById: {
+          u2: { cardStates: {}, lastLoadedAt: null, completedPerDay: {} },
+        },
+        lastActiveUserId: "u2",
+      },
+    },
+    fastFlashcardSessions: [
+      { id: "s1", endedAt: "2026-01-13", score: 5, correct: 0, incorrect: 1, total: 1, accuracy: 0, pace: 1, durationMs: 1000 },
+      { id: "s2", endedAt: "2026-01-15", score: 15, correct: 2, incorrect: 0, total: 2, accuracy: 100, pace: 1, durationMs: 1000 },
+    ],
+    examRuns: [
+      {
+        id: "e1",
+        startedAt: "2026-01-13",
+        endedAt: "2026-01-13",
+        durationMs: 1000,
+        userId: null,
+        userName: "User",
+        examFilePath: "/vault/exam.md",
+        tasksDetected: 1,
+        maxPoints: 10,
+        achievedPoints: 8,
+        percent: 80,
+        passed: true,
+        grade: "2",
+        gradeScaleId: "standard-1-6",
+      },
+      {
+        id: "e2",
+        startedAt: "2026-01-15",
+        endedAt: "2026-01-15",
+        durationMs: 1000,
+        userId: null,
+        userName: "User",
+        examFilePath: "/vault/exam-2.md",
+        tasksDetected: 1,
+        maxPoints: 10,
+        achievedPoints: 10,
+        percent: 100,
+        passed: true,
+        grade: "1",
+        gradeScaleId: "standard-1-6",
+      },
+    ],
+  };
+
+  it("merges without overwriting existing entries", () => {
+    const merged = mergeProfileData(base, incoming, "merge");
+    expect(Object.keys(merged.spacedRepetitionByVaultId)).toEqual(["vault1"]);
+    expect(merged.spacedRepetitionByVaultId.vault1?.users.length).toBe(2);
+    expect(merged.fastFlashcardSessions.map((session) => session.id)).toEqual([
+      "s1",
+      "s2",
+    ]);
+    expect(merged.examRuns.map((run) => run.id)).toEqual(["e1", "e2"]);
+  });
+
+  it("overwrites when strategy is overwrite", () => {
+    const merged = mergeProfileData(base, incoming, "overwrite");
+    expect(merged.fastFlashcardSessions.map((session) => session.id)).toEqual([
+      "s1",
+      "s2",
+    ]);
+    expect(merged.examRuns.map((run) => run.id)).toEqual(["e1", "e2"]);
+  });
+});
+
+describe("selectProfileFromExport", () => {
+  it("returns a matching profile when available", () => {
+    const payload: UserVaultExportPayload = {
+      schemaVersion: 1,
+      exportedAt: "2026-01-14",
+      profiles: [
+        {
+          profile: { id: "p1", name: "User 1", createdAt: "2026-01-14" },
+          data: createEmptyProfileData(),
+        },
+        {
+          profile: { id: "p2", name: "User 2", createdAt: "2026-01-15" },
+          data: createEmptyProfileData(),
+        },
+      ],
+    };
+    const entry = selectProfileFromExport(payload, "p2");
+    expect(entry?.profile.id).toBe("p2");
+  });
+
+  it("returns the single profile export", () => {
+    const payload: UserVaultExportPayload = {
+      schemaVersion: 1,
+      exportedAt: "2026-01-14",
+      profile: { id: "single", name: "Solo", createdAt: "2026-01-14" },
+      data: createEmptyProfileData(),
+    };
+    const entry = selectProfileFromExport(payload, null);
+    expect(entry?.profile.id).toBe("single");
+  });
+});
+
+---
+
+## 📝 userVault.ts — ./lib/userVault.ts
+
+/**
+ * @file apps/fmd-desktop/src/lib/userVault.ts
+ *
+ * Zweck:
+ * - Hilfsfunktionen und Typen fuer User Vault.
+ */
+
+import type { SpacedRepetitionStorage } from "../features/spaced-repetition/logic";
+import type { FastFlashcardSessionSummary } from "./fastFlashcard";
+import type { ExamRun } from "./examRuns";
+import { joinPath } from "./path";
+
+export type UserVaultMode = "auto" | "custom";
+export type UserVaultImportStrategy = "merge" | "overwrite";
+
+export type UserVaultProfileMeta = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
+export type UserVaultProfileData = {
+  spacedRepetitionByVaultId: Record<string, SpacedRepetitionStorage>;
+  fastFlashcardSessions: FastFlashcardSessionSummary[];
+  examRuns: ExamRun[];
+};
+
+export type UserVaultProfileExportEntry = {
+  profile: UserVaultProfileMeta;
+  data: UserVaultProfileData;
+};
+
+export type UserVaultExportPayload =
+  | {
+      schemaVersion: number;
+      exportedAt: string;
+      profile: UserVaultProfileMeta;
+      data: UserVaultProfileData;
+    }
+  | {
+      schemaVersion: number;
+      exportedAt: string;
+      profiles: UserVaultProfileExportEntry[];
+    };
+
+export const USER_VAULT_SCHEMA_VERSION = 1;
+
+const INVALID_PROFILE_CHARS = /[<>:"/\\|?*\u0000-\u001F]/g;
+const PROFILE_ID_PATTERN = /^(\d{4}-\d{2}-\d{2})_(.+)$/;
+const localDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export const sanitizeProfileName = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const normalized = trimmed
+    .replace(/\s+/g, "-")
+    .replace(INVALID_PROFILE_CHARS, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized;
+};
+
+export const formatDateStamp = (date: Date) => localDateFormatter.format(date);
+
+export const buildProfileId = (name: string, date: Date = new Date()) => {
+  const sanitized = sanitizeProfileName(name);
+  if (!sanitized) {
+    return null;
+  }
+  return `${formatDateStamp(date)}_${sanitized}`;
+};
+
+export const parseProfileId = (value: string) => {
+  const match = value.match(PROFILE_ID_PATTERN);
+  if (!match) {
+    return { dateStamp: "", name: value };
+  }
+  return { dateStamp: match[1] ?? "", name: match[2] ?? value };
+};
+
+export const resolveUserVaultPath = (
+  mode: UserVaultMode,
+  vaultPath: string | null,
+  customPath: string | null,
+) => {
+  if (mode === "auto") {
+    return vaultPath ? joinPath(vaultPath, "user") : null;
+  }
+  if (mode === "custom") {
+    const trimmed = customPath?.trim() ?? "";
+    return trimmed ? trimmed : null;
+  }
+  return null;
+};
+
+export const createEmptyProfileData = (): UserVaultProfileData => ({
+  spacedRepetitionByVaultId: {},
+  fastFlashcardSessions: [],
+  examRuns: [],
+});
+
+const mergeById = <T,>(
+  base: T[],
+  incoming: T[],
+  getId: (value: T) => string,
+) => {
+  const merged = [...base];
+  const seen = new Set(base.map(getId));
+  incoming.forEach((entry) => {
+    const id = getId(entry);
+    if (!id || seen.has(id)) {
+      return;
+    }
+    seen.add(id);
+    merged.push(entry);
+  });
+  return merged;
+};
+
+export const mergeSpacedRepetitionStorage = (
+  base: SpacedRepetitionStorage,
+  incoming: SpacedRepetitionStorage,
+): SpacedRepetitionStorage => {
+  const users = [...base.users];
+  const userIds = new Set(base.users.map((user) => user.id));
+  incoming.users.forEach((user) => {
+    if (!userIds.has(user.id)) {
+      users.push(user);
+      userIds.add(user.id);
+    }
+  });
+  return {
+    users,
+    userStateById: {
+      ...incoming.userStateById,
+      ...base.userStateById,
+    },
+    lastActiveUserId: base.lastActiveUserId ?? incoming.lastActiveUserId ?? null,
+  };
+};
+
+export const mergeProfileData = (
+  base: UserVaultProfileData,
+  incoming: UserVaultProfileData,
+  strategy: UserVaultImportStrategy,
+): UserVaultProfileData => {
+  if (strategy === "overwrite") {
+    return incoming;
+  }
+  const spacedRepetitionByVaultId = { ...base.spacedRepetitionByVaultId };
+  Object.entries(incoming.spacedRepetitionByVaultId).forEach(
+    ([vaultId, storage]) => {
+      if (!spacedRepetitionByVaultId[vaultId]) {
+        spacedRepetitionByVaultId[vaultId] = storage;
+      } else {
+        spacedRepetitionByVaultId[vaultId] = mergeSpacedRepetitionStorage(
+          spacedRepetitionByVaultId[vaultId],
+          storage,
+        );
+      }
+    },
+  );
+  return {
+    spacedRepetitionByVaultId,
+    fastFlashcardSessions: mergeById(
+      base.fastFlashcardSessions,
+      incoming.fastFlashcardSessions,
+      (session) => session.id,
+    ),
+    examRuns: mergeById(base.examRuns, incoming.examRuns, (run) => run.id),
+  };
+};
+
+export const selectProfileFromExport = (
+  payload: UserVaultExportPayload,
+  preferredProfileId: string | null,
+): UserVaultProfileExportEntry | null => {
+  if ("profile" in payload) {
+    return {
+      profile: payload.profile,
+      data: payload.data,
+    };
+  }
+  const profiles = Array.isArray(payload.profiles) ? payload.profiles : [];
+  if (preferredProfileId) {
+    const match = profiles.find(
+      (entry) => entry.profile.id === preferredProfileId,
+    );
+    if (match) {
+      return match;
+    }
+  }
+  return profiles[0] ?? null;
+};
+
+export const buildUserVaultProfilePath = (
+  userVaultPath: string,
+  profileId: string,
+) => joinPath(userVaultPath, "profiles", profileId);
+
+---
+
 ## 📝 main.tsx — ./main.tsx
+
+/**
+ * @file apps/fmd-desktop/src/main.tsx
+ *
+ * Zweck:
+ * - Startet die React-App, mountet die Root-Komponente und setzt globale Handler.
+ *
+ * Verantwortlichkeiten:
+ * - Initialisiert globale Error- und Promise-Rejection-Handler.
+ * - Mountet die App in #root oder zeigt ein Fallback.
+ * - Startet das Rendering unter React.StrictMode.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.tsx: Direkte Abhaengigkeit.
+ * - react: React-API.
+ *
+ * Hinweise:
+ * - Enthaelt globale Side Effects ueber window.* Handler.
+ */
 
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -11292,6 +20986,29 @@ if (!rootElement) {
 
 ## 📝 DashboardPage.tsx — ./pages/DashboardPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/DashboardPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Dashboard.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/FileList.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/PreviewPanel.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - DashboardPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
@@ -11301,6 +21018,7 @@ import { asErrorMessage } from "../lib/errors";
 import { normalizeRelativePath } from "../lib/path";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
+const notePanelStorageKey = "fmd.notePanelCollapsed";
 
 export const DashboardPage = () => {
   const { actions, preview, vault } = useAppState();
@@ -11309,6 +21027,16 @@ export const DashboardPage = () => {
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+  const [noteCollapsed, setNoteCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    try {
+      return window.localStorage.getItem(notePanelStorageKey) === "true";
+    } catch {
+      return false;
+    }
+  });
   const normalizedActiveFolderPath = useMemo(() => {
     if (!vault.activeFolderPath) {
       return "";
@@ -11345,6 +21073,21 @@ export const DashboardPage = () => {
     setIsSaving(false);
     setEditCaretIndex(null);
   }, [preview.selectedFile?.path]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.localStorage.setItem(notePanelStorageKey, String(noteCollapsed));
+    } catch {
+      // Ignore storage failures (e.g. privacy mode).
+    }
+  }, [noteCollapsed]);
+
+  const handleToggleNoteCollapsed = useCallback(() => {
+    setNoteCollapsed((current) => !current);
+  }, []);
 
   const handleEditStart = useCallback(
     (options?: { caretIndex?: number | null; origin?: "raw" | "markdown" }) => {
@@ -11415,7 +21158,7 @@ export const DashboardPage = () => {
         </div>
       </header>
 
-      <div className="workspace">
+      <div className={`workspace${noteCollapsed ? " note-collapsed" : ""}`}>
         <PreviewPanel
           emptyPreview={emptyPreview}
           editDraft={editDraft}
@@ -11439,9 +21182,11 @@ export const DashboardPage = () => {
           activeFolderPath={normalizedActiveFolderPath || null}
           fileCountLabel={fileCountLabel}
           files={visibleFiles}
+          isCollapsed={noteCollapsed}
           listError={vault.listError}
           listState={vault.listState}
           onSelectFile={actions.handleSelectFile}
+          onToggleCollapsed={handleToggleNoteCollapsed}
           selectedFile={preview.selectedFile}
           vaultPath={vault.vaultPath}
         />
@@ -11453,6 +21198,28 @@ export const DashboardPage = () => {
 ---
 
 ## 📝 ExamFilePanel.tsx — ./pages/exam-simulation/components/ExamFilePanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamFilePanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam File Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - ExamFilePanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import type { LoadState } from "../../../lib/types";
 import type { VaultFile } from "../../../lib/tree";
@@ -11479,6 +21246,7 @@ export const ExamFilePanel = ({
     : files.length === 0
       ? "Keine Exam-Dateien"
       : `${files.length} Exam-Datei${files.length === 1 ? "" : "en"}`;
+  const isScrollable = files.length > 5;
 
   return (
     <section className="panel list-panel">
@@ -11500,21 +21268,23 @@ export const ExamFilePanel = ({
           </div>
         ) : null}
         {vaultPath && listState !== "error" ? (
-          <ul className="file-list">
-            {files.map((file) => (
-              <li key={file.path}>
-                <button
-                  type="button"
-                  className={`file-item ${
-                    selectedFile?.path === file.path ? "active" : ""
-                  }`}
-                  onClick={() => onSelectFile(file)}
-                >
-                  <span className="file-name">{file.relative_path}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className={`exam-file-list ${isScrollable ? "is-scrollable" : ""}`}>
+            <ul className="file-list">
+              {files.map((file) => (
+                <li key={file.path}>
+                  <button
+                    type="button"
+                    className={`file-item ${
+                      selectedFile?.path === file.path ? "active" : ""
+                    }`}
+                    onClick={() => onSelectFile(file)}
+                  >
+                    <span className="file-name">{file.relative_path}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </div>
     </section>
@@ -11524,6 +21294,28 @@ export const ExamFilePanel = ({
 ---
 
 ## 📝 ExamIdlePanel.tsx — ./pages/exam-simulation/components/ExamIdlePanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamIdlePanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Idle Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/types.ts: Typen.
+ * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ *
+ * Exportiert:
+ * - ExamIdlePanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import type { LoadState } from "../../../lib/types";
 import type { VaultFile } from "../../../lib/tree";
@@ -11581,7 +21373,9 @@ export const ExamIdlePanel = ({
 
   return (
     <div className="exam-idle">
-      <p className="eyebrow">READY</p>
+      <div className="exam-idle-header">
+        <p className="eyebrow">READY</p>
+      </div>
       <h2>Exam ready to start</h2>
       <p className="muted">
         {availableTaskCount} tasks detected. Max points this run: {plannedMaxPoints}.
@@ -11598,6 +21392,28 @@ export const ExamIdlePanel = ({
 ---
 
 ## 📝 ExamMarkdown.tsx — ./pages/exam-simulation/components/ExamMarkdown.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamMarkdown.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Markdown.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - react-markdown: Externe Bibliothek.
+ * - rehype-sanitize: Externe Bibliothek.
+ *
+ * Exportiert:
+ * - ExamMarkdown: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
@@ -11646,6 +21462,27 @@ export const ExamMarkdown = ({ content, className }: ExamMarkdownProps) => {
 ---
 
 ## 📝 ExamResultsPanel.tsx — ./pages/exam-simulation/components/ExamResultsPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamResultsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Results Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - ExamResultsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 type ExamTaskBreakdown = {
   index: number;
@@ -11710,11 +21547,338 @@ export const ExamResultsPanel = ({ results }: ExamResultsPanelProps) => {
 
 ---
 
+## 📝 ExamStatisticsPanel.tsx — ./pages/exam-simulation/components/ExamStatisticsPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamStatisticsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert Statistikbereiche fuer Exam Runs.
+ */
+
+import { useMemo, useState, type CSSProperties } from "react";
+import {
+  filterExamRuns,
+  formatExamDuration,
+  formatExamGradeScale,
+  formatExamTimestamp,
+  getExamFileName,
+  getExamRunUserKey,
+  sortExamRunsByDateDesc,
+  type ExamGradeScaleId,
+  type ExamRun,
+  type ExamRunStatusFilter,
+} from "../../../lib/examRuns";
+
+type ExamStatisticsPanelProps = {
+  runs: ExamRun[];
+  gradeScaleId: ExamGradeScaleId;
+};
+
+type StatsTab = "last" | "history";
+
+type StatusTone =
+  | "zero"
+  | "red"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "diamond";
+
+const getStatusDescriptor = (percent: number) => {
+  if (percent === 100) {
+    return { token: "💎 1", tone: "diamond" as StatusTone };
+  }
+  if (percent >= 91) {
+    return { token: "🔵 1", tone: "blue" as StatusTone };
+  }
+  if (percent >= 82) {
+    return { token: "🟢 2", tone: "green" as StatusTone };
+  }
+  if (percent >= 76) {
+    return { token: "🟡 3", tone: "yellow" as StatusTone };
+  }
+  if (percent >= 51) {
+    return { token: "🟠 4", tone: "orange" as StatusTone };
+  }
+  if (percent >= 1) {
+    return { token: "🔴 5", tone: "red" as StatusTone };
+  }
+  return { token: "⚪ 0", tone: "zero" as StatusTone };
+};
+
+export const ExamStatisticsPanel = ({
+  runs,
+  gradeScaleId,
+}: ExamStatisticsPanelProps) => {
+  const [activeTab, setActiveTab] = useState<StatsTab>("last");
+  const [userFilter, setUserFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<ExamRunStatusFilter>("all");
+  const [query, setQuery] = useState("");
+
+  const sortedRuns = useMemo(() => sortExamRunsByDateDesc(runs), [runs]);
+  const lastRun = sortedRuns[0] ?? null;
+  const gradeScaleLabel = formatExamGradeScale(gradeScaleId);
+
+  const userOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    sortedRuns.forEach((run) => {
+      const key = getExamRunUserKey(run);
+      if (!key) {
+        return;
+      }
+      const label = run.userName || "Unknown";
+      if (!options.has(key)) {
+        options.set(key, label);
+      }
+    });
+    return Array.from(options, ([id, label]) => ({ id, label }));
+  }, [sortedRuns]);
+
+  const filteredRuns = useMemo(
+    () =>
+      filterExamRuns(sortedRuns, {
+        userId: userFilter === "all" ? "" : userFilter,
+        status: statusFilter,
+        query,
+      }),
+    [query, sortedRuns, statusFilter, userFilter],
+  );
+
+  const renderLastSession = () => {
+    const hasLastRun = Boolean(lastRun);
+    const scoreLabel = lastRun
+      ? `${lastRun.achievedPoints} / ${lastRun.maxPoints}`
+      : "—";
+    const percentLabel = lastRun ? `${lastRun.percent}%` : "—";
+    const statusDescriptor = lastRun ? getStatusDescriptor(lastRun.percent) : null;
+    const statusLabel = statusDescriptor ? statusDescriptor.token : "—";
+    const gradeLabel = lastRun?.grade ?? "—";
+    const scoreFill =
+      lastRun && lastRun.maxPoints > 0
+        ? Math.min(1, Math.max(0, lastRun.achievedPoints / lastRun.maxPoints))
+        : 0;
+    const percentFill = lastRun
+      ? Math.min(1, Math.max(0, lastRun.percent / 100))
+      : 0;
+    const scoreStyle = hasLastRun
+      ? ({ "--stat-fill": `${scoreFill * 100}%` } as CSSProperties)
+      : undefined;
+    const percentStyle = hasLastRun
+      ? ({ "--stat-fill": `${percentFill * 100}%` } as CSSProperties)
+      : undefined;
+    const statusToneClass = statusDescriptor ? ` status-${statusDescriptor.tone}` : "";
+    return (
+      <div className="exam-last-session">
+        <div className="exam-stats-grid">
+          <div
+            className={`exam-stats-card${hasLastRun ? " is-filled" : " is-empty"}${statusToneClass}`}
+            style={scoreStyle}
+          >
+            <span className="exam-stats-label">Score</span>
+            <span className="exam-stats-value">{scoreLabel}</span>
+          </div>
+          <div
+            className={`exam-stats-card${hasLastRun ? " is-filled" : " is-empty"}${statusToneClass}`}
+            style={percentStyle}
+          >
+            <span className="exam-stats-label">Percent</span>
+            <span className="exam-stats-value">{percentLabel}</span>
+          </div>
+          <div className="exam-stats-card">
+            <span className="exam-stats-label">Status</span>
+            <span className="exam-stats-value">{statusLabel}</span>
+          </div>
+          <div className="exam-stats-card">
+            <span className="exam-stats-label">Grade</span>
+            <span className="exam-stats-value">{gradeLabel}</span>
+          </div>
+        </div>
+        {hasLastRun ? (
+          <div className="exam-stats-meta">
+            <div className="exam-stats-meta-row">
+              <span className="label">User</span>
+              <span className="value">{lastRun?.userName || "Unknown"}</span>
+            </div>
+            <div className="exam-stats-meta-row">
+              <span className="label">Exam file</span>
+              <span className="value" title={lastRun?.examFilePath}>
+                {lastRun ? getExamFileName(lastRun.examFilePath) : "—"}
+              </span>
+            </div>
+            <div className="exam-stats-meta-row">
+              <span className="label">Started</span>
+              <span className="value">
+                {lastRun ? formatExamTimestamp(lastRun.startedAt) : "—"}
+              </span>
+            </div>
+            <div className="exam-stats-meta-row">
+              <span className="label">Ended</span>
+              <span className="value">
+                {lastRun ? formatExamTimestamp(lastRun.endedAt) : "—"}
+              </span>
+            </div>
+            <div className="exam-stats-meta-row">
+              <span className="label">Duration</span>
+              <span className="value">
+                {lastRun ? formatExamDuration(lastRun.durationMs) : "—"}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="empty-state">No exam runs recorded yet.</div>
+        )}
+        <span className="helper-text">Notenskala: {gradeScaleLabel}</span>
+      </div>
+    );
+  };
+
+  const renderHistory = () => {
+    return (
+      <div className="exam-history">
+        <div className="exam-history-filters">
+          <label className="exam-history-filter">
+            <span className="label">User</span>
+            <select
+              className="text-input"
+              value={userFilter}
+              onChange={(event) => setUserFilter(event.target.value)}
+              aria-label="Filter by user"
+            >
+              <option value="all">All users</option>
+              {userOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="exam-history-filter">
+            <span className="label">Status</span>
+            <select
+              className="text-input"
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as ExamRunStatusFilter)
+              }
+              aria-label="Filter by status"
+            >
+              <option value="all">All</option>
+              <option value="passed">Passed only</option>
+              <option value="failed">Not passed only</option>
+            </select>
+          </label>
+          <label className="exam-history-filter">
+            <span className="label">Exam file</span>
+            <input
+              type="text"
+              className="text-input"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search file"
+              aria-label="Search by exam file"
+            />
+          </label>
+        </div>
+        {filteredRuns.length === 0 ? (
+          <div className="empty-state">No exam runs match this filter.</div>
+        ) : (
+          <div className="exam-history-table">
+            <div className="exam-history-row header">
+              <span className="exam-history-cell timestamp">Date</span>
+              <span className="exam-history-cell user">User</span>
+              <span className="exam-history-cell file">Exam file</span>
+              <span className="exam-history-cell">Points</span>
+              <span className="exam-history-cell">Percent</span>
+              <span className="exam-history-cell">Status</span>
+              <span className="exam-history-cell">Duration</span>
+              <span className="exam-history-cell">Grade</span>
+            </div>
+            {filteredRuns.map((run) => (
+              <div key={run.id} className="exam-history-row">
+                <span className="exam-history-cell timestamp">
+                  {formatExamTimestamp(run.endedAt)}
+                </span>
+                <span className="exam-history-cell user">
+                  {run.userName || "Unknown"}
+                </span>
+                <span className="exam-history-cell file" title={run.examFilePath}>
+                  {getExamFileName(run.examFilePath)}
+                </span>
+                <span className="exam-history-cell">
+                  {run.achievedPoints} / {run.maxPoints}
+                </span>
+                <span className="exam-history-cell">{run.percent}%</span>
+                <span className="exam-history-cell">
+                  {getStatusDescriptor(run.percent).token}
+                </span>
+                <span className="exam-history-cell">
+                  {formatExamDuration(run.durationMs)}
+                </span>
+                <span className="exam-history-cell">{run.grade ?? "—"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <span className="helper-text">Notenskala: {gradeScaleLabel}</span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="exam-stats">
+      <div className="pill-grid exam-stats-tabs" role="tablist" aria-label="Statistics tabs">
+        <button
+          type="button"
+          className={`pill pill-button ${activeTab === "last" ? "active" : ""}`}
+          onClick={() => setActiveTab("last")}
+          role="tab"
+          aria-selected={activeTab === "last"}
+        >
+          Last session
+        </button>
+        <button
+          type="button"
+          className={`pill pill-button ${activeTab === "history" ? "active" : ""}`}
+          onClick={() => setActiveTab("history")}
+          role="tab"
+          aria-selected={activeTab === "history"}
+        >
+          History
+        </button>
+      </div>
+      {activeTab === "last" ? renderLastSession() : renderHistory()}
+    </div>
+  );
+};
+
+---
+
 ## 📝 ExamTaskRunner.test.ts — ./pages/exam-simulation/components/ExamTaskRunner.test.ts
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTaskRunner.test.ts
+ *
+ * Zweck:
+ * - Testet Exam Task Runner.test und zugehoerige Logik.
+ *
+ * Verantwortlichkeiten:
+ * - Prueft erwartetes Verhalten und Randfaelle.
+ * - Sichert Regressionen fuer zentrale Szenarien.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/exam.ts: Typen.
+ * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamTaskRunner.tsx: UI-Komponente.
+ *
+ * Hinweise:
+ * - Nur fuer Testlauf; keine Produktivnutzung.
+ */
 
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { parseFlashcards } from "../../../lib/flashcards";
 import type { ExamTask } from "../../../lib/exam";
 import { ExamTaskRunner } from "./ExamTaskRunner";
 
@@ -11724,6 +21888,9 @@ const buildTask = (): ExamTask => ({
   id: "exam-task-1",
   index: 0,
   rawLines: ["Define foreign key. Answer: A foreign key is an attribute."],
+  prompt: "Define foreign key.",
+  officialAnswer: "A foreign key is an attribute.",
+  gradingMode: "manual",
   sourceRange: { startLine: 0, endLine: 0 },
   warnings: [],
   card: {
@@ -11740,6 +21907,37 @@ const buildTask = (): ExamTask => ({
     isMixed: false,
   },
 });
+
+const buildTaskWithParts = (
+  parts: ExamTask["card"]["parts"],
+  gradingMode: ExamTask["gradingMode"],
+): ExamTask => ({
+  id: "exam-task-1",
+  index: 0,
+  rawLines: ["Task line"],
+  prompt: "Task line",
+  gradingMode,
+  sourceRange: { startLine: 0, endLine: 0 },
+  warnings: [],
+  card: {
+    kind: "composite",
+    parts,
+  },
+});
+
+const buildTaskFromMarkdown = (
+  markdown: string,
+  gradingMode: ExamTask["gradingMode"] = "auto",
+) => {
+  const cards = parseFlashcards(markdown);
+  expect(cards).toHaveLength(1);
+  const card = cards[0];
+  expect(card?.kind).toBe("composite");
+  if (!card || card.kind !== "composite") {
+    throw new Error("Expected composite card");
+  }
+  return buildTaskWithParts(card.parts, gradingMode);
+};
 
 const noopOptionSelect: ExamTaskRunnerProps["onOptionSelect"] = (...args) => {
   void args;
@@ -11790,13 +21988,13 @@ const noopConversionDecision: ExamTaskRunnerProps["onConversionDecision"] = (
 };
 
 const buildProps = (
-  phase: ExamTaskRunnerProps["phase"],
+  overrides: Partial<ExamTaskRunnerProps> = {},
 ): ExamTaskRunnerProps => ({
   task: buildTask(),
   taskIndex: 0,
   taskCount: 1,
   maxPoints: 5,
-  phase,
+  phase: "exam",
   partStates: [{}],
   awardedPoints: null,
   conversionPending: false,
@@ -11816,23 +22014,265 @@ const buildProps = (
   onNext: () => {},
   canGoBack: false,
   canGoNext: false,
+  ...overrides,
 });
+
+const autoScoringCases: Array<
+  [string, ExamTask, ExamTaskRunnerProps["partStates"]]
+> = [
+  [
+    "multiple-choice",
+    buildTaskWithParts(
+      [
+        {
+          kind: "multiple-choice",
+          question: "Pick one",
+          options: [{ key: "a", text: "Answer" }],
+          correctKeys: ["a"],
+        },
+      ],
+      "auto",
+    ),
+    [{ selections: ["a"] }],
+  ],
+  [
+    "true-false",
+    buildTaskWithParts(
+      [
+        {
+          kind: "true-false",
+          items: [
+            {
+              id: "tf-0",
+              question: "Statement",
+              correct: "wahr",
+            },
+          ],
+        },
+      ],
+      "auto",
+    ),
+    [{ trueFalseSelections: { "tf-0": "wahr" } }],
+  ],
+  [
+    "cloze-input",
+    buildTaskWithParts(
+      [
+        {
+          kind: "cloze",
+          subtype: "cl",
+          question: "Fill the blank",
+          segments: [
+            { type: "text", value: "Answer is " },
+            { type: "blank", id: "blank-0", kind: "input", solution: "text" },
+          ],
+          dragTokens: [],
+        },
+      ],
+      "auto",
+    ),
+    [{ clozeResponses: { "blank-0": "text" } }],
+  ],
+  [
+    "cloze-drag",
+    buildTaskWithParts(
+      [
+        {
+          kind: "cloze",
+          subtype: "cd",
+          question: "Drag the token",
+          segments: [
+            { type: "text", value: "Token is " },
+            { type: "blank", id: "blank-0", kind: "drag", solution: "token" },
+          ],
+          dragTokens: [{ id: "token-0", value: "token" }],
+        },
+      ],
+      "auto",
+    ),
+    [{ clozeResponses: { "blank-0": "token-0" } }],
+  ],
+];
 
 describe("ExamTaskRunner", () => {
   it("hides free-text solutions during exam and reveals them after submit", () => {
     const examMarkup = renderToStaticMarkup(
-      createElement(ExamTaskRunner, buildProps("exam")),
+      createElement(ExamTaskRunner, buildProps({ phase: "exam" })),
     );
     expect(examMarkup).toContain("Define foreign key.");
     expect(examMarkup).not.toContain("A foreign key is an attribute.");
     expect(examMarkup).not.toContain("flashcard-answer");
 
     const reviewMarkup = renderToStaticMarkup(
-      createElement(ExamTaskRunner, buildProps("review")),
+      createElement(ExamTaskRunner, buildProps({ phase: "review" })),
     );
     expect(reviewMarkup).toContain("Define foreign key.");
     expect(reviewMarkup).toContain("A foreign key is an attribute.");
     expect(reviewMarkup).toContain("flashcard-answer");
+
+    const scoringMarkup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "scoring" })),
+    );
+    expect(scoringMarkup).toContain("Define foreign key.");
+    expect(scoringMarkup).toContain("A foreign key is an attribute.");
+    expect(scoringMarkup).toContain("flashcard-answer");
+  });
+
+  it("renders tables for free-text parts with scroll fallback", () => {
+    const task = buildTaskFromMarkdown(`#card
+| Term | Answer |
+| --- | --- |
+| Alpha | Beta |
+Answer: Done
+#`, "manual");
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "review", task })),
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain("flashcard-table scrollable");
+  });
+
+  it("renders cloze tables without scroll wrappers and keeps tokens in cells", () => {
+    const task = buildTaskFromMarkdown(`#card
+| Term | Answer |
+| --- | --- |
+| Alpha | %%one%% |
+| Beta | \`two\` |
+#`);
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain("cloze-input");
+    expect(markup).toContain("cloze-placeholder");
+    expect(markup).toContain("flashcard-table no-scroll");
+    expect(markup).not.toContain("flashcard-table scrollable");
+  });
+
+  it("renders tables in multiple-choice context blocks", () => {
+    const task = buildTaskFromMarkdown(`#card
+Pick one using the context table.
+
+| Method | Intent |
+| --- | --- |
+| GET | Read |
+| POST | Create |
+
+Which method reads data?
+a) POST
+b) GET
+-b
+#`);
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain("flashcard-table scrollable");
+  });
+
+  it("renders tables in true/false context blocks", () => {
+    const task = buildTaskFromMarkdown(`#card
+Decide if the statement is true or false.
+
+| Term | Meaning |
+| --- | --- |
+| Star | Produces its own light |
+
+Statement: The Sun is a star.
+-true
+#`);
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    expect(markup).toContain("<table");
+    expect(markup).toContain("flashcard-table scrollable");
+  });
+
+  it.each(autoScoringCases)(
+    "hides manual scoring controls for %s tasks",
+    (_label, task, partStates) => {
+      void _label;
+      const scoringMarkup = renderToStaticMarkup(
+        createElement(
+          ExamTaskRunner,
+          buildProps({ phase: "scoring", task, partStates }),
+      ),
+    );
+
+    expect(scoringMarkup).toContain("RESULT");
+    expect(scoringMarkup).toContain("POINTS");
+    expect(scoringMarkup).toContain("Correct");
+    expect(scoringMarkup).not.toContain("AUTO RESULT");
+    expect(scoringMarkup).not.toContain("CONFIRM");
+    expect(scoringMarkup).not.toContain("AWARDED");
+    },
+  );
+
+  it("shows manual scoring controls for free-text tasks", () => {
+    const task = buildTaskWithParts(
+      [
+        {
+          kind: "free-text",
+          front: "Explain",
+          back: "Response",
+        },
+      ],
+      "manual",
+    );
+
+    const scoringMarkup = renderToStaticMarkup(
+      createElement(
+        ExamTaskRunner,
+        buildProps({ phase: "scoring", task, partStates: [{}] }),
+      ),
+    );
+
+    expect(scoringMarkup).toContain("AWARDED");
+    expect(scoringMarkup).toContain('aria-label="Awarded points"');
+    expect(scoringMarkup).not.toContain("RESULT");
+    expect(scoringMarkup).not.toContain("POINTS");
+  });
+
+  it("shows manual scoring controls for hybrid tasks", () => {
+    const task = buildTaskWithParts(
+      [
+        {
+          kind: "multiple-choice",
+          question: "Pick one",
+          options: [{ key: "a", text: "Answer" }],
+          correctKeys: ["a"],
+        },
+        {
+          kind: "free-text",
+          front: "Explain",
+          back: "Response",
+        },
+      ],
+      "hybrid",
+    );
+
+    const scoringMarkup = renderToStaticMarkup(
+      createElement(
+        ExamTaskRunner,
+        buildProps({
+          phase: "scoring",
+          task,
+          partStates: [{ selections: ["a"] }, {}],
+        }),
+      ),
+    );
+
+    expect(scoringMarkup).toContain("AWARDED");
+    expect(scoringMarkup).not.toContain("RESULT");
+    expect(scoringMarkup).not.toContain("POINTS");
   });
 });
 
@@ -11840,11 +22280,34 @@ describe("ExamTaskRunner", () => {
 
 ## 📝 ExamTaskRunner.tsx — ./pages/exam-simulation/components/ExamTaskRunner.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTaskRunner.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Task Runner.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - apps/fmd-desktop/src/lib/exam.ts: Typen.
+ *
+ * Exportiert:
+ * - ExamTaskRunner: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { type DragEvent } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
-import type { FlashcardPart } from "../../../lib/flashcards";
+import { HelpButton, hasHelpContent } from "../../../components/HelpButton";
 
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
 
@@ -11897,23 +22360,8 @@ type ExamTaskRunnerProps = {
   onNext: () => void;
   canGoBack: boolean;
   canGoNext: boolean;
+  helpEnabled?: boolean;
 };
-
-const isAutoGradablePart = (part: FlashcardPart) => {
-  if (part.kind === "multiple-choice") {
-    return part.correctKeys.length > 0;
-  }
-  if (part.kind === "true-false") {
-    return part.items.length > 0;
-  }
-  if (part.kind === "cloze") {
-    return part.segments.some((segment) => segment.type === "blank");
-  }
-  return false;
-};
-
-const isTaskAutoGraded = (task: ExamTask) =>
-  task.card.parts.length > 0 && task.card.parts.every(isAutoGradablePart);
 
 const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
   task.card.parts.every(
@@ -11936,7 +22384,6 @@ export const ExamTaskRunner = ({
   phase,
   partStates,
   awardedPoints,
-  autoGradeDecision,
   conversionDecision,
   conversionPending,
   conversionError,
@@ -11949,21 +22396,21 @@ export const ExamTaskRunner = ({
   onBlankDragOver,
   onTextInputChange,
   onAwardedPointsChange,
-  onAutoGradeDecision,
   onConversionDecision,
   onBack,
   onNext,
   canGoBack,
   canGoNext,
+  helpEnabled = false,
 }: ExamTaskRunnerProps) => {
   const isScoring = phase === "scoring";
-  const showAnswers = phase !== "exam";
-  const isAutoGraded = isTaskAutoGraded(task);
+  const canRevealOfficialSolution = phase === "review" || phase === "scoring";
+  const isAutoGraded = task.gradingMode === "auto";
   const taskIsCorrect = isAutoGraded ? isTaskCorrect(task, partStates) : false;
-  const decidedCorrect = isAutoGraded ? autoGradeDecision ?? taskIsCorrect : null;
-  const autoAwardedPoints = isAutoGraded && decidedCorrect ? maxPoints : 0;
+  const autoAwardedPoints = isAutoGraded && taskIsCorrect ? maxPoints : 0;
   const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
   const inputLocked = phase !== "exam" || conversionPending;
+  const hasHelp = helpEnabled && hasHelpContent(task.helpText);
 
   return (
     <div className="exam-task">
@@ -12004,14 +22451,14 @@ export const ExamTaskRunner = ({
       <CompositeCard
         card={task.card}
         cardIndex={taskIndex}
-        submitted={showAnswers}
+        submitted={canRevealOfficialSolution}
         submissionLocked={inputLocked}
         partStates={partStates}
         showSubmit={false}
         showResult={false}
-        revealCorrectness={showAnswers}
-        showSolution={showAnswers}
-        forceRevealText={showAnswers}
+        revealCorrectness={canRevealOfficialSolution}
+        showSolution={canRevealOfficialSolution}
+        forceRevealText={canRevealOfficialSolution}
         onOptionSelect={onOptionSelect}
         onTrueFalseSelect={onTrueFalseSelect}
         onClozeInputChange={onClozeInputChange}
@@ -12028,7 +22475,7 @@ export const ExamTaskRunner = ({
       {isScoring && isAutoGraded ? (
         <>
           <div className="exam-points-row">
-            <span className="label">AUTO RESULT</span>
+            <span className="label">RESULT</span>
             <div className="exam-points-input">
               <span
                 className={`flashcard-result ${
@@ -12040,30 +22487,7 @@ export const ExamTaskRunner = ({
             </div>
           </div>
           <div className="exam-points-row">
-            <span className="label">CONFIRM</span>
-            <div className="exam-points-input">
-              <button
-                type="button"
-                className={`small ${decidedCorrect ? "primary" : "ghost"}`}
-                onClick={() => onAutoGradeDecision(taskIndex, true)}
-                aria-pressed={decidedCorrect === true}
-                disabled={conversionPending}
-              >
-                Correct
-              </button>
-              <button
-                type="button"
-                className={`small ${decidedCorrect ? "ghost" : "primary"}`}
-                onClick={() => onAutoGradeDecision(taskIndex, false)}
-                aria-pressed={decidedCorrect === false}
-                disabled={conversionPending}
-              >
-                Not correct
-              </button>
-            </div>
-          </div>
-          <div className="exam-points-row">
-            <span className="label">AWARDED</span>
+            <span className="label">POINTS</span>
             <div className="exam-points-input">
               <span>{autoAwardedPoints}</span>
               <span className="muted">/ {maxPoints}</span>
@@ -12108,6 +22532,163 @@ export const ExamTaskRunner = ({
       {isScoring && conversionError ? (
         <div className="error">{conversionError}</div>
       ) : null}
+
+      {hasHelp ? (
+        <div className="exam-help-actions">
+          <HelpButton helpText={task.helpText} enabled={helpEnabled} />
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+---
+
+## 📝 ExamTimeBar.test.tsx — ./pages/exam-simulation/components/ExamTimeBar.test.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTimeBar.test.tsx
+ *
+ * Zweck:
+ * - Tests fuer ExamTimeBar.
+ */
+
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { ExamTimeBar } from "./ExamTimeBar";
+
+describe("ExamTimeBar", () => {
+  it("renders time limit when idle", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamTimeBar, {
+        timeLimitMs: 30 * 60 * 1000,
+        timeRemainingMs: null,
+        isRunning: false,
+        isTimeUp: false,
+        isEnabled: true,
+      }),
+    );
+    expect(markup).toContain("Time limit: 30 min");
+  });
+
+  it("renders remaining time when running", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamTimeBar, {
+        timeLimitMs: 30 * 60 * 1000,
+        timeRemainingMs: 90 * 1000,
+        isRunning: true,
+        isTimeUp: false,
+        isEnabled: true,
+      }),
+    );
+    expect(markup).toContain("Remaining: 1:30");
+    expect(markup).toContain("Total: 30 min");
+  });
+
+  it("renders time up state", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamTimeBar, {
+        timeLimitMs: 30 * 60 * 1000,
+        timeRemainingMs: 0,
+        isRunning: false,
+        isTimeUp: true,
+        isEnabled: true,
+      }),
+    );
+    expect(markup).toContain("Time up");
+  });
+
+  it("renders disabled label", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamTimeBar, {
+        timeLimitMs: 0,
+        timeRemainingMs: null,
+        isRunning: false,
+        isTimeUp: false,
+        isEnabled: false,
+      }),
+    );
+    expect(markup).toContain("Timer disabled");
+  });
+});
+
+---
+
+## 📝 ExamTimeBar.tsx — ./pages/exam-simulation/components/ExamTimeBar.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTimeBar.tsx
+ *
+ * Zweck:
+ * - Zeigt die Exam-Zeitleiste mit Restzeit.
+ */
+
+import { useMemo, type CSSProperties } from "react";
+
+type ExamTimeBarProps = {
+  timeLimitMs: number;
+  timeRemainingMs: number | null;
+  isRunning: boolean;
+  isTimeUp: boolean;
+  isEnabled: boolean;
+  className?: string;
+};
+
+const formatTime = (valueMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(valueMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+};
+
+export const ExamTimeBar = ({
+  timeLimitMs,
+  timeRemainingMs,
+  isRunning,
+  isTimeUp,
+  isEnabled,
+  className,
+}: ExamTimeBarProps) => {
+  const limitMinutes = Math.max(1, Math.round(timeLimitMs / 60000));
+  const remainingMs = timeRemainingMs ?? timeLimitMs;
+  const progress = timeLimitMs > 0 ? remainingMs / timeLimitMs : 0;
+  const isWarning = isRunning && !isTimeUp && progress <= 0.2;
+  const barStyle = useMemo(
+    () =>
+      ({
+        "--exam-time-progress": `${Math.max(0, Math.min(1, progress)) * 100}%`,
+      }) as CSSProperties,
+    [progress],
+  );
+
+  const label = !isEnabled
+    ? "Timer disabled"
+    : isTimeUp
+    ? "Time up"
+    : isRunning
+      ? `Remaining: ${formatTime(remainingMs)}`
+      : `Time limit: ${limitMinutes} min`;
+  const subLabel = isRunning && isEnabled ? `Total: ${limitMinutes} min` : null;
+
+  return (
+    <div
+      className={[
+        "exam-time-bar",
+        isRunning ? "is-running" : "is-idle",
+        isWarning && isEnabled ? "is-warning" : "",
+        isTimeUp ? "is-time-up" : "",
+        !isEnabled ? "is-disabled" : "",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="exam-time-bar-header">
+        <span className="label">{label}</span>
+        {subLabel ? <span className="muted">{subLabel}</span> : null}
+      </div>
+      <div className="exam-time-bar-track" style={barStyle} aria-hidden="true" />
     </div>
   );
 };
@@ -12115,6 +22696,27 @@ export const ExamTaskRunner = ({
 ---
 
 ## 📝 ExamToolsPanel.tsx — ./pages/exam-simulation/components/ExamToolsPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamToolsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Tools Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - ExamToolsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 type ExamStage = "idle" | "running" | "review" | "scoring" | "finished";
 
@@ -12227,28 +22829,71 @@ export const ExamToolsPanel = ({
 
 ## 📝 ExamSimulationPage.tsx — ./pages/exam-simulation/ExamSimulationPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Simulation.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamFilePanel.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamIdlePanel.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamResultsPanel.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - ExamSimulationPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { UserToolsPanel } from "../../components/UserToolsPanel";
+import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
 import { ExamResultsPanel } from "./components/ExamResultsPanel";
+import { ExamStatisticsPanel } from "./components/ExamStatisticsPanel";
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
-import { ExamToolsPanel } from "./components/ExamToolsPanel";
+import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
+import {
+  formatBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "../../lib/shortcuts/bindings";
+import { getShortcutById } from "../../lib/shortcuts/registry";
+
+const viewToggleCommand = getShortcutById("toggleViewMode");
+const studyPrevCommand = getShortcutById("studyPrevious");
+const studyNextCommand = getShortcutById("studyNext");
+const studySubmitCommand = getShortcutById("studySubmit");
 
 export const ExamSimulationPage = () => {
   const {
     actions,
     preview,
     settings,
+    spacedRepetition,
     vault,
     examFiles,
     examFilesState,
     examFilesError,
+    examRuns,
     selectedExamFile,
     previewExamParse,
     plannedTaskCount,
     plannedMaxPoints,
     hasTaskCountMismatch,
     stage,
+    examRunning,
     activeTaskIndex,
     activeTask,
     activeTaskMaxPoints,
@@ -12256,8 +22901,11 @@ export const ExamSimulationPage = () => {
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
     runTasks,
-    remainingPoints,
-    isSettingsValid,
+    examTimeLimitMs,
+    examTimeRemainingMs,
+    examTimeUp,
+    examTimerEnabled,
+    examShowTimeline,
     canStartExam,
     examEmptyState,
     results,
@@ -12283,78 +22931,348 @@ export const ExamSimulationPage = () => {
     handleTaskNext,
     handleConversionDecision,
   } = useExamSimulationViewModel();
+  const [isViewMode, setIsViewMode] = useState(false);
+  const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const platform = getShortcutPlatform();
+  const viewBinding = useMemo(() => {
+    if (!viewToggleCommand) {
+      return null;
+    }
+    return getEffectiveBinding(
+      viewToggleCommand,
+      settings.keyboardShortcuts.bindings,
+      platform,
+    );
+  }, [platform, settings.keyboardShortcuts.bindings]);
+  const viewShortcutLabel = viewBinding
+    ? formatBinding(viewBinding, platform)
+    : null;
+  const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
+  const studyBindings = useMemo(() => {
+    const bindings = settings.keyboardShortcuts.bindings;
+    return {
+      prev: studyPrevCommand
+        ? getEffectiveBinding(studyPrevCommand, bindings, platform)
+        : null,
+      next: studyNextCommand
+        ? getEffectiveBinding(studyNextCommand, bindings, platform)
+        : null,
+      submit: studySubmitCommand
+        ? getEffectiveBinding(studySubmitCommand, bindings, platform)
+        : null,
+    };
+  }, [platform, settings.keyboardShortcuts.bindings]);
 
   const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
+  const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
+  const isOverviewStage = stage === "idle";
+  const showOverviewLayout = isOverviewStage && !isViewMode;
+  const timelineVisible = examTimerEnabled && examShowTimeline;
+  const showTimelineBlock = !isViewMode && (timelineVisible || isOverviewStage);
+  const selectedUser = useMemo(
+    () =>
+      spacedRepetition.spacedRepetitionUsers.find(
+        (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
+      ),
+    [
+      spacedRepetition.spacedRepetitionSelectedUserId,
+      spacedRepetition.spacedRepetitionUsers,
+    ],
+  );
+  const deleteTargetName = selectedUser?.name ?? "";
+  const canConfirmDelete =
+    Boolean(deleteTargetName) && deleteConfirmInput.trim() === deleteTargetName;
+  const renderOverviewToggle = () => (
+    <div className="exam-overview-toggle">
+      <div className="exam-overview-toggle-header">
+        <div
+          className="pill-grid exam-overview-tabs"
+          role="tablist"
+          aria-label="Exam overview tabs"
+        >
+          <button
+            type="button"
+            className={`pill pill-button ${overviewTab === "ready" ? "active" : ""}`}
+            onClick={() => setOverviewTab("ready")}
+            role="tab"
+            aria-selected={overviewTab === "ready"}
+          >
+            READY
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${
+              overviewTab === "statistics" ? "active" : ""
+            }`}
+            onClick={() => setOverviewTab("statistics")}
+            role="tab"
+            aria-selected={overviewTab === "statistics"}
+          >
+            Statistics
+          </button>
+        </div>
+        <button
+          type="button"
+          className={`focus-toggle ${isViewMode ? "active" : ""}`}
+          onClick={() => setIsViewMode((prev) => !prev)}
+          aria-pressed={isViewMode}
+          aria-label={viewLabel}
+          title={viewLabel}
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+            <circle cx="12" cy="12" r="3.5" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  const handleDeleteOpen = useCallback(() => {
+    if (!selectedUser) {
+      return;
+    }
+    setIsDeleteDialogOpen(true);
+  }, [selectedUser]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!canConfirmDelete) {
+      return;
+    }
+    spacedRepetition.handleSpacedRepetitionDeleteUser();
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  }, [canConfirmDelete, spacedRepetition]);
+
+  useEffect(() => {
+    document.body.classList.toggle("focus-mode", isViewMode);
+    return () => {
+      document.body.classList.remove("focus-mode");
+    };
+  }, [isViewMode]);
+
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return;
+    }
+    if (!selectedUser) {
+      setIsDeleteDialogOpen(false);
+      setDeleteConfirmInput("");
+    }
+  }, [isDeleteDialogOpen, selectedUser]);
+
+  useEffect(() => {
+    if (stage !== "idle" && overviewTab !== "ready") {
+      setOverviewTab("ready");
+    }
+  }, [overviewTab, stage]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      const isEditable = isEditableTarget(event.target);
+      const canTrigger = (
+        command:
+          | typeof viewToggleCommand
+          | typeof studyPrevCommand
+          | typeof studyNextCommand
+          | typeof studySubmitCommand,
+        binding: string | null,
+      ) => {
+        if (!command || !binding) {
+          return false;
+        }
+        if (!command.allowInTextInputs && isEditable) {
+          return false;
+        }
+        return matchesBinding(event, binding);
+      };
+
+      if (canTrigger(viewToggleCommand, viewBinding)) {
+        event.preventDefault();
+        setIsViewMode((prev) => !prev);
+        return;
+      }
+
+      if (!isRunnerStage || !activeTask) {
+        return;
+      }
+
+      if (canTrigger(studyPrevCommand, studyBindings.prev)) {
+        event.preventDefault();
+        if (activeTaskIndex > 0) {
+          handleTaskBack();
+        }
+        return;
+      }
+
+      if (canTrigger(studyNextCommand, studyBindings.next)) {
+        event.preventDefault();
+        if (activeTaskIndex < runTasks.length - 1) {
+          handleTaskNext();
+        }
+        return;
+      }
+
+      if (!canTrigger(studySubmitCommand, studyBindings.submit)) {
+        return;
+      }
+      if (activeTaskIndex < runTasks.length - 1) {
+        event.preventDefault();
+        handleTaskNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    activeTask,
+    activeTaskIndex,
+    handleTaskBack,
+    handleTaskNext,
+    isRunnerStage,
+    runTasks.length,
+    studyBindings,
+    viewBinding,
+  ]);
 
   return (
     <div className="exam-page">
-      <header className="content-header">
-        <div>
-          <p className="eyebrow">EXAM SIMULATION</p>
-          <h1>Exam</h1>
-          <p className="muted">Run a Punktaufgaben exam and convert tasks into cards.</p>
+      {showTimelineBlock ? (
+        <div className="exam-timeline-block">
+          {timelineVisible ? (
+            <ExamTimeBar
+              timeLimitMs={examTimeLimitMs}
+              timeRemainingMs={examTimeRemainingMs}
+              isRunning={isExamTimerRunning}
+              isTimeUp={examTimeUp}
+              isEnabled={examTimerEnabled}
+            />
+          ) : null}
+          {showOverviewLayout ? renderOverviewToggle() : null}
         </div>
-      </header>
+      ) : null}
 
       <div className="exam-layout">
         <section className="panel exam-panel">
-          {stage === "idle" ? (
-            <ExamIdlePanel
-              selectedFile={selectedExamFile}
-              previewState={preview.previewState}
-              previewError={preview.previewError}
-              examEmptyState={examEmptyState}
-              availableTaskCount={previewExamParse.tasks.length}
-              plannedTaskCount={plannedTaskCount}
-              plannedMaxPoints={plannedMaxPoints}
-              hasTaskCountMismatch={hasTaskCountMismatch}
+          {isViewMode && timelineVisible ? (
+            <ExamTimeBar
+              className="exam-time-bar--view"
+              timeLimitMs={examTimeLimitMs}
+              timeRemainingMs={examTimeRemainingMs}
+              isRunning={isExamTimerRunning}
+              isTimeUp={examTimeUp}
+              isEnabled={examTimerEnabled}
             />
-          ) : isRunnerStage ? (
-            activeTask ? (
-              <ExamTaskRunner
-                task={activeTask}
-                taskIndex={activeTaskIndex}
-                taskCount={runTasks.length}
-                maxPoints={activeTaskMaxPoints}
-                phase={activePhase}
-                partStates={activeTaskPartStates}
-                awardedPoints={activeTaskAwardedPoints}
-                autoGradeDecision={activeTaskAutoDecision}
-                conversionDecision={conversionDecisions[activeTaskIndex]}
-                conversionPending={conversionPending}
-                conversionError={conversionError}
-                onOptionSelect={handleOptionSelect}
-                onTrueFalseSelect={handleTrueFalseSelect}
-                onClozeInputChange={handleClozeInputChange}
-                onClozeTokenDrop={handleClozeTokenDrop}
-                onClozeTokenRemove={handleClozeTokenRemove}
-                onClozeTokenDragStart={handleClozeTokenDragStart}
-                onBlankDragOver={handleClozeBlankDragOver}
-                onTextInputChange={handleTextInputChange}
-                onAwardedPointsChange={handleAwardedPointsChange}
-                onAutoGradeDecision={handleAutoGradeDecision}
-                onConversionDecision={handleConversionDecision}
-                onBack={handleTaskBack}
-                onNext={handleTaskNext}
-                canGoBack={activeTaskIndex > 0}
-                canGoNext={activeTaskIndex < runTasks.length - 1}
-              />
-            ) : (
-              <div className="empty-state">No tasks available for this exam.</div>
-            )
-          ) : stage === "finished" ? (
-            results ? (
-              <ExamResultsPanel
-                results={results}
-              />
-            ) : (
-              <div className="empty-state">No results available yet.</div>
-            )
           ) : null}
+          {stage === "idle" ? (
+            <div className="exam-overview">
+              {isViewMode && isOverviewStage ? renderOverviewToggle() : null}
+              <div className="exam-overview-body">
+                {overviewTab === "ready" ? (
+                  <ExamIdlePanel
+                    selectedFile={selectedExamFile}
+                    previewState={preview.previewState}
+                    previewError={preview.previewError}
+                    examEmptyState={examEmptyState}
+                    availableTaskCount={previewExamParse.tasks.length}
+                    plannedTaskCount={plannedTaskCount}
+                    plannedMaxPoints={plannedMaxPoints}
+                    hasTaskCountMismatch={hasTaskCountMismatch}
+                  />
+                ) : (
+                  <ExamStatisticsPanel
+                    runs={examRuns}
+                    gradeScaleId={settings.examGradeScale}
+                  />
+                )}
+              </div>
+            </div>
+          ) : isRunnerStage ? (
+              activeTask ? (
+                <ExamTaskRunner
+                  task={activeTask}
+                  taskIndex={activeTaskIndex}
+                  taskCount={runTasks.length}
+                  maxPoints={activeTaskMaxPoints}
+                  phase={activePhase}
+                  partStates={activeTaskPartStates}
+                  awardedPoints={activeTaskAwardedPoints}
+                  autoGradeDecision={activeTaskAutoDecision}
+                  conversionDecision={conversionDecisions[activeTaskIndex]}
+                  conversionPending={conversionPending}
+                  conversionError={conversionError}
+                  onOptionSelect={handleOptionSelect}
+                  onTrueFalseSelect={handleTrueFalseSelect}
+                  onClozeInputChange={handleClozeInputChange}
+                  onClozeTokenDrop={handleClozeTokenDrop}
+                  onClozeTokenRemove={handleClozeTokenRemove}
+                  onClozeTokenDragStart={handleClozeTokenDragStart}
+                  onBlankDragOver={handleClozeBlankDragOver}
+                  onTextInputChange={handleTextInputChange}
+                  onAwardedPointsChange={handleAwardedPointsChange}
+                  onAutoGradeDecision={handleAutoGradeDecision}
+                  onConversionDecision={handleConversionDecision}
+                  onBack={handleTaskBack}
+                  onNext={handleTaskNext}
+                  canGoBack={activeTaskIndex > 0}
+                  canGoNext={activeTaskIndex < runTasks.length - 1}
+                  helpEnabled={settings.examHelpEnabled}
+                />
+              ) : (
+                <div className="empty-state">No tasks available for this exam.</div>
+              )
+            ) : stage === "finished" ? (
+              results ? (
+                <ExamResultsPanel
+                  results={results}
+                />
+              ) : (
+                <div className="empty-state">No results available yet.</div>
+              )
+            ) : null}
         </section>
-
         <div className="exam-sidebar">
+          <UserToolsPanel
+            spacedRepetition={spacedRepetition}
+            handleDeleteOpen={handleDeleteOpen}
+            onStart={handleStartExam}
+            startDisabled={
+              !spacedRepetition.spacedRepetitionActiveUser ||
+              !canStartExam ||
+              examRunning
+            }
+            showReset={examRunning}
+            onReset={handleResetExam}
+            examStageControls={{
+              stage,
+              canStartExam,
+              finishPending: conversionPending,
+              onStartExam: handleStartExam,
+              onSubmitExam: handleSubmitExam,
+              onStartScoring: handleStartScoring,
+              onFinishScoring: handleFinishScoring,
+              onResetExam: handleResetExam,
+            }}
+          />
           <ExamFilePanel
             files={examFiles}
             listState={examFilesState}
@@ -12363,24 +23281,17 @@ export const ExamSimulationPage = () => {
             vaultPath={vault.vaultPath}
             onSelectFile={actions.handleSelectFile}
           />
-          <ExamToolsPanel
-            stage={stage}
-            canStartExam={canStartExam}
-            isSettingsValid={isSettingsValid}
-            remainingPoints={remainingPoints}
-            hasTaskCountMismatch={hasTaskCountMismatch}
-            plannedTaskCount={plannedTaskCount}
-            availableTaskCount={previewExamParse.tasks.length}
-            expectedTaskCount={settings.examTaskCount}
-            onStartExam={handleStartExam}
-            onSubmitExam={handleSubmitExam}
-            onStartScoring={handleStartScoring}
-            onFinishScoring={handleFinishScoring}
-            finishPending={conversionPending}
-            onResetExam={handleResetExam}
-          />
         </div>
       </div>
+      <SrDeleteModal
+        isDeleteDialogOpen={isDeleteDialogOpen}
+        deleteTargetName={deleteTargetName}
+        deleteConfirmInput={deleteConfirmInput}
+        setDeleteConfirmInput={setDeleteConfirmInput}
+        handleDeleteCancel={handleDeleteCancel}
+        handleDeleteConfirm={handleDeleteConfirm}
+        canConfirmDelete={canConfirmDelete}
+      />
     </div>
   );
 };
@@ -12389,7 +23300,30 @@ export const ExamSimulationPage = () => {
 
 ## 📝 useExamSimulationViewModel.ts — ./pages/exam-simulation/hooks/useExamSimulationViewModel.ts
 
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+/**
+ * @file apps/fmd-desktop/src/pages/exam-simulation/hooks/useExamSimulationViewModel.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useExamSimulationViewModel fuer Exam Simulation bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Exam Simulation.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Typen.
+ *
+ * Exportiert:
+ * - useExamSimulationViewModel: Hook fuer Exam Simulation.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppState } from "../../../components/AppStateProvider";
 import {
@@ -12402,10 +23336,28 @@ import {
 } from "../../../features/flashcards/logic";
 import { type ExamAiEvaluation } from "../../../features/settings/useAppSettings";
 import { asErrorMessage } from "../../../lib/errors";
+import {
+  buildExamRunId,
+  calculateExamPercent,
+  isExamPassed,
+  resolveExamGrade,
+  subscribeExamRunHistoryReset,
+  sortExamRunsByDateDesc,
+  type ExamRun,
+  type ExamRunStorage,
+} from "../../../lib/examRuns";
+import {
+  applyExamCardWrapperActions,
+  type ExamCardWrapperAction,
+} from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
-import { type FlashcardPart } from "../../../lib/flashcards";
 import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
+import {
+  createEmptyExamRunStore,
+  loadExamRunStore,
+  saveExamRunStore,
+} from "../../../features/user-vault/storage";
 
 type ExamStage =
   | "idle"
@@ -12418,6 +23370,8 @@ type ExamSettingsSnapshot = {
   maxTotalPoints: number;
   taskCount: number;
   taskPoints: number[];
+  durationMinutes: number;
+  timeLimitEnabled: boolean;
   aiEvaluation: ExamAiEvaluation;
 };
 
@@ -12438,21 +23392,8 @@ const normalizeAwardedPoints = (value: number | null, maxPoints: number) => {
   return clampNumber(Math.floor(value), 0, maxPoints);
 };
 
-const isAutoGradablePart = (part: FlashcardPart) => {
-  if (part.kind === "multiple-choice") {
-    return part.correctKeys.length > 0;
-  }
-  if (part.kind === "true-false") {
-    return part.items.length > 0;
-  }
-  if (part.kind === "cloze") {
-    return part.segments.some((segment) => segment.type === "blank");
-  }
-  return false;
-};
-
 const isAutoGradedTask = (task: ExamTask) =>
-  task.card.parts.length > 0 && task.card.parts.every(isAutoGradablePart);
+  task.gradingMode === "auto";
 
 const isTaskCorrect = (
   task: ExamTask,
@@ -12464,10 +23405,15 @@ const isTaskCorrect = (
   );
 
 export const useExamSimulationViewModel = () => {
-  const { actions, preview, settings, vault } = useAppState();
+  const { actions, preview, settings, spacedRepetition, userVault, vault } =
+    useAppState();
   const [examFiles, setExamFiles] = useState<VaultFile[]>([]);
   const [examFilesState, setExamFilesState] = useState<LoadState>("idle");
   const [examFilesError, setExamFilesError] = useState("");
+  const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
+  const [examRunsLoaded, setExamRunsLoaded] = useState(false);
+  const [examRunsMigratedFromLegacy, setExamRunsMigratedFromLegacy] =
+    useState(false);
   const [stage, setStage] = useState<ExamStage>("idle");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [activeExamTasks, setActiveExamTasks] = useState<ExamTask[]>([]);
@@ -12489,6 +23435,14 @@ export const useExamSimulationViewModel = () => {
   >({});
   const [conversionPending, setConversionPending] = useState(false);
   const [conversionError, setConversionError] = useState("");
+  const [examTimeRemainingMs, setExamTimeRemainingMs] = useState<number | null>(
+    null,
+  );
+  const [examTimeUp, setExamTimeUp] = useState(false);
+  const examTimerRef = useRef<number | null>(null);
+  const examTimerEndRef = useRef<number | null>(null);
+  const examStartTimeRef = useRef<number | null>(null);
+  const examRunRecordedRef = useRef(false);
 
   useEffect(() => {
     if (!vault.vaultPath) {
@@ -12552,6 +23506,90 @@ export const useExamSimulationViewModel = () => {
     };
   }, [vault.files, vault.vaultPath]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setExamRuns([]);
+    setExamRunsLoaded(false);
+
+    const loadRuns = async () => {
+      try {
+        if (userVault.activeProfilePath) {
+          const store = await loadExamRunStore(userVault.activeProfilePath);
+          let runs = Array.isArray(store.runs) ? store.runs : [];
+          let migrated = store.migratedFromAppData;
+          if (!migrated && runs.length === 0) {
+            const legacy = await invoke<ExamRunStorage>("load_exam_run_data");
+            runs = Array.isArray(legacy?.runs) ? legacy.runs : [];
+            migrated = true;
+            await saveExamRunStore(userVault.activeProfilePath, {
+              ...store,
+              runs,
+              migratedFromAppData: migrated,
+            });
+          }
+          if (cancelled) {
+            return;
+          }
+          setExamRuns(sortExamRunsByDateDesc(runs));
+          setExamRunsMigratedFromLegacy(migrated);
+          return;
+        }
+        const storage = await invoke<ExamRunStorage>("load_exam_run_data");
+        if (cancelled) {
+          return;
+        }
+        const runs = Array.isArray(storage?.runs) ? storage.runs : [];
+        setExamRuns(sortExamRunsByDateDesc(runs));
+        setExamRunsMigratedFromLegacy(false);
+      } catch (error) {
+        console.warn("Failed to load exam runs", error);
+      } finally {
+        if (!cancelled) {
+          setExamRunsLoaded(true);
+        }
+      }
+    };
+
+    void loadRuns();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userVault.activeProfilePath, userVault.revision]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeExamRunHistoryReset(() => {
+      setExamRuns([]);
+      if (userVault.activeProfilePath) {
+        setExamRunsMigratedFromLegacy(true);
+      }
+    });
+    return unsubscribe;
+  }, [userVault.activeProfilePath]);
+
+  useEffect(() => {
+    if (!examRunsLoaded) {
+      return;
+    }
+    if (userVault.activeProfilePath) {
+      void saveExamRunStore(userVault.activeProfilePath, {
+        ...createEmptyExamRunStore(),
+        runs: examRuns,
+        migratedFromAppData: examRunsMigratedFromLegacy,
+      });
+      return;
+    }
+    const storage: ExamRunStorage = { runs: examRuns };
+    void invoke("save_exam_run_data", { storage }).catch((error) => {
+      console.warn("Failed to save exam runs", error);
+    });
+  }, [
+    examRuns,
+    examRunsLoaded,
+    examRunsMigratedFromLegacy,
+    userVault.activeProfilePath,
+  ]);
+
   const selectedExamFile = useMemo(() => {
     if (!preview.selectedFile) {
       return null;
@@ -12581,6 +23619,14 @@ export const useExamSimulationViewModel = () => {
 
   const activeTasks = stage === "idle" ? previewExamParse.tasks : activeExamTasks;
   const activeExamSettings = stage === "idle" ? null : activeSettings;
+  const examDurationMinutes = activeExamSettings
+    ? activeExamSettings.durationMinutes
+    : settings.examDurationMinutes;
+  const examTimerEnabled = activeExamSettings
+    ? activeExamSettings.timeLimitEnabled && examDurationMinutes > 0
+    : settings.examTimeLimitEnabled && examDurationMinutes > 0;
+  const examShowTimeline = settings.examShowTimeline;
+  const examTimeLimitMs = examTimerEnabled ? examDurationMinutes * 60 * 1000 : 0;
   const activeTaskCount = activeExamSettings
     ? Math.min(activeTasks.length, activeExamSettings.taskCount)
     : plannedTaskCount;
@@ -12607,6 +23653,7 @@ export const useExamSimulationViewModel = () => {
     preview.previewState === "idle" &&
     previewExamParse.tasks.length > 0 &&
     isSettingsValid;
+  const examRunning = stage !== "idle";
 
   const resetExamState = useCallback(() => {
     setStage("idle");
@@ -12620,6 +23667,11 @@ export const useExamSimulationViewModel = () => {
     setConversionDecisions({});
     setConversionPending(false);
     setConversionError("");
+    setExamTimeRemainingMs(null);
+    setExamTimeUp(false);
+    examTimerEndRef.current = null;
+    examStartTimeRef.current = null;
+    examRunRecordedRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -12634,9 +23686,13 @@ export const useExamSimulationViewModel = () => {
       maxTotalPoints: settings.examMaxTotalPoints,
       taskCount: settings.examTaskCount,
       taskPoints: activeTaskPoints,
+      durationMinutes: settings.examDurationMinutes,
+      timeLimitEnabled: settings.examTimeLimitEnabled,
       aiEvaluation: settings.examAiEvaluation,
     };
     // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
+    examStartTimeRef.current = Date.now();
+    examRunRecordedRef.current = false;
     setActiveExamTasks(previewExamParse.tasks);
     setActiveExamFile(selectedExamFile);
     setActiveSettings(snapshot);
@@ -12648,6 +23704,14 @@ export const useExamSimulationViewModel = () => {
     setConversionDecisions({});
     setConversionError("");
     setConversionPending(false);
+    setExamTimeUp(false);
+    if (examTimerEnabled) {
+      setExamTimeRemainingMs(examTimeLimitMs);
+      examTimerEndRef.current = Date.now() + examTimeLimitMs;
+    } else {
+      setExamTimeRemainingMs(null);
+      examTimerEndRef.current = null;
+    }
   }, [
     canStartExam,
     previewExamParse.tasks,
@@ -12655,7 +23719,11 @@ export const useExamSimulationViewModel = () => {
     settings.examAiEvaluation,
     settings.examMaxTotalPoints,
     settings.examTaskCount,
+    settings.examDurationMinutes,
+    settings.examTimeLimitEnabled,
     activeTaskPoints,
+    examTimeLimitMs,
+    examTimerEnabled,
   ]);
 
   const handleResetExam = useCallback(() => {
@@ -12668,6 +23736,50 @@ export const useExamSimulationViewModel = () => {
     }
     setStage("review");
   }, [stage]);
+
+  useEffect(() => {
+    if (stage !== "running" || !examTimerEnabled) {
+      if (examTimerRef.current !== null) {
+        window.clearInterval(examTimerRef.current);
+        examTimerRef.current = null;
+      }
+      if (!examTimerEnabled) {
+        setExamTimeRemainingMs(null);
+      }
+      return;
+    }
+
+    const endTime = examTimerEndRef.current ?? Date.now() + examTimeLimitMs;
+    examTimerEndRef.current = endTime;
+
+    const updateTimer = () => {
+      const remaining = Math.max(0, endTime - Date.now());
+      setExamTimeRemainingMs(remaining);
+      if (remaining <= 0) {
+        setExamTimeUp(true);
+        if (examTimerRef.current !== null) {
+          window.clearInterval(examTimerRef.current);
+          examTimerRef.current = null;
+        }
+        if (stage === "running") {
+          setStage("review");
+        }
+      }
+    };
+
+    updateTimer();
+    if (examTimerRef.current !== null) {
+      window.clearInterval(examTimerRef.current);
+    }
+    examTimerRef.current = window.setInterval(updateTimer, 1000);
+
+    return () => {
+      if (examTimerRef.current !== null) {
+        window.clearInterval(examTimerRef.current);
+        examTimerRef.current = null;
+      }
+    };
+  }, [examTimeLimitMs, examTimerEnabled, stage]);
 
   const handleStartScoring = useCallback(() => {
     if (stage !== "review") {
@@ -12684,12 +23796,15 @@ export const useExamSimulationViewModel = () => {
       setStage("finished");
       return;
     }
+    const autoCardsEnabled = settings.examAutoCardsEnabled;
+    const autoCardsReturnOnCorrect = settings.examAutoCardsReturnOnCorrect;
+    const hasManualConversions = runTasks.some(
+      (_task, index) => conversionDecisions[index],
+    );
+    const shouldApplyCards =
+      autoCardsEnabled || autoCardsReturnOnCorrect || hasManualConversions;
 
-    const tasksToConvert = runTasks
-      .map((task, index) => ({ task, index }))
-      .filter((entry) => conversionDecisions[entry.index]);
-
-    if (tasksToConvert.length === 0) {
+    if (!shouldApplyCards) {
       setStage("finished");
       return;
     }
@@ -12697,47 +23812,62 @@ export const useExamSimulationViewModel = () => {
     setConversionPending(true);
     setConversionError("");
 
+    const resolveWrapperAction = (
+      task: ExamTask,
+      index: number,
+    ): ExamCardWrapperAction => {
+      const isCorrect = autoCardsReturnOnCorrect
+        ? task.gradingMode === "auto"
+          ? isTaskCorrect(task, partStates[index] ?? [])
+          : (() => {
+              const maxPoints = runTaskPoints[index] ?? 0;
+              if (maxPoints <= 0) {
+                return false;
+              }
+              const awarded = normalizeAwardedPoints(
+                awardedPoints[index] ?? null,
+                maxPoints,
+              );
+              return awarded >= maxPoints;
+            })()
+        : false;
+
+      if (autoCardsReturnOnCorrect && isCorrect) {
+        return "remove";
+      }
+      if (autoCardsEnabled) {
+        return "add";
+      }
+      return conversionDecisions[index] ? "add" : "keep";
+    };
+
     const applyConversions = async () => {
       try {
         const contents = await invoke<string>("read_text_file", {
           path: activeExamFile.path,
         });
-        const lines = contents.replace(/\r\n?/g, "\n").split("\n");
-        const sorted = [...tasksToConvert].sort(
-          (a, b) => a.task.sourceRange.startLine - b.task.sourceRange.startLine,
+        const { content: nextContents, changed } = applyExamCardWrapperActions(
+          contents,
+          runTasks,
+          resolveWrapperAction,
         );
-        let offset = 0;
 
-        sorted.forEach(({ task }) => {
-          const start = task.sourceRange.startLine + offset;
-          const end = task.sourceRange.endLine + offset;
-          const chunkHasCardMarker = lines
-            .slice(start, end + 1)
-            .some((line) => line.trim() === "#card");
-          const hasCardStart = lines[start - 1]?.trim() === "#card";
-          const isWrapped = hasCardStart || chunkHasCardMarker;
+        if (changed) {
+          await invoke("write_text_file", {
+            path: activeExamFile.path,
+            contents: nextContents,
+          });
 
-          if (!isWrapped) {
-            lines.splice(start, 0, "#card");
-            offset += 1;
-            lines.splice(end + 2, 0, "#");
-            offset += 1;
+          if (preview.selectedFile?.path === activeExamFile.path) {
+            preview.setPreview(nextContents);
           }
-        });
 
-        const nextContents = lines.join("\n");
-        await invoke("write_text_file", {
-          path: activeExamFile.path,
-          contents: nextContents,
-        });
-
-        if (preview.selectedFile?.path === activeExamFile.path) {
-          preview.setPreview(nextContents);
+          actions.handleRescanVault();
         }
 
         setStage("finished");
       } catch (error) {
-        setConversionError(asErrorMessage(error, "Failed to convert tasks."));
+        setConversionError(asErrorMessage(error, "Failed to update cards."));
       } finally {
         setConversionPending(false);
       }
@@ -12746,10 +23876,16 @@ export const useExamSimulationViewModel = () => {
     void applyConversions();
   }, [
     activeExamFile,
+    actions,
+    awardedPoints,
     conversionDecisions,
     conversionPending,
+    partStates,
     preview,
     runTasks,
+    runTaskPoints,
+    settings.examAutoCardsEnabled,
+    settings.examAutoCardsReturnOnCorrect,
     stage,
   ]);
 
@@ -12967,6 +24103,59 @@ export const useExamSimulationViewModel = () => {
     stage,
   ]);
 
+  useEffect(() => {
+    if (stage !== "finished") {
+      examRunRecordedRef.current = false;
+      return;
+    }
+    if (!results || !activeExamFile || !examRunsLoaded) {
+      return;
+    }
+    if (examRunRecordedRef.current) {
+      return;
+    }
+
+    const finishedAt = new Date().toISOString();
+    const startedAt = examStartTimeRef.current
+      ? new Date(examStartTimeRef.current).toISOString()
+      : finishedAt;
+    const durationMs = examStartTimeRef.current
+      ? Math.max(0, Date.now() - examStartTimeRef.current)
+      : 0;
+    const percent = calculateExamPercent(results.totalAwarded, results.totalMax);
+    const passed = isExamPassed(percent);
+    const grade = resolveExamGrade(settings.examGradeScale, percent);
+
+    const run: ExamRun = {
+      id: buildExamRunId(),
+      startedAt,
+      endedAt: finishedAt,
+      durationMs,
+      userId: spacedRepetition.spacedRepetitionActiveUserId ?? null,
+      userName: spacedRepetition.spacedRepetitionActiveUser ?? "Unknown",
+      examFilePath: activeExamFile.relative_path || activeExamFile.path,
+      tasksDetected: runTasks.length,
+      maxPoints: results.totalMax,
+      achievedPoints: results.totalAwarded,
+      percent,
+      passed,
+      grade,
+      gradeScaleId: settings.examGradeScale,
+    };
+
+    setExamRuns((prev) => sortExamRunsByDateDesc([run, ...prev]));
+    examRunRecordedRef.current = true;
+  }, [
+    activeExamFile,
+    examRunsLoaded,
+    results,
+    runTasks.length,
+    settings.examGradeScale,
+    spacedRepetition.spacedRepetitionActiveUser,
+    spacedRepetition.spacedRepetitionActiveUserId,
+    stage,
+  ]);
+
   const handleConversionDecision = useCallback(
     (taskIndex: number, shouldConvert: boolean) => {
       setConversionDecisions((prev) => ({ ...prev, [taskIndex]: shouldConvert }));
@@ -13008,16 +24197,19 @@ export const useExamSimulationViewModel = () => {
     actions,
     preview,
     settings,
+    spacedRepetition,
     vault,
     examFiles,
     examFilesState,
     examFilesError,
+    examRuns,
     selectedExamFile,
     previewExamParse,
     plannedTaskCount,
     plannedMaxPoints,
     hasTaskCountMismatch,
     stage,
+    examRunning,
     activeTaskIndex,
     activeTask,
     activeTaskMaxPoints,
@@ -13027,6 +24219,12 @@ export const useExamSimulationViewModel = () => {
     runTasks,
     runTaskPoints,
     runMaxPoints,
+    examDurationMinutes,
+    examTimeLimitMs,
+    examTimeRemainingMs,
+    examTimeUp,
+    examTimerEnabled,
+    examShowTimeline,
     remainingPoints,
     isSettingsValid,
     canStartExam,
@@ -13060,11 +24258,53 @@ export const useExamSimulationViewModel = () => {
 
 ## 📝 ExamSimulationPage.tsx — ./pages/ExamSimulationPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/ExamSimulationPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Exam Simulation.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx: Seiten-Komponente.
+ * - apps/fmd-desktop/src/App.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 export { ExamSimulationPage } from "./exam-simulation/ExamSimulationPage";
 
 ---
 
 ## 📝 FastCardHost.tsx — ./pages/fast-flashcard/components/FastCardHost.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastCardHost.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast Card Host.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - FastCardHost: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import type { DragEvent } from "react";
 import { ClozeCard } from "../../../components/flashcards/ClozeCard";
@@ -13079,6 +24319,7 @@ type FastCardHostProps = {
   currentEntry: { card: any; cardIndex: number } | null;
   isCurrentSubmitted: boolean;
   submissionLocked: boolean;
+  helpEnabled: boolean;
   fastFlashcards: {
     flashcardCompositeStates: Record<number, any[]>;
     flashcardClozeResponses: Record<number, Record<string, string>>;
@@ -13162,6 +24403,7 @@ export const FastCardHost = ({
   currentEntry,
   isCurrentSubmitted,
   submissionLocked,
+  helpEnabled,
   fastFlashcards,
   orderedEntries,
   canGoBack,
@@ -13201,6 +24443,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             partStates={
               fastFlashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
             }
@@ -13223,6 +24467,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             responses={
               fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ?? {}
             }
@@ -13240,6 +24486,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             selections={
               fastFlashcards.flashcardTrueFalseSelections[currentEntry.cardIndex] ?? {}
             }
@@ -13253,6 +24501,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             response={fastFlashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""}
             revealed={
               fastFlashcards.flashcardTextRevealed[currentEntry.cardIndex] ?? false
@@ -13269,6 +24519,8 @@ export const FastCardHost = ({
             cardIndex={currentEntry.cardIndex}
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
+            helpText={currentEntry.card.helpText}
+            helpEnabled={helpEnabled}
             selectedKeys={
               fastFlashcards.flashcardSelections[currentEntry.cardIndex] ?? []
             }
@@ -13309,13 +24561,43 @@ export const FastCardHost = ({
 
 ## 📝 FastHeader.tsx — ./pages/fast-flashcard/components/FastHeader.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastHeader.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast Header.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FastHeader: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { fastFlashcardStatusLabel } from "../hooks/useFastSession";
 
 type FastHeaderProps = {
   hasScannedCards: boolean;
+  isViewMode: boolean;
+  onToggleView: () => void;
+  viewLabel: string;
 };
 
-export const FastHeader = ({ hasScannedCards }: FastHeaderProps) => (
+export const FastHeader = ({
+  hasScannedCards,
+  isViewMode,
+  onToggleView,
+  viewLabel,
+}: FastHeaderProps) => (
   <div className="panel-header">
     <div>
       <h2>Flashcard</h2>
@@ -13323,12 +24605,57 @@ export const FastHeader = ({ hasScannedCards }: FastHeaderProps) => (
         <p className="muted">{fastFlashcardStatusLabel}</p>
       ) : null}
     </div>
+    <div className="panel-actions">
+      <button
+        type="button"
+        className={`focus-toggle ${isViewMode ? "active" : ""}`}
+        onClick={onToggleView}
+        aria-pressed={isViewMode}
+        aria-label={viewLabel}
+        title={viewLabel}
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+          <circle cx="12" cy="12" r="3.5" />
+        </svg>
+      </button>
+    </div>
   </div>
 );
 
 ---
 
 ## 📝 FastHistoryPanel.tsx — ./pages/fast-flashcard/components/FastHistoryPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastHistoryPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast History Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts: Typen.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FastHistoryPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import type { FastFlashcardSessionSummary } from "../hooks/useFastSession";
 import { formatSessionPace, formatSessionTimestamp } from "../hooks/useFastSession";
@@ -13414,6 +24741,28 @@ export const FastHistoryPanel = ({
 ---
 
 ## 📝 FastStatsPanel.tsx — ./pages/fast-flashcard/components/FastStatsPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastStatsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast Stats Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts: Typen.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - FastStatsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import type { CSSProperties } from "react";
 import type { FastFlashcardSessionStats } from "../hooks/useFastSession";
@@ -13585,6 +24934,28 @@ export const FastStatsPanel = ({
 
 ## 📝 FastToolsPanel.tsx — ./pages/fast-flashcard/components/FastToolsPanel.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastToolsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast Tools Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/settings/FastFlashcardToolsSettings.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/features/fast-flashcard/constants.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - FastToolsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { FastFlashcardToolsSettings } from "../../../components/settings/FastFlashcardToolsSettings";
 import { FAST_FLASHCARD_DURATIONS } from "../../../features/fast-flashcard/constants";
 
@@ -13667,12 +25038,55 @@ export const FastToolsPanel = ({
 
 ## 📝 FastFlashcardPage.tsx — ./pages/fast-flashcard/FastFlashcardPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast Flashcard.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastCardHost.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastHeader.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastHistoryPanel.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - FastFlashcardPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import { FastCardHost } from "./components/FastCardHost";
 import { FastHeader } from "./components/FastHeader";
 import { FastHistoryPanel } from "./components/FastHistoryPanel";
 import { FastStatsPanel } from "./components/FastStatsPanel";
 import { FastToolsPanel } from "./components/FastToolsPanel";
+import { StudyTimeBar } from "../../components/StudyTimeBar";
 import { useFastSession } from "./hooks/useFastSession";
+import {
+  areClozeBlanksComplete,
+  areTrueFalseItemsComplete,
+  isFlashcardPartComplete,
+} from "../../features/flashcards/logic";
+import {
+  formatBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "../../lib/shortcuts/bindings";
+import { getShortcutById } from "../../lib/shortcuts/registry";
+
+const viewToggleCommand = getShortcutById("toggleViewMode");
+const studyPrevCommand = getShortcutById("studyPrevious");
+const studyNextCommand = getShortcutById("studyNext");
+const studySubmitCommand = getShortcutById("studySubmit");
 
 export const FastFlashcardPage = () => {
   const {
@@ -13684,6 +25098,8 @@ export const FastFlashcardPage = () => {
     hasFilteredCards,
     isCurrentSubmitted,
     submissionLocked,
+    timeRemaining,
+    sessionElapsedMs,
     handleCompositeOptionSelect,
     handleCompositeTrueFalseSelect,
     handleCompositeClozeInputChange,
@@ -13727,9 +25143,169 @@ export const FastFlashcardPage = () => {
     topSessions,
     lastSessions,
   } = useFastSession();
+  const [isViewMode, setIsViewMode] = useState(false);
+  const platform = getShortcutPlatform();
+  const viewBinding = useMemo(() => {
+    if (!viewToggleCommand) {
+      return null;
+    }
+    return getEffectiveBinding(
+      viewToggleCommand,
+      settings.keyboardShortcuts.bindings,
+      platform,
+    );
+  }, [platform, settings.keyboardShortcuts.bindings]);
+  const viewShortcutLabel = viewBinding
+    ? formatBinding(viewBinding, platform)
+    : null;
+  const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
+  const maxTimeMs = selectedDuration * 1000;
+  const elapsedMs =
+    timeRemaining !== null
+      ? Math.max(0, (selectedDuration - timeRemaining) * 1000)
+      : sessionElapsedMs;
+  const studyBindings = useMemo(() => {
+    const bindings = settings.keyboardShortcuts.bindings;
+    return {
+      prev: studyPrevCommand
+        ? getEffectiveBinding(studyPrevCommand, bindings, platform)
+        : null,
+      next: studyNextCommand
+        ? getEffectiveBinding(studyNextCommand, bindings, platform)
+        : null,
+      submit: studySubmitCommand
+        ? getEffectiveBinding(studySubmitCommand, bindings, platform)
+        : null,
+    };
+  }, [platform, settings.keyboardShortcuts.bindings]);
+
+  useEffect(() => {
+    document.body.classList.toggle("focus-mode", isViewMode);
+    return () => {
+      document.body.classList.remove("focus-mode");
+    };
+  }, [isViewMode]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      const isEditable = isEditableTarget(event.target);
+      if (!viewToggleCommand || !viewBinding) {
+        return;
+      }
+      if (!viewToggleCommand.allowInTextInputs && isEditable) {
+        return;
+      }
+      if (!matchesBinding(event, viewBinding)) {
+        return;
+      }
+      event.preventDefault();
+      setIsViewMode((prev) => !prev);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [viewBinding]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      const isEditable = isEditableTarget(event.target);
+      const canTrigger = (
+        command:
+          | typeof studyPrevCommand
+          | typeof studyNextCommand
+          | typeof studySubmitCommand,
+        binding: string | null,
+      ) => {
+        if (!command || !binding) {
+          return false;
+        }
+        if (!command.allowInTextInputs && isEditable) {
+          return false;
+        }
+        return matchesBinding(event, binding);
+      };
+
+      if (canTrigger(studyPrevCommand, studyBindings.prev)) {
+        event.preventDefault();
+        if (canGoBack) {
+          setFastCardPosition((prev) => Math.max(0, prev - 1));
+        }
+        return;
+      }
+
+      if (canTrigger(studyNextCommand, studyBindings.next)) {
+        event.preventDefault();
+        if (canGoNext) {
+          setFastCardPosition((prev) => prev + 1);
+        }
+        return;
+      }
+
+      if (!canTrigger(studySubmitCommand, studyBindings.submit)) {
+        return;
+      }
+
+      if (!currentEntry || isCurrentSubmitted) {
+        return;
+      }
+
+      const { card, cardIndex } = currentEntry;
+      if (card.kind === "composite") {
+        const partStates = fastFlashcards.flashcardCompositeStates[cardIndex] ?? [];
+        const canSubmit =
+          card.parts.length > 0 &&
+          card.parts.every((part, partIndex) =>
+            isFlashcardPartComplete(part, partStates[partIndex] ?? {}),
+          );
+        if (!canSubmit) {
+          return;
+        }
+      } else if (card.kind === "multiple-choice") {
+        if ((fastFlashcards.flashcardSelections[cardIndex] ?? []).length === 0) {
+          return;
+        }
+      } else if (card.kind === "true-false") {
+        const selections = fastFlashcards.flashcardTrueFalseSelections[cardIndex] ?? {};
+        if (!areTrueFalseItemsComplete(card, selections)) {
+          return;
+        }
+      } else if (card.kind === "free-text") {
+        return;
+      } else {
+        const responses = fastFlashcards.flashcardClozeResponses[cardIndex] ?? {};
+        if (!areClozeBlanksComplete(card, responses)) {
+          return;
+        }
+      }
+
+      event.preventDefault();
+      handleFastSubmit(cardIndex, true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    canGoBack,
+    canGoNext,
+    currentEntry,
+    fastFlashcards.flashcardClozeResponses,
+    fastFlashcards.flashcardCompositeStates,
+    fastFlashcards.flashcardSelections,
+    fastFlashcards.flashcardTrueFalseSelections,
+    handleFastSubmit,
+    isCurrentSubmitted,
+    setFastCardPosition,
+    studyBindings,
+  ]);
 
   return (
-    <div className="fast-flashcard-layout">
+    <div className={`fast-flashcard-layout ${isViewMode ? "focus-mode" : ""}`}>
       <FastStatsPanel
         isTimeModeEnabled={isTimeModeEnabled}
         timeModeActive={timeModeActive}
@@ -13763,13 +25339,26 @@ export const FastFlashcardPage = () => {
         lastSessions={lastSessions}
       />
       <section className="panel fast-flashcard-panel">
-        <FastHeader hasScannedCards={hasScannedCards} />
+        {isViewMode ? (
+          <StudyTimeBar
+            elapsedMs={elapsedMs}
+            maxMs={maxTimeMs}
+            isRunning={timeModeActive}
+          />
+        ) : null}
+        <FastHeader
+          hasScannedCards={hasScannedCards}
+          isViewMode={isViewMode}
+          onToggleView={() => setIsViewMode((prev) => !prev)}
+          viewLabel={viewLabel}
+        />
         <FastCardHost
           hasScannedCards={hasScannedCards}
           hasFilteredCards={hasFilteredCards}
           currentEntry={currentEntry}
           isCurrentSubmitted={isCurrentSubmitted}
           submissionLocked={submissionLocked}
+          helpEnabled={settings.fastFlashcardHelpEnabled}
           fastFlashcards={fastFlashcards}
           orderedEntries={orderedEntries}
           canGoBack={canGoBack}
@@ -13800,7 +25389,66 @@ export const FastFlashcardPage = () => {
 
 ---
 
+## 📝 useFastSession.test.ts — ./pages/fast-flashcard/hooks/useFastSession.test.ts
+
+import { describe, expect, it, vi } from "vitest";
+import type { FastFlashcardResult } from "./useFastSession";
+import { processSessionResults } from "./useFastSession";
+
+describe("processSessionResults", () => {
+  it("only registers a submission once after a pending state", () => {
+    const counted = new Set<number>();
+    const register = vi.fn<(index: number, result: FastFlashcardResult) => void>();
+    const attempts = new Map<number, number>();
+    const resolve = (index: number): FastFlashcardResult | null => {
+      const attempt = attempts.get(index) ?? 0;
+      attempts.set(index, attempt + 1);
+      if (attempt === 0) {
+        return null;
+      }
+      return "correct";
+    };
+
+    processSessionResults([0], counted, resolve, register);
+    expect(register).not.toHaveBeenCalled();
+    expect(counted.has(0)).toBe(false);
+
+    processSessionResults([0], counted, resolve, register);
+    expect(register).toHaveBeenCalledTimes(1);
+    expect(register).toHaveBeenCalledWith(0, "correct");
+    expect(counted.has(0)).toBe(true);
+
+    processSessionResults([0], counted, resolve, register);
+    expect(register).toHaveBeenCalledTimes(1);
+  });
+});
+
+---
+
 ## 📝 useFastSession.ts — ./pages/fast-flashcard/hooks/useFastSession.ts
+
+/**
+ * @file apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useFastSession fuer Fast Flashcard bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Fast Flashcard.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - fastFlashcardStatusLabel: Zentrale Export-API.
+ * - subscribeFastFlashcardHistoryReset: Zentrale Export-API.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
 
 import {
   useCallback,
@@ -13814,27 +25462,20 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { useAppState } from "../../../components/AppStateProvider";
 import { evaluateFlashcardResult } from "../../../features/flashcards/logic";
+import type {
+  FastFlashcardResult,
+  FastFlashcardSessionSummary,
+  FastFlashcardStorage,
+} from "../../../lib/fastFlashcard";
+import {
+  createEmptyFastFlashcardStore,
+  loadFastFlashcardStore,
+  saveFastFlashcardStore,
+} from "../../../features/user-vault/storage";
 
 export const fastFlashcardStatusLabel = "Not scanned yet";
 
-export type FastFlashcardResult = "correct" | "incorrect" | "timeout";
-
-export type FastFlashcardSessionSummary = {
-  id: string;
-  endedAt: string;
-  score: number;
-  correct: number;
-  incorrect: number;
-  timeout?: number;
-  total: number;
-  accuracy: number;
-  pace: number;
-  durationMs: number;
-};
-
-type FastFlashcardStorage = {
-  sessions: FastFlashcardSessionSummary[];
-};
+export type { FastFlashcardResult, FastFlashcardSessionSummary, FastFlashcardStorage };
 
 type FastFlashcardHistoryResetListener = () => void;
 
@@ -13850,10 +25491,17 @@ export const subscribeFastFlashcardHistoryReset = (
   };
 };
 
-export const resetFastFlashcardHistory = async () => {
+export const resetFastFlashcardHistory = async (profilePath?: string | null) => {
   try {
-    const storage: FastFlashcardStorage = { sessions: [] };
-    await invoke("save_fast_flashcard_data", { storage });
+    if (profilePath) {
+      await saveFastFlashcardStore(profilePath, {
+        ...createEmptyFastFlashcardStore(),
+        migratedFromAppData: true,
+      });
+    } else {
+      const storage: FastFlashcardStorage = { sessions: [] };
+      await invoke("save_fast_flashcard_data", { storage });
+    }
     fastFlashcardHistoryResetListeners.forEach((listener) => listener());
     return true;
   } catch (error) {
@@ -13914,8 +25562,31 @@ export const formatSessionTimestamp = (value: string) => {
 export const formatSessionPace = (pace: number) =>
   Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
+export type SessionResultResolver = (
+  index: number,
+) => FastFlashcardResult | null;
+
+export const processSessionResults = (
+  indices: number[],
+  counted: Set<number>,
+  resolve: SessionResultResolver,
+  register: (index: number, result: FastFlashcardResult) => void,
+) => {
+  indices.forEach((index) => {
+    if (counted.has(index)) {
+      return;
+    }
+    const result = resolve(index);
+    if (!result) {
+      return;
+    }
+    register(index, result);
+    counted.add(index);
+  });
+};
+
 export const useFastSession = () => {
-  const { fastFlashcards, settings } = useAppState();
+  const { fastFlashcards, settings, userVault } = useAppState();
   const {
     flashcardSubmissions,
     handleFlashcardSelfGrade,
@@ -13936,6 +25607,8 @@ export const useFastSession = () => {
     FastFlashcardSessionSummary[]
   >([]);
   const [sessionHistoryLoaded, setSessionHistoryLoaded] = useState(false);
+  const [fastFlashcardMigratedFromLegacy, setFastFlashcardMigratedFromLegacy] =
+    useState(false);
   const timerRef = useRef<number | null>(null);
   const sessionTimerRef = useRef<number | null>(null);
   const sessionStartRef = useRef<number | null>(null);
@@ -14085,31 +25758,53 @@ export const useFastSession = () => {
       if (indices.length === 0) {
         return;
       }
-      const counted = sessionCountedRef.current;
-      indices.forEach((index) => counted.add(index));
-      indices.forEach((index) => {
-        const result = resolveSessionResult(index);
-        if (result) {
-          registerSessionResult(index, result);
-        }
-      });
+      processSessionResults(
+        indices,
+        sessionCountedRef.current,
+        resolveSessionResult,
+        registerSessionResult,
+      );
     },
     [registerSessionResult, resolveSessionResult],
   );
 
   useEffect(() => {
     let cancelled = false;
+    setSessionHistory([]);
+    setSessionHistoryLoaded(false);
 
     const loadSessions = async () => {
       try {
-        const storage = await invoke<FastFlashcardStorage>(
-          "load_fast_flashcard_data",
-        );
+        if (userVault.activeProfilePath) {
+          const store = await loadFastFlashcardStore(userVault.activeProfilePath);
+          let sessions = store.sessions;
+          let migrated = store.migratedFromAppData;
+          if (!migrated && sessions.length === 0) {
+            const legacy = await invoke<FastFlashcardStorage>(
+              "load_fast_flashcard_data",
+            );
+            sessions = Array.isArray(legacy?.sessions) ? legacy.sessions : [];
+            migrated = true;
+            await saveFastFlashcardStore(userVault.activeProfilePath, {
+              ...store,
+              sessions,
+              migratedFromAppData: migrated,
+            });
+          }
+          if (cancelled) {
+            return;
+          }
+          setSessionHistory(sessions);
+          setFastFlashcardMigratedFromLegacy(migrated);
+          return;
+        }
+        const storage = await invoke<FastFlashcardStorage>("load_fast_flashcard_data");
         if (cancelled) {
           return;
         }
         const sessions = Array.isArray(storage?.sessions) ? storage.sessions : [];
         setSessionHistory(sessions);
+        setFastFlashcardMigratedFromLegacy(false);
       } catch (error) {
         console.warn("Failed to load fast flashcard sessions", error);
       } finally {
@@ -14124,27 +25819,41 @@ export const useFastSession = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userVault.activeProfilePath, userVault.revision]);
 
   useEffect(
     () =>
       subscribeFastFlashcardHistoryReset(() => {
         setSessionHistory([]);
+        if (userVault.activeProfilePath) {
+          setFastFlashcardMigratedFromLegacy(true);
+        }
       }),
-    [],
+    [userVault.activeProfilePath],
   );
 
   useEffect(() => {
     if (!sessionHistoryLoaded) {
       return;
     }
-    const storage: FastFlashcardStorage = {
-      sessions: sessionHistory,
-    };
+    if (userVault.activeProfilePath) {
+      void saveFastFlashcardStore(userVault.activeProfilePath, {
+        ...createEmptyFastFlashcardStore(),
+        sessions: sessionHistory,
+        migratedFromAppData: fastFlashcardMigratedFromLegacy,
+      });
+      return;
+    }
+    const storage: FastFlashcardStorage = { sessions: sessionHistory };
     void invoke("save_fast_flashcard_data", { storage }).catch((error) => {
       console.warn("Failed to save fast flashcard sessions", error);
     });
-  }, [sessionHistory, sessionHistoryLoaded]);
+  }, [
+    fastFlashcardMigratedFromLegacy,
+    sessionHistory,
+    sessionHistoryLoaded,
+    userVault.activeProfilePath,
+  ]);
 
   useEffect(() => {
     if (fastCardPosition < orderedEntries.length) {
@@ -14580,6 +26289,8 @@ export const useFastSession = () => {
     hasFilteredCards,
     isCurrentSubmitted,
     submissionLocked,
+    timeRemaining,
+    sessionElapsedMs,
     handleCompositeOptionSelect,
     handleCompositeTrueFalseSelect,
     handleCompositeClozeInputChange,
@@ -14629,13 +26340,55 @@ export const useFastSession = () => {
 
 ## 📝 FastFlashcardPage.tsx — ./pages/FastFlashcardPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/FastFlashcardPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Fast Flashcard.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx: Seiten-Komponente.
+ * - apps/fmd-desktop/src/App.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 export { FastFlashcardPage } from "./fast-flashcard/FastFlashcardPage";
 
 ---
 
 ## 📝 FlashcardPage.tsx — ./pages/FlashcardPage.tsx
 
-import { useCallback, useEffect, useState, type DragEvent } from "react";
+/**
+ * @file apps/fmd-desktop/src/pages/FlashcardPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Flashcard.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - FlashcardPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
+import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { CompositeCard } from "../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../components/flashcards/FreeTextCard";
@@ -14649,30 +26402,61 @@ import {
   isFlashcardPartComplete,
 } from "../features/flashcards/logic";
 import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
+import {
+  formatBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "../lib/shortcuts/bindings";
+import { getShortcutById } from "../lib/shortcuts/registry";
 
 const flashcardStatusLabel = "Not scanned yet";
-
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-  const tagName = target.tagName;
-  return (
-    target.isContentEditable ||
-    tagName === "INPUT" ||
-    tagName === "TEXTAREA" ||
-    tagName === "SELECT"
-  );
-};
+const flashcardToggleCommand = getShortcutById("toggleViewMode");
+const flashcardPrevCommand = getShortcutById("studyPrevious");
+const flashcardNextCommand = getShortcutById("studyNext");
+const flashcardSubmitCommand = getShortcutById("studySubmit");
 
 export const FlashcardPage = () => {
-  const { flashcards } = useAppState();
+  const { flashcards, settings } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const totalQuestions = flashcards.filteredFlashcardCount;
   const hasScannedCards = flashcards.flashcards.length > 0;
   const hasFilteredCards = flashcards.filteredFlashcardCount > 0;
-  const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
+  const helpEnabled = settings.flashcardHelpEnabled;
+  const platform = getShortcutPlatform();
+  const shortcutBindings = useMemo(() => {
+    const bindings = settings.keyboardShortcuts.bindings;
+    return {
+      toggle: flashcardToggleCommand
+        ? getEffectiveBinding(flashcardToggleCommand, bindings, platform)
+        : null,
+      prev: flashcardPrevCommand
+        ? getEffectiveBinding(flashcardPrevCommand, bindings, platform)
+        : null,
+      next: flashcardNextCommand
+        ? getEffectiveBinding(flashcardNextCommand, bindings, platform)
+        : null,
+      submit: flashcardSubmitCommand
+        ? getEffectiveBinding(flashcardSubmitCommand, bindings, platform)
+        : null,
+    };
+  }, [platform, settings.keyboardShortcuts.bindings]);
+
+  const viewLabel = "View";
+  const toggleShortcutLabel = shortcutBindings.toggle
+    ? formatBinding(shortcutBindings.toggle, platform)
+    : null;
+  const focusTitle = toggleShortcutLabel
+    ? `${viewLabel} (${toggleShortcutLabel})`
+    : viewLabel;
+  const prevShortcutTitle = shortcutBindings.prev
+    ? `Back (${formatBinding(shortcutBindings.prev, platform)})`
+    : "Back";
+  const nextShortcutTitle = shortcutBindings.next
+    ? `Next (${formatBinding(shortcutBindings.next, platform)})`
+    : "Next";
 
   useEffect(() => {
     document.body.classList.toggle("focus-mode", isFocusMode);
@@ -14682,27 +26466,32 @@ export const FlashcardPage = () => {
   }, [isFocusMode]);
 
   useEffect(() => {
-    if (!isFocusMode) {
-      return;
-    }
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return;
       }
-      if (event.altKey || event.ctrlKey || event.metaKey) {
-        return;
-      }
-      if (event.key === "Escape") {
+      const isEditable = isEditableTarget(event.target);
+
+      const canTrigger = (
+        command: typeof flashcardToggleCommand,
+        binding: string | null,
+      ) => {
+        if (!command || !binding) {
+          return false;
+        }
+        if (!command.allowInTextInputs && isEditable) {
+          return false;
+        }
+        return matchesBinding(event, binding);
+      };
+
+      if (canTrigger(flashcardToggleCommand, shortcutBindings.toggle)) {
         event.preventDefault();
-        setIsFocusMode(false);
-        return;
-      }
-      if (isEditableTarget(event.target)) {
+        setIsFocusMode((prev) => !prev);
         return;
       }
 
-      if (event.key === "ArrowLeft") {
+      if (canTrigger(flashcardPrevCommand, shortcutBindings.prev)) {
         event.preventDefault();
         if (flashcards.canGoBack) {
           flashcards.handleFlashcardPageBack();
@@ -14710,7 +26499,7 @@ export const FlashcardPage = () => {
         return;
       }
 
-      if (event.key === "ArrowRight") {
+      if (canTrigger(flashcardNextCommand, shortcutBindings.next)) {
         event.preventDefault();
         if (flashcards.canGoNext) {
           flashcards.handleFlashcardPageNext();
@@ -14718,7 +26507,7 @@ export const FlashcardPage = () => {
         return;
       }
 
-      if (event.key !== "Enter" && event.key !== "NumpadEnter") {
+      if (!canTrigger(flashcardSubmitCommand, shortcutBindings.submit)) {
         return;
       }
 
@@ -14810,23 +26599,19 @@ export const FlashcardPage = () => {
       } else if (card.kind === "free-text") {
         return;
       } else {
-      const responses = flashcards.flashcardClozeResponses[resolvedIndex] ?? {};
-      if (!areClozeBlanksComplete(card, responses)) {
-        return;
+        const responses = flashcards.flashcardClozeResponses[resolvedIndex] ?? {};
+        if (!areClozeBlanksComplete(card, responses)) {
+          return;
+        }
       }
-    }
 
-    event.preventDefault();
-    flashcards.handleFlashcardSubmit(resolvedIndex, true);
+      event.preventDefault();
+      flashcards.handleFlashcardSubmit(resolvedIndex, true);
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    activeCardIndex,
-    flashcards,
-    isFocusMode,
-  ]);
+  }, [activeCardIndex, flashcards, shortcutBindings]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
@@ -14998,8 +26783,8 @@ export const FlashcardPage = () => {
               className={`focus-toggle ${isFocusMode ? "active" : ""}`}
               onClick={() => setIsFocusMode((prev) => !prev)}
               aria-pressed={isFocusMode}
-              aria-label={focusLabel}
-              title={focusLabel}
+              aria-label={focusTitle}
+              title={focusTitle}
             >
               <svg
                 aria-hidden="true"
@@ -15037,6 +26822,8 @@ export const FlashcardPage = () => {
                       card={card}
                       cardIndex={cardIndex}
                       submitted={submitted}
+                      helpText={card.helpText}
+                      helpEnabled={helpEnabled}
                       partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
                       onOptionSelect={handleCompositeOptionSelect}
                       onTrueFalseSelect={handleCompositeTrueFalseSelect}
@@ -15060,6 +26847,8 @@ export const FlashcardPage = () => {
                       card={card}
                       cardIndex={cardIndex}
                       submitted={submitted}
+                      helpText={card.helpText}
+                      helpEnabled={helpEnabled}
                       responses={flashcards.flashcardClozeResponses[cardIndex] ?? {}}
                       onInputChange={handleClozeInputChange}
                       onTokenDrop={handleClozeTokenDrop}
@@ -15078,6 +26867,8 @@ export const FlashcardPage = () => {
                       card={card}
                       cardIndex={cardIndex}
                       submitted={submitted}
+                      helpText={card.helpText}
+                      helpEnabled={helpEnabled}
                       selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
                       onSelect={handleTrueFalseSelect}
                       onSubmit={flashcards.handleFlashcardSubmit}
@@ -15092,6 +26883,8 @@ export const FlashcardPage = () => {
                       card={card}
                       cardIndex={cardIndex}
                       submitted={submitted}
+                      helpText={card.helpText}
+                      helpEnabled={helpEnabled}
                       response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
                       revealed={flashcards.flashcardTextRevealed[cardIndex] ?? false}
                       selfGrade={flashcards.flashcardSelfGrades[cardIndex]}
@@ -15108,6 +26901,8 @@ export const FlashcardPage = () => {
                     card={card}
                     cardIndex={cardIndex}
                     submitted={submitted}
+                    helpText={card.helpText}
+                    helpEnabled={helpEnabled}
                     selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}
                     onSelect={handleOptionSelect}
                     onSubmit={flashcards.handleFlashcardSubmit}
@@ -15122,6 +26917,7 @@ export const FlashcardPage = () => {
               className="ghost small"
               onClick={flashcards.handleFlashcardPageBack}
               disabled={!flashcards.canGoBack}
+              title={prevShortcutTitle}
             >
               Back
             </button>
@@ -15130,6 +26926,7 @@ export const FlashcardPage = () => {
               className="ghost small"
               onClick={flashcards.handleFlashcardPageNext}
               disabled={!flashcards.canGoNext}
+              title={nextShortcutTitle}
             >
               Next
             </button>
@@ -15264,6 +27061,24 @@ export const FlashcardPage = () => {
 ---
 
 ## 📝 appSections.ts — ./pages/help/content/appSections.ts
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/appSections.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 import { AppSectionData, AppSectionId, LocalizedText } from "./types";
 
@@ -15500,6 +27315,24 @@ export const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
 
 ## 📝 i18n.ts — ./pages/help/content/i18n.ts
 
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/i18n.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 import { AppLanguage, LocalizedText } from "./types";
 
 export const resolveText = (value: LocalizedText, language: AppLanguage) => {
@@ -15517,6 +27350,23 @@ export const resolveList = (items: LocalizedText[] | undefined, language: AppLan
 ---
 
 ## 📝 labels.ts — ./pages/help/content/labels.ts
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/labels.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 export const helpHeader = {
   eyebrow: { en: "Help", de: "Hilfe" },
@@ -15546,6 +27396,24 @@ export const helpLabels = {
 ---
 
 ## 📝 entries.ts — ./pages/help/content/syntax/entries.ts
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/syntax/entries.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 import { SyntaxEntry } from "../types";
 
@@ -16271,6 +28139,23 @@ export const flashcardSyntaxEntries: SyntaxEntry[] = [
 
 ## 📝 overview.ts — ./pages/help/content/syntax/overview.ts
 
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/syntax/overview.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 export const flashcardSyntaxOverview = {
   title: { en: "Core rules", de: "Grundregeln" },
   bullets: [
@@ -16292,6 +28177,24 @@ export const flashcardSyntaxOverview = {
 ---
 
 ## 📝 topics.ts — ./pages/help/content/topics.ts
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/topics.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
 
 import { HelpTopic } from "./types";
 
@@ -16453,21 +28356,21 @@ export const helpTopics: HelpTopic[] = [
     id: "extras",
     title: { en: "Additional features", de: "Weitere Funktionsbereiche" },
     summary: {
-      en: "Focus mode, shortcuts, and optional tooling to speed up review and reduce distractions.",
-      de: "Fokusmodus, Shortcuts und optionale Funktionen fuer schnelleres Review und weniger Ablenkung.",
+      en: "View mode, shortcuts, and optional tooling to speed up review and reduce distractions.",
+      de: "Ansichtsmodus, Shortcuts und optionale Funktionen fuer schnelleres Review und weniger Ablenkung.",
     },
     sections: [
       {
         id: "extras-focus",
-        title: { en: "Focus mode", de: "Fokusmodus" },
+        title: { en: "View mode", de: "Ansichtsmodus" },
         bullets: [
           {
-            en: "Use the eye icon to focus on the card and hide the rest of the UI for distraction-free review.",
-            de: "Mit dem Auge-Icon nur die Karte anzeigen und den Rest fuer konzentriertes Review ausblenden.",
+            en: "Use the eye icon to toggle View and hide the rest of the UI for distraction-free review.",
+            de: "Mit dem Auge-Icon den Ansichtsmodus umschalten und den Rest fuer konzentriertes Review ausblenden.",
           },
           {
-            en: "Press Esc to exit focus mode and restore the full layout.",
-            de: "Mit Esc den Fokusmodus verlassen und das volle Layout wiederherstellen.",
+            en: "Press F again to exit View and restore the full layout.",
+            de: "Mit F den Ansichtsmodus wieder verlassen und das volle Layout wiederherstellen.",
           },
         ],
       },
@@ -16476,8 +28379,8 @@ export const helpTopics: HelpTopic[] = [
         title: { en: "Shortcuts", de: "Shortcuts" },
         bullets: [
           {
-            en: "In focus mode: Left/Right for Back/Next, Enter to submit when possible, keeping hands on the keyboard.",
-            de: "Im Fokusmodus: Links/Rechts fuer Zurueck/Weiter, Enter zum Abgeben; Haende bleiben auf der Tastatur.",
+            en: "In View mode: Left/Right for Back/Next, Enter to submit when possible, keeping hands on the keyboard.",
+            de: "Im Ansichtsmodus: Links/Rechts fuer Zurueck/Weiter, Enter zum Abgeben; Haende bleiben auf der Tastatur.",
           },
           {
             en: "Shortcuts are ignored while typing in inputs to avoid accidental submissions.",
@@ -16502,6 +28405,24 @@ export const helpTopics: HelpTopic[] = [
 ---
 
 ## 📝 types.ts — ./pages/help/content/types.ts
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/content/types.ts
+ *
+ * Zweck:
+ * - Definiert Typen und Schnittstellen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Definiert Typen fuer Datenstrukturen und APIs.
+ * - Sichert konsistente Verwendung in Features und Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/content/appSections.ts: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/pages/help/content/i18n.ts: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Typanpassungen koennen mehrere Module betreffen.
+ */
 
 export type AppLanguage = "de" | "en";
 export type LocalizedText = { de?: string; en?: string };
@@ -16574,6 +28495,25 @@ export type AppSectionData = {
 
 ## 📝 helpContent.ts — ./pages/help/helpContent.ts
 
+/**
+ * @file apps/fmd-desktop/src/pages/help/helpContent.ts
+ *
+ * Zweck:
+ * - Enthaelt Hilfsfunktionen fuer Help.
+ *
+ * Verantwortlichkeiten:
+ * - Stellt Hilfsfunktionen fuer Help bereit.
+ * - Normalisiert oder validiert Daten, wo erforderlich.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/content/i18n.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/content/labels.ts: Seiten-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen alle nutzenden Module.
+ */
+
 export * from "./content/types";
 export * from "./content/i18n";
 export * from "./content/labels";
@@ -16585,6 +28525,28 @@ export * from "./content/syntax/entries";
 ---
 
 ## 📝 AppSectionsGuidePanel.tsx — ./pages/help/sections/AppSectionsGuidePanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite App Sections Guide Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - AppSectionsGuidePanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import { useEffect, useState } from "react";
 import {
@@ -16765,6 +28727,29 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
 
 ## 📝 HelpDetailSection.tsx — ./pages/help/sections/HelpDetailSection.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help Detail Section.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.tsx: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/HelpTopicSections.tsx: Seiten-Komponente.
+ *
+ * Exportiert:
+ * - HelpDetailSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { AppLanguage, HelpTopic, SyntaxEntry, helpLabels, resolveText } from "../helpContent";
 import { AppSectionsGuidePanel } from "./AppSectionsGuidePanel";
 import { HelpTopicSections } from "./HelpTopicSections";
@@ -16890,6 +28875,27 @@ export const HelpDetailSection = ({
 
 ## 📝 HelpHeaderSection.tsx — ./pages/help/sections/HelpHeaderSection.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/HelpHeaderSection.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help Header Section.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - HelpHeaderSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 type HelpHeaderSectionProps = {
   eyebrowText: string;
   titleText: string;
@@ -16913,6 +28919,28 @@ export const HelpHeaderSection = ({
 ---
 
 ## 📝 HelpOverviewSection.tsx — ./pages/help/sections/HelpOverviewSection.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/HelpOverviewSection.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help Overview Section.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - HelpOverviewSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import { AppLanguage, HelpTopic, helpLabels, resolveText } from "../helpContent";
 
@@ -16961,6 +28989,28 @@ export const HelpOverviewSection = ({
 
 ## 📝 HelpTopicHeadingsBlock.tsx — ./pages/help/sections/HelpTopicHeadingsBlock.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/HelpTopicHeadingsBlock.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help Topic Headings Block.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - HelpTopicHeadingsBlock: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { AppLanguage, HelpTopic, resolveText } from "../helpContent";
 
 type HelpTopicHeadingsBlockProps = {
@@ -16994,6 +29044,28 @@ export const HelpTopicHeadingsBlock = ({
 ---
 
 ## 📝 HelpTopicSections.tsx — ./pages/help/sections/HelpTopicSections.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/HelpTopicSections.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help Topic Sections.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - HelpTopicSections: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import {
   AppLanguage,
@@ -17088,6 +29160,28 @@ export const HelpTopicSections = ({
 ---
 
 ## 📝 SyntaxSection.tsx — ./pages/help/sections/SyntaxSection.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/help/sections/SyntaxSection.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Syntax Section.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - SyntaxSection: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import {
   AppLanguage,
@@ -17313,8 +29407,32 @@ export const SyntaxSection = ({
 
 ## 📝 HelpPage.tsx — ./pages/HelpPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/HelpPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Help.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Seiten-Komponente.
+ *
+ * Exportiert:
+ * - HelpPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { useEffect, useRef, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import {
   AppLanguage,
   flashcardSyntaxEntries,
@@ -17349,7 +29467,6 @@ export const HelpPage = () => {
     flashcardSyntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
     flashcardSyntaxEntries[0] ??
     null;
-
   const titleText = resolveText(helpHeader.title, language);
   const eyebrowText = resolveText(helpHeader.eyebrow, language);
   const summaryText = resolveText(helpHeader.summary, language);
@@ -17416,18 +29533,13 @@ export const HelpPage = () => {
     if (!activeTopicId) {
       return;
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      event.preventDefault();
-      setActiveTopicId(null);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [activeTopicId]);
+    return registerCloseLayer({
+      id: "help-topic-detail",
+      priority: 100,
+      isActive: () => true,
+      onClose: () => setActiveTopicId(null),
+    });
+  }, [activeTopicId, setActiveTopicId]);
 
   useEffect(
     () => () => {
@@ -17499,11 +29611,36 @@ export const HelpPage = () => {
 
 ## 📝 SettingsPage.tsx — ./pages/SettingsPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/SettingsPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Settings.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/settings/AppearanceSection.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/settings/ExamSettingsSection.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - SettingsPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { useCallback, useMemo, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import { ExamSettingsSection } from "../components/settings/ExamSettingsSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
+import { KeyboardShortcutsSection } from "../components/settings/KeyboardShortcutsSection";
+import { MarkdownEditorSection } from "../components/settings/MarkdownEditorSection";
 import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
 import { LanguageTabContent } from "../components/settings/DataSyncTabContent";
 import { PerformanceTabContent } from "../components/settings/PerformanceTabContent";
@@ -17516,6 +29653,7 @@ import {
   SPACED_REPETITION_PAGE_SIZES,
 } from "../features/spaced-repetition/useSpacedRepetition";
 import { resetFastFlashcardHistory } from "./fast-flashcard/hooks/useFastSession";
+import { resetExamRunHistory } from "../lib/examRuns";
 
 export const SettingsPage = () => {
   const {
@@ -17525,6 +29663,7 @@ export const SettingsPage = () => {
     settings,
     settingsNav,
     spacedRepetition,
+    userVault,
     vault,
   } = useAppState();
   const { language, setLanguage } = settings;
@@ -17541,16 +29680,23 @@ export const SettingsPage = () => {
   );
   const [isResetHistoryOpen, setIsResetHistoryOpen] = useState(false);
   const [isResetHistoryPending, setIsResetHistoryPending] = useState(false);
+  const [isResetExamStatsPending, setIsResetExamStatsPending] = useState(false);
   const { activeSettingsPage } = settingsNav;
 
   const handleResetHistoryConfirm = useCallback(async () => {
     setIsResetHistoryPending(true);
-    const success = await resetFastFlashcardHistory();
+    const success = await resetFastFlashcardHistory(userVault.activeProfilePath);
     setIsResetHistoryPending(false);
     if (success) {
       setIsResetHistoryOpen(false);
     }
-  }, [setIsResetHistoryOpen, resetFastFlashcardHistory]);
+  }, [setIsResetHistoryOpen, userVault.activeProfilePath, resetFastFlashcardHistory]);
+
+  const handleResetExamStatistics = useCallback(async () => {
+    setIsResetExamStatsPending(true);
+    await resetExamRunHistory(userVault.activeProfilePath);
+    setIsResetExamStatsPending(false);
+  }, [resetExamRunHistory, userVault.activeProfilePath]);
 
   return (
     <>
@@ -17563,8 +29709,12 @@ export const SettingsPage = () => {
           </p>
         </div>
         <div className="actions">
-          <button type="button" className="primary" onClick={actions.handlePickVault}>
-            Vault auswaehlen
+          <button
+            type="button"
+            className="primary"
+            onClick={actions.handleOpenVaultManager}
+          >
+            Manage Vaults
           </button>
         </div>
       </header>
@@ -17574,8 +29724,12 @@ export const SettingsPage = () => {
             lastOpenedFile={lastOpenedFile}
             listState={vault.listState}
             onCopyVaultPath={actions.handleCopyVaultPath}
+            onShowHiddenFoldersToggle={settings.setShowHiddenFolders}
             onRescanVault={actions.handleRescanVault}
+            onResetIndex={actions.handleResetIndex}
+            userVault={userVault}
             vaultIndexedComplete={vaultIndexedComplete}
+            showHiddenFolders={settings.showHiddenFolders}
             vaultPath={vault.vaultPath}
           />
           <section className="panel settings-performance-panel">
@@ -17610,6 +29764,8 @@ export const SettingsPage = () => {
             setFlashcardScope={flashcards.setFlashcardScope}
             setStatsResetMode={flashcards.setStatsResetMode}
             statsResetMode={flashcards.statsResetMode}
+            helpEnabled={settings.flashcardHelpEnabled}
+            setHelpEnabled={settings.setFlashcardHelpEnabled}
           />
           <section className="panel fast-flashcard-tools-panel">
             <div className="panel-header">
@@ -17709,6 +29865,24 @@ export const SettingsPage = () => {
                 </div>
               </div>
               <div className="setting-row">
+                <span className="label">HELP / HINTS</span>
+                <div className="setting-inline">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={settings.fastFlashcardHelpEnabled}
+                      onChange={(event) =>
+                        settings.setFastFlashcardHelpEnabled(event.target.checked)
+                      }
+                    />
+                    <span className="slider" />
+                  </label>
+                  <span className="muted">
+                    {settings.fastFlashcardHelpEnabled ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+              </div>
+              <div className="setting-row">
                 <span className="label">SESSION HISTORY</span>
                 <div className="setting-actions">
                   <button
@@ -17737,6 +29911,19 @@ export const SettingsPage = () => {
             setSpacedRepetitionRepetitionStrength={
               spacedRepetition.setSpacedRepetitionRepetitionStrength
             }
+            helpEnabled={settings.spacedRepetitionHelpEnabled}
+            setHelpEnabled={settings.setSpacedRepetitionHelpEnabled}
+          />
+        </div>
+      ) : null}
+      {activeSettingsPage === "keyboard-shortcuts" ? (
+        <div
+          className="settings-page settings-single-column"
+          id="settings-page-keyboard-shortcuts"
+        >
+          <KeyboardShortcutsSection
+            keyboardShortcuts={settings.keyboardShortcuts}
+            setKeyboardShortcuts={settings.setKeyboardShortcuts}
           />
         </div>
       ) : null}
@@ -17749,10 +29936,24 @@ export const SettingsPage = () => {
             maxTotalPoints={settings.examMaxTotalPoints}
             taskCount={settings.examTaskCount}
             taskPoints={settings.examTaskPoints.slice(0, settings.examTaskCount)}
+            durationMinutes={settings.examDurationMinutes}
+            timeLimitEnabled={settings.examTimeLimitEnabled}
+            showTimeline={settings.examShowTimeline}
+            helpEnabled={settings.examHelpEnabled}
+            autoCardsEnabled={settings.examAutoCardsEnabled}
+            autoCardsReturnOnCorrect={settings.examAutoCardsReturnOnCorrect}
             aiEvaluation={settings.examAiEvaluation}
+            resetStatisticsPending={isResetExamStatsPending}
             setMaxTotalPoints={settings.setExamMaxTotalPoints}
             setTaskCount={settings.setExamTaskCount}
             setTaskPoints={settings.setExamTaskPoints}
+            setDurationMinutes={settings.setExamDurationMinutes}
+            setTimeLimitEnabled={settings.setExamTimeLimitEnabled}
+            setShowTimeline={settings.setExamShowTimeline}
+            setHelpEnabled={settings.setExamHelpEnabled}
+            setAutoCardsEnabled={settings.setExamAutoCardsEnabled}
+            setAutoCardsReturnOnCorrect={settings.setExamAutoCardsReturnOnCorrect}
+            onResetStatistics={handleResetExamStatistics}
           />
         </div>
       ) : null}
@@ -17762,17 +29963,9 @@ export const SettingsPage = () => {
             accentColor={settings.accentColor}
             accentDraft={settings.accentDraft}
             accentError={settings.accentError}
-            editorExactColors={settings.editorExactColors}
-            editorBlueprintGrid={settings.editorBlueprintGrid}
-            editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
             onAccentInputChange={actions.handleAccentInputChange}
             onAccentPick={actions.handleAccentPick}
             onCopyAccent={actions.handleCopyAccent}
-            onEditorExactColorsToggle={settings.setEditorExactColors}
-            onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
-            onEditorBlueprintGridIntensityChange={
-              settings.setEditorBlueprintGridIntensity
-            }
             onThemeToggle={actions.handleThemeChange}
             theme={settings.theme}
           />
@@ -17792,6 +29985,23 @@ export const SettingsPage = () => {
           </section>
         </div>
       ) : null}
+      {activeSettingsPage === "markdown-editor" ? (
+        <div
+          className="settings-page settings-single-column"
+          id="settings-page-markdown-editor"
+        >
+          <MarkdownEditorSection
+            editorExactColors={settings.editorExactColors}
+            editorBlueprintGrid={settings.editorBlueprintGrid}
+            editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
+            onEditorExactColorsToggle={settings.setEditorExactColors}
+            onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
+            onEditorBlueprintGridIntensityChange={
+              settings.setEditorBlueprintGridIntensity
+            }
+          />
+        </div>
+      ) : null}
       <ResetSessionHistoryModal
         isOpen={isResetHistoryOpen}
         isPending={isResetHistoryPending}
@@ -17805,6 +30015,28 @@ export const SettingsPage = () => {
 ---
 
 ## 📝 SrBoxesPanel.tsx — ./pages/spaced-repetition/components/SrBoxesPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrBoxesPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Boxes Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsAndChart.tsx: Nutzt dieses Modul.
+ * - react: React-API.
+ *
+ * Exportiert:
+ * - SrBoxesPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import type { CSSProperties } from "react";
 
@@ -17859,6 +30091,29 @@ export const SrBoxesPanel = ({
 
 ## 📝 SrCardHost.tsx — ./pages/spaced-repetition/components/SrCardHost.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrCardHost.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Card Host.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - SrCardHost: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import type { DragEvent } from "react";
 import { ClozeCard } from "../../../components/flashcards/ClozeCard";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
@@ -17873,6 +30128,7 @@ type SrCardHostProps = {
   activeBoxFilter: number | null;
   spacedRepetitionEmptyState: string;
   spacedRepetitionSubmissions: Record<number, boolean>;
+  helpEnabled: boolean;
   spacedRepetitionCompositeStates?: Record<number, any[]>;
   spacedRepetitionClozeResponses: Record<number, Record<string, string>>;
   spacedRepetitionTrueFalseSelections: Record<number, Record<string, any>>;
@@ -17942,6 +30198,8 @@ type SrCardHostProps = {
   spacedRepetitionCanGoNext: boolean;
   handleSpacedRepetitionPageBack: () => void;
   handleSpacedRepetitionPageNext: () => void;
+  prevShortcutTitle: string;
+  nextShortcutTitle: string;
 };
 
 export const SrCardHost = ({
@@ -17950,6 +30208,7 @@ export const SrCardHost = ({
   activeBoxFilter,
   spacedRepetitionEmptyState,
   spacedRepetitionSubmissions,
+  helpEnabled,
   spacedRepetitionCompositeStates,
   spacedRepetitionClozeResponses,
   spacedRepetitionTrueFalseSelections,
@@ -17980,6 +30239,8 @@ export const SrCardHost = ({
   spacedRepetitionCanGoNext,
   handleSpacedRepetitionPageBack,
   handleSpacedRepetitionPageNext,
+  prevShortcutTitle,
+  nextShortcutTitle,
 }: SrCardHostProps) => (
   <div className="panel-body">
     {filteredFlashcardEntries.length === 0 ? (
@@ -18000,6 +30261,8 @@ export const SrCardHost = ({
                 card={card}
                 cardIndex={cardIndex}
                 submitted={submitted}
+                helpText={card.helpText}
+                helpEnabled={helpEnabled}
                 partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
                 onOptionSelect={handleCompositeOptionSelect}
                 onTrueFalseSelect={handleCompositeTrueFalseSelect}
@@ -18023,6 +30286,8 @@ export const SrCardHost = ({
                 card={card}
                 cardIndex={cardIndex}
                 submitted={submitted}
+                helpText={card.helpText}
+                helpEnabled={helpEnabled}
                 responses={spacedRepetitionClozeResponses[cardIndex] ?? {}}
                 onInputChange={handleClozeInputChange}
                 onTokenDrop={handleClozeTokenDrop}
@@ -18041,6 +30306,8 @@ export const SrCardHost = ({
                 card={card}
                 cardIndex={cardIndex}
                 submitted={submitted}
+                helpText={card.helpText}
+                helpEnabled={helpEnabled}
                 selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
                 onSelect={handleTrueFalseSelect}
                 onSubmit={handleSpacedRepetitionSubmit}
@@ -18055,6 +30322,8 @@ export const SrCardHost = ({
                 card={card}
                 cardIndex={cardIndex}
                 submitted={submitted}
+                helpText={card.helpText}
+                helpEnabled={helpEnabled}
                 response={spacedRepetitionTextResponses[cardIndex] ?? ""}
                 revealed={spacedRepetitionTextRevealed[cardIndex] ?? false}
                 selfGrade={spacedRepetitionSelfGrades[cardIndex]}
@@ -18071,6 +30340,8 @@ export const SrCardHost = ({
               card={card}
               cardIndex={cardIndex}
               submitted={submitted}
+              helpText={card.helpText}
+              helpEnabled={helpEnabled}
               selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}
               onSelect={handleOptionSelect}
               onSubmit={handleSpacedRepetitionSubmit}
@@ -18084,6 +30355,8 @@ export const SrCardHost = ({
       spacedRepetitionCanGoNext={spacedRepetitionCanGoNext}
       handleSpacedRepetitionPageBack={handleSpacedRepetitionPageBack}
       handleSpacedRepetitionPageNext={handleSpacedRepetitionPageNext}
+      prevShortcutTitle={prevShortcutTitle}
+      nextShortcutTitle={nextShortcutTitle}
     />
   </div>
 );
@@ -18091,6 +30364,30 @@ export const SrCardHost = ({
 ---
 
 ## 📝 SrDeleteModal.tsx — ./pages/spaced-repetition/components/SrDeleteModal.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrDeleteModal.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Delete Modal.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - SrDeleteModal: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
+import { useEffect } from "react";
+import { registerCloseLayer } from "../../../lib/shortcuts/closeOrBack";
 
 type SrDeleteModalProps = {
   isDeleteDialogOpen: boolean;
@@ -18110,8 +30407,24 @@ export const SrDeleteModal = ({
   handleDeleteCancel,
   handleDeleteConfirm,
   canConfirmDelete,
-}: SrDeleteModalProps) =>
-  isDeleteDialogOpen ? (
+}: SrDeleteModalProps) => {
+  useEffect(() => {
+    if (!isDeleteDialogOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "sr-delete-modal",
+      priority: 300,
+      isActive: () => true,
+      onClose: handleDeleteCancel,
+    });
+  }, [handleDeleteCancel, isDeleteDialogOpen]);
+
+  if (!isDeleteDialogOpen) {
+    return null;
+  }
+
+  return (
     <div className="modal-backdrop" role="presentation">
       <div
         className="modal-panel"
@@ -18151,11 +30464,34 @@ export const SrDeleteModal = ({
         </div>
       </div>
     </div>
-  ) : null;
+  );
+};
 
 ---
 
 ## 📝 SrHeader.tsx — ./pages/spaced-repetition/components/SrHeader.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrHeader.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Header.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
+ * - react: React-API.
+ *
+ * Exportiert:
+ * - SrHeader: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import type { Dispatch, SetStateAction } from "react";
 
@@ -18207,11 +30543,34 @@ export const SrHeader = ({
 
 ## 📝 SrReviewActions.tsx — ./pages/spaced-repetition/components/SrReviewActions.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrReviewActions.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Review Actions.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrCardHost.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - SrReviewActions: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 type SrReviewActionsProps = {
   spacedRepetitionCanGoBack: boolean;
   spacedRepetitionCanGoNext: boolean;
   handleSpacedRepetitionPageBack: () => void;
   handleSpacedRepetitionPageNext: () => void;
+  prevShortcutTitle: string;
+  nextShortcutTitle: string;
 };
 
 export const SrReviewActions = ({
@@ -18219,6 +30578,8 @@ export const SrReviewActions = ({
   spacedRepetitionCanGoNext,
   handleSpacedRepetitionPageBack,
   handleSpacedRepetitionPageNext,
+  prevShortcutTitle,
+  nextShortcutTitle,
 }: SrReviewActionsProps) => (
   <div className="flashcard-pagination">
     <button
@@ -18226,6 +30587,7 @@ export const SrReviewActions = ({
       className="ghost small"
       onClick={handleSpacedRepetitionPageBack}
       disabled={!spacedRepetitionCanGoBack}
+      title={prevShortcutTitle}
     >
       Back
     </button>
@@ -18234,6 +30596,7 @@ export const SrReviewActions = ({
       className="ghost small"
       onClick={handleSpacedRepetitionPageNext}
       disabled={!spacedRepetitionCanGoNext}
+      title={nextShortcutTitle}
     >
       Next
     </button>
@@ -18243,6 +30606,29 @@ export const SrReviewActions = ({
 ---
 
 ## 📝 SrStatsAndChart.tsx — ./pages/spaced-repetition/components/SrStatsAndChart.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsAndChart.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Stats And Chart.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/lib/chart.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts: Typen.
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrBoxesPanel.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - SrStatsAndChart: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import type { CSSProperties } from "react";
 import { buildLineChartPoints } from "../../../lib/chart";
@@ -18422,6 +30808,28 @@ export const SrStatsAndChart = ({
 
 ## 📝 SrStatsPanel.tsx — ./pages/spaced-repetition/components/SrStatsPanel.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Stats Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/KpiGrid.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - SrStatsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { KpiGrid } from "../../../components/KpiGrid";
 
 type SrStatsPanelProps = {
@@ -18444,6 +30852,28 @@ export const SrStatsPanel = ({ kpiItems }: SrStatsPanelProps) => (
 ---
 
 ## 📝 SrToolsPanel.tsx — ./pages/spaced-repetition/components/SrToolsPanel.tsx
+
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrToolsPanel.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Sr Tools Panel.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts: Feature-Logik oder Hook.
+ * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
+ *
+ * Exportiert:
+ * - SrToolsPanel: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
 
 import {
   SPACED_REPETITION_BOXES,
@@ -18556,131 +30986,30 @@ export const SrToolsPanel = ({
 
 ---
 
-## 📝 SrUserPanel.tsx — ./pages/spaced-repetition/components/SrUserPanel.tsx
-
-type SrUserPanelProps = {
-  flashcards: {
-    isFlashcardScanning: boolean;
-  };
-  spacedRepetition: {
-    spacedRepetitionActiveUser: string | null;
-    spacedRepetitionSelectedUserId: string;
-    spacedRepetitionUsers: { id: string; name: string }[];
-    spacedRepetitionNewUserName: string;
-    spacedRepetitionUserError: string;
-    handleSpacedRepetitionActiveUserLoadCards: () => void;
-    setSpacedRepetitionSelectedUserId: (value: string) => void;
-    setSpacedRepetitionNewUserName: (value: string) => void;
-    setSpacedRepetitionUserError: (value: string) => void;
-    handleSpacedRepetitionCreateUser: () => void;
-    handleSpacedRepetitionLoadUser: () => void;
-  };
-  handleDeleteOpen: () => void;
-};
-
-export const SrUserPanel = ({
-  flashcards,
-  spacedRepetition,
-  handleDeleteOpen,
-}: SrUserPanelProps) => (
-  <section className="panel sr-user-panel">
-    <div className="panel-header">
-      <div>
-        <h2>User Tools</h2>
-      </div>
-    </div>
-    <div className="panel-body">
-      <div className="setting-row">
-        <span className="label">Active user</span>
-        <button
-          type="button"
-          className="value active-user-button"
-          onClick={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
-          disabled={
-            !spacedRepetition.spacedRepetitionActiveUser ||
-            flashcards.isFlashcardScanning
-          }
-          aria-label="Load flashcards for active user"
-        >
-          {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
-        </button>
-      </div>
-      <div className="setting-row">
-        <span className="label">User list</span>
-        <select
-          className="text-input"
-          value={spacedRepetition.spacedRepetitionSelectedUserId}
-          onChange={(event) =>
-            spacedRepetition.setSpacedRepetitionSelectedUserId(event.target.value)
-          }
-          aria-label="Select user"
-        >
-          <option value="">Select user</option>
-          {spacedRepetition.spacedRepetitionUsers.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="setting-row">
-        <span className="label">New user</span>
-        <div className="setting-inline">
-          <input
-            type="text"
-            className="text-input"
-            value={spacedRepetition.spacedRepetitionNewUserName}
-            onChange={(event) => {
-              spacedRepetition.setSpacedRepetitionNewUserName(event.target.value);
-              if (spacedRepetition.spacedRepetitionUserError) {
-                spacedRepetition.setSpacedRepetitionUserError("");
-              }
-            }}
-            placeholder="User name"
-            aria-label="New user name"
-          />
-          <button
-            type="button"
-            className="ghost small"
-            onClick={spacedRepetition.handleSpacedRepetitionCreateUser}
-          >
-            Create
-          </button>
-        </div>
-        {spacedRepetition.spacedRepetitionUserError ? (
-          <span className="helper-text error-text">
-            {spacedRepetition.spacedRepetitionUserError}
-          </span>
-        ) : null}
-      </div>
-      <div className="setting-row">
-        <span className="label">Actions</span>
-        <div className="setting-actions">
-          <button
-            type="button"
-            className="ghost small"
-            onClick={spacedRepetition.handleSpacedRepetitionLoadUser}
-            disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
-          >
-            Load
-          </button>
-          <button
-            type="button"
-            className="ghost small"
-            onClick={handleDeleteOpen}
-            disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
-);
-
----
-
 ## 📝 useSrSessionViewModel.ts — ./pages/spaced-repetition/hooks/useSrSessionViewModel.ts
+
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/hooks/useSrSessionViewModel.ts
+ *
+ * Zweck:
+ * - Stellt den Hook useSrSessionViewModel fuer Spaced Repetition bereit.
+ *
+ * Verantwortlichkeiten:
+ * - Verwaltet State und Ableitungen fuer Spaced Repetition.
+ * - Stellt Aktionen und Handler fuer die UI bereit.
+ * - Bietet konsolidierte Daten fuer Komponenten.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ *
+ * Exportiert:
+ * - useSrSessionViewModel: Hook fuer Spaced Repetition.
+ *
+ * Hinweise:
+ * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
+ */
 
 import {
   useCallback,
@@ -18693,6 +31022,14 @@ import {
 import { useAppState } from "../../../components/AppStateProvider";
 import { vaultBaseName } from "../../../lib/path";
 import {
+  formatBinding,
+  getEffectiveBinding,
+  getShortcutPlatform,
+  isEditableTarget,
+  matchesBinding,
+} from "../../../lib/shortcuts/bindings";
+import { getShortcutById } from "../../../lib/shortcuts/registry";
+import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
   isFlashcardPartComplete,
@@ -18700,31 +31037,59 @@ import {
 import {
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
+  hashString,
   normalizeSpacedRepetitionCardProgress,
 } from "../../../features/spaced-repetition/logic";
 
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-  const tagName = target.tagName;
-  return (
-    target.isContentEditable ||
-    tagName === "INPUT" ||
-    tagName === "TEXTAREA" ||
-    tagName === "SELECT"
-  );
-};
+const srToggleCommand = getShortcutById("toggleViewMode");
+const srPrevCommand = getShortcutById("studyPrevious");
+const srNextCommand = getShortcutById("studyNext");
+const srSubmitCommand = getShortcutById("studySubmit");
 
 export const useSrSessionViewModel = () => {
-  const { flashcards, spacedRepetition, vault } = useAppState();
+  const { flashcards, settings, spacedRepetition, vault } = useAppState();
+  const spacedRepetitionHelpEnabled = settings.spacedRepetitionHelpEnabled;
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
   const statsView = spacedRepetition.spacedRepetitionStatsView;
-  const focusLabel = isFocusMode ? "Exit focus mode" : "Enter focus mode";
+  const platform = getShortcutPlatform();
+  const shortcutBindings = useMemo(() => {
+    const bindings = settings.keyboardShortcuts.bindings;
+    return {
+      toggle: srToggleCommand
+        ? getEffectiveBinding(srToggleCommand, bindings, platform)
+        : null,
+      prev: srPrevCommand ? getEffectiveBinding(srPrevCommand, bindings, platform) : null,
+      next: srNextCommand ? getEffectiveBinding(srNextCommand, bindings, platform) : null,
+      submit: srSubmitCommand
+        ? getEffectiveBinding(srSubmitCommand, bindings, platform)
+        : null,
+    };
+  }, [platform, settings.keyboardShortcuts.bindings]);
+  const viewLabel = "View";
+  const toggleShortcutLabel = shortcutBindings.toggle
+    ? formatBinding(shortcutBindings.toggle, platform)
+    : null;
+  const focusTitle = toggleShortcutLabel
+    ? `${viewLabel} (${toggleShortcutLabel})`
+    : viewLabel;
+  const prevShortcutTitle = shortcutBindings.prev
+    ? `Back (${formatBinding(shortcutBindings.prev, platform)})`
+    : "Back";
+  const nextShortcutTitle = shortcutBindings.next
+    ? `Next (${formatBinding(shortcutBindings.next, platform)})`
+    : "Next";
+  const vaultId = useMemo(
+    () => (vault.vaultPath ? hashString(vault.vaultPath) : null),
+    [vault.vaultPath],
+  );
+  const cardIdContext = useMemo(
+    () => (vaultId ? { vaultId } : undefined),
+    [vaultId],
+  );
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
@@ -18780,7 +31145,7 @@ export const useSrSessionViewModel = () => {
       return visibleFlashcardEntries;
     }
     return visibleFlashcardEntries.filter(({ card }) => {
-      const cardId = getFlashcardId(card);
+      const cardId = getFlashcardId(card, cardIdContext);
       const progress = spacedRepetition.spacedRepetitionCardStates[cardId] ?? null;
       const normalized = normalizeSpacedRepetitionCardProgress(progress);
       const effectiveBox = getSpacedRepetitionEffectiveBox(
@@ -18795,6 +31160,7 @@ export const useSrSessionViewModel = () => {
     spacedRepetition.spacedRepetitionBoxes,
     spacedRepetition.spacedRepetitionCardStates,
     visibleFlashcardEntries,
+    cardIdContext,
   ]);
   const toggleBoxFilter = useCallback(
     (boxNumber: number) => {
@@ -18847,27 +31213,32 @@ export const useSrSessionViewModel = () => {
   }, [isFocusMode]);
 
   useEffect(() => {
-    if (!isFocusMode) {
-      return;
-    }
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return;
       }
-      if (event.altKey || event.ctrlKey || event.metaKey) {
-        return;
-      }
-      if (event.key === "Escape") {
+      const isEditable = isEditableTarget(event.target);
+
+      const canTrigger = (
+        command: typeof srToggleCommand,
+        binding: string | null,
+      ) => {
+        if (!command || !binding) {
+          return false;
+        }
+        if (!command.allowInTextInputs && isEditable) {
+          return false;
+        }
+        return matchesBinding(event, binding);
+      };
+
+      if (canTrigger(srToggleCommand, shortcutBindings.toggle)) {
         event.preventDefault();
-        setIsFocusMode(false);
-        return;
-      }
-      if (isEditableTarget(event.target)) {
+        setIsFocusMode((prev) => !prev);
         return;
       }
 
-      if (event.key === "ArrowLeft") {
+      if (canTrigger(srPrevCommand, shortcutBindings.prev)) {
         event.preventDefault();
         if (spacedRepetition.spacedRepetitionCanGoBack) {
           spacedRepetition.handleSpacedRepetitionPageBack();
@@ -18875,7 +31246,7 @@ export const useSrSessionViewModel = () => {
         return;
       }
 
-      if (event.key === "ArrowRight") {
+      if (canTrigger(srNextCommand, shortcutBindings.next)) {
         event.preventDefault();
         if (spacedRepetition.spacedRepetitionCanGoNext) {
           spacedRepetition.handleSpacedRepetitionPageNext();
@@ -18883,7 +31254,7 @@ export const useSrSessionViewModel = () => {
         return;
       }
 
-      if (event.key !== "Enter" && event.key !== "NumpadEnter") {
+      if (!canTrigger(srSubmitCommand, shortcutBindings.submit)) {
         return;
       }
 
@@ -18999,7 +31370,7 @@ export const useSrSessionViewModel = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeCardIndex, isFocusMode, spacedRepetition]);
+  }, [activeCardIndex, shortcutBindings, spacedRepetition]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
@@ -19219,7 +31590,9 @@ export const useSrSessionViewModel = () => {
     setIsFocusMode,
     activeBoxFilter,
     statsView,
-    focusLabel,
+    focusLabel: focusTitle,
+    prevShortcutTitle,
+    nextShortcutTitle,
     vaultName,
     showBoxEmptyMessage,
     statsChartClass,
@@ -19252,6 +31625,7 @@ export const useSrSessionViewModel = () => {
     setDeleteConfirmInput,
     deleteTargetName,
     canConfirmDelete,
+    spacedRepetitionHelpEnabled,
   };
 };
 
@@ -19259,13 +31633,36 @@ export const useSrSessionViewModel = () => {
 
 ## 📝 SpacedRepetitionPage.tsx — ./pages/spaced-repetition/SpacedRepetitionPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Spaced Repetition.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrCardHost.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrDeleteModal.tsx: UI-Komponente.
+ * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrHeader.tsx: UI-Komponente.
+ *
+ * Exportiert:
+ * - SpacedRepetitionPage: React-Komponente.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 import { SrCardHost } from "./components/SrCardHost";
 import { SrDeleteModal } from "./components/SrDeleteModal";
 import { SrHeader } from "./components/SrHeader";
 import { SrStatsAndChart } from "./components/SrStatsAndChart";
 import { SrStatsPanel } from "./components/SrStatsPanel";
 import { SrToolsPanel } from "./components/SrToolsPanel";
-import { SrUserPanel } from "./components/SrUserPanel";
+import { UserToolsPanel } from "../../components/UserToolsPanel";
 import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
 
 export const SpacedRepetitionPage = () => {
@@ -19278,6 +31675,8 @@ export const SpacedRepetitionPage = () => {
     activeBoxFilter,
     statsView,
     focusLabel,
+    prevShortcutTitle,
+    nextShortcutTitle,
     vaultName,
     showBoxEmptyMessage,
     statsChartClass,
@@ -19310,6 +31709,7 @@ export const SpacedRepetitionPage = () => {
     setDeleteConfirmInput,
     deleteTargetName,
     canConfirmDelete,
+    spacedRepetitionHelpEnabled,
   } = useSrSessionViewModel();
 
   return (
@@ -19348,10 +31748,14 @@ export const SpacedRepetitionPage = () => {
       )}
 
       {isFocusMode ? null : (
-        <SrUserPanel
-          flashcards={flashcards}
+        <UserToolsPanel
           spacedRepetition={spacedRepetition}
           handleDeleteOpen={handleDeleteOpen}
+          onStart={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
+          startDisabled={
+            !spacedRepetition.spacedRepetitionActiveUser ||
+            flashcards.isFlashcardScanning
+          }
         />
       )}
 
@@ -19368,6 +31772,7 @@ export const SpacedRepetitionPage = () => {
           activeBoxFilter={activeBoxFilter}
           spacedRepetitionEmptyState={spacedRepetition.spacedRepetitionEmptyState}
           spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
+          helpEnabled={spacedRepetitionHelpEnabled}
           spacedRepetitionCompositeStates={
             spacedRepetition.spacedRepetitionCompositeStates
           }
@@ -19414,6 +31819,8 @@ export const SpacedRepetitionPage = () => {
           handleSpacedRepetitionPageNext={
             spacedRepetition.handleSpacedRepetitionPageNext
           }
+          prevShortcutTitle={prevShortcutTitle}
+          nextShortcutTitle={nextShortcutTitle}
         />
       </section>
 
@@ -19447,12 +31854,49 @@ export const SpacedRepetitionPage = () => {
 
 ## 📝 SpacedRepetitionPage.tsx — ./pages/SpacedRepetitionPage.tsx
 
+/**
+ * @file apps/fmd-desktop/src/pages/SpacedRepetitionPage.tsx
+ *
+ * Zweck:
+ * - Rendert die Seite Spaced Repetition.
+ *
+ * Verantwortlichkeiten:
+ * - Komponiert Seitenlayout und Unterbereiche.
+ * - Bindet Panels, Listen oder Tools fuer den Bereich ein.
+ * - Reicht App-State und Handler an Unterkomponenten weiter.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Seiten-Komponente.
+ * - apps/fmd-desktop/src/App.tsx: Nutzt dieses Modul.
+ *
+ * Hinweise:
+ * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
+ */
+
 export { SpacedRepetitionPage } from "./spaced-repetition/SpacedRepetitionPage";
 
 ---
 
 ## 📝 base.css — ./styles/base.css
 
+
+/*
+ * @file apps/fmd-desktop/src/styles/base.css
+ *
+ * Zweck:
+ * - Legt Basis-Styles und Defaults fuer die App fest.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer base.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
 
 * {
   box-sizing: border-box;
@@ -19484,6 +31928,24 @@ body {
 
 ## 📝 buttons.css — ./styles/components/buttons.css
 
+
+/*
+ * @file apps/fmd-desktop/src/styles/components/buttons.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer buttons.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer buttons.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
 
 button {
   border: none;
@@ -19542,10 +32004,33 @@ button {
   font-size: 0.85rem;
 }
 
+.primary.small {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
 ---
 
 ## 📝 content.css — ./styles/components/content.css
 
+
+/*
+ * @file apps/fmd-desktop/src/styles/components/content.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer content.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer content.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
 
 .content {
   display: flex;
@@ -19711,6 +32196,10 @@ h2 {
   min-width: 0;
 }
 
+.tree-item.is-hidden {
+  opacity: var(--hidden-item-opacity, 0.6);
+}
+
 .tree-item:hover {
   border-color: var(--accent-border);
 }
@@ -19806,7 +32295,7 @@ h2 {
 .context-menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: 60;
 }
 
 .context-menu {
@@ -19845,12 +32334,19 @@ h2 {
 }
 
 .workspace {
+  --note-panel-width: 320px;
+  --note-panel-collapsed-width: 32px;
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--note-panel-width));
   gap: 24px;
   align-items: stretch;
   flex: 1;
   min-height: 0;
+  transition: grid-template-columns 220ms ease;
+}
+
+.workspace.note-collapsed {
+  grid-template-columns: minmax(0, 1fr) minmax(0, var(--note-panel-collapsed-width));
 }
 
 .dashboard-page {
@@ -19921,11 +32417,19 @@ body.focus-mode .sidebar {
 }
 
 body.focus-mode .flashcard-layout,
-body.focus-mode .spaced-repetition-layout {
+body.focus-mode .spaced-repetition-layout,
+body.focus-mode .exam-layout,
+body.focus-mode .fast-flashcard-layout {
   grid-template-columns: 1fr;
 }
 
-body.focus-mode .flashcard-panel {
+body.focus-mode .fast-flashcard-layout {
+  grid-template-rows: auto;
+}
+
+body.focus-mode .flashcard-panel,
+body.focus-mode .exam-panel,
+body.focus-mode .fast-flashcard-panel {
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -19936,6 +32440,11 @@ body.focus-mode .sr-flashcards-panel {
   width: 100%;
   max-width: 100%;
   margin: 0;
+}
+
+body.focus-mode .fast-flashcard-panel {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .fast-stats-panel {
@@ -19976,6 +32485,45 @@ body.focus-mode .sr-flashcards-panel {
   grid-row: 2;
 }
 
+.study-time-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 6px;
+  width: 100%;
+  background: var(--chip-bg);
+  border-bottom: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+
+.study-time-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: var(--study-time-progress, 0%);
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-highlight) 100%);
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: width 0.2s ease;
+}
+
+.study-time-bar.is-indeterminate::after {
+  width: 30%;
+  animation: study-time-indeterminate 1.2s linear infinite;
+}
+
+.study-time-bar.is-indeterminate.is-paused::after {
+  animation-play-state: paused;
+}
+
+@keyframes study-time-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
 .fast-history-panel {
   grid-column: 2;
   grid-row: 2;
@@ -19996,10 +32544,14 @@ body.focus-mode .sr-flashcards-panel img {
 }
 
 body.focus-mode .flashcard-sidebar,
+body.focus-mode .exam-sidebar,
 body.focus-mode .sr-diagram-panel,
 body.focus-mode .sr-user-panel,
 body.focus-mode .sr-tools-panel,
-body.focus-mode .sr-stats-panel {
+body.focus-mode .sr-stats-panel,
+body.focus-mode .fast-stats-panel,
+body.focus-mode .fast-tools-panel,
+body.focus-mode .fast-history-panel {
   display: none;
 }
 
@@ -20050,10 +32602,322 @@ body.focus-mode .sr-stats-panel {
   min-height: 0;
 }
 
+.exam-timeline-block {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.exam-timeline-block .exam-time-bar {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.exam-time-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.exam-time-bar-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.exam-time-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  border: 1px solid var(--line-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.exam-time-bar-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: var(--exam-time-progress, 0%);
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-highlight) 100%);
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: width 0.2s ease;
+}
+
+.exam-time-bar.is-warning .exam-time-bar-track::after {
+  background: linear-gradient(90deg, var(--error-ink) 0%, var(--accent-highlight) 100%);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--error-ink) 40%, transparent);
+}
+
+.exam-time-bar.is-time-up .exam-time-bar-track::after {
+  width: 0%;
+}
+
+.exam-time-bar--view {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -20px -20px 12px;
+  border-radius: 20px 20px 14px 14px;
+}
+
+.exam-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exam-overview-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exam-overview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exam-overview-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exam-overview-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.exam-overview-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exam-overview-summary-title {
+  font-weight: 600;
+}
+
+.exam-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exam-stats-tabs {
+  margin-bottom: 4px;
+}
+
+.exam-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.exam-stats-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--block-border);
+  background: var(--block-bg);
+}
+
+.exam-stats-card.is-filled {
+  position: relative;
+  overflow: hidden;
+}
+
+.exam-stats-card.is-filled::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--stat-fill, 0%);
+  background: color-mix(
+    in srgb,
+    var(--stat-fill-color, var(--accent)) 24%,
+    transparent
+  );
+  border-top: 1px solid
+    color-mix(in srgb, var(--stat-fill-color, var(--accent)) 36%, transparent);
+  transition: height 0.25s ease;
+}
+
+.exam-stats-card.is-filled > * {
+  position: relative;
+  z-index: 1;
+}
+
+.exam-stats-card.status-zero {
+  --stat-fill-color: #94a3b8;
+}
+
+.exam-stats-card.status-red {
+  --stat-fill-color: #d14b4b;
+}
+
+.exam-stats-card.status-orange {
+  --stat-fill-color: #e28a2f;
+}
+
+.exam-stats-card.status-yellow {
+  --stat-fill-color: #e2c14b;
+}
+
+.exam-stats-card.status-green {
+  --stat-fill-color: #2f9e5b;
+}
+
+.exam-stats-card.status-blue {
+  --stat-fill-color: #3b6fff;
+}
+
+.exam-stats-card.status-diamond {
+  --stat-fill-color: #6bcfff;
+}
+
+.exam-stats-card.is-empty {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.exam-stats-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.exam-stats-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.exam-stats-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.exam-stats-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.exam-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exam-history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.exam-history-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
+
+.exam-history-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exam-history-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.2fr)
+    minmax(0, 0.9fr)
+    minmax(0, 1.2fr)
+    minmax(0, 0.7fr)
+    minmax(0, 0.6fr)
+    minmax(0, 0.7fr)
+    minmax(0, 0.7fr)
+    minmax(0, 0.5fr);
+  gap: 8px;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.exam-history-row.header {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.exam-history-cell {
+  text-align: right;
+}
+
+.exam-history-cell.timestamp,
+.exam-history-cell.user,
+.exam-history-cell.file {
+  text-align: left;
+}
+
+.exam-file-list {
+  --exam-file-row-height: 44px;
+}
+
+.exam-file-list .file-list {
+  overflow: visible;
+}
+
+.exam-file-list.is-scrollable {
+  max-height: calc(var(--exam-file-row-height) * 5 + 32px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.exam-idle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.exam-idle-header .eyebrow {
+  margin: 0;
+}
+
 .exam-task {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.exam-help-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .exam-markdown {
@@ -20212,6 +33076,24 @@ body.focus-mode .sr-stats-panel {
 
 ## 📝 flashcards.css — ./styles/components/flashcards.css
 
+
+/*
+ * @file apps/fmd-desktop/src/styles/components/flashcards.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer flashcards.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer flashcards.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
 
 .flashcard-list {
   display: flex;
@@ -20432,6 +33314,96 @@ body.focus-mode .sr-stats-panel {
   flex-wrap: wrap;
 }
 
+.flashcard-help-button {
+  margin-left: auto;
+}
+
+.flashcard-markdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.flashcard-markdown-text {
+  white-space: pre-wrap;
+}
+
+.flashcard-code-block {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: var(--preview-code-bg);
+  color: var(--ink);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.flashcard-code-block code {
+  font-family: inherit;
+}
+
+.flashcard-table {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--md-table-bg);
+}
+
+.flashcard-table.scrollable {
+  overflow-x: auto;
+}
+
+.flashcard-table.no-scroll {
+  overflow-x: visible;
+}
+
+.flashcard-table table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.flashcard-table.no-scroll table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.flashcard-table thead th {
+  background: var(--md-table-head-bg);
+  text-align: left;
+  font-weight: 600;
+}
+
+.flashcard-table th,
+.flashcard-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  vertical-align: top;
+  white-space: normal;
+}
+
+.flashcard-table.no-scroll th,
+.flashcard-table.no-scroll td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.flashcard-table tr > :last-child {
+  border-right: none;
+}
+
+.flashcard-table tbody tr:last-child th,
+.flashcard-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .flashcard-text-block {
   font-weight: 600;
   color: var(--ink);
@@ -20648,6 +33620,24 @@ body.focus-mode .sr-stats-panel {
 ## 📝 help.css — ./styles/components/help.css
 
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/help.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer help.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer help.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .help-panel .panel-body {
   min-height: auto;
 }
@@ -20810,6 +33800,78 @@ body.focus-mode .sr-stats-panel {
   margin-left: auto;
   color: var(--muted);
   font-weight: 700;
+}
+
+.help-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.help-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.help-modal-panel {
+  width: min(560px, 100%);
+}
+
+.help-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.help-modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.help-modal-section:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.help-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--md-table-bg);
+  display: block;
+  overflow-x: auto;
+}
+
+.help-markdown table thead th {
+  background: var(--md-table-head-bg);
+  text-align: left;
+  font-weight: 600;
+}
+
+.help-markdown table th,
+.help-markdown table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  vertical-align: top;
+  white-space: normal;
+}
+
+.help-markdown table tr > :last-child {
+  border-right: none;
+}
+
+.help-markdown table tbody tr:last-child th,
+.help-markdown table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .help-detail-header {
@@ -21057,6 +34119,24 @@ body.focus-mode .sr-stats-panel {
 ## 📝 modals.css — ./styles/components/modals.css
 
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/modals.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer modals.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer modals.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -21065,7 +34145,7 @@ body.focus-mode .sr-stats-panel {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  z-index: 20;
+  z-index: 70;
 }
 
 .modal-panel {
@@ -21098,6 +34178,24 @@ body.focus-mode .sr-stats-panel {
 ## 📝 panel-layout.css — ./styles/components/panel-layout.css
 
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/panel-layout.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer panel layout.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer panel layout.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .workspace .panel:nth-child(1) {
   animation-delay: 0.1s;
 }
@@ -21115,6 +34213,69 @@ body.focus-mode .sr-stats-panel {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.note-panel {
+  overflow: hidden;
+  transition: padding 200ms ease;
+}
+
+.note-toggle {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.note-toggle:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.note-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.note-title {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.note-panel.is-collapsed {
+  padding: 12px 6px;
+  gap: 0;
+}
+
+.note-panel.is-collapsed .panel-body {
+  display: none;
+}
+
+.note-panel.is-collapsed .note-toggle {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.note-handle-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note-handle-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .panel-actions {
@@ -21209,6 +34370,24 @@ body.focus-mode .sr-stats-panel {
 
 ## 📝 panels.css — ./styles/components/panels.css
 
+
+/*
+ * @file apps/fmd-desktop/src/styles/components/panels.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer panels.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer panels.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
 
 .panel {
   background: var(--panel);
@@ -21334,6 +34513,24 @@ body.focus-mode .sr-stats-panel {
 ## 📝 preview.css — ./styles/components/preview.css
 
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/preview.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer preview.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer preview.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .file-list {
   list-style: none;
   padding: 0;
@@ -21404,6 +34601,15 @@ body.focus-mode .sr-stats-panel {
   font-size: 0.95rem;
   line-height: 1.6;
   white-space: normal;
+}
+
+.preview.preview-editor.markdown a {
+  cursor: text;
+}
+
+.preview.preview-editor.markdown img {
+  pointer-events: none;
+  -webkit-user-drag: none;
 }
 
 .preview-editor:hover {
@@ -21614,6 +34820,24 @@ body.focus-mode .sr-stats-panel {
 ## 📝 responsive.css — ./styles/components/responsive.css
 
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/responsive.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer responsive.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer responsive.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 @media (max-width: 1200px) {
   .flashcard-layout {
     grid-template-columns: 1fr;
@@ -21738,6 +34962,10 @@ body.focus-mode .sr-stats-panel {
     flex: 0 0 auto;
   }
 
+  .workspace.note-collapsed {
+    grid-template-columns: 1fr;
+  }
+
   .workspace .panel,
   .workspace .vault-details {
     height: auto;
@@ -21756,6 +34984,24 @@ body.focus-mode .sr-stats-panel {
 
 ## 📝 settings.css — ./styles/components/settings.css
 
+
+/*
+ * @file apps/fmd-desktop/src/styles/components/settings.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer settings.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer settings.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
 
 .settings-nav .nav-item {
   width: 100%;
@@ -21808,10 +35054,24 @@ body.focus-mode .sr-stats-panel {
   grid-column: 1 / -1;
 }
 
-.exam-settings-panel .panel-body {
+
+.exam-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.exam-settings-panel .panel-body,
+.exam-settings-toggles-panel .panel-body {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.exam-settings-toggles-panel .setting-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
 }
 
 .exam-settings-grid {
@@ -21826,6 +35086,12 @@ body.focus-mode .sr-stats-panel {
   padding: 4px 12px;
   font-size: 0.9rem;
   line-height: 1.1;
+}
+
+.exam-time-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .exam-points-table {
@@ -21879,6 +35145,11 @@ body.focus-mode .sr-stats-panel {
   line-height: 1.2;
 }
 
+.exam-settings-actions {
+  display: flex;
+  align-items: center;
+}
+
 .settings-tab-content {
   display: flex;
   flex-direction: column;
@@ -21910,6 +35181,10 @@ body.focus-mode .sr-stats-panel {
   .settings-app-grid .vault-index-panel,
   .settings-app-grid .settings-performance-panel {
     grid-column: 1;
+  }
+
+  .exam-settings-layout {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -21988,6 +35263,158 @@ body.focus-mode .sr-stats-panel {
 .appearance-panel .setting-row:first-of-type {
   border-top: none;
   padding-top: 0;
+}
+
+.markdown-editor-panel .setting-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.keyboard-shortcuts-panel .panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.shortcut-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.shortcut-controls .text-input {
+  min-width: 200px;
+}
+
+.shortcut-conflicts {
+  border: 1px solid var(--error-border);
+  background: var(--error-bg);
+  color: var(--error-ink);
+  padding: 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shortcut-conflicts-title {
+  font-weight: 600;
+}
+
+.shortcut-conflict-binding {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.shortcut-conflict-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(160px, 0.6fr) auto;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.shortcut-row.is-conflict {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+}
+
+.shortcut-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shortcut-title {
+  font-weight: 600;
+}
+
+.shortcut-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shortcut-contexts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.shortcut-context {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.shortcut-binding {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.shortcut-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--field-bg-base);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.shortcut-capture {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.shortcut-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.shortcut-conflict-detail {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  color: var(--error-ink);
+}
+
+@media (max-width: 960px) {
+  .shortcut-row {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcut-actions {
+    justify-content: flex-start;
+  }
 }
 
 .appearance-layout {
@@ -22236,6 +35663,24 @@ body.focus-mode .sr-stats-panel {
 ## 📝 spaced-repetition.css — ./styles/components/spaced-repetition.css
 
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/spaced-repetition.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer spaced repetition.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer spaced repetition.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .sr-vault-row {
   display: flex;
   align-items: center;
@@ -22314,6 +35759,24 @@ body.focus-mode .sr-stats-panel {
 
 ## 📝 stats.css — ./styles/components/stats.css
 
+
+/*
+ * @file apps/fmd-desktop/src/styles/components/stats.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer stats.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer stats.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
 
 .stats-panel .panel-body {
   min-height: auto;
@@ -22413,6 +35876,7 @@ body.focus-mode .sr-stats-panel {
   gap: 12px;
   flex-wrap: wrap;
 }
+
 
 .fast-stats-blocks {
   display: grid;
@@ -22717,6 +36181,24 @@ body.focus-mode .sr-stats-panel {
 ## 📝 utility.css — ./styles/components/utility.css
 
 
+/*
+ * @file apps/fmd-desktop/src/styles/components/utility.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer utility.
+ *
+ * Verantwortlichkeiten:
+ * - Layout- und Komponenten-Styles fuer utility.
+ * - Zustands- und Variantenklassen fuer Interaktionen.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
+
 .empty-state {
   padding: 18px;
   border-radius: 16px;
@@ -22743,7 +36225,198 @@ body.focus-mode .sr-stats-panel {
 
 ---
 
+## 📝 vault-manager.css — ./styles/components/vault-manager.css
+
+/*
+ * @file apps/fmd-desktop/src/styles/components/vault-manager.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer den Vault Manager.
+ */
+
+.vault-manager-panel {
+  width: min(860px, 100%);
+  max-height: min(80vh, 720px);
+  padding: 18px;
+}
+
+.vault-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vault-manager-content {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
+  gap: 16px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.vault-manager-list {
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--block-bg);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.vault-manager-item {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: 0.2s ease;
+}
+
+.vault-manager-item:hover {
+  background: var(--accent-weak-bg);
+}
+
+.vault-manager-item.active {
+  background: var(--accent-active-bg);
+  border-color: var(--accent-weak-border);
+  color: var(--accent-strong);
+}
+
+.vault-manager-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.vault-manager-item-name {
+  font-weight: 600;
+}
+
+.vault-manager-item-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vault-manager-item-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.vault-manager-details {
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.vault-manager-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vault-manager-actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vault-manager-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vault-manager-path {
+  font-size: 0.85rem;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.vault-manager-profile-actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vault-manager-warning {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--error-border);
+  background: var(--error-bg);
+  color: var(--error-ink);
+}
+
+.vault-manager-context-backdrop {
+  z-index: 90;
+}
+
+.vault-manager-context-menu {
+  z-index: 91;
+}
+
+.vault-manager-confirm-backdrop {
+  z-index: 100;
+}
+
+.vault-manager-confirm {
+  width: min(420px, 100%);
+}
+
+@media (max-width: 720px) {
+  .vault-manager-panel {
+    max-height: none;
+  }
+
+  .vault-manager-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+---
+
 ## 📝 layout.css — ./styles/layout.css
+
+/*
+ * @file apps/fmd-desktop/src/styles/layout.css
+ *
+ * Zweck:
+ * - Definiert Layout- und Shell-Styles fuer die App.
+ *
+ * Verantwortlichkeiten:
+ * - Layout-, Grid- und Shell-Regeln fuer die App-Struktur.
+ * - Basis fuer Sidebar-, Content- und Panel-Anordnung.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
+ * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ *
+ * Hinweise:
+ * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
+ */
 
 .app-shell {
   --sidebar-width: 260px;
@@ -22797,7 +36470,7 @@ body.focus-mode .sr-stats-panel {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  background: var(--panel);
+  background: var(--left-bg-tint);
   border-radius: 24px;
   padding: 24px;
   box-shadow: var(--shadow);
@@ -22935,11 +36608,12 @@ body.focus-mode .sr-stats-panel {
   background: var(--accent-weak-bg);
   border: 1px solid var(--accent-weak-border);
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
   text-align: left;
-  cursor: pointer;
   transition: 0.2s ease;
+  position: relative;
+  overflow: visible;
 }
 
 .vault-status:hover {
@@ -22947,9 +36621,203 @@ body.focus-mode .sr-stats-panel {
   color: var(--accent-strong);
 }
 
-.vault-status:focus-visible {
+.vault-status:focus-within {
   outline: 2px solid var(--accent-focus-ring);
   outline-offset: 2px;
+}
+
+.vault-status-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.vault-status-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vault-status-value-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-status-caret {
+  display: inline-flex;
+  color: var(--muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.vault-status-caret.is-open {
+  transform: rotate(180deg);
+  color: var(--accent-strong);
+}
+
+.vault-status-caret svg {
+  width: 14px;
+  height: 14px;
+}
+
+.vault-status-refresh {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: inherit;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.vault-status-refresh:hover:not(:disabled) {
+  border-color: var(--accent-weak-border);
+  background: var(--accent-active-bg);
+}
+
+.vault-status-refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vault-status-refresh-icon {
+  display: inline-flex;
+}
+
+.vault-status-refresh-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.vault-status-refresh-icon.is-spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+.vault-status-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 80;
+}
+
+.vault-status-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vault-status-menu-item {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 8px 10px;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  min-width: 0;
+  transition: 0.2s ease;
+}
+
+.vault-status-menu-item:hover:not(:disabled) {
+  background: var(--accent-weak-bg);
+}
+
+.vault-status-menu-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.vault-status-menu-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-status-menu-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.vault-status-menu-check {
+  display: inline-flex;
+  color: var(--accent-strong);
+}
+
+.vault-status-menu-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.vault-status-menu-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: 0.2s ease;
+}
+
+.vault-status-menu-remove:hover {
+  color: var(--accent-strong);
+}
+
+.vault-status-menu-divider {
+  height: 1px;
+  background: var(--line-soft);
+  margin: 2px 4px;
+}
+
+.vault-status-menu-empty {
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-status-refresh-icon.is-spinning {
+    animation: none;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .nav-icon {
@@ -23109,6 +36977,24 @@ body.focus-mode .sr-stats-panel {
 
 ## 📝 tokens.css — ./styles/tokens.css
 
+/*
+ * @file apps/fmd-desktop/src/styles/tokens.css
+ *
+ * Zweck:
+ * - Definiert Design-Tokens und CSS-Variablen fuer das UI.
+ *
+ * Verantwortlichkeiten:
+ * - Definiert globale CSS-Variablen fuer Farben, Abstaende und Typografie.
+ * - Stellt Theme-spezifische Werte und Zustandsfarben bereit.
+ *
+ * Verbunden mit:
+ * - apps/fmd-desktop/src/App.css: Zentraler Import des Stylesets.
+ * - apps/fmd-desktop/src/styles/base.css: Nutzt Variablen fuer Basis-Styles.
+ *
+ * Hinweise:
+ * - Zentrale Quelle fuer CSS-Variablen und Theme-Werte.
+ */
+
 :root {
   font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
   font-size: 16px;
@@ -23121,13 +37007,15 @@ body.focus-mode .sr-stats-panel {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color-scheme: light;
-  --bg: #f3efe6;
-  --bg-strong: #ece6da;
-  --page-bg-base: #f3efe6;
-  --page-bg-spot-base: #f7dccb;
-  --page-bg-edge-base: #e6f0ee;
+  --bg: #e9edf0;
+  --bg-strong: #e1e6ea;
+  --page-bg-base: #e9edf0;
+  --page-bg-spot-base: #f2f4f6;
+  --page-bg-edge-base: #e2e7eb;
   --page-bg: var(--bg-gradient);
   --panel: #ffffff;
+  --left-bg-base: #f1f3f5;
+  --left-bg-tint: var(--left-bg-base);
   --panel-warm: #f8f2e8;
   --ink: #141717;
   --muted: #5b6265;
@@ -23214,6 +37102,8 @@ body.focus-mode .sr-stats-panel {
   --page-bg-edge-base: #0b1012;
   --panel: #151c20;
   --panel-warm: #1b2429;
+  --left-bg-base: var(--panel);
+  --left-bg-tint: var(--left-bg-base);
   --ink: #edf2f4;
   --muted: #a3abb0;
   --line: rgba(237, 242, 244, 0.16);
@@ -23255,9 +37145,14 @@ body.focus-mode .sr-stats-panel {
   :root {
     --page-bg: radial-gradient(
       circle at top left,
-      color-mix(in srgb, var(--page-bg-spot-base) 94%, var(--accent) 6%) 0%,
-      color-mix(in srgb, var(--page-bg-base) 96%, var(--accent) 4%) 45%,
-      color-mix(in srgb, var(--page-bg-edge-base) 96%, var(--accent) 4%) 100%
+      var(--page-bg-spot-base) 0%,
+      var(--page-bg-base) 45%,
+      var(--page-bg-edge-base) 100%
+    );
+    --left-bg-tint: color-mix(
+      in srgb,
+      var(--accent) 4%,
+      var(--left-bg-base)
     );
     --field-bg: color-mix(in srgb, var(--field-bg-base) 95%, var(--accent) 5%);
     --field-border: color-mix(
@@ -23305,6 +37200,13 @@ body.focus-mode .sr-stats-panel {
   }
 
   :root[data-theme="dark"] {
+    --page-bg: radial-gradient(
+      circle at top left,
+      color-mix(in srgb, var(--page-bg-spot-base) 94%, var(--accent) 6%) 0%,
+      color-mix(in srgb, var(--page-bg-base) 96%, var(--accent) 4%) 45%,
+      color-mix(in srgb, var(--page-bg-edge-base) 96%, var(--accent) 4%) 100%
+    );
+    --left-bg-tint: var(--left-bg-base);
     --block-bg: color-mix(in srgb, var(--block-bg-base) 94%, var(--accent) 6%);
     --block-border: color-mix(
       in srgb,
@@ -23373,6 +37275,23 @@ body.focus-mode .sr-stats-panel {
 ## 📝 vite-env.d.ts — ./vite-env.d.ts
 
 /// <reference types="vite/client" />
+
+/**
+ * @file apps/fmd-desktop/src/vite-env.d.ts
+ *
+ * Zweck:
+ * - Deklariert die Vite-Umgebungstypen fuer das Frontend.
+ *
+ * Verantwortlichkeiten:
+ * - Bindet Vite-spezifische Typen fuer das Projekt ein.
+ * - Sichert konsistente Typinformationen in der App.
+ *
+ * Verbunden mit:
+ * - vite/client: Externe Bibliothek.
+ *
+ * Hinweise:
+ * - Typanpassungen wirken sich auf die gesamte Frontend-Typisierung aus.
+ */
 
 ---
 
