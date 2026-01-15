@@ -20,6 +20,15 @@ import { HelpTopic } from "./types";
 
 export const helpTopics: HelpTopic[] = [
   {
+    id: "app-sections",
+    title: { en: "App Sections", de: "App Sections" },
+    summary: {
+      en: "Overview, navigation, and typical workflows for new users, with a quick tour of each main area.",
+      de: "Ueberblick, Navigation und typische Workflows fuer neue Nutzer, inklusive kurzem Rundgang durch alle Hauptbereiche.",
+    },
+    sections: [],
+  },
+  {
     id: "structured-syntax",
     title: { en: "Structured syntax", de: "Strukturierte Syntax" },
     summary: {
@@ -34,15 +43,6 @@ export const helpTopics: HelpTopic[] = [
     summary: {
       en: "Complete syntax reference with examples for every supported card type, plus rules and copy-ready templates.",
       de: "Komplette Syntax-Referenz mit Beispielen fuer alle Kartentypen sowie Regeln und Vorlagen zum Kopieren.",
-    },
-    sections: [],
-  },
-  {
-    id: "app-sections",
-    title: { en: "App Sections", de: "App Sections" },
-    summary: {
-      en: "Overview, navigation, and typical workflows for new users, with a quick tour of each main area.",
-      de: "Ueberblick, Navigation und typische Workflows fuer neue Nutzer, inklusive kurzem Rundgang durch alle Hauptbereiche.",
     },
     sections: [],
   },

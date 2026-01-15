@@ -108,8 +108,9 @@ export const SidebarNav = ({
   const toggleLabel = isToolbarCollapsed ? "Expand toolbar" : "Collapse toolbar";
   const toggleSymbol = isToolbarCollapsed ? ">" : "<";
   const helpTopicOrder = [
-    "flashcard-syntax",
     "app-sections",
+    "structured-syntax",
+    "flashcard-syntax",
     "vault",
   ];
   const helpNavTopics = helpTopicOrder
