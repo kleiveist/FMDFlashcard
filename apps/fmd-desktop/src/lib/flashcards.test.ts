@@ -22,6 +22,7 @@ import {
   isInputAnswerMatch,
   parseFlashcards,
   splitAnswerCard,
+  type ClozeSegment,
   type Flashcard,
 } from "./flashcards";
 
@@ -325,7 +326,10 @@ Answer: Confirmed.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
-      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      const blanks = part.segments.filter(
+        (segment): segment is Extract<ClozeSegment, { type: "blank" }> =>
+          segment.type === "blank",
+      );
       expect(blanks).toHaveLength(4);
       expect(blanks.map((blank) => blank.solution)).toEqual([
         "first",
@@ -361,7 +365,10 @@ SQL cld example.
     if (part.kind === "cloze") {
       expect(part.subtype).toBe("cld");
       const inputBlanks = part.segments.filter(
-        (segment) => segment.type === "blank" && segment.kind === "input",
+        (
+          segment,
+        ): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
+          segment.type === "blank" && segment.kind === "input",
       );
       expect(inputBlanks.map((blank) => blank.solution)).toEqual([
         "Nachname",

@@ -61,7 +61,7 @@ const isMarkdownFilePath = (value: string) => MARKDOWN_FILE_PATTERN.test(value);
 
 type DeleteShortcutEvent = {
   key: string;
-  currentTarget: { contains?: (node: unknown) => boolean } | null;
+  currentTarget: { contains?: (node: Node | null) => boolean } | null;
   target: unknown;
 };
 
@@ -77,7 +77,7 @@ export const shouldHandleVaultDeleteShortcut = (
   if (typeof event.currentTarget.contains !== "function") {
     return false;
   }
-  return event.currentTarget.contains(event.target);
+  return event.currentTarget.contains(event.target as Node);
 };
 
 const getIndentVars = (depth: number): CSSProperties =>
@@ -150,7 +150,7 @@ const findDirectoryNode = (nodes: TreeNode[], path: string): TreeNode | null => 
   let currentPath = "";
   for (const part of parts) {
     currentPath = currentPath ? `${currentPath}/${part}` : part;
-    const next =
+    const next: TreeNode | null =
       current?.children?.find(
         (child) => child.type === "dir" && child.path === currentPath,
       ) ?? null;
@@ -590,7 +590,7 @@ export const VaultTree = ({
 
   const invokeDelete = useCallback(
     (vaultRoot: string, relativePath: string) =>
-      invoke("delete_markdown_file", { vaultPath: vaultRoot, relativePath }),
+      invoke<void>("delete_markdown_file", { vaultPath: vaultRoot, relativePath }),
     [],
   );
 
@@ -742,7 +742,8 @@ export const VaultTree = ({
   );
   const menuTarget = contextMenu?.target ?? null;
   const fileTarget = menuTarget && menuTarget.kind === "file" ? menuTarget : null;
-  const menuDirPath = fileTarget ? fileTarget.dirPath : menuTarget?.path ?? "";
+  const menuDirPath =
+    menuTarget?.kind === "file" ? menuTarget.dirPath : menuTarget?.path ?? "";
   const canDeleteFile = fileTarget
     ? isMarkdownFilePath(fileTarget.file.relative_path)
     : false;

@@ -382,7 +382,6 @@ export const VaultManagerModal = ({
     ? vaults.find((entry) => entry.path === selectedVaultPath) ?? null
     : null;
   const profileCount = profileState.profiles.length;
-  const isProfileLoading = profileState.status === "loading";
   const isProfileReady = profileState.status === "idle";
   const canManageProfiles = Boolean(resolvedUserVaultPath) && !selectedVaultMissing;
   const canLoadProfile = canManageProfiles && isProfileReady && profileCount > 0;

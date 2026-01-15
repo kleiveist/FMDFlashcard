@@ -23,6 +23,7 @@ import {
   splitCardLines,
   type CompositeFlashcard,
   type Flashcard,
+  type FlashcardMetadata,
   type FlashcardPart,
 } from "./flashcards";
 import { findTableLineIndices } from "./markdownTables";
@@ -38,6 +39,8 @@ export type ExamTaskWarning = {
   message: string;
 };
 
+type ExamCompositeFlashcard = CompositeFlashcard & FlashcardMetadata;
+
 export type ExamTaskBase = {
   id: string;
   index: number;
@@ -47,7 +50,7 @@ export type ExamTaskBase = {
   helpText?: string[];
   gradingMode: ExamTaskGradingMode;
   sourceRange: ExamTaskSourceRange;
-  card: CompositeFlashcard;
+  card: ExamCompositeFlashcard;
   warnings: ExamTaskWarning[];
 };
 
@@ -188,7 +191,7 @@ const normalizeTaskLines = (lines: string[]) => {
   return trimEmptyLines(stripped);
 };
 
-const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
+const toCompositeCard = (card: Flashcard): ExamCompositeFlashcard => {
   if (card.kind === "composite") {
     return card;
   }
@@ -201,7 +204,7 @@ const toCompositeCard = (card: Flashcard): CompositeFlashcard => {
   };
 };
 
-const buildFallbackCard = (split: ExamAnswerSplit): CompositeFlashcard => {
+const buildFallbackCard = (split: ExamAnswerSplit): ExamCompositeFlashcard => {
   const front =
     split.prompt || (split.hasAnswerMarker ? "" : "No task content provided.");
   const back = split.hasAnswerMarker ? split.officialAnswer ?? "" : "";

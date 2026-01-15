@@ -28,6 +28,7 @@ import { FreeTextCard } from "../../../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
 import { SrReviewActions } from "./SrReviewActions";
+import type { ClozeDragPayload, FlashcardSelfGrade } from "../../../features/flashcards/logic";
 
 type SrCardHostProps = {
   filteredFlashcardEntries: { card: any; cardIndex: number }[];
@@ -98,8 +99,15 @@ type SrCardHostProps = {
   handleTextInputChange: (cardIndex: number, value: string) => void;
   handleTextCheck: (cardIndex: number) => void;
   handleSelfGrade: (cardIndex: number, grade: "correct" | "incorrect") => void;
-  handleSpacedRepetitionSubmit: (cardIndex: number, isFocusSubmit?: boolean) => void;
-  handleClozeTokenDragStart: (event: DragEvent<HTMLElement>) => void;
+  handleSpacedRepetitionSubmit: (
+    cardIndex: number,
+    canSubmit: boolean,
+    selfGrade?: FlashcardSelfGrade,
+  ) => void;
+  handleClozeTokenDragStart: (
+    event: DragEvent<HTMLElement>,
+    payload: ClozeDragPayload,
+  ) => void;
   handleClozeBlankDragOver: (event: DragEvent<HTMLElement>) => void;
   spacedRepetitionCanGoBack: boolean;
   spacedRepetitionCanGoNext: boolean;

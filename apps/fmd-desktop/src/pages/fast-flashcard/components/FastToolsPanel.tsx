@@ -22,6 +22,11 @@
 
 import { FastFlashcardToolsSettings } from "../../../components/settings/FastFlashcardToolsSettings";
 import { FAST_FLASHCARD_DURATIONS } from "../../../features/fast-flashcard/constants";
+import type {
+  FlashcardMode,
+  FlashcardOrder,
+  FlashcardScope,
+} from "../../../features/flashcards/useFlashcards";
 
 type FastToolsPanelProps = {
   fastFlashcards: {
@@ -29,12 +34,12 @@ type FastToolsPanelProps = {
     isFlashcardScanning: boolean;
   };
   settings: {
-    fastFlashcardOrder: string;
-    fastFlashcardMode: string;
-    fastFlashcardScope: string;
-    setFastFlashcardOrder: (value: string) => void;
-    setFastFlashcardMode: (value: string) => void;
-    setFastFlashcardScope: (value: string) => void;
+    fastFlashcardOrder: FlashcardOrder;
+    fastFlashcardMode: FlashcardMode;
+    fastFlashcardScope: FlashcardScope;
+    setFastFlashcardOrder: (value: FlashcardOrder) => void;
+    setFastFlashcardMode: (value: FlashcardMode) => void;
+    setFastFlashcardScope: (value: FlashcardScope) => void;
   };
   selectedDuration: number;
   setSelectedDuration: (value: number) => void;

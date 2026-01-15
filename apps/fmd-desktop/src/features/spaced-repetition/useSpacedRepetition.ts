@@ -116,9 +116,13 @@ const normalizeCompletedPerDay = (value: unknown) => {
   if (!value || typeof value !== "object") {
     return {};
   }
+  const isFiniteCount = (
+    entry: [string, unknown],
+  ): entry is [string, number] =>
+    typeof entry[1] === "number" && Number.isFinite(entry[1]);
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
-      .filter(([, count]) => typeof count === "number" && Number.isFinite(count))
+      .filter(isFiniteCount)
       .map(([key, count]) => [key, Math.max(0, Math.floor(count))]),
   );
 };

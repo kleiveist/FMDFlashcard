@@ -16,6 +16,7 @@ import {
   sanitizeProfileName,
   selectProfileFromExport,
   type UserVaultExportPayload,
+  type UserVaultProfileData,
 } from "./userVault";
 
 describe("sanitizeProfileName", () => {
@@ -63,7 +64,7 @@ describe("resolveUserVaultPath", () => {
 });
 
 describe("mergeProfileData", () => {
-  const base = {
+  const base: UserVaultProfileData = {
     ...createEmptyProfileData(),
     spacedRepetitionByVaultId: {
       vault1: {
@@ -95,7 +96,7 @@ describe("mergeProfileData", () => {
     ],
   };
 
-  const incoming = {
+  const incoming: UserVaultProfileData = {
     ...createEmptyProfileData(),
     spacedRepetitionByVaultId: {
       vault1: {

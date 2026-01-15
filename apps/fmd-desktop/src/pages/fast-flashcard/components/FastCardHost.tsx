@@ -27,6 +27,7 @@ import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../../../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
+import type { ClozeDragPayload } from "../../../features/flashcards/logic";
 
 type FastCardHostProps = {
   hasScannedCards: boolean;
@@ -43,7 +44,10 @@ type FastCardHostProps = {
     flashcardTextRevealed: Record<number, boolean>;
     flashcardSelfGrades: Record<number, any>;
     flashcardSelections: Record<number, string[]>;
-    handleClozeTokenDragStart: (event: DragEvent<HTMLElement>) => void;
+    handleClozeTokenDragStart: (
+      event: DragEvent<HTMLElement>,
+      payload: ClozeDragPayload,
+    ) => void;
     handleClozeBlankDragOver: (event: DragEvent<HTMLElement>) => void;
   };
   orderedEntries: { cardIndex: number; card: any }[];

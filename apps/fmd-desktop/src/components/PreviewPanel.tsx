@@ -142,21 +142,20 @@ const getSelectionRange = (container: HTMLElement) => {
 };
 
 const getRangeFromPoint = (x: number, y: number) => {
-  if ("caretRangeFromPoint" in document) {
-    return (document as Document & { caretRangeFromPoint?: (x: number, y: number) => Range | null })
-      .caretRangeFromPoint?.(x, y) ?? null;
+  const doc = document as Document & {
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    caretPositionFromPoint?: (
+      x: number,
+      y: number,
+    ) => { offsetNode: Node; offset: number } | null;
+  };
+  if (doc.caretRangeFromPoint) {
+    return doc.caretRangeFromPoint(x, y) ?? null;
   }
-  if ("caretPositionFromPoint" in document) {
-    const position = (
-      document as Document & {
-        caretPositionFromPoint?: (
-          x: number,
-          y: number,
-        ) => { offsetNode: Node; offset: number } | null;
-      }
-    ).caretPositionFromPoint?.(x, y);
+  if (doc.caretPositionFromPoint) {
+    const position = doc.caretPositionFromPoint(x, y);
     if (position) {
-      const range = document.createRange();
+      const range = doc.createRange();
       range.setStart(position.offsetNode, position.offset);
       range.collapse(true);
       return range;
