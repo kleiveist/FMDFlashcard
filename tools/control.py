@@ -27,7 +27,7 @@ for extra_dir in (PY_DIR, PY_DIR / "linux", PY_DIR / "mac", PY_DIR / "win"):
         sys.path.insert(0, str(extra_dir))
 
 from doctor import run as run_doctor  # type: ignore
-from console import section as console_section
+from console import info, section as console_section
 
 RunInstall = Callable[[bool], int]
 RunVsCodeInstall = Callable[[], int]
@@ -168,9 +168,9 @@ def _load_run_runner() -> Callable[..., int] | None:
     return cast(Callable[..., int], fn)
 
 
-def _load_build_runner() -> Callable[..., int] | None:
-    """Load tools/inst/build.py (runner for pnpm tauri build)."""
-    mod_name = "build"
+def _load_build_lin_runner() -> Callable[..., int] | None:
+    """Load tools/inst/build_lin.py (runner for pnpm tauri build)."""
+    mod_name = "build_lin"
     try:
         mod = importlib.import_module(mod_name)
     except Exception as e:
@@ -180,6 +180,62 @@ def _load_build_runner() -> Callable[..., int] | None:
     fn = getattr(mod, "run_install", None)
     if not callable(fn):
         print(f"Build module '{mod_name}' has no run_install(dry_run=...) function.")
+        return None
+    return cast(Callable[..., int], fn)
+
+
+def _load_test_runner() -> Callable[..., int] | None:
+    """Load tools/inst/run_test.py (runner for pnpm tests)."""
+    mod_name = "run_test"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load test module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"Test module '{mod_name}' has no run_install(dry_run=...) function.")
+        return None
+    return cast(Callable[..., int], fn)
+
+
+def _print_build_helper() -> None:
+    console_section("Build helper")
+    info("Available targets:")
+    info("  --build-lin  Linux release (NO_STRIP, CLEAN_BUNDLE).")
+    info("  --build-win  Windows bundles (WIN_BUNDLES=nsis,msi, ALLOW_CROSS).")
+    info("  --build-mac  macOS bundles (MAC_BUNDLES=app,dmg, ALLOW_CROSS).")
+
+
+def _load_build_win_runner() -> Callable[..., int] | None:
+    """Load tools/inst/build_win.py (runner for Windows build)."""
+    mod_name = "build_win"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load Windows build module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"Windows build module '{mod_name}' has no run_install(dry_run=...) function.")
+        return None
+    return cast(Callable[..., int], fn)
+
+
+def _load_build_mac_runner() -> Callable[..., int] | None:
+    """Load tools/inst/build_mac.py (runner for macOS build)."""
+    mod_name = "build_mac"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load macOS build module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"macOS build module '{mod_name}' has no run_install(dry_run=...) function.")
         return None
     return cast(Callable[..., int], fn)
 
@@ -229,6 +285,26 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--build",
         action="store_true",
         help="Build the desktop app (pnpm tauri build).",
+    )
+    parser.add_argument(
+        "--build-lin",
+        action="store_true",
+        help="Build Linux desktop bundles (same as --build before; use NO_STRIP/CLEAN_BUNDLE env)",
+    )
+    parser.add_argument(
+        "--build-win",
+        action="store_true",
+        help="Build Windows bundles (WIN_BUNDLES=nsis,msi).",
+    )
+    parser.add_argument(
+        "--build-mac",
+        action="store_true",
+        help="Build macOS bundles (MAC_BUNDLES=app,dmg).",
+    )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Run pnpm tests for the desktop app.",
     )
     parser.add_argument(
         "--dry-run",
@@ -300,20 +376,75 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.build:
         handled = True
-        console_section("Desktop Build")
-        run_build = _load_build_runner()
-        if not run_build:
-            print("No build routine found. Expected: tools/inst/build.py")
+        _print_build_helper()
+
+    if args.test:
+        handled = True
+        console_section("Test Suite")
+        run_test = _load_test_runner()
+        if not run_test:
+            print("No test routine found. Expected: tools/inst/run_test.py")
             exit_code = max(exit_code, 1)
         else:
             try:
-                sig = inspect.signature(run_build)
+                sig = inspect.signature(run_test)
                 if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_build())
+                    exit_code = max(exit_code, run_test())
                 else:
-                    exit_code = max(exit_code, run_build(args.dry_run))
+                    exit_code = max(exit_code, run_test(args.dry_run))
             except Exception:
-                exit_code = max(exit_code, run_build(args.dry_run))
+                exit_code = max(exit_code, run_test(args.dry_run))
+
+    if args.build_lin:
+        handled = True
+        console_section("Linux Build")
+        run_build_lin = _load_build_lin_runner()
+        if not run_build_lin:
+            print("No build routine found. Expected: tools/inst/build_lin.py")
+            exit_code = max(exit_code, 1)
+        else:
+            try:
+                sig = inspect.signature(run_build_lin)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_build_lin())
+                else:
+                    exit_code = max(exit_code, run_build_lin(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_build_lin(args.dry_run))
+
+    if args.build_win:
+        handled = True
+        console_section("Windows Build")
+        run_build_win = _load_build_win_runner()
+        if not run_build_win:
+            print("No Windows build routine found. Expected: tools/inst/build_win.py")
+            exit_code = max(exit_code, 1)
+        else:
+            try:
+                sig = inspect.signature(run_build_win)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_build_win())
+                else:
+                    exit_code = max(exit_code, run_build_win(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_build_win(args.dry_run))
+
+    if args.build_mac:
+        handled = True
+        console_section("macOS Build")
+        run_build_mac = _load_build_mac_runner()
+        if not run_build_mac:
+            print("No macOS build routine found. Expected: tools/inst/build_mac.py")
+            exit_code = max(exit_code, 1)
+        else:
+            try:
+                sig = inspect.signature(run_build_mac)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_build_mac())
+                else:
+                    exit_code = max(exit_code, run_build_mac(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_build_mac(args.dry_run))
 
     if args.doctor or args.check:
         handled = True

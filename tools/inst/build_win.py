@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """
-Build runner for the Tauri desktop app.
+Windows build runner for the Tauri desktop app.
 
 control.py entry:
-  python3 tools/control.py --build
+  python3 tools/control.py --build-win
 
 Default behavior:
   - pnpm install
-  - pnpm tauri build
-  - NO_STRIP=true unless already set (avoid linuxdeploy strip issues)
+  - pnpm tauri build --bundles <WIN_BUNDLES>
   - optional cleanup of old bundle artifacts (CLEAN_BUNDLE=0 to skip)
 """
 
 from __future__ import annotations
 
 import os
+import platform
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -34,7 +35,6 @@ from console import (
 
 
 def _repo_root_from_tools_inst() -> Path:
-    # tools/inst/build.py -> repo root is parents[2] (inst -> tools -> repo)
     return Path(__file__).resolve().parents[2]
 
 
@@ -77,49 +77,65 @@ def _clean_old_bundles(app_dir: Path, dry_run: bool) -> float:
 
 
 def _gather_bundle_files(bundle_dir: Path) -> dict[str, list[Path]]:
-    bundles: dict[str, list[Path]] = {"AppImage": [], "Deb": [], "Rpm": []}
+    bundles: dict[str, list[Path]] = {}
     if not bundle_dir.exists():
         return bundles
-    for path in bundle_dir.rglob("*"):
+    for path in sorted(bundle_dir.rglob("*")):
         if not path.is_file():
             continue
-        name = path.name.lower()
-        if name.endswith(".appimage"):
-            bundles["AppImage"].append(path)
-        elif name.endswith(".deb"):
-            bundles["Deb"].append(path)
-        elif name.endswith(".rpm"):
-            bundles["Rpm"].append(path)
+        label = path.parent.name or "bundle"
+        bundles.setdefault(label, []).append(path)
     return bundles
 
 
+def _confirm_allow_cross() -> bool:
+    if not sys.stdin.isatty():
+        err("Nicht-interaktives Terminal: setze ALLOW_CROSS=1, um fortzufahren.")
+        return False
+    while True:
+        try:
+            answer = input("Nicht-Windows Host erkannt. ALLOW_CROSS=1 setzen und weiterbauen? (j/n) ").strip().lower()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return False
+        if answer in {"j", "ja", "y", "yes"}:
+            return True
+        if answer in {"n", "nein", "no"}:
+            return False
+        warn("Bitte mit j/n antworten.")
+
+
 def run_install(dry_run: bool = False) -> int:
-    """
-    Entry point used by control.py.
-    """
-    original_env = os.environ
     repo_root = _repo_root_from_tools_inst()
     app_dir = (repo_root / "apps" / "fmd-desktop").resolve()
     legacy_dir = (repo_root / "tools" / "apps" / "fmd-desktop").resolve()
-    using_legacy = False
     if not app_dir.exists() and legacy_dir.exists():
         app_dir = legacy_dir
-        using_legacy = True
     if not app_dir.exists():
         raise SystemExit(f"Desktop app dir not found: {app_dir}")
 
+    allow_cross_env = os.environ.get("ALLOW_CROSS", "0")
+    allow_cross_enabled = allow_cross_env.lower() in ("1", "true", "yes")
+    if platform.system().lower() != "windows":
+        if not allow_cross_enabled:
+            if not _confirm_allow_cross():
+                err("Windows build requires a Windows host (set ALLOW_CROSS=1 to override).")
+                return 1
+            allow_cross_enabled = True
+            allow_cross_env = "1"
+            os.environ["ALLOW_CROSS"] = "1"
+        if allow_cross_enabled:
+            warn("ALLOW_CROSS=1 -> running Windows build on a non-Windows host (may fail).")
+
     pnpm = _which_pnpm()
 
-    env = original_env.copy()
-    no_strip_defaulted = "NO_STRIP" not in original_env
-    env.setdefault("NO_STRIP", "true")
-    no_strip_value = env["NO_STRIP"]
-
-    clean_bundle_env = original_env.get("CLEAN_BUNDLE")
+    env = os.environ.copy()
+    win_bundles_env = os.environ.get("WIN_BUNDLES", "nsis,msi")
+    win_bundles = ",".join(part.strip() for part in win_bundles_env.split(",") if part.strip())
+    clean_bundle_env = os.environ.get("CLEAN_BUNDLE")
     clean_bundle_value = clean_bundle_env if clean_bundle_env is not None else "1"
     clean_bundle_enabled = clean_bundle_value.lower() not in ("0", "false", "no")
-
-    build_verbose_env = original_env.get("BUILD_VERBOSE")
+    build_verbose_env = os.environ.get("BUILD_VERBOSE")
     build_verbose_value = build_verbose_env if build_verbose_env is not None else "1"
     build_verbose_enabled = build_verbose_value.lower() not in ("0", "false", "no")
 
@@ -128,15 +144,14 @@ def run_install(dry_run: bool = False) -> int:
     section("Run Context")
     info(f"Repo root:  {repo_root}")
     info(f"App dir:   {app_dir}")
-    if using_legacy:
-        warn("Using legacy path: consider migrating to /apps/fmd-desktop")
 
     section("Settings")
-    kv("NO_STRIP", f"{no_strip_value} ({'default' if no_strip_defaulted else 'override'})")
     kv(
-        "CLEAN_BUNDLE",
-        f"{clean_bundle_value} ({'cleanup' if clean_bundle_enabled else 'skip'})",
+        "WIN_BUNDLES",
+        f"{win_bundles_env} ({'default' if win_bundles_env == 'nsis,msi' else 'override'})",
     )
+    kv("ALLOW_CROSS", f"{allow_cross_env} ({'allow' if allow_cross_enabled else 'strict'})")
+    kv("CLEAN_BUNDLE", f"{clean_bundle_value} ({'cleanup' if clean_bundle_enabled else 'skip'})")
     kv(
         "BUILD_VERBOSE",
         f"{build_verbose_value} ({'enabled' if build_verbose_enabled else 'disabled'})",
@@ -159,9 +174,10 @@ def run_install(dry_run: bool = False) -> int:
         return install_rc
 
     section("Tauri Build")
-    build_rc, build_time = _run(
-        [pnpm, "tauri", "build"], cwd=app_dir, env=env, dry_run=dry_run
-    )
+    build_cmd = [pnpm, "tauri", "build"]
+    if win_bundles:
+        build_cmd.extend(["--bundles", win_bundles])
+    build_rc, build_time = _run(build_cmd, cwd=app_dir, env=env, dry_run=dry_run)
     step_times["build"] = build_time
     if build_rc != 0:
         err("pnpm tauri build failed.")
@@ -169,7 +185,7 @@ def run_install(dry_run: bool = False) -> int:
 
     total_time = time.perf_counter() - overall_start
     section("Result")
-    ok("Desktop build completed.")
+    ok("Windows desktop build completed.")
     kv("Install time", _format_duration(step_times.get("install", 0.0)))
     kv("Build time", _format_duration(step_times.get("build", 0.0)))
     if "cleanup" in step_times:
