@@ -184,7 +184,7 @@ const promptExamTemplateEn = joinLines([
   "- But use separators --- after each task",
   "- Output must end with #examend.",
   "",
-  "OUTPUT THE TASKS AS A DOWNLOADABLE FILE!",
+  "Provide the tasks as a downloadable .md file!",
 ]);
 
 const promptExamTemplateDeCode = joinLines([
