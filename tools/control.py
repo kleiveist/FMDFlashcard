@@ -27,6 +27,7 @@ for extra_dir in (PY_DIR, PY_DIR / "linux", PY_DIR / "mac", PY_DIR / "win"):
         sys.path.insert(0, str(extra_dir))
 
 from doctor import run as run_doctor  # type: ignore
+from console import section as console_section
 
 RunInstall = Callable[[bool], int]
 RunVsCodeInstall = Callable[[], int]
@@ -299,6 +300,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.build:
         handled = True
+        console_section("Desktop Build")
         run_build = _load_build_runner()
         if not run_build:
             print("No build routine found. Expected: tools/inst/build.py")
