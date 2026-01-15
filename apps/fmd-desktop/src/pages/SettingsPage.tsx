@@ -96,8 +96,12 @@ export const SettingsPage = () => {
           </p>
         </div>
         <div className="actions">
-          <button type="button" className="primary" onClick={actions.handlePickVault}>
-            Vault auswaehlen
+          <button
+            type="button"
+            className="primary"
+            onClick={actions.handleOpenVaultManager}
+          >
+            Vault verwalten
           </button>
         </div>
       </header>

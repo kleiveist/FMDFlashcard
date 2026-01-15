@@ -210,6 +210,8 @@
   gap: 8px;
   text-align: left;
   transition: 0.2s ease;
+  position: relative;
+  overflow: visible;
 }
 
 .vault-status:hover {
@@ -235,6 +237,37 @@
   font: inherit;
   cursor: pointer;
   min-width: 0;
+}
+
+.vault-status-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vault-status-value-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-status-caret {
+  display: inline-flex;
+  color: var(--muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.vault-status-caret.is-open {
+  transform: rotate(180deg);
+  color: var(--accent-strong);
+}
+
+.vault-status-caret svg {
+  width: 14px;
+  height: 14px;
 }
 
 .vault-status-refresh {
@@ -271,6 +304,103 @@
 
 .vault-status-refresh-icon.is-spinning {
   animation: spin 0.9s linear infinite;
+}
+
+.vault-status-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 80;
+}
+
+.vault-status-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vault-status-menu-item {
+  flex: 1 1 auto;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 8px 10px;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  min-width: 0;
+  transition: 0.2s ease;
+}
+
+.vault-status-menu-item:hover:not(:disabled) {
+  background: var(--accent-weak-bg);
+}
+
+.vault-status-menu-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.vault-status-menu-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-status-menu-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.vault-status-menu-check {
+  display: inline-flex;
+  color: var(--accent-strong);
+}
+
+.vault-status-menu-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.vault-status-menu-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: 0.2s ease;
+}
+
+.vault-status-menu-remove:hover {
+  color: var(--accent-strong);
+}
+
+.vault-status-menu-divider {
+  height: 1px;
+  background: var(--line-soft);
+  margin: 2px 4px;
+}
+
+.vault-status-menu-empty {
+  padding: 6px 8px;
+  font-size: 0.8rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

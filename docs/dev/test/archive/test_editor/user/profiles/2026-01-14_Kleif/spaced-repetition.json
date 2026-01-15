@@ -1,7 +1,26 @@
 {
   "schemaVersion": 1,
-  "byVaultId": {},
+  "byVaultId": {
+    "f636d0e3": {
+      "users": [
+        {
+          "id": "8968e153-ed4c-476d-939a-d613b472d174",
+          "name": "Lysanne",
+          "createdAt": "2026-01-14T13:50:43.668Z"
+        }
+      ],
+      "userStateById": {
+        "8968e153-ed4c-476d-939a-d613b472d174": {
+          "cardStates": {},
+          "completedPerDay": {},
+          "lastLoadedAt": null
+        }
+      },
+      "lastActiveUserId": "8968e153-ed4c-476d-939a-d613b472d174"
+    }
+  },
   "migratedVaultIds": [
-    "b19bb94f"
+    "b19bb94f",
+    "f636d0e3"
   ]
 }

@@ -32,7 +32,7 @@ import {
   type ReactNode,
 } from "react";
 import { isValidHex, normalizeHex } from "../lib/color";
-import { isHiddenPath, normalizeRelativePath } from "../lib/path";
+import { isHiddenPath, normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
@@ -43,9 +43,13 @@ import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepe
 import { useUserVault } from "../features/user-vault/useUserVault";
 import { useVault } from "../features/vault/useVault";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
+import { VaultManagerModal } from "./VaultManagerModal";
 
 type AppActions = {
   handlePickVault: () => Promise<boolean>;
+  handleSwitchVault: (path: string) => Promise<boolean>;
+  handleRemoveRecentVault: (path: string) => void;
+  handleOpenVaultManager: () => void;
   handleSelectFile: (file: VaultFile) => void;
   handleThemeChange: (nextTheme: ThemeMode) => void;
   handleAccentPick: (value: string) => void;
@@ -102,6 +106,8 @@ const parseVaultWarningThreshold = (value: string) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
+const MAX_RECENT_VAULTS = 10;
+
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
   const [activeHelpTopicId, setActiveHelpTopicId] = useState<string | null>(
@@ -113,6 +119,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<
     number | null
   >(null);
+  const [isVaultManagerOpen, setIsVaultManagerOpen] = useState(false);
   const [activeSettingsPage, setActiveSettingsPage] =
     useState<SettingsPageId>("appearance");
   const {
@@ -129,6 +136,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setTheme,
     settingsLoaded,
     vaultPath: storedVaultPath,
+    recentVaults,
     flashcardMode,
     flashcardOrder,
     flashcardPageSize,
@@ -220,16 +228,19 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     },
   });
   const hasRestoredVault = useRef(false);
+  const lastRecentVaultRef = useRef<string | null>(null);
   const isRestoringActiveNote = useRef(false);
   const hasResolvedActiveNote = useRef(false);
   const {
     loadVault,
     pickVault,
     rescanVault,
+    restoreSnapshot: restoreVaultSnapshot,
     setFiles,
     setListError,
     setListState,
     setVaultPath,
+    takeSnapshot: takeVaultSnapshot,
     vaultPath,
   } = vault;
   const {
@@ -398,6 +409,132 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     showHiddenFolders,
   ]);
 
+  const handleSwitchVault = useCallback(
+    async (path: string) => {
+      if (!path) {
+        return false;
+      }
+      setPreviewError("");
+      const previewSnapshot = takePreviewSnapshot();
+      const flashcardsSnapshot = takeFlashcardsSnapshot();
+      const vaultSnapshot = takeVaultSnapshot();
+
+      resetPreview();
+      resetFlashcards();
+
+      const errorMessage = "Ausgewaehlter Vault ist nicht verfuegbar.";
+      const results = await loadVault(path, {
+        persist: true,
+        clearOnFailure: false,
+        errorMessage,
+      });
+
+      if (!results) {
+        restoreVaultSnapshot(vaultSnapshot);
+        setListError(errorMessage);
+        restorePreviewSnapshot(previewSnapshot);
+        restoreFlashcardsSnapshot(flashcardsSnapshot);
+        return false;
+      }
+
+      const count = countMarkdownFiles(results, showHiddenFolders);
+      const threshold = parseVaultWarningThreshold(maxFilesPerScan);
+      if (threshold && count > threshold) {
+        setLargeVaultWarningCount(count);
+      } else {
+        setLargeVaultWarningCount(null);
+      }
+
+      return true;
+    },
+    [
+      loadVault,
+      maxFilesPerScan,
+      resetFlashcards,
+      resetPreview,
+      restoreFlashcardsSnapshot,
+      restorePreviewSnapshot,
+      restoreVaultSnapshot,
+      setLargeVaultWarningCount,
+      setListError,
+      setPreviewError,
+      showHiddenFolders,
+      takeFlashcardsSnapshot,
+      takePreviewSnapshot,
+      takeVaultSnapshot,
+    ],
+  );
+
+  const updateRecentVaults = useCallback(
+    async (path: string) => {
+      if (!settingsLoaded) {
+        return;
+      }
+      const normalized = normalizeVaultPath(path);
+      if (!normalized) {
+        return;
+      }
+      const next = [
+        { path, lastOpenedAt: new Date().toISOString() },
+        ...recentVaults.filter(
+          (entry) => normalizeVaultPath(entry.path) !== normalized,
+        ),
+      ].slice(0, MAX_RECENT_VAULTS);
+      await persistSettings({ recentVaults: next });
+    },
+    [persistSettings, recentVaults, settingsLoaded],
+  );
+
+  const handleRemoveRecentVault = useCallback(
+    (path: string) => {
+      const normalized = normalizeVaultPath(path);
+      if (!normalized) {
+        return;
+      }
+      if (lastRecentVaultRef.current === normalized) {
+        lastRecentVaultRef.current = null;
+      }
+      const next = recentVaults.filter(
+        (entry) => normalizeVaultPath(entry.path) !== normalized,
+      );
+      if (next.length === recentVaults.length) {
+        return;
+      }
+      void persistSettings({ recentVaults: next });
+    },
+    [persistSettings, recentVaults],
+  );
+
+  useEffect(() => {
+    if (!settingsLoaded) {
+      return;
+    }
+    if (!vault.vaultPath) {
+      lastRecentVaultRef.current = null;
+      return;
+    }
+    if (vault.listState !== "idle") {
+      return;
+    }
+    const normalized = normalizeVaultPath(vault.vaultPath);
+    if (!normalized) {
+      return;
+    }
+    if (lastRecentVaultRef.current === normalized) {
+      return;
+    }
+    lastRecentVaultRef.current = normalized;
+    void updateRecentVaults(vault.vaultPath);
+  }, [settingsLoaded, updateRecentVaults, vault.listState, vault.vaultPath]);
+
+  const handleOpenVaultManager = useCallback(() => {
+    setIsVaultManagerOpen(true);
+  }, []);
+
+  const handleCloseVaultManager = useCallback(() => {
+    setIsVaultManagerOpen(false);
+  }, []);
+
   const handleSelectFile = useCallback(
     (file: VaultFile) => {
       resetFlashcards();
@@ -512,6 +649,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const value: AppState = {
     actions: {
       handlePickVault,
+      handleSwitchVault,
+      handleRemoveRecentVault,
+      handleOpenVaultManager,
       handleSelectFile,
       handleThemeChange,
       handleAccentPick,
@@ -546,6 +686,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppStateContext.Provider value={value}>
       {children}
+      <VaultManagerModal
+        isOpen={isVaultManagerOpen}
+        vaults={recentVaults}
+        activeVaultPath={vault.vaultPath}
+        userVault={userVault}
+        onClose={handleCloseVaultManager}
+        onOpenVault={handlePickVault}
+        onSwitchVault={handleSwitchVault}
+        onRemoveVault={handleRemoveRecentVault}
+      />
       <LargeVaultWarningModal
         count={largeVaultWarningCount}
         onClose={handleLargeVaultWarningDismiss}

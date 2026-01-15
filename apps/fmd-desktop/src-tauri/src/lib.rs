@@ -35,9 +35,17 @@ struct KeyboardShortcutSettings {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+struct RecentVaultEntry {
+    path: String,
+    last_opened_at: Option<String>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 struct AppSettings {
     active_note_path: Option<String>,
     vault_path: Option<String>,
+    recent_vaults: Option<Vec<RecentVaultEntry>>,
     user_vault_mode: Option<String>,
     user_vault_custom_path: Option<String>,
     theme: Option<String>,
@@ -167,6 +175,7 @@ struct ExamRunStorage {
 impl AppSettings {
     fn is_empty(&self) -> bool {
         self.vault_path.is_none()
+            && self.recent_vaults.is_none()
             && self.user_vault_mode.is_none()
             && self.user_vault_custom_path.is_none()
             && self.active_note_path.is_none()
@@ -408,6 +417,7 @@ fn save_app_settings(
     app: tauri::AppHandle,
     active_note_path: Option<String>,
     vault_path: Option<String>,
+    recent_vaults: Option<Vec<RecentVaultEntry>>,
     user_vault_mode: Option<String>,
     user_vault_custom_path: Option<String>,
     theme: Option<String>,
@@ -452,6 +462,7 @@ fn save_app_settings(
     let settings = AppSettings {
         active_note_path,
         vault_path,
+        recent_vaults,
         user_vault_mode,
         user_vault_custom_path,
         theme,

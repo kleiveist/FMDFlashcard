@@ -36,6 +36,18 @@ export const vaultBaseName = (value: string | null) => {
   return parts[parts.length - 1] || "Vault";
 };
 
+export const normalizeVaultPath = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const normalized = trimmed.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (/^[A-Za-z]:\//.test(normalized)) {
+    return normalized.replace(/^([A-Za-z]):\//, (_, drive) => `${drive.toLowerCase()}:/`);
+  }
+  return normalized;
+};
+
 export const joinPath = (root: string, ...segments: string[]) => {
   const separator = root.includes("\\") ? "\\" : "/";
   const normalizedRoot = root.replace(/[\\/]+$/, "");

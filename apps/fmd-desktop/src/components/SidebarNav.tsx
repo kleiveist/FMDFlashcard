@@ -21,12 +21,14 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppState } from "./AppStateProvider";
-import { normalizeRelativePath, vaultBaseName } from "../lib/path";
+import { normalizeRelativePath, normalizeVaultPath, vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
 import {
   CardsIcon,
+  CheckIcon,
+  ChevronDownIcon,
   FolderIcon,
   HelpIcon,
   RefreshIcon,
@@ -34,6 +36,8 @@ import {
 } from "./icons";
 import { helpTopics, resolveText } from "../pages/help/helpContent";
 import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
+import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
+import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
 
 type TabKey =
   | "dashboard"
@@ -64,12 +68,25 @@ export const SidebarNav = ({
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => new Set(),
   );
+  const [isVaultMenuOpen, setIsVaultMenuOpen] = useState(false);
+  const vaultMenuRef = useRef<HTMLDivElement | null>(null);
+  const vaultButtonRef = useRef<HTMLButtonElement | null>(null);
   const { activeSettingsPage, setActiveSettingsPage } = settingsNav;
   const isToolbarCollapsed = settings.rightToolbarCollapsed;
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
+  const activeVaultKey = useMemo(
+    () => normalizeVaultPath(vault.vaultPath ?? ""),
+    [vault.vaultPath],
+  );
+  const recentVaults = settings.recentVaults ?? [];
+  const recentVaultPaths = useMemo(
+    () => recentVaults.map((entry) => entry.path),
+    [recentVaults],
+  );
+  const recentVaultInfo = useVaultPathInfo(recentVaultPaths, isVaultMenuOpen);
   const isRescanningVault = vault.listState === "loading";
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
@@ -133,6 +150,41 @@ export const SidebarNav = ({
     });
   }, [vault.activeFolderPath]);
 
+  useEffect(() => {
+    if (!isVaultMenuOpen) {
+      return;
+    }
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+      if (vaultMenuRef.current?.contains(target)) {
+        return;
+      }
+      if (vaultButtonRef.current?.contains(target)) {
+        return;
+      }
+      setIsVaultMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+    };
+  }, [isVaultMenuOpen]);
+
+  useEffect(() => {
+    if (!isVaultMenuOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "vault-recent-menu",
+      priority: 200,
+      isActive: () => isVaultMenuOpen,
+      onClose: () => setIsVaultMenuOpen(false),
+    });
+  }, [isVaultMenuOpen]);
+
   return (
     <aside
       id="app-sidebar"
@@ -163,15 +215,29 @@ export const SidebarNav = ({
             </button>
             <div className="vault-status">
               <button
+                ref={vaultButtonRef}
                 type="button"
                 className="vault-status-main"
-                onClick={actions.handlePickVault}
+                onClick={() => setIsVaultMenuOpen((prev) => !prev)}
                 title={vault.vaultPath ?? "Select vault"}
                 aria-label="Select vault"
+                aria-haspopup="menu"
+                aria-expanded={isVaultMenuOpen}
+                aria-controls="vault-recents-menu"
               >
-                <span className="label">Active Vault</span>
-                <span className="value">
-                  Vault: {vault.vaultPath ? vaultRootName : "Not set"}
+                <span className="label">ACTIVE VAULT</span>
+                <span className="value vault-status-value">
+                  <span className="vault-status-value-text">
+                    Vault: {vault.vaultPath ? vaultRootName : "Not set"}
+                  </span>
+                  <span
+                    className={`vault-status-caret${
+                      isVaultMenuOpen ? " is-open" : ""
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <ChevronDownIcon />
+                  </span>
                 </span>
               </button>
               <button
@@ -190,6 +256,82 @@ export const SidebarNav = ({
                   <RefreshIcon />
                 </span>
               </button>
+              {isVaultMenuOpen ? (
+                <div
+                  ref={vaultMenuRef}
+                  id="vault-recents-menu"
+                  className="vault-status-menu"
+                  role="menu"
+                  aria-label="Recent vaults"
+                >
+                  {recentVaults.length === 0 ? (
+                    <div className="vault-status-menu-empty muted">
+                      No recent vaults.
+                    </div>
+                  ) : (
+                    recentVaults.map((entry) => {
+                      const info = recentVaultInfo[entry.path];
+                      const isMissing = info ? !info.exists || !info.isDir : false;
+                      const isActive =
+                        normalizeVaultPath(entry.path) === activeVaultKey;
+                      return (
+                        <div className="vault-status-menu-row" key={entry.path}>
+                          <button
+                            type="button"
+                            className="vault-status-menu-item"
+                            role="menuitem"
+                            disabled={isMissing}
+                            onClick={() => {
+                              setIsVaultMenuOpen(false);
+                              if (isActive) {
+                                return;
+                              }
+                              void actions.handleSwitchVault(entry.path);
+                            }}
+                            title={entry.path}
+                          >
+                            <span className="vault-status-menu-name">
+                              {vaultBaseName(entry.path)}
+                            </span>
+                            {isMissing ? <span className="chip">Missing</span> : null}
+                          </button>
+                          <div className="vault-status-menu-actions">
+                            {isActive ? (
+                              <span
+                                className="vault-status-menu-check"
+                                aria-hidden="true"
+                              >
+                                <CheckIcon />
+                              </span>
+                            ) : null}
+                            {isMissing ? (
+                              <button
+                                type="button"
+                                className="vault-status-menu-remove"
+                                onClick={() => actions.handleRemoveRecentVault(entry.path)}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div className="vault-status-menu-divider" role="separator" />
+                  <button
+                    type="button"
+                    className="vault-status-menu-item vault-status-menu-manage"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsVaultMenuOpen(false);
+                      actions.handleOpenVaultManager();
+                    }}
+                  >
+                    Vault verwalten
+                  </button>
+                </div>
+              ) : null}
             </div>
             <div className="sidebar-icon-row">
               <button
@@ -357,7 +499,7 @@ export const SidebarNav = ({
                 >
                   {resolveText(topic.title, settings.language)}
                 </button>
-              ))}
+                ))}
             </nav>
           ) : null}
         </>

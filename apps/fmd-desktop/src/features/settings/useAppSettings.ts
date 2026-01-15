@@ -26,6 +26,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color";
 import { applyAccentColor, applyTheme, type ThemeMode } from "../../lib/theme";
+import { normalizeVaultPath } from "../../lib/path";
 import {
   DEFAULT_KEYBOARD_SHORTCUTS,
   normalizeKeyboardShortcuts,
@@ -66,9 +67,15 @@ export type ExamAiEvaluation = {
   provider: ExamAiProvider | null;
 };
 
+export type RecentVaultEntry = {
+  path: string;
+  lastOpenedAt: string;
+};
+
 type AppSettings = {
   active_note_path?: string | null;
   vault_path?: string | null;
+  recent_vaults?: RecentVaultEntry[] | null;
   user_vault_mode?: string | null;
   user_vault_custom_path?: string | null;
   theme?: string | null;
@@ -119,6 +126,7 @@ type AppSettings = {
 type PersistUpdates = {
   activeNotePath?: string | null;
   vaultPath?: string | null;
+  recentVaults?: RecentVaultEntry[];
   userVaultMode?: UserVaultMode;
   userVaultCustomPath?: string | null;
   theme?: ThemeMode;
@@ -191,6 +199,8 @@ const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionS
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
 const DEFAULT_SPACED_REPETITION_HELP_ENABLED = true;
 const DEFAULT_RIGHT_TOOLBAR_COLLAPSED = false;
+const MAX_RECENT_VAULTS = 10;
+const FALLBACK_RECENT_OPENED_AT = new Date(0).toISOString();
 const MAX_EXAM_TASK_COUNT = 20;
 const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
 const DEFAULT_EXAM_TASK_COUNT = 5;
@@ -327,6 +337,44 @@ const normalizeExamAiEvaluation = (value: unknown): ExamAiEvaluation => {
   };
 };
 
+const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const entries: RecentVaultEntry[] = [];
+  const seen = new Set<string>();
+  value.forEach((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return;
+    }
+    const candidate = entry as {
+      path?: unknown;
+      lastOpenedAt?: unknown;
+      last_opened_at?: unknown;
+    };
+    if (typeof candidate.path !== "string") {
+      return;
+    }
+    const trimmedPath = candidate.path.trim();
+    if (!trimmedPath) {
+      return;
+    }
+    const normalized = normalizeVaultPath(trimmedPath);
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    const lastOpenedAt =
+      typeof candidate.lastOpenedAt === "string"
+        ? candidate.lastOpenedAt
+        : typeof candidate.last_opened_at === "string"
+          ? candidate.last_opened_at
+          : FALLBACK_RECENT_OPENED_AT;
+    entries.push({ path: trimmedPath, lastOpenedAt });
+  });
+  return entries.slice(0, MAX_RECENT_VAULTS);
+};
+
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
@@ -343,6 +391,7 @@ export const useAppSettings = () => {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
+  const [recentVaults, setRecentVaults] = useState<RecentVaultEntry[]>([]);
   const [userVaultMode, setUserVaultModeState] = useState<UserVaultMode>(
     DEFAULT_USER_VAULT_MODE,
   );
@@ -554,6 +603,7 @@ export const useAppSettings = () => {
     async (settings: {
       activeNotePath: string | null;
       vaultPath: string | null;
+      recentVaults: RecentVaultEntry[];
       userVaultMode: UserVaultMode;
       userVaultCustomPath: string | null;
       theme: ThemeMode;
@@ -601,6 +651,7 @@ export const useAppSettings = () => {
         await invoke("save_app_settings", {
           activeNotePath: settings.activeNotePath,
           vaultPath: settings.vaultPath,
+          recentVaults: settings.recentVaults,
           userVaultMode: settings.userVaultMode,
           userVaultCustomPath: settings.userVaultCustomPath,
           theme: settings.theme,
@@ -662,6 +713,7 @@ export const useAppSettings = () => {
       const nextSettings = {
         activeNotePath: updates.activeNotePath ?? activeNotePath,
         vaultPath: updates.vaultPath ?? vaultPath,
+        recentVaults: updates.recentVaults ?? recentVaults,
         userVaultMode: updates.userVaultMode ?? userVaultMode,
         userVaultCustomPath: updates.userVaultCustomPath ?? userVaultCustomPath,
         theme: updates.theme ?? theme,
@@ -736,6 +788,9 @@ export const useAppSettings = () => {
       if (saved && "vaultPath" in updates) {
         setVaultPath(nextSettings.vaultPath ?? null);
       }
+      if (saved && "recentVaults" in updates) {
+        setRecentVaults(nextSettings.recentVaults ?? []);
+      }
       return saved;
     },
     [
@@ -783,6 +838,7 @@ export const useAppSettings = () => {
       userVaultCustomPath,
       userVaultMode,
       vaultPath,
+      recentVaults,
       rightToolbarCollapsed,
     ],
   );
@@ -990,6 +1046,7 @@ export const useAppSettings = () => {
           typeof settings.active_note_path === "string"
             ? settings.active_note_path
             : null;
+        const storedRecentVaults = normalizeRecentVaults(settings.recent_vaults);
         const storedRightToolbarCollapsed =
           typeof settings.right_toolbar_collapsed === "boolean"
             ? settings.right_toolbar_collapsed
@@ -1043,6 +1100,7 @@ export const useAppSettings = () => {
         setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
         setActiveNotePath(storedActiveNotePath);
         setVaultPath(settings.vault_path ?? null);
+        setRecentVaults(storedRecentVaults);
         setUserVaultModeState(storedUserVaultMode);
         setUserVaultCustomPathState(storedUserVaultCustomPath);
         setLanguage(storedLanguage);
@@ -1152,6 +1210,7 @@ export const useAppSettings = () => {
       void saveSettings({
         activeNotePath,
         vaultPath,
+        recentVaults,
         userVaultMode,
         userVaultCustomPath,
         theme,
@@ -1248,6 +1307,7 @@ export const useAppSettings = () => {
     userVaultCustomPath,
     userVaultMode,
     vaultPath,
+    recentVaults,
     rightToolbarCollapsed,
   ]);
 
@@ -1346,6 +1406,7 @@ export const useAppSettings = () => {
     userVaultCustomPath,
     userVaultMode,
     vaultPath,
+    recentVaults,
     rightToolbarCollapsed,
   };
 };

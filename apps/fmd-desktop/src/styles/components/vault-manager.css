@@ -1,0 +1,152 @@
+/*
+ * @file apps/fmd-desktop/src/styles/components/vault-manager.css
+ *
+ * Zweck:
+ * - Definiert Styles fuer den Vault Manager.
+ */
+
+.vault-manager-panel {
+  width: min(860px, 100%);
+  max-height: min(80vh, 720px);
+  padding: 18px;
+}
+
+.vault-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vault-manager-content {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
+  gap: 16px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.vault-manager-list {
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--block-bg);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.vault-manager-item {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: 0.2s ease;
+}
+
+.vault-manager-item:hover {
+  background: var(--accent-weak-bg);
+}
+
+.vault-manager-item.active {
+  background: var(--accent-active-bg);
+  border-color: var(--accent-weak-border);
+  color: var(--accent-strong);
+}
+
+.vault-manager-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.vault-manager-item-name {
+  font-weight: 600;
+}
+
+.vault-manager-item-path {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vault-manager-item-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.vault-manager-details {
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.vault-manager-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vault-manager-actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vault-manager-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vault-manager-path {
+  font-size: 0.85rem;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.vault-manager-profile-actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vault-manager-warning {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--error-border);
+  background: var(--error-bg);
+  color: var(--error-ink);
+}
+
+@media (max-width: 720px) {
+  .vault-manager-panel {
+    max-height: none;
+  }
+
+  .vault-manager-content {
+    grid-template-columns: 1fr;
+  }
+}
