@@ -91,7 +91,7 @@ const promptExamTemplateDe = joinLines([
   "- aber verwende Tennlienen --- nach jeder Aufgabe",
   "- Output muss am Ende mit #examend schließen.",
   "",
-  "GIB DIE AUFGABEN ALS MD IN EINEM CODEBLOCK AUS !",
+  "GIB DIE AUFGABEN ALS DOWNLOADBARE DATEI AUS !",
 ]);
 
 const promptExamTemplateEn = joinLines([
@@ -184,16 +184,16 @@ const promptExamTemplateEn = joinLines([
   "- But use separators --- after each task",
   "- Output must end with #examend.",
   "",
-  "OUTPUT THE TASKS AS MD IN A CODE BLOCK!",
+  "OUTPUT THE TASKS AS A DOWNLOADABLE FILE!",
 ]);
 
-const promptExamPromptTemplate = joinLines([
-  "DE TEMPLATE:",
+const promptExamTemplateDeCode = joinLines([
   "```",
   promptExamTemplateDe,
   "```",
-  "",
-  "EN TEMPLATE:",
+]);
+
+const promptExamTemplateEnCode = joinLines([
   "```",
   promptExamTemplateEn,
   "```",
@@ -222,7 +222,7 @@ export const promptExamEntry: SyntaxEntry = {
         "Expect exactly one #exam ... #examend output, wrapped in a code block.",
         "Do not add #card blocks or extra files unless you intentionally change the format.",
       ],
-      promptTemplate: promptExamPromptTemplate,
+      promptTemplate: promptExamTemplateEnCode,
       example: joinLines([
         "Example usage:",
         "TOPIC (provided by the user): Database normalization",
@@ -249,7 +249,7 @@ export const promptExamEntry: SyntaxEntry = {
         "Erwarte genau eine #exam ... #examend Ausgabe im Codeblock.",
         "Keine #card-Bloecke oder zusaetzliche Dateien hinzufuegen.",
       ],
-      promptTemplate: promptExamPromptTemplate,
+      promptTemplate: promptExamTemplateDeCode,
       example: joinLines([
         "Beispielnutzung:",
         "THEMA (vom Nutzer vorgegeben): Datenbanknormalisierung",
