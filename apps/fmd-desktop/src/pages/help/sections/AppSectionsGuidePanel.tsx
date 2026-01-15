@@ -70,6 +70,9 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
     !selectedSection ||
     !defaultSectionId ||
     !APP_SECTION_DATA[defaultSectionId];
+  const hasGroundRules =
+    (APP_SECTION_GROUND_RULES.paragraph?.[sectionLanguage] ?? "").trim().length >
+      0 || (APP_SECTION_GROUND_RULES.bullets?.length ?? 0) > 0;
 
   useEffect(() => {
     setSectionLanguage(language);
@@ -93,23 +96,25 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
 
   return (
     <div className="help-detail-sections">
-      <div className="help-detail-section help-block">
-        <div className="help-item-header">
-          <span className="help-block-title">
-            {resolveText(APP_SECTION_LABELS.groundRulesTitle, sectionLanguage)}
-          </span>
+      {hasGroundRules ? (
+        <div className="help-detail-section help-block">
+          <div className="help-item-header">
+            <span className="help-block-title">
+              {resolveText(APP_SECTION_LABELS.groundRulesTitle, sectionLanguage)}
+            </span>
+          </div>
+          <p className="help-syntax-text">
+            {resolveText(APP_SECTION_GROUND_RULES.paragraph, sectionLanguage)}
+          </p>
+          <ul className="help-list">
+            {APP_SECTION_GROUND_RULES.bullets.map((bullet, index) => (
+              <li key={`ground-${index}`}>
+                {resolveText(bullet, sectionLanguage)}
+              </li>
+            ))}
+          </ul>
         </div>
-        <p className="help-syntax-text">
-          {resolveText(APP_SECTION_GROUND_RULES.paragraph, sectionLanguage)}
-        </p>
-        <ul className="help-list">
-          {APP_SECTION_GROUND_RULES.bullets.map((bullet, index) => (
-            <li key={`ground-${index}`}>
-              {resolveText(bullet, sectionLanguage)}
-            </li>
-          ))}
-        </ul>
-      </div>
+      ) : null}
       <div className="help-syntax-layout">
         <div className="help-syntax-cards" role="tablist">
           {APP_SECTION_ORDER.map((sectionId) => {

@@ -110,10 +110,7 @@ export const SidebarNav = ({
   const helpTopicOrder = [
     "flashcard-syntax",
     "app-sections",
-    "settings",
-    "advanced",
     "vault",
-    "extras",
   ];
   const helpNavTopics = helpTopicOrder
     .map((id) => helpTopics.find((topic) => topic.id === id))

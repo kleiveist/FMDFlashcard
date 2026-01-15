@@ -64,23 +64,30 @@ export const SyntaxSection = ({
   syntaxWhatItIsLabel,
   syntaxMistakesLabel,
   syntaxMarkersLabel,
-}: SyntaxSectionProps) => (
-  <div className="help-detail-sections">
-    <div className="help-detail-section help-block">
-      <div className="help-item-header">
-        <span className="help-block-title">
-          {resolveText(flashcardSyntaxOverview.title, syntaxLanguage)}
-        </span>
-      </div>
-      {overviewBullets.length > 0 ? (
-        <ul className="help-list">
-          {overviewBullets.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+}: SyntaxSectionProps) => {
+  const hasOverview =
+    (flashcardSyntaxOverview.bullets?.length ?? 0) > 0 &&
+    (flashcardSyntaxOverview.title?.[syntaxLanguage] ?? "").trim().length > 0;
+
+  return (
+    <div className="help-detail-sections">
+      {hasOverview ? (
+        <div className="help-detail-section help-block">
+          <div className="help-item-header">
+            <span className="help-block-title">
+              {resolveText(flashcardSyntaxOverview.title, syntaxLanguage)}
+            </span>
+          </div>
+          {overviewBullets.length > 0 ? (
+            <ul className="help-list">
+              {overviewBullets.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
-    </div>
-    <div className="help-syntax-layout">
+      <div className="help-syntax-layout">
       <div className="help-syntax-cards" role="tablist">
         {flashcardSyntaxEntries.map((entry) => {
           const isActive = entry.id === activeSyntax?.id;
@@ -237,5 +244,6 @@ export const SyntaxSection = ({
         </div>
       ) : null}
     </div>
-  </div>
-);
+    </div>
+  );
+};

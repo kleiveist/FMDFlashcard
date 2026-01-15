@@ -27,24 +27,8 @@ export const APP_SECTION_GROUND_RULES: {
   paragraph: LocalizedText;
   bullets: LocalizedText[];
 } = {
-  paragraph: {
-    en: "Use the sections below to understand what each mode does and how to run it end-to-end.",
-    de: "Nutze die Sektionen unten, um zu verstehen, was jeder Modus leistet und wie du ihn von Anfang bis Ende durchfuehrst.",
-  },
-  bullets: [
-    {
-      en: "Pick a section on the left; the detail panel updates instantly.",
-      de: "Waehle links eine Sektion; der Detailbereich aktualisiert sich sofort.",
-    },
-    {
-      en: "The highlighted entry shows your current topic and helps you switch quickly.",
-      de: "Der markierte Eintrag zeigt dein aktuelles Thema und erleichtert den schnellen Wechsel.",
-    },
-    {
-      en: "Each section explains: what it is, what it is for, what you see there, and the core workflow.",
-      de: "Jede Sektion erklaert: Was ist das, wofuer ist es, was du dort siehst, und den Core-Workflow.",
-    },
-  ],
+  paragraph: { en: "", de: "" },
+  bullets: [],
 };
 
 export const APP_SECTION_LABELS = {
