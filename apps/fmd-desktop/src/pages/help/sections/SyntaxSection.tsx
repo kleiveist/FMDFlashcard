@@ -22,14 +22,15 @@
 
 import {
   AppLanguage,
+  LocalizedText,
   SyntaxEntry,
-  flashcardSyntaxEntries,
-  flashcardSyntaxOverview,
   resolveText,
 } from "../helpContent";
 
 type SyntaxSectionProps = {
   overviewBullets: string[];
+  syntaxOverview: { title: LocalizedText; bullets?: LocalizedText[] };
+  syntaxEntries: SyntaxEntry[];
   activeSyntax: SyntaxEntry | null;
   syntaxLanguage: AppLanguage;
   setActiveSyntaxId: (value: string | null) => void;
@@ -49,6 +50,8 @@ type SyntaxSectionProps = {
 
 export const SyntaxSection = ({
   overviewBullets,
+  syntaxOverview,
+  syntaxEntries,
   activeSyntax,
   syntaxLanguage,
   setActiveSyntaxId,
@@ -66,8 +69,8 @@ export const SyntaxSection = ({
   syntaxMarkersLabel,
 }: SyntaxSectionProps) => {
   const hasOverview =
-    (flashcardSyntaxOverview.bullets?.length ?? 0) > 0 &&
-    (flashcardSyntaxOverview.title?.[syntaxLanguage] ?? "").trim().length > 0;
+    (syntaxOverview.bullets?.length ?? 0) > 0 &&
+    (syntaxOverview.title?.[syntaxLanguage] ?? "").trim().length > 0;
 
   return (
     <div className="help-detail-sections">
@@ -75,7 +78,7 @@ export const SyntaxSection = ({
         <div className="help-detail-section help-block">
           <div className="help-item-header">
             <span className="help-block-title">
-              {resolveText(flashcardSyntaxOverview.title, syntaxLanguage)}
+              {resolveText(syntaxOverview.title, syntaxLanguage)}
             </span>
           </div>
           {overviewBullets.length > 0 ? (
@@ -89,7 +92,7 @@ export const SyntaxSection = ({
       ) : null}
       <div className="help-syntax-layout">
       <div className="help-syntax-cards" role="tablist">
-        {flashcardSyntaxEntries.map((entry) => {
+        {syntaxEntries.map((entry) => {
           const isActive = entry.id === activeSyntax?.id;
           const entryTitle = resolveText(entry.title, syntaxLanguage);
           const entrySnippet = entry.snippet

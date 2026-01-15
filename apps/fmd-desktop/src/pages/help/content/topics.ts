@@ -20,6 +20,15 @@ import { HelpTopic } from "./types";
 
 export const helpTopics: HelpTopic[] = [
   {
+    id: "structured-syntax",
+    title: { en: "Structured syntax", de: "Strukturierte Syntax" },
+    summary: {
+      en: "Structured blocks for exams, cards, and hints with rules and templates.",
+      de: "Strukturierte Bloecke fuer Exams, Karten und Hinweise mit Regeln und Vorlagen.",
+    },
+    sections: [],
+  },
+  {
     id: "flashcard-syntax",
     title: { en: "Flashcard syntax", de: "Karteikarten-Syntax" },
     summary: {

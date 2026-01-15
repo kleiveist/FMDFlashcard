@@ -1,0 +1,106 @@
+import { SyntaxEntry } from "../../types";
+import { joinLines } from "../../syntax/entries/helpers";
+
+export const examBlockEntry: SyntaxEntry = {
+  id: "exam-block",
+  title: { en: "Exam structured block", de: "Exam-Strukturblock" },
+  markers: ["#exam", "#examend"],
+  keyRule: {
+    en: "Wrap multiple tasks inside #exam ... #examend using numbered headings.",
+    de: "Mehrere Aufgaben in #exam ... #examend mit nummerierten Ueberschriften.",
+  },
+  snippet: {
+    en: "#exam\n1. ...\n#examend",
+    de: "#exam\n1. ...\n#examend",
+  },
+  detail: {
+    en: {
+      whatItIs:
+        "The exam block wraps a set of numbered tasks into one structured unit. Tasks are detected by numbered headings, and each task ends at the next number, a standalone '---' line, or #examend.",
+      rules: [
+        "Start the block with #exam and end it with #examend (own lines).",
+        "Each task starts with a numbered heading like '1.' or '2.'.",
+        "A task ends at the next numbered heading, a standalone '---', or #examend.",
+        "Keep each task internally consistent; separate interaction types with '---'.",
+        "Text outside #exam ... #examend is not part of the exam.",
+      ],
+      promptTemplate: joinLines([
+        "Create one exam block with at least two numbered tasks.",
+        "Use #exam and #examend on their own lines.",
+        "Rules:",
+        "- Each task starts with '1.', '2.', ...",
+        "- Tasks end at the next number, a standalone '---', or #examend.",
+        "- Keep each task internally consistent.",
+        "Template:",
+        "#exam",
+        "1. {{task_1_title}}",
+        "{{task_1_body}}",
+        "---",
+        "2. {{task_2_title}}",
+        "{{task_2_body}}",
+        "#examend",
+      ]),
+      example: joinLines([
+        "#exam",
+        "1. Basic arithmetic",
+        "What is 12 / 3?",
+        "Answer: 4",
+        "---",
+        "2. True or false",
+        "The moon is a planet.",
+        "-false",
+        "#examend",
+      ]),
+      mistakes: [
+        "Forgetting #examend (the parser may absorb trailing content).",
+        "Using invalid numbering (e.g., missing the number or using bullets).",
+        "Mixing multiple interaction types in one task without separators.",
+        "Placing #card outside a task and expecting it to count.",
+      ],
+    },
+    de: {
+      whatItIs:
+        "Der Exam-Block fasst mehrere nummerierte Aufgaben in einer strukturierten Einheit zusammen. Aufgaben werden durch nummerierte Ueberschriften erkannt und enden am naechsten Nummern-Heading, einer alleinstehenden '---'-Zeile oder bei #examend.",
+      rules: [
+        "Block mit #exam starten und mit #examend beenden (eigene Zeilen).",
+        "Jede Aufgabe startet mit einer Nummer wie '1.' oder '2.'.",
+        "Eine Aufgabe endet am naechsten Nummern-Heading, einer alleinstehenden '---' oder bei #examend.",
+        "Aufgaben intern konsistent halten; Interaktionstypen mit '---' trennen.",
+        "Text ausserhalb #exam ... #examend gehoert nicht zur Exam.",
+      ],
+      promptTemplate: joinLines([
+        "Erstelle einen Exam-Block mit mindestens zwei nummerierten Aufgaben.",
+        "Nutze #exam und #examend auf eigenen Zeilen.",
+        "Regeln:",
+        "- Jede Aufgabe startet mit '1.', '2.', ...",
+        "- Aufgaben enden am naechsten Nummern-Heading, einer alleinstehenden '---' oder bei #examend.",
+        "- Jede Aufgabe intern konsistent halten.",
+        "Template:",
+        "#exam",
+        "1. {{aufgabe_1_titel}}",
+        "{{aufgabe_1_inhalt}}",
+        "---",
+        "2. {{aufgabe_2_titel}}",
+        "{{aufgabe_2_inhalt}}",
+        "#examend",
+      ]),
+      example: joinLines([
+        "#exam",
+        "1. Grundrechnen",
+        "Was ist 12 / 3?",
+        "Antwort: 4",
+        "---",
+        "2. Wahr oder falsch",
+        "Der Mond ist ein Planet.",
+        "-false",
+        "#examend",
+      ]),
+      mistakes: [
+        "#examend vergessen (der Parser kann folgenden Inhalt verschlucken).",
+        "Ungueltige Nummerierung (z.B. ohne Zahl oder mit Bulletpoints).",
+        "Mehrere Interaktionstypen in einer Aufgabe ohne Trennung mischen.",
+        "#card ausserhalb einer Aufgabe platzieren und erwarten, dass es zaehlt.",
+      ],
+    },
+  },
+};

@@ -21,7 +21,14 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { AppLanguage, HelpTopic, SyntaxEntry, helpLabels, resolveText } from "../helpContent";
+import {
+  AppLanguage,
+  HelpTopic,
+  LocalizedText,
+  SyntaxEntry,
+  helpLabels,
+  resolveText,
+} from "../helpContent";
 import { AppSectionsGuidePanel } from "./AppSectionsGuidePanel";
 import { HelpTopicSections } from "./HelpTopicSections";
 import { LoadVaultGuidePanel } from "./LoadVaultGuidePanel";
@@ -34,6 +41,8 @@ type HelpDetailSectionProps = {
   isSyntaxTopic: boolean;
   isAppSectionsTopic: boolean;
   isLoadVaultTopic: boolean;
+  syntaxEntries: SyntaxEntry[];
+  syntaxOverview: { title: LocalizedText; bullets?: LocalizedText[] };
   activeSyntax: SyntaxEntry | null;
   setActiveTopicId: (value: string | null) => void;
   setActiveSyntaxId: (value: string | null) => void;
@@ -62,6 +71,8 @@ export const HelpDetailSection = ({
   isSyntaxTopic,
   isAppSectionsTopic,
   isLoadVaultTopic,
+  syntaxEntries,
+  syntaxOverview,
   activeSyntax,
   setActiveTopicId,
   setActiveSyntaxId,
@@ -114,6 +125,8 @@ export const HelpDetailSection = ({
     {isSyntaxTopic ? (
       <SyntaxSection
         overviewBullets={overviewBullets}
+        syntaxOverview={syntaxOverview}
+        syntaxEntries={syntaxEntries}
         activeSyntax={activeSyntax}
         syntaxLanguage={syntaxLanguage}
         setActiveSyntaxId={setActiveSyntaxId}

@@ -28,6 +28,8 @@ import {
   AppLanguage,
   flashcardSyntaxEntries,
   flashcardSyntaxOverview,
+  structuredSyntaxEntries,
+  structuredSyntaxOverview,
   helpHeader,
   helpLabels,
   helpTopics,
@@ -42,8 +44,11 @@ import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
 export const HelpPage = () => {
   const { help, settings } = useAppState();
   const { activeTopicId, setActiveTopicId } = help;
-  const [activeSyntaxId, setActiveSyntaxId] = useState<string | null>(
+  const [flashcardSyntaxId, setFlashcardSyntaxId] = useState<string | null>(
     flashcardSyntaxEntries[0]?.id ?? null,
+  );
+  const [structuredSyntaxId, setStructuredSyntaxId] = useState<string | null>(
+    structuredSyntaxEntries[0]?.id ?? null,
   );
   const [syntaxLanguage, setSyntaxLanguage] = useState<AppLanguage>(
     settings.language,
@@ -52,12 +57,23 @@ export const HelpPage = () => {
   const copyTimeoutRef = useRef<number | null>(null);
   const language = settings.language;
   const activeTopic = helpTopics.find((topic) => topic.id === activeTopicId) ?? null;
-  const isSyntaxTopic = activeTopic?.id === "flashcard-syntax";
+  const isFlashcardSyntaxTopic = activeTopic?.id === "flashcard-syntax";
+  const isStructuredSyntaxTopic = activeTopic?.id === "structured-syntax";
+  const isSyntaxTopic = isFlashcardSyntaxTopic || isStructuredSyntaxTopic;
   const isAppSectionsTopic = activeTopic?.id === "app-sections";
   const isLoadVaultTopic = activeTopic?.id === "vault";
+  const syntaxEntries = isStructuredSyntaxTopic
+    ? structuredSyntaxEntries
+    : flashcardSyntaxEntries;
+  const syntaxOverview = isStructuredSyntaxTopic
+    ? structuredSyntaxOverview
+    : flashcardSyntaxOverview;
+  const activeSyntaxId = isStructuredSyntaxTopic
+    ? structuredSyntaxId
+    : flashcardSyntaxId;
   const activeSyntax =
-    flashcardSyntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
-    flashcardSyntaxEntries[0] ??
+    syntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
+    syntaxEntries[0] ??
     null;
   const titleText = resolveText(helpHeader.title, language);
   const eyebrowText = resolveText(helpHeader.eyebrow, language);
@@ -77,8 +93,8 @@ export const HelpPage = () => {
   const syntaxWhatItIsLabel = resolveText(helpLabels.whatItIs, syntaxLanguage);
   const syntaxMistakesLabel = resolveText(helpLabels.mistakes, syntaxLanguage);
   const syntaxMarkersLabel = resolveText(helpLabels.markers, syntaxLanguage);
-  const overviewBullets = resolveList(
-    flashcardSyntaxOverview.bullets,
+  const syntaxOverviewBullets = resolveList(
+    syntaxOverview.bullets,
     syntaxLanguage,
   );
 
@@ -109,16 +125,24 @@ export const HelpPage = () => {
   };
 
   useEffect(() => {
-    if (activeTopicId !== "flashcard-syntax") {
-      return;
+    if (activeTopicId === "flashcard-syntax") {
+      setFlashcardSyntaxId((prev) => {
+        if (prev && flashcardSyntaxEntries.some((entry) => entry.id === prev)) {
+          return prev;
+        }
+        return flashcardSyntaxEntries[0]?.id ?? null;
+      });
+      setSyntaxLanguage(settings.language);
     }
-    setActiveSyntaxId((prev) => {
-      if (prev && flashcardSyntaxEntries.some((entry) => entry.id === prev)) {
-        return prev;
-      }
-      return flashcardSyntaxEntries[0]?.id ?? null;
-    });
-    setSyntaxLanguage(settings.language);
+    if (activeTopicId === "structured-syntax") {
+      setStructuredSyntaxId((prev) => {
+        if (prev && structuredSyntaxEntries.some((entry) => entry.id === prev)) {
+          return prev;
+        }
+        return structuredSyntaxEntries[0]?.id ?? null;
+      });
+      setSyntaxLanguage(settings.language);
+    }
   }, [activeTopicId, settings.language]);
 
   useEffect(() => {
@@ -166,16 +190,24 @@ export const HelpPage = () => {
                 isSyntaxTopic={isSyntaxTopic}
                 isAppSectionsTopic={isAppSectionsTopic}
                 isLoadVaultTopic={isLoadVaultTopic}
+                syntaxEntries={syntaxEntries}
+                syntaxOverview={syntaxOverview}
                 activeSyntax={activeSyntax}
                 setActiveTopicId={setActiveTopicId}
-                setActiveSyntaxId={setActiveSyntaxId}
+                setActiveSyntaxId={(value) => {
+                  if (isStructuredSyntaxTopic) {
+                    setStructuredSyntaxId(value);
+                  } else {
+                    setFlashcardSyntaxId(value);
+                  }
+                }}
                 syntaxLanguage={syntaxLanguage}
                 setSyntaxLanguage={setSyntaxLanguage}
                 copyLabel={copyLabel}
                 copiedLabel={copiedLabel}
                 copiedItemId={copiedItemId}
                 handleCopy={handleCopy}
-                overviewBullets={overviewBullets}
+                overviewBullets={syntaxOverviewBullets}
                 syntaxCopyExampleLabel={syntaxCopyExampleLabel}
                 syntaxCopyPromptLabel={syntaxCopyPromptLabel}
                 syntaxCopiedLabel={syntaxCopiedLabel}

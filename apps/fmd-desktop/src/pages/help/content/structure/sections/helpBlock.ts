@@ -1,13 +1,13 @@
 import { SyntaxEntry } from "../../types";
-import { joinLines } from "./helpers";
+import { joinLines } from "../../syntax/entries/helpers";
 
 export const helpBlockEntry: SyntaxEntry = {
   id: "help-block",
   title: { en: "Help / hint block", de: "Hilfe-/Hinweis-Block" },
   markers: ["#help", "#helpend"],
   keyRule: {
-    en: "Attach optional hints inside a card/task; help never affects grading.",
-    de: "Optionale Hinweise innerhalb Karte/Aufgabe; Help beeinflusst keine Bewertung.",
+    en: "Hints live in #help ... #helpend and never affect grading.",
+    de: "Hinweise stehen in #help ... #helpend und beeinflussen keine Bewertung.",
   },
   snippet: {
     en: "#help\nHint: {{...}}\n#helpend",
@@ -16,14 +16,13 @@ export const helpBlockEntry: SyntaxEntry = {
   detail: {
     en: {
       whatItIs:
-        "Use #help ... #helpend to attach non-graded hints to a flashcard (or an exam task). The parser extracts the block and excludes it from interaction detection, so markers inside help do not change the detected card type or scoring.",
+        "The help block is a non-graded hint area. If a #help ... #helpend block exists, the UI can show it as optional guidance without changing the detected interaction type or scoring.",
       rules: [
-        "Place the help block inside an open #card ... # scope (or inside an ea task scope).",
+        "Place #help ... #helpend inside a #card ... # block or inside an exam task.",
         "#help and #helpend must be on their own lines.",
-        "Help content is optional UI text (hints, reminders, mini cheat-sheets).",
-        "Help never changes the detected interaction type and never affects scoring/SRS.",
-        "Avoid a standalone '---' line inside #help (it ends the help block early).",
-        "A help block outside any card/task is ignored.",
+        "Hints are optional and only shown if the block exists.",
+        "Help content never affects grading or the detected card type.",
+        "Keep hints short and supportive; avoid full solutions unless intentional.",
       ],
       promptTemplate: joinLines([
         "Write exactly one flashcard in FMDFlashcard syntax.",
@@ -32,8 +31,7 @@ export const helpBlockEntry: SyntaxEntry = {
         "Rules:",
         "- The help block must be inside the #card block.",
         "- #help and #helpend must be on their own lines.",
-        "- Do not put '---' on its own line inside #help.",
-        "- Do not reveal the full solution inside the hints.",
+        "- Keep hints short; do not reveal the full solution.",
         "Template:",
         "#card",
         "{{prompt}}",
@@ -62,22 +60,20 @@ export const helpBlockEntry: SyntaxEntry = {
         "#",
       ]),
       mistakes: [
-        "Placing #help outside any #card (it will be ignored).",
         "Forgetting #helpend (the help block may swallow following lines).",
-        "Using a standalone '---' inside #help (it ends the block early).",
-        "Expecting Answer:/-a/-true inside #help to count as solutions (they are ignored).",
+        "Placing #help outside any card or exam task (it will be ignored).",
+        "Using #help for graded answers or solutions by accident.",
       ],
     },
     de: {
       whatItIs:
-        "Mit #help ... #helpend kannst du nicht-bewertete Hinweise an eine Flashcard (oder eine Exam-Aufgabe) haengen. Der Parser extrahiert den Block und entfernt ihn vor der Interaktions-Erkennung, daher aendert Help weder Kartentyp noch Bewertung.",
+        "Der Help-Block ist ein nicht-bewerteter Hinweisbereich. Wenn ein #help ... #helpend Block existiert, kann die UI ihn optional anzeigen, ohne Kartentyp oder Bewertung zu aendern.",
       rules: [
-        "Platziere den Help-Block innerhalb eines offenen #card ... #-Scopes (oder innerhalb eines ea-Task-Scopes).",
+        "#help ... #helpend innerhalb eines #card ... # Blocks oder innerhalb einer Exam-Aufgabe platzieren.",
         "#help und #helpend muessen jeweils auf eigenen Zeilen stehen.",
-        "Help-Inhalt ist optionaler UI-Text (Hinweise, Merksaetze, Mini-Spickzettel).",
-        "Help aendert weder den erkannten Interaktionstyp noch Bewertung/SRS.",
-        "Vermeide eine alleinstehende '---'-Zeile innerhalb #help (beendet den Block vorzeitig).",
-        "Ein Help-Block ausserhalb einer Karte/Aufgabe wird ignoriert.",
+        "Hinweise sind optional und werden nur angezeigt, wenn der Block existiert.",
+        "Help-Inhalt beeinflusst weder Kartentyp noch Bewertung.",
+        "Hinweise kurz halten; keine komplette Loesung verraten (ausser absichtlich).",
       ],
       promptTemplate: joinLines([
         "Erstelle genau eine Flashcard im FMDFlashcard-Syntaxformat.",
@@ -86,8 +82,7 @@ export const helpBlockEntry: SyntaxEntry = {
         "Regeln:",
         "- Der Help-Block muss innerhalb des #card-Blocks stehen.",
         "- #help und #helpend muessen auf eigenen Zeilen stehen.",
-        "- Schreibe '---' nicht als eigene Zeile innerhalb #help.",
-        "- Keine komplette Loesung in den Hinweisen verraten.",
+        "- Hinweise kurz halten; keine komplette Loesung verraten.",
         "Template:",
         "#card",
         "{{frage}}",
@@ -116,10 +111,9 @@ export const helpBlockEntry: SyntaxEntry = {
         "#",
       ]),
       mistakes: [
-        "#help ausserhalb eines #card-Blocks platzieren (wird ignoriert).",
         "#helpend vergessen (der Block kann nachfolgende Zeilen verschlucken).",
-        "Eine alleinstehende '---'-Zeile innerhalb #help verwenden (beendet den Block vorzeitig).",
-        "Erwarten, dass Answer:/-a/-true innerhalb #help als Loesung zaehlt (wird ignoriert).",
+        "#help ausserhalb einer Karte oder Exam-Aufgabe platzieren (wird ignoriert).",
+        "#help fuer bewertete Antworten verwenden (sollte nur Hinweis sein).",
       ],
     },
   },

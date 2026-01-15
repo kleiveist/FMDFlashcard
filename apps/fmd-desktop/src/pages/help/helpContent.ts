@@ -24,3 +24,4 @@ export * from "./content/topics";
 export * from "./content/appSections";
 export * from "./content/loadVault";
 export * from "./content/syntax";
+export * from "./content/structure";
