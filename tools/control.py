@@ -167,6 +167,22 @@ def _load_run_runner() -> Callable[..., int] | None:
     return cast(Callable[..., int], fn)
 
 
+def _load_build_runner() -> Callable[..., int] | None:
+    """Load tools/inst/build.py (runner for pnpm tauri build)."""
+    mod_name = "build"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load build module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"Build module '{mod_name}' has no run_install(dry_run=...) function.")
+        return None
+    return cast(Callable[..., int], fn)
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Project toolbox launcher.")
     parser.add_argument(
@@ -283,7 +299,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.build:
         handled = True
-        exit_code = max(exit_code, cmd_build_desktop())
+        run_build = _load_build_runner()
+        if not run_build:
+            print("No build routine found. Expected: tools/inst/build.py")
+            exit_code = max(exit_code, 1)
+        else:
+            try:
+                sig = inspect.signature(run_build)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_build())
+                else:
+                    exit_code = max(exit_code, run_build(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_build(args.dry_run))
 
     if args.doctor or args.check:
         handled = True
