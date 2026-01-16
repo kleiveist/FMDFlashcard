@@ -6,9 +6,26 @@
  */
 
 type VaultActionHandlers = {
-  handleRescanVault: () => Promise<boolean>;
+  handleRescanVault: (source?: string) => Promise<boolean>;
 };
 
-export const refreshActiveVault = (actions: VaultActionHandlers) => {
-  return actions.handleRescanVault();
+export const refreshActiveVault = async (
+  actions: VaultActionHandlers,
+  source = "unknown",
+) => {
+  if (import.meta.env.DEV) {
+    console.info("[vault] Refresh trigger received", { source });
+  }
+  try {
+    const success = await actions.handleRescanVault(source);
+    if (!success && import.meta.env.DEV) {
+      console.warn("[vault] Refresh request failed", { source });
+    }
+    return success;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error("[vault] Refresh crashed", { source, error });
+    }
+    return false;
+  }
 };

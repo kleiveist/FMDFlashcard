@@ -45,6 +45,7 @@ export type VaultSnapshot = {
   files: VaultFile[];
   listState: LoadState;
   listError: string;
+  lastRefreshAt: string | null;
 };
 
 type UseVaultOptions = {
@@ -57,6 +58,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [listState, setListState] = useState<LoadState>("idle");
   const [listError, setListError] = useState("");
+  const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
   const lastRescanHiddenState = useRef(showHiddenFolders);
 
   const takeSnapshot = useCallback(
@@ -65,8 +67,9 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
       files,
       listState,
       listError,
+      lastRefreshAt,
     }),
-    [files, listError, listState, vaultPath],
+    [files, lastRefreshAt, listError, listState, vaultPath],
   );
 
   const restoreSnapshot = useCallback((snapshot: VaultSnapshot) => {
@@ -74,6 +77,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     setFiles(snapshot.files);
     setListState(snapshot.listState);
     setListError(snapshot.listError);
+    setLastRefreshAt(snapshot.lastRefreshAt);
   }, []);
 
   const loadVault = useCallback(
@@ -88,6 +92,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
           showHiddenFolders,
         });
         setFiles(results);
+        setLastRefreshAt(new Date().toISOString());
         setListState("idle");
         if (options.persist) {
           await persistSettings({ vaultPath: path });
@@ -154,6 +159,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
         showHiddenFolders,
       });
       setFiles(results);
+      setLastRefreshAt(new Date().toISOString());
       setListState("idle");
       return true;
     } catch (error) {
@@ -179,6 +185,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     files,
     listError,
     listState,
+    lastRefreshAt,
     loadVault,
     pickVault,
     rescanVault,
@@ -186,6 +193,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     setFiles,
     setListError,
     setListState,
+    setLastRefreshAt,
     setVaultPath,
     takeSnapshot,
     vaultPath,

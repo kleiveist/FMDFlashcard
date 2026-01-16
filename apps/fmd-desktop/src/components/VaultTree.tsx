@@ -202,7 +202,7 @@ type VaultDeleteHandlerOptions = {
   selectedFile: VaultFile | null;
   isDeleting: boolean;
   invokeDelete: (vaultPath: string, relativePath: string) => Promise<void>;
-  onRescanVault: () => void;
+  onRescanVault: (source?: string) => Promise<boolean>;
   onClose: () => void;
   onClearSelection?: () => void;
   setError: (message: string) => void;
@@ -272,7 +272,7 @@ type VaultTreeProps = {
   showHiddenFolders: boolean;
   listError: string;
   listState: LoadState;
-  onRescanVault: () => void;
+  onRescanVault: (source?: string) => Promise<boolean>;
   onActiveFolderChange: (path: string | null) => void;
   onTogglePath: (path: string, isOpen: boolean) => void;
   onSelectFile: (file: VaultFile) => void;
@@ -763,6 +763,17 @@ export const VaultTree = ({
         style={menuStyle ?? { left: contextMenu.x, top: contextMenu.y }}
         onMouseDown={(event) => event.stopPropagation()}
       >
+        <button
+          type="button"
+          className="context-menu-item"
+          onClick={() => {
+            closeContextMenu();
+            void onRescanVault("vault-tree:context-menu");
+          }}
+          disabled={!vaultPath || listState === "loading"}
+        >
+          Refresh Active Vault
+        </button>
         {fileTarget ? (
           <>
             <button

@@ -84,6 +84,13 @@ export const SidebarNav = ({
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
+  const refreshLabel = useMemo(() => {
+    if (!vault.vaultPath || !vault.lastRefreshAt) {
+      return "Rescan vault";
+    }
+    const formatted = new Date(vault.lastRefreshAt).toLocaleTimeString();
+    return `Rescan vault (last: ${formatted})`;
+  }, [vault.lastRefreshAt, vault.vaultPath]);
   const activeVaultKey = useMemo(
     () => normalizeVaultPath(vault.vaultPath ?? ""),
     [vault.vaultPath],
@@ -259,9 +266,9 @@ export const SidebarNav = ({
               <button
                 type="button"
                 className="vault-status-refresh"
-                onClick={actions.handleRescanVault}
-                title="Rescan vault"
-                aria-label="Rescan vault"
+                onClick={() => void actions.handleRescanVault("sidebar:refresh-button")}
+                title={refreshLabel}
+                aria-label={refreshLabel}
                 disabled={!vault.vaultPath || isRescanningVault}
               >
                 <span

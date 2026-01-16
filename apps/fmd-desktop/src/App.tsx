@@ -34,6 +34,7 @@ import {
 } from "./lib/shortcuts/bindings";
 import { getActiveCloseLayer } from "./lib/shortcuts/closeOrBack";
 import { getShortcutById } from "./lib/shortcuts/registry";
+import { logWordPressFeatureStatus } from "./lib/featureFlags";
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
@@ -108,6 +109,10 @@ const AppContent = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [closeBinding, closeCommand]);
+
+  useEffect(() => {
+    logWordPressFeatureStatus();
+  }, []);
 
   useEffect(() => {
     const dispose = registerGlobalShortcuts({

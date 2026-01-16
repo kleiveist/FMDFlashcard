@@ -24,6 +24,7 @@
 import { useEffect, useState } from "react";
 import type { UserVaultImportStrategy } from "../../lib/userVault";
 import type { UserVaultState } from "../../features/user-vault/useUserVault";
+import { isWordPressEnabled, logWordPressFeatureStatus } from "../../lib/featureFlags";
 
 type AppLanguage = "de" | "en";
 
@@ -54,6 +55,7 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
   const [selectedProfileId, setSelectedProfileId] = useState("");
   const [importStrategy, setImportStrategy] =
     useState<UserVaultImportStrategy>("merge");
+  const wordpressEnabled = isWordPressEnabled();
   const isCustomMode = userVault.mode === "custom";
   const canManageVault = Boolean(userVault.resolvedPath);
   const canManageProfiles = canManageVault && userVault.profiles.length > 0;
@@ -66,6 +68,10 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
     }
     setSelectedProfileId("");
   }, [userVault.activeProfileId]);
+
+  useEffect(() => {
+    logWordPressFeatureStatus();
+  }, []);
 
   const handleCreateProfile = async () => {
     if (!newProfileName.trim()) {
@@ -254,6 +260,23 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
         </div>
         <span className="helper-text">
           Merge keeps existing entries and adds new ones. Overwrite replaces data.
+        </span>
+      </div>
+      <div className="setting-row">
+        <span className="label">WordPress</span>
+        <div className="setting-inline">
+          <span className="value">
+            {wordpressEnabled
+              ? "Enabled via VITE_WORDPRESS_ENABLED"
+              : "Disabled (flag off)"}
+          </span>
+          <button type="button" className="ghost small" disabled>
+            {wordpressEnabled ? "Active" : "Coming soon"}
+          </button>
+        </div>
+        <span className="helper-text">
+          Set VITE_WORDPRESS_ENABLED=true to allow the integration to initialize.
+          No calls are made while disabled.
         </span>
       </div>
       <div className="setting-row">

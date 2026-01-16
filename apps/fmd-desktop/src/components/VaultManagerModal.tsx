@@ -40,9 +40,10 @@ type VaultManagerModalProps = {
   vaults: RecentVaultEntry[];
   activeVaultPath: string | null;
   userVault: UserVaultState;
+  activeVaultError: string;
   onClose: () => void;
   onOpenVault: () => Promise<boolean>;
-  onRescanVault: () => Promise<boolean>;
+  onRescanVault: (source?: string) => Promise<boolean>;
   onSwitchVault: (path: string) => Promise<boolean>;
   onRemoveVault: (path: string) => void;
   onClearVault: () => void;
@@ -60,6 +61,7 @@ export const VaultManagerModal = ({
   vaults,
   activeVaultPath,
   userVault,
+  activeVaultError,
   onClose,
   onOpenVault,
   onRescanVault,
@@ -289,18 +291,26 @@ export const VaultManagerModal = ({
     userVault,
   ]);
 
-  const handleRefreshActiveVault = useCallback(async () => {
-    if (!activeVaultKey) {
-      return;
-    }
-    setActionError("");
-    setIsBusy(true);
-    const success = await onRescanVault();
-    if (!success) {
-      setActionError("Vault refresh failed. Please try again.");
-    }
-    setIsBusy(false);
-  }, [activeVaultKey, onRescanVault]);
+  const handleRefreshActiveVault = useCallback(
+    async (source: string) => {
+      if (!activeVaultKey) {
+        return;
+      }
+      setActionError("");
+      setIsBusy(true);
+      try {
+        const success = await onRescanVault(source);
+        if (!success) {
+          setActionError(
+            activeVaultError || "Vault refresh failed. Please try again.",
+          );
+        }
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [activeVaultError, activeVaultKey, onRescanVault],
+  );
 
   const openContextMenu = useCallback(
     (event: MouseEvent<HTMLButtonElement>, path: string) => {
@@ -457,6 +467,14 @@ export const VaultManagerModal = ({
               <div className="vault-manager-actions">
                 <button
                   type="button"
+                  className="ghost small"
+                  onClick={() => void handleRefreshActiveVault("vault-manager:actions")}
+                  disabled={!hasActiveVault || isBusy}
+                >
+                  Refresh Active Vault
+                </button>
+                <button
+                  type="button"
                   className="primary small"
                   onClick={handleOpenVault}
                   disabled={isBusy}
@@ -554,7 +572,7 @@ export const VaultManagerModal = ({
               className="context-menu-item"
               onClick={() => {
                 closeContextMenu();
-                void handleRefreshActiveVault();
+                void handleRefreshActiveVault("vault-manager:context-menu");
               }}
               disabled={!hasActiveVault || isBusy}
             >

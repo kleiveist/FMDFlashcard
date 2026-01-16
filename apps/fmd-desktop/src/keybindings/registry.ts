@@ -9,7 +9,7 @@ import { refreshActiveVault } from "../actions/vaultActions";
 import { VAULT_REFRESH } from "../actions/actionIds";
 
 export type GlobalShortcutActions = {
-  handleRescanVault: () => Promise<boolean>;
+  handleRescanVault: (source?: string) => Promise<boolean>;
 };
 
 export type GlobalShortcutContext = {
@@ -19,5 +19,5 @@ export type GlobalShortcutContext = {
 export type GlobalShortcutHandler = (context: GlobalShortcutContext) => void;
 
 export const GLOBAL_SHORTCUT_HANDLERS = new Map<string, GlobalShortcutHandler>([
-  [VAULT_REFRESH, (context) => refreshActiveVault(context.actions)],
+  [VAULT_REFRESH, (context) => refreshActiveVault(context.actions, "shortcut")],
 ]);

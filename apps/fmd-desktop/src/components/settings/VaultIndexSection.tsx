@@ -30,9 +30,11 @@ type VaultIndexTab = "vault" | "data-sync";
 type VaultIndexSectionProps = {
   lastOpenedFile: string | null;
   listState: LoadState;
+  listError: string;
+  lastRefreshAt: string | null;
   onCopyVaultPath: () => Promise<void>;
   onShowHiddenFoldersToggle: (value: boolean) => void;
-  onRescanVault: () => Promise<boolean>;
+  onRescanVault: (source?: string) => Promise<boolean>;
   onResetIndex: () => void;
   userVault: UserVaultState;
   vaultIndexedComplete: boolean;
@@ -43,6 +45,8 @@ type VaultIndexSectionProps = {
 export const VaultIndexSection = ({
   lastOpenedFile,
   listState,
+  listError,
+  lastRefreshAt,
   onCopyVaultPath,
   onShowHiddenFoldersToggle,
   onRescanVault,
@@ -57,6 +61,10 @@ export const VaultIndexSection = ({
   const handleShowHiddenFoldersChange = (event: ChangeEvent<HTMLInputElement>) => {
     onShowHiddenFoldersToggle(event.target.checked);
   };
+  const isRefreshing = listState === "loading";
+  const lastRefreshLabel = lastRefreshAt
+    ? new Date(lastRefreshAt).toLocaleString()
+    : "Not refreshed yet";
 
   return (
     <section className="panel vault-index-panel">
@@ -161,8 +169,8 @@ export const VaultIndexSection = ({
               <button
                 type="button"
                 className="ghost small"
-                onClick={onRescanVault}
-                disabled={!vaultPath || listState === "loading"}
+                onClick={() => onRescanVault("settings:vault-index")}
+                disabled={!vaultPath || isRefreshing}
               >
                 Rescan vault
               </button>
@@ -170,7 +178,7 @@ export const VaultIndexSection = ({
                 type="button"
                 className="ghost small"
                 onClick={onResetIndex}
-                disabled={!vaultPath || listState === "loading"}
+                disabled={!vaultPath || isRefreshing}
               >
                 Reset index
               </button>
@@ -178,6 +186,16 @@ export const VaultIndexSection = ({
             <span className="helper-text">
               Reset index clears the current vault registration.
             </span>
+            <div className="setting-inline">
+              <span className="muted">
+                {isRefreshing ? "Refreshing active vault..." : `Last refresh: ${lastRefreshLabel}`}
+              </span>
+            </div>
+            {listError ? (
+              <div className="error" role="status">
+                {listError}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : (

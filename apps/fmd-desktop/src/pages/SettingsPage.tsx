@@ -110,6 +110,8 @@ export const SettingsPage = () => {
           <VaultIndexSection
             lastOpenedFile={lastOpenedFile}
             listState={vault.listState}
+            listError={vault.listError}
+            lastRefreshAt={vault.lastRefreshAt}
             onCopyVaultPath={actions.handleCopyVaultPath}
             onShowHiddenFoldersToggle={settings.setShowHiddenFolders}
             onRescanVault={actions.handleRescanVault}
