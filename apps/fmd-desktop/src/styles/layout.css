@@ -398,16 +398,11 @@
   margin: 2px 4px;
 }
 
-.vault-status-menu-footer {
+.vault-status-menu-manage-row {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 0 6px 4px;
-}
-
-.vault-status-menu-settings {
-  font-weight: 600;
-  justify-content: flex-start;
 }
 
 .vault-status-menu-help {

@@ -41,7 +41,7 @@ import {
   RefreshIcon,
   SettingsIcon,
 } from "./icons";
-import { helpTopics, resolveText } from "../pages/help/helpContent";
+import { DEFAULT_HELP_TOPIC_ID, helpTopics, resolveText } from "../pages/help/helpContent";
 import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
@@ -135,29 +135,15 @@ export const SidebarNav = ({
     });
   };
 
-  const handleVaultSettingsClick = useCallback(() => {
-    setIsVaultMenuOpen(false);
-    setToolbarMode("settings");
-    setActiveSettingsPage("app-settings");
-    if (activeTab !== "settings") {
-      onTabChange("settings");
-    }
-  }, [
-    activeTab,
-    onTabChange,
-    setActiveSettingsPage,
-    setIsVaultMenuOpen,
-    setToolbarMode,
-  ]);
-
   const handleVaultHelpClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
+    (event?: MouseEvent<HTMLButtonElement>) => {
+      event?.stopPropagation();
       setIsVaultMenuOpen(false);
       setToolbarMode("help");
+      help.setActiveTopicId(DEFAULT_HELP_TOPIC_ID);
       onTabChange("help");
     },
-    [onTabChange, setIsVaultMenuOpen, setToolbarMode],
+    [help, onTabChange, setIsVaultMenuOpen, setToolbarMode],
   );
 
   useEffect(() => {
@@ -349,25 +335,17 @@ export const SidebarNav = ({
                     })
                   )}
                   <div className="vault-status-menu-divider" role="separator" />
-                  <button
-                    type="button"
-                    className="vault-status-menu-item vault-status-menu-manage"
-                    role="menuitem"
-                    onClick={() => {
-                      setIsVaultMenuOpen(false);
-                      actions.handleOpenVaultManager();
-                    }}
-                  >
-                    Manage Vaults
-                  </button>
-                  <div className="vault-status-menu-footer" role="presentation">
+                  <div className="vault-status-menu-manage-row">
                     <button
                       type="button"
-                      className="vault-status-menu-item vault-status-menu-settings"
+                      className="vault-status-menu-item vault-status-menu-manage"
                       role="menuitem"
-                      onClick={handleVaultSettingsClick}
+                      onClick={() => {
+                        setIsVaultMenuOpen(false);
+                        actions.handleOpenVaultManager();
+                      }}
                     >
-                      Vault settings
+                      Manage Vaults
                     </button>
                     <button
                       type="button"
