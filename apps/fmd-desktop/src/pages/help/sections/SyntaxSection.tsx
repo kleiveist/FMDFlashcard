@@ -33,7 +33,7 @@ type SyntaxSectionProps = {
   syntaxEntries: SyntaxEntry[];
   activeSyntax: SyntaxEntry | null;
   syntaxLanguage: AppLanguage;
-  setActiveSyntaxId: (value: string | null) => void;
+  setActiveSyntaxId: (value: string) => void;
   setSyntaxLanguage: (value: AppLanguage) => void;
   handleCopy: (text: string, copyId: string) => void;
   copiedItemId: string | null;

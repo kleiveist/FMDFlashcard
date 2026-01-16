@@ -23,9 +23,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
-import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import {
   AppLanguage,
+  DEFAULT_HELP_TOPIC_ID,
   flashcardSyntaxEntries,
   flashcardSyntaxOverview,
   structuredSyntaxEntries,
@@ -38,10 +38,13 @@ import {
 } from "./help/helpContent";
 import { HelpDetailSection } from "./help/sections/HelpDetailSection";
 import { HelpHeaderSection } from "./help/sections/HelpHeaderSection";
-import { HelpOverviewSection } from "./help/sections/HelpOverviewSection";
 import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
 
-export const HelpPage = () => {
+type HelpPageProps = {
+  onCloseHelp: () => void;
+};
+
+export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
   const { help, settings } = useAppState();
   const { activeTopicId, setActiveTopicId } = help;
   const [flashcardSyntaxId, setFlashcardSyntaxId] = useState<string | null>(
@@ -56,12 +59,28 @@ export const HelpPage = () => {
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<number | null>(null);
   const language = settings.language;
-  const activeTopic = helpTopics.find((topic) => topic.id === activeTopicId) ?? null;
-  const isFlashcardSyntaxTopic = activeTopic?.id === "flashcard-syntax";
-  const isStructuredSyntaxTopic = activeTopic?.id === "structured-syntax";
+
+  const resolvedTopicId = helpTopics.some((topic) => topic.id === activeTopicId)
+    ? activeTopicId
+    : DEFAULT_HELP_TOPIC_ID;
+
+  useEffect(() => {
+    if (activeTopicId !== resolvedTopicId) {
+      setActiveTopicId(resolvedTopicId);
+    }
+  }, [activeTopicId, resolvedTopicId, setActiveTopicId]);
+
+  const normalizedActiveTopic =
+    helpTopics.find((topic) => topic.id === resolvedTopicId) ??
+    helpTopics[0] ??
+    null;
+  const isFlashcardSyntaxTopic =
+    normalizedActiveTopic?.id === "flashcard-syntax";
+  const isStructuredSyntaxTopic =
+    normalizedActiveTopic?.id === "structured-syntax";
   const isSyntaxTopic = isFlashcardSyntaxTopic || isStructuredSyntaxTopic;
-  const isAppSectionsTopic = activeTopic?.id === "app-sections";
-  const isLoadVaultTopic = activeTopic?.id === "vault";
+  const isAppSectionsTopic = normalizedActiveTopic?.id === "app-sections";
+  const isLoadVaultTopic = normalizedActiveTopic?.id === "vault";
   const syntaxEntries = isStructuredSyntaxTopic
     ? structuredSyntaxEntries
     : flashcardSyntaxEntries;
@@ -125,7 +144,7 @@ export const HelpPage = () => {
   };
 
   useEffect(() => {
-    if (activeTopicId === "flashcard-syntax") {
+    if (normalizedActiveTopic?.id === "flashcard-syntax") {
       setFlashcardSyntaxId((prev) => {
         if (prev && flashcardSyntaxEntries.some((entry) => entry.id === prev)) {
           return prev;
@@ -134,7 +153,7 @@ export const HelpPage = () => {
       });
       setSyntaxLanguage(settings.language);
     }
-    if (activeTopicId === "structured-syntax") {
+    if (normalizedActiveTopic?.id === "structured-syntax") {
       setStructuredSyntaxId((prev) => {
         if (prev && structuredSyntaxEntries.some((entry) => entry.id === prev)) {
           return prev;
@@ -143,19 +162,7 @@ export const HelpPage = () => {
       });
       setSyntaxLanguage(settings.language);
     }
-  }, [activeTopicId, settings.language]);
-
-  useEffect(() => {
-    if (!activeTopicId) {
-      return;
-    }
-    return registerCloseLayer({
-      id: "help-topic-detail",
-      priority: 100,
-      isActive: () => true,
-      onClose: () => setActiveTopicId(null),
-    });
-  }, [activeTopicId, setActiveTopicId]);
+  }, [normalizedActiveTopic?.id, settings.language]);
 
   useEffect(
     () => () => {
@@ -175,57 +182,50 @@ export const HelpPage = () => {
       />
       <section className="panel help-panel">
         <div className="panel-body help-body">
-          {activeTopic ? (
-            <>
-              <HelpTopicHeadingsBlock
-                helpTopics={helpTopics}
-                language={language}
-                activeTopicId={activeTopic.id}
-                setActiveTopicId={setActiveTopicId}
-              />
-              <HelpDetailSection
-                titleText={titleText}
-                activeTopic={activeTopic}
-                language={language}
-                isSyntaxTopic={isSyntaxTopic}
-                isAppSectionsTopic={isAppSectionsTopic}
-                isLoadVaultTopic={isLoadVaultTopic}
-                syntaxEntries={syntaxEntries}
-                syntaxOverview={syntaxOverview}
-                activeSyntax={activeSyntax}
-                setActiveTopicId={setActiveTopicId}
-                setActiveSyntaxId={(value) => {
-                  if (isStructuredSyntaxTopic) {
-                    setStructuredSyntaxId(value);
-                  } else {
-                    setFlashcardSyntaxId(value);
-                  }
-                }}
-                syntaxLanguage={syntaxLanguage}
-                setSyntaxLanguage={setSyntaxLanguage}
-                copyLabel={copyLabel}
-                copiedLabel={copiedLabel}
-                copiedItemId={copiedItemId}
-                handleCopy={handleCopy}
-                overviewBullets={syntaxOverviewBullets}
-                syntaxCopyExampleLabel={syntaxCopyExampleLabel}
-                syntaxCopyPromptLabel={syntaxCopyPromptLabel}
-                syntaxCopiedLabel={syntaxCopiedLabel}
-                syntaxPromptLabel={syntaxPromptLabel}
-                syntaxExampleLabel={syntaxExampleLabel}
-                syntaxRulesLabel={syntaxRulesLabel}
-                syntaxWhatItIsLabel={syntaxWhatItIsLabel}
-                syntaxMistakesLabel={syntaxMistakesLabel}
-                syntaxMarkersLabel={syntaxMarkersLabel}
-              />
-            </>
-          ) : (
-            <HelpOverviewSection
+          <>
+            <HelpTopicHeadingsBlock
               helpTopics={helpTopics}
               language={language}
+              activeTopicId={normalizedActiveTopic?.id ?? DEFAULT_HELP_TOPIC_ID}
               setActiveTopicId={setActiveTopicId}
             />
-          )}
+            <HelpDetailSection
+              titleText={titleText}
+              activeTopic={normalizedActiveTopic ?? helpTopics[0]!}
+              language={language}
+              isSyntaxTopic={isSyntaxTopic}
+              isAppSectionsTopic={isAppSectionsTopic}
+              isLoadVaultTopic={isLoadVaultTopic}
+              syntaxEntries={syntaxEntries}
+              syntaxOverview={syntaxOverview}
+              activeSyntax={activeSyntax}
+              setActiveTopicId={setActiveTopicId}
+              setActiveSyntaxId={(value) => {
+                if (isStructuredSyntaxTopic) {
+                  setStructuredSyntaxId(value);
+                } else {
+                  setFlashcardSyntaxId(value);
+                }
+              }}
+              syntaxLanguage={syntaxLanguage}
+              setSyntaxLanguage={setSyntaxLanguage}
+              copyLabel={copyLabel}
+              copiedLabel={copiedLabel}
+              copiedItemId={copiedItemId}
+              handleCopy={handleCopy}
+              overviewBullets={syntaxOverviewBullets}
+              syntaxCopyExampleLabel={syntaxCopyExampleLabel}
+              syntaxCopyPromptLabel={syntaxCopyPromptLabel}
+              syntaxCopiedLabel={syntaxCopiedLabel}
+              syntaxPromptLabel={syntaxPromptLabel}
+              syntaxExampleLabel={syntaxExampleLabel}
+              syntaxRulesLabel={syntaxRulesLabel}
+              syntaxWhatItIsLabel={syntaxWhatItIsLabel}
+              syntaxMistakesLabel={syntaxMistakesLabel}
+              syntaxMarkersLabel={syntaxMarkersLabel}
+              onCloseHelp={onCloseHelp}
+            />
+          </>
         </div>
       </section>
     </>

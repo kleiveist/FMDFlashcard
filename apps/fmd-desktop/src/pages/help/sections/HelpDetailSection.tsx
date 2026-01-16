@@ -44,8 +44,8 @@ type HelpDetailSectionProps = {
   syntaxEntries: SyntaxEntry[];
   syntaxOverview: { title: LocalizedText; bullets?: LocalizedText[] };
   activeSyntax: SyntaxEntry | null;
-  setActiveTopicId: (value: string | null) => void;
-  setActiveSyntaxId: (value: string | null) => void;
+  setActiveTopicId: (value: string) => void;
+  setActiveSyntaxId: (value: string) => void;
   syntaxLanguage: AppLanguage;
   setSyntaxLanguage: (value: AppLanguage) => void;
   copyLabel: string;
@@ -62,6 +62,7 @@ type HelpDetailSectionProps = {
   syntaxWhatItIsLabel: string;
   syntaxMistakesLabel: string;
   syntaxMarkersLabel: string;
+  onCloseHelp: () => void;
 };
 
 export const HelpDetailSection = ({
@@ -92,6 +93,7 @@ export const HelpDetailSection = ({
   syntaxWhatItIsLabel,
   syntaxMistakesLabel,
   syntaxMarkersLabel,
+  onCloseHelp,
 }: HelpDetailSectionProps) => (
   <>
     <div className="help-detail-header">
@@ -116,7 +118,7 @@ export const HelpDetailSection = ({
       <button
         type="button"
         className="ghost small"
-        onClick={() => setActiveTopicId(null)}
+        onClick={onCloseHelp}
       >
         {resolveText(helpLabels.back, language)}
       </button>

@@ -21,7 +21,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
@@ -42,6 +42,7 @@ import { FastFlashcardPage } from "./pages/FastFlashcardPage";
 import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
+import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
 
 type TabKey =
   | "dashboard"
@@ -53,9 +54,11 @@ type TabKey =
   | "settings";
 
 const AppContent = () => {
-  const { actions, settings } = useAppState();
+  const { actions, help, settings } = useAppState();
+  const { setActiveTopicId } = help;
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [helpReturnTab, setHelpReturnTab] = useState<TabKey>("dashboard");
   const isDashboard = activeTab === "dashboard";
   const platform = getShortcutPlatform();
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
@@ -66,10 +69,19 @@ const AppContent = () => {
         : null,
     [closeCommand, platform, settings.keyboardShortcuts.bindings],
   );
-  const handleTabChange = (tab: TabKey) => {
-    setActiveTab(tab);
-    setIsMobileNavOpen(false);
-  };
+  const handleTabChange = useCallback(
+    (tab: TabKey) => {
+      if (tab === "help" && activeTab !== "help") {
+        setActiveTopicId(DEFAULT_HELP_TOPIC_ID);
+      }
+      setActiveTab(tab);
+      setIsMobileNavOpen(false);
+      if (tab !== "help") {
+        setHelpReturnTab(tab);
+      }
+    },
+    [activeTab, setActiveTopicId, setActiveTab, setHelpReturnTab, setIsMobileNavOpen],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -114,6 +126,26 @@ const AppContent = () => {
     settings.keyboardShortcuts.bindings,
   ]);
 
+  const closeHelp = useCallback(() => {
+    const targetTab = helpReturnTab === "help" ? "dashboard" : helpReturnTab;
+    handleTabChange(targetTab);
+  }, [handleTabChange, helpReturnTab]);
+
+  useEffect(() => {
+    if (activeTab !== "help") {
+      return undefined;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) {
+        return;
+      }
+      event.preventDefault();
+      closeHelp();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTab, closeHelp]);
+
   return (
     <div
       className={`app-shell ${
@@ -152,7 +184,7 @@ const AppContent = () => {
         ) : activeTab === "fast-flashcard" ? (
           <FastFlashcardPage />
         ) : activeTab === "help" ? (
-          <HelpPage />
+          <HelpPage onCloseHelp={closeHelp} />
         ) : (
           <SettingsPage />
         )}

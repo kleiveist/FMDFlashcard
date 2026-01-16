@@ -44,6 +44,7 @@ import { useUserVault } from "../features/user-vault/useUserVault";
 import { useVault } from "../features/vault/useVault";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 import { VaultManagerModal } from "./VaultManagerModal";
+import { DEFAULT_HELP_TOPIC_ID } from "../pages/help/helpContent";
 
 type AppActions = {
   handlePickVault: () => Promise<boolean>;
@@ -67,8 +68,8 @@ type AppState = {
   flashcards: ReturnType<typeof useFlashcards>;
   fastFlashcards: ReturnType<typeof useFlashcards>;
   help: {
-    activeTopicId: string | null;
-    setActiveTopicId: (value: string | null) => void;
+    activeTopicId: string;
+    setActiveTopicId: (value: string) => void;
   };
   settingsNav: {
     activeSettingsPage: SettingsPageId;
@@ -111,8 +112,8 @@ const MAX_RECENT_VAULTS = 10;
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
-  const [activeHelpTopicId, setActiveHelpTopicId] = useState<string | null>(
-    null,
+  const [activeHelpTopicId, setActiveHelpTopicId] = useState<string>(
+    DEFAULT_HELP_TOPIC_ID,
   );
   const [activeFolderPath, setActiveFolderPathState] = useState<string | null>(
     null,

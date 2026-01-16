@@ -26,7 +26,7 @@ type HelpTopicHeadingsBlockProps = {
   helpTopics: HelpTopic[];
   language: AppLanguage;
   activeTopicId: string;
-  setActiveTopicId: (value: string | null) => void;
+  setActiveTopicId: (value: string) => void;
 };
 
 export const HelpTopicHeadingsBlock = ({

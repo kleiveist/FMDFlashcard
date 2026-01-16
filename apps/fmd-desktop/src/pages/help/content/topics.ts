@@ -56,3 +56,5 @@ export const helpTopics: HelpTopic[] = [
     sections: [],
   },
 ];
+
+export const DEFAULT_HELP_TOPIC_ID = helpTopics[0]?.id ?? "app-sections";
