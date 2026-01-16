@@ -82,11 +82,15 @@ const wrapperLinePattern = /^\s*#(?:examend|exam|card|endcard)?\s*$/;
 const examStartPattern = /^\s*#exam\s*$/;
 const examEndPattern = /^\s*#examend\s*$/;
 const separatorLinePattern = /^\s*---\s*$/;
+const cardStartPattern = /^\s*#card\s*$/;
+const cardEndPattern = /^\s*#(?:endcard)?\s*$/;
 
 const isWrapperLine = (line: string) => wrapperLinePattern.test(line);
 const isExamStartLine = (line: string) => examStartPattern.test(line);
 const isExamEndLine = (line: string) => examEndPattern.test(line);
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
+const isCardStartLine = (line: string) => cardStartPattern.test(line);
+const isCardEndLine = (line: string) => cardEndPattern.test(line);
 
 const stripWrapperLines = (lines: string[]) =>
   lines.filter((line) => !isWrapperLine(line));
@@ -191,6 +195,49 @@ const normalizeTaskLines = (lines: string[]) => {
   return trimEmptyLines(stripped);
 };
 
+type ExamTaskLineSplit = {
+  combinedLines: string[];
+  taskLines: string[];
+  cardLines: string[];
+  hasCardBlock: boolean;
+};
+
+const splitExamTaskLines = (lines: string[]): ExamTaskLineSplit => {
+  const combinedLines: string[] = [];
+  const taskLines: string[] = [];
+  const cardLines: string[] = [];
+  let inCard = false;
+  let hasCardBlock = false;
+
+  lines.forEach((line) => {
+    if (isCardStartLine(line)) {
+      inCard = true;
+      hasCardBlock = true;
+      return;
+    }
+    if (isCardEndLine(line)) {
+      inCard = false;
+      return;
+    }
+    if (isWrapperLine(line)) {
+      return;
+    }
+    combinedLines.push(line);
+    if (inCard) {
+      cardLines.push(line);
+      return;
+    }
+    taskLines.push(line);
+  });
+
+  return {
+    combinedLines: trimEmptyLines(combinedLines),
+    taskLines: trimEmptyLines(taskLines),
+    cardLines: trimEmptyLines(cardLines),
+    hasCardBlock,
+  };
+};
+
 const toCompositeCard = (card: Flashcard): ExamCompositeFlashcard => {
   if (card.kind === "composite") {
     return card;
@@ -231,9 +278,15 @@ const parseTaskChunk = (
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
   const normalizedLines = normalizeTaskLines(chunkLines);
-  const { helpText, contentLines } = extractHelpBlocksFromLines(normalizedLines);
-  const answerSplit = splitAnswerBlockLines(contentLines);
-  const cardSource = `#card\n${contentLines.join("\n")}\n#`;
+  const { combinedLines, taskLines, cardLines } = splitExamTaskLines(chunkLines);
+  const { helpText: taskHelpText, contentLines: taskContentLines } =
+    extractHelpBlocksFromLines(taskLines);
+  const { contentLines: combinedContentLines } =
+    extractHelpBlocksFromLines(combinedLines.length > 0 ? combinedLines : normalizedLines);
+  const cardInputLines =
+    cardLines.length > 0 ? cardLines : taskContentLines.length > 0 ? taskContentLines : normalizedLines;
+  const answerSplit = splitAnswerBlockLines(combinedContentLines);
+  const cardSource = `#card\n${cardInputLines.join("\n")}\n#`;
   const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
   let card: CompositeFlashcard | null = null;
   let officialAnswer: string | undefined;
@@ -253,7 +306,7 @@ const parseTaskChunk = (
       });
     }
     card = toCompositeCard(parsed[0]);
-    const answerBlocks = splitCardLines(contentLines, "line-start");
+    const answerBlocks = splitCardLines(combinedContentLines, "line-start");
     const qaAnswers = answerBlocks
       .map((block) => splitAnswerCard(block, { answerMatch: "line-start" }))
       .filter(
@@ -278,7 +331,7 @@ const parseTaskChunk = (
     sourceRange,
     card,
     warnings,
-    helpText: helpText.length > 0 ? helpText : undefined,
+    helpText: taskHelpText.length > 0 ? taskHelpText : undefined,
   };
 };
 

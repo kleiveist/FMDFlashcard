@@ -1,0 +1,185 @@
+/**
+ * @file apps/fmd-desktop/src/features/exam-editor/serializer.ts
+ *
+ * Zweck:
+ * - Serialisiert Exam-Blueprints zu Exam-Markdown.
+ */
+
+import type {
+  CardBlueprint,
+  CardType,
+  ChoiceOption,
+  ExamBlueprint,
+  ExamTaskBlueprint,
+} from "./types";
+
+const normalizeLines = (value: string) => value.replace(/\r\n?/g, "\n").split("\n");
+
+const trimEmptyLines = (lines: string[]) => {
+  let start = 0;
+  let end = lines.length;
+
+  while (start < end && lines[start]?.trim() === "") {
+    start += 1;
+  }
+  while (end > start && lines[end - 1]?.trim() === "") {
+    end -= 1;
+  }
+
+  return lines.slice(start, end);
+};
+
+const cleanLines = (value: string) =>
+  trimEmptyLines(normalizeLines(value).map((line) => line.trimEnd()));
+
+const formatOptionKey = (index: number) => {
+  const code = "a".charCodeAt(0) + index;
+  return String.fromCharCode(code);
+};
+
+const serializeHelpBlock = (helpText?: string) => {
+  if (!helpText || helpText.trim() === "") {
+    return [];
+  }
+  const lines = cleanLines(helpText);
+  if (lines.length === 0) {
+    return [];
+  }
+  return ["#help", ...lines, "#helpend"];
+};
+
+const serializeQaCard = (card: Extract<CardBlueprint, { type: "qa" }>) => {
+  const promptLines = cleanLines(card.prompt);
+  const answerLines = cleanLines(card.answer);
+  const [firstAnswer, ...restAnswer] = answerLines.length > 0 ? answerLines : [""];
+  const answerLine = firstAnswer ? `Answer: ${firstAnswer}` : "Answer:";
+  return [...promptLines, answerLine, ...restAnswer];
+};
+
+const serializeTfCard = (card: Extract<CardBlueprint, { type: "tf" }>) => {
+  const promptLines = cleanLines(card.prompt);
+  const marker = card.correct === "false" ? "false" : "true";
+  return [...promptLines, `-${marker}`];
+};
+
+const serializeChoiceCard = (
+  card: Extract<CardBlueprint, { type: "m1" | "m2" }>,
+) => {
+  const promptLines = cleanLines(card.prompt);
+  const optionLines = card.options.map((option, index) => {
+    const key = formatOptionKey(index);
+    return `${key}) ${option.text}`.trimEnd();
+  });
+  const correctLines = card.options
+    .map((option, index) => ({
+      key: formatOptionKey(index),
+      isCorrect: option.isCorrect,
+    }))
+    .filter((option) => option.isCorrect)
+    .map((option) => `-${option.key}`);
+
+  return [...promptLines, ...optionLines, ...correctLines];
+};
+
+const serializeClozeCard = (
+  card: Extract<CardBlueprint, { type: "cl" | "cd" | "cld" }>,
+) => cleanLines(card.prompt);
+
+const serializeCardContent = (card: CardBlueprint) => {
+  switch (card.type) {
+    case "qa":
+      return serializeQaCard(card);
+    case "tf":
+      return serializeTfCard(card);
+    case "m1":
+    case "m2":
+      return serializeChoiceCard(card);
+    case "cl":
+    case "cd":
+    case "cld":
+      return serializeClozeCard(card);
+    default: {
+      const _exhaustive: never = card;
+      return [];
+    }
+  }
+};
+
+const serializeCardBlock = (card: CardBlueprint) => {
+  // Keep card help adjacent to its content inside the card scope.
+  const helpLines = serializeHelpBlock(card.helpText);
+  const contentLines = serializeCardContent(card);
+  return [...helpLines, ...contentLines];
+};
+
+const serializeTask = (task: ExamTaskBlueprint, index: number) => {
+  const lines: string[] = [];
+  const title = task.title.trim();
+  lines.push(`${index + 1})${title ? ` ${title}` : ""}`);
+  // Place task-level help inside the task scope, before the card block.
+  lines.push(...serializeHelpBlock(task.helpText));
+  lines.push("#card");
+  task.cards.forEach((card, cardIndex) => {
+    if (cardIndex > 0) {
+      lines.push("---");
+    }
+    lines.push(...serializeCardBlock(card));
+  });
+  lines.push("#");
+  return lines;
+};
+
+const serializeExamMeta = (exam: ExamBlueprint) => {
+  const lines: string[] = [];
+  if (exam.title.trim()) {
+    lines.push(`# ${exam.title.trim()}`);
+  }
+  if (exam.description.trim()) {
+    lines.push(...cleanLines(exam.description));
+  }
+  return lines;
+};
+
+export const serializeExamBlueprint = (exam: ExamBlueprint) => {
+  const lines: string[] = ["#exam"];
+  const metaLines = serializeExamMeta(exam);
+  if (metaLines.length > 0) {
+    lines.push(...metaLines, "");
+  }
+  exam.tasks
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .forEach((task, index) => {
+      lines.push(...serializeTask(task, index));
+    });
+  lines.push("#examend");
+  return lines.join("\n");
+};
+
+export const serializeCardTypeLabel = (cardType: CardType) => {
+  switch (cardType) {
+    case "qa":
+      return "QA";
+    case "tf":
+      return "TF";
+    case "m1":
+      return "M1";
+    case "m2":
+      return "M2";
+    case "cl":
+      return "CL";
+    case "cd":
+      return "CD";
+    case "cld":
+      return "CLD";
+    default: {
+      const _exhaustive: never = cardType;
+      return "";
+    }
+  }
+};
+
+export const buildChoiceOption = (index: number, option: ChoiceOption) => ({
+  ...option,
+  label: `${formatOptionKey(index)}) ${option.text}`.trimEnd(),
+});

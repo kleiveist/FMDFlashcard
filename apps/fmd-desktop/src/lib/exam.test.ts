@@ -101,6 +101,27 @@ Answer: Real
     expect(task?.officialAnswer).toBe("Real");
   });
 
+  it("attaches help blocks inside #card to the card only", () => {
+    const markdown = `#exam
+1) Task with help in card.
+#card
+#help
+Answer: Decoy
+#helpend
+Answer: Real
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.helpText).toBeUndefined();
+    expect(task?.card.helpText?.length).toBe(1);
+    expect(task?.card.helpText?.[0]).toContain("Answer: Decoy");
+    expect(task?.officialAnswer).toBe("Real");
+  });
+
   it("keeps table separators inside a task prompt", () => {
     const markdown = `#exam
 1) Table task

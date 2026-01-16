@@ -1,0 +1,500 @@
+/*
+ * @file apps/fmd-desktop/src/styles/components/exam-editor.css
+ */
+
+.exam-editor-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exam-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.exam-editor-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.exam-editor-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.exam-editor-save-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+}
+
+.save-path {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.exam-editor-validation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill.success {
+  background: var(--accent-weak-bg);
+  color: var(--accent-strong);
+}
+
+.pill.warning {
+  background: var(--error-bg);
+  color: var(--error-ink);
+}
+
+.exam-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr) minmax(220px, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.exam-editor-content {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(320px, 2fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.exam-editor-panel {
+  min-height: 0;
+}
+
+.exam-canvas-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  text-align: left;
+  cursor: pointer;
+}
+
+.exam-canvas-meta.selected {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-soft);
+}
+
+.exam-canvas-empty {
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--block-bg);
+}
+
+.exam-task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exam-task-node {
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  padding: 12px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exam-task-node.selected {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-soft);
+}
+
+.exam-task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.exam-task-title {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.task-number {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.task-title-text {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.exam-task-actions,
+.exam-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exam-task-warning {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+}
+
+.exam-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exam-card-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+}
+
+.exam-card-item.selected {
+  border-color: var(--accent-border);
+}
+
+.exam-card-title {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+
+.card-index {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.card-type {
+  font-weight: 600;
+}
+
+.card-hint {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.card-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.card-palette-item {
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: 0.2s ease;
+}
+
+.card-palette-item:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-weak-bg);
+}
+
+.card-type-badge {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.card-type-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-error {
+  color: var(--error-ink);
+  font-size: 0.8rem;
+}
+
+.exam-textarea {
+  min-height: 90px;
+}
+
+.help-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.help-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.help-editor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.help-preview {
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  padding: 10px;
+}
+
+.choice-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.choice-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
+  font-size: 0.85rem;
+}
+
+.option-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.option-row.has-error input {
+  border-color: var(--error-border);
+}
+
+.option-choice input {
+  margin: 0;
+}
+
+.card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exam-card-form {
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--block-bg);
+}
+
+.exam-card-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.exam-card-form-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint-box {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--accent-weak-bg);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.content-task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.content-task-item {
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.content-task-item.active {
+  border-color: var(--accent-border);
+}
+
+.content-task-button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.status-dot.valid {
+  background: var(--accent-strong);
+}
+
+.status-dot.invalid {
+  background: var(--error-ink);
+}
+
+.task-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.task-title {
+  font-weight: 600;
+}
+
+.card-count {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.content-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.content-task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ghost.small.danger {
+  border-color: var(--error-border);
+  color: var(--error-ink);
+}
+
+.ghost.small.danger:hover {
+  border-color: var(--error-ink);
+}
+
+.muted.small {
+  font-size: 0.8rem;
+}
+
+@media (max-width: 1100px) {
+  .exam-editor-layout {
+    grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr);
+  }
+
+  .card-palette {
+    order: 3;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .exam-editor-layout,
+  .exam-editor-content {
+    grid-template-columns: 1fr;
+  }
+
+  .exam-editor-actions {
+    align-items: flex-start;
+  }
+}
