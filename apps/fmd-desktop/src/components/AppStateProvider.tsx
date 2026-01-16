@@ -58,7 +58,7 @@ type AppActions = {
   handleAccentInputChange: (value: string) => void;
   handleCopyAccent: () => Promise<void>;
   handleCopyVaultPath: () => Promise<void>;
-  handleRescanVault: () => void;
+  handleRescanVault: () => Promise<boolean>;
   handleResetIndex: () => void;
   handleMaxFilesPerScanChange: (value: string) => void;
 };
@@ -238,6 +238,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     pickVault,
     rescanVault,
     restoreSnapshot: restoreVaultSnapshot,
+    listState,
     setFiles,
     setListError,
     setListState,
@@ -602,9 +603,26 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [vaultPath]);
 
-  const handleRescanVault = useCallback(() => {
-    void rescanVault();
-  }, [rescanVault]);
+  const handleRescanVault = useCallback(async () => {
+    if (!vaultPath) {
+      setListError("Kein aktiver Vault zum Aktualisieren.");
+      return false;
+    }
+    if (listState === "loading") {
+      if (import.meta.env.DEV) {
+        console.info("[vault] Refresh skipped because a scan is already running.");
+      }
+      return false;
+    }
+    if (import.meta.env.DEV) {
+      console.info("[vault] Refresh requested", { vaultPath });
+    }
+    const success = await rescanVault();
+    if (!success && import.meta.env.DEV) {
+      console.warn("[vault] Refresh failed", { vaultPath });
+    }
+    return success;
+  }, [listState, rescanVault, setListError, vaultPath]);
 
   const handleResetIndex = useCallback(() => {
     if (!vaultPath) {

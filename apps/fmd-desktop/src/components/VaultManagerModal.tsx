@@ -42,7 +42,7 @@ type VaultManagerModalProps = {
   userVault: UserVaultState;
   onClose: () => void;
   onOpenVault: () => Promise<boolean>;
-  onRescanVault: () => void;
+  onRescanVault: () => Promise<boolean>;
   onSwitchVault: (path: string) => Promise<boolean>;
   onRemoveVault: (path: string) => void;
   onClearVault: () => void;
@@ -289,12 +289,17 @@ export const VaultManagerModal = ({
     userVault,
   ]);
 
-  const handleRefreshActiveVault = useCallback(() => {
+  const handleRefreshActiveVault = useCallback(async () => {
     if (!activeVaultKey) {
       return;
     }
     setActionError("");
-    onRescanVault();
+    setIsBusy(true);
+    const success = await onRescanVault();
+    if (!success) {
+      setActionError("Vault refresh failed. Please try again.");
+    }
+    setIsBusy(false);
   }, [activeVaultKey, onRescanVault]);
 
   const openContextMenu = useCallback(
@@ -546,15 +551,15 @@ export const VaultManagerModal = ({
             >
               <button
                 type="button"
-                className="context-menu-item"
-                onClick={() => {
-                  closeContextMenu();
-                  handleRefreshActiveVault();
-                }}
-                disabled={!hasActiveVault || isBusy}
-              >
-                Refresh Active Vault
-              </button>
+              className="context-menu-item"
+              onClick={() => {
+                closeContextMenu();
+                void handleRefreshActiveVault();
+              }}
+              disabled={!hasActiveVault || isBusy}
+            >
+              Refresh Active Vault
+            </button>
               <button
                 type="button"
                 className="context-menu-item"

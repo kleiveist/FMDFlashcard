@@ -142,9 +142,9 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     [loadVault, restoreSnapshot, takeSnapshot],
   );
 
-  const rescanVault = useCallback(async () => {
+  const rescanVault = useCallback(async (): Promise<boolean> => {
     if (!vaultPath || listState === "loading") {
-      return;
+      return false;
     }
     setListError("");
     setListState("loading");
@@ -155,10 +155,12 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
       });
       setFiles(results);
       setListState("idle");
+      return true;
     } catch (error) {
       const message = asErrorMessage(error, "Vault konnte nicht neu gescannt werden.");
       setListError(message);
       setListState("error");
+      return false;
     }
   }, [listState, showHiddenFolders, vaultPath]);
 

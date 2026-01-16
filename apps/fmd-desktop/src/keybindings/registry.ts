@@ -9,7 +9,7 @@ import { refreshActiveVault } from "../actions/vaultActions";
 import { VAULT_REFRESH } from "../actions/actionIds";
 
 export type GlobalShortcutActions = {
-  handleRescanVault: () => void;
+  handleRescanVault: () => Promise<boolean>;
 };
 
 export type GlobalShortcutContext = {

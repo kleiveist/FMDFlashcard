@@ -30,9 +30,9 @@ type VaultIndexTab = "vault" | "data-sync";
 type VaultIndexSectionProps = {
   lastOpenedFile: string | null;
   listState: LoadState;
-  onCopyVaultPath: () => void;
+  onCopyVaultPath: () => Promise<void>;
   onShowHiddenFoldersToggle: (value: boolean) => void;
-  onRescanVault: () => void;
+  onRescanVault: () => Promise<boolean>;
   onResetIndex: () => void;
   userVault: UserVaultState;
   vaultIndexedComplete: boolean;

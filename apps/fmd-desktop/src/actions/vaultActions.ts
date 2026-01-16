@@ -6,9 +6,9 @@
  */
 
 type VaultActionHandlers = {
-  handleRescanVault: () => void;
+  handleRescanVault: () => Promise<boolean>;
 };
 
 export const refreshActiveVault = (actions: VaultActionHandlers) => {
-  actions.handleRescanVault();
+  return actions.handleRescanVault();
 };
