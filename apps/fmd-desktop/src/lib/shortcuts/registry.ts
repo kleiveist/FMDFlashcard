@@ -96,6 +96,15 @@ export const SHORTCUT_COMMANDS: ShortcutCommand[] = [
     defaultBinding: { winLinux: "Enter", mac: "Enter" },
   },
   {
+    id: "vault.refresh",
+    title: "Refresh active vault",
+    description: "Refresh the vault scanner and reload Markdown files.",
+    contexts: ["global"],
+    defaultBinding: { winLinux: "Ctrl+R", mac: "Cmd+R" },
+    allowInTextInputs: true,
+    notes: "Overrides the browser reload shortcut for active vault refresh.",
+  },
+  {
     id: "uiCloseOrBack",
     title: "Close / Back",
     description: "Close dialogs/menus or return from help detail.",

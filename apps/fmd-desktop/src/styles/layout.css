@@ -398,6 +398,41 @@
   margin: 2px 4px;
 }
 
+.vault-status-menu-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 4px;
+}
+
+.vault-status-menu-settings {
+  font-weight: 600;
+  justify-content: flex-start;
+}
+
+.vault-status-menu-help {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.vault-status-menu-help:hover {
+  background: var(--accent-weak-bg);
+  color: var(--accent-strong);
+}
+
+.vault-status-menu-help svg {
+  width: 16px;
+  height: 16px;
+}
+
 .vault-status-menu-empty {
   padding: 6px 8px;
   font-size: 0.8rem;

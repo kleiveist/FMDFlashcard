@@ -21,7 +21,14 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useAppState } from "./AppStateProvider";
 import { normalizeRelativePath, normalizeVaultPath, vaultBaseName } from "../lib/path";
 import { VaultTree } from "./VaultTree";
@@ -127,6 +134,31 @@ export const SidebarNav = ({
       return next;
     });
   };
+
+  const handleVaultSettingsClick = useCallback(() => {
+    setIsVaultMenuOpen(false);
+    setToolbarMode("settings");
+    setActiveSettingsPage("app-settings");
+    if (activeTab !== "settings") {
+      onTabChange("settings");
+    }
+  }, [
+    activeTab,
+    onTabChange,
+    setActiveSettingsPage,
+    setIsVaultMenuOpen,
+    setToolbarMode,
+  ]);
+
+  const handleVaultHelpClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      setIsVaultMenuOpen(false);
+      setToolbarMode("help");
+      onTabChange("help");
+    },
+    [onTabChange, setIsVaultMenuOpen, setToolbarMode],
+  );
 
   useEffect(() => {
     if (!vault.activeFolderPath) {
@@ -328,6 +360,25 @@ export const SidebarNav = ({
                   >
                     Manage Vaults
                   </button>
+                  <div className="vault-status-menu-footer" role="presentation">
+                    <button
+                      type="button"
+                      className="vault-status-menu-item vault-status-menu-settings"
+                      role="menuitem"
+                      onClick={handleVaultSettingsClick}
+                    >
+                      Vault settings
+                    </button>
+                    <button
+                      type="button"
+                      className="vault-status-menu-help"
+                      onClick={handleVaultHelpClick}
+                      aria-label="Help"
+                      title="Help"
+                    >
+                      <HelpIcon />
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </div>

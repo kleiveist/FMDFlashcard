@@ -34,6 +34,7 @@ import {
 } from "./lib/shortcuts/bindings";
 import { getActiveCloseLayer } from "./lib/shortcuts/closeOrBack";
 import { getShortcutById } from "./lib/shortcuts/registry";
+import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
@@ -52,7 +53,7 @@ type TabKey =
   | "settings";
 
 const AppContent = () => {
-  const { settings } = useAppState();
+  const { actions, settings } = useAppState();
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const isDashboard = activeTab === "dashboard";
@@ -95,6 +96,23 @@ const AppContent = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [closeBinding, closeCommand]);
+
+  useEffect(() => {
+    const dispose = registerGlobalShortcuts({
+      bindings: settings.keyboardShortcuts.bindings,
+      platform,
+      context: {
+        actions: {
+          handleRescanVault: actions.handleRescanVault,
+        },
+      },
+    });
+    return dispose;
+  }, [
+    actions.handleRescanVault,
+    platform,
+    settings.keyboardShortcuts.bindings,
+  ]);
 
   return (
     <div
