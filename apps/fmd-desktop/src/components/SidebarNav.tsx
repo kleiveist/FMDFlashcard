@@ -49,7 +49,6 @@ import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
 type TabKey =
   | "dashboard"
   | "exam"
-  | "exam-editor"
   | "flashcard"
   | "spaced-repetition"
   | "fast-flashcard"
@@ -117,7 +116,6 @@ export const SidebarNav = ({
   const isCollapsed = isToolbarCollapsed && !isMobileNavOpen;
   const isCardsTab =
     activeTab === "exam" ||
-    activeTab === "exam-editor" ||
     activeTab === "flashcard" ||
     activeTab === "fast-flashcard" ||
     activeTab === "spaced-repetition";
@@ -446,13 +444,6 @@ export const SidebarNav = ({
                 onClick={() => onTabChange("exam")}
               >
                 Exam
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeTab === "exam-editor" ? "active" : ""}`}
-                onClick={() => onTabChange("exam-editor")}
-              >
-                Exam Editor
               </button>
               <button
                 type="button"

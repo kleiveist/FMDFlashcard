@@ -2,7 +2,7 @@
  * @file apps/fmd-desktop/src/pages/exam-editor/ExamEditorView.tsx
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
@@ -20,6 +20,7 @@ import type {
 } from "../../features/exam-editor/types";
 import { serializeExamBlueprint } from "../../features/exam-editor/serializer";
 import { isCompositeTask, validateExamBlueprint } from "../../features/exam-editor/validation";
+import { importExamMarkdown, isExamMarkdown } from "../../features/exam-editor/importer";
 import { CardPalette } from "./components/CardPalette";
 import { ExamCanvas } from "./components/ExamCanvas";
 import { PropertiesPanel } from "./components/PropertiesPanel";
@@ -33,7 +34,17 @@ type EditorMode = "structure" | "content";
 
 type SaveState = "idle" | "saving" | "saved";
 
-export const ExamEditorView = () => {
+type ExamEditorViewProps = {
+  sourcePath?: string | null;
+  sourceMarkdown?: string;
+  onSave?: (payload: { path: string; markdown: string }) => void;
+};
+
+export const ExamEditorView = ({
+  sourcePath,
+  sourceMarkdown,
+  onSave,
+}: ExamEditorViewProps) => {
   const [exam, setExam] = useState<ExamBlueprint>(() => createExamBlueprint());
   const [selection, setSelection] = useState<ExamEditorSelection>({ type: "exam" });
   const [mode, setMode] = useState<EditorMode>("structure");
@@ -41,6 +52,12 @@ export const ExamEditorView = () => {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState<string | null>(null);
+  const [importMessage, setImportMessage] = useState("");
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const lastLoadedRef = useRef<{ path: string | null; markdown: string | null }>({
+    path: null,
+    markdown: null,
+  });
 
   const validation = useMemo(() => validateExamBlueprint(exam), [exam]);
   const canSave = validation.valid;
@@ -381,6 +398,8 @@ export const ExamEditorView = () => {
     setSaveState("idle");
     setSaveError("");
     setLastSavedContent(null);
+    setImportMessage("");
+    setImportWarnings([]);
   }, []);
 
   const handleSave = useCallback(
@@ -416,6 +435,7 @@ export const ExamEditorView = () => {
         setSavePath(nextSavePath ?? targetPath);
         setSaveState("saved");
         setLastSavedContent(markdown);
+        onSave?.({ path: targetPath, markdown });
       } catch (error) {
         setSaveError(asErrorMessage(error, "Failed to save exam."));
         setSaveState("idle");
@@ -452,6 +472,60 @@ export const ExamEditorView = () => {
       setSaveState("idle");
     }
   }, [lastSavedContent, markdown, saveState]);
+
+  useEffect(() => {
+    if (sourcePath === undefined || sourceMarkdown === undefined) {
+      return;
+    }
+    const lastLoaded = lastLoadedRef.current;
+    if (
+      lastLoaded.path === sourcePath &&
+      lastLoaded.markdown === sourceMarkdown
+    ) {
+      return;
+    }
+    if (
+      sourcePath &&
+      savePath &&
+      sourcePath === savePath &&
+      lastSavedContent === sourceMarkdown
+    ) {
+      return;
+    }
+    lastLoadedRef.current = { path: sourcePath ?? null, markdown: sourceMarkdown };
+    setImportWarnings([]);
+    setImportMessage("");
+    setSaveState("idle");
+    setSaveError("");
+
+    if (!sourcePath || !sourceMarkdown.trim()) {
+      return;
+    }
+    if (!isExamMarkdown(sourceMarkdown)) {
+      setImportMessage(
+        "Selected file has no #exam block. Create a new exam or switch back to Markdown.",
+      );
+      setExam(createExamBlueprint());
+      setSelection({ type: "exam" });
+      setSavePath(null);
+      setLastSavedContent(null);
+      return;
+    }
+    const imported = importExamMarkdown(sourceMarkdown);
+    if (!imported) {
+      setImportMessage("Unable to import exam data from this file.");
+      setExam(createExamBlueprint());
+      setSelection({ type: "exam" });
+      setSavePath(null);
+      setLastSavedContent(null);
+      return;
+    }
+    setExam(imported.blueprint);
+    setSelection({ type: "exam" });
+    setImportWarnings(imported.warnings);
+    setSavePath(sourcePath);
+    setLastSavedContent(sourceMarkdown);
+  }, [lastSavedContent, savePath, sourceMarkdown, sourcePath]);
 
   const getTaskWarning = useCallback(
     (task: ExamTaskBlueprint) =>
@@ -523,6 +597,14 @@ export const ExamEditorView = () => {
           ) : saveState === "saved" ? (
             <span className="pill success">Saved</span>
           ) : null}
+        </div>
+      ) : null}
+      {importMessage ? <div className="error">{importMessage}</div> : null}
+      {importWarnings.length > 0 ? (
+        <div className="exam-task-warning">
+          {importWarnings.map((warning) => (
+            <div key={warning}>{warning}</div>
+          ))}
         </div>
       ) : null}
       {saveError ? <div className="error">{saveError}</div> : null}

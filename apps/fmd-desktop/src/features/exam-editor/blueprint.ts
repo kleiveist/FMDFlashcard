@@ -13,12 +13,14 @@ import type {
   ExamTaskBlueprint,
 } from "./types";
 
-const buildId = (prefix: string) => {
+export const createBlueprintId = (prefix: string) => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `${prefix}-${crypto.randomUUID()}`;
   }
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
+
+const buildId = createBlueprintId;
 
 export const createExamBlueprint = (): ExamBlueprint => ({
   id: buildId("exam"),

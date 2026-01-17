@@ -37,7 +37,6 @@ import { getShortcutById } from "./lib/shortcuts/registry";
 import { logWordPressFeatureStatus } from "./lib/featureFlags";
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
 import { DashboardPage } from "./pages/DashboardPage";
-import { ExamEditorPage } from "./pages/ExamEditorPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
 import { FastFlashcardPage } from "./pages/FastFlashcardPage";
@@ -49,7 +48,6 @@ import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
 type TabKey =
   | "dashboard"
   | "exam"
-  | "exam-editor"
   | "flashcard"
   | "spaced-repetition"
   | "fast-flashcard"
@@ -184,8 +182,6 @@ const AppContent = () => {
           <DashboardPage />
         ) : activeTab === "exam" ? (
           <ExamSimulationPage />
-        ) : activeTab === "exam-editor" ? (
-          <ExamEditorPage />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage />
         ) : activeTab === "spaced-repetition" ? (

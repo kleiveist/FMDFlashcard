@@ -21,13 +21,15 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
 import { normalizeRelativePath } from "../lib/path";
+import { parseExamTasks } from "../lib/exam";
+import { ExamEditorView } from "./exam-editor/ExamEditorView";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 const notePanelStorageKey = "fmd.notePanelCollapsed";
@@ -39,6 +41,8 @@ export const DashboardPage = () => {
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+  const [vaultView, setVaultView] = useState<"markdown" | "exam">("markdown");
+  const lastSelectedPathRef = useRef<string | null>(null);
   const [noteCollapsed, setNoteCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -144,6 +148,22 @@ export const DashboardPage = () => {
     }
   }, [editDraft, isEditing, isSaving, preview]);
 
+  const handleVaultViewChange = useCallback(
+    async (nextView: "markdown" | "exam") => {
+      if (nextView === vaultView) {
+        return;
+      }
+      if (isEditing) {
+        const saved = await handleEditAutosave();
+        if (!saved) {
+          return;
+        }
+      }
+      setVaultView(nextView);
+    },
+    [handleEditAutosave, isEditing, vaultView],
+  );
+
   const handleToggleRawPreview = useCallback(async () => {
     if (isEditing) {
       const saved = await handleEditAutosave();
@@ -157,10 +177,49 @@ export const DashboardPage = () => {
     setEditCaretIndex(null);
   }, []);
 
+  useEffect(() => {
+    if (preview.previewState !== "idle") {
+      return;
+    }
+    const selectedPath = preview.selectedFile?.path ?? null;
+    if (lastSelectedPathRef.current === selectedPath) {
+      return;
+    }
+    lastSelectedPathRef.current = selectedPath;
+    if (!selectedPath) {
+      setVaultView("markdown");
+      return;
+    }
+    const { hasExamBlock } = parseExamTasks(preview.preview);
+    setVaultView(hasExamBlock ? "exam" : "markdown");
+  }, [preview.preview, preview.previewState, preview.selectedFile?.path]);
+
   return (
     <div className="dashboard-page">
       <header className="content-header">
         <div>
+          <div className="vault-view-switch pill-grid" role="tablist">
+            <button
+              type="button"
+              className={`pill pill-button ${
+                vaultView === "markdown" ? "active" : ""
+              }`}
+              onClick={() => handleVaultViewChange("markdown")}
+              role="tab"
+              aria-selected={vaultView === "markdown"}
+            >
+              Markdown
+            </button>
+            <button
+              type="button"
+              className={`pill pill-button ${vaultView === "exam" ? "active" : ""}`}
+              onClick={() => handleVaultViewChange("exam")}
+              role="tab"
+              aria-selected={vaultView === "exam"}
+            >
+              Exam Editor
+            </button>
+          </div>
           <p className="eyebrow">Makedon</p>
           <h1>Vault</h1>
           <p className="muted">
@@ -171,24 +230,38 @@ export const DashboardPage = () => {
       </header>
 
       <div className={`workspace${noteCollapsed ? " note-collapsed" : ""}`}>
-        <PreviewPanel
-          emptyPreview={emptyPreview}
-          editDraft={editDraft}
-          editError={editError}
-          editCaretIndex={editCaretIndex}
-          isEditing={isEditing}
-          preview={preview.preview}
-          previewError={preview.previewError}
-          previewState={preview.previewState}
-          rawPreview={preview.rawPreview}
-          selectedFile={preview.selectedFile}
-          canEdit={canEdit}
-          onEditChange={setEditDraft}
-          onEditCaretApplied={handleEditCaretApplied}
-          onEditExit={handleEditAutosave}
-          onEditStart={handleEditStart}
-          onToggleRawPreview={handleToggleRawPreview}
-        />
+        {vaultView === "markdown" ? (
+          <PreviewPanel
+            emptyPreview={emptyPreview}
+            editDraft={editDraft}
+            editError={editError}
+            editCaretIndex={editCaretIndex}
+            isEditing={isEditing}
+            preview={preview.preview}
+            previewError={preview.previewError}
+            previewState={preview.previewState}
+            rawPreview={preview.rawPreview}
+            selectedFile={preview.selectedFile}
+            canEdit={canEdit}
+            onEditChange={setEditDraft}
+            onEditCaretApplied={handleEditCaretApplied}
+            onEditExit={handleEditAutosave}
+            onEditStart={handleEditStart}
+            onToggleRawPreview={handleToggleRawPreview}
+          />
+        ) : (
+          <ExamEditorView
+            sourcePath={preview.selectedFile?.path ?? null}
+            sourceMarkdown={
+              preview.previewState === "idle" ? preview.preview : undefined
+            }
+            onSave={({ path, markdown }) => {
+              if (preview.selectedFile?.path === path) {
+                preview.setPreview(markdown);
+              }
+            }}
+          />
+        )}
 
         <FileList
           activeFolderPath={normalizedActiveFolderPath || null}

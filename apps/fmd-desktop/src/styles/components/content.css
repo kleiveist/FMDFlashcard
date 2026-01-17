@@ -75,6 +75,10 @@
   flex-wrap: wrap;
 }
 
+.vault-view-switch {
+  margin-bottom: 10px;
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -346,16 +350,16 @@ h2 {
   min-height: 0;
 }
 
-.workspace .panel,
-.workspace .vault-details {
+.workspace > .panel,
+.workspace > .vault-details {
   height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.workspace .panel-body,
-.workspace .vault-body {
+.workspace > .panel .panel-body,
+.workspace > .vault-details .vault-body {
   flex: 1;
   min-height: 0;
   overflow: auto;
