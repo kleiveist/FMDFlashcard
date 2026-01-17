@@ -6,7 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
-import { joinPath, normalizeVaultPath } from "../../lib/path";
+import { joinPath, normalizeRelativePath, normalizeVaultPath } from "../../lib/path";
+import { type VaultFile } from "../../lib/tree";
 import {
   cloneTaskBlueprint,
   createCardBlueprint,
@@ -22,6 +23,7 @@ import type {
 import { serializeExamBlueprint } from "../../features/exam-editor/serializer";
 import { isCompositeTask, validateExamBlueprint } from "../../features/exam-editor/validation";
 import { importExamMarkdown, isExamMarkdown } from "../../features/exam-editor/importer";
+import { findNextNewExamFilename } from "../../features/exam-editor/fileNaming";
 import { CardPalette } from "./components/CardPalette";
 import { ExamCanvas } from "./components/ExamCanvas";
 import { PropertiesPanel } from "./components/PropertiesPanel";
@@ -39,7 +41,10 @@ type SaveState = "idle" | "saving" | "saved";
 
 type ExamEditorViewProps = {
   sourcePath?: string | null;
+  sourceRelativePath?: string | null;
   sourceMarkdown?: string;
+  activeFolderPath?: string | null;
+  vaultFiles?: VaultFile[];
   vaultPath?: string | null;
   onControlsReady?: (controls: ExamEditorControlsState | null) => void;
   onSave?: (payload: { path: string; markdown: string }) => void;
@@ -62,9 +67,24 @@ const isPathInsideVault = (path: string, vaultPath: string | null) => {
 
 const isAbsolutePath = (value: string) => /^(?:[A-Za-z]:[\\/]|\/)/.test(value);
 
+const normalizeFolderPath = (value: string | null | undefined) =>
+  normalizeRelativePath(value ?? "").replace(/\/+$/, "");
+
+const getParentRelativePath = (value: string) => {
+  const normalized = normalizeRelativePath(value).replace(/\/+$/, "");
+  const lastSlash = normalized.lastIndexOf("/");
+  if (lastSlash <= 0) {
+    return "";
+  }
+  return normalized.slice(0, lastSlash);
+};
+
 export const ExamEditorView = ({
   sourcePath,
+  sourceRelativePath,
   sourceMarkdown,
+  activeFolderPath,
+  vaultFiles,
   vaultPath,
   onControlsReady,
   onSave,
@@ -416,16 +436,58 @@ export const ExamEditorView = ({
     [handleCardUpdate],
   );
 
-  const handleNewExam = useCallback(() => {
-    setExam(createExamBlueprint());
-    setSelection({ type: "exam" });
-    setSavePath(null);
-    setSaveState("idle");
+  const handleNewExam = useCallback(async () => {
     setSaveError("");
-    setLastSavedContent(null);
     setImportMessage("");
     setImportWarnings([]);
-  }, []);
+    setSaveState("idle");
+
+    if (!vaultPath) {
+      setSaveError("No active vault selected.");
+      return;
+    }
+
+    const targetRelativeDir = sourceRelativePath
+      ? getParentRelativePath(sourceRelativePath)
+      : normalizeFolderPath(activeFolderPath);
+    const existingRelativePaths = vaultFiles?.map((file) => file.relative_path) ?? [];
+    const nextFilename = findNextNewExamFilename(
+      targetRelativeDir,
+      existingRelativePaths,
+    );
+
+    if (!nextFilename) {
+      setSaveError("All New Exam filenames (01-99) already exist in this folder.");
+      return;
+    }
+
+    const targetPath = joinPath(vaultPath, targetRelativeDir, nextFilename);
+    const nextExam = createExamBlueprint();
+    const initialMarkdown = serializeExamBlueprint(nextExam);
+
+    setSaveState("saving");
+    try {
+      await invoke("write_text_file", {
+        path: targetPath,
+        contents: initialMarkdown,
+      });
+      setExam(nextExam);
+      setSelection({ type: "exam" });
+      setSavePath(targetPath);
+      setSaveState("saved");
+      setLastSavedContent(initialMarkdown);
+      onSave?.({ path: targetPath, markdown: initialMarkdown });
+    } catch (error) {
+      setSaveError(asErrorMessage(error, "Failed to create new exam file."));
+      setSaveState("idle");
+    }
+  }, [
+    activeFolderPath,
+    onSave,
+    sourceRelativePath,
+    vaultFiles,
+    vaultPath,
+  ]);
 
   const handleSave = useCallback(
     async (forceDialog = false) => {
@@ -477,7 +539,7 @@ export const ExamEditorView = ({
         setSaveState("idle");
       }
     },
-    [canSave, exam.title, markdown, savePath, vaultPath],
+    [canSave, exam.title, markdown, onSave, savePath, vaultPath],
   );
 
   const controls = useMemo<ExamEditorControlsState>(
@@ -576,7 +638,15 @@ export const ExamEditorView = ({
     setSaveState("idle");
     setSaveError("");
 
-    if (!sourcePath || !sourceMarkdown.trim()) {
+    if (!sourcePath) {
+      return;
+    }
+    if (!sourceMarkdown.trim()) {
+      const blankExam = createExamBlueprint();
+      setExam(blankExam);
+      setSelection({ type: "exam" });
+      setSavePath(sourcePath);
+      setLastSavedContent(sourceMarkdown);
       return;
     }
     if (!isExamMarkdown(sourceMarkdown)) {

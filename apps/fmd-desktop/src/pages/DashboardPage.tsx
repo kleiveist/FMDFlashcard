@@ -27,7 +27,7 @@ import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
-import { normalizeRelativePath } from "../lib/path";
+import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { parseExamTasks } from "../lib/exam";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
 import type { ExamEditorControlsState } from "./exam-editor/types";
@@ -85,6 +85,28 @@ export const DashboardPage = () => {
   }, [normalizedActiveFolderPath, visibleFiles.length, vault.vaultPath]);
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
+
+  const resolveVaultRelativePath = useCallback(
+    (absolutePath: string) => {
+      if (!vault.vaultPath) {
+        return null;
+      }
+      const normalizedVault = normalizeVaultPath(vault.vaultPath);
+      const normalizedAbsolute = normalizeVaultPath(absolutePath);
+      if (!normalizedVault || !normalizedAbsolute) {
+        return null;
+      }
+      if (normalizedAbsolute === normalizedVault) {
+        return "";
+      }
+      if (!normalizedAbsolute.startsWith(`${normalizedVault}/`)) {
+        return null;
+      }
+      const relative = normalizedAbsolute.slice(normalizedVault.length + 1);
+      return normalizeRelativePath(relative);
+    },
+    [vault.vaultPath],
+  );
 
   useEffect(() => {
     setIsEditing(false);
@@ -260,14 +282,27 @@ export const DashboardPage = () => {
         ) : (
           <ExamEditorView
             sourcePath={preview.selectedFile?.path ?? null}
+            sourceRelativePath={preview.selectedFile?.relative_path ?? null}
             sourceMarkdown={
               preview.previewState === "idle" ? preview.preview : undefined
             }
+            activeFolderPath={normalizedActiveFolderPath || null}
+            vaultFiles={vault.files}
             vaultPath={vault.vaultPath ?? null}
             onControlsReady={setExamControls}
             onSave={({ path, markdown }) => {
               if (preview.selectedFile?.path === path) {
                 preview.setPreview(markdown);
+              }
+              if (!vault.files.some((file) => file.path === path)) {
+                const relativePath = resolveVaultRelativePath(path);
+                if (relativePath) {
+                  const nextFiles = [
+                    ...vault.files,
+                    { path, relative_path: relativePath },
+                  ].sort((a, b) => a.relative_path.localeCompare(b.relative_path));
+                  vault.setFiles(nextFiles);
+                }
               }
             }}
           />
