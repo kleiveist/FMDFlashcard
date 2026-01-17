@@ -17,6 +17,7 @@
 ## 📁 Pages
 - 🗂️ [Overview](pages/pages.md)
 - 📝 [Dashboard](pages/dashboard.md)
+- 📝 [Exam Editor – User Documentation (EN)](pages/Exam%20Editor.md)
 - 📝 [Exams](pages/exams.md)
 - 📝 [Fast Flashcard](pages/fast-flashcard.md)
 - 📝 [Flashcards](pages/flashcards.md)
