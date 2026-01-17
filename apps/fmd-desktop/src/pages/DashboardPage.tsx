@@ -30,6 +30,7 @@ import { asErrorMessage } from "../lib/errors";
 import { normalizeRelativePath } from "../lib/path";
 import { parseExamTasks } from "../lib/exam";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
+import type { ExamEditorControlsState } from "./exam-editor/types";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 const notePanelStorageKey = "fmd.notePanelCollapsed";
@@ -42,6 +43,9 @@ export const DashboardPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
   const [vaultView, setVaultView] = useState<"markdown" | "exam">("markdown");
+  const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
+    null,
+  );
   const lastSelectedPathRef = useRef<string | null>(null);
   const [noteCollapsed, setNoteCollapsed] = useState(() => {
     if (typeof window === "undefined") {
@@ -220,12 +224,16 @@ export const DashboardPage = () => {
               Exam Editor
             </button>
           </div>
-          <p className="eyebrow">Makedon</p>
-          <h1>Vault</h1>
-          <p className="muted">
-            Waehle einen Vault, scanne Markdown-Dateien und sieh dir Inhalte sofort
-            an.
-          </p>
+          {vaultView === "markdown" ? (
+            <>
+              <p className="eyebrow">Makedon</p>
+              <h1>Vault</h1>
+              <p className="muted">
+                Waehle einen Vault, scanne Markdown-Dateien und sieh dir Inhalte
+                sofort an.
+              </p>
+            </>
+          ) : null}
         </div>
       </header>
 
@@ -255,6 +263,8 @@ export const DashboardPage = () => {
             sourceMarkdown={
               preview.previewState === "idle" ? preview.preview : undefined
             }
+            vaultPath={vault.vaultPath ?? null}
+            onControlsReady={setExamControls}
             onSave={({ path, markdown }) => {
               if (preview.selectedFile?.path === path) {
                 preview.setPreview(markdown);
@@ -263,18 +273,90 @@ export const DashboardPage = () => {
           />
         )}
 
-        <FileList
-          activeFolderPath={normalizedActiveFolderPath || null}
-          fileCountLabel={fileCountLabel}
-          files={visibleFiles}
-          isCollapsed={noteCollapsed}
-          listError={vault.listError}
-          listState={vault.listState}
-          onSelectFile={actions.handleSelectFile}
-          onToggleCollapsed={handleToggleNoteCollapsed}
-          selectedFile={preview.selectedFile}
-          vaultPath={vault.vaultPath}
-        />
+        {vaultView === "markdown" ? (
+          <FileList
+            activeFolderPath={normalizedActiveFolderPath || null}
+            fileCountLabel={fileCountLabel}
+            files={visibleFiles}
+            isCollapsed={noteCollapsed}
+            listError={vault.listError}
+            listState={vault.listState}
+            onSelectFile={actions.handleSelectFile}
+            onToggleCollapsed={handleToggleNoteCollapsed}
+            selectedFile={preview.selectedFile}
+            vaultPath={vault.vaultPath}
+          />
+        ) : (
+          <div className="note-column">
+            {examControls ? (
+              <section className="panel toolbar-panel exam-editor-controls-panel">
+                <div className="exam-editor-toolbar">
+                  <div className="pill-grid" role="tablist" aria-label="Editor mode">
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        examControls.mode === "structure" ? "active" : ""
+                      }`}
+                      onClick={() => examControls.onModeChange("structure")}
+                      role="tab"
+                      aria-selected={examControls.mode === "structure"}
+                    >
+                      Structure
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        examControls.mode === "content" ? "active" : ""
+                      }`}
+                      onClick={() => examControls.onModeChange("content")}
+                      role="tab"
+                      aria-selected={examControls.mode === "content"}
+                    >
+                      Content
+                    </button>
+                  </div>
+                  <div className="exam-editor-action-buttons">
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={examControls.onNewExam}
+                    >
+                      New exam
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={examControls.onSaveAs}
+                      disabled={!examControls.canSave || examControls.isSaving}
+                    >
+                      Save as
+                    </button>
+                    <button
+                      type="button"
+                      className="primary small"
+                      onClick={examControls.onSave}
+                      disabled={!examControls.canSave || examControls.isSaving}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+            <FileList
+              activeFolderPath={normalizedActiveFolderPath || null}
+              fileCountLabel={fileCountLabel}
+              files={visibleFiles}
+              isCollapsed={noteCollapsed}
+              listError={vault.listError}
+              listState={vault.listState}
+              onSelectFile={actions.handleSelectFile}
+              onToggleCollapsed={handleToggleNoteCollapsed}
+              selectedFile={preview.selectedFile}
+              vaultPath={vault.vaultPath}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

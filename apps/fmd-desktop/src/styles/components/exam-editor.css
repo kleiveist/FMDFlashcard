@@ -6,28 +6,47 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+.note-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  height: 100%;
+}
+
+.note-column .note-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.note-column .exam-editor-controls-panel {
+  flex: 0 0 auto;
 }
 
 .exam-editor-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.exam-editor-actions {
-  display: flex;
   flex-direction: column;
   gap: 12px;
-  align-items: flex-end;
+  width: 100%;
+}
+
+.exam-editor-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
 }
 
 .exam-editor-action-buttons {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .exam-editor-save-row {
@@ -35,7 +54,6 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 6px 0;
 }
 
 .save-path {
@@ -63,9 +81,11 @@
 
 .exam-editor-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr) minmax(220px, 1fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr);
   gap: 16px;
   align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
 .exam-editor-content {
@@ -73,10 +93,35 @@
   grid-template-columns: minmax(240px, 1fr) minmax(320px, 2fr);
   gap: 16px;
   align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.exam-editor-structure {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
 .exam-editor-panel {
   min-height: 0;
+}
+
+.exam-editor-layout .exam-editor-panel,
+.exam-editor-content .exam-editor-panel {
+  height: 100%;
+}
+
+.card-palette {
+  width: 100%;
+}
+
+.exam-editor-layout .panel-body {
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
 }
 
 .exam-canvas-meta {
@@ -398,6 +443,13 @@
   gap: 8px;
 }
 
+.content-nav .panel-body,
+.content-editor .panel-body {
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
+
 .content-task-item {
   border-radius: 12px;
   border: 1px solid transparent;
@@ -481,11 +533,6 @@
   .exam-editor-layout {
     grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr);
   }
-
-  .card-palette {
-    order: 3;
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 900px) {
@@ -494,7 +541,7 @@
     grid-template-columns: 1fr;
   }
 
-  .exam-editor-actions {
-    align-items: flex-start;
+  .exam-editor-action-buttons {
+    margin-left: 0;
   }
 }

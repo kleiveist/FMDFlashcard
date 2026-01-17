@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
+import { joinPath, normalizeVaultPath } from "../../lib/path";
 import {
   cloneTaskBlueprint,
   createCardBlueprint,
@@ -25,29 +26,52 @@ import { CardPalette } from "./components/CardPalette";
 import { ExamCanvas } from "./components/ExamCanvas";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { ContentMode } from "./components/ContentMode";
-import type { ExamEditorSelection } from "./types";
+import type {
+  ExamEditorControlsState,
+  ExamEditorMode,
+  ExamEditorSelection,
+} from "./types";
 
 const normalizeTaskOrder = (tasks: ExamTaskBlueprint[]) =>
   tasks.map((task, index) => ({ ...task, order: index }));
-
-type EditorMode = "structure" | "content";
 
 type SaveState = "idle" | "saving" | "saved";
 
 type ExamEditorViewProps = {
   sourcePath?: string | null;
   sourceMarkdown?: string;
+  vaultPath?: string | null;
+  onControlsReady?: (controls: ExamEditorControlsState | null) => void;
   onSave?: (payload: { path: string; markdown: string }) => void;
 };
+
+const isPathInsideVault = (path: string, vaultPath: string | null) => {
+  if (!vaultPath) {
+    return false;
+  }
+  const normalizedVault = normalizeVaultPath(vaultPath);
+  const normalizedPath = normalizeVaultPath(path);
+  if (!normalizedVault || !normalizedPath) {
+    return false;
+  }
+  return (
+    normalizedPath === normalizedVault ||
+    normalizedPath.startsWith(`${normalizedVault}/`)
+  );
+};
+
+const isAbsolutePath = (value: string) => /^(?:[A-Za-z]:[\\/]|\/)/.test(value);
 
 export const ExamEditorView = ({
   sourcePath,
   sourceMarkdown,
+  vaultPath,
+  onControlsReady,
   onSave,
 }: ExamEditorViewProps) => {
   const [exam, setExam] = useState<ExamBlueprint>(() => createExamBlueprint());
   const [selection, setSelection] = useState<ExamEditorSelection>({ type: "exam" });
-  const [mode, setMode] = useState<EditorMode>("structure");
+  const [mode, setMode] = useState<ExamEditorMode>("structure");
   const [savePath, setSavePath] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState("");
@@ -58,6 +82,7 @@ export const ExamEditorView = ({
     path: null,
     markdown: null,
   });
+  const lastVaultPathRef = useRef<string | null>(vaultPath ?? null);
 
   const validation = useMemo(() => validateExamBlueprint(exam), [exam]);
   const canSave = validation.valid;
@@ -410,22 +435,33 @@ export const ExamEditorView = ({
       setSaveState("saving");
       setSaveError("");
       try {
+        const resolvePath = (path: string) =>
+          vaultPath && !isAbsolutePath(path) ? joinPath(vaultPath, path) : path;
         let targetPath = savePath;
         let nextSavePath = savePath;
         if (!targetPath || forceDialog) {
           const suggestedName = exam.title.trim()
             ? `${exam.title.trim()}.md`
-            : undefined;
+            : "New Exam.md";
+          const defaultPath =
+            savePath && isPathInsideVault(savePath, vaultPath ?? null)
+              ? savePath
+              : vaultPath
+                ? joinPath(vaultPath, suggestedName)
+                : suggestedName;
           const chosenPath = await save({
-            defaultPath: suggestedName,
+            defaultPath,
             filters: [{ name: "Markdown", extensions: ["md"] }],
           });
           if (!chosenPath) {
             setSaveState("idle");
             return;
           }
-          targetPath = chosenPath;
-          nextSavePath = chosenPath;
+          targetPath = resolvePath(chosenPath);
+          nextSavePath = targetPath;
+        } else {
+          targetPath = resolvePath(targetPath);
+          nextSavePath = targetPath;
         }
 
         await invoke("write_text_file", {
@@ -441,8 +477,34 @@ export const ExamEditorView = ({
         setSaveState("idle");
       }
     },
-    [canSave, exam.title, markdown, savePath],
+    [canSave, exam.title, markdown, savePath, vaultPath],
   );
+
+  const controls = useMemo<ExamEditorControlsState>(
+    () => ({
+      mode,
+      canSave,
+      isSaving,
+      onModeChange: setMode,
+      onNewExam: handleNewExam,
+      onSaveAs: () => handleSave(true),
+      onSave: () => handleSave(false),
+    }),
+    [canSave, handleNewExam, handleSave, isSaving, mode],
+  );
+
+  useEffect(() => {
+    if (!onControlsReady) {
+      return;
+    }
+    onControlsReady(controls);
+  }, [controls, onControlsReady]);
+
+  useEffect(() => {
+    return () => {
+      onControlsReady?.(null);
+    };
+  }, [onControlsReady]);
 
   useEffect(() => {
     if (selection.type === "task") {
@@ -472,6 +534,22 @@ export const ExamEditorView = ({
       setSaveState("idle");
     }
   }, [lastSavedContent, markdown, saveState]);
+
+  useEffect(() => {
+    if (lastVaultPathRef.current === vaultPath) {
+      return;
+    }
+    lastVaultPathRef.current = vaultPath ?? null;
+    if (!savePath) {
+      return;
+    }
+    if (vaultPath && isPathInsideVault(savePath, vaultPath)) {
+      return;
+    }
+    setSavePath(null);
+    setSaveState("idle");
+    setLastSavedContent(null);
+  }, [savePath, vaultPath]);
 
   useEffect(() => {
     if (sourcePath === undefined || sourceMarkdown === undefined) {
@@ -535,133 +613,104 @@ export const ExamEditorView = ({
 
   return (
     <div className="exam-editor-page">
-      <header className="content-header exam-editor-header">
+      <section className="exam-editor-header">
         <div>
-          <p className="eyebrow">Exam Editor</p>
-          <h1>Build exams</h1>
+          <h1>EXAM EDITOR</h1>
+          <h2>Build exams</h2>
           <p className="muted">
             Design structure first, then fill in card content and hints.
           </p>
         </div>
-        <div className="exam-editor-actions">
-          <div className="pill-grid" role="tablist" aria-label="Editor mode">
-            <button
-              type="button"
-              className={`pill pill-button ${mode === "structure" ? "active" : ""}`}
-              onClick={() => setMode("structure")}
-              role="tab"
-              aria-selected={mode === "structure"}
-            >
-              Structure
-            </button>
-            <button
-              type="button"
-              className={`pill pill-button ${mode === "content" ? "active" : ""}`}
-              onClick={() => setMode("content")}
-              role="tab"
-              aria-selected={mode === "content"}
-            >
-              Content
-            </button>
-          </div>
-          <div className="exam-editor-action-buttons">
-            <button type="button" className="ghost small" onClick={handleNewExam}>
-              New exam
-            </button>
-            <button
-              type="button"
-              className="ghost small"
-              onClick={() => handleSave(true)}
-              disabled={!canSave || isSaving}
-            >
-              Save as
-            </button>
-            <button
-              type="button"
-              className="primary small"
-              onClick={() => handleSave(false)}
-              disabled={!canSave || isSaving}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {savePath ? (
         <div className="exam-editor-save-row">
           <span className="muted">Saved path:</span>
-          <span className="save-path">{savePath}</span>
+          <span className="save-path">{savePath ?? "Not saved yet"}</span>
           {saveState === "saving" ? (
             <span className="pill">Saving...</span>
           ) : saveState === "saved" ? (
             <span className="pill success">Saved</span>
           ) : null}
         </div>
-      ) : null}
-      {importMessage ? <div className="error">{importMessage}</div> : null}
-      {importWarnings.length > 0 ? (
-        <div className="exam-task-warning">
-          {importWarnings.map((warning) => (
-            <div key={warning}>{warning}</div>
-          ))}
-        </div>
-      ) : null}
-      {saveError ? <div className="error">{saveError}</div> : null}
-      {!canSave ? (
-        <div className="exam-editor-validation">
-          <span className="pill warning">Fix validation before saving.</span>
-        </div>
-      ) : null}
-
+      </section>
       {mode === "structure" ? (
-        <div className="exam-editor-layout">
-          <PropertiesPanel
+        <div className="exam-editor-structure">
+          <CardPalette onQuickAdd={handleAddTask} />
+          {importMessage ? <div className="error">{importMessage}</div> : null}
+          {importWarnings.length > 0 ? (
+            <div className="exam-task-warning">
+              {importWarnings.map((warning) => (
+                <div key={warning}>{warning}</div>
+              ))}
+            </div>
+          ) : null}
+          {saveError ? <div className="error">{saveError}</div> : null}
+          {!canSave ? (
+            <div className="exam-editor-validation">
+              <span className="pill warning">Fix validation before saving.</span>
+            </div>
+          ) : null}
+          <div className="exam-editor-layout">
+            <PropertiesPanel
+              exam={exam}
+              selection={selection}
+              onExamUpdate={handleExamUpdate}
+              onTaskUpdate={handleTaskUpdate}
+              onCardUpdate={(taskId, cardId, updates) =>
+                handleCardUpdate(taskId, cardId, updates)
+              }
+              onCardTypeChange={handleCardTypeChange}
+            />
+            <ExamCanvas
+              exam={exam}
+              selection={selection}
+              onSelectExam={() => setSelection({ type: "exam" })}
+              onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
+              onSelectCard={(taskId, cardId) =>
+                setSelection({ type: "card", taskId, cardId })
+              }
+              onCanvasDrop={handleAddTask}
+              onTaskDrop={handleAddCardToTask}
+              onMoveTask={handleMoveTask}
+              onDuplicateTask={handleDuplicateTask}
+              onDeleteTask={handleDeleteTask}
+              onMoveCard={handleMoveCard}
+              onDeleteCard={handleDeleteCard}
+              getTaskWarning={getTaskWarning}
+            />
+          </div>
+        </div>
+      ) : (
+        <>
+          {importMessage ? <div className="error">{importMessage}</div> : null}
+          {importWarnings.length > 0 ? (
+            <div className="exam-task-warning">
+              {importWarnings.map((warning) => (
+                <div key={warning}>{warning}</div>
+              ))}
+            </div>
+          ) : null}
+          {saveError ? <div className="error">{saveError}</div> : null}
+          {!canSave ? (
+            <div className="exam-editor-validation">
+              <span className="pill warning">Fix validation before saving.</span>
+            </div>
+          ) : null}
+          <ContentMode
             exam={exam}
             selection={selection}
-            onExamUpdate={handleExamUpdate}
+            validation={validation}
+            onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
             onTaskUpdate={handleTaskUpdate}
             onCardUpdate={(taskId, cardId, updates) =>
               handleCardUpdate(taskId, cardId, updates)
             }
-            onCardTypeChange={handleCardTypeChange}
+            onCardHelpChange={handleCardHelpChange}
+            onOptionTextChange={handleOptionTextChange}
+            onOptionToggle={handleOptionToggle}
+            onOptionSelect={handleOptionSelect}
+            onOptionAdd={handleOptionAdd}
+            onOptionRemove={handleOptionRemove}
           />
-          <ExamCanvas
-            exam={exam}
-            selection={selection}
-            onSelectExam={() => setSelection({ type: "exam" })}
-            onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
-            onSelectCard={(taskId, cardId) =>
-              setSelection({ type: "card", taskId, cardId })
-            }
-            onCanvasDrop={handleAddTask}
-            onTaskDrop={handleAddCardToTask}
-            onMoveTask={handleMoveTask}
-            onDuplicateTask={handleDuplicateTask}
-            onDeleteTask={handleDeleteTask}
-            onMoveCard={handleMoveCard}
-            onDeleteCard={handleDeleteCard}
-            getTaskWarning={getTaskWarning}
-          />
-          <CardPalette onQuickAdd={handleAddTask} />
-        </div>
-      ) : (
-        <ContentMode
-          exam={exam}
-          selection={selection}
-          validation={validation}
-          onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
-          onTaskUpdate={handleTaskUpdate}
-          onCardUpdate={(taskId, cardId, updates) =>
-            handleCardUpdate(taskId, cardId, updates)
-          }
-          onCardHelpChange={handleCardHelpChange}
-          onOptionTextChange={handleOptionTextChange}
-          onOptionToggle={handleOptionToggle}
-          onOptionSelect={handleOptionSelect}
-          onOptionAdd={handleOptionAdd}
-          onOptionRemove={handleOptionRemove}
-        />
+        </>
       )}
     </div>
   );
