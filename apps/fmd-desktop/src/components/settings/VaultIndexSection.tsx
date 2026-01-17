@@ -34,11 +34,13 @@ type VaultIndexSectionProps = {
   lastRefreshAt: string | null;
   onCopyVaultPath: () => Promise<void>;
   onShowHiddenFoldersToggle: (value: boolean) => void;
+  onShowEmptyFoldersToggle: (value: boolean) => void;
   onRescanVault: (source?: string) => Promise<boolean>;
   onResetIndex: () => void;
   userVault: UserVaultState;
   vaultIndexedComplete: boolean;
   showHiddenFolders: boolean;
+  showEmptyFolders: boolean;
   vaultPath: string | null;
 };
 
@@ -49,17 +51,22 @@ export const VaultIndexSection = ({
   lastRefreshAt,
   onCopyVaultPath,
   onShowHiddenFoldersToggle,
+  onShowEmptyFoldersToggle,
   onRescanVault,
   onResetIndex,
   userVault,
   vaultIndexedComplete,
   showHiddenFolders,
+  showEmptyFolders,
   vaultPath,
 }: VaultIndexSectionProps) => {
   const [activeTab, setActiveTab] = useState<VaultIndexTab>("vault");
   const isVaultTab = activeTab === "vault";
   const handleShowHiddenFoldersChange = (event: ChangeEvent<HTMLInputElement>) => {
     onShowHiddenFoldersToggle(event.target.checked);
+  };
+  const handleShowEmptyFoldersChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onShowEmptyFoldersToggle(event.target.checked);
   };
   const isRefreshing = listState === "loading";
   const lastRefreshLabel = lastRefreshAt
@@ -142,6 +149,25 @@ export const VaultIndexSection = ({
             </div>
             <span className="helper-text">
               Folders starting with a dot (e.g., .git, .obsidian).
+            </span>
+          </div>
+          <div className="setting-row">
+            <span className="label">Show empty folders</span>
+            <div className="theme-toggle">
+              <span className="toggle-label">Off</span>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={showEmptyFolders}
+                  onChange={handleShowEmptyFoldersChange}
+                  aria-label="Show empty folders"
+                />
+                <span className="slider" />
+              </label>
+              <span className="toggle-label">On</span>
+            </div>
+            <span className="helper-text">
+              Show folders that do not contain markdown files.
             </span>
           </div>
           <div className="setting-row">

@@ -12,6 +12,12 @@
 - Hidden folder definition: any path segment starting with "." (dot).
 - One control applies to both vault tree visibility and indexing.
 
+## Empty folders
+
+- Toggle: Show empty folders (default on).
+- Off: folders without markdown files anywhere in their subtree are hidden.
+- On: empty folders are shown in the vault tree, so you can navigate and add notes.
+
 ## Actions
 
 - Rescan vault: triggers the same refresh action as the vault status refresh icon.

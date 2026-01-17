@@ -14,6 +14,12 @@ struct VaultFile {
 }
 
 #[derive(serde::Serialize)]
+struct VaultScanResults {
+    files: Vec<VaultFile>,
+    folders: Vec<String>,
+}
+
+#[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PathInfo {
     exists: bool,
@@ -57,6 +63,7 @@ struct AppSettings {
     max_files_per_scan: Option<String>,
     scan_parallelism: Option<String>,
     show_hidden_folders: Option<bool>,
+    show_empty_folders: Option<bool>,
     hidden_folders_level: Option<u32>,
     hidden_folders_level_vault: Option<u32>,
     hidden_folders_level_index: Option<u32>,
@@ -188,6 +195,7 @@ impl AppSettings {
             && self.max_files_per_scan.is_none()
             && self.scan_parallelism.is_none()
             && self.show_hidden_folders.is_none()
+            && self.show_empty_folders.is_none()
             && self.hidden_folders_level.is_none()
             && self.hidden_folders_level_vault.is_none()
             && self.hidden_folders_level_index.is_none()
@@ -429,6 +437,7 @@ fn save_app_settings(
     max_files_per_scan: Option<String>,
     scan_parallelism: Option<String>,
     show_hidden_folders: Option<bool>,
+    show_empty_folders: Option<bool>,
     flashcard_order: Option<String>,
     flashcard_mode: Option<String>,
     flashcard_scope: Option<String>,
@@ -474,6 +483,7 @@ fn save_app_settings(
         max_files_per_scan,
         scan_parallelism,
         show_hidden_folders,
+        show_empty_folders,
         hidden_folders_level: None,
         hidden_folders_level_vault: None,
         hidden_folders_level_index: None,
@@ -579,6 +589,56 @@ fn save_vault_path(app: tauri::AppHandle, vault_path: Option<String>) -> Result<
     let mut settings = read_settings(&path)?;
     settings.vault_path = vault_path;
     write_settings(&path, &settings)
+}
+
+#[tauri::command]
+fn list_vault_entries(
+    vault_path: String,
+    show_hidden_folders: Option<bool>,
+) -> Result<VaultScanResults, String> {
+    let root = PathBuf::from(vault_path);
+    if !root.exists() {
+        return Err("Vault path does not exist.".to_string());
+    }
+    if !root.is_dir() {
+        return Err("Vault path is not a directory.".to_string());
+    }
+
+    let mut files = Vec::new();
+    let mut folders = Vec::new();
+    let include_hidden = show_hidden_folders.unwrap_or(false);
+    for entry in WalkDir::new(&root)
+        .into_iter()
+        .filter_entry(|entry| include_hidden || !is_hidden(entry))
+    {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(_) => continue,
+        };
+        let path = entry.path();
+        if entry.file_type().is_dir() {
+            if entry.depth() == 0 {
+                continue;
+            }
+            let relative = path.strip_prefix(&root).unwrap_or(path);
+            let relative = relative.to_string_lossy().to_string();
+            if !relative.is_empty() {
+                folders.push(relative);
+            }
+            continue;
+        }
+        if entry.file_type().is_file() && is_markdown(path) {
+            let relative = path.strip_prefix(&root).unwrap_or(path);
+            files.push(VaultFile {
+                path: path.to_string_lossy().to_string(),
+                relative_path: relative.to_string_lossy().to_string(),
+            });
+        }
+    }
+
+    files.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
+    folders.sort();
+    Ok(VaultScanResults { files, folders })
 }
 
 #[tauri::command]
@@ -827,6 +887,7 @@ pub fn run() {
             load_vault_path,
             save_vault_path,
             list_markdown_files,
+            list_vault_entries,
             get_path_info,
             list_directories,
             ensure_directory,

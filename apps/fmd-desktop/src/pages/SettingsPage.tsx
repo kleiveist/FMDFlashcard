@@ -114,11 +114,13 @@ export const SettingsPage = () => {
             lastRefreshAt={vault.lastRefreshAt}
             onCopyVaultPath={actions.handleCopyVaultPath}
             onShowHiddenFoldersToggle={settings.setShowHiddenFolders}
+            onShowEmptyFoldersToggle={settings.setShowEmptyFolders}
             onRescanVault={actions.handleRescanVault}
             onResetIndex={actions.handleResetIndex}
             userVault={userVault}
             vaultIndexedComplete={vaultIndexedComplete}
             showHiddenFolders={settings.showHiddenFolders}
+            showEmptyFolders={settings.showEmptyFolders}
             vaultPath={vault.vaultPath}
           />
           <section className="panel settings-performance-panel">

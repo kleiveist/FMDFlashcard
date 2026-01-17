@@ -28,6 +28,11 @@ import { asErrorMessage } from "../../lib/errors";
 import { type LoadState } from "../../lib/types";
 import { type VaultFile } from "../../lib/tree";
 
+type VaultScanResults = {
+  files: VaultFile[];
+  folders: string[];
+};
+
 type LoadOptions = {
   persist: boolean;
   clearOnFailure?: boolean;
@@ -43,6 +48,7 @@ type PickOptions = {
 export type VaultSnapshot = {
   vaultPath: string | null;
   files: VaultFile[];
+  folders: string[];
   listState: LoadState;
   listError: string;
   lastRefreshAt: string | null;
@@ -56,6 +62,7 @@ type UseVaultOptions = {
 export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions) => {
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
+  const [folders, setFolders] = useState<string[]>([]);
   const [listState, setListState] = useState<LoadState>("idle");
   const [listError, setListError] = useState("");
   const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
@@ -65,33 +72,37 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     (): VaultSnapshot => ({
       vaultPath,
       files,
+      folders,
       listState,
       listError,
       lastRefreshAt,
     }),
-    [files, lastRefreshAt, listError, listState, vaultPath],
+    [files, folders, lastRefreshAt, listError, listState, vaultPath],
   );
 
   const restoreSnapshot = useCallback((snapshot: VaultSnapshot) => {
     setVaultPath(snapshot.vaultPath);
     setFiles(snapshot.files);
+    setFolders(snapshot.folders);
     setListState(snapshot.listState);
     setListError(snapshot.listError);
     setLastRefreshAt(snapshot.lastRefreshAt);
   }, []);
 
   const loadVault = useCallback(
-    async (path: string, options: LoadOptions): Promise<VaultFile[] | null> => {
+    async (path: string, options: LoadOptions): Promise<VaultScanResults | null> => {
       setListError("");
       setVaultPath(path);
       setFiles([]);
+      setFolders([]);
       setListState("loading");
       try {
-        const results = await invoke<VaultFile[]>("list_markdown_files", {
+        const results = await invoke<VaultScanResults>("list_vault_entries", {
           vaultPath: path,
           showHiddenFolders,
         });
-        setFiles(results);
+        setFiles(results.files);
+        setFolders(results.folders);
         setLastRefreshAt(new Date().toISOString());
         setListState("idle");
         if (options.persist) {
@@ -113,7 +124,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
   );
 
   const pickVault = useCallback(
-    async (options?: PickOptions): Promise<VaultFile[] | null> => {
+    async (options?: PickOptions): Promise<VaultScanResults | null> => {
       setListError("");
       const selected = await open({
         directory: true,
@@ -154,11 +165,12 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     setListError("");
     setListState("loading");
     try {
-      const results = await invoke<VaultFile[]>("list_markdown_files", {
+      const results = await invoke<VaultScanResults>("list_vault_entries", {
         vaultPath,
         showHiddenFolders,
       });
-      setFiles(results);
+      setFiles(results.files);
+      setFolders(results.folders);
       setLastRefreshAt(new Date().toISOString());
       setListState("idle");
       return true;
@@ -183,6 +195,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
 
   return {
     files,
+    folders,
     listError,
     listState,
     lastRefreshAt,
@@ -191,6 +204,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     rescanVault,
     restoreSnapshot,
     setFiles,
+    setFolders,
     setListError,
     setListState,
     setLastRefreshAt,

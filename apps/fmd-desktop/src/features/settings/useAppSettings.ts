@@ -87,6 +87,7 @@ type AppSettings = {
   max_files_per_scan?: string | null;
   scan_parallelism?: string | null;
   show_hidden_folders?: boolean | null;
+  show_empty_folders?: boolean | null;
   hidden_folders_level?: number | null;
   hidden_folders_level_vault?: number | null;
   hidden_folders_level_index?: number | null;
@@ -138,6 +139,7 @@ type PersistUpdates = {
   maxFilesPerScan?: string;
   scanParallelism?: "low" | "medium" | "high";
   showHiddenFolders?: boolean;
+  showEmptyFolders?: boolean;
   flashcardOrder?: FlashcardOrder;
   flashcardMode?: FlashcardMode;
   flashcardScope?: FlashcardScope;
@@ -179,6 +181,7 @@ const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_SHOW_HIDDEN_FOLDERS = false;
+const DEFAULT_SHOW_EMPTY_FOLDERS = true;
 const DEFAULT_USER_VAULT_MODE: UserVaultMode = "auto";
 const DEFAULT_FLASHCARD_ORDER: FlashcardOrder = "in-order";
 const DEFAULT_FLASHCARD_MODE: FlashcardMode = "all";
@@ -408,6 +411,9 @@ export const useAppSettings = () => {
   const [showHiddenFolders, setShowHiddenFoldersState] = useState(
     DEFAULT_SHOW_HIDDEN_FOLDERS,
   );
+  const [showEmptyFolders, setShowEmptyFoldersState] = useState(
+    DEFAULT_SHOW_EMPTY_FOLDERS,
+  );
   const [flashcardOrder, setFlashcardOrder] =
     useState<FlashcardOrder>(DEFAULT_FLASHCARD_ORDER);
   const [flashcardMode, setFlashcardMode] =
@@ -574,6 +580,10 @@ export const useAppSettings = () => {
     setShowHiddenFoldersState(Boolean(value));
   }, []);
 
+  const setShowEmptyFolders = useCallback((value: boolean) => {
+    setShowEmptyFoldersState(Boolean(value));
+  }, []);
+
   const setUserVaultMode = useCallback((value: UserVaultMode) => {
     setUserVaultModeState(value);
   }, []);
@@ -615,6 +625,7 @@ export const useAppSettings = () => {
       maxFilesPerScan: string;
       scanParallelism: "low" | "medium" | "high";
       showHiddenFolders: boolean;
+      showEmptyFolders: boolean;
       flashcardOrder: FlashcardOrder;
       flashcardMode: FlashcardMode;
       flashcardScope: FlashcardScope;
@@ -663,6 +674,7 @@ export const useAppSettings = () => {
           maxFilesPerScan: settings.maxFilesPerScan,
           scanParallelism: settings.scanParallelism,
           showHiddenFolders: settings.showHiddenFolders,
+          showEmptyFolders: settings.showEmptyFolders,
           flashcardOrder: settings.flashcardOrder,
           flashcardMode: settings.flashcardMode,
           flashcardScope: settings.flashcardScope,
@@ -726,6 +738,7 @@ export const useAppSettings = () => {
         maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
         scanParallelism: updates.scanParallelism ?? scanParallelism,
         showHiddenFolders: updates.showHiddenFolders ?? showHiddenFolders,
+        showEmptyFolders: updates.showEmptyFolders ?? showEmptyFolders,
         flashcardOrder: updates.flashcardOrder ?? flashcardOrder,
         flashcardMode: updates.flashcardMode ?? flashcardMode,
         flashcardScope: updates.flashcardScope ?? flashcardScope,
@@ -824,6 +837,7 @@ export const useAppSettings = () => {
       saveSettings,
       scanParallelism,
       showHiddenFolders,
+      showEmptyFolders,
       settingsLoaded,
       solutionRevealEnabled,
       examHelpEnabled,
@@ -907,6 +921,10 @@ export const useAppSettings = () => {
             : legacyHiddenFoldersLevel !== null
               ? legacyHiddenFoldersLevel > 0
               : DEFAULT_SHOW_HIDDEN_FOLDERS;
+        const storedShowEmptyFolders =
+          typeof settings.show_empty_folders === "boolean"
+            ? settings.show_empty_folders
+            : DEFAULT_SHOW_EMPTY_FOLDERS;
         const storedUserVaultMode =
           settings.user_vault_mode === "custom" ? "custom" : DEFAULT_USER_VAULT_MODE;
         const storedUserVaultCustomPath =
@@ -1107,6 +1125,7 @@ export const useAppSettings = () => {
         setMaxFilesPerScan(storedMaxFilesPerScan);
         setScanParallelism(storedScanParallelism);
         setShowHiddenFoldersState(storedShowHiddenFolders);
+        setShowEmptyFoldersState(storedShowEmptyFolders);
         setFlashcardOrder(storedFlashcardOrder);
         setFlashcardMode(storedFlashcardMode);
         setFlashcardScope(storedFlashcardScope);
@@ -1222,6 +1241,7 @@ export const useAppSettings = () => {
         maxFilesPerScan,
         scanParallelism,
         showHiddenFolders,
+        showEmptyFolders,
         flashcardOrder,
         flashcardMode,
         flashcardScope,
@@ -1294,6 +1314,7 @@ export const useAppSettings = () => {
     saveSettings,
     scanParallelism,
     showHiddenFolders,
+    showEmptyFolders,
     settingsLoaded,
     solutionRevealEnabled,
     spacedRepetitionBoxes,
@@ -1341,6 +1362,7 @@ export const useAppSettings = () => {
     flashcardScope,
     keyboardShortcuts,
     showHiddenFolders,
+    showEmptyFolders,
     language,
     maxFilesPerScan,
     persistSettings,
@@ -1377,6 +1399,7 @@ export const useAppSettings = () => {
     setKeyboardShortcutBinding,
     resetKeyboardShortcuts,
     setShowHiddenFolders,
+    setShowEmptyFolders,
     setUserVaultCustomPath,
     setUserVaultMode,
     setLanguage,

@@ -269,7 +269,9 @@ type VaultTreeProps = {
   expandedPaths: Set<string>;
   fileCountLabel: string;
   files: VaultFile[];
+  folders: string[];
   showHiddenFolders: boolean;
+  showEmptyFolders: boolean;
   listError: string;
   listState: LoadState;
   onRescanVault: (source?: string) => Promise<boolean>;
@@ -286,7 +288,9 @@ export const VaultTree = ({
   expandedPaths,
   fileCountLabel,
   files,
+  folders,
   showHiddenFolders,
+  showEmptyFolders,
   listError,
   listState,
   onRescanVault,
@@ -342,19 +346,31 @@ export const VaultTree = ({
 
   const treeNodes = useMemo(() => {
     const nodes = buildTree(visibleFiles);
-    const visibleExtraDirs = showHiddenFolders
-      ? extraDirs
-      : extraDirs.filter((dirPath) => !isHiddenPath(dirPath));
-    if (!visibleExtraDirs.length) {
-      return nodes;
-    }
-    const nextNodes = [...nodes];
-    visibleExtraDirs.forEach((dirPath) => {
+    const visibleExtraDirs = showEmptyFolders
+      ? showHiddenFolders
+        ? extraDirs
+        : extraDirs.filter((dirPath) => !isHiddenPath(dirPath))
+      : [];
+    const visibleFolders =
+      showEmptyFolders
+        ? showHiddenFolders
+          ? folders
+          : folders.filter((dirPath) => !isHiddenPath(dirPath))
+        : [];
+    const combinedDirs = new Set<string>();
+    [...visibleExtraDirs, ...visibleFolders].forEach((dirPath) => {
       const normalized = normalizeRelativePath(dirPath);
       if (!normalized) {
         return;
       }
-      const parts = normalized.split("/").filter(Boolean);
+      combinedDirs.add(normalized);
+    });
+    if (combinedDirs.size === 0) {
+      return nodes;
+    }
+    const nextNodes = [...nodes];
+    combinedDirs.forEach((dirPath) => {
+      const parts = dirPath.split("/").filter(Boolean);
       let currentNodes = nextNodes;
       let currentPath = "";
       for (const part of parts) {
@@ -379,7 +395,7 @@ export const VaultTree = ({
       }
     });
     return sortNodes(nextNodes);
-  }, [extraDirs, showHiddenFolders, visibleFiles]);
+  }, [extraDirs, folders, showEmptyFolders, showHiddenFolders, visibleFiles]);
   const maxDepth = useMemo(
     () => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0),
     [treeNodes],

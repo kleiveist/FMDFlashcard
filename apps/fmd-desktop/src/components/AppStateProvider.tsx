@@ -389,7 +389,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (results) {
-      const count = countMarkdownFiles(results, showHiddenFolders);
+      const count = countMarkdownFiles(results.files, showHiddenFolders);
       const threshold = parseVaultWarningThreshold(maxFilesPerScan);
       if (threshold && count > threshold) {
         setLargeVaultWarningCount(count);
@@ -441,7 +441,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
 
-      const count = countMarkdownFiles(results, showHiddenFolders);
+      const count = countMarkdownFiles(results.files, showHiddenFolders);
       const threshold = parseVaultWarningThreshold(maxFilesPerScan);
       if (threshold && count > threshold) {
         setLargeVaultWarningCount(count);
