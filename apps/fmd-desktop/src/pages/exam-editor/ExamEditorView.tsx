@@ -392,6 +392,7 @@ export const ExamEditorView = () => {
       setSaveError("");
       try {
         let targetPath = savePath;
+        let nextSavePath = savePath;
         if (!targetPath || forceDialog) {
           const suggestedName = exam.title.trim()
             ? `${exam.title.trim()}.md`
@@ -405,13 +406,14 @@ export const ExamEditorView = () => {
             return;
           }
           targetPath = chosenPath;
-          setSavePath(chosenPath);
+          nextSavePath = chosenPath;
         }
 
         await invoke("write_text_file", {
           path: targetPath,
           contents: markdown,
         });
+        setSavePath(nextSavePath ?? targetPath);
         setSaveState("saved");
         setLastSavedContent(markdown);
       } catch (error) {

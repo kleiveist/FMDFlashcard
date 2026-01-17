@@ -711,14 +711,15 @@ fn read_text_file(path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_text_file(path: String, contents: String) -> Result<(), String> {
     let path = PathBuf::from(path);
-    if !path.exists() {
-        return Err("File not found.".to_string());
-    }
-    if !path.is_file() {
-        return Err("Path is not a file.".to_string());
-    }
     if !is_markdown(&path) {
         return Err("Only markdown files are supported.".to_string());
+    }
+    if path.exists() {
+        if !path.is_file() {
+            return Err("Path is not a file.".to_string());
+        }
+    } else if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
     }
     fs::write(path, contents).map_err(|err| err.to_string())
 }
