@@ -21,14 +21,13 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
-import { parseExamTasks } from "../lib/exam";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
 import type { ExamEditorControlsState } from "./exam-editor/types";
 
@@ -46,7 +45,6 @@ export const DashboardPage = () => {
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
   );
-  const lastSelectedPathRef = useRef<string | null>(null);
   const [noteCollapsed, setNoteCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -203,23 +201,6 @@ export const DashboardPage = () => {
     setEditCaretIndex(null);
   }, []);
 
-  useEffect(() => {
-    if (preview.previewState !== "idle") {
-      return;
-    }
-    const selectedPath = preview.selectedFile?.path ?? null;
-    if (lastSelectedPathRef.current === selectedPath) {
-      return;
-    }
-    lastSelectedPathRef.current = selectedPath;
-    if (!selectedPath) {
-      setVaultView("markdown");
-      return;
-    }
-    const { hasExamBlock } = parseExamTasks(preview.preview);
-    setVaultView(hasExamBlock ? "exam" : "markdown");
-  }, [preview.preview, preview.previewState, preview.selectedFile?.path]);
-
   return (
     <div className="dashboard-page">
       <header className="content-header">
@@ -316,6 +297,8 @@ export const DashboardPage = () => {
             isCollapsed={noteCollapsed}
             listError={vault.listError}
             listState={vault.listState}
+            onClearSelection={preview.resetPreview}
+            onRescanVault={actions.handleRescanVault}
             onSelectFile={actions.handleSelectFile}
             onToggleCollapsed={handleToggleNoteCollapsed}
             selectedFile={preview.selectedFile}
@@ -385,6 +368,8 @@ export const DashboardPage = () => {
               isCollapsed={noteCollapsed}
               listError={vault.listError}
               listState={vault.listState}
+              onClearSelection={preview.resetPreview}
+              onRescanVault={actions.handleRescanVault}
               onSelectFile={actions.handleSelectFile}
               onToggleCollapsed={handleToggleNoteCollapsed}
               selectedFile={preview.selectedFile}
