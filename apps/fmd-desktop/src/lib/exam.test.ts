@@ -155,7 +155,8 @@ Still first task
     expect(tasks).toHaveLength(2);
     expect(tasks[0]?.prompt).toContain("| Row | --- |");
     expect(tasks[0]?.prompt).toContain("--- not a separator");
-    expect(tasks[0]?.prompt).toContain("---");
+    expect(tasks[0]?.prompt).not.toContain("\n---\n");
+    expect(tasks[0]?.prompt).toContain("Still first task");
     expect(tasks[1]?.prompt).toContain("2) Second task");
   });
 

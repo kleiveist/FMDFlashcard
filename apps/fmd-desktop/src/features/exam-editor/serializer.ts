@@ -142,8 +142,6 @@ const serializeTask = (task: ExamTaskBlueprint, index: number) => {
   const lines: string[] = [];
   const title = task.title.trim();
   lines.push(`${index + 1})${title ? ` ${title}` : ""}`);
-  // Place task-level help inside the task scope, before the card block.
-  lines.push(...serializeHelpBlock(task.helpText));
   const wrapTask = task.useCardWrapper;
   if (wrapTask) {
     lines.push("#card");
@@ -157,6 +155,8 @@ const serializeTask = (task: ExamTaskBlueprint, index: number) => {
   if (wrapTask) {
     lines.push("#");
   }
+  // Place task-level help at the end of the task, outside the card wrapper.
+  lines.push(...serializeHelpBlock(task.helpText));
   return lines;
 };
 
@@ -181,7 +181,18 @@ export const serializeExamBlueprint = (exam: ExamBlueprint) => {
     .slice()
     .sort((a, b) => a.order - b.order)
     .forEach((task, index) => {
-      lines.push(...serializeTask(task, index));
+      const taskLines = serializeTask(task, index);
+      const trimmed = taskLines.slice();
+      while (trimmed.length > 0 && trimmed[trimmed.length - 1]?.trim() === "") {
+        trimmed.pop();
+      }
+      while (trimmed.length > 0 && trimmed[trimmed.length - 1] === "---") {
+        trimmed.pop();
+      }
+      while (trimmed.length > 0 && trimmed[trimmed.length - 1]?.trim() === "") {
+        trimmed.pop();
+      }
+      lines.push(...trimmed, "---");
     });
   lines.push("#examend");
   return lines.join("\n");

@@ -162,11 +162,13 @@ describe("serializeExamBlueprint", () => {
     const taskHelpIndex = markdown.indexOf("#help\nTask hint\n#helpend");
     const cardStartIndex = markdown.indexOf("#card");
     const cardHelpIndex = markdown.indexOf("#help\nCard hint\n#helpend");
+    const cardEndIndex = markdown.indexOf("\n#\n");
 
     expect(taskHelpIndex).toBeGreaterThan(-1);
     expect(cardHelpIndex).toBeGreaterThan(-1);
-    expect(taskHelpIndex).toBeLessThan(cardStartIndex);
     expect(cardHelpIndex).toBeGreaterThan(cardStartIndex);
+    expect(cardEndIndex).toBeGreaterThan(cardHelpIndex);
+    expect(taskHelpIndex).toBeGreaterThan(cardEndIndex);
   });
 
   it("omits #card wrapper when disabled", () => {
@@ -195,6 +197,50 @@ describe("serializeExamBlueprint", () => {
     const markdown = serializeExamBlueprint(exam);
     expect(markdown).not.toMatch(/^#card$/m);
     expect(markdown).not.toMatch(/^#$/m);
+  });
+
+  it("adds task separators after every task", () => {
+    const exam: ExamBlueprint = {
+      id: "exam-separators",
+      title: "",
+      description: "",
+      tasks: [
+        {
+          id: "task-1",
+          order: 0,
+          title: "First",
+          useCardWrapper: false,
+          cards: [
+            {
+              id: "card-1",
+              type: "qa",
+              prompt: "Prompt",
+              answer: "Answer",
+            },
+          ],
+        },
+        {
+          id: "task-2",
+          order: 1,
+          title: "Second",
+          useCardWrapper: false,
+          cards: [
+            {
+              id: "card-2",
+              type: "qa",
+              prompt: "Another",
+              answer: "Answer",
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = serializeExamBlueprint(exam);
+    const separatorLines = markdown.split("\n").filter((line) => line === "---");
+    expect(separatorLines).toHaveLength(2);
+    expect(markdown).toMatch(/1\)[\s\S]*---\n2\)/);
+    expect(markdown).toContain("---\n#examend");
   });
 
   it("strips leading task numbers from card content", () => {

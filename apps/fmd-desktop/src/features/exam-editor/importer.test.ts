@@ -125,4 +125,60 @@ Fill %%col%% using \`token\`.
       expect(card.prompt).toContain("`alpha`");
     }
   });
+
+  it("imports task help at start and end of tasks", () => {
+    const markdown = `
+#exam
+1) Start help
+#help
+Start hint
+#helpend
+Question?
+Answer: A
+---
+2) End help
+Question?
+Answer: B
+#help
+End hint
+#helpend
+---
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(2);
+    expect(imported.blueprint.tasks[0]?.helpText).toBe("Start hint");
+    expect(imported.blueprint.tasks[1]?.helpText).toBe("End hint");
+  });
+
+  it("ignores task help markers inside fenced code blocks", () => {
+    const markdown = `
+#exam
+1) Task with fence
+\`\`\`sql
+#help
+Not help
+#helpend
+\`\`\`
+Question?
+Answer: A
+---
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(1);
+    expect(imported.blueprint.tasks[0]?.helpText).toBeUndefined();
+  });
 });

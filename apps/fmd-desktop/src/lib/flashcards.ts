@@ -204,7 +204,10 @@ export const extractHelpBlocksFromLines = (
   const helpText: string[] = [];
   const contentLines: string[] = [];
   let inHelp = false;
+  let inFence = false;
+  let fenceToken = "";
   let currentBlock: string[] = [];
+  const fencePattern = /^\s*(```|~~~)/;
 
   const flushHelp = () => {
     const trimmed = trimEmptyLines(currentBlock);
@@ -215,8 +218,26 @@ export const extractHelpBlocksFromLines = (
   };
 
   lines.forEach((line) => {
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      if (inHelp) {
+        currentBlock.push(line);
+      } else {
+        contentLines.push(line);
+      }
+      return;
+    }
+
     if (!inHelp) {
-      if (isHelpStartLine(line)) {
+      if (!inFence && isHelpStartLine(line)) {
         inHelp = true;
         currentBlock = [];
         return;
@@ -225,13 +246,13 @@ export const extractHelpBlocksFromLines = (
       return;
     }
 
-    if (isHelpEndLine(line)) {
+    if (!inFence && isHelpEndLine(line)) {
       inHelp = false;
       flushHelp();
       return;
     }
 
-    if (isSeparatorLine(line)) {
+    if (!inFence && isSeparatorLine(line)) {
       inHelp = false;
       flushHelp();
       contentLines.push(line);

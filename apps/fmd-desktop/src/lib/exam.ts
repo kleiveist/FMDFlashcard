@@ -84,12 +84,14 @@ const examStartPattern = /^\s*#exam\s*$/;
 const examEndPattern = /^\s*#examend\s*$/;
 const cardStartPattern = /^\s*#card\s*$/;
 const cardEndPattern = /^\s*#(?:endcard)?\s*$/;
+const taskSeparatorPattern = /^\s*---\s*$/;
 
 const isWrapperLine = (line: string) => wrapperLinePattern.test(line);
 const isExamStartLine = (line: string) => examStartPattern.test(line);
 const isExamEndLine = (line: string) => examEndPattern.test(line);
 const isCardStartLine = (line: string) => cardStartPattern.test(line);
 const isCardEndLine = (line: string) => cardEndPattern.test(line);
+const isTaskSeparatorLine = (line: string) => taskSeparatorPattern.test(line);
 
 const stripWrapperLines = (lines: string[]) =>
   lines.filter((line) => !isWrapperLine(line));
@@ -174,7 +176,7 @@ const isExamTaskStartLine = (line: string) => {
   }
 
   const number = Number.parseInt(numberRaw, 10);
-  if (number < 1 || number > 20) {
+  if (number < 1 || number > 99) {
     return false;
   }
 
@@ -344,15 +346,34 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   let currentTaskStart: number | null = null;
   let hasExamBlock = false;
 
+  const resolveTaskEndLine = (startLine: number, endLine: number) => {
+    let last = endLine;
+    while (last >= startLine && lines[last]?.trim() === "") {
+      last -= 1;
+    }
+    while (last >= startLine && isTaskSeparatorLine(lines[last] ?? "")) {
+      last -= 1;
+      while (last >= startLine && lines[last]?.trim() === "") {
+        last -= 1;
+      }
+    }
+    return last;
+  };
+
   const flushTask = (endLine: number) => {
     if (currentTaskStart === null || endLine < currentTaskStart) {
       currentTaskStart = null;
       return;
     }
-    const chunkLines = lines.slice(currentTaskStart, endLine + 1);
+    const taskEndLine = resolveTaskEndLine(currentTaskStart, endLine);
+    if (taskEndLine < currentTaskStart) {
+      currentTaskStart = null;
+      return;
+    }
+    const chunkLines = lines.slice(currentTaskStart, taskEndLine + 1);
     const task = parseTaskChunk(chunkLines, tasks.length, {
       startLine: currentTaskStart,
-      endLine,
+      endLine: taskEndLine,
     });
     tasks.push(task);
     currentTaskStart = null;

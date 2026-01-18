@@ -85,6 +85,7 @@ const stripLeadingTaskNumber = (text: string) =>
 const helpStartPattern = /^\s*#help\s*$/;
 const helpEndPattern = /^\s*#helpend\s*$/;
 const separatorLinePattern = /^\s*---\s*$/;
+const fencePattern = /^\s*(```|~~~)/;
 
 const isHelpStartLine = (line: string) => helpStartPattern.test(line);
 const isHelpEndLine = (line: string) => helpEndPattern.test(line);
@@ -202,6 +203,8 @@ const splitCardBlocksWithHelp = (lines: string[]): CardBlock[] => {
   let helpBlocks: string[] = [];
   let inHelp = false;
   let currentHelp: string[] = [];
+  let inFence = false;
+  let fenceToken = "";
 
   const flushHelp = () => {
     const trimmed = trimEmptyLines(currentHelp);
@@ -222,8 +225,26 @@ const splitCardBlocksWithHelp = (lines: string[]): CardBlock[] => {
   };
 
   lines.forEach((line, index) => {
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      if (inHelp) {
+        currentHelp.push(line);
+      } else {
+        currentLines.push(line);
+      }
+      return;
+    }
+
     if (inHelp) {
-      if (isHelpEndLine(line)) {
+      if (!inFence && isHelpEndLine(line)) {
         inHelp = false;
         flushHelp();
         return;
@@ -231,12 +252,12 @@ const splitCardBlocksWithHelp = (lines: string[]): CardBlock[] => {
       currentHelp.push(line);
       return;
     }
-    if (isHelpStartLine(line)) {
+    if (!inFence && isHelpStartLine(line)) {
       inHelp = true;
       currentHelp = [];
       return;
     }
-    if (isSeparatorLine(line) && !tableLineIndices.has(index)) {
+    if (!inFence && isSeparatorLine(line) && !tableLineIndices.has(index)) {
       flushBlock();
       return;
     }
