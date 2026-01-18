@@ -103,6 +103,23 @@
   word-break: normal;
 }
 
+.vault-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  max-width: min(40vw, 360px);
+  min-width: 0;
+}
+
+.vault-warning-text {
+  font-size: 0.75rem;
+  color: var(--error-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.08em;

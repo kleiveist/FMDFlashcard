@@ -1361,6 +1361,7 @@ export const useAppSettings = () => {
     editorExactColors,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
+    examEditorShowMoveButtons,
     examAiEvaluation,
     examMaxTotalPoints,
     examTaskCount,

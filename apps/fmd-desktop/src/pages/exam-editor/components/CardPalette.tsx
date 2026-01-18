@@ -30,12 +30,6 @@ const handleDragStart = (event: DragEvent<HTMLButtonElement>, type: CardType) =>
 
 export const CardPalette = ({ onQuickAdd }: CardPaletteProps) => (
   <aside className="panel exam-editor-panel card-palette">
-    <header className="panel-header">
-      <div>
-        <h2>Card palette</h2>
-        <p className="muted">Drag a type into the canvas.</p>
-      </div>
-    </header>
     <div className="panel-body">
       <div className="card-palette-grid" role="list">
         {CARD_TYPES.map((type) => (

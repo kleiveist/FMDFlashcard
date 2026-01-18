@@ -192,6 +192,7 @@ impl AppSettings {
             && self.editor_exact_colors.is_none()
             && self.editor_blueprint_grid.is_none()
             && self.editor_blueprint_grid_intensity.is_none()
+            && self.exam_editor_show_move_buttons.is_none()
             && self.language.is_none()
             && self.max_files_per_scan.is_none()
             && self.scan_parallelism.is_none()

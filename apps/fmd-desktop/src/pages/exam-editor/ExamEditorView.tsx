@@ -22,7 +22,10 @@ import type {
   ExamBlueprint,
   ExamTaskBlueprint,
 } from "../../features/exam-editor/types";
-import { serializeExamBlueprint } from "../../features/exam-editor/serializer";
+import {
+  serializeCardTypeLabel,
+  serializeExamBlueprint,
+} from "../../features/exam-editor/serializer";
 import { isCompositeTask, validateExamBlueprint } from "../../features/exam-editor/validation";
 import { importExamMarkdown, isExamMarkdown } from "../../features/exam-editor/importer";
 import { findNextNewExamFilename } from "../../features/exam-editor/fileNaming";
@@ -137,6 +140,48 @@ export const ExamEditorView = ({
   const canSave = validation.valid;
   const isSaving = saveState === "saving";
   const markdown = useMemo(() => serializeExamBlueprint(exam), [exam]);
+  const validationSummary = useMemo(() => {
+    if (validation.valid) {
+      return null;
+    }
+    const ordered = exam.tasks.slice().sort((a, b) => a.order - b.order);
+    const taskLookup = new Map(
+      ordered.map((task, index) => [task.id, { task, index }]),
+    );
+    const messages: string[] = [];
+    validation.errors.forEach((error) => {
+      messages.push(error);
+    });
+    validation.taskValidations.forEach((taskValidation) => {
+      const info = taskLookup.get(taskValidation.taskId);
+      const taskIndex = info ? info.index + 1 : null;
+      const taskLabel = taskIndex ? `Task ${taskIndex}` : "Task";
+      taskValidation.errors.forEach((error) => {
+        messages.push(`${taskLabel}: ${error}`);
+      });
+      const cards = info?.task.cards ?? [];
+      taskValidation.cardValidations.forEach((cardValidation, cardIndex) => {
+        if (cardValidation.errors.length === 0) {
+          return;
+        }
+        const card = cards[cardIndex];
+        const cardLabel = card ? serializeCardTypeLabel(card.type) : "Card";
+        const location = taskIndex
+          ? `${taskLabel} -> ${cardLabel} ${cardIndex + 1}`
+          : `${cardLabel} ${cardIndex + 1}`;
+        cardValidation.errors.forEach((error) => {
+          messages.push(`${location}: ${error}`);
+        });
+      });
+    });
+    if (messages.length === 0) {
+      messages.push("Validation failed.");
+    }
+    return {
+      count: messages.length,
+      messages: messages.slice(0, 3),
+    };
+  }, [exam.tasks, validation]);
 
   const updateTasks = useCallback(
     (updater: (tasks: ExamTaskBlueprint[]) => ExamTaskBlueprint[]) => {
@@ -544,7 +589,9 @@ export const ExamEditorView = ({
 
   const handleSave = useCallback(
     async (forceDialog = false) => {
-      if (!canSave) {
+      const currentValidation = validateExamBlueprint(exam);
+      if (!currentValidation.valid) {
+        setSaveState("idle");
         return;
       }
       setSaveState("saving");
@@ -592,7 +639,7 @@ export const ExamEditorView = ({
         setSaveState("idle");
       }
     },
-    [canSave, exam.title, markdown, onSave, savePath, vaultPath],
+    [exam, exam.title, markdown, onSave, savePath, vaultPath],
   );
 
   const controls = useMemo<ExamEditorControlsState>(
@@ -602,12 +649,22 @@ export const ExamEditorView = ({
       isSaving,
       savePath,
       saveState,
+      validationSummary,
       onModeChange: setMode,
       onNewExam: handleNewExam,
       onSaveAs: () => handleSave(true),
       onSave: () => handleSave(false),
     }),
-    [canSave, handleNewExam, handleSave, isSaving, mode, savePath, saveState],
+    [
+      canSave,
+      handleNewExam,
+      handleSave,
+      isSaving,
+      mode,
+      savePath,
+      saveState,
+      validationSummary,
+    ],
   );
 
   const orderedTasks = useMemo(

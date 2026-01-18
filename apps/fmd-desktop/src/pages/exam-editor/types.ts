@@ -15,6 +15,10 @@ export type ExamEditorControlsState = {
   isSaving: boolean;
   savePath: string | null;
   saveState: "idle" | "saving" | "saved";
+  validationSummary: {
+    count: number;
+    messages: string[];
+  } | null;
   onModeChange: (mode: ExamEditorMode) => void;
   onNewExam: () => void;
   onSaveAs: () => void;
