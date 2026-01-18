@@ -65,37 +65,8 @@ const analyzeCloze = (prompt: string) => {
 
 const stripFencedBlocks = (prompt: string) => {
   const lines = prompt.replace(/\r\n?/g, "\n").split("\n");
-  const output: string[] = [];
-  const fenceBuffer: string[] = [];
-  let inFence = false;
-  let fenceToken = "";
   const fencePattern = /^\s*(```|~~~)/;
-
-  lines.forEach((line) => {
-    const match = line.match(fencePattern);
-    if (match) {
-      if (inFence && match[1] === fenceToken) {
-        inFence = false;
-        fenceToken = "";
-        fenceBuffer.length = 0;
-      } else if (!inFence) {
-        inFence = true;
-        fenceToken = match[1] ?? "";
-        fenceBuffer.push(line);
-      }
-      return;
-    }
-    if (!inFence) {
-      output.push(line);
-      return;
-    }
-    fenceBuffer.push(line);
-  });
-
-  if (inFence && fenceBuffer.length > 0) {
-    output.push(...fenceBuffer);
-  }
-
+  const output = lines.filter((line) => !fencePattern.test(line));
   return output.join("\n");
 };
 

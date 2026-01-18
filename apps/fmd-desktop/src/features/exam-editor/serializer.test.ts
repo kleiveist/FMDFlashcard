@@ -196,4 +196,34 @@ describe("serializeExamBlueprint", () => {
     expect(markdown).not.toMatch(/^#card$/m);
     expect(markdown).not.toMatch(/^#$/m);
   });
+
+  it("strips leading task numbers from card content", () => {
+    const exam: ExamBlueprint = {
+      id: "exam-numbering",
+      title: "",
+      description: "",
+      tasks: [
+        {
+          id: "task-1",
+          order: 0,
+          title: "Numbered",
+          useCardWrapper: false,
+          cards: [
+            {
+              id: "card-1",
+              type: "qa",
+              prompt: "2) Already numbered",
+              answer: "Answer",
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = serializeExamBlueprint(exam);
+    const numberLines = markdown.split("\n").filter((line) => /^\d+\)/.test(line));
+    expect(numberLines).toHaveLength(1);
+    expect(markdown).toContain("Already numbered");
+    expect(markdown).not.toContain("\n2) Already numbered");
+  });
 });

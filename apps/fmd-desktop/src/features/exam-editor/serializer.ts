@@ -32,6 +32,29 @@ const trimEmptyLines = (lines: string[]) => {
 const cleanLines = (value: string) =>
   trimEmptyLines(normalizeLines(value).map((line) => line.trimEnd()));
 
+const taskNumberPattern = /^\s*\d+\)\s*(.*)$/;
+
+const stripLeadingTaskNumberLine = (lines: string[]) => {
+  const next = lines.slice();
+  for (let index = 0; index < next.length; index += 1) {
+    const line = next[index];
+    if (line.trim() === "") {
+      continue;
+    }
+    const match = line.match(taskNumberPattern);
+    if (match) {
+      const remainder = match[1] ?? "";
+      if (remainder.trim() === "") {
+        next.splice(index, 1);
+      } else {
+        next[index] = remainder;
+      }
+    }
+    break;
+  }
+  return next;
+};
+
 const formatOptionKey = (index: number) => {
   const code = "a".charCodeAt(0) + index;
   return String.fromCharCode(code);
@@ -105,11 +128,14 @@ const serializeCardContent = (card: CardBlueprint) => {
   }
 };
 
-const serializeCardBlock = (card: CardBlueprint) => {
+const serializeCardBlock = (card: CardBlueprint, stripTaskNumber: boolean) => {
   // Keep card help adjacent to its content inside the card scope.
   const helpLines = serializeHelpBlock(card.helpText);
   const contentLines = serializeCardContent(card);
-  return [...helpLines, ...contentLines];
+  const sanitizedContent = stripTaskNumber
+    ? stripLeadingTaskNumberLine(contentLines)
+    : contentLines;
+  return [...helpLines, ...sanitizedContent];
 };
 
 const serializeTask = (task: ExamTaskBlueprint, index: number) => {
@@ -126,7 +152,7 @@ const serializeTask = (task: ExamTaskBlueprint, index: number) => {
     if (cardIndex > 0) {
       lines.push("---");
     }
-    lines.push(...serializeCardBlock(card));
+    lines.push(...serializeCardBlock(card, cardIndex === 0));
   });
   if (wrapTask) {
     lines.push("#");

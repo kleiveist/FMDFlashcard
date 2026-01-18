@@ -67,6 +67,33 @@ describe("importExamMarkdown", () => {
     expect(serialized).toContain("---");
   });
 
+  it("removes duplicated task numbers from content on roundtrip", () => {
+    const markdown = `
+#exam
+1) First task
+1) Question line
+Answer: A
+2) Second task
+2) Another question
+Answer: B
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const serialized = serializeExamBlueprint(imported.blueprint);
+    const numberLines = serialized.split("\n").filter((line) => /^\d+\)/.test(line));
+    expect(numberLines).toHaveLength(2);
+    expect(serialized).toContain("Question line");
+    expect(serialized).toContain("Another question");
+    expect(serialized).not.toContain("\n1) Question line");
+    expect(serialized).not.toContain("\n2) Another question");
+  });
+
   it("imports cld tasks with tables and tokens", () => {
     const markdown = `
 #exam

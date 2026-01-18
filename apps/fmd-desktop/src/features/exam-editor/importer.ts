@@ -56,6 +56,32 @@ const joinHelpBlocks = (blocks?: string[]) => {
   return trimmed.join("\n\n");
 };
 
+const taskNumberPattern = /^\s*\d+\)\s*(.*)$/;
+
+const stripLeadingTaskNumberLine = (lines: string[]) => {
+  const next = lines.slice();
+  for (let index = 0; index < next.length; index += 1) {
+    const line = next[index];
+    if (line.trim() === "") {
+      continue;
+    }
+    const match = line.match(taskNumberPattern);
+    if (match) {
+      const remainder = match[1] ?? "";
+      if (remainder.trim() === "") {
+        next.splice(index, 1);
+      } else {
+        next[index] = remainder;
+      }
+    }
+    break;
+  }
+  return next;
+};
+
+const stripLeadingTaskNumber = (text: string) =>
+  stripLeadingTaskNumberLine(text.replace(/\r\n?/g, "\n").split("\n")).join("\n");
+
 const helpStartPattern = /^\s*#help\s*$/;
 const helpEndPattern = /^\s*#helpend\s*$/;
 const separatorLinePattern = /^\s*---\s*$/;
@@ -299,7 +325,9 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     const cards: CardBlueprint[] = [];
     const cardBlocks = splitCardBlocksWithHelp(task.cardLines);
     cardBlocks.forEach((block) => {
-      const trimmedLines = trimEmptyLines(block.contentLines);
+      const trimmedLines = stripLeadingTaskNumberLine(
+        trimEmptyLines(block.contentLines),
+      );
       if (trimmedLines.length === 0) {
         return;
       }
@@ -334,7 +362,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       cards.push({
         id: createBlueprintId("card"),
         type: "qa",
-        prompt: task.prompt,
+        prompt: stripLeadingTaskNumber(task.prompt),
         answer: task.officialAnswer ?? "",
       });
     }

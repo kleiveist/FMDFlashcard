@@ -102,9 +102,9 @@ describe("validateCard", () => {
       id: "cld-2",
       type: "cld",
       prompt: [
-        "Use %%value%% with `token` outside.",
         "```sql",
-        "`SELECT` %%Ignored%%",
+        "SELECT `token` FROM table",
+        "WHERE column = %%value%%",
         "```",
       ].join("\n"),
     });

@@ -344,7 +344,7 @@ Answer: Confirmed.
     }
   });
 
-  it("ignores cloze markers inside fenced code blocks", () => {
+  it("parses cloze markers inside fenced code blocks", () => {
     const markdown = `#card
 SQL cld example with %%Outside%% and \`token\`.
 \`\`\`sql
@@ -367,8 +367,16 @@ SQL cld example with %%Outside%% and \`token\`.
         ): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
           segment.type === "blank" && segment.kind === "input",
       );
-      expect(inputBlanks.map((blank) => blank.solution)).toEqual(["Outside"]);
-      expect(part.dragTokens.map((token) => token.value)).toEqual(["token"]);
+      expect(inputBlanks.map((blank) => blank.solution)).toEqual([
+        "Outside",
+        "Nachname",
+      ]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual([
+        "token",
+        "SELECT",
+        "FROM",
+        "WHERE",
+      ]);
     }
   });
 
@@ -1052,7 +1060,7 @@ Valid %%answer%% and \`unfinished.
     }
   });
 
-  it("ignores markers inside fenced code blocks", () => {
+  it("parses markers inside fenced code blocks", () => {
     const markdown = `#card
 Question.
 Code:
@@ -1069,9 +1077,49 @@ Outside \`token\` and %%blank%%.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
-      expect(part.dragTokens).toEqual([{ id: "token-0", value: "token" }]);
+      expect(part.dragTokens).toEqual([
+        { id: "token-0", value: "ignored" },
+        { id: "token-1", value: "token" },
+      ]);
       const blanks = part.segments.filter((segment) => segment.type === "blank");
-      expect(blanks.map((blank) => blank.solution)).toEqual(["token", "blank"]);
+      expect(blanks).toEqual([
+        { type: "blank", id: "blank-0", kind: "drag", solution: "ignored" },
+        { type: "blank", id: "blank-1", kind: "input", solution: "not" },
+        { type: "blank", id: "blank-2", kind: "drag", solution: "token" },
+        { type: "blank", id: "blank-3", kind: "input", solution: "blank" },
+      ]);
+    }
+  });
+
+  it("parses tables with fenced sql blocks in cld prompts", () => {
+    const markdown = `#card
+Query overview:
+| Column | Value |
+| --- | --- |
+| min | %%min_bestellungen%% |
+| note | text |
+\`\`\`sql
+SELECT \`COUNT\`(*) FROM orders
+WHERE column = %%sort_spalte%%
+\`\`\`
+Outside token: \`SELECT\`
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      expect(blanks.map((blank) => blank.solution)).toEqual([
+        "min_bestellungen",
+        "sort_spalte",
+      ]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual([
+        "COUNT",
+        "SELECT",
+      ]);
     }
   });
 
@@ -1084,6 +1132,39 @@ Empty blank.
     const cards = parseFlashcards(markdown);
 
     expect(cards).toHaveLength(0);
+  });
+
+  it("parses multiple fenced blocks in one prompt", () => {
+    const markdown = `#card
+Before %%first%%.
+\`\`\`
+\`token1\`
+%%inside%%
+\`\`\`
+Between \`token2\`.
+~~~sql
+%%second%%
+~~~
+After.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      expect(blanks.map((blank) => blank.solution)).toEqual([
+        "first",
+        "inside",
+        "second",
+      ]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual([
+        "token1",
+        "token2",
+      ]);
+    }
   });
 
   it("stores help blocks without affecting detection", () => {
