@@ -13,6 +13,7 @@ const buildTask = (id: string, order: number): ExamTaskBlueprint => ({
   id,
   order,
   title: "",
+  useCardWrapper: false,
   cards: [],
 });
 

@@ -15,6 +15,7 @@ const buildExam = (): ExamBlueprint => ({
       id: "task-qa",
       order: 0,
       title: "QA",
+      useCardWrapper: true,
       cards: [
         {
           id: "card-qa",
@@ -28,6 +29,7 @@ const buildExam = (): ExamBlueprint => ({
       id: "task-tf",
       order: 1,
       title: "TF",
+      useCardWrapper: true,
       cards: [
         {
           id: "card-tf",
@@ -41,6 +43,7 @@ const buildExam = (): ExamBlueprint => ({
       id: "task-m1",
       order: 2,
       title: "M1",
+      useCardWrapper: true,
       cards: [
         {
           id: "card-m1",
@@ -57,6 +60,7 @@ const buildExam = (): ExamBlueprint => ({
       id: "task-m2",
       order: 3,
       title: "M2",
+      useCardWrapper: true,
       cards: [
         {
           id: "card-m2",
@@ -74,6 +78,7 @@ const buildExam = (): ExamBlueprint => ({
       id: "task-cl",
       order: 4,
       title: "CL",
+      useCardWrapper: true,
       cards: [
         {
           id: "card-cl",
@@ -86,6 +91,7 @@ const buildExam = (): ExamBlueprint => ({
       id: "task-cd",
       order: 5,
       title: "CD",
+      useCardWrapper: true,
       cards: [
         {
           id: "card-cd",
@@ -98,6 +104,7 @@ const buildExam = (): ExamBlueprint => ({
       id: "task-cld",
       order: 6,
       title: "CLD",
+      useCardWrapper: true,
       cards: [
         {
           id: "card-cld",
@@ -137,6 +144,7 @@ describe("serializeExamBlueprint", () => {
           order: 0,
           title: "Hints",
           helpText: "Task hint",
+          useCardWrapper: true,
           cards: [
             {
               id: "card-1",
@@ -159,5 +167,33 @@ describe("serializeExamBlueprint", () => {
     expect(cardHelpIndex).toBeGreaterThan(-1);
     expect(taskHelpIndex).toBeLessThan(cardStartIndex);
     expect(cardHelpIndex).toBeGreaterThan(cardStartIndex);
+  });
+
+  it("omits #card wrapper when disabled", () => {
+    const exam: ExamBlueprint = {
+      id: "exam-nowrap",
+      title: "",
+      description: "",
+      tasks: [
+        {
+          id: "task-1",
+          order: 0,
+          title: "No wrapper",
+          useCardWrapper: false,
+          cards: [
+            {
+              id: "card-1",
+              type: "qa",
+              prompt: "Prompt",
+              answer: "Answer",
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = serializeExamBlueprint(exam);
+    expect(markdown).not.toMatch(/^#card$/m);
+    expect(markdown).not.toMatch(/^#$/m);
   });
 });

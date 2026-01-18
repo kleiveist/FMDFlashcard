@@ -166,9 +166,8 @@ export const ExamEditorView = ({
         }
         const card = cards[cardIndex];
         const cardLabel = card ? serializeCardTypeLabel(card.type) : "Card";
-        const location = taskIndex
-          ? `${taskLabel} -> ${cardLabel} ${cardIndex + 1}`
-          : `${cardLabel} ${cardIndex + 1}`;
+        const partLabel = `Part ${cardIndex + 1} (${cardLabel})`;
+        const location = taskIndex ? `${taskLabel} -> ${partLabel}` : partLabel;
         cardValidation.errors.forEach((error) => {
           messages.push(`${location}: ${error}`);
         });
@@ -201,7 +200,10 @@ export const ExamEditorView = ({
   );
 
   const handleTaskUpdate = useCallback(
-    (taskId: string, updates: { title?: string; helpText?: string }) => {
+    (
+      taskId: string,
+      updates: { title?: string; helpText?: string; useCardWrapper?: boolean },
+    ) => {
       updateTasks((tasks) =>
         tasks.map((task) =>
           task.id === taskId ? { ...task, ...updates } : task,

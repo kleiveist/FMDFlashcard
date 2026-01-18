@@ -13,7 +13,10 @@ type PropertiesPanelProps = {
   exam: ExamBlueprint;
   selection: ExamEditorSelection;
   onExamUpdate: (updates: Pick<ExamBlueprint, "title" | "description">) => void;
-  onTaskUpdate: (taskId: string, updates: { title?: string; helpText?: string }) => void;
+  onTaskUpdate: (
+    taskId: string,
+    updates: { title?: string; helpText?: string; useCardWrapper?: boolean },
+  ) => void;
   onCardUpdate: (taskId: string, cardId: string, updates: { helpText?: string }) => void;
   onCardTypeChange: (taskId: string, cardId: string, type: CardType) => void;
 };
@@ -51,6 +54,22 @@ export const PropertiesPanel = ({
               placeholder="Optional heading"
             />
           </label>
+          <div className="field">
+            <span className="label">Card wrapper</span>
+            <label className="choice-pill">
+              <input
+                type="checkbox"
+                checked={task.useCardWrapper}
+                onChange={(event) =>
+                  onTaskUpdate(task.id, { useCardWrapper: event.target.checked })
+                }
+              />
+              Wrap task in #card block
+            </label>
+            <span className="muted small">
+              Applies to the full task, including all parts.
+            </span>
+          </div>
           <HelpEditor
             label="Task help / hint"
             value={task.helpText ?? ""}

@@ -5,13 +5,15 @@
  * - Importiert Exam-Markdown in Exam-Editor Blueprints.
  */
 
-import { parseExamTasks } from "../../lib/exam";
+import { parseExamTasks, splitAnswerBlock } from "../../lib/exam";
 import type {
   ClozeSegment,
   FlashcardPart,
   MultipleChoiceCard,
   TrueFalseCard,
 } from "../../lib/flashcards";
+import { parseFlashcards } from "../../lib/flashcards";
+import { findTableLineIndices } from "../../lib/markdownTables";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
   CardBlueprint,
@@ -53,6 +55,14 @@ const joinHelpBlocks = (blocks?: string[]) => {
   }
   return trimmed.join("\n\n");
 };
+
+const helpStartPattern = /^\s*#help\s*$/;
+const helpEndPattern = /^\s*#helpend\s*$/;
+const separatorLinePattern = /^\s*---\s*$/;
+
+const isHelpStartLine = (line: string) => helpStartPattern.test(line);
+const isHelpEndLine = (line: string) => helpEndPattern.test(line);
+const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 
 const hasClozeMarker = (line: string) => line.includes("%%") || line.includes("`");
 
@@ -154,6 +164,80 @@ const buildCardsFromPart = (part: FlashcardPart): CardBlueprint[] => {
   }
 };
 
+type CardBlock = {
+  contentLines: string[];
+  helpText?: string;
+};
+
+const splitCardBlocksWithHelp = (lines: string[]): CardBlock[] => {
+  const blocks: CardBlock[] = [];
+  const tableLineIndices = findTableLineIndices(lines);
+  let currentLines: string[] = [];
+  let helpBlocks: string[] = [];
+  let inHelp = false;
+  let currentHelp: string[] = [];
+
+  const flushHelp = () => {
+    const trimmed = trimEmptyLines(currentHelp);
+    if (trimmed.length > 0) {
+      helpBlocks.push(trimmed.join("\n"));
+    }
+    currentHelp = [];
+  };
+
+  const flushBlock = () => {
+    const trimmed = trimEmptyLines(currentLines);
+    const helpText = joinHelpBlocks(helpBlocks);
+    if (trimmed.length > 0 || helpText) {
+      blocks.push({ contentLines: trimmed, helpText });
+    }
+    currentLines = [];
+    helpBlocks = [];
+  };
+
+  lines.forEach((line, index) => {
+    if (inHelp) {
+      if (isHelpEndLine(line)) {
+        inHelp = false;
+        flushHelp();
+        return;
+      }
+      currentHelp.push(line);
+      return;
+    }
+    if (isHelpStartLine(line)) {
+      inHelp = true;
+      currentHelp = [];
+      return;
+    }
+    if (isSeparatorLine(line) && !tableLineIndices.has(index)) {
+      flushBlock();
+      return;
+    }
+    currentLines.push(line);
+  });
+
+  if (inHelp) {
+    flushHelp();
+  }
+  flushBlock();
+
+  return blocks;
+};
+
+const parseCardBlock = (lines: string[]): FlashcardPart[] => {
+  const trimmed = trimEmptyLines(lines);
+  if (trimmed.length === 0) {
+    return [];
+  }
+  const cardSource = ["#card", ...trimmed, "#"].join("\n");
+  const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
+  if (parsed.length === 0 || parsed[0].kind !== "composite") {
+    return [];
+  }
+  return parsed[0].parts;
+};
+
 const extractTaskTitle = (lines: string[]) => {
   const taskLine = lines.find((line) => line.trim() !== "") ?? "";
   const trimmed = taskLine.trim();
@@ -213,19 +297,37 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
   blueprint.tasks = parsed.tasks.map((task, index) => {
     const taskTitle = extractTaskTitle(task.rawLines);
     const cards: CardBlueprint[] = [];
-    const cardHelp = joinHelpBlocks(task.card.helpText);
-    let appliedHelp = false;
-
-    task.card.parts.forEach((part) => {
-      const partCards = buildCardsFromPart(part);
-      if (part.kind === "true-false" && part.items.length > 1) {
-        warnings.push("Multiple true/false statements were split into separate cards.");
+    const cardBlocks = splitCardBlocksWithHelp(task.cardLines);
+    cardBlocks.forEach((block) => {
+      const trimmedLines = trimEmptyLines(block.contentLines);
+      if (trimmedLines.length === 0) {
+        return;
       }
-      if (!appliedHelp && cardHelp && partCards.length > 0) {
-        partCards[0].helpText = cardHelp;
-        appliedHelp = true;
+      const parts = parseCardBlock(trimmedLines);
+      if (parts.length === 0) {
+        const fallback = splitAnswerBlock(trimmedLines.join("\n"));
+        const fallbackCard: CardBlueprint = {
+          id: createBlueprintId("card"),
+          type: "qa",
+          prompt: fallback.prompt,
+          answer: fallback.officialAnswer ?? "",
+          helpText: block.helpText,
+        };
+        cards.push(fallbackCard);
+        return;
       }
-      cards.push(...partCards);
+      let appliedHelp = false;
+      parts.forEach((part) => {
+        const partCards = buildCardsFromPart(part);
+        if (part.kind === "true-false" && part.items.length > 1) {
+          warnings.push("Multiple true/false statements were split into separate cards.");
+        }
+        if (!appliedHelp && block.helpText && partCards.length > 0) {
+          partCards[0].helpText = block.helpText;
+          appliedHelp = true;
+        }
+        cards.push(...partCards);
+      });
     });
 
     if (cards.length === 0) {
@@ -242,6 +344,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       order: index,
       title: taskTitle,
       helpText: joinHelpBlocks(task.helpText),
+      useCardWrapper: task.cardWrapper,
       cards,
     };
 

@@ -118,14 +118,19 @@ const serializeTask = (task: ExamTaskBlueprint, index: number) => {
   lines.push(`${index + 1})${title ? ` ${title}` : ""}`);
   // Place task-level help inside the task scope, before the card block.
   lines.push(...serializeHelpBlock(task.helpText));
-  lines.push("#card");
+  const wrapTask = task.useCardWrapper;
+  if (wrapTask) {
+    lines.push("#card");
+  }
   task.cards.forEach((card, cardIndex) => {
     if (cardIndex > 0) {
       lines.push("---");
     }
     lines.push(...serializeCardBlock(card));
   });
-  lines.push("#");
+  if (wrapTask) {
+    lines.push("#");
+  }
   return lines;
 };
 

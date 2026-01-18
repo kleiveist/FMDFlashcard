@@ -86,6 +86,7 @@ export const createTaskBlueprint = (
   id: buildId("task"),
   order,
   title: "",
+  useCardWrapper: false,
   cards: [createCardBlueprint(cardType)],
 });
 
@@ -149,6 +150,7 @@ export const cloneTaskBlueprint = (task: ExamTaskBlueprint): ExamTaskBlueprint =
   order: task.order,
   title: task.title,
   helpText: task.helpText,
+  useCardWrapper: task.useCardWrapper,
   cards: task.cards.map(cloneCardBlueprint),
 });
 

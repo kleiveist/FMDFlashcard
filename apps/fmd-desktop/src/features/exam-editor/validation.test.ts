@@ -121,6 +121,7 @@ describe("validateExamBlueprint", () => {
           id: "task-1",
           order: 0,
           title: "QA",
+          useCardWrapper: false,
           cards: [
             {
               id: "card-1",

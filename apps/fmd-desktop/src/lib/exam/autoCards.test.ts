@@ -15,7 +15,6 @@ import {
 const baseExamContent = [
   "#exam",
   "1) First task",
-  "---",
   "2) Second task",
   "#examend",
 ].join("\n");

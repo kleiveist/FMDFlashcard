@@ -26,7 +26,6 @@ import {
   type FlashcardMetadata,
   type FlashcardPart,
 } from "./flashcards";
-import { findTableLineIndices } from "./markdownTables";
 
 export type ExamTaskSourceRange = {
   startLine: number;
@@ -50,6 +49,8 @@ export type ExamTaskBase = {
   helpText?: string[];
   gradingMode: ExamTaskGradingMode;
   sourceRange: ExamTaskSourceRange;
+  cardWrapper: boolean;
+  cardLines: string[];
   card: ExamCompositeFlashcard;
   warnings: ExamTaskWarning[];
 };
@@ -81,14 +82,12 @@ const trimEmptyLines = (lines: string[]) => {
 const wrapperLinePattern = /^\s*#(?:examend|exam|card|endcard)?\s*$/;
 const examStartPattern = /^\s*#exam\s*$/;
 const examEndPattern = /^\s*#examend\s*$/;
-const separatorLinePattern = /^\s*---\s*$/;
 const cardStartPattern = /^\s*#card\s*$/;
 const cardEndPattern = /^\s*#(?:endcard)?\s*$/;
 
 const isWrapperLine = (line: string) => wrapperLinePattern.test(line);
 const isExamStartLine = (line: string) => examStartPattern.test(line);
 const isExamEndLine = (line: string) => examEndPattern.test(line);
-const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 const isCardStartLine = (line: string) => cardStartPattern.test(line);
 const isCardEndLine = (line: string) => cardEndPattern.test(line);
 
@@ -278,7 +277,8 @@ const parseTaskChunk = (
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
   const normalizedLines = normalizeTaskLines(chunkLines);
-  const { combinedLines, taskLines, cardLines } = splitExamTaskLines(chunkLines);
+  const { combinedLines, taskLines, cardLines, hasCardBlock } =
+    splitExamTaskLines(chunkLines);
   const { helpText: taskHelpText, contentLines: taskContentLines } =
     extractHelpBlocksFromLines(taskLines);
   const { contentLines: combinedContentLines } =
@@ -332,6 +332,8 @@ const parseTaskChunk = (
     card,
     warnings,
     helpText: taskHelpText.length > 0 ? taskHelpText : undefined,
+    cardWrapper: hasCardBlock,
+    cardLines: cardInputLines,
   };
 };
 
@@ -341,7 +343,6 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   let inExam = false;
   let currentTaskStart: number | null = null;
   let hasExamBlock = false;
-  const tableLineIndices = findTableLineIndices(lines);
 
   const flushTask = (endLine: number) => {
     if (currentTaskStart === null || endLine < currentTaskStart) {
@@ -371,14 +372,6 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
       flushTask(index - 1);
       inExam = false;
       currentTaskStart = null;
-      return;
-    }
-
-    if (isSeparatorLine(line)) {
-      if (!tableLineIndices.has(index)) {
-        flushTask(index - 1);
-        currentTaskStart = null;
-      }
       return;
     }
 

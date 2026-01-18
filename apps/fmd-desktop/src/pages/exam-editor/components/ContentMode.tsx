@@ -23,7 +23,10 @@ type ContentModeProps = {
   selection: ExamEditorSelection;
   validation: ExamValidation;
   onSelectTask: (taskId: string) => void;
-  onTaskUpdate: (taskId: string, updates: { title?: string; helpText?: string }) => void;
+  onTaskUpdate: (
+    taskId: string,
+    updates: { title?: string; helpText?: string; useCardWrapper?: boolean },
+  ) => void;
   onCardUpdate: (
     taskId: string,
     cardId: string,

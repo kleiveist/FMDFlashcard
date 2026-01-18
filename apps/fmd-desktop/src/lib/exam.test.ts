@@ -137,7 +137,7 @@ Answer: Real
     expect(tasks[0]?.prompt).toContain("| --- | --- |");
   });
 
-  it("ends tasks only on standalone separators", () => {
+  it("does not split tasks on separator lines", () => {
     const markdown = `#exam
 1) First task
 | Key | Value |
@@ -155,6 +155,7 @@ Still first task
     expect(tasks).toHaveLength(2);
     expect(tasks[0]?.prompt).toContain("| Row | --- |");
     expect(tasks[0]?.prompt).toContain("--- not a separator");
+    expect(tasks[0]?.prompt).toContain("---");
     expect(tasks[1]?.prompt).toContain("2) Second task");
   });
 

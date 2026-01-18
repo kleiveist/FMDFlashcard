@@ -53,6 +53,7 @@ export type ExamTaskBlueprint = {
   order: number;
   title: string;
   helpText?: string;
+  useCardWrapper: boolean;
   cards: CardBlueprint[];
 };
 

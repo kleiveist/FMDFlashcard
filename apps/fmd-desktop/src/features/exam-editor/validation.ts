@@ -217,7 +217,7 @@ export const validateTask = (task: ExamTaskBlueprint): TaskValidation => {
   const cardValidations = task.cards.map((card) => validateCard(card));
   const errors: string[] = [];
   if (task.cards.length === 0) {
-    errors.push("Task requires at least one card.");
+    errors.push("Task requires at least one part.");
   }
   const isValid =
     errors.length === 0 && cardValidations.every((entry) => entry.valid);
