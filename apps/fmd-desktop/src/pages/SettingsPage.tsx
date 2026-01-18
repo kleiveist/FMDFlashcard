@@ -35,6 +35,7 @@ import { SpacedRepetitionSettingsSection } from "../components/settings/SpacedRe
 import { VaultIndexSection } from "../components/settings/VaultIndexSection";
 import { FAST_FLASHCARD_DURATIONS } from "../features/fast-flashcard/constants";
 import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
+import { SETTINGS_PAGES } from "../features/settings/settingsNavigation";
 import {
   SPACED_REPETITION_BOXES,
   SPACED_REPETITION_PAGE_SIZES,
@@ -68,7 +69,7 @@ export const SettingsPage = () => {
   const [isResetHistoryOpen, setIsResetHistoryOpen] = useState(false);
   const [isResetHistoryPending, setIsResetHistoryPending] = useState(false);
   const [isResetExamStatsPending, setIsResetExamStatsPending] = useState(false);
-  const { activeSettingsPage } = settingsNav;
+  const { activeSettingsPage, setActiveSettingsPage } = settingsNav;
 
   const handleResetHistoryConfirm = useCallback(async () => {
     setIsResetHistoryPending(true);
@@ -98,6 +99,23 @@ export const SettingsPage = () => {
           </button>
         </div>
       </header>
+      <div className="settings-page-nav" role="tablist" aria-label="Settings sections">
+        {SETTINGS_PAGES.map((page) => (
+          <button
+            key={page.id}
+            type="button"
+            className={`pill pill-button ${
+              activeSettingsPage === page.id ? "active" : ""
+            }`}
+            role="tab"
+            aria-selected={activeSettingsPage === page.id}
+            aria-controls={`settings-page-${page.id}`}
+            onClick={() => setActiveSettingsPage(page.id)}
+          >
+            {page.label}
+          </button>
+        ))}
+      </div>
       {activeSettingsPage === "app-settings" ? (
         <div className="settings-page settings-app-grid" id="settings-page-app-settings">
           <VaultIndexSection

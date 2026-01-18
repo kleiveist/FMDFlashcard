@@ -28,6 +28,12 @@
   min-width: 0;
 }
 
+.settings-page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .settings-page .panel {
   min-width: 0;
 }

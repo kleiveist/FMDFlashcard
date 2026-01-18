@@ -151,10 +151,10 @@ const resolveTaskGradingMode = (
   return "auto";
 };
 
-const isExamTaskStartLine = (line: string) => {
+const getExamTaskStartNumber = (line: string) => {
   let trimmed = line.trim();
   if (!trimmed) {
-    return false;
+    return null;
   }
 
   if (trimmed.startsWith("**")) {
@@ -167,17 +167,17 @@ const isExamTaskStartLine = (line: string) => {
 
   const numberMatch = trimmed.match(/^(\d+)/);
   if (!numberMatch) {
-    return false;
+    return null;
   }
 
   const numberRaw = numberMatch[1] ?? "";
   if (numberRaw.length > 1 && numberRaw.startsWith("0")) {
-    return false;
+    return null;
   }
 
   const number = Number.parseInt(numberRaw, 10);
   if (number < 1 || number > 99) {
-    return false;
+    return null;
   }
 
   let remainder = trimmed.slice(numberRaw.length);
@@ -188,7 +188,11 @@ const isExamTaskStartLine = (line: string) => {
     remainder = remainder.slice(2);
   }
 
-  return remainder.length === 0 || /^\s/.test(remainder);
+  if (remainder.length === 0 || /^\s/.test(remainder)) {
+    return number;
+  }
+
+  return null;
 };
 
 const normalizeTaskLines = (lines: string[]) => {
@@ -344,18 +348,22 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   const tasks: ExamTask[] = [];
   let inExam = false;
   let currentTaskStart: number | null = null;
+  let currentTaskNumber: number | null = null;
   let hasExamBlock = false;
 
   const resolveTaskEndLine = (startLine: number, endLine: number) => {
     let last = endLine;
-    while (last >= startLine && lines[last]?.trim() === "") {
-      last -= 1;
-    }
-    while (last >= startLine && isTaskSeparatorLine(lines[last] ?? "")) {
-      last -= 1;
-      while (last >= startLine && lines[last]?.trim() === "") {
+    while (last >= startLine) {
+      const line = lines[last] ?? "";
+      if (
+        line.trim() === "" ||
+        isTaskSeparatorLine(line) ||
+        isWrapperLine(line)
+      ) {
         last -= 1;
+        continue;
       }
+      break;
     }
     return last;
   };
@@ -363,11 +371,13 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   const flushTask = (endLine: number) => {
     if (currentTaskStart === null || endLine < currentTaskStart) {
       currentTaskStart = null;
+      currentTaskNumber = null;
       return;
     }
     const taskEndLine = resolveTaskEndLine(currentTaskStart, endLine);
     if (taskEndLine < currentTaskStart) {
       currentTaskStart = null;
+      currentTaskNumber = null;
       return;
     }
     const chunkLines = lines.slice(currentTaskStart, taskEndLine + 1);
@@ -377,6 +387,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     });
     tasks.push(task);
     currentTaskStart = null;
+    currentTaskNumber = null;
   };
 
   lines.forEach((line, index) => {
@@ -384,6 +395,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
       if (isExamStartLine(line)) {
         inExam = true;
         currentTaskStart = null;
+        currentTaskNumber = null;
         hasExamBlock = true;
       }
       return;
@@ -393,14 +405,20 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
       flushTask(index - 1);
       inExam = false;
       currentTaskStart = null;
+      currentTaskNumber = null;
       return;
     }
 
-    if (isExamTaskStartLine(line)) {
+    const taskNumber = getExamTaskStartNumber(line);
+    if (taskNumber !== null) {
+      if (currentTaskStart !== null && currentTaskNumber === taskNumber) {
+        return;
+      }
       if (currentTaskStart !== null) {
         flushTask(index - 1);
       }
       currentTaskStart = index;
+      currentTaskNumber = taskNumber;
     }
   });
 

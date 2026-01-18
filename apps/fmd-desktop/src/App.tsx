@@ -21,10 +21,11 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
+import { ModalShell } from "./components/ModalShell";
 import { SidebarNav } from "./components/SidebarNav";
 import {
   getEffectiveBinding,
@@ -36,7 +37,7 @@ import { getActiveCloseLayer } from "./lib/shortcuts/closeOrBack";
 import { getShortcutById } from "./lib/shortcuts/registry";
 import { logWordPressFeatureStatus } from "./lib/featureFlags";
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
-import { DashboardPage } from "./pages/DashboardPage";
+import { DashboardPage, type DashboardPageHandle, type DashboardView } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
 import { FastFlashcardPage } from "./pages/FastFlashcardPage";
@@ -50,16 +51,16 @@ type TabKey =
   | "exam"
   | "flashcard"
   | "spaced-repetition"
-  | "fast-flashcard"
-  | "help"
-  | "settings";
+  | "fast-flashcard";
 
 const AppContent = () => {
   const { actions, help, settings } = useAppState();
-  const { setActiveTopicId } = help;
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [helpReturnTab, setHelpReturnTab] = useState<TabKey>("dashboard");
+  const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
+  const dashboardRef = useRef<DashboardPageHandle | null>(null);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const isDashboard = activeTab === "dashboard";
   const platform = getShortcutPlatform();
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
@@ -72,16 +73,10 @@ const AppContent = () => {
   );
   const handleTabChange = useCallback(
     (tab: TabKey) => {
-      if (tab === "help" && activeTab !== "help") {
-        setActiveTopicId(DEFAULT_HELP_TOPIC_ID);
-      }
       setActiveTab(tab);
       setIsMobileNavOpen(false);
-      if (tab !== "help") {
-        setHelpReturnTab(tab);
-      }
     },
-    [activeTab, setActiveTopicId, setActiveTab, setHelpReturnTab, setIsMobileNavOpen],
+    [setActiveTab, setIsMobileNavOpen],
   );
 
   useEffect(() => {
@@ -114,6 +109,36 @@ const AppContent = () => {
     logWordPressFeatureStatus();
   }, []);
 
+  const requestDashboardViewChange = useCallback(
+    (nextView: DashboardView) => {
+      if (activeTab === "dashboard" && dashboardRef.current) {
+        dashboardRef.current.requestVaultViewChange(nextView);
+        return;
+      }
+      setDashboardView(nextView);
+    },
+    [activeTab],
+  );
+
+  const handleOpenHelp = useCallback(() => {
+    help.setActiveTopicId(DEFAULT_HELP_TOPIC_ID);
+    setIsHelpOpen(true);
+    setIsSettingsOpen(false);
+  }, [help]);
+
+  const handleOpenSettings = useCallback(() => {
+    setIsSettingsOpen(true);
+    setIsHelpOpen(false);
+  }, []);
+
+  const handleCloseHelp = useCallback(() => {
+    setIsHelpOpen(false);
+  }, []);
+
+  const handleCloseSettings = useCallback(() => {
+    setIsSettingsOpen(false);
+  }, []);
+
   useEffect(() => {
     const dispose = registerGlobalShortcuts({
       bindings: settings.keyboardShortcuts.bindings,
@@ -131,26 +156,6 @@ const AppContent = () => {
     settings.keyboardShortcuts.bindings,
   ]);
 
-  const closeHelp = useCallback(() => {
-    const targetTab = helpReturnTab === "help" ? "dashboard" : helpReturnTab;
-    handleTabChange(targetTab);
-  }, [handleTabChange, helpReturnTab]);
-
-  useEffect(() => {
-    if (activeTab !== "help") {
-      return undefined;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) {
-        return;
-      }
-      event.preventDefault();
-      closeHelp();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeTab, closeHelp]);
-
   return (
     <div
       className={`app-shell ${
@@ -162,6 +167,10 @@ const AppContent = () => {
       <SidebarNav
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        vaultView={dashboardView}
+        onVaultViewChange={requestDashboardViewChange}
+        onOpenHelp={handleOpenHelp}
+        onOpenSettings={handleOpenSettings}
         isMobileNavOpen={isMobileNavOpen}
         onMobileNavClose={() => setIsMobileNavOpen(false)}
       />
@@ -179,21 +188,31 @@ const AppContent = () => {
           </button>
         </div>
         {activeTab === "dashboard" ? (
-          <DashboardPage />
+          <DashboardPage
+            ref={dashboardRef}
+            initialVaultView={dashboardView}
+            onVaultViewChange={setDashboardView}
+          />
         ) : activeTab === "exam" ? (
           <ExamSimulationPage />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage />
         ) : activeTab === "spaced-repetition" ? (
           <SpacedRepetitionPage />
-        ) : activeTab === "fast-flashcard" ? (
-          <FastFlashcardPage />
-        ) : activeTab === "help" ? (
-          <HelpPage onCloseHelp={closeHelp} />
         ) : (
-          <SettingsPage />
+          <FastFlashcardPage />
         )}
       </main>
+      <ModalShell isOpen={isHelpOpen} title="Help" onClose={handleCloseHelp}>
+        <div className="hub-modal-scroll">
+          <HelpPage onCloseHelp={handleCloseHelp} />
+        </div>
+      </ModalShell>
+      <ModalShell isOpen={isSettingsOpen} title="Settings" onClose={handleCloseSettings}>
+        <div className="hub-modal-scroll">
+          <SettingsPage />
+        </div>
+      </ModalShell>
       <button
         type="button"
         className="mobile-nav-backdrop"

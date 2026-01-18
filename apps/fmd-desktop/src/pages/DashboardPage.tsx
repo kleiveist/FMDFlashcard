@@ -21,7 +21,16 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ForwardedRef,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
@@ -34,14 +43,28 @@ import type { ExamEditorControlsState } from "./exam-editor/types";
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 const notePanelStorageKey = "fmd.notePanelCollapsed";
 
-export const DashboardPage = () => {
+export type DashboardView = "markdown" | "exam";
+
+type DashboardPageProps = {
+  initialVaultView?: DashboardView;
+  onVaultViewChange?: (nextView: DashboardView) => void;
+};
+
+export type DashboardPageHandle = {
+  requestVaultViewChange: (nextView: DashboardView) => void;
+};
+
+const DashboardPageInner = (
+  { initialVaultView = "markdown", onVaultViewChange }: DashboardPageProps,
+  ref: ForwardedRef<DashboardPageHandle>,
+) => {
   const { actions, preview, settings, vault } = useAppState();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
-  const [vaultView, setVaultView] = useState<"markdown" | "exam">("markdown");
+  const [vaultView, setVaultView] = useState<DashboardView>(initialVaultView);
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
   );
@@ -190,7 +213,7 @@ export const DashboardPage = () => {
   }, [editDraft, isEditing, isSaving, preview]);
 
   const handleVaultViewChange = useCallback(
-    async (nextView: "markdown" | "exam") => {
+    async (nextView: DashboardView) => {
       if (nextView === vaultView) {
         return;
       }
@@ -201,8 +224,19 @@ export const DashboardPage = () => {
         }
       }
       setVaultView(nextView);
+      onVaultViewChange?.(nextView);
     },
-    [handleEditAutosave, isEditing, vaultView],
+    [handleEditAutosave, isEditing, onVaultViewChange, vaultView],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      requestVaultViewChange: (nextView: DashboardView) => {
+        void handleVaultViewChange(nextView);
+      },
+    }),
+    [handleVaultViewChange],
   );
 
   const handleToggleRawPreview = useCallback(async () => {
@@ -427,3 +461,6 @@ export const DashboardPage = () => {
     </div>
   );
 };
+
+export const DashboardPage = forwardRef(DashboardPageInner);
+DashboardPage.displayName = "DashboardPage";

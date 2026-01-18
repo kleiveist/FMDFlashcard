@@ -40,6 +40,72 @@
   gap: 12px;
 }
 
+.modal-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal-panel-title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.modal-panel-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.modal-panel-close:hover {
+  border-color: var(--accent-weak-border);
+  background: var(--accent-weak-bg);
+  color: var(--accent-strong);
+}
+
+.modal-panel-close:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.modal-panel-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.hub-modal-panel {
+  width: min(940px, 96vw);
+  max-height: min(84vh, 760px);
+  min-height: 0;
+}
+
+.hub-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hub-modal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-right: 4px;
+}
+
 .modal-body {
   display: flex;
   flex-direction: column;

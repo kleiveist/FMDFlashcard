@@ -180,7 +180,7 @@
 
 .sidebar-icon-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -241,12 +241,55 @@
   background: var(--accent-weak-bg);
   border: 1px solid var(--accent-weak-border);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   text-align: left;
   transition: 0.2s ease;
   position: relative;
   overflow: visible;
+}
+
+.vault-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vault-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vault-status-action {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.vault-status-action:hover {
+  border-color: var(--accent-weak-border);
+  background: var(--accent-active-bg);
+  color: var(--accent-strong);
+}
+
+.vault-status-action:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.vault-status-action svg {
+  width: 16px;
+  height: 16px;
 }
 
 .vault-status:hover {
@@ -341,9 +384,15 @@
   animation: spin 0.9s linear infinite;
 }
 
+.vault-status-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .vault-status-menu {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   left: 0;
   right: 0;
   background: var(--panel);
@@ -354,7 +403,24 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-height: var(--vault-menu-max-height, 240px);
+  overflow: hidden;
   z-index: 80;
+}
+
+.vault-status-menu-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.vault-status-menu-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .vault-status-menu-row {
@@ -438,29 +504,6 @@
   align-items: center;
   gap: 6px;
   padding: 0 6px 4px;
-}
-
-.vault-status-menu-help {
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  padding: 6px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.vault-status-menu-help:hover {
-  background: var(--accent-weak-bg);
-  color: var(--accent-strong);
-}
-
-.vault-status-menu-help svg {
-  width: 16px;
-  height: 16px;
 }
 
 .vault-status-menu-empty {

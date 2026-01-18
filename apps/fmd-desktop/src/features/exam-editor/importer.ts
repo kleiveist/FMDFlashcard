@@ -56,25 +56,36 @@ const joinHelpBlocks = (blocks?: string[]) => {
   return trimmed.join("\n\n");
 };
 
-const taskNumberPattern = /^\s*\d+\)\s*(.*)$/;
+const taskNumberPattern = /^\s*(\d+)\)\s*(.*)$/;
 
 const stripLeadingTaskNumberLine = (lines: string[]) => {
   const next = lines.slice();
-  for (let index = 0; index < next.length; index += 1) {
+  let expectedNumber: string | null = null;
+  let index = 0;
+
+  while (index < next.length) {
     const line = next[index];
     if (line.trim() === "") {
+      index += 1;
       continue;
     }
     const match = line.match(taskNumberPattern);
-    if (match) {
-      const remainder = match[1] ?? "";
-      if (remainder.trim() === "") {
-        next.splice(index, 1);
-      } else {
-        next[index] = remainder;
-      }
+    if (!match) {
+      break;
     }
-    break;
+    const number = match[1] ?? "";
+    if (!expectedNumber) {
+      expectedNumber = number;
+    } else if (number !== expectedNumber) {
+      break;
+    }
+    const remainder = match[2] ?? "";
+    if (remainder.trim() === "") {
+      next.splice(index, 1);
+      continue;
+    }
+    next[index] = remainder;
+    index += 1;
   }
   return next;
 };

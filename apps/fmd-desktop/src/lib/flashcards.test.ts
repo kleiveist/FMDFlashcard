@@ -1111,7 +1111,12 @@ Outside token: \`SELECT\`
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
-      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      const blanks = part.segments.filter(
+        (
+          segment,
+        ): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
+          segment.type === "blank" && segment.kind === "input",
+      );
       expect(blanks.map((blank) => blank.solution)).toEqual([
         "min_bestellungen",
         "sort_spalte",
@@ -1154,7 +1159,12 @@ After.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
-      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      const blanks = part.segments.filter(
+        (
+          segment,
+        ): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
+          segment.type === "blank" && segment.kind === "input",
+      );
       expect(blanks.map((blank) => blank.solution)).toEqual([
         "first",
         "inside",
