@@ -37,7 +37,6 @@ import {
   resolveText,
 } from "./help/helpContent";
 import { HelpDetailSection } from "./help/sections/HelpDetailSection";
-import { HelpHeaderSection } from "./help/sections/HelpHeaderSection";
 import { HelpTopicHeadingsBlock } from "./help/sections/HelpTopicHeadingsBlock";
 
 type HelpPageProps = {
@@ -95,8 +94,6 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
     syntaxEntries[0] ??
     null;
   const titleText = resolveText(helpHeader.title, language);
-  const eyebrowText = resolveText(helpHeader.eyebrow, language);
-  const summaryText = resolveText(helpHeader.summary, language);
 
   const copyLabel = resolveText(helpLabels.copy, language);
   const copiedLabel = resolveText(helpLabels.copied, language);
@@ -174,60 +171,55 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
   );
 
   return (
-    <>
-      <HelpHeaderSection
-        eyebrowText={eyebrowText}
-        titleText={titleText}
-        summaryText={summaryText}
-      />
+    <div className="help-layout">
+      <div className="help-nav" role="navigation" aria-label="Help sections">
+        <HelpTopicHeadingsBlock
+          helpTopics={helpTopics}
+          language={language}
+          activeTopicId={normalizedActiveTopic?.id ?? DEFAULT_HELP_TOPIC_ID}
+          setActiveTopicId={setActiveTopicId}
+        />
+      </div>
       <section className="panel help-panel">
         <div className="panel-body help-body">
-          <>
-            <HelpTopicHeadingsBlock
-              helpTopics={helpTopics}
-              language={language}
-              activeTopicId={normalizedActiveTopic?.id ?? DEFAULT_HELP_TOPIC_ID}
-              setActiveTopicId={setActiveTopicId}
-            />
-            <HelpDetailSection
-              titleText={titleText}
-              activeTopic={normalizedActiveTopic ?? helpTopics[0]!}
-              language={language}
-              isSyntaxTopic={isSyntaxTopic}
-              isAppSectionsTopic={isAppSectionsTopic}
-              isLoadVaultTopic={isLoadVaultTopic}
-              syntaxEntries={syntaxEntries}
-              syntaxOverview={syntaxOverview}
-              activeSyntax={activeSyntax}
-              setActiveTopicId={setActiveTopicId}
-              setActiveSyntaxId={(value) => {
-                if (isStructuredSyntaxTopic) {
-                  setStructuredSyntaxId(value);
-                } else {
-                  setFlashcardSyntaxId(value);
-                }
-              }}
-              syntaxLanguage={syntaxLanguage}
-              setSyntaxLanguage={setSyntaxLanguage}
-              copyLabel={copyLabel}
-              copiedLabel={copiedLabel}
-              copiedItemId={copiedItemId}
-              handleCopy={handleCopy}
-              overviewBullets={syntaxOverviewBullets}
-              syntaxCopyExampleLabel={syntaxCopyExampleLabel}
-              syntaxCopyPromptLabel={syntaxCopyPromptLabel}
-              syntaxCopiedLabel={syntaxCopiedLabel}
-              syntaxPromptLabel={syntaxPromptLabel}
-              syntaxExampleLabel={syntaxExampleLabel}
-              syntaxRulesLabel={syntaxRulesLabel}
-              syntaxWhatItIsLabel={syntaxWhatItIsLabel}
-              syntaxMistakesLabel={syntaxMistakesLabel}
-              syntaxMarkersLabel={syntaxMarkersLabel}
-              onCloseHelp={onCloseHelp}
-            />
-          </>
+          <HelpDetailSection
+            titleText={titleText}
+            activeTopic={normalizedActiveTopic ?? helpTopics[0]!}
+            language={language}
+            isSyntaxTopic={isSyntaxTopic}
+            isAppSectionsTopic={isAppSectionsTopic}
+            isLoadVaultTopic={isLoadVaultTopic}
+            syntaxEntries={syntaxEntries}
+            syntaxOverview={syntaxOverview}
+            activeSyntax={activeSyntax}
+            setActiveTopicId={setActiveTopicId}
+            setActiveSyntaxId={(value) => {
+              if (isStructuredSyntaxTopic) {
+                setStructuredSyntaxId(value);
+              } else {
+                setFlashcardSyntaxId(value);
+              }
+            }}
+            syntaxLanguage={syntaxLanguage}
+            setSyntaxLanguage={setSyntaxLanguage}
+            copyLabel={copyLabel}
+            copiedLabel={copiedLabel}
+            copiedItemId={copiedItemId}
+            handleCopy={handleCopy}
+            overviewBullets={syntaxOverviewBullets}
+            syntaxCopyExampleLabel={syntaxCopyExampleLabel}
+            syntaxCopyPromptLabel={syntaxCopyPromptLabel}
+            syntaxCopiedLabel={syntaxCopiedLabel}
+            syntaxPromptLabel={syntaxPromptLabel}
+            syntaxExampleLabel={syntaxExampleLabel}
+            syntaxRulesLabel={syntaxRulesLabel}
+            syntaxWhatItIsLabel={syntaxWhatItIsLabel}
+            syntaxMistakesLabel={syntaxMistakesLabel}
+            syntaxMarkersLabel={syntaxMarkersLabel}
+            onCloseHelp={onCloseHelp}
+          />
         </div>
       </section>
-    </>
+    </div>
   );
 };

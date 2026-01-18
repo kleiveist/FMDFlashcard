@@ -420,6 +420,13 @@ h2 {
   align-items: start;
 }
 
+.exam-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
 .fast-flashcard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -699,8 +706,6 @@ body.focus-mode .fast-history-panel {
   position: sticky;
   top: 0;
   z-index: 2;
-  margin: -20px -20px 12px;
-  border-radius: 20px 20px 14px 14px;
 }
 
 .exam-overview {

@@ -21,6 +21,19 @@
   min-height: auto;
 }
 
+.help-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.help-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .help-body {
   gap: 16px;
 }

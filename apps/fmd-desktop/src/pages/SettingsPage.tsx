@@ -88,13 +88,6 @@ export const SettingsPage = () => {
   return (
     <>
       <header className="content-header">
-        <div>
-          <p className="eyebrow">SETTINGS</p>
-          <h1>Settings</h1>
-          <p className="muted">
-            Adjust your workflow. The next features build on this vault foundation.
-          </p>
-        </div>
         <div className="actions">
           <button
             type="button"

@@ -138,9 +138,8 @@ export const ExamSimulationPage = () => {
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const isOverviewStage = stage === "idle";
-  const showOverviewLayout = isOverviewStage && !isViewMode;
+  const showOverviewToggle = isOverviewStage;
   const timelineVisible = examTimerEnabled && examShowTimeline;
-  const showTimelineBlock = !isViewMode && (timelineVisible || isOverviewStage);
   const selectedUser = useMemo(
     () =>
       spacedRepetition.spacedRepetitionUsers.find(
@@ -325,10 +324,12 @@ export const ExamSimulationPage = () => {
 
   return (
     <div className="exam-page">
-      {showTimelineBlock ? (
-        <div className="exam-timeline-block">
+      <div className="exam-layout">
+        <div className="exam-main">
+          {showOverviewToggle ? renderOverviewToggle() : null}
           {timelineVisible ? (
             <ExamTimeBar
+              className={isViewMode ? "exam-time-bar--view" : undefined}
               timeLimitMs={examTimeLimitMs}
               timeRemainingMs={examTimeRemainingMs}
               isRunning={isExamTimerRunning}
@@ -336,89 +337,74 @@ export const ExamSimulationPage = () => {
               isEnabled={examTimerEnabled}
             />
           ) : null}
-          {showOverviewLayout ? renderOverviewToggle() : null}
-        </div>
-      ) : null}
-
-      <div className="exam-layout">
-        <section className="panel exam-panel">
-          {isViewMode && timelineVisible ? (
-            <ExamTimeBar
-              className="exam-time-bar--view"
-              timeLimitMs={examTimeLimitMs}
-              timeRemainingMs={examTimeRemainingMs}
-              isRunning={isExamTimerRunning}
-              isTimeUp={examTimeUp}
-              isEnabled={examTimerEnabled}
-            />
-          ) : null}
-          {stage === "idle" ? (
-            <div className="exam-overview">
-              {isViewMode && isOverviewStage ? renderOverviewToggle() : null}
-              <div className="exam-overview-body">
-                {overviewTab === "ready" ? (
-                  <ExamIdlePanel
-                    selectedFile={selectedExamFile}
-                    previewState={preview.previewState}
-                    previewError={preview.previewError}
-                    examEmptyState={examEmptyState}
-                    availableTaskCount={previewExamParse.tasks.length}
-                    plannedTaskCount={plannedTaskCount}
-                    plannedMaxPoints={plannedMaxPoints}
-                    hasTaskCountMismatch={hasTaskCountMismatch}
+          <section className="panel exam-panel">
+            {stage === "idle" ? (
+              <div className="exam-overview">
+                <div className="exam-overview-body">
+                  {overviewTab === "ready" ? (
+                    <ExamIdlePanel
+                      selectedFile={selectedExamFile}
+                      previewState={preview.previewState}
+                      previewError={preview.previewError}
+                      examEmptyState={examEmptyState}
+                      availableTaskCount={previewExamParse.tasks.length}
+                      plannedTaskCount={plannedTaskCount}
+                      plannedMaxPoints={plannedMaxPoints}
+                      hasTaskCountMismatch={hasTaskCountMismatch}
+                    />
+                  ) : (
+                    <ExamStatisticsPanel
+                      runs={examRuns}
+                      gradeScaleId={settings.examGradeScale}
+                    />
+                  )}
+                </div>
+              </div>
+            ) : isRunnerStage ? (
+                activeTask ? (
+                  <ExamTaskRunner
+                    task={activeTask}
+                    taskIndex={activeTaskIndex}
+                    taskCount={runTasks.length}
+                    maxPoints={activeTaskMaxPoints}
+                    phase={activePhase}
+                    partStates={activeTaskPartStates}
+                    awardedPoints={activeTaskAwardedPoints}
+                    autoGradeDecision={activeTaskAutoDecision}
+                    conversionDecision={conversionDecisions[activeTaskIndex]}
+                    conversionPending={conversionPending}
+                    conversionError={conversionError}
+                    onOptionSelect={handleOptionSelect}
+                    onTrueFalseSelect={handleTrueFalseSelect}
+                    onClozeInputChange={handleClozeInputChange}
+                    onClozeTokenDrop={handleClozeTokenDrop}
+                    onClozeTokenRemove={handleClozeTokenRemove}
+                    onClozeTokenDragStart={handleClozeTokenDragStart}
+                    onBlankDragOver={handleClozeBlankDragOver}
+                    onTextInputChange={handleTextInputChange}
+                    onAwardedPointsChange={handleAwardedPointsChange}
+                    onAutoGradeDecision={handleAutoGradeDecision}
+                    onConversionDecision={handleConversionDecision}
+                    onBack={handleTaskBack}
+                    onNext={handleTaskNext}
+                    canGoBack={activeTaskIndex > 0}
+                    canGoNext={activeTaskIndex < runTasks.length - 1}
+                    helpEnabled={settings.examHelpEnabled}
                   />
                 ) : (
-                  <ExamStatisticsPanel
-                    runs={examRuns}
-                    gradeScaleId={settings.examGradeScale}
+                  <div className="empty-state">No tasks available for this exam.</div>
+                )
+              ) : stage === "finished" ? (
+                results ? (
+                  <ExamResultsPanel
+                    results={results}
                   />
-                )}
-              </div>
-            </div>
-          ) : isRunnerStage ? (
-              activeTask ? (
-                <ExamTaskRunner
-                  task={activeTask}
-                  taskIndex={activeTaskIndex}
-                  taskCount={runTasks.length}
-                  maxPoints={activeTaskMaxPoints}
-                  phase={activePhase}
-                  partStates={activeTaskPartStates}
-                  awardedPoints={activeTaskAwardedPoints}
-                  autoGradeDecision={activeTaskAutoDecision}
-                  conversionDecision={conversionDecisions[activeTaskIndex]}
-                  conversionPending={conversionPending}
-                  conversionError={conversionError}
-                  onOptionSelect={handleOptionSelect}
-                  onTrueFalseSelect={handleTrueFalseSelect}
-                  onClozeInputChange={handleClozeInputChange}
-                  onClozeTokenDrop={handleClozeTokenDrop}
-                  onClozeTokenRemove={handleClozeTokenRemove}
-                  onClozeTokenDragStart={handleClozeTokenDragStart}
-                  onBlankDragOver={handleClozeBlankDragOver}
-                  onTextInputChange={handleTextInputChange}
-                  onAwardedPointsChange={handleAwardedPointsChange}
-                  onAutoGradeDecision={handleAutoGradeDecision}
-                  onConversionDecision={handleConversionDecision}
-                  onBack={handleTaskBack}
-                  onNext={handleTaskNext}
-                  canGoBack={activeTaskIndex > 0}
-                  canGoNext={activeTaskIndex < runTasks.length - 1}
-                  helpEnabled={settings.examHelpEnabled}
-                />
-              ) : (
-                <div className="empty-state">No tasks available for this exam.</div>
-              )
-            ) : stage === "finished" ? (
-              results ? (
-                <ExamResultsPanel
-                  results={results}
-                />
-              ) : (
-                <div className="empty-state">No results available yet.</div>
-              )
-            ) : null}
-        </section>
+                ) : (
+                  <div className="empty-state">No results available yet.</div>
+                )
+              ) : null}
+          </section>
+        </div>
         <div className="exam-sidebar">
           <UserToolsPanel
             spacedRepetition={spacedRepetition}
