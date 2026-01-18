@@ -20,6 +20,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isValidHex, normalizeHex } from "../../lib/color";
+import { ModalShell } from "../ModalShell";
 
 type AccentMode = "light" | "dark";
 
@@ -324,10 +325,13 @@ export const MarkdownEditorSection = ({
                     ))}
                   </div>
                   <div className="markdown-accent-row">
-                    <span
-                      className="markdown-accent-preview"
+                    <button
+                      type="button"
+                      className="markdown-accent-preview markdown-accent-trigger"
                       style={{ backgroundColor: activeAccentHex }}
-                      aria-hidden="true"
+                      onClick={() => setIsPaletteOpen(true)}
+                      aria-label="Open accent palette"
+                      aria-expanded={isPaletteOpen}
                     />
                     <input
                       type="text"
@@ -343,21 +347,19 @@ export const MarkdownEditorSection = ({
                     >
                       {isCopied ? "Copied" : "Copy"}
                     </button>
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={() => setIsPaletteOpen((prev) => !prev)}
-                      aria-expanded={isPaletteOpen}
-                    >
-                      {isPaletteOpen ? "Hide palette" : "Choose color"}
-                    </button>
                   </div>
                   <span
                     className={`helper-text ${activeError ? "error-text" : ""}`}
                   >
                     {activeError || "HEX value of the accent color (#RRGGBB)."}
                   </span>
-                  {isPaletteOpen ? (
+                  <ModalShell
+                    isOpen={isPaletteOpen}
+                    title="Markdown editor palette"
+                    onClose={() => setIsPaletteOpen(false)}
+                    className="markdown-accent-modal"
+                    bodyClassName="hub-modal-scroll markdown-accent-modal-body"
+                  >
                     <div className="markdown-accent-picker">
                       <div className="markdown-accent-grid">
                         {MARKDOWN_EDITOR_PALETTE.map((color) => (
@@ -406,7 +408,7 @@ export const MarkdownEditorSection = ({
                         </div>
                       </div>
                     </div>
-                  ) : null}
+                  </ModalShell>
                 </>
               ) : (
                 <span className="helper-text">

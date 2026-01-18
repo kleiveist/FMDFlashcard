@@ -686,6 +686,28 @@
   box-shadow: inset 0 0 0 1px var(--line-soft);
 }
 
+.markdown-accent-trigger {
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.markdown-accent-trigger:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px var(--line-soft),
+    0 0 0 2px var(--accent-weak-border);
+}
+
+.markdown-accent-trigger:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
 .markdown-accent-picker {
   margin-top: 8px;
   padding: 10px;
@@ -742,6 +764,18 @@
   flex-wrap: wrap;
   gap: 6px;
   min-height: 22px;
+}
+
+.hub-modal-panel.markdown-accent-modal {
+  width: min(560px, 92vw);
+  max-height: min(72vh, 620px);
+}
+
+.markdown-accent-modal-body .markdown-accent-picker {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .hex-input {
