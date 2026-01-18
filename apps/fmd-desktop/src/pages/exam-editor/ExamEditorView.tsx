@@ -79,6 +79,31 @@ const getParentRelativePath = (value: string) => {
   return normalized.slice(0, lastSlash);
 };
 
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  if (target.isContentEditable) {
+    return true;
+  }
+  const tag = target.tagName.toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") {
+    return true;
+  }
+  return Boolean(
+    target.closest('[contenteditable="true"], [contenteditable=""], [role="textbox"]'),
+  );
+};
+
+const isModalOpen = () => {
+  if (typeof document === "undefined") {
+    return false;
+  }
+  return Boolean(
+    document.querySelector(".modal-backdrop, .context-menu-backdrop"),
+  );
+};
+
 export const ExamEditorView = ({
   sourcePath,
   sourceRelativePath,
@@ -567,6 +592,39 @@ export const ExamEditorView = ({
       onControlsReady?.(null);
     };
   }, [onControlsReady]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      if (isModalOpen()) {
+        return;
+      }
+      const isSaveShortcut =
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "s";
+      if (isSaveShortcut) {
+        event.preventDefault();
+        void handleSave(false);
+        return;
+      }
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        if (isEditableTarget(event.target)) {
+          return;
+        }
+        const nextMode = event.key === "ArrowLeft" ? "structure" : "content";
+        if (mode !== nextMode) {
+          setMode(nextMode);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleSave, mode]);
 
   useEffect(() => {
     if (selection.type === "task") {

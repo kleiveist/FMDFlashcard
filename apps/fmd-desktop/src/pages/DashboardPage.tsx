@@ -21,7 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
@@ -45,6 +45,7 @@ export const DashboardPage = () => {
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
   );
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
   const [noteCollapsed, setNoteCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -124,6 +125,22 @@ export const DashboardPage = () => {
       // Ignore storage failures (e.g. privacy mode).
     }
   }, [noteCollapsed]);
+
+  useEffect(() => {
+    if (!noteCollapsed || typeof document === "undefined") {
+      return;
+    }
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement)) {
+      return;
+    }
+    const rightPanel =
+      document.querySelector(".note-column") ??
+      document.querySelector(".note-panel");
+    if (rightPanel?.contains(active)) {
+      workspaceRef.current?.focus();
+    }
+  }, [noteCollapsed, vaultView]);
 
   const handleToggleNoteCollapsed = useCallback(() => {
     setNoteCollapsed((current) => !current);
@@ -240,7 +257,11 @@ export const DashboardPage = () => {
         </div>
       </header>
 
-      <div className={`workspace${noteCollapsed ? " note-collapsed" : ""}`}>
+      <div
+        className={`workspace${noteCollapsed ? " note-collapsed" : ""}`}
+        ref={workspaceRef}
+        tabIndex={-1}
+      >
         {vaultView === "markdown" ? (
           <PreviewPanel
             emptyPreview={emptyPreview}
@@ -306,7 +327,27 @@ export const DashboardPage = () => {
           />
         ) : (
           <div className="note-column">
-            {examControls ? (
+            {noteCollapsed ? (
+              <section className="panel toolbar-panel exam-editor-controls-panel is-collapsed">
+                <button
+                  type="button"
+                  className="exam-editor-controls-handle"
+                  onClick={handleToggleNoteCollapsed}
+                  aria-label="Expand editor panels"
+                >
+                  <span className="note-handle-icon" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M15 6l-6 6 6 6" />
+                    </svg>
+                  </span>
+                </button>
+              </section>
+            ) : examControls ? (
               <section className="panel toolbar-panel exam-editor-controls-panel">
                 <div className="exam-editor-toolbar">
                   <div className="pill-grid" role="tablist" aria-label="Editor mode">
@@ -373,6 +414,7 @@ export const DashboardPage = () => {
               onSelectFile={actions.handleSelectFile}
               onToggleCollapsed={handleToggleNoteCollapsed}
               selectedFile={preview.selectedFile}
+              showCollapseStrip
               vaultPath={vault.vaultPath}
             />
           </div>

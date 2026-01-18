@@ -153,6 +153,10 @@ export const SidebarNav = ({
     [help, onTabChange, setIsVaultMenuOpen, setToolbarMode],
   );
 
+  const handleToolbarToggle = useCallback(() => {
+    settings.setRightToolbarCollapsed((prev) => !prev);
+  }, [settings]);
+
   useEffect(() => {
     if (!vault.activeFolderPath) {
       return;
@@ -214,10 +218,23 @@ export const SidebarNav = ({
       className={`sidebar ${isCollapsed ? "collapsed" : ""}`}
       aria-label="Primary navigation"
     >
+      {isCollapsed ? (
+        <button
+          type="button"
+          className="sidebar-collapsed-trigger"
+          onClick={handleToolbarToggle}
+          aria-label="Expand toolbar"
+          title="Expand toolbar"
+        >
+          <span className="sidebar-collapsed-icon" aria-hidden="true">
+            {">"}
+          </span>
+        </button>
+      ) : null}
       <button
         type="button"
         className="sidebar-handle"
-        onClick={() => settings.setRightToolbarCollapsed((prev) => !prev)}
+        onClick={handleToolbarToggle}
         aria-label={toggleLabel}
         title={toggleLabel}
       >

@@ -113,6 +113,7 @@ type FileListProps = {
   onSelectFile: (file: VaultFile) => void;
   onToggleCollapsed: () => void;
   selectedFile: VaultFile | null;
+  showCollapseStrip?: boolean;
   vaultPath: string | null;
 };
 
@@ -128,6 +129,7 @@ export const FileList = ({
   onSelectFile,
   onToggleCollapsed,
   selectedFile,
+  showCollapseStrip = false,
   vaultPath,
 }: FileListProps) => {
   const [contextMenu, setContextMenu] = useState<{
@@ -451,6 +453,19 @@ export const FileList = ({
           </ul>
         ) : null}
       </div>
+      {showCollapseStrip && !isCollapsed ? (
+        <button
+          type="button"
+          className="note-collapse-strip"
+          onClick={onToggleCollapsed}
+          aria-label="Collapse Note panel"
+          title="Collapse Note panel"
+        >
+          <span className="note-collapse-icon" aria-hidden="true">
+            {">"}
+          </span>
+        </button>
+      ) : null}
       <VaultCreateModal
         isOpen={isCreateOpen}
         kind="file"

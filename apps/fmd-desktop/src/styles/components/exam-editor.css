@@ -18,13 +18,75 @@
   height: 100%;
 }
 
+.workspace.note-collapsed .note-column {
+  gap: 8px;
+}
+
 .note-column .note-panel {
   flex: 1 1 auto;
   min-height: 0;
+  position: relative;
 }
 
 .note-column .exam-editor-controls-panel {
   flex: 0 0 auto;
+}
+
+.note-column .note-collapse-strip {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  right: 6px;
+  width: 20px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.note-column .note-panel:hover .note-collapse-strip,
+.note-column .note-collapse-strip:focus-visible {
+  opacity: 1;
+  background: var(--accent-weak-bg);
+  color: var(--accent-strong);
+}
+
+.note-column .note-collapse-strip:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.exam-editor-controls-panel.is-collapsed {
+  padding: 10px 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+}
+
+.exam-editor-controls-handle {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.exam-editor-controls-handle:hover,
+.exam-editor-controls-handle:focus-visible {
+  color: var(--accent-strong);
+}
+
+.exam-editor-controls-handle:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
 }
 
 .exam-editor-header {
