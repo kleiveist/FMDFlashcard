@@ -38,9 +38,11 @@ Escaped symbols: \* \# \- \|
 
 #exam
 1) First task with table
+
 | Key | Value |
 | --- | --- |
 | Row | --- |
+
 ---
 2) Second task with card
 #card
