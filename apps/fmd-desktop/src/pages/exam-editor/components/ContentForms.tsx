@@ -6,6 +6,7 @@ import type { CardBlueprint, ChoiceOption } from "../../../features/exam-editor/
 import type { CardValidation } from "../../../features/exam-editor/validation";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
 import { HelpEditor } from "./HelpEditor";
+import { AutoGrowTextarea } from "./AutoGrowTextarea";
 
 type BaseCardFormProps = {
   card: CardBlueprint;
@@ -61,11 +62,11 @@ const renderPromptField = (
 ) => (
   <label className="field">
     <span className="label">Prompt</span>
-    <textarea
+    <AutoGrowTextarea
       className="text-input exam-textarea"
       rows={4}
       value={"prompt" in card ? card.prompt : ""}
-      onChange={(event) => onPromptChange(event.target.value)}
+      onChange={onPromptChange}
       placeholder="Write the task prompt..."
     />
     {renderFieldError(validation?.fieldErrors.prompt)}
@@ -97,11 +98,11 @@ const QaCardForm = ({
     {renderPromptField(card, validation, onPromptChange)}
     <label className="field">
       <span className="label">Answer</span>
-      <textarea
+      <AutoGrowTextarea
         className="text-input exam-textarea"
         rows={3}
         value={card.answer}
-        onChange={(event) => onAnswerChange(event.target.value)}
+        onChange={onAnswerChange}
         placeholder="Answer text (line-start Answer: in exam mode)"
       />
       {renderFieldError(validation?.fieldErrors.answer)}

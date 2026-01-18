@@ -564,6 +564,11 @@
 
 .exam-textarea {
   min-height: 90px;
+  width: 100%;
+  max-width: 100%;
+  max-height: min(45vh, 360px);
+  resize: vertical;
+  overflow-y: auto;
 }
 
 .help-editor {

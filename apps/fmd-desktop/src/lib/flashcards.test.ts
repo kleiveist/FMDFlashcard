@@ -344,16 +344,13 @@ Answer: Confirmed.
     }
   });
 
-  it("detects cloze markers inside fenced code blocks", () => {
+  it("ignores cloze markers inside fenced code blocks", () => {
     const markdown = `#card
-SQL cld example.
+SQL cld example with %%Outside%% and \`token\`.
 \`\`\`sql
 \`SELECT\` a.PLZ, a.ORT
 \`FROM\` ADRESSE a
-\`JOIN\` KUNDE k \`ON\` a.KUNDEID = k.KUNDEID
-\`WHERE\` k.NAME = %%Nachname%% \`AND\` k.VORNAME = %%Vorname%%
-\`AND\` a.TYP = %%Adresstyp%%
-\`ORDER\` \`BY\` a.%%Sortierattribut%%;
+\`WHERE\` k.NAME = %%Nachname%%
 \`\`\`
 #`;
 
@@ -370,23 +367,8 @@ SQL cld example.
         ): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
           segment.type === "blank" && segment.kind === "input",
       );
-      expect(inputBlanks.map((blank) => blank.solution)).toEqual([
-        "Nachname",
-        "Vorname",
-        "Adresstyp",
-        "Sortierattribut",
-      ]);
-      expect(part.dragTokens.map((token) => token.value)).toEqual([
-        "SELECT",
-        "FROM",
-        "JOIN",
-        "ON",
-        "WHERE",
-        "AND",
-        "AND",
-        "ORDER",
-        "BY",
-      ]);
+      expect(inputBlanks.map((blank) => blank.solution)).toEqual(["Outside"]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual(["token"]);
     }
   });
 
@@ -1070,7 +1052,7 @@ Valid %%answer%% and \`unfinished.
     }
   });
 
-  it("parses markers inside fenced code blocks", () => {
+  it("ignores markers inside fenced code blocks", () => {
     const markdown = `#card
 Question.
 Code:
@@ -1087,17 +1069,9 @@ Outside \`token\` and %%blank%%.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
-      expect(part.dragTokens).toEqual([
-        { id: "token-0", value: "ignored" },
-        { id: "token-1", value: "token" },
-      ]);
+      expect(part.dragTokens).toEqual([{ id: "token-0", value: "token" }]);
       const blanks = part.segments.filter((segment) => segment.type === "blank");
-      expect(blanks).toEqual([
-        { type: "blank", id: "blank-0", kind: "drag", solution: "ignored" },
-        { type: "blank", id: "blank-1", kind: "input", solution: "not" },
-        { type: "blank", id: "blank-2", kind: "drag", solution: "token" },
-        { type: "blank", id: "blank-3", kind: "input", solution: "blank" },
-      ]);
+      expect(blanks.map((blank) => blank.solution)).toEqual(["token", "blank"]);
     }
   });
 

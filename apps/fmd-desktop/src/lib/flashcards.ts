@@ -299,6 +299,8 @@ const parseClozeSegments = (lines: string[]) => {
   let blankIndex = 0;
   let tokenIndex = 0;
   const fencePattern = /^(```|~~~)/;
+  let inFence = false;
+  let fenceToken = "";
 
   const handleLine = (line: string) => {
     let cursor = 0;
@@ -373,7 +375,17 @@ const parseClozeSegments = (lines: string[]) => {
   for (let lineIndex = 0; lineIndex < trimmedLines.length; lineIndex += 1) {
     const line = trimmedLines[lineIndex];
     const trimmed = line.trimStart();
-    if (fencePattern.test(trimmed)) {
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      appendText(segments, line);
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+    } else if (inFence) {
       appendText(segments, line);
     } else {
       const parsed = handleLine(line);

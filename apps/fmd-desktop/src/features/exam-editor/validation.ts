@@ -63,6 +63,42 @@ const analyzeCloze = (prompt: string) => {
   return { count, hasEmpty };
 };
 
+const stripFencedBlocks = (prompt: string) => {
+  const lines = prompt.replace(/\r\n?/g, "\n").split("\n");
+  const output: string[] = [];
+  const fenceBuffer: string[] = [];
+  let inFence = false;
+  let fenceToken = "";
+  const fencePattern = /^\s*(```|~~~)/;
+
+  lines.forEach((line) => {
+    const match = line.match(fencePattern);
+    if (match) {
+      if (inFence && match[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+        fenceBuffer.length = 0;
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = match[1] ?? "";
+        fenceBuffer.push(line);
+      }
+      return;
+    }
+    if (!inFence) {
+      output.push(line);
+      return;
+    }
+    fenceBuffer.push(line);
+  });
+
+  if (inFence && fenceBuffer.length > 0) {
+    output.push(...fenceBuffer);
+  }
+
+  return output.join("\n");
+};
+
 const analyzeTokens = (prompt: string) => {
   const pattern = /`([^`]+)`/g;
   let match: RegExpExecArray | null = null;
@@ -157,8 +193,9 @@ const validateClozeCard = (
     optionErrors: {},
   };
   validatePrompt(card.prompt, validation);
-  const cloze = analyzeCloze(card.prompt);
-  const tokens = analyzeTokens(card.prompt);
+  const sanitizedPrompt = stripFencedBlocks(card.prompt);
+  const cloze = analyzeCloze(sanitizedPrompt);
+  const tokens = analyzeTokens(sanitizedPrompt);
   const syntaxMessages: string[] = [];
 
   if (card.type === "cl" || card.type === "cld") {

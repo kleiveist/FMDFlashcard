@@ -96,6 +96,21 @@ describe("validateCard", () => {
     expect(result.valid).toBe(false);
     expect(result.fieldErrors.syntax).toContain("drag token");
   });
+
+  it("ignores fenced code blocks when validating cld prompts", () => {
+    const result = validateCard({
+      id: "cld-2",
+      type: "cld",
+      prompt: [
+        "Use %%value%% with `token` outside.",
+        "```sql",
+        "`SELECT` %%Ignored%%",
+        "```",
+      ].join("\n"),
+    });
+
+    expect(result.valid).toBe(true);
+  });
 });
 
 describe("validateExamBlueprint", () => {

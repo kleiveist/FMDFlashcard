@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { AutoGrowTextarea } from "./AutoGrowTextarea";
 
 type HelpEditorProps = {
   label: string;
@@ -46,12 +47,12 @@ export const HelpEditor = ({
           </button>
         </div>
       </div>
-      <textarea
+      <AutoGrowTextarea
         className="text-input exam-textarea"
         rows={4}
         value={value}
         placeholder="Write a markdown hint for this scope..."
-        onChange={(event) => onChange(event.target.value)}
+        onChange={onChange}
       />
       {showPreviewToggle && showPreview && hasContent ? (
         <div className="help-preview">
