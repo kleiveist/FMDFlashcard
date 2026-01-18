@@ -665,6 +665,85 @@
   flex-wrap: wrap;
 }
 
+.markdown-accent-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.markdown-accent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.markdown-accent-preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+
+.markdown-accent-picker {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.markdown-accent-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.markdown-accent-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.markdown-accent-swatch:hover {
+  transform: translateY(-1px);
+}
+
+.markdown-accent-swatch.active {
+  box-shadow:
+    inset 0 0 0 1px var(--line-soft),
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--accent-border);
+}
+
+.markdown-accent-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.markdown-accent-custom-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.markdown-accent-custom-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 22px;
+}
+
 .hex-input {
   min-width: 120px;
   padding: 8px 10px;

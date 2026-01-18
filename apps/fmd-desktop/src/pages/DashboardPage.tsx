@@ -110,18 +110,21 @@ const DashboardPageInner = (
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
   const markdownEditorAccentHex = useMemo(() => {
-    if (!settings.markdownEditorExactColorsEnabled) {
+    if (!settings.markdownEditorAccentEnabled) {
       return settings.accentColor;
     }
-    if (!settings.markdownEditorCustomAccentHex) {
-      return settings.accentColor;
-    }
-    const normalized = normalizeHex(settings.markdownEditorCustomAccentHex);
+    const accentValue =
+      settings.theme === "dark"
+        ? settings.markdownEditorAccentDarkHex
+        : settings.markdownEditorAccentLightHex;
+    const normalized = normalizeHex(accentValue ?? "");
     return isValidHex(normalized) ? normalized : settings.accentColor;
   }, [
     settings.accentColor,
-    settings.markdownEditorCustomAccentHex,
-    settings.markdownEditorExactColorsEnabled,
+    settings.markdownEditorAccentEnabled,
+    settings.markdownEditorAccentDarkHex,
+    settings.markdownEditorAccentLightHex,
+    settings.theme,
   ]);
   const markdownEditorStyle = useMemo(
     () =>

@@ -62,6 +62,17 @@ type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 type ExamAiProvider = "shared-gpt";
 type ExamGradeScale = "standard-1-6";
 
+type MarkdownEditorAccentColor = {
+  lightHex?: string | null;
+  darkHex?: string | null;
+  customSwatches?: string[] | null;
+};
+
+type MarkdownEditorSettings = {
+  accentColor?: MarkdownEditorAccentColor | null;
+  accentColorHex?: string | null;
+};
+
 export type ExamAiEvaluation = {
   enabled: boolean;
   provider: ExamAiProvider | null;
@@ -80,6 +91,7 @@ type AppSettings = {
   user_vault_custom_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
+  markdownEditor?: MarkdownEditorSettings | null;
   editor_exact_colors?: boolean | null;
   editor_markdown_exact_colors_enabled?: boolean | null;
   editor_markdown_custom_accent_hex?: string | null;
@@ -135,8 +147,10 @@ type PersistUpdates = {
   userVaultCustomPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
-  editorMarkdownExactColorsEnabled?: boolean;
-  editorMarkdownCustomAccentHex?: string | null;
+  markdownEditorAccentEnabled?: boolean;
+  markdownEditorAccentLightHex?: string;
+  markdownEditorAccentDarkHex?: string;
+  markdownEditorAccentCustomSwatches?: string[];
   editorBlueprintGrid?: boolean;
   editorBlueprintGridIntensity?: EditorGridIntensity;
   examEditorShowMoveButtons?: boolean;
@@ -180,10 +194,10 @@ type PersistUpdates = {
 
 export const DEFAULT_THEME: ThemeMode = "light";
 export const DEFAULT_LANGUAGE: AppLanguage = "de";
-const DEFAULT_MARKDOWN_EDITOR_EXACT_COLORS_ENABLED = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS = false;
+const DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED = false;
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_SHOW_HIDDEN_FOLDERS = false;
@@ -384,15 +398,46 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
   return entries.slice(0, MAX_RECENT_VAULTS);
 };
 
+const normalizeMarkdownAccentHex = (value: unknown) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = normalizeHex(value);
+  return isValidHex(normalized) ? normalized : null;
+};
+
+const normalizeMarkdownAccentSwatches = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const next = new Set<string>();
+  value.forEach((entry) => {
+    if (typeof entry !== "string") {
+      return;
+    }
+    const normalized = normalizeHex(entry);
+    if (isValidHex(normalized)) {
+      next.add(normalized);
+    }
+  });
+  return Array.from(next).slice(0, 20);
+};
+
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
   const [accentError, setAccentError] = useState("");
-  const [markdownEditorExactColorsEnabled, setMarkdownEditorExactColorsEnabledState] =
-    useState(DEFAULT_MARKDOWN_EDITOR_EXACT_COLORS_ENABLED);
-  const [markdownEditorCustomAccentHex, setMarkdownEditorCustomAccentHexState] =
-    useState<string | null>(null);
+  const [markdownEditorAccentEnabled, setMarkdownEditorAccentEnabledState] =
+    useState(DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED);
+  const [markdownEditorAccentLightHex, setMarkdownEditorAccentLightHexState] =
+    useState(DEFAULT_ACCENT);
+  const [markdownEditorAccentDarkHex, setMarkdownEditorAccentDarkHexState] =
+    useState(DEFAULT_ACCENT);
+  const [
+    markdownEditorAccentCustomSwatches,
+    setMarkdownEditorAccentCustomSwatchesState,
+  ] = useState<string[]>([]);
   const [editorBlueprintGrid, setEditorBlueprintGrid] = useState(
     DEFAULT_EDITOR_BLUEPRINT_GRID,
   );
@@ -618,32 +663,49 @@ export const useAppSettings = () => {
     setExamEditorShowMoveButtonsState(Boolean(value));
   }, []);
 
-  const setMarkdownEditorCustomAccentHex = useCallback((value: string | null) => {
-    const normalized = value ? normalizeHex(value) : "";
-    if (!normalized) {
-      setMarkdownEditorCustomAccentHexState(null);
-      return;
-    }
-    if (!isValidHex(normalized)) {
-      return;
-    }
-    setMarkdownEditorCustomAccentHexState(normalized);
+  const setMarkdownEditorAccentEnabled = useCallback((value: boolean) => {
+    setMarkdownEditorAccentEnabledState(Boolean(value));
   }, []);
 
-  const setMarkdownEditorExactColorsEnabled = useCallback(
-    (value: boolean) => {
-      setMarkdownEditorExactColorsEnabledState(Boolean(value));
-      if (!value) {
+  const setMarkdownEditorAccentHex = useCallback(
+    (mode: "light" | "dark", value: string) => {
+      const normalized = normalizeHex(value);
+      if (!isValidHex(normalized)) {
         return;
       }
-      setMarkdownEditorCustomAccentHexState((current) => {
-        if (current && isValidHex(current)) {
-          return current;
+      if (mode === "dark") {
+        setMarkdownEditorAccentDarkHexState(normalized);
+      } else {
+        setMarkdownEditorAccentLightHexState(normalized);
+      }
+    },
+    [],
+  );
+
+  const setMarkdownEditorAccentCustomSwatches = useCallback(
+    (value: string[]) => {
+      setMarkdownEditorAccentCustomSwatchesState(
+        normalizeMarkdownAccentSwatches(value),
+      );
+    },
+    [],
+  );
+
+  const addMarkdownEditorAccentCustomSwatch = useCallback(
+    (value: string) => {
+      const normalized = normalizeHex(value);
+      if (!isValidHex(normalized)) {
+        return;
+      }
+      setMarkdownEditorAccentCustomSwatchesState((prev) => {
+        if (prev.includes(normalized)) {
+          return prev;
         }
-        return accentColor;
+        const next = [normalized, ...prev];
+        return normalizeMarkdownAccentSwatches(next);
       });
     },
-    [accentColor],
+    [],
   );
 
   const setSpacedRepetitionHelpEnabled = useCallback((value: boolean) => {
@@ -659,8 +721,10 @@ export const useAppSettings = () => {
       userVaultCustomPath: string | null;
       theme: ThemeMode;
       accentColor: string;
-      editorMarkdownExactColorsEnabled: boolean;
-      editorMarkdownCustomAccentHex: string | null;
+      markdownEditorAccentEnabled: boolean;
+      markdownEditorAccentLightHex: string;
+      markdownEditorAccentDarkHex: string;
+      markdownEditorAccentCustomSwatches: string[];
       editorBlueprintGrid: boolean;
       editorBlueprintGridIntensity: EditorGridIntensity;
       examEditorShowMoveButtons: boolean;
@@ -710,8 +774,14 @@ export const useAppSettings = () => {
           userVaultCustomPath: settings.userVaultCustomPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
-          editorMarkdownExactColorsEnabled: settings.editorMarkdownExactColorsEnabled,
-          editorMarkdownCustomAccentHex: settings.editorMarkdownCustomAccentHex,
+          editorMarkdownExactColorsEnabled: settings.markdownEditorAccentEnabled,
+          markdownEditor: {
+            accentColor: {
+              lightHex: settings.markdownEditorAccentLightHex,
+              darkHex: settings.markdownEditorAccentDarkHex,
+              customSwatches: settings.markdownEditorAccentCustomSwatches,
+            },
+          },
           editorBlueprintGrid: settings.editorBlueprintGrid,
           editorBlueprintGridIntensity: settings.editorBlueprintGridIntensity,
           examEditorShowMoveButtons: settings.examEditorShowMoveButtons,
@@ -775,13 +845,15 @@ export const useAppSettings = () => {
         userVaultCustomPath: updates.userVaultCustomPath ?? userVaultCustomPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
-        editorMarkdownExactColorsEnabled:
-          updates.editorMarkdownExactColorsEnabled ??
-          markdownEditorExactColorsEnabled,
-        editorMarkdownCustomAccentHex:
-          typeof updates.editorMarkdownCustomAccentHex !== "undefined"
-            ? updates.editorMarkdownCustomAccentHex
-            : markdownEditorCustomAccentHex,
+        markdownEditorAccentEnabled:
+          updates.markdownEditorAccentEnabled ?? markdownEditorAccentEnabled,
+        markdownEditorAccentLightHex:
+          updates.markdownEditorAccentLightHex ?? markdownEditorAccentLightHex,
+        markdownEditorAccentDarkHex:
+          updates.markdownEditorAccentDarkHex ?? markdownEditorAccentDarkHex,
+        markdownEditorAccentCustomSwatches:
+          updates.markdownEditorAccentCustomSwatches ??
+          markdownEditorAccentCustomSwatches,
         editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
         editorBlueprintGridIntensity:
           updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
@@ -862,8 +934,10 @@ export const useAppSettings = () => {
     [
       activeNotePath,
       accentColor,
-      markdownEditorExactColorsEnabled,
-      markdownEditorCustomAccentHex,
+      markdownEditorAccentEnabled,
+      markdownEditorAccentLightHex,
+      markdownEditorAccentDarkHex,
+      markdownEditorAccentCustomSwatches,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
       examEditorShowMoveButtons,
@@ -928,24 +1002,28 @@ export const useAppSettings = () => {
         const resolvedAccent = isValidHex(storedAccent)
           ? storedAccent
           : DEFAULT_ACCENT;
-        const storedMarkdownExactColorsEnabled =
+        const storedMarkdownAccent = settings.markdownEditor?.accentColor ?? null;
+        const storedMarkdownAccentLight = normalizeMarkdownAccentHex(
+          storedMarkdownAccent?.lightHex,
+        );
+        const storedMarkdownAccentDark = normalizeMarkdownAccentHex(
+          storedMarkdownAccent?.darkHex,
+        );
+        const storedMarkdownAccentCustomSwatches = normalizeMarkdownAccentSwatches(
+          storedMarkdownAccent?.customSwatches ?? [],
+        );
+        const legacyMarkdownAccent =
+          normalizeMarkdownAccentHex(settings.markdownEditor?.accentColorHex) ??
+          normalizeMarkdownAccentHex(settings.editor_markdown_custom_accent_hex);
+        const fallbackMarkdownAccent = legacyMarkdownAccent ?? resolvedAccent;
+        const storedMarkdownAccentEnabled =
           typeof settings.editor_markdown_exact_colors_enabled === "boolean"
             ? settings.editor_markdown_exact_colors_enabled
-            : typeof settings.editor_exact_colors === "boolean"
-              ? settings.editor_exact_colors
-              : DEFAULT_MARKDOWN_EDITOR_EXACT_COLORS_ENABLED;
-        const storedMarkdownCustomAccentRaw =
-          typeof settings.editor_markdown_custom_accent_hex === "string"
-            ? settings.editor_markdown_custom_accent_hex
-            : "";
-        const storedMarkdownCustomAccentNormalized = normalizeHex(
-          storedMarkdownCustomAccentRaw,
-        );
-        const storedMarkdownCustomAccentHex = isValidHex(
-          storedMarkdownCustomAccentNormalized,
-        )
-          ? storedMarkdownCustomAccentNormalized
-          : null;
+            : DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED;
+        const storedMarkdownAccentLightHex =
+          storedMarkdownAccentLight ?? fallbackMarkdownAccent;
+        const storedMarkdownAccentDarkHex =
+          storedMarkdownAccentDark ?? fallbackMarkdownAccent;
         const storedEditorBlueprintGrid =
           typeof settings.editor_blueprint_grid === "boolean"
             ? settings.editor_blueprint_grid
@@ -1186,10 +1264,12 @@ export const useAppSettings = () => {
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
         setAccentError("");
-        setMarkdownEditorExactColorsEnabledState(
-          storedMarkdownExactColorsEnabled,
+        setMarkdownEditorAccentEnabledState(storedMarkdownAccentEnabled);
+        setMarkdownEditorAccentLightHexState(storedMarkdownAccentLightHex);
+        setMarkdownEditorAccentDarkHexState(storedMarkdownAccentDarkHex);
+        setMarkdownEditorAccentCustomSwatchesState(
+          storedMarkdownAccentCustomSwatches,
         );
-        setMarkdownEditorCustomAccentHexState(storedMarkdownCustomAccentHex);
         setEditorBlueprintGrid(storedEditorBlueprintGrid);
         setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
         setExamEditorShowMoveButtonsState(storedExamEditorShowMoveButtons);
@@ -1306,8 +1386,10 @@ export const useAppSettings = () => {
         userVaultCustomPath,
         theme,
         accentColor,
-        editorMarkdownExactColorsEnabled: markdownEditorExactColorsEnabled,
-        editorMarkdownCustomAccentHex: markdownEditorCustomAccentHex,
+        markdownEditorAccentEnabled,
+        markdownEditorAccentLightHex,
+        markdownEditorAccentDarkHex,
+        markdownEditorAccentCustomSwatches,
         editorBlueprintGrid,
         editorBlueprintGridIntensity,
         examEditorShowMoveButtons,
@@ -1358,8 +1440,10 @@ export const useAppSettings = () => {
   }, [
     accentColor,
     activeNotePath,
-    markdownEditorExactColorsEnabled,
-    markdownEditorCustomAccentHex,
+    markdownEditorAccentEnabled,
+    markdownEditorAccentLightHex,
+    markdownEditorAccentDarkHex,
+    markdownEditorAccentCustomSwatches,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
     examEditorShowMoveButtons,
@@ -1413,8 +1497,10 @@ export const useAppSettings = () => {
     activeNotePath,
     accentDraft,
     accentError,
-    markdownEditorExactColorsEnabled,
-    markdownEditorCustomAccentHex,
+    markdownEditorAccentEnabled,
+    markdownEditorAccentLightHex,
+    markdownEditorAccentDarkHex,
+    markdownEditorAccentCustomSwatches,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
     examEditorShowMoveButtons,
@@ -1449,8 +1535,10 @@ export const useAppSettings = () => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
-    setMarkdownEditorExactColorsEnabled,
-    setMarkdownEditorCustomAccentHex,
+    setMarkdownEditorAccentEnabled,
+    setMarkdownEditorAccentHex,
+    setMarkdownEditorAccentCustomSwatches,
+    addMarkdownEditorAccentCustomSwatch,
     setEditorBlueprintGrid,
     setEditorBlueprintGridIntensity,
     setExamEditorShowMoveButtons,

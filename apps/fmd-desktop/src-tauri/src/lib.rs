@@ -48,6 +48,21 @@ struct RecentVaultEntry {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
+#[serde(rename_all = "camelCase", default)]
+struct MarkdownEditorAccentColor {
+    light_hex: Option<String>,
+    dark_hex: Option<String>,
+    custom_swatches: Option<Vec<String>>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
+#[serde(rename_all = "camelCase", default)]
+struct MarkdownEditorSettings {
+    accent_color: Option<MarkdownEditorAccentColor>,
+    accent_color_hex: Option<String>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 struct AppSettings {
     active_note_path: Option<String>,
     vault_path: Option<String>,
@@ -56,6 +71,8 @@ struct AppSettings {
     user_vault_custom_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
+    #[serde(rename = "markdownEditor")]
+    markdown_editor: Option<MarkdownEditorSettings>,
     editor_exact_colors: Option<bool>,
     editor_markdown_exact_colors_enabled: Option<bool>,
     editor_markdown_custom_accent_hex: Option<String>,
@@ -191,6 +208,7 @@ impl AppSettings {
             && self.active_note_path.is_none()
             && self.theme.is_none()
             && self.accent_color.is_none()
+            && self.markdown_editor.is_none()
             && self.editor_exact_colors.is_none()
             && self.editor_markdown_exact_colors_enabled.is_none()
             && self.editor_markdown_custom_accent_hex.is_none()
@@ -436,6 +454,7 @@ fn save_app_settings(
     user_vault_custom_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
+    markdown_editor: Option<MarkdownEditorSettings>,
     editor_exact_colors: Option<bool>,
     editor_markdown_exact_colors_enabled: Option<bool>,
     editor_markdown_custom_accent_hex: Option<String>,
@@ -485,6 +504,7 @@ fn save_app_settings(
         user_vault_custom_path,
         theme,
         accent_color,
+        markdown_editor,
         editor_exact_colors,
         editor_markdown_exact_colors_enabled,
         editor_markdown_custom_accent_hex,
