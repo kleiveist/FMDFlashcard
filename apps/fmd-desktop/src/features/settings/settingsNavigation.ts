@@ -22,7 +22,7 @@ export const SETTINGS_PAGES = [
   { id: "review-tools", label: "Review Tools" },
   { id: "keyboard-shortcuts", label: "Keyboard Shortcuts" },
   { id: "appearance", label: "Appearance" },
-  { id: "markdown-editor", label: "Markdown editor" },
+  { id: "markdown-editor", label: "Editor Settings" },
 ] as const;
 
 export type SettingsPageId = (typeof SETTINGS_PAGES)[number]["id"];

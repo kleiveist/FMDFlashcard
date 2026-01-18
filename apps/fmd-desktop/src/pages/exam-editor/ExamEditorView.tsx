@@ -48,6 +48,7 @@ type ExamEditorViewProps = {
   activeFolderPath?: string | null;
   vaultFiles?: VaultFile[];
   vaultPath?: string | null;
+  showMoveButtons?: boolean;
   onControlsReady?: (controls: ExamEditorControlsState | null) => void;
   onSave?: (payload: { path: string; markdown: string }) => void;
 };
@@ -113,6 +114,7 @@ export const ExamEditorView = ({
   activeFolderPath,
   vaultFiles,
   vaultPath,
+  showMoveButtons,
   onControlsReady,
   onSave,
 }: ExamEditorViewProps) => {
@@ -291,6 +293,53 @@ export const ExamEditorView = ({
       );
     },
     [updateTasks],
+  );
+
+  const handleMoveCardAcrossTasks = useCallback(
+    (
+      sourceTaskId: string,
+      targetTaskId: string,
+      sourceIndex: number,
+      targetIndex: number,
+    ) => {
+      if (sourceTaskId === targetTaskId) {
+        handleReorderCard(sourceTaskId, sourceIndex, targetIndex);
+        return;
+      }
+      updateTasks((tasks) => {
+        const sourceTask = tasks.find((task) => task.id === sourceTaskId);
+        const targetTask = tasks.find((task) => task.id === targetTaskId);
+        if (!sourceTask || !targetTask) {
+          return tasks;
+        }
+        if (sourceIndex < 0 || sourceIndex >= sourceTask.cards.length) {
+          return tasks;
+        }
+        const movedCard = sourceTask.cards[sourceIndex];
+        const nextTasks = tasks.flatMap((task) => {
+          if (task.id !== sourceTaskId) {
+            return [task];
+          }
+          const nextCards = task.cards.filter(
+            (_, index) => index !== sourceIndex,
+          );
+          if (nextCards.length === 0) {
+            return [];
+          }
+          return [{ ...task, cards: nextCards }];
+        });
+        return nextTasks.map((task) => {
+          if (task.id !== targetTaskId) {
+            return task;
+          }
+          const nextCards = task.cards.slice();
+          const insertIndex = Math.max(0, Math.min(targetIndex, nextCards.length));
+          nextCards.splice(insertIndex, 0, movedCard);
+          return { ...task, cards: nextCards };
+        });
+      });
+    },
+    [handleReorderCard, updateTasks],
   );
 
   const handleDeleteCard = useCallback(
@@ -551,12 +600,14 @@ export const ExamEditorView = ({
       mode,
       canSave,
       isSaving,
+      savePath,
+      saveState,
       onModeChange: setMode,
       onNewExam: handleNewExam,
       onSaveAs: () => handleSave(true),
       onSave: () => handleSave(false),
     }),
-    [canSave, handleNewExam, handleSave, isSaving, mode],
+    [canSave, handleNewExam, handleSave, isSaving, mode, savePath, saveState],
   );
 
   const orderedTasks = useMemo(
@@ -780,24 +831,6 @@ export const ExamEditorView = ({
 
   return (
     <div className="exam-editor-page">
-      <section className="exam-editor-header">
-        <div>
-          <h1>EXAM EDITOR</h1>
-          <h2>Build exams</h2>
-          <p className="muted">
-            Design structure first, then fill in card content and hints.
-          </p>
-        </div>
-        <div className="exam-editor-save-row">
-          <span className="muted">Saved path:</span>
-          <span className="save-path">{savePath ?? "Not saved yet"}</span>
-          {saveState === "saving" ? (
-            <span className="pill">Saving...</span>
-          ) : saveState === "saved" ? (
-            <span className="pill success">Saved</span>
-          ) : null}
-        </div>
-      </section>
       {mode === "structure" ? (
         <div className="exam-editor-structure">
           <CardPalette onQuickAdd={handleAddTask} />
@@ -840,7 +873,9 @@ export const ExamEditorView = ({
               onDuplicateTask={handleDuplicateTask}
               onDeleteTask={handleDeleteTask}
               onReorderCard={handleReorderCard}
+              onMoveCardAcrossTasks={handleMoveCardAcrossTasks}
               onDeleteCard={handleDeleteCard}
+              showMoveButtons={Boolean(showMoveButtons)}
               getTaskWarning={getTaskWarning}
             />
           </div>

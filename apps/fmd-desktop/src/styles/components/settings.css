@@ -279,9 +279,36 @@
   padding-top: 0;
 }
 
-.markdown-editor-panel .setting-row:first-of-type {
+.editor-settings-block .setting-row:first-of-type {
   border-top: none;
   padding-top: 0;
+}
+
+.editor-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.editor-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.editor-settings-block {
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-settings-block h3 {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .keyboard-shortcuts-panel .panel-body {

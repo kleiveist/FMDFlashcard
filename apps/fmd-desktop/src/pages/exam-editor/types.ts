@@ -13,6 +13,8 @@ export type ExamEditorControlsState = {
   mode: ExamEditorMode;
   canSave: boolean;
   isSaving: boolean;
+  savePath: string | null;
+  saveState: "idle" | "saving" | "saved";
   onModeChange: (mode: ExamEditorMode) => void;
   onNewExam: () => void;
   onSaveAs: () => void;

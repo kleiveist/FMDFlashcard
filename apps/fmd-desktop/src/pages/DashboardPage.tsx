@@ -35,7 +35,7 @@ const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 const notePanelStorageKey = "fmd.notePanelCollapsed";
 
 export const DashboardPage = () => {
-  const { actions, preview, vault } = useAppState();
+  const { actions, preview, settings, vault } = useAppState();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState("");
@@ -221,7 +221,7 @@ export const DashboardPage = () => {
   return (
     <div className="dashboard-page">
       <header className="content-header">
-        <div>
+        <div className="vault-header-row">
           <div className="vault-view-switch pill-grid" role="tablist">
             <button
               type="button"
@@ -244,15 +244,18 @@ export const DashboardPage = () => {
               Exam Editor
             </button>
           </div>
-          {vaultView === "markdown" ? (
-            <>
-              <p className="eyebrow">Makedon</p>
-              <h1>Vault</h1>
-              <p className="muted">
-                Waehle einen Vault, scanne Markdown-Dateien und sieh dir Inhalte
-                sofort an.
-              </p>
-            </>
+          {vaultView === "exam" ? (
+            <div className="vault-saved-path">
+              <span className="muted">Saved path:</span>
+              <span className="save-path">
+                {examControls?.savePath ?? "Not saved yet"}
+              </span>
+              {examControls?.saveState === "saving" ? (
+                <span className="pill">Saving...</span>
+              ) : examControls?.saveState === "saved" ? (
+                <span className="pill success">Saved</span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </header>
@@ -291,6 +294,7 @@ export const DashboardPage = () => {
             activeFolderPath={normalizedActiveFolderPath || null}
             vaultFiles={vault.files}
             vaultPath={vault.vaultPath ?? null}
+            showMoveButtons={settings.examEditorShowMoveButtons}
             onControlsReady={setExamControls}
             onSave={({ path, markdown }) => {
               if (preview.selectedFile?.path === path) {

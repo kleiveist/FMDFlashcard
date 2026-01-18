@@ -75,8 +75,32 @@
   flex-wrap: wrap;
 }
 
+.vault-header-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+
 .vault-view-switch {
-  margin-bottom: 10px;
+  margin-bottom: 0;
+}
+
+.vault-saved-path {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.vault-saved-path .save-path {
+  max-width: min(55vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
 }
 
 .eyebrow {

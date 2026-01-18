@@ -382,9 +382,11 @@ export const SettingsPage = () => {
           id="settings-page-markdown-editor"
         >
           <MarkdownEditorSection
+            examEditorShowMoveButtons={settings.examEditorShowMoveButtons}
             editorExactColors={settings.editorExactColors}
             editorBlueprintGrid={settings.editorBlueprintGrid}
             editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
+            onExamEditorShowMoveButtonsToggle={settings.setExamEditorShowMoveButtons}
             onEditorExactColorsToggle={settings.setEditorExactColors}
             onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
             onEditorBlueprintGridIntensityChange={

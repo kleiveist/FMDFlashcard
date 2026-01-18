@@ -83,6 +83,7 @@ type AppSettings = {
   editor_exact_colors?: boolean | null;
   editor_blueprint_grid?: boolean | null;
   editor_blueprint_grid_intensity?: string | null;
+  exam_editor_show_move_buttons?: boolean | null;
   language?: AppLanguage | null;
   max_files_per_scan?: string | null;
   scan_parallelism?: string | null;
@@ -135,6 +136,7 @@ type PersistUpdates = {
   editorExactColors?: boolean;
   editorBlueprintGrid?: boolean;
   editorBlueprintGridIntensity?: EditorGridIntensity;
+  examEditorShowMoveButtons?: boolean;
   language?: AppLanguage;
   maxFilesPerScan?: string;
   scanParallelism?: "low" | "medium" | "high";
@@ -178,6 +180,7 @@ export const DEFAULT_LANGUAGE: AppLanguage = "de";
 const DEFAULT_EDITOR_EXACT_COLORS = true;
 const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
+const DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS = false;
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_SHOW_HIDDEN_FOLDERS = false;
@@ -391,6 +394,8 @@ export const useAppSettings = () => {
   );
   const [editorBlueprintGridIntensity, setEditorBlueprintGridIntensity] =
     useState<EditorGridIntensity>(DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY);
+  const [examEditorShowMoveButtons, setExamEditorShowMoveButtonsState] =
+    useState(DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
@@ -605,6 +610,10 @@ export const useAppSettings = () => {
     setExamHelpEnabledState(Boolean(value));
   }, []);
 
+  const setExamEditorShowMoveButtons = useCallback((value: boolean) => {
+    setExamEditorShowMoveButtonsState(Boolean(value));
+  }, []);
+
   const setSpacedRepetitionHelpEnabled = useCallback((value: boolean) => {
     setSpacedRepetitionHelpEnabledState(Boolean(value));
   }, []);
@@ -621,6 +630,7 @@ export const useAppSettings = () => {
       editorExactColors: boolean;
       editorBlueprintGrid: boolean;
       editorBlueprintGridIntensity: EditorGridIntensity;
+      examEditorShowMoveButtons: boolean;
       language: AppLanguage;
       maxFilesPerScan: string;
       scanParallelism: "low" | "medium" | "high";
@@ -670,6 +680,7 @@ export const useAppSettings = () => {
           editorExactColors: settings.editorExactColors,
           editorBlueprintGrid: settings.editorBlueprintGrid,
           editorBlueprintGridIntensity: settings.editorBlueprintGridIntensity,
+          examEditorShowMoveButtons: settings.examEditorShowMoveButtons,
           language: settings.language,
           maxFilesPerScan: settings.maxFilesPerScan,
           scanParallelism: settings.scanParallelism,
@@ -734,6 +745,8 @@ export const useAppSettings = () => {
         editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
         editorBlueprintGridIntensity:
           updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
+        examEditorShowMoveButtons:
+          updates.examEditorShowMoveButtons ?? examEditorShowMoveButtons,
         language: updates.language ?? language,
         maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
         scanParallelism: updates.scanParallelism ?? scanParallelism,
@@ -812,6 +825,7 @@ export const useAppSettings = () => {
       editorExactColors,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      examEditorShowMoveButtons,
       examAiEvaluation,
       examGradeScale,
       examMaxTotalPoints,
@@ -887,6 +901,10 @@ export const useAppSettings = () => {
           settings.editor_blueprint_grid_intensity === "medium"
             ? settings.editor_blueprint_grid_intensity
             : DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY;
+        const storedExamEditorShowMoveButtons =
+          typeof settings.exam_editor_show_move_buttons === "boolean"
+            ? settings.exam_editor_show_move_buttons
+            : DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS;
         const storedLanguage =
           settings.language === "en" ? "en" : DEFAULT_LANGUAGE;
         const maxFilesRaw = settings.max_files_per_scan;
@@ -1116,6 +1134,7 @@ export const useAppSettings = () => {
         setEditorExactColors(storedEditorExactColors);
         setEditorBlueprintGrid(storedEditorBlueprintGrid);
         setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
+        setExamEditorShowMoveButtonsState(storedExamEditorShowMoveButtons);
         setActiveNotePath(storedActiveNotePath);
         setVaultPath(settings.vault_path ?? null);
         setRecentVaults(storedRecentVaults);
@@ -1237,6 +1256,7 @@ export const useAppSettings = () => {
         editorExactColors,
         editorBlueprintGrid,
         editorBlueprintGridIntensity,
+        examEditorShowMoveButtons,
         language,
         maxFilesPerScan,
         scanParallelism,
@@ -1287,6 +1307,7 @@ export const useAppSettings = () => {
     editorExactColors,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
+    examEditorShowMoveButtons,
     examAiEvaluation,
     examMaxTotalPoints,
     examTaskCount,
@@ -1374,6 +1395,7 @@ export const useAppSettings = () => {
     setEditorExactColors,
     setEditorBlueprintGrid,
     setEditorBlueprintGridIntensity,
+    setExamEditorShowMoveButtons,
     setExamAiEvaluation,
     setExamMaxTotalPoints,
     setExamTaskCount,
