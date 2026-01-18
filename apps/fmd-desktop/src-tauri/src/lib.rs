@@ -57,6 +57,8 @@ struct AppSettings {
     theme: Option<String>,
     accent_color: Option<String>,
     editor_exact_colors: Option<bool>,
+    editor_markdown_exact_colors_enabled: Option<bool>,
+    editor_markdown_custom_accent_hex: Option<String>,
     editor_blueprint_grid: Option<bool>,
     editor_blueprint_grid_intensity: Option<String>,
     exam_editor_show_move_buttons: Option<bool>,
@@ -190,6 +192,8 @@ impl AppSettings {
             && self.theme.is_none()
             && self.accent_color.is_none()
             && self.editor_exact_colors.is_none()
+            && self.editor_markdown_exact_colors_enabled.is_none()
+            && self.editor_markdown_custom_accent_hex.is_none()
             && self.editor_blueprint_grid.is_none()
             && self.editor_blueprint_grid_intensity.is_none()
             && self.exam_editor_show_move_buttons.is_none()
@@ -433,6 +437,8 @@ fn save_app_settings(
     theme: Option<String>,
     accent_color: Option<String>,
     editor_exact_colors: Option<bool>,
+    editor_markdown_exact_colors_enabled: Option<bool>,
+    editor_markdown_custom_accent_hex: Option<String>,
     editor_blueprint_grid: Option<bool>,
     editor_blueprint_grid_intensity: Option<String>,
     exam_editor_show_move_buttons: Option<bool>,
@@ -480,6 +486,8 @@ fn save_app_settings(
         theme,
         accent_color,
         editor_exact_colors,
+        editor_markdown_exact_colors_enabled,
+        editor_markdown_custom_accent_hex,
         editor_blueprint_grid,
         editor_blueprint_grid_intensity,
         exam_editor_show_move_buttons,

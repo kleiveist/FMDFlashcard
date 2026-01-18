@@ -21,6 +21,7 @@
  */
 
 import {
+  type CSSProperties,
   type FocusEvent,
   type MouseEvent,
   useCallback,
@@ -112,6 +113,7 @@ type PreviewPanelProps = {
   rawPreview: boolean;
   selectedFile: VaultFile | null;
   canEdit: boolean;
+  markdownEditorStyle?: CSSProperties;
   onEditChange: (value: string) => void;
   onEditCaretApplied: () => void;
   onEditExit: () => void;
@@ -974,6 +976,7 @@ export const PreviewPanel = ({
   rawPreview,
   selectedFile,
   canEdit,
+  markdownEditorStyle,
   onEditChange,
   onEditCaretApplied,
   onEditExit,
@@ -1192,7 +1195,7 @@ export const PreviewPanel = ({
   const renderedPreview = rawPreview ? preview : applyInteractionSpacing(preview);
 
   return (
-    <section className="panel preview-panel">
+    <section className="panel preview-panel" style={markdownEditorStyle}>
       <div className="panel-header">
         <div>
           <h2>Preview</h2>

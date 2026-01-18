@@ -36,6 +36,8 @@ import { FileList } from "../components/FileList";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
+import { isValidHex, normalizeHex } from "../lib/color";
+import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
 import type { ExamEditorControlsState } from "./exam-editor/types";
@@ -107,6 +109,28 @@ const DashboardPageInner = (
   }, [normalizedActiveFolderPath, visibleFiles.length, vault.vaultPath]);
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
+  const markdownEditorAccentHex = useMemo(() => {
+    if (!settings.markdownEditorExactColorsEnabled) {
+      return settings.accentColor;
+    }
+    if (!settings.markdownEditorCustomAccentHex) {
+      return settings.accentColor;
+    }
+    const normalized = normalizeHex(settings.markdownEditorCustomAccentHex);
+    return isValidHex(normalized) ? normalized : settings.accentColor;
+  }, [
+    settings.accentColor,
+    settings.markdownEditorCustomAccentHex,
+    settings.markdownEditorExactColorsEnabled,
+  ]);
+  const markdownEditorStyle = useMemo(
+    () =>
+      deriveMarkdownEditorColors({
+        accentHex: markdownEditorAccentHex,
+        themeMode: settings.theme,
+      }),
+    [markdownEditorAccentHex, settings.theme],
+  );
 
   const resolveVaultRelativePath = useCallback(
     (absolutePath: string) => {
@@ -312,6 +336,7 @@ const DashboardPageInner = (
             rawPreview={preview.rawPreview}
             selectedFile={preview.selectedFile}
             canEdit={canEdit}
+            markdownEditorStyle={markdownEditorStyle}
             onEditChange={setEditDraft}
             onEditCaretApplied={handleEditCaretApplied}
             onEditExit={handleEditAutosave}

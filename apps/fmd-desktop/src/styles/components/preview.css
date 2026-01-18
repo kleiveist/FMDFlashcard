@@ -61,7 +61,7 @@
 .preview {
   margin: 0;
   padding: 16px;
-  background-color: var(--md-surface-bg);
+  background-color: var(--md-question-bg, var(--md-surface-bg));
   color: var(--preview-ink);
   border-radius: 16px;
   flex: 1;
@@ -77,8 +77,8 @@
   min-height: 0;
   padding: 16px;
   border-radius: 16px;
-  border: 1px solid var(--md-editor-border);
-  background-color: var(--md-editor-bg);
+  border: 1px solid var(--md-question-border, var(--md-editor-border));
+  background-color: var(--md-question-bg, var(--md-editor-bg));
   color: var(--preview-ink);
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -123,36 +123,36 @@
   background-image:
     radial-gradient(
       circle at 50% 50%,
-      var(--md-grid-line-color) 0,
-      var(--md-grid-line-color) var(--md-grid-dot),
-      transparent calc(var(--md-grid-dot) + 0.5px)
+      var(--md-grid-dot) 0,
+      var(--md-grid-dot) var(--md-grid-dot-size),
+      transparent calc(var(--md-grid-dot-size) + 0.5px)
     ),
     radial-gradient(
-      ellipse var(--md-grid-line) calc(var(--md-grid-stroke) / 2)
+      ellipse var(--md-grid-line-size) calc(var(--md-grid-stroke) / 2)
         at 50% calc(50% - var(--md-grid-cross-offset)),
-      var(--md-grid-line-color) 0,
-      var(--md-grid-line-color) 100%,
+      var(--md-grid-line) 0,
+      var(--md-grid-line) 100%,
       transparent 100%
     ),
     radial-gradient(
-      ellipse var(--md-grid-line) calc(var(--md-grid-stroke) / 2)
+      ellipse var(--md-grid-line-size) calc(var(--md-grid-stroke) / 2)
         at 50% calc(50% + var(--md-grid-cross-offset)),
-      var(--md-grid-line-color) 0,
-      var(--md-grid-line-color) 100%,
+      var(--md-grid-line) 0,
+      var(--md-grid-line) 100%,
       transparent 100%
     ),
     radial-gradient(
-      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line)
+      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line-size)
         at calc(50% - var(--md-grid-cross-offset)) 50%,
-      var(--md-grid-line-color) 0,
-      var(--md-grid-line-color) 100%,
+      var(--md-grid-line) 0,
+      var(--md-grid-line) 100%,
       transparent 100%
     ),
     radial-gradient(
-      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line)
+      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line-size)
         at calc(50% + var(--md-grid-cross-offset)) 50%,
-      var(--md-grid-line-color) 0,
-      var(--md-grid-line-color) 100%,
+      var(--md-grid-line) 0,
+      var(--md-grid-line) 100%,
       transparent 100%
     );
   background-size: var(--md-grid-size) var(--md-grid-size);

@@ -81,6 +81,8 @@ type AppSettings = {
   theme?: string | null;
   accent_color?: string | null;
   editor_exact_colors?: boolean | null;
+  editor_markdown_exact_colors_enabled?: boolean | null;
+  editor_markdown_custom_accent_hex?: string | null;
   editor_blueprint_grid?: boolean | null;
   editor_blueprint_grid_intensity?: string | null;
   exam_editor_show_move_buttons?: boolean | null;
@@ -133,7 +135,8 @@ type PersistUpdates = {
   userVaultCustomPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
-  editorExactColors?: boolean;
+  editorMarkdownExactColorsEnabled?: boolean;
+  editorMarkdownCustomAccentHex?: string | null;
   editorBlueprintGrid?: boolean;
   editorBlueprintGridIntensity?: EditorGridIntensity;
   examEditorShowMoveButtons?: boolean;
@@ -177,7 +180,7 @@ type PersistUpdates = {
 
 export const DEFAULT_THEME: ThemeMode = "light";
 export const DEFAULT_LANGUAGE: AppLanguage = "de";
-const DEFAULT_EDITOR_EXACT_COLORS = true;
+const DEFAULT_MARKDOWN_EDITOR_EXACT_COLORS_ENABLED = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS = false;
@@ -386,9 +389,10 @@ export const useAppSettings = () => {
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
   const [accentError, setAccentError] = useState("");
-  const [editorExactColors, setEditorExactColors] = useState(
-    DEFAULT_EDITOR_EXACT_COLORS,
-  );
+  const [markdownEditorExactColorsEnabled, setMarkdownEditorExactColorsEnabledState] =
+    useState(DEFAULT_MARKDOWN_EDITOR_EXACT_COLORS_ENABLED);
+  const [markdownEditorCustomAccentHex, setMarkdownEditorCustomAccentHexState] =
+    useState<string | null>(null);
   const [editorBlueprintGrid, setEditorBlueprintGrid] = useState(
     DEFAULT_EDITOR_BLUEPRINT_GRID,
   );
@@ -614,6 +618,34 @@ export const useAppSettings = () => {
     setExamEditorShowMoveButtonsState(Boolean(value));
   }, []);
 
+  const setMarkdownEditorCustomAccentHex = useCallback((value: string | null) => {
+    const normalized = value ? normalizeHex(value) : "";
+    if (!normalized) {
+      setMarkdownEditorCustomAccentHexState(null);
+      return;
+    }
+    if (!isValidHex(normalized)) {
+      return;
+    }
+    setMarkdownEditorCustomAccentHexState(normalized);
+  }, []);
+
+  const setMarkdownEditorExactColorsEnabled = useCallback(
+    (value: boolean) => {
+      setMarkdownEditorExactColorsEnabledState(Boolean(value));
+      if (!value) {
+        return;
+      }
+      setMarkdownEditorCustomAccentHexState((current) => {
+        if (current && isValidHex(current)) {
+          return current;
+        }
+        return accentColor;
+      });
+    },
+    [accentColor],
+  );
+
   const setSpacedRepetitionHelpEnabled = useCallback((value: boolean) => {
     setSpacedRepetitionHelpEnabledState(Boolean(value));
   }, []);
@@ -627,7 +659,8 @@ export const useAppSettings = () => {
       userVaultCustomPath: string | null;
       theme: ThemeMode;
       accentColor: string;
-      editorExactColors: boolean;
+      editorMarkdownExactColorsEnabled: boolean;
+      editorMarkdownCustomAccentHex: string | null;
       editorBlueprintGrid: boolean;
       editorBlueprintGridIntensity: EditorGridIntensity;
       examEditorShowMoveButtons: boolean;
@@ -677,7 +710,8 @@ export const useAppSettings = () => {
           userVaultCustomPath: settings.userVaultCustomPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
-          editorExactColors: settings.editorExactColors,
+          editorMarkdownExactColorsEnabled: settings.editorMarkdownExactColorsEnabled,
+          editorMarkdownCustomAccentHex: settings.editorMarkdownCustomAccentHex,
           editorBlueprintGrid: settings.editorBlueprintGrid,
           editorBlueprintGridIntensity: settings.editorBlueprintGridIntensity,
           examEditorShowMoveButtons: settings.examEditorShowMoveButtons,
@@ -741,7 +775,13 @@ export const useAppSettings = () => {
         userVaultCustomPath: updates.userVaultCustomPath ?? userVaultCustomPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
-        editorExactColors: updates.editorExactColors ?? editorExactColors,
+        editorMarkdownExactColorsEnabled:
+          updates.editorMarkdownExactColorsEnabled ??
+          markdownEditorExactColorsEnabled,
+        editorMarkdownCustomAccentHex:
+          typeof updates.editorMarkdownCustomAccentHex !== "undefined"
+            ? updates.editorMarkdownCustomAccentHex
+            : markdownEditorCustomAccentHex,
         editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
         editorBlueprintGridIntensity:
           updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
@@ -822,7 +862,8 @@ export const useAppSettings = () => {
     [
       activeNotePath,
       accentColor,
-      editorExactColors,
+      markdownEditorExactColorsEnabled,
+      markdownEditorCustomAccentHex,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
       examEditorShowMoveButtons,
@@ -887,10 +928,24 @@ export const useAppSettings = () => {
         const resolvedAccent = isValidHex(storedAccent)
           ? storedAccent
           : DEFAULT_ACCENT;
-        const storedEditorExactColors =
-          typeof settings.editor_exact_colors === "boolean"
-            ? settings.editor_exact_colors
-            : DEFAULT_EDITOR_EXACT_COLORS;
+        const storedMarkdownExactColorsEnabled =
+          typeof settings.editor_markdown_exact_colors_enabled === "boolean"
+            ? settings.editor_markdown_exact_colors_enabled
+            : typeof settings.editor_exact_colors === "boolean"
+              ? settings.editor_exact_colors
+              : DEFAULT_MARKDOWN_EDITOR_EXACT_COLORS_ENABLED;
+        const storedMarkdownCustomAccentRaw =
+          typeof settings.editor_markdown_custom_accent_hex === "string"
+            ? settings.editor_markdown_custom_accent_hex
+            : "";
+        const storedMarkdownCustomAccentNormalized = normalizeHex(
+          storedMarkdownCustomAccentRaw,
+        );
+        const storedMarkdownCustomAccentHex = isValidHex(
+          storedMarkdownCustomAccentNormalized,
+        )
+          ? storedMarkdownCustomAccentNormalized
+          : null;
         const storedEditorBlueprintGrid =
           typeof settings.editor_blueprint_grid === "boolean"
             ? settings.editor_blueprint_grid
@@ -1131,7 +1186,10 @@ export const useAppSettings = () => {
         setAccentColor(resolvedAccent);
         setAccentDraft(resolvedAccent);
         setAccentError("");
-        setEditorExactColors(storedEditorExactColors);
+        setMarkdownEditorExactColorsEnabledState(
+          storedMarkdownExactColorsEnabled,
+        );
+        setMarkdownEditorCustomAccentHexState(storedMarkdownCustomAccentHex);
         setEditorBlueprintGrid(storedEditorBlueprintGrid);
         setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
         setExamEditorShowMoveButtonsState(storedExamEditorShowMoveButtons);
@@ -1204,11 +1262,6 @@ export const useAppSettings = () => {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.dataset.mdEditorColors = editorExactColors ? "on" : "off";
-  }, [editorExactColors]);
-
-  useEffect(() => {
-    const root = document.documentElement;
     root.dataset.mdEditorGrid = editorBlueprintGrid ? "on" : "off";
   }, [editorBlueprintGrid]);
 
@@ -1253,7 +1306,8 @@ export const useAppSettings = () => {
         userVaultCustomPath,
         theme,
         accentColor,
-        editorExactColors,
+        editorMarkdownExactColorsEnabled: markdownEditorExactColorsEnabled,
+        editorMarkdownCustomAccentHex: markdownEditorCustomAccentHex,
         editorBlueprintGrid,
         editorBlueprintGridIntensity,
         examEditorShowMoveButtons,
@@ -1304,7 +1358,8 @@ export const useAppSettings = () => {
   }, [
     accentColor,
     activeNotePath,
-    editorExactColors,
+    markdownEditorExactColorsEnabled,
+    markdownEditorCustomAccentHex,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
     examEditorShowMoveButtons,
@@ -1358,7 +1413,8 @@ export const useAppSettings = () => {
     activeNotePath,
     accentDraft,
     accentError,
-    editorExactColors,
+    markdownEditorExactColorsEnabled,
+    markdownEditorCustomAccentHex,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
     examEditorShowMoveButtons,
@@ -1393,7 +1449,8 @@ export const useAppSettings = () => {
     setAccentDraft,
     setAccentError,
     setActiveNotePath,
-    setEditorExactColors,
+    setMarkdownEditorExactColorsEnabled,
+    setMarkdownEditorCustomAccentHex,
     setEditorBlueprintGrid,
     setEditorBlueprintGridIntensity,
     setExamEditorShowMoveButtons,
