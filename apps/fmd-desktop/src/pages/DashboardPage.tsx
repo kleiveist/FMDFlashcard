@@ -257,21 +257,6 @@ export const DashboardPage = () => {
               ) : null}
             </div>
           ) : null}
-          {vaultView === "exam" && examControls?.validationSummary ? (
-            <div
-              className="vault-warning"
-              role="status"
-              title={examControls.validationSummary.messages.join(" | ")}
-            >
-              <span className="pill warning">
-                Cannot save: {examControls.validationSummary.count} validation{" "}
-                {examControls.validationSummary.count === 1 ? "error" : "errors"}
-              </span>
-              <span className="vault-warning-text">
-                {examControls.validationSummary.messages.join(" | ")}
-              </span>
-            </div>
-          ) : null}
         </div>
       </header>
 

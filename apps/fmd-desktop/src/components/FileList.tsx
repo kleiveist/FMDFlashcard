@@ -37,11 +37,14 @@ import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
 import { asErrorMessage } from "../lib/errors";
 import { normalizeRelativePath } from "../lib/path";
+import { isEditableTarget } from "../lib/shortcuts/bindings";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import {
   buildVaultDeleteHandlers,
   shouldHandleVaultDeleteShortcut,
+  shouldHandleVaultRenameShortcut,
 } from "./VaultTree";
+import { InlineRenameLabel } from "./InlineRenameLabel";
 import { VaultCreateModal } from "./VaultCreateModal";
 import { VaultDeleteModal } from "./VaultDeleteModal";
 
@@ -147,6 +150,17 @@ export const FileList = ({
   const [deleteTarget, setDeleteTarget] = useState<VaultFile | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<{
+    file: VaultFile;
+    name: string;
+    parentPath: string;
+  } | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renameError, setRenameError] = useState("");
+  const [renameRange, setRenameRange] = useState<{ start: number; end: number } | null>(
+    null,
+  );
+  const [isRenaming, setIsRenaming] = useState(false);
 
   const closeContextMenu = useCallback(() => {
     setContextMenu(null);
@@ -293,10 +307,116 @@ export const FileList = ({
     [],
   );
 
+  const invokeMove = useCallback(
+    (vaultRoot: string, fromRelativePath: string, toRelativePath: string) =>
+      invoke<VaultFile>("move_markdown_file", {
+        vaultPath: vaultRoot,
+        fromRelativePath,
+        toRelativePath,
+      }),
+    [],
+  );
+
   const handleRescan = useCallback(
     (source?: string) => (onRescanVault ? onRescanVault(source) : Promise.resolve(false)),
     [onRescanVault],
   );
+
+  const startRenameFile = useCallback((file: VaultFile) => {
+    const relativePath = normalizeRelativePath(file.relative_path);
+    const name = getFileName(relativePath);
+    const parentPath = normalizeFolderPath(getParentRelativePath(relativePath));
+    const extensionMatch = name.match(/\.md$/i);
+    setRenameTarget({ file, name, parentPath });
+    setRenameDraft(name);
+    setRenameError("");
+    setRenameRange(
+      extensionMatch
+        ? { start: 0, end: Math.max(0, name.length - extensionMatch[0].length) }
+        : null,
+    );
+    setIsRenaming(false);
+    setContextMenu(null);
+  }, []);
+
+  const handleRenameCancel = useCallback(() => {
+    if (isRenaming) {
+      return;
+    }
+    setRenameTarget(null);
+    setRenameDraft("");
+    setRenameError("");
+    setRenameRange(null);
+  }, [isRenaming]);
+
+  const handleRenameCommit = useCallback(async () => {
+    if (!renameTarget || !vaultPath || isRenaming) {
+      return;
+    }
+    const trimmed = normalizeNewName(renameDraft);
+    if (!trimmed) {
+      setRenameError("Name is required.");
+      return;
+    }
+    if (NAME_FORBIDDEN_PATTERN.test(trimmed) || trimmed === "." || trimmed === "..") {
+      setRenameError("Name cannot include / or \\ characters.");
+      return;
+    }
+    if (/\.[^./\\]+$/.test(trimmed) && !/\.md$/i.test(trimmed)) {
+      setRenameError("Only .md files are supported.");
+      return;
+    }
+    const nextName = ensureMarkdownExtension(trimmed);
+    const baseName = nextName.replace(/\.md$/i, "").trim();
+    if (!baseName) {
+      setRenameError("Name is required.");
+      return;
+    }
+    const existingNames = getChildNameSet(files, renameTarget.parentPath);
+    existingNames.delete(renameTarget.name.trim().toLowerCase());
+    if (existingNames.has(nextName.toLowerCase())) {
+      setRenameError("Name already exists in this folder.");
+      return;
+    }
+    const targetRelative = renameTarget.parentPath
+      ? `${renameTarget.parentPath}/${nextName}`
+      : nextName;
+    const normalizedTarget = normalizeRelativePath(targetRelative);
+    const normalizedSource = normalizeRelativePath(renameTarget.file.relative_path);
+    if (normalizedSource === normalizedTarget) {
+      handleRenameCancel();
+      return;
+    }
+    setIsRenaming(true);
+    setRenameError("");
+    try {
+      const moved = await invokeMove(vaultPath, normalizedSource, normalizedTarget);
+      if (selectedFile?.path === renameTarget.file.path) {
+        onSelectFile(moved);
+      }
+      if (onRescanVault) {
+        void onRescanVault("note-list:rename");
+      }
+      setRenameTarget(null);
+      setRenameDraft("");
+      setRenameRange(null);
+    } catch (error) {
+      setRenameError(asErrorMessage(error, "Failed to rename file."));
+    } finally {
+      setIsRenaming(false);
+    }
+  }, [
+    files,
+    handleRenameCancel,
+    invokeMove,
+    isRenaming,
+    onRescanVault,
+    onSelectFile,
+    renameDraft,
+    renameTarget,
+    selectedFile,
+    vaultPath,
+  ]);
 
   const { handleCancel: handleDeleteCancel, handleConfirm: handleDeleteConfirm } =
     useMemo(
@@ -327,6 +447,17 @@ export const FileList = ({
 
   const handleNoteKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+      if (shouldHandleVaultRenameShortcut(event)) {
+        if (!selectedFile) {
+          return;
+        }
+        event.preventDefault();
+        startRenameFile(selectedFile);
+        return;
+      }
       if (!shouldHandleVaultDeleteShortcut(event)) {
         return;
       }
@@ -336,7 +467,7 @@ export const FileList = ({
       event.preventDefault();
       requestDelete(selectedFile);
     },
-    [requestDelete, selectedFile],
+    [requestDelete, selectedFile, startRenameFile],
   );
 
   const menuTarget = contextMenu?.target ?? null;
@@ -363,13 +494,22 @@ export const FileList = ({
           New file
         </button>
         {fileTarget ? (
-          <button
-            type="button"
-            className="context-menu-item"
-            onClick={() => requestDelete(fileTarget)}
-          >
-            Delete
-          </button>
+          <>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => startRenameFile(fileTarget)}
+            >
+              Rename
+            </button>
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => requestDelete(fileTarget)}
+            >
+              Delete
+            </button>
+          </>
         ) : null}
       </div>
     </div>
@@ -434,22 +574,50 @@ export const FileList = ({
         ) : null}
         {vaultPath && listState !== "error" ? (
           <ul className="file-list">
-            {files.map((file) => (
-              <li key={file.path}>
-                <button
-                  type="button"
-                  className={`file-item ${
-                    selectedFile?.path === file.path ? "active" : ""
-                  }`}
-                  onClick={() => onSelectFile(file)}
-                  onContextMenu={(event) =>
-                    openContextMenu(event, { kind: "file", file })
-                  }
-                >
-                  <span className="file-name">{file.relative_path}</span>
-                </button>
-              </li>
-            ))}
+            {files.map((file) => {
+              const isRenamingFile = renameTarget?.file.path === file.path;
+              const isActive = selectedFile?.path === file.path;
+              if (isRenamingFile) {
+                return (
+                  <li key={file.path}>
+                    <div className={`file-item ${isActive ? "active" : ""}`}>
+                      <InlineRenameLabel
+                        value={file.relative_path}
+                        isEditing={isRenamingFile}
+                        draft={renameDraft}
+                        error={renameError}
+                        className="inline-rename"
+                        displayClassName="file-name"
+                        inputClassName="inline-rename-input"
+                        selectRange={renameRange}
+                        onDraftChange={(value) => {
+                          setRenameDraft(value);
+                          if (renameError) {
+                            setRenameError("");
+                          }
+                        }}
+                        onCommit={handleRenameCommit}
+                        onCancel={handleRenameCancel}
+                      />
+                    </div>
+                  </li>
+                );
+              }
+              return (
+                <li key={file.path}>
+                  <button
+                    type="button"
+                    className={`file-item ${isActive ? "active" : ""}`}
+                    onClick={() => onSelectFile(file)}
+                    onContextMenu={(event) =>
+                      openContextMenu(event, { kind: "file", file })
+                    }
+                  >
+                    <span className="file-name">{file.relative_path}</span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         ) : null}
       </div>

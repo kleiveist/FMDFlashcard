@@ -234,6 +234,21 @@ h2 {
   border-color: var(--accent-border);
 }
 
+.tree-item.drop-target {
+  border-color: var(--accent-strong);
+  background: var(--accent-hover-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+.tree-item.drop-target-invalid {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+}
+
+.tree-item.is-dragging {
+  opacity: 0.7;
+}
+
 .tree-item.active {
   border-color: var(--accent-border);
   background: var(--accent-active-bg);
@@ -304,6 +319,15 @@ h2 {
   width: calc(100% - 8px);
 }
 
+.tree-file[draggable="true"] {
+  cursor: grab;
+}
+
+.tree-file.is-dragging {
+  opacity: 0.6;
+  cursor: grabbing;
+}
+
 .vault-tree-scroll.vault-tree-scroll-wide .tree-file {
   min-width: calc(100% + var(--tree-overflow, 0px) - 8px);
 }
@@ -320,6 +344,30 @@ h2 {
   text-overflow: ellipsis;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.inline-rename {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inline-rename-input {
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 0.8rem;
+}
+
+.inline-rename-error {
+  font-size: 0.7rem;
+  color: var(--error-ink);
 }
 
 .context-menu-backdrop {

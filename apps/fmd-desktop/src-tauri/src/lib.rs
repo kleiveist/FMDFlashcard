@@ -818,6 +818,102 @@ fn delete_markdown_file(
 }
 
 #[tauri::command]
+fn move_markdown_file(
+    vault_path: String,
+    from_relative_path: String,
+    to_relative_path: String,
+) -> Result<VaultFile, String> {
+    let root = PathBuf::from(&vault_path);
+    if !root.exists() {
+        return Err("Vault path does not exist.".to_string());
+    }
+    if !root.is_dir() {
+        return Err("Vault path is not a directory.".to_string());
+    }
+    let from_relative = sanitize_relative_path(&from_relative_path)?;
+    let to_relative = sanitize_relative_path(&to_relative_path)?;
+    let from_full = root.join(&from_relative);
+    let to_full = root.join(&to_relative);
+    if !from_full.starts_with(&root) || !to_full.starts_with(&root) {
+        return Err("Path is outside the vault.".to_string());
+    }
+    if from_full == to_full {
+        return Err("Target path matches source.".to_string());
+    }
+    if !from_full.exists() {
+        return Err("File not found.".to_string());
+    }
+    if !from_full.is_file() {
+        return Err("Path is not a file.".to_string());
+    }
+    if !is_markdown(&from_full) || !is_markdown(&to_full) {
+        return Err("Only markdown files are supported.".to_string());
+    }
+    if to_full.exists() {
+        return Err("File already exists.".to_string());
+    }
+    if let Some(parent) = to_full.parent() {
+        if !parent.exists() {
+            return Err("Target folder does not exist.".to_string());
+        }
+        if !parent.is_dir() {
+            return Err("Target folder is not a directory.".to_string());
+        }
+    }
+    fs::rename(&from_full, &to_full).map_err(|err| err.to_string())?;
+    Ok(VaultFile {
+        path: to_full.to_string_lossy().to_string(),
+        relative_path: format_relative_path(&to_relative),
+    })
+}
+
+#[tauri::command]
+fn move_directory(
+    vault_path: String,
+    from_relative_path: String,
+    to_relative_path: String,
+) -> Result<(), String> {
+    let root = PathBuf::from(&vault_path);
+    if !root.exists() {
+        return Err("Vault path does not exist.".to_string());
+    }
+    if !root.is_dir() {
+        return Err("Vault path is not a directory.".to_string());
+    }
+    let from_relative = sanitize_relative_path(&from_relative_path)?;
+    let to_relative = sanitize_relative_path(&to_relative_path)?;
+    let from_full = root.join(&from_relative);
+    let to_full = root.join(&to_relative);
+    if !from_full.starts_with(&root) || !to_full.starts_with(&root) {
+        return Err("Path is outside the vault.".to_string());
+    }
+    if from_full == to_full {
+        return Err("Target path matches source.".to_string());
+    }
+    if !from_full.exists() {
+        return Err("Folder not found.".to_string());
+    }
+    if !from_full.is_dir() {
+        return Err("Path is not a directory.".to_string());
+    }
+    if to_full.starts_with(&from_full) {
+        return Err("Cannot move a folder into itself.".to_string());
+    }
+    if to_full.exists() {
+        return Err("Folder already exists.".to_string());
+    }
+    if let Some(parent) = to_full.parent() {
+        if !parent.exists() {
+            return Err("Target folder does not exist.".to_string());
+        }
+        if !parent.is_dir() {
+            return Err("Target folder is not a directory.".to_string());
+        }
+    }
+    fs::rename(&from_full, &to_full).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 fn create_markdown_file(
     vault_path: String,
     relative_path: String,
@@ -874,6 +970,29 @@ fn create_directory(vault_path: String, relative_path: String) -> Result<(), Str
     fs::create_dir(&full_path).map_err(|err| err.to_string())
 }
 
+#[tauri::command]
+fn delete_directory(vault_path: String, relative_path: String) -> Result<(), String> {
+    let root = PathBuf::from(&vault_path);
+    if !root.exists() {
+        return Err("Vault path does not exist.".to_string());
+    }
+    if !root.is_dir() {
+        return Err("Vault path is not a directory.".to_string());
+    }
+    let relative = sanitize_relative_path(&relative_path)?;
+    let full_path = root.join(&relative);
+    if !full_path.starts_with(&root) {
+        return Err("Path is outside the vault.".to_string());
+    }
+    if !full_path.exists() {
+        return Err("Folder not found.".to_string());
+    }
+    if !full_path.is_dir() {
+        return Err("Path is not a directory.".to_string());
+    }
+    fs::remove_dir_all(&full_path).map_err(|err| err.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -900,8 +1019,11 @@ pub fn run() {
             read_text_file,
             write_text_file,
             delete_markdown_file,
+            move_markdown_file,
+            move_directory,
             create_markdown_file,
-            create_directory
+            create_directory,
+            delete_directory
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

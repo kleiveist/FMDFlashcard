@@ -54,6 +54,10 @@
   color: var(--ink);
 }
 
+.file-item .inline-rename-input {
+  font-size: 0.9rem;
+}
+
 .preview {
   margin: 0;
   padding: 16px;

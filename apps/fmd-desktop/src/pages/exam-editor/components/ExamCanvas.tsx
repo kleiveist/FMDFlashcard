@@ -2,7 +2,15 @@
  * @file apps/fmd-desktop/src/pages/exam-editor/components/ExamCanvas.tsx
  */
 
-import { type DragEvent, type WheelEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type DragEvent,
+  type WheelEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { AlertIcon, CheckIcon } from "../../../components/icons";
 import type { ExamBlueprint, ExamTaskBlueprint, CardType } from "../../../features/exam-editor/types";
 import type { ExamEditorSelection } from "../types";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
@@ -12,6 +20,7 @@ const CARD_TYPES: CardType[] = ["qa", "tf", "m1", "m2", "cl", "cd", "cld"];
 type ExamCanvasProps = {
   exam: ExamBlueprint;
   selection: ExamEditorSelection;
+  validationSummary: { count: number; messages: string[] } | null;
   onSelectExam: () => void;
   onSelectTask: (taskId: string) => void;
   onSelectCard: (taskId: string, cardId: string) => void;
@@ -73,6 +82,7 @@ const allowDrop = (event: DragEvent<HTMLElement>) => {
 export const ExamCanvas = ({
   exam,
   selection,
+  validationSummary,
   onSelectExam,
   onSelectTask,
   onSelectCard,
@@ -99,6 +109,14 @@ export const ExamCanvas = ({
     [exam.tasks],
   );
   const isExamSelected = selection.type === "exam";
+  const hasValidationErrors = Boolean(
+    validationSummary && validationSummary.count > 0,
+  );
+  const validationLabel = hasValidationErrors
+    ? `Cannot save: ${validationSummary?.count ?? 0} validation ${
+        validationSummary?.count === 1 ? "error" : "errors"
+      }`
+    : "All checks passed.";
 
   useEffect(() => {
     dragPayloadRef.current = dragPayload;
@@ -502,10 +520,31 @@ export const ExamCanvas = ({
       onDragOver={allowDrop}
       onDrop={handleCanvasDrop}
     >
-      <header className="panel-header">
+      <header className="panel-header exam-canvas-header">
         <div>
           <h2>Canvas</h2>
           <p className="muted">Drop cards to create tasks and interactions.</p>
+        </div>
+        <div className="exam-canvas-status" role="status">
+          <button
+            type="button"
+            className={`exam-canvas-status-button ${
+              hasValidationErrors ? "is-invalid" : "is-valid"
+            }`}
+            aria-label={validationLabel}
+          >
+            {hasValidationErrors ? <AlertIcon /> : <CheckIcon />}
+          </button>
+          <div className="exam-canvas-status-tooltip" role="tooltip">
+            <div className="exam-canvas-status-title">{validationLabel}</div>
+            {hasValidationErrors ? (
+              <ul className="exam-canvas-status-list">
+                {validationSummary?.messages.map((message, index) => (
+                  <li key={`${index}-${message}`}>{message}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         </div>
       </header>
       <div

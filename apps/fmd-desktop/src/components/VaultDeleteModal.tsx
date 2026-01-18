@@ -26,6 +26,7 @@ type VaultDeleteModalProps = {
   fileName: string;
   error: string;
   isPending?: boolean;
+  kind?: "file" | "folder";
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -35,6 +36,7 @@ export const VaultDeleteModal = ({
   fileName,
   error,
   isPending = false,
+  kind = "file",
   onCancel,
   onConfirm,
 }: VaultDeleteModalProps) => {
@@ -64,9 +66,19 @@ export const VaultDeleteModal = ({
         aria-modal="true"
         aria-labelledby="vault-delete-title"
       >
-        <h3 id="vault-delete-title">Delete file?</h3>
+        <h3 id="vault-delete-title">
+          {kind === "folder" ? "Delete folder?" : "Delete file?"}
+        </h3>
         <p className="muted">
-          Do you really want to delete <strong>{fileName}</strong>?
+          {kind === "folder" ? (
+            <>
+              Delete folder <strong>{fileName}</strong> and all of its contents?
+            </>
+          ) : (
+            <>
+              Do you really want to delete <strong>{fileName}</strong>?
+            </>
+          )}
         </p>
         {error ? <div className="error">{error}</div> : null}
         <div className="modal-actions">

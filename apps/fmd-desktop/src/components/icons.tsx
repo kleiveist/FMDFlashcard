@@ -142,3 +142,19 @@ export const CheckIcon = () => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
+
+export const AlertIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 3l9 16H3l9-16Z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);

@@ -900,11 +900,6 @@ export const ExamEditorView = ({
             </div>
           ) : null}
           {saveError ? <div className="error">{saveError}</div> : null}
-          {!canSave ? (
-            <div className="exam-editor-validation">
-              <span className="pill warning">Fix validation before saving.</span>
-            </div>
-          ) : null}
           <div className="exam-editor-layout">
             <PropertiesPanel
               exam={exam}
@@ -919,6 +914,7 @@ export const ExamEditorView = ({
             <ExamCanvas
               exam={exam}
               selection={selection}
+              validationSummary={validationSummary}
               onSelectExam={() => setSelection({ type: "exam" })}
               onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
               onSelectCard={(taskId, cardId) =>
@@ -948,11 +944,6 @@ export const ExamEditorView = ({
             </div>
           ) : null}
           {saveError ? <div className="error">{saveError}</div> : null}
-          {!canSave ? (
-            <div className="exam-editor-validation">
-              <span className="pill warning">Fix validation before saving.</span>
-            </div>
-          ) : null}
           <ContentMode
             exam={exam}
             selection={selection}

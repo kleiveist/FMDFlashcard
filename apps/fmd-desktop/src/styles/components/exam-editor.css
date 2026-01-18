@@ -131,6 +131,89 @@
   gap: 8px;
 }
 
+.exam-canvas-header {
+  align-items: center;
+}
+
+.exam-canvas-status {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.exam-canvas-status-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: help;
+  transition: 0.2s ease;
+}
+
+.exam-canvas-status-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.exam-canvas-status-button.is-valid {
+  border-color: var(--accent-weak-border);
+  background: var(--accent-weak-bg);
+  color: var(--accent-strong);
+}
+
+.exam-canvas-status-button.is-invalid {
+  border-color: var(--error-border);
+  background: var(--error-bg);
+  color: var(--error-ink);
+}
+
+.exam-canvas-status-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-width: min(360px, 70vw);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: 0.15s ease;
+  z-index: 5;
+}
+
+.exam-canvas-status:hover .exam-canvas-status-tooltip,
+.exam-canvas-status:focus-within .exam-canvas-status-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.exam-canvas-status-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.exam-canvas-status-list {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .pill.success {
   background: var(--accent-weak-bg);
   color: var(--accent-strong);
