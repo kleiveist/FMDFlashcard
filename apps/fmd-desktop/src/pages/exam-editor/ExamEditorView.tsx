@@ -14,6 +14,8 @@ import {
   createChoiceOption,
   createExamBlueprint,
   createTaskBlueprint,
+  reorderCardsByIndex,
+  reorderTasksByIndex,
 } from "../../features/exam-editor/blueprint";
 import type {
   CardType,
@@ -238,23 +240,9 @@ export const ExamEditorView = ({
     [updateTasks],
   );
 
-  const handleMoveTask = useCallback(
-    (taskId: string, direction: "up" | "down") => {
-      updateTasks((tasks) => {
-        const index = tasks.findIndex((task) => task.id === taskId);
-        if (index === -1) {
-          return tasks;
-        }
-        const targetIndex = direction === "up" ? index - 1 : index + 1;
-        if (targetIndex < 0 || targetIndex >= tasks.length) {
-          return tasks;
-        }
-        const nextTasks = [...tasks];
-        const temp = nextTasks[index];
-        nextTasks[index] = nextTasks[targetIndex];
-        nextTasks[targetIndex] = temp;
-        return nextTasks;
-      });
+  const handleReorderTask = useCallback(
+    (sourceIndex: number, targetIndex: number) => {
+      updateTasks((tasks) => reorderTasksByIndex(tasks, sourceIndex, targetIndex));
     },
     [updateTasks],
   );
@@ -288,26 +276,17 @@ export const ExamEditorView = ({
     [updateTasks],
   );
 
-  const handleMoveCard = useCallback(
-    (taskId: string, cardId: string, direction: "up" | "down") => {
+  const handleReorderCard = useCallback(
+    (taskId: string, sourceIndex: number, targetIndex: number) => {
       updateTasks((tasks) =>
         tasks.map((task) => {
           if (task.id !== taskId) {
             return task;
           }
-          const index = task.cards.findIndex((card) => card.id === cardId);
-          if (index === -1) {
-            return task;
-          }
-          const targetIndex = direction === "up" ? index - 1 : index + 1;
-          if (targetIndex < 0 || targetIndex >= task.cards.length) {
-            return task;
-          }
-          const nextCards = [...task.cards];
-          const temp = nextCards[index];
-          nextCards[index] = nextCards[targetIndex];
-          nextCards[targetIndex] = temp;
-          return { ...task, cards: nextCards };
+          return {
+            ...task,
+            cards: reorderCardsByIndex(task.cards, sourceIndex, targetIndex),
+          };
         }),
       );
     },
@@ -580,6 +559,51 @@ export const ExamEditorView = ({
     [canSave, handleNewExam, handleSave, isSaving, mode],
   );
 
+  const orderedTasks = useMemo(
+    () => exam.tasks.slice().sort((a, b) => a.order - b.order),
+    [exam.tasks],
+  );
+
+  const handleKeyboardReorder = useCallback(
+    (direction: "up" | "down") => {
+      const delta = direction === "up" ? -1 : 1;
+      if (selection.type === "task") {
+        const sourceIndex = orderedTasks.findIndex(
+          (task) => task.id === selection.taskId,
+        );
+        if (sourceIndex === -1) {
+          return false;
+        }
+        const targetIndex = sourceIndex + delta;
+        if (targetIndex < 0 || targetIndex >= orderedTasks.length) {
+          return false;
+        }
+        handleReorderTask(sourceIndex, targetIndex);
+        return true;
+      }
+      if (selection.type === "card") {
+        const task = exam.tasks.find((entry) => entry.id === selection.taskId);
+        if (!task) {
+          return false;
+        }
+        const sourceIndex = task.cards.findIndex(
+          (card) => card.id === selection.cardId,
+        );
+        if (sourceIndex === -1) {
+          return false;
+        }
+        const targetIndex = sourceIndex + delta;
+        if (targetIndex < 0 || targetIndex >= task.cards.length) {
+          return false;
+        }
+        handleReorderCard(task.id, sourceIndex, targetIndex);
+        return true;
+      }
+      return false;
+    },
+    [exam.tasks, handleReorderCard, handleReorderTask, orderedTasks, selection],
+  );
+
   useEffect(() => {
     if (!onControlsReady) {
       return;
@@ -609,6 +633,21 @@ export const ExamEditorView = ({
         void handleSave(false);
         return;
       }
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        if (mode !== "structure") {
+          return;
+        }
+        if (isEditableTarget(event.target)) {
+          return;
+        }
+        const moved = handleKeyboardReorder(
+          event.key === "ArrowUp" ? "up" : "down",
+        );
+        if (moved) {
+          event.preventDefault();
+        }
+        return;
+      }
       if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
         if (isEditableTarget(event.target)) {
           return;
@@ -624,7 +663,7 @@ export const ExamEditorView = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [handleSave, mode]);
+  }, [handleKeyboardReorder, handleSave, mode]);
 
   useEffect(() => {
     if (selection.type === "task") {
@@ -797,10 +836,10 @@ export const ExamEditorView = ({
               }
               onCanvasDrop={handleAddTask}
               onTaskDrop={handleAddCardToTask}
-              onMoveTask={handleMoveTask}
+              onReorderTask={handleReorderTask}
               onDuplicateTask={handleDuplicateTask}
               onDeleteTask={handleDeleteTask}
-              onMoveCard={handleMoveCard}
+              onReorderCard={handleReorderCard}
               onDeleteCard={handleDeleteCard}
               getTaskWarning={getTaskWarning}
             />

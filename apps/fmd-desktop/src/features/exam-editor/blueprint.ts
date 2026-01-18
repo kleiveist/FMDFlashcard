@@ -151,3 +151,45 @@ export const cloneTaskBlueprint = (task: ExamTaskBlueprint): ExamTaskBlueprint =
   helpText: task.helpText,
   cards: task.cards.map(cloneCardBlueprint),
 });
+
+const reorderByIndex = <T>(items: T[], sourceIndex: number, targetIndex: number) => {
+  if (sourceIndex === targetIndex) {
+    return items;
+  }
+  if (
+    sourceIndex < 0 ||
+    targetIndex < 0 ||
+    sourceIndex >= items.length ||
+    targetIndex >= items.length
+  ) {
+    return items;
+  }
+  const next = items.slice();
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  return next;
+};
+
+export const reorderTasksByIndex = (
+  tasks: ExamTaskBlueprint[],
+  sourceIndex: number,
+  targetIndex: number,
+) => {
+  if (
+    sourceIndex === targetIndex ||
+    sourceIndex < 0 ||
+    targetIndex < 0 ||
+    sourceIndex >= tasks.length ||
+    targetIndex >= tasks.length
+  ) {
+    return tasks;
+  }
+  const ordered = tasks.slice().sort((a, b) => a.order - b.order);
+  return reorderByIndex(ordered, sourceIndex, targetIndex);
+};
+
+export const reorderCardsByIndex = (
+  cards: CardBlueprint[],
+  sourceIndex: number,
+  targetIndex: number,
+) => reorderByIndex(cards, sourceIndex, targetIndex);

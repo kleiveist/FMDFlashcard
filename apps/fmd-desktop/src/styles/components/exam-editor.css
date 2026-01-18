@@ -229,11 +229,43 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .exam-task-node.selected {
-  border-color: var(--accent-border);
+  border-color: var(--accent-strong);
+  background: var(--accent-weak-bg);
   box-shadow: var(--shadow-soft);
+}
+
+.exam-task-node.is-dragging {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.exam-task-node.drop-target {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--accent-weak-bg);
+}
+
+.exam-task-node.drop-before::before,
+.exam-task-node.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background: var(--accent-strong);
+  border-radius: 999px;
+}
+
+.exam-task-node.drop-before::before {
+  top: -7px;
+}
+
+.exam-task-node.drop-after::after {
+  bottom: -7px;
 }
 
 .exam-task-header {
@@ -242,6 +274,7 @@
   align-items: flex-start;
   gap: 12px;
   flex-wrap: wrap;
+  cursor: grab;
 }
 
 .exam-task-title {
@@ -275,6 +308,11 @@
   flex-wrap: wrap;
 }
 
+.exam-task-actions button,
+.exam-card-actions button {
+  cursor: pointer;
+}
+
 .exam-task-warning {
   padding: 8px 12px;
   border-radius: 12px;
@@ -298,10 +336,43 @@
   border-radius: 12px;
   background: var(--field-bg);
   border: 1px solid var(--field-border);
+  position: relative;
+  cursor: grab;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .exam-card-item.selected {
   border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.exam-card-item.is-dragging {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.exam-card-item.drop-target {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--accent-weak-bg);
+}
+
+.exam-card-item.drop-before::before,
+.exam-card-item.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  background: var(--accent-strong);
+  border-radius: 999px;
+}
+
+.exam-card-item.drop-before::before {
+  top: -6px;
+}
+
+.exam-card-item.drop-after::after {
+  bottom: -6px;
 }
 
 .exam-card-title {

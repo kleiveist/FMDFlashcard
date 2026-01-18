@@ -2,7 +2,7 @@
  * @file apps/fmd-desktop/src/pages/exam-editor/components/ExamCanvas.tsx
  */
 
-import type { DragEvent } from "react";
+import { type DragEvent, useMemo, useState } from "react";
 import type { ExamBlueprint, ExamTaskBlueprint, CardType } from "../../../features/exam-editor/types";
 import type { ExamEditorSelection } from "../types";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
@@ -17,13 +17,31 @@ type ExamCanvasProps = {
   onSelectCard: (taskId: string, cardId: string) => void;
   onCanvasDrop: (cardType: CardType) => void;
   onTaskDrop: (taskId: string, cardType: CardType) => void;
-  onMoveTask: (taskId: string, direction: "up" | "down") => void;
+  onReorderTask: (sourceIndex: number, targetIndex: number) => void;
   onDuplicateTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
-  onMoveCard: (taskId: string, cardId: string, direction: "up" | "down") => void;
+  onReorderCard: (taskId: string, sourceIndex: number, targetIndex: number) => void;
   onDeleteCard: (taskId: string, cardId: string) => void;
   getTaskWarning: (task: ExamTaskBlueprint) => string | null;
 };
+
+type DragPayload =
+  | { kind: "task"; taskId: string }
+  | { kind: "card"; taskId: string; cardId: string };
+
+type TaskDropTarget = {
+  taskId: string;
+  position: "before" | "after";
+};
+
+type CardDropTarget = {
+  taskId: string;
+  cardId: string;
+  position: "before" | "after";
+};
+
+const TASK_DRAG_TYPE = "application/x-fmd-task";
+const CARD_DRAG_TYPE = "application/x-fmd-card";
 
 const resolveDropType = (event: DragEvent<HTMLElement>) => {
   const value =
@@ -36,6 +54,9 @@ const resolveDropType = (event: DragEvent<HTMLElement>) => {
 };
 
 const allowDrop = (event: DragEvent<HTMLElement>) => {
+  if (!event.dataTransfer.types.includes("application/x-fmd-card-type")) {
+    return;
+  }
   event.preventDefault();
   event.dataTransfer.dropEffect = "copy";
 };
@@ -48,15 +69,27 @@ export const ExamCanvas = ({
   onSelectCard,
   onCanvasDrop,
   onTaskDrop,
-  onMoveTask,
+  onReorderTask,
   onDuplicateTask,
   onDeleteTask,
-  onMoveCard,
+  onReorderCard,
   onDeleteCard,
   getTaskWarning,
 }: ExamCanvasProps) => {
-  const orderedTasks = exam.tasks.slice().sort((a, b) => a.order - b.order);
+  const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
+  const [taskDropTarget, setTaskDropTarget] = useState<TaskDropTarget | null>(null);
+  const [cardDropTarget, setCardDropTarget] = useState<CardDropTarget | null>(null);
+  const orderedTasks = useMemo(
+    () => exam.tasks.slice().sort((a, b) => a.order - b.order),
+    [exam.tasks],
+  );
   const isExamSelected = selection.type === "exam";
+
+  const clearDragState = () => {
+    setDragPayload(null);
+    setTaskDropTarget(null);
+    setCardDropTarget(null);
+  };
 
   const handleCanvasDrop = (event: DragEvent<HTMLDivElement>) => {
     const cardType = resolveDropType(event);
@@ -67,14 +100,145 @@ export const ExamCanvas = ({
     onCanvasDrop(cardType);
   };
 
+  const getDropPosition = (event: DragEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    return event.clientY <= midpoint ? "before" : "after";
+  };
+
+  const handleTaskDragStart = (event: DragEvent<HTMLDivElement>, taskId: string) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest(".exam-task-actions")) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.setData(TASK_DRAG_TYPE, taskId);
+    event.dataTransfer.effectAllowed = "move";
+    setDragPayload({ kind: "task", taskId });
+  };
+
+  const handleCardDragStart = (
+    event: DragEvent<HTMLDivElement>,
+    taskId: string,
+    cardId: string,
+  ) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest(".exam-card-actions")) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.setData(
+      CARD_DRAG_TYPE,
+      JSON.stringify({ taskId, cardId }),
+    );
+    event.dataTransfer.effectAllowed = "move";
+    setDragPayload({ kind: "card", taskId, cardId });
+  };
+
+  const handleDragEnd = () => {
+    clearDragState();
+  };
+
+  const handleTaskDragOver = (event: DragEvent<HTMLLIElement>, taskId: string) => {
+    if (event.dataTransfer.types.includes("application/x-fmd-card-type")) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      return;
+    }
+    if (!dragPayload || dragPayload.kind !== "task") {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const position = getDropPosition(event);
+    setTaskDropTarget({ taskId, position });
+  };
+
   const handleTaskDrop = (event: DragEvent<HTMLLIElement>, taskId: string) => {
     const cardType = resolveDropType(event);
-    if (!cardType) {
+    if (cardType) {
+      event.preventDefault();
+      event.stopPropagation();
+      onTaskDrop(taskId, cardType);
+      clearDragState();
+      return;
+    }
+    if (!dragPayload || dragPayload.kind !== "task") {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
-    onTaskDrop(taskId, cardType);
+    const position = getDropPosition(event);
+    const sourceIndex = orderedTasks.findIndex(
+      (task) => task.id === dragPayload.taskId,
+    );
+    const targetIndex = orderedTasks.findIndex((task) => task.id === taskId);
+    if (sourceIndex === -1 || targetIndex === -1) {
+      clearDragState();
+      return;
+    }
+    let insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
+    if (sourceIndex < insertIndex) {
+      insertIndex -= 1;
+    }
+    if (insertIndex !== sourceIndex) {
+      onReorderTask(sourceIndex, insertIndex);
+    }
+    clearDragState();
+  };
+
+  const handleCardDragOver = (
+    event: DragEvent<HTMLDivElement>,
+    taskId: string,
+    cardId: string,
+  ) => {
+    if (!dragPayload || dragPayload.kind !== "card") {
+      return;
+    }
+    if (dragPayload.taskId !== taskId) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const position = getDropPosition(event);
+    setCardDropTarget({ taskId, cardId, position });
+  };
+
+  const handleCardDrop = (
+    event: DragEvent<HTMLDivElement>,
+    taskId: string,
+    cardId: string,
+  ) => {
+    if (!dragPayload || dragPayload.kind !== "card") {
+      return;
+    }
+    if (dragPayload.taskId !== taskId) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const task = orderedTasks.find((entry) => entry.id === taskId);
+    if (!task) {
+      clearDragState();
+      return;
+    }
+    const sourceIndex = task.cards.findIndex(
+      (card) => card.id === dragPayload.cardId,
+    );
+    const targetIndex = task.cards.findIndex((card) => card.id === cardId);
+    if (sourceIndex === -1 || targetIndex === -1) {
+      clearDragState();
+      return;
+    }
+    const position = getDropPosition(event);
+    let insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
+    if (sourceIndex < insertIndex) {
+      insertIndex -= 1;
+    }
+    if (insertIndex !== sourceIndex) {
+      onReorderCard(taskId, sourceIndex, insertIndex);
+    }
+    clearDragState();
   };
 
   return (
@@ -109,15 +273,30 @@ export const ExamCanvas = ({
             {orderedTasks.map((task, index) => {
               const isTaskSelected =
                 selection.type === "task" && selection.taskId === task.id;
+              const isTaskDragging =
+                dragPayload?.kind === "task" && dragPayload.taskId === task.id;
+              const taskDropPosition =
+                taskDropTarget?.taskId === task.id
+                  ? taskDropTarget.position
+                  : null;
               const warning = getTaskWarning(task);
               return (
                 <li
                   key={task.id}
-                  className={`exam-task-node ${isTaskSelected ? "selected" : ""}`}
-                  onDragOver={allowDrop}
+                  className={`exam-task-node ${isTaskSelected ? "selected" : ""}${
+                    isTaskDragging ? " is-dragging" : ""
+                  }${taskDropPosition ? " drop-target" : ""}${
+                    taskDropPosition ? ` drop-${taskDropPosition}` : ""
+                  }`}
+                  onDragOver={(event) => handleTaskDragOver(event, task.id)}
                   onDrop={(event) => handleTaskDrop(event, task.id)}
                 >
-                  <div className="exam-task-header">
+                  <div
+                    className="exam-task-header"
+                    draggable
+                    onDragStart={(event) => handleTaskDragStart(event, task.id)}
+                    onDragEnd={handleDragEnd}
+                  >
                     <button
                       type="button"
                       className="exam-task-title"
@@ -129,22 +308,6 @@ export const ExamCanvas = ({
                       </span>
                     </button>
                     <div className="exam-task-actions">
-                      <button
-                        type="button"
-                        className="ghost small"
-                        onClick={() => onMoveTask(task.id, "up")}
-                        disabled={index === 0}
-                      >
-                        Up
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost small"
-                        onClick={() => onMoveTask(task.id, "down")}
-                        disabled={index === orderedTasks.length - 1}
-                      >
-                        Down
-                      </button>
                       <button
                         type="button"
                         className="ghost small"
@@ -168,12 +331,34 @@ export const ExamCanvas = ({
                         selection.type === "card" &&
                         selection.taskId === task.id &&
                         selection.cardId === card.id;
+                      const isCardDragging =
+                        dragPayload?.kind === "card" &&
+                        dragPayload.taskId === task.id &&
+                        dragPayload.cardId === card.id;
+                      const cardDropPosition =
+                        cardDropTarget?.taskId === task.id &&
+                        cardDropTarget.cardId === card.id
+                          ? cardDropTarget.position
+                          : null;
                       return (
                         <div
                           key={card.id}
                           className={`exam-card-item ${
                             isCardSelected ? "selected" : ""
-                          }`}
+                          }${isCardDragging ? " is-dragging" : ""}${
+                            cardDropPosition ? " drop-target" : ""
+                          }${cardDropPosition ? ` drop-${cardDropPosition}` : ""}`}
+                          draggable
+                          onDragStart={(event) =>
+                            handleCardDragStart(event, task.id, card.id)
+                          }
+                          onDragEnd={handleDragEnd}
+                          onDragOver={(event) =>
+                            handleCardDragOver(event, task.id, card.id)
+                          }
+                          onDrop={(event) =>
+                            handleCardDrop(event, task.id, card.id)
+                          }
                         >
                           <button
                             type="button"
@@ -189,22 +374,6 @@ export const ExamCanvas = ({
                             ) : null}
                           </button>
                           <div className="exam-card-actions">
-                            <button
-                              type="button"
-                              className="ghost small"
-                              onClick={() => onMoveCard(task.id, card.id, "up")}
-                              disabled={cardIndex === 0}
-                            >
-                              Up
-                            </button>
-                            <button
-                              type="button"
-                              className="ghost small"
-                              onClick={() => onMoveCard(task.id, card.id, "down")}
-                              disabled={cardIndex === task.cards.length - 1}
-                            >
-                              Down
-                            </button>
                             <button
                               type="button"
                               className="ghost small danger"
