@@ -40,7 +40,6 @@ import {
   ExamEditorIcon,
   FolderIcon,
   HelpIcon,
-  RefreshIcon,
   SettingsIcon,
 } from "./icons";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
@@ -86,6 +85,7 @@ export const SidebarNav = ({
   );
   const [isVaultMenuOpen, setIsVaultMenuOpen] = useState(false);
   const [vaultMenuMaxHeight, setVaultMenuMaxHeight] = useState<number | null>(null);
+  const vaultLayoutRef = useRef<HTMLDivElement | null>(null);
   const vaultStatusRef = useRef<HTMLDivElement | null>(null);
   const vaultMenuRef = useRef<HTMLDivElement | null>(null);
   const vaultButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -111,7 +111,6 @@ export const SidebarNav = ({
     [recentVaults],
   );
   const recentVaultInfo = useVaultPathInfo(recentVaultPaths, isVaultMenuOpen);
-  const isRescanningVault = vault.listState === "loading";
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
       return "No vault selected";
@@ -161,19 +160,16 @@ export const SidebarNav = ({
   }, [isCardsTab, isDashboard, toolbarMode]);
 
   const updateVaultMenuMaxHeight = useCallback(() => {
+    const layoutElement = vaultLayoutRef.current;
     const statusElement = vaultStatusRef.current;
-    if (!statusElement) {
+    if (!layoutElement || !statusElement) {
       return;
     }
-    const sidebar = statusElement.closest(".sidebar") as HTMLElement | null;
-    if (!sidebar) {
-      return;
-    }
-    const sidebarRect = sidebar.getBoundingClientRect();
+    const layoutRect = layoutElement.getBoundingClientRect();
     const statusRect = statusElement.getBoundingClientRect();
     const gap = 8;
     const safeOffset = 4;
-    const available = statusRect.top - sidebarRect.top - gap - safeOffset;
+    const available = statusRect.top - layoutRect.top - gap - safeOffset;
     setVaultMenuMaxHeight(Math.max(0, Math.floor(available)));
   }, []);
 
@@ -285,169 +281,6 @@ export const SidebarNav = ({
             >
               Close
             </button>
-            <div className="vault-status" ref={vaultStatusRef}>
-              <div className="vault-status-header">
-                <span className="label">ACTIVE VAULT</span>
-                <div className="vault-status-actions">
-                  <button
-                    type="button"
-                    className="vault-status-action"
-                    onClick={() => {
-                      setIsVaultMenuOpen(false);
-                      onOpenHelp();
-                    }}
-                    aria-label="Help"
-                    title="Help"
-                  >
-                    <HelpIcon />
-                  </button>
-                  <button
-                    type="button"
-                    className="vault-status-action"
-                    onClick={() => {
-                      setIsVaultMenuOpen(false);
-                      onOpenSettings();
-                    }}
-                    aria-label="Settings"
-                    title="Settings"
-                  >
-                    <SettingsIcon />
-                  </button>
-                </div>
-              </div>
-              <button
-                ref={vaultButtonRef}
-                type="button"
-                className="vault-status-main"
-                onClick={() => setIsVaultMenuOpen((prev) => !prev)}
-                title={vault.vaultPath ?? "Select vault"}
-                aria-label="Select vault"
-                aria-haspopup="menu"
-                aria-expanded={isVaultMenuOpen}
-                aria-controls="vault-recents-menu"
-              >
-                <span className="value vault-status-value">
-                  <span className="vault-status-value-text">
-                    Vault: {vault.vaultPath ? vaultRootName : "Not set"}
-                  </span>
-                  <span
-                    className={`vault-status-caret${
-                      isVaultMenuOpen ? " is-open" : ""
-                    }`}
-                    aria-hidden="true"
-                  >
-                    <ChevronDownIcon />
-                  </span>
-                </span>
-              </button>
-              <div className="vault-status-secondary">
-                <button
-                  type="button"
-                  className="vault-status-refresh"
-                  onClick={() => void actions.handleRescanVault("sidebar:refresh-button")}
-                  title={refreshLabel}
-                  aria-label={refreshLabel}
-                  disabled={!vault.vaultPath || isRescanningVault}
-                >
-                  <span
-                    className={`vault-status-refresh-icon${
-                      isRescanningVault ? " is-spinning" : ""
-                    }`}
-                  >
-                    <RefreshIcon />
-                  </span>
-                </button>
-              </div>
-              {isVaultMenuOpen ? (
-                <div
-                  ref={vaultMenuRef}
-                  id="vault-recents-menu"
-                  className="vault-status-menu"
-                  role="menu"
-                  aria-label="Recent vaults"
-                  style={
-                    vaultMenuMaxHeight !== null
-                      ? ({ "--vault-menu-max-height": `${vaultMenuMaxHeight}px` } as CSSProperties)
-                      : undefined
-                  }
-                >
-                  <div className="vault-status-menu-scroll" role="presentation">
-                    {recentVaults.length === 0 ? (
-                      <div className="vault-status-menu-empty muted">
-                        No recent vaults.
-                      </div>
-                    ) : (
-                      recentVaults.map((entry) => {
-                        const info = recentVaultInfo[entry.path];
-                        const isMissing = info ? !info.exists || !info.isDir : false;
-                        const isActive =
-                          normalizeVaultPath(entry.path) === activeVaultKey;
-                        return (
-                          <div className="vault-status-menu-row" key={entry.path}>
-                            <button
-                              type="button"
-                              className="vault-status-menu-item"
-                              role="menuitem"
-                              disabled={isMissing}
-                              onClick={() => {
-                                setIsVaultMenuOpen(false);
-                                if (isActive) {
-                                  return;
-                                }
-                                void actions.handleSwitchVault(entry.path);
-                              }}
-                              title={entry.path}
-                            >
-                              <span className="vault-status-menu-name">
-                                {vaultBaseName(entry.path)}
-                              </span>
-                              {isMissing ? <span className="chip">Missing</span> : null}
-                            </button>
-                            <div className="vault-status-menu-actions">
-                              {isActive ? (
-                                <span
-                                  className="vault-status-menu-check"
-                                  aria-hidden="true"
-                                >
-                                  <CheckIcon />
-                                </span>
-                              ) : null}
-                              {isMissing ? (
-                                <button
-                                  type="button"
-                                  className="vault-status-menu-remove"
-                                  onClick={() =>
-                                    actions.handleRemoveRecentVault(entry.path)
-                                  }
-                                >
-                                  Remove
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                  <div className="vault-status-menu-footer" role="presentation">
-                    <div className="vault-status-menu-divider" role="separator" />
-                    <div className="vault-status-menu-manage-row">
-                      <button
-                        type="button"
-                        className="vault-status-menu-item vault-status-menu-manage"
-                        role="menuitem"
-                        onClick={() => {
-                          setIsVaultMenuOpen(false);
-                          actions.handleOpenVaultManager();
-                        }}
-                      >
-                        Manage Vaults
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
             <div className="sidebar-icon-row">
               <button
                 type="button"
@@ -507,64 +340,214 @@ export const SidebarNav = ({
               aria-hidden="true"
             />
           </div>
-          {toolbarMode === "cards" ? (
-            <nav className="nav">
-              <button
-                type="button"
-                className={`nav-item ${activeTab === "exam" ? "active" : ""}`}
-                onClick={() => onTabChange("exam")}
-              >
-                Exam
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${activeTab === "flashcard" ? "active" : ""}`}
-                onClick={() => onTabChange("flashcard")}
-              >
-                Flashcard
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${
-                  activeTab === "fast-flashcard" ? "active" : ""
-                }`}
-                onClick={() => onTabChange("fast-flashcard")}
-              >
-                Fast Flashcard
-              </button>
-              <button
-                type="button"
-                className={`nav-item ${
-                  activeTab === "spaced-repetition" ? "active" : ""
-                }`}
-                onClick={() => onTabChange("spaced-repetition")}
-              >
-                Spaced Repetition
-              </button>
-            </nav>
-          ) : null}
-          {toolbarMode === "vault" ? (
-            <div className="sidebar-vault-panel" id="sidebar-vault-panel">
-              <VaultTree
-                activeFolderPath={vault.activeFolderPath}
-                expandedPaths={expandedPaths}
-                fileCountLabel={fileCountLabel}
-                files={vault.files}
-                folders={vault.folders}
-                showHiddenFolders={settings.showHiddenFolders}
-                showEmptyFolders={settings.showEmptyFolders}
-                listError={vault.listError}
-                listState={vault.listState}
-                onActiveFolderChange={vault.setActiveFolderPath}
-                onTogglePath={handleTogglePath}
-                onSelectFile={actions.handleSelectFile}
-                onRescanVault={actions.handleRescanVault}
-                onClearSelection={preview.resetPreview}
-                selectedFile={preview.selectedFile}
-                vaultPath={vault.vaultPath}
-              />
+          <div className="sidebar-main" ref={vaultLayoutRef}>
+            <div className="sidebar-main-content">
+              {toolbarMode === "cards" ? (
+                <nav className="nav">
+                  <button
+                    type="button"
+                    className={`nav-item ${activeTab === "exam" ? "active" : ""}`}
+                    onClick={() => onTabChange("exam")}
+                  >
+                    Exam
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${
+                      activeTab === "flashcard" ? "active" : ""
+                    }`}
+                    onClick={() => onTabChange("flashcard")}
+                  >
+                    Flashcard
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${
+                      activeTab === "fast-flashcard" ? "active" : ""
+                    }`}
+                    onClick={() => onTabChange("fast-flashcard")}
+                  >
+                    Fast Flashcard
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-item ${
+                      activeTab === "spaced-repetition" ? "active" : ""
+                    }`}
+                    onClick={() => onTabChange("spaced-repetition")}
+                  >
+                    Spaced Repetition
+                  </button>
+                </nav>
+              ) : null}
+              {toolbarMode === "vault" ? (
+                <div className="sidebar-vault-panel" id="sidebar-vault-panel">
+                  <VaultTree
+                    activeFolderPath={vault.activeFolderPath}
+                    expandedPaths={expandedPaths}
+                    fileCountLabel={fileCountLabel}
+                    files={vault.files}
+                    folders={vault.folders}
+                    showHiddenFolders={settings.showHiddenFolders}
+                    showEmptyFolders={settings.showEmptyFolders}
+                    listError={vault.listError}
+                    listState={vault.listState}
+                    refreshLabel={refreshLabel}
+                    onActiveFolderChange={vault.setActiveFolderPath}
+                    onTogglePath={handleTogglePath}
+                    onSelectFile={actions.handleSelectFile}
+                    onRescanVault={actions.handleRescanVault}
+                    onClearSelection={preview.resetPreview}
+                    selectedFile={preview.selectedFile}
+                    vaultPath={vault.vaultPath}
+                  />
+                </div>
+              ) : null}
             </div>
-          ) : null}
+            {isVaultMenuOpen ? (
+              <div
+                ref={vaultMenuRef}
+                id="vault-recents-menu"
+                className="vault-status-menu"
+                role="menu"
+                aria-label="Recent vaults"
+                style={
+                  vaultMenuMaxHeight !== null
+                    ? ({ "--vault-menu-max-height": `${vaultMenuMaxHeight}px` } as CSSProperties)
+                    : undefined
+                }
+              >
+                <div className="vault-status-menu-scroll" role="presentation">
+                  {recentVaults.length === 0 ? (
+                    <div className="vault-status-menu-empty muted">
+                      No recent vaults.
+                    </div>
+                  ) : (
+                    recentVaults.map((entry) => {
+                      const info = recentVaultInfo[entry.path];
+                      const isMissing = info ? !info.exists || !info.isDir : false;
+                      const isActive =
+                        normalizeVaultPath(entry.path) === activeVaultKey;
+                      return (
+                        <div className="vault-status-menu-row" key={entry.path}>
+                          <button
+                            type="button"
+                            className="vault-status-menu-item"
+                            role="menuitem"
+                            disabled={isMissing}
+                            onClick={() => {
+                              setIsVaultMenuOpen(false);
+                              if (isActive) {
+                                return;
+                              }
+                              void actions.handleSwitchVault(entry.path);
+                            }}
+                            title={entry.path}
+                          >
+                            <span className="vault-status-menu-name">
+                              {vaultBaseName(entry.path)}
+                            </span>
+                            {isMissing ? <span className="chip">Missing</span> : null}
+                          </button>
+                          <div className="vault-status-menu-actions">
+                            {isActive ? (
+                              <span
+                                className="vault-status-menu-check"
+                                aria-hidden="true"
+                              >
+                                <CheckIcon />
+                              </span>
+                            ) : null}
+                            {isMissing ? (
+                              <button
+                                type="button"
+                                className="vault-status-menu-remove"
+                                onClick={() => actions.handleRemoveRecentVault(entry.path)}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="vault-status-menu-footer" role="presentation">
+                  <div className="vault-status-menu-divider" role="separator" />
+                  <div className="vault-status-menu-manage-row">
+                    <button
+                      type="button"
+                      className="vault-status-menu-item vault-status-menu-manage"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsVaultMenuOpen(false);
+                        actions.handleOpenVaultManager();
+                      }}
+                    >
+                      Manage Vaults
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="vault-status" ref={vaultStatusRef}>
+              <div className="vault-status-header">
+                <span className="label">ACTIVE VAULT</span>
+                <div className="vault-status-actions">
+                  <button
+                    type="button"
+                    className="vault-status-action"
+                    onClick={() => {
+                      setIsVaultMenuOpen(false);
+                      onOpenHelp();
+                    }}
+                    aria-label="Help"
+                    title="Help"
+                  >
+                    <HelpIcon />
+                  </button>
+                  <button
+                    type="button"
+                    className="vault-status-action"
+                    onClick={() => {
+                      setIsVaultMenuOpen(false);
+                      onOpenSettings();
+                    }}
+                    aria-label="Settings"
+                    title="Settings"
+                  >
+                    <SettingsIcon />
+                  </button>
+                </div>
+              </div>
+              <button
+                ref={vaultButtonRef}
+                type="button"
+                className="vault-status-main"
+                onClick={() => setIsVaultMenuOpen((prev) => !prev)}
+                title={vault.vaultPath ?? "Select vault"}
+                aria-label="Select vault"
+                aria-haspopup="menu"
+                aria-expanded={isVaultMenuOpen}
+                aria-controls="vault-recents-menu"
+              >
+                <span className="value vault-status-value">
+                  <span className="vault-status-value-text">
+                    Vault: {vault.vaultPath ? vaultRootName : "Not set"}
+                  </span>
+                  <span
+                    className={`vault-status-caret${
+                      isVaultMenuOpen ? " is-open" : ""
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <ChevronDownIcon />
+                  </span>
+                </span>
+              </button>
+            </div>
+          </div>
         </>
       )}
     </aside>

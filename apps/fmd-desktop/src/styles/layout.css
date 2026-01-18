@@ -167,6 +167,23 @@
   gap: 12px;
 }
 
+.sidebar-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 8px;
+}
+
+.sidebar-main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  gap: 12px;
+}
+
 .sidebar-divider {
   height: 1px;
   width: 100%;
@@ -391,10 +408,8 @@
 }
 
 .vault-status-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  right: 0;
+  position: relative;
+  width: 100%;
   background: var(--panel);
   border: 1px solid var(--line-soft);
   border-radius: 12px;
@@ -403,6 +418,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 0 1 auto;
+  min-height: 0;
   max-height: var(--vault-menu-max-height, 240px);
   overflow: hidden;
   z-index: 80;
@@ -412,6 +429,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
@@ -421,6 +439,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-top: auto;
 }
 
 .vault-status-menu-row {
@@ -512,7 +531,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vault-status-refresh-icon.is-spinning {
+  .vault-status-refresh-icon.is-spinning,
+  .vault-directory-action-icon.is-spinning {
     animation: none;
   }
 }
@@ -599,14 +619,68 @@
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: 4px;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.sidebar .vault-details-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.sidebar .vault-details-title {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar .vault-summary {
-  display: block;
-  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar .vault-directory-action {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  color: inherit;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.sidebar .vault-directory-action:hover:not(:disabled) {
+  border-color: var(--accent-weak-border);
+  background: var(--accent-active-bg);
+}
+
+.sidebar .vault-directory-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sidebar .vault-directory-action-icon {
+  display: inline-flex;
+}
+
+.sidebar .vault-directory-action-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sidebar .vault-directory-action-icon.is-spinning {
+  animation: spin 0.9s linear infinite;
 }
 
 .sidebar .vault-body {

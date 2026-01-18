@@ -36,7 +36,7 @@ import {
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { FileIcon, FolderIcon } from "./icons";
+import { CloseIcon, FileIcon, FolderIcon, RefreshIcon } from "./icons";
 import { InlineRenameLabel } from "./InlineRenameLabel";
 import { VaultCreateModal } from "./VaultCreateModal";
 import { VaultDeleteModal } from "./VaultDeleteModal";
@@ -320,6 +320,7 @@ type VaultTreeProps = {
   showEmptyFolders: boolean;
   listError: string;
   listState: LoadState;
+  refreshLabel?: string;
   onRescanVault: (source?: string) => Promise<boolean>;
   onActiveFolderChange: (path: string | null) => void;
   onTogglePath: (path: string, isOpen: boolean) => void;
@@ -339,6 +340,7 @@ export const VaultTree = ({
   showEmptyFolders,
   listError,
   listState,
+  refreshLabel,
   onRescanVault,
   onActiveFolderChange,
   onTogglePath,
@@ -348,6 +350,9 @@ export const VaultTree = ({
   vaultPath,
 }: VaultTreeProps) => {
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
+  const isRescanningVault = listState === "loading";
+  const refreshTitle = refreshLabel ?? "Rescan vault";
+  const clearSelectionTitle = "Clear selection";
   const closeContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
@@ -398,6 +403,11 @@ export const VaultTree = ({
     null,
   );
   const portalTarget = typeof document === "undefined" ? null : document.body;
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedNode(null);
+    onClearSelection?.();
+  }, [onClearSelection]);
 
   const mergedFiles = useMemo(() => {
     if (pendingFiles.length === 0) {
@@ -1818,8 +1828,40 @@ export const VaultTree = ({
   return (
     <div className="vault-details">
       <div className="vault-details-header">
-        <span>Vault Directory</span>
-        <span className="vault-summary">{fileCountLabel}</span>
+        <div className="vault-details-row">
+          <span className="vault-details-title">Vault Directory</span>
+          <button
+            type="button"
+            className="vault-directory-action"
+            onClick={() => void onRescanVault("vault-tree:header-refresh")}
+            title={refreshTitle}
+            aria-label={refreshTitle}
+            disabled={!vaultPath || isRescanningVault}
+          >
+            <span
+              className={`vault-directory-action-icon${
+                isRescanningVault ? " is-spinning" : ""
+              }`}
+            >
+              <RefreshIcon />
+            </span>
+          </button>
+        </div>
+        <div className="vault-details-row">
+          <span className="vault-summary">{fileCountLabel}</span>
+          <button
+            type="button"
+            className="vault-directory-action"
+            onClick={handleClearSelection}
+            title={clearSelectionTitle}
+            aria-label={clearSelectionTitle}
+            disabled={!onClearSelection || !selectedFile}
+          >
+            <span className="vault-directory-action-icon">
+              <CloseIcon />
+            </span>
+          </button>
+        </div>
       </div>
       <div className="vault-body">
         <div

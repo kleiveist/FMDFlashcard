@@ -5,12 +5,6 @@ Project control entry point.
 Examples:
     ./control.py --doctor
     ./control.py --doctor --json
-
-    # Windows build (installer bundles)
-    ./control.py --build-win
-
-    # Windows portable build (no installer; build script decides packaging)
-    ./control.py --build-win -p
 """
 
 from __future__ import annotations
@@ -23,34 +17,27 @@ import platform
 import shutil
 import subprocess
 import sys
+import runpy
+import types
 from pathlib import Path
 from typing import Callable, cast
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-
-# New structure:
-#   tools/build/build_*.py
-# Legacy (optional):
-#   tools/inst/build/build_*.py
 INST_DIR = SCRIPT_DIR / "inst"
-BUILD_DIR = SCRIPT_DIR / "build"
-LEGACY_BUILD_DIR = INST_DIR / "build"
+BUILD_DIR = INST_DIR / "build"
 
 # sys.path bootstrap for tooling modules.
-# insert(0) gives higher precedence to later inserts, so we insert
-# in increasing priority order (last = highest).
+# insert(0) gives higher precedence to later inserts.
 extra_dirs = (
-    INST_DIR,
-    INST_DIR / "linux",
-    INST_DIR / "mac",
-    INST_DIR / "win",
-    LEGACY_BUILD_DIR,
     BUILD_DIR,
+    INST_DIR / "win",
+    INST_DIR / "mac",
+    INST_DIR / "linux",
+    INST_DIR,
 )
 for extra_dir in extra_dirs:
     if extra_dir.exists() and str(extra_dir) not in sys.path:
         sys.path.insert(0, str(extra_dir))
-
 from doctor import run as run_doctor  # type: ignore
 from console import info, section as console_section
 
@@ -193,18 +180,34 @@ def _load_run_runner() -> Callable[..., int] | None:
     return cast(Callable[..., int], fn)
 
 
-def _load_build_lin_runner() -> Callable[..., int] | None:
-    """Load tools/build/build_lin.py (runner for pnpm tauri build)."""
-    mod_name = "build_lin"
+
+
+def _load_module_from_path(mod_name: str, path: Path):
+    """Load a Python module from an explicit file path without relying on importlib.util."""
+    if not path.exists():
+        return None
     try:
-        mod = importlib.import_module(mod_name)
+        ns = runpy.run_path(str(path), run_name=mod_name)
     except Exception as e:
-        print(f"Could not load Linux build module: {mod_name} ({e})")
+        print(f"Could not execute module at {path}: {e}")
+        return None
+
+    mod = types.ModuleType(mod_name)
+    mod.__file__ = str(path)
+    mod.__dict__.update(ns)
+    sys.modules[mod_name] = mod
+    return mod
+def _load_build_lin_runner() -> Callable[..., int] | None:
+    """Load tools/inst/build/build_lin.py (runner for pnpm tauri build)."""
+    path = BUILD_DIR / "build_lin.py"
+    mod = _load_module_from_path("build_lin", path)
+    if not mod:
+        print(f"Could not load build module from: {path}")
         return None
 
     fn = getattr(mod, "run_install", None)
     if not callable(fn):
-        print(f"Linux build module '{mod_name}' has no run_install(dry_run=...) function.")
+        print("Linux build module has no run_install(dry_run=...) function.")
         return None
     return cast(Callable[..., int], fn)
 
@@ -229,56 +232,36 @@ def _print_build_helper() -> None:
     console_section("Build helper")
     info("Available targets:")
     info("  --build-lin  Linux release (NO_STRIP, CLEAN_BUNDLE).")
-    info("  --build-win  Windows build (default bundles via WIN_BUNDLES). Use -p for portable.")
+    info("  --build-win  Windows bundles (WIN_BUNDLES=nsis,msi, ALLOW_CROSS).")
     info("  --build-mac  macOS bundles (MAC_BUNDLES=app,dmg, ALLOW_CROSS).")
 
 
 def _load_build_win_runner() -> Callable[..., int] | None:
-    """Load tools/build/build_win.py (runner for Windows build)."""
-    mod_name = "build_win"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load Windows build module: {mod_name} ({e})")
+    """Load tools/inst/build/build_win.py (runner for Windows build)."""
+    path = BUILD_DIR / "build_win.py"
+    mod = _load_module_from_path("build_win", path)
+    if not mod:
+        print(f"Could not load Windows build module from: {path}")
         return None
 
     fn = getattr(mod, "run_install", None)
     if not callable(fn):
-        print(f"Windows build module '{mod_name}' has no run_install(dry_run=...) function.")
-        return None
-    return cast(Callable[..., int], fn)
-
-
-def _load_build_win_portable_runner() -> Callable[..., int] | None:
-    """Load tools/build/build_win_p.py (runner for Windows portable build)."""
-    mod_name = "build_win_p"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load Windows portable build module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(
-            f"Windows portable build module '{mod_name}' has no run_install(dry_run=...) function."
-        )
+        print("Windows build module has no run_install(dry_run=...) function.")
         return None
     return cast(Callable[..., int], fn)
 
 
 def _load_build_mac_runner() -> Callable[..., int] | None:
-    """Load tools/build/build_mac.py (runner for macOS build)."""
-    mod_name = "build_mac"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load macOS build module: {mod_name} ({e})")
+    """Load tools/inst/build/build_mac.py (runner for macOS build)."""
+    path = BUILD_DIR / "build_mac.py"
+    mod = _load_module_from_path("build_mac", path)
+    if not mod:
+        print(f"Could not load macOS build module from: {path}")
         return None
 
     fn = getattr(mod, "run_install", None)
     if not callable(fn):
-        print(f"macOS build module '{mod_name}' has no run_install(dry_run=...) function.")
+        print("macOS build module has no run_install(dry_run=...) function.")
         return None
     return cast(Callable[..., int], fn)
 
@@ -327,23 +310,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--build",
         action="store_true",
-        help="Build helper output (prints build targets).",
+        help="Build the desktop app (pnpm tauri build).",
     )
     parser.add_argument(
         "--build-lin",
         action="store_true",
-        help="Build Linux desktop bundles (use NO_STRIP/CLEAN_BUNDLE env).",
+        help="Build Linux desktop bundles (same as --build before; use NO_STRIP/CLEAN_BUNDLE env)",
     )
     parser.add_argument(
         "--build-win",
         action="store_true",
-        help="Build Windows bundles (use WIN_BUNDLES env). Add -p for portable.",
-    )
-    parser.add_argument(
-        "-p",
-        "--portable",
-        action="store_true",
-        help="Portable mode for --build-win (build exe + package, no installer).",
+        help="Build Windows bundles (WIN_BUNDLES=nsis,msi).",
     )
     parser.add_argument(
         "--build-mac",
@@ -449,7 +426,7 @@ def main(argv: list[str] | None = None) -> int:
         console_section("Linux Build")
         run_build_lin = _load_build_lin_runner()
         if not run_build_lin:
-            print("No Linux build routine found. Expected: tools/build/build_lin.py")
+            print("No build routine found. Expected: tools/inst/build/build_lin.py")
             exit_code = max(exit_code, 1)
         else:
             try:
@@ -464,14 +441,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.build_win:
         handled = True
         console_section("Windows Build")
-        run_build_win = (
-            _load_build_win_portable_runner() if args.portable else _load_build_win_runner()
-        )
+        run_build_win = _load_build_win_runner()
         if not run_build_win:
-            if args.portable:
-                print("No Windows portable build routine found. Expected: tools/build/build_win_p.py")
-            else:
-                print("No Windows build routine found. Expected: tools/build/build_win.py")
+            print("No Windows build routine found. Expected: tools/inst/build/build_win.py")
             exit_code = max(exit_code, 1)
         else:
             try:
@@ -488,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
         console_section("macOS Build")
         run_build_mac = _load_build_mac_runner()
         if not run_build_mac:
-            print("No macOS build routine found. Expected: tools/build/build_mac.py")
+            print("No macOS build routine found. Expected: tools/inst/build/build_mac.py")
             exit_code = max(exit_code, 1)
         else:
             try:
