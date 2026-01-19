@@ -22,6 +22,7 @@
  */
 
 import {
+  type CSSProperties,
   type ForwardedRef,
   forwardRef,
   useCallback,
@@ -131,7 +132,7 @@ const DashboardPageInner = (
       deriveMarkdownEditorColors({
         accentHex: markdownEditorAccentHex,
         themeMode: settings.theme,
-      }),
+      }) as CSSProperties,
     [markdownEditorAccentHex, settings.theme],
   );
 
