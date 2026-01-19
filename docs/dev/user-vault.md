@@ -39,7 +39,7 @@
 
 - **Konflikte** bei Multi-Device Sync (gleichzeitige Writes).
 - **Schema-Versioning** fuer JSON; Migrationen sauber definieren.
-- **Settings Persistenz**: user vault mode + custom path sind App-Settings.
+- **Settings Persistenz**: Settings werden im Profil (`profile.json`) gespeichert und folgen dem aktiven Profil.
 - **Vault-Wechsel**: Auto-Mode wechselt path; Custom-Mode bleibt.
 - **Backup/Restore UX**: Export/Import fuer Profile + optionaler Vault-wide Export.
 - **Security/Privacy**: Optional Verschluesselung fuer Sync-Provider.

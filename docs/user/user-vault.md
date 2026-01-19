@@ -23,7 +23,7 @@ Kurz: Profile steuern den Speicherort, User steuern SR-Logik.
 ## Was wird gespeichert?
 
 Pro Profil werden JSON-Dateien abgelegt:
-- `profile.json`: Profil-Metadaten
+- `profile.json`: Profil-Metadaten und Settings
 - `spaced-repetition.json`: SR-Fortschritt (pro Vault-ID)
 - `fast-flashcard.json`: Fast-Flashcard Session-Historie
 - `exam-runs.json`: Exam-Simulation Runs

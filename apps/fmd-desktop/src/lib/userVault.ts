@@ -19,10 +19,13 @@ export type UserVaultProfileMeta = {
   createdAt: string;
 };
 
+export type UserVaultProfileSettings = Record<string, unknown>;
+
 export type UserVaultProfileData = {
   spacedRepetitionByVaultId: Record<string, SpacedRepetitionStorage>;
   fastFlashcardSessions: FastFlashcardSessionSummary[];
   examRuns: ExamRun[];
+  settings?: UserVaultProfileSettings | null;
 };
 
 export type UserVaultProfileExportEntry = {
@@ -103,6 +106,7 @@ export const createEmptyProfileData = (): UserVaultProfileData => ({
   spacedRepetitionByVaultId: {},
   fastFlashcardSessions: [],
   examRuns: [],
+  settings: null,
 });
 
 const mergeById = <T,>(
@@ -150,8 +154,15 @@ export const mergeProfileData = (
   incoming: UserVaultProfileData,
   strategy: UserVaultImportStrategy,
 ): UserVaultProfileData => {
+  const incomingHasSettings = Object.prototype.hasOwnProperty.call(
+    incoming,
+    "settings",
+  );
   if (strategy === "overwrite") {
-    return incoming;
+    return {
+      ...incoming,
+      settings: incomingHasSettings ? incoming.settings ?? null : base.settings ?? null,
+    };
   }
   const spacedRepetitionByVaultId = { ...base.spacedRepetitionByVaultId };
   Object.entries(incoming.spacedRepetitionByVaultId).forEach(
@@ -174,6 +185,7 @@ export const mergeProfileData = (
       (session) => session.id,
     ),
     examRuns: mergeById(base.examRuns, incoming.examRuns, (run) => run.id),
+    settings: base.settings ?? incoming.settings ?? null,
   };
 };
 

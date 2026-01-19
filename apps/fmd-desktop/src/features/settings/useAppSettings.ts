@@ -55,6 +55,10 @@ import {
   type SpacedRepetitionRepetitionStrength,
 } from "../spaced-repetition/useSpacedRepetition";
 import type { UserVaultMode } from "../../lib/userVault";
+import {
+  loadProfileSettings as loadUserVaultProfileSettings,
+  saveProfileSettings as saveUserVaultProfileSettings,
+} from "../user-vault/storage";
 
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
@@ -190,6 +194,59 @@ type PersistUpdates = {
   examGradeScale?: ExamGradeScale;
   examAiEvaluation?: ExamAiEvaluation;
   keyboardShortcuts?: KeyboardShortcutSettings;
+};
+
+type SettingsSnapshot = {
+  activeNotePath: string | null;
+  vaultPath: string | null;
+  recentVaults: RecentVaultEntry[];
+  userVaultMode: UserVaultMode;
+  userVaultCustomPath: string | null;
+  theme: ThemeMode;
+  accentColor: string;
+  markdownEditorAccentEnabled: boolean;
+  markdownEditorAccentLightHex: string;
+  markdownEditorAccentDarkHex: string;
+  markdownEditorAccentCustomSwatches: string[];
+  editorBlueprintGrid: boolean;
+  editorBlueprintGridIntensity: EditorGridIntensity;
+  examEditorShowMoveButtons: boolean;
+  language: AppLanguage;
+  maxFilesPerScan: string;
+  scanParallelism: "low" | "medium" | "high";
+  showHiddenFolders: boolean;
+  showEmptyFolders: boolean;
+  flashcardOrder: FlashcardOrder;
+  flashcardMode: FlashcardMode;
+  flashcardScope: FlashcardScope;
+  flashcardPageSize: FlashcardPageSize;
+  solutionRevealEnabled: boolean;
+  statsResetMode: StatsResetMode;
+  flashcardHelpEnabled: boolean;
+  fastFlashcardOrder: FlashcardOrder;
+  fastFlashcardMode: FlashcardMode;
+  fastFlashcardScope: FlashcardScope;
+  fastFlashcardDuration: number;
+  fastFlashcardHelpEnabled: boolean;
+  examShowTimeline: boolean;
+  examHelpEnabled: boolean;
+  spacedRepetitionBoxes: SpacedRepetitionBoxes;
+  spacedRepetitionOrder: SpacedRepetitionOrder;
+  spacedRepetitionPageSize: SpacedRepetitionPageSize;
+  spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
+  spacedRepetitionStatsView: SpacedRepetitionStatsView;
+  spacedRepetitionHelpEnabled: boolean;
+  rightToolbarCollapsed: boolean;
+  examMaxTotalPoints: number;
+  examTaskCount: number;
+  examTaskPoints: number[];
+  examDurationMinutes: number;
+  examTimeLimitEnabled: boolean;
+  examAutoCardsEnabled: boolean;
+  examAutoCardsReturnOnCorrect: boolean;
+  examGradeScale: ExamGradeScale;
+  examAiEvaluation: ExamAiEvaluation;
+  keyboardShortcuts: KeyboardShortcutSettings;
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -423,6 +480,64 @@ const normalizeMarkdownAccentSwatches = (value: unknown) => {
   return Array.from(next).slice(0, 20);
 };
 
+const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings => ({
+  active_note_path: settings.activeNotePath,
+  vault_path: settings.vaultPath,
+  recent_vaults: settings.recentVaults,
+  user_vault_mode: settings.userVaultMode,
+  user_vault_custom_path: settings.userVaultCustomPath,
+  theme: settings.theme,
+  accent_color: settings.accentColor,
+  markdownEditor: {
+    accentColor: {
+      lightHex: settings.markdownEditorAccentLightHex,
+      darkHex: settings.markdownEditorAccentDarkHex,
+      customSwatches: settings.markdownEditorAccentCustomSwatches,
+    },
+  },
+  editor_markdown_exact_colors_enabled: settings.markdownEditorAccentEnabled,
+  editor_blueprint_grid: settings.editorBlueprintGrid,
+  editor_blueprint_grid_intensity: settings.editorBlueprintGridIntensity,
+  exam_editor_show_move_buttons: settings.examEditorShowMoveButtons,
+  language: settings.language,
+  max_files_per_scan: settings.maxFilesPerScan,
+  scan_parallelism: settings.scanParallelism,
+  show_hidden_folders: settings.showHiddenFolders,
+  show_empty_folders: settings.showEmptyFolders,
+  flashcard_order: settings.flashcardOrder,
+  flashcard_mode: settings.flashcardMode,
+  flashcard_scope: settings.flashcardScope,
+  flashcard_page_size: settings.flashcardPageSize,
+  flashcard_solution_reveal_enabled: settings.solutionRevealEnabled,
+  flashcard_stats_reset_mode: settings.statsResetMode,
+  flashcard_help_enabled: settings.flashcardHelpEnabled,
+  fast_flashcard_order: settings.fastFlashcardOrder,
+  fast_flashcard_mode: settings.fastFlashcardMode,
+  fast_flashcard_scope: settings.fastFlashcardScope,
+  fast_flashcard_duration: settings.fastFlashcardDuration,
+  fast_flashcard_help_enabled: settings.fastFlashcardHelpEnabled,
+  exam_show_timeline: settings.examShowTimeline,
+  exam_help_enabled: settings.examHelpEnabled,
+  spaced_repetition_boxes: settings.spacedRepetitionBoxes,
+  spaced_repetition_order: settings.spacedRepetitionOrder,
+  spaced_repetition_page_size: settings.spacedRepetitionPageSize,
+  spaced_repetition_repetition_strength:
+    settings.spacedRepetitionRepetitionStrength,
+  spaced_repetition_stats_view: settings.spacedRepetitionStatsView,
+  spaced_repetition_help_enabled: settings.spacedRepetitionHelpEnabled,
+  right_toolbar_collapsed: settings.rightToolbarCollapsed,
+  exam_max_total_points: settings.examMaxTotalPoints,
+  exam_task_count: settings.examTaskCount,
+  exam_task_points: settings.examTaskPoints,
+  exam_duration_minutes: settings.examDurationMinutes,
+  exam_time_limit_enabled: settings.examTimeLimitEnabled,
+  exam_auto_cards_enabled: settings.examAutoCardsEnabled,
+  exam_auto_cards_return_on_correct: settings.examAutoCardsReturnOnCorrect,
+  exam_grade_scale: settings.examGradeScale,
+  exam_ai_evaluation: settings.examAiEvaluation,
+  keyboard_shortcuts: settings.keyboardShortcuts,
+});
+
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
@@ -446,6 +561,10 @@ export const useAppSettings = () => {
   const [examEditorShowMoveButtons, setExamEditorShowMoveButtonsState] =
     useState(DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [userVaultProfilePath, setUserVaultProfilePath] = useState<string | null>(
+    null,
+  );
+  const [userVaultProfileRevision, setUserVaultProfileRevision] = useState(0);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [recentVaults, setRecentVaults] = useState<RecentVaultEntry[]>([]);
@@ -553,6 +672,9 @@ export const useAppSettings = () => {
   const autoSaveTimer = useRef<number | null>(null);
   const needsShowHiddenFoldersMigration = useRef(false);
   const needsKeyboardShortcutsMigration = useRef(false);
+  const lastProfileSyncRef = useRef<{ path: string; revision: number } | null>(
+    null,
+  );
 
   const setExamMaxTotalPoints = useCallback((value: number) => {
     setExamMaxTotalPointsState(clampExamTotalPoints(value));
@@ -647,6 +769,14 @@ export const useAppSettings = () => {
     setUserVaultCustomPathState(next || null);
   }, []);
 
+  const setUserVaultProfileContext = useCallback(
+    (path: string | null, revision: number) => {
+      setUserVaultProfilePath(path);
+      setUserVaultProfileRevision(revision);
+    },
+    [],
+  );
+
   const setFlashcardHelpEnabled = useCallback((value: boolean) => {
     setFlashcardHelpEnabledState(Boolean(value));
   }, []);
@@ -712,60 +842,120 @@ export const useAppSettings = () => {
     setSpacedRepetitionHelpEnabledState(Boolean(value));
   }, []);
 
+  const buildSettingsSnapshot = useCallback(
+    (): SettingsSnapshot => ({
+      activeNotePath,
+      vaultPath,
+      recentVaults,
+      userVaultMode,
+      userVaultCustomPath,
+      theme,
+      accentColor,
+      markdownEditorAccentEnabled,
+      markdownEditorAccentLightHex,
+      markdownEditorAccentDarkHex,
+      markdownEditorAccentCustomSwatches,
+      editorBlueprintGrid,
+      editorBlueprintGridIntensity,
+      examEditorShowMoveButtons,
+      language,
+      maxFilesPerScan,
+      scanParallelism,
+      showHiddenFolders,
+      showEmptyFolders,
+      flashcardOrder,
+      flashcardMode,
+      flashcardScope,
+      flashcardPageSize,
+      solutionRevealEnabled,
+      statsResetMode,
+      flashcardHelpEnabled,
+      fastFlashcardOrder,
+      fastFlashcardMode,
+      fastFlashcardScope,
+      fastFlashcardDuration,
+      fastFlashcardHelpEnabled,
+      examShowTimeline,
+      examHelpEnabled,
+      spacedRepetitionBoxes,
+      spacedRepetitionOrder,
+      spacedRepetitionPageSize,
+      spacedRepetitionRepetitionStrength,
+      spacedRepetitionStatsView,
+      spacedRepetitionHelpEnabled,
+      rightToolbarCollapsed,
+      examMaxTotalPoints,
+      examTaskCount,
+      examTaskPoints,
+      examDurationMinutes,
+      examTimeLimitEnabled,
+      examAutoCardsEnabled,
+      examAutoCardsReturnOnCorrect,
+      examGradeScale,
+      examAiEvaluation,
+      keyboardShortcuts,
+    }),
+    [
+      accentColor,
+      activeNotePath,
+      markdownEditorAccentEnabled,
+      markdownEditorAccentLightHex,
+      markdownEditorAccentDarkHex,
+      markdownEditorAccentCustomSwatches,
+      editorBlueprintGrid,
+      editorBlueprintGridIntensity,
+      examEditorShowMoveButtons,
+      examAiEvaluation,
+      examMaxTotalPoints,
+      examTaskCount,
+      examTaskPoints,
+      examDurationMinutes,
+      examTimeLimitEnabled,
+      examAutoCardsEnabled,
+      examAutoCardsReturnOnCorrect,
+      examGradeScale,
+      examHelpEnabled,
+      keyboardShortcuts,
+      flashcardMode,
+      flashcardOrder,
+      fastFlashcardMode,
+      fastFlashcardOrder,
+      fastFlashcardScope,
+      fastFlashcardDuration,
+      fastFlashcardHelpEnabled,
+      examShowTimeline,
+      flashcardPageSize,
+      flashcardScope,
+      flashcardHelpEnabled,
+      language,
+      maxFilesPerScan,
+      scanParallelism,
+      showHiddenFolders,
+      showEmptyFolders,
+      solutionRevealEnabled,
+      spacedRepetitionBoxes,
+      spacedRepetitionHelpEnabled,
+      spacedRepetitionOrder,
+      spacedRepetitionPageSize,
+      spacedRepetitionRepetitionStrength,
+      spacedRepetitionStatsView,
+      statsResetMode,
+      theme,
+      userVaultCustomPath,
+      userVaultMode,
+      vaultPath,
+      recentVaults,
+      rightToolbarCollapsed,
+    ],
+  );
+
   const saveSettings = useCallback(
-    async (settings: {
-      activeNotePath: string | null;
-      vaultPath: string | null;
-      recentVaults: RecentVaultEntry[];
-      userVaultMode: UserVaultMode;
-      userVaultCustomPath: string | null;
-      theme: ThemeMode;
-      accentColor: string;
-      markdownEditorAccentEnabled: boolean;
-      markdownEditorAccentLightHex: string;
-      markdownEditorAccentDarkHex: string;
-      markdownEditorAccentCustomSwatches: string[];
-      editorBlueprintGrid: boolean;
-      editorBlueprintGridIntensity: EditorGridIntensity;
-      examEditorShowMoveButtons: boolean;
-      language: AppLanguage;
-      maxFilesPerScan: string;
-      scanParallelism: "low" | "medium" | "high";
-      showHiddenFolders: boolean;
-      showEmptyFolders: boolean;
-      flashcardOrder: FlashcardOrder;
-      flashcardMode: FlashcardMode;
-      flashcardScope: FlashcardScope;
-      flashcardPageSize: FlashcardPageSize;
-      solutionRevealEnabled: boolean;
-      statsResetMode: StatsResetMode;
-      flashcardHelpEnabled: boolean;
-      spacedRepetitionBoxes: SpacedRepetitionBoxes;
-      spacedRepetitionOrder: SpacedRepetitionOrder;
-      spacedRepetitionPageSize: SpacedRepetitionPageSize;
-      spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
-      spacedRepetitionStatsView: SpacedRepetitionStatsView;
-      spacedRepetitionHelpEnabled: boolean;
-      rightToolbarCollapsed: boolean;
-      fastFlashcardOrder: FlashcardOrder;
-      fastFlashcardMode: FlashcardMode;
-      fastFlashcardScope: FlashcardScope;
-      fastFlashcardDuration: number;
-      fastFlashcardHelpEnabled: boolean;
-      examShowTimeline: boolean;
-      examHelpEnabled: boolean;
-      examMaxTotalPoints: number;
-      examTaskCount: number;
-      examTaskPoints: number[];
-      examDurationMinutes: number;
-      examTimeLimitEnabled: boolean;
-      examAutoCardsEnabled: boolean;
-      examAutoCardsReturnOnCorrect: boolean;
-      examGradeScale: ExamGradeScale;
-      examAiEvaluation: ExamAiEvaluation;
-      keyboardShortcuts: KeyboardShortcutSettings;
-    }) => {
+    async (settings: SettingsSnapshot) => {
       try {
+        const profilePayload = buildProfileSettingsPayload(settings);
+        if (userVaultProfilePath) {
+          await saveUserVaultProfileSettings(userVaultProfilePath, profilePayload);
+        }
         await invoke("save_app_settings", {
           activeNotePath: settings.activeNotePath,
           vaultPath: settings.vaultPath,
@@ -829,7 +1019,7 @@ export const useAppSettings = () => {
         return false;
       }
     },
-    [],
+    [userVaultProfilePath],
   );
 
   const persistSettings = useCallback(
@@ -986,6 +1176,313 @@ export const useAppSettings = () => {
     ],
   );
 
+  const applyStoredSettings = useCallback((settings: AppSettings) => {
+    const storedTheme = settings.theme === "dark" ? "dark" : DEFAULT_THEME;
+    const storedAccentRaw = settings.accent_color ?? DEFAULT_ACCENT;
+    const storedAccent = normalizeHex(storedAccentRaw);
+    const resolvedAccent = isValidHex(storedAccent) ? storedAccent : DEFAULT_ACCENT;
+    const storedMarkdownAccent = settings.markdownEditor?.accentColor ?? null;
+    const storedMarkdownAccentLight = normalizeMarkdownAccentHex(
+      storedMarkdownAccent?.lightHex,
+    );
+    const storedMarkdownAccentDark = normalizeMarkdownAccentHex(
+      storedMarkdownAccent?.darkHex,
+    );
+    const storedMarkdownAccentCustomSwatches = normalizeMarkdownAccentSwatches(
+      storedMarkdownAccent?.customSwatches ?? [],
+    );
+    const legacyMarkdownAccent =
+      normalizeMarkdownAccentHex(settings.markdownEditor?.accentColorHex) ??
+      normalizeMarkdownAccentHex(settings.editor_markdown_custom_accent_hex);
+    const fallbackMarkdownAccent = legacyMarkdownAccent ?? resolvedAccent;
+    const storedMarkdownAccentEnabled =
+      typeof settings.editor_markdown_exact_colors_enabled === "boolean"
+        ? settings.editor_markdown_exact_colors_enabled
+        : DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED;
+    const storedMarkdownAccentLightHex =
+      storedMarkdownAccentLight ?? fallbackMarkdownAccent;
+    const storedMarkdownAccentDarkHex =
+      storedMarkdownAccentDark ?? fallbackMarkdownAccent;
+    const storedEditorBlueprintGrid =
+      typeof settings.editor_blueprint_grid === "boolean"
+        ? settings.editor_blueprint_grid
+        : DEFAULT_EDITOR_BLUEPRINT_GRID;
+    const storedEditorBlueprintGridIntensity =
+      settings.editor_blueprint_grid_intensity === "light" ||
+      settings.editor_blueprint_grid_intensity === "strong" ||
+      settings.editor_blueprint_grid_intensity === "medium"
+        ? settings.editor_blueprint_grid_intensity
+        : DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY;
+    const storedExamEditorShowMoveButtons =
+      typeof settings.exam_editor_show_move_buttons === "boolean"
+        ? settings.exam_editor_show_move_buttons
+        : DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS;
+    const storedLanguage = settings.language === "en" ? "en" : DEFAULT_LANGUAGE;
+    const maxFilesRaw = settings.max_files_per_scan;
+    const maxFilesValue =
+      typeof maxFilesRaw === "number"
+        ? String(maxFilesRaw)
+        : typeof maxFilesRaw === "string"
+          ? maxFilesRaw.trim()
+          : DEFAULT_MAX_FILES_PER_SCAN;
+    const storedMaxFilesPerScan =
+      maxFilesValue === ""
+        ? ""
+        : /^[0-9]+$/.test(maxFilesValue)
+          ? maxFilesValue
+          : DEFAULT_MAX_FILES_PER_SCAN;
+    const storedScanParallelism =
+      settings.scan_parallelism === "low" ||
+      settings.scan_parallelism === "high" ||
+      settings.scan_parallelism === "medium"
+        ? settings.scan_parallelism
+        : DEFAULT_SCAN_PARALLELISM;
+    const legacyHiddenFoldersLevel = resolveLegacyHiddenFoldersLevel(settings);
+    const shouldMigrateShowHiddenFolders =
+      typeof settings.show_hidden_folders !== "boolean" &&
+      legacyHiddenFoldersLevel !== null;
+    if (shouldMigrateShowHiddenFolders) {
+      needsShowHiddenFoldersMigration.current = true;
+    }
+    const storedShowHiddenFolders =
+      typeof settings.show_hidden_folders === "boolean"
+        ? settings.show_hidden_folders
+        : legacyHiddenFoldersLevel !== null
+          ? legacyHiddenFoldersLevel > 0
+          : DEFAULT_SHOW_HIDDEN_FOLDERS;
+    const storedShowEmptyFolders =
+      typeof settings.show_empty_folders === "boolean"
+        ? settings.show_empty_folders
+        : DEFAULT_SHOW_EMPTY_FOLDERS;
+    const storedUserVaultMode =
+      settings.user_vault_mode === "custom" ? "custom" : DEFAULT_USER_VAULT_MODE;
+    const storedUserVaultCustomPath =
+      typeof settings.user_vault_custom_path === "string"
+        ? settings.user_vault_custom_path.trim() || null
+        : null;
+    const storedFlashcardOrder =
+      settings.flashcard_order === "random" ? "random" : DEFAULT_FLASHCARD_ORDER;
+    const storedFlashcardMode =
+      settings.flashcard_mode === "all" ||
+      settings.flashcard_mode === "qa" ||
+      settings.flashcard_mode === "multiple-choice" ||
+      settings.flashcard_mode === "mix" ||
+      settings.flashcard_mode === "fill-blank" ||
+      settings.flashcard_mode === "assignment" ||
+      settings.flashcard_mode === "true-false"
+        ? settings.flashcard_mode
+        : settings.flashcard_mode === "yes-no"
+          ? "true-false"
+          : DEFAULT_FLASHCARD_MODE;
+    const storedFlashcardScope =
+      settings.flashcard_scope === "vault" ? "vault" : DEFAULT_FLASHCARD_SCOPE;
+    const storedFastFlashcardOrder =
+      settings.fast_flashcard_order === "random"
+        ? "random"
+        : DEFAULT_FAST_FLASHCARD_ORDER;
+    const storedFastFlashcardMode =
+      settings.fast_flashcard_mode === "all" ||
+      settings.fast_flashcard_mode === "qa" ||
+      settings.fast_flashcard_mode === "multiple-choice" ||
+      settings.fast_flashcard_mode === "mix" ||
+      settings.fast_flashcard_mode === "fill-blank" ||
+      settings.fast_flashcard_mode === "assignment" ||
+      settings.fast_flashcard_mode === "true-false"
+        ? settings.fast_flashcard_mode
+        : settings.fast_flashcard_mode === "yes-no"
+          ? "true-false"
+          : DEFAULT_FAST_FLASHCARD_MODE;
+    const storedFastFlashcardScope =
+      settings.fast_flashcard_scope === "vault"
+        ? "vault"
+        : DEFAULT_FAST_FLASHCARD_SCOPE;
+    const storedFastFlashcardDurationRaw = settings.fast_flashcard_duration;
+    const storedFastFlashcardDurationValue =
+      typeof storedFastFlashcardDurationRaw === "number"
+        ? storedFastFlashcardDurationRaw
+        : typeof storedFastFlashcardDurationRaw === "string"
+          ? Number.parseInt(storedFastFlashcardDurationRaw, 10)
+          : DEFAULT_FAST_FLASHCARD_DURATION;
+    const storedFastFlashcardDuration =
+      FAST_FLASHCARD_DURATIONS.includes(
+        storedFastFlashcardDurationValue as FastFlashcardDuration,
+      )
+        ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
+        : DEFAULT_FAST_FLASHCARD_DURATION;
+    const storedFastFlashcardHelpEnabled =
+      typeof settings.fast_flashcard_help_enabled === "boolean"
+        ? settings.fast_flashcard_help_enabled
+        : DEFAULT_FAST_FLASHCARD_HELP_ENABLED;
+    const storedExamShowTimeline =
+      typeof settings.exam_show_timeline === "boolean"
+        ? settings.exam_show_timeline
+        : DEFAULT_EXAM_SHOW_TIMELINE;
+    const storedExamHelpEnabled =
+      typeof settings.exam_help_enabled === "boolean"
+        ? settings.exam_help_enabled
+        : DEFAULT_EXAM_HELP_ENABLED;
+    const storedFlashcardPageSizeRaw = settings.flashcard_page_size;
+    const migratedFlashcardPageSize =
+      storedFlashcardPageSizeRaw === 10 ? 5 : storedFlashcardPageSizeRaw;
+    const storedFlashcardPageSize =
+      typeof migratedFlashcardPageSize === "number" &&
+      FLASHCARD_PAGE_SIZES.includes(
+        migratedFlashcardPageSize as FlashcardPageSize,
+      )
+        ? (migratedFlashcardPageSize as FlashcardPageSize)
+        : DEFAULT_FLASHCARD_PAGE_SIZE;
+    const storedSolutionRevealEnabled =
+      typeof settings.flashcard_solution_reveal_enabled === "boolean"
+        ? settings.flashcard_solution_reveal_enabled
+        : true;
+    const storedStatsResetMode =
+      settings.flashcard_stats_reset_mode === "session"
+        ? "session"
+        : DEFAULT_STATS_RESET_MODE;
+    const storedFlashcardHelpEnabled =
+      typeof settings.flashcard_help_enabled === "boolean"
+        ? settings.flashcard_help_enabled
+        : DEFAULT_FLASHCARD_HELP_ENABLED;
+    const storedSpacedRepetitionBoxes =
+      typeof settings.spaced_repetition_boxes === "number" &&
+      SPACED_REPETITION_BOXES.includes(
+        settings.spaced_repetition_boxes as SpacedRepetitionBoxes,
+      )
+        ? (settings.spaced_repetition_boxes as SpacedRepetitionBoxes)
+        : DEFAULT_SPACED_REPETITION_BOXES;
+    const storedSpacedRepetitionOrder =
+      settings.spaced_repetition_order === "random" ||
+      settings.spaced_repetition_order === "repetition"
+        ? settings.spaced_repetition_order
+        : DEFAULT_SPACED_REPETITION_ORDER;
+    const storedSpacedRepetitionPageSizeRaw = settings.spaced_repetition_page_size;
+    const migratedSpacedRepetitionPageSize =
+      storedSpacedRepetitionPageSizeRaw === 10
+        ? 5
+        : storedSpacedRepetitionPageSizeRaw;
+    const storedSpacedRepetitionPageSize =
+      typeof migratedSpacedRepetitionPageSize === "number" &&
+      SPACED_REPETITION_PAGE_SIZES.includes(
+        migratedSpacedRepetitionPageSize as SpacedRepetitionPageSize,
+      )
+        ? (migratedSpacedRepetitionPageSize as SpacedRepetitionPageSize)
+        : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
+    const storedSpacedRepetitionRepetitionStrength =
+      settings.spaced_repetition_repetition_strength === "weak" ||
+      settings.spaced_repetition_repetition_strength === "strong" ||
+      settings.spaced_repetition_repetition_strength === "medium"
+        ? settings.spaced_repetition_repetition_strength
+        : DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH;
+    const storedSpacedRepetitionStatsView =
+      settings.spaced_repetition_stats_view === "vault" ||
+      settings.spaced_repetition_stats_view === "completed"
+        ? settings.spaced_repetition_stats_view
+        : DEFAULT_SPACED_REPETITION_STATS_VIEW;
+    const storedSpacedRepetitionHelpEnabled =
+      typeof settings.spaced_repetition_help_enabled === "boolean"
+        ? settings.spaced_repetition_help_enabled
+        : DEFAULT_SPACED_REPETITION_HELP_ENABLED;
+    const storedActiveNotePath =
+      typeof settings.active_note_path === "string" ? settings.active_note_path : null;
+    const storedRecentVaults = normalizeRecentVaults(settings.recent_vaults);
+    const storedRightToolbarCollapsed =
+      typeof settings.right_toolbar_collapsed === "boolean"
+        ? settings.right_toolbar_collapsed
+        : DEFAULT_RIGHT_TOOLBAR_COLLAPSED;
+    const storedExamMaxTotalPoints = clampExamTotalPoints(
+      settings.exam_max_total_points ?? DEFAULT_EXAM_MAX_TOTAL_POINTS,
+    );
+    const storedExamTaskCount = clampExamTaskCount(
+      settings.exam_task_count ?? DEFAULT_EXAM_TASK_COUNT,
+    );
+    const storedExamTaskPoints = normalizeExamTaskPointsAll(
+      settings.exam_task_points,
+      storedExamTaskCount,
+      storedExamMaxTotalPoints,
+    );
+    const storedExamDurationMinutes = clampExamDurationMinutes(
+      settings.exam_duration_minutes ?? DEFAULT_EXAM_DURATION_MINUTES,
+    );
+    const storedExamTimeLimitEnabled =
+      typeof settings.exam_time_limit_enabled === "boolean"
+        ? settings.exam_time_limit_enabled
+        : DEFAULT_EXAM_TIME_LIMIT_ENABLED;
+    const storedExamAutoCardsEnabled =
+      typeof settings.exam_auto_cards_enabled === "boolean"
+        ? settings.exam_auto_cards_enabled
+        : DEFAULT_EXAM_AUTO_CARDS_ENABLED;
+    const storedExamAutoCardsReturnOnCorrect =
+      typeof settings.exam_auto_cards_return_on_correct === "boolean"
+        ? settings.exam_auto_cards_return_on_correct
+        : DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT;
+    const storedExamGradeScale =
+      settings.exam_grade_scale === "standard-1-6"
+        ? settings.exam_grade_scale
+        : DEFAULT_EXAM_GRADE_SCALE;
+    const storedExamAiEvaluation = normalizeExamAiEvaluation(
+      settings.exam_ai_evaluation,
+    );
+    const {
+      settings: storedKeyboardShortcuts,
+      needsMigration: shouldMigrateShortcuts,
+    } = normalizeKeyboardShortcuts(settings.keyboard_shortcuts);
+    if (shouldMigrateShortcuts) {
+      needsKeyboardShortcutsMigration.current = true;
+    }
+    setTheme(storedTheme);
+    setAccentColor(resolvedAccent);
+    setAccentDraft(resolvedAccent);
+    setAccentError("");
+    setMarkdownEditorAccentEnabledState(storedMarkdownAccentEnabled);
+    setMarkdownEditorAccentLightHexState(storedMarkdownAccentLightHex);
+    setMarkdownEditorAccentDarkHexState(storedMarkdownAccentDarkHex);
+    setMarkdownEditorAccentCustomSwatchesState(storedMarkdownAccentCustomSwatches);
+    setEditorBlueprintGrid(storedEditorBlueprintGrid);
+    setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
+    setExamEditorShowMoveButtonsState(storedExamEditorShowMoveButtons);
+    setActiveNotePath(storedActiveNotePath);
+    setVaultPath(settings.vault_path ?? null);
+    setRecentVaults(storedRecentVaults);
+    setUserVaultModeState(storedUserVaultMode);
+    setUserVaultCustomPathState(storedUserVaultCustomPath);
+    setLanguage(storedLanguage);
+    setMaxFilesPerScan(storedMaxFilesPerScan);
+    setScanParallelism(storedScanParallelism);
+    setShowHiddenFoldersState(storedShowHiddenFolders);
+    setShowEmptyFoldersState(storedShowEmptyFolders);
+    setFlashcardOrder(storedFlashcardOrder);
+    setFlashcardMode(storedFlashcardMode);
+    setFlashcardScope(storedFlashcardScope);
+    setFastFlashcardOrder(storedFastFlashcardOrder);
+    setFastFlashcardMode(storedFastFlashcardMode);
+    setFastFlashcardScope(storedFastFlashcardScope);
+    setFastFlashcardDuration(storedFastFlashcardDuration);
+    setFastFlashcardHelpEnabledState(storedFastFlashcardHelpEnabled);
+    setExamShowTimelineState(storedExamShowTimeline);
+    setExamHelpEnabledState(storedExamHelpEnabled);
+    setFlashcardPageSize(storedFlashcardPageSize);
+    setSolutionRevealEnabled(storedSolutionRevealEnabled);
+    setStatsResetMode(storedStatsResetMode);
+    setFlashcardHelpEnabledState(storedFlashcardHelpEnabled);
+    setSpacedRepetitionBoxes(storedSpacedRepetitionBoxes);
+    setSpacedRepetitionOrder(storedSpacedRepetitionOrder);
+    setSpacedRepetitionPageSize(storedSpacedRepetitionPageSize);
+    setSpacedRepetitionRepetitionStrength(storedSpacedRepetitionRepetitionStrength);
+    setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
+    setSpacedRepetitionHelpEnabledState(storedSpacedRepetitionHelpEnabled);
+    setRightToolbarCollapsed(storedRightToolbarCollapsed);
+    setExamMaxTotalPointsState(storedExamMaxTotalPoints);
+    setExamTaskCountState(storedExamTaskCount);
+    setExamTaskPointsState(storedExamTaskPoints);
+    setExamDurationMinutesState(storedExamDurationMinutes);
+    setExamTimeLimitEnabledState(storedExamTimeLimitEnabled);
+    setExamAutoCardsEnabledState(storedExamAutoCardsEnabled);
+    setExamAutoCardsReturnOnCorrectState(storedExamAutoCardsReturnOnCorrect);
+    setExamGradeScaleState(storedExamGradeScale);
+    setExamAiEvaluationState(storedExamAiEvaluation);
+    setKeyboardShortcutsState(storedKeyboardShortcuts);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -995,327 +1492,7 @@ export const useAppSettings = () => {
         if (cancelled) {
           return;
         }
-
-        const storedTheme = settings.theme === "dark" ? "dark" : DEFAULT_THEME;
-        const storedAccentRaw = settings.accent_color ?? DEFAULT_ACCENT;
-        const storedAccent = normalizeHex(storedAccentRaw);
-        const resolvedAccent = isValidHex(storedAccent)
-          ? storedAccent
-          : DEFAULT_ACCENT;
-        const storedMarkdownAccent = settings.markdownEditor?.accentColor ?? null;
-        const storedMarkdownAccentLight = normalizeMarkdownAccentHex(
-          storedMarkdownAccent?.lightHex,
-        );
-        const storedMarkdownAccentDark = normalizeMarkdownAccentHex(
-          storedMarkdownAccent?.darkHex,
-        );
-        const storedMarkdownAccentCustomSwatches = normalizeMarkdownAccentSwatches(
-          storedMarkdownAccent?.customSwatches ?? [],
-        );
-        const legacyMarkdownAccent =
-          normalizeMarkdownAccentHex(settings.markdownEditor?.accentColorHex) ??
-          normalizeMarkdownAccentHex(settings.editor_markdown_custom_accent_hex);
-        const fallbackMarkdownAccent = legacyMarkdownAccent ?? resolvedAccent;
-        const storedMarkdownAccentEnabled =
-          typeof settings.editor_markdown_exact_colors_enabled === "boolean"
-            ? settings.editor_markdown_exact_colors_enabled
-            : DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED;
-        const storedMarkdownAccentLightHex =
-          storedMarkdownAccentLight ?? fallbackMarkdownAccent;
-        const storedMarkdownAccentDarkHex =
-          storedMarkdownAccentDark ?? fallbackMarkdownAccent;
-        const storedEditorBlueprintGrid =
-          typeof settings.editor_blueprint_grid === "boolean"
-            ? settings.editor_blueprint_grid
-            : DEFAULT_EDITOR_BLUEPRINT_GRID;
-        const storedEditorBlueprintGridIntensity =
-          settings.editor_blueprint_grid_intensity === "light" ||
-          settings.editor_blueprint_grid_intensity === "strong" ||
-          settings.editor_blueprint_grid_intensity === "medium"
-            ? settings.editor_blueprint_grid_intensity
-            : DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY;
-        const storedExamEditorShowMoveButtons =
-          typeof settings.exam_editor_show_move_buttons === "boolean"
-            ? settings.exam_editor_show_move_buttons
-            : DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS;
-        const storedLanguage =
-          settings.language === "en" ? "en" : DEFAULT_LANGUAGE;
-        const maxFilesRaw = settings.max_files_per_scan;
-        const maxFilesValue =
-          typeof maxFilesRaw === "number"
-            ? String(maxFilesRaw)
-            : typeof maxFilesRaw === "string"
-              ? maxFilesRaw.trim()
-              : DEFAULT_MAX_FILES_PER_SCAN;
-        const storedMaxFilesPerScan =
-          maxFilesValue === ""
-            ? ""
-            : /^[0-9]+$/.test(maxFilesValue)
-              ? maxFilesValue
-              : DEFAULT_MAX_FILES_PER_SCAN;
-        const storedScanParallelism =
-          settings.scan_parallelism === "low" ||
-          settings.scan_parallelism === "high" ||
-          settings.scan_parallelism === "medium"
-            ? settings.scan_parallelism
-            : DEFAULT_SCAN_PARALLELISM;
-        const legacyHiddenFoldersLevel = resolveLegacyHiddenFoldersLevel(settings);
-        const shouldMigrateShowHiddenFolders =
-          typeof settings.show_hidden_folders !== "boolean" &&
-          legacyHiddenFoldersLevel !== null;
-        if (shouldMigrateShowHiddenFolders) {
-          needsShowHiddenFoldersMigration.current = true;
-        }
-        const storedShowHiddenFolders =
-          typeof settings.show_hidden_folders === "boolean"
-            ? settings.show_hidden_folders
-            : legacyHiddenFoldersLevel !== null
-              ? legacyHiddenFoldersLevel > 0
-              : DEFAULT_SHOW_HIDDEN_FOLDERS;
-        const storedShowEmptyFolders =
-          typeof settings.show_empty_folders === "boolean"
-            ? settings.show_empty_folders
-            : DEFAULT_SHOW_EMPTY_FOLDERS;
-        const storedUserVaultMode =
-          settings.user_vault_mode === "custom" ? "custom" : DEFAULT_USER_VAULT_MODE;
-        const storedUserVaultCustomPath =
-          typeof settings.user_vault_custom_path === "string"
-            ? settings.user_vault_custom_path.trim() || null
-            : null;
-        const storedFlashcardOrder =
-          settings.flashcard_order === "random"
-            ? "random"
-            : DEFAULT_FLASHCARD_ORDER;
-        const storedFlashcardMode =
-          settings.flashcard_mode === "all" ||
-          settings.flashcard_mode === "qa" ||
-          settings.flashcard_mode === "multiple-choice" ||
-          settings.flashcard_mode === "mix" ||
-          settings.flashcard_mode === "fill-blank" ||
-          settings.flashcard_mode === "assignment" ||
-          settings.flashcard_mode === "true-false"
-            ? settings.flashcard_mode
-            : settings.flashcard_mode === "yes-no"
-              ? "true-false"
-              : DEFAULT_FLASHCARD_MODE;
-        const storedFlashcardScope =
-          settings.flashcard_scope === "vault"
-            ? "vault"
-            : DEFAULT_FLASHCARD_SCOPE;
-        const storedFastFlashcardOrder =
-          settings.fast_flashcard_order === "random"
-            ? "random"
-            : DEFAULT_FAST_FLASHCARD_ORDER;
-        const storedFastFlashcardMode =
-          settings.fast_flashcard_mode === "all" ||
-          settings.fast_flashcard_mode === "qa" ||
-          settings.fast_flashcard_mode === "multiple-choice" ||
-          settings.fast_flashcard_mode === "mix" ||
-          settings.fast_flashcard_mode === "fill-blank" ||
-          settings.fast_flashcard_mode === "assignment" ||
-          settings.fast_flashcard_mode === "true-false"
-            ? settings.fast_flashcard_mode
-            : settings.fast_flashcard_mode === "yes-no"
-              ? "true-false"
-              : DEFAULT_FAST_FLASHCARD_MODE;
-        const storedFastFlashcardScope =
-          settings.fast_flashcard_scope === "vault"
-            ? "vault"
-            : DEFAULT_FAST_FLASHCARD_SCOPE;
-        const storedFastFlashcardDurationRaw = settings.fast_flashcard_duration;
-        const storedFastFlashcardDurationValue =
-          typeof storedFastFlashcardDurationRaw === "number"
-            ? storedFastFlashcardDurationRaw
-            : typeof storedFastFlashcardDurationRaw === "string"
-              ? Number.parseInt(storedFastFlashcardDurationRaw, 10)
-              : DEFAULT_FAST_FLASHCARD_DURATION;
-        const storedFastFlashcardDuration =
-          FAST_FLASHCARD_DURATIONS.includes(
-            storedFastFlashcardDurationValue as FastFlashcardDuration,
-          )
-            ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
-            : DEFAULT_FAST_FLASHCARD_DURATION;
-        const storedFastFlashcardHelpEnabled =
-          typeof settings.fast_flashcard_help_enabled === "boolean"
-            ? settings.fast_flashcard_help_enabled
-            : DEFAULT_FAST_FLASHCARD_HELP_ENABLED;
-        const storedExamShowTimeline =
-          typeof settings.exam_show_timeline === "boolean"
-            ? settings.exam_show_timeline
-            : DEFAULT_EXAM_SHOW_TIMELINE;
-        const storedExamHelpEnabled =
-          typeof settings.exam_help_enabled === "boolean"
-            ? settings.exam_help_enabled
-            : DEFAULT_EXAM_HELP_ENABLED;
-        const storedFlashcardPageSizeRaw = settings.flashcard_page_size;
-        const migratedFlashcardPageSize =
-          storedFlashcardPageSizeRaw === 10
-            ? 5
-            : storedFlashcardPageSizeRaw;
-        const storedFlashcardPageSize =
-          typeof migratedFlashcardPageSize === "number" &&
-          FLASHCARD_PAGE_SIZES.includes(
-            migratedFlashcardPageSize as FlashcardPageSize,
-          )
-            ? (migratedFlashcardPageSize as FlashcardPageSize)
-            : DEFAULT_FLASHCARD_PAGE_SIZE;
-        const storedSolutionRevealEnabled =
-          typeof settings.flashcard_solution_reveal_enabled === "boolean"
-            ? settings.flashcard_solution_reveal_enabled
-            : true;
-        const storedStatsResetMode =
-          settings.flashcard_stats_reset_mode === "session"
-            ? "session"
-            : DEFAULT_STATS_RESET_MODE;
-        const storedFlashcardHelpEnabled =
-          typeof settings.flashcard_help_enabled === "boolean"
-            ? settings.flashcard_help_enabled
-            : DEFAULT_FLASHCARD_HELP_ENABLED;
-        const storedSpacedRepetitionBoxes =
-          typeof settings.spaced_repetition_boxes === "number" &&
-          SPACED_REPETITION_BOXES.includes(
-            settings.spaced_repetition_boxes as SpacedRepetitionBoxes,
-          )
-            ? (settings.spaced_repetition_boxes as SpacedRepetitionBoxes)
-            : DEFAULT_SPACED_REPETITION_BOXES;
-        const storedSpacedRepetitionOrder =
-          settings.spaced_repetition_order === "random" ||
-          settings.spaced_repetition_order === "repetition"
-            ? settings.spaced_repetition_order
-            : DEFAULT_SPACED_REPETITION_ORDER;
-        const storedSpacedRepetitionPageSizeRaw =
-          settings.spaced_repetition_page_size;
-        const migratedSpacedRepetitionPageSize =
-          storedSpacedRepetitionPageSizeRaw === 10
-            ? 5
-            : storedSpacedRepetitionPageSizeRaw;
-        const storedSpacedRepetitionPageSize =
-          typeof migratedSpacedRepetitionPageSize === "number" &&
-          SPACED_REPETITION_PAGE_SIZES.includes(
-            migratedSpacedRepetitionPageSize as SpacedRepetitionPageSize,
-          )
-            ? (migratedSpacedRepetitionPageSize as SpacedRepetitionPageSize)
-            : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
-        const storedSpacedRepetitionRepetitionStrength =
-          settings.spaced_repetition_repetition_strength === "weak" ||
-          settings.spaced_repetition_repetition_strength === "strong" ||
-          settings.spaced_repetition_repetition_strength === "medium"
-            ? settings.spaced_repetition_repetition_strength
-            : DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH;
-        const storedSpacedRepetitionStatsView =
-          settings.spaced_repetition_stats_view === "vault" ||
-          settings.spaced_repetition_stats_view === "completed"
-            ? settings.spaced_repetition_stats_view
-            : DEFAULT_SPACED_REPETITION_STATS_VIEW;
-        const storedSpacedRepetitionHelpEnabled =
-          typeof settings.spaced_repetition_help_enabled === "boolean"
-            ? settings.spaced_repetition_help_enabled
-            : DEFAULT_SPACED_REPETITION_HELP_ENABLED;
-        const storedActiveNotePath =
-          typeof settings.active_note_path === "string"
-            ? settings.active_note_path
-            : null;
-        const storedRecentVaults = normalizeRecentVaults(settings.recent_vaults);
-        const storedRightToolbarCollapsed =
-          typeof settings.right_toolbar_collapsed === "boolean"
-            ? settings.right_toolbar_collapsed
-            : DEFAULT_RIGHT_TOOLBAR_COLLAPSED;
-        const storedExamMaxTotalPoints = clampExamTotalPoints(
-          settings.exam_max_total_points ?? DEFAULT_EXAM_MAX_TOTAL_POINTS,
-        );
-        const storedExamTaskCount = clampExamTaskCount(
-          settings.exam_task_count ?? DEFAULT_EXAM_TASK_COUNT,
-        );
-        const storedExamTaskPoints = normalizeExamTaskPointsAll(
-          settings.exam_task_points,
-          storedExamTaskCount,
-          storedExamMaxTotalPoints,
-        );
-        const storedExamDurationMinutes = clampExamDurationMinutes(
-          settings.exam_duration_minutes ?? DEFAULT_EXAM_DURATION_MINUTES,
-        );
-        const storedExamTimeLimitEnabled =
-          typeof settings.exam_time_limit_enabled === "boolean"
-            ? settings.exam_time_limit_enabled
-            : DEFAULT_EXAM_TIME_LIMIT_ENABLED;
-        const storedExamAutoCardsEnabled =
-          typeof settings.exam_auto_cards_enabled === "boolean"
-            ? settings.exam_auto_cards_enabled
-            : DEFAULT_EXAM_AUTO_CARDS_ENABLED;
-        const storedExamAutoCardsReturnOnCorrect =
-          typeof settings.exam_auto_cards_return_on_correct === "boolean"
-            ? settings.exam_auto_cards_return_on_correct
-            : DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT;
-        const storedExamGradeScale =
-          settings.exam_grade_scale === "standard-1-6"
-            ? settings.exam_grade_scale
-            : DEFAULT_EXAM_GRADE_SCALE;
-        const storedExamAiEvaluation = normalizeExamAiEvaluation(
-          settings.exam_ai_evaluation,
-        );
-        const {
-          settings: storedKeyboardShortcuts,
-          needsMigration: shouldMigrateShortcuts,
-        } = normalizeKeyboardShortcuts(settings.keyboard_shortcuts);
-        if (shouldMigrateShortcuts) {
-          needsKeyboardShortcutsMigration.current = true;
-        }
-        setTheme(storedTheme);
-        setAccentColor(resolvedAccent);
-        setAccentDraft(resolvedAccent);
-        setAccentError("");
-        setMarkdownEditorAccentEnabledState(storedMarkdownAccentEnabled);
-        setMarkdownEditorAccentLightHexState(storedMarkdownAccentLightHex);
-        setMarkdownEditorAccentDarkHexState(storedMarkdownAccentDarkHex);
-        setMarkdownEditorAccentCustomSwatchesState(
-          storedMarkdownAccentCustomSwatches,
-        );
-        setEditorBlueprintGrid(storedEditorBlueprintGrid);
-        setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
-        setExamEditorShowMoveButtonsState(storedExamEditorShowMoveButtons);
-        setActiveNotePath(storedActiveNotePath);
-        setVaultPath(settings.vault_path ?? null);
-        setRecentVaults(storedRecentVaults);
-        setUserVaultModeState(storedUserVaultMode);
-        setUserVaultCustomPathState(storedUserVaultCustomPath);
-        setLanguage(storedLanguage);
-        setMaxFilesPerScan(storedMaxFilesPerScan);
-        setScanParallelism(storedScanParallelism);
-        setShowHiddenFoldersState(storedShowHiddenFolders);
-        setShowEmptyFoldersState(storedShowEmptyFolders);
-        setFlashcardOrder(storedFlashcardOrder);
-        setFlashcardMode(storedFlashcardMode);
-        setFlashcardScope(storedFlashcardScope);
-        setFastFlashcardOrder(storedFastFlashcardOrder);
-        setFastFlashcardMode(storedFastFlashcardMode);
-        setFastFlashcardScope(storedFastFlashcardScope);
-        setFastFlashcardDuration(storedFastFlashcardDuration);
-        setFastFlashcardHelpEnabledState(storedFastFlashcardHelpEnabled);
-        setExamShowTimelineState(storedExamShowTimeline);
-        setExamHelpEnabledState(storedExamHelpEnabled);
-        setFlashcardPageSize(storedFlashcardPageSize);
-        setSolutionRevealEnabled(storedSolutionRevealEnabled);
-        setStatsResetMode(storedStatsResetMode);
-        setFlashcardHelpEnabledState(storedFlashcardHelpEnabled);
-        setSpacedRepetitionBoxes(storedSpacedRepetitionBoxes);
-        setSpacedRepetitionOrder(storedSpacedRepetitionOrder);
-        setSpacedRepetitionPageSize(storedSpacedRepetitionPageSize);
-        setSpacedRepetitionRepetitionStrength(
-          storedSpacedRepetitionRepetitionStrength,
-        );
-        setSpacedRepetitionStatsView(storedSpacedRepetitionStatsView);
-        setSpacedRepetitionHelpEnabledState(storedSpacedRepetitionHelpEnabled);
-        setRightToolbarCollapsed(storedRightToolbarCollapsed);
-        setExamMaxTotalPointsState(storedExamMaxTotalPoints);
-        setExamTaskCountState(storedExamTaskCount);
-        setExamTaskPointsState(storedExamTaskPoints);
-        setExamDurationMinutesState(storedExamDurationMinutes);
-        setExamTimeLimitEnabledState(storedExamTimeLimitEnabled);
-        setExamAutoCardsEnabledState(storedExamAutoCardsEnabled);
-        setExamAutoCardsReturnOnCorrectState(storedExamAutoCardsReturnOnCorrect);
-        setExamGradeScaleState(storedExamGradeScale);
-        setExamAiEvaluationState(storedExamAiEvaluation);
-        setKeyboardShortcutsState(storedKeyboardShortcuts);
+        applyStoredSettings(settings);
         setSettingsLoaded(true);
       } catch (error) {
         if (!cancelled) {
@@ -1331,6 +1508,52 @@ export const useAppSettings = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!settingsLoaded || !userVaultProfilePath) {
+      lastProfileSyncRef.current = null;
+      return;
+    }
+    const lastSync = lastProfileSyncRef.current;
+    if (
+      lastSync &&
+      lastSync.path === userVaultProfilePath &&
+      lastSync.revision === userVaultProfileRevision
+    ) {
+      return;
+    }
+    lastProfileSyncRef.current = {
+      path: userVaultProfilePath,
+      revision: userVaultProfileRevision,
+    };
+    let cancelled = false;
+
+    const restoreProfileSettings = async () => {
+      const stored = await loadUserVaultProfileSettings(userVaultProfilePath);
+      if (cancelled) {
+        return;
+      }
+      if (stored) {
+        applyStoredSettings(stored as AppSettings);
+        return;
+      }
+      const snapshot = buildSettingsSnapshot();
+      const payload = buildProfileSettingsPayload(snapshot);
+      await saveUserVaultProfileSettings(userVaultProfilePath, payload);
+    };
+
+    void restoreProfileSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    applyStoredSettings,
+    buildSettingsSnapshot,
+    settingsLoaded,
+    userVaultProfilePath,
+    userVaultProfileRevision,
+  ]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -1377,59 +1600,9 @@ export const useAppSettings = () => {
     if (autoSaveTimer.current) {
       window.clearTimeout(autoSaveTimer.current);
     }
+    const snapshot = buildSettingsSnapshot();
     autoSaveTimer.current = window.setTimeout(() => {
-      void saveSettings({
-        activeNotePath,
-        vaultPath,
-        recentVaults,
-        userVaultMode,
-        userVaultCustomPath,
-        theme,
-        accentColor,
-        markdownEditorAccentEnabled,
-        markdownEditorAccentLightHex,
-        markdownEditorAccentDarkHex,
-        markdownEditorAccentCustomSwatches,
-        editorBlueprintGrid,
-        editorBlueprintGridIntensity,
-        examEditorShowMoveButtons,
-        language,
-        maxFilesPerScan,
-        scanParallelism,
-        showHiddenFolders,
-        showEmptyFolders,
-        flashcardOrder,
-        flashcardMode,
-        flashcardScope,
-        flashcardPageSize,
-        solutionRevealEnabled,
-        statsResetMode,
-        flashcardHelpEnabled,
-        spacedRepetitionBoxes,
-        spacedRepetitionOrder,
-        spacedRepetitionPageSize,
-        spacedRepetitionRepetitionStrength,
-        spacedRepetitionStatsView,
-        spacedRepetitionHelpEnabled,
-        rightToolbarCollapsed,
-        fastFlashcardOrder,
-        fastFlashcardMode,
-        fastFlashcardScope,
-        fastFlashcardDuration,
-        fastFlashcardHelpEnabled,
-        examShowTimeline,
-        examHelpEnabled,
-        examMaxTotalPoints,
-        examTaskCount,
-        examTaskPoints,
-        examDurationMinutes,
-        examTimeLimitEnabled,
-        examAutoCardsEnabled,
-        examAutoCardsReturnOnCorrect,
-        examGradeScale,
-        examAiEvaluation,
-        keyboardShortcuts,
-      });
+      void saveSettings(snapshot);
     }, 300);
 
     return () => {
@@ -1437,60 +1610,7 @@ export const useAppSettings = () => {
         window.clearTimeout(autoSaveTimer.current);
       }
     };
-  }, [
-    accentColor,
-    activeNotePath,
-    markdownEditorAccentEnabled,
-    markdownEditorAccentLightHex,
-    markdownEditorAccentDarkHex,
-    markdownEditorAccentCustomSwatches,
-    editorBlueprintGrid,
-    editorBlueprintGridIntensity,
-    examEditorShowMoveButtons,
-    examAiEvaluation,
-    examMaxTotalPoints,
-    examTaskCount,
-    examTaskPoints,
-    examDurationMinutes,
-    examTimeLimitEnabled,
-    examAutoCardsEnabled,
-    examAutoCardsReturnOnCorrect,
-    examGradeScale,
-    examHelpEnabled,
-    keyboardShortcuts,
-    flashcardMode,
-    flashcardOrder,
-    fastFlashcardMode,
-    fastFlashcardOrder,
-    fastFlashcardScope,
-    fastFlashcardDuration,
-    fastFlashcardHelpEnabled,
-    examShowTimeline,
-    flashcardPageSize,
-    flashcardScope,
-    flashcardHelpEnabled,
-    language,
-    maxFilesPerScan,
-    saveSettings,
-    scanParallelism,
-    showHiddenFolders,
-    showEmptyFolders,
-    settingsLoaded,
-    solutionRevealEnabled,
-    spacedRepetitionBoxes,
-    spacedRepetitionOrder,
-    spacedRepetitionPageSize,
-    spacedRepetitionRepetitionStrength,
-    spacedRepetitionHelpEnabled,
-    spacedRepetitionStatsView,
-    statsResetMode,
-    theme,
-    userVaultCustomPath,
-    userVaultMode,
-    vaultPath,
-    recentVaults,
-    rightToolbarCollapsed,
-  ]);
+  }, [buildSettingsSnapshot, saveSettings, settingsLoaded]);
 
   return {
     accentColor,
@@ -1570,6 +1690,7 @@ export const useAppSettings = () => {
     setShowEmptyFolders,
     setUserVaultCustomPath,
     setUserVaultMode,
+    setUserVaultProfileContext,
     setLanguage,
     setMaxFilesPerScan,
     setRightToolbarCollapsed,

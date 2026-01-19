@@ -166,6 +166,23 @@ describe("mergeProfileData", () => {
     ]);
     expect(merged.examRuns.map((run) => run.id)).toEqual(["e1", "e2"]);
   });
+
+  it("keeps settings when overwrite data has none", () => {
+    const baseWithSettings: UserVaultProfileData = {
+      ...createEmptyProfileData(),
+      settings: { theme: "dark" },
+    };
+    const incomingWithoutSettings: UserVaultProfileData = {
+      ...createEmptyProfileData(),
+    };
+    delete incomingWithoutSettings.settings;
+    const merged = mergeProfileData(
+      baseWithSettings,
+      incomingWithoutSettings,
+      "overwrite",
+    );
+    expect(merged.settings).toEqual({ theme: "dark" });
+  });
 });
 
 describe("selectProfileFromExport", () => {

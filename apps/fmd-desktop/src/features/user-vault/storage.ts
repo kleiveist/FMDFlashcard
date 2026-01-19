@@ -16,6 +16,7 @@ import {
   sanitizeProfileName,
   type UserVaultProfileData,
   type UserVaultProfileMeta,
+  type UserVaultProfileSettings,
 } from "../../lib/userVault";
 import type { FastFlashcardSessionSummary } from "../../lib/fastFlashcard";
 import type { ExamRun } from "../../lib/examRuns";
@@ -24,6 +25,10 @@ import type { SpacedRepetitionStorage } from "../spaced-repetition/logic";
 type PathInfo = {
   exists: boolean;
   isDir: boolean;
+};
+
+type UserVaultProfileStore = UserVaultProfileMeta & {
+  settings?: UserVaultProfileSettings | null;
 };
 
 export type UserVaultMetaStore = {
@@ -101,6 +106,12 @@ const resolveFastFlashcardPath = (profilePath: string) =>
 
 const resolveExamRunsPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_EXAM_RUNS_FILE);
+
+const resolveProfileIdFromPath = (profilePath: string) => {
+  const trimmed = profilePath.replace(/[\\/]+$/, "");
+  const parts = trimmed.split(/[\\/]/);
+  return parts[parts.length - 1] || trimmed;
+};
 
 const createEmptyUserVaultMeta = (): UserVaultMetaStore => ({
   schemaVersion: USER_VAULT_SCHEMA_VERSION,
@@ -269,7 +280,10 @@ export const createUserVaultProfile = async (
     name: sanitized,
     createdAt: new Date().toISOString(),
   };
-  await writeJsonFile(resolveProfileMetaPath(profilePath), meta);
+  await writeJsonFile(resolveProfileMetaPath(profilePath), {
+    ...meta,
+    settings: {},
+  });
   return { ...meta, path: profilePath };
 };
 
@@ -289,11 +303,59 @@ export const loadProfileData = async (
   const spacedRepetition = await loadSpacedRepetitionStore(profilePath);
   const fastFlashcard = await loadFastFlashcardStore(profilePath);
   const examRuns = await loadExamRunStore(profilePath);
+  const settings = await loadProfileSettings(profilePath);
   return {
     spacedRepetitionByVaultId: spacedRepetition.byVaultId,
     fastFlashcardSessions: fastFlashcard.sessions,
     examRuns: examRuns.runs,
+    settings,
   };
+};
+
+export const loadProfileSettings = async (
+  profilePath: string,
+): Promise<UserVaultProfileSettings | null> => {
+  const path = resolveProfileMetaPath(profilePath);
+  const store = await readJsonFile<UserVaultProfileStore | null>(path, null);
+  if (!store || typeof store !== "object") {
+    return null;
+  }
+  const settings = (store as UserVaultProfileStore).settings;
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    return null;
+  }
+  if (Object.keys(settings).length === 0) {
+    return null;
+  }
+  return settings;
+};
+
+export const saveProfileSettings = async (
+  profilePath: string,
+  settings: UserVaultProfileSettings | null,
+): Promise<boolean> => {
+  try {
+    const path = resolveProfileMetaPath(profilePath);
+    const stored = await readJsonFile<Record<string, unknown> | null>(path, null);
+    const fallbackId = resolveProfileIdFromPath(profilePath);
+    const meta = normalizeProfileMeta(
+      fallbackId,
+      (stored as UserVaultProfileMeta | null) ?? null,
+    );
+    const base = stored && typeof stored === "object" ? stored : {};
+    await writeJsonFile(path, {
+      ...base,
+      ...meta,
+      settings: settings ?? null,
+    });
+    return true;
+  } catch (error) {
+    console.error(
+      "Failed to save user profile settings",
+      asErrorMessage(error, "Unknown error"),
+    );
+    return false;
+  }
 };
 
 export const loadSpacedRepetitionStore = async (

@@ -30,6 +30,7 @@ import {
   loadUserVaultMeta,
   saveExamRunStore,
   saveFastFlashcardStore,
+  saveProfileSettings,
   saveSpacedRepetitionStore,
   setActiveProfileId,
   type UserVaultProfileSummary,
@@ -294,6 +295,7 @@ export const useUserVault = ({
           runs: merged.examRuns,
           migratedFromAppData: true,
         });
+        await saveProfileSettings(activeProfilePath, merged.settings ?? null);
         setRevision((value) => value + 1);
       } catch (loadError) {
         setError(asErrorMessage(loadError, "Import failed."));

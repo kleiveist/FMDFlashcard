@@ -155,6 +155,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setFastFlashcardScope,
     setSolutionRevealEnabled,
     setStatsResetMode,
+    setUserVaultProfileContext,
     solutionRevealEnabled,
     statsResetMode,
   } = settings;
@@ -166,6 +167,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     customPath: settings.userVaultCustomPath,
     setCustomPath: settings.setUserVaultCustomPath,
   });
+  useEffect(() => {
+    setUserVaultProfileContext(userVault.activeProfilePath, userVault.revision);
+  }, [setUserVaultProfileContext, userVault.activeProfilePath, userVault.revision]);
   const preview = usePreview();
   const flashcards = useFlashcards({
     files: vault.files,
