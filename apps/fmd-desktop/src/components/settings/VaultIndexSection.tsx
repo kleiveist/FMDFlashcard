@@ -20,12 +20,8 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useState, type ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
 import { type LoadState } from "../../lib/types";
-import { DataSyncTabContent } from "./DataSyncTabContent";
-import type { UserVaultState } from "../../features/user-vault/useUserVault";
-
-type VaultIndexTab = "vault" | "data-sync";
 
 type VaultIndexSectionProps = {
   lastOpenedFile: string | null;
@@ -37,7 +33,6 @@ type VaultIndexSectionProps = {
   onShowEmptyFoldersToggle: (value: boolean) => void;
   onRescanVault: (source?: string) => Promise<boolean>;
   onResetIndex: () => void;
-  userVault: UserVaultState;
   vaultIndexedComplete: boolean;
   showHiddenFolders: boolean;
   showEmptyFolders: boolean;
@@ -54,14 +49,11 @@ export const VaultIndexSection = ({
   onShowEmptyFoldersToggle,
   onRescanVault,
   onResetIndex,
-  userVault,
   vaultIndexedComplete,
   showHiddenFolders,
   showEmptyFolders,
   vaultPath,
 }: VaultIndexSectionProps) => {
-  const [activeTab, setActiveTab] = useState<VaultIndexTab>("vault");
-  const isVaultTab = activeTab === "vault";
   const handleShowHiddenFoldersChange = (event: ChangeEvent<HTMLInputElement>) => {
     onShowHiddenFoldersToggle(event.target.checked);
   };
@@ -75,168 +67,125 @@ export const VaultIndexSection = ({
 
   return (
     <section className="panel vault-index-panel">
-      <div className="panel-header settings-tab-header">
+      <div className="panel-header">
         <div>
           <h2>Vault &amp; Index</h2>
         </div>
-        <div className="settings-tabs" role="tablist" aria-label="Vault settings tabs">
-          <button
-            type="button"
-            className={`pill pill-button ${isVaultTab ? "active" : ""}`}
-            onClick={() => setActiveTab("vault")}
-            role="tab"
-            aria-selected={isVaultTab}
-            aria-controls="vault-index-tab-panel"
-            id="vault-index-tab"
-          >
-            Vault &amp; Index
-          </button>
-          <button
-            type="button"
-            className={`pill pill-button ${isVaultTab ? "" : "active"}`}
-            onClick={() => setActiveTab("data-sync")}
-            role="tab"
-            aria-selected={!isVaultTab}
-            aria-controls="data-sync-tab-panel"
-            id="data-sync-tab"
-          >
-            Data &amp; Sync
-          </button>
-        </div>
       </div>
-      {isVaultTab ? (
-        <div
-          className="settings-tab-panel"
-          role="tabpanel"
-          id="vault-index-tab-panel"
-          aria-labelledby="vault-index-tab"
-        >
-          <p className="muted">Vault path, last opened note, and index status.</p>
-          <div className="setting-row">
-            <span className="label">Current vault path</span>
-            <div className="setting-inline">
-              <span className="value path-value">{vaultPath ?? "—"}</span>
-              <button
-                type="button"
-                className="ghost small"
-                onClick={onCopyVaultPath}
-                disabled={!vaultPath}
-              >
-                Copy
-              </button>
-            </div>
+      <div className="panel-body">
+        <p className="muted">Vault path, last opened note, and index status.</p>
+        <div className="setting-row">
+          <span className="label">Current vault path</span>
+          <div className="setting-inline">
+            <span className="value path-value">{vaultPath ?? "—"}</span>
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onCopyVaultPath}
+              disabled={!vaultPath}
+            >
+              Copy
+            </button>
           </div>
-          <div className="setting-row">
-            <span className="label">Last opened</span>
-            <span className="value path-value">
-              {lastOpenedFile ?? "Not loaded yet"}
-            </span>
+        </div>
+        <div className="setting-row">
+          <span className="label">Last opened</span>
+          <span className="value path-value">
+            {lastOpenedFile ?? "Not loaded yet"}
+          </span>
+        </div>
+        <div className="setting-row">
+          <span className="label">Show hidden folders</span>
+          <div className="theme-toggle">
+            <span className="toggle-label">Off</span>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={showHiddenFolders}
+                onChange={handleShowHiddenFoldersChange}
+                aria-label="Show hidden folders"
+              />
+              <span className="slider" />
+            </label>
+            <span className="toggle-label">On</span>
           </div>
-          <div className="setting-row">
-            <span className="label">Show hidden folders</span>
-            <div className="theme-toggle">
-              <span className="toggle-label">Off</span>
-              <label className="switch">
+          <span className="helper-text">
+            Folders starting with a dot (e.g., .git, .obsidian).
+          </span>
+        </div>
+        <div className="setting-row">
+          <span className="label">Show empty folders</span>
+          <div className="theme-toggle">
+            <span className="toggle-label">Off</span>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={showEmptyFolders}
+                onChange={handleShowEmptyFoldersChange}
+                aria-label="Show empty folders"
+              />
+              <span className="slider" />
+            </label>
+            <span className="toggle-label">On</span>
+          </div>
+          <span className="helper-text">
+            Show folders that do not contain markdown files.
+          </span>
+        </div>
+        <div className="setting-row">
+          <span className="label">Status indicators</span>
+          <div className="status-list">
+            <div className="status-item">
+              <label className="status-checkbox">
                 <input
                   type="checkbox"
-                  checked={showHiddenFolders}
-                  onChange={handleShowHiddenFoldersChange}
-                  aria-label="Show hidden folders"
+                  checked={vaultIndexedComplete}
+                  disabled
+                  aria-label="Fully processed"
                 />
-                <span className="slider" />
+                <span>Fully processed</span>
               </label>
-              <span className="toggle-label">On</span>
-            </div>
-            <span className="helper-text">
-              Folders starting with a dot (e.g., .git, .obsidian).
-            </span>
-          </div>
-          <div className="setting-row">
-            <span className="label">Show empty folders</span>
-            <div className="theme-toggle">
-              <span className="toggle-label">Off</span>
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  checked={showEmptyFolders}
-                  onChange={handleShowEmptyFoldersChange}
-                  aria-label="Show empty folders"
-                />
-                <span className="slider" />
-              </label>
-              <span className="toggle-label">On</span>
-            </div>
-            <span className="helper-text">
-              Show folders that do not contain markdown files.
-            </span>
-          </div>
-          <div className="setting-row">
-            <span className="label">Status indicators</span>
-            <div className="status-list">
-              <div className="status-item">
-                <label className="status-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={vaultIndexedComplete}
-                    disabled
-                    aria-label="Fully processed"
-                  />
-                  <span>Fully processed</span>
-                </label>
-                <span className="helper-text">
-                  All notes have been scanned and indexed.
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="setting-row">
-            <span className="label">Actions</span>
-            <div className="setting-actions">
-              <button
-                type="button"
-                className="ghost small"
-                onClick={() => onRescanVault("settings:vault-index")}
-                disabled={!vaultPath || isRefreshing}
-              >
-                Rescan vault
-              </button>
-              <button
-                type="button"
-                className="ghost small"
-                onClick={onResetIndex}
-                disabled={!vaultPath || isRefreshing}
-              >
-                Reset index
-              </button>
-            </div>
-            <span className="helper-text">
-              Reset index clears the current vault registration.
-            </span>
-            <div className="setting-inline">
-              <span className="muted">
-                {isRefreshing ? "Refreshing active vault..." : `Last refresh: ${lastRefreshLabel}`}
+              <span className="helper-text">
+                All notes have been scanned and indexed.
               </span>
             </div>
-            {listError ? (
-              <div className="error" role="status">
-                {listError}
-              </div>
-            ) : null}
           </div>
         </div>
-      ) : (
-        <div
-          className="settings-tab-panel"
-          role="tabpanel"
-          id="data-sync-tab-panel"
-          aria-labelledby="data-sync-tab"
-        >
-          <p className="muted">Manage local stats storage and profiles.</p>
-          <div className="settings-tab-content">
-            <DataSyncTabContent userVault={userVault} />
+        <div className="setting-row">
+          <span className="label">Actions</span>
+          <div className="setting-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => onRescanVault("settings:vault-index")}
+              disabled={!vaultPath || isRefreshing}
+            >
+              Rescan vault
+            </button>
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onResetIndex}
+              disabled={!vaultPath || isRefreshing}
+            >
+              Reset index
+            </button>
           </div>
+          <span className="helper-text">
+            Reset index clears the current vault registration.
+          </span>
+          <div className="setting-inline">
+            <span className="muted">
+              {isRefreshing ? "Refreshing active vault..." : `Last refresh: ${lastRefreshLabel}`}
+            </span>
+          </div>
+          {listError ? (
+            <div className="error" role="status">
+              {listError}
+            </div>
+          ) : null}
         </div>
-      )}
+      </div>
     </section>
   );
 };

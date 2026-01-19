@@ -9,7 +9,7 @@
  * - Konflikte erkennen und Speichern blockieren.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_KEYBOARD_SHORTCUTS,
   detectShortcutConflicts,
@@ -46,6 +46,86 @@ const areBindingsEqual = (
     return false;
   }
   return leftKeys.every((key) => left[key] === right[key]);
+};
+
+const buildInfoPreview = (description: string, notes?: string) => {
+  const combined = notes ? `${description} Note: ${notes}` : description;
+  const normalized = combined.replace(/\s+/g, " ").trim();
+  const maxLength = 120;
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength - 3)}...`;
+};
+
+type ShortcutInfoButtonProps = {
+  commandId: string;
+  description: string;
+  notes?: string;
+};
+
+const ShortcutInfoButton = ({
+  commandId,
+  description,
+  notes,
+}: ShortcutInfoButtonProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+  const popoverId = `shortcut-info-${commandId}`;
+  const preview = buildInfoPreview(description, notes);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target || !containerRef.current) {
+        return;
+      }
+      if (!containerRef.current.contains(target)) {
+        setIsOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <span ref={containerRef} className="shortcut-info">
+      <button
+        type="button"
+        className="shortcut-info-button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-label="Shortcut description"
+        aria-expanded={isOpen}
+        aria-controls={popoverId}
+        title={preview}
+      >
+        ?
+      </button>
+      {isOpen ? (
+        <div
+          id={popoverId}
+          className="shortcut-info-popover"
+          role="dialog"
+          aria-label="Shortcut description"
+        >
+          <p>{description}</p>
+          {notes ? <p className="muted">Note: {notes}</p> : null}
+        </div>
+      ) : null}
+    </span>
+  );
 };
 
 export const KeyboardShortcutsSection = ({
@@ -361,52 +441,32 @@ export const KeyboardShortcutsSection = ({
                 className={`shortcut-row ${isConflicting ? "is-conflict" : ""}`}
                 tabIndex={-1}
               >
-                <div className="shortcut-main">
-                  <div className="shortcut-title">{command.title}</div>
-                  <div className="shortcut-meta">
-                    <div className="shortcut-contexts">
-                      {contextLabels.length > 0 ? (
-                        contextLabels.map((label) => (
-                          <span key={label} className="shortcut-context">
-                            {label}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="shortcut-context">Unknown</span>
-                      )}
-                    </div>
-                    <span className="muted">{command.description}</span>
-                    {command.notes ? (
-                      <span className="muted">Note: {command.notes}</span>
-                    ) : null}
+                <div className="shortcut-row-top">
+                  <div className="shortcut-row-left">
+                    {isEditing ? (
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={handleCancelEditing}
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={() => handleStartEditing(command.id)}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    <span className="shortcut-title">{command.title}</span>
+                    <ShortcutInfoButton
+                      commandId={command.id}
+                      description={command.description}
+                      notes={command.notes}
+                    />
                   </div>
-                </div>
-                <div className="shortcut-binding">
-                  <span className="shortcut-chip">
-                    {formatBinding(effectiveBinding, platform)}
-                  </span>
-                  {isEditing ? (
-                    <span className="shortcut-capture">Press new keys...</span>
-                  ) : null}
-                </div>
-                <div className="shortcut-actions">
-                  {isEditing ? (
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={handleCancelEditing}
-                    >
-                      Cancel
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={() => handleStartEditing(command.id)}
-                    >
-                      Edit
-                    </button>
-                  )}
                   <button
                     type="button"
                     className="ghost small"
@@ -414,9 +474,30 @@ export const KeyboardShortcutsSection = ({
                   >
                     Clear
                   </button>
+                </div>
+                <div className="shortcut-row-meta">
+                  <div className="shortcut-contexts">
+                    {contextLabels.length > 0 ? (
+                      contextLabels.map((label) => (
+                        <span key={label} className="shortcut-context">
+                          {label}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="shortcut-context">Unknown</span>
+                    )}
+                  </div>
+                  <div className="shortcut-binding">
+                    <button type="button" className="shortcut-chip">
+                      {formatBinding(effectiveBinding, platform)}
+                    </button>
+                    {isEditing ? (
+                      <span className="shortcut-capture">Press new keys...</span>
+                    ) : null}
+                  </div>
                   <button
                     type="button"
-                    className="ghost small"
+                    className="ghost small shortcut-restore"
                     onClick={() => handleRestoreDefault(command)}
                   >
                     Restore default

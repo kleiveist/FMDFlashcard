@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "runs": [
+    {
+      "id": "3f1599f4-e947-442b-8028-b27159d16f2f",
+      "startedAt": "2026-01-14T19:32:24.422Z",
+      "endedAt": "2026-01-14T19:33:06.686Z",
+      "durationMs": 42264,
+      "userId": "16fb2853-c3e4-4949-835f-552e56c5627a",
+      "userName": "xx",
+      "examFilePath": "New Note.md",
+      "tasksDetected": 10,
+      "maxPoints": 45,
+      "achievedPoints": 0,
+      "percent": 0,
+      "passed": false,
+      "grade": "6",
+      "gradeScaleId": "standard-1-6"
+    },
+    {
+      "id": "f083aaa2-7254-4ad2-9539-e6def8783e4f",
+      "startedAt": "2026-01-13T22:10:01.306Z",
+      "endedAt": "2026-01-13T22:10:03.085Z",
+      "durationMs": 1779,
+      "userId": "16fb2853-c3e4-4949-835f-552e56c5627a",
+      "userName": "xx",
+      "examFilePath": "IDBS01.md",
+      "tasksDetected": 10,
+      "maxPoints": 45,
+      "achievedPoints": 0,
+      "percent": 0,
+      "passed": false,
+      "grade": "6",
+      "gradeScaleId": "standard-1-6"
+    },
+    {
+      "id": "8ccda710-81f9-4b3d-9b06-3bf3032cccf4",
+      "startedAt": "2026-01-13T22:09:03.979Z",
+      "endedAt": "2026-01-13T22:09:15.384Z",
+      "durationMs": 11405,
+      "userId": null,
+      "userName": "Unknown",
+      "examFilePath": "IDBS01.md",
+      "tasksDetected": 10,
+      "maxPoints": 45,
+      "achievedPoints": 0,
+      "percent": 0,
+      "passed": false,
+      "grade": "6",
+      "gradeScaleId": "standard-1-6"
+    },
+    {
+      "id": "4454bd29-11ec-4e28-86a1-c04d2ec90df6",
+      "startedAt": "2026-01-13T21:28:03.349Z",
+      "endedAt": "2026-01-13T21:28:16.660Z",
+      "durationMs": 13311,
+      "userId": null,
+      "userName": "Unknown",
+      "examFilePath": "IDBS01.md",
+      "tasksDetected": 10,
+      "maxPoints": 45,
+      "achievedPoints": 0,
+      "percent": 0,
+      "passed": false,
+      "grade": "6",
+      "gradeScaleId": "standard-1-6"
+    }
+  ],
+  "migratedFromAppData": true
+}

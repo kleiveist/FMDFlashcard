@@ -12,6 +12,7 @@
  * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
+ * - ExamEditorSection: React-Komponente.
  * - MarkdownEditorSection: React-Komponente.
  *
  * Hinweise:
@@ -25,14 +26,12 @@ import { ModalShell } from "../ModalShell";
 type AccentMode = "light" | "dark";
 
 type MarkdownEditorSectionProps = {
-  examEditorShowMoveButtons: boolean;
   markdownEditorAccentEnabled: boolean;
   markdownEditorAccentLightHex: string;
   markdownEditorAccentDarkHex: string;
   markdownEditorAccentCustomSwatches: string[];
   editorBlueprintGrid: boolean;
   editorBlueprintGridIntensity: "light" | "medium" | "strong";
-  onExamEditorShowMoveButtonsToggle: (value: boolean) => void;
   onMarkdownEditorAccentEnabledToggle: (value: boolean) => void;
   onMarkdownEditorAccentHexChange: (mode: AccentMode, value: string) => void;
   onMarkdownEditorAccentCustomSwatchAdd: (value: string) => void;
@@ -40,6 +39,11 @@ type MarkdownEditorSectionProps = {
   onEditorBlueprintGridIntensityChange: (
     value: "light" | "medium" | "strong",
   ) => void;
+};
+
+type ExamEditorSectionProps = {
+  examEditorShowMoveButtons: boolean;
+  onExamEditorShowMoveButtonsToggle: (value: boolean) => void;
 };
 
 const GRID_INTENSITY_OPTIONS: Array<"light" | "medium" | "strong"> = [
@@ -117,15 +121,49 @@ const MARKDOWN_EDITOR_PALETTE = [
   "#F472B6",
 ];
 
-export const MarkdownEditorSection = ({
+export const ExamEditorSection = ({
   examEditorShowMoveButtons,
+  onExamEditorShowMoveButtonsToggle,
+}: ExamEditorSectionProps) => (
+  <section className="panel editor-settings-panel">
+    <div>
+      <h2>Exam editor</h2>
+      <p className="muted">Canvas controls and structure tools.</p>
+    </div>
+    <div className="editor-settings-grid">
+      <div className="editor-settings-block">
+        <h3>Move buttons</h3>
+        <p className="muted">Quick controls for moving content blocks.</p>
+        <div className="setting-row">
+          <span className="label">Show Up/Down buttons</span>
+          <div className="theme-toggle">
+            <span className="toggle-label">Off</span>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={examEditorShowMoveButtons}
+                onChange={(event) =>
+                  onExamEditorShowMoveButtonsToggle(event.target.checked)
+                }
+                aria-label="Show Up/Down move buttons in exam editor"
+              />
+              <span className="slider" />
+            </label>
+            <span className="toggle-label">On</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+);
+
+export const MarkdownEditorSection = ({
   markdownEditorAccentEnabled,
   markdownEditorAccentLightHex,
   markdownEditorAccentDarkHex,
   markdownEditorAccentCustomSwatches,
   editorBlueprintGrid,
   editorBlueprintGridIntensity,
-  onExamEditorShowMoveButtonsToggle,
   onMarkdownEditorAccentEnabledToggle,
   onMarkdownEditorAccentHexChange,
   onMarkdownEditorAccentCustomSwatchAdd,
@@ -256,35 +294,13 @@ export const MarkdownEditorSection = ({
   return (
     <section className="panel editor-settings-panel">
       <div>
-        <h2>Editor Settings</h2>
-        <p className="muted">Tune exam and markdown editor behavior.</p>
+        <h2>Markdown editor</h2>
+        <p className="muted">Tune editor colors and grid helpers.</p>
       </div>
       <div className="editor-settings-grid">
         <div className="editor-settings-block">
-          <h3>Exam editor</h3>
-          <p className="muted">Canvas controls and structure tools.</p>
-          <div className="setting-row">
-            <span className="label">Show Up/Down buttons</span>
-            <div className="theme-toggle">
-              <span className="toggle-label">Off</span>
-              <label className="switch">
-                <input
-                  type="checkbox"
-                  checked={examEditorShowMoveButtons}
-                  onChange={(event) =>
-                    onExamEditorShowMoveButtonsToggle(event.target.checked)
-                  }
-                  aria-label="Show Up/Down move buttons in exam editor"
-                />
-                <span className="slider" />
-              </label>
-              <span className="toggle-label">On</span>
-            </div>
-          </div>
-        </div>
-        <div className="editor-settings-block">
-          <h3>Markdown editor</h3>
-          <p className="muted">Tune editor colors and grid helpers.</p>
+          <h3>Accent &amp; grid</h3>
+          <p className="muted">Custom colors and blueprint helpers.</p>
           <div className="setting-row">
             <span className="label">ACCENT COLOR (MARKDOWN EDITOR)</span>
             <div className="markdown-accent-controls">
