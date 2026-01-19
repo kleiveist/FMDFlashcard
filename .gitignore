@@ -28,7 +28,6 @@ venv/
 # Node / Vite / React
 node_modules/
 dist/
-build/
 out/
 .vite/
 .eslintcache
