@@ -44,7 +44,6 @@ type HelpDetailSectionProps = {
   syntaxEntries: SyntaxEntry[];
   syntaxOverview: { title: LocalizedText; bullets?: LocalizedText[] };
   activeSyntax: SyntaxEntry | null;
-  setActiveTopicId: (value: string) => void;
   setActiveSyntaxId: (value: string) => void;
   syntaxLanguage: AppLanguage;
   setSyntaxLanguage: (value: AppLanguage) => void;
@@ -75,7 +74,6 @@ export const HelpDetailSection = ({
   syntaxEntries,
   syntaxOverview,
   activeSyntax,
-  setActiveTopicId,
   setActiveSyntaxId,
   syntaxLanguage,
   setSyntaxLanguage,

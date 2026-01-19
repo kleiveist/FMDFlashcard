@@ -211,6 +211,7 @@ export const validateCard = (card: CardBlueprint): CardValidation => {
       return validateClozeCard(card);
     default: {
       const _exhaustive: never = card;
+      void _exhaustive;
       return {
         valid: false,
         errors: ["Unsupported card type."],

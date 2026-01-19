@@ -23,7 +23,6 @@
 
 import {
   type CSSProperties,
-  type MouseEvent,
   useCallback,
   useEffect,
   useMemo,

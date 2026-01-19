@@ -192,7 +192,6 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
             syntaxEntries={syntaxEntries}
             syntaxOverview={syntaxOverview}
             activeSyntax={activeSyntax}
-            setActiveTopicId={setActiveTopicId}
             setActiveSyntaxId={(value) => {
               if (isStructuredSyntaxTopic) {
                 setStructuredSyntaxId(value);

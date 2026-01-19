@@ -19,7 +19,7 @@ type MarkdownEditorColorInput = {
   themeMode: ThemeMode;
 };
 
-export type MarkdownEditorColorVars = {
+export type MarkdownEditorColorVars = Record<string, string> & {
   "--md-accent": string;
   "--md-question-bg": string;
   "--md-question-border": string;

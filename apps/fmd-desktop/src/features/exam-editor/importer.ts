@@ -17,7 +17,6 @@ import { findTableLineIndices } from "../../lib/markdownTables";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
   CardBlueprint,
-  CardType,
   ExamBlueprint,
   ExamTaskBlueprint,
   ChoiceOption,
@@ -131,7 +130,7 @@ const buildChoiceOptions = (
   }));
 };
 
-const resolveChoiceType = (card: MultipleChoiceCard): CardType =>
+const resolveChoiceType = (card: MultipleChoiceCard): "m1" | "m2" =>
   card.correctKeys.length > 1 ? "m2" : "m1";
 
 const buildPromptWithContext = (question: string, context?: string) => {
@@ -197,6 +196,7 @@ const buildCardsFromPart = (part: FlashcardPart): CardBlueprint[] => {
       return [buildCardFromCloze(part)];
     default: {
       const _exhaustive: never = part;
+      void _exhaustive;
       return [];
     }
   }

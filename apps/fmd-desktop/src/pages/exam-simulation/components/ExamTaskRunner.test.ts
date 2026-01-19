@@ -33,6 +33,8 @@ const buildTask = (): ExamTask => ({
   officialAnswer: "A foreign key is an attribute.",
   gradingMode: "manual",
   sourceRange: { startLine: 0, endLine: 0 },
+  cardWrapper: false,
+  cardLines: ["Define foreign key. Answer: A foreign key is an attribute."],
   warnings: [],
   card: {
     kind: "composite",
@@ -59,6 +61,8 @@ const buildTaskWithParts = (
   prompt: "Task line",
   gradingMode,
   sourceRange: { startLine: 0, endLine: 0 },
+  cardWrapper: false,
+  cardLines: ["Task line"],
   warnings: [],
   card: {
     kind: "composite",

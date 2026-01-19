@@ -123,6 +123,7 @@ const serializeCardContent = (card: CardBlueprint) => {
       return serializeClozeCard(card);
     default: {
       const _exhaustive: never = card;
+      void _exhaustive;
       return [];
     }
   }
@@ -216,6 +217,7 @@ export const serializeCardTypeLabel = (cardType: CardType) => {
       return "CLD";
     default: {
       const _exhaustive: never = cardType;
+      void _exhaustive;
       return "";
     }
   }
