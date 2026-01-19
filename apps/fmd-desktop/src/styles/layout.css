@@ -626,10 +626,13 @@
 .sidebar .vault-details-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   width: 100%;
   min-width: 0;
+}
+
+.sidebar .vault-details-row--actions {
+  justify-content: space-between;
 }
 
 .sidebar .vault-details-title {

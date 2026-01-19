@@ -36,7 +36,7 @@ import {
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { CloseIcon, FileIcon, FolderIcon, RefreshIcon } from "./icons";
+import { FileIcon, FolderIcon, RefreshIcon } from "./icons";
 import { InlineRenameLabel } from "./InlineRenameLabel";
 import { VaultCreateModal } from "./VaultCreateModal";
 import { VaultDeleteModal } from "./VaultDeleteModal";
@@ -352,7 +352,6 @@ export const VaultTree = ({
   const vaultRootName = useMemo(() => vaultBaseName(vaultPath), [vaultPath]);
   const isRescanningVault = listState === "loading";
   const refreshTitle = refreshLabel ?? "Rescan vault";
-  const clearSelectionTitle = "Clear selection";
   const closeContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
@@ -404,10 +403,6 @@ export const VaultTree = ({
   );
   const portalTarget = typeof document === "undefined" ? null : document.body;
 
-  const handleClearSelection = useCallback(() => {
-    setSelectedNode(null);
-    onClearSelection?.();
-  }, [onClearSelection]);
 
   const mergedFiles = useMemo(() => {
     if (pendingFiles.length === 0) {
@@ -1828,7 +1823,7 @@ export const VaultTree = ({
   return (
     <div className="vault-details">
       <div className="vault-details-header">
-        <div className="vault-details-row">
+        <div className="vault-details-row vault-details-row--actions">
           <span className="vault-details-title">Vault Directory</span>
           <button
             type="button"
@@ -1849,18 +1844,6 @@ export const VaultTree = ({
         </div>
         <div className="vault-details-row">
           <span className="vault-summary">{fileCountLabel}</span>
-          <button
-            type="button"
-            className="vault-directory-action"
-            onClick={handleClearSelection}
-            title={clearSelectionTitle}
-            aria-label={clearSelectionTitle}
-            disabled={!onClearSelection || !selectedFile}
-          >
-            <span className="vault-directory-action-icon">
-              <CloseIcon />
-            </span>
-          </button>
         </div>
       </div>
       <div className="vault-body">
