@@ -47,18 +47,19 @@ If `git` or `python` is “not recognized”, close the terminal and open it aga
 $Projects = Join-Path $HOME "Projects"
 New-Item -ItemType Directory -Force -Path $Projects | Out-Null
 Set-Location $Projects
-
-# Clone repository (replace URL if needed)
+```
+### Clone repository (replace URL if needed)
+```powershell
 git clone https://github.com/kleiveist/FMDFlashcard.git
+```
+```powershell
 Set-Location .\FMDFlashcard
 ```
-
 ---
 
 ## 3) Control script (doctor / health check)
 
 ```powershell
-Set-Location (Join-Path $HOME "Projects\FMDFlashcard")
 py -3 .\tools\control.py --doctor
 ```
 
@@ -67,7 +68,6 @@ py -3 .\tools\control.py --doctor
 ## 4) Install & setup
 
 ```powershell
-Set-Location (Join-Path $HOME "Projects\FMDFlashcard")
 py -3 .\tools\control.py --install
 ```
 
