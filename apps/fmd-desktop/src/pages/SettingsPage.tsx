@@ -22,6 +22,7 @@
  */
 
 import {
+  type ReactElement,
   type ReactNode,
   useCallback,
   useEffect,
@@ -78,7 +79,7 @@ import {
 import { resetFastFlashcardHistory } from "./fast-flashcard/hooks/useFastSession";
 import { resetExamRunHistory } from "../lib/examRuns";
 
-const SETTINGS_NAV_ICONS: Record<SettingsNavIcon, () => JSX.Element> = {
+const SETTINGS_NAV_ICONS: Record<SettingsNavIcon, () => ReactElement> = {
   appearance: AppearanceIcon,
   markdown: FileIcon,
   "exam-editor": ExamEditorIcon,

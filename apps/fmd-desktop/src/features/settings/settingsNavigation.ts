@@ -34,6 +34,11 @@ export type SettingsSubPageId =
   | "fast-flashcard-tools"
   | "spaced-repetition-tools";
 
+export type SettingsNavSubPage = {
+  id: SettingsSubPageId;
+  label: string;
+};
+
 export const SETTINGS_NAV_MODEL = [
   { type: "divider", label: "DESIGN" },
   {
@@ -114,7 +119,10 @@ export const SETTINGS_NAV_MODEL = [
 ] as const;
 
 export type SettingsNavEntry = (typeof SETTINGS_NAV_MODEL)[number];
-export type SettingsNavItem = Extract<SettingsNavEntry, { type: "item" }>;
+export type SettingsNavItem = Extract<SettingsNavEntry, { type: "item" }> & {
+  title?: string;
+  subPages?: readonly SettingsNavSubPage[];
+};
 export type SettingsNavDivider = Extract<SettingsNavEntry, { type: "divider" }>;
 export type SettingsNavModel = readonly SettingsNavEntry[];
 export type SettingsPageId = SettingsNavItem["id"];
