@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import time
+import os
 from typing import List, Set, Tuple
 
 from doctor import CRITICAL_CATEGORIES, collect_checks, missing_checks
@@ -33,6 +33,8 @@ WINGET_MAP = {
     "node": ["OpenJS.NodeJS.LTS"],
     "npm": ["OpenJS.NodeJS.LTS"],
     "rustup": ["Rustlang.Rustup"],
+    # Common Windows build helper
+    "cmake": ["Kitware.CMake"],
     # `curl` is usually present on modern Windows; `file`, `make`, `gcc` are not handled here.
 }
 
@@ -68,26 +70,12 @@ def _run(cmd: List[str], dry_run: bool) -> int:
     if dry_run:
         print(f"{ICONS['info']} Dry run: skipping execution.")
         return 0
-    attempts = 3
-    delay_seconds = 5
-    for attempt in range(1, attempts + 1):
-        try:
-            subprocess.run(cmd, check=True)
-            return 0
-        except subprocess.CalledProcessError as e:
-            print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
-            return int(e.returncode) if e.returncode is not None else 1
-        except OSError as e:
-            if getattr(e, "winerror", None) == 1920 and attempt < attempts:
-                print(
-                    f"{ICONS['warn']} Install process not ready (WinError 1920); "
-                    f"retrying in {delay_seconds}s..."
-                )
-                time.sleep(delay_seconds)
-                continue
-            print(f"{ICONS['err']} OS error while running: {e}")
-            return 1
-    return 1
+    try:
+        subprocess.run(cmd, check=True)
+        return 0
+    except subprocess.CalledProcessError as e:
+        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
+        return int(e.returncode) if e.returncode is not None else 1
 
 
 def _expand(manager: str, tools: List[str]) -> Tuple[List[str], List[str]]:
@@ -118,6 +106,10 @@ def _install(manager: str, packages: List[str], dry_run: bool) -> int:
     if manager == "winget":
         # `-e` exact match, `--id` uses the package ID.
         # Agreements flags avoid prompts.
+        # IMPORTANT: force the "winget" community source so certificate issues
+        # with the Microsoft Store source (msstore) do not break installs.
+        # You can override via env var, e.g. WINGET_SOURCE=winget (default).
+        winget_source = os.environ.get("WINGET_SOURCE", "winget")
         rc = 0
         for pkg_id in packages:
             cmd = [
@@ -127,7 +119,7 @@ def _install(manager: str, packages: List[str], dry_run: bool) -> int:
                 "--id",
                 pkg_id,
                 "--source",
-                "winget",
+                winget_source,
                 "--disable-interactivity",
                 "--accept-package-agreements",
                 "--accept-source-agreements",

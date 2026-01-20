@@ -231,6 +231,7 @@ def _print_build_helper() -> None:
     info("  --build-lin  Linux release (NO_STRIP, CLEAN_BUNDLE).")
     info("  --build-win  Windows build (default bundles via WIN_BUNDLES). Use -p for portable.")
     info("  --build-mac  macOS bundles (MAC_BUNDLES=app,dmg, ALLOW_CROSS).")
+    info("  --build --winlinux  Windows cross-compile on Linux (cargo-xwin, portable exe).")
 
 
 def _load_build_win_runner() -> Callable[..., int] | None:
@@ -283,6 +284,24 @@ def _load_build_mac_runner() -> Callable[..., int] | None:
     return cast(Callable[..., int], fn)
 
 
+def _load_build_winlinux_runner() -> Callable[..., int] | None:
+    """Load tools/inst/win/installwin_linux.py (runner for Windows cross build on Linux)."""
+    mod_name = "installwin_linux"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load Windows Linux build module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(
+            f"Windows Linux build module '{mod_name}' has no run_install(dry_run=...) function."
+        )
+        return None
+    return cast(Callable[..., int], fn)
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Project toolbox launcher.")
     parser.add_argument(
@@ -328,6 +347,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--build",
         action="store_true",
         help="Build helper output (prints build targets).",
+    )
+    parser.add_argument(
+        "--winlinux",
+        action="store_true",
+        help="Enable Windows cross-compile on Linux (use with --build).",
     )
     parser.add_argument(
         "--build-lin",
@@ -423,7 +447,23 @@ def main(argv: list[str] | None = None) -> int:
             except Exception:
                 exit_code = max(exit_code, run_runner(args.dry_run))
 
-    if args.build:
+    if args.build and args.winlinux:
+        handled = True
+        console_section("Windows Build (Linux cross)")
+        run_build_winlinux = _load_build_winlinux_runner()
+        if not run_build_winlinux:
+            print("No Windows cross build routine found. Expected: tools/inst/win/installwin_linux.py")
+            exit_code = max(exit_code, 1)
+        else:
+            try:
+                sig = inspect.signature(run_build_winlinux)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_build_winlinux())
+                else:
+                    exit_code = max(exit_code, run_build_winlinux(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_build_winlinux(args.dry_run))
+    elif args.build:
         handled = True
         _print_build_helper()
 
@@ -499,6 +539,11 @@ def main(argv: list[str] | None = None) -> int:
                     exit_code = max(exit_code, run_build_mac(args.dry_run))
             except Exception:
                 exit_code = max(exit_code, run_build_mac(args.dry_run))
+
+    if args.winlinux and not args.build:
+        handled = True
+        print("Use --winlinux with --build (example: python3 tools/control.py --winlinux --build).")
+        exit_code = max(exit_code, 1)
 
     if args.doctor or args.check:
         handled = True
