@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import time
 from typing import List, Set, Tuple
 
 from doctor import CRITICAL_CATEGORIES, collect_checks, missing_checks
@@ -67,12 +68,26 @@ def _run(cmd: List[str], dry_run: bool) -> int:
     if dry_run:
         print(f"{ICONS['info']} Dry run: skipping execution.")
         return 0
-    try:
-        subprocess.run(cmd, check=True)
-        return 0
-    except subprocess.CalledProcessError as e:
-        print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
-        return int(e.returncode) if e.returncode is not None else 1
+    attempts = 3
+    delay_seconds = 5
+    for attempt in range(1, attempts + 1):
+        try:
+            subprocess.run(cmd, check=True)
+            return 0
+        except subprocess.CalledProcessError as e:
+            print(f"{ICONS['err']} Error running (exit {e.returncode}): {' '.join(cmd)}")
+            return int(e.returncode) if e.returncode is not None else 1
+        except OSError as e:
+            if getattr(e, "winerror", None) == 1920 and attempt < attempts:
+                print(
+                    f"{ICONS['warn']} Install process not ready (WinError 1920); "
+                    f"retrying in {delay_seconds}s..."
+                )
+                time.sleep(delay_seconds)
+                continue
+            print(f"{ICONS['err']} OS error while running: {e}")
+            return 1
+    return 1
 
 
 def _expand(manager: str, tools: List[str]) -> Tuple[List[str], List[str]]:
@@ -111,6 +126,9 @@ def _install(manager: str, packages: List[str], dry_run: bool) -> int:
                 "-e",
                 "--id",
                 pkg_id,
+                "--source",
+                "winget",
+                "--disable-interactivity",
                 "--accept-package-agreements",
                 "--accept-source-agreements",
             ]
