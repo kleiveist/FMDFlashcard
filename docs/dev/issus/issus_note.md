@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](issus.md)
+<!-- AUTO-GENERATED:backlink END -->
 der Settings soll nochmal übereabreite werden mit einer einer linke toobar anstell von klickbaren buttons
 in der toobar soll deann alle bereiche mit icosn vesehn aufgelistet werden
 recht toobar mit icon links einstell bereich

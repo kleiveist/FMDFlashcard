@@ -9,7 +9,7 @@
 
 ## 📄 Pages
 - 📝 [Dashboard](dashboard.md)
-- 📝 [Exam Editor – User Documentation (EN)](Exam%20Editor.md)
+- 📝 [Exam Editor – User Documentation](Exam%20Editor.md)
 - 📝 [Exams](exams.md)
 - 📝 [Fast Flashcard](fast-flashcard.md)
 - 📝 [Flashcards](flashcards.md)

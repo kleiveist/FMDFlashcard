@@ -21,7 +21,8 @@
 - 📝 [Developer ↔ Codex Workflow](dev/codex-workflow.md)
 - 📝 [Control script (`tools/control.py`)](dev/control-script.md)
 - 📝 [Releases / Packaging](dev/release.md)
-- 📝 [Developer setup (run from source)](dev/setup.md)
+- 📝 [Developer setup (run from source)](dev/setup_lin.md)
+- 📝 [Windows developer setup (PowerShell, run from source)](dev/setup_win.md)
 - 📝 [Testing](dev/testing.md)
 - 📝 [User Vault (Dev Notes)](dev/user-vault.md)
 

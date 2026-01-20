@@ -12,17 +12,19 @@
 - 📝 [Developer ↔ Codex Workflow](codex-workflow.md)
 - 📝 [Control script (`tools/control.py`)](control-script.md)
 - 📝 [Releases / Packaging](release.md)
-- 📝 [Developer setup (run from source)](setup.md)
+- 📝 [Developer setup (run from source)](setup_lin.md)
+- 📝 [Windows developer setup (PowerShell, run from source)](setup_win.md)
 - 📝 [Testing](testing.md)
 - 📝 [User Vault (Dev Notes)](user-vault.md)
 
 ## 📁 Issus
 - 🗂️ [Overview](issus/issus.md)
-- 📝 [Issue Notes (Bug Report)](issus/issus_note.md)
+- 📝 [Issus note](issus/issus_note.md)
 - 📝 [Issustabel](issus/issustabel.md)
 
 ## 📁 Rendering
 - 🗂️ [Overview](rendering/rendering.md)
+- 📝 [Rendering examedito](rendering/rendering_examedito.md)
 - 📝 [Rendering markdown tabel](rendering/rendering_markdown_tabel.md)
 - 📝 [Recommendation: Extend your table by 3 meta columns](rendering/rendering_markdown_types.md)
 - 📝 [Rendering tabelcard](rendering/rendering_tabelcard.md)

@@ -8,7 +8,7 @@
 <!-- AUTO-GENERATED:docs-index START -->
 
 ## 📄 Pages
-- 📝 [Issue Notes (Bug Report)](issus_note.md)
+- 📝 [Issus note](issus_note.md)
 - 📝 [Issustabel](issustabel.md)
 
 ## 📁 IssusDE

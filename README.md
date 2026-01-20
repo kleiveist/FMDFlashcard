@@ -40,7 +40,8 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Developer ↔ Codex Workflow](docs/dev/codex-workflow.md)
 - 📝 [Control script (`tools/control.py`)](docs/dev/control-script.md)
 - 📝 [Releases / Packaging](docs/dev/release.md)
-- 📝 [Developer setup (run from source)](docs/dev/setup.md)
+- 📝 [Developer setup (run from source)](docs/dev/setup_lin.md)
+- 📝 [Windows developer setup (PowerShell, run from source)](docs/dev/setup_win.md)
 - 📝 [Testing](docs/dev/testing.md)
 - 📝 [User Vault (Dev Notes)](docs/dev/user-vault.md)
 

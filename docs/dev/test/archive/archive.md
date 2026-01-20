@@ -20,4 +20,7 @@
 - 📝 [Test n1](test_editor/test_n1.md)
 - 📝 [Test n2](test_editor/test_n2.md)
 
+## 📁 USER
+- 🗂️ [Overview](user/user.md)
+
 <!-- AUTO-GENERATED:docs-index END -->
