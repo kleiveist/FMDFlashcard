@@ -306,33 +306,9 @@ const DashboardPageInner = (
 
   return (
     <div className="dashboard-page">
-      <header className="content-header">
-        <div className="vault-header-row">
-          <div className="vault-view-switch pill-grid" role="tablist">
-            {vaultView === "exam" ? (
-              <button
-                type="button"
-                className="pill pill-button"
-                onClick={() => handleVaultViewChange("markdown")}
-                role="tab"
-                aria-selected={false}
-              >
-                Markdown
-              </button>
-            ) : null}
-            {vaultView === "markdown" ? (
-              <button
-                type="button"
-                className="pill pill-button"
-                onClick={() => handleVaultViewChange("exam")}
-                role="tab"
-                aria-selected={false}
-              >
-                Exam Editor
-              </button>
-            ) : null}
-          </div>
-          {vaultView === "exam" ? (
+      {vaultView === "exam" ? (
+        <header className="content-header">
+          <div className="vault-header-row">
             <div className="vault-saved-path">
               <span className="muted">Saved path:</span>
               <span className="save-path">
@@ -344,9 +320,9 @@ const DashboardPageInner = (
                 <span className="pill success">Saved</span>
               ) : null}
             </div>
-          ) : null}
-        </div>
-      </header>
+          </div>
+        </header>
+      ) : null}
 
       <div
         className={`workspace${noteCollapsed ? " note-collapsed" : ""}`}
