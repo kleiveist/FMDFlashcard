@@ -309,26 +309,28 @@ const DashboardPageInner = (
       <header className="content-header">
         <div className="vault-header-row">
           <div className="vault-view-switch pill-grid" role="tablist">
-            <button
-              type="button"
-              className={`pill pill-button ${
-                vaultView === "markdown" ? "active" : ""
-              }`}
-              onClick={() => handleVaultViewChange("markdown")}
-              role="tab"
-              aria-selected={vaultView === "markdown"}
-            >
-              Markdown
-            </button>
-            <button
-              type="button"
-              className={`pill pill-button ${vaultView === "exam" ? "active" : ""}`}
-              onClick={() => handleVaultViewChange("exam")}
-              role="tab"
-              aria-selected={vaultView === "exam"}
-            >
-              Exam Editor
-            </button>
+            {vaultView === "exam" ? (
+              <button
+                type="button"
+                className="pill pill-button"
+                onClick={() => handleVaultViewChange("markdown")}
+                role="tab"
+                aria-selected={false}
+              >
+                Markdown
+              </button>
+            ) : null}
+            {vaultView === "markdown" ? (
+              <button
+                type="button"
+                className="pill pill-button"
+                onClick={() => handleVaultViewChange("exam")}
+                role="tab"
+                aria-selected={false}
+              >
+                Exam Editor
+              </button>
+            ) : null}
           </div>
           {vaultView === "exam" ? (
             <div className="vault-saved-path">

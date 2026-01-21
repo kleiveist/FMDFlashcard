@@ -106,7 +106,7 @@ export const ModalShell = ({
     .filter(Boolean)
     .join(" ");
   const modal = (
-    <div className="modal-backdrop" role="presentation">
+    <div className="modal-backdrop" role="presentation" onClick={onClose}>
       <div
         ref={panelRef}
         className={panelClassName}
@@ -114,6 +114,7 @@ export const ModalShell = ({
         aria-modal="true"
         aria-labelledby={titleId}
         onKeyDown={handleKeyDown}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="modal-panel-header">
           <h2 id={titleId} className="modal-panel-title">
