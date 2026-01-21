@@ -1242,7 +1242,7 @@ export const PreviewPanel = ({
               <div
                 key="markdown-edit"
                 ref={markdownEditorRef}
-                className="preview preview-editor markdown"
+                className="preview preview-editor markdown md-preview"
                 contentEditable
                 suppressContentEditableWarning
                 onInput={handleMarkdownInput}
@@ -1257,7 +1257,9 @@ export const PreviewPanel = ({
             <div
               key={rawPreview ? "raw-view" : "markdown-view"}
               ref={previewRef}
-              className={`preview ${rawPreview ? "raw" : "markdown"}`}
+              className={`preview ${rawPreview ? "raw" : "markdown"}${
+                rawPreview ? "" : " md-preview"
+              }`}
               onScroll={(event) => captureScroll(event.currentTarget)}
             >
               {rawPreview ? (

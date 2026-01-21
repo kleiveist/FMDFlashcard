@@ -180,50 +180,71 @@
   font-size: inherit;
 }
 
-.preview.markdown {
+.md-preview {
+  font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.6;
+  white-space: normal;
 }
 
-.preview.markdown > :first-child {
+.md-preview > :first-child {
   margin-top: 0;
 }
 
-.preview.markdown h1 {
+.md-preview > :last-child {
+  margin-bottom: 0;
+}
+
+.md-preview h1 {
   font-size: 1.4rem;
   margin: 0 0 0.6rem;
 }
 
-.preview.markdown h2 {
+.md-preview h2 {
   font-size: 1.2rem;
   margin: 1.2rem 0 0.6rem;
 }
 
-.preview.markdown h3 {
+.md-preview h3 {
   font-size: 1.05rem;
   margin: 1rem 0 0.5rem;
 }
 
-.preview.markdown p {
+.md-preview h4 {
+  font-size: 1rem;
+  margin: 0.9rem 0 0.5rem;
+}
+
+.md-preview h5 {
+  font-size: 0.95rem;
+  margin: 0.8rem 0 0.45rem;
+}
+
+.md-preview h6 {
+  font-size: 0.9rem;
+  margin: 0.7rem 0 0.4rem;
+}
+
+.md-preview p {
   margin: 0 0 0.8rem;
 }
 
-.preview.markdown ul,
-.preview.markdown ol {
+.md-preview ul,
+.md-preview ol {
   margin: 0 0 0.8rem;
   padding-left: 1.4rem;
 }
 
-.preview.markdown a {
+.md-preview a {
   color: var(--md-link);
   text-decoration: underline;
 }
 
-.preview.markdown a:hover {
+.md-preview a:hover {
   color: var(--md-link-hover);
 }
 
-.preview.markdown code {
+.md-preview code {
   font-family: var(--mono);
   font-size: 0.85rem;
   background: var(--preview-code-bg);
@@ -232,7 +253,7 @@
   padding: 2px 6px;
 }
 
-.preview.markdown pre {
+.md-preview pre {
   margin: 0 0 0.8rem;
   padding: 12px;
   background: var(--preview-code-bg);
@@ -241,13 +262,13 @@
   overflow-x: auto;
 }
 
-.preview.markdown pre code {
+.md-preview pre code {
   background: transparent;
   border: none;
   padding: 0;
 }
 
-.preview.markdown blockquote {
+.md-preview blockquote {
   margin: 0 0 0.8rem;
   padding-left: 12px;
   border-left: 3px solid var(--md-blockquote-border);
@@ -264,32 +285,32 @@
   background: var(--md-table-bg);
 }
 
-.preview.markdown table {
+.md-preview table {
   width: max-content;
   min-width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
-.preview.markdown thead th {
+.md-preview thead th {
   background: var(--md-table-head-bg);
   text-align: left;
   font-weight: 600;
 }
 
-.preview.markdown th,
-.preview.markdown td {
+.md-preview th,
+.md-preview td {
   padding: 8px 12px;
   border-bottom: 1px solid var(--line-soft);
   border-right: 1px solid var(--line-soft);
 }
 
-.preview.markdown tr > :last-child {
+.md-preview tr > :last-child {
   border-right: none;
 }
 
-.preview.markdown tbody tr:last-child th,
-.preview.markdown tbody tr:last-child td {
+.md-preview tbody tr:last-child th,
+.md-preview tbody tr:last-child td {
   border-bottom: none;
 }
 
