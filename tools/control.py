@@ -285,8 +285,8 @@ def _load_build_mac_runner() -> Callable[..., int] | None:
 
 
 def _load_build_winlinux_runner() -> Callable[..., int] | None:
-    """Load tools/inst/win/installwin_linux.py (runner for Windows cross build on Linux)."""
-    mod_name = "installwin_linux"
+    """Load tools/build/buildwin_linux.py (runner for Windows cross build on Linux)."""
+    mod_name = "buildwin_linux"
     try:
         mod = importlib.import_module(mod_name)
     except Exception as e:
@@ -452,7 +452,7 @@ def main(argv: list[str] | None = None) -> int:
         console_section("Windows Build (Linux cross)")
         run_build_winlinux = _load_build_winlinux_runner()
         if not run_build_winlinux:
-            print("No Windows cross build routine found. Expected: tools/inst/win/installwin_linux.py")
+            print("No Windows cross build routine found. Expected: tools/build/buildwin_linux.py")
             exit_code = max(exit_code, 1)
         else:
             try:
