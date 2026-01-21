@@ -279,6 +279,30 @@ const DashboardPageInner = (
   const handleEditCaretApplied = useCallback(() => {
     setEditCaretIndex(null);
   }, []);
+  const handleExamSave = useCallback(
+    ({ path, markdown }: { path: string; markdown: string }) => {
+      if (preview.selectedFile?.path === path) {
+        preview.setPreview(markdown);
+      }
+      if (!vault.files.some((file) => file.path === path)) {
+        const relativePath = resolveVaultRelativePath(path);
+        if (relativePath) {
+          const nextFiles = [
+            ...vault.files,
+            { path, relative_path: relativePath },
+          ].sort((a, b) => a.relative_path.localeCompare(b.relative_path));
+          vault.setFiles(nextFiles);
+        }
+      }
+    },
+    [
+      preview.selectedFile?.path,
+      preview.setPreview,
+      resolveVaultRelativePath,
+      vault.files,
+      vault.setFiles,
+    ],
+  );
 
   return (
     <div className="dashboard-page">
@@ -359,21 +383,7 @@ const DashboardPageInner = (
             vaultPath={vault.vaultPath ?? null}
             showMoveButtons={settings.examEditorShowMoveButtons}
             onControlsReady={setExamControls}
-            onSave={({ path, markdown }) => {
-              if (preview.selectedFile?.path === path) {
-                preview.setPreview(markdown);
-              }
-              if (!vault.files.some((file) => file.path === path)) {
-                const relativePath = resolveVaultRelativePath(path);
-                if (relativePath) {
-                  const nextFiles = [
-                    ...vault.files,
-                    { path, relative_path: relativePath },
-                  ].sort((a, b) => a.relative_path.localeCompare(b.relative_path));
-                  vault.setFiles(nextFiles);
-                }
-              }
-            }}
+            onSave={handleExamSave}
           />
         )}
 
