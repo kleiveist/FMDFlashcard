@@ -35,9 +35,27 @@
   --sidebar-width: var(--sidebar-collapsed-width);
 }
 
+.app-shell.compact-top-nav {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.app-shell.compact-top-nav .study-section-nav {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.app-shell.compact-top-nav .sidebar,
+.app-shell.compact-top-nav .content {
+  grid-row: 2;
+}
+
 .app-shell.dashboard-active {
   height: 100vh;
   grid-template-rows: minmax(0, 1fr);
+}
+
+.app-shell.compact-top-nav.dashboard-active {
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .app-shell.dashboard-active .content {

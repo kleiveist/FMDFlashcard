@@ -44,19 +44,13 @@ import {
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
 import type { DashboardView } from "../pages/DashboardPage";
-
-type TabKey =
-  | "dashboard"
-  | "exam"
-  | "flashcard"
-  | "spaced-repetition"
-  | "fast-flashcard";
+import { CARD_SECTION_KEYS, CARD_SECTIONS, type StudySectionKey } from "../lib/studySections";
 
 type ToolbarMode = "cards" | "vault";
 
 type SidebarNavProps = {
-  activeTab: TabKey;
-  onTabChange: (tab: TabKey) => void;
+  activeTab: StudySectionKey;
+  onTabChange: (tab: StudySectionKey) => void;
   vaultView: DashboardView;
   onVaultViewChange: (view: DashboardView) => void;
   onOpenHelp: () => void;
@@ -122,11 +116,7 @@ export const SidebarNav = ({
     }`;
   }, [vault.files.length, vault.vaultPath]);
   const isCollapsed = isToolbarCollapsed && !isMobileNavOpen;
-  const isCardsTab =
-    activeTab === "exam" ||
-    activeTab === "flashcard" ||
-    activeTab === "fast-flashcard" ||
-    activeTab === "spaced-repetition";
+  const isCardsTab = CARD_SECTION_KEYS.includes(activeTab);
   const isDashboard = activeTab === "dashboard";
   const isMarkdownView = isDashboard && vaultView === "markdown";
   const isExamView = isDashboard && vaultView === "exam";
@@ -343,40 +333,19 @@ export const SidebarNav = ({
             <div className="sidebar-main-content">
               {toolbarMode === "cards" ? (
                 <nav className="nav">
-                  <button
-                    type="button"
-                    className={`nav-item ${activeTab === "exam" ? "active" : ""}`}
-                    onClick={() => onTabChange("exam")}
-                  >
-                    Exam
-                  </button>
-                  <button
-                    type="button"
-                    className={`nav-item ${
-                      activeTab === "flashcard" ? "active" : ""
-                    }`}
-                    onClick={() => onTabChange("flashcard")}
-                  >
-                    Flashcard
-                  </button>
-                  <button
-                    type="button"
-                    className={`nav-item ${
-                      activeTab === "fast-flashcard" ? "active" : ""
-                    }`}
-                    onClick={() => onTabChange("fast-flashcard")}
-                  >
-                    Fast Flashcard
-                  </button>
-                  <button
-                    type="button"
-                    className={`nav-item ${
-                      activeTab === "spaced-repetition" ? "active" : ""
-                    }`}
-                    onClick={() => onTabChange("spaced-repetition")}
-                  >
-                    Spaced Repetition
-                  </button>
+                  {CARD_SECTIONS.map((section) => {
+                    const isActive = activeTab === section.key;
+                    return (
+                      <button
+                        key={section.key}
+                        type="button"
+                        className={`nav-item ${isActive ? "active" : ""}`}
+                        onClick={() => onTabChange(section.key)}
+                      >
+                        {section.label}
+                      </button>
+                    );
+                  })}
                 </nav>
               ) : null}
               {toolbarMode === "vault" ? (

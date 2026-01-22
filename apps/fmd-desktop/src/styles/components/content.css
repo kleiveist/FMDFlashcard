@@ -27,6 +27,38 @@
   overflow: auto;
 }
 
+.study-section-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  box-shadow: var(--shadow-soft);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.study-section-nav::-webkit-scrollbar {
+  height: 6px;
+}
+
+.study-section-nav::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+.study-section-tab {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  text-align: center;
+  white-space: nowrap;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
 .mobile-nav-header {
   display: none;
   align-items: center;

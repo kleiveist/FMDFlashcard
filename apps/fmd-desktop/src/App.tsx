@@ -27,6 +27,7 @@ import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ModalShell } from "./components/ModalShell";
 import { SidebarNav } from "./components/SidebarNav";
+import { StudySectionNav } from "./components/StudySectionNav";
 import {
   getEffectiveBinding,
   getShortcutPlatform,
@@ -45,20 +46,19 @@ import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
+import type { StudySectionKey } from "./lib/studySections";
 
-type TabKey =
-  | "dashboard"
-  | "exam"
-  | "flashcard"
-  | "spaced-repetition"
-  | "fast-flashcard";
+const NARROW_WIDTH_BREAKPOINT = 900;
+const NARROW_ASPECT_RATIO = 0.8;
 
 const AppContent = () => {
   const { actions, help, settings } = useAppState();
-  const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
+  const [activeTab, setActiveTab] = useState<StudySectionKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
   const dashboardRef = useRef<DashboardPageHandle | null>(null);
+  const appShellRef = useRef<HTMLDivElement | null>(null);
+  const [showStudySectionNav, setShowStudySectionNav] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const isDashboard = activeTab === "dashboard";
@@ -72,7 +72,7 @@ const AppContent = () => {
     [closeCommand, platform, settings.keyboardShortcuts.bindings],
   );
   const handleTabChange = useCallback(
-    (tab: TabKey) => {
+    (tab: StudySectionKey) => {
       setActiveTab(tab);
       setIsMobileNavOpen(false);
     },
@@ -107,6 +107,55 @@ const AppContent = () => {
 
   useEffect(() => {
     logWordPressFeatureStatus();
+  }, []);
+
+  useEffect(() => {
+    const shell = appShellRef.current;
+    if (!shell) {
+      return;
+    }
+
+    const evaluateLayout = (width: number, height: number) => {
+      const isNarrowWidth = width <= NARROW_WIDTH_BREAKPOINT;
+      const aspectRatio = height > 0 ? width / height : 1;
+      const isNarrowAspect = aspectRatio <= NARROW_ASPECT_RATIO;
+      const shouldShow = isNarrowWidth || isNarrowAspect;
+      setShowStudySectionNav((prev) => (prev === shouldShow ? prev : shouldShow));
+    };
+
+    const updateFromRect = () => {
+      const rect = shell.getBoundingClientRect();
+      evaluateLayout(rect.width, rect.height);
+    };
+
+    if (typeof ResizeObserver === "undefined") {
+      updateFromRect();
+      window.addEventListener("resize", updateFromRect);
+      return () => window.removeEventListener("resize", updateFromRect);
+    }
+
+    let frame = 0;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      const { width, height } = entry.contentRect;
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      frame = requestAnimationFrame(() => evaluateLayout(width, height));
+    });
+
+    observer.observe(shell);
+    updateFromRect();
+
+    return () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      observer.disconnect();
+    };
   }, []);
 
   const requestDashboardViewChange = useCallback(
@@ -158,12 +207,16 @@ const AppContent = () => {
 
   return (
     <div
-      className={`app-shell ${
+      ref={appShellRef}
+      className={`app-shell ${showStudySectionNav ? "compact-top-nav" : ""} ${
         settings.rightToolbarCollapsed ? "sidebar-collapsed" : ""
       } ${isDashboard ? "dashboard-active" : ""} ${
         isMobileNavOpen ? "nav-open" : ""
       }`}
     >
+      {showStudySectionNav ? (
+        <StudySectionNav activeTab={activeTab} onTabChange={handleTabChange} />
+      ) : null}
       <SidebarNav
         activeTab={activeTab}
         onTabChange={handleTabChange}
