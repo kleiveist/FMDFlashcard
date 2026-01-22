@@ -50,7 +50,6 @@ import type { StudySectionKey } from "./lib/studySections";
 
 const NARROW_WIDTH_BREAKPOINT = 900;
 const NARROW_ASPECT_RATIO = 0.8;
-
 const AppContent = () => {
   const { actions, flashcards, fastFlashcards, help, settings, spacedRepetition } =
     useAppState();
