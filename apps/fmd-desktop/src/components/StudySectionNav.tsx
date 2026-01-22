@@ -9,10 +9,10 @@ import { STUDY_SECTIONS, type StudySectionKey } from "../lib/studySections";
 
 type StudySectionNavProps = {
   activeTab: StudySectionKey;
-  onTabChange: (tab: StudySectionKey) => void;
+  onSectionSelect: (tab: StudySectionKey) => void;
 };
 
-export const StudySectionNav = ({ activeTab, onTabChange }: StudySectionNavProps) => (
+export const StudySectionNav = ({ activeTab, onSectionSelect }: StudySectionNavProps) => (
   <nav className="study-section-nav" aria-label="Study sections">
     {STUDY_SECTIONS.map((section) => {
       const isActive = activeTab === section.key;
@@ -21,7 +21,7 @@ export const StudySectionNav = ({ activeTab, onTabChange }: StudySectionNavProps
           key={section.key}
           type="button"
           className={`nav-item study-section-tab ${isActive ? "active" : ""}`}
-          onClick={() => onTabChange(section.key)}
+          onClick={() => onSectionSelect(section.key)}
           aria-pressed={isActive}
         >
           {section.label}

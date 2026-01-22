@@ -52,7 +52,8 @@ const NARROW_WIDTH_BREAKPOINT = 900;
 const NARROW_ASPECT_RATIO = 0.8;
 
 const AppContent = () => {
-  const { actions, help, settings } = useAppState();
+  const { actions, flashcards, fastFlashcards, help, settings, spacedRepetition } =
+    useAppState();
   const [activeTab, setActiveTab] = useState<StudySectionKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
@@ -77,6 +78,23 @@ const AppContent = () => {
       setIsMobileNavOpen(false);
     },
     [setActiveTab, setIsMobileNavOpen],
+  );
+  const handleStudySectionSelect = useCallback(
+    (tab: StudySectionKey) => {
+      handleTabChange(tab);
+      if (tab === "flashcard" && !flashcards.isFlashcardScanning) {
+        void flashcards.handleFlashcardScan();
+      } else if (tab === "fast-flashcard" && !fastFlashcards.isFlashcardScanning) {
+        void fastFlashcards.handleFlashcardScan();
+      } else if (
+        tab === "spaced-repetition" &&
+        !flashcards.isFlashcardScanning &&
+        spacedRepetition.spacedRepetitionActiveUser
+      ) {
+        void spacedRepetition.handleSpacedRepetitionActiveUserLoadCards();
+      }
+    },
+    [flashcards, fastFlashcards, handleTabChange, spacedRepetition],
   );
 
   useEffect(() => {
@@ -215,7 +233,10 @@ const AppContent = () => {
       }`}
     >
       {showStudySectionNav ? (
-        <StudySectionNav activeTab={activeTab} onTabChange={handleTabChange} />
+        <StudySectionNav
+          activeTab={activeTab}
+          onSectionSelect={handleStudySectionSelect}
+        />
       ) : null}
       <SidebarNav
         activeTab={activeTab}
@@ -249,11 +270,11 @@ const AppContent = () => {
         ) : activeTab === "exam" ? (
           <ExamSimulationPage />
         ) : activeTab === "flashcard" ? (
-          <FlashcardPage onSectionSelect={handleTabChange} />
+          <FlashcardPage onSectionSelect={handleStudySectionSelect} />
         ) : activeTab === "spaced-repetition" ? (
-          <SpacedRepetitionPage onSectionSelect={handleTabChange} />
+          <SpacedRepetitionPage onSectionSelect={handleStudySectionSelect} />
         ) : (
-          <FastFlashcardPage onSectionSelect={handleTabChange} />
+          <FastFlashcardPage onSectionSelect={handleStudySectionSelect} />
         )}
       </main>
       <ModalShell isOpen={isHelpOpen} title="Help" onClose={handleCloseHelp}>
