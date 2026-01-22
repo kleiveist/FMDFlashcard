@@ -1054,6 +1054,17 @@ body.focus-mode .fast-history-panel {
   margin: 0;
 }
 
+.exam-ready-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.exam-ready-header h2 {
+  margin: 0;
+}
+
 .exam-task {
   display: flex;
   flex-direction: column;

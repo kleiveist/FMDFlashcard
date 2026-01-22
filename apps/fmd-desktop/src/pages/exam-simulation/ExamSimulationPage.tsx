@@ -224,28 +224,6 @@ export const ExamSimulationPage = ({
             </button>
           ) : null}
         </div>
-        <button
-          type="button"
-          className={`focus-toggle ${isViewMode ? "active" : ""}`}
-          onClick={() => setIsViewMode((prev) => !prev)}
-          aria-pressed={isViewMode}
-          aria-label={viewLabel}
-          title={viewLabel}
-          disabled={viewToggleDisabled}
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-            <circle cx="12" cy="12" r="3.5" />
-          </svg>
-        </button>
       </div>
     </div>
   );
@@ -440,6 +418,10 @@ export const ExamSimulationPage = ({
                       hasTaskCountMismatch={hasTaskCountMismatch}
                       onStartExam={phaseButton.onClick}
                       startDisabled={phaseButton.disabled}
+                      onToggleView={() => setIsViewMode((prev) => !prev)}
+                      viewToggleDisabled={viewToggleDisabled}
+                      isViewMode={isViewMode}
+                      viewLabel={viewLabel}
                     />
                   ) : (
                     <ExamStatisticsPanel
