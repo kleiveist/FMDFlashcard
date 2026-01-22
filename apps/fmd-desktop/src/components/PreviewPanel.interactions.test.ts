@@ -53,8 +53,12 @@ const render = (element: ReactElement) => {
   };
 };
 
-const buildHarness = (markdown: string) => {
+const buildHarness = (
+  markdown: string,
+  options: { markdownViewEditEnabled?: boolean; rawPreview?: boolean } = {},
+) => {
   const onEditExit = vi.fn();
+  const { markdownViewEditEnabled = true, rawPreview = false } = options;
 
   const Harness = () => {
     const [isEditing, setIsEditing] = useState(false);
@@ -81,7 +85,8 @@ const buildHarness = (markdown: string) => {
       preview: markdown,
       previewError: "",
       previewState: "idle",
-      rawPreview: false,
+      rawPreview,
+      markdownViewEditEnabled,
       selectedFile: baseFile,
       canEdit: true,
       onEditChange: setEditDraft,
@@ -179,6 +184,23 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     expect(openUrlMock).not.toHaveBeenCalled();
     expect(onEditExit).not.toHaveBeenCalled();
+  });
+
+  it("does not enter markdown edit mode when disabled", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Plain text", {
+      markdownViewEditEnabled: false,
+    });
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editor = container.querySelector(".preview.preview-editor.markdown");
+    expect(editor).toBeNull();
   });
 
   it("renders inline HTML tags after sanitization", () => {

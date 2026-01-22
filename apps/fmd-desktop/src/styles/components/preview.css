@@ -70,6 +70,11 @@
   overflow: auto;
 }
 
+.preview-toggle-button svg {
+  width: 18px;
+  height: 18px;
+}
+
 .preview-editor {
   width: 100%;
   height: 100%;

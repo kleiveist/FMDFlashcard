@@ -62,6 +62,7 @@ import {
 
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
+type MarkdownPreviewDefaultMode = "markdown" | "raw";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 type ExamAiProvider = "shared-gpt";
 type ExamGradeScale = "standard-1-6";
@@ -101,6 +102,8 @@ type AppSettings = {
   editor_markdown_custom_accent_hex?: string | null;
   editor_blueprint_grid?: boolean | null;
   editor_blueprint_grid_intensity?: string | null;
+  editor_markdown_view_edit_enabled?: boolean | null;
+  editor_markdown_preview_default_mode?: string | null;
   exam_editor_show_move_buttons?: boolean | null;
   language?: AppLanguage | null;
   max_files_per_scan?: string | null;
@@ -157,6 +160,8 @@ type PersistUpdates = {
   markdownEditorAccentCustomSwatches?: string[];
   editorBlueprintGrid?: boolean;
   editorBlueprintGridIntensity?: EditorGridIntensity;
+  markdownViewEditEnabled?: boolean;
+  markdownPreviewDefaultMode?: MarkdownPreviewDefaultMode;
   examEditorShowMoveButtons?: boolean;
   language?: AppLanguage;
   maxFilesPerScan?: string;
@@ -210,6 +215,8 @@ type SettingsSnapshot = {
   markdownEditorAccentCustomSwatches: string[];
   editorBlueprintGrid: boolean;
   editorBlueprintGridIntensity: EditorGridIntensity;
+  markdownViewEditEnabled: boolean;
+  markdownPreviewDefaultMode: MarkdownPreviewDefaultMode;
   examEditorShowMoveButtons: boolean;
   language: AppLanguage;
   maxFilesPerScan: string;
@@ -255,6 +262,9 @@ const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS = false;
 const DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED = false;
+const DEFAULT_MARKDOWN_VIEW_EDIT_ENABLED = false;
+const DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE: MarkdownPreviewDefaultMode =
+  "markdown";
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_SHOW_HIDDEN_FOLDERS = false;
@@ -498,6 +508,8 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   editor_markdown_exact_colors_enabled: settings.markdownEditorAccentEnabled,
   editor_blueprint_grid: settings.editorBlueprintGrid,
   editor_blueprint_grid_intensity: settings.editorBlueprintGridIntensity,
+  editor_markdown_view_edit_enabled: settings.markdownViewEditEnabled,
+  editor_markdown_preview_default_mode: settings.markdownPreviewDefaultMode,
   exam_editor_show_move_buttons: settings.examEditorShowMoveButtons,
   language: settings.language,
   max_files_per_scan: settings.maxFilesPerScan,
@@ -558,6 +570,11 @@ export const useAppSettings = () => {
   );
   const [editorBlueprintGridIntensity, setEditorBlueprintGridIntensity] =
     useState<EditorGridIntensity>(DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY);
+  const [markdownViewEditEnabled, setMarkdownViewEditEnabledState] = useState(
+    DEFAULT_MARKDOWN_VIEW_EDIT_ENABLED,
+  );
+  const [markdownPreviewDefaultMode, setMarkdownPreviewDefaultModeState] =
+    useState<MarkdownPreviewDefaultMode>(DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE);
   const [examEditorShowMoveButtons, setExamEditorShowMoveButtonsState] =
     useState(DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -838,6 +855,17 @@ export const useAppSettings = () => {
     [],
   );
 
+  const setMarkdownViewEditEnabled = useCallback((value: boolean) => {
+    setMarkdownViewEditEnabledState(Boolean(value));
+  }, []);
+
+  const setMarkdownPreviewDefaultMode = useCallback(
+    (value: MarkdownPreviewDefaultMode) => {
+      setMarkdownPreviewDefaultModeState(value === "raw" ? "raw" : "markdown");
+    },
+    [],
+  );
+
   const setSpacedRepetitionHelpEnabled = useCallback((value: boolean) => {
     setSpacedRepetitionHelpEnabledState(Boolean(value));
   }, []);
@@ -857,6 +885,8 @@ export const useAppSettings = () => {
       markdownEditorAccentCustomSwatches,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      markdownViewEditEnabled,
+      markdownPreviewDefaultMode,
       examEditorShowMoveButtons,
       language,
       maxFilesPerScan,
@@ -904,6 +934,8 @@ export const useAppSettings = () => {
       markdownEditorAccentCustomSwatches,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      markdownViewEditEnabled,
+      markdownPreviewDefaultMode,
       examEditorShowMoveButtons,
       examAiEvaluation,
       examMaxTotalPoints,
@@ -974,6 +1006,8 @@ export const useAppSettings = () => {
           },
           editorBlueprintGrid: settings.editorBlueprintGrid,
           editorBlueprintGridIntensity: settings.editorBlueprintGridIntensity,
+          editorMarkdownViewEditEnabled: settings.markdownViewEditEnabled,
+          editorMarkdownPreviewDefaultMode: settings.markdownPreviewDefaultMode,
           examEditorShowMoveButtons: settings.examEditorShowMoveButtons,
           language: settings.language,
           maxFilesPerScan: settings.maxFilesPerScan,
@@ -1047,6 +1081,10 @@ export const useAppSettings = () => {
         editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
         editorBlueprintGridIntensity:
           updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
+        markdownViewEditEnabled:
+          updates.markdownViewEditEnabled ?? markdownViewEditEnabled,
+        markdownPreviewDefaultMode:
+          updates.markdownPreviewDefaultMode ?? markdownPreviewDefaultMode,
         examEditorShowMoveButtons:
           updates.examEditorShowMoveButtons ?? examEditorShowMoveButtons,
         language: updates.language ?? language,
@@ -1130,6 +1168,8 @@ export const useAppSettings = () => {
       markdownEditorAccentCustomSwatches,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      markdownViewEditEnabled,
+      markdownPreviewDefaultMode,
       examEditorShowMoveButtons,
       examAiEvaluation,
       examGradeScale,
@@ -1213,6 +1253,15 @@ export const useAppSettings = () => {
       settings.editor_blueprint_grid_intensity === "medium"
         ? settings.editor_blueprint_grid_intensity
         : DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY;
+    const storedMarkdownViewEditEnabled =
+      typeof settings.editor_markdown_view_edit_enabled === "boolean"
+        ? settings.editor_markdown_view_edit_enabled
+        : DEFAULT_MARKDOWN_VIEW_EDIT_ENABLED;
+    const storedMarkdownPreviewDefaultMode =
+      settings.editor_markdown_preview_default_mode === "raw" ||
+      settings.editor_markdown_preview_default_mode === "markdown"
+        ? settings.editor_markdown_preview_default_mode
+        : DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE;
     const storedExamEditorShowMoveButtons =
       typeof settings.exam_editor_show_move_buttons === "boolean"
         ? settings.exam_editor_show_move_buttons
@@ -1439,6 +1488,8 @@ export const useAppSettings = () => {
     setMarkdownEditorAccentCustomSwatchesState(storedMarkdownAccentCustomSwatches);
     setEditorBlueprintGrid(storedEditorBlueprintGrid);
     setEditorBlueprintGridIntensity(storedEditorBlueprintGridIntensity);
+    setMarkdownViewEditEnabledState(storedMarkdownViewEditEnabled);
+    setMarkdownPreviewDefaultModeState(storedMarkdownPreviewDefaultMode);
     setExamEditorShowMoveButtonsState(storedExamEditorShowMoveButtons);
     setActiveNotePath(storedActiveNotePath);
     setVaultPath(settings.vault_path ?? null);
@@ -1623,6 +1674,8 @@ export const useAppSettings = () => {
     markdownEditorAccentCustomSwatches,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
+    markdownViewEditEnabled,
+    markdownPreviewDefaultMode,
     examEditorShowMoveButtons,
     examAiEvaluation,
     examMaxTotalPoints,
@@ -1661,6 +1714,8 @@ export const useAppSettings = () => {
     addMarkdownEditorAccentCustomSwatch,
     setEditorBlueprintGrid,
     setEditorBlueprintGridIntensity,
+    setMarkdownViewEditEnabled,
+    setMarkdownPreviewDefaultMode,
     setExamEditorShowMoveButtons,
     setExamAiEvaluation,
     setExamMaxTotalPoints,

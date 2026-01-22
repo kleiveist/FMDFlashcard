@@ -48,6 +48,18 @@ const notePanelStorageKey = "fmd.notePanelCollapsed";
 
 export type DashboardView = "markdown" | "exam";
 
+export const shouldApplyPreviewDefaultMode = ({
+  didApplyDefault,
+  settingsLoaded,
+  isEditing,
+  vaultView,
+}: {
+  didApplyDefault: boolean;
+  settingsLoaded: boolean;
+  isEditing: boolean;
+  vaultView: DashboardView;
+}) => settingsLoaded && !didApplyDefault && !isEditing && vaultView === "markdown";
+
 type DashboardPageProps = {
   initialVaultView?: DashboardView;
   onVaultViewChange?: (nextView: DashboardView) => void;
@@ -72,6 +84,7 @@ const DashboardPageInner = (
     null,
   );
   const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const didApplyPreviewDefaultModeRef = useRef(false);
   const [noteCollapsed, setNoteCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -165,6 +178,27 @@ const DashboardPageInner = (
     setIsSaving(false);
     setEditCaretIndex(null);
   }, [preview.selectedFile?.path]);
+
+  useEffect(() => {
+    if (
+      !shouldApplyPreviewDefaultMode({
+        didApplyDefault: didApplyPreviewDefaultModeRef.current,
+        settingsLoaded: settings.settingsLoaded,
+        isEditing,
+        vaultView,
+      })
+    ) {
+      return;
+    }
+    preview.setRawPreview(settings.markdownPreviewDefaultMode === "raw");
+    didApplyPreviewDefaultModeRef.current = true;
+  }, [
+    isEditing,
+    preview,
+    settings.markdownPreviewDefaultMode,
+    settings.settingsLoaded,
+    vaultView,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -340,6 +374,7 @@ const DashboardPageInner = (
             previewError={preview.previewError}
             previewState={preview.previewState}
             rawPreview={preview.rawPreview}
+            markdownViewEditEnabled={settings.markdownViewEditEnabled}
             selectedFile={preview.selectedFile}
             canEdit={canEdit}
             markdownEditorStyle={markdownEditorStyle}

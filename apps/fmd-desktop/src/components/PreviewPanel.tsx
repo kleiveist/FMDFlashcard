@@ -36,6 +36,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
+import { CodeIcon, MarkdownIcon } from "./icons";
 
 const markdownSchema = {
   ...defaultSchema,
@@ -111,6 +112,7 @@ type PreviewPanelProps = {
   previewError: string;
   previewState: LoadState;
   rawPreview: boolean;
+  markdownViewEditEnabled: boolean;
   selectedFile: VaultFile | null;
   canEdit: boolean;
   markdownEditorStyle?: CSSProperties;
@@ -123,6 +125,14 @@ type PreviewPanelProps = {
   }) => void;
   onToggleRawPreview: () => void;
 };
+
+export const canStartPreviewEdit = ({
+  rawPreview,
+  markdownViewEditEnabled,
+}: {
+  rawPreview: boolean;
+  markdownViewEditEnabled: boolean;
+}) => rawPreview || markdownViewEditEnabled;
 
 const getRangeOffset = (container: HTMLElement, range: Range) => {
   const offsetRange = document.createRange();
@@ -524,6 +534,68 @@ const setCaretAtPlainOffset = (container: HTMLElement, offset: number) => {
   selection.addRange(range);
 };
 
+const isInteractionMarkerLine = (line: string) => {
+  const trimmed = line.trim().toLowerCase();
+  return trimmed === "-true" ||
+    trimmed === "-false" ||
+    (trimmed.length === 2 &&
+      trimmed[0] === "-" &&
+      trimmed[1] >= "a" &&
+      trimmed[1] <= "d");
+};
+
+const isFmdDirectiveLine = (line: string) => {
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return false;
+  }
+  if (trimmed === "---") {
+    return true;
+  }
+  const lowered = trimmed.toLowerCase();
+  if (
+    lowered === "#" ||
+    lowered === "#exam" ||
+    lowered === "#examend" ||
+    lowered === "#card" ||
+    lowered === "#help" ||
+    lowered === "#helpend"
+  ) {
+    return true;
+  }
+  return isInteractionMarkerLine(trimmed);
+};
+
+const escapeMarkdownLineStart = (line: string) => {
+  if (!line || isFmdDirectiveLine(line)) {
+    return line;
+  }
+  const match = line.match(/^([ \t]*)(.*)$/);
+  if (!match) {
+    return line;
+  }
+  const indent = match[1];
+  const content = match[2];
+  if (!content) {
+    return line;
+  }
+  if (/^#+(?=\s|$)/.test(content)) {
+    return `${indent}\\${content}`;
+  }
+  if (content.startsWith("-") && (content.length === 1 || content[1] === " ")) {
+    return `${indent}\\${content}`;
+  }
+  return line;
+};
+
+const escapeMarkdownLineStarts = (value: string) =>
+  value
+    .split(/(\r?\n)/)
+    .map((part, index) =>
+      index % 2 === 1 ? part : escapeMarkdownLineStart(part),
+    )
+    .join("");
+
 const escapeMarkdownText = (text: string, escapePipes = true) => {
   let next = text
     .replace(/\u00a0/g, " ")
@@ -535,7 +607,7 @@ const escapeMarkdownText = (text: string, escapePipes = true) => {
   if (escapePipes) {
     next = next.replace(/\|/g, "\\|");
   }
-  return next.replace(/(^|[\n\r])([ \t]*)([#-])/g, "$1$2\\$3");
+  return escapeMarkdownLineStarts(next);
 };
 
 const escapeMarkdownLinkText = (text: string) =>
@@ -571,6 +643,7 @@ const wrapCodeBlock = (text: string) => {
 type MarkdownSerializeContext = {
   listDepth: number;
   escapePipes: boolean;
+  inContentEditable: boolean;
 };
 
 const serializeMarkdownChildren = (
@@ -599,9 +672,18 @@ const serializeMarkdownNode = (
     return "\n";
   }
 
-  if (tag === "p" || tag === "div") {
+  if (tag === "p") {
     const content = serializeMarkdownChildren(element, context).trim();
+    if (context.inContentEditable) {
+      return content ? `${content}\n` : "\n";
+    }
     return content ? `${content}\n\n` : "\n\n";
+  }
+
+  if (tag === "div") {
+    // contentEditable uses div per line; keep single newline to avoid extra gaps.
+    const content = serializeMarkdownChildren(element, context).trim();
+    return content ? `${content}\n` : "\n";
   }
 
   if (tag.startsWith("h") && tag.length === 2) {
@@ -742,8 +824,12 @@ const serializeTableCell = (
   return escapeMarkdownTableCell(text);
 };
 
-const serializeMarkdownFromHtml = (container: HTMLElement) => {
-  return serializeMarkdownChildren(container, { listDepth: 0, escapePipes: true });
+export const serializeMarkdownFromHtml = (container: HTMLElement) => {
+  return serializeMarkdownChildren(container, {
+    listDepth: 0,
+    escapePipes: true,
+    inContentEditable: true,
+  });
 };
 
 const resolveRawCaretIndex = (container: HTMLElement, range: Range | null) => {
@@ -768,16 +854,6 @@ const resolveMarkdownCaretIndex = (
     return 0;
   }
   return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset);
-};
-
-const isInteractionMarkerLine = (line: string) => {
-  const trimmed = line.trim().toLowerCase();
-  return trimmed === "-true" ||
-    trimmed === "-false" ||
-    (trimmed.length === 2 &&
-      trimmed[0] === "-" &&
-      trimmed[1] >= "a" &&
-      trimmed[1] <= "d");
 };
 
 const isExamTaskStartLine = (line: string) => {
@@ -974,6 +1050,7 @@ export const PreviewPanel = ({
   previewError,
   previewState,
   rawPreview,
+  markdownViewEditEnabled,
   selectedFile,
   canEdit,
   markdownEditorStyle,
@@ -1105,6 +1182,9 @@ export const PreviewPanel = ({
       if (!canEdit || isEditing) {
         return;
       }
+      if (!canStartPreviewEdit({ rawPreview, markdownViewEditEnabled })) {
+        return;
+      }
       if (event.button !== 0) {
         return;
       }
@@ -1151,7 +1231,15 @@ export const PreviewPanel = ({
       }
       onEditStart({ caretIndex, origin });
     },
-    [canEdit, captureScroll, isEditing, onEditStart, preview, rawPreview],
+    [
+      canEdit,
+      captureScroll,
+      isEditing,
+      markdownViewEditEnabled,
+      onEditStart,
+      preview,
+      rawPreview,
+    ],
   );
 
   const handleRawEditorBlur = useCallback(
@@ -1193,6 +1281,11 @@ export const PreviewPanel = ({
   }, [onEditChange]);
 
   const renderedPreview = rawPreview ? preview : applyInteractionSpacing(preview);
+  const previewToggleLabel = rawPreview
+    ? "Switch to Markdown preview"
+    : "Switch to Rohtext";
+  const ToggleIcon = rawPreview ? MarkdownIcon : CodeIcon;
+  const showMarkdownEditor = markdownViewEditEnabled && !rawPreview;
 
   return (
     <section className="panel preview-panel" style={markdownEditorStyle}>
@@ -1206,12 +1299,16 @@ export const PreviewPanel = ({
         <div className="preview-actions">
           <button
             type="button"
-            className={`ghost small ${rawPreview ? "active" : ""}`}
+            className={`ghost small preview-toggle-button ${rawPreview ? "active" : ""}`}
             onClick={onToggleRawPreview}
             aria-pressed={rawPreview}
+            aria-label={previewToggleLabel}
+            title={previewToggleLabel}
             disabled={!selectedFile}
           >
-            {rawPreview ? "Markdown" : "Rohtext"}
+            <span className="preview-toggle-icon" aria-hidden="true">
+              <ToggleIcon />
+            </span>
           </button>
           {previewState === "loading" ? <span className="chip">Lade...</span> : null}
         </div>
@@ -1238,7 +1335,7 @@ export const PreviewPanel = ({
                 onScroll={(event) => captureScroll(event.currentTarget)}
                 aria-label="Edit markdown preview"
               />
-            ) : (
+            ) : showMarkdownEditor ? (
               <div
                 key="markdown-edit"
                 ref={markdownEditorRef}
@@ -1252,7 +1349,7 @@ export const PreviewPanel = ({
                 aria-multiline="true"
                 aria-label="Edit markdown preview"
               />
-            )
+            ) : null
           ) : preview ? (
             <div
               key={rawPreview ? "raw-view" : "markdown-view"}

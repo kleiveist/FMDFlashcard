@@ -32,6 +32,8 @@ type MarkdownEditorSectionProps = {
   markdownEditorAccentCustomSwatches: string[];
   editorBlueprintGrid: boolean;
   editorBlueprintGridIntensity: "light" | "medium" | "strong";
+  markdownViewEditEnabled: boolean;
+  markdownPreviewDefaultMode: "markdown" | "raw";
   onMarkdownEditorAccentEnabledToggle: (value: boolean) => void;
   onMarkdownEditorAccentHexChange: (mode: AccentMode, value: string) => void;
   onMarkdownEditorAccentCustomSwatchAdd: (value: string) => void;
@@ -39,6 +41,8 @@ type MarkdownEditorSectionProps = {
   onEditorBlueprintGridIntensityChange: (
     value: "light" | "medium" | "strong",
   ) => void;
+  onMarkdownViewEditToggle: (value: boolean) => void;
+  onMarkdownPreviewDefaultModeChange: (value: "markdown" | "raw") => void;
 };
 
 type ExamEditorSectionProps = {
@@ -164,11 +168,15 @@ export const MarkdownEditorSection = ({
   markdownEditorAccentCustomSwatches,
   editorBlueprintGrid,
   editorBlueprintGridIntensity,
+  markdownViewEditEnabled,
+  markdownPreviewDefaultMode,
   onMarkdownEditorAccentEnabledToggle,
   onMarkdownEditorAccentHexChange,
   onMarkdownEditorAccentCustomSwatchAdd,
   onEditorBlueprintGridToggle,
   onEditorBlueprintGridIntensityChange,
+  onMarkdownViewEditToggle,
+  onMarkdownPreviewDefaultModeChange,
 }: MarkdownEditorSectionProps) => {
   const [accentMode, setAccentMode] = useState<AccentMode>("light");
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
@@ -470,6 +478,55 @@ export const MarkdownEditorSection = ({
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+          <div className="setting-row">
+            <span className="label">Markdown view edit (experimental)</span>
+            <div className="theme-toggle">
+              <span className="toggle-label">Off</span>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={markdownViewEditEnabled}
+                  onChange={(event) =>
+                    onMarkdownViewEditToggle(event.target.checked)
+                  }
+                  aria-label="Enable markdown view editing (experimental)"
+                />
+                <span className="slider" />
+              </label>
+              <span className="toggle-label">On</span>
+            </div>
+          </div>
+          {markdownViewEditEnabled ? (
+            <span className="helper-text">
+              Experimental: Markdown view editing may rewrite formatting. Prefer Raw
+              text for safe editing.
+            </span>
+          ) : null}
+          <div className="setting-row">
+            <span className="label">Default preview mode</span>
+            <div className="pill-grid" role="tablist" aria-label="Default preview mode">
+              <button
+                type="button"
+                className={`pill pill-button ${
+                  markdownPreviewDefaultMode === "markdown" ? "active" : ""
+                }`}
+                aria-pressed={markdownPreviewDefaultMode === "markdown"}
+                onClick={() => onMarkdownPreviewDefaultModeChange("markdown")}
+              >
+                Markdown
+              </button>
+              <button
+                type="button"
+                className={`pill pill-button ${
+                  markdownPreviewDefaultMode === "raw" ? "active" : ""
+                }`}
+                aria-pressed={markdownPreviewDefaultMode === "raw"}
+                onClick={() => onMarkdownPreviewDefaultModeChange("raw")}
+              >
+                Rohtext
+              </button>
             </div>
           </div>
         </div>

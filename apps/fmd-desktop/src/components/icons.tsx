@@ -50,6 +50,39 @@ export const FileIcon = () => (
   </svg>
 );
 
+export const MarkdownIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M7 4h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+    <path d="M14 4v5h5" />
+    <path d="M8 14h8" />
+    <path d="M8 18h5" />
+  </svg>
+);
+
+export const CodeIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="8 8 4 12 8 16" />
+    <polyline points="16 8 20 12 16 16" />
+    <line x1="11" y1="6" x2="13" y2="18" />
+  </svg>
+);
+
 export const CardsIcon = () => (
   <svg
     aria-hidden="true"

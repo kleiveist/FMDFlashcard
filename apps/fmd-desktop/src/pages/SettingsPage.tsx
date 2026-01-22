@@ -364,6 +364,8 @@ export const SettingsPage = () => {
               }
               editorBlueprintGrid={settings.editorBlueprintGrid}
               editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
+              markdownViewEditEnabled={settings.markdownViewEditEnabled}
+              markdownPreviewDefaultMode={settings.markdownPreviewDefaultMode}
               onMarkdownEditorAccentEnabledToggle={
                 settings.setMarkdownEditorAccentEnabled
               }
@@ -374,6 +376,10 @@ export const SettingsPage = () => {
               onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
               onEditorBlueprintGridIntensityChange={
                 settings.setEditorBlueprintGridIntensity
+              }
+              onMarkdownViewEditToggle={settings.setMarkdownViewEditEnabled}
+              onMarkdownPreviewDefaultModeChange={
+                settings.setMarkdownPreviewDefaultMode
               }
             />
           </div>
