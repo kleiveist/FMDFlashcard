@@ -110,8 +110,7 @@ export const useExamSimulationViewModel = () => {
   const [examFilesError, setExamFilesError] = useState("");
   const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
   const [examRunsLoaded, setExamRunsLoaded] = useState(false);
-  const [examRunsMigratedFromLegacy, setExamRunsMigratedFromLegacy] =
-    useState(false);
+  const [, setExamRunsMigratedFromLegacy] = useState(false);
   const [stage, setStage] = useState<ExamStage>("idle");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
   const [activeExamTasks, setActiveExamTasks] = useState<ExamTask[]>([]);
