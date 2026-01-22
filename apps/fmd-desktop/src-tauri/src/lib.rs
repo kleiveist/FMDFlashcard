@@ -792,6 +792,31 @@ fn write_json_file(path: String, contents: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn rename_json_file(from: String, to: String) -> Result<(), String> {
+    let from = PathBuf::from(from);
+    let to = PathBuf::from(to);
+    if !is_json(&from) || !is_json(&to) {
+        return Err("Only JSON files are supported.".to_string());
+    }
+    if !from.exists() {
+        return Err("Source file not found.".to_string());
+    }
+    if from.is_dir() {
+        return Err("Source path is not a file.".to_string());
+    }
+    if let Some(parent) = to.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    if to.exists() {
+        if to.is_dir() {
+            return Err("Target path is not a file.".to_string());
+        }
+        fs::remove_file(&to).map_err(|err| err.to_string())?;
+    }
+    fs::rename(&from, &to).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
     let path = PathBuf::from(path);
     if !path.exists() {
@@ -1050,6 +1075,7 @@ pub fn run() {
             ensure_directory,
             read_json_file,
             write_json_file,
+            rename_json_file,
             read_text_file,
             write_text_file,
             delete_markdown_file,

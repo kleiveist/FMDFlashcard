@@ -52,7 +52,7 @@ import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
 import {
-  createEmptyExamRunStore,
+  appendExamRunStore,
   loadExamRunStore,
   saveExamRunStore,
 } from "../../../features/user-vault/storage";
@@ -266,27 +266,14 @@ export const useExamSimulationViewModel = () => {
   }, [userVault.activeProfilePath]);
 
   useEffect(() => {
-    if (!examRunsLoaded) {
-      return;
-    }
-    if (userVault.activeProfilePath) {
-      void saveExamRunStore(userVault.activeProfilePath, {
-        ...createEmptyExamRunStore(),
-        runs: examRuns,
-        migratedFromAppData: examRunsMigratedFromLegacy,
-      });
+    if (!examRunsLoaded || userVault.activeProfilePath) {
       return;
     }
     const storage: ExamRunStorage = { runs: examRuns };
     void invoke("save_exam_run_data", { storage }).catch((error) => {
       console.warn("Failed to save exam runs", error);
     });
-  }, [
-    examRuns,
-    examRunsLoaded,
-    examRunsMigratedFromLegacy,
-    userVault.activeProfilePath,
-  ]);
+  }, [examRuns, examRunsLoaded, userVault.activeProfilePath]);
 
   const selectedExamFile = useMemo(() => {
     if (!preview.selectedFile) {
@@ -841,6 +828,9 @@ export const useExamSimulationViewModel = () => {
       gradeScaleId: settings.examGradeScale,
     };
 
+    if (userVault.activeProfilePath) {
+      void appendExamRunStore(userVault.activeProfilePath, run);
+    }
     setExamRuns((prev) => sortExamRunsByDateDesc([run, ...prev]));
     examRunRecordedRef.current = true;
   }, [
@@ -852,6 +842,7 @@ export const useExamSimulationViewModel = () => {
     spacedRepetition.spacedRepetitionActiveUser,
     spacedRepetition.spacedRepetitionActiveUserId,
     stage,
+    userVault.activeProfilePath,
   ]);
 
   const handleConversionDecision = useCallback(

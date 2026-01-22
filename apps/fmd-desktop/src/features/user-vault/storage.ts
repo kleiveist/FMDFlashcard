@@ -28,7 +28,13 @@ type PathInfo = {
 };
 
 type UserVaultProfileStore = UserVaultProfileMeta & {
+  schemaVersion?: number;
   settings?: UserVaultProfileSettings | null;
+};
+
+type MigrationResult<T> = {
+  store: T;
+  didMigrate: boolean;
 };
 
 export type UserVaultMetaStore = {
@@ -65,6 +71,9 @@ const USER_VAULT_SPACED_REPETITION_FILE = "spaced-repetition.json";
 const USER_VAULT_FAST_FLASHCARD_FILE = "fast-flashcard.json";
 const USER_VAULT_EXAM_RUNS_FILE = "exam-runs.json";
 
+const USER_VAULT_PROFILE_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
+const USER_VAULT_EXAM_RUNS_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
+
 const readJsonFile = async <T,>(path: string, fallback: T): Promise<T> => {
   try {
     const raw = await invoke<string>("read_json_file", { path });
@@ -75,9 +84,67 @@ const readJsonFile = async <T,>(path: string, fallback: T): Promise<T> => {
   }
 };
 
+type JsonReadError = "missing" | "parse" | "unknown";
+
+type JsonReadResult<T> = {
+  value: T | null;
+  error: JsonReadError | null;
+};
+
+const readJsonFileWithStatus = async <T,>(path: string): Promise<JsonReadResult<T>> => {
+  try {
+    const raw = await invoke<string>("read_json_file", { path });
+    try {
+      return { value: (JSON.parse(raw) as T) ?? null, error: null };
+    } catch {
+      return { value: null, error: "parse" };
+    }
+  } catch (error) {
+    const message = asErrorMessage(error, "Unknown error");
+    if (message.includes("File not found")) {
+      return { value: null, error: "missing" };
+    }
+    return { value: null, error: "unknown" };
+  }
+};
+
+const buildJsonSiblingPath = (path: string, suffix: string) => {
+  if (path.toLowerCase().endsWith(".json")) {
+    return path.replace(/\.json$/i, `${suffix}.json`);
+  }
+  return `${path}.${suffix}.json`;
+};
+
+const buildCorruptBackupPath = (path: string) => {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return buildJsonSiblingPath(path, `.corrupt.${stamp}`);
+};
+
+const buildTempJsonPath = (path: string) =>
+  buildJsonSiblingPath(path, `.tmp.${Date.now()}`);
+
+const renameJsonFile = async (from: string, to: string) => {
+  await invoke("rename_json_file", { from, to });
+};
+
 const writeJsonFile = async (path: string, payload: unknown) => {
   const contents = JSON.stringify(payload, null, 2);
   await invoke("write_json_file", { path, contents });
+};
+
+const writeJsonFileAtomic = async (path: string, payload: unknown) => {
+  const contents = JSON.stringify(payload, null, 2);
+  const tempPath = buildTempJsonPath(path);
+  await invoke("write_json_file", { path: tempPath, contents });
+  try {
+    await renameJsonFile(tempPath, path);
+  } catch (error) {
+    await invoke("write_json_file", { path, contents });
+    console.warn(
+      "Failed to replace JSON file atomically",
+      asErrorMessage(error, "Unknown error"),
+    );
+  }
 };
 
 const ensureDirectory = async (path: string) => {
@@ -131,7 +198,7 @@ export const createEmptyFastFlashcardStore = (): FastFlashcardProfileStore => ({
 });
 
 export const createEmptyExamRunStore = (): ExamRunProfileStore => ({
-  schemaVersion: USER_VAULT_SCHEMA_VERSION,
+  schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
   runs: [],
   migratedFromAppData: false,
 });
@@ -153,6 +220,39 @@ const normalizeProfileMeta = (
     ? `${fallback.dateStamp}T00:00:00.000Z`
     : new Date().toISOString();
   return { id: fallbackId, name: fallback.name, createdAt };
+};
+
+const migrateProfileStore = (
+  value: unknown,
+  fallbackId: string,
+): MigrationResult<UserVaultProfileStore> | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const candidate = value as Record<string, unknown>;
+  const storedVersion =
+    typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
+  const meta = normalizeProfileMeta(fallbackId, candidate as UserVaultProfileMeta);
+  const settingsCandidate = candidate.settings;
+  const settings =
+    settingsCandidate &&
+    typeof settingsCandidate === "object" &&
+    !Array.isArray(settingsCandidate)
+      ? (settingsCandidate as UserVaultProfileSettings)
+      : null;
+  const didMigrate =
+    storedVersion !== USER_VAULT_PROFILE_SCHEMA_VERSION ||
+    settingsCandidate === undefined ||
+    settingsCandidate !== settings;
+  return {
+    store: {
+      ...(candidate as UserVaultProfileStore),
+      ...meta,
+      schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
+      settings,
+    },
+    didMigrate,
+  };
 };
 
 const normalizeSpacedRepetitionStore = (
@@ -195,20 +295,88 @@ const normalizeFastFlashcardStore = (value: unknown): FastFlashcardProfileStore 
   };
 };
 
-const normalizeExamRunStore = (value: unknown): ExamRunProfileStore => {
+const normalizeExamRun = (value: unknown): ExamRun | null => {
   if (!value || typeof value !== "object") {
-    return createEmptyExamRunStore();
+    return null;
+  }
+  const candidate = value as Partial<ExamRun>;
+  const id = typeof candidate.id === "string" ? candidate.id : "";
+  const startedAt = typeof candidate.startedAt === "string" ? candidate.startedAt : "";
+  const endedAt = typeof candidate.endedAt === "string" ? candidate.endedAt : "";
+  if (!id || !startedAt || !endedAt) {
+    return null;
+  }
+  const grade =
+    typeof candidate.grade === "string"
+      ? candidate.grade
+      : typeof candidate.grade === "number" && Number.isFinite(candidate.grade)
+        ? String(candidate.grade)
+        : null;
+  return {
+    id,
+    startedAt,
+    endedAt,
+    durationMs:
+      typeof candidate.durationMs === "number" && Number.isFinite(candidate.durationMs)
+        ? candidate.durationMs
+        : 0,
+    userId: typeof candidate.userId === "string" ? candidate.userId : null,
+    userName: typeof candidate.userName === "string" ? candidate.userName : "Unknown",
+    examFilePath:
+      typeof candidate.examFilePath === "string" ? candidate.examFilePath : "",
+    tasksDetected:
+      typeof candidate.tasksDetected === "number" &&
+      Number.isFinite(candidate.tasksDetected)
+        ? candidate.tasksDetected
+        : 0,
+    maxPoints:
+      typeof candidate.maxPoints === "number" && Number.isFinite(candidate.maxPoints)
+        ? candidate.maxPoints
+        : 0,
+    achievedPoints:
+      typeof candidate.achievedPoints === "number" &&
+      Number.isFinite(candidate.achievedPoints)
+        ? candidate.achievedPoints
+        : 0,
+    percent:
+      typeof candidate.percent === "number" && Number.isFinite(candidate.percent)
+        ? candidate.percent
+        : 0,
+    passed: typeof candidate.passed === "boolean" ? candidate.passed : false,
+    grade,
+    gradeScaleId:
+      candidate.gradeScaleId === "standard-1-6"
+        ? candidate.gradeScaleId
+        : "standard-1-6",
+  };
+};
+
+const migrateExamRunStore = (
+  value: unknown,
+): MigrationResult<ExamRunProfileStore> => {
+  if (!value || typeof value !== "object") {
+    return { store: createEmptyExamRunStore(), didMigrate: true };
   }
   const candidate = value as Partial<ExamRunProfileStore>;
-  const runs = Array.isArray(candidate.runs) ? (candidate.runs as ExamRun[]) : [];
+  const storedVersion =
+    typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
+  const rawRuns = Array.isArray(candidate.runs) ? candidate.runs : [];
+  const runs = rawRuns.map(normalizeExamRun).filter((run) => run !== null) as ExamRun[];
   const migratedFromAppData =
     typeof candidate.migratedFromAppData === "boolean"
       ? candidate.migratedFromAppData
       : false;
+  const didMigrate =
+    storedVersion !== USER_VAULT_EXAM_RUNS_SCHEMA_VERSION ||
+    rawRuns.length !== runs.length ||
+    typeof candidate.migratedFromAppData !== "boolean";
   return {
-    schemaVersion: USER_VAULT_SCHEMA_VERSION,
-    runs,
-    migratedFromAppData,
+    store: {
+      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
+      runs,
+      migratedFromAppData,
+    },
+    didMigrate,
   };
 };
 
@@ -281,6 +449,7 @@ export const createUserVaultProfile = async (
     createdAt: new Date().toISOString(),
   };
   await writeJsonFile(resolveProfileMetaPath(profilePath), {
+    schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
     ...meta,
     settings: {},
   });
@@ -317,10 +486,22 @@ export const loadProfileSettings = async (
 ): Promise<UserVaultProfileSettings | null> => {
   const path = resolveProfileMetaPath(profilePath);
   const store = await readJsonFile<UserVaultProfileStore | null>(path, null);
-  if (!store || typeof store !== "object") {
+  const fallbackId = resolveProfileIdFromPath(profilePath);
+  const migrated = migrateProfileStore(store, fallbackId);
+  if (!migrated) {
     return null;
   }
-  const settings = (store as UserVaultProfileStore).settings;
+  if (migrated.didMigrate) {
+    try {
+      await writeJsonFile(path, migrated.store);
+    } catch (error) {
+      console.warn(
+        "Failed to migrate user profile settings",
+        asErrorMessage(error, "Unknown error"),
+      );
+    }
+  }
+  const settings = migrated.store.settings;
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
     return null;
   }
@@ -345,6 +526,7 @@ export const saveProfileSettings = async (
     const base = stored && typeof stored === "object" ? stored : {};
     await writeJsonFile(path, {
       ...base,
+      schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
       ...meta,
       settings: settings ?? null,
     });
@@ -418,11 +600,42 @@ export const loadExamRunStore = async (
   profilePath: string,
 ): Promise<ExamRunProfileStore> => {
   const path = resolveExamRunsPath(profilePath);
-  const store = await readJsonFile<ExamRunProfileStore>(
-    path,
-    createEmptyExamRunStore(),
-  );
-  return normalizeExamRunStore(store);
+  const { value, error } = await readJsonFileWithStatus<ExamRunProfileStore>(path);
+  if (error) {
+    if (error === "parse") {
+      const backupPath = buildCorruptBackupPath(path);
+      try {
+        await renameJsonFile(path, backupPath);
+      } catch (renameError) {
+        console.warn(
+          "Failed to archive corrupt exam run store",
+          asErrorMessage(renameError, "Unknown error"),
+        );
+      }
+    }
+    const empty = createEmptyExamRunStore();
+    try {
+      await writeJsonFileAtomic(path, empty);
+    } catch (writeError) {
+      console.warn(
+        "Failed to recover exam run store",
+        asErrorMessage(writeError, "Unknown error"),
+      );
+    }
+    return empty;
+  }
+  const { store, didMigrate } = migrateExamRunStore(value);
+  if (didMigrate) {
+    try {
+      await writeJsonFileAtomic(path, store);
+    } catch (writeError) {
+      console.warn(
+        "Failed to migrate exam run store",
+        asErrorMessage(writeError, "Unknown error"),
+      );
+    }
+  }
+  return store;
 };
 
 export const saveExamRunStore = async (
@@ -430,14 +643,69 @@ export const saveExamRunStore = async (
   store: ExamRunProfileStore,
 ) => {
   try {
-    await writeJsonFile(resolveExamRunsPath(profilePath), {
+    await writeJsonFileAtomic(resolveExamRunsPath(profilePath), {
       ...store,
-      schemaVersion: USER_VAULT_SCHEMA_VERSION,
+      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
     });
   } catch (error) {
     console.error(
       "Failed to save exam run user vault data",
       asErrorMessage(error, "Unknown error"),
     );
+  }
+};
+
+export const appendExamRunStore = async (
+  profilePath: string,
+  run: ExamRun,
+): Promise<boolean> => {
+  const path = resolveExamRunsPath(profilePath);
+  try {
+    const { value, error } = await readJsonFileWithStatus<ExamRunProfileStore>(
+      path,
+    );
+    let store: ExamRunProfileStore;
+    let needsWrite = false;
+
+    if (error) {
+      if (error === "parse") {
+        const backupPath = buildCorruptBackupPath(path);
+        try {
+          await renameJsonFile(path, backupPath);
+        } catch (renameError) {
+          console.warn(
+            "Failed to archive corrupt exam run store",
+            asErrorMessage(renameError, "Unknown error"),
+          );
+        }
+      }
+      store = createEmptyExamRunStore();
+      needsWrite = true;
+    } else {
+      const migrated = migrateExamRunStore(value);
+      store = migrated.store;
+      needsWrite = migrated.didMigrate;
+    }
+
+    if (store.runs.some((entry) => entry.id === run.id)) {
+      if (needsWrite) {
+        await writeJsonFileAtomic(path, store);
+      }
+      return true;
+    }
+
+    const nextStore: ExamRunProfileStore = {
+      ...store,
+      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
+      runs: [...store.runs, run],
+    };
+    await writeJsonFileAtomic(path, nextStore);
+    return true;
+  } catch (error) {
+    console.warn(
+      "Failed to append exam run store",
+      asErrorMessage(error, "Unknown error"),
+    );
+    return false;
   }
 };
