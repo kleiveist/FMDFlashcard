@@ -1323,68 +1323,70 @@ export const PreviewPanel = ({
           onAuxClick={handlePreviewLinkClick}
           onMouseUp={handlePreviewClick}
         >
-          {isEditing ? (
-            rawPreview ? (
-              <textarea
-                key="raw-edit"
-                ref={editorRef}
-                className="preview-editor"
-                value={editDraft}
-                onChange={(event) => onEditChange(event.target.value)}
-                onBlur={handleRawEditorBlur}
-                onScroll={(event) => captureScroll(event.currentTarget)}
-                aria-label="Edit markdown preview"
-              />
-            ) : showMarkdownEditor ? (
+          <div className="preview-surface">
+            {isEditing ? (
+              rawPreview ? (
+                <textarea
+                  key="raw-edit"
+                  ref={editorRef}
+                  className="preview-editor"
+                  value={editDraft}
+                  onChange={(event) => onEditChange(event.target.value)}
+                  onBlur={handleRawEditorBlur}
+                  onScroll={(event) => captureScroll(event.currentTarget)}
+                  aria-label="Edit markdown preview"
+                />
+              ) : showMarkdownEditor ? (
+                <div
+                  key="markdown-edit"
+                  ref={markdownEditorRef}
+                  className="preview preview-editor markdown md-preview"
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleMarkdownInput}
+                  onBlur={handleMarkdownEditorBlur}
+                  onScroll={(event) => captureScroll(event.currentTarget)}
+                  role="textbox"
+                  aria-multiline="true"
+                  aria-label="Edit markdown preview"
+                />
+              ) : null
+            ) : preview ? (
               <div
-                key="markdown-edit"
-                ref={markdownEditorRef}
-                className="preview preview-editor markdown md-preview"
-                contentEditable
-                suppressContentEditableWarning
-                onInput={handleMarkdownInput}
-                onBlur={handleMarkdownEditorBlur}
+                key={rawPreview ? "raw-view" : "markdown-view"}
+                ref={previewRef}
+                className={`preview ${rawPreview ? "raw" : "markdown"}${
+                  rawPreview ? "" : " md-preview"
+                }`}
                 onScroll={(event) => captureScroll(event.currentTarget)}
-                role="textbox"
-                aria-multiline="true"
-                aria-label="Edit markdown preview"
-              />
-            ) : null
-          ) : preview ? (
-            <div
-              key={rawPreview ? "raw-view" : "markdown-view"}
-              ref={previewRef}
-              className={`preview ${rawPreview ? "raw" : "markdown"}${
-                rawPreview ? "" : " md-preview"
-              }`}
-              onScroll={(event) => captureScroll(event.currentTarget)}
-            >
-              {rawPreview ? (
-                <pre>{preview}</pre>
-              ) : (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
-                  components={{
-                    table: ({ node: _node, ...props }) => (
-                      <div className="markdown-table">
-                        <table {...props} />
-                      </div>
-                    ),
-                    img: ({ node: _node, ...props }) => (
-                      <img {...props} draggable={false} />
-                    ),
-                  }}
-                >
-                  {renderedPreview}
-                </ReactMarkdown>
-              )}
-            </div>
-          ) : (
-            <div key="preview-empty" className="preview placeholder">
-              {emptyPreview}
-            </div>
-          )}
+              >
+                {rawPreview ? (
+                  <pre>{preview}</pre>
+                ) : (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+                    components={{
+                      table: ({ node: _node, ...props }) => (
+                        <div className="markdown-table">
+                          <table {...props} />
+                        </div>
+                      ),
+                      img: ({ node: _node, ...props }) => (
+                        <img {...props} draggable={false} />
+                      ),
+                    }}
+                  >
+                    {renderedPreview}
+                  </ReactMarkdown>
+                )}
+              </div>
+            ) : (
+              <div key="preview-empty" className="preview placeholder">
+                {emptyPreview}
+              </div>
+            )}
+          </div>
         </div>
         {editError ? <div className="error">{editError}</div> : null}
       </div>
