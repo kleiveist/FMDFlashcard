@@ -260,6 +260,7 @@ const AppContent = () => {
           >
             Menu
           </button>
+          <div id="mobile-nav-actions" className="mobile-nav-actions" />
         </div>
         {activeTab === "dashboard" ? (
           <DashboardPage
@@ -268,7 +269,7 @@ const AppContent = () => {
             onVaultViewChange={setDashboardView}
           />
         ) : activeTab === "exam" ? (
-          <ExamSimulationPage />
+          <ExamSimulationPage isTableView={showStudySectionNav} />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage onSectionSelect={handleStudySectionSelect} />
         ) : activeTab === "spaced-repetition" ? (

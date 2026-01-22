@@ -11,6 +11,102 @@
 
 import { CollapsiblePanelHeader } from "./CollapsiblePanelHeader";
 
+export type ExamStageControls = {
+  stage: "idle" | "running" | "review" | "scoring" | "finished";
+  canStartExam: boolean;
+  finishPending?: boolean;
+  onStartExam: () => void;
+  onSubmitExam: () => void;
+  onStartScoring: () => void;
+  onFinishScoring: () => void;
+  onResetExam: () => void;
+};
+
+type ExamPhaseButton = {
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
+};
+
+export const resolveExamPhaseButton = (
+  examStageControls: ExamStageControls,
+): ExamPhaseButton => {
+  switch (examStageControls.stage) {
+    case "idle":
+      return {
+        label: "Start",
+        onClick: examStageControls.onStartExam,
+        disabled: !examStageControls.canStartExam,
+      };
+    case "running":
+      return {
+        label: "Submit",
+        onClick: examStageControls.onSubmitExam,
+        disabled: false,
+      };
+    case "review":
+      return {
+        label: "Exam",
+        onClick: examStageControls.onStartScoring,
+        disabled: false,
+      };
+    case "scoring":
+      return {
+        label: "Grading",
+        onClick: examStageControls.onFinishScoring,
+        disabled: Boolean(examStageControls.finishPending),
+      };
+    case "finished":
+    default:
+      return {
+        label: "Grading",
+        onClick: examStageControls.onFinishScoring,
+        disabled: true,
+      };
+  }
+};
+
+export const ExamControlsBar = ({
+  examStageControls,
+}: {
+  examStageControls: ExamStageControls;
+}) => {
+  const phaseButton = resolveExamPhaseButton(examStageControls);
+  const controls = [
+    { label: "Start", onClick: examStageControls.onStartExam },
+    { label: "Submit", onClick: examStageControls.onSubmitExam },
+    { label: "Exam", onClick: examStageControls.onStartScoring },
+    { label: "Grading", onClick: examStageControls.onFinishScoring },
+  ];
+
+  return (
+    <div className="exam-controls-bar" role="group" aria-label="Exam controls">
+      {controls.map((control) => {
+        const isActive = control.label === phaseButton.label;
+        const isDisabled = !isActive || phaseButton.disabled;
+        return (
+          <button
+            key={control.label}
+            type="button"
+            className={`${isActive ? "primary" : "ghost"} small`}
+            onClick={control.onClick}
+            disabled={isDisabled}
+          >
+            {control.label}
+          </button>
+        );
+      })}
+      <button
+        type="button"
+        className="ghost small"
+        onClick={examStageControls.onResetExam}
+      >
+        Reset
+      </button>
+    </div>
+  );
+};
+
 type UserToolsPanelProps = {
   spacedRepetition: {
     spacedRepetitionActiveUser: string | null;
@@ -30,16 +126,7 @@ type UserToolsPanelProps = {
   startDisabled: boolean;
   showReset?: boolean;
   onReset?: () => void;
-  examStageControls?: {
-    stage: "idle" | "running" | "review" | "scoring" | "finished";
-    canStartExam: boolean;
-    finishPending?: boolean;
-    onStartExam: () => void;
-    onSubmitExam: () => void;
-    onStartScoring: () => void;
-    onFinishScoring: () => void;
-    onResetExam: () => void;
-  };
+  examStageControls?: ExamStageControls;
   isCollapsible?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -60,41 +147,7 @@ export const UserToolsPanel = ({
   controlsId,
 }: UserToolsPanelProps) => {
   const phaseButton = examStageControls
-    ? (() => {
-        switch (examStageControls.stage) {
-          case "idle":
-            return {
-              label: "Start",
-              onClick: examStageControls.onStartExam,
-              disabled: !examStageControls.canStartExam,
-            };
-          case "running":
-            return {
-              label: "Submit",
-              onClick: examStageControls.onSubmitExam,
-              disabled: false,
-            };
-          case "review":
-            return {
-              label: "Exam",
-              onClick: examStageControls.onStartScoring,
-              disabled: false,
-            };
-          case "scoring":
-            return {
-              label: "Grading",
-              onClick: examStageControls.onFinishScoring,
-              disabled: Boolean(examStageControls.finishPending),
-            };
-          case "finished":
-          default:
-            return {
-              label: "Grading",
-              onClick: examStageControls.onFinishScoring,
-              disabled: true,
-            };
-        }
-      })()
+    ? resolveExamPhaseButton(examStageControls)
     : null;
 
   return (

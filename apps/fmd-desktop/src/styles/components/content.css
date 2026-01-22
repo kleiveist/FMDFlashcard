@@ -63,10 +63,29 @@
   display: none;
   align-items: center;
   justify-content: flex-start;
+  gap: 12px;
 }
 
 .mobile-nav-toggle {
   align-self: flex-start;
+}
+
+.mobile-nav-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exam-controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exam-controls-bar button {
+  white-space: nowrap;
 }
 
 .mobile-nav-backdrop {

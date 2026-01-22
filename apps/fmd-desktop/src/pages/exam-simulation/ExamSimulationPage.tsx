@@ -22,7 +22,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { UserToolsPanel } from "../../components/UserToolsPanel";
+import { createPortal } from "react-dom";
+import {
+  ExamControlsBar,
+  resolveExamPhaseButton,
+  type ExamStageControls,
+  UserToolsPanel,
+} from "../../components/UserToolsPanel";
 import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
@@ -45,7 +51,13 @@ const studyPrevCommand = getShortcutById("studyPrevious");
 const studyNextCommand = getShortcutById("studyNext");
 const studySubmitCommand = getShortcutById("studySubmit");
 
-export const ExamSimulationPage = () => {
+type ExamSimulationPageProps = {
+  isTableView?: boolean;
+};
+
+export const ExamSimulationPage = ({
+  isTableView = false,
+}: ExamSimulationPageProps) => {
   const {
     actions,
     preview,
@@ -104,6 +116,29 @@ export const ExamSimulationPage = () => {
   const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const examStageControls = useMemo<ExamStageControls>(
+    () => ({
+      stage,
+      canStartExam,
+      finishPending: conversionPending,
+      onStartExam: handleStartExam,
+      onSubmitExam: handleSubmitExam,
+      onStartScoring: handleStartScoring,
+      onFinishScoring: handleFinishScoring,
+      onResetExam: handleResetExam,
+    }),
+    [
+      canStartExam,
+      conversionPending,
+      handleFinishScoring,
+      handleResetExam,
+      handleStartExam,
+      handleStartScoring,
+      handleSubmitExam,
+      stage,
+    ],
+  );
+  const phaseButton = resolveExamPhaseButton(examStageControls);
   const platform = getShortcutPlatform();
   const viewBinding = useMemo(() => {
     if (!viewToggleCommand) {
@@ -236,6 +271,12 @@ export const ExamSimulationPage = () => {
   }, [isViewMode]);
 
   useEffect(() => {
+    if (isTableView) {
+      setIsViewMode(true);
+    }
+  }, [isTableView]);
+
+  useEffect(() => {
     if (!isDeleteDialogOpen) {
       return;
     }
@@ -322,8 +363,21 @@ export const ExamSimulationPage = () => {
     viewBinding,
   ]);
 
+  const mobileNavActions =
+    typeof document === "undefined"
+      ? null
+      : document.getElementById("mobile-nav-actions");
+  const tableViewControls =
+    isTableView && mobileNavActions
+      ? createPortal(
+          <ExamControlsBar examStageControls={examStageControls} />,
+          mobileNavActions,
+        )
+      : null;
+
   return (
     <div className="exam-page">
+      {tableViewControls}
       <div className="exam-layout">
         <div className="exam-main">
           {showOverviewToggle ? renderOverviewToggle() : null}
@@ -351,6 +405,9 @@ export const ExamSimulationPage = () => {
                       plannedTaskCount={plannedTaskCount}
                       plannedMaxPoints={plannedMaxPoints}
                       hasTaskCountMismatch={hasTaskCountMismatch}
+                      isTableView={isTableView}
+                      onStartExam={phaseButton.onClick}
+                      startDisabled={phaseButton.disabled}
                     />
                   ) : (
                     <ExamStatisticsPanel
@@ -417,16 +474,7 @@ export const ExamSimulationPage = () => {
             }
             showReset={examRunning}
             onReset={handleResetExam}
-            examStageControls={{
-              stage,
-              canStartExam,
-              finishPending: conversionPending,
-              onStartExam: handleStartExam,
-              onSubmitExam: handleSubmitExam,
-              onStartScoring: handleStartScoring,
-              onFinishScoring: handleFinishScoring,
-              onResetExam: handleResetExam,
-            }}
+            examStageControls={examStageControls}
           />
           <ExamFilePanel
             files={examFiles}
