@@ -27,6 +27,7 @@ import {
   type SpacedRepetitionOrder,
   type SpacedRepetitionPageSize,
 } from "../../../features/spaced-repetition/useSpacedRepetition";
+import { CollapsiblePanelHeader } from "../../../components/CollapsiblePanelHeader";
 
 type SrToolsPanelProps = {
   spacedRepetitionBoxes: SpacedRepetitionBoxes;
@@ -35,6 +36,10 @@ type SrToolsPanelProps = {
   setSpacedRepetitionOrder: (value: SpacedRepetitionOrder) => void;
   spacedRepetitionPageSize: SpacedRepetitionPageSize;
   setSpacedRepetitionPageSize: (value: SpacedRepetitionPageSize) => void;
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  controlsId?: string;
 };
 
 export const SrToolsPanel = ({
@@ -44,14 +49,32 @@ export const SrToolsPanel = ({
   setSpacedRepetitionOrder,
   spacedRepetitionPageSize,
   setSpacedRepetitionPageSize,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
+  controlsId,
 }: SrToolsPanelProps) => (
   <section className="panel sr-tools-panel">
-    <div className="panel-header">
-      <div>
-        <h2>Spaced Repetition</h2>
+    {isCollapsible && onToggleCollapse && controlsId ? (
+      <CollapsiblePanelHeader
+        title="Spaced Repetition"
+        isCollapsed={isCollapsed}
+        onToggle={onToggleCollapse}
+        controlsId={controlsId}
+      />
+    ) : (
+      <div className="panel-header">
+        <div>
+          <h2>Spaced Repetition</h2>
+        </div>
       </div>
-    </div>
-    <div className="panel-body">
+    )}
+    <div
+      className="panel-body"
+      id={controlsId}
+      hidden={Boolean(isCollapsible && isCollapsed)}
+      aria-hidden={Boolean(isCollapsible && isCollapsed)}
+    >
       <div className="setting-row">
         <span className="label">Boxes</span>
         <div className="pill-grid">

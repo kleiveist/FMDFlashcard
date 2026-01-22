@@ -21,12 +21,17 @@
  */
 
 import { useMemo, type CSSProperties } from "react";
+import { CollapsiblePanelHeader } from "./CollapsiblePanelHeader";
 
 type StatsPanelProps = {
   correctCount: number;
   correctPercent: number;
   incorrectCount: number;
   totalQuestions: number;
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  controlsId?: string;
 };
 
 export const StatsPanel = ({
@@ -34,6 +39,10 @@ export const StatsPanel = ({
   correctPercent,
   incorrectCount,
   totalQuestions,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
+  controlsId,
 }: StatsPanelProps) => {
   const statsTotal = correctCount + incorrectCount;
   const statsChartStyle = useMemo(
@@ -45,14 +54,31 @@ export const StatsPanel = ({
   );
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
 
+  const collapseEnabled = Boolean(isCollapsible && onToggleCollapse && controlsId);
+  const isHidden = collapseEnabled && isCollapsed;
+
   return (
     <section className="panel stats-panel">
-      <div className="panel-header">
-        <div>
-          <h2>Statistics</h2>
+      {collapseEnabled ? (
+        <CollapsiblePanelHeader
+          title="Statistics"
+          isCollapsed={isCollapsed}
+          onToggle={onToggleCollapse ?? (() => {})}
+          controlsId={controlsId ?? ""}
+        />
+      ) : (
+        <div className="panel-header">
+          <div>
+            <h2>Statistics</h2>
+          </div>
         </div>
-      </div>
-      <div className="panel-body">
+      )}
+      <div
+        className="panel-body"
+        id={controlsId}
+        hidden={isHidden}
+        aria-hidden={isHidden}
+      >
         <div className="stats-summary">
           <div className="stats-counters">
             <div className="stats-counter">

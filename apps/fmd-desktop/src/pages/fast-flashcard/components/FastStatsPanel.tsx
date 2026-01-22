@@ -21,6 +21,7 @@
  */
 
 import type { CSSProperties } from "react";
+import { CollapsiblePanelHeader } from "../../../components/CollapsiblePanelHeader";
 import type { FastFlashcardSessionStats } from "../hooks/useFastSession";
 
 type FastStatsPanelProps = {
@@ -42,6 +43,10 @@ type FastStatsPanelProps = {
   sessionScore: number;
   sessionMultiplier: number;
   handleTimeToggle: () => void;
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  controlsId?: string;
 };
 
 export const FastStatsPanel = ({
@@ -63,15 +68,34 @@ export const FastStatsPanel = ({
   sessionScore,
   sessionMultiplier,
   handleTimeToggle,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
+  controlsId,
 }: FastStatsPanelProps) => (
   <section className="panel fast-stats-panel">
-    <div className="panel-header">
-      <div>
-        <h2>Statistics Diagram</h2>
-        <p className="muted">Progress trends over time</p>
+    {isCollapsible && onToggleCollapse && controlsId ? (
+      <CollapsiblePanelHeader
+        title="Statistics Diagram"
+        description="Progress trends over time"
+        isCollapsed={isCollapsed}
+        onToggle={onToggleCollapse}
+        controlsId={controlsId}
+      />
+    ) : (
+      <div className="panel-header">
+        <div>
+          <h2>Statistics Diagram</h2>
+          <p className="muted">Progress trends over time</p>
+        </div>
       </div>
-    </div>
-    <div className="panel-body">
+    )}
+    <div
+      className="panel-body"
+      id={controlsId}
+      hidden={Boolean(isCollapsible && isCollapsed)}
+      aria-hidden={Boolean(isCollapsible && isCollapsed)}
+    >
       <div className="fast-stats-switch">
         <span className="label">View</span>
         <button

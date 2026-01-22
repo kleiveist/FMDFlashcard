@@ -22,25 +22,48 @@
 
 import type { FastFlashcardSessionSummary } from "../hooks/useFastSession";
 import { formatSessionPace, formatSessionTimestamp } from "../hooks/useFastSession";
+import { CollapsiblePanelHeader } from "../../../components/CollapsiblePanelHeader";
 
 type FastHistoryPanelProps = {
   sessionHistory: FastFlashcardSessionSummary[];
   topSessions: FastFlashcardSessionSummary[];
   lastSessions: FastFlashcardSessionSummary[];
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  controlsId?: string;
 };
 
 export const FastHistoryPanel = ({
   sessionHistory,
   topSessions,
   lastSessions,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
+  controlsId,
 }: FastHistoryPanelProps) => (
   <section className="panel fast-history-panel">
-    <div className="panel-header">
-      <div>
-        <h2>Session History</h2>
+    {isCollapsible && onToggleCollapse && controlsId ? (
+      <CollapsiblePanelHeader
+        title="Session History"
+        isCollapsed={isCollapsed}
+        onToggle={onToggleCollapse}
+        controlsId={controlsId}
+      />
+    ) : (
+      <div className="panel-header">
+        <div>
+          <h2>Session History</h2>
+        </div>
       </div>
-    </div>
-    <div className="panel-body">
+    )}
+    <div
+      className="panel-body"
+      id={controlsId}
+      hidden={Boolean(isCollapsible && isCollapsed)}
+      aria-hidden={Boolean(isCollapsible && isCollapsed)}
+    >
       {sessionHistory.length === 0 ? (
         <div className="empty-state">No sessions yet.</div>
       ) : (

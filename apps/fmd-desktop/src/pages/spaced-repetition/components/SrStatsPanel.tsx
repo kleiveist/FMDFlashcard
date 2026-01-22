@@ -21,19 +21,44 @@
  */
 
 import { KpiGrid } from "../../../components/KpiGrid";
+import { CollapsiblePanelHeader } from "../../../components/CollapsiblePanelHeader";
 
 type SrStatsPanelProps = {
   kpiItems: { label: string; value: number }[];
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  controlsId?: string;
 };
 
-export const SrStatsPanel = ({ kpiItems }: SrStatsPanelProps) => (
+export const SrStatsPanel = ({
+  kpiItems,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
+  controlsId,
+}: SrStatsPanelProps) => (
   <section className="panel stats-panel sr-stats-panel">
-    <div className="panel-header">
-      <div>
-        <h2>Statistics</h2>
+    {isCollapsible && onToggleCollapse && controlsId ? (
+      <CollapsiblePanelHeader
+        title="Statistics"
+        isCollapsed={isCollapsed}
+        onToggle={onToggleCollapse}
+        controlsId={controlsId}
+      />
+    ) : (
+      <div className="panel-header">
+        <div>
+          <h2>Statistics</h2>
+        </div>
       </div>
-    </div>
-    <div className="panel-body">
+    )}
+    <div
+      className="panel-body"
+      id={controlsId}
+      hidden={Boolean(isCollapsible && isCollapsed)}
+      aria-hidden={Boolean(isCollapsible && isCollapsed)}
+    >
       <KpiGrid items={kpiItems} />
     </div>
   </section>

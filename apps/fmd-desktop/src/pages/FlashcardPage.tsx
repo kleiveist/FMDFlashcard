@@ -22,6 +22,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+import { CollapsiblePanelHeader } from "../components/CollapsiblePanelHeader";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { CompositeCard } from "../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../components/flashcards/FreeTextCard";
@@ -43,6 +44,7 @@ import {
   matchesBinding,
 } from "../lib/shortcuts/bindings";
 import { getShortcutById } from "../lib/shortcuts/registry";
+import { useTableView } from "../lib/useTableView";
 import type { StudySectionKey } from "../lib/studySections";
 
 const flashcardStatusLabel = "Not scanned yet";
@@ -58,6 +60,9 @@ type FlashcardPageProps = {
 export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   const { flashcards, settings } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const isTableView = useTableView();
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const totalQuestions = flashcards.filteredFlashcardCount;
   const hasScannedCards = flashcards.flashcards.length > 0;
@@ -405,6 +410,158 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
     [flashcards],
   );
 
+  const statsPanel = (
+    <StatsPanel
+      correctCount={flashcards.correctCount}
+      correctPercent={flashcards.correctPercent}
+      incorrectCount={flashcards.incorrectCount}
+      totalQuestions={totalQuestions}
+      isCollapsible={isTableView}
+      isCollapsed={isTableView && !isStatsOpen}
+      onToggleCollapse={() => setIsStatsOpen((prev) => !prev)}
+      controlsId="flashcard-stats-body"
+    />
+  );
+
+  const toolsPanel = (
+    <section className="panel toolbar-panel">
+      {isTableView ? (
+        <CollapsiblePanelHeader
+          title="Flashcard Tools"
+          description="Scan current notes for cards."
+          isCollapsed={!isToolsOpen}
+          onToggle={() => setIsToolsOpen((prev) => !prev)}
+          controlsId="flashcard-tools-body"
+        />
+      ) : (
+        <div className="panel-header">
+          <div>
+            <h2>Flashcard Tools</h2>
+            <p className="muted">Scan current notes for cards.</p>
+          </div>
+        </div>
+      )}
+      <div
+        className="panel-body"
+        id="flashcard-tools-body"
+        hidden={isTableView && !isToolsOpen}
+        aria-hidden={isTableView && !isToolsOpen}
+      >
+        <button
+          type="button"
+          className="primary"
+          onClick={flashcards.handleFlashcardScan}
+          disabled={flashcards.isFlashcardScanning}
+        >
+          {flashcards.isFlashcardScanning ? "Scanning..." : "Flashcard"}
+        </button>
+        <div className="flashcard-controls">
+          <div className="toolbar-section">
+            <span className="label">ORDER</span>
+            <div className="pill-grid">
+              <button
+                type="button"
+                className={`pill pill-button ${
+                  flashcards.flashcardOrder === "in-order" ? "active" : ""
+                }`}
+                aria-pressed={flashcards.flashcardOrder === "in-order"}
+                onClick={() => flashcards.setFlashcardOrder("in-order")}
+              >
+                In order
+              </button>
+              <button
+                type="button"
+                className={`pill pill-button ${
+                  flashcards.flashcardOrder === "random" ? "active" : ""
+                }`}
+                aria-pressed={flashcards.flashcardOrder === "random"}
+                onClick={() => flashcards.setFlashcardOrder("random")}
+              >
+                Random
+              </button>
+            </div>
+          </div>
+          <div className="toolbar-section">
+            <span className="label">MODE</span>
+            <select
+              className="text-input"
+              value={flashcards.flashcardMode}
+              onChange={(event) =>
+                flashcards.setFlashcardMode(
+                  event.target.value as typeof flashcards.flashcardMode,
+                )
+              }
+              aria-label="Select mode filter"
+            >
+              <option value="all">All</option>
+              <option value="qa">Q&amp;A</option>
+              <option value="multiple-choice">Multiple Choice</option>
+              <option value="fill-blank">Fill-in-the-blank</option>
+              <option value="assignment">Assignment</option>
+              <option value="true-false">True/False</option>
+              <option value="mix">Mix</option>
+            </select>
+          </div>
+          <div className="toolbar-section">
+            <span className="label">PAGE SIZE</span>
+            <div className="pill-grid">
+              {FLASHCARD_PAGE_SIZES.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  className={`pill pill-button ${
+                    flashcards.flashcardPageSize === size ? "active" : ""
+                  }`}
+                  aria-pressed={flashcards.flashcardPageSize === size}
+                  onClick={() => flashcards.setFlashcardPageSize(size)}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="toolbar-section">
+            <span className="label">DEFAULT SCOPE</span>
+            <div className="pill-grid">
+              <button
+                type="button"
+                className={`pill pill-button ${
+                  flashcards.flashcardScope === "current" ? "active" : ""
+                }`}
+                aria-pressed={flashcards.flashcardScope === "current"}
+                onClick={() => flashcards.setFlashcardScope("current")}
+              >
+                Current note
+              </button>
+              <button
+                type="button"
+                className={`pill pill-button ${
+                  flashcards.flashcardScope === "vault" ? "active" : ""
+                }`}
+                aria-pressed={flashcards.flashcardScope === "vault"}
+                onClick={() => flashcards.setFlashcardScope("vault")}
+              >
+                Whole vault
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  const sidebarPanels = isTableView ? (
+    <>
+      {statsPanel}
+      {toolsPanel}
+    </>
+  ) : (
+    <>
+      {toolsPanel}
+      {statsPanel}
+    </>
+  );
+
   return (
     <div className={`flashcard-layout ${isFocusMode ? "focus-mode" : ""}`}>
       <section className="panel flashcard-panel">
@@ -581,124 +738,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
       </section>
 
       {isFocusMode ? null : (
-        <div className="flashcard-sidebar">
-          <section className="panel toolbar-panel">
-            <div className="panel-header">
-              <div>
-                <h2>Flashcard Tools</h2>
-                <p className="muted">Scan current notes for cards.</p>
-              </div>
-            </div>
-            <div className="panel-body">
-              <button
-                type="button"
-                className="primary"
-                onClick={flashcards.handleFlashcardScan}
-                disabled={flashcards.isFlashcardScanning}
-              >
-                {flashcards.isFlashcardScanning ? "Scanning..." : "Flashcard"}
-              </button>
-              <div className="flashcard-controls">
-                <div className="toolbar-section">
-                  <span className="label">ORDER</span>
-                  <div className="pill-grid">
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        flashcards.flashcardOrder === "in-order" ? "active" : ""
-                      }`}
-                      aria-pressed={flashcards.flashcardOrder === "in-order"}
-                      onClick={() => flashcards.setFlashcardOrder("in-order")}
-                    >
-                      In order
-                    </button>
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        flashcards.flashcardOrder === "random" ? "active" : ""
-                      }`}
-                      aria-pressed={flashcards.flashcardOrder === "random"}
-                      onClick={() => flashcards.setFlashcardOrder("random")}
-                    >
-                      Random
-                    </button>
-                  </div>
-                </div>
-                <div className="toolbar-section">
-                  <span className="label">MODE</span>
-                  <select
-                    className="text-input"
-                    value={flashcards.flashcardMode}
-                    onChange={(event) =>
-                      flashcards.setFlashcardMode(
-                        event.target.value as typeof flashcards.flashcardMode,
-                      )
-                    }
-                    aria-label="Select mode filter"
-                  >
-                    <option value="all">All</option>
-                    <option value="qa">Q&amp;A</option>
-                    <option value="multiple-choice">Multiple Choice</option>
-                    <option value="fill-blank">Fill-in-the-blank</option>
-                    <option value="assignment">Assignment</option>
-                    <option value="true-false">True/False</option>
-                    <option value="mix">Mix</option>
-                  </select>
-                </div>
-                <div className="toolbar-section">
-                  <span className="label">PAGE SIZE</span>
-                  <div className="pill-grid">
-                    {FLASHCARD_PAGE_SIZES.map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        className={`pill pill-button ${
-                          flashcards.flashcardPageSize === size ? "active" : ""
-                        }`}
-                        aria-pressed={flashcards.flashcardPageSize === size}
-                        onClick={() => flashcards.setFlashcardPageSize(size)}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="toolbar-section">
-                  <span className="label">DEFAULT SCOPE</span>
-                  <div className="pill-grid">
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        flashcards.flashcardScope === "current" ? "active" : ""
-                      }`}
-                      aria-pressed={flashcards.flashcardScope === "current"}
-                      onClick={() => flashcards.setFlashcardScope("current")}
-                    >
-                      Current note
-                    </button>
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        flashcards.flashcardScope === "vault" ? "active" : ""
-                      }`}
-                      aria-pressed={flashcards.flashcardScope === "vault"}
-                      onClick={() => flashcards.setFlashcardScope("vault")}
-                    >
-                      Whole vault
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <StatsPanel
-            correctCount={flashcards.correctCount}
-            correctPercent={flashcards.correctPercent}
-            incorrectCount={flashcards.incorrectCount}
-            totalQuestions={totalQuestions}
-          />
-        </div>
+        <div className="flashcard-sidebar">{sidebarPanels}</div>
       )}
     </div>
   );

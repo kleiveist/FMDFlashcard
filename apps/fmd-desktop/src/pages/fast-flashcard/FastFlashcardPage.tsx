@@ -42,6 +42,7 @@ import {
   matchesBinding,
 } from "../../lib/shortcuts/bindings";
 import { getShortcutById } from "../../lib/shortcuts/registry";
+import { useTableView } from "../../lib/useTableView";
 import type { StudySectionKey } from "../../lib/studySections";
 
 const viewToggleCommand = getShortcutById("toggleViewMode");
@@ -109,6 +110,10 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
     lastSessions,
   } = useFastSession();
   const [isViewMode, setIsViewMode] = useState(false);
+  const isTableView = useTableView();
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   const platform = getShortcutPlatform();
   const viewBinding = useMemo(() => {
     if (!viewToggleCommand) {
@@ -269,86 +274,129 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
     studyBindings,
   ]);
 
-  return (
-    <div className={`fast-flashcard-layout ${isViewMode ? "focus-mode" : ""}`}>
-      <FastStatsPanel
-        isTimeModeEnabled={isTimeModeEnabled}
-        timeModeActive={timeModeActive}
-        timeStatusLabel={timeStatusLabel}
-        timeProgressStyle={timeProgressStyle}
-        selectedDuration={selectedDuration}
-        statsChartClass={statsChartClass}
-        statsChartStyle={statsChartStyle}
-        statsCorrect={statsCorrect}
-        statsIncorrect={statsIncorrect}
-        statsTotal={statsTotal}
-        sessionStats={sessionStats}
-        sessionCompleted={sessionCompleted}
-        sessionMissed={sessionMissed}
-        sessionAccuracy={sessionAccuracy}
-        sessionPace={sessionPace}
-        sessionScore={sessionScore}
-        sessionMultiplier={sessionMultiplier}
-        handleTimeToggle={handleTimeToggle}
+  const statsPanel = (
+    <FastStatsPanel
+      isTimeModeEnabled={isTimeModeEnabled}
+      timeModeActive={timeModeActive}
+      timeStatusLabel={timeStatusLabel}
+      timeProgressStyle={timeProgressStyle}
+      selectedDuration={selectedDuration}
+      statsChartClass={statsChartClass}
+      statsChartStyle={statsChartStyle}
+      statsCorrect={statsCorrect}
+      statsIncorrect={statsIncorrect}
+      statsTotal={statsTotal}
+      sessionStats={sessionStats}
+      sessionCompleted={sessionCompleted}
+      sessionMissed={sessionMissed}
+      sessionAccuracy={sessionAccuracy}
+      sessionPace={sessionPace}
+      sessionScore={sessionScore}
+      sessionMultiplier={sessionMultiplier}
+      handleTimeToggle={handleTimeToggle}
+      isCollapsible={isTableView}
+      isCollapsed={isTableView && !isStatsOpen}
+      onToggleCollapse={() => setIsStatsOpen((prev) => !prev)}
+      controlsId="fast-stats-body"
+    />
+  );
+
+  const toolsPanel = (
+    <FastToolsPanel
+      fastFlashcards={fastFlashcards}
+      settings={settings}
+      selectedDuration={selectedDuration}
+      setSelectedDuration={setSelectedDuration}
+      isTimeModeEnabled={isTimeModeEnabled}
+      isCollapsible={isTableView}
+      isCollapsed={isTableView && !isToolsOpen}
+      onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
+      controlsId="fast-tools-body"
+    />
+  );
+
+  const historyPanel = (
+    <FastHistoryPanel
+      sessionHistory={sessionHistory}
+      topSessions={topSessions}
+      lastSessions={lastSessions}
+      isCollapsible={isTableView}
+      isCollapsed={isTableView && !isHistoryOpen}
+      onToggleCollapse={() => setIsHistoryOpen((prev) => !prev)}
+      controlsId="fast-history-body"
+    />
+  );
+
+  const flashcardPanel = (
+    <section className="panel fast-flashcard-panel">
+      {isViewMode ? (
+        <StudyTimeBar
+          elapsedMs={elapsedMs}
+          maxMs={maxTimeMs}
+          isRunning={timeModeActive}
+        />
+      ) : null}
+      <FastHeader
+        hasScannedCards={hasScannedCards}
+        isViewMode={isViewMode}
+        onToggleView={() => setIsViewMode((prev) => !prev)}
+        viewLabel={viewLabel}
+        onSectionSelect={onSectionSelect}
       />
-      <FastToolsPanel
+      <FastCardHost
+        hasScannedCards={hasScannedCards}
+        hasFilteredCards={hasFilteredCards}
+        currentEntry={currentEntry}
+        isCurrentSubmitted={isCurrentSubmitted}
+        submissionLocked={submissionLocked}
+        helpEnabled={settings.fastFlashcardHelpEnabled}
         fastFlashcards={fastFlashcards}
-        settings={settings}
-        selectedDuration={selectedDuration}
-        setSelectedDuration={setSelectedDuration}
-        isTimeModeEnabled={isTimeModeEnabled}
+        orderedEntries={orderedEntries}
+        canGoBack={canGoBack}
+        canGoNext={canGoNext}
+        setFastCardPosition={setFastCardPosition}
+        handleOptionSelect={handleOptionSelect}
+        handleTrueFalseSelect={handleTrueFalseSelect}
+        handleClozeInputChange={handleClozeInputChange}
+        handleClozeTokenDrop={handleClozeTokenDrop}
+        handleClozeTokenRemove={handleClozeTokenRemove}
+        handleTextInputChange={handleTextInputChange}
+        handleTextCheck={handleTextCheck}
+        handleCompositeOptionSelect={handleCompositeOptionSelect}
+        handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
+        handleCompositeClozeInputChange={handleCompositeClozeInputChange}
+        handleCompositeClozeTokenDrop={handleCompositeClozeTokenDrop}
+        handleCompositeClozeTokenRemove={handleCompositeClozeTokenRemove}
+        handleCompositeTextInputChange={handleCompositeTextInputChange}
+        handleCompositeTextCheck={handleCompositeTextCheck}
+        handleCompositeSelfGrade={handleCompositeSelfGrade}
+        handleFastSubmit={handleFastSubmit}
+        handleFastSelfGrade={handleFastSelfGrade}
       />
-      <FastHistoryPanel
-        sessionHistory={sessionHistory}
-        topSessions={topSessions}
-        lastSessions={lastSessions}
-      />
-      <section className="panel fast-flashcard-panel">
-        {isViewMode ? (
-          <StudyTimeBar
-            elapsedMs={elapsedMs}
-            maxMs={maxTimeMs}
-            isRunning={timeModeActive}
-          />
-        ) : null}
-        <FastHeader
-          hasScannedCards={hasScannedCards}
-          isViewMode={isViewMode}
-          onToggleView={() => setIsViewMode((prev) => !prev)}
-          viewLabel={viewLabel}
-          onSectionSelect={onSectionSelect}
-        />
-        <FastCardHost
-          hasScannedCards={hasScannedCards}
-          hasFilteredCards={hasFilteredCards}
-          currentEntry={currentEntry}
-          isCurrentSubmitted={isCurrentSubmitted}
-          submissionLocked={submissionLocked}
-          helpEnabled={settings.fastFlashcardHelpEnabled}
-          fastFlashcards={fastFlashcards}
-          orderedEntries={orderedEntries}
-          canGoBack={canGoBack}
-          canGoNext={canGoNext}
-          setFastCardPosition={setFastCardPosition}
-          handleOptionSelect={handleOptionSelect}
-          handleTrueFalseSelect={handleTrueFalseSelect}
-          handleClozeInputChange={handleClozeInputChange}
-          handleClozeTokenDrop={handleClozeTokenDrop}
-          handleClozeTokenRemove={handleClozeTokenRemove}
-          handleTextInputChange={handleTextInputChange}
-          handleTextCheck={handleTextCheck}
-          handleCompositeOptionSelect={handleCompositeOptionSelect}
-          handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
-          handleCompositeClozeInputChange={handleCompositeClozeInputChange}
-          handleCompositeClozeTokenDrop={handleCompositeClozeTokenDrop}
-          handleCompositeClozeTokenRemove={handleCompositeClozeTokenRemove}
-          handleCompositeTextInputChange={handleCompositeTextInputChange}
-          handleCompositeTextCheck={handleCompositeTextCheck}
-          handleCompositeSelfGrade={handleCompositeSelfGrade}
-          handleFastSubmit={handleFastSubmit}
-          handleFastSelfGrade={handleFastSelfGrade}
-        />
-      </section>
+    </section>
+  );
+
+  return (
+    <div
+      className={`fast-flashcard-layout ${isViewMode ? "focus-mode" : ""} ${
+        isTableView ? "table-view" : ""
+      }`}
+    >
+      {isTableView ? (
+        <>
+          {flashcardPanel}
+          {statsPanel}
+          {historyPanel}
+          {toolsPanel}
+        </>
+      ) : (
+        <>
+          {statsPanel}
+          {toolsPanel}
+          {historyPanel}
+          {flashcardPanel}
+        </>
+      )}
     </div>
   );
 };

@@ -22,6 +22,7 @@
  */
 
 import type { CSSProperties } from "react";
+import { CollapsiblePanelHeader } from "../../../components/CollapsiblePanelHeader";
 import { buildLineChartPoints } from "../../../lib/chart";
 import { type SpacedRepetitionStatsView } from "../../../features/spaced-repetition/useSpacedRepetition";
 import { SrBoxesPanel } from "./SrBoxesPanel";
@@ -43,6 +44,10 @@ type SrStatsAndChartProps = {
   spacedRepetitionCorrectCount: number;
   spacedRepetitionIncorrectCount: number;
   spacedRepetitionTotalQuestions: number;
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  controlsId?: string;
 };
 
 export const SrStatsAndChart = ({
@@ -62,15 +67,34 @@ export const SrStatsAndChart = ({
   spacedRepetitionCorrectCount,
   spacedRepetitionIncorrectCount,
   spacedRepetitionTotalQuestions,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
+  controlsId,
 }: SrStatsAndChartProps) => (
   <section className="panel sr-diagram-panel">
-    <div className="panel-header">
-      <div>
-        <h2>Statistics Diagram</h2>
-        <p className="muted">Progress trends over time.</p>
+    {isCollapsible && onToggleCollapse && controlsId ? (
+      <CollapsiblePanelHeader
+        title="Statistics Diagram"
+        description="Progress trends over time."
+        isCollapsed={isCollapsed}
+        onToggle={onToggleCollapse}
+        controlsId={controlsId}
+      />
+    ) : (
+      <div className="panel-header">
+        <div>
+          <h2>Statistics Diagram</h2>
+          <p className="muted">Progress trends over time.</p>
+        </div>
       </div>
-    </div>
-    <div className="panel-body">
+    )}
+    <div
+      className="panel-body"
+      id={controlsId}
+      hidden={Boolean(isCollapsible && isCollapsed)}
+      aria-hidden={Boolean(isCollapsible && isCollapsed)}
+    >
       <div className="sr-stats-top">
         <div className="sr-stats-left">
           <div className="sr-stats-switch">

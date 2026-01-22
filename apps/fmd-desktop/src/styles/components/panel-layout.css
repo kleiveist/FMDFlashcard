@@ -36,6 +36,49 @@
   gap: 12px;
 }
 
+.panel-header-toggle {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.panel-header-toggle:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+.panel-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.panel-header-chevron {
+  display: inline-flex;
+  color: var(--muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.panel-header-chevron.is-open {
+  transform: rotate(180deg);
+  color: var(--accent-strong);
+}
+
+.panel-header-toggle:hover .panel-header-chevron {
+  color: var(--accent-strong);
+}
+
+.panel-header-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+
 .panel-title-button {
   padding: 0;
   border: none;

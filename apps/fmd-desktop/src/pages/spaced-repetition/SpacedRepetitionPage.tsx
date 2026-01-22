@@ -21,6 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
+import { useState } from "react";
 import { SrCardHost } from "./components/SrCardHost";
 import { SrDeleteModal } from "./components/SrDeleteModal";
 import { SrHeader } from "./components/SrHeader";
@@ -29,6 +30,7 @@ import { SrStatsPanel } from "./components/SrStatsPanel";
 import { SrToolsPanel } from "./components/SrToolsPanel";
 import { UserToolsPanel } from "../../components/UserToolsPanel";
 import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
+import { useTableView } from "../../lib/useTableView";
 import type { StudySectionKey } from "../../lib/studySections";
 
 type SpacedRepetitionPageProps = {
@@ -81,9 +83,18 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     canConfirmDelete,
     spacedRepetitionHelpEnabled,
   } = useSrSessionViewModel();
+  const isTableView = useTableView();
+  const [isDiagramOpen, setIsDiagramOpen] = useState(false);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isUserToolsOpen, setIsUserToolsOpen] = useState(false);
 
   return (
-    <div className={`spaced-repetition-layout ${isFocusMode ? "focus-mode" : ""}`}>
+    <div
+      className={`spaced-repetition-layout ${isFocusMode ? "focus-mode" : ""} ${
+        isTableView ? "table-view" : ""
+      }`}
+    >
       {isFocusMode ? null : (
         <SrStatsAndChart
           statsView={statsView}
@@ -114,6 +125,10 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           spacedRepetitionTotalQuestions={
             spacedRepetition.spacedRepetitionTotalQuestions
           }
+          isCollapsible={isTableView}
+          isCollapsed={isTableView && !isDiagramOpen}
+          onToggleCollapse={() => setIsDiagramOpen((prev) => !prev)}
+          controlsId="sr-diagram-body"
         />
       )}
 
@@ -126,6 +141,10 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
             !spacedRepetition.spacedRepetitionActiveUser ||
             flashcards.isFlashcardScanning
           }
+          isCollapsible={isTableView}
+          isCollapsed={isTableView && !isUserToolsOpen}
+          onToggleCollapse={() => setIsUserToolsOpen((prev) => !prev)}
+          controlsId="sr-user-tools-body"
         />
       )}
 
@@ -203,10 +222,22 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           setSpacedRepetitionOrder={spacedRepetition.setSpacedRepetitionOrder}
           spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
           setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
+          isCollapsible={isTableView}
+          isCollapsed={isTableView && !isToolsOpen}
+          onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
+          controlsId="sr-tools-body"
         />
       )}
 
-      {isFocusMode ? null : <SrStatsPanel kpiItems={kpiItems} />}
+      {isFocusMode ? null : (
+        <SrStatsPanel
+          kpiItems={kpiItems}
+          isCollapsible={isTableView}
+          isCollapsed={isTableView && !isStatsOpen}
+          onToggleCollapse={() => setIsStatsOpen((prev) => !prev)}
+          controlsId="sr-stats-body"
+        />
+      )}
 
       <SrDeleteModal
         isDeleteDialogOpen={isDeleteDialogOpen}

@@ -9,6 +9,8 @@
  * - Teilt Layout und Logik zwischen Study und Exam.
  */
 
+import { CollapsiblePanelHeader } from "./CollapsiblePanelHeader";
+
 type UserToolsPanelProps = {
   spacedRepetition: {
     spacedRepetitionActiveUser: string | null;
@@ -38,6 +40,10 @@ type UserToolsPanelProps = {
     onFinishScoring: () => void;
     onResetExam: () => void;
   };
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  controlsId?: string;
 };
 
 export const UserToolsPanel = ({
@@ -48,6 +54,10 @@ export const UserToolsPanel = ({
   showReset = false,
   onReset,
   examStageControls,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
+  controlsId,
 }: UserToolsPanelProps) => {
   const phaseButton = examStageControls
     ? (() => {
@@ -89,12 +99,26 @@ export const UserToolsPanel = ({
 
   return (
     <section className="panel sr-user-panel">
-      <div className="panel-header">
-        <div>
-          <h2>User Tools</h2>
+      {isCollapsible && onToggleCollapse && controlsId ? (
+        <CollapsiblePanelHeader
+          title="User Tools"
+          isCollapsed={isCollapsed}
+          onToggle={onToggleCollapse}
+          controlsId={controlsId}
+        />
+      ) : (
+        <div className="panel-header">
+          <div>
+            <h2>User Tools</h2>
+          </div>
         </div>
-      </div>
-      <div className="panel-body">
+      )}
+      <div
+        className="panel-body"
+        id={controlsId}
+        hidden={Boolean(isCollapsible && isCollapsed)}
+        aria-hidden={Boolean(isCollapsible && isCollapsed)}
+      >
         <div className="setting-row">
           <span className="label">Active user</span>
           <div className="setting-inline">

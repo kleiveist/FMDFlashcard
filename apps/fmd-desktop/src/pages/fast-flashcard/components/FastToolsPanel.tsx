@@ -21,6 +21,7 @@
  */
 
 import { FastFlashcardToolsSettings } from "../../../components/settings/FastFlashcardToolsSettings";
+import { CollapsiblePanelHeader } from "../../../components/CollapsiblePanelHeader";
 import { FAST_FLASHCARD_DURATIONS } from "../../../features/fast-flashcard/constants";
 import type {
   FlashcardMode,
@@ -44,6 +45,10 @@ type FastToolsPanelProps = {
   selectedDuration: number;
   setSelectedDuration: (value: number) => void;
   isTimeModeEnabled: boolean;
+  isCollapsible?: boolean;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  controlsId?: string;
 };
 
 export const FastToolsPanel = ({
@@ -52,15 +57,34 @@ export const FastToolsPanel = ({
   selectedDuration,
   setSelectedDuration,
   isTimeModeEnabled,
+  isCollapsible = false,
+  isCollapsed = false,
+  onToggleCollapse,
+  controlsId,
 }: FastToolsPanelProps) => (
   <section className="panel fast-tools-panel">
-    <div className="panel-header">
-      <div>
-        <h2>Fast Flashcard Tools</h2>
-        <p className="muted">Scan current notes for cards.</p>
+    {isCollapsible && onToggleCollapse && controlsId ? (
+      <CollapsiblePanelHeader
+        title="Fast Flashcard Tools"
+        description="Scan current notes for cards."
+        isCollapsed={isCollapsed}
+        onToggle={onToggleCollapse}
+        controlsId={controlsId}
+      />
+    ) : (
+      <div className="panel-header">
+        <div>
+          <h2>Fast Flashcard Tools</h2>
+          <p className="muted">Scan current notes for cards.</p>
+        </div>
       </div>
-    </div>
-    <div className="panel-body">
+    )}
+    <div
+      className="panel-body"
+      id={controlsId}
+      hidden={Boolean(isCollapsible && isCollapsed)}
+      aria-hidden={Boolean(isCollapsible && isCollapsed)}
+    >
       <button
         type="button"
         className="primary"

@@ -55,6 +55,16 @@
     grid-row: 1;
   }
 
+  .fast-flashcard-layout.table-view .fast-history-panel {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .fast-flashcard-layout.table-view .fast-tools-panel {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
   .fast-stats-blocks {
     grid-template-columns: 1fr;
   }
@@ -85,6 +95,31 @@
   }
 
   .spaced-repetition-layout .sr-stats-panel {
+    grid-column: 1;
+    grid-row: 5;
+  }
+
+  .spaced-repetition-layout.table-view .sr-flashcards-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .spaced-repetition-layout.table-view .sr-diagram-panel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .spaced-repetition-layout.table-view .sr-stats-panel {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .spaced-repetition-layout.table-view .sr-tools-panel {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  .spaced-repetition-layout.table-view .sr-user-panel {
     grid-column: 1;
     grid-row: 5;
   }
