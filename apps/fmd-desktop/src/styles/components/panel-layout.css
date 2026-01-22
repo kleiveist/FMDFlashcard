@@ -224,6 +224,7 @@
 .preview-content {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
 }
 
@@ -250,6 +251,7 @@
 .panel-body.preview-body {
   flex: 1;
   min-height: 0;
+  min-width: 0;
 }
 
 .workspace .panel-body {

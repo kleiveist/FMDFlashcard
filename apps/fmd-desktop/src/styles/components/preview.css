@@ -66,8 +66,8 @@
   border-radius: 16px;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   width: 100%;
-  overflow: auto;
 }
 
 .preview-toggle-button svg {
@@ -80,7 +80,9 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   width: 100%;
+  overflow: hidden;
 }
 
 .preview-editor {
@@ -97,6 +99,18 @@
   font-size: 0.85rem;
   resize: none;
   caret-color: var(--md-editor-caret);
+}
+
+.preview.markdown.md-preview,
+.preview.raw,
+textarea.preview-editor {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: auto;
 }
 
 .preview.preview-editor.markdown {
@@ -340,20 +354,46 @@
 }
 
 @media (max-width: 1200px) {
-  .preview-panel .preview-content {
-    width: 100%;
+  .preview-panel,
+  .preview-panel .preview-content,
+  .preview-panel .preview-surface {
     min-width: 0;
+    min-height: 0;
   }
 
-  .preview-panel .preview-surface {
+  .preview-panel .preview-content,
+  .preview-panel .preview-surface,
+  .preview-panel .preview-editor,
+  .preview-panel .preview,
+  .preview-panel .preview.markdown.md-preview,
+  .preview-panel .preview.raw,
+  .preview-panel textarea.preview-editor {
     width: 100%;
     min-width: 0;
+    height: 42rem;
+    max-height: 42rem;
   }
 
   .preview-panel .preview-editor,
   .preview-panel .preview {
     flex: 1 1 100%;
+  }
+
+  .preview-panel .preview.markdown.md-preview,
+  .preview-panel .preview.raw,
+  .preview-panel .preview-editor,
+  .preview-panel textarea.preview-editor {
+    box-sizing: border-box;
+  }
+
+  .preview-panel textarea.preview-editor {
+    display: block;
+  }
+
+  .preview-panel .preview.raw > pre {
     width: 100%;
     min-width: 0;
+    box-sizing: border-box;
+    overflow: auto;
   }
 }
