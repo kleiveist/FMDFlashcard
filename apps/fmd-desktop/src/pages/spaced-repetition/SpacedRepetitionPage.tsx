@@ -29,8 +29,13 @@ import { SrStatsPanel } from "./components/SrStatsPanel";
 import { SrToolsPanel } from "./components/SrToolsPanel";
 import { UserToolsPanel } from "../../components/UserToolsPanel";
 import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
+import type { StudySectionKey } from "../../lib/studySections";
 
-export const SpacedRepetitionPage = () => {
+type SpacedRepetitionPageProps = {
+  onSectionSelect?: (section: StudySectionKey) => void;
+};
+
+export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPageProps) => {
   const {
     flashcards,
     spacedRepetition,
@@ -130,6 +135,7 @@ export const SpacedRepetitionPage = () => {
           isFocusMode={isFocusMode}
           focusLabel={focusLabel}
           setIsFocusMode={setIsFocusMode}
+          onSectionSelect={onSectionSelect}
         />
         <SrCardHost
           filteredFlashcardEntries={filteredFlashcardEntries}

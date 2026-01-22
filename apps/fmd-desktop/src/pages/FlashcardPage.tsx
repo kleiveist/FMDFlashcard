@@ -43,6 +43,7 @@ import {
   matchesBinding,
 } from "../lib/shortcuts/bindings";
 import { getShortcutById } from "../lib/shortcuts/registry";
+import type { StudySectionKey } from "../lib/studySections";
 
 const flashcardStatusLabel = "Not scanned yet";
 const flashcardToggleCommand = getShortcutById("toggleViewMode");
@@ -50,7 +51,11 @@ const flashcardPrevCommand = getShortcutById("studyPrevious");
 const flashcardNextCommand = getShortcutById("studyNext");
 const flashcardSubmitCommand = getShortcutById("studySubmit");
 
-export const FlashcardPage = () => {
+type FlashcardPageProps = {
+  onSectionSelect?: (section: StudySectionKey) => void;
+};
+
+export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   const { flashcards, settings } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
@@ -405,7 +410,15 @@ export const FlashcardPage = () => {
       <section className="panel flashcard-panel">
         <div className="panel-header">
           <div>
-            <h2>Flashcard</h2>
+            <h2>
+              <button
+                type="button"
+                className="panel-title-button"
+                onClick={() => onSectionSelect?.("flashcard")}
+              >
+                Flashcard
+              </button>
+            </h2>
             {!hasScannedCards ? (
               <p className="muted">{flashcardStatusLabel}</p>
             ) : null}

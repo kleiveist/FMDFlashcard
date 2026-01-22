@@ -42,13 +42,18 @@ import {
   matchesBinding,
 } from "../../lib/shortcuts/bindings";
 import { getShortcutById } from "../../lib/shortcuts/registry";
+import type { StudySectionKey } from "../../lib/studySections";
 
 const viewToggleCommand = getShortcutById("toggleViewMode");
 const studyPrevCommand = getShortcutById("studyPrevious");
 const studyNextCommand = getShortcutById("studyNext");
 const studySubmitCommand = getShortcutById("studySubmit");
 
-export const FastFlashcardPage = () => {
+type FastFlashcardPageProps = {
+  onSectionSelect?: (section: StudySectionKey) => void;
+};
+
+export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) => {
   const {
     fastFlashcards,
     settings,
@@ -311,6 +316,7 @@ export const FastFlashcardPage = () => {
           isViewMode={isViewMode}
           onToggleView={() => setIsViewMode((prev) => !prev)}
           viewLabel={viewLabel}
+          onSectionSelect={onSectionSelect}
         />
         <FastCardHost
           hasScannedCards={hasScannedCards}

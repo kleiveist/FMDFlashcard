@@ -21,12 +21,14 @@
  */
 
 import { fastFlashcardStatusLabel } from "../hooks/useFastSession";
+import type { StudySectionKey } from "../../../lib/studySections";
 
 type FastHeaderProps = {
   hasScannedCards: boolean;
   isViewMode: boolean;
   onToggleView: () => void;
   viewLabel: string;
+  onSectionSelect?: (section: StudySectionKey) => void;
 };
 
 export const FastHeader = ({
@@ -34,10 +36,19 @@ export const FastHeader = ({
   isViewMode,
   onToggleView,
   viewLabel,
+  onSectionSelect,
 }: FastHeaderProps) => (
   <div className="panel-header">
     <div>
-      <h2>Flashcard</h2>
+      <h2>
+        <button
+          type="button"
+          className="panel-title-button"
+          onClick={() => onSectionSelect?.("fast-flashcard")}
+        >
+          Flashcard
+        </button>
+      </h2>
       {!hasScannedCards ? (
         <p className="muted">{fastFlashcardStatusLabel}</p>
       ) : null}

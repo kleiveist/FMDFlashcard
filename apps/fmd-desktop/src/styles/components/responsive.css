@@ -33,17 +33,17 @@
 
   .fast-stats-panel {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 2;
   }
 
   .fast-tools-panel {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 3;
   }
 
   .fast-history-panel {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
   }
 
   .fast-session-grid {
@@ -52,7 +52,7 @@
 
   .fast-flashcard-panel {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: 1;
   }
 
   .fast-stats-blocks {
@@ -66,17 +66,17 @@
 
   .spaced-repetition-layout .sr-diagram-panel {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 2;
   }
 
   .spaced-repetition-layout .sr-user-panel {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 3;
   }
 
   .spaced-repetition-layout .sr-flashcards-panel {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 1;
   }
 
   .spaced-repetition-layout .sr-tools-panel {

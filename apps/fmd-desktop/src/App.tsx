@@ -249,11 +249,11 @@ const AppContent = () => {
         ) : activeTab === "exam" ? (
           <ExamSimulationPage />
         ) : activeTab === "flashcard" ? (
-          <FlashcardPage />
+          <FlashcardPage onSectionSelect={handleTabChange} />
         ) : activeTab === "spaced-repetition" ? (
-          <SpacedRepetitionPage />
+          <SpacedRepetitionPage onSectionSelect={handleTabChange} />
         ) : (
-          <FastFlashcardPage />
+          <FastFlashcardPage onSectionSelect={handleTabChange} />
         )}
       </main>
       <ModalShell isOpen={isHelpOpen} title="Help" onClose={handleCloseHelp}>
