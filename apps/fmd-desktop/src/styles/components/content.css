@@ -78,16 +78,6 @@
   flex-wrap: wrap;
 }
 
-.exam-controls-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.exam-controls-bar button {
-  white-space: nowrap;
-}
-
 .mobile-nav-backdrop {
   position: fixed;
   inset: 0;

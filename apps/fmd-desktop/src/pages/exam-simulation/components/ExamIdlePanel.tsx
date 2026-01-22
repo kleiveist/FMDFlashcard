@@ -37,9 +37,8 @@ type ExamIdlePanelProps = {
   plannedTaskCount: number;
   plannedMaxPoints: number;
   hasTaskCountMismatch: boolean;
-  isTableView?: boolean;
-  onStartExam?: () => void;
-  startDisabled?: boolean;
+  onStartExam: () => void;
+  startDisabled: boolean;
 };
 
 export const ExamIdlePanel = ({
@@ -51,10 +50,10 @@ export const ExamIdlePanel = ({
   plannedTaskCount,
   plannedMaxPoints,
   hasTaskCountMismatch,
-  isTableView = false,
   onStartExam,
-  startDisabled = false,
+  startDisabled,
 }: ExamIdlePanelProps) => {
+  const isReadyDisabled = startDisabled;
   if (!selectedFile) {
     return (
       <div className="empty-state">
@@ -85,20 +84,16 @@ export const ExamIdlePanel = ({
       <div className="exam-idle-header">
         <p className="eyebrow">READY</p>
       </div>
-      {isTableView && onStartExam ? (
-        <h2>
-          <button
-            type="button"
-            className="panel-title-button"
-            onClick={onStartExam}
-            disabled={startDisabled}
-          >
-            Exam ready to start
-          </button>
-        </h2>
-      ) : (
-        <h2>Exam ready to start</h2>
-      )}
+      <h2>
+        <button
+          type="button"
+          className="panel-title-button"
+          onClick={onStartExam}
+          disabled={isReadyDisabled}
+        >
+          Exam ready to start
+        </button>
+      </h2>
       <p className="muted">
         {availableTaskCount} tasks detected. Max points this run: {plannedMaxPoints}.
       </p>

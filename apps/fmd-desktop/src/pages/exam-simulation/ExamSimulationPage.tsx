@@ -21,11 +21,11 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ExamControlsBar,
   resolveExamPhaseButton,
+  resolveExamPrimaryButton,
   type ExamStageControls,
   UserToolsPanel,
 } from "../../components/UserToolsPanel";
@@ -116,6 +116,7 @@ export const ExamSimulationPage = ({
   const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const autoViewModeRef = useRef(false);
   const examStageControls = useMemo<ExamStageControls>(
     () => ({
       stage,
@@ -139,6 +140,7 @@ export const ExamSimulationPage = ({
     ],
   );
   const phaseButton = resolveExamPhaseButton(examStageControls);
+  const primaryButton = resolveExamPrimaryButton(examStageControls);
   const platform = getShortcutPlatform();
   const viewBinding = useMemo(() => {
     if (!viewToggleCommand) {
@@ -173,7 +175,10 @@ export const ExamSimulationPage = ({
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const isOverviewStage = stage === "idle";
+  const canShowStatistics = examRuns.length > 0;
+  const resolvedOverviewTab = canShowStatistics ? overviewTab : "ready";
   const showOverviewToggle = isOverviewStage;
+  const viewToggleDisabled = isTableView && !examRunning;
   const timelineVisible = examTimerEnabled && examShowTimeline;
   const selectedUser = useMemo(
     () =>
@@ -205,17 +210,19 @@ export const ExamSimulationPage = ({
           >
             READY
           </button>
-          <button
-            type="button"
-            className={`pill pill-button ${
-              overviewTab === "statistics" ? "active" : ""
-            }`}
-            onClick={() => setOverviewTab("statistics")}
-            role="tab"
-            aria-selected={overviewTab === "statistics"}
-          >
-            Statistics
-          </button>
+          {canShowStatistics ? (
+            <button
+              type="button"
+              className={`pill pill-button ${
+                overviewTab === "statistics" ? "active" : ""
+              }`}
+              onClick={() => setOverviewTab("statistics")}
+              role="tab"
+              aria-selected={overviewTab === "statistics"}
+            >
+              Statistics
+            </button>
+          ) : null}
         </div>
         <button
           type="button"
@@ -224,6 +231,7 @@ export const ExamSimulationPage = ({
           aria-pressed={isViewMode}
           aria-label={viewLabel}
           title={viewLabel}
+          disabled={viewToggleDisabled}
         >
           <svg
             aria-hidden="true"
@@ -271,10 +279,22 @@ export const ExamSimulationPage = ({
   }, [isViewMode]);
 
   useEffect(() => {
-    if (isTableView) {
+    if (!isTableView) {
+      autoViewModeRef.current = false;
+      return;
+    }
+    if (!examRunning) {
+      autoViewModeRef.current = false;
+      if (isViewMode) {
+        setIsViewMode(false);
+      }
+      return;
+    }
+    if (!autoViewModeRef.current) {
+      autoViewModeRef.current = true;
       setIsViewMode(true);
     }
-  }, [isTableView]);
+  }, [examRunning, isTableView, isViewMode]);
 
   useEffect(() => {
     if (!isDeleteDialogOpen) {
@@ -291,6 +311,12 @@ export const ExamSimulationPage = ({
       setOverviewTab("ready");
     }
   }, [overviewTab, stage]);
+
+  useEffect(() => {
+    if (!canShowStatistics && overviewTab !== "ready") {
+      setOverviewTab("ready");
+    }
+  }, [canShowStatistics, overviewTab]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -370,7 +396,14 @@ export const ExamSimulationPage = ({
   const tableViewControls =
     isTableView && mobileNavActions
       ? createPortal(
-          <ExamControlsBar examStageControls={examStageControls} />,
+          <button
+            type="button"
+            className={`${primaryButton.variant} small`}
+            onClick={primaryButton.onClick}
+            disabled={primaryButton.disabled}
+          >
+            {primaryButton.label}
+          </button>,
           mobileNavActions,
         )
       : null;
@@ -395,7 +428,7 @@ export const ExamSimulationPage = ({
             {stage === "idle" ? (
               <div className="exam-overview">
                 <div className="exam-overview-body">
-                  {overviewTab === "ready" ? (
+                  {resolvedOverviewTab === "ready" ? (
                     <ExamIdlePanel
                       selectedFile={selectedExamFile}
                       previewState={preview.previewState}
@@ -405,7 +438,6 @@ export const ExamSimulationPage = ({
                       plannedTaskCount={plannedTaskCount}
                       plannedMaxPoints={plannedMaxPoints}
                       hasTaskCountMismatch={hasTaskCountMismatch}
-                      isTableView={isTableView}
                       onStartExam={phaseButton.onClick}
                       startDisabled={phaseButton.disabled}
                     />

@@ -28,6 +28,13 @@ type ExamPhaseButton = {
   disabled: boolean;
 };
 
+export type ExamPrimaryButton = {
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
+  variant: "primary" | "ghost";
+};
+
 export const resolveExamPhaseButton = (
   examStageControls: ExamStageControls,
 ): ExamPhaseButton => {
@@ -66,45 +73,22 @@ export const resolveExamPhaseButton = (
   }
 };
 
-export const ExamControlsBar = ({
-  examStageControls,
-}: {
-  examStageControls: ExamStageControls;
-}) => {
+export const resolveExamPrimaryButton = (
+  examStageControls: ExamStageControls,
+): ExamPrimaryButton => {
+  if (examStageControls.stage === "finished") {
+    return {
+      label: "Reset",
+      onClick: examStageControls.onResetExam,
+      disabled: false,
+      variant: "ghost",
+    };
+  }
   const phaseButton = resolveExamPhaseButton(examStageControls);
-  const controls = [
-    { label: "Start", onClick: examStageControls.onStartExam },
-    { label: "Submit", onClick: examStageControls.onSubmitExam },
-    { label: "Exam", onClick: examStageControls.onStartScoring },
-    { label: "Grading", onClick: examStageControls.onFinishScoring },
-  ];
-
-  return (
-    <div className="exam-controls-bar" role="group" aria-label="Exam controls">
-      {controls.map((control) => {
-        const isActive = control.label === phaseButton.label;
-        const isDisabled = !isActive || phaseButton.disabled;
-        return (
-          <button
-            key={control.label}
-            type="button"
-            className={`${isActive ? "primary" : "ghost"} small`}
-            onClick={control.onClick}
-            disabled={isDisabled}
-          >
-            {control.label}
-          </button>
-        );
-      })}
-      <button
-        type="button"
-        className="ghost small"
-        onClick={examStageControls.onResetExam}
-      >
-        Reset
-      </button>
-    </div>
-  );
+  return {
+    ...phaseButton,
+    variant: "primary",
+  };
 };
 
 type UserToolsPanelProps = {
