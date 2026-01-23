@@ -62,6 +62,7 @@ const AppContent = () => {
   const platform = getShortcutPlatform();
   const layoutMode = useLayoutMode();
   const showStudySectionNav = layoutMode === "table";
+  const isToolbarCollapsed = layoutMode === "table";
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
   const closeBinding = useMemo(
     () =>
@@ -174,9 +175,11 @@ const AppContent = () => {
 
   return (
     <div
-      className={`app-shell ${showStudySectionNav ? "compact-top-nav" : ""} ${
-        settings.rightToolbarCollapsed ? "sidebar-collapsed" : ""
-      } ${isDashboard ? "dashboard-active" : ""} ${
+      className={`app-shell layout-${layoutMode} ${
+        showStudySectionNav ? "compact-top-nav" : ""
+      } ${isToolbarCollapsed ? "sidebar-collapsed" : ""} ${
+        isDashboard ? "dashboard-active" : ""
+      } ${
         isMobileNavOpen ? "nav-open" : ""
       }`}
     >
@@ -196,6 +199,7 @@ const AppContent = () => {
         onOpenHelp={handleOpenHelp}
         onOpenSettings={handleOpenSettings}
         isMobileNavOpen={isMobileNavOpen}
+        onMobileNavOpen={() => setIsMobileNavOpen(true)}
         onMobileNavClose={() => setIsMobileNavOpen(false)}
       />
       <main className="content">

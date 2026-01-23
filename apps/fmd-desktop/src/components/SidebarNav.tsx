@@ -39,12 +39,14 @@ import {
   ExamEditorIcon,
   FolderIcon,
   HelpIcon,
+  MenuIcon,
   SettingsIcon,
 } from "./icons";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
 import type { DashboardView } from "../pages/DashboardPage";
 import { CARD_SECTION_KEYS, CARD_SECTIONS, type StudySectionKey } from "../lib/studySections";
+import { useLayoutMode } from "../lib/layoutMode";
 
 type ToolbarMode = "cards" | "vault";
 
@@ -56,6 +58,7 @@ type SidebarNavProps = {
   onOpenHelp: () => void;
   onOpenSettings: () => void;
   isMobileNavOpen: boolean;
+  onMobileNavOpen: () => void;
   onMobileNavClose: () => void;
 };
 
@@ -67,9 +70,11 @@ export const SidebarNav = ({
   onOpenHelp,
   onOpenSettings,
   isMobileNavOpen,
+  onMobileNavOpen,
   onMobileNavClose,
 }: SidebarNavProps) => {
   const { actions, preview, settings, vault } = useAppState();
+  const layoutMode = useLayoutMode();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>(() =>
     activeTab === "dashboard" ? "vault" : "cards",
   );
@@ -82,7 +87,7 @@ export const SidebarNav = ({
   const vaultStatusRef = useRef<HTMLDivElement | null>(null);
   const vaultMenuRef = useRef<HTMLDivElement | null>(null);
   const vaultButtonRef = useRef<HTMLButtonElement | null>(null);
-  const isToolbarCollapsed = settings.rightToolbarCollapsed;
+  const isToolbarCollapsed = layoutMode === "table";
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
@@ -120,8 +125,6 @@ export const SidebarNav = ({
   const isDashboard = activeTab === "dashboard";
   const isMarkdownView = isDashboard && vaultView === "markdown";
   const isExamView = isDashboard && vaultView === "exam";
-  const toggleLabel = isToolbarCollapsed ? "Expand toolbar" : "Collapse toolbar";
-  const toggleSymbol = isToolbarCollapsed ? ">" : "<";
   const handleTogglePath = (path: string, isOpen: boolean) => {
     setExpandedPaths((prev) => {
       const next = new Set(prev);
@@ -133,10 +136,6 @@ export const SidebarNav = ({
       return next;
     });
   };
-
-  const handleToolbarToggle = useCallback(() => {
-    settings.setRightToolbarCollapsed((prev) => !prev);
-  }, [settings]);
 
   useEffect(() => {
     if (isDashboard && toolbarMode !== "vault") {
@@ -236,30 +235,40 @@ export const SidebarNav = ({
       aria-label="Primary navigation"
     >
       {isCollapsed ? (
-        <button
-          type="button"
-          className="sidebar-collapsed-trigger"
-          onClick={handleToolbarToggle}
-          aria-label="Expand toolbar"
-          title="Expand toolbar"
-        >
-          <span className="sidebar-collapsed-icon" aria-hidden="true">
-            {">"}
-          </span>
-        </button>
-      ) : null}
-      <button
-        type="button"
-        className="sidebar-handle"
-        onClick={handleToolbarToggle}
-        aria-label={toggleLabel}
-        title={toggleLabel}
-      >
-        <span className="sidebar-handle-chevron" aria-hidden="true">
-          {toggleSymbol}
-        </span>
-      </button>
-      {isCollapsed ? null : (
+        <div className="sidebar-compact">
+          <button
+            type="button"
+            className="sidebar-compact-button"
+            onClick={onMobileNavOpen}
+            aria-label="Open navigation"
+            aria-controls="app-sidebar"
+            aria-expanded={isMobileNavOpen}
+            title="Open navigation"
+          >
+            <MenuIcon />
+          </button>
+          <div className="sidebar-compact-actions">
+            <button
+              type="button"
+              className="sidebar-compact-button"
+              onClick={onOpenHelp}
+              aria-label="Help"
+              title="Help"
+            >
+              <HelpIcon />
+            </button>
+            <button
+              type="button"
+              className="sidebar-compact-button"
+              onClick={onOpenSettings}
+              aria-label="Settings"
+              title="Settings"
+            >
+              <SettingsIcon />
+            </button>
+          </div>
+        </div>
+      ) : (
         <>
           <div className="sidebar-head">
             <button
