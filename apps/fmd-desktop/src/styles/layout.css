@@ -35,6 +35,11 @@
   --sidebar-width: var(--sidebar-collapsed-width);
 }
 
+.app-shell.layout-table,
+.app-shell.layout-table.sidebar-collapsed {
+  grid-template-columns: 1fr;
+}
+
 .app-shell.compact-top-nav {
   grid-template-rows: auto minmax(0, 1fr);
 }
@@ -49,13 +54,19 @@
   grid-row: 2;
 }
 
-.app-shell.layout-table.nav-open .sidebar {
+.app-shell.layout-table .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
   width: min(320px, 85vw);
   max-height: 100vh;
   overflow-y: auto;
+  transform: translateX(-110%);
+  transition: transform 0.2s ease;
   z-index: 30;
+}
+
+.app-shell.layout-table.nav-open .sidebar {
+  transform: translateX(0);
 }
 
 .app-shell.dashboard-active {
@@ -186,51 +197,6 @@
 .sidebar-collapsed-icon {
   font-size: 1rem;
   font-weight: 700;
-}
-
-.sidebar-compact {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-height: 0;
-  padding: 8px 0;
-}
-
-.sidebar-compact-actions {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.sidebar-compact-button {
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel);
-  color: var(--ink);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.sidebar-compact-button:hover {
-  border-color: var(--accent-border);
-  color: var(--accent-strong);
-}
-
-.sidebar-compact-button:focus-visible {
-  outline: 2px solid var(--accent-focus-ring);
-  outline-offset: 2px;
-}
-
-.sidebar-compact-button svg {
-  width: 18px;
-  height: 18px;
 }
 
 .sidebar-head {

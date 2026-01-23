@@ -198,8 +198,6 @@ const AppContent = () => {
         onVaultViewChange={requestDashboardViewChange}
         onOpenHelp={handleOpenHelp}
         onOpenSettings={handleOpenSettings}
-        isMobileNavOpen={isMobileNavOpen}
-        onMobileNavOpen={() => setIsMobileNavOpen(true)}
         onMobileNavClose={() => setIsMobileNavOpen(false)}
       />
       <main className="content">
