@@ -12,7 +12,7 @@ The capital of France is %%Paris%%.
 ```
 
 - Each `%%…%%` pair becomes an input blank. The parser trims the text inside; blanks without any content are rejected.
-- You can combine cloze blanks and drag tokens in the same question as long as the interactions stay within one block. When cl and cd coexist, the parser spawns both blank and drag segments.
+- You can combine cloze blanks and drag tokens in the same question as long as the interactions stay within one block. Drag tokens use `tocken "..."`. When cl and cd coexist, the parser spawns both blank and drag segments.
 - The blank solutions are case-insensitive and trimmed; punctuation inside the solution is preserved, so `%%Paris%%` differs from `%%Paris,%%`.
 
 ## Behavior notes

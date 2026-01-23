@@ -98,8 +98,8 @@ Tabelle 1 – Markdown-Typen & Editfaktor (vollständig)
 | MC-Antwortmarker             | `-a` `-b`                  | ✔️          | nur Marker               |
 | True/False-Marker            | `-true` / `-false`         | ✔️          | nur Marker               |
 | Cloze (Typed)                | `%%answer%%`               | ✔️          | Textabschnitt            |
-| Cloze (Drag)                 | `` `token` ``              | ✔️          | Textabschnitt            |
-| Kombination cl+cd            | `%%text%%` + `` `token` `` | ✔️          | Textabschnitt            |
+| Cloze (Drag)                 | `tocken "token"`           | ✔️          | Textabschnitt            |
+| Kombination cl+cd            | `%%text%%` + `tocken "token"` | ✔️          | Textabschnitt            |
 | Trennmarker (Exam/Composite) | `---`                      | ✔️          | vollständiger Block      |
 | Mehrfache Trennmarker        | `--- ---`                  | ✔️          | vollständiger Block      |
 | Verschachtelte Blöcke        | Liste → Zitat → Code       | ✔️          | Blockhierarchie          |

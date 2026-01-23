@@ -55,13 +55,13 @@ Typed blanks are marked with `%%...%%` and can appear inside any table cell.
 ```
 ### CD (drag tokens) in tables
 
-Drag tokens are marked with backticks (e.g., `` `WHERE` ``) and can be placed in table cells.
+Drag tokens are marked with `tocken "..."` and can be placed in table cells.
 ```q
 #card
 |   |   |
 |---|---|
-| Filter rows | `WHERE` |
-| Sort results | `ORDER BY` |
+| Filter rows | tocken "WHERE" |
+| Sort results | tocken "ORDER BY" |
 #
 ```
 ### CLD (typed blanks + drag tokens) in tables
@@ -71,8 +71,8 @@ Combination of drag tokens and typed blanks inside table cells.
 #card
 |   |   |
 |---|---|
-| Filter | `WHERE` SELECT * FROM users WHERE age > %%18%%; |
-| Limit  | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %%10%%; |
+| Filter | tocken "WHERE" SELECT * FROM users WHERE age > %%18%%; |
+| Limit  | tocken "LIMIT" SELECT * FROM users ORDER BY id LIMIT %%10%%; |
 #
 ```
 ## Tables inside exam blocks

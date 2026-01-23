@@ -77,7 +77,7 @@ AUFGABEN-ANFORDERUNGEN (10 Tasks total):
 - Nutze cld (Kombination aus Typed Blanks und Drag Tokens):
   - Integriere in den Aufgabentext:
     - mindestens 3 Typed Blanks im Format %%...%%
-    - mindestens 5 Drag Tokens im Format `token`
+    - mindestens 5 Drag Tokens im Format tocken "token"
   - Kontext ist ein realistischer Mini-Use-Case (z. B. Code-Review, Bugfix, API-Call, SQL-Query, Konfig-Snippet).
   - Aufgabe muss eine echte Anwendung prüfen (nicht nur Definition).
   - Verwende Tokens so, dass es “Zuordnung”/Einsetzen in Lücken ermöglicht (Tokenbank-Charakter).

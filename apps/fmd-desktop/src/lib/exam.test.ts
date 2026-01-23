@@ -239,10 +239,10 @@ d) 9
   const clBlock = `[cl]
 The capital of France is %%Paris%%.`;
   const cdBlock = `[cd]
-Colors: \`schwarz\`, \`rot\`, \`gold\`.`;
+Colors: tocken "schwarz", tocken "rot", tocken "gold".`;
   const cldBlock = `[cld]
 [cl] The capital of France is %%Paris%%.
-[cd] Colors: \`schwarz\`, \`rot\`, \`gold\`.`;
+[cd] Colors: tocken "schwarz", tocken "rot", tocken "gold".`;
 
   const buildCardBody = (...sections: string[]) => sections.join("\n\n");
   const buildExamMarkdown = (title: string, body: string, index = 1) => `#exam

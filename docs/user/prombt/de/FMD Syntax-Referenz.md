@@ -178,18 +178,18 @@ Jedes %%...%% erzeugt ein Eingabefeld.
 Inhalt in %%...%% ist die Lösung (typisch: trim + case-normalisiert).
 
 cd — Cloze (Drag Tokens)
-Drag/Drop-Tokens mit Backticks. Das Token selbst ist die Lösung.
+Drag/Drop-Tokens mit `tocken "..."`. Das Token selbst ist die Lösung.
 
 Beispiel
 
 md
 Code kopieren
 #card
-Ordne zu: HTTP ist ein `application-layer` Protokoll.
+Ordne zu: HTTP ist ein tocken "application-layer" Protokoll.
 #
 Regeln
 
-Tokens werden mit Backticks markiert: `token`
+Tokens werden mit `tocken "token"` markiert.
 
 UI kann Tokens als “Tokenbank” / Drag-Elemente darstellen (je nach Implementierung).
 
@@ -201,13 +201,13 @@ Beispiel
 md
 Code kopieren
 #card
-Die API liefert %%JSON%% und verwendet typischerweise `GET` für das Abrufen von Ressourcen.
+Die API liefert %%JSON%% und verwendet typischerweise tocken "GET" für das Abrufen von Ressourcen.
 #
 Regeln
 
 %%...%% für Typed Blanks
 
-`token` für Drag Tokens
+`tocken "token"` für Drag Tokens
 
 Geeignet für Code-/Konfig-Aufgaben, bei denen sowohl Einsetzen als auch Tippen sinnvoll ist.
 

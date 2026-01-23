@@ -31,7 +31,7 @@ import { findTableLineIndices } from "./markdownTables";
  * v3 (cloze blanks + tokens)
  * #card
  * Question line
- * Body text with input blanks like %%answer%% and drag tokens like `token`
+ * Body text with input blanks like %%answer%% and drag tokens like tocken "token"
  * #
  *
  * v4 (true/false)
@@ -289,8 +289,12 @@ const normalizeAssignmentLine = (line: string) => {
   if (!left || !right) {
     return null;
   }
-  const normalizedRight =
-    right.startsWith("`") && right.endsWith("`") ? right : `\`${right}\``;
+  const dragTokenPattern = /^\s*tocken\b\s*"(?:[^"\\]|\\.)*"\s*$/;
+  const escapeToken = (value: string) =>
+    value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const normalizedRight = dragTokenPattern.test(right)
+    ? right
+    : `tocken "${escapeToken(right)}"`;
   return `${left} => ${normalizedRight}`;
 };
 
@@ -300,7 +304,8 @@ const isTrueFalseMarkerLine = (line: string) =>
   normalizeTrueFalseMarker(line.trim()) !== null;
 const isAnswerMarkerLine = (line: string, answerMatch: AnswerMatchMode) =>
   Boolean(findAnswerMarkerMatch(line, answerMatch));
-const hasClozeMarker = (line: string) => line.includes("%%") || line.includes("`");
+const hasClozeMarker = (line: string) =>
+  line.includes("%%") || /\btocken\b\s*"/.test(line);
 
 const appendText = (segments: ClozeSegment[], text: string) => {
   if (!text) {
@@ -320,13 +325,51 @@ const parseClozeSegments = (lines: string[]) => {
   let blankIndex = 0;
   let tokenIndex = 0;
   const fencePattern = /^(```|~~~)/;
+  const dragTokenPattern = /\btocken\b\s*"/g;
+
+  const findNextDragToken = (line: string, startIndex: number) => {
+    dragTokenPattern.lastIndex = startIndex;
+    const match = dragTokenPattern.exec(line);
+    if (!match) {
+      return null;
+    }
+    const markerStart = match.index;
+    const quoteIndex = markerStart + match[0].length - 1;
+    return { markerStart, quoteIndex };
+  };
+
+  const parseQuotedToken = (line: string, quoteIndex: number) => {
+    let value = "";
+    let index = quoteIndex + 1;
+    while (index < line.length) {
+      const char = line[index];
+      if (char === "\\") {
+        const next = line[index + 1];
+        if (next === "\\" || next === "\"") {
+          value += next;
+          index += 2;
+          continue;
+        }
+        value += char;
+        index += 1;
+        continue;
+      }
+      if (char === "\"") {
+        return { value, end: index };
+      }
+      value += char;
+      index += 1;
+    }
+    return null;
+  };
 
   const handleLine = (line: string) => {
     let cursor = 0;
 
     while (cursor < line.length) {
       const nextInput = line.indexOf("%%", cursor);
-      const nextDrag = line.indexOf("`", cursor);
+      const dragMatch = findNextDragToken(line, cursor);
+      const nextDrag = dragMatch ? dragMatch.markerStart : -1;
       const nextMarker = Math.min(
         nextInput === -1 ? Number.POSITIVE_INFINITY : nextInput,
         nextDrag === -1 ? Number.POSITIVE_INFINITY : nextDrag,
@@ -363,16 +406,19 @@ const parseClozeSegments = (lines: string[]) => {
         continue;
       }
 
-      const end = line.indexOf("`", nextDrag + 1);
-      if (end === -1) {
-        appendText(segments, line.slice(nextDrag));
+      if (!dragMatch) {
+        appendText(segments, line.slice(cursor));
         break;
       }
-      const rawToken = line.slice(nextDrag + 1, end);
-      const value = rawToken.trim();
+      const parsed = parseQuotedToken(line, dragMatch.quoteIndex);
+      if (!parsed) {
+        appendText(segments, line.slice(dragMatch.markerStart));
+        break;
+      }
+      const value = parsed.value.trim();
       if (!value) {
-        appendText(segments, line.slice(nextDrag, end + 1));
-        cursor = end + 1;
+        appendText(segments, line.slice(dragMatch.markerStart, parsed.end + 1));
+        cursor = parsed.end + 1;
         continue;
       }
       segments.push({
@@ -384,7 +430,7 @@ const parseClozeSegments = (lines: string[]) => {
       dragTokens.push({ id: `token-${tokenIndex}`, value });
       blankIndex += 1;
       tokenIndex += 1;
-      cursor = end + 1;
+      cursor = parsed.end + 1;
     }
 
     return true;

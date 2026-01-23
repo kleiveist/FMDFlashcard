@@ -78,7 +78,7 @@ Fehlt aktuell konzeptionell.
 Zellen dürfen enthalten:
 - Inline-Markdown (`**`, `` ` ``, `%% %%`)
 - `<br>` für Zeilenumbrüche
-- Tokens (z. B. `` `token` ``)
+- Tokens (z. B. `tocken "token"`)
 ➡ Editor darf das **nicht auflösen oder blockieren**.
 
 ---

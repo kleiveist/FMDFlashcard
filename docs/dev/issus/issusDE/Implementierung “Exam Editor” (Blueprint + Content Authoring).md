@@ -67,7 +67,7 @@ Persistenz als Markdown im bestehenden Format, damit Parser/Renderer unveränder
     - TF: Prompt + true/false
     - M1/M2: Prompt + Optionsliste + korrekte Marker
     - CL: Prompt mit `%%...%%`
-    - CD: Prompt mit `` `token` ``
+    - CD: Prompt mit `tocken "token"`
     - CLD: Kombination aus CL + CD
 - Live-Validation und Fehlerhinweise mit “Fix actions” (z. B. “mind. 2 Optionen hinzufügen”).
 

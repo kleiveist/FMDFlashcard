@@ -96,7 +96,7 @@ const buildExam = (): ExamBlueprint => ({
         {
           id: "card-cd",
           type: "cd",
-          prompt: "Tokens: `alpha`, `beta`.",
+          prompt: 'Tokens: tocken "alpha", tocken "beta".',
         },
       ],
     },
@@ -109,7 +109,7 @@ const buildExam = (): ExamBlueprint => ({
         {
           id: "card-cld",
           type: "cld",
-          prompt: "Mix %%one%% with `token`.",
+          prompt: 'Mix %%one%% with tocken "token".',
         },
       ],
     },
@@ -129,8 +129,8 @@ describe("serializeExamBlueprint", () => {
     expect(markdown).toContain("-a");
     expect(markdown).toContain("-b");
     expect(markdown).toContain("%%France%%");
-    expect(markdown).toContain("`alpha`");
-    expect(markdown).toContain("Mix %%one%% with `token`.");
+    expect(markdown).toContain('tocken "alpha"');
+    expect(markdown).toContain('Mix %%one%% with tocken "token".');
   });
 
   it("places help blocks in task and card scopes", () => {

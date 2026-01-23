@@ -71,12 +71,14 @@ const stripFencedBlocks = (prompt: string) => {
 };
 
 const analyzeTokens = (prompt: string) => {
-  const pattern = /`([^`]+)`/g;
+  const pattern = /\btocken\b\s*"((?:[^"\\]|\\.)*)"/g;
   let match: RegExpExecArray | null = null;
   let count = 0;
   let hasEmpty = false;
   while ((match = pattern.exec(prompt)) !== null) {
-    const content = (match[1] ?? "").trim();
+    const raw = match[1] ?? "";
+    const unescaped = raw.replace(/\\(["\\])/g, "$1");
+    const content = unescaped.trim();
     if (!content) {
       hasEmpty = true;
     } else {
@@ -180,7 +182,7 @@ const validateClozeCard = (
 
   if (card.type === "cd" || card.type === "cld") {
     if (tokens.count === 0) {
-      syntaxMessages.push("Add at least one drag token (inline `token`).");
+      syntaxMessages.push('Add at least one drag token (tocken "...").');
     }
     if (tokens.hasEmpty) {
       syntaxMessages.push("Drag tokens must not be empty.");

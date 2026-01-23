@@ -24,16 +24,16 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Code `cd`: Cloze (drag tokens)
 
-Drag tokens use backticks to create draggable pieces learners can drop into blanks. The parser reads ``token`` fragments as drag-and-drop solutions inside the same cloze pipeline.
+Drag tokens use the `tocken "token"` syntax to create draggable pieces learners can drop into blanks. The parser reads these markers as drag-and-drop solutions inside the same cloze pipeline.
 
 ```md
 #card
-The colors of the German flag are `black`, `red`, and `gold`.
+The colors of the German flag are tocken "black", tocken "red", and tocken "gold".
 #
 ```
 
-- Each inline `token` becomes a drag token that learners can drag into the drop zone associated with that blank.
-- Empty tokens are ignored, so always place visible text inside the backticks.
+- Each `tocken "token"` marker becomes a drag token that learners can drag into the drop zone associated with that blank.
+- Empty tokens are ignored, so always place visible text inside the quotes.
 - Drag tokens work alongside typed cloze blanks; both are treated as `cloze` parts with `kind` `drag` in the segment list.
 - The drag-token list is shuffled before display; the order does not match the order in the source text.
 - The shuffle order is seeded by the card/part identity so repeated views keep the same arrangement.
@@ -41,10 +41,17 @@ The colors of the German flag are `black`, `red`, and `gold`.
 
 - Use drag tokens when you want the learner to match predefined units instead of typing them.
 - Drag and typed blanks render together on the same UI if they belong to the same block. If you need to mix drag tokens with other modes (TF or MC), separate them with `---` or split into different tasks.
+- Backticks are treated as normal inline code and do not create drag blanks.
+## Migration note
+
+To locate legacy drag-token markers in vault files:
+```sh
+rg -n --glob "*.md" "tocken`" /path/to/vault
+```
 ### Typed mit codeblock
 #card
 ```q
-The colors of the German flag are `black`, `red`, and `gold`.
+The colors of the German flag are tocken "black", tocken "red", and tocken "gold".
 ```
 #
 
@@ -66,7 +73,7 @@ The capital of France is %%Paris%%.
 ```
 
 - Each `%%…%%` pair becomes an input blank. The parser trims the text inside; blanks without any content are rejected.
-- You can combine cloze blanks and drag tokens in the same question as long as the interactions stay within one block. When cl and cd coexist, the parser spawns both blank and drag segments.
+- You can combine cloze blanks and drag tokens in the same question as long as the interactions stay within one block. Drag tokens use `tocken "..."`. When cl and cd coexist, the parser spawns both blank and drag segments.
 - The blank solutions are case-insensitive and trimmed; punctuation inside the solution is preserved, so `%%Paris%%` differs from `%%Paris,%%`.
 
 ## Behavior notes
@@ -92,11 +99,12 @@ The capital of France is %%Paris%%.
 
 `cld` is the combined Cloze format that supports **both**:
 - **Typed blanks** using `%%...%%`
-- **Drag tokens** using backticks `` `token` ``
+- **Drag tokens** using `tocken "token"`
 
 - This lets you build a single cloze interaction where learners can either type answers (typed blanks) and/or use a token bank (drag tokens) within the same part.
 - The drag-token list is shuffled before display; the order does not match the order in the source text.
 - The shuffle sequence is seeded by the card/part identity so the same task keeps the same order within a session.
+- Backticks are treated as normal inline code and do not create drag blanks.
 ---
 ## Syntax
 
@@ -107,6 +115,16 @@ Example:
 ```md
 #card
 The `capital` of France is %%Paris%%.
+#
+```
+---
+### Drag tokens
+Use `tocken "..."` to create a drag token. The text inside the quotes is the **solution**.
+
+Example:
+```md
+#card
+The colors are tocken "black", tocken "red", and tocken "gold".
 #
 ```
 ---

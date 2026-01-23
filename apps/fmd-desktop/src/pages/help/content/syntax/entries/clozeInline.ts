@@ -3,25 +3,25 @@ import { joinLines } from "./helpers";
 
 export const clozeInlineEntry: SyntaxEntry = {
     id: "cloze-inline",
-    title: { en: "Cloze + inline code", de: "Cloze + Inline-Code" },
-    markers: ["%%...%%", "`token`"],
+    title: { en: "Cloze + drag tokens", de: "Cloze + Drag-Tokens" },
+    markers: ["%%...%%", 'tocken "token"'],
     keyRule: {
-      en: "Typed cloze blanks and inline-code drag tokens can be combined.",
-      de: "Cloze-Luecken und Inline-Code-Drag-Tokens koennen kombiniert werden.",
+      en: "Typed cloze blanks and drag tokens can be combined.",
+      de: "Cloze-Luecken und Drag-Tokens koennen kombiniert werden.",
     },
     snippet: {
-      en: "%%Paris%% and `Seine`",
-      de: "%%Paris%% und `Seine`",
+      en: '%%Paris%% and tocken "Seine"',
+      de: '%%Paris%% und tocken "Seine"',
     },
     detail: {
       en: {
         whatItIs:
-          "Cloze blanks (%%...%%) are typed inputs, while inline code tokens (`...`) become drag blanks. You can use both in one card and combine with other syntaxes if desired.",
+          'Cloze blanks (%%...%%) are typed inputs, while drag tokens (tocken "...") become drag blanks. You can use both in one card and combine with other syntaxes if desired.',
         rules: [
           "Wrap the card with #card and # on their own lines.",
           "The first non-empty line is the prompt.",
           "Use %%...%% for typed cloze blanks.",
-          "Use `...` for drag tokens.",
+          'Use tocken "..." for drag tokens.',
           "Can be combined with other syntaxes in the same #card block (if desired).",
         ],
         promptTemplate: joinLines([
@@ -30,31 +30,31 @@ export const clozeInlineEntry: SyntaxEntry = {
           "Rules:",
           "- First non-empty line is the prompt.",
           "- Typed blanks use %%...%%.",
-          "- Drag tokens use `...`.",
+          '- Drag tokens use tocken "...".',
           "- Can be combined with other syntaxes in the same #card block (if desired).",
           "Template:",
           "#card",
-          "{{prompt_with_%%cloze%%_and_`token`}}",
+          '{{prompt_with_%%cloze%%_and_tocken_"token"}}',
           "#",
         ]),
         example: joinLines([
           "#card",
-          "Fill in: The capital of France is %%Paris%% and the river is `Seine`.",
+          'Fill in: The capital of France is %%Paris%% and the river is tocken "Seine".',
           "#",
         ]),
         mistakes: [
           "Leaving an empty %%...%% segment.",
-          "Forgetting backticks around a drag token.",
+          'Forgetting tocken "..." around a drag token.',
         ],
       },
       de: {
         whatItIs:
-          "Cloze-Luecken (%%...%%) sind Eingabefelder, Inline-Code-Tokens (`...`) werden zu Drag-Luecken. Beides kann in einer Karte stehen und mit anderen Syntaxen kombiniert werden.",
+          'Cloze-Luecken (%%...%%) sind Eingabefelder, Drag-Tokens (tocken "...") werden zu Drag-Luecken. Beides kann in einer Karte stehen und mit anderen Syntaxen kombiniert werden.',
         rules: [
           "Karte mit #card und # auf eigenen Zeilen umschliessen.",
           "Die erste nicht-leere Zeile ist die Frage.",
           "%%...%% fuer Cloze-Eingaben nutzen.",
-          "`...` fuer Drag-Tokens nutzen.",
+          'tocken "..." fuer Drag-Tokens nutzen.',
           "Kann mit anderen Syntaxen im selben #card-Block kombiniert werden (falls gewuenscht).",
         ],
         promptTemplate: joinLines([
@@ -63,21 +63,21 @@ export const clozeInlineEntry: SyntaxEntry = {
           "Regeln:",
           "- Erste nicht-leere Zeile ist die Frage.",
           "- Eingabeblanks mit %%...%%.",
-          "- Drag-Tokens mit `...`.",
+          '- Drag-Tokens mit tocken "...".',
           "- Kann mit anderen Syntaxen im selben #card-Block kombiniert werden (falls gewuenscht).",
           "Template:",
           "#card",
-          "{{frage_mit_%%cloze%%_und_`token`}}",
+          '{{frage_mit_%%cloze%%_und_tocken_"token"}}',
           "#",
         ]),
         example: joinLines([
           "#card",
-          "Fill in: Die Hauptstadt von Frankreich ist %%Paris%% und der Fluss ist `Seine`.",
+          'Fill in: Die Hauptstadt von Frankreich ist %%Paris%% und der Fluss ist tocken "Seine".',
           "#",
         ]),
         mistakes: [
           "Leere %%...%%-Blaenke lassen.",
-          "Backticks fuer Drag-Tokens vergessen.",
+          'tocken "..." fuer Drag-Tokens vergessen.',
         ],
       },
     },

@@ -103,7 +103,7 @@ describe("validateCard", () => {
       type: "cld",
       prompt: [
         "```sql",
-        "SELECT `token` FROM table",
+        'SELECT tocken "token" FROM table',
         "WHERE column = %%value%%",
         "```",
       ].join("\n"),

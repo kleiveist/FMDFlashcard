@@ -246,9 +246,9 @@ const ClozeCardForm = ({
       {card.type === "cl" ? (
         <p>Use %%answer%% to create typed blanks.</p>
       ) : card.type === "cd" ? (
-        <p>Use inline `token` to create drag blanks.</p>
+        <p>Use tocken "token" to create drag blanks.</p>
       ) : (
-        <p>Combine %%blanks%% with `tokens` for mixed cloze.</p>
+        <p>Combine %%blanks%% with tocken "tokens" for mixed cloze.</p>
       )}
     </div>
     {renderHelpField("Card help / hint", card.helpText ?? "", onHelpChange)}

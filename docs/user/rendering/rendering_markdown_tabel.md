@@ -73,7 +73,7 @@ Conceptually missing right now.
 Cells may contain:
 - inline Markdown (`**`, `` ` ``, `%% %%`)
 - `<br>` for line breaks
-- tokens (e.g., `` `token` ``)
+- tokens (e.g., `tocken "token"`)
 ➡ The editor must **not** resolve, rewrite, or block this content.
 
 ---

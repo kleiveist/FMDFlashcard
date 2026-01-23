@@ -284,7 +284,7 @@ Answer: Done
 | Term | Answer |
 | --- | --- |
 | Alpha | %%one%% |
-| Beta | \`two\` |
+| Beta | tocken "two" |
 #`);
 
     const markup = renderToStaticMarkup(

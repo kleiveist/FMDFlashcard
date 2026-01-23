@@ -101,7 +101,8 @@ const isHelpStartLine = (line: string) => helpStartPattern.test(line);
 const isHelpEndLine = (line: string) => helpEndPattern.test(line);
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 
-const hasClozeMarker = (line: string) => line.includes("%%") || line.includes("`");
+const hasClozeMarker = (line: string) =>
+  line.includes("%%") || /\btocken\b\s*"/.test(line);
 
 const serializeClozeSegments = (segments: ClozeSegment[]) => {
   let output = "";
@@ -114,7 +115,8 @@ const serializeClozeSegments = (segments: ClozeSegment[]) => {
       output += `%%${segment.solution}%%`;
       return;
     }
-    output += `\`${segment.solution}\``;
+    const escaped = segment.solution.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    output += `tocken "${escaped}"`;
   });
   return output;
 };

@@ -53,8 +53,8 @@
 | MC-Antwortmarker             | `-a` `-b`                  | ✔️          | nur Marker               |
 | True/False-Marker            | `-true` / `-false`         | ✔️          | nur Marker               |
 | Cloze (Typed)                | `%%answer%%`               | ✔️          | Textabschnitt            |
-| Cloze (Drag)                 | `` `token` ``              | ✔️          | Textabschnitt            |
-| Kombination cl+cd            | `%%text%%` + `` `token` `` | ✔️          | Textabschnitt            |
+| Cloze (Drag)                 | `tocken "token"`           | ✔️          | Textabschnitt            |
+| Kombination cl+cd            | `%%text%%` + `tocken "token"` | ✔️          | Textabschnitt            |
 | Verschachtelte Blöcke        | Liste → Zitat → Code       | ✔️          | Blockhierarchie          |
 
 ---
