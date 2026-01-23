@@ -353,7 +353,7 @@ textarea.preview-editor {
   font-style: italic;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1199.98px) {
   .preview-panel,
   .preview-panel .preview-content,
   .preview-panel .preview-surface {

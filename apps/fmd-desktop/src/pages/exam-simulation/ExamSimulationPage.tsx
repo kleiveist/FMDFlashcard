@@ -37,6 +37,7 @@ import { ExamStatisticsPanel } from "./components/ExamStatisticsPanel";
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
 import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
+import { useLayoutMode } from "../../lib/layoutMode";
 import {
   formatBinding,
   getEffectiveBinding,
@@ -51,13 +52,7 @@ const studyPrevCommand = getShortcutById("studyPrevious");
 const studyNextCommand = getShortcutById("studyNext");
 const studySubmitCommand = getShortcutById("studySubmit");
 
-type ExamSimulationPageProps = {
-  isTableView?: boolean;
-};
-
-export const ExamSimulationPage = ({
-  isTableView = false,
-}: ExamSimulationPageProps) => {
+export const ExamSimulationPage = () => {
   const {
     actions,
     preview,
@@ -117,6 +112,7 @@ export const ExamSimulationPage = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const autoViewModeRef = useRef(false);
+  const isTableView = useLayoutMode() === "table";
   const examStageControls = useMemo<ExamStageControls>(
     () => ({
       stage,

@@ -28,6 +28,7 @@ import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ModalShell } from "./components/ModalShell";
 import { SidebarNav } from "./components/SidebarNav";
 import { StudySectionNav } from "./components/StudySectionNav";
+import { LayoutModeProvider, useLayoutMode } from "./lib/layoutMode";
 import {
   getEffectiveBinding,
   getShortcutPlatform,
@@ -48,8 +49,6 @@ import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
 import type { StudySectionKey } from "./lib/studySections";
 
-const NARROW_WIDTH_BREAKPOINT = 900;
-const NARROW_ASPECT_RATIO = 0.8;
 const AppContent = () => {
   const { actions, flashcards, fastFlashcards, help, settings, spacedRepetition } =
     useAppState();
@@ -57,12 +56,12 @@ const AppContent = () => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
   const dashboardRef = useRef<DashboardPageHandle | null>(null);
-  const appShellRef = useRef<HTMLDivElement | null>(null);
-  const [showStudySectionNav, setShowStudySectionNav] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const isDashboard = activeTab === "dashboard";
   const platform = getShortcutPlatform();
+  const layoutMode = useLayoutMode();
+  const showStudySectionNav = layoutMode === "table";
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
   const closeBinding = useMemo(
     () =>
@@ -126,55 +125,6 @@ const AppContent = () => {
     logWordPressFeatureStatus();
   }, []);
 
-  useEffect(() => {
-    const shell = appShellRef.current;
-    if (!shell) {
-      return;
-    }
-
-    const evaluateLayout = (width: number, height: number) => {
-      const isNarrowWidth = width <= NARROW_WIDTH_BREAKPOINT;
-      const aspectRatio = height > 0 ? width / height : 1;
-      const isNarrowAspect = aspectRatio <= NARROW_ASPECT_RATIO;
-      const shouldShow = isNarrowWidth || isNarrowAspect;
-      setShowStudySectionNav((prev) => (prev === shouldShow ? prev : shouldShow));
-    };
-
-    const updateFromRect = () => {
-      const rect = shell.getBoundingClientRect();
-      evaluateLayout(rect.width, rect.height);
-    };
-
-    if (typeof ResizeObserver === "undefined") {
-      updateFromRect();
-      window.addEventListener("resize", updateFromRect);
-      return () => window.removeEventListener("resize", updateFromRect);
-    }
-
-    let frame = 0;
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) {
-        return;
-      }
-      const { width, height } = entry.contentRect;
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-      frame = requestAnimationFrame(() => evaluateLayout(width, height));
-    });
-
-    observer.observe(shell);
-    updateFromRect();
-
-    return () => {
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-      observer.disconnect();
-    };
-  }, []);
-
   const requestDashboardViewChange = useCallback(
     (nextView: DashboardView) => {
       if (activeTab === "dashboard" && dashboardRef.current) {
@@ -224,7 +174,6 @@ const AppContent = () => {
 
   return (
     <div
-      ref={appShellRef}
       className={`app-shell ${showStudySectionNav ? "compact-top-nav" : ""} ${
         settings.rightToolbarCollapsed ? "sidebar-collapsed" : ""
       } ${isDashboard ? "dashboard-active" : ""} ${
@@ -272,7 +221,7 @@ const AppContent = () => {
             onVaultViewChange={setDashboardView}
           />
         ) : activeTab === "exam" ? (
-          <ExamSimulationPage isTableView={showStudySectionNav} />
+          <ExamSimulationPage />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage onSectionSelect={handleStudySectionSelect} />
         ) : activeTab === "spaced-repetition" ? (
@@ -306,7 +255,9 @@ function App() {
   return (
     <AppErrorBoundary>
       <AppStateProvider>
-        <AppContent />
+        <LayoutModeProvider>
+          <AppContent />
+        </LayoutModeProvider>
       </AppStateProvider>
     </AppErrorBoundary>
   );

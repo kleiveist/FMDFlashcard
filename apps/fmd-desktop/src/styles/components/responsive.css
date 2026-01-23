@@ -17,7 +17,7 @@
  * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.
  */
 
-@media (max-width: 1200px) {
+@media (max-width: 1199.98px) {
   .flashcard-layout {
     grid-template-columns: 1fr;
   }
