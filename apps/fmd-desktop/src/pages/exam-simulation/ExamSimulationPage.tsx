@@ -224,6 +224,16 @@ export const ExamSimulationPage = ({
             </button>
           ) : null}
         </div>
+        {isTableView ? (
+          <button
+            type="button"
+            className="primary small"
+            onClick={phaseButton.onClick}
+            disabled={phaseButton.disabled}
+          >
+            {phaseButton.label}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -372,7 +382,7 @@ export const ExamSimulationPage = ({
       ? null
       : document.getElementById("mobile-nav-actions");
   const tableViewControls =
-    isTableView && mobileNavActions
+    isTableView && mobileNavActions && !isOverviewStage
       ? createPortal(
           <button
             type="button"

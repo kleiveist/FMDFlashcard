@@ -58,11 +58,36 @@
   background: var(--panel);
 }
 
-.study-section-nav.icon-only {
+.study-section-nav .study-section-menu-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.study-section-nav .study-section-menu-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.study-section-nav.icon-only {
+  justify-content: flex-start;
   gap: 6px;
   padding: 6px;
   flex-wrap: nowrap;
+}
+
+.study-section-nav.icon-only .study-section-menu-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
 }
 
 .study-section-nav.icon-only .study-section-tab {

@@ -17,6 +17,7 @@ import {
   ExamEditorIcon,
   FolderIcon,
   GaugeIcon,
+  MenuIcon,
   RefreshIcon,
 } from "./icons";
 import { STUDY_SECTIONS, type StudySectionKey } from "../lib/studySections";
@@ -24,6 +25,8 @@ import { STUDY_SECTIONS, type StudySectionKey } from "../lib/studySections";
 type StudySectionNavProps = {
   activeTab: StudySectionKey;
   onSectionSelect: (tab: StudySectionKey) => void;
+  isMobileNavOpen: boolean;
+  onMobileNavOpen: () => void;
 };
 
 const SECTION_ICONS: Record<StudySectionKey, ComponentType> = {
@@ -37,6 +40,8 @@ const SECTION_ICONS: Record<StudySectionKey, ComponentType> = {
 export const StudySectionNav = ({
   activeTab,
   onSectionSelect,
+  isMobileNavOpen,
+  onMobileNavOpen,
 }: StudySectionNavProps) => {
   const [isIconOnly, setIsIconOnly] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
@@ -100,6 +105,16 @@ export const StudySectionNav = ({
         className={`study-section-nav ${isIconOnly ? "icon-only" : ""}`}
         aria-label="Study sections"
       >
+        <button
+          type="button"
+          className="nav-item study-section-menu-toggle"
+          onClick={onMobileNavOpen}
+          aria-label="Open navigation"
+          aria-controls="app-sidebar"
+          aria-expanded={isMobileNavOpen}
+        >
+          <MenuIcon />
+        </button>
         {STUDY_SECTIONS.map((section) => {
           const isActive = activeTab === section.key;
           const Icon = SECTION_ICONS[section.key];
@@ -123,6 +138,9 @@ export const StudySectionNav = ({
         className="study-section-nav study-section-nav-measure"
         aria-hidden="true"
       >
+        <span className="nav-item study-section-menu-toggle" aria-hidden="true">
+          <MenuIcon />
+        </span>
         {STUDY_SECTIONS.map((section) => (
           <span key={section.key} className="nav-item study-section-tab">
             {section.label}

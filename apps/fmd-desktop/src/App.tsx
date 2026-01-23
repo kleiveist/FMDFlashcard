@@ -235,6 +235,8 @@ const AppContent = () => {
         <StudySectionNav
           activeTab={activeTab}
           onSectionSelect={handleStudySectionSelect}
+          isMobileNavOpen={isMobileNavOpen}
+          onMobileNavOpen={() => setIsMobileNavOpen(true)}
         />
       ) : null}
       <SidebarNav
@@ -249,16 +251,18 @@ const AppContent = () => {
       />
       <main className="content">
         <div className="mobile-nav-header">
-          <button
-            type="button"
-            className="ghost small mobile-nav-toggle"
-            onClick={() => setIsMobileNavOpen(true)}
-            aria-label="Open navigation"
-            aria-controls="app-sidebar"
-            aria-expanded={isMobileNavOpen}
-          >
-            Menu
-          </button>
+          {!showStudySectionNav ? (
+            <button
+              type="button"
+              className="ghost small mobile-nav-toggle"
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-label="Open navigation"
+              aria-controls="app-sidebar"
+              aria-expanded={isMobileNavOpen}
+            >
+              Menu
+            </button>
+          ) : null}
           <div id="mobile-nav-actions" className="mobile-nav-actions" />
         </div>
         {activeTab === "dashboard" ? (
