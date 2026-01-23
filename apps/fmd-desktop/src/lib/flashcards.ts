@@ -681,6 +681,9 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
   let current: string[] = [];
   let state = createSplitState();
   const tableLineIndices = findTableLineIndices(lines);
+  let inFence = false;
+  let fenceToken = "";
+  const fencePattern = /^\s*(```|~~~)/;
 
   const reset = () => {
     current = [];
@@ -727,13 +730,28 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
     state.hasClozeMarker ||
     state.hasAssignmentLine;
 
-  const findNextNonEmpty = (startIndex: number) => {
+  const findNextNonEmpty = (
+    startIndex: number,
+    fenceState: { inFence: boolean; fenceToken: string },
+  ) => {
+    let nextInFence = fenceState.inFence;
+    let nextFenceToken = fenceState.fenceToken;
     for (let i = startIndex; i < lines.length; i += 1) {
       const trimmed = lines[i].trim();
       if (!trimmed) {
         continue;
       }
-      if (isSeparatorLine(lines[i]) && !tableLineIndices.has(i)) {
+      const fenceMatch = lines[i].trimStart().match(fencePattern);
+      if (fenceMatch) {
+        if (nextInFence && fenceMatch[1] === nextFenceToken) {
+          nextInFence = false;
+          nextFenceToken = "";
+        } else if (!nextInFence) {
+          nextInFence = true;
+          nextFenceToken = fenceMatch[1] ?? "";
+        }
+      }
+      if (!nextInFence && isSeparatorLine(lines[i]) && !tableLineIndices.has(i)) {
         continue;
       }
       return trimmed;
@@ -744,8 +762,18 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     const trimmed = line.trim();
+    const fenceMatch = line.trimStart().match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+    }
 
-    if (isSeparatorLine(line) && !tableLineIndices.has(index)) {
+    if (!inFence && isSeparatorLine(line) && !tableLineIndices.has(index)) {
       flush();
       continue;
     }
@@ -769,8 +797,8 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
       continue;
     }
 
-    if (!trimmed && isComplete()) {
-      const nextNonEmpty = findNextNonEmpty(index + 1);
+    if (!trimmed && isComplete() && !inFence) {
+      const nextNonEmpty = findNextNonEmpty(index + 1, { inFence, fenceToken });
       if (nextNonEmpty) {
         flush();
       }

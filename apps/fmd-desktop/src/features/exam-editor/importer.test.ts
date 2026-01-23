@@ -181,4 +181,137 @@ Answer: A
     expect(imported.blueprint.tasks).toHaveLength(1);
     expect(imported.blueprint.tasks[0]?.helpText).toBeUndefined();
   });
+
+  it("skips context blocks between tasks separated by ---", () => {
+    const markdown = `
+#exam
+8) Some task
+Antwort: Some answer
+---
+## Abschnitt 3: Erlaeuterungsfrage (qa)
+9) Next task
+Antwort: Next answer
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(2);
+    expect(imported.blueprint.tasks[0]?.cards).toHaveLength(1);
+    expect(imported.blueprint.tasks[1]?.cards).toHaveLength(1);
+    const hasHeadingCard = imported.blueprint.tasks.some((task) =>
+      task.cards.some(
+        (card) => card.type === "qa" && card.prompt.includes("Abschnitt 3"),
+      ),
+    );
+    expect(hasHeadingCard).toBe(false);
+  });
+
+  it("does not create QA cards from headings without separators", () => {
+    const markdown = `
+#exam
+1) First task
+Question?
+Answer: A
+## Abschnitt heading
+2) Second task
+Answer: B
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(2);
+    expect(imported.blueprint.tasks[0]?.cards).toHaveLength(1);
+    expect(imported.blueprint.tasks[1]?.cards).toHaveLength(1);
+  });
+
+  it("does not split on --- inside fenced code blocks", () => {
+    const markdown = `
+#exam
+1) Task with fence
+#card
+Question?
+\`\`\`md
+---
+\`\`\`
+Answer: A
+#
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task?.cards).toHaveLength(1);
+    const card = task?.cards[0];
+    if (card?.type === "qa") {
+      expect(card.prompt).toContain("```");
+      expect(card.prompt).toContain("---");
+    }
+  });
+
+  it("does not split on --- inside tables", () => {
+    const markdown = `
+#exam
+1) Table task
+#card
+Question?
+| Key | Value |
+| --- | --- |
+| A | --- |
+Answer: A
+#
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task?.cards).toHaveLength(1);
+    const card = task?.cards[0];
+    if (card?.type === "qa") {
+      expect(card.prompt).toContain("| Key | Value |");
+      expect(card.prompt).toContain("| A | --- |");
+    }
+  });
+
+  it("skips blocks without answer markers", () => {
+    const markdown = `
+#exam
+1) Task
+Question?
+Answer: A
+---
+Just context without an answer marker.
+---
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task?.cards).toHaveLength(1);
+    expect(task?.cards[0]?.type).toBe("qa");
+  });
 });

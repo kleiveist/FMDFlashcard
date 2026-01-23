@@ -368,6 +368,10 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       const parts = parseCardBlock(trimmedLines);
       if (parts.length === 0) {
         const fallback = splitAnswerBlock(trimmedLines.join("\n"));
+        // Only treat unrecognized blocks as QA when an explicit answer marker exists.
+        if (!fallback.hasAnswerMarker) {
+          return;
+        }
         const fallbackCard: CardBlueprint = {
           id: createBlueprintId("card"),
           type: "qa",
@@ -393,12 +397,14 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     });
 
     if (cards.length === 0) {
-      cards.push({
-        id: createBlueprintId("card"),
-        type: "qa",
-        prompt: stripLeadingTaskNumber(task.prompt),
-        answer: task.officialAnswer ?? "",
-      });
+      if (task.officialAnswer !== undefined) {
+        cards.push({
+          id: createBlueprintId("card"),
+          type: "qa",
+          prompt: stripLeadingTaskNumber(task.prompt),
+          answer: task.officialAnswer ?? "",
+        });
+      }
     }
 
     const taskBlueprint: ExamTaskBlueprint = {

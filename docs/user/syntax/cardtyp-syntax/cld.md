@@ -5,7 +5,7 @@
 
 `cld` is the combined Cloze format that supports **both**:
 - **Typed blanks** using `%%...%%`
-- **Drag tokens** using `tocken "token"`
+- **Drag tokens** using "token"`
 
 - This lets you build a single cloze interaction where learners can either type answers (typed blanks) and/or use a token bank (drag tokens) within the same part.
 - The drag-token list is shuffled before display; the order does not match the order in the source text.
@@ -25,7 +25,7 @@ The `capital` of France is %%Paris%%.
 ```
 ---
 ### Drag tokens
-Use `tocken "..."` to create a drag token. The text inside the quotes is the **solution**.
+Use "..." to create a drag token. The text inside the quotes is the **solution**.
 
 Example:
 ```md
@@ -38,7 +38,7 @@ The colors are tocken "black", tocken "red", and tocken "gold".
 
 #card
 ```c#
-The `capital` of France is %%Paris%%.
+The "capital" of France is %%Paris%%.
 ```
 #
 
