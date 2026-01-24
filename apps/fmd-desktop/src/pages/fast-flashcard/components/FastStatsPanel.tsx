@@ -96,37 +96,39 @@ export const FastStatsPanel = ({
       hidden={Boolean(isCollapsible && isCollapsed)}
       aria-hidden={Boolean(isCollapsible && isCollapsed)}
     >
-      <div className="fast-stats-switch">
-        <span className="label">View</span>
-        <button
-          type="button"
-          className={`timer-start-button ${isTimeModeEnabled ? "active" : ""}`}
-          onClick={handleTimeToggle}
-          aria-pressed={isTimeModeEnabled}
-        >
-          <span className="timer-start-icon" aria-hidden="true">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="7.5" />
-              <path d="M12 7.5v4.4l2.8 1.8" />
-            </svg>
-          </span>
-          <span className="timer-start-text">
-            <span className="timer-start-meta">Time</span>
-            <span className="timer-start-action">
-              {isTimeModeEnabled ? "Stop" : "Start"}
+      {!isCollapsible ? (
+        <div className="fast-stats-switch">
+          <span className="label">View</span>
+          <button
+            type="button"
+            className={`timer-start-button ${isTimeModeEnabled ? "active" : ""}`}
+            onClick={handleTimeToggle}
+            aria-pressed={isTimeModeEnabled}
+          >
+            <span className="timer-start-icon" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="7.5" />
+                <path d="M12 7.5v4.4l2.8 1.8" />
+              </svg>
             </span>
-          </span>
-        </button>
-      </div>
+            <span className="timer-start-text">
+              <span className="timer-start-meta">Time</span>
+              <span className="timer-start-action">
+                {isTimeModeEnabled ? "Stop" : "Start"}
+              </span>
+            </span>
+          </button>
+        </div>
+      ) : null}
       <div className="fast-stats-blocks">
-        <div className="fast-time-block">
+        <div className={`fast-time-block ${isCollapsible ? "fast-time-block--hidden" : ""}`}>
           <div className="fast-block-header">
             <span className="label">Time</span>
             <span

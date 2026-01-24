@@ -134,6 +134,14 @@
   border: 1px solid var(--block-border);
 }
 
+.fast-time-block--compact {
+  padding: 8px 10px;
+}
+
+.fast-time-block--hidden {
+  display: none;
+}
+
 .fast-block-header {
   display: flex;
   align-items: center;

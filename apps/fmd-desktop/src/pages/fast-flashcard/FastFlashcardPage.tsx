@@ -342,7 +342,15 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
         onToggleView={() => setIsViewMode((prev) => !prev)}
         viewLabel={viewLabel}
         onSectionSelect={onSectionSelect}
+        isTimeModeEnabled={isTimeModeEnabled}
+        onTimeToggle={handleTimeToggle}
+        showTimeToggle={isTableView}
       />
+      {isTableView ? (
+        <div className="fast-time-block fast-time-block--compact">
+          <div className="fast-time-meter" style={timeProgressStyle} aria-hidden="true" />
+        </div>
+      ) : null}
       <FastCardHost
         hasScannedCards={hasScannedCards}
         hasFilteredCards={hasFilteredCards}

@@ -29,6 +29,9 @@ type FastHeaderProps = {
   onToggleView: () => void;
   viewLabel: string;
   onSectionSelect?: (section: StudySectionKey) => void;
+  isTimeModeEnabled?: boolean;
+  onTimeToggle?: () => void;
+  showTimeToggle?: boolean;
 };
 
 export const FastHeader = ({
@@ -37,6 +40,9 @@ export const FastHeader = ({
   onToggleView,
   viewLabel,
   onSectionSelect,
+  isTimeModeEnabled,
+  onTimeToggle,
+  showTimeToggle = false,
 }: FastHeaderProps) => (
   <div className="panel-header">
     <div>
@@ -54,6 +60,34 @@ export const FastHeader = ({
       ) : null}
     </div>
     <div className="panel-actions">
+      {showTimeToggle && onTimeToggle ? (
+        <button
+          type="button"
+          className={`timer-start-button ${isTimeModeEnabled ? "active" : ""}`}
+          onClick={onTimeToggle}
+          aria-pressed={Boolean(isTimeModeEnabled)}
+        >
+          <span className="timer-start-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="7.5" />
+              <path d="M12 7.5v4.4l2.8 1.8" />
+            </svg>
+          </span>
+          <span className="timer-start-text">
+            <span className="timer-start-meta">Time</span>
+            <span className="timer-start-action">
+              {isTimeModeEnabled ? "Stop" : "Start"}
+            </span>
+          </span>
+        </button>
+      ) : null}
       <button
         type="button"
         className={`focus-toggle ${isViewMode ? "active" : ""}`}
