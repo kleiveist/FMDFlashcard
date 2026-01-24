@@ -69,6 +69,63 @@ d) DCL
     }
   });
 
+  it("parses multi-line options with fenced code blocks", () => {
+    const markdown = `#card
+Question with code options?
+a) Plain option
+b)
+\`\`\`sql
+-b
+SELECT * FROM users;
+\`\`\`
+c) \`\`\`js
+console.log("hi");
+\`\`\`
+d) Done
+-d
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.correctKeys).toEqual(["d"]);
+      const optionB = part.options.find((option) => option.key === "b");
+      const optionC = part.options.find((option) => option.key === "c");
+      expect(optionB?.text ?? "").toContain("```sql");
+      expect(optionB?.text ?? "").toContain("-b");
+      expect(optionC?.text ?? "").toContain("```js");
+    }
+  });
+
+  it("parses table options as one selectable block", () => {
+    const markdown = `#card
+Which table is valid?
+a)
+| Name | Value |
+| --- | --- |
+| Alpha | 1 |
+| Beta | 2 |
+b) Another option
+-a
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.correctKeys).toEqual(["a"]);
+      const optionA = part.options.find((option) => option.key === "a");
+      expect(optionA?.text ?? "").toContain("| Name | Value |");
+      expect(optionA?.text ?? "").toContain("| --- | --- |");
+      expect(optionA?.text ?? "").toContain("| Beta | 2 |");
+    }
+  });
+
   it("parses multiple cards in one document", () => {
     const markdown = `Intro text.
 

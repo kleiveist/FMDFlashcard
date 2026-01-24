@@ -141,9 +141,10 @@ const normalizeLines = (markdown: string) =>
 const resolveAnswerMatch = (options?: { answerMatch?: AnswerMatchMode }) =>
   options?.answerMatch ?? "anywhere";
 
-const optionPattern = /^([A-Za-z])\)\s+(.*)$/;
+const optionPattern = /^([A-Za-z])\)\s*(.*)$/;
 const markerPattern = /^-([A-Za-z])$/;
 const assignmentPattern = /^(.+?)=>\s*(.+)$/;
+const fenceLinePattern = /^\s*(```|~~~)/;
 const separatorLinePattern = /^\s*---\s*$/;
 const cardStartPattern = /^\s*#card\s*$/;
 const cardEndPattern = /^\s*#\s*$/;
@@ -185,6 +186,30 @@ const trimEmptyLines = (lines: string[]) => {
   }
 
   return lines.slice(start, end);
+};
+
+const buildFenceMap = (lines: string[]) => {
+  const inFenceByLine: boolean[] = [];
+  let inFence = false;
+  let fenceToken = "";
+
+  lines.forEach((line, index) => {
+    const match = line.trimStart().match(fenceLinePattern);
+    if (match) {
+      inFenceByLine[index] = true;
+      if (inFence && match[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = match[1] ?? "";
+      }
+      return;
+    }
+    inFenceByLine[index] = inFence;
+  });
+
+  return inFenceByLine;
 };
 
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
@@ -298,7 +323,23 @@ const normalizeAssignmentLine = (line: string) => {
   return `${left} => ${normalizedRight}`;
 };
 
-const isOptionLine = (line: string) => optionPattern.test(line.trim());
+type OptionHeaderMatch = {
+  key: string;
+  rest: string;
+};
+
+const parseOptionHeader = (line: string): OptionHeaderMatch | null => {
+  const match = line.trim().match(optionPattern);
+  if (!match) {
+    return null;
+  }
+  return {
+    key: match[1].toLowerCase(),
+    rest: match[2] ?? "",
+  };
+};
+
+const isOptionLine = (line: string) => Boolean(parseOptionHeader(line));
 const isCorrectMarkerLine = (line: string) => markerPattern.test(line.trim());
 const isTrueFalseMarkerLine = (line: string) =>
   normalizeTrueFalseMarker(line.trim()) !== null;
@@ -617,16 +658,28 @@ const normalizeTrueFalseMarker = (value: string) => {
 const parseTrueFalseItems = (lines: string[]) => {
   const items: TrueFalseItem[] = [];
   let firstQuestionIndex: number | null = null;
+  const fenceMap = buildFenceMap(lines);
 
   for (let index = 0; index < lines.length; index += 1) {
+    if (fenceMap[index]) {
+      continue;
+    }
     const question = lines[index].trim();
     if (!question) {
       continue;
     }
 
     let markerIndex = index + 1;
-    while (markerIndex < lines.length && lines[markerIndex].trim() === "") {
-      markerIndex += 1;
+    while (markerIndex < lines.length) {
+      if (fenceMap[markerIndex]) {
+        markerIndex += 1;
+        continue;
+      }
+      if (lines[markerIndex].trim() === "") {
+        markerIndex += 1;
+        continue;
+      }
+      break;
     }
     if (markerIndex >= lines.length) {
       continue;
@@ -744,7 +797,11 @@ const findAnswerMarkerMatch = (
 };
 
 const findAnswerMarkerLine = (lines: string[], answerMatch: AnswerMatchMode) => {
+  const fenceMap = buildFenceMap(lines);
   for (let index = 0; index < lines.length; index += 1) {
+    if (fenceMap[index]) {
+      continue;
+    }
     const match = findAnswerMarkerMatch(lines[index] ?? "", answerMatch);
     if (match) {
       return { index, match };
@@ -830,22 +887,22 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
     if (!state.hasQuestion && trimmed) {
       state.hasQuestion = true;
     }
-    if (isOptionLine(line)) {
+    if (!inFenceState && isOptionLine(line)) {
       state.hasOption = true;
     }
-    if (isCorrectMarkerLine(line)) {
+    if (!inFenceState && isCorrectMarkerLine(line)) {
       state.hasCorrectMarker = true;
     }
-    if (isAnswerMarkerLine(line, answerMatch)) {
+    if (!inFenceState && isAnswerMarkerLine(line, answerMatch)) {
       state.hasAnswerMarker = true;
     }
-    if (isTrueFalseMarkerLine(line)) {
+    if (!inFenceState && isTrueFalseMarkerLine(line)) {
       state.hasTrueFalseMarker = true;
     }
     if (hasClozeMarker(line, { ignoreInlineCode: !inFenceState })) {
       state.hasClozeMarker = true;
     }
-    if (isAssignmentLine(line)) {
+    if (!inFenceState && isAssignmentLine(line)) {
       state.hasAssignmentLine = true;
     }
   };
@@ -905,13 +962,16 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
       continue;
     }
 
+    const isOption = !inFence && isOptionLine(line);
+    const isMarker = !inFence && isCorrectMarkerLine(line);
+
     if (
       current.length > 0 &&
       state.hasOption &&
       state.hasCorrectMarker &&
       trimmed &&
-      !isOptionLine(line) &&
-      !isCorrectMarkerLine(line)
+      !isOption &&
+      !isMarker
     ) {
       flush();
     }
@@ -919,7 +979,23 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
     current.push(line);
     updateState(line, inFence);
 
-    if (state.hasTrueFalseMarker && state.hasQuestion && isTrueFalseMarkerLine(line)) {
+    if (!fenceMatch && !inFence) {
+      const optionHeader = parseOptionHeader(line);
+      if (optionHeader?.rest) {
+        const inlineFenceMatch = optionHeader.rest.trimStart().match(fencePattern);
+        if (inlineFenceMatch) {
+          inFence = true;
+          fenceToken = inlineFenceMatch[1] ?? "";
+        }
+      }
+    }
+
+    if (
+      !inFence &&
+      state.hasTrueFalseMarker &&
+      state.hasQuestion &&
+      isTrueFalseMarkerLine(line)
+    ) {
       flush();
       continue;
     }
@@ -934,6 +1010,31 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
 
   flush();
   return blocks;
+};
+
+const findOptionStartIndex = (lines: string[]) => {
+  let inFence = false;
+  let fenceToken = "";
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    const fenceMatch = line.trimStart().match(fenceLinePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      continue;
+    }
+    if (!inFence && isOptionLine(line)) {
+      return index;
+    }
+  }
+
+  return -1;
 };
 
 const parseCardLines = (
@@ -955,55 +1056,106 @@ const parseCardLines = (
   const includeQuestionLine =
     hasClozeMarker(questionLine) || tableLineIndices.has(0);
   const clozeLines: string[] = includeQuestionLine ? [questionLine] : [];
+  const nonOptionLines: string[] = [questionLine];
   let hasAssignmentLines = false;
+  const fencePattern = fenceLinePattern;
+  let inFence = false;
+  let fenceToken = "";
+  let currentOption: { key: string; lines: string[] } | null = null;
+
+  const toggleFence = (token: string) => {
+    if (inFence && token === fenceToken) {
+      inFence = false;
+      fenceToken = "";
+      return;
+    }
+    if (!inFence) {
+      inFence = true;
+      fenceToken = token;
+    }
+  };
+
+  const flushOption = () => {
+    if (!currentOption) {
+      return;
+    }
+    const trimmedLines = trimEmptyLines(currentOption.lines);
+    const text = trimmedLines.join("\n");
+    if (text.trim()) {
+      options.push({
+        key: currentOption.key,
+        text,
+      });
+    }
+    currentOption = null;
+  };
 
   bodyLines.forEach((rawLine) => {
     const trimmed = rawLine.trim();
-    if (!trimmed) {
-      clozeLines.push("");
-      return;
-    }
 
-    const optionMatch = trimmed.match(optionPattern);
-    if (optionMatch) {
-      const text = optionMatch[2].trim();
-      if (text) {
-        options.push({
-          key: optionMatch[1].toLowerCase(),
-          text,
-        });
+    if (!inFence) {
+      const optionHeader = parseOptionHeader(rawLine);
+      if (optionHeader) {
+        flushOption();
+        currentOption = { key: optionHeader.key, lines: [] };
+        if (optionHeader.rest) {
+          currentOption.lines.push(optionHeader.rest);
+          const inlineFenceMatch = optionHeader.rest
+            .trimStart()
+            .match(fencePattern);
+          if (inlineFenceMatch) {
+            toggleFence(inlineFenceMatch[1] ?? "");
+          }
+        }
+        return;
       }
-      return;
+
+      const markerMatch = trimmed.match(markerPattern);
+      if (markerMatch) {
+        flushOption();
+        pushUnique(correctKeys, markerMatch[1].toLowerCase());
+        return;
+      }
     }
 
-    const markerMatch = trimmed.match(markerPattern);
-    if (markerMatch) {
-      pushUnique(correctKeys, markerMatch[1].toLowerCase());
-      return;
+    if (currentOption) {
+      currentOption.lines.push(rawLine);
+    } else {
+      nonOptionLines.push(rawLine);
+      if (!trimmed) {
+        clozeLines.push("");
+      } else {
+        const assignmentLine = !inFence ? normalizeAssignmentLine(rawLine) : null;
+        if (assignmentLine) {
+          hasAssignmentLines = true;
+          clozeLines.push(assignmentLine);
+        } else {
+          clozeLines.push(rawLine);
+        }
+      }
     }
 
-    const assignmentLine = normalizeAssignmentLine(rawLine);
-    if (assignmentLine) {
-      hasAssignmentLines = true;
-      clozeLines.push(assignmentLine);
-      return;
+    const fenceMatch = rawLine.trimStart().match(fencePattern);
+    if (fenceMatch) {
+      toggleFence(fenceMatch[1] ?? "");
     }
-
-    clozeLines.push(rawLine);
   });
+
+  flushOption();
 
   const detectedTypes: FlashcardDetectedType[] = [];
   if (options.length > 0) {
     pushUnique(detectedTypes, "multiple-choice");
   }
 
+  const scanLines = options.length > 0 ? nonOptionLines : contentLines;
   const { items: trueFalseItems, firstQuestionIndex } =
-    parseTrueFalseItems(contentLines);
+    parseTrueFalseItems(scanLines);
   if (trueFalseItems.length > 0) {
     pushUnique(detectedTypes, "true-false");
   }
 
-  const answerCard = splitAnswerCard(contentLines, { answerMatch });
+  const answerCard = splitAnswerCard(scanLines, { answerMatch });
   if (answerCard) {
     pushUnique(detectedTypes, "qa");
   }
@@ -1033,7 +1185,7 @@ const parseCardLines = (
 
   if (options.length > 0) {
     let context: string | undefined;
-    const optionStartIndex = contentLines.findIndex((line) => isOptionLine(line));
+    const optionStartIndex = findOptionStartIndex(contentLines);
     if (optionStartIndex > 1) {
       const contextLines = trimEmptyLines(
         contentLines.slice(1, optionStartIndex),

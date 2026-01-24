@@ -20,7 +20,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
 import { MarkdownBlocks } from "./MarkdownBlocks";
 import { HelpButton, hasHelpContent } from "../HelpButton";
@@ -86,6 +86,7 @@ export const MultipleChoiceCard = ({
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
+  const inputGroup = useId();
   const hasSolutions = card.correctKeys.length > 0;
   const isMultiSelect = card.correctKeys.length > 1;
   const selectionIsCorrect =
@@ -131,36 +132,49 @@ export const MultipleChoiceCard = ({
           const isSelected = selectedKeys.includes(option.key);
           const isCorrect = hasSolutions && card.correctKeys.includes(option.key);
           const isIncorrect = hasSolutions && reveal && isSelected && !isCorrect;
+          const isDisabled = submitted || submissionLocked;
           const optionClasses = [
             "flashcard-option",
             isSelected ? "selected" : "",
             reveal && isCorrect ? "correct" : "",
             reveal && isIncorrect ? "incorrect" : "",
+            isDisabled ? "disabled" : "",
           ]
             .filter(Boolean)
             .join(" ");
 
+          const handleSelect = () => {
+            if (isDisabled) {
+              return;
+            }
+            if (isMultiSelect) {
+              const nextKeys = isSelected
+                ? selectedKeys.filter((key) => key !== option.key)
+                : [...selectedKeys, option.key];
+              onSelect(cardIndex, nextKeys);
+              return;
+            }
+            onSelect(cardIndex, [option.key]);
+          };
+
           return (
             <li key={`flashcard-${cardIndex}-${option.key}`}>
-              <button
-                type="button"
-                className={optionClasses}
-                onClick={() => {
-                  if (isMultiSelect) {
-                    const nextKeys = isSelected
-                      ? selectedKeys.filter((key) => key !== option.key)
-                      : [...selectedKeys, option.key];
-                    onSelect(cardIndex, nextKeys);
-                    return;
-                  }
-                  onSelect(cardIndex, [option.key]);
-                }}
-                disabled={submitted}
-                aria-pressed={isSelected}
-              >
+              <label className={optionClasses}>
+                <input
+                  type={isMultiSelect ? "checkbox" : "radio"}
+                  name={`flashcard-${cardIndex}-${inputGroup}`}
+                  checked={isSelected}
+                  onChange={handleSelect}
+                  disabled={isDisabled}
+                  className="flashcard-option-input"
+                />
                 <span className="flashcard-key">{label}</span>
-                <span className="flashcard-text">{option.text}</span>
-              </button>
+                <MarkdownBlocks
+                  text={option.text}
+                  className="flashcard-text"
+                  allowTableScroll
+                />
+              </label>
             </li>
           );
         })}
