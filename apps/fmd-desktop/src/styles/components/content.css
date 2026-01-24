@@ -746,6 +746,17 @@ body.focus-mode .fast-history-panel {
   grid-row: 1;
 }
 
+.sr-user-panel .sr-user-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sr-user-panel .setting-row {
+  border-top: none;
+  padding-top: 0;
+}
+
 .spaced-repetition-layout .sr-flashcards-panel {
   grid-column: 1;
   grid-row: 2;

@@ -157,16 +157,7 @@ export const UserToolsPanel = ({
         aria-hidden={Boolean(isCollapsible && isCollapsed)}
       >
         <div className="setting-row">
-          <span className="label">Active user</span>
-          <div className="setting-inline">
-            <span className="value">
-              {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
-            </span>
-          </div>
-        </div>
-        <div className="setting-row">
-          <span className="label">User</span>
-          <div className="setting-inline">
+          <div className="setting-inline sr-user-actions">
             {phaseButton ? (
               <>
                 <button
@@ -209,6 +200,14 @@ export const UserToolsPanel = ({
                 ) : null}
               </>
             )}
+          </div>
+        </div>
+        <div className="setting-row">
+          <span className="label">Active user</span>
+          <div className="setting-inline">
+            <span className="value">
+              {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
+            </span>
           </div>
         </div>
       <div className="setting-row">
