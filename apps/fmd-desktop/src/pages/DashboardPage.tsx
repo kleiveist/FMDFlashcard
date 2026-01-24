@@ -34,6 +34,7 @@ import {
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
+import { NoteModal } from "../components/NoteModal";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
@@ -63,6 +64,9 @@ export const shouldApplyPreviewDefaultMode = ({
 type DashboardPageProps = {
   initialVaultView?: DashboardView;
   onVaultViewChange?: (nextView: DashboardView) => void;
+  isNoteModalOpen?: boolean;
+  noteModalEnabled?: boolean;
+  onNoteModalClose?: () => void;
 };
 
 export type DashboardPageHandle = {
@@ -70,7 +74,13 @@ export type DashboardPageHandle = {
 };
 
 const DashboardPageInner = (
-  { initialVaultView = "markdown", onVaultViewChange }: DashboardPageProps,
+  {
+    initialVaultView = "markdown",
+    onVaultViewChange,
+    isNoteModalOpen = false,
+    noteModalEnabled = false,
+    onNoteModalClose,
+  }: DashboardPageProps,
   ref: ForwardedRef<DashboardPageHandle>,
 ) => {
   const { actions, preview, settings, vault } = useAppState();
@@ -338,6 +348,21 @@ const DashboardPageInner = (
     ],
   );
 
+  const noteModalActive = noteModalEnabled && isNoteModalOpen;
+
+  const handleNoteModalClose = useCallback(() => {
+    onNoteModalClose?.();
+  }, [onNoteModalClose]);
+
+  useEffect(() => {
+    if (!noteModalActive) {
+      return;
+    }
+    if (noteCollapsed) {
+      setNoteCollapsed(false);
+    }
+  }, [noteCollapsed, noteModalActive]);
+
   return (
     <div className="dashboard-page">
       {vaultView === "exam" ? (
@@ -401,20 +426,22 @@ const DashboardPageInner = (
         )}
 
         {vaultView === "markdown" ? (
-          <FileList
-            activeFolderPath={normalizedActiveFolderPath || null}
-            fileCountLabel={fileCountLabel}
-            files={visibleFiles}
-            isCollapsed={noteCollapsed}
-            listError={vault.listError}
-            listState={vault.listState}
-            onClearSelection={preview.resetPreview}
-            onRescanVault={actions.handleRescanVault}
-            onSelectFile={actions.handleSelectFile}
-            onToggleCollapsed={handleToggleNoteCollapsed}
-            selectedFile={preview.selectedFile}
-            vaultPath={vault.vaultPath}
-          />
+          noteModalEnabled ? null : (
+            <FileList
+              activeFolderPath={normalizedActiveFolderPath || null}
+              fileCountLabel={fileCountLabel}
+              files={visibleFiles}
+              isCollapsed={noteCollapsed}
+              listError={vault.listError}
+              listState={vault.listState}
+              onClearSelection={preview.resetPreview}
+              onRescanVault={actions.handleRescanVault}
+              onSelectFile={actions.handleSelectFile}
+              onToggleCollapsed={handleToggleNoteCollapsed}
+              selectedFile={preview.selectedFile}
+              vaultPath={vault.vaultPath}
+            />
+          )
         ) : (
           <div className="note-column">
             {noteCollapsed ? (
@@ -492,24 +519,45 @@ const DashboardPageInner = (
                 </div>
               </section>
             ) : null}
-            <FileList
-              activeFolderPath={normalizedActiveFolderPath || null}
-              fileCountLabel={fileCountLabel}
-              files={visibleFiles}
-              isCollapsed={noteCollapsed}
-              listError={vault.listError}
-              listState={vault.listState}
-              onClearSelection={preview.resetPreview}
-              onRescanVault={actions.handleRescanVault}
-              onSelectFile={actions.handleSelectFile}
-              onToggleCollapsed={handleToggleNoteCollapsed}
-              selectedFile={preview.selectedFile}
-              showCollapseStrip
-              vaultPath={vault.vaultPath}
-            />
+            {noteModalEnabled ? null : (
+              <FileList
+                activeFolderPath={normalizedActiveFolderPath || null}
+                fileCountLabel={fileCountLabel}
+                files={visibleFiles}
+                isCollapsed={noteCollapsed}
+                listError={vault.listError}
+                listState={vault.listState}
+                onClearSelection={preview.resetPreview}
+                onRescanVault={actions.handleRescanVault}
+                onSelectFile={actions.handleSelectFile}
+                onToggleCollapsed={handleToggleNoteCollapsed}
+                selectedFile={preview.selectedFile}
+                showCollapseStrip
+                vaultPath={vault.vaultPath}
+              />
+            )}
           </div>
         )}
       </div>
+      {noteModalEnabled ? (
+        <NoteModal isOpen={noteModalActive} onClose={handleNoteModalClose}>
+          <FileList
+            activeFolderPath={normalizedActiveFolderPath || null}
+            fileCountLabel={fileCountLabel}
+            files={visibleFiles}
+            isCollapsed={noteCollapsed}
+            listError={vault.listError}
+            listState={vault.listState}
+            onClearSelection={preview.resetPreview}
+            onRescanVault={actions.handleRescanVault}
+            onSelectFile={actions.handleSelectFile}
+            onToggleCollapsed={handleToggleNoteCollapsed}
+            selectedFile={preview.selectedFile}
+            showCollapseStrip={vaultView === "exam"}
+            vaultPath={vault.vaultPath}
+          />
+        </NoteModal>
+      ) : null}
     </div>
   );
 };

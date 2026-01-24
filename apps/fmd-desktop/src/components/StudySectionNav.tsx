@@ -7,6 +7,7 @@
 
 import {
   type ComponentType,
+  type RefObject,
   useCallback,
   useLayoutEffect,
   useRef,
@@ -17,6 +18,7 @@ import {
   ExamEditorIcon,
   FolderIcon,
   GaugeIcon,
+  MarkdownIcon,
   MenuIcon,
   RefreshIcon,
 } from "./icons";
@@ -27,6 +29,10 @@ type StudySectionNavProps = {
   onSectionSelect: (tab: StudySectionKey) => void;
   isMobileNavOpen: boolean;
   onMobileNavOpen: () => void;
+  showNoteAction?: boolean;
+  onNoteAction?: () => void;
+  noteActionRef?: RefObject<HTMLButtonElement>;
+  isNoteActionActive?: boolean;
 };
 
 const SECTION_ICONS: Record<StudySectionKey, ComponentType> = {
@@ -42,10 +48,15 @@ export const StudySectionNav = ({
   onSectionSelect,
   isMobileNavOpen,
   onMobileNavOpen,
+  showNoteAction = false,
+  onNoteAction,
+  noteActionRef,
+  isNoteActionActive = false,
 }: StudySectionNavProps) => {
   const [isIconOnly, setIsIconOnly] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
+  const noteLabel = "Note";
 
   const evaluateOverflow = useCallback(() => {
     const navElement = navRef.current;
@@ -132,6 +143,22 @@ export const StudySectionNav = ({
             </button>
           );
         })}
+        {showNoteAction ? (
+          <button
+            ref={noteActionRef}
+            type="button"
+            className={`nav-item study-section-note-toggle ${
+              isNoteActionActive ? "active" : ""
+            }`}
+            onClick={onNoteAction}
+            aria-label="Open note"
+            aria-haspopup="dialog"
+            aria-expanded={isNoteActionActive}
+            title={noteLabel}
+          >
+            <MarkdownIcon />
+          </button>
+        ) : null}
       </nav>
       <div
         ref={measureRef}
@@ -146,6 +173,11 @@ export const StudySectionNav = ({
             {section.label}
           </span>
         ))}
+        {showNoteAction ? (
+          <span className="nav-item study-section-note-toggle" aria-hidden="true">
+            <MarkdownIcon />
+          </span>
+        ) : null}
       </div>
     </>
   );

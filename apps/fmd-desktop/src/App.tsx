@@ -55,7 +55,12 @@ const AppContent = () => {
   const [activeTab, setActiveTab] = useState<StudySectionKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const dashboardRef = useRef<DashboardPageHandle | null>(null);
+  const noteButtonRef = useRef<HTMLButtonElement | null>(null);
+  const noteWasOpenRef = useRef(false);
+  const prevTabRef = useRef<StudySectionKey>(activeTab);
+  const prevDashboardViewRef = useRef<DashboardView>(dashboardView);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const isDashboard = activeTab === "dashboard";
@@ -63,6 +68,11 @@ const AppContent = () => {
   const layoutMode = useLayoutMode();
   const showStudySectionNav = layoutMode === "table";
   const isToolbarCollapsed = layoutMode === "table";
+  const isNoteViewport = useMediaQuery("(max-width: 980px)", false);
+  const isNoteModalEligible =
+    activeTab === "dashboard" &&
+    (dashboardView === "markdown" || dashboardView === "exam") &&
+    isNoteViewport;
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
   const closeBinding = useMemo(
     () =>
@@ -120,6 +130,17 @@ const AppContent = () => {
     ],
   );
 
+  const handleNoteModalOpen = useCallback(() => {
+    if (!isNoteModalEligible) {
+      return;
+    }
+    setIsNoteModalOpen(true);
+  }, [isNoteModalEligible]);
+
+  const handleNoteModalClose = useCallback(() => {
+    setIsNoteModalOpen(false);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
@@ -145,6 +166,37 @@ const AppContent = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [closeBinding, closeCommand]);
+
+  useEffect(() => {
+    if (!isNoteModalOpen) {
+      return;
+    }
+    if (!isNoteModalEligible) {
+      setIsNoteModalOpen(false);
+    }
+  }, [isNoteModalEligible, isNoteModalOpen]);
+
+  useEffect(() => {
+    if (!isNoteModalOpen) {
+      prevTabRef.current = activeTab;
+      prevDashboardViewRef.current = dashboardView;
+      return;
+    }
+    const tabChanged = prevTabRef.current !== activeTab;
+    const viewChanged = prevDashboardViewRef.current !== dashboardView;
+    if (tabChanged || viewChanged) {
+      setIsNoteModalOpen(false);
+    }
+    prevTabRef.current = activeTab;
+    prevDashboardViewRef.current = dashboardView;
+  }, [activeTab, dashboardView, isNoteModalOpen]);
+
+  useEffect(() => {
+    if (noteWasOpenRef.current && !isNoteModalOpen) {
+      noteButtonRef.current?.focus();
+    }
+    noteWasOpenRef.current = isNoteModalOpen;
+  }, [isNoteModalOpen]);
 
   useEffect(() => {
     logWordPressFeatureStatus();
@@ -203,6 +255,10 @@ const AppContent = () => {
           onSectionSelect={handleStudySectionSelect}
           isMobileNavOpen={isMobileNavOpen}
           onMobileNavOpen={() => setIsMobileNavOpen(true)}
+          showNoteAction={isNoteModalEligible}
+          onNoteAction={handleNoteModalOpen}
+          noteActionRef={noteButtonRef}
+          isNoteActionActive={isNoteModalOpen}
         />
       ) : null}
       <SidebarNav
@@ -235,6 +291,9 @@ const AppContent = () => {
             ref={dashboardRef}
             initialVaultView={dashboardView}
             onVaultViewChange={setDashboardView}
+            isNoteModalOpen={isNoteModalOpen}
+            noteModalEnabled={isNoteModalEligible}
+            onNoteModalClose={handleNoteModalClose}
           />
         ) : activeTab === "exam" ? (
           <ExamSimulationPage />
@@ -280,3 +339,31 @@ function App() {
 }
 
 export default App;
+
+function useMediaQuery(query: string, defaultState: boolean) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined" || !window.matchMedia) {
+      return defaultState;
+    }
+    return window.matchMedia(query).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) {
+      return;
+    }
+    const mediaQuery = window.matchMedia(query);
+    const handleChange = () => {
+      setMatches(mediaQuery.matches);
+    };
+    handleChange();
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, [query]);
+
+  return matches;
+}
