@@ -94,7 +94,7 @@ Englische Tabellenzeile (für die Syntax-Matrix):
     -  Help innerhalb QA-Karte
     -  Help innerhalb TF-Karte
     -  Help innerhalb M1/M2
-    -  Help innerhalb cl/cd/cld (inkl. Tokens/%%…%%)
+    -  Help innerhalb cl/cd/cld (inkl. Tokens/%…%)
     -  Help mit Marker-Strings (`-true`, `Answer:`) ohne Seiteneffekte
     -  Help außerhalb Scope → ignoriert
 -  Snapshot/Renderer-Test: Markdown in Help wird korrekt gerendert (inkl. Tabellen).

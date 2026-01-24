@@ -76,12 +76,12 @@ AUFGABEN-ANFORDERUNGEN (10 Tasks total):
 10) Abschnitt 4 (10 Punkte) – Anwendungsfrage mit Code:
 - Nutze cld (Kombination aus Typed Blanks und Drag Tokens):
   - Integriere in den Aufgabentext:
-    - mindestens 3 Typed Blanks im Format %%...%%
-    - mindestens 5 Drag Tokens im Format tocken "token"
+    - mindestens 3 Typed Blanks im Format %...%
+    - mindestens 5 Drag Tokens im Format "token"
   - Kontext ist ein realistischer Mini-Use-Case (z. B. Code-Review, Bugfix, API-Call, SQL-Query, Konfig-Snippet).
   - Aufgabe muss eine echte Anwendung prüfen (nicht nur Definition).
   - Verwende Tokens so, dass es “Zuordnung”/Einsetzen in Lücken ermöglicht (Tokenbank-Charakter).
-  - Gib KEINE separate Fließtextlösung; die Lösungen stecken in %%...%%.
+  - Gib KEINE separate Fließtextlösung; die Lösungen stecken in %...%.
 
 FORMATREGELN:
 - Jede Aufgabe beginnt mit "1)" bzw. "2)" etc. (eine Zeile).

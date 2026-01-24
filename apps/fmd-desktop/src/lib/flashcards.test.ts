@@ -122,7 +122,7 @@ c) Gamma
 -c
 
 Cloze sample.
-Use %%token%% with tocken "drag".
+Use %token% with "drag".
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -282,7 +282,7 @@ c) Three
 -a
 -c
 ---
-Cloze chain: %%first%% and tocken "token".
+Cloze chain: %first% and "token".
 ---
 QA check.
 Answer: Confirmed.
@@ -315,9 +315,9 @@ Answer: Confirmed.
     const markdown = `#card
 | Term | Answer |
 | --- | --- |
-| Alpha | %%first%% |
-| Beta | tocken "second" |
-| Gamma | tocken "third" and %%fourth%% |
+| Alpha | %first% |
+| Beta | "second" |
+| Gamma | "third" and %fourth% |
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -344,13 +344,38 @@ Answer: Confirmed.
     }
   });
 
+  it("keeps table headers when cloze markers are only in table rows", () => {
+    const markdown = `#card
+| Term | Answer |
+| --- | --- |
+| Alpha | %first% |
+| Beta | "second" |
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      const rendered = part.segments
+        .map((segment) =>
+          segment.type === "text" ? segment.value : `@@${segment.solution}@@`,
+        )
+        .join("");
+      const lines = rendered.split("\n");
+      expect(lines[0]).toContain("| Term | Answer |");
+      expect(lines[1]).toContain("| --- | --- |");
+    }
+  });
+
   it("parses cloze markers inside fenced code blocks", () => {
     const markdown = `#card
-SQL cld example with %%Outside%% and tocken "token".
+SQL cld example with %Outside% and "token".
 \`\`\`sql
-tocken "SELECT" a.PLZ, a.ORT
-tocken "FROM" ADRESSE a
-tocken "WHERE" k.NAME = %%Nachname%%
+"SELECT" a.PLZ, a.ORT
+"FROM" ADRESSE a
+"WHERE" k.NAME = %Nachname%
 \`\`\`
 #`;
 
@@ -384,7 +409,7 @@ tocken "WHERE" k.NAME = %%Nachname%%
     const markdown = `#card
 | Term | Answer |
 | --- | --- |
-| Join | %%inner%% |
+| Join | %inner% |
 ---
 Second prompt?
 Answer: Table stays in the first part.
@@ -843,12 +868,12 @@ More text.`;
 ---
 #card
 First.
-Fill %%one%% and tocken "alpha".
+Fill %one% and "alpha".
 #
 ---
 #card
 Second.
-Only tocken "beta".
+Only "beta".
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -888,10 +913,10 @@ a) Option`;
     expect(cards).toHaveLength(0);
   });
 
-  it("parses cloze cards with %% blanks", () => {
+  it("parses cloze cards with % blanks", () => {
     const markdown = `#card
 Define foreign key.
-A foreign key is an %% attribute or attribute set %% that references a %%primary key%% in another %% table %%.
+A foreign key is an % attribute or attribute set % that references a %primary key% in another % table %.
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -923,7 +948,7 @@ A foreign key is an %% attribute or attribute set %% that references a %%primary
   it("supports multiple blanks with and without spacing", () => {
     const markdown = `#card
 Short cloze.
-%%alpha%% and %% beta %% then %%gamma%%.
+%alpha% and % beta % then %gamma%.
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -946,7 +971,7 @@ Short cloze.
   it("parses quoted drag tokens", () => {
     const markdown = `#card
 Drag token example.
-Use tocken "Paris".
+Use "Paris".
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -967,7 +992,7 @@ Use tocken "Paris".
   it("treats backticks as inline code", () => {
     const markdown = `#card
 Inline code sample.
-Use %%answer%% with \`foo()\`.
+Use %answer% with \`foo()\`.
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -985,10 +1010,53 @@ Use %%answer%% with \`foo()\`.
     }
   });
 
+  it("ignores cloze markers inside inline code spans", () => {
+    const markdown = `#card
+Inline code only: \`"alpha"\` and \`%beta%\`.
+Outside "gamma" and %delta%.
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.question).toBe(
+        'Inline code only: `"alpha"` and `%beta%`.',
+      );
+      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      expect(blanks).toHaveLength(2);
+      expect(part.dragTokens.map((token) => token.value)).toEqual(["gamma"]);
+      const inputBlanks = blanks.filter((blank) => blank.kind === "input");
+      expect(inputBlanks.map((blank) => blank.solution)).toEqual(["delta"]);
+    }
+  });
+
+  it("parses markers inside fenced code blocks even with backticks", () => {
+    const markdown = `#card
+Code sample:
+\`\`\`js
+const q = \`SELECT %col% FROM "table"\`;
+\`\`\`
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      const blanks = part.segments.filter((segment) => segment.type === "blank");
+      expect(blanks.map((blank) => blank.solution)).toEqual(["col", "table"]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual(["table"]);
+    }
+  });
+
   it("combines typed blanks with drag tokens", () => {
     const markdown = `#card
 Mixed cloze.
-%%Answer%% and tocken "Token".
+%Answer% and "Token".
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1011,7 +1079,7 @@ Mixed cloze.
   it("collects drag tokens alongside blanks", () => {
     const markdown = `#card
 Mixed markers.
-Use %%blank%% with tocken "alpha" and tocken "beta".
+Use %blank% with "alpha" and "beta".
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1040,7 +1108,7 @@ Use %%blank%% with tocken "alpha" and tocken "beta".
   it("keeps cards with only drag tokens", () => {
     const markdown = `#card
 Only tokens.
-Use tocken "alpha" and tocken "beta" here.
+Use "alpha" and "beta" here.
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1067,7 +1135,7 @@ Use tocken "alpha" and tocken "beta" here.
   it("keeps duplicate tokens with unique ids", () => {
     const markdown = `#card
 Duplicate tokens.
-Use tocken "same" and tocken "same" again.
+Use "same" and "same" again.
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1083,10 +1151,10 @@ Use tocken "same" and tocken "same" again.
     }
   });
 
-  it("handles unclosed %% safely", () => {
+  it("handles unclosed % safely", () => {
     const markdown = `#card
 Broken markers.
-Valid %%answer%% and %%unfinished.
+Valid %answer% and %unfinished.
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1099,7 +1167,7 @@ Valid %%answer%% and %%unfinished.
       expect(part.segments).toEqual([
         { type: "text", value: "Valid " },
         { type: "blank", id: "blank-0", kind: "input", solution: "answer" },
-        { type: "text", value: " and %%unfinished." },
+        { type: "text", value: " and %unfinished." },
       ]);
     }
   });
@@ -1107,7 +1175,7 @@ Valid %%answer%% and %%unfinished.
   it("handles unclosed drag tokens safely", () => {
     const markdown = `#card
 Broken token.
-Valid %%answer%% and tocken "unfinished.
+Valid %answer% and "unfinished.
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1120,7 +1188,7 @@ Valid %%answer%% and tocken "unfinished.
       expect(part.segments).toEqual([
         { type: "text", value: "Valid " },
         { type: "blank", id: "blank-0", kind: "input", solution: "answer" },
-        { type: "text", value: " and tocken \"unfinished." },
+        { type: "text", value: " and \"unfinished." },
       ]);
     }
   });
@@ -1130,10 +1198,10 @@ Valid %%answer%% and tocken "unfinished.
 Question.
 Code:
 ~~~
-tocken "ignored"
-%%not%%
+"ignored"
+%not%
 ~~~
-Outside tocken "token" and %%blank%%.
+Outside "token" and %blank%.
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1161,13 +1229,13 @@ Outside tocken "token" and %%blank%%.
 Query overview:
 | Column | Value |
 | --- | --- |
-| min | %%min_bestellungen%% |
+| min | %min_bestellungen% |
 | note | text |
 \`\`\`sql
-SELECT tocken "COUNT"(*) FROM orders
-WHERE column = %%sort_spalte%%
+SELECT "COUNT"(*) FROM orders
+WHERE column = %sort_spalte%
 \`\`\`
-Outside token: tocken "SELECT"
+Outside token: "SELECT"
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1196,7 +1264,7 @@ Outside token: tocken "SELECT"
   it("skips cards with empty blanks", () => {
     const markdown = `#card
 Empty blank.
-%%%%
+% %
 #`;
 
     const cards = parseFlashcards(markdown);
@@ -1206,14 +1274,14 @@ Empty blank.
 
   it("parses multiple fenced blocks in one prompt", () => {
     const markdown = `#card
-Before %%first%%.
+Before %first%.
 \`\`\`
-tocken "token1"
-%%inside%%
+"token1"
+%inside%
 \`\`\`
-Between tocken "token2".
+Between "token2".
 ~~~sql
-%%second%%
+%second%
 ~~~
 After.
 #`;

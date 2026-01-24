@@ -45,12 +45,12 @@ d) 9
 ---
 5) Cloze – Typed blanks (cl)
 #card
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 6) Cloze – Drag tokens (cd)
 #card
-The colors of the German flag are `black`, `red` and `gold`.
+The colors of the German flag are "black", "red" and "gold".
 #
 
 #examend

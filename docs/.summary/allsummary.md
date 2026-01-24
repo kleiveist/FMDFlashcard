@@ -345,7 +345,7 @@ Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
 Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
+[cl] Die Hauptstadt von Frankreich ist %Paris%.
 [cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 #
 ---
@@ -357,7 +357,7 @@ Aussage:
 -true
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
+[cl] Die Hauptstadt von Frankreich ist %Paris%.
 [cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 #
 ---
@@ -371,7 +371,7 @@ c) 9
 -b
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
+[cl] Die Hauptstadt von Frankreich ist %Paris%.
 [cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 #
 ---
@@ -387,17 +387,17 @@ d) 9
 -c
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
+[cl] Die Hauptstadt von Frankreich ist %Paris%.
 [cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 #
 ---
 6) cl + cld
 #card
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
+[cl] Die Hauptstadt von Frankreich ist %Paris%.
 [cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 #
 ---
@@ -407,18 +407,18 @@ Die Hauptstadt von Frankreich ist %%Paris%%.
 Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
+[cl] Die Hauptstadt von Frankreich ist %Paris%.
 [cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 #
 ---
 8) cld + cld
 #card
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
+[cl] Die Hauptstadt von Frankreich ist %Paris%.
 [cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 
 [cld]
-[cl] Die Hauptstadt von Frankreich ist %%Paris%%.
+[cl] Die Hauptstadt von Frankreich ist %Paris%.
 [cd] Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 #
 
@@ -436,21 +436,21 @@ Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 
 | |   |
 |---|---|
-| Nur Zeilen mit Match in beiden Tabellen | %%INNER JOIN%% |
-| Alle Zeilen links + passende rechts (sonst NULL) | %%LEFT JOIN%% |
-| Alle Zeilen rechts + passende links (sonst NULL) | %%RIGHT JOIN%% |
-| Alle Zeilen beider Seiten, Matches zusammen, sonst NULL | %%FULL OUTER JOIN%% |
+| Nur Zeilen mit Match in beiden Tabellen | %INNER JOIN% |
+| Alle Zeilen links + passende rechts (sonst NULL) | %LEFT JOIN% |
+| Alle Zeilen rechts + passende links (sonst NULL) | %RIGHT JOIN% |
+| Alle Zeilen beider Seiten, Matches zusammen, sonst NULL | %FULL OUTER JOIN% |
 
 ---
 2) CL (3 Spalten) – Tippe das richtige SQL-Keyword.
 
 |   |   |   |
 |---|---|---|
-| Zeilen filtern (vor GROUP BY) | %%WHERE%% | SELECT * FROM users WHERE age > 18; |
-| Gruppieren | %%GROUP BY%% | SELECT country, COUNT(*) FROM users GROUP BY country; |
-| Gruppen filtern (nach GROUP BY) | %%HAVING%% | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
-| Sortieren | %%ORDER BY%% | SELECT * FROM users ORDER BY created_at DESC; |
-| Begrenzen | %%LIMIT%% | SELECT * FROM users ORDER BY id LIMIT 10; |
+| Zeilen filtern (vor GROUP BY) | %WHERE% | SELECT * FROM users WHERE age > 18; |
+| Gruppieren | %GROUP BY% | SELECT country, COUNT(*) FROM users GROUP BY country; |
+| Gruppen filtern (nach GROUP BY) | %HAVING% | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
+| Sortieren | %ORDER BY% | SELECT * FROM users ORDER BY created_at DESC; |
+| Begrenzen | %LIMIT% | SELECT * FROM users ORDER BY id LIMIT 10; |
 
 ---
 3) CD (2 Spalten) – Ziehe den richtigen JOIN in die rechte Zelle (Token-Bank).
@@ -478,20 +478,20 @@ Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 
 |   |   |
 |---|---|
-| Zeilen filtern | `WHERE` SELECT * FROM users WHERE age > %%18%%; |
-| Sortieren | `ORDER BY` SELECT * FROM users ORDER BY created_at %%DESC%%; |
-| Begrenzen | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %%10%%; |
-| Gruppieren | `GROUP BY` SELECT country, COUNT(*) FROM users GROUP BY %%country%%; |
+| Zeilen filtern | `WHERE` SELECT * FROM users WHERE age > %18%; |
+| Sortieren | `ORDER BY` SELECT * FROM users ORDER BY created_at %DESC%; |
+| Begrenzen | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %10%; |
+| Gruppieren | `GROUP BY` SELECT country, COUNT(*) FROM users GROUP BY %country%; |
 
 ---
 6) CLD (3 Spalten) – Drag Keyword + tippe die fehlenden Werte im Beispiel.
 
 |   |   |   |
 |---|---|---|
-| Zeilen filtern | `WHERE` | SELECT * FROM users WHERE age > %%18%%; |
-| Gruppen filtern (nach GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %%10%%; |
-| Sortieren | `ORDER BY` | SELECT * FROM users ORDER BY created_at %%DESC%%; |
-| Begrenzen | `LIMIT` | SELECT * FROM users ORDER BY id LIMIT %%10%%; |
+| Zeilen filtern | `WHERE` | SELECT * FROM users WHERE age > %18%; |
+| Gruppen filtern (nach GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %10%; |
+| Sortieren | `ORDER BY` | SELECT * FROM users ORDER BY created_at %DESC%; |
+| Begrenzen | `LIMIT` | SELECT * FROM users ORDER BY id LIMIT %10%; |
 #examend
 
 ---
@@ -544,7 +544,7 @@ d) 9
 ---
 5) Cloze – Typed blanks (cl)
 #card
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 6) Cloze – Drag tokens (cd)
@@ -643,10 +643,10 @@ d) 9
 5) cl + cl
 #card
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 6) cd + cd
@@ -709,7 +709,7 @@ Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
 Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 11) qa + cd
@@ -762,7 +762,7 @@ Aussage:
 -true
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 15) tf + cd
@@ -805,7 +805,7 @@ c) 9
 -b
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 18) m1 + cd
@@ -833,7 +833,7 @@ d) 9
 -c
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 20) m2 + cd
@@ -854,7 +854,7 @@ Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
 21) cl + cd
 #card
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 
 [cd]
 Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
@@ -905,7 +905,7 @@ What does “least privilege” mean in the context of IT security?
 Answer: Users and systems are granted only the minimum necessary permissions to complete their task.
 
 [cld]
-[cl] The capital of France is %%Paris%%.
+[cl] The capital of France is %Paris%.
 [cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
@@ -917,7 +917,7 @@ Statement:
 -true
 
 [cld]
-[cl] The capital of France is %%Paris%%.
+[cl] The capital of France is %Paris%.
 [cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
@@ -931,7 +931,7 @@ c) 9
 -b
 
 [cld]
-[cl] The capital of France is %%Paris%%.
+[cl] The capital of France is %Paris%.
 [cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
@@ -947,17 +947,17 @@ d) 9
 -c
 
 [cld]
-[cl] The capital of France is %%Paris%%.
+[cl] The capital of France is %Paris%.
 [cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
 6) cl + cld
 #card
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 
 [cld]
-[cl] The capital of France is %%Paris%%.
+[cl] The capital of France is %Paris%.
 [cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
@@ -967,18 +967,18 @@ The capital of France is %%Paris%%.
 The colors of the German flag are `black`, `red`, and `gold`.
 
 [cld]
-[cl] The capital of France is %%Paris%%.
+[cl] The capital of France is %Paris%.
 [cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 ---
 8) cld + cld
 #card
 [cld]
-[cl] The capital of France is %%Paris%%.
+[cl] The capital of France is %Paris%.
 [cd] The colors of the German flag are `black`, `red`, and `gold`.
 
 [cld]
-[cl] The capital of France is %%Paris%%.
+[cl] The capital of France is %Paris%.
 [cd] The colors of the German flag are `black`, `red`, and `gold`.
 #
 
@@ -997,10 +997,10 @@ The colors of the German flag are `black`, `red`, and `gold`.
 
 | |   |
 |---|---|
-| Only rows with a match in both tables | %%INNER JOIN%% |
-| All rows on the left + matching on the right (otherwise NULL) | %%LEFT JOIN%% |
-| All rows on the right + matching on the left (otherwise NULL) | %%RIGHT JOIN%% |
-| All rows from both sides, matches combined, otherwise NULL | %%FULL OUTER JOIN%% |
+| Only rows with a match in both tables | %INNER JOIN% |
+| All rows on the left + matching on the right (otherwise NULL) | %LEFT JOIN% |
+| All rows on the right + matching on the left (otherwise NULL) | %RIGHT JOIN% |
+| All rows from both sides, matches combined, otherwise NULL | %FULL OUTER JOIN% |
 
 #
 ---
@@ -1009,11 +1009,11 @@ The colors of the German flag are `black`, `red`, and `gold`.
 
 |   |   |   |
 |---|---|---|
-| Filter rows (before GROUP BY) | %%WHERE%% | SELECT * FROM users WHERE age > 18; |
-| Group | %%GROUP BY%% | SELECT country, COUNT(*) FROM users GROUP BY country; |
-| Filter groups (after GROUP BY) | %%HAVING%% | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
-| Sort | %%ORDER BY%% | SELECT * FROM users ORDER BY created_at DESC; |
-| Limit | %%LIMIT%% | SELECT * FROM users ORDER BY id LIMIT 10; |
+| Filter rows (before GROUP BY) | %WHERE% | SELECT * FROM users WHERE age > 18; |
+| Group | %GROUP BY% | SELECT country, COUNT(*) FROM users GROUP BY country; |
+| Filter groups (after GROUP BY) | %HAVING% | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
+| Sort | %ORDER BY% | SELECT * FROM users ORDER BY created_at DESC; |
+| Limit | %LIMIT% | SELECT * FROM users ORDER BY id LIMIT 10; |
 
 #
 ---
@@ -1047,10 +1047,10 @@ The colors of the German flag are `black`, `red`, and `gold`.
 
 |   |   |
 |---|---|
-| Filter rows | `WHERE` SELECT * FROM users WHERE age > %%18%%; |
-| Sort | `ORDER BY` SELECT * FROM users ORDER BY created_at %%DESC%%; |
-| Limit | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %%10%%; |
-| Group | `GROUP BY` SELECT country, COUNT(*) FROM users GROUP BY %%country%%; |
+| Filter rows | `WHERE` SELECT * FROM users WHERE age > %18%; |
+| Sort | `ORDER BY` SELECT * FROM users ORDER BY created_at %DESC%; |
+| Limit | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %10%; |
+| Group | `GROUP BY` SELECT country, COUNT(*) FROM users GROUP BY %country%; |
 
 #
 ---
@@ -1059,10 +1059,10 @@ The colors of the German flag are `black`, `red`, and `gold`.
 
 |   |   |   |
 |---|---|---|
-| Filter rows | `WHERE` | SELECT * FROM users WHERE age > %%18%%; |
-| Filter groups (after GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %%10%%; |
-| Sort | `ORDER BY` | SELECT * FROM users ORDER BY created_at %%DESC%%; |
-| Limit | `LIMIT` | SELECT * FROM users ORDER BY id LIMIT %%10%%; |
+| Filter rows | `WHERE` | SELECT * FROM users WHERE age > %18%; |
+| Filter groups (after GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %10%; |
+| Sort | `ORDER BY` | SELECT * FROM users ORDER BY created_at %DESC%; |
+| Limit | `LIMIT` | SELECT * FROM users ORDER BY id LIMIT %10%; |
 #
 #examend
 
@@ -1117,7 +1117,7 @@ d) 9
 ---
 5) Cloze – Typed blanks (cl)
 #card
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 6) Cloze – Drag tokens (cd)
@@ -1216,10 +1216,10 @@ d) 9
 5) cl + cl
 #card
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 6) cd + cd
@@ -1282,7 +1282,7 @@ What does “least privilege” mean in the context of IT security?
 Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 11) qa + cd
@@ -1335,7 +1335,7 @@ Statement:
 -true
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 15) tf + cd
@@ -1378,7 +1378,7 @@ c) 9
 -b
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 18) m1 + cd
@@ -1406,7 +1406,7 @@ d) 9
 -c
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 20) m2 + cd
@@ -1427,7 +1427,7 @@ The colors of the German flag are `black`, `red` and `gold`.
 21) cl + cd
 #card
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 
 [cd]
 The colors of the German flag are `black`, `red` and `gold`.
@@ -1544,9 +1544,9 @@ console.log(x, y);
 
 | Term | Answer |
 | --- | --- |
-| Alpha | %%first%% |
+| Alpha | %first% |
 | Beta | `second` |
-| Gamma | `third` and %%fourth%% |
+| Gamma | `third` and %fourth% |
 #
 
 #exam
@@ -1554,8 +1554,8 @@ console.log(x, y);
 
 | Term | Answer |
 | --- | --- |
-| Alpha | %%first%% |
-| Beta | %%second%% |
+| Alpha | %first% |
+| Beta | %second% |
 
 ---
 2) Table in exam prompt (CLD)
@@ -1563,7 +1563,7 @@ console.log(x, y);
 | Term | Answer |
 | --- | --- |
 | Alpha | `first` |
-| Beta | `second` and %%third%% |
+| Beta | `second` and %third% |
 
 
 #card
@@ -1633,7 +1633,7 @@ d) Process
 | HTTP | 80 |
 | HTTPS | 443 |
 
-The default port for HTTPS is %%443%%.
+The default port for HTTPS is %443%.
 #
 
 #card
@@ -1966,17 +1966,17 @@ The colors of the German flag are `black`, `red`, and `gold`.
 <!-- AUTO-GENERATED:backlink END -->
 # Code `cl`: Cloze (typed blanks)
 
-Typed clozes use the `%%...%%` syntax to turn inline fragments into input fields (`cl`). The learner must type the missing words exactly as written (normalization is trim-and-lowercase by default).
+Typed clozes use the `%...%` syntax to turn inline fragments into input fields (`cl`). The learner must type the missing words exactly as written (normalization is trim-and-lowercase by default).
 
 ```md
 #card
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ```
 
-- Each `%%…%%` pair becomes an input blank. The parser trims the text inside; blanks without any content are rejected.
+- Each `%…%` pair becomes an input blank. The parser trims the text inside; blanks without any content are rejected.
 - You can combine cloze blanks and drag tokens in the same question as long as the interactions stay within one block. When cl and cd coexist, the parser spawns both blank and drag segments.
-- The blank solutions are case-insensitive and trimmed; punctuation inside the solution is preserved, so `%%Paris%%` differs from `%%Paris,%%`.
+- The blank solutions are case-insensitive and trimmed; punctuation inside the solution is preserved, so `%Paris%` differs from `%Paris,%`.
 
 ## Behavior notes
 
@@ -1993,7 +1993,7 @@ The capital of France is %%Paris%%.
 # Code `cld`: Cloze (typed blanks + drag tokens)
 
 `cld` is the combined Cloze format that supports **both**:
-- **Typed blanks** using `%%...%%`
+- **Typed blanks** using `%...%`
 - **Drag tokens** using backticks `` `token` ``
 
 - This lets you build a single cloze interaction where learners can either type answers (typed blanks) and/or use a token bank (drag tokens) within the same part.
@@ -2004,12 +2004,12 @@ The capital of France is %%Paris%%.
 ## Syntax
 
 ### Typed blanks
-Use `%%...%%` to create an input field. The text inside is the **solution**.
+Use `%...%` to create an input field. The text inside is the **solution**.
 
 Example:
 ```md
 #card
-The `capital` of France is %%Paris%%.
+The `capital` of France is %Paris%.
 #
 ```
 ---
@@ -2144,9 +2144,9 @@ Every numbered heading above becomes one `ea` task, with its own prompt and answ
 | True/False-Marker <br>(2-Button-Karte)  | true/false? {text}<br>-true or<br>-false                             | ---  <br>#                                       | e-page <br>f-pages     | - UI: **2 Buttons (True/False)**- Validierung: Marker muss auf **nächster nicht-leerer Zeile** stehen. | tf     |
 | Multiple Choice (Single-Answer)         | - Options-Labels im Block,<br>`a)` `b)` `c)` …                       | aswahl endet mit<br>-a)<br>blog mit <br>#<br>--- | e-page <br>f-pages     | - UI: Auswahl Single Marker mindestens 1<br>-x = 1<br>-a)                                              | m1     |
 | Multiple Choice <br>(Multi-Answer)      | - Options-Labels im Block,<br>`a)` `b)` `c)` …                       | aswahl endet mit<br>-a)<br>blog mit <br>#<br>--- | e-page <br>f-pages     | Auswahl Multi Anzahl Marker mindestens 2<br>-x < 2<br>-a)<br>-b)                                       | m2     |
-| Cloze Lückentext:                       | -Typed blanks: `%%...%%` innerhalb                                   | ---  <br>#                                       | e-page <br>f-pages     | für Backticks- Validierung: jedes `%%...%%` enthält Text.                                              | cl     |
+| Cloze Lückentext:                       | -Typed blanks: `%...%` innerhalb                                   | ---  <br>#                                       | e-page <br>f-pages     | für Backticks- Validierung: jedes `%...%` enthält Text.                                              | cl     |
 | Cloze <br>Drag Tokens)                  | des Texts- Drag tokens: ``token``                                    | ---  <br>#                                       | e-page <br>f-pages     | - UI: Eingabefelder für ``token`` + Drag/Drop                                                          | cd     |
-| Cloze Lückentext +Drag Tokens           | Typed blanks: `%%...%%` + tokens: ``token``innerhalb                 | ---  <br>#                                       | e-page <br>f-pages     | - UI: Eingabefelder  ``token`` und Drag/Drop<br> Backticks- Validierung: jedes `%%...%%`               | cld    |
+| Cloze Lückentext +Drag Tokens           | Typed blanks: `%...%` + tokens: ``token``innerhalb                 | ---  <br>#                                       | e-page <br>f-pages     | - UI: Eingabefelder  ``token`` und Drag/Drop<br> Backticks- Validierung: jedes `%...%`               | cld    |
 
 ## **Kombinierung Tabelle** 
 Legende: 💠 problemlos · ❕ mit Beachtung · ⚠️ mit Einschränkungen · ❌ nicht möglich
@@ -2201,9 +2201,9 @@ Legende: 💠 problemlos · ❕ mit Beachtung · ⚠️ mit Einschränkungen · 
 | True/False marker <br>(2-button card)    | true/false? {text}<br>-true or<br>-false                              | ---  <br>#                                                | e-page <br>f-pages     | - UI: **2 buttons (True/False)**<br>- Validation: marker must be on the **next non-empty line**. | tf   |
 | Multiple choice (single-answer)          | - Option labels in the block,<br>`a)` `b)` `c)` …                     | selection ends with<br>-a)<br>block ends with<br>#<br>--- | e-page <br>f-pages     | - UI: single choice; at least 1 correct marker<br>-x = 1<br>-a)                                  | m1   |
 | Multiple choice <br>(multi-answer)       | - Option labels in the block,<br>`a)` `b)` `c)` …                     | selection ends with<br>-a)<br>block ends with<br>#<br>--- | e-page <br>f-pages     | Multi choice; at least 2 correct markers<br>-x < 2<br>-a)<br>-b)                                 | m2   |
-| Cloze (typed blanks)                     | Typed blanks: `%%...%%` inside                                        | ---  <br>#                                                | e-page <br>f-pages     | For typed blanks: validation requires every `%%...%%` to contain text.                           | cl   |
+| Cloze (typed blanks)                     | Typed blanks: `%...%` inside                                        | ---  <br>#                                                | e-page <br>f-pages     | For typed blanks: validation requires every `%...%` to contain text.                           | cl   |
 | Cloze <br>(drag tokens)                  | in the text: drag tokens: ``token``                                   | ---  <br>#                                                | e-page <br>f-pages     | - UI: input fields for ``token`` + drag/drop                                                     | cd   |
-| Cloze <br>(drag tokens)                  | in the text: drag tokens: ``token``<br>Typed blanks: `%%...%%` inside | ---  <br>#                                                | e-page <br>f-pages     | - UI: input fields for ``token`` + drag/drop and  blanks: validation `%%...%%`                   | cd   |
+| Cloze <br>(drag tokens)                  | in the text: drag tokens: ``token``<br>Typed blanks: `%...%` inside | ---  <br>#                                                | e-page <br>f-pages     | - UI: input fields for ``token`` + drag/drop and  blanks: validation `%...%`                   | cd   |
 
 
 ## **Combination matrix**
@@ -2608,7 +2608,7 @@ The Flashcards page is the standard review mode. It loads flashcards found in yo
 
 ## Notes / tips
 
-- If a card renders unexpectedly, verify marker placement (`-true`, `-a`, `%%...%%`, backticks).
+- If a card renders unexpectedly, verify marker placement (`-true`, `-a`, `%...%`, backticks).
 
 ## Related docs
 
@@ -3068,7 +3068,7 @@ Markdown flashcards keep your notes readable and the parser precise. The only re
 - **QA (free-text answers):** Place questions followed by an answer marker (`Answer:`, `Antwort:`, `answertocken:` etc.). Everything after the marker becomes the answer. Answers preserve line breaks, so multi-paragraph solutions are fine. Mixed QA + auto-graded parts use `---`.
 - **True/False:** Write the statement, then on the very next non-empty line add `-true` or `-false` (normalized to your language). The parser looks for the marker immediately after the question block.
 - **Multiple choice (single / multi):** Use option lines like `a) Text`. Mark correct options with `-a`, `-b`, etc. A single marker means single-answer (m1), two or more markers classify the block as multi-answer (m2).
-- **Cloze interactions:** `%%solution%%` produces text inputs. Inline `` `token` `` fragments become drag tokens (cd). You can mix typed blanks and drag tokens inside the same cloze chunk; just keep the actual tokens populated.
+- **Cloze interactions:** `%solution%` produces text inputs. Inline `` `token` `` fragments become drag tokens (cd). You can mix typed blanks and drag tokens inside the same cloze chunk; just keep the actual tokens populated.
 
 ## Composites and interactions
 
@@ -3156,13 +3156,13 @@ If you do **not** want visible headings, use an **empty header**:
 - This is acceptable because token tables are limited in practice (typically **max. 3 columns**) and should fit the card layout without needing scrolling.
 ## Interactive content inside table cells
 ### CL (typed blanks) in tables
-Typed blanks are marked with `%%...%%` and can appear inside any table cell.
+Typed blanks are marked with `%...%` and can appear inside any table cell.
 ```q
 #card
 |   |   |
 |---|---|
-| Only rows with matches in both tables | %%INNER JOIN%% |
-| All rows from the left + matching right rows | %%LEFT JOIN%% |
+| Only rows with matches in both tables | %INNER JOIN% |
+| All rows from the left + matching right rows | %LEFT JOIN% |
 #
 ```
 ### CD (drag tokens) in tables
@@ -3183,8 +3183,8 @@ Combination of drag tokens and typed blanks inside table cells.
 #card
 |   |   |
 |---|---|
-| Filter | `WHERE` SELECT * FROM users WHERE age > %%18%%; |
-| Limit  | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %%10%%; |
+| Filter | `WHERE` SELECT * FROM users WHERE age > %18%; |
+| Limit  | `LIMIT` SELECT * FROM users ORDER BY id LIMIT %10%; |
 #
 ```
 ## Tables inside exam blocks
@@ -3196,15 +3196,15 @@ Tables can also be part of an exam prompt within `#exam`.
 1) Fill in JOIN types (CL)
 |   |   |
 |---|---|
-| Only matches in both tables | %%INNER JOIN%% |
-| All left rows + matching right rows | %%LEFT JOIN%% |
+| Only matches in both tables | %INNER JOIN% |
+| All left rows + matching right rows | %LEFT JOIN% |
 
 ---
 2) Drag + type (CLD)
 |   |   |
 |---|---|
-| Filter | `WHERE` SELECT * FROM users WHERE age > %%18%%; |
-| Sort   | `ORDER BY` SELECT * FROM users ORDER BY created_at %%DESC%%; |
+| Filter | `WHERE` SELECT * FROM users WHERE age > %18%; |
+| Sort   | `ORDER BY` SELECT * FROM users ORDER BY created_at %DESC%; |
 #examend
 
 ```

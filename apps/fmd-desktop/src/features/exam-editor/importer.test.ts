@@ -99,10 +99,10 @@ Answer: B
 #exam
 1) Table CLD
 #card
-Fill %%col%% using tocken "token".
+Fill %col% using "token".
 | Col | Value |
 | --- | --- |
-| A | tocken "alpha" |
+| A | "alpha" |
 #
 #examend
     `.trim();
@@ -122,7 +122,7 @@ Fill %%col%% using tocken "token".
     expect(card?.type).toBe("cld");
     if (card?.type === "cld") {
       expect(card.prompt).toContain("| Col | Value |");
-      expect(card.prompt).toContain('tocken "alpha"');
+      expect(card.prompt).toContain('"alpha"');
     }
   });
 

@@ -31,7 +31,7 @@ import { findTableLineIndices } from "./markdownTables";
  * v3 (cloze blanks + tokens)
  * #card
  * Question line
- * Body text with input blanks like %%answer%% and drag tokens like tocken "token"
+ * Body text with input blanks like %answer% and drag tokens like "token"
  * #
  *
  * v4 (true/false)
@@ -289,12 +289,12 @@ const normalizeAssignmentLine = (line: string) => {
   if (!left || !right) {
     return null;
   }
-  const dragTokenPattern = /^\s*tocken\b\s*"(?:[^"\\]|\\.)*"\s*$/;
+  const dragTokenPattern = /^\s*"(?:[^"\\]|\\.)*"\s*$/;
   const escapeToken = (value: string) =>
     value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const normalizedRight = dragTokenPattern.test(right)
     ? right
-    : `tocken "${escapeToken(right)}"`;
+    : `"${escapeToken(right)}"`;
   return `${left} => ${normalizedRight}`;
 };
 
@@ -304,8 +304,132 @@ const isTrueFalseMarkerLine = (line: string) =>
   normalizeTrueFalseMarker(line.trim()) !== null;
 const isAnswerMarkerLine = (line: string, answerMatch: AnswerMatchMode) =>
   Boolean(findAnswerMarkerMatch(line, answerMatch));
-const hasClozeMarker = (line: string) =>
-  line.includes("%%") || /\btocken\b\s*"/.test(line);
+
+type InlineCodeSegment = { type: "text" | "code"; value: string };
+
+const findNextQuoteIndex = (line: string, startIndex: number) => {
+  for (let index = startIndex; index < line.length; index += 1) {
+    if (line[index] !== "\"") {
+      continue;
+    }
+    let backslashCount = 0;
+    let cursor = index - 1;
+    while (cursor >= 0 && line[cursor] === "\\") {
+      backslashCount += 1;
+      cursor -= 1;
+    }
+    if (backslashCount % 2 === 0) {
+      return index;
+    }
+  }
+  return -1;
+};
+
+const parseQuotedToken = (line: string, quoteIndex: number) => {
+  let value = "";
+  let index = quoteIndex + 1;
+  while (index < line.length) {
+    const char = line[index];
+    if (char === "\\") {
+      const next = line[index + 1];
+      if (next === "\\" || next === "\"") {
+        value += next;
+        index += 2;
+        continue;
+      }
+      value += char;
+      index += 1;
+      continue;
+    }
+    if (char === "\"") {
+      return { value, end: index };
+    }
+    value += char;
+    index += 1;
+  }
+  return null;
+};
+
+const splitInlineCodeSegments = (line: string): InlineCodeSegment[] => {
+  const segments: InlineCodeSegment[] = [];
+  let cursor = 0;
+
+  while (cursor < line.length) {
+    const tickIndex = line.indexOf("`", cursor);
+    if (tickIndex === -1) {
+      segments.push({ type: "text", value: line.slice(cursor) });
+      break;
+    }
+    if (tickIndex > cursor) {
+      segments.push({ type: "text", value: line.slice(cursor, tickIndex) });
+    }
+    let tickEnd = tickIndex;
+    while (tickEnd < line.length && line[tickEnd] === "`") {
+      tickEnd += 1;
+    }
+    const tickCount = tickEnd - tickIndex;
+    const fence = "`".repeat(tickCount);
+    const closingIndex = line.indexOf(fence, tickEnd);
+    if (closingIndex === -1) {
+      segments.push({ type: "code", value: line.slice(tickIndex) });
+      break;
+    }
+    segments.push({
+      type: "code",
+      value: line.slice(tickIndex, closingIndex + tickCount),
+    });
+    cursor = closingIndex + tickCount;
+  }
+
+  return segments.filter((segment) => segment.value !== "");
+};
+
+export const stripInlineCodeFromLine = (line: string) =>
+  splitInlineCodeSegments(line)
+    .filter((segment) => segment.type === "text")
+    .map((segment) => segment.value)
+    .join("");
+
+const hasPercentMarker = (line: string) => {
+  let cursor = 0;
+  while (cursor < line.length) {
+    const start = line.indexOf("%", cursor);
+    if (start === -1) {
+      return false;
+    }
+    const end = line.indexOf("%", start + 1);
+    if (end === -1) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+};
+
+const hasQuotedToken = (line: string) => {
+  let cursor = 0;
+  while (cursor < line.length) {
+    const quoteIndex = findNextQuoteIndex(line, cursor);
+    if (quoteIndex === -1) {
+      return false;
+    }
+    const parsed = parseQuotedToken(line, quoteIndex);
+    if (!parsed) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+};
+
+export const hasClozeMarker = (
+  line: string,
+  options?: { ignoreInlineCode?: boolean },
+) => {
+  const ignoreInlineCode = options?.ignoreInlineCode ?? true;
+  const target = ignoreInlineCode ? stripInlineCodeFromLine(line) : line;
+  return hasPercentMarker(target) || hasQuotedToken(target);
+};
 
 const appendText = (segments: ClozeSegment[], text: string) => {
   if (!text) {
@@ -325,50 +449,23 @@ const parseClozeSegments = (lines: string[]) => {
   let blankIndex = 0;
   let tokenIndex = 0;
   const fencePattern = /^(```|~~~)/;
-  const dragTokenPattern = /\btocken\b\s*"/g;
+  let inFence = false;
+  let fenceToken = "";
 
   const findNextDragToken = (line: string, startIndex: number) => {
-    dragTokenPattern.lastIndex = startIndex;
-    const match = dragTokenPattern.exec(line);
-    if (!match) {
+    const quoteIndex = findNextQuoteIndex(line, startIndex);
+    if (quoteIndex === -1) {
       return null;
     }
-    const markerStart = match.index;
-    const quoteIndex = markerStart + match[0].length - 1;
-    return { markerStart, quoteIndex };
+    return { markerStart: quoteIndex, quoteIndex };
   };
 
-  const parseQuotedToken = (line: string, quoteIndex: number) => {
-    let value = "";
-    let index = quoteIndex + 1;
-    while (index < line.length) {
-      const char = line[index];
-      if (char === "\\") {
-        const next = line[index + 1];
-        if (next === "\\" || next === "\"") {
-          value += next;
-          index += 2;
-          continue;
-        }
-        value += char;
-        index += 1;
-        continue;
-      }
-      if (char === "\"") {
-        return { value, end: index };
-      }
-      value += char;
-      index += 1;
-    }
-    return null;
-  };
-
-  const handleLine = (line: string) => {
+  const handleTextSegment = (segmentText: string) => {
     let cursor = 0;
 
-    while (cursor < line.length) {
-      const nextInput = line.indexOf("%%", cursor);
-      const dragMatch = findNextDragToken(line, cursor);
+    while (cursor < segmentText.length) {
+      const nextInput = segmentText.indexOf("%", cursor);
+      const dragMatch = findNextDragToken(segmentText, cursor);
       const nextDrag = dragMatch ? dragMatch.markerStart : -1;
       const nextMarker = Math.min(
         nextInput === -1 ? Number.POSITIVE_INFINITY : nextInput,
@@ -376,21 +473,21 @@ const parseClozeSegments = (lines: string[]) => {
       );
 
       if (!Number.isFinite(nextMarker)) {
-        appendText(segments, line.slice(cursor));
+        appendText(segments, segmentText.slice(cursor));
         break;
       }
 
       if (nextMarker > cursor) {
-        appendText(segments, line.slice(cursor, nextMarker));
+        appendText(segments, segmentText.slice(cursor, nextMarker));
       }
 
       if (nextMarker === nextInput) {
-        const end = line.indexOf("%%", nextInput + 2);
+        const end = segmentText.indexOf("%", nextInput + 1);
         if (end === -1) {
-          appendText(segments, line.slice(nextInput));
+          appendText(segments, segmentText.slice(nextInput));
           break;
         }
-        const rawSolution = line.slice(nextInput + 2, end);
+        const rawSolution = segmentText.slice(nextInput + 1, end);
         const solution = rawSolution.trim();
         if (!solution) {
           return null;
@@ -402,22 +499,25 @@ const parseClozeSegments = (lines: string[]) => {
           solution,
         });
         blankIndex += 1;
-        cursor = end + 2;
+        cursor = end + 1;
         continue;
       }
 
       if (!dragMatch) {
-        appendText(segments, line.slice(cursor));
+        appendText(segments, segmentText.slice(cursor));
         break;
       }
-      const parsed = parseQuotedToken(line, dragMatch.quoteIndex);
+      const parsed = parseQuotedToken(segmentText, dragMatch.quoteIndex);
       if (!parsed) {
-        appendText(segments, line.slice(dragMatch.markerStart));
+        appendText(segments, segmentText.slice(dragMatch.markerStart));
         break;
       }
       const value = parsed.value.trim();
       if (!value) {
-        appendText(segments, line.slice(dragMatch.markerStart, parsed.end + 1));
+        appendText(
+          segments,
+          segmentText.slice(dragMatch.markerStart, parsed.end + 1),
+        );
         cursor = parsed.end + 1;
         continue;
       }
@@ -436,14 +536,41 @@ const parseClozeSegments = (lines: string[]) => {
     return true;
   };
 
+  const handleLine = (line: string, allowInlineCode: boolean) => {
+    const parts = allowInlineCode
+      ? splitInlineCodeSegments(line)
+      : [{ type: "text", value: line }];
+
+    for (const part of parts) {
+      if (part.type === "code") {
+        appendText(segments, part.value);
+        continue;
+      }
+      const parsed = handleTextSegment(part.value);
+      if (!parsed) {
+        return null;
+      }
+    }
+
+    return true;
+  };
+
   const trimmedLines = trimEmptyLines(lines);
   for (let lineIndex = 0; lineIndex < trimmedLines.length; lineIndex += 1) {
     const line = trimmedLines[lineIndex];
     const trimmed = line.trimStart();
-    if (fencePattern.test(trimmed)) {
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
       appendText(segments, line);
     } else {
-      const parsed = handleLine(line);
+      const parsed = handleLine(line, !inFence);
       if (!parsed) {
         return null;
       }
@@ -698,7 +825,7 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
     reset();
   };
 
-  const updateState = (line: string) => {
+  const updateState = (line: string, inFenceState: boolean) => {
     const trimmed = line.trim();
     if (!state.hasQuestion && trimmed) {
       state.hasQuestion = true;
@@ -715,7 +842,7 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
     if (isTrueFalseMarkerLine(line)) {
       state.hasTrueFalseMarker = true;
     }
-    if (hasClozeMarker(line)) {
+    if (hasClozeMarker(line, { ignoreInlineCode: !inFenceState })) {
       state.hasClozeMarker = true;
     }
     if (isAssignmentLine(line)) {
@@ -790,7 +917,7 @@ export const splitCardLines = (lines: string[], answerMatch: AnswerMatchMode) =>
     }
 
     current.push(line);
-    updateState(line);
+    updateState(line, inFence);
 
     if (state.hasTrueFalseMarker && state.hasQuestion && isTrueFalseMarkerLine(line)) {
       flush();
@@ -820,11 +947,14 @@ const parseCardLines = (
   const question = cardLines[questionIndex].trim();
   const bodyLines = cardLines.slice(questionIndex + 1);
   const contentLines = cardLines.slice(questionIndex);
+  const tableLineIndices = findTableLineIndices(contentLines);
 
   const options: FlashcardOption[] = [];
   const correctKeys: string[] = [];
   const questionLine = cardLines[questionIndex];
-  const clozeLines: string[] = hasClozeMarker(questionLine) ? [questionLine] : [];
+  const includeQuestionLine =
+    hasClozeMarker(questionLine) || tableLineIndices.has(0);
+  const clozeLines: string[] = includeQuestionLine ? [questionLine] : [];
   let hasAssignmentLines = false;
 
   bodyLines.forEach((rawLine) => {

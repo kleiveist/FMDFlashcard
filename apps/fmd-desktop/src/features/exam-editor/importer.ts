@@ -12,7 +12,7 @@ import type {
   MultipleChoiceCard,
   TrueFalseCard,
 } from "../../lib/flashcards";
-import { parseFlashcards } from "../../lib/flashcards";
+import { hasClozeMarker, parseFlashcards } from "../../lib/flashcards";
 import { findTableLineIndices } from "../../lib/markdownTables";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
@@ -101,9 +101,6 @@ const isHelpStartLine = (line: string) => helpStartPattern.test(line);
 const isHelpEndLine = (line: string) => helpEndPattern.test(line);
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 
-const hasClozeMarker = (line: string) =>
-  line.includes("%%") || /\btocken\b\s*"/.test(line);
-
 const serializeClozeSegments = (segments: ClozeSegment[]) => {
   let output = "";
   segments.forEach((segment) => {
@@ -112,11 +109,11 @@ const serializeClozeSegments = (segments: ClozeSegment[]) => {
       return;
     }
     if (segment.kind === "input") {
-      output += `%%${segment.solution}%%`;
+      output += `%${segment.solution}%`;
       return;
     }
     const escaped = segment.solution.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-    output += `tocken "${escaped}"`;
+    output += `"${escaped}"`;
   });
   return output;
 };

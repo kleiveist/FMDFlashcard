@@ -18,8 +18,8 @@
   Answer: Users and systems are granted only the minimum necessary permissions to complete their task.
 
 [cld]
-[cl] The capital of France is %%Paris%%.
-[cd] The colors of the German flag are `black`, `red`, and `gold`.
+[cl] The capital of France is %Paris%.
+[cd] The colors of the German flag are "black", "red", and "gold".
 
 # 
 
@@ -33,8 +33,8 @@
   -true
 
 [cld]
-[cl] The capital of France is %%Paris%%.
-[cd] The colors of the German flag are `black`, `red`, and `gold`.
+[cl] The capital of France is %Paris%.
+[cd] The colors of the German flag are "black", "red", and "gold".
 
 # 
 
@@ -50,8 +50,8 @@
   -b
 
 [cld]
-[cl] The capital of France is %%Paris%%.
-[cd] The colors of the German flag are `black`, `red`, and `gold`.
+[cl] The capital of France is %Paris%.
+[cd] The colors of the German flag are "black", "red", and "gold".
 
 # 
 
@@ -69,8 +69,8 @@
   -c
 
 [cld]
-[cl] The capital of France is %%Paris%%.
-[cd] The colors of the German flag are `black`, `red`, and `gold`.
+[cl] The capital of France is %Paris%.
+[cd] The colors of the German flag are "black", "red", and "gold".
 
 # 
 
@@ -79,11 +79,11 @@
 6. cl + cld
   #card
   [cl]
-  The capital of France is %%Paris%%.
+  The capital of France is %Paris%.
 
 [cld]
-[cl] The capital of France is %%Paris%%.
-[cd] The colors of the German flag are `black`, `red`, and `gold`.
+[cl] The capital of France is %Paris%.
+[cd] The colors of the German flag are "black", "red", and "gold".
 
 # 
 
@@ -92,11 +92,11 @@
 7. cd + cld
   #card
   [cd]
-  The colors of the German flag are `black`, `red`, and `gold`.
+  The colors of the German flag are "black", "red", and "gold".
 
 [cld]
-[cl] The capital of France is %%Paris%%.
-[cd] The colors of the German flag are `black`, `red`, and `gold`.
+[cl] The capital of France is %Paris%.
+[cd] The colors of the German flag are "black", "red", and "gold".
 
 # 
 
@@ -105,12 +105,12 @@
 8. cld + cld
   #card
   [cld]
-  [cl] The capital of France is %%Paris%%.
-  [cd] The colors of the German flag are `black`, `red`, and `gold`.
+  [cl] The capital of France is %Paris%.
+  [cd] The colors of the German flag are "black", "red", and "gold".
 
 [cld]
-[cl] The capital of France is %%Paris%%.
-[cd] The colors of the German flag are `black`, `red`, and `gold`.
+[cl] The capital of France is %Paris%.
+[cd] The colors of the German flag are "black", "red", and "gold".
 
 # 
 

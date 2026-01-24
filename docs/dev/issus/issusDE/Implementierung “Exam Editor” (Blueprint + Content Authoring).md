@@ -38,7 +38,7 @@ Persistenz als Markdown im bestehenden Format, damit Parser/Renderer unveränder
     - `m1`: genau 1 korrekt (`-a` etc.), mind. 2 Optionen.
     - `m2`: mind. 2 korrekte Marker.
     - `tf`: Marker auf der nächsten non-empty line.
-    - `cl`: `%%...%%` darf nicht leer sein.
+    - `cl`: `%...%` darf nicht leer sein.
     - `qa`: Answer-Marker am Zeilenanfang (Exam-Modus line-start).
     - Hinweise/Warnungen bei Mischtypen (auto-grading Risiken).
 ### Out of Scope (für dieses Master Issue)
@@ -66,8 +66,8 @@ Persistenz als Markdown im bestehenden Format, damit Parser/Renderer unveränder
     - QA: Prompt + Answer-Text
     - TF: Prompt + true/false
     - M1/M2: Prompt + Optionsliste + korrekte Marker
-    - CL: Prompt mit `%%...%%`
-    - CD: Prompt mit `tocken "token"`
+    - CL: Prompt mit `%...%`
+    - CD: Prompt mit `"token"`
     - CLD: Kombination aus CL + CD
 - Live-Validation und Fehlerhinweise mit “Fix actions” (z. B. “mind. 2 Optionen hinzufügen”).
 

@@ -6,9 +6,9 @@
 
 | Term | Answer |
 | --- | --- |
-| Alpha | %%first%% |
-| Beta | `second` |
-| Gamma | `third` and %%fourth%% |
+| Alpha | %first% |
+| Beta | "second" |
+| Gamma | "third" and %fourth% |
 #
 
 #exam
@@ -16,16 +16,16 @@
 
 | Term | Answer |
 | --- | --- |
-| Alpha | %%first%% |
-| Beta | %%second%% |
+| Alpha | %first% |
+| Beta | %second% |
 
 ---
 2) Table in exam prompt (CLD)
 
 | Term | Answer |
 | --- | --- |
-| Alpha | `first` |
-| Beta | `second` and %%third%% |
+| Alpha | "first" |
+| Beta | "second" and %third% |
 
 
 #card
@@ -95,7 +95,7 @@ d) Process
 | HTTP | 80 |
 | HTTPS | 443 |
 
-The default port for HTTPS is %%443%%.
+The default port for HTTPS is %443%.
 #
 
 #card
@@ -107,7 +107,7 @@ The default port for HTTPS is %%443%%.
 | Network        | 3            |
 | Data Link      | 2            |
 
-In the OSI model, end-to-end delivery is handled by the `Transport` layer, which is layer `4`.
+In the OSI model, end-to-end delivery is handled by the "Transport" layer, which is layer "4".
 #
 
 #card
@@ -118,7 +118,7 @@ In the OSI model, end-to-end delivery is handled by the `Transport` layer, which
 | TCP | Connection-oriented |
 | UDP | Connectionless |
 
-`TCP` is connection-oriented, while `UDP` is connectionless.
+"TCP" is connection-oriented, while "UDP" is connectionless.
 #
 
 #examend

@@ -58,6 +58,6 @@ b) Second
 
 #card
 [cld]
-[cl] The capital is %%Paris%%.
-[cd] Colors: `red`, `blue`.
+[cl] The capital is %Paris%.
+[cd] Colors: "red", "blue".
 #

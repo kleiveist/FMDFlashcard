@@ -83,19 +83,19 @@ d) 9
 5) cl + cl
 #card
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 6) cd + cd
 #card
 [cd]
-The colors of the German flag are `black`, `red` and `gold`.
+The colors of the German flag are "black", "red" and "gold".
 
 [cd]
-The colors of the German flag are `black`, `red` and `gold`.
+The colors of the German flag are "black", "red" and "gold".
 #
 
 ---
@@ -149,7 +149,7 @@ What does “least privilege” mean in the context of IT security?
 Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 11) qa + cd
@@ -159,7 +159,7 @@ What does “least privilege” mean in the context of IT security?
 Answer: Users and systems receive only the minimum privileges required to perform their task.
 
 [cd]
-The colors of the German flag are `black`, `red` and `gold`.
+The colors of the German flag are "black", "red" and "gold".
 #
 ---
 12) tf + m1
@@ -202,7 +202,7 @@ Statement:
 -true
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 15) tf + cd
@@ -213,7 +213,7 @@ Statement:
 -true
 
 [cd]
-The colors of the German flag are `black`, `red` and `gold`.
+The colors of the German flag are "black", "red" and "gold".
 #
 ---
 16) m1 + m2
@@ -245,7 +245,7 @@ c) 9
 -b
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 18) m1 + cd
@@ -258,7 +258,7 @@ c) 9
 -b
 
 [cd]
-The colors of the German flag are `black`, `red` and `gold`.
+The colors of the German flag are "black", "red" and "gold".
 #
 ---
 19) m2 + cl
@@ -273,7 +273,7 @@ d) 9
 -c
 
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ---
 20) m2 + cd
@@ -288,16 +288,16 @@ d) 9
 -c
 
 [cd]
-The colors of the German flag are `black`, `red` and `gold`.
+The colors of the German flag are "black", "red" and "gold".
 #
 ---
 21) cl + cd
 #card
 [cl]
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 
 [cd]
-The colors of the German flag are `black`, `red` and `gold`.
+The colors of the German flag are "black", "red" and "gold".
 #
 
 #examend

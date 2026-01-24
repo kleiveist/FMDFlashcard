@@ -83,19 +83,19 @@ d) 9
 5) cl + cl
 #card
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 6) cd + cd
 #card
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+Die Farben der deutschen Flagge sind "schwarz", "rot" und "gold".
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+Die Farben der deutschen Flagge sind "schwarz", "rot" und "gold".
 #
 
 ---
@@ -149,7 +149,7 @@ Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
 Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 11) qa + cd
@@ -159,7 +159,7 @@ Was bedeutet „Least Privilege“ im Kontext von IT-Sicherheit?
 Antwort: Benutzer und Systeme erhalten nur die minimal notwendigen Rechte, um ihre Aufgabe zu erfüllen.
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+Die Farben der deutschen Flagge sind "schwarz", "rot" und "gold".
 #
 ---
 12) tf + m1
@@ -202,7 +202,7 @@ Aussage:
 -true
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 15) tf + cd
@@ -213,7 +213,7 @@ Aussage:
 -true
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+Die Farben der deutschen Flagge sind "schwarz", "rot" und "gold".
 #
 ---
 16) m1 + m2
@@ -245,7 +245,7 @@ c) 9
 -b
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 18) m1 + cd
@@ -258,7 +258,7 @@ c) 9
 -b
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+Die Farben der deutschen Flagge sind "schwarz", "rot" und "gold".
 #
 ---
 19) m2 + cl
@@ -273,7 +273,7 @@ d) 9
 -c
 
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 20) m2 + cd
@@ -288,16 +288,16 @@ d) 9
 -c
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+Die Farben der deutschen Flagge sind "schwarz", "rot" und "gold".
 #
 ---
 21) cl + cd
 #card
 [cl]
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 
 [cd]
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+Die Farben der deutschen Flagge sind "schwarz", "rot" und "gold".
 #
 
 #examend

@@ -86,11 +86,22 @@ describe("validateCard", () => {
     expect(result.fieldErrors.syntax).toContain("drag token");
   });
 
+  it("ignores drag tokens inside inline code spans", () => {
+    const result = validateCard({
+      id: "cd-inline",
+      type: "cd",
+      prompt: 'Use `"token"` as inline code.',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.fieldErrors.syntax).toContain("drag token");
+  });
+
   it("flags cld prompts without both blanks and tokens", () => {
     const result = validateCard({
       id: "cld-1",
       type: "cld",
-      prompt: "Only %%blank%%.",
+      prompt: "Only %blank%.",
     });
 
     expect(result.valid).toBe(false);
@@ -103,8 +114,8 @@ describe("validateCard", () => {
       type: "cld",
       prompt: [
         "```sql",
-        'SELECT tocken "token" FROM table',
-        "WHERE column = %%value%%",
+        'SELECT "token" FROM table',
+        "WHERE column = %value%",
         "```",
       ].join("\n"),
     });

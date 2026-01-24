@@ -41,10 +41,10 @@
 
 |  |  |
 | --- | --- |
-| Only rows with a match in both tables | %%INNER JOIN%% |
-| All rows on the left + matching on the right (otherwise NULL) | %%LEFT JOIN%% |
-| All rows on the right + matching on the left (otherwise NULL) | %%RIGHT JOIN%% |
-| All rows from both sides, matches combined, otherwise NULL | %%FULL OUTER JOIN%% |
+| Only rows with a match in both tables | %INNER JOIN% |
+| All rows on the left + matching on the right (otherwise NULL) | %LEFT JOIN% |
+| All rows on the right + matching on the left (otherwise NULL) | %RIGHT JOIN% |
+| All rows from both sides, matches combined, otherwise NULL | %FULL OUTER JOIN% |
 
 
 # 
@@ -96,11 +96,11 @@
 
 |  |  |  |
 | --- | --- | --- |
-| Filter rows (before GROUP BY) | %%WHERE%% | SELECT \* FROM users WHERE age > 18; |
-| Group | %%GROUP BY%% | SELECT country, COUNT(\*) FROM users GROUP BY country; |
-| Filter groups (after GROUP BY) | %%HAVING%% | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
-| Sort | %%ORDER BY%% | SELECT \* FROM users ORDER BY created\_at DESC; |
-| Limit | %%LIMIT%% | SELECT \* FROM users ORDER BY id LIMIT 10; |
+| Filter rows (before GROUP BY) | %WHERE% | SELECT \* FROM users WHERE age > 18; |
+| Group | %GROUP BY% | SELECT country, COUNT(\*) FROM users GROUP BY country; |
+| Filter groups (after GROUP BY) | %HAVING% | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
+| Sort | %ORDER BY% | SELECT \* FROM users ORDER BY created\_at DESC; |
+| Limit | %LIMIT% | SELECT \* FROM users ORDER BY id LIMIT 10; |
 
 
 # 
@@ -142,10 +142,10 @@
 
 |  |  |
 | --- | --- |
-| Only rows with a match in both tables | `INNER JOIN` |
-| All rows on the left + matching on the right (otherwise NULL) | `LEFT JOIN` |
-| All rows on the right + matching on the left (otherwise NULL) | `RIGHT JOIN` |
-| All rows from both sides, matches combined, otherwise NULL | `FULL OUTER JOIN` |
+| Only rows with a match in both tables | "INNER JOIN" |
+| All rows on the left + matching on the right (otherwise NULL) | "LEFT JOIN" |
+| All rows on the right + matching on the left (otherwise NULL) | "RIGHT JOIN" |
+| All rows from both sides, matches combined, otherwise NULL | "FULL OUTER JOIN" |
 
 
 # 
@@ -197,11 +197,11 @@
 
 |  |  |  |
 | --- | --- | --- |
-| Filter rows (before GROUP BY) | `WHERE` | SELECT \* FROM users WHERE age > 18; |
-| Group | `GROUP BY` | SELECT country, COUNT(\*) FROM users GROUP BY country; |
-| Filter groups (after GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
-| Sort | `ORDER BY` | SELECT \* FROM users ORDER BY created\_at DESC; |
-| Limit | `LIMIT` | SELECT \* FROM users ORDER BY id LIMIT 10; |
+| Filter rows (before GROUP BY) | "WHERE" | SELECT \* FROM users WHERE age > 18; |
+| Group | "GROUP BY" | SELECT country, COUNT(\*) FROM users GROUP BY country; |
+| Filter groups (after GROUP BY) | "HAVING" | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > 10; |
+| Sort | "ORDER BY" | SELECT \* FROM users ORDER BY created\_at DESC; |
+| Limit | "LIMIT" | SELECT \* FROM users ORDER BY id LIMIT 10; |
 
 
 # 
@@ -243,10 +243,10 @@
 
 |  |  |
 | --- | --- |
-| Filter rows | `WHERE` SELECT \* FROM users WHERE age > %%18%%; |
-| Sort | `ORDER BY` SELECT \* FROM users ORDER BY created\_at %%DESC%%; |
-| Limit | `LIMIT` SELECT \* FROM users ORDER BY id LIMIT %%10%%; |
-| Group | `GROUP BY` SELECT country, COUNT(\*) FROM users GROUP BY %%country%%; |
+| Filter rows | "WHERE" SELECT \* FROM users WHERE age > %18%; |
+| Sort | "ORDER BY" SELECT \* FROM users ORDER BY created\_at %DESC%; |
+| Limit | "LIMIT" SELECT \* FROM users ORDER BY id LIMIT %10%; |
+| Group | "GROUP BY" SELECT country, COUNT(\*) FROM users GROUP BY %country%; |
 
 
 # 
@@ -291,20 +291,19 @@
 
 
 
-| \|  \|  \|  \| \| --- \| --- \| --- \| \| Filter rows \| `WHERE` \| SELECT \* FROM users WHERE age > %%18%%; \| \| Filter groups (after GROUP BY) \| `HAVING` \| SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %%10%%; \| \| Sort \| |  |  |
+| \|  \|  \|  \| \| --- \| --- \| --- \| \| Filter rows \| "WHERE" \| SELECT \* FROM users WHERE age > %18%; \| \| Filter groups (after GROUP BY) \| "HAVING" \| SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %10%; \| \| Sort \| |  |  |
 | --- | --- | --- |
 |  |  |  |
-| Filter rows | `WHERE` | SELECT \* FROM users WHERE age > %%18%%; |
-| Filter groups (after GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %%10%%; |
+| Filter rows | "WHERE" | SELECT \* FROM users WHERE age > %18%; |
+| Filter groups (after GROUP BY) | "HAVING" | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %10%; |
 | Sort |
-| Filter rows | `WHERE` | SELECT \* FROM users WHERE age > %%18%%; |
-| Filter groups (after GROUP BY) | `HAVING` | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %%10%%; |
-| Sort | `ORDER BY` | SELECT \* FROM users ORDER BY created\_at %%DESC%%; |
-| Limit | `LIMIT` | SELECT \* FROM users ORDER BY id LIMIT %%10%%; |
+| Filter rows | "WHERE" | SELECT \* FROM users WHERE age > %18%; |
+| Filter groups (after GROUP BY) | "HAVING" | SELECT country, COUNT(*) FROM users GROUP BY country HAVING COUNT(*) > %10%; |
+| Sort | "ORDER BY" | SELECT \* FROM users ORDER BY created\_at %DESC%; |
+| Limit | "LIMIT" | SELECT \* FROM users ORDER BY id LIMIT %10%; |
 
 
 # 
 
 
 \#examend
-

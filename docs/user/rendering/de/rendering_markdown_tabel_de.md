@@ -76,9 +76,9 @@ Fehlt aktuell konzeptionell.
 ---
 ### b) Gemischter Inhalt in Zellen
 Zellen dürfen enthalten:
-- Inline-Markdown (`**`, `` ` ``, `%% %%`)
+- Inline-Markdown (`**`, `` ` ``, `% %`)
 - `<br>` für Zeilenumbrüche
-- Tokens (z. B. `tocken "token"`)
+- Tokens (z. B. `"token"`)
 ➡ Editor darf das **nicht auflösen oder blockieren**.
 
 ---

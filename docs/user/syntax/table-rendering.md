@@ -44,24 +44,24 @@ If you do **not** want visible headings, use an **empty header**:
 - This is acceptable because token tables are limited in practice (typically **max. 3 columns**) and should fit the card layout without needing scrolling.
 ## Interactive content inside table cells
 ### CL (typed blanks) in tables
-Typed blanks are marked with `%%...%%` and can appear inside any table cell.
+Typed blanks are marked with `%...%` and can appear inside any table cell.
 ```q
 #card
 |   |   |
 |---|---|
-| Only rows with matches in both tables | %%INNER JOIN%% |
-| All rows from the left + matching right rows | %%LEFT JOIN%% |
+| Only rows with matches in both tables | %INNER JOIN% |
+| All rows from the left + matching right rows | %LEFT JOIN% |
 #
 ```
 ### CD (drag tokens) in tables
 
-Drag tokens are marked with `tocken "..."` and can be placed in table cells.
+Drag tokens are marked with `"..."` and can be placed in table cells.
 ```q
 #card
 |   |   |
 |---|---|
-| Filter rows | tocken "WHERE" |
-| Sort results | tocken "ORDER BY" |
+| Filter rows | "WHERE" |
+| Sort results | "ORDER BY" |
 #
 ```
 ### CLD (typed blanks + drag tokens) in tables
@@ -71,8 +71,8 @@ Combination of drag tokens and typed blanks inside table cells.
 #card
 |   |   |
 |---|---|
-| Filter | tocken "WHERE" SELECT * FROM users WHERE age > %%18%%; |
-| Limit  | tocken "LIMIT" SELECT * FROM users ORDER BY id LIMIT %%10%%; |
+| Filter | "WHERE" SELECT * FROM users WHERE age > %18%; |
+| Limit  | "LIMIT" SELECT * FROM users ORDER BY id LIMIT %10%; |
 #
 ```
 ## Tables inside exam blocks
@@ -84,15 +84,15 @@ Tables can also be part of an exam prompt within `#exam`.
 1) Fill in JOIN types (CL)
 |   |   |
 |---|---|
-| Only matches in both tables | %%INNER JOIN%% |
-| All left rows + matching right rows | %%LEFT JOIN%% |
+| Only matches in both tables | %INNER JOIN% |
+| All left rows + matching right rows | %LEFT JOIN% |
 
 ---
 2) Drag + type (CLD)
 |   |   |
 |---|---|
-| Filter | `WHERE` SELECT * FROM users WHERE age > %%18%%; |
-| Sort   | `ORDER BY` SELECT * FROM users ORDER BY created_at %%DESC%%; |
+| Filter | "WHERE" SELECT * FROM users WHERE age > %18%; |
+| Sort   | "ORDER BY" SELECT * FROM users ORDER BY created_at %DESC%; |
 #examend
 
 ```

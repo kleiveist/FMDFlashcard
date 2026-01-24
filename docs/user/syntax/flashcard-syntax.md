@@ -22,10 +22,10 @@ Markdown flashcards keep your notes readable and the parser precise. The only re
 
 ## Interaction highlights
 
-- **QA (free-text answers):** Place questions followed by an answer marker (`Answer:`, `Antwort:`, `answertocken:` etc.). Everything after the marker becomes the answer. Answers preserve line breaks, so multi-paragraph solutions are fine. Mixed QA + auto-graded parts use `---`.
+- **QA (free-text answers):** Place questions followed by an answer marker (for example `Answer:` or `Antwort:`). Everything after the marker becomes the answer. Answers preserve line breaks, so multi-paragraph solutions are fine. Mixed QA + auto-graded parts use `---`.
 - **True/False:** Write the statement, then on the very next non-empty line add `-true` or `-false` (normalized to your language). The parser looks for the marker immediately after the question block.
 - **Multiple choice (single / multi):** Use option lines like `a) Text`. Mark correct options with `-a`, `-b`, etc. A single marker means single-answer (m1), two or more markers classify the block as multi-answer (m2).
-- **Cloze interactions:** `%%solution%%` produces text inputs. Drag tokens use `tocken "token"` (cd). You can mix typed blanks and drag tokens inside the same cloze chunk; just keep the actual tokens populated. Backticks are treated as normal inline code.
+- **Cloze interactions:** `%solution%` produces text inputs. Drag tokens use `"token"` (cd). You can mix typed blanks and drag tokens inside the same cloze chunk; just keep the actual tokens populated. Backticks are treated as normal inline code.
 
 ## Composites and interactions
 

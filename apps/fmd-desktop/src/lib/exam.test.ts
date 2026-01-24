@@ -127,7 +127,7 @@ Answer: Real
 1) Table task
 | Term | Answer |
 | --- | --- |
-| Alpha | %%one%% |
+| Alpha | %one% |
 #
 #examend`;
 
@@ -237,12 +237,12 @@ d) 9
 -a
 -c`;
   const clBlock = `[cl]
-The capital of France is %%Paris%%.`;
+The capital of France is %Paris%.`;
   const cdBlock = `[cd]
-Colors: tocken "schwarz", tocken "rot", tocken "gold".`;
+Colors: "schwarz", "rot", "gold".`;
   const cldBlock = `[cld]
-[cl] The capital of France is %%Paris%%.
-[cd] Colors: tocken "schwarz", tocken "rot", tocken "gold".`;
+[cl] The capital of France is %Paris%.
+[cd] Colors: "schwarz", "rot", "gold".`;
 
   const buildCardBody = (...sections: string[]) => sections.join("\n\n");
   const buildExamMarkdown = (title: string, body: string, index = 1) => `#exam

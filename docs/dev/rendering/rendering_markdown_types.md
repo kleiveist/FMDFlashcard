@@ -49,7 +49,7 @@ This makes it substantially stronger as a specification:
 | Math (inline)                | `$a+b$`                    | ✔️       | text segment              |
 | Math (block)                 | `$$ … $$`                  | ✔️       | full block                |
 | Math block with `<br>`       | `<br>$$ … $$<br>`          | ✔️       | full block                |
-| Comment (FMD)                | `%%comment%%`              | ✔️       | text segment              |
+| Comment (FMD)                | `%comment%`              | ✔️       | text segment              |
 | Escape characters            | `\* \# \- \|`              | ✔️       | text segment              |
 | Link                         | `[text](url)`              | ✔️       | text segment              |
 | Autolink                     | `https://…`                | ✔️       | text segment              |
@@ -67,9 +67,9 @@ This makes it substantially stronger as a specification:
 | MC option                    | `a)` `b)`                  | ✔️       | paragraph                 |
 | MC answer marker             | `-a` `-b`                  | ✔️       | marker only               |
 | True/False marker            | `-true` / `-false`         | ✔️       | marker only               |
-| Cloze (typed)                | `%%answer%%`               | ✔️       | text segment              |
-| Cloze (drag)                 | `tocken "token"`           | ✔️       | text segment              |
-| Combination cl+cd            | `%%text%%` + `tocken "token"` | ✔️       | text segment              |
+| Cloze (typed)                | `%answer%`               | ✔️       | text segment              |
+| Cloze (drag)                 | `"token"`           | ✔️       | text segment              |
+| Combination cl+cd            | `%text%` + `"token"` | ✔️       | text segment              |
 | Separator marker (exam/composite) | `---`                 | ✔️       | full block                |
 | Multiple separator markers   | `--- ---`                  | ✔️       | full block                |
 | Nested blocks                | List → Quote → Code        | ✔️       | block hierarchy           |

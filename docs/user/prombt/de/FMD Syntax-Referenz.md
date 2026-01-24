@@ -162,34 +162,34 @@ Optionen wie bei m1
 Mindestens zwei korrekte Marker -x (z. B. -a und -d)
 
 cl — Cloze (Typed Blanks)
-Lückentext mit freier Eingabe. Lösungen stehen in %%...%%.
+Lückentext mit freier Eingabe. Lösungen stehen in %...%.
 
 Beispiel
 
 md
 Code kopieren
 #card
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 Regeln
 
-Jedes %%...%% erzeugt ein Eingabefeld.
+Jedes %...% erzeugt ein Eingabefeld.
 
-Inhalt in %%...%% ist die Lösung (typisch: trim + case-normalisiert).
+Inhalt in %...% ist die Lösung (typisch: trim + case-normalisiert).
 
 cd — Cloze (Drag Tokens)
-Drag/Drop-Tokens mit `tocken "..."`. Das Token selbst ist die Lösung.
+Drag/Drop-Tokens mit `"..."`. Das Token selbst ist die Lösung.
 
 Beispiel
 
 md
 Code kopieren
 #card
-Ordne zu: HTTP ist ein tocken "application-layer" Protokoll.
+Ordne zu: HTTP ist ein "application-layer" Protokoll.
 #
 Regeln
 
-Tokens werden mit `tocken "token"` markiert.
+Tokens werden mit `"token"` markiert.
 
 UI kann Tokens als “Tokenbank” / Drag-Elemente darstellen (je nach Implementierung).
 
@@ -201,13 +201,13 @@ Beispiel
 md
 Code kopieren
 #card
-Die API liefert %%JSON%% und verwendet typischerweise tocken "GET" für das Abrufen von Ressourcen.
+Die API liefert %JSON% und verwendet typischerweise "GET" für das Abrufen von Ressourcen.
 #
 Regeln
 
-%%...%% für Typed Blanks
+%...% für Typed Blanks
 
-`tocken "token"` für Drag Tokens
+`"token"` für Drag Tokens
 
 Geeignet für Code-/Konfig-Aufgaben, bei denen sowohl Einsetzen als auch Tippen sinnvoll ist.
 

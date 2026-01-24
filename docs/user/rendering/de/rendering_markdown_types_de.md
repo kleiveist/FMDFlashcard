@@ -151,7 +151,7 @@ Damit wird sie als Spezifikation deutlich stärker:
 | Mathe-Inline                 | `$a+b$`                    | ✔️          | Textabschnitt            |
 | Mathe-Block                  | `$$ … $$`                  | ✔️          | vollständiger Block      |
 | Mathe-Block mit `<br>`       | `<br>$$ … $$<br>`          | ✔️          | vollständiger Block      |
-| Kommentar (FMD)              | `%%comment%%`              | ✔️          | Textabschnitt            |
+| Kommentar (FMD)              | `%comment%`              | ✔️          | Textabschnitt            |
 | Escape-Zeichen               | `\* \# \- \|`              | ✔️          | Textabschnitt            |
 | Link                         | `[text](url)`              | ✔️          | Textabschnitt            |
 | Autolink                     | `https://…`                | ✔️          | Textabschnitt            |
@@ -169,9 +169,9 @@ Damit wird sie als Spezifikation deutlich stärker:
 | MC-Option                    | `a)` `b)`                  | ✔️          | Absatz                   |
 | MC-Antwortmarker             | `-a` `-b`                  | ✔️          | nur Marker               |
 | True/False-Marker            | `-true` / `-false`         | ✔️          | nur Marker               |
-| Cloze (Typed)                | `%%answer%%`               | ✔️          | Textabschnitt            |
-| Cloze (Drag)                 | `tocken "token"`           | ✔️          | Textabschnitt            |
-| Kombination cl+cd            | `%%text%%` + `tocken "token"` | ✔️          | Textabschnitt            |
+| Cloze (Typed)                | `%answer%`               | ✔️          | Textabschnitt            |
+| Cloze (Drag)                 | `"token"`           | ✔️          | Textabschnitt            |
+| Kombination cl+cd            | `%text%` + `"token"` | ✔️          | Textabschnitt            |
 | Trennmarker (Exam/Composite) | `---`                      | ✔️          | vollständiger Block      |
 | Mehrfache Trennmarker        | `--- ---`                  | ✔️          | vollständiger Block      |
 | Verschachtelte Blöcke        | Liste → Zitat → Code       | ✔️          | Blockhierarchie          |

@@ -76,12 +76,12 @@ TASK REQUIREMENTS (10 tasks total):
 10) Section 4 (10 points) – Application question with code:
 - Use cld (combination of Typed Blanks and Drag Tokens):
   - Integrate into the task text:
-    - at least 3 Typed Blanks in the format %%...%%
-    - at least 5 Drag Tokens in the format tocken "token"
+    - at least 3 Typed Blanks in the format %...%
+    - at least 5 Drag Tokens in the format "token"
   - Context must be a realistic mini use case (e.g., code review, bugfix, API call, SQL query, config snippet).
   - The task must test genuine application (not just definitions).
   - Use tokens so that mapping/inserting into blanks is possible (token bank behavior).
-  - Provide NO separate prose solution; the solutions are embedded in %%...%%.
+  - Provide NO separate prose solution; the solutions are embedded in %...%.
 
 FORMAT RULES:
 - Each task starts with "1)" / "2)" etc. (one line).

@@ -25,7 +25,7 @@ The Flashcards page is the standard review mode. It loads flashcards found in yo
 
 ## Notes / tips
 
-- If a card renders unexpectedly, verify marker placement (`-true`, `-a`, `%%...%%`, `tocken "..."`).
+- If a card renders unexpectedly, verify marker placement (`-true`, `-a`, `%...%`, `"..."`).
 
 ## Related docs
 

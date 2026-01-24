@@ -44,12 +44,12 @@ d) 9
 ---
 5) Cloze – Typed blanks (cl)
 #card
-Die Hauptstadt von Frankreich ist %%Paris%%.
+Die Hauptstadt von Frankreich ist %Paris%.
 #
 ---
 6) Cloze – Drag tokens (cd)
 #card
-Die Farben der deutschen Flagge sind `schwarz`, `rot` und `gold`.
+Die Farben der deutschen Flagge sind "schwarz", "rot" und "gold".
 #
 
 #examend

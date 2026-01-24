@@ -209,12 +209,12 @@ Fehlerhaftes Snippet (zu korrigieren/zu vervollständigen):
 
 
 ```
-CREATE VIEW %%ViewName%% AS
-SELECT %%Spalte1%%, %%Spalte2%%, %%Spalte3%%, %%Spalte4%%
-FROM %%TabelleLinks%% `INNER JOIN` %%TabelleRechts%%
-%%JoinKlausel%% %%JoinBedingung%%
-`WHERE` %%FilterBedingung%%
-`ORDER BY` %%SortierSpalte%% %%SortierRichtung%%;
+CREATE VIEW %ViewName% AS
+SELECT %Spalte1%, %Spalte2%, %Spalte3%, %Spalte4%
+FROM %TabelleLinks% "INNER JOIN" %TabelleRechts%
+%JoinKlausel% %JoinBedingung%
+"WHERE" %FilterBedingung%
+"ORDER BY" %SortierSpalte% %SortierRichtung%;
 ```
 
 
@@ -222,7 +222,7 @@ Hinweise:
 
 
 - Setzen Sie als View-Namen einen sprechenden Namen.
-- Wählen Sie für %%JoinKlausel%% entweder `ON` oder `USING` passend zur Join-Bedingung.
+- Wählen Sie für %JoinKlausel% entweder "ON" oder "USING" passend zur Join-Bedingung.
 - Die Filterbedingung soll exakt auf Verfügbarkeit „sofort“ prüfen.
 
 
@@ -267,5 +267,4 @@ ORDER BY Artikel.Name ASC;
 \#examend
 
 
-\`\`
-
+\"\"

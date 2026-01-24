@@ -2,9 +2,12 @@
  * @file apps/fmd-desktop/src/pages/exam-editor/components/ContentForms.tsx
  */
 
+import { useMemo, useState } from "react";
 import type { CardBlueprint, ChoiceOption } from "../../../features/exam-editor/types";
 import type { CardValidation } from "../../../features/exam-editor/validation";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
+import { ClozeCard as ClozeCardPreview } from "../../../components/flashcards/ClozeCard";
+import { parseFlashcards, type ClozeCard as ClozeCardType } from "../../../lib/flashcards";
 import { HelpEditor } from "./HelpEditor";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 
@@ -36,6 +39,22 @@ type ChoiceCardFormProps = BaseCardFormProps & {
 
 type ClozeCardFormProps = BaseCardFormProps & {
   card: Extract<CardBlueprint, { type: "cl" | "cd" | "cld" }>;
+};
+
+const noop = (..._args: unknown[]) => {};
+
+const buildClozePreview = (prompt: string): ClozeCardType | null => {
+  if (!prompt.trim()) {
+    return null;
+  }
+  const source = `#card\n${prompt}\n#`;
+  const parsed = parseFlashcards(source, { answerMatch: "line-start" });
+  const card = parsed[0];
+  if (!card || card.kind !== "composite") {
+    return null;
+  }
+  const clozePart = card.parts.find((part) => part.kind === "cloze");
+  return clozePart && clozePart.kind === "cloze" ? clozePart : null;
 };
 
 type CardContentFormProps = {
@@ -239,21 +258,65 @@ const ClozeCardForm = ({
   validation,
   onPromptChange,
   onHelpChange,
-}: ClozeCardFormProps) => (
-  <div className="card-form">
-    {renderPromptField(card, validation, onPromptChange)}
-    <div className="hint-box">
+}: ClozeCardFormProps) => {
+  const [showPreview, setShowPreview] = useState(false);
+  const previewCard = useMemo(() => buildClozePreview(card.prompt), [card.prompt]);
+
+  return (
+    <div className="card-form">
+      {renderPromptField(card, validation, onPromptChange)}
+      <div className="hint-box">
       {card.type === "cl" ? (
-        <p>Use %%answer%% to create typed blanks.</p>
+        <p>Use %answer% to create typed blanks.</p>
       ) : card.type === "cd" ? (
-        <p>Use tocken "token" to create drag blanks.</p>
+        <p>Use "token" to create drag blanks.</p>
       ) : (
-        <p>Combine %%blanks%% with tocken "tokens" for mixed cloze.</p>
+        <p>Combine %blanks% with "tokens" for mixed cloze.</p>
       )}
+      </div>
+      <div className="cloze-preview">
+        <div className="cloze-preview-header">
+          <span className="label">Preview</span>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={() => setShowPreview((prev) => !prev)}
+          >
+            {showPreview ? "Hide preview" : "Show preview"}
+          </button>
+        </div>
+        {showPreview ? (
+          previewCard ? (
+            <div className="help-preview cloze-preview-surface">
+              <ClozeCardPreview
+                card={previewCard}
+                cardIndex={0}
+                submitted
+                responses={{}}
+                showSubmit={false}
+                showResult={false}
+                revealCorrectness={false}
+                showSolution={false}
+                helpEnabled={false}
+                onInputChange={noop}
+                onTokenDrop={noop}
+                onTokenRemove={noop}
+                onTokenDragStart={noop}
+                onBlankDragOver={noop}
+                onSubmit={noop}
+              />
+            </div>
+          ) : (
+            <div className="help-preview cloze-preview-empty">
+              Add at least one cloze marker to see the preview.
+            </div>
+          )
+        ) : null}
+      </div>
+      {renderHelpField("Card help / hint", card.helpText ?? "", onHelpChange)}
     </div>
-    {renderHelpField("Card help / hint", card.helpText ?? "", onHelpChange)}
-  </div>
-);
+  );
+};
 
 export const CardContentForm = ({
   card,

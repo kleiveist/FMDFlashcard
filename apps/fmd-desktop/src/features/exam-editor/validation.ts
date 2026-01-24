@@ -5,6 +5,7 @@
  * - Validiert Exam-Editor Blueprints ohne Help-Content.
  */
 
+import { stripInlineCodeFromLine } from "../../lib/flashcards";
 import type { CardBlueprint, ExamBlueprint, ExamTaskBlueprint } from "./types";
 
 export type CardValidation = {
@@ -48,7 +49,7 @@ const validatePrompt = (prompt: string, validation: CardValidation) => {
 };
 
 const analyzeCloze = (prompt: string) => {
-  const pattern = /%%(.*?)%%/g;
+  const pattern = /%(.*?)%/g;
   let match: RegExpExecArray | null = null;
   let count = 0;
   let hasEmpty = false;
@@ -63,15 +64,38 @@ const analyzeCloze = (prompt: string) => {
   return { count, hasEmpty };
 };
 
-const stripFencedBlocks = (prompt: string) => {
+const sanitizeClozePrompt = (prompt: string) => {
   const lines = prompt.replace(/\r\n?/g, "\n").split("\n");
   const fencePattern = /^\s*(```|~~~)/;
-  const output = lines.filter((line) => !fencePattern.test(line));
+  const output: string[] = [];
+  let inFence = false;
+  let fenceToken = "";
+
+  lines.forEach((line) => {
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      return;
+    }
+    if (inFence) {
+      output.push(line);
+      return;
+    }
+    output.push(stripInlineCodeFromLine(line));
+  });
+
   return output.join("\n");
 };
 
 const analyzeTokens = (prompt: string) => {
-  const pattern = /\btocken\b\s*"((?:[^"\\]|\\.)*)"/g;
+  const pattern = /"((?:[^"\\]|\\.)*)"/g;
   let match: RegExpExecArray | null = null;
   let count = 0;
   let hasEmpty = false;
@@ -166,14 +190,14 @@ const validateClozeCard = (
     optionErrors: {},
   };
   validatePrompt(card.prompt, validation);
-  const sanitizedPrompt = stripFencedBlocks(card.prompt);
+  const sanitizedPrompt = sanitizeClozePrompt(card.prompt);
   const cloze = analyzeCloze(sanitizedPrompt);
   const tokens = analyzeTokens(sanitizedPrompt);
   const syntaxMessages: string[] = [];
 
   if (card.type === "cl" || card.type === "cld") {
     if (cloze.count === 0) {
-      syntaxMessages.push("Add at least one cloze blank (%%...%%).");
+      syntaxMessages.push("Add at least one cloze blank (%...%).");
     }
     if (cloze.hasEmpty) {
       syntaxMessages.push("Cloze blanks must not be empty.");
@@ -182,7 +206,7 @@ const validateClozeCard = (
 
   if (card.type === "cd" || card.type === "cld") {
     if (tokens.count === 0) {
-      syntaxMessages.push('Add at least one drag token (tocken "...").');
+      syntaxMessages.push('Add at least one drag token ("...").');
     }
     if (tokens.hasEmpty) {
       syntaxMessages.push("Drag tokens must not be empty.");

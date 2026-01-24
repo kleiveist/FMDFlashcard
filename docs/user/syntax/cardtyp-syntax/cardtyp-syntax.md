@@ -24,36 +24,35 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Code `cd`: Cloze (drag tokens)
 
-Drag tokens use the `tocken "token"` syntax to create draggable pieces learners can drop into blanks. The parser reads these markers as drag-and-drop solutions inside the same cloze pipeline.
+Drag tokens use the `"token"` syntax to create draggable pieces learners can drop into blanks. The parser reads these markers as drag-and-drop solutions inside the same cloze pipeline.
 
 ```md
 #card
-The colors of the German flag are tocken "black", tocken "red", and tocken "gold".
+The colors of the German flag are "black", "red", and "gold".
 #
 ```
 
-- Each `tocken "token"` marker becomes a drag token that learners can drag into the drop zone associated with that blank.
+- Each `"token"` marker becomes a drag token that learners can drag into the drop zone associated with that blank.
 - Empty tokens are ignored, so always place visible text inside the quotes.
 - Drag tokens work alongside typed cloze blanks; both are treated as `cloze` parts with `kind` `drag` in the segment list.
 - The drag-token list is shuffled before display; the order does not match the order in the source text.
 - The shuffle order is seeded by the card/part identity so repeated views keep the same arrangement.
+
 ## Behavior notes
 
 - Use drag tokens when you want the learner to match predefined units instead of typing them.
 - Drag and typed blanks render together on the same UI if they belong to the same block. If you need to mix drag tokens with other modes (TF or MC), separate them with `---` or split into different tasks.
 - Backticks are treated as normal inline code and do not create drag blanks.
-## Migration note
 
-To locate legacy drag-token markers in vault files:
-```sh
-rg -n --glob "*.md" "tocken`" /path/to/vault
-```
-### Typed mit codeblock
+### Drag tokens mit Codeblock
+
+````md
 #card
 ```q
-The colors of the German flag are tocken "black", tocken "red", and tocken "gold".
+The colors of the German flag are "black", "red", and "gold".
 ```
 #
+````
 
 ---
 
@@ -64,29 +63,32 @@ The colors of the German flag are tocken "black", tocken "red", and tocken "gold
 <!-- AUTO-GENERATED:backlink END -->
 # Code `cl`: Cloze (typed blanks)
 
-Typed clozes use the `%%...%%` syntax to turn inline fragments into input fields (`cl`). The learner must type the missing words exactly as written (normalization is trim-and-lowercase by default).
+Typed clozes use the `%...%` syntax to turn inline fragments into input fields (`cl`). The learner must type the missing words exactly as written (normalization is trim-and-lowercase by default).
 
 ```md
 #card
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 #
 ```
 
-- Each `%%…%%` pair becomes an input blank. The parser trims the text inside; blanks without any content are rejected.
-- You can combine cloze blanks and drag tokens in the same question as long as the interactions stay within one block. Drag tokens use `tocken "..."`. When cl and cd coexist, the parser spawns both blank and drag segments.
-- The blank solutions are case-insensitive and trimmed; punctuation inside the solution is preserved, so `%%Paris%%` differs from `%%Paris,%%`.
+- Each `%…%` pair becomes an input blank. The parser trims the text inside; blanks without any content are rejected.
+- You can combine cloze blanks and drag tokens in the same question as long as the interactions stay within one block. Drag tokens use `"..."`. When cl and cd coexist, the parser spawns both blank and drag segments.
+- The blank solutions are case-insensitive and trimmed; punctuation inside the solution is preserved, so `%Paris%` differs from `%Paris,%`.
 
 ## Behavior notes
 
 - Cloze blanks can appear in the prompt or in body text, and the parser splits them into segments for the UI.
 - If you need to mix typed blanks with other interactions (MC, TF), insert `---` between them or split them into separate tasks to keep scoring manageable.
 
-### Typed mit codeblock
+### Typed mit Codeblock
+
+````md
 #card
 ```sql
-The capital of France is %%Paris%%.
+The capital of France is %Paris%.
 ```
 #
+````
 
 ---
 
@@ -98,8 +100,8 @@ The capital of France is %%Paris%%.
 # Code `cld`: Cloze (typed blanks + drag tokens)
 
 `cld` is the combined Cloze format that supports **both**:
-- **Typed blanks** using `%%...%%`
-- **Drag tokens** using `tocken "token"`
+- **Typed blanks** using `%...%`
+- **Drag tokens** using `"token"`
 
 - This lets you build a single cloze interaction where learners can either type answers (typed blanks) and/or use a token bank (drag tokens) within the same part.
 - The drag-token list is shuffled before display; the order does not match the order in the source text.
@@ -109,32 +111,34 @@ The capital of France is %%Paris%%.
 ## Syntax
 
 ### Typed blanks
-Use `%%...%%` to create an input field. The text inside is the **solution**.
+Use `%...%` to create an input field. The text inside is the **solution**.
 
 Example:
 ```md
 #card
-The `capital` of France is %%Paris%%.
+The `capital` of France is %Paris%.
 #
 ```
 ---
 ### Drag tokens
-Use `tocken "..."` to create a drag token. The text inside the quotes is the **solution**.
+Use `"..."` to create a drag token. The text inside the quotes is the **solution**.
 
 Example:
 ```md
 #card
-The colors are tocken "black", tocken "red", and tocken "gold".
+The colors are "black", "red", and "gold".
 #
 ```
 ---
-### Typed mit codeblock
+### Typed mit Codeblock
 
+````md
 #card
 ```c#
-The `capital` of France is %%Paris%%.
+The `capital` of France is %Paris%.
 ```
 #
+````
 
 
 

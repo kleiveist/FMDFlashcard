@@ -283,8 +283,8 @@ Answer: Done
     const task = buildTaskFromMarkdown(`#card
 | Term | Answer |
 | --- | --- |
-| Alpha | %%one%% |
-| Beta | tocken "two" |
+| Alpha | %one% |
+| Beta | "two" |
 #`);
 
     const markup = renderToStaticMarkup(

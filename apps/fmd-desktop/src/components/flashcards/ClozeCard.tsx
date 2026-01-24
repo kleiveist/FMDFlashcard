@@ -121,8 +121,10 @@ export const ClozeCard = ({
       return { markdownText: placeholderText, questionText: "" };
     }
     const combinedText = `${card.question}\n${placeholderText}`;
-    const tableLineIndices = findTableLineIndices(combinedText.split("\n"));
-    if (tableLineIndices.has(0)) {
+    const combinedLines = combinedText.split("\n");
+    const tableLineIndices = findTableLineIndices(combinedLines);
+    const isFenceStart = /^(```|~~~)/.test(combinedLines[0]?.trimStart() ?? "");
+    if (tableLineIndices.has(0) || isFenceStart) {
       return { markdownText: combinedText, questionText: "" };
     }
     return { markdownText: placeholderText, questionText: card.question };

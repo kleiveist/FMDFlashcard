@@ -71,9 +71,9 @@ Conceptually missing right now.
 ---
 ### b) Mixed content in cells
 Cells may contain:
-- inline Markdown (`**`, `` ` ``, `%% %%`)
+- inline Markdown (`**`, `` ` ``, `% %`)
 - `<br>` for line breaks
-- tokens (e.g., `tocken "token"`)
+- tokens (e.g., `"token"`)
 ➡ The editor must **not** resolve, rewrite, or block this content.
 
 ---

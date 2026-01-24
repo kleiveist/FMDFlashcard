@@ -598,6 +598,31 @@
   padding: 10px;
 }
 
+.cloze-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cloze-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cloze-preview-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.cloze-preview-surface .flashcard-item {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
 .choice-row {
   display: flex;
   gap: 12px;
