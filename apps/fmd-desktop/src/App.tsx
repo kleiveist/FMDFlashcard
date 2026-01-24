@@ -71,6 +71,16 @@ const AppContent = () => {
         : null,
     [closeCommand, platform, settings.keyboardShortcuts.bindings],
   );
+  const requestDashboardViewChange = useCallback(
+    (nextView: DashboardView) => {
+      if (activeTab === "dashboard" && dashboardRef.current) {
+        dashboardRef.current.requestVaultViewChange(nextView);
+        return;
+      }
+      setDashboardView(nextView);
+    },
+    [activeTab],
+  );
   const handleTabChange = useCallback(
     (tab: StudySectionKey) => {
       setActiveTab(tab);
@@ -80,6 +90,13 @@ const AppContent = () => {
   );
   const handleStudySectionSelect = useCallback(
     (tab: StudySectionKey) => {
+      if (tab === "dashboard") {
+        const nextView: DashboardView =
+          dashboardView === "markdown" ? "exam" : "markdown";
+        requestDashboardViewChange(nextView);
+        handleTabChange("dashboard");
+        return;
+      }
       handleTabChange(tab);
       if (tab === "flashcard" && !flashcards.isFlashcardScanning) {
         void flashcards.handleFlashcardScan();
@@ -93,7 +110,14 @@ const AppContent = () => {
         void spacedRepetition.handleSpacedRepetitionActiveUserLoadCards();
       }
     },
-    [flashcards, fastFlashcards, handleTabChange, spacedRepetition],
+    [
+      dashboardView,
+      flashcards,
+      fastFlashcards,
+      handleTabChange,
+      requestDashboardViewChange,
+      spacedRepetition,
+    ],
   );
 
   useEffect(() => {
@@ -125,17 +149,6 @@ const AppContent = () => {
   useEffect(() => {
     logWordPressFeatureStatus();
   }, []);
-
-  const requestDashboardViewChange = useCallback(
-    (nextView: DashboardView) => {
-      if (activeTab === "dashboard" && dashboardRef.current) {
-        dashboardRef.current.requestVaultViewChange(nextView);
-        return;
-      }
-      setDashboardView(nextView);
-    },
-    [activeTab],
-  );
 
   const handleOpenHelp = useCallback(() => {
     help.setActiveTopicId(DEFAULT_HELP_TOPIC_ID);
@@ -182,6 +195,7 @@ const AppContent = () => {
       } ${
         isMobileNavOpen ? "nav-open" : ""
       }`}
+      data-study-subview={dashboardView}
     >
       {showStudySectionNav ? (
         <StudySectionNav
