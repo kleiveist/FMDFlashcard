@@ -31,7 +31,7 @@ type StudySectionNavProps = {
   onMobileNavOpen: () => void;
   showNoteAction?: boolean;
   onNoteAction?: () => void;
-  noteActionRef?: RefObject<HTMLButtonElement>;
+  noteActionRef?: RefObject<HTMLButtonElement | null>;
   isNoteActionActive?: boolean;
 };
 
