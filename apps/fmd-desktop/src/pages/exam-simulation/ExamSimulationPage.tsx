@@ -63,6 +63,7 @@ export const ExamSimulationPage = () => {
     examFilesState,
     examFilesError,
     examRuns,
+    examRunDeleteError,
     selectedExamFile,
     previewExamParse,
     plannedTaskCount,
@@ -88,6 +89,7 @@ export const ExamSimulationPage = () => {
     conversionDecisions,
     conversionPending,
     conversionError,
+    handleDeleteExamRun,
     handleStartExam,
     handleResetExam,
     handleSubmitExam,
@@ -171,8 +173,6 @@ export const ExamSimulationPage = () => {
   const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const isOverviewStage = stage === "idle";
-  const canShowStatistics = examRuns.length > 0;
-  const resolvedOverviewTab = canShowStatistics ? overviewTab : "ready";
   const showOverviewToggle = isOverviewStage;
   const viewToggleDisabled = isTableView && !examRunning;
   const timelineVisible = examTimerEnabled && examShowTimeline;
@@ -206,19 +206,15 @@ export const ExamSimulationPage = () => {
           >
             READY
           </button>
-          {canShowStatistics ? (
-            <button
-              type="button"
-              className={`pill pill-button ${
-                overviewTab === "statistics" ? "active" : ""
-              }`}
-              onClick={() => setOverviewTab("statistics")}
-              role="tab"
-              aria-selected={overviewTab === "statistics"}
-            >
-              Statistics
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className={`pill pill-button ${overviewTab === "statistics" ? "active" : ""}`}
+            onClick={() => setOverviewTab("statistics")}
+            role="tab"
+            aria-selected={overviewTab === "statistics"}
+          >
+            Statistics
+          </button>
         </div>
         {isTableView ? (
           <button
@@ -295,12 +291,6 @@ export const ExamSimulationPage = () => {
       setOverviewTab("ready");
     }
   }, [overviewTab, stage]);
-
-  useEffect(() => {
-    if (!canShowStatistics && overviewTab !== "ready") {
-      setOverviewTab("ready");
-    }
-  }, [canShowStatistics, overviewTab]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -412,7 +402,7 @@ export const ExamSimulationPage = () => {
             {stage === "idle" ? (
               <div className="exam-overview">
                 <div className="exam-overview-body">
-                  {resolvedOverviewTab === "ready" ? (
+                  {overviewTab === "ready" ? (
                     <ExamIdlePanel
                       selectedFile={selectedExamFile}
                       previewState={preview.previewState}
@@ -433,6 +423,8 @@ export const ExamSimulationPage = () => {
                     <ExamStatisticsPanel
                       runs={examRuns}
                       gradeScaleId={settings.examGradeScale}
+                      onDeleteRun={handleDeleteExamRun}
+                      deleteError={examRunDeleteError}
                     />
                   )}
                 </div>
@@ -473,9 +465,24 @@ export const ExamSimulationPage = () => {
                 )
               ) : stage === "finished" ? (
                 results ? (
-                  <ExamResultsPanel
-                    results={results}
-                  />
+                  <>
+                    <section className="panel exam-panel">
+                      <div className="exam-overview">
+                        <div className="exam-overview-body">
+                          <ExamStatisticsPanel
+                            runs={examRuns}
+                            gradeScaleId={settings.examGradeScale}
+                            onDeleteRun={handleDeleteExamRun}
+                            deleteError={examRunDeleteError}
+                            showTabs={false}
+                          />
+                        </div>
+                      </div>
+                    </section>
+                    <section className="panel exam-panel">
+                      <ExamResultsPanel results={results} />
+                    </section>
+                  </>
                 ) : (
                   <div className="empty-state">No results available yet.</div>
                 )

@@ -22,6 +22,9 @@ import {
 type ExamStatisticsPanelProps = {
   runs: ExamRun[];
   gradeScaleId: ExamGradeScaleId;
+  onDeleteRun: (runId: string) => void;
+  deleteError?: string;
+  showTabs?: boolean;
 };
 
 type StatsTab = "last" | "history";
@@ -60,6 +63,9 @@ const getStatusDescriptor = (percent: number) => {
 export const ExamStatisticsPanel = ({
   runs,
   gradeScaleId,
+  onDeleteRun,
+  deleteError,
+  showTabs = true,
 }: ExamStatisticsPanelProps) => {
   const [activeTab, setActiveTab] = useState<StatsTab>("last");
   const [userFilter, setUserFilter] = useState("all");
@@ -68,6 +74,7 @@ export const ExamStatisticsPanel = ({
 
   const sortedRuns = useMemo(() => sortExamRunsByDateDesc(runs), [runs]);
   const lastRun = sortedRuns[0] ?? null;
+  const hasRuns = sortedRuns.length > 0;
   const gradeScaleLabel = formatExamGradeScale(gradeScaleId);
 
   const userOptions = useMemo(() => {
@@ -176,7 +183,7 @@ export const ExamStatisticsPanel = ({
             </div>
           </div>
         ) : (
-          <div className="empty-state">No exam runs recorded yet.</div>
+          <div className="empty-state">Noch keine Bewertung vorhanden.</div>
         )}
         <span className="helper-text">Notenskala: {gradeScaleLabel}</span>
       </div>
@@ -184,6 +191,9 @@ export const ExamStatisticsPanel = ({
   };
 
   const renderHistory = () => {
+    const emptyLabel = hasRuns
+      ? "No exam runs match this filter."
+      : "Noch keine Bewertung vorhanden.";
     return (
       <div className="exam-history">
         <div className="exam-history-filters">
@@ -231,7 +241,7 @@ export const ExamStatisticsPanel = ({
           </label>
         </div>
         {filteredRuns.length === 0 ? (
-          <div className="empty-state">No exam runs match this filter.</div>
+          <div className="empty-state">{emptyLabel}</div>
         ) : (
           <div className="exam-history-table">
             <div className="exam-history-row header">
@@ -243,6 +253,7 @@ export const ExamStatisticsPanel = ({
               <span className="exam-history-cell">Status</span>
               <span className="exam-history-cell">Duration</span>
               <span className="exam-history-cell">Grade</span>
+              <span className="exam-history-cell action" aria-hidden="true" />
             </div>
             {filteredRuns.map((run) => (
               <div key={run.id} className="exam-history-row">
@@ -266,10 +277,43 @@ export const ExamStatisticsPanel = ({
                   {formatExamDuration(run.durationMs)}
                 </span>
                 <span className="exam-history-cell">{run.grade ?? "—"}</span>
+                <span className="exam-history-cell action">
+                  <button
+                    type="button"
+                    className="ghost small danger exam-history-delete"
+                    aria-label="Eintrag loeschen"
+                    title="Loeschen"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDeleteRun(run.id);
+                    }}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                      <path d="M10 11v6" />
+                      <path d="M14 11v6" />
+                    </svg>
+                  </button>
+                </span>
               </div>
             ))}
           </div>
         )}
+        {deleteError ? (
+          <span className="helper-text exam-history-error" role="status">
+            {deleteError}
+          </span>
+        ) : null}
         <span className="helper-text">Notenskala: {gradeScaleLabel}</span>
       </div>
     );
@@ -277,27 +321,33 @@ export const ExamStatisticsPanel = ({
 
   return (
     <div className="exam-stats">
-      <div className="pill-grid exam-stats-tabs" role="tablist" aria-label="Statistics tabs">
-        <button
-          type="button"
-          className={`pill pill-button ${activeTab === "last" ? "active" : ""}`}
-          onClick={() => setActiveTab("last")}
-          role="tab"
-          aria-selected={activeTab === "last"}
+      {showTabs ? (
+        <div
+          className="pill-grid exam-stats-tabs"
+          role="tablist"
+          aria-label="Statistics tabs"
         >
-          Last session
-        </button>
-        <button
-          type="button"
-          className={`pill pill-button ${activeTab === "history" ? "active" : ""}`}
-          onClick={() => setActiveTab("history")}
-          role="tab"
-          aria-selected={activeTab === "history"}
-        >
-          History
-        </button>
-      </div>
-      {activeTab === "last" ? renderLastSession() : renderHistory()}
+          <button
+            type="button"
+            className={`pill pill-button ${activeTab === "last" ? "active" : ""}`}
+            onClick={() => setActiveTab("last")}
+            role="tab"
+            aria-selected={activeTab === "last"}
+          >
+            Last session
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${activeTab === "history" ? "active" : ""}`}
+            onClick={() => setActiveTab("history")}
+            role="tab"
+            aria-selected={activeTab === "history"}
+          >
+            History
+          </button>
+        </div>
+      ) : null}
+      {(showTabs ? activeTab === "last" : true) ? renderLastSession() : renderHistory()}
     </div>
   );
 };

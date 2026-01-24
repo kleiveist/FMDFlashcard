@@ -53,6 +53,7 @@ import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
 import {
   appendExamRunStore,
+  deleteExamRunStoreEntry,
   loadExamRunStore,
   saveExamRunStore,
 } from "../../../features/user-vault/storage";
@@ -110,6 +111,7 @@ export const useExamSimulationViewModel = () => {
   const [examFilesError, setExamFilesError] = useState("");
   const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
   const [examRunsLoaded, setExamRunsLoaded] = useState(false);
+  const [examRunDeleteError, setExamRunDeleteError] = useState("");
   const [, setExamRunsMigratedFromLegacy] = useState(false);
   const [stage, setStage] = useState<ExamStage>("idle");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
@@ -413,6 +415,48 @@ export const useExamSimulationViewModel = () => {
   const handleResetExam = useCallback(() => {
     resetExamState();
   }, [resetExamState]);
+
+  const handleDeleteExamRun = useCallback(
+    async (runId: string) => {
+      if (!runId) {
+        return;
+      }
+      setExamRunDeleteError("");
+      let previousRuns: ExamRun[] = [];
+      let hadRun = false;
+
+      setExamRuns((prev) => {
+        previousRuns = prev;
+        hadRun = prev.some((run) => run.id === runId);
+        return prev.filter((run) => run.id !== runId);
+      });
+
+      if (!hadRun) {
+        return;
+      }
+
+      const nextRuns = previousRuns.filter((run) => run.id !== runId);
+      let success = true;
+
+      if (userVault.activeProfilePath) {
+        success = await deleteExamRunStoreEntry(userVault.activeProfilePath, runId);
+      } else {
+        try {
+          const storage: ExamRunStorage = { runs: nextRuns };
+          await invoke("save_exam_run_data", { storage });
+        } catch (error) {
+          console.warn("Failed to delete exam run entry", error);
+          success = false;
+        }
+      }
+
+      if (!success) {
+        setExamRuns(previousRuns);
+        setExamRunDeleteError("Eintrag konnte nicht geloescht werden.");
+      }
+    },
+    [userVault.activeProfilePath],
+  );
 
   const handleSubmitExam = useCallback(() => {
     if (stage !== "running") {
@@ -891,6 +935,7 @@ export const useExamSimulationViewModel = () => {
     examFilesState,
     examFilesError,
     examRuns,
+    examRunDeleteError,
     selectedExamFile,
     previewExamParse,
     plannedTaskCount,
@@ -921,6 +966,7 @@ export const useExamSimulationViewModel = () => {
     conversionDecisions,
     conversionPending,
     conversionError,
+    handleDeleteExamRun,
     handleStartExam,
     handleResetExam,
     handleSubmitExam,

@@ -709,3 +709,54 @@ export const appendExamRunStore = async (
     return false;
   }
 };
+
+export const deleteExamRunStoreEntry = async (
+  profilePath: string,
+  runId: string,
+): Promise<boolean> => {
+  const path = resolveExamRunsPath(profilePath);
+  try {
+    const { value, error } = await readJsonFileWithStatus<ExamRunProfileStore>(path);
+    let store: ExamRunProfileStore;
+    let needsWrite = false;
+
+    if (error) {
+      if (error === "parse") {
+        const backupPath = buildCorruptBackupPath(path);
+        try {
+          await renameJsonFile(path, backupPath);
+        } catch (renameError) {
+          console.warn(
+            "Failed to archive corrupt exam run store",
+            asErrorMessage(renameError, "Unknown error"),
+          );
+        }
+      }
+      store = createEmptyExamRunStore();
+      needsWrite = true;
+    } else {
+      const migrated = migrateExamRunStore(value);
+      store = migrated.store;
+      needsWrite = migrated.didMigrate;
+    }
+
+    const nextRuns = store.runs.filter((entry) => entry.id !== runId);
+    if (!needsWrite && nextRuns.length === store.runs.length) {
+      return true;
+    }
+
+    const nextStore: ExamRunProfileStore = {
+      ...store,
+      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
+      runs: nextRuns,
+    };
+    await writeJsonFileAtomic(path, nextStore);
+    return true;
+  } catch (error) {
+    console.warn(
+      "Failed to delete exam run store entry",
+      asErrorMessage(error, "Unknown error"),
+    );
+    return false;
+  }
+};
