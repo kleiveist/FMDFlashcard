@@ -15,7 +15,7 @@ export const STUDY_SECTIONS: StudySection[] = [
   { key: "exam", label: "Exam" },
   { key: "flashcard", label: "Flashcard" },
   { key: "fast-flashcard", label: "Fast Flashcard" },
-  { key: "spaced-repetition", label: "Spaced Repetition" },
+  { key: "spaced-repetition", label: "Repetition" },
 ];
 
 export const CARD_SECTIONS = STUDY_SECTIONS.filter(
