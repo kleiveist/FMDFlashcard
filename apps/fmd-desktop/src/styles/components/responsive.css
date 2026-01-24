@@ -180,6 +180,10 @@
     grid-template-columns: 1fr;
   }
 
+  .workspace .note-column {
+    order: -1;
+  }
+
   .workspace .panel,
   .workspace .vault-details {
     height: auto;
