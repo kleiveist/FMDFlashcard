@@ -44,7 +44,8 @@ import {
 } from "../components/settings/MarkdownEditorSection";
 import { ResetSessionHistoryModal } from "../components/settings/ResetSessionHistoryModal";
 import {
-  DataSyncTabContent,
+  DataSyncSettingsView,
+  ExportImportSettingsView,
   LanguageTabContent,
 } from "../components/settings/DataSyncTabContent";
 import { PerformanceTabContent } from "../components/settings/PerformanceTabContent";
@@ -669,19 +670,13 @@ export const SettingsPage = () => {
       case "data-sync":
         return (
           <div className="settings-page settings-single-column">
-            <section className="panel settings-data-sync-panel">
-              <div className="panel-header">
-                <div>
-                  <h2>Data &amp; Sync</h2>
-                  <p className="muted">Manage local stats storage and profiles.</p>
-                </div>
-              </div>
-              <div className="panel-body">
-                <div className="settings-tab-content">
-                  <DataSyncTabContent userVault={userVault} />
-                </div>
-              </div>
-            </section>
+            <div className="settings-tab-content">
+              {activeSubPageId === "export-import" ? (
+                <ExportImportSettingsView userVault={userVault} />
+              ) : (
+                <DataSyncSettingsView userVault={userVault} />
+              )}
+            </div>
           </div>
         );
       default:

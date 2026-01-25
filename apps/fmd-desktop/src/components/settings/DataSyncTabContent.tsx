@@ -2,7 +2,7 @@
  * @file apps/fmd-desktop/src/components/settings/DataSyncTabContent.tsx
  *
  * Zweck:
- * - Rendert die UI-Komponente Data Sync Tab Content.
+ * - Rendert die UI-Komponenten fuer Data & Sync und Export/Import.
  *
  * Verantwortlichkeiten:
  * - Baut die UI-Struktur und zugehoerige Klassen auf.
@@ -14,7 +14,8 @@
  * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
- * - DataSyncTabContent: React-Komponente.
+ * - DataSyncSettingsView: React-Komponente.
+ * - ExportImportSettingsView: React-Komponente.
  * - LanguageTabContent: React-Komponente.
  *
  * Hinweise:
@@ -24,7 +25,7 @@
 import { useEffect, useState } from "react";
 import type { UserVaultImportStrategy } from "../../lib/userVault";
 import type { UserVaultState } from "../../features/user-vault/useUserVault";
-import { isWordPressEnabled, logWordPressFeatureStatus } from "../../lib/featureFlags";
+import { isWordPressEnabled } from "../../lib/featureFlags";
 
 type AppLanguage = "de" | "en";
 
@@ -46,20 +47,16 @@ const LANGUAGE_LABELS: Record<
   },
 };
 
-type DataSyncTabContentProps = {
+type DataSyncSettingsViewProps = {
   userVault: UserVaultState;
 };
 
-export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
+export const DataSyncSettingsView = ({ userVault }: DataSyncSettingsViewProps) => {
   const [newProfileName, setNewProfileName] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("");
-  const [importStrategy, setImportStrategy] =
-    useState<UserVaultImportStrategy>("merge");
-  const wordpressEnabled = isWordPressEnabled();
   const isCustomMode = userVault.mode === "custom";
   const canManageVault = Boolean(userVault.resolvedPath);
   const canManageProfiles = canManageVault && userVault.profiles.length > 0;
-  const canExportActive = canManageVault && Boolean(userVault.activeProfileId);
 
   useEffect(() => {
     if (userVault.activeProfileId) {
@@ -68,10 +65,6 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
     }
     setSelectedProfileId("");
   }, [userVault.activeProfileId]);
-
-  useEffect(() => {
-    logWordPressFeatureStatus();
-  }, []);
 
   const handleCreateProfile = async () => {
     if (!newProfileName.trim()) {
@@ -86,18 +79,6 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
       return;
     }
     await userVault.handleSelectProfile(selectedProfileId);
-  };
-
-  const handleExportActive = async () => {
-    await userVault.handleExport("active");
-  };
-
-  const handleExportAll = async () => {
-    await userVault.handleExport("all");
-  };
-
-  const handleImport = async () => {
-    await userVault.handleImport(importStrategy);
   };
 
   return (
@@ -216,8 +197,63 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
           </button>
         </div>
       </div>
+      {userVault.error ? (
+        <div className="setting-row">
+          <span className="label">Status</span>
+          <span className="helper-text error-text">{userVault.error}</span>
+        </div>
+      ) : null}
+    </>
+  );
+};
+
+type ExportImportSettingsViewProps = {
+  userVault: UserVaultState;
+};
+
+export const ExportImportSettingsView = ({
+  userVault,
+}: ExportImportSettingsViewProps) => {
+  const [importStrategy, setImportStrategy] =
+    useState<UserVaultImportStrategy>("merge");
+  const wordpressEnabled = isWordPressEnabled();
+  const canManageVault = Boolean(userVault.resolvedPath);
+  const hasProfiles = userVault.profiles.length > 0;
+  const canExportActive = canManageVault && Boolean(userVault.activeProfileId);
+  const canExportAll = canManageVault && hasProfiles;
+  const canImport = canExportActive;
+
+  const handleExportActive = async () => {
+    if (!canExportActive) {
+      // TODO: enable exports once a profile exists.
+      console.info("[settings] Export profile requested without an active profile.");
+      return;
+    }
+    await userVault.handleExport("active");
+  };
+
+  const handleExportAll = async () => {
+    if (!canExportAll) {
+      // TODO: enable exports once profiles exist.
+      console.info("[settings] Export all profiles requested without profiles.");
+      return;
+    }
+    await userVault.handleExport("all");
+  };
+
+  const handleImport = async () => {
+    if (!canImport) {
+      // TODO: enable imports once a profile exists.
+      console.info("[settings] Import requested without an active profile.");
+      return;
+    }
+    await userVault.handleImport(importStrategy);
+  };
+
+  return (
+    <>
       <div className="setting-row">
-        <span className="label">Export / Import (JSON)</span>
+        <span className="label">EXPORT / IMPORT (JSON)</span>
         <div className="setting-actions">
           <button
             type="button"
@@ -231,11 +267,14 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
             type="button"
             className="ghost small"
             onClick={handleExportAll}
-            disabled={!canManageProfiles || userVault.isBusy}
+            disabled={!canExportAll || userVault.isBusy}
           >
             Export all profiles
           </button>
         </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">Import JSON</span>
         <div className="setting-inline">
           <select
             className="text-input"
@@ -243,7 +282,7 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
             onChange={(event) =>
               setImportStrategy(event.target.value as UserVaultImportStrategy)
             }
-            disabled={!canExportActive || userVault.isBusy}
+            disabled={!canImport || userVault.isBusy}
             aria-label="Import strategy"
           >
             <option value="merge">Merge</option>
@@ -253,7 +292,7 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
             type="button"
             className="ghost small"
             onClick={handleImport}
-            disabled={!canExportActive || userVault.isBusy}
+            disabled={!canImport || userVault.isBusy}
           >
             Import JSON
           </button>
@@ -263,7 +302,7 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
         </span>
       </div>
       <div className="setting-row">
-        <span className="label">WordPress</span>
+        <span className="label">WORDPRESS</span>
         <div className="setting-inline">
           <span className="value">
             {wordpressEnabled
@@ -280,11 +319,11 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
         </span>
       </div>
       <div className="setting-row">
-        <span className="label">Sync provider</span>
+        <span className="label">SYNC PROVIDER</span>
         <input
           type="text"
           className="text-input"
-          value="Coming later."
+          value="Coming soon"
           disabled
           aria-label="Sync provider"
         />
@@ -292,7 +331,7 @@ export const DataSyncTabContent = ({ userVault }: DataSyncTabContentProps) => {
       {userVault.error ? (
         <div className="setting-row">
           <span className="label">Status</span>
-          <span className="helper-text">{userVault.error}</span>
+          <span className="helper-text error-text">{userVault.error}</span>
         </div>
       ) : null}
     </>

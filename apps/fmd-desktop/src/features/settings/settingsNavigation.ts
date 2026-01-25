@@ -32,7 +32,9 @@ export type SettingsSubPageId =
   | "exam-toggles"
   | "flashcard-tools"
   | "fast-flashcard-tools"
-  | "spaced-repetition-tools";
+  | "spaced-repetition-tools"
+  | "data-sync"
+  | "export-import";
 
 export type SettingsNavSubPage = {
   id: SettingsSubPageId;
@@ -115,6 +117,10 @@ export const SETTINGS_NAV_MODEL = [
     id: "data-sync",
     label: "Data & Sync",
     icon: "data-sync",
+    subPages: [
+      { id: "data-sync", label: "Data & Sync" },
+      { id: "export-import", label: "Ex- Import" },
+    ],
   },
 ] as const;
 

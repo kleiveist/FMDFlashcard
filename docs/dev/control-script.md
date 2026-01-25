@@ -5,6 +5,8 @@
 
 The repository contains a Python control script intended to standardize common development tasks.
 
+> **Note:** Run every `python3 tools/control.py …` command from the project root (`~/Projects/FMDFlashcard`) so the script can resolve its relative paths. If you try to run it from elsewhere, the helpers (install, build, etc.) will not find `tools/` or `apps/` directories.
+
 ## Why it exists
 
 - Reduce setup friction across OSes
