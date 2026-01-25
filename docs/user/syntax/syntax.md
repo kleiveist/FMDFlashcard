@@ -12,7 +12,7 @@
 - 📝 [Flashcard syntax reference](flashcard-syntax.md)
 - 📝 [Tables in Flashcards and Exams](table-rendering.md)
 
-## 📁 Gesamtinhalte – Root: /home/kleif/Projects/FMDFlashcard/docs/user/syntax/cardtyp-syntax
+## 📁 Cardtyp syntax
 - 🗂️ [Overview](cardtyp-syntax/cardtyp-syntax.md)
 - 📝 [Code `cd`: Cloze (drag tokens)](cardtyp-syntax/cd.md)
 - 📝 [Code `cl`: Cloze (typed blanks)](cardtyp-syntax/cl.md)
