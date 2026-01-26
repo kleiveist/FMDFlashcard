@@ -19,19 +19,17 @@
 
 @media (max-width: 1199.98px) {
   .flashcard-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 320px;
   }
 
   .exam-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 320px;
   }
 
   .fast-flashcard-layout {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "fast-main"
-      "fast-sidebar";
-    grid-template-rows: auto auto;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-areas: "fast-main fast-sidebar";
+    grid-template-rows: auto;
   }
 
   .fast-session-grid {
@@ -43,11 +41,9 @@
   }
 
   .spaced-repetition-layout {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "sr-main"
-      "sr-sidebar";
-    grid-template-rows: auto auto;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-areas: "sr-main sr-sidebar";
+    grid-template-rows: auto;
   }
 
   .spaced-repetition-main .sr-flashcards-panel {
@@ -64,6 +60,30 @@
 }
 
 @media (max-width: 980px) {
+  .flashcard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .exam-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fast-flashcard-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "fast-main"
+      "fast-sidebar";
+    grid-template-rows: auto auto;
+  }
+
+  .spaced-repetition-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "sr-main"
+      "sr-sidebar";
+    grid-template-rows: auto auto;
+  }
+
   .flashcard-note-files-panel,
   .fast-note-files-panel,
   .sr-note-files-panel,
