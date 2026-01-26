@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "byVaultId": {
+    "5bdfd7b4": {
+      "users": [],
+      "userStateById": {},
+      "lastActiveUserId": null
+    }
+  },
+  "migratedVaultIds": [
+    "5bdfd7b4"
+  ]
+}
