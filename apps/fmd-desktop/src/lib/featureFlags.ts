@@ -9,8 +9,12 @@
 const WORDPRESS_ENABLED =
   typeof import.meta.env.VITE_WORDPRESS_ENABLED === "string" &&
   import.meta.env.VITE_WORDPRESS_ENABLED.toLowerCase() === "true";
+const SYNC_PROVIDER_ENABLED =
+  typeof import.meta.env.VITE_SYNC_PROVIDER_ENABLED === "string" &&
+  import.meta.env.VITE_SYNC_PROVIDER_ENABLED.toLowerCase() === "true";
 
 export const isWordPressEnabled = () => WORDPRESS_ENABLED;
+export const isSyncProviderEnabled = () => SYNC_PROVIDER_ENABLED;
 
 export const logWordPressFeatureStatus = () => {
   if (!import.meta.env.DEV) {

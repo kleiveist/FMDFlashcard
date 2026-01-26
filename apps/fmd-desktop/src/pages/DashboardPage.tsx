@@ -67,6 +67,12 @@ type DashboardPageProps = {
   isNoteModalOpen?: boolean;
   noteModalEnabled?: boolean;
   onNoteModalClose?: () => void;
+  showGate?: boolean;
+  gateEyebrow?: string;
+  gateTitle?: string;
+  gateDescription?: string;
+  gateCtaLabel?: string;
+  onOpenGate?: () => void;
 };
 
 export type DashboardPageHandle = {
@@ -80,6 +86,12 @@ const DashboardPageInner = (
     isNoteModalOpen = false,
     noteModalEnabled = false,
     onNoteModalClose,
+    showGate = false,
+    gateEyebrow,
+    gateTitle,
+    gateDescription,
+    gateCtaLabel,
+    onOpenGate,
   }: DashboardPageProps,
   ref: ForwardedRef<DashboardPageHandle>,
 ) => {
@@ -383,6 +395,25 @@ const DashboardPageInner = (
         </header>
       ) : null}
 
+      {showGate ? (
+        <section className="panel">
+          <div className="panel-header">
+            <div className="panel-header-content">
+              {gateEyebrow ? <span className="eyebrow">{gateEyebrow}</span> : null}
+              {gateTitle ? <h3>{gateTitle}</h3> : null}
+              {gateDescription ? <p className="muted">{gateDescription}</p> : null}
+            </div>
+            <button
+              type="button"
+              className="primary"
+              onClick={onOpenGate}
+              disabled={!onOpenGate}
+            >
+              {gateCtaLabel ?? "Continue"}
+            </button>
+          </div>
+        </section>
+      ) : null}
       <div
         className={`workspace${noteCollapsed ? " note-collapsed" : ""}`}
         ref={workspaceRef}

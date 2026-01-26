@@ -28,6 +28,11 @@ import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ModalShell } from "./components/ModalShell";
 import { SidebarNav } from "./components/SidebarNav";
 import { StudySectionNav } from "./components/StudySectionNav";
+import {
+  UserVaultCustomPathModal,
+  UserVaultProfileModal,
+  UserVaultSyncProviderModal,
+} from "./components/UserVaultGateModals";
 import { LayoutModeProvider, useLayoutMode } from "./lib/layoutMode";
 import {
   getEffectiveBinding,
@@ -37,7 +42,7 @@ import {
 } from "./lib/shortcuts/bindings";
 import { getActiveCloseLayer } from "./lib/shortcuts/closeOrBack";
 import { getShortcutById } from "./lib/shortcuts/registry";
-import { logWordPressFeatureStatus } from "./lib/featureFlags";
+import { isSyncProviderEnabled, logWordPressFeatureStatus } from "./lib/featureFlags";
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
 import { DashboardPage, type DashboardPageHandle, type DashboardView } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
@@ -49,9 +54,19 @@ import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
 import type { StudySectionKey } from "./lib/studySections";
 
+type WalletGateId = "custom-path" | "profile" | "sync-provider";
+
 const AppContent = () => {
-  const { actions, flashcards, fastFlashcards, help, settings, spacedRepetition } =
-    useAppState();
+  const {
+    actions,
+    flashcards,
+    fastFlashcards,
+    help,
+    settings,
+    spacedRepetition,
+    userVault,
+    vault,
+  } = useAppState();
   const [activeTab, setActiveTab] = useState<StudySectionKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
@@ -63,6 +78,8 @@ const AppContent = () => {
   const prevDashboardViewRef = useRef<DashboardView>(dashboardView);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [openGateId, setOpenGateId] = useState<WalletGateId | null>(null);
+  const [dismissedGateId, setDismissedGateId] = useState<WalletGateId | null>(null);
   const isDashboard = activeTab === "dashboard";
   const platform = getShortcutPlatform();
   const layoutMode = useLayoutMode();
@@ -81,6 +98,50 @@ const AppContent = () => {
         : null,
     [closeCommand, platform, settings.keyboardShortcuts.bindings],
   );
+  const activeProfileName = userVault.activeProfile?.name?.trim() ?? "";
+  const isWalletOpen = Boolean(vault.vaultPath);
+  const isUserVaultReady = userVault.status !== "loading";
+  const isActivePathReady = Boolean(userVault.resolvedPath);
+  const isProfileReady = Boolean(userVault.activeProfileId && activeProfileName);
+  const syncProviderEnabled = isSyncProviderEnabled();
+  const syncProviderRequired = false; // TODO: enable when product rule requires sync setup.
+  const syncProviderConfigured = false; // TODO: wire to persisted sync provider config.
+  const shouldGateSyncProvider =
+    syncProviderEnabled && syncProviderRequired && !syncProviderConfigured;
+  const nextGate: WalletGateId | null = !isWalletOpen || !isUserVaultReady
+    ? null
+    : !isActivePathReady
+      ? "custom-path"
+      : !isProfileReady
+        ? "profile"
+        : shouldGateSyncProvider
+          ? "sync-provider"
+          : null;
+  const showInlineGate = Boolean(nextGate) && !openGateId;
+  const gateCopy = nextGate
+    ? {
+        "custom-path": {
+          eyebrow: "Active path required",
+          title: "Set an active path to continue",
+          description:
+            "Choose where your profile data is stored. Pick a custom folder if you prefer.",
+          cta: "Set active path",
+        },
+        profile: {
+          eyebrow: "Profile required",
+          title: "Create a profile to continue",
+          description:
+            "Your progress is stored per profile. Create or load a profile to continue working in this vault.",
+          cta: "Create profile",
+        },
+        "sync-provider": {
+          eyebrow: "Sync provider",
+          title: "Configure sync provider",
+          description: "Set up a sync provider to continue.",
+          cta: "Configure sync",
+        },
+      }[nextGate]
+    : null;
   const requestDashboardViewChange = useCallback(
     (nextView: DashboardView) => {
       if (activeTab === "dashboard" && dashboardRef.current) {
@@ -129,6 +190,19 @@ const AppContent = () => {
       spacedRepetition,
     ],
   );
+
+  const handleGateClose = useCallback(() => {
+    setDismissedGateId((prev) => openGateId ?? prev);
+    setOpenGateId(null);
+  }, [openGateId]);
+
+  const handleGateOpen = useCallback(() => {
+    if (!nextGate) {
+      return;
+    }
+    setDismissedGateId(null);
+    setOpenGateId(nextGate);
+  }, [nextGate]);
 
   const handleNoteModalOpen = useCallback(() => {
     if (!isNoteModalEligible) {
@@ -197,6 +271,19 @@ const AppContent = () => {
     }
     noteWasOpenRef.current = isNoteModalOpen;
   }, [isNoteModalOpen]);
+
+  useEffect(() => {
+    if (!nextGate) {
+      setOpenGateId(null);
+      setDismissedGateId(null);
+      return;
+    }
+    if (dismissedGateId === nextGate) {
+      setOpenGateId(null);
+      return;
+    }
+    setOpenGateId(nextGate);
+  }, [dismissedGateId, nextGate]);
 
   useEffect(() => {
     logWordPressFeatureStatus();
@@ -286,6 +373,20 @@ const AppContent = () => {
           ) : null}
           <div id="mobile-nav-actions" className="mobile-nav-actions" />
         </div>
+        {activeTab !== "dashboard" && showInlineGate && gateCopy ? (
+          <section className="panel">
+            <div className="panel-header">
+              <div className="panel-header-content">
+                <span className="eyebrow">{gateCopy.eyebrow}</span>
+                <h3>{gateCopy.title}</h3>
+                <p className="muted">{gateCopy.description}</p>
+              </div>
+              <button type="button" className="primary" onClick={handleGateOpen}>
+                {gateCopy.cta}
+              </button>
+            </div>
+          </section>
+        ) : null}
         {activeTab === "dashboard" ? (
           <DashboardPage
             ref={dashboardRef}
@@ -294,6 +395,12 @@ const AppContent = () => {
             isNoteModalOpen={isNoteModalOpen}
             noteModalEnabled={isNoteModalEligible}
             onNoteModalClose={handleNoteModalClose}
+            showGate={showInlineGate}
+            gateEyebrow={gateCopy?.eyebrow}
+            gateTitle={gateCopy?.title}
+            gateDescription={gateCopy?.description}
+            gateCtaLabel={gateCopy?.cta}
+            onOpenGate={handleGateOpen}
           />
         ) : activeTab === "exam" ? (
           <ExamSimulationPage />
@@ -315,6 +422,21 @@ const AppContent = () => {
           <SettingsPage />
         </div>
       </ModalShell>
+      <UserVaultCustomPathModal
+        isOpen={openGateId === "custom-path"}
+        onClose={handleGateClose}
+        userVault={userVault}
+      />
+      <UserVaultProfileModal
+        isOpen={openGateId === "profile"}
+        onClose={handleGateClose}
+        userVault={userVault}
+      />
+      <UserVaultSyncProviderModal
+        isOpen={openGateId === "sync-provider"}
+        onClose={handleGateClose}
+        userVault={userVault}
+      />
       <button
         type="button"
         className="mobile-nav-backdrop"
