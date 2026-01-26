@@ -57,6 +57,13 @@ export const ExamMarkdown = ({ content, className }: ExamMarkdownProps) => {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[[rehypeSanitize, markdownSchema]]}
+        components={{
+          table: ({ node: _node, ...props }) => (
+            <div className="exam-table-wrap">
+              <table {...props} />
+            </div>
+          ),
+        }}
       >
         {content}
       </ReactMarkdown>

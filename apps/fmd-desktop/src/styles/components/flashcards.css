@@ -31,16 +31,20 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .composite-card {
   gap: 16px;
+  min-width: 0;
 }
 
 .composite-parts {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
 }
 
 .composite-card .flashcard-item {
@@ -62,6 +66,10 @@
   gap: 8px;
 }
 
+.flashcard-options > li {
+  min-width: 0;
+}
+
 .truefalse-list {
   list-style: none;
   margin: 0;
@@ -79,6 +87,7 @@
   border-radius: 12px;
   border: 1px solid var(--line-soft);
   background: var(--panel);
+  min-width: 0;
 }
 
 .truefalse-question {
@@ -238,6 +247,8 @@
   color: var(--ink);
   flex: 1;
   min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .flashcard-pagination {
@@ -263,10 +274,16 @@
   gap: 8px;
   color: var(--ink);
   line-height: 1.6;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .flashcard-markdown-text {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .flashcard-code-block {
@@ -280,6 +297,7 @@
   color: var(--ink);
   white-space: pre;
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .flashcard-option .flashcard-code-block {
@@ -293,6 +311,8 @@
 
 .flashcard-table {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border-radius: 12px;
   border: 1px solid var(--line-soft);
   background: var(--md-table-bg);
@@ -352,6 +372,10 @@
   font-weight: 600;
   color: var(--ink);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .flashcard-input {
@@ -382,12 +406,18 @@
 .flashcard-answer-text {
   color: var(--ink);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .cloze-text {
   line-height: 1.6;
   white-space: pre-wrap;
   color: var(--ink);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cloze-blank {

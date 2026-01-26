@@ -39,10 +39,6 @@ type ExamIdlePanelProps = {
   hasTaskCountMismatch: boolean;
   onStartExam: () => void;
   startDisabled: boolean;
-  onToggleView: () => void;
-  viewToggleDisabled: boolean;
-  isViewMode: boolean;
-  viewLabel: string;
 };
 
 export const ExamIdlePanel = ({
@@ -56,10 +52,6 @@ export const ExamIdlePanel = ({
   hasTaskCountMismatch,
   onStartExam,
   startDisabled,
-  onToggleView,
-  viewToggleDisabled,
-  isViewMode,
-  viewLabel,
 }: ExamIdlePanelProps) => {
   const isReadyDisabled = startDisabled;
   if (!selectedFile) {
@@ -103,28 +95,6 @@ export const ExamIdlePanel = ({
             Exam ready to start
           </button>
         </h2>
-        <button
-          type="button"
-          className={`focus-toggle ${isViewMode ? "active" : ""}`}
-          onClick={onToggleView}
-          aria-pressed={isViewMode}
-          aria-label={viewLabel}
-          title={viewLabel}
-          disabled={viewToggleDisabled}
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-            <circle cx="12" cy="12" r="3.5" />
-          </svg>
-        </button>
       </div>
       <p className="muted">
         {availableTaskCount} tasks detected. Max points this run: {plannedMaxPoints}.

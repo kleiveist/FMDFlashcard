@@ -583,6 +583,11 @@ h2 {
   align-items: start;
 }
 
+.flashcard-panel {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .exam-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -595,6 +600,7 @@ h2 {
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+  min-width: 0;
 }
 
 .fast-flashcard-layout {
@@ -802,6 +808,7 @@ body.focus-mode .fast-history-panel {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .exam-page {
@@ -814,10 +821,21 @@ body.focus-mode .fast-history-panel {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
 .exam-panel {
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.exam-panel-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .exam-timeline-block {
@@ -893,6 +911,7 @@ body.focus-mode .fast-history-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .exam-overview-tabs {
@@ -905,6 +924,7 @@ body.focus-mode .fast-history-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .exam-overview-toggle {
@@ -1165,6 +1185,7 @@ body.focus-mode .fast-history-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .exam-help-actions {
@@ -1177,6 +1198,10 @@ body.focus-mode .fast-history-panel {
   font-weight: 500;
   line-height: 1.6;
   white-space: normal;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .exam-markdown > :first-child {
@@ -1209,12 +1234,14 @@ body.focus-mode .fast-history-panel {
   border: 1px solid var(--preview-code-border);
   border-radius: 12px;
   overflow-x: auto;
+  max-width: 100%;
 }
 
 .exam-markdown pre code {
   background: transparent;
   border: none;
   padding: 0;
+  white-space: pre;
 }
 
 .exam-markdown blockquote {
@@ -1222,6 +1249,52 @@ body.focus-mode .fast-history-panel {
   padding-left: 12px;
   border-left: 2px solid var(--line);
   color: var(--muted);
+}
+
+.exam-markdown img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.exam-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--md-table-bg);
+}
+
+.exam-markdown table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.exam-markdown thead th {
+  background: var(--md-table-head-bg);
+  text-align: left;
+  font-weight: 600;
+}
+
+.exam-markdown th,
+.exam-markdown td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  vertical-align: top;
+}
+
+.exam-markdown tr > :last-child {
+  border-right: none;
+}
+
+.exam-markdown tbody tr:last-child th,
+.exam-markdown tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .flashcard-text-block.exam-markdown,
@@ -1235,6 +1308,12 @@ body.focus-mode .fast-history-panel {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.exam-task-header > div {
+  min-width: 0;
 }
 
 .exam-task-nav {
