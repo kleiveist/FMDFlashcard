@@ -666,6 +666,15 @@ body.focus-mode .fast-flashcard-panel {
   grid-row: 1;
 }
 
+.fast-flashcard-main {
+  grid-area: fast-main;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: stretch;
+  min-width: 0;
+}
+
 .fast-flashcard-sidebar {
   grid-area: fast-sidebar;
   display: flex;
@@ -676,7 +685,7 @@ body.focus-mode .fast-flashcard-panel {
 }
 
 .fast-stats-panel {
-  align-self: start;
+  width: 100%;
   min-height: 0;
 }
 

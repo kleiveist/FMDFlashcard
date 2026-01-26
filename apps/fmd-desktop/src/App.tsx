@@ -287,8 +287,9 @@ const AppContent = () => {
     noteWasOpenRef.current = isNoteModalOpen;
   }, [isNoteModalOpen]);
 
-  const noteFilesDialogOpen =
-    isNoteModalOpen && noteDialogSection && noteDialogSection !== "dashboard";
+  const noteFilesDialogOpen = Boolean(
+    isNoteModalOpen && noteDialogSection && noteDialogSection !== "dashboard",
+  );
   const useFastNoteFiles = noteDialogSection === "fast-flashcard";
   const noteFilesSource = useFastNoteFiles ? fastFlashcards : flashcards;
   const noteFilesListState = noteFilesSource.isFlashcardScanning ? "loading" : "idle";

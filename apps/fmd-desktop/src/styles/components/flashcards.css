@@ -510,7 +510,10 @@
   background: var(--accent-weak-bg);
   color: var(--ink);
   cursor: grab;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
+  touch-action: none;
 }
 
 .token-chip:active {
@@ -524,6 +527,38 @@
 
 .token-chip.used {
   opacity: 0.6;
+}
+
+.token-chip.selected {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-contrast-strong, var(--ink));
+}
+
+.token-chip.is-dragging {
+  opacity: 0.5;
+}
+
+.cloze-card.is-selecting .cloze-blank.drag {
+  border-color: var(--accent-border);
+  background: var(--accent-weak-bg);
+}
+
+.cloze-blank.drag.drop-target {
+  border-color: var(--accent-border);
+  background: var(--accent-hover-bg);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.token-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9999;
+  pointer-events: none;
+  cursor: grabbing;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  opacity: 0.95;
 }
 
 .token-remove {

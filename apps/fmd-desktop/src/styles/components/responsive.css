@@ -46,6 +46,14 @@
     grid-template-rows: auto;
   }
 
+  .fast-flashcard-main .fast-flashcard-panel {
+    order: 1;
+  }
+
+  .fast-flashcard-main .fast-stats-panel {
+    order: 2;
+  }
+
   .spaced-repetition-main .sr-flashcards-panel {
     order: 1;
   }

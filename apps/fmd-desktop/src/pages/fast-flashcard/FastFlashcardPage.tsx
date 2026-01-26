@@ -393,11 +393,13 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
         isTableView ? "table-view" : ""
       }`}
     >
-      {flashcardPanel}
+      <div className="fast-flashcard-main">
+        {statsPanel}
+        {flashcardPanel}
+      </div>
       <aside className="fast-flashcard-sidebar">
         {noteFilesPanel}
         {toolsPanel}
-        {statsPanel}
       </aside>
     </div>
   );
