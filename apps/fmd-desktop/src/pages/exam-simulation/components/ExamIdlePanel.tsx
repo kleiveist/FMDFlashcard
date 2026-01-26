@@ -22,6 +22,7 @@
 
 import type { LoadState } from "../../../lib/types";
 import type { VaultFile } from "../../../lib/tree";
+import type { MissingExamSetting } from "../../../features/settings/validateExamSettings";
 
 type ExamEmptyState = {
   title: string;
@@ -39,6 +40,8 @@ type ExamIdlePanelProps = {
   hasTaskCountMismatch: boolean;
   onStartExam: () => void;
   startDisabled: boolean;
+  missingSettings: MissingExamSetting[];
+  onOpenExamSettings: () => void;
 };
 
 export const ExamIdlePanel = ({
@@ -52,8 +55,13 @@ export const ExamIdlePanel = ({
   hasTaskCountMismatch,
   onStartExam,
   startDisabled,
+  missingSettings,
+  onOpenExamSettings,
 }: ExamIdlePanelProps) => {
   const isReadyDisabled = startDisabled;
+  const hasBlockingMissing =
+    missingSettings.length > 0 &&
+    missingSettings.some((item) => item.severity !== "warning");
   if (!selectedFile) {
     return (
       <div className="empty-state">
@@ -103,6 +111,39 @@ export const ExamIdlePanel = ({
         <p className="muted">
           Only {availableTaskCount} tasks available. The exam will run {plannedTaskCount}.
         </p>
+      ) : null}
+      {isReadyDisabled && hasBlockingMissing ? (
+        <div className="exam-start-blocked">
+          <div className="exam-start-blocked-header">
+            <strong>Exam kann nicht gestartet werden</strong>
+            <p className="muted">Bitte ergaenze die folgenden Einstellungen.</p>
+          </div>
+          <div className="exam-start-blocked-list">
+            <span className="label">Fehlende Einstellungen</span>
+            <ul className="exam-missing-settings-list">
+              {missingSettings.map((item) => (
+                <li key={item.id} className="exam-missing-settings-item">
+                  <span className="exam-missing-settings-dot" aria-hidden="true">
+                    •
+                  </span>
+                  <div className="exam-missing-settings-content">
+                    <span className="exam-missing-settings-label">{item.label}</span>
+                    {item.description ? (
+                      <span className="muted">{item.description}</span>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <button
+            type="button"
+            className="primary small"
+            onClick={onOpenExamSettings}
+          >
+            Exam Settings oeffnen
+          </button>
+        </div>
       ) : null}
     </div>
   );

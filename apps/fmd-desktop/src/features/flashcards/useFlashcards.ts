@@ -55,6 +55,11 @@ export type FlashcardMode =
 export type FlashcardScope = "current" | "vault";
 export type FlashcardPageSize = 1 | 2 | 3 | 5;
 export type StatsResetMode = "scan" | "session";
+export type FlashcardFileEntry = VaultFile & { flashcardCount: number };
+
+export const filterFlashcardFiles = <T extends { flashcardCount?: number | null }>(
+  files: T[],
+) => files.filter((file) => (file.flashcardCount ?? 0) > 0);
 
 export const FLASHCARD_PAGE_SIZES: FlashcardPageSize[] = [1, 2, 3, 5];
 export const DEFAULT_FLASHCARD_PAGE_SIZE: FlashcardPageSize = 2;
@@ -191,6 +196,7 @@ type ScanOptions = {
   scopeOverride?: FlashcardScope;
   allowVaultFallback?: boolean;
   orderOverride?: FlashcardOrder;
+  updateIndex?: boolean;
 };
 
 type UseFlashcardsOptions = {
@@ -238,6 +244,15 @@ export const useFlashcards = ({
   } = settings;
   const [flashcardPage, setFlashcardPage] = useState(0);
   const [isFlashcardScanning, setIsFlashcardScanning] = useState(false);
+  const [flashcardFiles, setFlashcardFiles] = useState<FlashcardFileEntry[]>([]);
+  const [flashcardFilesError, setFlashcardFilesError] = useState("");
+
+  useEffect(() => {
+    if (!vaultPath || files.length === 0) {
+      setFlashcardFiles([]);
+      setFlashcardFilesError("");
+    }
+  }, [files.length, vaultPath]);
   const [flashcardSelections, setFlashcardSelections] = useState<
     Record<number, string[]>
   >({});
@@ -459,33 +474,62 @@ export const useFlashcards = ({
       const shouldFallbackToVault =
         options?.allowVaultFallback && scope === "current" && !selectedFile;
       const resolvedScope = shouldFallbackToVault ? "vault" : scope;
+      const shouldUpdateIndex = Boolean(options?.updateIndex) && resolvedScope === "vault";
 
       if (resolvedScope === "vault") {
         if (!vaultPath || files.length === 0) {
+          if (shouldUpdateIndex) {
+            setFlashcardFiles([]);
+            setFlashcardFilesError("");
+          }
           return [];
         }
 
+        const markdownFiles = files.filter((file) =>
+          file.relative_path.toLowerCase().endsWith(".md"),
+        );
         const results = await Promise.allSettled(
-          files.map(async (file) => {
+          markdownFiles.map(async (file) => {
             const contents = await invoke<string>("read_text_file", {
               path: file.path,
             });
-            return parseFlashcards(contents);
+            const cards = parseFlashcards(contents);
+            return { file, cards };
           }),
         );
 
         const merged: Flashcard[] = [];
+        const nextFiles: FlashcardFileEntry[] = [];
+        let failures = 0;
         results.forEach((result, index) => {
           if (result.status === "fulfilled") {
-            merged.push(...result.value);
+            merged.push(...result.value.cards);
+            if (shouldUpdateIndex && result.value.cards.length > 0) {
+              nextFiles.push({
+                ...result.value.file,
+                flashcardCount: result.value.cards.length,
+              });
+            }
           } else {
+            failures += 1;
             console.warn(
               "Failed to read markdown file",
-              files[index]?.path,
+              markdownFiles[index]?.path,
               result.reason,
             );
           }
         });
+
+        if (shouldUpdateIndex) {
+          setFlashcardFiles(nextFiles);
+          if (failures > 0 && nextFiles.length === 0) {
+            setFlashcardFilesError(
+              "Flashcard-Dateien konnten nicht gescannt werden.",
+            );
+          } else {
+            setFlashcardFilesError("");
+          }
+        }
 
         return merged;
       }
@@ -493,7 +537,15 @@ export const useFlashcards = ({
       const cards = parseFlashcards(preview);
       return cards;
     },
-    [files, flashcardScope, preview, selectedFile, vaultPath],
+    [
+      files,
+      flashcardScope,
+      preview,
+      selectedFile,
+      setFlashcardFiles,
+      setFlashcardFilesError,
+      vaultPath,
+    ],
   );
 
   const handleFlashcardScan = useCallback(async () => {
@@ -501,7 +553,7 @@ export const useFlashcards = ({
     resetFlashcards({ keepScanning: true });
 
     try {
-      const cards = await scanFlashcards();
+      const cards = await scanFlashcards({ updateIndex: true });
       setFlashcards(cards);
     } finally {
       setIsFlashcardScanning(false);
@@ -820,6 +872,8 @@ export const useFlashcards = ({
     correctCount,
     flashcardClozeResponses,
     flashcardCompositeStates,
+    flashcardFiles,
+    flashcardFilesError,
     flashcardMode,
     flashcardOrder,
     flashcardPage,

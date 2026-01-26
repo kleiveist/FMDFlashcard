@@ -142,6 +142,7 @@ type UseSpacedRepetitionOptions = {
     scopeOverride?: FlashcardScope;
     allowVaultFallback?: boolean;
     orderOverride?: FlashcardOrder;
+    updateIndex?: boolean;
   }) => Promise<Flashcard[]>;
   setIsFlashcardScanning: (value: boolean) => void;
   userVaultProfilePath: string | null;
@@ -784,6 +785,7 @@ const storageKey = useMemo(
       const cards = await scanFlashcards({
         scopeOverride: "vault",
         orderOverride: "in-order",
+        updateIndex: true,
       });
       const cardIdContext = vaultId ? { vaultId } : undefined;
       const activeCardIds = buildActiveSpacedRepetitionCardIdSet(

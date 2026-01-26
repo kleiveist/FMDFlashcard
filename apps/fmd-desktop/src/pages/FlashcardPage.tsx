@@ -29,6 +29,7 @@ import { FreeTextCard } from "../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
 import { StatsPanel } from "../components/StatsPanel";
+import { NoteFilesPanel } from "../components/NoteFilesPanel";
 import { useAppState } from "../components/AppStateProvider";
 import {
   areClozeBlanksComplete,
@@ -58,7 +59,7 @@ type FlashcardPageProps = {
 };
 
 export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
-  const { flashcards, settings } = useAppState();
+  const { actions, flashcards, preview, settings, vault } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const isTableView = useTableView();
   const [isStatsOpen, setIsStatsOpen] = useState(false);
@@ -423,6 +424,18 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
     />
   );
 
+  const noteFilesPanel = (
+    <NoteFilesPanel
+      className="flashcard-note-files-panel"
+      files={flashcards.flashcardFiles}
+      listState={flashcards.isFlashcardScanning ? "loading" : "idle"}
+      listError={flashcards.flashcardFilesError}
+      selectedFile={preview.selectedFile}
+      vaultPath={vault.vaultPath}
+      onSelectFile={actions.handleSelectFile}
+    />
+  );
+
   const toolsPanel = (
     <section className="panel toolbar-panel">
       {isTableView ? (
@@ -554,9 +567,11 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
     <>
       {statsPanel}
       {toolsPanel}
+      {noteFilesPanel}
     </>
   ) : (
     <>
+      {noteFilesPanel}
       {toolsPanel}
       {statsPanel}
     </>

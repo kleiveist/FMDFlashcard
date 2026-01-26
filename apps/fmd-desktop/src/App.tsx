@@ -26,6 +26,8 @@ import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ModalShell } from "./components/ModalShell";
+import { NoteModal } from "./components/NoteModal";
+import { NoteFilesPanel } from "./components/NoteFilesPanel";
 import { SidebarNav } from "./components/SidebarNav";
 import { StudySectionNav } from "./components/StudySectionNav";
 import {
@@ -34,6 +36,7 @@ import {
   UserVaultSyncProviderModal,
 } from "./components/UserVaultGateModals";
 import { LayoutModeProvider, useLayoutMode } from "./lib/layoutMode";
+import { useMediaQuery } from "./lib/useMediaQuery";
 import {
   getEffectiveBinding,
   getShortcutPlatform,
@@ -44,6 +47,7 @@ import { getActiveCloseLayer } from "./lib/shortcuts/closeOrBack";
 import { getShortcutById } from "./lib/shortcuts/registry";
 import { isSyncProviderEnabled, logWordPressFeatureStatus } from "./lib/featureFlags";
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
+import { subscribeSettingsFocus } from "./features/settings/settingsDeepLink";
 import { DashboardPage, type DashboardPageHandle, type DashboardView } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
@@ -62,7 +66,9 @@ const AppContent = () => {
     flashcards,
     fastFlashcards,
     help,
+    preview,
     settings,
+    settingsNav,
     spacedRepetition,
     userVault,
     vault,
@@ -71,6 +77,9 @@ const AppContent = () => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [noteDialogSection, setNoteDialogSection] = useState<StudySectionKey | null>(
+    null,
+  );
   const dashboardRef = useRef<DashboardPageHandle | null>(null);
   const noteButtonRef = useRef<HTMLButtonElement | null>(null);
   const noteWasOpenRef = useRef(false);
@@ -86,10 +95,12 @@ const AppContent = () => {
   const showStudySectionNav = layoutMode === "table";
   const isToolbarCollapsed = layoutMode === "table";
   const isNoteViewport = useMediaQuery("(max-width: 980px)", false);
-  const isNoteModalEligible =
+  const isDashboardNoteEligible =
     activeTab === "dashboard" &&
     (dashboardView === "markdown" || dashboardView === "exam") &&
     isNoteViewport;
+  const isSectionNoteEligible = isNoteViewport && activeTab !== "dashboard";
+  const isNoteModalEligible = isDashboardNoteEligible || isSectionNoteEligible;
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
   const closeBinding = useMemo(
     () =>
@@ -208,11 +219,13 @@ const AppContent = () => {
     if (!isNoteModalEligible) {
       return;
     }
+    setNoteDialogSection(activeTab);
     setIsNoteModalOpen(true);
-  }, [isNoteModalEligible]);
+  }, [activeTab, isNoteModalEligible]);
 
   const handleNoteModalClose = useCallback(() => {
     setIsNoteModalOpen(false);
+    setNoteDialogSection(null);
   }, []);
 
   useEffect(() => {
@@ -247,6 +260,7 @@ const AppContent = () => {
     }
     if (!isNoteModalEligible) {
       setIsNoteModalOpen(false);
+      setNoteDialogSection(null);
     }
   }, [isNoteModalEligible, isNoteModalOpen]);
 
@@ -260,6 +274,7 @@ const AppContent = () => {
     const viewChanged = prevDashboardViewRef.current !== dashboardView;
     if (tabChanged || viewChanged) {
       setIsNoteModalOpen(false);
+      setNoteDialogSection(null);
     }
     prevTabRef.current = activeTab;
     prevDashboardViewRef.current = dashboardView;
@@ -271,6 +286,12 @@ const AppContent = () => {
     }
     noteWasOpenRef.current = isNoteModalOpen;
   }, [isNoteModalOpen]);
+
+  const noteFilesDialogOpen =
+    isNoteModalOpen && noteDialogSection && noteDialogSection !== "dashboard";
+  const useFastNoteFiles = noteDialogSection === "fast-flashcard";
+  const noteFilesSource = useFastNoteFiles ? fastFlashcards : flashcards;
+  const noteFilesListState = noteFilesSource.isFlashcardScanning ? "loading" : "idle";
 
   useEffect(() => {
     if (!nextGate) {
@@ -307,6 +328,14 @@ const AppContent = () => {
   const handleCloseSettings = useCallback(() => {
     setIsSettingsOpen(false);
   }, []);
+
+  useEffect(() => {
+    return subscribeSettingsFocus((request) => {
+      settingsNav.setActiveSettingsPage(request.pageId);
+      setIsSettingsOpen(true);
+      setIsHelpOpen(false);
+    });
+  }, [settingsNav, setIsHelpOpen, setIsSettingsOpen]);
 
   useEffect(() => {
     const dispose = registerGlobalShortcuts({
@@ -412,6 +441,16 @@ const AppContent = () => {
           <FastFlashcardPage onSectionSelect={handleStudySectionSelect} />
         )}
       </main>
+      <NoteModal isOpen={noteFilesDialogOpen} onClose={handleNoteModalClose} title="Note">
+        <NoteFilesPanel
+          files={noteFilesSource.flashcardFiles}
+          listState={noteFilesListState}
+          listError={noteFilesSource.flashcardFilesError}
+          selectedFile={preview.selectedFile}
+          vaultPath={vault.vaultPath}
+          onSelectFile={actions.handleSelectFile}
+        />
+      </NoteModal>
       <ModalShell isOpen={isHelpOpen} title="Help" onClose={handleCloseHelp}>
         <div className="hub-modal-scroll">
           <HelpPage onCloseHelp={handleCloseHelp} />
@@ -461,31 +500,3 @@ function App() {
 }
 
 export default App;
-
-function useMediaQuery(query: string, defaultState: boolean) {
-  const [matches, setMatches] = useState(() => {
-    if (typeof window === "undefined" || !window.matchMedia) {
-      return defaultState;
-    }
-    return window.matchMedia(query).matches;
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) {
-      return;
-    }
-    const mediaQuery = window.matchMedia(query);
-    const handleChange = () => {
-      setMatches(mediaQuery.matches);
-    };
-    handleChange();
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, [query]);
-
-  return matches;
-}

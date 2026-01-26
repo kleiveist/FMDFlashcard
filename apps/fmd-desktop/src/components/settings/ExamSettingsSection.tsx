@@ -84,7 +84,7 @@ export const ExamSettingsPanel = ({
     setTaskPoints(nextPoints);
   };
   return (
-    <section className="panel exam-settings-panel">
+    <section className="panel exam-settings-panel" id="exam-settings-section">
       <div className="panel-header">
         <div>
           <h2>Exam Settings</h2>
@@ -100,6 +100,7 @@ export const ExamSettingsPanel = ({
               min={0}
               className="text-input exam-compact-input"
               value={maxTotalPoints}
+              id="exam-max-total-points"
               onChange={(event) => setMaxTotalPoints(clampInput(event.target.value))}
             />
           </label>
@@ -111,6 +112,7 @@ export const ExamSettingsPanel = ({
               max={20}
               className="text-input exam-compact-input"
               value={taskCount}
+              id="exam-task-count"
               onChange={(event) => setTaskCount(clampInput(event.target.value))}
             />
           </label>
@@ -123,6 +125,7 @@ export const ExamSettingsPanel = ({
                 max={240}
                 className="text-input exam-compact-input"
                 value={durationMinutes}
+                id="exam-duration"
                 onChange={(event) => onDurationChange(event.target.value)}
               />
               <span className="muted">min</span>
@@ -130,7 +133,7 @@ export const ExamSettingsPanel = ({
           </label>
         </div>
 
-        <div className="exam-points-table">
+        <div className="exam-points-table" id="exam-task-points">
           {taskPoints.map((points, index) => (
             <div key={`exam-task-point-${index}`} className="exam-points-row">
               <span className="label">Task {index + 1}</span>
@@ -139,6 +142,7 @@ export const ExamSettingsPanel = ({
                 min={0}
                 className="text-input exam-compact-input"
                 value={points}
+                id={`exam-task-point-${index + 1}`}
                 onChange={(event) => handleTaskPointChange(index, event.target.value)}
               />
             </div>

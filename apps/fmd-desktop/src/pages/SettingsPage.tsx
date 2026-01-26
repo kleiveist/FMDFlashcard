@@ -79,6 +79,11 @@ import {
 } from "../features/spaced-repetition/useSpacedRepetition";
 import { resetFastFlashcardHistory } from "./fast-flashcard/hooks/useFastSession";
 import { resetExamRunHistory } from "../lib/examRuns";
+import {
+  consumeSettingsFocusRequest,
+  subscribeSettingsFocus,
+  type SettingsFocusRequest,
+} from "../features/settings/settingsDeepLink";
 
 const SETTINGS_NAV_ICONS: Record<SettingsNavIcon, () => ReactElement> = {
   appearance: AppearanceIcon,
@@ -255,9 +260,74 @@ export const SettingsPage = () => {
   const [activeSubPages, setActiveSubPages] = useState<
     Partial<Record<SettingsPageId, SettingsSubPageId>>
   >(() => buildDefaultSubPages());
+  const [pendingFocusRequest, setPendingFocusRequest] =
+    useState<SettingsFocusRequest | null>(null);
   const lastDurationRef = useRef<number>(
     settings.examDurationMinutes > 0 ? settings.examDurationMinutes : 30,
   );
+
+  useEffect(() => {
+    return subscribeSettingsFocus((request) => {
+      setPendingFocusRequest(request);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!pendingFocusRequest) {
+      return;
+    }
+    const request = pendingFocusRequest;
+    if (activeSettingsPage !== request.pageId) {
+      setActiveSettingsPage(request.pageId);
+    }
+    if (request.subPageId) {
+      setActiveSubPages((prev) => ({
+        ...prev,
+        [request.pageId]: request.subPageId,
+      }));
+    }
+    setPendingFocusRequest(null);
+    consumeSettingsFocusRequest();
+
+    let cancelled = false;
+    let attempt = 0;
+    const maxAttempts = 6;
+    const attemptFocus = () => {
+      if (cancelled) {
+        return;
+      }
+      attempt += 1;
+      const focusTarget = request.focusSelector
+        ? document.querySelector<HTMLElement>(request.focusSelector)
+        : null;
+      const scrollTarget = request.scrollSelector
+        ? document.querySelector<HTMLElement>(request.scrollSelector)
+        : null;
+      const target = focusTarget ?? scrollTarget;
+      if (!target) {
+        if (attempt < maxAttempts) {
+          window.setTimeout(attemptFocus, 90);
+        }
+        return;
+      }
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (focusTarget) {
+        focusTarget.focus({ preventScroll: true });
+      }
+      if (request.highlight !== false) {
+        target.classList.add("settings-focus-highlight");
+        window.setTimeout(() => {
+          target.classList.remove("settings-focus-highlight");
+        }, 2500);
+      }
+    };
+
+    window.setTimeout(attemptFocus, 90);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSettingsPage, pendingFocusRequest, setActiveSettingsPage]);
 
   useEffect(() => {
     if (settings.examDurationMinutes > 0) {

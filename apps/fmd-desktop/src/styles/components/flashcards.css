@@ -297,7 +297,6 @@
   color: var(--ink);
   white-space: pre;
   overflow-x: auto;
-  max-width: 100%;
 }
 
 .flashcard-option .flashcard-code-block {

@@ -29,8 +29,10 @@ import { SrStatsAndChart } from "./components/SrStatsAndChart";
 import { SrStatsPanel } from "./components/SrStatsPanel";
 import { SrToolsPanel } from "./components/SrToolsPanel";
 import { UserToolsPanel } from "../../components/UserToolsPanel";
+import { NoteFilesPanel } from "../../components/NoteFilesPanel";
 import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
 import { useTableView } from "../../lib/useTableView";
+import { useAppState } from "../../components/AppStateProvider";
 import type { StudySectionKey } from "../../lib/studySections";
 
 type SpacedRepetitionPageProps = {
@@ -38,6 +40,7 @@ type SpacedRepetitionPageProps = {
 };
 
 export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPageProps) => {
+  const { actions, preview } = useAppState();
   const {
     flashcards,
     spacedRepetition,
@@ -88,6 +91,18 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isUserToolsOpen, setIsUserToolsOpen] = useState(false);
+
+  const noteFilesPanel = (
+    <NoteFilesPanel
+      className="sr-note-files-panel"
+      files={flashcards.flashcardFiles}
+      listState={flashcards.isFlashcardScanning ? "loading" : "idle"}
+      listError={flashcards.flashcardFilesError}
+      selectedFile={preview.selectedFile}
+      vaultPath={vault.vaultPath}
+      onSelectFile={actions.handleSelectFile}
+    />
+  );
 
   return (
     <div
@@ -238,6 +253,8 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           controlsId="sr-stats-body"
         />
       )}
+
+      {isFocusMode ? null : noteFilesPanel}
 
       <SrDeleteModal
         isDeleteDialogOpen={isDeleteDialogOpen}

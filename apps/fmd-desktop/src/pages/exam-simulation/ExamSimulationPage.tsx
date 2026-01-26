@@ -29,6 +29,9 @@ import {
   type ExamStageControls,
   UserToolsPanel,
 } from "../../components/UserToolsPanel";
+import { ModalShell } from "../../components/ModalShell";
+import { FileIcon } from "../../components/icons";
+import type { VaultFile } from "../../lib/tree";
 import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
@@ -38,6 +41,8 @@ import { ExamTaskRunner } from "./components/ExamTaskRunner";
 import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 import { useLayoutMode } from "../../lib/layoutMode";
+import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import {
   formatBinding,
   getEffectiveBinding,
@@ -84,6 +89,7 @@ export const ExamSimulationPage = () => {
     examTimerEnabled,
     examShowTimeline,
     canStartExam,
+    missingExamSettings,
     examEmptyState,
     results,
     conversionDecisions,
@@ -115,6 +121,42 @@ export const ExamSimulationPage = () => {
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const autoViewModeRef = useRef(false);
   const isTableView = useLayoutMode() === "table";
+  const isTablet = useMediaQuery("(min-width: 980px) and (max-width: 1199px)", false);
+  const [isExamFilesOpen, setIsExamFilesOpen] = useState(false);
+  const handleOpenExamSettings = useCallback(() => {
+    const focusTarget =
+      missingExamSettings.find((item) => item.severity !== "warning") ??
+      missingExamSettings[0];
+    requestSettingsFocus({
+      pageId: "exam-settings",
+      subPageId: "exam-settings",
+      scrollSelector: "#exam-settings-section",
+      focusSelector: focusTarget?.fieldSelector,
+      highlight: true,
+    });
+  }, [missingExamSettings]);
+
+  const handleExamFilesOpen = useCallback(() => {
+    setIsExamFilesOpen(true);
+  }, []);
+
+  const handleExamFilesClose = useCallback(() => {
+    setIsExamFilesOpen(false);
+  }, []);
+
+  const handleExamFileSelect = useCallback(
+    (file: VaultFile) => {
+      actions.handleSelectFile(file);
+      setIsExamFilesOpen(false);
+    },
+    [actions],
+  );
+
+  useEffect(() => {
+    if (!isTablet && isExamFilesOpen) {
+      setIsExamFilesOpen(false);
+    }
+  }, [isExamFilesOpen, isTablet]);
   const examStageControls = useMemo<ExamStageControls>(
     () => ({
       stage,
@@ -422,6 +464,17 @@ export const ExamSimulationPage = () => {
                   <circle cx="12" cy="12" r="3.5" />
                 </svg>
               </button>
+              {isTablet ? (
+                <button
+                  type="button"
+                  className="focus-toggle exam-files-toggle"
+                  onClick={handleExamFilesOpen}
+                  aria-label="Exam Files"
+                  title="Exam Files"
+                >
+                  <FileIcon />
+                </button>
+              ) : null}
             </div>
             {stage === "idle" ? (
               <div className="exam-overview">
@@ -438,6 +491,8 @@ export const ExamSimulationPage = () => {
                       hasTaskCountMismatch={hasTaskCountMismatch}
                       onStartExam={phaseButton.onClick}
                       startDisabled={phaseButton.disabled}
+                      missingSettings={missingExamSettings}
+                      onOpenExamSettings={handleOpenExamSettings}
                     />
                   ) : (
                     <ExamStatisticsPanel
@@ -542,6 +597,22 @@ export const ExamSimulationPage = () => {
         handleDeleteConfirm={handleDeleteConfirm}
         canConfirmDelete={canConfirmDelete}
       />
+      <ModalShell
+        isOpen={isExamFilesOpen}
+        title="Exam Files"
+        onClose={handleExamFilesClose}
+        className="note-modal-panel"
+        bodyClassName="note-modal-body"
+      >
+        <ExamFilePanel
+          files={examFiles}
+          listState={examFilesState}
+          listError={examFilesError}
+          selectedFile={selectedExamFile}
+          vaultPath={vault.vaultPath}
+          onSelectFile={handleExamFileSelect}
+        />
+      </ModalShell>
     </div>
   );
 };

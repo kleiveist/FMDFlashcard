@@ -28,6 +28,7 @@ import { FastHistoryPanel } from "./components/FastHistoryPanel";
 import { FastStatsPanel } from "./components/FastStatsPanel";
 import { FastToolsPanel } from "./components/FastToolsPanel";
 import { StudyTimeBar } from "../../components/StudyTimeBar";
+import { NoteFilesPanel } from "../../components/NoteFilesPanel";
 import { useFastSession } from "./hooks/useFastSession";
 import {
   areClozeBlanksComplete,
@@ -43,6 +44,7 @@ import {
 } from "../../lib/shortcuts/bindings";
 import { getShortcutById } from "../../lib/shortcuts/registry";
 import { useTableView } from "../../lib/useTableView";
+import { useAppState } from "../../components/AppStateProvider";
 import type { StudySectionKey } from "../../lib/studySections";
 
 const viewToggleCommand = getShortcutById("toggleViewMode");
@@ -55,6 +57,7 @@ type FastFlashcardPageProps = {
 };
 
 export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) => {
+  const { actions, preview, vault } = useAppState();
   const {
     fastFlashcards,
     settings,
@@ -327,6 +330,18 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
     />
   );
 
+  const noteFilesPanel = (
+    <NoteFilesPanel
+      className="fast-note-files-panel"
+      files={fastFlashcards.flashcardFiles}
+      listState={fastFlashcards.isFlashcardScanning ? "loading" : "idle"}
+      listError={fastFlashcards.flashcardFilesError}
+      selectedFile={preview.selectedFile}
+      vaultPath={vault.vaultPath}
+      onSelectFile={actions.handleSelectFile}
+    />
+  );
+
   const flashcardPanel = (
     <section className="panel fast-flashcard-panel">
       {isViewMode ? (
@@ -396,12 +411,14 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
           {statsPanel}
           {historyPanel}
           {toolsPanel}
+          {noteFilesPanel}
         </>
       ) : (
         <>
           {statsPanel}
           {toolsPanel}
           {historyPanel}
+          {noteFilesPanel}
           {flashcardPanel}
         </>
       )}

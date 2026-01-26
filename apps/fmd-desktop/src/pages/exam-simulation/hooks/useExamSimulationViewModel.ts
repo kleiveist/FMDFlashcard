@@ -33,6 +33,7 @@ import {
   type TrueFalseSelection,
 } from "../../../features/flashcards/logic";
 import { type ExamAiEvaluation } from "../../../features/settings/useAppSettings";
+import { validateExamSettings } from "../../../features/settings/validateExamSettings";
 import { asErrorMessage } from "../../../lib/errors";
 import {
   buildExamRunId,
@@ -328,11 +329,27 @@ export const useExamSimulationViewModel = () => {
 
   const taskPointsSum = activeTaskPoints.reduce((sum, value) => sum + value, 0);
   const remainingPoints = settings.examMaxTotalPoints - taskPointsSum;
-  const isSettingsValid =
-    activeTaskPoints.length === settings.examTaskCount &&
-    taskPointsSum === settings.examMaxTotalPoints &&
-    settings.examTaskCount >= 1 &&
-    settings.examTaskCount <= 20;
+  const missingExamSettings = useMemo(
+    () =>
+      validateExamSettings({
+        examMaxTotalPoints: settings.examMaxTotalPoints,
+        examTaskCount: settings.examTaskCount,
+        examTaskPoints: settings.examTaskPoints,
+        examDurationMinutes: settings.examDurationMinutes,
+        examTimeLimitEnabled: settings.examTimeLimitEnabled,
+      }),
+    [
+      settings.examDurationMinutes,
+      settings.examMaxTotalPoints,
+      settings.examTaskCount,
+      settings.examTaskPoints,
+      settings.examTimeLimitEnabled,
+    ],
+  );
+  const hasSettingsBlockers = missingExamSettings.some(
+    (item) => item.severity !== "warning",
+  );
+  const isSettingsValid = !hasSettingsBlockers;
 
   const canStartExam =
     Boolean(selectedExamFile) &&
@@ -959,6 +976,7 @@ export const useExamSimulationViewModel = () => {
     examTimerEnabled,
     examShowTimeline,
     remainingPoints,
+    missingExamSettings,
     isSettingsValid,
     canStartExam,
     examEmptyState,

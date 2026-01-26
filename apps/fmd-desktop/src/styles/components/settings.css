@@ -1035,3 +1035,10 @@
   font-size: 0.85rem;
   font-weight: 600;
 }
+
+.settings-focus-highlight {
+  outline: 2px solid var(--accent-highlight);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-highlight) 35%, transparent);
+  transition: box-shadow 0.3s ease;
+}

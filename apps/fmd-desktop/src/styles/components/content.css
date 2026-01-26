@@ -606,7 +606,7 @@ h2 {
 .fast-flashcard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   gap: 18px 24px;
   align-items: stretch;
 }
@@ -614,7 +614,7 @@ h2 {
 .spaced-repetition-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto auto auto;
+  grid-template-rows: auto auto auto auto;
   gap: 24px;
   align-items: start;
 }
@@ -749,6 +749,12 @@ body.focus-mode .fast-flashcard-panel {
   overflow: auto;
 }
 
+.fast-note-files-panel {
+  grid-column: 2;
+  grid-row: 3;
+  min-height: 0;
+}
+
 body.focus-mode .flashcard-panel img,
 body.focus-mode .sr-flashcards-panel img {
   max-width: 100%;
@@ -764,7 +770,9 @@ body.focus-mode .sr-tools-panel,
 body.focus-mode .sr-stats-panel,
 body.focus-mode .fast-stats-panel,
 body.focus-mode .fast-tools-panel,
-body.focus-mode .fast-history-panel {
+body.focus-mode .fast-history-panel,
+body.focus-mode .fast-note-files-panel,
+body.focus-mode .sr-note-files-panel {
   display: none;
 }
 
@@ -799,9 +807,14 @@ body.focus-mode .fast-history-panel {
   grid-row: 2;
 }
 
+.spaced-repetition-layout .sr-note-files-panel {
+  grid-column: 2;
+  grid-row: 3;
+}
+
 .spaced-repetition-layout .sr-stats-panel {
   grid-column: 1 / span 2;
-  grid-row: 3;
+  grid-row: 4;
 }
 
 .flashcard-sidebar {
@@ -1332,6 +1345,61 @@ body.focus-mode .fast-history-panel {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.exam-start-blocked {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--error-border);
+  background: color-mix(in srgb, var(--error-bg) 70%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exam-start-blocked-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.exam-start-blocked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exam-missing-settings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exam-missing-settings-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.exam-missing-settings-dot {
+  color: var(--error-ink);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.exam-missing-settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.exam-missing-settings-label {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .exam-points-row {
