@@ -585,6 +585,7 @@ export const ExamSimulationPage = () => {
             selectedFile={selectedExamFile}
             vaultPath={vault.vaultPath}
             onSelectFile={actions.handleSelectFile}
+            className="exam-files-panel"
           />
         </div>
       </div>

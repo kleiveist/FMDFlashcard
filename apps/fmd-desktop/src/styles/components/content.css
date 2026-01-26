@@ -606,17 +606,19 @@ h2 {
 .fast-flashcard-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto auto auto;
+  grid-template-areas: "fast-main fast-sidebar";
   gap: 18px 24px;
-  align-items: stretch;
+  align-items: start;
+  align-content: start;
 }
 
 .spaced-repetition-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto auto auto auto;
+  grid-template-areas: "sr-main sr-sidebar";
   gap: 24px;
   align-items: start;
+  align-content: start;
 }
 
 body.focus-mode .app-shell,
@@ -636,8 +638,12 @@ body.focus-mode .fast-flashcard-layout {
   grid-template-columns: 1fr;
 }
 
+body.focus-mode .spaced-repetition-layout {
+  grid-template-areas: "sr-main";
+}
+
 body.focus-mode .fast-flashcard-layout {
-  grid-template-rows: auto;
+  grid-template-areas: "fast-main";
 }
 
 body.focus-mode .flashcard-panel,
@@ -660,9 +666,18 @@ body.focus-mode .fast-flashcard-panel {
   grid-row: 1;
 }
 
+.fast-flashcard-sidebar {
+  grid-area: fast-sidebar;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: stretch;
+  min-width: 0;
+}
+
 .fast-stats-panel {
-  grid-column: 1;
-  grid-row: 1;
+  align-self: start;
+  min-height: 0;
 }
 
 .fast-stats-panel .panel-body {
@@ -673,8 +688,7 @@ body.focus-mode .fast-flashcard-panel {
 }
 
 .fast-tools-panel {
-  grid-column: 2;
-  grid-row: 1;
+  min-height: 0;
 }
 
 .fast-flashcard-tools-settings {
@@ -694,8 +708,7 @@ body.focus-mode .fast-flashcard-panel {
 }
 
 .fast-flashcard-panel {
-  grid-column: 1;
-  grid-row: 2;
+  grid-area: fast-main;
 }
 
 .study-time-bar {
@@ -750,8 +763,6 @@ body.focus-mode .fast-flashcard-panel {
 }
 
 .fast-note-files-panel {
-  grid-column: 2;
-  grid-row: 3;
   min-height: 0;
 }
 
@@ -767,7 +778,6 @@ body.focus-mode .exam-sidebar,
 body.focus-mode .sr-diagram-panel,
 body.focus-mode .sr-user-panel,
 body.focus-mode .sr-tools-panel,
-body.focus-mode .sr-stats-panel,
 body.focus-mode .fast-stats-panel,
 body.focus-mode .fast-tools-panel,
 body.focus-mode .fast-history-panel,
@@ -776,14 +786,33 @@ body.focus-mode .sr-note-files-panel {
   display: none;
 }
 
+body.focus-mode .fast-flashcard-sidebar {
+  display: none;
+}
+
+body.focus-mode .spaced-repetition-sidebar {
+  display: none;
+}
+
+.spaced-repetition-main {
+  grid-area: sr-main;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: stretch;
+  min-width: 0;
+}
+
 .spaced-repetition-layout .sr-diagram-panel {
-  grid-column: 1;
-  grid-row: 1;
+  width: 100%;
+}
+
+.spaced-repetition-layout .sr-diagram-panel .panel-body {
+  overflow-y: auto;
 }
 
 .spaced-repetition-layout .sr-user-panel {
-  grid-column: 2;
-  grid-row: 1;
+  min-height: 0;
 }
 
 .sr-user-panel .sr-user-actions {
@@ -797,24 +826,22 @@ body.focus-mode .sr-note-files-panel {
   padding-top: 0;
 }
 
-.spaced-repetition-layout .sr-flashcards-panel {
-  grid-column: 1;
-  grid-row: 2;
-}
-
 .spaced-repetition-layout .sr-tools-panel {
-  grid-column: 2;
-  grid-row: 2;
+  min-height: 0;
 }
 
 .spaced-repetition-layout .sr-note-files-panel {
-  grid-column: 2;
-  grid-row: 3;
+  min-height: 0;
 }
 
-.spaced-repetition-layout .sr-stats-panel {
-  grid-column: 1 / span 2;
-  grid-row: 4;
+.spaced-repetition-sidebar {
+  grid-area: sr-sidebar;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: stretch;
+  align-self: start;
+  min-width: 0;
 }
 
 .flashcard-sidebar {

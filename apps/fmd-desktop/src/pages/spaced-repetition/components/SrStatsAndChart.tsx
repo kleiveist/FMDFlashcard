@@ -21,8 +21,9 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import type { CSSProperties } from "react";
-import { CollapsiblePanelHeader } from "../../../components/CollapsiblePanelHeader";
+import { type CSSProperties, useState } from "react";
+import { KpiGrid } from "../../../components/KpiGrid";
+import { ChevronDownIcon } from "../../../components/icons";
 import { buildLineChartPoints } from "../../../lib/chart";
 import { type SpacedRepetitionStatsView } from "../../../features/spaced-repetition/useSpacedRepetition";
 import { SrBoxesPanel } from "./SrBoxesPanel";
@@ -44,6 +45,7 @@ type SrStatsAndChartProps = {
   spacedRepetitionCorrectCount: number;
   spacedRepetitionIncorrectCount: number;
   spacedRepetitionTotalQuestions: number;
+  kpiItems: { label: string; value: number }[];
   isCollapsible?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -67,154 +69,199 @@ export const SrStatsAndChart = ({
   spacedRepetitionCorrectCount,
   spacedRepetitionIncorrectCount,
   spacedRepetitionTotalQuestions,
+  kpiItems,
   isCollapsible = false,
   isCollapsed = false,
   onToggleCollapse,
   controlsId,
-}: SrStatsAndChartProps) => (
-  <section className="panel sr-diagram-panel">
-    {isCollapsible && onToggleCollapse && controlsId ? (
-      <CollapsiblePanelHeader
-        title="Statistics Diagram"
-        description="Progress trends over time."
-        isCollapsed={isCollapsed}
-        onToggle={onToggleCollapse}
-        controlsId={controlsId}
-      />
-    ) : (
+}: SrStatsAndChartProps) => {
+  const [view, setView] = useState<"diagram" | "stats">("diagram");
+  const activeTitle = view === "diagram" ? "Statistics Diagram" : "Statistics";
+  const showCollapseToggle = Boolean(isCollapsible && onToggleCollapse && controlsId);
+
+  return (
+    <section className="panel sr-diagram-panel">
       <div className="panel-header">
-        <div>
-          <h2>Statistics Diagram</h2>
-          <p className="muted">Progress trends over time.</p>
-        </div>
-      </div>
-    )}
-    <div
-      className="panel-body"
-      id={controlsId}
-      hidden={Boolean(isCollapsible && isCollapsed)}
-      aria-hidden={Boolean(isCollapsible && isCollapsed)}
-    >
-      <div className="sr-stats-top">
-        <div className="sr-stats-left">
-          <div className="sr-stats-switch">
-            <span className="label">View</span>
-            <div className="pill-grid">
-              <button
-                type="button"
-                className={`pill pill-button ${statsView === "boxes" ? "active" : ""}`}
-                aria-pressed={statsView === "boxes"}
-                onClick={() => setSpacedRepetitionStatsView("boxes")}
-              >
-                Boxes
-              </button>
-              <button
-                type="button"
-                className={`pill pill-button ${statsView === "vault" ? "active" : ""}`}
-                aria-pressed={statsView === "vault"}
-                onClick={() => setSpacedRepetitionStatsView("vault")}
-              >
-                Active vault
-              </button>
-              <button
-                type="button"
-                className={`pill pill-button ${
-                  statsView === "completed" ? "active" : ""
-                }`}
-                aria-pressed={statsView === "completed"}
-                onClick={() => setSpacedRepetitionStatsView("completed")}
-              >
-                Completed per day
-              </button>
-            </div>
-          </div>
-          {statsView === "boxes" ? (
-            <SrBoxesPanel
-              spacedRepetitionBoxCounts={spacedRepetitionBoxCounts}
-              maxBoxCount={maxBoxCount}
-              activeBoxFilter={activeBoxFilter}
-              toggleBoxFilter={toggleBoxFilter}
-            />
-          ) : statsView === "vault" ? (
-            <div className="sr-vault-card">
-              <div className="sr-vault-row">
-                <span className="label">Vault</span>
-                <span className="value">{vaultName}</span>
-              </div>
-              <div className="sr-vault-row">
-                <span className="label">Notes</span>
-                <span className="value">{vaultFilesCount}</span>
-              </div>
-              <div className="sr-vault-row">
-                <span className="label">Cards loaded</span>
-                <span className="value">{spacedRepetitionFlashcardsLength}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="chart-card">
-              <div className="chart-header">
-                <span className="label">Completed per day</span>
-                <span className="chart-meta">Last 7 days</span>
-              </div>
-              <div className="chart-canvas">
-                <svg
-                  className="sr-chart"
-                  viewBox="0 0 100 40"
-                  role="img"
-                  aria-label="Completed per day"
-                >
-                  <line
-                    x1="0"
-                    y1="40"
-                    x2="100"
-                    y2="40"
-                    className="sr-chart-axis"
-                  />
-                  <polyline
-                    className="sr-chart-line"
-                    points={buildLineChartPoints(spacedRepetitionCompletedChartData)}
-                  />
-                </svg>
-              </div>
-              <div className="chart-axis">
-                {spacedRepetitionCompletedChartLabels.map((label) => (
-                  <span key={label}>{label}</span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="sr-stats-right">
-          <span className="label">Statistics</span>
-          <div className="stats-summary">
-            <div className="stats-counters">
-              <div className="stats-counter">
-                <span className="stats-label">Correct</span>
-                <span className="stats-value">{spacedRepetitionCorrectCount}</span>
-              </div>
-              <div className="stats-counter">
-                <span className="stats-label">Incorrect</span>
-                <span className="stats-value">{spacedRepetitionIncorrectCount}</span>
-              </div>
-              <div className="stats-counter">
-                <span className="stats-label">Total</span>
-                <span className="stats-value">{spacedRepetitionTotalQuestions}</span>
-              </div>
-            </div>
-            <div
-              className={statsChartClass}
-              style={statsChartStyle}
-              role="img"
-              aria-label={`Correct ${spacedRepetitionCorrectCount}, Incorrect ${spacedRepetitionIncorrectCount}, Total ${spacedRepetitionTotalQuestions}`}
+        <div className="sr-panel-header-content">
+          <div className="sr-stats-toggle" role="group" aria-label="Statistics view">
+            <button
+              type="button"
+              className={`pill pill-button ${view === "diagram" ? "active" : ""}`}
+              aria-pressed={view === "diagram"}
+              onClick={() => setView("diagram")}
             >
-              <div className="stats-chart-label">
-                <span className="stats-chart-total">{spacedRepetitionTotalQuestions}</span>
-                <span className="stats-chart-caption">Total</span>
+              Statistics Diagram
+            </button>
+            <button
+              type="button"
+              className={`pill pill-button ${view === "stats" ? "active" : ""}`}
+              aria-pressed={view === "stats"}
+              onClick={() => setView("stats")}
+            >
+              Statistics
+            </button>
+          </div>
+          <h2 className="sr-panel-title">{activeTitle}</h2>
+        </div>
+        {showCollapseToggle ? (
+          <button
+            type="button"
+            className="sr-panel-collapse"
+            onClick={onToggleCollapse}
+            aria-label={isCollapsed ? "Expand statistics panel" : "Collapse statistics panel"}
+            aria-expanded={!isCollapsed}
+            aria-controls={controlsId}
+          >
+            <span
+              className={`panel-header-chevron ${isCollapsed ? "" : "is-open"}`}
+              aria-hidden="true"
+            >
+              <ChevronDownIcon />
+            </span>
+          </button>
+        ) : null}
+      </div>
+      <div
+        className={`panel-body ${view === "stats" ? "sr-stats-body" : ""}`}
+        id={controlsId}
+        hidden={Boolean(isCollapsible && isCollapsed)}
+        aria-hidden={Boolean(isCollapsible && isCollapsed)}
+      >
+        {view === "diagram" ? (
+          <div className="sr-stats-top">
+            <div className="sr-stats-left">
+              <div className="sr-stats-switch">
+                <span className="label">View</span>
+                <div className="pill-grid">
+                  <button
+                    type="button"
+                    className={`pill pill-button ${statsView === "boxes" ? "active" : ""}`}
+                    aria-pressed={statsView === "boxes"}
+                    onClick={() => setSpacedRepetitionStatsView("boxes")}
+                  >
+                    Boxes
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill pill-button ${statsView === "vault" ? "active" : ""}`}
+                    aria-pressed={statsView === "vault"}
+                    onClick={() => setSpacedRepetitionStatsView("vault")}
+                  >
+                    Active vault
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      statsView === "completed" ? "active" : ""
+                    }`}
+                    aria-pressed={statsView === "completed"}
+                    onClick={() => setSpacedRepetitionStatsView("completed")}
+                  >
+                    Completed per day
+                  </button>
+                </div>
+              </div>
+              {statsView === "boxes" ? (
+                <SrBoxesPanel
+                  spacedRepetitionBoxCounts={spacedRepetitionBoxCounts}
+                  maxBoxCount={maxBoxCount}
+                  activeBoxFilter={activeBoxFilter}
+                  toggleBoxFilter={toggleBoxFilter}
+                />
+              ) : statsView === "vault" ? (
+                <div className="sr-vault-card">
+                  <div className="sr-vault-row">
+                    <span className="label">Vault</span>
+                    <span className="value">{vaultName}</span>
+                  </div>
+                  <div className="sr-vault-row">
+                    <span className="label">Notes</span>
+                    <span className="value">{vaultFilesCount}</span>
+                  </div>
+                  <div className="sr-vault-row">
+                    <span className="label">Cards loaded</span>
+                    <span className="value">{spacedRepetitionFlashcardsLength}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="chart-card">
+                  <div className="chart-header">
+                    <span className="label">Completed per day</span>
+                    <span className="chart-meta">Last 7 days</span>
+                  </div>
+                  <div className="chart-canvas">
+                    <svg
+                      className="sr-chart"
+                      viewBox="0 0 100 40"
+                      role="img"
+                      aria-label="Completed per day"
+                    >
+                      <line
+                        x1="0"
+                        y1="40"
+                        x2="100"
+                        y2="40"
+                        className="sr-chart-axis"
+                      />
+                      <polyline
+                        className="sr-chart-line"
+                        points={buildLineChartPoints(
+                          spacedRepetitionCompletedChartData
+                        )}
+                      />
+                    </svg>
+                  </div>
+                  <div className="chart-axis">
+                    {spacedRepetitionCompletedChartLabels.map((label) => (
+                      <span key={label}>{label}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="sr-stats-right">
+              <span className="label">Statistics</span>
+              <div className="stats-summary">
+                <div className="stats-counters">
+                  <div className="stats-counter">
+                    <span className="stats-label">Correct</span>
+                    <span className="stats-value">
+                      {spacedRepetitionCorrectCount}
+                    </span>
+                  </div>
+                  <div className="stats-counter">
+                    <span className="stats-label">Incorrect</span>
+                    <span className="stats-value">
+                      {spacedRepetitionIncorrectCount}
+                    </span>
+                  </div>
+                  <div className="stats-counter">
+                    <span className="stats-label">Total</span>
+                    <span className="stats-value">
+                      {spacedRepetitionTotalQuestions}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={statsChartClass}
+                  style={statsChartStyle}
+                  role="img"
+                  aria-label={`Correct ${spacedRepetitionCorrectCount}, Incorrect ${spacedRepetitionIncorrectCount}, Total ${spacedRepetitionTotalQuestions}`}
+                >
+                  <div className="stats-chart-label">
+                    <span className="stats-chart-total">
+                      {spacedRepetitionTotalQuestions}
+                    </span>
+                    <span className="stats-chart-caption">Total</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <KpiGrid items={kpiItems} />
+        )}
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};

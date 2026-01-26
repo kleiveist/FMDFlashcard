@@ -26,7 +26,6 @@ import { SrCardHost } from "./components/SrCardHost";
 import { SrDeleteModal } from "./components/SrDeleteModal";
 import { SrHeader } from "./components/SrHeader";
 import { SrStatsAndChart } from "./components/SrStatsAndChart";
-import { SrStatsPanel } from "./components/SrStatsPanel";
 import { SrToolsPanel } from "./components/SrToolsPanel";
 import { UserToolsPanel } from "../../components/UserToolsPanel";
 import { NoteFilesPanel } from "../../components/NoteFilesPanel";
@@ -88,7 +87,6 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
   } = useSrSessionViewModel();
   const isTableView = useTableView();
   const [isDiagramOpen, setIsDiagramOpen] = useState(false);
-  const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isUserToolsOpen, setIsUserToolsOpen] = useState(false);
 
@@ -110,151 +108,144 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
         isTableView ? "table-view" : ""
       }`}
     >
-      {isFocusMode ? null : (
-        <SrStatsAndChart
-          statsView={statsView}
-          setSpacedRepetitionStatsView={
-            spacedRepetition.setSpacedRepetitionStatsView
-          }
-          spacedRepetitionBoxCounts={spacedRepetition.spacedRepetitionBoxCounts}
-          maxBoxCount={maxBoxCount}
-          activeBoxFilter={activeBoxFilter}
-          toggleBoxFilter={toggleBoxFilter}
-          vaultName={vaultName}
-          vaultFilesCount={vault.files.length}
-          spacedRepetitionFlashcardsLength={
-            spacedRepetition.spacedRepetitionFlashcards.length
-          }
-          spacedRepetitionCompletedChartData={
-            spacedRepetition.spacedRepetitionCompletedChartData
-          }
-          spacedRepetitionCompletedChartLabels={
-            spacedRepetition.spacedRepetitionCompletedChartLabels
-          }
-          statsChartClass={statsChartClass}
-          statsChartStyle={statsChartStyle}
-          spacedRepetitionCorrectCount={spacedRepetition.spacedRepetitionCorrectCount}
-          spacedRepetitionIncorrectCount={
-            spacedRepetition.spacedRepetitionIncorrectCount
-          }
-          spacedRepetitionTotalQuestions={
-            spacedRepetition.spacedRepetitionTotalQuestions
-          }
-          isCollapsible={isTableView}
-          isCollapsed={isTableView && !isDiagramOpen}
-          onToggleCollapse={() => setIsDiagramOpen((prev) => !prev)}
-          controlsId="sr-diagram-body"
-        />
-      )}
+      <div className="spaced-repetition-main">
+        {isFocusMode ? null : (
+          <SrStatsAndChart
+            statsView={statsView}
+            setSpacedRepetitionStatsView={
+              spacedRepetition.setSpacedRepetitionStatsView
+            }
+            spacedRepetitionBoxCounts={spacedRepetition.spacedRepetitionBoxCounts}
+            maxBoxCount={maxBoxCount}
+            activeBoxFilter={activeBoxFilter}
+            toggleBoxFilter={toggleBoxFilter}
+            vaultName={vaultName}
+            vaultFilesCount={vault.files.length}
+            spacedRepetitionFlashcardsLength={
+              spacedRepetition.spacedRepetitionFlashcards.length
+            }
+            spacedRepetitionCompletedChartData={
+              spacedRepetition.spacedRepetitionCompletedChartData
+            }
+            spacedRepetitionCompletedChartLabels={
+              spacedRepetition.spacedRepetitionCompletedChartLabels
+            }
+            statsChartClass={statsChartClass}
+            statsChartStyle={statsChartStyle}
+            spacedRepetitionCorrectCount={
+              spacedRepetition.spacedRepetitionCorrectCount
+            }
+            spacedRepetitionIncorrectCount={
+              spacedRepetition.spacedRepetitionIncorrectCount
+            }
+            spacedRepetitionTotalQuestions={
+              spacedRepetition.spacedRepetitionTotalQuestions
+            }
+            kpiItems={kpiItems}
+            isCollapsible={isTableView}
+            isCollapsed={isTableView && !isDiagramOpen}
+            onToggleCollapse={() => setIsDiagramOpen((prev) => !prev)}
+            controlsId="sr-diagram-body"
+          />
+        )}
+
+        <section className="panel sr-flashcards-panel">
+          <SrHeader
+            spacedRepetitionStatusLabel={spacedRepetition.spacedRepetitionStatusLabel}
+            isFocusMode={isFocusMode}
+            focusLabel={focusLabel}
+            setIsFocusMode={setIsFocusMode}
+            onSectionSelect={onSectionSelect}
+          />
+          <SrCardHost
+            filteredFlashcardEntries={filteredFlashcardEntries}
+            showBoxEmptyMessage={showBoxEmptyMessage}
+            activeBoxFilter={activeBoxFilter}
+            spacedRepetitionEmptyState={spacedRepetition.spacedRepetitionEmptyState}
+            spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
+            helpEnabled={spacedRepetitionHelpEnabled}
+            spacedRepetitionCompositeStates={
+              spacedRepetition.spacedRepetitionCompositeStates
+            }
+            spacedRepetitionClozeResponses={
+              spacedRepetition.spacedRepetitionClozeResponses
+            }
+            spacedRepetitionTrueFalseSelections={
+              spacedRepetition.spacedRepetitionTrueFalseSelections
+            }
+            spacedRepetitionTextResponses={
+              spacedRepetition.spacedRepetitionTextResponses
+            }
+            spacedRepetitionTextRevealed={
+              spacedRepetition.spacedRepetitionTextRevealed
+            }
+            spacedRepetitionSelfGrades={spacedRepetition.spacedRepetitionSelfGrades}
+            spacedRepetitionSelections={spacedRepetition.spacedRepetitionSelections}
+            handleCompositeOptionSelect={handleCompositeOptionSelect}
+            handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
+            handleCompositeClozeInputChange={handleCompositeClozeInputChange}
+            handleCompositeClozeTokenDrop={handleCompositeClozeTokenDrop}
+            handleCompositeClozeTokenRemove={handleCompositeClozeTokenRemove}
+            handleCompositeTextInputChange={handleCompositeTextInputChange}
+            handleCompositeTextCheck={handleCompositeTextCheck}
+            handleCompositeSelfGrade={handleCompositeSelfGrade}
+            handleOptionSelect={handleOptionSelect}
+            handleTrueFalseSelect={handleTrueFalseSelect}
+            handleClozeInputChange={handleClozeInputChange}
+            handleClozeTokenDrop={handleClozeTokenDrop}
+            handleClozeTokenRemove={handleClozeTokenRemove}
+            handleTextInputChange={handleTextInputChange}
+            handleTextCheck={handleTextCheck}
+            handleSelfGrade={handleSelfGrade}
+            handleSpacedRepetitionSubmit={
+              spacedRepetition.handleSpacedRepetitionSubmit
+            }
+            handleClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
+            handleClozeBlankDragOver={flashcards.handleClozeBlankDragOver}
+            spacedRepetitionCanGoBack={spacedRepetition.spacedRepetitionCanGoBack}
+            spacedRepetitionCanGoNext={spacedRepetition.spacedRepetitionCanGoNext}
+            handleSpacedRepetitionPageBack={
+              spacedRepetition.handleSpacedRepetitionPageBack
+            }
+            handleSpacedRepetitionPageNext={
+              spacedRepetition.handleSpacedRepetitionPageNext
+            }
+            prevShortcutTitle={prevShortcutTitle}
+            nextShortcutTitle={nextShortcutTitle}
+          />
+        </section>
+      </div>
 
       {isFocusMode ? null : (
-        <UserToolsPanel
-          spacedRepetition={spacedRepetition}
-          handleDeleteOpen={handleDeleteOpen}
-          onStart={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
-          startDisabled={
-            !spacedRepetition.spacedRepetitionActiveUser ||
-            flashcards.isFlashcardScanning
-          }
-          isCollapsible={isTableView}
-          isCollapsed={isTableView && !isUserToolsOpen}
-          onToggleCollapse={() => setIsUserToolsOpen((prev) => !prev)}
-          controlsId="sr-user-tools-body"
-        />
+        <aside className="spaced-repetition-sidebar">
+          {noteFilesPanel}
+          <UserToolsPanel
+            spacedRepetition={spacedRepetition}
+            handleDeleteOpen={handleDeleteOpen}
+            onStart={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
+            startDisabled={
+              !spacedRepetition.spacedRepetitionActiveUser ||
+              flashcards.isFlashcardScanning
+            }
+            isCollapsible={isTableView}
+            isCollapsed={isTableView && !isUserToolsOpen}
+            onToggleCollapse={() => setIsUserToolsOpen((prev) => !prev)}
+            controlsId="sr-user-tools-body"
+          />
+          <SrToolsPanel
+            spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
+            setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
+            spacedRepetitionOrder={spacedRepetition.spacedRepetitionOrder}
+            setSpacedRepetitionOrder={spacedRepetition.setSpacedRepetitionOrder}
+            spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
+            setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
+            isCollapsible={isTableView}
+            isCollapsed={isTableView && !isToolsOpen}
+            onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
+            controlsId="sr-tools-body"
+          />
+        </aside>
       )}
-
-      <section className="panel sr-flashcards-panel">
-        <SrHeader
-          spacedRepetitionStatusLabel={spacedRepetition.spacedRepetitionStatusLabel}
-          isFocusMode={isFocusMode}
-          focusLabel={focusLabel}
-          setIsFocusMode={setIsFocusMode}
-          onSectionSelect={onSectionSelect}
-        />
-        <SrCardHost
-          filteredFlashcardEntries={filteredFlashcardEntries}
-          showBoxEmptyMessage={showBoxEmptyMessage}
-          activeBoxFilter={activeBoxFilter}
-          spacedRepetitionEmptyState={spacedRepetition.spacedRepetitionEmptyState}
-          spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
-          helpEnabled={spacedRepetitionHelpEnabled}
-          spacedRepetitionCompositeStates={
-            spacedRepetition.spacedRepetitionCompositeStates
-          }
-          spacedRepetitionClozeResponses={
-            spacedRepetition.spacedRepetitionClozeResponses
-          }
-          spacedRepetitionTrueFalseSelections={
-            spacedRepetition.spacedRepetitionTrueFalseSelections
-          }
-          spacedRepetitionTextResponses={
-            spacedRepetition.spacedRepetitionTextResponses
-          }
-          spacedRepetitionTextRevealed={
-            spacedRepetition.spacedRepetitionTextRevealed
-          }
-          spacedRepetitionSelfGrades={spacedRepetition.spacedRepetitionSelfGrades}
-          spacedRepetitionSelections={spacedRepetition.spacedRepetitionSelections}
-          handleCompositeOptionSelect={handleCompositeOptionSelect}
-          handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
-          handleCompositeClozeInputChange={handleCompositeClozeInputChange}
-          handleCompositeClozeTokenDrop={handleCompositeClozeTokenDrop}
-          handleCompositeClozeTokenRemove={handleCompositeClozeTokenRemove}
-          handleCompositeTextInputChange={handleCompositeTextInputChange}
-          handleCompositeTextCheck={handleCompositeTextCheck}
-          handleCompositeSelfGrade={handleCompositeSelfGrade}
-          handleOptionSelect={handleOptionSelect}
-          handleTrueFalseSelect={handleTrueFalseSelect}
-          handleClozeInputChange={handleClozeInputChange}
-          handleClozeTokenDrop={handleClozeTokenDrop}
-          handleClozeTokenRemove={handleClozeTokenRemove}
-          handleTextInputChange={handleTextInputChange}
-          handleTextCheck={handleTextCheck}
-          handleSelfGrade={handleSelfGrade}
-          handleSpacedRepetitionSubmit={
-            spacedRepetition.handleSpacedRepetitionSubmit
-          }
-          handleClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
-          handleClozeBlankDragOver={flashcards.handleClozeBlankDragOver}
-          spacedRepetitionCanGoBack={spacedRepetition.spacedRepetitionCanGoBack}
-          spacedRepetitionCanGoNext={spacedRepetition.spacedRepetitionCanGoNext}
-          handleSpacedRepetitionPageBack={
-            spacedRepetition.handleSpacedRepetitionPageBack
-          }
-          handleSpacedRepetitionPageNext={
-            spacedRepetition.handleSpacedRepetitionPageNext
-          }
-          prevShortcutTitle={prevShortcutTitle}
-          nextShortcutTitle={nextShortcutTitle}
-        />
-      </section>
-
-      {isFocusMode ? null : (
-        <SrToolsPanel
-          spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
-          setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
-          spacedRepetitionOrder={spacedRepetition.spacedRepetitionOrder}
-          setSpacedRepetitionOrder={spacedRepetition.setSpacedRepetitionOrder}
-          spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
-          setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
-          isCollapsible={isTableView}
-          isCollapsed={isTableView && !isToolsOpen}
-          onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
-          controlsId="sr-tools-body"
-        />
-      )}
-
-      {isFocusMode ? null : (
-        <SrStatsPanel
-          kpiItems={kpiItems}
-          isCollapsible={isTableView}
-          isCollapsed={isTableView && !isStatsOpen}
-          onToggleCollapse={() => setIsStatsOpen((prev) => !prev)}
-          controlsId="sr-stats-body"
-        />
-      )}
-
-      {isFocusMode ? null : noteFilesPanel}
 
       <SrDeleteModal
         isDeleteDialogOpen={isDeleteDialogOpen}

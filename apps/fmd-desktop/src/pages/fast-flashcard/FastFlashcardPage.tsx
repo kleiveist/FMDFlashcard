@@ -12,7 +12,6 @@
  * Verbunden mit:
  * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastCardHost.tsx: UI-Komponente.
  * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastHeader.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastHistoryPanel.tsx: UI-Komponente.
  *
  * Exportiert:
  * - FastFlashcardPage: React-Komponente.
@@ -24,7 +23,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FastCardHost } from "./components/FastCardHost";
 import { FastHeader } from "./components/FastHeader";
-import { FastHistoryPanel } from "./components/FastHistoryPanel";
 import { FastStatsPanel } from "./components/FastStatsPanel";
 import { FastToolsPanel } from "./components/FastToolsPanel";
 import { StudyTimeBar } from "../../components/StudyTimeBar";
@@ -115,7 +113,6 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
   const [isViewMode, setIsViewMode] = useState(false);
   const isTableView = useTableView();
   const [isStatsOpen, setIsStatsOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const platform = getShortcutPlatform();
   const viewBinding = useMemo(() => {
@@ -290,6 +287,9 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
       statsIncorrect={statsIncorrect}
       statsTotal={statsTotal}
       sessionStats={sessionStats}
+      sessionHistory={sessionHistory}
+      topSessions={topSessions}
+      lastSessions={lastSessions}
       sessionCompleted={sessionCompleted}
       sessionMissed={sessionMissed}
       sessionAccuracy={sessionAccuracy}
@@ -315,18 +315,6 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
       isCollapsed={isTableView && !isToolsOpen}
       onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
       controlsId="fast-tools-body"
-    />
-  );
-
-  const historyPanel = (
-    <FastHistoryPanel
-      sessionHistory={sessionHistory}
-      topSessions={topSessions}
-      lastSessions={lastSessions}
-      isCollapsible={isTableView}
-      isCollapsed={isTableView && !isHistoryOpen}
-      onToggleCollapse={() => setIsHistoryOpen((prev) => !prev)}
-      controlsId="fast-history-body"
     />
   );
 
@@ -405,23 +393,12 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
         isTableView ? "table-view" : ""
       }`}
     >
-      {isTableView ? (
-        <>
-          {flashcardPanel}
-          {statsPanel}
-          {historyPanel}
-          {toolsPanel}
-          {noteFilesPanel}
-        </>
-      ) : (
-        <>
-          {statsPanel}
-          {toolsPanel}
-          {historyPanel}
-          {noteFilesPanel}
-          {flashcardPanel}
-        </>
-      )}
+      {flashcardPanel}
+      <aside className="fast-flashcard-sidebar">
+        {noteFilesPanel}
+        {toolsPanel}
+        {statsPanel}
+      </aside>
     </div>
   );
 };

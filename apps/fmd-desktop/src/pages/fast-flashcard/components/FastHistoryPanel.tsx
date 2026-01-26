@@ -24,15 +24,80 @@ import type { FastFlashcardSessionSummary } from "../hooks/useFastSession";
 import { formatSessionPace, formatSessionTimestamp } from "../hooks/useFastSession";
 import { CollapsiblePanelHeader } from "../../../components/CollapsiblePanelHeader";
 
-type FastHistoryPanelProps = {
+type FastSessionHistoryProps = {
   sessionHistory: FastFlashcardSessionSummary[];
   topSessions: FastFlashcardSessionSummary[];
   lastSessions: FastFlashcardSessionSummary[];
+};
+
+type FastHistoryPanelProps = FastSessionHistoryProps & {
   isCollapsible?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   controlsId?: string;
 };
+
+export const FastSessionHistory = ({
+  sessionHistory,
+  topSessions,
+  lastSessions,
+}: FastSessionHistoryProps) =>
+  sessionHistory.length === 0 ? (
+    <div className="empty-state">No sessions yet.</div>
+  ) : (
+    <div className="fast-history-sections">
+      <div className="fast-session-section">
+        <div>
+          <h3 className="fast-section-title">Top 3 Sessions</h3>
+        </div>
+        <div className="fast-session-table">
+          <div className="fast-session-row header">
+            <span className="fast-session-cell timestamp">Date/Time</span>
+            <span className="fast-session-cell">Score</span>
+            <span className="fast-session-cell">Accuracy</span>
+            <span className="fast-session-cell">Pace</span>
+          </div>
+          {topSessions.map((session) => (
+            <div key={session.id} className="fast-session-row">
+              <span className="fast-session-cell timestamp">
+                {formatSessionTimestamp(session.endedAt)}
+              </span>
+              <span className="fast-session-cell">{session.score}</span>
+              <span className="fast-session-cell">{session.accuracy}%</span>
+              <span className="fast-session-cell">
+                {formatSessionPace(session.pace)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="fast-session-section">
+        <div>
+          <h3 className="fast-section-title">Last 5 Sessions</h3>
+        </div>
+        <div className="fast-session-table">
+          <div className="fast-session-row header">
+            <span className="fast-session-cell timestamp">Date/Time</span>
+            <span className="fast-session-cell">Score</span>
+            <span className="fast-session-cell">Accuracy</span>
+            <span className="fast-session-cell">Pace</span>
+          </div>
+          {lastSessions.map((session) => (
+            <div key={session.id} className="fast-session-row">
+              <span className="fast-session-cell timestamp">
+                {formatSessionTimestamp(session.endedAt)}
+              </span>
+              <span className="fast-session-cell">{session.score}</span>
+              <span className="fast-session-cell">{session.accuracy}%</span>
+              <span className="fast-session-cell">
+                {formatSessionPace(session.pace)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
 export const FastHistoryPanel = ({
   sessionHistory,
@@ -64,62 +129,11 @@ export const FastHistoryPanel = ({
       hidden={Boolean(isCollapsible && isCollapsed)}
       aria-hidden={Boolean(isCollapsible && isCollapsed)}
     >
-      {sessionHistory.length === 0 ? (
-        <div className="empty-state">No sessions yet.</div>
-      ) : (
-        <div className="fast-history-sections">
-          <div className="fast-session-section">
-            <div>
-              <h3 className="fast-section-title">Top 3 Sessions</h3>
-            </div>
-            <div className="fast-session-table">
-              <div className="fast-session-row header">
-                <span className="fast-session-cell timestamp">Date/Time</span>
-                <span className="fast-session-cell">Score</span>
-                <span className="fast-session-cell">Accuracy</span>
-                <span className="fast-session-cell">Pace</span>
-              </div>
-              {topSessions.map((session) => (
-                <div key={session.id} className="fast-session-row">
-                  <span className="fast-session-cell timestamp">
-                    {formatSessionTimestamp(session.endedAt)}
-                  </span>
-                  <span className="fast-session-cell">{session.score}</span>
-                  <span className="fast-session-cell">{session.accuracy}%</span>
-                  <span className="fast-session-cell">
-                    {formatSessionPace(session.pace)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="fast-session-section">
-            <div>
-              <h3 className="fast-section-title">Last 5 Sessions</h3>
-            </div>
-            <div className="fast-session-table">
-              <div className="fast-session-row header">
-                <span className="fast-session-cell timestamp">Date/Time</span>
-                <span className="fast-session-cell">Score</span>
-                <span className="fast-session-cell">Accuracy</span>
-                <span className="fast-session-cell">Pace</span>
-              </div>
-              {lastSessions.map((session) => (
-                <div key={session.id} className="fast-session-row">
-                  <span className="fast-session-cell timestamp">
-                    {formatSessionTimestamp(session.endedAt)}
-                  </span>
-                  <span className="fast-session-cell">{session.score}</span>
-                  <span className="fast-session-cell">{session.accuracy}%</span>
-                  <span className="fast-session-cell">
-                    {formatSessionPace(session.pace)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <FastSessionHistory
+        sessionHistory={sessionHistory}
+        topSessions={topSessions}
+        lastSessions={lastSessions}
+      />
     </div>
   </section>
 );

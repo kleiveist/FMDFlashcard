@@ -30,6 +30,7 @@ type ExamFilePanelProps = {
   selectedFile: VaultFile | null;
   vaultPath: string | null;
   onSelectFile: (file: VaultFile) => void;
+  className?: string;
 };
 
 export const ExamFilePanel = ({
@@ -39,6 +40,7 @@ export const ExamFilePanel = ({
   selectedFile,
   vaultPath,
   onSelectFile,
+  className,
 }: ExamFilePanelProps) => {
   const fileCountLabel = !vaultPath
     ? "No vault selected"
@@ -48,7 +50,7 @@ export const ExamFilePanel = ({
   const isScrollable = files.length > 5;
 
   return (
-    <section className="panel list-panel">
+    <section className={["panel list-panel", className].filter(Boolean).join(" ")}>
       <div className="panel-header">
         <div>
           <h2>Exam Files</h2>
