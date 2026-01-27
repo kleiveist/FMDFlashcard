@@ -296,6 +296,11 @@
   min-height: 0;
 }
 
+.exam-editor-structure.study-structure {
+  align-items: stretch;
+  overflow-y: auto;
+}
+
 .exam-editor-panel {
   min-height: 0;
 }
@@ -307,6 +312,17 @@
 
 .card-palette {
   width: 100%;
+}
+
+.exam-editor-structure.study-structure .card-palette {
+  position: static;
+  flex-shrink: 0;
+}
+
+.exam-editor-structure.study-structure .card-palette .panel-body {
+  max-height: none;
+  overflow: visible;
+  min-height: 0;
 }
 
 .exam-editor-layout .panel-body {
@@ -332,6 +348,11 @@
   min-width: 0;
 }
 
+.exam-canvas-top,
+.exam-canvas-bottom {
+  flex-shrink: 0;
+}
+
 .exam-canvas-top > *,
 .exam-canvas-body > *,
 .exam-canvas-bottom > * {
@@ -340,6 +361,18 @@
 
 .exam-canvas-body {
   gap: 16px;
+}
+
+.exam-canvas-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+.exam-canvas-section > * {
+  min-width: 0;
 }
 
 .exam-canvas-meta {
@@ -357,8 +390,21 @@
   width: 100%;
 }
 
+.exam-canvas-meta .muted {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .properties-panel {
   min-width: 0;
+  flex-shrink: 0;
+}
+
+.properties-panel .panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .properties-panel .panel-header,
@@ -401,6 +447,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
 }
 
 .exam-task-node {
@@ -474,6 +522,7 @@
   gap: 4px;
   cursor: pointer;
   color: inherit;
+  min-width: 0;
 }
 
 .task-number {
@@ -486,6 +535,7 @@
 .task-title-text {
   font-size: 1rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .exam-task-actions,
@@ -668,6 +718,10 @@
   max-height: min(45vh, 360px);
   resize: vertical;
   overflow-y: auto;
+}
+
+.exam-description {
+  min-height: 140px;
 }
 
 .help-editor {

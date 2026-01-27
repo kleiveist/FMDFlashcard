@@ -993,7 +993,10 @@ export const ExamEditorView = ({
     <div className="exam-editor-page">
       {mode === "structure" ? (
         isStudyView ? (
-          <div className="exam-editor-structure">
+          <div className="exam-editor-structure study-structure">
+            {paletteOverlayActive ? null : (
+              <CardPalette onQuickAdd={handleAddTask} />
+            )}
             <ExamCanvas
               {...canvasProps}
               headerActions={paletteToggleButton}
@@ -1002,11 +1005,6 @@ export const ExamEditorView = ({
                   {propertiesPanel}
                   {alerts}
                 </>
-              }
-              bottomContent={
-                paletteOverlayActive ? null : (
-                  <CardPalette onQuickAdd={handleAddTask} />
-                )
               }
             />
             {paletteOverlayActive && paletteModalOpen ? (

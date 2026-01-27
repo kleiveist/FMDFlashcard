@@ -5,6 +5,7 @@
 import type { ExamBlueprint, CardType } from "../../../features/exam-editor/types";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
 import type { ExamEditorSelection } from "../types";
+import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import { HelpEditor } from "./HelpEditor";
 
 const CARD_TYPES: CardType[] = ["qa", "tf", "m1", "m2", "cl", "cd", "cld"];
@@ -149,14 +150,14 @@ export const PropertiesPanel = ({
         </label>
         <label className="field">
           <span className="label">Description</span>
-          <textarea
-            className="text-input exam-textarea"
-            rows={4}
+          <AutoGrowTextarea
+            className="text-input exam-textarea exam-description"
+            rows={6}
             value={exam.description}
-            onChange={(event) =>
+            onChange={(value) =>
               onExamUpdate({
                 title: exam.title,
-                description: event.target.value,
+                description: value,
               })
             }
             placeholder="Short description"
