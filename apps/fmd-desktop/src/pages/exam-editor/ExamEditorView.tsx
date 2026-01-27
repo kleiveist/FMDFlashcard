@@ -144,10 +144,7 @@ export const ExamEditorView = ({
   const lastVaultPathRef = useRef<string | null>(vaultPath ?? null);
   const isStudyView = variant === "study";
   const isPaletteOverlayMode = useMediaQuery("(max-width: 979px)", false);
-  const isContentPopupMode = useMediaQuery(
-    "(min-width: 980px) and (max-width: 1200px)",
-    false,
-  );
+  const isContentPopupMode = useMediaQuery("(max-width: 1200px)", false);
   const paletteOverlayActive = isStudyView && isPaletteOverlayMode;
   const contentPopupActive = isStudyView && isContentPopupMode;
 
