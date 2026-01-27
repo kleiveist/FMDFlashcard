@@ -2,6 +2,8 @@
  * @file apps/fmd-desktop/src/pages/exam-editor/types.ts
  */
 
+import type { CardType } from "../../features/exam-editor/types";
+
 export type ExamEditorSelection =
   | { type: "exam" }
   | { type: "task"; taskId: string }
@@ -23,4 +25,5 @@ export type ExamEditorControlsState = {
   onNewExam: () => void;
   onSaveAs: () => void;
   onSave: () => void;
+  onQuickAddCard: (type: CardType) => void;
 };

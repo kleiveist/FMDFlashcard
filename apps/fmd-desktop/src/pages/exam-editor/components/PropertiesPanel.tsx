@@ -129,7 +129,7 @@ export const PropertiesPanel = ({
       <header className="panel-header">
         <div>
           <h2>Exam properties</h2>
-          <p className="muted">Define title and description.</p>
+          <span className="muted small">Title & description</span>
         </div>
       </header>
       <div className="panel-body">

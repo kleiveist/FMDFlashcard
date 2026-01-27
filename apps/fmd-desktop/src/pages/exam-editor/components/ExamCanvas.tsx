@@ -4,6 +4,7 @@
 
 import {
   type DragEvent,
+  type ReactNode,
   type WheelEvent,
   useEffect,
   useMemo,
@@ -39,6 +40,11 @@ type ExamCanvasProps = {
   onDeleteCard: (taskId: string, cardId: string) => void;
   showMoveButtons: boolean;
   getTaskWarning: (task: ExamTaskBlueprint) => string | null;
+  topContent?: ReactNode;
+  bodyContent?: ReactNode;
+  bottomContent?: ReactNode;
+  headerActions?: ReactNode;
+  showExamMeta?: boolean;
 };
 
 type DragPayload =
@@ -96,6 +102,11 @@ export const ExamCanvas = ({
   onDeleteCard,
   showMoveButtons,
   getTaskWarning,
+  topContent,
+  bodyContent,
+  bottomContent,
+  headerActions,
+  showExamMeta = true,
 }: ExamCanvasProps) => {
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
   const [taskDropTarget, setTaskDropTarget] = useState<TaskDropTarget | null>(null);
@@ -521,31 +532,36 @@ export const ExamCanvas = ({
       onDrop={handleCanvasDrop}
     >
       <header className="panel-header exam-canvas-header">
-        <div>
-          <h2>Canvas</h2>
-          <p className="muted">Drop cards to create tasks and interactions.</p>
-        </div>
-        <div className="exam-canvas-status" role="status">
-          <button
-            type="button"
-            className={`exam-canvas-status-button ${
-              hasValidationErrors ? "is-invalid" : "is-valid"
-            }`}
-            aria-label={validationLabel}
-          >
-            {hasValidationErrors ? <AlertIcon /> : <CheckIcon />}
-          </button>
-          <div className="exam-canvas-status-tooltip" role="tooltip">
-            <div className="exam-canvas-status-title">{validationLabel}</div>
-            {hasValidationErrors ? (
-              <ul className="exam-canvas-status-list">
-                {validationSummary?.messages.map((message, index) => (
-                  <li key={`${index}-${message}`}>{message}</li>
-                ))}
-              </ul>
-            ) : null}
+        <div className="exam-canvas-title">
+          <div className="exam-canvas-status" role="status">
+            <button
+              type="button"
+              className={`exam-canvas-status-button ${
+                hasValidationErrors ? "is-invalid" : "is-valid"
+              }`}
+              aria-label={validationLabel}
+            >
+              {hasValidationErrors ? <AlertIcon /> : <CheckIcon />}
+            </button>
+            <div className="exam-canvas-status-tooltip" role="tooltip">
+              <div className="exam-canvas-status-title">{validationLabel}</div>
+              {hasValidationErrors ? (
+                <ul className="exam-canvas-status-list">
+                  {validationSummary?.messages.map((message, index) => (
+                    <li key={`${index}-${message}`}>{message}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </div>
+          <div>
+            <h2>Canvas</h2>
+            <p className="muted">Drop cards to create tasks and interactions.</p>
           </div>
         </div>
+        {headerActions ? (
+          <div className="exam-canvas-actions">{headerActions}</div>
+        ) : null}
       </header>
       <div
         className="panel-body"
@@ -553,201 +569,215 @@ export const ExamCanvas = ({
         onDragOver={handleCanvasDragOver}
         onWheel={handleCanvasWheel}
       >
-        <button
-          type="button"
-          className={`exam-canvas-meta ${isExamSelected ? "selected" : ""}`}
-          onClick={onSelectExam}
-        >
-          <span className="eyebrow">Exam</span>
-          <strong>{exam.title.trim() || "Untitled exam"}</strong>
-          <span className="muted">{exam.description.trim() || "No description"}</span>
-        </button>
-
-        {orderedTasks.length === 0 ? (
-          <div className="exam-canvas-empty">
-            <p>Drop a card type here to create Task 1.</p>
-          </div>
+        {topContent ? <div className="exam-canvas-top">{topContent}</div> : null}
+        {bodyContent ? (
+          <div className="exam-canvas-body">{bodyContent}</div>
         ) : (
-          <ol className="exam-task-list">
-            {orderedTasks.map((task, index) => {
-              const isTaskSelected =
-                selection.type === "task" && selection.taskId === task.id;
-              const isTaskDragging =
-                dragPayload?.kind === "task" && dragPayload.taskId === task.id;
-              const taskDropPosition =
-                taskDropTarget?.taskId === task.id
-                  ? taskDropTarget.position
-                  : null;
-              const isCardDropTarget =
-                dragPayload?.kind === "card" && cardDropTarget?.taskId === task.id;
-              const warning = getTaskWarning(task);
-              return (
-                <li
-                  key={task.id}
-                  className={`exam-task-node ${isTaskSelected ? "selected" : ""}${
-                    isTaskDragging ? " is-dragging" : ""
-                  }${taskDropPosition ? " drop-target" : ""}${
-                    taskDropPosition ? ` drop-${taskDropPosition}` : ""
-                  }${isCardDropTarget ? " card-drop-target" : ""}`}
-                  onDragOver={(event) =>
-                    handleTaskDragOver(event, task.id, task.cards.length === 0)
-                  }
-                  onDrop={(event) => handleTaskDrop(event, task.id)}
-                >
-                  <div
-                    className="exam-task-header"
-                    draggable
-                    onDragStart={(event) => handleTaskDragStart(event, task.id)}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <button
-                      type="button"
-                      className="exam-task-title"
-                      onClick={() => onSelectTask(task.id)}
+          <>
+            {showExamMeta ? (
+              <button
+                type="button"
+                className={`exam-canvas-meta ${isExamSelected ? "selected" : ""}`}
+                onClick={onSelectExam}
+              >
+                <span className="eyebrow">Exam</span>
+                <strong>{exam.title.trim() || "Untitled exam"}</strong>
+                <span className="muted">
+                  {exam.description.trim() || "No description"}
+                </span>
+              </button>
+            ) : null}
+
+            {orderedTasks.length === 0 ? (
+              <div className="exam-canvas-empty">
+                <p>Drop a card type here to create Task 1.</p>
+              </div>
+            ) : (
+              <ol className="exam-task-list">
+                {orderedTasks.map((task, index) => {
+                  const isTaskSelected =
+                    selection.type === "task" && selection.taskId === task.id;
+                  const isTaskDragging =
+                    dragPayload?.kind === "task" && dragPayload.taskId === task.id;
+                  const taskDropPosition =
+                    taskDropTarget?.taskId === task.id
+                      ? taskDropTarget.position
+                      : null;
+                  const isCardDropTarget =
+                    dragPayload?.kind === "card" && cardDropTarget?.taskId === task.id;
+                  const warning = getTaskWarning(task);
+                  return (
+                    <li
+                      key={task.id}
+                      className={`exam-task-node ${isTaskSelected ? "selected" : ""}${
+                        isTaskDragging ? " is-dragging" : ""
+                      }${taskDropPosition ? " drop-target" : ""}${
+                        taskDropPosition ? ` drop-${taskDropPosition}` : ""
+                      }${isCardDropTarget ? " card-drop-target" : ""}`}
+                      onDragOver={(event) =>
+                        handleTaskDragOver(event, task.id, task.cards.length === 0)
+                      }
+                      onDrop={(event) => handleTaskDrop(event, task.id)}
                     >
-                      <span className="task-number">Task {index + 1}</span>
-                      <span className="task-title-text">
-                        {task.title.trim() || "Untitled task"}
-                      </span>
-                    </button>
-                    <div className="exam-task-actions">
-                      {showMoveButtons ? (
-                        <>
-                          <button
-                            type="button"
-                            className="ghost small"
-                            onClick={() => handleMoveTask(task.id, "up")}
-                            disabled={index === 0}
-                          >
-                            Up
-                          </button>
-                          <button
-                            type="button"
-                            className="ghost small"
-                            onClick={() => handleMoveTask(task.id, "down")}
-                            disabled={index === orderedTasks.length - 1}
-                          >
-                            Down
-                          </button>
-                        </>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="ghost small"
-                        onClick={() => onDuplicateTask(task.id)}
+                      <div
+                        className="exam-task-header"
+                        draggable
+                        onDragStart={(event) => handleTaskDragStart(event, task.id)}
+                        onDragEnd={handleDragEnd}
                       >
-                        Duplicate
-                      </button>
-                      <button
-                        type="button"
-                        className="ghost small danger"
-                        onClick={() => onDeleteTask(task.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  {warning ? <div className="exam-task-warning">{warning}</div> : null}
-                  <div
-                    className={`exam-card-list${
-                      dragPayload?.kind === "card" &&
-                      cardDropTarget?.taskId === task.id &&
-                      cardDropTarget.cardId === null
-                        ? " drop-target drop-after"
-                        : ""
-                    }`}
-                    onDragOver={(event) => handleCardListDragOver(event, task.id)}
-                    onDrop={(event) => handleCardListDrop(event, task.id)}
-                  >
-                    {task.cards.map((card, cardIndex) => {
-                      const isCardSelected =
-                        selection.type === "card" &&
-                        selection.taskId === task.id &&
-                        selection.cardId === card.id;
-                      const isCardDragging =
-                        dragPayload?.kind === "card" &&
-                        dragPayload.taskId === task.id &&
-                        dragPayload.cardId === card.id;
-                      const cardDropPosition =
-                        cardDropTarget?.taskId === task.id &&
-                        cardDropTarget.cardId === card.id
-                          ? cardDropTarget.position
-                          : null;
-                      return (
-                        <div
-                          key={card.id}
-                          className={`exam-card-item ${
-                            isCardSelected ? "selected" : ""
-                          }${isCardDragging ? " is-dragging" : ""}${
-                            cardDropPosition ? " drop-target" : ""
-                          }${cardDropPosition ? ` drop-${cardDropPosition}` : ""}`}
-                          draggable
-                          onDragStart={(event) =>
-                            handleCardDragStart(event, task.id, card.id)
-                          }
-                          onDragEnd={handleDragEnd}
-                          onDragOver={(event) =>
-                            handleCardDragOver(event, task.id, card.id)
-                          }
-                          onDrop={(event) =>
-                            handleCardDrop(event, task.id, card.id)
-                          }
+                        <button
+                          type="button"
+                          className="exam-task-title"
+                          onClick={() => onSelectTask(task.id)}
                         >
+                          <span className="task-number">Task {index + 1}</span>
+                          <span className="task-title-text">
+                            {task.title.trim() || "Untitled task"}
+                          </span>
+                        </button>
+                        <div className="exam-task-actions">
+                          {showMoveButtons ? (
+                            <>
+                              <button
+                                type="button"
+                                className="ghost small"
+                                onClick={() => handleMoveTask(task.id, "up")}
+                                disabled={index === 0}
+                              >
+                                Up
+                              </button>
+                              <button
+                                type="button"
+                                className="ghost small"
+                                onClick={() => handleMoveTask(task.id, "down")}
+                                disabled={index === orderedTasks.length - 1}
+                              >
+                                Down
+                              </button>
+                            </>
+                          ) : null}
                           <button
                             type="button"
-                            className="exam-card-title"
-                            onClick={() => onSelectCard(task.id, card.id)}
+                            className="ghost small"
+                            onClick={() => onDuplicateTask(task.id)}
                           >
-                            <span className="card-index">Card {cardIndex + 1}</span>
-                            <span className="card-type">
-                              {serializeCardTypeLabel(card.type)}
-                            </span>
-                            {card.helpText?.trim() ? (
-                              <span className="card-hint">Hint</span>
-                            ) : null}
+                            Duplicate
                           </button>
-                          <div className="exam-card-actions">
-                            {showMoveButtons ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="ghost small"
-                                  onClick={() =>
-                                    handleMoveCard(task.id, card.id, "up")
-                                  }
-                                  disabled={cardIndex === 0}
-                                >
-                                  Up
-                                </button>
-                                <button
-                                  type="button"
-                                  className="ghost small"
-                                  onClick={() =>
-                                    handleMoveCard(task.id, card.id, "down")
-                                  }
-                                  disabled={cardIndex === task.cards.length - 1}
-                                >
-                                  Down
-                                </button>
-                              </>
-                            ) : null}
-                            <button
-                              type="button"
-                              className="ghost small danger"
-                              onClick={() => onDeleteCard(task.id, card.id)}
-                            >
-                              Remove
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            className="ghost small danger"
+                            onClick={() => onDeleteTask(task.id)}
+                          >
+                            Delete
+                          </button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+                      </div>
+                      {warning ? <div className="exam-task-warning">{warning}</div> : null}
+                      <div
+                        className={`exam-card-list${
+                          dragPayload?.kind === "card" &&
+                          cardDropTarget?.taskId === task.id &&
+                          cardDropTarget.cardId === null
+                            ? " drop-target drop-after"
+                            : ""
+                        }`}
+                        onDragOver={(event) => handleCardListDragOver(event, task.id)}
+                        onDrop={(event) => handleCardListDrop(event, task.id)}
+                      >
+                        {task.cards.map((card, cardIndex) => {
+                          const isCardSelected =
+                            selection.type === "card" &&
+                            selection.taskId === task.id &&
+                            selection.cardId === card.id;
+                          const isCardDragging =
+                            dragPayload?.kind === "card" &&
+                            dragPayload.taskId === task.id &&
+                            dragPayload.cardId === card.id;
+                          const cardDropPosition =
+                            cardDropTarget?.taskId === task.id &&
+                            cardDropTarget.cardId === card.id
+                              ? cardDropTarget.position
+                              : null;
+                          return (
+                            <div
+                              key={card.id}
+                              className={`exam-card-item ${
+                                isCardSelected ? "selected" : ""
+                              }${isCardDragging ? " is-dragging" : ""}${
+                                cardDropPosition ? " drop-target" : ""
+                              }${cardDropPosition ? ` drop-${cardDropPosition}` : ""}`}
+                              draggable
+                              onDragStart={(event) =>
+                                handleCardDragStart(event, task.id, card.id)
+                              }
+                              onDragEnd={handleDragEnd}
+                              onDragOver={(event) =>
+                                handleCardDragOver(event, task.id, card.id)
+                              }
+                              onDrop={(event) =>
+                                handleCardDrop(event, task.id, card.id)
+                              }
+                            >
+                              <button
+                                type="button"
+                                className="exam-card-title"
+                                onClick={() => onSelectCard(task.id, card.id)}
+                              >
+                                <span className="card-index">Card {cardIndex + 1}</span>
+                                <span className="card-type">
+                                  {serializeCardTypeLabel(card.type)}
+                                </span>
+                                {card.helpText?.trim() ? (
+                                  <span className="card-hint">Hint</span>
+                                ) : null}
+                              </button>
+                              <div className="exam-card-actions">
+                                {showMoveButtons ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="ghost small"
+                                      onClick={() =>
+                                        handleMoveCard(task.id, card.id, "up")
+                                      }
+                                      disabled={cardIndex === 0}
+                                    >
+                                      Up
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="ghost small"
+                                      onClick={() =>
+                                        handleMoveCard(task.id, card.id, "down")
+                                      }
+                                      disabled={cardIndex === task.cards.length - 1}
+                                    >
+                                      Down
+                                    </button>
+                                  </>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="ghost small danger"
+                                  onClick={() => onDeleteCard(task.id, card.id)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </>
         )}
+        {bottomContent ? (
+          <div className="exam-canvas-bottom">{bottomContent}</div>
+        ) : null}
       </div>
     </section>
   );

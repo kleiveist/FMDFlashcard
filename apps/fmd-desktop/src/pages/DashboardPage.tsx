@@ -361,7 +361,6 @@ const DashboardPageInner = (
   );
 
   const noteModalActive = noteModalEnabled && isNoteModalOpen;
-
   const handleNoteModalClose = useCallback(() => {
     onNoteModalClose?.();
   }, [onNoteModalClose]);
@@ -374,6 +373,7 @@ const DashboardPageInner = (
       setNoteCollapsed(false);
     }
   }, [noteCollapsed, noteModalActive]);
+
 
   return (
     <div className="dashboard-page">
@@ -451,6 +451,7 @@ const DashboardPageInner = (
             vaultFiles={vault.files}
             vaultPath={vault.vaultPath ?? null}
             showMoveButtons={settings.examEditorShowMoveButtons}
+            variant="study"
             onControlsReady={setExamControls}
             onSave={handleExamSave}
           />

@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
 import { joinPath, normalizeRelativePath, normalizeVaultPath } from "../../lib/path";
+import { useMediaQuery } from "../../lib/useMediaQuery";
 import { type VaultFile } from "../../lib/tree";
 import {
   cloneTaskBlueprint,
@@ -29,10 +30,12 @@ import {
 import { isCompositeTask, validateExamBlueprint } from "../../features/exam-editor/validation";
 import { importExamMarkdown, isExamMarkdown } from "../../features/exam-editor/importer";
 import { findNextNewExamFilename } from "../../features/exam-editor/fileNaming";
+import { CardsIcon } from "../../components/icons";
 import { CardPalette } from "./components/CardPalette";
 import { ExamCanvas } from "./components/ExamCanvas";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { ContentMode } from "./components/ContentMode";
+import { ModalShell } from "../../components/ModalShell";
 import type {
   ExamEditorControlsState,
   ExamEditorMode,
@@ -52,6 +55,7 @@ type ExamEditorViewProps = {
   vaultFiles?: VaultFile[];
   vaultPath?: string | null;
   showMoveButtons?: boolean;
+  variant?: "exam" | "study";
   onControlsReady?: (controls: ExamEditorControlsState | null) => void;
   onSave?: (payload: { path: string; markdown: string }) => void;
 };
@@ -118,6 +122,7 @@ export const ExamEditorView = ({
   vaultFiles,
   vaultPath,
   showMoveButtons,
+  variant = "exam",
   onControlsReady,
   onSave,
 }: ExamEditorViewProps) => {
@@ -130,11 +135,21 @@ export const ExamEditorView = ({
   const [lastSavedContent, setLastSavedContent] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState("");
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [contentModalOpen, setContentModalOpen] = useState(false);
+  const [paletteModalOpen, setPaletteModalOpen] = useState(false);
   const lastLoadedRef = useRef<{ path: string | null; markdown: string | null }>({
     path: null,
     markdown: null,
   });
   const lastVaultPathRef = useRef<string | null>(vaultPath ?? null);
+  const isStudyView = variant === "study";
+  const isPaletteOverlayMode = useMediaQuery("(max-width: 979px)", false);
+  const isContentPopupMode = useMediaQuery(
+    "(min-width: 980px) and (max-width: 1200px)",
+    false,
+  );
+  const paletteOverlayActive = isStudyView && isPaletteOverlayMode;
+  const contentPopupActive = isStudyView && isContentPopupMode;
 
   const validation = useMemo(() => validateExamBlueprint(exam), [exam]);
   const canSave = validation.valid;
@@ -181,6 +196,18 @@ export const ExamEditorView = ({
       messages: messages.slice(0, 3),
     };
   }, [exam.tasks, validation]);
+
+  useEffect(() => {
+    if (!contentPopupActive || mode !== "content") {
+      setContentModalOpen(false);
+    }
+  }, [contentPopupActive, mode]);
+
+  useEffect(() => {
+    if (!paletteOverlayActive || mode !== "structure") {
+      setPaletteModalOpen(false);
+    }
+  }, [paletteOverlayActive, mode]);
 
   const updateTasks = useCallback(
     (updater: (tasks: ExamTaskBlueprint[]) => ExamTaskBlueprint[]) => {
@@ -656,11 +683,13 @@ export const ExamEditorView = ({
       onNewExam: handleNewExam,
       onSaveAs: () => handleSave(true),
       onSave: () => handleSave(false),
+      onQuickAddCard: handleAddTask,
     }),
     [
       canSave,
       handleNewExam,
       handleSave,
+      handleAddTask,
       isSaving,
       mode,
       savePath,
@@ -888,64 +917,157 @@ export const ExamEditorView = ({
     [],
   );
 
+  const handleContentTaskSelect = useCallback(
+    (taskId: string) => {
+      setSelection({ type: "task", taskId });
+      if (contentPopupActive) {
+        setContentModalOpen(true);
+      }
+    },
+    [contentPopupActive],
+  );
+
+  const hasAlerts = Boolean(importMessage || importWarnings.length > 0 || saveError);
+  const alerts = hasAlerts ? (
+    <>
+      {importMessage ? <div className="error">{importMessage}</div> : null}
+      {importWarnings.length > 0 ? (
+        <div className="exam-task-warning">
+          {importWarnings.map((warning) => (
+            <div key={warning}>{warning}</div>
+          ))}
+        </div>
+      ) : null}
+      {saveError ? <div className="error">{saveError}</div> : null}
+    </>
+  ) : null;
+
+  const propertiesPanel = (
+    <PropertiesPanel
+      exam={exam}
+      selection={selection}
+      onExamUpdate={handleExamUpdate}
+      onTaskUpdate={handleTaskUpdate}
+      onCardUpdate={(taskId, cardId, updates) =>
+        handleCardUpdate(taskId, cardId, updates)
+      }
+      onCardTypeChange={handleCardTypeChange}
+    />
+  );
+
+  const canvasProps = {
+    exam,
+    selection,
+    validationSummary,
+    onSelectExam: () => setSelection({ type: "exam" }),
+    onSelectTask: (taskId: string) => setSelection({ type: "task", taskId }),
+    onSelectCard: (taskId: string, cardId: string) =>
+      setSelection({ type: "card", taskId, cardId }),
+    onCanvasDrop: handleAddTask,
+    onTaskDrop: handleAddCardToTask,
+    onReorderTask: handleReorderTask,
+    onDuplicateTask: handleDuplicateTask,
+    onDeleteTask: handleDeleteTask,
+    onReorderCard: handleReorderCard,
+    onMoveCardAcrossTasks: handleMoveCardAcrossTasks,
+    onDeleteCard: handleDeleteCard,
+    showMoveButtons: Boolean(showMoveButtons),
+    getTaskWarning,
+  };
+
+  const paletteToggleButton = paletteOverlayActive ? (
+    <button
+      type="button"
+      className="ghost small exam-editor-palette-toggle"
+      onClick={() => setPaletteModalOpen((open) => !open)}
+      aria-haspopup="dialog"
+      aria-expanded={paletteModalOpen}
+      aria-label="Open card palette"
+      title="Card palette"
+    >
+      <CardsIcon />
+    </button>
+  ) : null;
+
   return (
     <div className="exam-editor-page">
       {mode === "structure" ? (
-        <div className="exam-editor-structure">
-          <CardPalette onQuickAdd={handleAddTask} />
-          {importMessage ? <div className="error">{importMessage}</div> : null}
-          {importWarnings.length > 0 ? (
-            <div className="exam-task-warning">
-              {importWarnings.map((warning) => (
-                <div key={warning}>{warning}</div>
-              ))}
-            </div>
-          ) : null}
-          {saveError ? <div className="error">{saveError}</div> : null}
-          <div className="exam-editor-layout">
-            <PropertiesPanel
-              exam={exam}
-              selection={selection}
-              onExamUpdate={handleExamUpdate}
-              onTaskUpdate={handleTaskUpdate}
-              onCardUpdate={(taskId, cardId, updates) =>
-                handleCardUpdate(taskId, cardId, updates)
-              }
-              onCardTypeChange={handleCardTypeChange}
-            />
+        isStudyView ? (
+          <div className="exam-editor-structure">
             <ExamCanvas
-              exam={exam}
-              selection={selection}
-              validationSummary={validationSummary}
-              onSelectExam={() => setSelection({ type: "exam" })}
-              onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
-              onSelectCard={(taskId, cardId) =>
-                setSelection({ type: "card", taskId, cardId })
+              {...canvasProps}
+              headerActions={paletteToggleButton}
+              topContent={
+                <>
+                  {propertiesPanel}
+                  {alerts}
+                </>
               }
-              onCanvasDrop={handleAddTask}
-              onTaskDrop={handleAddCardToTask}
-              onReorderTask={handleReorderTask}
-              onDuplicateTask={handleDuplicateTask}
-              onDeleteTask={handleDeleteTask}
-              onReorderCard={handleReorderCard}
-              onMoveCardAcrossTasks={handleMoveCardAcrossTasks}
-              onDeleteCard={handleDeleteCard}
-              showMoveButtons={Boolean(showMoveButtons)}
-              getTaskWarning={getTaskWarning}
+              bottomContent={
+                paletteOverlayActive ? null : (
+                  <CardPalette onQuickAdd={handleAddTask} />
+                )
+              }
             />
+            {paletteOverlayActive && paletteModalOpen ? (
+              <ModalShell
+                isOpen={paletteModalOpen}
+                title="Card palette"
+                onClose={() => setPaletteModalOpen(false)}
+                className="palette-modal-panel"
+                bodyClassName="palette-modal-body"
+              >
+                <CardPalette
+                  onQuickAdd={(type) => {
+                    handleAddTask(type);
+                    setPaletteModalOpen(false);
+                  }}
+                />
+              </ModalShell>
+            ) : null}
           </div>
+        ) : (
+          <div className="exam-editor-structure">
+            <CardPalette onQuickAdd={handleAddTask} />
+            {alerts}
+            <div className="exam-editor-layout">
+              {propertiesPanel}
+              <ExamCanvas {...canvasProps} />
+            </div>
+          </div>
+        )
+      ) : isStudyView ? (
+        <div className="exam-editor-structure">
+          <ExamCanvas
+            {...canvasProps}
+            topContent={alerts}
+            bodyContent={
+              <ContentMode
+                exam={exam}
+                selection={selection}
+                validation={validation}
+                onSelectTask={handleContentTaskSelect}
+                onTaskUpdate={handleTaskUpdate}
+                onCardUpdate={(taskId, cardId, updates) =>
+                  handleCardUpdate(taskId, cardId, updates)
+                }
+                onCardHelpChange={handleCardHelpChange}
+                onOptionTextChange={handleOptionTextChange}
+                onOptionToggle={handleOptionToggle}
+                onOptionSelect={handleOptionSelect}
+                onOptionAdd={handleOptionAdd}
+                onOptionRemove={handleOptionRemove}
+                popupMode={contentPopupActive}
+                popupOpen={contentModalOpen}
+                onPopupOpen={() => setContentModalOpen(true)}
+                onPopupClose={() => setContentModalOpen(false)}
+              />
+            }
+          />
         </div>
       ) : (
         <>
-          {importMessage ? <div className="error">{importMessage}</div> : null}
-          {importWarnings.length > 0 ? (
-            <div className="exam-task-warning">
-              {importWarnings.map((warning) => (
-                <div key={warning}>{warning}</div>
-              ))}
-            </div>
-          ) : null}
-          {saveError ? <div className="error">{saveError}</div> : null}
+          {alerts}
           <ContentMode
             exam={exam}
             selection={selection}
