@@ -146,7 +146,7 @@ const markerPattern = /^-([A-Za-z])$/;
 const assignmentPattern = /^(.+?)=>\s*(.+)$/;
 const fenceLinePattern = /^\s*(```|~~~)/;
 const separatorLinePattern = /^\s*---\s*$/;
-const cardStartPattern = /^\s*#card\s*$/;
+const cardStartPattern = /^\s*#card\s*$/i;
 const cardEndPattern = /^\s*#\s*$/;
 const helpStartPattern = /^\s*#help\s*$/;
 const helpEndPattern = /^\s*#helpend\s*$/;

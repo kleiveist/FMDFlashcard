@@ -59,7 +59,16 @@ type FlashcardPageProps = {
 };
 
 export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
-  const { actions, flashcards, preview, settings, vault } = useAppState();
+  const {
+    actions,
+    flashcards,
+    flashcardNoteFiles,
+    flashcardNoteFilesError,
+    flashcardNoteFilesState,
+    preview,
+    settings,
+    vault,
+  } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const isTableView = useTableView();
   const [isStatsOpen, setIsStatsOpen] = useState(false);
@@ -427,9 +436,9 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   const noteFilesPanel = (
     <NoteFilesPanel
       className="flashcard-note-files-panel"
-      files={flashcards.flashcardFiles}
-      listState={flashcards.isFlashcardScanning ? "loading" : "idle"}
-      listError={flashcards.flashcardFilesError}
+      files={flashcardNoteFiles}
+      listState={flashcardNoteFilesState}
+      listError={flashcardNoteFilesError}
       selectedFile={preview.selectedFile}
       vaultPath={vault.vaultPath}
       onSelectFile={actions.handleSelectFile}

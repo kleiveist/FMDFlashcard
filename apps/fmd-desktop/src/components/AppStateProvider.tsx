@@ -37,6 +37,7 @@ import { type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
 import type { LoadState } from "../lib/types";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
+import { useFlashcardNoteFiles } from "../features/flashcards/useFlashcardNoteFiles";
 import { usePreview } from "../features/preview/usePreview";
 import { useAppSettings } from "../features/settings/useAppSettings";
 import { type SettingsPageId } from "../features/settings/settingsNavigation";
@@ -72,6 +73,9 @@ type AppState = {
   examFiles: VaultFile[];
   examFilesState: LoadState;
   examFilesError: string;
+  flashcardNoteFiles: ReturnType<typeof useFlashcards>["flashcardFiles"];
+  flashcardNoteFilesState: LoadState;
+  flashcardNoteFilesError: string;
   help: {
     activeTopicId: string;
     setActiveTopicId: (value: string) => void;
@@ -217,6 +221,14 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     },
   });
   const { examFiles, examFilesState, examFilesError } = useExamFiles({
+    files: vault.files,
+    vaultPath: vault.vaultPath,
+  });
+  const {
+    noteFiles: flashcardNoteFiles,
+    noteFilesState: flashcardNoteFilesState,
+    noteFilesError: flashcardNoteFilesError,
+  } = useFlashcardNoteFiles({
     files: vault.files,
     vaultPath: vault.vaultPath,
   });
@@ -709,6 +721,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     examFiles,
     examFilesState,
     examFilesError,
+    flashcardNoteFiles,
+    flashcardNoteFilesState,
+    flashcardNoteFilesError,
     help: {
       activeTopicId: activeHelpTopicId,
       setActiveTopicId: setActiveHelpTopicId,

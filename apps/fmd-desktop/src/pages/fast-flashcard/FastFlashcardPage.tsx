@@ -55,7 +55,14 @@ type FastFlashcardPageProps = {
 };
 
 export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) => {
-  const { actions, preview, vault } = useAppState();
+  const {
+    actions,
+    flashcardNoteFiles,
+    flashcardNoteFilesError,
+    flashcardNoteFilesState,
+    preview,
+    vault,
+  } = useAppState();
   const {
     fastFlashcards,
     settings,
@@ -321,9 +328,9 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
   const noteFilesPanel = (
     <NoteFilesPanel
       className="fast-note-files-panel"
-      files={fastFlashcards.flashcardFiles}
-      listState={fastFlashcards.isFlashcardScanning ? "loading" : "idle"}
-      listError={fastFlashcards.flashcardFilesError}
+      files={flashcardNoteFiles}
+      listState={flashcardNoteFilesState}
+      listError={flashcardNoteFilesError}
       selectedFile={preview.selectedFile}
       vaultPath={vault.vaultPath}
       onSelectFile={actions.handleSelectFile}

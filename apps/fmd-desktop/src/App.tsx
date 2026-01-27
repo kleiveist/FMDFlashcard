@@ -64,6 +64,9 @@ type WalletGateId = "custom-path" | "profile" | "sync-provider";
 const AppContent = () => {
   const {
     actions,
+    flashcardNoteFiles,
+    flashcardNoteFilesError,
+    flashcardNoteFilesState,
     examFiles,
     examFilesError,
     examFilesState,
@@ -294,10 +297,7 @@ const AppContent = () => {
   const noteFilesDialogOpen = Boolean(
     isNoteModalOpen && noteDialogSection && noteDialogSection !== "dashboard",
   );
-  const useFastNoteFiles = noteDialogSection === "fast-flashcard";
   const isExamNoteFiles = noteDialogSection === "exam";
-  const noteFilesSource = useFastNoteFiles ? fastFlashcards : flashcards;
-  const noteFilesListState = noteFilesSource.isFlashcardScanning ? "loading" : "idle";
   const noteModalTitle = isExamNoteFiles ? "Exam Files" : "Note";
   const selectedExamFile =
     examFiles.find((file) => file.path === preview.selectedFile?.path) ?? null;
@@ -466,9 +466,9 @@ const AppContent = () => {
           />
         ) : (
           <NoteFilesPanel
-            files={noteFilesSource.flashcardFiles}
-            listState={noteFilesListState}
-            listError={noteFilesSource.flashcardFilesError}
+            files={flashcardNoteFiles}
+            listState={flashcardNoteFilesState}
+            listError={flashcardNoteFilesError}
             selectedFile={preview.selectedFile}
             vaultPath={vault.vaultPath}
             onSelectFile={actions.handleSelectFile}

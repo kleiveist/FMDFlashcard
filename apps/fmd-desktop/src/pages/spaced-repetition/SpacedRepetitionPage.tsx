@@ -39,7 +39,13 @@ type SpacedRepetitionPageProps = {
 };
 
 export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPageProps) => {
-  const { actions, preview } = useAppState();
+  const {
+    actions,
+    flashcardNoteFiles,
+    flashcardNoteFilesError,
+    flashcardNoteFilesState,
+    preview,
+  } = useAppState();
   const {
     flashcards,
     spacedRepetition,
@@ -93,9 +99,9 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
   const noteFilesPanel = (
     <NoteFilesPanel
       className="sr-note-files-panel"
-      files={flashcards.flashcardFiles}
-      listState={flashcards.isFlashcardScanning ? "loading" : "idle"}
-      listError={flashcards.flashcardFilesError}
+      files={flashcardNoteFiles}
+      listState={flashcardNoteFilesState}
+      listError={flashcardNoteFilesError}
       selectedFile={preview.selectedFile}
       vaultPath={vault.vaultPath}
       onSelectFile={actions.handleSelectFile}

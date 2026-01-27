@@ -69,6 +69,15 @@ d) DCL
     }
   });
 
+  it("parses cards with case-insensitive #card markers", () => {
+    const markdown = `#CaRd
+What is 2+2?
+Answer: 4
+#`;
+    const cards = parseFlashcards(markdown);
+    expect(cards).toHaveLength(1);
+  });
+
   it("parses multi-line options with fenced code blocks", () => {
     const markdown = `#card
 Question with code options?

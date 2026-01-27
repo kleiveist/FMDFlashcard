@@ -5,10 +5,7 @@
  * - Rendert eine Liste von Notizdateien mit Flashcards.
  */
 
-import {
-  filterFlashcardFiles,
-  type FlashcardFileEntry,
-} from "../features/flashcards/useFlashcards";
+import type { FlashcardFileEntry } from "../features/flashcards/useFlashcards";
 import type { LoadState } from "../lib/types";
 import type { VaultFile } from "../lib/tree";
 
@@ -31,13 +28,12 @@ export const NoteFilesPanel = ({
   onSelectFile,
   className,
 }: NoteFilesPanelProps) => {
-  const visibleFiles = filterFlashcardFiles(files);
   const fileCountLabel = !vaultPath
     ? "No vault selected"
-    : visibleFiles.length === 0
+    : files.length === 0
       ? "Keine Notizen mit Flashcards"
-      : `${visibleFiles.length} Note File${visibleFiles.length === 1 ? "" : "s"}`;
-  const isScrollable = visibleFiles.length > 5;
+      : `${files.length} Note File${files.length === 1 ? "" : "s"}`;
+  const isScrollable = files.length > 5;
 
   return (
     <section className={["panel list-panel", className].filter(Boolean).join(" ")}>
@@ -53,7 +49,7 @@ export const NoteFilesPanel = ({
           <div className="empty-state">Waehle einen Vault, um die Liste zu fuellen.</div>
         ) : null}
         {listError ? <div className="error">{listError}</div> : null}
-        {vaultPath && listState === "idle" && visibleFiles.length === 0 ? (
+        {vaultPath && listState === "idle" && files.length === 0 ? (
           <div className="empty-state">
             Keine Markdown-Dateien mit Flashcards gefunden.
           </div>
@@ -61,7 +57,7 @@ export const NoteFilesPanel = ({
         {vaultPath && listState !== "error" ? (
           <div className={`exam-file-list ${isScrollable ? "is-scrollable" : ""}`}>
             <ul className="file-list">
-              {visibleFiles.map((file) => (
+              {files.map((file) => (
                 <li key={file.path}>
                   <button
                     type="button"
