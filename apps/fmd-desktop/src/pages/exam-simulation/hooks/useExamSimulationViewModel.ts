@@ -50,7 +50,6 @@ import {
   type ExamCardWrapperAction,
 } from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
-import { type LoadState } from "../../../lib/types";
 import { type VaultFile } from "../../../lib/tree";
 import {
   appendExamRunStore,
@@ -105,11 +104,17 @@ const isTaskCorrect = (
   );
 
 export const useExamSimulationViewModel = () => {
-  const { actions, preview, settings, spacedRepetition, userVault, vault } =
-    useAppState();
-  const [examFiles, setExamFiles] = useState<VaultFile[]>([]);
-  const [examFilesState, setExamFilesState] = useState<LoadState>("idle");
-  const [examFilesError, setExamFilesError] = useState("");
+  const {
+    actions,
+    preview,
+    settings,
+    spacedRepetition,
+    userVault,
+    vault,
+    examFiles,
+    examFilesState,
+    examFilesError,
+  } = useAppState();
   const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
   const [examRunsLoaded, setExamRunsLoaded] = useState(false);
   const [examRunDeleteError, setExamRunDeleteError] = useState("");
@@ -144,67 +149,6 @@ export const useExamSimulationViewModel = () => {
   const examStartTimeRef = useRef<number | null>(null);
   const examRunRecordedRef = useRef(false);
 
-  useEffect(() => {
-    if (!vault.vaultPath) {
-      setExamFiles([]);
-      setExamFilesState("idle");
-      setExamFilesError("");
-      return;
-    }
-    if (vault.files.length === 0) {
-      setExamFiles([]);
-      setExamFilesState("idle");
-      setExamFilesError("");
-      return;
-    }
-
-    let cancelled = false;
-    setExamFilesState("loading");
-    setExamFilesError("");
-
-    const scanFiles = async () => {
-      const results = await Promise.allSettled(
-        vault.files.map(async (file) => {
-          const contents = await invoke<string>("read_text_file", {
-            path: file.path,
-          });
-          const parsed = parseExamTasks(contents);
-          return parsed.hasExamBlock ? file : null;
-        }),
-      );
-
-      if (cancelled) {
-        return;
-      }
-
-      const nextExamFiles: VaultFile[] = [];
-      let failures = 0;
-
-      results.forEach((result) => {
-        if (result.status === "fulfilled") {
-          if (result.value) {
-            nextExamFiles.push(result.value);
-          }
-        } else {
-          failures += 1;
-          console.warn("Failed to scan exam file", result.reason);
-        }
-      });
-
-      if (failures > 0 && nextExamFiles.length === 0) {
-        setExamFilesError("Exam files could not be scanned.");
-      }
-
-      setExamFiles(nextExamFiles);
-      setExamFilesState("idle");
-    };
-
-    void scanFiles();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [vault.files, vault.vaultPath]);
 
   useEffect(() => {
     let cancelled = false;
@@ -925,7 +869,7 @@ export const useExamSimulationViewModel = () => {
     if (!previewExamParse.hasExamBlock) {
       return {
         title: "No exam block",
-        message: "This file does not include a #exam ... # wrapper.",
+        message: "This file does not include a #exam ... #examend wrapper.",
       };
     }
     if (previewExamParse.tasks.length === 0) {

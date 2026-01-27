@@ -79,11 +79,11 @@ const trimEmptyLines = (lines: string[]) => {
   return lines.slice(start, end);
 };
 
-const wrapperLinePattern = /^\s*#(?:examend|exam|card|endcard)?\s*$/;
-const examStartPattern = /^\s*#exam\s*$/;
-const examEndPattern = /^\s*#examend\s*$/;
-const cardStartPattern = /^\s*#card\s*$/;
-const cardEndPattern = /^\s*#(?:endcard)?\s*$/;
+const wrapperLinePattern = /^\s*#(?:examend|exam|card|endcard)?\s*$/i;
+const examStartPattern = /^\s*#exam\s*$/i;
+const examEndPattern = /^\s*#examend\s*$/i;
+const cardStartPattern = /^\s*#card\s*$/i;
+const cardEndPattern = /^\s*#(?:endcard)?\s*$/i;
 const taskSeparatorPattern = /^\s*---\s*$/;
 
 const isWrapperLine = (line: string) => wrapperLinePattern.test(line);
@@ -349,7 +349,8 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   let inExam = false;
   let currentTaskStart: number | null = null;
   let currentTaskNumber: number | null = null;
-  let hasExamBlock = false;
+  let sawExamStart = false;
+  let sawExamEnd = false;
 
   const resolveTaskEndLine = (startLine: number, endLine: number) => {
     let last = endLine;
@@ -394,9 +395,9 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     if (!inExam) {
       if (isExamStartLine(line)) {
         inExam = true;
+        sawExamStart = true;
         currentTaskStart = null;
         currentTaskNumber = null;
-        hasExamBlock = true;
       }
       return;
     }
@@ -404,6 +405,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     if (isExamEndLine(line)) {
       flushTask(index - 1);
       inExam = false;
+      sawExamEnd = true;
       currentTaskStart = null;
       currentTaskNumber = null;
       return;
@@ -426,5 +428,5 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     flushTask(lines.length - 1);
   }
 
-  return { tasks, hasExamBlock };
+  return { tasks, hasExamBlock: sawExamStart && sawExamEnd };
 };

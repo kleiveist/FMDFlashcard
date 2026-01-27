@@ -151,6 +151,13 @@ export const ExamSimulationPage = () => {
     },
     [actions],
   );
+  const examFilePanelProps = {
+    files: examFiles,
+    listState: examFilesState,
+    listError: examFilesError,
+    selectedFile: selectedExamFile,
+    vaultPath: vault.vaultPath,
+  };
 
   useEffect(() => {
     if (!isTablet && isExamFilesOpen) {
@@ -579,11 +586,7 @@ export const ExamSimulationPage = () => {
             examStageControls={examStageControls}
           />
           <ExamFilePanel
-            files={examFiles}
-            listState={examFilesState}
-            listError={examFilesError}
-            selectedFile={selectedExamFile}
-            vaultPath={vault.vaultPath}
+            {...examFilePanelProps}
             onSelectFile={actions.handleSelectFile}
             className="exam-files-panel"
           />
@@ -606,11 +609,7 @@ export const ExamSimulationPage = () => {
         bodyClassName="note-modal-body"
       >
         <ExamFilePanel
-          files={examFiles}
-          listState={examFilesState}
-          listError={examFilesError}
-          selectedFile={selectedExamFile}
-          vaultPath={vault.vaultPath}
+          {...examFilePanelProps}
           onSelectFile={handleExamFileSelect}
         />
       </ModalShell>

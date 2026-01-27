@@ -352,4 +352,22 @@ Answer: Plain text remains
     const { tasks } = parseExamTasks(markdown);
     expect(tasks).toHaveLength(1);
   });
+
+  it("recognizes exam markers case-insensitively", () => {
+    const markdown = `#ExAm
+1) Alpha
+Answer: A
+#eXaMeNd`;
+    const { tasks, hasExamBlock } = parseExamTasks(markdown);
+    expect(hasExamBlock).toBe(true);
+    expect(tasks).toHaveLength(1);
+  });
+
+  it("requires both #exam and #examend for hasExamBlock", () => {
+    const markdown = `#exam
+1) Missing end marker
+Answer: A`;
+    const { hasExamBlock } = parseExamTasks(markdown);
+    expect(hasExamBlock).toBe(false);
+  });
 });

@@ -56,6 +56,7 @@ import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
+import { ExamFilePanel } from "./pages/exam-simulation/components/ExamFilePanel";
 import type { StudySectionKey } from "./lib/studySections";
 
 type WalletGateId = "custom-path" | "profile" | "sync-provider";
@@ -63,6 +64,9 @@ type WalletGateId = "custom-path" | "profile" | "sync-provider";
 const AppContent = () => {
   const {
     actions,
+    examFiles,
+    examFilesError,
+    examFilesState,
     flashcards,
     fastFlashcards,
     help,
@@ -291,8 +295,12 @@ const AppContent = () => {
     isNoteModalOpen && noteDialogSection && noteDialogSection !== "dashboard",
   );
   const useFastNoteFiles = noteDialogSection === "fast-flashcard";
+  const isExamNoteFiles = noteDialogSection === "exam";
   const noteFilesSource = useFastNoteFiles ? fastFlashcards : flashcards;
   const noteFilesListState = noteFilesSource.isFlashcardScanning ? "loading" : "idle";
+  const noteModalTitle = isExamNoteFiles ? "Exam Files" : "Note";
+  const selectedExamFile =
+    examFiles.find((file) => file.path === preview.selectedFile?.path) ?? null;
 
   useEffect(() => {
     if (!nextGate) {
@@ -442,15 +450,30 @@ const AppContent = () => {
           <FastFlashcardPage onSectionSelect={handleStudySectionSelect} />
         )}
       </main>
-      <NoteModal isOpen={noteFilesDialogOpen} onClose={handleNoteModalClose} title="Note">
-        <NoteFilesPanel
-          files={noteFilesSource.flashcardFiles}
-          listState={noteFilesListState}
-          listError={noteFilesSource.flashcardFilesError}
-          selectedFile={preview.selectedFile}
-          vaultPath={vault.vaultPath}
-          onSelectFile={actions.handleSelectFile}
-        />
+      <NoteModal
+        isOpen={noteFilesDialogOpen}
+        onClose={handleNoteModalClose}
+        title={noteModalTitle}
+      >
+        {isExamNoteFiles ? (
+          <ExamFilePanel
+            files={examFiles}
+            listState={examFilesState}
+            listError={examFilesError}
+            selectedFile={selectedExamFile}
+            vaultPath={vault.vaultPath}
+            onSelectFile={actions.handleSelectFile}
+          />
+        ) : (
+          <NoteFilesPanel
+            files={noteFilesSource.flashcardFiles}
+            listState={noteFilesListState}
+            listError={noteFilesSource.flashcardFilesError}
+            selectedFile={preview.selectedFile}
+            vaultPath={vault.vaultPath}
+            onSelectFile={actions.handleSelectFile}
+          />
+        )}
       </NoteModal>
       <ModalShell isOpen={isHelpOpen} title="Help" onClose={handleCloseHelp}>
         <div className="hub-modal-scroll">

@@ -46,6 +46,17 @@ describe("importExamMarkdown", () => {
     expect(second.useCardWrapper).toBe(false);
   });
 
+  it("accepts case-insensitive exam wrappers", () => {
+    const markdown = `
+#EXAM
+1) Uppercase wrapper
+Answer: A
+#ExamEnd
+    `.trim();
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+  });
+
   it("roundtrips composite tasks without splitting parts", () => {
     const imported = importExamMarkdown(compositeMarkdown);
     expect(imported).not.toBeNull();

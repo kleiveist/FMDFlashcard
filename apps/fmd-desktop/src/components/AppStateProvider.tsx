@@ -35,6 +35,7 @@ import { isValidHex, normalizeHex } from "../lib/color";
 import { isHiddenPath, normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
+import type { LoadState } from "../lib/types";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
 import { usePreview } from "../features/preview/usePreview";
 import { useAppSettings } from "../features/settings/useAppSettings";
@@ -42,6 +43,7 @@ import { type SettingsPageId } from "../features/settings/settingsNavigation";
 import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepetition";
 import { useUserVault } from "../features/user-vault/useUserVault";
 import { useVault } from "../features/vault/useVault";
+import { useExamFiles } from "../features/exam/useExamFiles";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 import { VaultManagerModal } from "./VaultManagerModal";
 import { DEFAULT_HELP_TOPIC_ID } from "../pages/help/helpContent";
@@ -67,6 +69,9 @@ type AppState = {
   actions: AppActions;
   flashcards: ReturnType<typeof useFlashcards>;
   fastFlashcards: ReturnType<typeof useFlashcards>;
+  examFiles: VaultFile[];
+  examFilesState: LoadState;
+  examFilesError: string;
   help: {
     activeTopicId: string;
     setActiveTopicId: (value: string) => void;
@@ -210,6 +215,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       solutionRevealEnabled,
       statsResetMode,
     },
+  });
+  const { examFiles, examFilesState, examFilesError } = useExamFiles({
+    files: vault.files,
+    vaultPath: vault.vaultPath,
   });
   const spacedRepetition = useSpacedRepetition({
     isFlashcardScanning: flashcards.isFlashcardScanning,
@@ -697,6 +706,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     },
     flashcards,
     fastFlashcards,
+    examFiles,
+    examFilesState,
+    examFilesError,
     help: {
       activeTopicId: activeHelpTopicId,
       setActiveTopicId: setActiveHelpTopicId,

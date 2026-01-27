@@ -65,7 +65,7 @@ export const ExamFilePanel = ({
         {listError ? <div className="error">{listError}</div> : null}
         {vaultPath && listState === "idle" && files.length === 0 ? (
           <div className="empty-state">
-            Keine Exam-Dateien gefunden. Fuege einen #exam ... # Block hinzu.
+            Keine Exam-Dateien gefunden. Fuege einen #exam ... #examend Block hinzu.
           </div>
         ) : null}
         {vaultPath && listState !== "error" ? (

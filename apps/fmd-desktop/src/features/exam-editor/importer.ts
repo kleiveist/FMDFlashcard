@@ -307,7 +307,7 @@ const extractTaskTitle = (lines: string[]) => {
 
 const extractExamMeta = (markdown: string, taskStartLine: number | null) => {
   const lines = normalizeLines(markdown);
-  const examStartIndex = lines.findIndex((line) => /^\s*#exam\s*$/.test(line));
+  const examStartIndex = lines.findIndex((line) => /^\s*#exam\s*$/i.test(line));
   if (examStartIndex === -1) {
     return { title: "", description: "" };
   }
