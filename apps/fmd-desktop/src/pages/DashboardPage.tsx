@@ -374,6 +374,13 @@ const DashboardPageInner = (
     }
   }, [noteCollapsed, noteModalActive]);
 
+  useEffect(() => {
+    if (initialVaultView === vaultView) {
+      return;
+    }
+    void handleVaultViewChange(initialVaultView);
+  }, [handleVaultViewChange, initialVaultView, vaultView]);
+
 
   return (
     <div className="dashboard-page">
