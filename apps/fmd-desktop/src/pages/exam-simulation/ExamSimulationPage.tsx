@@ -417,7 +417,7 @@ export const ExamSimulationPage = () => {
       ? null
       : document.getElementById("mobile-nav-actions");
   const tableViewControls =
-    isTableView && mobileNavActions && !isOverviewStage
+    (isTableView || isViewMode) && mobileNavActions && !isOverviewStage
       ? createPortal(
           <button
             type="button"

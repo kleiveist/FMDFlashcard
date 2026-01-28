@@ -54,6 +54,7 @@ import { VaultIndexSection } from "../components/settings/VaultIndexSection";
 import {
   AppearanceIcon,
   CardsIcon,
+  ChevronDownIcon,
   ExamEditorIcon,
   FileIcon,
   FolderIcon,
@@ -79,6 +80,7 @@ import {
 } from "../features/spaced-repetition/useSpacedRepetition";
 import { resetFastFlashcardHistory } from "./fast-flashcard/hooks/useFastSession";
 import { resetExamRunHistory } from "../lib/examRuns";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import {
   consumeSettingsFocusRequest,
   subscribeSettingsFocus,
@@ -148,12 +150,84 @@ const SettingsNav = ({ items, activeId, onSelect }: SettingsNavProps) => (
   </nav>
 );
 
+type SettingsMobileToolbarProps = {
+  items: readonly SettingsNavEntry[];
+  activeId: SettingsPageId;
+  isOpen: boolean;
+  toolbarId: string;
+  onNavigate: (id: SettingsPageId) => void;
+};
+
+const SettingsMobileToolbar = ({
+  items,
+  activeId,
+  isOpen,
+  toolbarId,
+  onNavigate,
+}: SettingsMobileToolbarProps) => {
+  const firstItemRef = useRef<HTMLButtonElement | null>(null);
+  const firstItemId =
+    items.find((entry): entry is SettingsNavItem => entry.type === "item")?.id ??
+    null;
+
+  useEffect(() => {
+    if (!isOpen || !firstItemRef.current) {
+      return;
+    }
+    firstItemRef.current.focus({ preventScroll: true });
+  }, [isOpen]);
+
+  return (
+    <div id={toolbarId} className="settings-mobile-toolbar" hidden={!isOpen}>
+      <nav className="settings-mobile-toolbar-nav" aria-label="Settings sections">
+        {items.map((entry, index) => {
+          if (entry.type === "divider") {
+            return (
+              <div
+                key={`settings-mobile-divider-${entry.label}-${index}`}
+                className="settings-nav-divider"
+              >
+                {entry.label}
+              </div>
+            );
+          }
+          const Icon = SETTINGS_NAV_ICONS[entry.icon];
+          const isActive = activeId === entry.id;
+          const isFirstItem = entry.id === firstItemId;
+          return (
+            <button
+              key={entry.id}
+              ref={isFirstItem ? firstItemRef : undefined}
+              type="button"
+              className={`settings-nav-item ${isActive ? "active" : ""}`}
+              onClick={() => onNavigate(entry.id)}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <span className="settings-nav-icon">
+                <Icon />
+              </span>
+              <span className="settings-nav-label">{entry.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+};
+
 type SettingsPanelProps = {
   activeItem: SettingsNavItem;
   activeSubPageId: SettingsSubPageId | null;
   onSubPageChange: (id: SettingsSubPageId) => void;
   actions?: ReactNode;
   children: ReactNode;
+  mobileToolbar?: {
+    items: readonly SettingsNavEntry[];
+    activeId: SettingsPageId;
+    isOpen: boolean;
+    onToggle: () => void;
+    onNavigate: (id: SettingsPageId) => void;
+  };
 };
 
 const SettingsPanel = ({
@@ -162,6 +236,7 @@ const SettingsPanel = ({
   onSubPageChange,
   actions,
   children,
+  mobileToolbar,
 }: SettingsPanelProps) => {
   const Icon = SETTINGS_NAV_ICONS[activeItem.icon];
   const title = activeItem.title ?? activeItem.label;
@@ -175,6 +250,9 @@ const SettingsPanel = ({
   const labelledBy = resolvedSubPageId
     ? `settings-subpage-tab-${activeItem.id}-${resolvedSubPageId}`
     : headingId;
+  const mobileToolbarId = mobileToolbar
+    ? `settings-mobile-toolbar-${activeItem.id}`
+    : null;
 
   return (
     <section className="settings-panel" aria-labelledby={headingId}>
@@ -184,11 +262,41 @@ const SettingsPanel = ({
             <Icon />
           </span>
           <div className="settings-panel-title-text">
-            <h2 id={headingId}>{title}</h2>
+            <h2 id={headingId} className="settings-panel-title-heading">
+              {title}
+            </h2>
+            {mobileToolbar && mobileToolbarId ? (
+              <button
+                type="button"
+                className="settings-section-header-btn"
+                onClick={mobileToolbar.onToggle}
+                aria-expanded={mobileToolbar.isOpen}
+                aria-controls={mobileToolbarId}
+              >
+                <span className="settings-section-header-text">{title}</span>
+                <span
+                  className={`settings-section-header-chevron ${
+                    mobileToolbar.isOpen ? "is-open" : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  <ChevronDownIcon />
+                </span>
+              </button>
+            ) : null}
           </div>
         </div>
         {actions ? <div className="panel-actions">{actions}</div> : null}
       </div>
+      {mobileToolbar && mobileToolbarId ? (
+        <SettingsMobileToolbar
+          toolbarId={mobileToolbarId}
+          items={mobileToolbar.items}
+          activeId={mobileToolbar.activeId}
+          isOpen={mobileToolbar.isOpen}
+          onNavigate={mobileToolbar.onNavigate}
+        />
+      ) : null}
       {hasSubPages ? (
         <div className="settings-tabs" role="tablist" aria-label={`${title} pages`}>
           {activeItem.subPages?.map((subPage) => {
@@ -260,6 +368,10 @@ export const SettingsPage = () => {
   const [activeSubPages, setActiveSubPages] = useState<
     Partial<Record<SettingsPageId, SettingsSubPageId>>
   >(() => buildDefaultSubPages());
+  const isSmartMode = useMediaQuery("(max-width: 980px)", false);
+  const [openToolbarSectionId, setOpenToolbarSectionId] = useState<
+    SettingsPageId | null
+  >(null);
   const [pendingFocusRequest, setPendingFocusRequest] =
     useState<SettingsFocusRequest | null>(null);
   const lastDurationRef = useRef<number>(
@@ -395,6 +507,22 @@ export const SettingsPage = () => {
     },
     [activeItem],
   );
+
+  const handleMobileToolbarToggle = useCallback((sectionId: SettingsPageId) => {
+    setOpenToolbarSectionId((prev) => (prev === sectionId ? null : sectionId));
+  }, []);
+
+  const handleMobileNavigate = useCallback(
+    (nextId: SettingsPageId) => {
+      setActiveSettingsPage(nextId);
+      setOpenToolbarSectionId(null);
+    },
+    [setActiveSettingsPage],
+  );
+
+  useEffect(() => {
+    setOpenToolbarSectionId(null);
+  }, [activeSettingsPage]);
 
   const headerActions = (
     <button
@@ -761,16 +889,29 @@ export const SettingsPage = () => {
   return (
     <>
       <div className="settings-layout">
-        <SettingsNav
-          items={SETTINGS_NAV_MODEL}
-          activeId={activeSettingsPage}
-          onSelect={setActiveSettingsPage}
-        />
+        {!isSmartMode ? (
+          <SettingsNav
+            items={SETTINGS_NAV_MODEL}
+            activeId={activeSettingsPage}
+            onSelect={setActiveSettingsPage}
+          />
+        ) : null}
         <SettingsPanel
           activeItem={activeItem}
           activeSubPageId={activeSubPageId}
           onSubPageChange={handleSubPageChange}
           actions={headerActions}
+          mobileToolbar={
+            isSmartMode
+              ? {
+                  items: SETTINGS_NAV_MODEL,
+                  activeId: activeSettingsPage,
+                  isOpen: openToolbarSectionId === activeItem.id,
+                  onToggle: () => handleMobileToolbarToggle(activeItem.id),
+                  onNavigate: handleMobileNavigate,
+                }
+              : undefined
+          }
         >
           {renderSettingsContent()}
         </SettingsPanel>

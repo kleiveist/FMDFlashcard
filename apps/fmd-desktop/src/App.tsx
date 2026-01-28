@@ -372,6 +372,7 @@ const AppContent = () => {
       } ${
         isMobileNavOpen ? "nav-open" : ""
       }`}
+      data-active-tab={activeTab}
       data-study-subview={dashboardView}
     >
       {showStudySectionNav ? (
