@@ -301,7 +301,7 @@
   overflow: hidden;
 }
 
-.exam-editor-structure.study-structure .exam-canvas {
+.exam-editor-structure .exam-canvas {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -972,6 +972,29 @@
 @media (max-width: 1100px) {
   .exam-editor-layout {
     grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr);
+  }
+}
+
+@media (max-width: 980px) {
+  .exam-editor-page.study-view {
+    height: auto;
+  }
+
+  .exam-editor-page.study-view .exam-editor-structure {
+    flex: 0 0 auto;
+  }
+
+  .exam-editor-page.study-view .exam-editor-structure.study-structure {
+    overflow: visible;
+  }
+
+  .exam-editor-page.study-view .exam-canvas {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  .exam-editor-page.study-view .exam-canvas .panel-body {
+    overflow: visible;
   }
 }
 

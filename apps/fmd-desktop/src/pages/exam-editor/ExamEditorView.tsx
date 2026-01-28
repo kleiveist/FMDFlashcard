@@ -986,7 +986,7 @@ export const ExamEditorView = ({
   ) : null;
 
   return (
-    <div className="exam-editor-page">
+    <div className={`exam-editor-page${isStudyView ? " study-view" : ""}`}>
       {mode === "structure" ? (
         isStudyView ? (
           <div className="exam-editor-structure study-structure">
