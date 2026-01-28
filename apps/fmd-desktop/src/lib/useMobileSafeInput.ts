@@ -6,6 +6,7 @@ import {
   type FocusEvent,
   type FormEvent,
   type KeyboardEvent,
+  type MutableRefObject,
 } from "react";
 
 type InputTarget = HTMLInputElement | HTMLTextAreaElement;
@@ -13,6 +14,8 @@ type InputTarget = HTMLInputElement | HTMLTextAreaElement;
 type UseMobileSafeInputOptions<T extends InputTarget> = {
   value: string;
   onValueChange: (value: string) => void;
+  editingRef?: MutableRefObject<boolean>;
+  focusRef?: MutableRefObject<boolean>;
   onFocus?: (event: FocusEvent<T>) => void;
   onBlur?: (event: FocusEvent<T>) => void;
   onChange?: (event: ChangeEvent<T>) => void;
@@ -60,6 +63,8 @@ const deleteInputTypes = new Set([
 export const useMobileSafeInput = <T extends InputTarget>({
   value,
   onValueChange,
+  editingRef: editingRefProp,
+  focusRef: focusRefProp,
   onFocus,
   onBlur,
   onChange,
@@ -70,30 +75,40 @@ export const useMobileSafeInput = <T extends InputTarget>({
   onCompositionEnd,
 }: UseMobileSafeInputOptions<T>) => {
   const isComposingRef = useRef(false);
-  const isEditingRef = useRef(false);
+  const internalEditingRef = useRef(false);
+  const internalFocusRef = useRef(false);
+  const editingRef = editingRefProp ?? internalEditingRef;
+  const focusRef = focusRefProp ?? internalFocusRef;
+  const markEditing = useCallback(() => {
+    editingRef.current = true;
+  }, [editingRef]);
 
   const handleFocus = useCallback(
     (event: FocusEvent<T>) => {
-      isEditingRef.current = true;
+      focusRef.current = true;
+      editingRef.current = false;
       onFocus?.(event);
     },
-    [onFocus],
+    [editingRef, focusRef, onFocus],
   );
 
   const handleBlur = useCallback(
     (event: FocusEvent<T>) => {
-      isEditingRef.current = false;
+      focusRef.current = false;
+      editingRef.current = false;
+      isComposingRef.current = false;
       onBlur?.(event);
     },
-    [onBlur],
+    [editingRef, focusRef, onBlur],
   );
 
   const handleChange = useCallback(
     (event: ChangeEvent<T>) => {
+      markEditing();
       onValueChange(event.currentTarget.value);
       onChange?.(event);
     },
-    [onChange, onValueChange],
+    [markEditing, onChange, onValueChange],
   );
 
   const handleNativeTextEvent = useCallback(
@@ -106,11 +121,12 @@ export const useMobileSafeInput = <T extends InputTarget>({
       // Some OSKs (e.g., GNOME/Phosh, OEM Android) only emit delete via input events.
       const nextValue = event.currentTarget.value;
       if (nextValue !== value) {
+        markEditing();
         onValueChange(nextValue);
       }
       return true;
     },
-    [onValueChange, value],
+    [markEditing, onValueChange, value],
   );
 
   const handleBeforeInput = useCallback(
@@ -147,13 +163,14 @@ export const useMobileSafeInput = <T extends InputTarget>({
             );
           }
           if (nextValue !== value) {
+            markEditing();
             onValueChange(nextValue);
           }
         }
       }
       onBeforeInput?.(event);
     },
-    [onBeforeInput, onValueChange, value],
+    [markEditing, onBeforeInput, onValueChange, value],
   );
 
   const handleInput = useCallback(
@@ -162,12 +179,13 @@ export const useMobileSafeInput = <T extends InputTarget>({
       if (!handledDelete && !isComposingRef.current) {
         const nextValue = event.currentTarget.value;
         if (nextValue !== value) {
+          markEditing();
           onValueChange(nextValue);
         }
       }
       onInput?.(event);
     },
-    [handleNativeTextEvent, onInput, onValueChange, value],
+    [handleNativeTextEvent, markEditing, onInput, onValueChange, value],
   );
 
   const handleKeyDown = useCallback(
@@ -193,28 +211,36 @@ export const useMobileSafeInput = <T extends InputTarget>({
           ? computeDeleteContentBackward(target.value, selectionStart, selectionEnd)
           : computeDeleteContentForward(target.value, selectionStart, selectionEnd);
       if (nextValue !== value) {
+        markEditing();
         onValueChange(nextValue);
       }
     },
-    [onKeyDown, onValueChange, value],
+    [markEditing, onKeyDown, onValueChange, value],
   );
 
   const handleCompositionStart = useCallback(
     (event: CompositionEvent<T>) => {
       // IME composition should flow without forced mutations; finalize on compositionend.
       isComposingRef.current = true;
+      markEditing();
       onCompositionStart?.(event);
     },
-    [onCompositionStart],
+    [markEditing, onCompositionStart],
   );
 
   const handleCompositionEnd = useCallback(
     (event: CompositionEvent<T>) => {
       isComposingRef.current = false;
+      markEditing();
       onValueChange(event.currentTarget.value);
       onCompositionEnd?.(event);
     },
-    [onCompositionEnd, onValueChange],
+    [markEditing, onCompositionEnd, onValueChange],
+  );
+
+  const shouldBlockExternalUpdates = useCallback(
+    () => focusRef.current && (editingRef.current || isComposingRef.current),
+    [editingRef, focusRef],
   );
 
   return {
@@ -229,6 +255,7 @@ export const useMobileSafeInput = <T extends InputTarget>({
       onFocus: handleFocus,
       onBlur: handleBlur,
     },
-    isEditingRef,
+    isEditingRef: editingRef,
+    shouldBlockExternalUpdates,
   };
 };

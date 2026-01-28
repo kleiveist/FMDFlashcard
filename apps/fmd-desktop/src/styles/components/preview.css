@@ -58,6 +58,12 @@
   font-size: 0.9rem;
 }
 
+.preview-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
 .preview {
   margin: 0;
   padding: 16px;
@@ -370,13 +376,12 @@ textarea.preview-editor {
   .preview-panel textarea.preview-editor {
     width: 100%;
     min-width: 0;
-    height: 42rem;
-    max-height: 42rem;
+    min-height: 0;
   }
 
   .preview-panel .preview-editor,
   .preview-panel .preview {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
   }
 
   .preview-panel .preview.markdown.md-preview,
@@ -394,6 +399,5 @@ textarea.preview-editor {
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    overflow: auto;
   }
 }

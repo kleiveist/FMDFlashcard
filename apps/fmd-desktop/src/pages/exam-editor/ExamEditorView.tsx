@@ -956,7 +956,6 @@ export const ExamEditorView = ({
     exam,
     selection,
     validationSummary,
-    onSelectExam: () => setSelection({ type: "exam" }),
     onSelectTask: (taskId: string) => setSelection({ type: "task", taskId }),
     onSelectCard: (taskId: string, cardId: string) =>
       setSelection({ type: "card", taskId, cardId }),

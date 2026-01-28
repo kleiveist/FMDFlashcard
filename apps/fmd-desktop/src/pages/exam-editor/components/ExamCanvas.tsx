@@ -22,7 +22,6 @@ type ExamCanvasProps = {
   exam: ExamBlueprint;
   selection: ExamEditorSelection;
   validationSummary: { count: number; messages: string[] } | null;
-  onSelectExam: () => void;
   onSelectTask: (taskId: string) => void;
   onSelectCard: (taskId: string, cardId: string) => void;
   onCanvasDrop: (cardType: CardType) => void;
@@ -44,7 +43,6 @@ type ExamCanvasProps = {
   bodyContent?: ReactNode;
   bottomContent?: ReactNode;
   headerActions?: ReactNode;
-  showExamMeta?: boolean;
 };
 
 type DragPayload =
@@ -89,7 +87,6 @@ export const ExamCanvas = ({
   exam,
   selection,
   validationSummary,
-  onSelectExam,
   onSelectTask,
   onSelectCard,
   onCanvasDrop,
@@ -106,7 +103,6 @@ export const ExamCanvas = ({
   bodyContent,
   bottomContent,
   headerActions,
-  showExamMeta = true,
 }: ExamCanvasProps) => {
   const [dragPayload, setDragPayload] = useState<DragPayload | null>(null);
   const [taskDropTarget, setTaskDropTarget] = useState<TaskDropTarget | null>(null);
@@ -119,7 +115,6 @@ export const ExamCanvas = ({
     () => exam.tasks.slice().sort((a, b) => a.order - b.order),
     [exam.tasks],
   );
-  const isExamSelected = selection.type === "exam";
   const hasValidationErrors = Boolean(
     validationSummary && validationSummary.count > 0,
   );
@@ -574,22 +569,6 @@ export const ExamCanvas = ({
           <div className="exam-canvas-body">{bodyContent}</div>
         ) : (
           <div className="exam-canvas-body">
-            {showExamMeta ? (
-              <div className="exam-canvas-section">
-                <button
-                  type="button"
-                  className={`exam-canvas-meta ${isExamSelected ? "selected" : ""}`}
-                  onClick={onSelectExam}
-                >
-                  <span className="eyebrow">Exam</span>
-                  <strong>{exam.title.trim() || "Untitled exam"}</strong>
-                  <span className="muted">
-                    {exam.description.trim() || "No description"}
-                  </span>
-                </button>
-              </div>
-            ) : null}
-
             <div className="exam-canvas-section">
               {orderedTasks.length === 0 ? (
                 <div className="exam-canvas-empty">

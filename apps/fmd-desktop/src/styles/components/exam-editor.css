@@ -375,26 +375,6 @@
   min-width: 0;
 }
 
-.exam-canvas-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid var(--line-soft);
-  background: var(--panel);
-  text-align: left;
-  cursor: pointer;
-  white-space: normal;
-  word-break: break-word;
-  width: 100%;
-}
-
-.exam-canvas-meta .muted {
-  display: block;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
 
 .properties-panel {
   min-width: 0;
@@ -419,16 +399,6 @@
 .properties-panel .label,
 .properties-panel .muted {
   overflow-wrap: anywhere;
-}
-
-.exam-canvas-meta strong,
-.exam-canvas-meta .muted {
-  overflow-wrap: anywhere;
-}
-
-.exam-canvas-meta.selected {
-  border-color: var(--accent-border);
-  box-shadow: var(--shadow-soft);
 }
 
 .exam-canvas-empty {
