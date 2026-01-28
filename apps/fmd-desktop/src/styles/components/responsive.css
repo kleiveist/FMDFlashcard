@@ -165,4 +165,17 @@
   .content {
     order: 2;
   }
+
+  body.focus-mode .study-section-nav {
+    display: none !important;
+  }
+
+  body.focus-mode .app-shell.compact-top-nav {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  body.focus-mode .app-shell.compact-top-nav .sidebar,
+  body.focus-mode .app-shell.compact-top-nav .content {
+    grid-row: 1;
+  }
 }
