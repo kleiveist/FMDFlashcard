@@ -614,7 +614,10 @@ export const ExamCanvas = ({
                           <button
                             type="button"
                             className="exam-task-title"
-                            onClick={() => onSelectTask(task.id)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onSelectTask(task.id);
+                            }}
                           >
                             <span className="task-number">Task {index + 1}</span>
                             <span className="task-title-text">

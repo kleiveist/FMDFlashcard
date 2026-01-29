@@ -137,16 +137,18 @@ export const ExamEditorView = ({
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [contentModalOpen, setContentModalOpen] = useState(false);
   const [paletteModalOpen, setPaletteModalOpen] = useState(false);
+  const [taskPropertiesModalOpen, setTaskPropertiesModalOpen] = useState(false);
   const lastLoadedRef = useRef<{ path: string | null; markdown: string | null }>({
     path: null,
     markdown: null,
   });
   const lastVaultPathRef = useRef<string | null>(vaultPath ?? null);
   const isStudyView = variant === "study";
-  const isPaletteOverlayMode = useMediaQuery("(max-width: 979px)", false);
+  const isPaletteOverlayMode = useMediaQuery("(max-width: 1200px)", false);
   const isContentPopupMode = useMediaQuery("(max-width: 1200px)", false);
   const paletteOverlayActive = isStudyView && isPaletteOverlayMode;
   const contentPopupActive = isStudyView && isContentPopupMode;
+  const taskPropertiesPopupActive = isStudyView && isContentPopupMode;
 
   const validation = useMemo(() => validateExamBlueprint(exam), [exam]);
   const canSave = validation.valid;
@@ -201,10 +203,25 @@ export const ExamEditorView = ({
   }, [contentPopupActive, mode]);
 
   useEffect(() => {
+    if (!taskPropertiesPopupActive || mode !== "structure") {
+      setTaskPropertiesModalOpen(false);
+    }
+  }, [taskPropertiesPopupActive, mode]);
+
+  useEffect(() => {
     if (!paletteOverlayActive || mode !== "structure") {
       setPaletteModalOpen(false);
     }
   }, [paletteOverlayActive, mode]);
+
+  useEffect(() => {
+    if (!taskPropertiesModalOpen) {
+      return;
+    }
+    if (selection.type !== "task") {
+      setTaskPropertiesModalOpen(false);
+    }
+  }, [selection.type, taskPropertiesModalOpen]);
 
   const updateTasks = useCallback(
     (updater: (tasks: ExamTaskBlueprint[]) => ExamTaskBlueprint[]) => {
@@ -952,11 +969,26 @@ export const ExamEditorView = ({
     />
   );
 
+  const handleStructureTaskSelect = useCallback(
+    (taskId: string) => {
+      setSelection({ type: "task", taskId });
+      if (taskPropertiesPopupActive) {
+        setTaskPropertiesModalOpen(true);
+      }
+    },
+    [taskPropertiesPopupActive],
+  );
+
+  const handleTaskPropertiesClose = useCallback(() => {
+    setTaskPropertiesModalOpen(false);
+    setSelection((prev) => (prev.type === "task" ? { type: "exam" } : prev));
+  }, []);
+
   const canvasProps = {
     exam,
     selection,
     validationSummary,
-    onSelectTask: (taskId: string) => setSelection({ type: "task", taskId }),
+    onSelectTask: handleStructureTaskSelect,
     onSelectCard: (taskId: string, cardId: string) =>
       setSelection({ type: "card", taskId, cardId }),
     onCanvasDrop: handleAddTask,
@@ -985,6 +1017,16 @@ export const ExamEditorView = ({
     </button>
   ) : null;
 
+  const inlinePropertiesPanel =
+    !taskPropertiesPopupActive || selection.type !== "task" ? propertiesPanel : null;
+  const topContent =
+    inlinePropertiesPanel || alerts ? (
+      <>
+        {inlinePropertiesPanel}
+        {alerts}
+      </>
+    ) : null;
+
   return (
     <div className={`exam-editor-page${isStudyView ? " study-view" : ""}`}>
       {mode === "structure" ? (
@@ -996,12 +1038,7 @@ export const ExamEditorView = ({
             <ExamCanvas
               {...canvasProps}
               headerActions={paletteToggleButton}
-              topContent={
-                <>
-                  {propertiesPanel}
-                  {alerts}
-                </>
-              }
+              topContent={topContent}
             />
             {paletteOverlayActive && paletteModalOpen ? (
               <ModalShell
@@ -1017,6 +1054,19 @@ export const ExamEditorView = ({
                     setPaletteModalOpen(false);
                   }}
                 />
+              </ModalShell>
+            ) : null}
+            {taskPropertiesPopupActive &&
+            taskPropertiesModalOpen &&
+            selection.type === "task" ? (
+              <ModalShell
+                isOpen={taskPropertiesModalOpen}
+                title="Task Properties"
+                onClose={handleTaskPropertiesClose}
+                className="task-properties-modal-panel"
+                bodyClassName="task-properties-modal-body"
+              >
+                {propertiesPanel}
               </ModalShell>
             ) : null}
           </div>

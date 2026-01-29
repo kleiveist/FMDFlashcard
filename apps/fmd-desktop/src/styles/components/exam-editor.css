@@ -950,6 +950,14 @@
   overflow: auto;
 }
 
+.task-properties-modal-panel {
+  width: min(560px, 96vw);
+}
+
+.task-properties-modal-body {
+  overflow: auto;
+}
+
 .content-popup-panel {
   width: min(1100px, 96vw);
 }
