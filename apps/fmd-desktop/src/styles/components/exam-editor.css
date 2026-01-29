@@ -368,6 +368,39 @@
   gap: 16px;
 }
 
+.exam-canvas.is-split .panel-body {
+  overflow: hidden;
+}
+
+.exam-canvas.is-split .exam-canvas-split {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) minmax(260px, 1fr);
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.exam-canvas.is-split .exam-canvas-tasks,
+.exam-canvas.is-split .exam-canvas-side {
+  min-height: 0;
+  min-width: 0;
+}
+
+.exam-canvas.is-split .exam-canvas-tasks {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.exam-canvas.is-split .exam-canvas-side {
+  overflow: hidden;
+}
+
+.exam-canvas.is-split .exam-canvas-side .properties-panel {
+  height: 100%;
+  min-height: 0;
+}
+
 .exam-canvas-section {
   display: flex;
   flex-direction: column;

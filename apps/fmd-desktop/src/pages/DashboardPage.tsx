@@ -41,6 +41,7 @@ import { asErrorMessage } from "../lib/errors";
 import { isValidHex, normalizeHex } from "../lib/color";
 import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
 import type { ExamEditorControlsState } from "./exam-editor/types";
 
@@ -105,6 +106,13 @@ const DashboardPageInner = (
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
   );
+  const isDesktopViewport = useMediaQuery("(min-width: 1201px)", false);
+  const [examPanelsCollapsed, setExamPanelsCollapsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return window.matchMedia("(min-width: 1201px)").matches;
+  });
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const didApplyPreviewDefaultModeRef = useRef(false);
   const [noteCollapsed, setNoteCollapsed] = useState(() => {
@@ -117,6 +125,8 @@ const DashboardPageInner = (
       return false;
     }
   });
+  const isExamDesktop = vaultView === "exam" && isDesktopViewport;
+  const panelsCollapsed = isExamDesktop ? examPanelsCollapsed : noteCollapsed;
   const normalizedActiveFolderPath = useMemo(() => {
     if (!vault.activeFolderPath) {
       return "";
@@ -234,7 +244,7 @@ const DashboardPageInner = (
   }, [noteCollapsed]);
 
   useEffect(() => {
-    if (!noteCollapsed || typeof document === "undefined") {
+    if (!panelsCollapsed || typeof document === "undefined") {
       return;
     }
     const active = document.activeElement;
@@ -247,10 +257,14 @@ const DashboardPageInner = (
     if (rightPanel?.contains(active)) {
       workspaceRef.current?.focus();
     }
-  }, [noteCollapsed, vaultView]);
+  }, [panelsCollapsed, vaultView]);
 
   const handleToggleNoteCollapsed = useCallback(() => {
     setNoteCollapsed((current) => !current);
+  }, []);
+
+  const handleToggleExamPanelsCollapsed = useCallback(() => {
+    setExamPanelsCollapsed((current) => !current);
   }, []);
 
   const handleEditStart = useCallback(
@@ -381,6 +395,9 @@ const DashboardPageInner = (
     void handleVaultViewChange(initialVaultView);
   }, [handleVaultViewChange, initialVaultView, vaultView]);
 
+  const handleTogglePanelsCollapsed = isExamDesktop
+    ? handleToggleExamPanelsCollapsed
+    : handleToggleNoteCollapsed;
 
   return (
     <div className="dashboard-page">
@@ -422,7 +439,7 @@ const DashboardPageInner = (
         </section>
       ) : null}
       <div
-        className={`workspace${noteCollapsed ? " note-collapsed" : ""}`}
+        className={`workspace${panelsCollapsed ? " note-collapsed" : ""}`}
         ref={workspaceRef}
         tabIndex={-1}
       >
@@ -483,12 +500,12 @@ const DashboardPageInner = (
           )
         ) : (
           <div className="note-column">
-            {noteCollapsed ? (
+            {panelsCollapsed ? (
               <section className="panel toolbar-panel exam-editor-controls-panel is-collapsed">
                 <button
                   type="button"
                   className="exam-editor-controls-handle"
-                  onClick={handleToggleNoteCollapsed}
+                  onClick={handleTogglePanelsCollapsed}
                   aria-label="Expand editor panels"
                 >
                   <span className="note-handle-icon" aria-hidden="true">
@@ -563,13 +580,13 @@ const DashboardPageInner = (
                 activeFolderPath={normalizedActiveFolderPath || null}
                 fileCountLabel={fileCountLabel}
                 files={visibleFiles}
-                isCollapsed={noteCollapsed}
+                isCollapsed={panelsCollapsed}
                 listError={vault.listError}
                 listState={vault.listState}
                 onClearSelection={preview.resetPreview}
                 onRescanVault={actions.handleRescanVault}
                 onSelectFile={actions.handleSelectFile}
-                onToggleCollapsed={handleToggleNoteCollapsed}
+                onToggleCollapsed={handleTogglePanelsCollapsed}
                 selectedFile={preview.selectedFile}
                 showCollapseStrip
                 vaultPath={vault.vaultPath}

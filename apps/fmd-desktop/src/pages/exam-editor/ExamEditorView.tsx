@@ -146,6 +146,7 @@ export const ExamEditorView = ({
   const isStudyView = variant === "study";
   const isPaletteOverlayMode = useMediaQuery("(max-width: 1200px)", false);
   const isContentPopupMode = useMediaQuery("(max-width: 1200px)", false);
+  const isDesktopViewport = useMediaQuery("(min-width: 1201px)", false);
   const paletteOverlayActive = isStudyView && isPaletteOverlayMode;
   const contentPopupActive = isStudyView && isContentPopupMode;
   const taskPropertiesPopupActive = isStudyView && isContentPopupMode;
@@ -1017,15 +1018,23 @@ export const ExamEditorView = ({
     </button>
   ) : null;
 
-  const inlinePropertiesPanel =
-    !taskPropertiesPopupActive || selection.type !== "task" ? propertiesPanel : null;
-  const topContent =
-    inlinePropertiesPanel || alerts ? (
-      <>
-        {inlinePropertiesPanel}
-        {alerts}
-      </>
-    ) : null;
+  const structureSplitLayout = isStudyView && isDesktopViewport;
+  const showPropertiesInline = !structureSplitLayout;
+  const inlinePropertiesPanel = showPropertiesInline
+    ? !taskPropertiesPopupActive || selection.type !== "task"
+      ? propertiesPanel
+      : null
+    : null;
+  const topContent = showPropertiesInline
+    ? inlinePropertiesPanel || alerts
+      ? (
+          <>
+            {inlinePropertiesPanel}
+            {alerts}
+          </>
+        )
+      : null
+    : alerts;
 
   return (
     <div className={`exam-editor-page${isStudyView ? " study-view" : ""}`}>
@@ -1039,6 +1048,7 @@ export const ExamEditorView = ({
               {...canvasProps}
               headerActions={paletteToggleButton}
               topContent={topContent}
+              sideContent={structureSplitLayout ? propertiesPanel : undefined}
             />
             {paletteOverlayActive && paletteModalOpen ? (
               <ModalShell
