@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](adr.md)
+<!-- AUTO-GENERATED:backlink END -->
 # User Vault Mode Unterschiede
 
 ## Zweck

@@ -11,6 +11,8 @@
 ## 📁 ADR
 - 🗂️ [Overview](adr/adr.md)
 - 📝 [ADR 0001: Documentation source of truth](adr/0001-documentation-source-of-truth.md)
+- 📝 [User Vault Mode Unterschiede](adr/user-vault-mode.md)
+- 📝 [Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)](adr/wallet-onboarding-gates.md)
 
 ## 📁 Assets
 - 🗂️ [Overview](assets/assets.md)

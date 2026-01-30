@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](adr.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)
 
 ## Context / Problem
