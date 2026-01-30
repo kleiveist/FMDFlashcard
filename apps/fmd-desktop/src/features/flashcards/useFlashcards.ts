@@ -175,7 +175,7 @@ const getDetectedTypes = (card: Flashcard): FlashcardDetectedType[] => {
   return [card.primaryType ?? getPrimaryTypeFromKind(card)];
 };
 
-const matchesFlashcardMode = (card: Flashcard, mode: FlashcardMode) => {
+export const matchesFlashcardMode = (card: Flashcard, mode: FlashcardMode) => {
   const resolvedMode = normalizeFlashcardMode(mode);
   if (resolvedMode === "all") {
     return true;

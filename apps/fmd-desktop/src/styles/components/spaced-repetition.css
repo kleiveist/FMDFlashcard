@@ -90,3 +90,16 @@
   border-radius: 10px;
   transition: height 0.2s ease;
 }
+
+.sr-flashcards-panel.is-empty {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  height: auto;
+  min-height: 0;
+  padding: 12px 16px;
+  gap: 8px;
+}
+
+.sr-flashcards-panel.is-empty .panel-body {
+  display: none;
+}

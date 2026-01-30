@@ -54,15 +54,20 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     setIsFocusMode,
     activeBoxFilter,
     statsView,
+    flashcardFilterMode,
+    setFlashcardFilterMode,
     focusLabel,
     prevShortcutTitle,
     nextShortcutTitle,
     vaultName,
-    showBoxEmptyMessage,
     statsChartClass,
     statsChartStyle,
     maxBoxCount,
     filteredFlashcardEntries,
+    flashcardsPanelCanGoBack,
+    flashcardsPanelCanGoNext,
+    handleFlashcardsPanelPageBack,
+    handleFlashcardsPanelPageNext,
     toggleBoxFilter,
     kpiItems,
     handleOptionSelect,
@@ -95,6 +100,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
   const [isDiagramOpen, setIsDiagramOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isUserToolsOpen, setIsUserToolsOpen] = useState(false);
+  const isFlashcardsPanelEmpty = filteredFlashcardEntries.length === 0;
 
   const noteFilesPanel = (
     <NoteFilesPanel
@@ -155,70 +161,72 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           />
         )}
 
-        <section className="panel sr-flashcards-panel">
+        <section
+          className={`panel sr-flashcards-panel ${
+            isFlashcardsPanelEmpty ? "is-empty" : ""
+          }`}
+        >
           <SrHeader
-            spacedRepetitionStatusLabel={spacedRepetition.spacedRepetitionStatusLabel}
             isFocusMode={isFocusMode}
             focusLabel={focusLabel}
             setIsFocusMode={setIsFocusMode}
             onSectionSelect={onSectionSelect}
           />
-          <SrCardHost
-            filteredFlashcardEntries={filteredFlashcardEntries}
-            showBoxEmptyMessage={showBoxEmptyMessage}
-            activeBoxFilter={activeBoxFilter}
-            spacedRepetitionEmptyState={spacedRepetition.spacedRepetitionEmptyState}
-            spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
-            helpEnabled={spacedRepetitionHelpEnabled}
-            spacedRepetitionCompositeStates={
-              spacedRepetition.spacedRepetitionCompositeStates
-            }
-            spacedRepetitionClozeResponses={
-              spacedRepetition.spacedRepetitionClozeResponses
-            }
-            spacedRepetitionTrueFalseSelections={
-              spacedRepetition.spacedRepetitionTrueFalseSelections
-            }
-            spacedRepetitionTextResponses={
-              spacedRepetition.spacedRepetitionTextResponses
-            }
-            spacedRepetitionTextRevealed={
-              spacedRepetition.spacedRepetitionTextRevealed
-            }
-            spacedRepetitionSelfGrades={spacedRepetition.spacedRepetitionSelfGrades}
-            spacedRepetitionSelections={spacedRepetition.spacedRepetitionSelections}
-            handleCompositeOptionSelect={handleCompositeOptionSelect}
-            handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
-            handleCompositeClozeInputChange={handleCompositeClozeInputChange}
-            handleCompositeClozeTokenDrop={handleCompositeClozeTokenDrop}
-            handleCompositeClozeTokenRemove={handleCompositeClozeTokenRemove}
-            handleCompositeTextInputChange={handleCompositeTextInputChange}
-            handleCompositeTextCheck={handleCompositeTextCheck}
-            handleCompositeSelfGrade={handleCompositeSelfGrade}
-            handleOptionSelect={handleOptionSelect}
-            handleTrueFalseSelect={handleTrueFalseSelect}
-            handleClozeInputChange={handleClozeInputChange}
-            handleClozeTokenDrop={handleClozeTokenDrop}
-            handleClozeTokenRemove={handleClozeTokenRemove}
-            handleTextInputChange={handleTextInputChange}
-            handleTextCheck={handleTextCheck}
-            handleSelfGrade={handleSelfGrade}
-            handleSpacedRepetitionSubmit={
-              spacedRepetition.handleSpacedRepetitionSubmit
-            }
-            handleClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
-            handleClozeBlankDragOver={flashcards.handleClozeBlankDragOver}
-            spacedRepetitionCanGoBack={spacedRepetition.spacedRepetitionCanGoBack}
-            spacedRepetitionCanGoNext={spacedRepetition.spacedRepetitionCanGoNext}
-            handleSpacedRepetitionPageBack={
-              spacedRepetition.handleSpacedRepetitionPageBack
-            }
-            handleSpacedRepetitionPageNext={
-              spacedRepetition.handleSpacedRepetitionPageNext
-            }
-            prevShortcutTitle={prevShortcutTitle}
-            nextShortcutTitle={nextShortcutTitle}
-          />
+          {isFlashcardsPanelEmpty ? null : (
+            <SrCardHost
+              filteredFlashcardEntries={filteredFlashcardEntries}
+              spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
+              helpEnabled={spacedRepetitionHelpEnabled}
+              spacedRepetitionCompositeStates={
+                spacedRepetition.spacedRepetitionCompositeStates
+              }
+              spacedRepetitionClozeResponses={
+                spacedRepetition.spacedRepetitionClozeResponses
+              }
+              spacedRepetitionTrueFalseSelections={
+                spacedRepetition.spacedRepetitionTrueFalseSelections
+              }
+              spacedRepetitionTextResponses={
+                spacedRepetition.spacedRepetitionTextResponses
+              }
+              spacedRepetitionTextRevealed={
+                spacedRepetition.spacedRepetitionTextRevealed
+              }
+              spacedRepetitionSelfGrades={
+                spacedRepetition.spacedRepetitionSelfGrades
+              }
+              spacedRepetitionSelections={
+                spacedRepetition.spacedRepetitionSelections
+              }
+              handleCompositeOptionSelect={handleCompositeOptionSelect}
+              handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
+              handleCompositeClozeInputChange={handleCompositeClozeInputChange}
+              handleCompositeClozeTokenDrop={handleCompositeClozeTokenDrop}
+              handleCompositeClozeTokenRemove={handleCompositeClozeTokenRemove}
+              handleCompositeTextInputChange={handleCompositeTextInputChange}
+              handleCompositeTextCheck={handleCompositeTextCheck}
+              handleCompositeSelfGrade={handleCompositeSelfGrade}
+              handleOptionSelect={handleOptionSelect}
+              handleTrueFalseSelect={handleTrueFalseSelect}
+              handleClozeInputChange={handleClozeInputChange}
+              handleClozeTokenDrop={handleClozeTokenDrop}
+              handleClozeTokenRemove={handleClozeTokenRemove}
+              handleTextInputChange={handleTextInputChange}
+              handleTextCheck={handleTextCheck}
+              handleSelfGrade={handleSelfGrade}
+              handleSpacedRepetitionSubmit={
+                spacedRepetition.handleSpacedRepetitionSubmit
+              }
+              handleClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
+              handleClozeBlankDragOver={flashcards.handleClozeBlankDragOver}
+              spacedRepetitionCanGoBack={flashcardsPanelCanGoBack}
+              spacedRepetitionCanGoNext={flashcardsPanelCanGoNext}
+              handleSpacedRepetitionPageBack={handleFlashcardsPanelPageBack}
+              handleSpacedRepetitionPageNext={handleFlashcardsPanelPageNext}
+              prevShortcutTitle={prevShortcutTitle}
+              nextShortcutTitle={nextShortcutTitle}
+            />
+          )}
         </section>
       </div>
 
@@ -241,10 +249,11 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           <SrToolsPanel
             spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
             setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
-            spacedRepetitionOrder={spacedRepetition.spacedRepetitionOrder}
-            setSpacedRepetitionOrder={spacedRepetition.setSpacedRepetitionOrder}
             spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
             setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
+            flashcardFilterMode={flashcardFilterMode}
+            setFlashcardFilterMode={setFlashcardFilterMode}
+            statusLabel={spacedRepetition.spacedRepetitionStatusLabel}
             isCollapsible={isTableView}
             isCollapsed={isTableView && !isToolsOpen}
             onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}

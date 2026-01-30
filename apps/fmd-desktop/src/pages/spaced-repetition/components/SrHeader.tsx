@@ -24,7 +24,6 @@ import type { Dispatch, SetStateAction } from "react";
 import type { StudySectionKey } from "../../../lib/studySections";
 
 type SrHeaderProps = {
-  spacedRepetitionStatusLabel: string;
   isFocusMode: boolean;
   focusLabel: string;
   setIsFocusMode: Dispatch<SetStateAction<boolean>>;
@@ -32,7 +31,6 @@ type SrHeaderProps = {
 };
 
 export const SrHeader = ({
-  spacedRepetitionStatusLabel,
   isFocusMode,
   focusLabel,
   setIsFocusMode,
@@ -49,7 +47,6 @@ export const SrHeader = ({
           Flashcard
         </button>
       </h2>
-      <p className="muted">{spacedRepetitionStatusLabel}</p>
     </div>
     <div className="panel-actions">
       <button

@@ -1131,6 +1131,25 @@ const storageKey = useMemo(
     }));
   }, [spacedRepetitionPageCount, updateActiveSpacedRepetitionSession]);
 
+  const setSpacedRepetitionPage = useCallback(
+    (value: number) => {
+      updateActiveSpacedRepetitionSession((session) => {
+        if (spacedRepetitionPageCount <= 0) {
+          return session.page === 0 ? session : { ...session, page: 0 };
+        }
+        const nextPage = Math.min(
+          Math.max(0, value),
+          spacedRepetitionPageCount - 1,
+        );
+        if (nextPage === session.page) {
+          return session;
+        }
+        return { ...session, page: nextPage };
+      });
+    },
+    [spacedRepetitionPageCount, updateActiveSpacedRepetitionSession],
+  );
+
   const handleSpacedRepetitionClozeInputChange = useCallback(
     (cardIndex: number, blankId: string, value: string) => {
       updateActiveSpacedRepetitionSession((session) => {
@@ -1304,6 +1323,7 @@ const storageKey = useMemo(
     setSpacedRepetitionBoxes,
     setSpacedRepetitionNewUserName,
     setSpacedRepetitionOrder,
+    setSpacedRepetitionPage,
     setSpacedRepetitionPageSize,
     setSpacedRepetitionRepetitionStrength,
     setSpacedRepetitionSelectedUserId,

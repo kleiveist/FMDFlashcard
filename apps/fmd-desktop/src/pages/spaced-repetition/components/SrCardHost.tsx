@@ -32,9 +32,6 @@ import type { ClozeDragPayload, FlashcardSelfGrade } from "../../../features/fla
 
 type SrCardHostProps = {
   filteredFlashcardEntries: { card: any; cardIndex: number }[];
-  showBoxEmptyMessage: boolean;
-  activeBoxFilter: number | null;
-  spacedRepetitionEmptyState: string;
   spacedRepetitionSubmissions: Record<number, boolean>;
   helpEnabled: boolean;
   spacedRepetitionCompositeStates?: Record<number, any[]>;
@@ -119,9 +116,6 @@ type SrCardHostProps = {
 
 export const SrCardHost = ({
   filteredFlashcardEntries,
-  showBoxEmptyMessage,
-  activeBoxFilter,
-  spacedRepetitionEmptyState,
   spacedRepetitionSubmissions,
   helpEnabled,
   spacedRepetitionCompositeStates,
@@ -158,113 +152,105 @@ export const SrCardHost = ({
   nextShortcutTitle,
 }: SrCardHostProps) => (
   <div className="panel-body">
-    {filteredFlashcardEntries.length === 0 ? (
-      <div className="empty-state">
-        {showBoxEmptyMessage
-          ? `No cards currently in box ${activeBoxFilter}.`
-          : spacedRepetitionEmptyState}
-      </div>
-    ) : (
-      <div className="flashcard-list">
-        {filteredFlashcardEntries.map(({ card, cardIndex }) => {
-          const submitted = !!spacedRepetitionSubmissions[cardIndex];
+    <div className="flashcard-list">
+      {filteredFlashcardEntries.map(({ card, cardIndex }) => {
+        const submitted = !!spacedRepetitionSubmissions[cardIndex];
 
-          if (card.kind === "composite") {
-            return (
-              <CompositeCard
-                key={`flashcard-${cardIndex}`}
-                card={card}
-                cardIndex={cardIndex}
-                submitted={submitted}
-                helpText={card.helpText}
-                helpEnabled={helpEnabled}
-                partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
-                onOptionSelect={handleCompositeOptionSelect}
-                onTrueFalseSelect={handleCompositeTrueFalseSelect}
-                onClozeInputChange={handleCompositeClozeInputChange}
-                onClozeTokenDrop={handleCompositeClozeTokenDrop}
-                onClozeTokenRemove={handleCompositeClozeTokenRemove}
-                onClozeTokenDragStart={handleClozeTokenDragStart}
-                onBlankDragOver={handleClozeBlankDragOver}
-                onTextInputChange={handleCompositeTextInputChange}
-                onTextCheck={handleCompositeTextCheck}
-                onSelfGrade={handleCompositeSelfGrade}
-                onSubmit={handleSpacedRepetitionSubmit}
-              />
-            );
-          }
-
-          if (card.kind === "cloze") {
-            return (
-              <ClozeCard
-                key={`flashcard-${cardIndex}`}
-                card={card}
-                cardIndex={cardIndex}
-                submitted={submitted}
-                helpText={card.helpText}
-                helpEnabled={helpEnabled}
-                responses={spacedRepetitionClozeResponses[cardIndex] ?? {}}
-                onInputChange={handleClozeInputChange}
-                onTokenDrop={handleClozeTokenDrop}
-                onTokenRemove={handleClozeTokenRemove}
-                onTokenDragStart={handleClozeTokenDragStart}
-                onBlankDragOver={handleClozeBlankDragOver}
-                onSubmit={handleSpacedRepetitionSubmit}
-              />
-            );
-          }
-
-          if (card.kind === "true-false") {
-            return (
-              <TrueFalseCard
-                key={`flashcard-${cardIndex}`}
-                card={card}
-                cardIndex={cardIndex}
-                submitted={submitted}
-                helpText={card.helpText}
-                helpEnabled={helpEnabled}
-                selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
-                onSelect={handleTrueFalseSelect}
-                onSubmit={handleSpacedRepetitionSubmit}
-              />
-            );
-          }
-
-          if (card.kind === "free-text") {
-            return (
-              <FreeTextCard
-                key={`flashcard-${cardIndex}`}
-                card={card}
-                cardIndex={cardIndex}
-                submitted={submitted}
-                helpText={card.helpText}
-                helpEnabled={helpEnabled}
-                response={spacedRepetitionTextResponses[cardIndex] ?? ""}
-                revealed={spacedRepetitionTextRevealed[cardIndex] ?? false}
-                selfGrade={spacedRepetitionSelfGrades[cardIndex]}
-                onInputChange={handleTextInputChange}
-                onCheck={handleTextCheck}
-                onSelfGrade={handleSelfGrade}
-              />
-            );
-          }
-
+        if (card.kind === "composite") {
           return (
-            <MultipleChoiceCard
+            <CompositeCard
               key={`flashcard-${cardIndex}`}
               card={card}
               cardIndex={cardIndex}
               submitted={submitted}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
-              selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}
-              onSelect={handleOptionSelect}
+              partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
+              onOptionSelect={handleCompositeOptionSelect}
+              onTrueFalseSelect={handleCompositeTrueFalseSelect}
+              onClozeInputChange={handleCompositeClozeInputChange}
+              onClozeTokenDrop={handleCompositeClozeTokenDrop}
+              onClozeTokenRemove={handleCompositeClozeTokenRemove}
+              onClozeTokenDragStart={handleClozeTokenDragStart}
+              onBlankDragOver={handleClozeBlankDragOver}
+              onTextInputChange={handleCompositeTextInputChange}
+              onTextCheck={handleCompositeTextCheck}
+              onSelfGrade={handleCompositeSelfGrade}
               onSubmit={handleSpacedRepetitionSubmit}
             />
           );
-        })}
-      </div>
-    )}
+        }
+
+        if (card.kind === "cloze") {
+          return (
+            <ClozeCard
+              key={`flashcard-${cardIndex}`}
+              card={card}
+              cardIndex={cardIndex}
+              submitted={submitted}
+              helpText={card.helpText}
+              helpEnabled={helpEnabled}
+              responses={spacedRepetitionClozeResponses[cardIndex] ?? {}}
+              onInputChange={handleClozeInputChange}
+              onTokenDrop={handleClozeTokenDrop}
+              onTokenRemove={handleClozeTokenRemove}
+              onTokenDragStart={handleClozeTokenDragStart}
+              onBlankDragOver={handleClozeBlankDragOver}
+              onSubmit={handleSpacedRepetitionSubmit}
+            />
+          );
+        }
+
+        if (card.kind === "true-false") {
+          return (
+            <TrueFalseCard
+              key={`flashcard-${cardIndex}`}
+              card={card}
+              cardIndex={cardIndex}
+              submitted={submitted}
+              helpText={card.helpText}
+              helpEnabled={helpEnabled}
+              selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
+              onSelect={handleTrueFalseSelect}
+              onSubmit={handleSpacedRepetitionSubmit}
+            />
+          );
+        }
+
+        if (card.kind === "free-text") {
+          return (
+            <FreeTextCard
+              key={`flashcard-${cardIndex}`}
+              card={card}
+              cardIndex={cardIndex}
+              submitted={submitted}
+              helpText={card.helpText}
+              helpEnabled={helpEnabled}
+              response={spacedRepetitionTextResponses[cardIndex] ?? ""}
+              revealed={spacedRepetitionTextRevealed[cardIndex] ?? false}
+              selfGrade={spacedRepetitionSelfGrades[cardIndex]}
+              onInputChange={handleTextInputChange}
+              onCheck={handleTextCheck}
+              onSelfGrade={handleSelfGrade}
+            />
+          );
+        }
+
+        return (
+          <MultipleChoiceCard
+            key={`flashcard-${cardIndex}`}
+            card={card}
+            cardIndex={cardIndex}
+            submitted={submitted}
+            helpText={card.helpText}
+            helpEnabled={helpEnabled}
+            selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}
+            onSelect={handleOptionSelect}
+            onSubmit={handleSpacedRepetitionSubmit}
+          />
+        );
+      })}
+    </div>
     <SrReviewActions
       spacedRepetitionCanGoBack={spacedRepetitionCanGoBack}
       spacedRepetitionCanGoNext={spacedRepetitionCanGoNext}

@@ -44,6 +44,7 @@ import {
   areTrueFalseItemsComplete,
   isFlashcardPartComplete,
 } from "../../../features/flashcards/logic";
+import { matchesFlashcardMode, type FlashcardMode } from "../../../features/flashcards/useFlashcards";
 import {
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
@@ -64,6 +65,8 @@ export const useSrSessionViewModel = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
+  const [flashcardFilterMode, setFlashcardFilterMode] =
+    useState<FlashcardMode>("all");
   const statsView = spacedRepetition.spacedRepetitionStatsView;
   const platform = getShortcutPlatform();
   const shortcutBindings = useMemo(() => {
@@ -104,10 +107,6 @@ export const useSrSessionViewModel = () => {
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
   );
-  const showBoxEmptyMessage =
-    statsView === "boxes" &&
-    activeBoxFilter !== null &&
-    Boolean(spacedRepetition.spacedRepetitionActiveUser);
   const selectedUser = useMemo(
     () =>
       spacedRepetition.spacedRepetitionUsers.find(
@@ -135,43 +134,102 @@ export const useSrSessionViewModel = () => {
     [spacedRepetition.spacedRepetitionCorrectPercent],
   );
   const maxBoxCount = Math.max(...spacedRepetition.spacedRepetitionBoxCounts, 0);
-  const visibleFlashcardEntries = useMemo(
+  const flashcardEntries = useMemo(
     () =>
-      spacedRepetition.spacedRepetitionVisibleFlashcards.map((card, localIndex) => ({
+      spacedRepetition.spacedRepetitionFlashcards.map((card, cardIndex) => ({
         card,
-        cardIndex: spacedRepetition.spacedRepetitionPageStart + localIndex,
+        cardIndex,
       })),
-    [
-      spacedRepetition.spacedRepetitionPageStart,
-      spacedRepetition.spacedRepetitionVisibleFlashcards,
-    ],
+    [spacedRepetition.spacedRepetitionFlashcards],
   );
   const filteredFlashcardEntries = useMemo(() => {
+    let entries = flashcardEntries;
+
     if (
-      activeBoxFilter === null ||
-      statsView !== "boxes" ||
-      !spacedRepetition.spacedRepetitionCardStates
+      activeBoxFilter !== null &&
+      statsView === "boxes" &&
+      spacedRepetition.spacedRepetitionCardStates
     ) {
-      return visibleFlashcardEntries;
+      entries = entries.filter(({ card }) => {
+        const cardId = getFlashcardId(card, cardIdContext);
+        const progress = spacedRepetition.spacedRepetitionCardStates[cardId] ?? null;
+        const normalized = normalizeSpacedRepetitionCardProgress(progress);
+        const effectiveBox = getSpacedRepetitionEffectiveBox(
+          normalized,
+          spacedRepetition.spacedRepetitionBoxes,
+        );
+        return effectiveBox === activeBoxFilter;
+      });
     }
-    return visibleFlashcardEntries.filter(({ card }) => {
-      const cardId = getFlashcardId(card, cardIdContext);
-      const progress = spacedRepetition.spacedRepetitionCardStates[cardId] ?? null;
-      const normalized = normalizeSpacedRepetitionCardProgress(progress);
-      const effectiveBox = getSpacedRepetitionEffectiveBox(
-        normalized,
-        spacedRepetition.spacedRepetitionBoxes,
+
+    if (flashcardFilterMode !== "all") {
+      entries = entries.filter(({ card }) =>
+        matchesFlashcardMode(card, flashcardFilterMode),
       );
-      return effectiveBox === activeBoxFilter;
-    });
+    }
+
+    return entries;
   }, [
     activeBoxFilter,
-    statsView,
+    cardIdContext,
+    flashcardFilterMode,
+    flashcardEntries,
     spacedRepetition.spacedRepetitionBoxes,
     spacedRepetition.spacedRepetitionCardStates,
-    visibleFlashcardEntries,
-    cardIdContext,
+    statsView,
   ]);
+  const filteredPageCount = useMemo(() => {
+    if (filteredFlashcardEntries.length === 0) {
+      return 0;
+    }
+    return Math.ceil(
+      filteredFlashcardEntries.length / spacedRepetition.spacedRepetitionPageSize,
+    );
+  }, [
+    filteredFlashcardEntries.length,
+    spacedRepetition.spacedRepetitionPageSize,
+  ]);
+  const filteredPageIndex = useMemo(() => {
+    if (filteredPageCount === 0) {
+      return 0;
+    }
+    return Math.min(
+      spacedRepetition.spacedRepetitionPage,
+      Math.max(0, filteredPageCount - 1),
+    );
+  }, [filteredPageCount, spacedRepetition.spacedRepetitionPage]);
+  const filteredPageStart =
+    filteredPageIndex * spacedRepetition.spacedRepetitionPageSize;
+  const pagedFlashcardEntries = useMemo(
+    () =>
+      filteredFlashcardEntries.slice(
+        filteredPageStart,
+        filteredPageStart + spacedRepetition.spacedRepetitionPageSize,
+      ),
+    [
+      filteredFlashcardEntries,
+      filteredPageStart,
+      spacedRepetition.spacedRepetitionPageSize,
+    ],
+  );
+  const flashcardsPanelCanGoBack =
+    filteredPageCount > 0 && filteredPageIndex > 0;
+  const flashcardsPanelCanGoNext =
+    filteredPageCount > 0 && filteredPageIndex < filteredPageCount - 1;
+  const handleFlashcardsPanelPageBack = useCallback(() => {
+    if (filteredPageCount === 0) {
+      return;
+    }
+    spacedRepetition.setSpacedRepetitionPage(Math.max(0, filteredPageIndex - 1));
+  }, [filteredPageCount, filteredPageIndex, spacedRepetition]);
+  const handleFlashcardsPanelPageNext = useCallback(() => {
+    if (filteredPageCount === 0) {
+      return;
+    }
+    spacedRepetition.setSpacedRepetitionPage(
+      Math.min(filteredPageCount - 1, filteredPageIndex + 1),
+    );
+  }, [filteredPageCount, filteredPageIndex, spacedRepetition]);
   const toggleBoxFilter = useCallback(
     (boxNumber: number) => {
       const nextFilter = activeBoxFilter === boxNumber ? null : boxNumber;
@@ -223,6 +281,23 @@ export const useSrSessionViewModel = () => {
   }, [isFocusMode]);
 
   useEffect(() => {
+    if (filteredPageCount === 0) {
+      if (spacedRepetition.spacedRepetitionPage !== 0) {
+        spacedRepetition.setSpacedRepetitionPage(0);
+      }
+      return;
+    }
+    if (spacedRepetition.spacedRepetitionPage !== filteredPageIndex) {
+      spacedRepetition.setSpacedRepetitionPage(filteredPageIndex);
+    }
+  }, [
+    filteredPageCount,
+    filteredPageIndex,
+    spacedRepetition,
+    spacedRepetition.spacedRepetitionPage,
+  ]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return;
@@ -250,16 +325,16 @@ export const useSrSessionViewModel = () => {
 
       if (canTrigger(srPrevCommand, shortcutBindings.prev)) {
         event.preventDefault();
-        if (spacedRepetition.spacedRepetitionCanGoBack) {
-          spacedRepetition.handleSpacedRepetitionPageBack();
+        if (flashcardsPanelCanGoBack) {
+          handleFlashcardsPanelPageBack();
         }
         return;
       }
 
       if (canTrigger(srNextCommand, shortcutBindings.next)) {
         event.preventDefault();
-        if (spacedRepetition.spacedRepetitionCanGoNext) {
-          spacedRepetition.handleSpacedRepetitionPageNext();
+        if (flashcardsPanelCanGoNext) {
+          handleFlashcardsPanelPageNext();
         }
         return;
       }
@@ -268,16 +343,15 @@ export const useSrSessionViewModel = () => {
         return;
       }
 
-      const visibleCards = spacedRepetition.spacedRepetitionVisibleFlashcards;
-      if (visibleCards.length === 0) {
+      const visibleEntries = pagedFlashcardEntries;
+      if (visibleEntries.length === 0) {
         return;
       }
 
       const findFirstSubmittableIndex = () => {
-        for (let localIndex = 0; localIndex < visibleCards.length; localIndex += 1) {
-          const cardIndex =
-            spacedRepetition.spacedRepetitionPageStart + localIndex;
-          const card = visibleCards[localIndex];
+        for (const entry of visibleEntries) {
+          const cardIndex = entry.cardIndex;
+          const card = entry.card;
           if (spacedRepetition.spacedRepetitionSubmissions[cardIndex]) {
             continue;
           }
@@ -324,10 +398,7 @@ export const useSrSessionViewModel = () => {
 
       const resolvedIndex =
         activeCardIndex !== null &&
-        activeCardIndex >= spacedRepetition.spacedRepetitionPageStart &&
-        activeCardIndex <
-          spacedRepetition.spacedRepetitionPageStart +
-            spacedRepetition.spacedRepetitionVisibleFlashcards.length
+        visibleEntries.some((entry) => entry.cardIndex === activeCardIndex)
           ? activeCardIndex
           : findFirstSubmittableIndex();
 
@@ -335,8 +406,10 @@ export const useSrSessionViewModel = () => {
         return;
       }
 
-      const localIndex = resolvedIndex - spacedRepetition.spacedRepetitionPageStart;
-      const card = visibleCards[localIndex];
+      const resolvedEntry = visibleEntries.find(
+        (entry) => entry.cardIndex === resolvedIndex,
+      );
+      const card = resolvedEntry?.card;
       if (!card || spacedRepetition.spacedRepetitionSubmissions[resolvedIndex]) {
         return;
       }
@@ -380,7 +453,16 @@ export const useSrSessionViewModel = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeCardIndex, shortcutBindings, spacedRepetition]);
+  }, [
+    activeCardIndex,
+    flashcardsPanelCanGoBack,
+    flashcardsPanelCanGoNext,
+    handleFlashcardsPanelPageBack,
+    handleFlashcardsPanelPageNext,
+    pagedFlashcardEntries,
+    shortcutBindings,
+    spacedRepetition,
+  ]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
@@ -600,15 +682,20 @@ export const useSrSessionViewModel = () => {
     setIsFocusMode,
     activeBoxFilter,
     statsView,
+    flashcardFilterMode,
+    setFlashcardFilterMode,
     focusLabel: focusTitle,
     prevShortcutTitle,
     nextShortcutTitle,
     vaultName,
-    showBoxEmptyMessage,
     statsChartClass,
     statsChartStyle,
     maxBoxCount,
-    filteredFlashcardEntries,
+    filteredFlashcardEntries: pagedFlashcardEntries,
+    flashcardsPanelCanGoBack,
+    flashcardsPanelCanGoNext,
+    handleFlashcardsPanelPageBack,
+    handleFlashcardsPanelPageNext,
     toggleBoxFilter,
     kpiItems,
     handleOptionSelect,
