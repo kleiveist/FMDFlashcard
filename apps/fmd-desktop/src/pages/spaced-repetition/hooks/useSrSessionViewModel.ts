@@ -44,7 +44,7 @@ import {
   areTrueFalseItemsComplete,
   isFlashcardPartComplete,
 } from "../../../features/flashcards/logic";
-import { matchesFlashcardMode, type FlashcardMode } from "../../../features/flashcards/useFlashcards";
+import { matchesFlashcardMode } from "../../../features/flashcards/useFlashcards";
 import {
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
@@ -65,8 +65,8 @@ export const useSrSessionViewModel = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
-  const [flashcardFilterMode, setFlashcardFilterMode] =
-    useState<FlashcardMode>("all");
+  const flashcardFilterMode = settings.flashcardMode;
+  const setFlashcardFilterMode = settings.setFlashcardMode;
   const statsView = spacedRepetition.spacedRepetitionStatsView;
   const platform = getShortcutPlatform();
   const shortcutBindings = useMemo(() => {

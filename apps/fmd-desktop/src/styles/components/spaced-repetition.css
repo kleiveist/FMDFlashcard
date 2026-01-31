@@ -94,10 +94,22 @@
 .sr-flashcards-panel.is-empty {
   flex: 0 0 auto;
   align-self: flex-start;
+  width: 100%;
+  max-width: 100%;
   height: auto;
   min-height: 0;
   padding: 12px 16px;
   gap: 8px;
+}
+
+.sr-flashcards-panel.is-empty .panel-header,
+.sr-flashcards-panel.is-empty .panel-header > * {
+  display: flex;
+  align-items: center;
+}
+
+.sr-flashcards-panel.is-empty .panel-actions {
+  margin-left: auto;
 }
 
 .sr-flashcards-panel.is-empty .panel-body {

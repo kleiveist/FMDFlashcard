@@ -776,6 +776,8 @@ export const SettingsPage = () => {
                 }
                 helpEnabled={settings.spacedRepetitionHelpEnabled}
                 setHelpEnabled={settings.setSpacedRepetitionHelpEnabled}
+                flashcardMode={settings.flashcardMode}
+                setFlashcardMode={settings.setFlashcardMode}
               />
             ) : (
               <FlashcardsSettingsSection

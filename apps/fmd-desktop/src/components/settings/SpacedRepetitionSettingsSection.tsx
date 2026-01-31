@@ -26,6 +26,7 @@ import type {
   SpacedRepetitionPageSize,
   SpacedRepetitionRepetitionStrength,
 } from "../../features/spaced-repetition/useSpacedRepetition";
+import type { FlashcardMode } from "../../features/flashcards/useFlashcards";
 
 type SpacedRepetitionSettingsSectionProps = {
   spacedRepetitionBoxes: SpacedRepetitionBoxes;
@@ -42,6 +43,8 @@ type SpacedRepetitionSettingsSectionProps = {
   ) => void;
   helpEnabled: boolean;
   setHelpEnabled: (value: boolean) => void;
+  flashcardMode: FlashcardMode;
+  setFlashcardMode: (value: FlashcardMode) => void;
 };
 
 export const SpacedRepetitionSettingsSection = ({
@@ -57,6 +60,8 @@ export const SpacedRepetitionSettingsSection = ({
   setSpacedRepetitionRepetitionStrength,
   helpEnabled,
   setHelpEnabled,
+  flashcardMode,
+  setFlashcardMode,
 }: SpacedRepetitionSettingsSectionProps) => (
   <section className="panel spaced-repetition-panel">
     <div className="panel-header">
@@ -100,6 +105,25 @@ export const SpacedRepetitionSettingsSection = ({
             Repetition
           </button>
         </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">MODE</span>
+        <select
+          className="text-input"
+          value={flashcardMode}
+          onChange={(event) =>
+            setFlashcardMode(event.target.value as FlashcardMode)
+          }
+          aria-label="Select mode filter"
+        >
+          <option value="all">All</option>
+          <option value="qa">Q&amp;A</option>
+          <option value="multiple-choice">Multiple Choice</option>
+          <option value="fill-blank">Fill-in-the-blank</option>
+          <option value="assignment">Assignment</option>
+          <option value="true-false">True/False</option>
+          <option value="mix">Mix</option>
+        </select>
       </div>
       <div className="setting-row">
         <span className="label">PAGE SIZE</span>
