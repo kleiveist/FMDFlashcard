@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](README.md)
+<!-- AUTO-GENERATED:backlink END -->
 📁 src
 ├── 📁 .summary
 │   ├── 📝allsummary.md

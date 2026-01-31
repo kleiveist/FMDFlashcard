@@ -21,6 +21,9 @@ while adding a dedicated review experience and study progress tracking.
 ## 📄 Files
 - 📝 [Changelog](CHANGELOG.md)
 - 📝 [Contributing](CONTRIBUTING.md)
+- 📝 [Folderlist docs](folderlist_docs.md)
+- 📝 [Folderlist fdm desktop](folderlist_fdm-desktop.md)
+- 📝 [Folderlist tools](folderlist_tools.md)
 - 📝 [Security Policy](SECURITY.md)
 
 # DOCS
