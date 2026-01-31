@@ -1,6 +1,7 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](README.md)
 <!-- AUTO-GENERATED:backlink END -->
+```q
 📁 src
 ├── 📁 .summary
 │   ├── 📝allsummary.md
@@ -268,3 +269,4 @@
 ├── 📄 App.tsx
 ├── 📄 main.tsx
 └── 📄 vite-env.d.ts
+```
