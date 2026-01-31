@@ -167,6 +167,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setUserVaultProfileContext,
     solutionRevealEnabled,
     statsResetMode,
+    userVaultLastPath,
   } = settings;
   const vault = useVault({ persistSettings, showHiddenFolders });
   const userVault = useUserVault({
@@ -175,6 +176,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setMode: settings.setUserVaultMode,
     customPath: settings.userVaultCustomPath,
     setCustomPath: settings.setUserVaultCustomPath,
+    lastUsedPath: userVaultLastPath,
+    setLastUsedPath: settings.setUserVaultLastPath,
   });
   useEffect(() => {
     setUserVaultProfileContext(userVault.activeProfilePath, userVault.revision);

@@ -119,7 +119,8 @@ const AppContent = () => {
   const activeProfileName = userVault.activeProfile?.name?.trim() ?? "";
   const isWalletOpen = Boolean(vault.vaultPath);
   const isUserVaultReady = userVault.status !== "loading";
-  const isActivePathReady = Boolean(userVault.resolvedPath);
+  const isActivePathReady =
+    Boolean(userVault.resolvedPath) && userVault.status !== "error";
   const isProfileReady = Boolean(userVault.activeProfileId && activeProfileName);
   const syncProviderEnabled = isSyncProviderEnabled();
   const syncProviderRequired = false; // TODO: enable when product rule requires sync setup.

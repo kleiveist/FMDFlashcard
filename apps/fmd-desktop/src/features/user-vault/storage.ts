@@ -27,6 +27,11 @@ type PathInfo = {
   isDir: boolean;
 };
 
+export type ValidateUserDirResult = {
+  ok: boolean;
+  reason: string;
+};
+
 type UserVaultProfileStore = UserVaultProfileMeta & {
   schemaVersion?: number;
   settings?: UserVaultProfileSettings | null;
@@ -178,6 +183,50 @@ const resolveProfileIdFromPath = (profilePath: string) => {
   const trimmed = profilePath.replace(/[\\/]+$/, "");
   const parts = trimmed.split(/[\\/]/);
   return parts[parts.length - 1] || trimmed;
+};
+
+export const validateUserDir = async (
+  userVaultPath: string,
+): Promise<ValidateUserDirResult> => {
+  try {
+    const info = await invoke<PathInfo>("get_path_info", { path: userVaultPath });
+    if (!info.exists) {
+      return { ok: false, reason: "User path does not exist." };
+    }
+    if (!info.isDir) {
+      return { ok: false, reason: "User path is not a directory." };
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      reason: asErrorMessage(error, "User path could not be inspected."),
+    };
+  }
+
+  const metaPath = resolveUserVaultMetaPath(userVaultPath);
+  try {
+    await invoke<string>("read_json_file", { path: metaPath });
+  } catch (error) {
+    const message = asErrorMessage(error, "User meta could not be read.");
+    if (message.includes("File not found")) {
+      return {
+        ok: false,
+        reason: "Missing user-vault.json in the selected folder.",
+      };
+    }
+    return { ok: false, reason: message };
+  }
+
+  try {
+    await listDirectories(resolveProfilesRootPath(userVaultPath));
+  } catch (error) {
+    return {
+      ok: false,
+      reason: asErrorMessage(error, "Profiles folder is not accessible."),
+    };
+  }
+
+  return { ok: true, reason: "" };
 };
 
 const createEmptyUserVaultMeta = (): UserVaultMetaStore => ({

@@ -11,14 +11,15 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
 import {
   USER_VAULT_SCHEMA_VERSION,
+  resolveUserVaultTarget,
   buildUserVaultProfilePath,
   createEmptyProfileData,
   mergeProfileData,
-  resolveUserVaultPath,
   selectProfileFromExport,
   type UserVaultExportPayload,
   type UserVaultImportStrategy,
   type UserVaultMode,
+  type UserVaultResolverSource,
 } from "../../lib/userVault";
 import {
   createEmptyExamRunStore,
@@ -33,8 +34,15 @@ import {
   saveProfileSettings,
   saveSpacedRepetitionStore,
   setActiveProfileId,
+  validateUserDir,
   type UserVaultProfileSummary,
 } from "./storage";
+
+const logUserVaultEvent = (event: string, payload: Record<string, unknown>) => {
+  if (typeof console !== "undefined") {
+    console.info(`[userVault] ${event}`, payload);
+  }
+};
 
 type UseUserVaultOptions = {
   vaultPath: string | null;
@@ -42,6 +50,8 @@ type UseUserVaultOptions = {
   setMode: (value: UserVaultMode) => void;
   customPath: string | null;
   setCustomPath: (value: string | null) => void;
+  lastUsedPath: string | null;
+  setLastUsedPath: (value: string | null) => void;
 };
 
 type ExportScope = "active" | "all";
@@ -65,6 +75,8 @@ export const useUserVault = ({
   setMode,
   customPath,
   setCustomPath,
+  lastUsedPath,
+  setLastUsedPath,
 }: UseUserVaultOptions) => {
   const [profiles, setProfiles] = useState<UserVaultProfileSummary[]>([]);
   const [activeProfileId, setActiveProfileIdState] = useState<string | null>(null);
@@ -72,11 +84,14 @@ export const useUserVault = ({
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [resolverSource, setResolverSource] = useState<UserVaultResolverSource>(null);
 
-  const resolvedPath = useMemo(
-    () => resolveUserVaultPath(mode, vaultPath, customPath),
-    [customPath, mode, vaultPath],
+  const resolver = useMemo(
+    () => resolveUserVaultTarget(mode, vaultPath, customPath, lastUsedPath),
+    [customPath, lastUsedPath, mode, vaultPath],
   );
+
+  const resolvedPath = resolver.path;
 
   const activeProfile = useMemo(
     () => profiles.find((profile) => profile.id === activeProfileId) ?? null,
@@ -95,10 +110,31 @@ export const useUserVault = ({
       setProfiles([]);
       setActiveProfileIdState(null);
       setStatus("idle");
+      setResolverSource(null);
       return;
     }
+    logUserVaultEvent("resolve.start", {
+      path: resolvedPath,
+      source: resolver.source,
+    });
     setStatus("loading");
     setError("");
+    const validation = await validateUserDir(resolvedPath);
+    if (!validation.ok) {
+      setStatus("error");
+      setError(validation.reason);
+      setResolverSource(resolver.source);
+      setProfiles([]);
+      setActiveProfileIdState(null);
+      logUserVaultEvent("resolve.validation_failed", {
+        path: resolvedPath,
+        source: resolver.source,
+        reason: validation.reason,
+      });
+      return;
+    }
+    setResolverSource(resolver.source);
+    setLastUsedPath(resolvedPath);
     const [nextProfiles, meta] = await Promise.all([
       listUserVaultProfiles(resolvedPath),
       loadUserVaultMeta(resolvedPath),
@@ -116,7 +152,13 @@ export const useUserVault = ({
     setProfiles(nextProfiles);
     setActiveProfileIdState(nextActive);
     setStatus("idle");
-  }, [resolvedPath]);
+    logUserVaultEvent("resolve.success", {
+      path: resolvedPath,
+      source: resolver.source,
+      profiles: nextProfiles.length,
+      autoUserCreated: false,
+    });
+  }, [resolvedPath, resolver.source, setLastUsedPath]);
 
   useEffect(() => {
     let cancelled = false;
@@ -323,6 +365,7 @@ export const useUserVault = ({
     profiles,
     refreshProfiles,
     resolvedPath,
+    resolverSource,
     revision,
     status,
   };
