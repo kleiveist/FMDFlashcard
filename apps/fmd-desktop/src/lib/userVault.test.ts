@@ -12,7 +12,7 @@ import {
   formatDateStamp,
   mergeProfileData,
   parseProfileId,
-  resolveUserVaultPath,
+  resolveActiveProfileRoot,
   sanitizeProfileName,
   selectProfileFromExport,
   type UserVaultExportPayload,
@@ -48,26 +48,34 @@ describe("parseProfileId", () => {
   });
 });
 
-describe("resolveUserVaultPath", () => {
-  it("resolves auto mode to vault/user", () => {
-    expect(resolveUserVaultPath("auto", "/vault/main", null)).toBe("/vault/main/user");
-    expect(resolveUserVaultPath("auto", "C:\\Vault\\Main", null)).toBe(
-      "C:\\Vault\\Main\\user",
+describe("resolveActiveProfileRoot", () => {
+  it("resolves auto mode to vault/profile", () => {
+    expect(resolveActiveProfileRoot("auto", "/vault/main", null)).toBe(
+      "/vault/main/profile",
+    );
+    expect(resolveActiveProfileRoot("auto", "C:\\Vault\\Main", null)).toBe(
+      "C:\\Vault\\Main\\profile",
     );
   });
 
   it("returns custom path when set", () => {
-    expect(resolveUserVaultPath("custom", "/vault/main", "  /data/user ")).toBe(
-      "/data/user",
-    );
+    expect(
+      resolveActiveProfileRoot("custom", "/vault/main", "  /data/user "),
+    ).toBe("/data/user");
+  });
+
+  it("returns null when custom mode has no path", () => {
+    expect(resolveActiveProfileRoot("custom", "/vault/main", null)).toBeNull();
+    expect(resolveActiveProfileRoot("custom", "/vault/main", " ")).toBeNull();
   });
 
   it("ignores custom path when mode is auto", () => {
-    expect(resolveUserVaultPath("auto", "/vault/main", "/custom/root")).toBe(
-      "/vault/main/user",
+    expect(resolveActiveProfileRoot("auto", "/vault/main", "/custom/root")).toBe(
+      "/vault/main/profile",
     );
   });
 });
+
 
 describe("mergeProfileData", () => {
   const base: UserVaultProfileData = {

@@ -7,19 +7,18 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { asErrorMessage } from "../../lib/errors";
-import { joinPath, normalizeVaultPath, vaultBaseName } from "../../lib/path";
+import { joinPath } from "../../lib/path";
 import {
+  LEGACY_PROFILE_ROOT_DIR,
+  PROFILE_ROOT_DIR,
   USER_VAULT_SCHEMA_VERSION,
   buildProfileId,
-  buildUserVaultProfilePath,
   parseProfileId,
   sanitizeProfileName,
-  type UserVaultMode,
   type UserVaultProfileData,
   type UserVaultProfileMeta,
   type UserVaultProfileSettings,
 } from "../../lib/userVault";
-import { sortUserVaultCandidates, type UserVaultCandidate } from "../../lib/userVaultUsers";
 import type { FastFlashcardSessionSummary } from "../../lib/fastFlashcard";
 import type { ExamRun } from "../../lib/examRuns";
 import type { SpacedRepetitionStorage } from "../spaced-repetition/logic";
@@ -29,14 +28,9 @@ type PathInfo = {
   isDir: boolean;
 };
 
-export type ValidateUserDirResult = {
+export type ValidateProfileRootResult = {
   ok: boolean;
   reason: string;
-};
-
-export type UserVaultScanResult = {
-  users: UserVaultCandidate[];
-  error: string | null;
 };
 
 type UserVaultProfileStore = UserVaultProfileMeta & {
@@ -87,27 +81,15 @@ const USER_VAULT_EXAM_RUNS_FILE = "exam-runs.json";
 const USER_VAULT_PROFILE_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
 const USER_VAULT_EXAM_RUNS_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
 
-const normalizeUserVaultId = (path: string) => normalizeVaultPath(path) || path;
-
-const buildUserVaultCandidate = (
-  path: string,
-  source: UserVaultMode,
-): UserVaultCandidate => ({
-  id: normalizeUserVaultId(path),
-  name: vaultBaseName(path),
-  path,
-  source,
-});
-
 const isMissingPathError = (message: string) =>
   message.includes("Path does not exist") ||
   message.includes("Path is not a directory") ||
   message.includes("File not found");
 
-const hasUserVaultIdentity = async (path: string): Promise<boolean> => {
+const hasProfileIdentity = async (profilePath: string): Promise<boolean> => {
   try {
     await invoke<string>("read_json_file", {
-      path: joinPath(path, USER_VAULT_META_FILE),
+      path: joinPath(profilePath, USER_VAULT_PROFILE_FILE),
     });
     return true;
   } catch (error) {
@@ -115,7 +97,7 @@ const hasUserVaultIdentity = async (path: string): Promise<boolean> => {
     if (isMissingPathError(message)) {
       return false;
     }
-    console.warn("Failed to inspect user vault identity", message);
+    console.warn("Failed to inspect profile identity", message);
     return false;
   }
 };
@@ -205,9 +187,6 @@ const listDirectories = async (path: string) => {
 const resolveUserVaultMetaPath = (userVaultPath: string) =>
   joinPath(userVaultPath, USER_VAULT_META_FILE);
 
-const resolveProfilesRootPath = (userVaultPath: string) =>
-  joinPath(userVaultPath, USER_VAULT_PROFILES_DIR);
-
 const resolveProfileMetaPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_PROFILE_FILE);
 
@@ -226,118 +205,129 @@ const resolveProfileIdFromPath = (profilePath: string) => {
   return parts[parts.length - 1] || trimmed;
 };
 
-const listUserVaultCandidates = async (
+const resolveUserEntriesRootPaths = (profileRoot: string) => ({
+  usersRoot: joinPath(profileRoot, USER_VAULT_USERS_DIR),
+  profilesRoot: joinPath(profileRoot, USER_VAULT_PROFILES_DIR),
+});
+
+const listUserEntriesInRoot = async (
   root: string,
-  source: UserVaultMode,
   exclude: Set<string> = new Set(),
-): Promise<UserVaultCandidate[]> => {
+): Promise<UserVaultProfileSummary[]> => {
   const entries = await listDirectories(root);
   const candidates = await Promise.all(
     entries
       .filter((entry) => !exclude.has(entry))
       .map(async (entry) => {
-        const candidatePath = joinPath(root, entry);
-        if (await hasUserVaultIdentity(candidatePath)) {
-          return buildUserVaultCandidate(candidatePath, source);
+        const profilePath = joinPath(root, entry);
+        if (!(await hasProfileIdentity(profilePath))) {
+          return null;
         }
-        return null;
+        const metaPath = resolveProfileMetaPath(profilePath);
+        const meta = await readJsonFile<UserVaultProfileMeta | null>(metaPath, null);
+        return { ...normalizeProfileMeta(entry, meta), path: profilePath };
       }),
   );
-  return candidates.filter(Boolean) as UserVaultCandidate[];
+  return candidates.filter(Boolean) as UserVaultProfileSummary[];
 };
 
-export const scanUsersInUsersFolder = async (
+const listUserEntriesSafe = async (
   root: string,
-  source: UserVaultMode,
-): Promise<UserVaultCandidate[]> => {
+  exclude?: Set<string>,
+): Promise<UserVaultProfileSummary[]> => {
   try {
-    return await listUserVaultCandidates(root, source);
+    return await listUserEntriesInRoot(root, exclude ?? new Set());
   } catch (error) {
-    const message = asErrorMessage(error, "Unknown error");
+    const message = asErrorMessage(error, "Failed to scan user entries.");
     if (isMissingPathError(message)) {
       return [];
     }
-    console.warn("Failed to scan users folder", message);
+    console.warn("Failed to scan user entries", message);
     return [];
   }
 };
 
-export const scanUsersInRoot = async (
-  root: string,
-  source: UserVaultMode,
-): Promise<UserVaultScanResult> => {
-  try {
-    const info = await invoke<PathInfo>("get_path_info", { path: root });
-    if (!info.exists) {
-      return { users: [], error: "User root path does not exist." };
-    }
-    if (!info.isDir) {
-      return { users: [], error: "User root path is not a directory." };
-    }
-  } catch (error) {
-    return {
-      users: [],
-      error: asErrorMessage(error, "User root path is not accessible."),
-    };
-  }
-
-  const candidates: UserVaultCandidate[] = [];
-  if (await hasUserVaultIdentity(root)) {
-    candidates.push(buildUserVaultCandidate(root, source));
-  }
-
-  let directCandidates: UserVaultCandidate[] = [];
-  try {
-    directCandidates = await listUserVaultCandidates(
-      root,
-      source,
-      new Set([USER_VAULT_USERS_DIR]),
-    );
-  } catch (error) {
-    const message = asErrorMessage(error, "Failed to scan user root.");
-    if (!isMissingPathError(message)) {
-      return { users: [], error: message };
-    }
-  }
-
-  const nestedCandidates = await scanUsersInUsersFolder(
-    joinPath(root, USER_VAULT_USERS_DIR),
-    source,
-  );
-
-  const merged = new Map<string, UserVaultCandidate>();
-  [...candidates, ...directCandidates, ...nestedCandidates].forEach((entry) => {
+export const listUserVaultProfiles = async (
+  userVaultPath: string,
+): Promise<UserVaultProfileSummary[]> => {
+  const { usersRoot, profilesRoot } = resolveUserEntriesRootPaths(userVaultPath);
+  const [usersFolder, profilesFolder, directFolder] = await Promise.all([
+    listUserEntriesSafe(usersRoot),
+    listUserEntriesSafe(profilesRoot),
+    listUserEntriesSafe(
+      userVaultPath,
+      new Set([USER_VAULT_USERS_DIR, USER_VAULT_PROFILES_DIR]),
+    ),
+  ]);
+  const merged = new Map<string, UserVaultProfileSummary>();
+  [...usersFolder, ...profilesFolder, ...directFolder].forEach((entry) => {
     if (!merged.has(entry.id)) {
       merged.set(entry.id, entry);
     }
   });
-
-  return { users: sortUserVaultCandidates(Array.from(merged.values())), error: null };
+  return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
 };
 
-export const validateUserDir = async (
-  userVaultPath: string,
-): Promise<ValidateUserDirResult> => {
+export type ProfileRootMigrationResult = {
+  moved: boolean;
+  conflict: boolean;
+  error: string | null;
+};
+
+export const migrateLegacyProfileRoot = async (
+  vaultPath: string,
+): Promise<ProfileRootMigrationResult> => {
+  const legacyRoot = joinPath(vaultPath, LEGACY_PROFILE_ROOT_DIR);
+  const profileRoot = joinPath(vaultPath, PROFILE_ROOT_DIR);
   try {
-    const info = await invoke<PathInfo>("get_path_info", { path: userVaultPath });
+    const [legacyInfo, profileInfo] = await Promise.all([
+      invoke<PathInfo>("get_path_info", { path: legacyRoot }),
+      invoke<PathInfo>("get_path_info", { path: profileRoot }),
+    ]);
+    if (legacyInfo.exists && profileInfo.exists) {
+      return { moved: false, conflict: true, error: null };
+    }
+    if (legacyInfo.exists && !profileInfo.exists) {
+      await invoke("move_directory", {
+        vaultPath,
+        fromRelativePath: LEGACY_PROFILE_ROOT_DIR,
+        toRelativePath: PROFILE_ROOT_DIR,
+      });
+      return { moved: true, conflict: false, error: null };
+    }
+    return { moved: false, conflict: false, error: null };
+  } catch (error) {
+    return {
+      moved: false,
+      conflict: false,
+      error: asErrorMessage(error, "Profile root migration failed."),
+    };
+  }
+};
+
+export const validateProfileRoot = async (
+  profileRoot: string,
+): Promise<ValidateProfileRootResult> => {
+  try {
+    const info = await invoke<PathInfo>("get_path_info", { path: profileRoot });
     if (!info.exists) {
-      return { ok: false, reason: "User path does not exist." };
+      return { ok: false, reason: "Profile root does not exist." };
     }
     if (!info.isDir) {
-      return { ok: false, reason: "User path is not a directory." };
+      return { ok: false, reason: "Profile root is not a directory." };
     }
   } catch (error) {
     return {
       ok: false,
-      reason: asErrorMessage(error, "User path could not be inspected."),
+      reason: asErrorMessage(error, "Profile root could not be inspected."),
     };
   }
 
-  const metaPath = resolveUserVaultMetaPath(userVaultPath);
+  const metaPath = resolveUserVaultMetaPath(profileRoot);
   try {
     await invoke<string>("read_json_file", { path: metaPath });
   } catch (error) {
-    const message = asErrorMessage(error, "User meta could not be read.");
+    const message = asErrorMessage(error, "Profile meta could not be read.");
     if (message.includes("File not found")) {
       return {
         ok: false,
@@ -348,11 +338,11 @@ export const validateUserDir = async (
   }
 
   try {
-    await listDirectories(resolveProfilesRootPath(userVaultPath));
+    await listDirectories(profileRoot);
   } catch (error) {
     return {
       ok: false,
-      reason: asErrorMessage(error, "Profiles folder is not accessible."),
+      reason: asErrorMessage(error, "Profile root is not accessible."),
     };
   }
 
@@ -582,20 +572,28 @@ export const saveUserVaultMeta = async (
   });
 };
 
-export const listUserVaultProfiles = async (
-  userVaultPath: string,
-): Promise<UserVaultProfileSummary[]> => {
-  const profilesRoot = resolveProfilesRootPath(userVaultPath);
-  const entries = await listDirectories(profilesRoot);
-  const profiles = await Promise.all(
-    entries.map(async (profileId) => {
-      const profilePath = buildUserVaultProfilePath(userVaultPath, profileId);
-      const metaPath = resolveProfileMetaPath(profilePath);
-      const meta = await readJsonFile<UserVaultProfileMeta | null>(metaPath, null);
-      return { ...normalizeProfileMeta(profileId, meta), path: profilePath };
-    }),
-  );
-  return profiles.sort((a, b) => a.id.localeCompare(b.id));
+const resolveUserEntriesRootForWrite = async (
+  profileRoot: string,
+): Promise<string> => {
+  const { usersRoot, profilesRoot } = resolveUserEntriesRootPaths(profileRoot);
+  try {
+    const [usersInfo, profilesInfo] = await Promise.all([
+      invoke<PathInfo>("get_path_info", { path: usersRoot }),
+      invoke<PathInfo>("get_path_info", { path: profilesRoot }),
+    ]);
+    if (usersInfo.exists && usersInfo.isDir) {
+      return usersRoot;
+    }
+    if (profilesInfo.exists && profilesInfo.isDir) {
+      return profilesRoot;
+    }
+  } catch (error) {
+    console.warn(
+      "Failed to inspect user entries root",
+      asErrorMessage(error, "Unknown error"),
+    );
+  }
+  return usersRoot;
 };
 
 export const createUserVaultProfile = async (
@@ -607,12 +605,12 @@ export const createUserVaultProfile = async (
     throw new Error("Profile name is required.");
   }
   const baseId = buildProfileId(sanitized) ?? sanitized;
-  const profilesRoot = resolveProfilesRootPath(userVaultPath);
-  await ensureDirectory(profilesRoot);
+  const entriesRoot = await resolveUserEntriesRootForWrite(userVaultPath);
+  await ensureDirectory(entriesRoot);
   let candidate = baseId;
   let suffix = 1;
   while (true) {
-    const profilePath = buildUserVaultProfilePath(userVaultPath, candidate);
+    const profilePath = joinPath(entriesRoot, candidate);
     const info = await invoke<PathInfo>("get_path_info", { path: profilePath });
     if (!info.exists) {
       break;
@@ -620,7 +618,7 @@ export const createUserVaultProfile = async (
     candidate = `${baseId}-${suffix}`;
     suffix += 1;
   }
-  const profilePath = buildUserVaultProfilePath(userVaultPath, candidate);
+  const profilePath = joinPath(entriesRoot, candidate);
   await ensureDirectory(profilePath);
   const meta: UserVaultProfileMeta = {
     id: candidate,

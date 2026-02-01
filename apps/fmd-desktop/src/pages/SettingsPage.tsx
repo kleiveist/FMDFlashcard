@@ -874,7 +874,10 @@ export const SettingsPage = () => {
               {activeSubPageId === "export-import" ? (
                 <ExportImportSettingsView userVault={userVault} />
               ) : (
-                <DataSyncSettingsView userVault={userVault} />
+                <DataSyncSettingsView
+                  userVault={userVault}
+                  spacedRepetition={spacedRepetition}
+                />
               )}
             </div>
           </div>

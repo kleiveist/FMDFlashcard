@@ -509,11 +509,6 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   active_note_path: settings.activeNotePath,
   vault_path: settings.vaultPath,
   recent_vaults: settings.recentVaults,
-  user_vault_mode: settings.userVaultMode,
-  user_vault_custom_path: settings.userVaultCustomPath,
-  user_vault_last_path: settings.userVaultLastPath,
-  user_vault_selected_auto_path: settings.userVaultSelectedAutoPath,
-  user_vault_selected_custom_path: settings.userVaultSelectedCustomPath,
   theme: settings.theme,
   accent_color: settings.accentColor,
   markdownEditor: {
@@ -1736,7 +1731,15 @@ export const useAppSettings = () => {
         return;
       }
       if (stored) {
-        applyStoredSettings(stored as AppSettings);
+        const sanitized = {
+          ...(stored as AppSettings),
+          user_vault_mode: userVaultMode,
+          user_vault_custom_path: userVaultCustomPath,
+          user_vault_last_path: userVaultLastPath,
+          user_vault_selected_auto_path: userVaultSelectedAutoPath,
+          user_vault_selected_custom_path: userVaultSelectedCustomPath,
+        };
+        applyStoredSettings(sanitized);
         return;
       }
       const snapshot = buildSettingsSnapshot();
@@ -1753,6 +1756,11 @@ export const useAppSettings = () => {
     applyStoredSettings,
     buildSettingsSnapshot,
     settingsLoaded,
+    userVaultCustomPath,
+    userVaultLastPath,
+    userVaultMode,
+    userVaultSelectedAutoPath,
+    userVaultSelectedCustomPath,
     userVaultProfilePath,
     userVaultProfileRevision,
   ]);

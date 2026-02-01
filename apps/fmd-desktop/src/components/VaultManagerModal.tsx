@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "reac
 import { createPortal } from "react-dom";
 import { asErrorMessage } from "../lib/errors";
 import { normalizeVaultPath, vaultBaseName } from "../lib/path";
-import { resolveUserVaultPath } from "../lib/userVault";
+import { resolveActiveProfileRoot } from "../lib/userVault";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import {
   createUserVaultProfile,
@@ -83,16 +83,15 @@ export const VaultManagerModal = ({
     [activeVaultPath],
   );
 
-  const resolvedUserVaultPath = useMemo(() => {
-    if (userVault.mode === "custom") {
-      return userVault.activeUserPath ?? null;
-    }
-    return resolveUserVaultPath(
-      userVault.mode,
-      selectedVaultPath,
-      userVault.customPath,
-    );
-  }, [selectedVaultPath, userVault.activeUserPath, userVault.customPath, userVault.mode]);
+  const resolvedUserVaultPath = useMemo(
+    () =>
+      resolveActiveProfileRoot(
+        userVault.mode,
+        selectedVaultPath,
+        userVault.customPath,
+      ),
+    [selectedVaultPath, userVault.customPath, userVault.mode],
+  );
 
   const selectedPathInfo = selectedVaultPath
     ? pathInfo[selectedVaultPath] ?? null

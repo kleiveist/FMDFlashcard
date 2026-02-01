@@ -686,90 +686,149 @@ const storageKey = useMemo(
     });
   }, [spacedRepetitionActiveUserId, spacedRepetitionSessions]);
 
+  const logUserRegistryEvent = useCallback(
+    (event: string, payload: Record<string, unknown>) => {
+      if (typeof console !== "undefined") {
+        console.info(`[userRegistry] ${event}`, payload);
+      }
+    },
+    [],
+  );
+
+  const listUsers = useCallback(
+    () => [...spacedRepetitionUsers],
+    [spacedRepetitionUsers],
+  );
+
+  const getActiveUser = useCallback(
+    () =>
+      spacedRepetitionActiveUserId
+        ? spacedRepetitionUsers.find((user) => user.id === spacedRepetitionActiveUserId) ??
+          null
+        : null,
+    [spacedRepetitionActiveUserId, spacedRepetitionUsers],
+  );
+
+  const createUser = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        setSpacedRepetitionUserError("User name is required.");
+        return null;
+      }
+      const normalized = trimmed.toLowerCase();
+      const hasDuplicate = spacedRepetitionUsers.some(
+        (user) => user.name.trim().toLowerCase() === normalized,
+      );
+      if (hasDuplicate) {
+        setSpacedRepetitionUserError("User name already exists.");
+        return null;
+      }
+
+      const newUser: SpacedRepetitionUser = {
+        id: createSpacedRepetitionUserId(),
+        name: trimmed,
+        createdAt: new Date().toISOString(),
+      };
+
+      setSpacedRepetitionUsers((prev) => [...prev, newUser]);
+      setSpacedRepetitionUserStateById((prev) => ({
+        ...prev,
+        [newUser.id]: createEmptySpacedRepetitionUserState(),
+      }));
+      setSpacedRepetitionActiveUserId(newUser.id);
+      setSpacedRepetitionSelectedUserId(newUser.id);
+      setSpacedRepetitionNewUserName("");
+      setSpacedRepetitionUserError("");
+      logUserRegistryEvent("user.create", { id: newUser.id, name: newUser.name });
+      return newUser;
+    },
+    [logUserRegistryEvent, spacedRepetitionUsers],
+  );
+
+  const setActiveUser = useCallback(
+    (userId: string) => {
+      if (!userId) {
+        return;
+      }
+      setSpacedRepetitionActiveUserId(userId);
+      setSpacedRepetitionSelectedUserId(userId);
+      setSpacedRepetitionUserStateById((prev) => {
+        const current = prev[userId] ?? createEmptySpacedRepetitionUserState();
+        return {
+          ...prev,
+          [userId]: {
+            ...current,
+            lastLoadedAt: new Date().toISOString(),
+          },
+        };
+      });
+      setSpacedRepetitionUserError("");
+      logUserRegistryEvent("user.activate", { id: userId });
+    },
+    [logUserRegistryEvent],
+  );
+
+  const deleteUser = useCallback(
+    (userId: string) => {
+      if (!userId) {
+        return;
+      }
+      const deletedId = userId;
+
+      setSpacedRepetitionSessions((prev) => {
+        if (!prev[deletedId]) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[deletedId];
+        return next;
+      });
+      setSpacedRepetitionUserStateById((prev) => {
+        if (!prev[deletedId]) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[deletedId];
+        return next;
+      });
+      setSpacedRepetitionUsers((prev) => {
+        const next = prev.filter((user) => user.id !== deletedId);
+        const nextSelected = next[0]?.id ?? "";
+        if (spacedRepetitionActiveUserId === deletedId) {
+          setSpacedRepetitionActiveUserId(null);
+        }
+        setSpacedRepetitionSelectedUserId(nextSelected);
+        return next;
+      });
+      setSpacedRepetitionUserError("");
+      logUserRegistryEvent("user.delete", { id: deletedId });
+    },
+    [logUserRegistryEvent, spacedRepetitionActiveUserId],
+  );
+
   const handleSpacedRepetitionCreateUser = useCallback(() => {
     const trimmed = spacedRepetitionNewUserName.trim();
     if (!trimmed) {
       setSpacedRepetitionUserError("User name is required.");
       return;
     }
-    const normalized = trimmed.toLowerCase();
-    const hasDuplicate = spacedRepetitionUsers.some(
-      (user) => user.name.trim().toLowerCase() === normalized,
-    );
-    if (hasDuplicate) {
-      setSpacedRepetitionUserError("User name already exists.");
-      return;
-    }
-
-    const newUser: SpacedRepetitionUser = {
-      id: createSpacedRepetitionUserId(),
-      name: trimmed,
-      createdAt: new Date().toISOString(),
-    };
-
-    setSpacedRepetitionUsers((prev) => [...prev, newUser]);
-    setSpacedRepetitionUserStateById((prev) => ({
-      ...prev,
-      [newUser.id]: createEmptySpacedRepetitionUserState(),
-    }));
-    setSpacedRepetitionActiveUserId(newUser.id);
-    setSpacedRepetitionSelectedUserId(newUser.id);
-    setSpacedRepetitionNewUserName("");
-    setSpacedRepetitionUserError("");
-  }, [spacedRepetitionNewUserName, spacedRepetitionUsers]);
+    createUser(trimmed);
+  }, [createUser, spacedRepetitionNewUserName]);
 
   const handleSpacedRepetitionLoadUser = useCallback(() => {
     if (!spacedRepetitionSelectedUserId) {
       return;
     }
-    setSpacedRepetitionActiveUserId(spacedRepetitionSelectedUserId);
-    setSpacedRepetitionUserStateById((prev) => {
-      const current =
-        prev[spacedRepetitionSelectedUserId] ?? createEmptySpacedRepetitionUserState();
-      return {
-        ...prev,
-        [spacedRepetitionSelectedUserId]: {
-          ...current,
-          lastLoadedAt: new Date().toISOString(),
-        },
-      };
-    });
-    setSpacedRepetitionUserError("");
-  }, [spacedRepetitionSelectedUserId]);
+    setActiveUser(spacedRepetitionSelectedUserId);
+  }, [setActiveUser, spacedRepetitionSelectedUserId]);
 
   const handleSpacedRepetitionDeleteUser = useCallback(() => {
     if (!spacedRepetitionSelectedUserId) {
       return;
     }
-    const deletedId = spacedRepetitionSelectedUserId;
-
-    setSpacedRepetitionSessions((prev) => {
-      if (!prev[deletedId]) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[deletedId];
-      return next;
-    });
-    setSpacedRepetitionUserStateById((prev) => {
-      if (!prev[deletedId]) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[deletedId];
-      return next;
-    });
-    setSpacedRepetitionUsers((prev) => {
-      const next = prev.filter((user) => user.id !== deletedId);
-      const nextSelected = next[0]?.id ?? "";
-      if (spacedRepetitionActiveUserId === deletedId) {
-        setSpacedRepetitionActiveUserId(null);
-      }
-      setSpacedRepetitionSelectedUserId(nextSelected);
-      return next;
-    });
-    setSpacedRepetitionUserError("");
-  }, [spacedRepetitionActiveUserId, spacedRepetitionSelectedUserId]);
+    deleteUser(spacedRepetitionSelectedUserId);
+  }, [deleteUser, spacedRepetitionSelectedUserId]);
 
   const handleSpacedRepetitionActiveUserLoadCards = useCallback(async (
     options?: { boxFilter?: number | null },
@@ -1296,6 +1355,11 @@ const storageKey = useMemo(
   );
 
   return {
+    listUsers,
+    createUser,
+    deleteUser,
+    getActiveUser,
+    setActiveUser,
     handleSpacedRepetitionActiveUserLoadCards,
     handleSpacedRepetitionClozeInputChange,
     handleSpacedRepetitionClozeTokenDrop,

@@ -22,10 +22,15 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import type { UserVaultImportStrategy } from "../../lib/userVault";
 import type { UserVaultState } from "../../features/user-vault/useUserVault";
 import { isSyncProviderEnabled, isWordPressEnabled } from "../../lib/featureFlags";
+import {
+  UserRegistryControls,
+  type UserRegistryControlsProps,
+} from "../UserToolsPanel";
+import { SrDeleteModal } from "../../pages/spaced-repetition/components/SrDeleteModal";
 
 type AppLanguage = "de" | "en";
 
@@ -51,54 +56,10 @@ type DataSyncSettingsViewMode = "settings" | "onboarding";
 
 type DataSyncSettingsViewProps = {
   userVault: UserVaultState;
+  spacedRepetition: UserRegistryControlsProps["spacedRepetition"];
   mode?: DataSyncSettingsViewMode;
 };
 
-type ProfileFormState = {
-  newProfileName: string;
-  setNewProfileName: (value: string) => void;
-  selectedProfileId: string;
-  setSelectedProfileId: (value: string) => void;
-  handleCreateProfile: () => Promise<void>;
-  handleLoadProfile: () => Promise<void>;
-};
-
-const useProfileForm = (userVault: UserVaultState): ProfileFormState => {
-  const [newProfileName, setNewProfileName] = useState("");
-  const [selectedProfileId, setSelectedProfileId] = useState("");
-
-  useEffect(() => {
-    if (userVault.activeProfileId) {
-      setSelectedProfileId(userVault.activeProfileId);
-      return;
-    }
-    setSelectedProfileId("");
-  }, [userVault.activeProfileId]);
-
-  const handleCreateProfile = async () => {
-    if (!newProfileName.trim()) {
-      return;
-    }
-    await userVault.handleCreateProfile(newProfileName);
-    setNewProfileName("");
-  };
-
-  const handleLoadProfile = async () => {
-    if (!selectedProfileId) {
-      return;
-    }
-    await userVault.handleSelectProfile(selectedProfileId);
-  };
-
-  return {
-    handleCreateProfile,
-    handleLoadProfile,
-    newProfileName,
-    selectedProfileId,
-    setNewProfileName,
-    setSelectedProfileId,
-  };
-};
 
 type UserVaultModeSectionProps = {
   userVault: UserVaultState;
@@ -106,7 +67,7 @@ type UserVaultModeSectionProps = {
 
 const UserVaultModeSection = ({ userVault }: UserVaultModeSectionProps) => (
   <div className="setting-row">
-    <span className="label">User Source</span>
+    <span className="label">Profile Source</span>
     <div className="pill-grid">
       <button
         type="button"
@@ -114,7 +75,7 @@ const UserVaultModeSection = ({ userVault }: UserVaultModeSectionProps) => (
         aria-pressed={userVault.mode === "auto"}
         onClick={() => userVault.handleModeChange("auto")}
       >
-        Auto (Vault/user)
+        Auto (Vault/profile)
       </button>
       <button
         type="button"
@@ -129,7 +90,7 @@ const UserVaultModeSection = ({ userVault }: UserVaultModeSectionProps) => (
       </button>
     </div>
     <span className="helper-text">
-      Auto uses the current vault user root. Custom stays fixed across vault switches.
+      Auto uses the current vault profile root. Custom stays fixed across vault switches.
     </span>
   </div>
 );
@@ -143,7 +104,7 @@ type ActivePathSectionProps = {
 
 export const ActivePathSection = ({
   userVault,
-  label = "Active path",
+  label = "Profile root",
   helperText,
   allowPickWhenAuto = false,
 }: ActivePathSectionProps) => {
@@ -153,8 +114,8 @@ export const ActivePathSection = ({
   const resolvedHelper =
     helperText ??
     (isCustomMode
-      ? "Pick a root folder that contains user folders."
-      : "Select a vault to enable Auto user root.");
+      ? "Pick a profile root folder that contains users."
+      : "Select a vault to enable Auto profile root.");
 
   const handlePickPath = async () => {
     if (allowPickWhenAuto && userVault.mode !== "custom") {
@@ -178,185 +139,6 @@ export const ActivePathSection = ({
         </button>
       </div>
       <span className="helper-text">{resolvedHelper}</span>
-    </div>
-  );
-};
-
-type UserSelectionSectionProps = {
-  userVault: UserVaultState;
-  source: "auto" | "custom";
-  label?: string;
-};
-
-const UserSelectionSection = ({
-  userVault,
-  source,
-  label,
-}: UserSelectionSectionProps) => {
-  const isActive = userVault.mode === source;
-  const users = source === "custom" ? userVault.customUsers : userVault.autoUsers;
-  const selectedPath =
-    source === "custom" ? userVault.selectedCustomPath : userVault.selectedAutoPath;
-  const activePath = isActive ? userVault.activeUserPath : null;
-  const selectable = isActive && !userVault.isBusy && users.length > 0;
-  const fallbackValue = activePath && users.some((user) => user.path === activePath)
-    ? activePath
-    : "";
-  const value =
-    selectedPath && users.some((user) => user.path === selectedPath)
-      ? selectedPath
-      : fallbackValue;
-  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const next = event.target.value;
-    if (source === "custom") {
-      userVault.handleSelectCustomUser(next);
-    } else {
-      userVault.handleSelectAutoUser(next);
-    }
-  };
-  const resolvedLabel =
-    label ?? (source === "custom" ? "Custom users" : "Auto users");
-  const helper = isActive
-    ? `Found users: ${users.length}`
-    : "Inactive source. Switch to manage users.";
-
-  return (
-    <div className="setting-row">
-      <span className="label">{resolvedLabel}</span>
-      <div className="setting-inline">
-        <select
-          className="text-input"
-          value={value}
-          onChange={handleChange}
-          disabled={!selectable}
-          aria-label={`${resolvedLabel} select`}
-        >
-          <option value="" disabled>
-            {users.length > 0 ? "Select user" : "No users found"}
-          </option>
-          {users.map((user) => (
-            <option key={user.id} value={user.path}>
-              {user.name}
-            </option>
-          ))}
-        </select>
-        <span className="value path-value">{activePath ?? "—"}</span>
-      </div>
-      <span className="helper-text">{helper}</span>
-    </div>
-  );
-};
-
-type ProfilesSummarySectionProps = {
-  userVault: UserVaultState;
-  label?: string;
-};
-
-export const ProfilesSummarySection = ({
-  userVault,
-  label = "Profiles",
-}: ProfilesSummarySectionProps) => (
-  <div className="setting-row">
-    <span className="label">{label}</span>
-    <div className="status-list">
-      <div className="status-row">
-        <span className="value">Found profiles: {userVault.profiles.length}</span>
-        <span className="value">
-          Active profile: {userVault.activeProfile?.name ?? "—"}
-        </span>
-      </div>
-    </div>
-  </div>
-);
-
-type CreateProfileSectionProps = {
-  userVault: UserVaultState;
-  form: ProfileFormState;
-  label?: string;
-};
-
-export const CreateProfileSection = ({
-  userVault,
-  form,
-  label = "Create profile",
-}: CreateProfileSectionProps) => {
-  const canManageVault = Boolean(userVault.resolvedPath);
-  return (
-    <div className="setting-row">
-      <span className="label">{label}</span>
-      <div className="setting-inline">
-        <input
-          type="text"
-          className="text-input"
-          value={form.newProfileName}
-          onChange={(event) => form.setNewProfileName(event.target.value)}
-          placeholder="Profile name"
-          aria-label="Profile name"
-          disabled={!canManageVault || userVault.isBusy}
-        />
-        <button
-          type="button"
-          className="ghost small"
-          onClick={form.handleCreateProfile}
-          disabled={
-            !canManageVault || userVault.isBusy || !form.newProfileName.trim()
-          }
-        >
-          Create
-        </button>
-      </div>
-      <span className="helper-text">Date is added automatically.</span>
-    </div>
-  );
-};
-
-type LoadProfileSectionProps = {
-  userVault: UserVaultState;
-  form: ProfileFormState;
-  label?: string;
-};
-
-export const LoadProfileSection = ({
-  userVault,
-  form,
-  label = "Load profile",
-}: LoadProfileSectionProps) => {
-  const canManageVault = Boolean(userVault.resolvedPath);
-  const canManageProfiles = canManageVault && userVault.profiles.length > 0;
-  return (
-    <div className="setting-row">
-      <span className="label">{label}</span>
-      <div className="setting-inline">
-        <select
-          className="text-input"
-          value={form.selectedProfileId}
-          onChange={(event) => form.setSelectedProfileId(event.target.value)}
-          disabled={!canManageProfiles || userVault.isBusy}
-          aria-label="Select profile"
-        >
-          <option value="" disabled>
-            Select profile
-          </option>
-          {userVault.profiles.map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {profile.name}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="ghost small"
-          onClick={form.handleLoadProfile}
-          disabled={
-            !canManageProfiles ||
-            userVault.isBusy ||
-            !form.selectedProfileId ||
-            form.selectedProfileId === userVault.activeProfileId
-          }
-        >
-          Load
-        </button>
-      </div>
     </div>
   );
 };
@@ -388,38 +170,43 @@ export const SyncProviderSection = ({ label = "SYNC PROVIDER" }: SyncProviderSec
   );
 };
 
-type ProfileSectionsProps = {
-  userVault: UserVaultState;
-  showLoad?: boolean;
-  labels?: {
-    profiles?: string;
-    create?: string;
-    load?: string;
-  };
-};
-
-export const ProfileSections = ({
-  userVault,
-  showLoad = true,
-  labels,
-}: ProfileSectionsProps) => {
-  const form = useProfileForm(userVault);
-  return (
-    <>
-      <ProfilesSummarySection userVault={userVault} label={labels?.profiles} />
-      <CreateProfileSection userVault={userVault} form={form} label={labels?.create} />
-      {showLoad ? (
-        <LoadProfileSection userVault={userVault} form={form} label={labels?.load} />
-      ) : null}
-    </>
-  );
-};
-
 export const DataSyncSettingsView = ({
   userVault,
+  spacedRepetition,
   mode = "settings",
 }: DataSyncSettingsViewProps) => {
   const isOnboarding = mode === "onboarding";
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const selectedUser = spacedRepetition.spacedRepetitionUsers.find(
+    (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
+  );
+  const deleteTargetName = selectedUser?.name ?? "";
+  const deleteInputValue = deleteConfirmInput.trim();
+  const canConfirmDelete =
+    Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
+
+  const handleDeleteOpen = () => {
+    if (!selectedUser) {
+      return;
+    }
+    setDeleteConfirmInput("");
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!canConfirmDelete) {
+      return;
+    }
+    spacedRepetition.handleSpacedRepetitionDeleteUser();
+    setIsDeleteDialogOpen(false);
+    setDeleteConfirmInput("");
+  };
 
   return (
     <>
@@ -427,11 +214,11 @@ export const DataSyncSettingsView = ({
         <section className="panel">
           <div className="panel-header">
             <div className="panel-header-content">
-              <span className="eyebrow">Profile required</span>
-              <h3>Set up your profile</h3>
+              <span className="eyebrow">User required</span>
+              <h3>Set up your user</h3>
               <p className="muted">
-                Create or load a profile to save progress for this vault. You can
-                edit these settings later in Settings &gt; Data &amp; Sync.
+                Create or load a user to save progress for this vault. You can edit
+                these settings later in Settings &gt; Data &amp; Sync.
               </p>
             </div>
           </div>
@@ -444,18 +231,32 @@ export const DataSyncSettingsView = ({
         <ActivePathSection userVault={userVault} />
       ) : null}
       {!isOnboarding ? (
-        <>
-          <UserSelectionSection userVault={userVault} source="auto" />
-          <UserSelectionSection userVault={userVault} source="custom" />
-        </>
+        <UserRegistryControls
+          spacedRepetition={spacedRepetition}
+          handleDeleteOpen={handleDeleteOpen}
+        />
       ) : null}
-      <ProfileSections userVault={userVault} />
+      {userVault.migrationWarning ? (
+        <div className="setting-row">
+          <span className="label">Warning</span>
+          <span className="helper-text">{userVault.migrationWarning}</span>
+        </div>
+      ) : null}
       {userVault.error ? (
         <div className="setting-row">
           <span className="label">Status</span>
           <span className="helper-text error-text">{userVault.error}</span>
         </div>
       ) : null}
+      <SrDeleteModal
+        isDeleteDialogOpen={isDeleteDialogOpen}
+        deleteTargetName={deleteTargetName}
+        deleteConfirmInput={deleteConfirmInput}
+        setDeleteConfirmInput={setDeleteConfirmInput}
+        handleDeleteCancel={handleDeleteCancel}
+        handleDeleteConfirm={handleDeleteConfirm}
+        canConfirmDelete={canConfirmDelete}
+      />
     </>
   );
 };
@@ -514,7 +315,7 @@ export const ExportImportSettingsView = ({
             onClick={handleExportActive}
             disabled={!canExportActive || userVault.isBusy}
           >
-            Export profile
+            Export user
           </button>
           <button
             type="button"
@@ -522,7 +323,7 @@ export const ExportImportSettingsView = ({
             onClick={handleExportAll}
             disabled={!canExportAll || userVault.isBusy}
           >
-            Export all profiles
+            Export all users
           </button>
         </div>
       </div>
@@ -550,9 +351,9 @@ export const ExportImportSettingsView = ({
             Import JSON
           </button>
         </div>
-        <span className="helper-text">
+      <span className="helper-text">
           Merge keeps existing entries and adds new ones. Overwrite replaces data.
-        </span>
+      </span>
       </div>
       <div className="setting-row">
         <span className="label">WORDPRESS</span>

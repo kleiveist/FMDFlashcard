@@ -3,8 +3,8 @@ import { LoadVaultTabData } from "../../types";
 export const dataAndSyncSection: LoadVaultTabData = {
   title: { en: "Data & Sync", de: "Data & Sync" },
   summary: {
-    en: "Manage local stats storage and profiles.",
-    de: "Lokale Statistik-Speicherung und Profile verwalten.",
+    en: "Manage local stats storage and users.",
+    de: "Lokale Statistik-Speicherung und Nutzer verwalten.",
   },
   blocks: [
     {
@@ -24,12 +24,12 @@ export const dataAndSyncSection: LoadVaultTabData = {
           de: "Fortschritt nachvollziehbar halten – auch bei Vault-Wechseln und Geraetewechsel.",
         },
         {
-          en: "Separate different learners or learning contexts via profiles.",
-          de: "Verschiedene Nutzer oder Lernkontexte ueber Profile trennen.",
+          en: "Separate different learners or learning contexts via users.",
+          de: "Verschiedene Nutzer oder Lernkontexte ueber Nutzer trennen.",
         },
         {
-          en: "Auto (Vault/user) stores stats inside the active vault under /user; Custom path stores stats in a fixed location across vault switches.",
-          de: "Auto (Vault/user) speichert Stats im aktiven Vault unter /user; Custom path speichert Stats in einem festen Ordner – auch bei Vault-Wechsel.",
+          en: "Auto (Vault/profile) stores stats inside the active vault under /profile; Custom path stores stats in a fixed location across vault switches.",
+          de: "Auto (Vault/profile) speichert Stats im aktiven Vault unter /profile; Custom path speichert Stats in einem festen Ordner – auch bei Vault-Wechsel.",
         },
         {
           en: "Sync provider is a placeholder until cloud sync is implemented.",
@@ -42,32 +42,32 @@ export const dataAndSyncSection: LoadVaultTabData = {
       title: { en: "What you see there", de: "Was du dort siehst" },
       bullets: [
         {
-          en: "User vault mode: Auto (Vault/user), Custom path, and Sync provider (placeholder).",
-          de: "User vault mode: Auto (Vault/user), Custom path und Sync provider (Platzhalter).",
+          en: "Profile mode: Auto (Vault/profile), Custom path, and Sync provider (placeholder).",
+          de: "Profile mode: Auto (Vault/profile), Custom path und Sync provider (Platzhalter).",
         },
         {
-          en: "Active path: the current stats folder (Example: /Users/kleif/Vaults/FMD/user).",
-          de: "Active path: der aktuelle Stats-Ordner (Beispiel: /Users/kleif/Vaults/FMD/user).",
+          en: "Active path: the current stats folder (Example: /Users/kleif/Vaults/FMD/profile).",
+          de: "Active path: der aktuelle Stats-Ordner (Beispiel: /Users/kleif/Vaults/FMD/profile).",
         },
         {
           en: "Change: selects a different folder when using Custom path.",
           de: "Change: waehlt einen anderen Ordner (bei Custom path).",
         },
         {
-          en: "Profiles: how many profiles were found and which one is active.",
-          de: "Profiles: wie viele Profile gefunden wurden und welches aktiv ist.",
+          en: "Users: how many users were found and which one is active.",
+          de: "Users: wie viele Nutzer gefunden wurden und welcher aktiv ist.",
         },
         {
-          en: "Create profile: creates a new profile entry; the date is added automatically.",
-          de: "Create profile: erstellt ein neues Profil; das Datum wird automatisch hinzugefuegt.",
+          en: "Create user: creates a new user entry; the date is added automatically.",
+          de: "Create user: erstellt einen neuen Nutzer; das Datum wird automatisch hinzugefuegt.",
         },
         {
-          en: "Load profile: switches the active profile for the current session without changing the vault.",
-          de: "Load profile: wechselt das aktive Profil fuer die aktuelle Session, ohne den Vault zu aendern.",
+          en: "Load user: switches the active user for the current session without changing the vault.",
+          de: "Load user: wechselt den aktiven Nutzer fuer die aktuelle Session, ohne den Vault zu aendern.",
         },
         {
-          en: "Export / Import (JSON): export a profile or all profiles; import supports merge or overwrite.",
-          de: "Export / Import (JSON): Profil oder alle Profile exportieren; Import mit Merge oder Overwrite.",
+          en: "Export / Import (JSON): export a user or all users; import supports merge or overwrite.",
+          de: "Export / Import (JSON): Nutzer oder alle Nutzer exportieren; Import mit Merge oder Overwrite.",
         },
       ],
     },
@@ -84,8 +84,8 @@ export const dataAndSyncSection: LoadVaultTabData = {
           de: "Custom path nutzen, wenn Stats zentral und vault-unabhaengig gespeichert werden sollen.",
         },
         {
-          en: "Use Create profile for a new learner/context; use Load profile to switch without touching the vault.",
-          de: "Create profile fuer neuen Lernkontext nutzen; Load profile zum Umschalten ohne Vault-Wechsel.",
+          en: "Use Create user for a new learner/context; use Load user to switch without touching the vault.",
+          de: "Create user fuer neuen Lernkontext nutzen; Load user zum Umschalten ohne Vault-Wechsel.",
         },
         {
           en: "Export before major changes; import with Merge to add data, or Overwrite to replace the set.",
@@ -102,8 +102,8 @@ export const dataAndSyncSection: LoadVaultTabData = {
           de: "Bei haeufigen Vault-Wechseln reduziert Custom path Verwirrung, wo Stats gespeichert sind.",
         },
         {
-          en: "Use clear profile names (e.g., “Kleif – Biology”, “Kleif – Languages”).",
-          de: "Profile eindeutig benennen (z. B. „Kleif – Bio“, „Kleif – Sprachen“).",
+          en: "Use clear user names (e.g., “Kleif – Biology”, “Kleif – Languages”).",
+          de: "Nutzer eindeutig benennen (z. B. „Kleif – Bio“, „Kleif – Sprachen“).",
         },
         {
           en: "Keep periodic JSON exports as safety backups, especially before migrations or refactors.",

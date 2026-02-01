@@ -47,6 +47,8 @@ export type UserVaultExportPayload =
     };
 
 export const USER_VAULT_SCHEMA_VERSION = 1;
+export const PROFILE_ROOT_DIR = "profile";
+export const LEGACY_PROFILE_ROOT_DIR = "user";
 
 const INVALID_PROFILE_CHARS = /[<>:"/\\|?*\u0000-\u001F]/g;
 const PROFILE_ID_PATTERN = /^(\d{4}-\d{2}-\d{2})_(.+)$/;
@@ -87,7 +89,7 @@ export const parseProfileId = (value: string) => {
   return { dateStamp: match[1] ?? "", name: match[2] ?? value };
 };
 
-export const resolveUserVaultPath = (
+export const resolveActiveProfileRoot = (
   mode: UserVaultMode,
   vaultPath: string | null,
   customPath: string | null,
@@ -97,10 +99,12 @@ export const resolveUserVaultPath = (
     return trimmed ? trimmed : null;
   }
   if (mode === "auto") {
-    return vaultPath ? joinPath(vaultPath, "user") : null;
+    return vaultPath ? joinPath(vaultPath, PROFILE_ROOT_DIR) : null;
   }
   return null;
 };
+
+export const resolveUserVaultPath = resolveActiveProfileRoot;
 
 export const createEmptyProfileData = (): UserVaultProfileData => ({
   spacedRepetitionByVaultId: {},

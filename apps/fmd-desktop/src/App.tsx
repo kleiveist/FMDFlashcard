@@ -116,12 +116,14 @@ const AppContent = () => {
         : null,
     [closeCommand, platform, settings.keyboardShortcuts.bindings],
   );
-  const activeProfileName = userVault.activeProfile?.name?.trim() ?? "";
+  const activeUserName = spacedRepetition.spacedRepetitionActiveUser?.trim() ?? "";
   const isWalletOpen = Boolean(vault.vaultPath);
   const isUserVaultReady = userVault.status !== "loading";
   const isActivePathReady =
     Boolean(userVault.resolvedPath) && userVault.status !== "error";
-  const isProfileReady = Boolean(userVault.activeProfileId && activeProfileName);
+  const isProfileReady = Boolean(
+    spacedRepetition.spacedRepetitionActiveUserId && activeUserName,
+  );
   const syncProviderEnabled = isSyncProviderEnabled();
   const syncProviderRequired = false; // TODO: enable when product rule requires sync setup.
   const syncProviderConfigured = false; // TODO: wire to persisted sync provider config.
@@ -147,11 +149,11 @@ const AppContent = () => {
           cta: "Set active path",
         },
         profile: {
-          eyebrow: "Profile required",
-          title: "Create a profile to continue",
+          eyebrow: "User required",
+          title: "Create a user to continue",
           description:
-            "Your progress is stored per profile. Create or load a profile to continue working in this vault.",
-          cta: "Create profile",
+            "Your progress is stored per user. Create or load a user to continue working in this vault.",
+          cta: "Create user",
         },
         "sync-provider": {
           eyebrow: "Sync provider",
@@ -491,16 +493,19 @@ const AppContent = () => {
         isOpen={openGateId === "custom-path"}
         onClose={handleGateClose}
         userVault={userVault}
+        spacedRepetition={spacedRepetition}
       />
       <UserVaultProfileModal
         isOpen={openGateId === "profile"}
         onClose={handleGateClose}
         userVault={userVault}
+        spacedRepetition={spacedRepetition}
       />
       <UserVaultSyncProviderModal
         isOpen={openGateId === "sync-provider"}
         onClose={handleGateClose}
         userVault={userVault}
+        spacedRepetition={spacedRepetition}
       />
       <button
         type="button"
