@@ -101,6 +101,8 @@ export type AppSettings = {
   user_vault_mode?: string | null;
   user_vault_custom_path?: string | null;
   user_vault_last_path?: string | null;
+  user_vault_selected_auto_path?: string | null;
+  user_vault_selected_custom_path?: string | null;
   theme?: string | null;
   accent_color?: string | null;
   markdownEditor?: MarkdownEditorSettings | null;
@@ -160,6 +162,8 @@ type PersistUpdates = {
   userVaultMode?: UserVaultMode;
   userVaultCustomPath?: string | null;
   userVaultLastPath?: string | null;
+  userVaultSelectedAutoPath?: string | null;
+  userVaultSelectedCustomPath?: string | null;
   theme?: ThemeMode;
   accentColor?: string;
   markdownEditorAccentEnabled?: boolean;
@@ -216,6 +220,8 @@ export type SettingsSnapshot = {
   userVaultMode: UserVaultMode;
   userVaultCustomPath: string | null;
   userVaultLastPath: string | null;
+  userVaultSelectedAutoPath: string | null;
+  userVaultSelectedCustomPath: string | null;
   theme: ThemeMode;
   accentColor: string;
   markdownEditorAccentEnabled: boolean;
@@ -506,6 +512,8 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   user_vault_mode: settings.userVaultMode,
   user_vault_custom_path: settings.userVaultCustomPath,
   user_vault_last_path: settings.userVaultLastPath,
+  user_vault_selected_auto_path: settings.userVaultSelectedAutoPath,
+  user_vault_selected_custom_path: settings.userVaultSelectedCustomPath,
   theme: settings.theme,
   accent_color: settings.accentColor,
   markdownEditor: {
@@ -657,6 +665,16 @@ export const normalizeSettings = (
     typeof stored.user_vault_last_path === "string"
       ? stored.user_vault_last_path.trim() || null
       : null;
+  const storedUserVaultSelectedAutoPath =
+    typeof stored.user_vault_selected_auto_path === "string"
+      ? stored.user_vault_selected_auto_path.trim() || null
+      : null;
+  const storedUserVaultSelectedCustomPathRaw =
+    typeof stored.user_vault_selected_custom_path === "string"
+      ? stored.user_vault_selected_custom_path.trim() || null
+      : null;
+  const storedUserVaultSelectedCustomPath =
+    storedUserVaultSelectedCustomPathRaw ?? storedUserVaultCustomPath ?? null;
   const storedFlashcardOrder =
     stored.flashcard_order === "random" ? "random" : DEFAULT_FLASHCARD_ORDER;
   const storedFlashcardMode =
@@ -830,6 +848,8 @@ export const normalizeSettings = (
       userVaultMode: storedUserVaultMode,
       userVaultCustomPath: storedUserVaultCustomPath,
       userVaultLastPath: storedUserVaultLastPath,
+      userVaultSelectedAutoPath: storedUserVaultSelectedAutoPath,
+      userVaultSelectedCustomPath: storedUserVaultSelectedCustomPath,
       theme: storedTheme,
       accentColor: resolvedAccent,
       markdownEditorAccentEnabled: storedMarkdownAccentEnabled,
@@ -927,6 +947,10 @@ export const useAppSettings = () => {
   const [userVaultLastPath, setUserVaultLastPathState] = useState<string | null>(
     null,
   );
+  const [userVaultSelectedAutoPath, setUserVaultSelectedAutoPathState] =
+    useState<string | null>(null);
+  const [userVaultSelectedCustomPath, setUserVaultSelectedCustomPathState] =
+    useState<string | null>(null);
   const [language, setLanguage] = useState<AppLanguage>(DEFAULT_LANGUAGE);
   const [maxFilesPerScan, setMaxFilesPerScan] = useState(
     DEFAULT_MAX_FILES_PER_SCAN,
@@ -1127,6 +1151,16 @@ export const useAppSettings = () => {
     setUserVaultLastPathState(next || null);
   }, []);
 
+  const setUserVaultSelectedAutoPath = useCallback((value: string | null) => {
+    const next = value?.trim() ?? null;
+    setUserVaultSelectedAutoPathState(next || null);
+  }, []);
+
+  const setUserVaultSelectedCustomPath = useCallback((value: string | null) => {
+    const next = value?.trim() ?? null;
+    setUserVaultSelectedCustomPathState(next || null);
+  }, []);
+
   const setUserVaultProfileContext = useCallback(
     (path: string | null, revision: number) => {
       setUserVaultProfilePath(path);
@@ -1219,6 +1253,8 @@ export const useAppSettings = () => {
       userVaultMode,
       userVaultCustomPath,
       userVaultLastPath,
+      userVaultSelectedAutoPath,
+      userVaultSelectedCustomPath,
       theme,
       accentColor,
       markdownEditorAccentEnabled,
@@ -1317,6 +1353,8 @@ export const useAppSettings = () => {
       theme,
       userVaultCustomPath,
       userVaultLastPath,
+      userVaultSelectedAutoPath,
+      userVaultSelectedCustomPath,
       userVaultMode,
       vaultPath,
       recentVaults,
@@ -1338,6 +1376,8 @@ export const useAppSettings = () => {
           userVaultMode: settings.userVaultMode,
           userVaultCustomPath: settings.userVaultCustomPath,
           userVaultLastPath: settings.userVaultLastPath,
+          userVaultSelectedAutoPath: settings.userVaultSelectedAutoPath,
+          userVaultSelectedCustomPath: settings.userVaultSelectedCustomPath,
           theme: settings.theme,
           accentColor: settings.accentColor,
           editorMarkdownExactColorsEnabled: settings.markdownEditorAccentEnabled,
@@ -1412,6 +1452,10 @@ export const useAppSettings = () => {
         userVaultMode: updates.userVaultMode ?? userVaultMode,
         userVaultCustomPath: updates.userVaultCustomPath ?? userVaultCustomPath,
         userVaultLastPath: updates.userVaultLastPath ?? userVaultLastPath,
+        userVaultSelectedAutoPath:
+          updates.userVaultSelectedAutoPath ?? userVaultSelectedAutoPath,
+        userVaultSelectedCustomPath:
+          updates.userVaultSelectedCustomPath ?? userVaultSelectedCustomPath,
         theme: updates.theme ?? theme,
         accentColor: updates.accentColor ?? accentColor,
         markdownEditorAccentEnabled:
@@ -1555,6 +1599,8 @@ export const useAppSettings = () => {
       theme,
       userVaultCustomPath,
       userVaultLastPath,
+      userVaultSelectedAutoPath,
+      userVaultSelectedCustomPath,
       userVaultMode,
       vaultPath,
       recentVaults,
@@ -1597,6 +1643,8 @@ export const useAppSettings = () => {
     setUserVaultModeState(normalized.userVaultMode);
     setUserVaultCustomPathState(normalized.userVaultCustomPath);
     setUserVaultLastPathState(normalized.userVaultLastPath);
+    setUserVaultSelectedAutoPathState(normalized.userVaultSelectedAutoPath);
+    setUserVaultSelectedCustomPathState(normalized.userVaultSelectedCustomPath);
     setLanguage(normalized.language);
     setMaxFilesPerScan(normalized.maxFilesPerScan);
     setScanParallelism(normalized.scanParallelism);
@@ -1849,6 +1897,8 @@ export const useAppSettings = () => {
     setUserVaultCustomPath,
     setUserVaultMode,
     setUserVaultLastPath,
+    setUserVaultSelectedAutoPath,
+    setUserVaultSelectedCustomPath,
     setUserVaultProfileContext,
     setLanguage,
     setMaxFilesPerScan,
@@ -1877,6 +1927,8 @@ export const useAppSettings = () => {
     userVaultCustomPath,
     userVaultMode,
     userVaultLastPath,
+    userVaultSelectedAutoPath,
+    userVaultSelectedCustomPath,
     vaultPath,
     recentVaults,
     rightToolbarCollapsed,

@@ -83,10 +83,16 @@ export const VaultManagerModal = ({
     [activeVaultPath],
   );
 
-  const resolvedUserVaultPath = useMemo(
-    () => resolveUserVaultPath(userVault.mode, selectedVaultPath, userVault.customPath),
-    [selectedVaultPath, userVault.customPath, userVault.mode],
-  );
+  const resolvedUserVaultPath = useMemo(() => {
+    if (userVault.mode === "custom") {
+      return userVault.activeUserPath ?? null;
+    }
+    return resolveUserVaultPath(
+      userVault.mode,
+      selectedVaultPath,
+      userVault.customPath,
+    );
+  }, [selectedVaultPath, userVault.activeUserPath, userVault.customPath, userVault.mode]);
 
   const selectedPathInfo = selectedVaultPath
     ? pathInfo[selectedVaultPath] ?? null

@@ -9,9 +9,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
+import { joinPath, normalizeVaultPath, vaultBaseName } from "../../lib/path";
 import {
   USER_VAULT_SCHEMA_VERSION,
-  resolveUserVaultTarget,
   buildUserVaultProfilePath,
   createEmptyProfileData,
   mergeProfileData,
@@ -19,8 +19,12 @@ import {
   type UserVaultExportPayload,
   type UserVaultImportStrategy,
   type UserVaultMode,
-  type UserVaultResolverSource,
 } from "../../lib/userVault";
+import {
+  resolveActiveUser,
+  sortUserVaultCandidates,
+  type UserVaultCandidate,
+} from "../../lib/userVaultUsers";
 import {
   createEmptyExamRunStore,
   createEmptyFastFlashcardStore,
@@ -34,6 +38,7 @@ import {
   saveProfileSettings,
   saveSpacedRepetitionStore,
   setActiveProfileId,
+  scanUsersInRoot,
   validateUserDir,
   type UserVaultProfileSummary,
 } from "./storage";
@@ -50,8 +55,10 @@ type UseUserVaultOptions = {
   setMode: (value: UserVaultMode) => void;
   customPath: string | null;
   setCustomPath: (value: string | null) => void;
-  lastUsedPath: string | null;
-  setLastUsedPath: (value: string | null) => void;
+  selectedAutoPath: string | null;
+  setSelectedAutoPath: (value: string | null) => void;
+  selectedCustomPath: string | null;
+  setSelectedCustomPath: (value: string | null) => void;
 };
 
 type ExportScope = "active" | "all";
@@ -75,8 +82,10 @@ export const useUserVault = ({
   setMode,
   customPath,
   setCustomPath,
-  lastUsedPath,
-  setLastUsedPath,
+  selectedAutoPath,
+  setSelectedAutoPath,
+  selectedCustomPath,
+  setSelectedCustomPath,
 }: UseUserVaultOptions) => {
   const [profiles, setProfiles] = useState<UserVaultProfileSummary[]>([]);
   const [activeProfileId, setActiveProfileIdState] = useState<string | null>(null);
@@ -84,14 +93,18 @@ export const useUserVault = ({
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [revision, setRevision] = useState(0);
-  const [resolverSource, setResolverSource] = useState<UserVaultResolverSource>(null);
+  const [autoUsers, setAutoUsers] = useState<UserVaultCandidate[]>([]);
+  const [customUsers, setCustomUsers] = useState<UserVaultCandidate[]>([]);
+  const [activeUserPath, setActiveUserPath] = useState<string | null>(null);
 
-  const resolver = useMemo(
-    () => resolveUserVaultTarget(mode, vaultPath, customPath, lastUsedPath),
-    [customPath, lastUsedPath, mode, vaultPath],
+  const autoRootPath = useMemo(
+    () => (vaultPath ? joinPath(vaultPath, "user") : null),
+    [vaultPath],
   );
 
-  const resolvedPath = resolver.path;
+  const customRootPath = useMemo(() => customPath?.trim() ?? null, [customPath]);
+
+  const resolvedPath = activeUserPath;
 
   const activeProfile = useMemo(
     () => profiles.find((profile) => profile.id === activeProfileId) ?? null,
@@ -106,38 +119,115 @@ export const useUserVault = ({
   }, [activeProfileId, resolvedPath]);
 
   const refreshProfiles = useCallback(async () => {
-    if (!resolvedPath) {
+    setStatus("loading");
+    setError("");
+
+    const [autoScan, customScan] = await Promise.all([
+      autoRootPath
+        ? scanUsersInRoot(autoRootPath, "auto")
+        : Promise.resolve({ users: [], error: "Select a vault to use Auto users." }),
+      customRootPath
+        ? scanUsersInRoot(customRootPath, "custom")
+        : Promise.resolve({ users: [], error: "Custom path is required." }),
+    ]);
+
+    let nextAutoUsers = autoScan.users;
+    let nextAutoError = autoScan.error;
+    if (
+      autoRootPath &&
+      nextAutoUsers.length === 0 &&
+      (!autoScan.error || autoScan.error === "User root path does not exist.")
+    ) {
+      const fallbackUser: UserVaultCandidate = {
+        id: normalizeVaultPath(autoRootPath) || autoRootPath,
+        name: vaultBaseName(autoRootPath),
+        path: autoRootPath,
+        source: "auto",
+      };
+      nextAutoUsers = sortUserVaultCandidates([fallbackUser]);
+      nextAutoError = null;
+    }
+
+    setAutoUsers(nextAutoUsers);
+    setCustomUsers(customScan.users);
+
+    const resolution = resolveActiveUser({
+      source: mode,
+      autoUsers: nextAutoUsers,
+      customUsers: customScan.users,
+      selectedAutoPath,
+      selectedCustomPath,
+      autoError:
+        mode === "auto"
+          ? autoRootPath
+            ? nextAutoError
+            : "Select a vault to use Auto users."
+          : null,
+      customError:
+        mode === "custom"
+          ? customRootPath
+            ? customScan.error
+            : "Custom path is required."
+          : null,
+    });
+
+    const selectedPath = mode === "custom" ? selectedCustomPath : selectedAutoPath;
+    logUserVaultEvent("users.resolve", {
+      source: mode,
+      autoCount: nextAutoUsers.length,
+      customCount: customScan.users.length,
+      selectedPath,
+      activePath: resolution.activeUser?.path ?? null,
+      reason: resolution.reason,
+      autoRootPath,
+      customRootPath,
+    });
+
+    if (!resolution.activeUser) {
+      setStatus("error");
+      setError(resolution.error);
+      setProfiles([]);
+      setActiveProfileIdState(null);
+      setActiveUserPath(null);
+      return;
+    }
+
+    setActiveUserPath(resolution.activeUser.path);
+
+    const isAutoRootFallback =
+      mode === "auto" &&
+      autoRootPath &&
+      autoScan.users.length === 0 &&
+      resolution.activeUser.path === autoRootPath;
+
+    if (isAutoRootFallback) {
       setProfiles([]);
       setActiveProfileIdState(null);
       setStatus("idle");
-      setResolverSource(null);
+      logUserVaultEvent("users.empty_auto_root", {
+        path: resolution.activeUser.path,
+        source: mode,
+      });
       return;
     }
-    logUserVaultEvent("resolve.start", {
-      path: resolvedPath,
-      source: resolver.source,
-    });
-    setStatus("loading");
-    setError("");
-    const validation = await validateUserDir(resolvedPath);
+
+    const validation = await validateUserDir(resolution.activeUser.path);
     if (!validation.ok) {
       setStatus("error");
       setError(validation.reason);
-      setResolverSource(resolver.source);
       setProfiles([]);
       setActiveProfileIdState(null);
-      logUserVaultEvent("resolve.validation_failed", {
-        path: resolvedPath,
-        source: resolver.source,
+      logUserVaultEvent("users.validation_failed", {
+        path: resolution.activeUser.path,
+        source: mode,
         reason: validation.reason,
       });
       return;
     }
-    setResolverSource(resolver.source);
-    setLastUsedPath(resolvedPath);
+
     const [nextProfiles, meta] = await Promise.all([
-      listUserVaultProfiles(resolvedPath),
-      loadUserVaultMeta(resolvedPath),
+      listUserVaultProfiles(resolution.activeUser.path),
+      loadUserVaultMeta(resolution.activeUser.path),
     ]);
     let nextActive = meta.activeProfileId;
     if (nextActive && !nextProfiles.some((profile) => profile.id === nextActive)) {
@@ -146,19 +236,24 @@ export const useUserVault = ({
     if (!nextActive && nextProfiles.length > 0) {
       nextActive = nextProfiles[0]?.id ?? null;
       if (nextActive) {
-        await setActiveProfileId(resolvedPath, nextActive);
+        await setActiveProfileId(resolution.activeUser.path, nextActive);
       }
     }
     setProfiles(nextProfiles);
     setActiveProfileIdState(nextActive);
     setStatus("idle");
-    logUserVaultEvent("resolve.success", {
-      path: resolvedPath,
-      source: resolver.source,
+    logUserVaultEvent("users.loaded", {
+      path: resolution.activeUser.path,
+      source: mode,
       profiles: nextProfiles.length,
-      autoUserCreated: false,
     });
-  }, [resolvedPath, resolver.source, setLastUsedPath]);
+  }, [
+    autoRootPath,
+    customRootPath,
+    mode,
+    selectedAutoPath,
+    selectedCustomPath,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,6 +280,20 @@ export const useUserVault = ({
     [setMode],
   );
 
+  const handleSelectAutoUser = useCallback(
+    (value: string) => {
+      setSelectedAutoPath(value);
+    },
+    [setSelectedAutoPath],
+  );
+
+  const handleSelectCustomUser = useCallback(
+    (value: string) => {
+      setSelectedCustomPath(value);
+    },
+    [setSelectedCustomPath],
+  );
+
   const handlePickCustomPath = useCallback(async () => {
     const selected = await open({
       title: "Select User Vault",
@@ -193,8 +302,9 @@ export const useUserVault = ({
     });
     if (typeof selected === "string") {
       setCustomPath(selected);
+      setSelectedCustomPath(null);
     }
-  }, [setCustomPath]);
+  }, [setCustomPath, setSelectedCustomPath]);
 
   const handleCreateProfile = useCallback(
     async (name: string) => {
@@ -349,24 +459,32 @@ export const useUserVault = ({
   );
 
   return {
+    activeUserPath,
     activeProfile,
     activeProfileId,
     activeProfilePath,
+    autoRootPath,
+    autoUsers,
     customPath,
+    customRootPath,
+    customUsers,
     error,
     handleCreateProfile,
     handleExport,
     handleImport,
     handleModeChange,
     handlePickCustomPath,
+    handleSelectAutoUser,
+    handleSelectCustomUser,
     handleSelectProfile,
     isBusy,
     mode,
     profiles,
     refreshProfiles,
     resolvedPath,
-    resolverSource,
     revision,
+    selectedAutoPath,
+    selectedCustomPath,
     status,
   };
 };

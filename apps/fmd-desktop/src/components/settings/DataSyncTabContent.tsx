@@ -22,7 +22,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import type { UserVaultImportStrategy } from "../../lib/userVault";
 import type { UserVaultState } from "../../features/user-vault/useUserVault";
 import { isSyncProviderEnabled, isWordPressEnabled } from "../../lib/featureFlags";
@@ -106,7 +106,7 @@ type UserVaultModeSectionProps = {
 
 const UserVaultModeSection = ({ userVault }: UserVaultModeSectionProps) => (
   <div className="setting-row">
-    <span className="label">User Vault Mode</span>
+    <span className="label">User Source</span>
     <div className="pill-grid">
       <button
         type="button"
@@ -129,7 +129,7 @@ const UserVaultModeSection = ({ userVault }: UserVaultModeSectionProps) => (
       </button>
     </div>
     <span className="helper-text">
-      Auto uses the current vault path. Custom stays fixed across vault switches.
+      Auto uses the current vault user root. Custom stays fixed across vault switches.
     </span>
   </div>
 );
@@ -149,11 +149,12 @@ export const ActivePathSection = ({
 }: ActivePathSectionProps) => {
   const isCustomMode = userVault.mode === "custom";
   const canPick = allowPickWhenAuto ? !userVault.isBusy : isCustomMode && !userVault.isBusy;
+  const rootPath = isCustomMode ? userVault.customRootPath : userVault.autoRootPath;
   const resolvedHelper =
     helperText ??
     (isCustomMode
-      ? "Pick a folder outside the vault if you prefer."
-      : "Set a vault to enable Auto mode.");
+      ? "Pick a root folder that contains user folders."
+      : "Select a vault to enable Auto user root.");
 
   const handlePickPath = async () => {
     if (allowPickWhenAuto && userVault.mode !== "custom") {
@@ -166,7 +167,7 @@ export const ActivePathSection = ({
     <div className="setting-row">
       <span className="label">{label}</span>
       <div className="setting-inline">
-        <span className="value path-value">{userVault.resolvedPath ?? "—"}</span>
+        <span className="value path-value">{rootPath ?? "—"}</span>
         <button
           type="button"
           className="ghost small"
@@ -177,6 +178,71 @@ export const ActivePathSection = ({
         </button>
       </div>
       <span className="helper-text">{resolvedHelper}</span>
+    </div>
+  );
+};
+
+type UserSelectionSectionProps = {
+  userVault: UserVaultState;
+  source: "auto" | "custom";
+  label?: string;
+};
+
+const UserSelectionSection = ({
+  userVault,
+  source,
+  label,
+}: UserSelectionSectionProps) => {
+  const isActive = userVault.mode === source;
+  const users = source === "custom" ? userVault.customUsers : userVault.autoUsers;
+  const selectedPath =
+    source === "custom" ? userVault.selectedCustomPath : userVault.selectedAutoPath;
+  const activePath = isActive ? userVault.activeUserPath : null;
+  const selectable = isActive && !userVault.isBusy && users.length > 0;
+  const fallbackValue = activePath && users.some((user) => user.path === activePath)
+    ? activePath
+    : "";
+  const value =
+    selectedPath && users.some((user) => user.path === selectedPath)
+      ? selectedPath
+      : fallbackValue;
+  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const next = event.target.value;
+    if (source === "custom") {
+      userVault.handleSelectCustomUser(next);
+    } else {
+      userVault.handleSelectAutoUser(next);
+    }
+  };
+  const resolvedLabel =
+    label ?? (source === "custom" ? "Custom users" : "Auto users");
+  const helper = isActive
+    ? `Found users: ${users.length}`
+    : "Inactive source. Switch to manage users.";
+
+  return (
+    <div className="setting-row">
+      <span className="label">{resolvedLabel}</span>
+      <div className="setting-inline">
+        <select
+          className="text-input"
+          value={value}
+          onChange={handleChange}
+          disabled={!selectable}
+          aria-label={`${resolvedLabel} select`}
+        >
+          <option value="" disabled>
+            {users.length > 0 ? "Select user" : "No users found"}
+          </option>
+          {users.map((user) => (
+            <option key={user.id} value={user.path}>
+              {user.name}
+            </option>
+          ))}
+        </select>
+        <span className="value path-value">{activePath ?? "—"}</span>
+      </div>
+      <span className="helper-text">{helper}</span>
     </div>
   );
 };
@@ -376,6 +442,12 @@ export const DataSyncSettingsView = ({
       ) : null}
       {!isOnboarding ? (
         <ActivePathSection userVault={userVault} />
+      ) : null}
+      {!isOnboarding ? (
+        <>
+          <UserSelectionSection userVault={userVault} source="auto" />
+          <UserSelectionSection userVault={userVault} source="custom" />
+        </>
       ) : null}
       <ProfileSections userVault={userVault} />
       {userVault.error ? (

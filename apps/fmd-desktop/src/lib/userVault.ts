@@ -11,7 +11,6 @@ import type { ExamRun } from "./examRuns";
 import { joinPath } from "./path";
 
 export type UserVaultMode = "auto" | "custom";
-export type UserVaultResolverSource = "custom" | "last-used" | "auto" | null;
 export type UserVaultImportStrategy = "merge" | "overwrite";
 
 export type UserVaultProfileMeta = {
@@ -88,38 +87,20 @@ export const parseProfileId = (value: string) => {
   return { dateStamp: match[1] ?? "", name: match[2] ?? value };
 };
 
-export const resolveUserVaultTarget = (
-  mode: UserVaultMode,
-  vaultPath: string | null,
-  customPath: string | null,
-  lastUsedPath: string | null = null,
-): { path: string | null; source: UserVaultResolverSource } => {
-  const trimmedCustom = customPath?.trim() ?? "";
-  if (trimmedCustom) {
-    return { path: trimmedCustom, source: "custom" };
-  }
-
-  const trimmedLastUsed = lastUsedPath?.trim() ?? "";
-  if (trimmedLastUsed) {
-    return { path: trimmedLastUsed, source: "last-used" };
-  }
-
-  if (mode === "auto") {
-    return {
-      path: vaultPath ? joinPath(vaultPath, "user") : null,
-      source: "auto",
-    };
-  }
-
-  return { path: null, source: mode === "custom" ? "custom" : null };
-};
-
 export const resolveUserVaultPath = (
   mode: UserVaultMode,
   vaultPath: string | null,
   customPath: string | null,
-  lastUsedPath: string | null = null,
-) => resolveUserVaultTarget(mode, vaultPath, customPath, lastUsedPath).path;
+): string | null => {
+  if (mode === "custom") {
+    const trimmed = customPath?.trim() ?? "";
+    return trimmed ? trimmed : null;
+  }
+  if (mode === "auto") {
+    return vaultPath ? joinPath(vaultPath, "user") : null;
+  }
+  return null;
+};
 
 export const createEmptyProfileData = (): UserVaultProfileData => ({
   spacedRepetitionByVaultId: {},

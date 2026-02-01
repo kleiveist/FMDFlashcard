@@ -7,17 +7,19 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { asErrorMessage } from "../../lib/errors";
-import { joinPath } from "../../lib/path";
+import { joinPath, normalizeVaultPath, vaultBaseName } from "../../lib/path";
 import {
   USER_VAULT_SCHEMA_VERSION,
   buildProfileId,
   buildUserVaultProfilePath,
   parseProfileId,
   sanitizeProfileName,
+  type UserVaultMode,
   type UserVaultProfileData,
   type UserVaultProfileMeta,
   type UserVaultProfileSettings,
 } from "../../lib/userVault";
+import { sortUserVaultCandidates, type UserVaultCandidate } from "../../lib/userVaultUsers";
 import type { FastFlashcardSessionSummary } from "../../lib/fastFlashcard";
 import type { ExamRun } from "../../lib/examRuns";
 import type { SpacedRepetitionStorage } from "../spaced-repetition/logic";
@@ -30,6 +32,11 @@ type PathInfo = {
 export type ValidateUserDirResult = {
   ok: boolean;
   reason: string;
+};
+
+export type UserVaultScanResult = {
+  users: UserVaultCandidate[];
+  error: string | null;
 };
 
 type UserVaultProfileStore = UserVaultProfileMeta & {
@@ -71,6 +78,7 @@ export type ExamRunProfileStore = {
 
 const USER_VAULT_META_FILE = "user-vault.json";
 const USER_VAULT_PROFILES_DIR = "profiles";
+const USER_VAULT_USERS_DIR = "users";
 const USER_VAULT_PROFILE_FILE = "profile.json";
 const USER_VAULT_SPACED_REPETITION_FILE = "spaced-repetition.json";
 const USER_VAULT_FAST_FLASHCARD_FILE = "fast-flashcard.json";
@@ -78,6 +86,39 @@ const USER_VAULT_EXAM_RUNS_FILE = "exam-runs.json";
 
 const USER_VAULT_PROFILE_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
 const USER_VAULT_EXAM_RUNS_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
+
+const normalizeUserVaultId = (path: string) => normalizeVaultPath(path) || path;
+
+const buildUserVaultCandidate = (
+  path: string,
+  source: UserVaultMode,
+): UserVaultCandidate => ({
+  id: normalizeUserVaultId(path),
+  name: vaultBaseName(path),
+  path,
+  source,
+});
+
+const isMissingPathError = (message: string) =>
+  message.includes("Path does not exist") ||
+  message.includes("Path is not a directory") ||
+  message.includes("File not found");
+
+const hasUserVaultIdentity = async (path: string): Promise<boolean> => {
+  try {
+    await invoke<string>("read_json_file", {
+      path: joinPath(path, USER_VAULT_META_FILE),
+    });
+    return true;
+  } catch (error) {
+    const message = asErrorMessage(error, "Unknown error");
+    if (isMissingPathError(message)) {
+      return false;
+    }
+    console.warn("Failed to inspect user vault identity", message);
+    return false;
+  }
+};
 
 const readJsonFile = async <T,>(path: string, fallback: T): Promise<T> => {
   try {
@@ -183,6 +224,95 @@ const resolveProfileIdFromPath = (profilePath: string) => {
   const trimmed = profilePath.replace(/[\\/]+$/, "");
   const parts = trimmed.split(/[\\/]/);
   return parts[parts.length - 1] || trimmed;
+};
+
+const listUserVaultCandidates = async (
+  root: string,
+  source: UserVaultMode,
+  exclude: Set<string> = new Set(),
+): Promise<UserVaultCandidate[]> => {
+  const entries = await listDirectories(root);
+  const candidates = await Promise.all(
+    entries
+      .filter((entry) => !exclude.has(entry))
+      .map(async (entry) => {
+        const candidatePath = joinPath(root, entry);
+        if (await hasUserVaultIdentity(candidatePath)) {
+          return buildUserVaultCandidate(candidatePath, source);
+        }
+        return null;
+      }),
+  );
+  return candidates.filter(Boolean) as UserVaultCandidate[];
+};
+
+export const scanUsersInUsersFolder = async (
+  root: string,
+  source: UserVaultMode,
+): Promise<UserVaultCandidate[]> => {
+  try {
+    return await listUserVaultCandidates(root, source);
+  } catch (error) {
+    const message = asErrorMessage(error, "Unknown error");
+    if (isMissingPathError(message)) {
+      return [];
+    }
+    console.warn("Failed to scan users folder", message);
+    return [];
+  }
+};
+
+export const scanUsersInRoot = async (
+  root: string,
+  source: UserVaultMode,
+): Promise<UserVaultScanResult> => {
+  try {
+    const info = await invoke<PathInfo>("get_path_info", { path: root });
+    if (!info.exists) {
+      return { users: [], error: "User root path does not exist." };
+    }
+    if (!info.isDir) {
+      return { users: [], error: "User root path is not a directory." };
+    }
+  } catch (error) {
+    return {
+      users: [],
+      error: asErrorMessage(error, "User root path is not accessible."),
+    };
+  }
+
+  const candidates: UserVaultCandidate[] = [];
+  if (await hasUserVaultIdentity(root)) {
+    candidates.push(buildUserVaultCandidate(root, source));
+  }
+
+  let directCandidates: UserVaultCandidate[] = [];
+  try {
+    directCandidates = await listUserVaultCandidates(
+      root,
+      source,
+      new Set([USER_VAULT_USERS_DIR]),
+    );
+  } catch (error) {
+    const message = asErrorMessage(error, "Failed to scan user root.");
+    if (!isMissingPathError(message)) {
+      return { users: [], error: message };
+    }
+  }
+
+  const nestedCandidates = await scanUsersInUsersFolder(
+    joinPath(root, USER_VAULT_USERS_DIR),
+    source,
+  );
+
+  const merged = new Map<string, UserVaultCandidate>();
+  [...candidates, ...directCandidates, ...nestedCandidates].forEach((entry) => {
+    if (!merged.has(entry.id)) {
+      merged.set(entry.id, entry);
+    }
+  });
+
+  return { users: sortUserVaultCandidates(Array.from(merged.values())), error: null };
 };
 
 export const validateUserDir = async (

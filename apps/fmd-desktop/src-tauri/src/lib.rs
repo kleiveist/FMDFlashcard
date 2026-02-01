@@ -70,6 +70,8 @@ struct AppSettings {
     user_vault_mode: Option<String>,
     user_vault_custom_path: Option<String>,
     user_vault_last_path: Option<String>,
+    user_vault_selected_auto_path: Option<String>,
+    user_vault_selected_custom_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
     #[serde(rename = "markdownEditor")]
@@ -209,6 +211,8 @@ impl AppSettings {
             && self.user_vault_mode.is_none()
             && self.user_vault_custom_path.is_none()
             && self.user_vault_last_path.is_none()
+            && self.user_vault_selected_auto_path.is_none()
+            && self.user_vault_selected_custom_path.is_none()
             && self.active_note_path.is_none()
             && self.theme.is_none()
             && self.accent_color.is_none()
@@ -457,6 +461,8 @@ fn save_app_settings(
     user_vault_mode: Option<String>,
     user_vault_custom_path: Option<String>,
     user_vault_last_path: Option<String>,
+    user_vault_selected_auto_path: Option<String>,
+    user_vault_selected_custom_path: Option<String>,
     theme: Option<String>,
     accent_color: Option<String>,
     markdown_editor: Option<MarkdownEditorSettings>,
@@ -510,6 +516,8 @@ fn save_app_settings(
         user_vault_mode,
         user_vault_custom_path,
         user_vault_last_path,
+        user_vault_selected_auto_path,
+        user_vault_selected_custom_path,
         theme,
         accent_color,
         markdown_editor,

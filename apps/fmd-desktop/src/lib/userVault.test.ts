@@ -12,7 +12,6 @@ import {
   formatDateStamp,
   mergeProfileData,
   parseProfileId,
-  resolveUserVaultTarget,
   resolveUserVaultPath,
   sanitizeProfileName,
   selectProfileFromExport,
@@ -63,43 +62,10 @@ describe("resolveUserVaultPath", () => {
     );
   });
 
-  it("prefers custom path even when mode is auto", () => {
-    expect(resolveUserVaultTarget("auto", "/vault/main", "/opt/users", null)).toEqual({
-      path: "/opt/users",
-      source: "custom",
-    });
-  });
-
-  it("uses last-used path when no custom path exists", () => {
-    expect(
-      resolveUserVaultTarget("auto", "/vault/main", null, "/last/user"),
-    ).toEqual({
-      path: "/last/user",
-      source: "last-used",
-    });
-  });
-
-  it("falls back to auto when neither custom nor last-used exist", () => {
-    expect(resolveUserVaultTarget("auto", "/vault/main", null, null)).toEqual({
-      path: "/vault/main/user",
-      source: "auto",
-    });
-  });
-
-  it("returns null when no sources are available", () => {
-    expect(resolveUserVaultTarget("custom", null, null, null)).toEqual({
-      path: null,
-      source: "custom",
-    });
-  });
-
-  it("allows last-used paths from other vaults (cross-vault)", () => {
-    expect(
-      resolveUserVaultTarget("auto", "/vault/main", null, "/other-vault/user-data"),
-    ).toEqual({
-      path: "/other-vault/user-data",
-      source: "last-used",
-    });
+  it("ignores custom path when mode is auto", () => {
+    expect(resolveUserVaultPath("auto", "/vault/main", "/custom/root")).toBe(
+      "/vault/main/user",
+    );
   });
 });
 
