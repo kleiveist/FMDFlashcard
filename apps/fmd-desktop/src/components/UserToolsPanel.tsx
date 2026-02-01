@@ -102,6 +102,7 @@ type UserRegistryState = {
   setSpacedRepetitionNewUserName: (value: string) => void;
   setSpacedRepetitionUserError: (value: string) => void;
   handleSpacedRepetitionCreateUser: () => void;
+  handleSpacedRepetitionDeleteUser: () => void;
   handleSpacedRepetitionLoadUser: () => void;
 };
 

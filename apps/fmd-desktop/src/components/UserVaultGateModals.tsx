@@ -128,7 +128,6 @@ export const UserVaultCustomPathModal = ({
 export const UserVaultProfileModal = ({
   isOpen,
   onClose,
-  userVault,
   spacedRepetition,
 }: GateModalProps) => {
   useFocusRestore(isOpen);

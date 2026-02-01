@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "2026-01-26_Lysanne",
-  "name": "Lysanne",
-  "createdAt": "2026-01-26T07:50:16.843Z",
+  "id": "2026-01-14_Kleif",
+  "name": "Kleif",
+  "createdAt": "2026-01-14T00:00:00.000Z",
   "settings": {
     "active_note_path": "Test/IDBS01-TestL2.md",
     "vault_path": "/home/kleif/Projects/EXAM",
@@ -20,6 +20,11 @@
         "lastOpenedAt": "2026-01-22T07:32:59.542Z"
       }
     ],
+    "user_vault_mode": "auto",
+    "user_vault_custom_path": "/home/kleif/Projects/FMDFlashcard/docs/dev/test/archive/test_editor/user",
+    "user_vault_last_path": null,
+    "user_vault_selected_auto_path": null,
+    "user_vault_selected_custom_path": null,
     "theme": "light",
     "accent_color": "#77767B",
     "markdownEditor": {
@@ -40,9 +45,9 @@
     "scan_parallelism": "high",
     "show_hidden_folders": false,
     "show_empty_folders": true,
-    "flashcard_order": "in-order",
+    "flashcard_order": "random",
     "flashcard_mode": "all",
-    "flashcard_scope": "current",
+    "flashcard_scope": "vault",
     "flashcard_page_size": 1,
     "flashcard_solution_reveal_enabled": true,
     "flashcard_stats_reset_mode": "session",
@@ -54,8 +59,8 @@
     "fast_flashcard_help_enabled": true,
     "exam_show_timeline": true,
     "exam_help_enabled": true,
-    "spaced_repetition_boxes": 5,
-    "spaced_repetition_order": "in-order",
+    "spaced_repetition_boxes": 3,
+    "spaced_repetition_order": "random",
     "spaced_repetition_page_size": 1,
     "spaced_repetition_repetition_strength": "strong",
     "spaced_repetition_stats_view": "boxes",
