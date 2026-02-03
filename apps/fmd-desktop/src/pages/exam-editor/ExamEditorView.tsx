@@ -1026,7 +1026,7 @@ export const ExamEditorView = ({
 
   const structureSplitLayout = isStudyView && isDesktopViewport;
   const showPropertiesInline = !structureSplitLayout;
-  const inlineSelection =
+  const inlineSelection: ExamEditorSelection =
     propertiesPopupActive && (selection.type === "task" || selection.type === "card")
       ? { type: "exam" }
       : selection;

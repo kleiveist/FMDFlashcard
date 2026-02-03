@@ -187,16 +187,41 @@ const collectDescriptionLines = (lines: string[]) => {
   return trimEmptyLines(output);
 };
 
-const extractHeadingParagraph = (lines: string[]) => {
-  const startIndex = lines.findIndex((line) => line.trim() !== "");
-  if (startIndex === -1) {
-    return "";
+type HeadingParagraphInfo = {
+  text: string;
+  lineCount: number;
+};
+
+const isTaskNumberLine = (line: string) => taskLinePattern.test(line.trim());
+
+const extractHeadingParagraph = (lines: string[]): HeadingParagraphInfo => {
+  const tableLineIndices = findTableLineIndices(lines);
+  const headingLines: string[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    if (headingLines.length === 0 && isTaskNumberLine(line)) {
+      break;
+    }
+    if (line.trim() === "") {
+      break;
+    }
+    if (tableLineIndices.has(index)) {
+      break;
+    }
+    if (
+      isCardBoundaryLine(line) ||
+      isAnswerMarkerLine(line) ||
+      isTrueFalseMarkerLine(line) ||
+      isOptionLine(line) ||
+      isCorrectMarkerLine(line) ||
+      hasClozeMarker(line)
+    ) {
+      break;
+    }
+    headingLines.push(line);
   }
-  let endIndex = startIndex;
-  while (endIndex < lines.length && lines[endIndex]?.trim() !== "") {
-    endIndex += 1;
-  }
-  return lines.slice(startIndex, endIndex).join("\n").trim();
+  const text = trimEmptyLines(headingLines).join("\n").trim();
+  return { text, lineCount: headingLines.length };
 };
 
 const stripTaskNumberFromLines = (lines: string[]) => {
@@ -232,10 +257,21 @@ const extractTaskNumberInfo = (lines: string[]) => {
   };
 };
 
-const resolveHeadingParagraph = (lines: string[]) => {
+const resolveHeadingParagraph = (lines: string[], expectedTaskNumber?: string) => {
   const tableLineIndices = findTableLineIndices(lines);
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? "";
+    if (expectedTaskNumber) {
+      const match = line.trim().match(taskLinePattern);
+      if (match && (match[1] ?? "") === expectedTaskNumber) {
+        // Duplicate task numbers (e.g. "1) Question ...") belong to the prompt/description,
+        // not the task title/heading continuation.
+        return {
+          continuationLines: lines.slice(0, index),
+          descriptionStartIndex: index,
+        };
+      }
+    }
     if (line.trim() === "") {
       return {
         continuationLines: lines.slice(0, index),
@@ -291,7 +327,7 @@ const deriveTaskHeadingInfo = (
 
   if (numberLineHasText && !hasCardWrapper) {
     const { continuationLines, descriptionStartIndex } =
-      resolveHeadingParagraph(descriptionSource);
+      resolveHeadingParagraph(descriptionSource, numberInfo?.number);
     headingLineCount = 1 + continuationLines.length;
     heading = [numberText, ...continuationLines].join("\n").trim();
     descriptionSource =
@@ -303,7 +339,11 @@ const deriveTaskHeadingInfo = (
   const descriptionLines = collectDescriptionLines(descriptionSource);
 
   if (!heading) {
-    heading = extractHeadingParagraph(descriptionLines);
+    const paragraph = extractHeadingParagraph(descriptionLines);
+    if (paragraph.text) {
+      heading = paragraph.text;
+      headingLineCount = paragraph.lineCount;
+    }
   }
   if (!heading) {
     const fallbackNumber = numberInfo?.number || String(taskIndex + 1);
