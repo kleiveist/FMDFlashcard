@@ -6,13 +6,14 @@
  */
 
 import { parseExamTasks, splitAnswerBlock } from "../../lib/exam";
+import { falseTokens, trueTokens } from "../../lib/flashcardKeywords";
 import type {
   ClozeSegment,
   FlashcardPart,
   MultipleChoiceCard,
   TrueFalseCard,
 } from "../../lib/flashcards";
-import { hasClozeMarker, parseFlashcards } from "../../lib/flashcards";
+import { hasClozeMarker, parseFlashcards, splitAnswerCard } from "../../lib/flashcards";
 import { findTableLineIndices } from "../../lib/markdownTables";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
@@ -55,8 +56,6 @@ const joinHelpBlocks = (blocks?: string[]) => {
   return trimmed.join("\n\n");
 };
 
-const taskNumberPattern = /^\s*(\d+)\)\s*(.*)$/;
-
 const stripLeadingTaskNumberLine = (lines: string[]) => {
   const next = lines.slice();
   let expectedNumber: string | null = null;
@@ -68,7 +67,7 @@ const stripLeadingTaskNumberLine = (lines: string[]) => {
       index += 1;
       continue;
     }
-    const match = line.match(taskNumberPattern);
+    const match = line.match(taskLinePattern);
     if (!match) {
       break;
     }
@@ -96,10 +95,228 @@ const helpStartPattern = /^\s*#help\s*$/;
 const helpEndPattern = /^\s*#helpend\s*$/;
 const separatorLinePattern = /^\s*---\s*$/;
 const fencePattern = /^\s*(```|~~~)/;
+const cardStartPattern = /^\s*#card\s*$/i;
+const cardEndPattern = /^\s*#(?:endcard)?\s*$/i;
+const optionPattern = /^([A-Za-z])\)\s*(.*)$/;
+const markerPattern = /^-([A-Za-z])$/;
+const taskLinePattern = /^(?:-\s*)?(?:\*\*)?(\d+)\)?\s*(?:\*\*)?\s*(.*)$/;
 
 const isHelpStartLine = (line: string) => helpStartPattern.test(line);
 const isHelpEndLine = (line: string) => helpEndPattern.test(line);
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
+const isCardBoundaryLine = (line: string) =>
+  cardStartPattern.test(line) || cardEndPattern.test(line);
+const isOptionLine = (line: string) => optionPattern.test(line.trim());
+const isCorrectMarkerLine = (line: string) => markerPattern.test(line.trim());
+const isAnswerMarkerLine = (line: string) =>
+  Boolean(splitAnswerCard([line], { answerMatch: "line-start" }));
+
+const normalizeKeyword = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const normalizedTrueTokens = new Set(trueTokens.map(normalizeKeyword));
+const normalizedFalseTokens = new Set(falseTokens.map(normalizeKeyword));
+
+const normalizeTrueFalseMarker = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("-")) {
+    return null;
+  }
+  const rawToken = trimmed.slice(1).trim();
+  if (!rawToken) {
+    return null;
+  }
+  const cleaned = rawToken.replace(/[.,;:!?]+$/g, "");
+  const normalized = normalizeKeyword(cleaned);
+  if (normalizedTrueTokens.has(normalized)) {
+    return "true";
+  }
+  if (normalizedFalseTokens.has(normalized)) {
+    return "false";
+  }
+  return null;
+};
+
+const isTrueFalseMarkerLine = (line: string) =>
+  normalizeTrueFalseMarker(line) !== null;
+
+const collectDescriptionLines = (lines: string[]) => {
+  const tableLineIndices = findTableLineIndices(lines);
+  const output: string[] = [];
+  let inFence = false;
+  let fenceToken = "";
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    const fenceMatch = line.trimStart().match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      output.push(line);
+      continue;
+    }
+
+    if (inFence || tableLineIndices.has(index)) {
+      output.push(line);
+      continue;
+    }
+
+    if (
+      isCardBoundaryLine(line) ||
+      isAnswerMarkerLine(line) ||
+      isTrueFalseMarkerLine(line) ||
+      isOptionLine(line) ||
+      isCorrectMarkerLine(line) ||
+      hasClozeMarker(line)
+    ) {
+      break;
+    }
+
+    output.push(line);
+  }
+
+  return trimEmptyLines(output);
+};
+
+const extractHeadingParagraph = (lines: string[]) => {
+  const startIndex = lines.findIndex((line) => line.trim() !== "");
+  if (startIndex === -1) {
+    return "";
+  }
+  let endIndex = startIndex;
+  while (endIndex < lines.length && lines[endIndex]?.trim() !== "") {
+    endIndex += 1;
+  }
+  return lines.slice(startIndex, endIndex).join("\n").trim();
+};
+
+const stripTaskNumberFromLines = (lines: string[]) => {
+  const index = lines.findIndex((line) => line.trim() !== "");
+  if (index === -1) {
+    return lines;
+  }
+  const match = lines[index]?.trim().match(taskLinePattern);
+  if (!match) {
+    return lines;
+  }
+  return lines.slice(index + 1);
+};
+
+type TaskHeadingInfo = {
+  heading: string;
+  removeHeadingFromPrompt: boolean;
+  headingLineCount: number;
+};
+
+const extractTaskNumberInfo = (lines: string[]) => {
+  const index = lines.findIndex((line) => line.trim() !== "");
+  if (index === -1) {
+    return null;
+  }
+  const match = lines[index]?.trim().match(taskLinePattern);
+  if (!match) {
+    return null;
+  }
+  return {
+    number: match[1] ?? "",
+    text: (match[2] ?? "").trim(),
+  };
+};
+
+const resolveHeadingParagraph = (lines: string[]) => {
+  const tableLineIndices = findTableLineIndices(lines);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    if (line.trim() === "") {
+      return {
+        continuationLines: lines.slice(0, index),
+        descriptionStartIndex: index + 1,
+      };
+    }
+    if (line.trimStart().match(fencePattern)) {
+      return {
+        continuationLines: lines.slice(0, index),
+        descriptionStartIndex: index,
+      };
+    }
+    if (tableLineIndices.has(index)) {
+      return {
+        continuationLines: lines.slice(0, index),
+        descriptionStartIndex: index,
+      };
+    }
+    if (
+      isCardBoundaryLine(line) ||
+      isAnswerMarkerLine(line) ||
+      isTrueFalseMarkerLine(line) ||
+      isOptionLine(line) ||
+      isCorrectMarkerLine(line) ||
+      hasClozeMarker(line)
+    ) {
+      return {
+        continuationLines: lines.slice(0, index),
+        descriptionStartIndex: lines.length,
+      };
+    }
+  }
+  return {
+    continuationLines: lines.slice(),
+    descriptionStartIndex: lines.length,
+  };
+};
+
+const deriveTaskHeadingInfo = (
+  rawLines: string[],
+  firstBlockLines: string[],
+  taskIndex: number,
+  hasCardWrapper: boolean,
+): TaskHeadingInfo => {
+  const numberInfo = extractTaskNumberInfo(rawLines);
+  const numberText = numberInfo?.text ?? "";
+  const numberLineHasText = Boolean(numberText);
+  let descriptionSource = hasCardWrapper
+    ? firstBlockLines
+    : stripTaskNumberFromLines(firstBlockLines);
+  let heading = numberText;
+  let headingLineCount = 0;
+
+  if (numberLineHasText && !hasCardWrapper) {
+    const { continuationLines, descriptionStartIndex } =
+      resolveHeadingParagraph(descriptionSource);
+    headingLineCount = 1 + continuationLines.length;
+    heading = [numberText, ...continuationLines].join("\n").trim();
+    descriptionSource =
+      descriptionStartIndex < descriptionSource.length
+        ? descriptionSource.slice(descriptionStartIndex)
+        : [];
+  }
+
+  const descriptionLines = collectDescriptionLines(descriptionSource);
+
+  if (!heading) {
+    heading = extractHeadingParagraph(descriptionLines);
+  }
+  if (!heading) {
+    const fallbackNumber = numberInfo?.number || String(taskIndex + 1);
+    heading = `Task ${fallbackNumber}`;
+  }
+
+  return {
+    heading,
+    headingLineCount,
+    removeHeadingFromPrompt:
+      !hasCardWrapper && numberLineHasText && descriptionLines.length > 0,
+  };
+};
 
 const serializeClozeSegments = (segments: ClozeSegment[]) => {
   let output = "";
@@ -295,16 +512,6 @@ const parseCardBlock = (lines: string[]): FlashcardPart[] => {
   return parsed[0].parts;
 };
 
-const extractTaskTitle = (lines: string[]) => {
-  const taskLine = lines.find((line) => line.trim() !== "") ?? "";
-  const trimmed = taskLine.trim();
-  const match = trimmed.match(/^(?:-\s*)?(?:\*\*)?(\d+)\)?\s*(?:\*\*)?\s*(.*)$/);
-  if (!match) {
-    return "";
-  }
-  return (match[2] ?? "").trim();
-};
-
 const extractExamMeta = (markdown: string, taskStartLine: number | null) => {
   const lines = normalizeLines(markdown);
   const examStartIndex = lines.findIndex((line) => /^\s*#exam\s*$/i.test(line));
@@ -352,13 +559,32 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
   };
 
   blueprint.tasks = parsed.tasks.map((task, index) => {
-    const taskTitle = extractTaskTitle(task.rawLines);
     const cards: CardBlueprint[] = [];
     const cardBlocks = splitCardBlocksWithHelp(task.cardLines);
-    cardBlocks.forEach((block) => {
-      const trimmedLines = stripLeadingTaskNumberLine(
+    const headingInfo = deriveTaskHeadingInfo(
+      task.rawLines,
+      cardBlocks[0]?.contentLines ?? [],
+      index,
+      task.cardWrapper,
+    );
+    const hasCardContent = cardBlocks.some(
+      (block) => trimEmptyLines(block.contentLines).length > 0,
+    );
+    cardBlocks.forEach((block, blockIndex) => {
+      let trimmedLines = stripLeadingTaskNumberLine(
         trimEmptyLines(block.contentLines),
       );
+      if (
+        blockIndex === 0 &&
+        headingInfo.removeHeadingFromPrompt &&
+        trimmedLines.length > 0
+      ) {
+        const dropCount = Math.min(
+          headingInfo.headingLineCount || 1,
+          trimmedLines.length,
+        );
+        trimmedLines = trimmedLines.slice(dropCount);
+      }
       if (trimmedLines.length === 0) {
         return;
       }
@@ -401,13 +627,20 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
           prompt: stripLeadingTaskNumber(task.prompt),
           answer: task.officialAnswer ?? "",
         });
+      } else if (!hasCardContent) {
+        cards.push({
+          id: createBlueprintId("card"),
+          type: "qa",
+          prompt: headingInfo.heading,
+          answer: "",
+        });
       }
     }
 
     const taskBlueprint: ExamTaskBlueprint = {
       id: createBlueprintId("task"),
       order: index,
-      title: taskTitle,
+      title: headingInfo.heading,
       helpText: joinHelpBlocks(task.helpText),
       useCardWrapper: task.cardWrapper,
       cards,

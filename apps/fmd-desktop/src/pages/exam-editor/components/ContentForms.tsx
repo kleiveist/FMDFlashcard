@@ -80,13 +80,13 @@ const renderPromptField = (
   onPromptChange: (value: string) => void,
 ) => (
   <label className="field">
-    <span className="label">Prompt</span>
+    <span className="label">Task description</span>
     <AutoGrowTextarea
       className="text-input exam-textarea"
       rows={4}
       value={"prompt" in card ? card.prompt : ""}
       onChange={onPromptChange}
-      placeholder="Write the task prompt..."
+      placeholder="Write the task description..."
     />
     {renderFieldError(validation?.fieldErrors.prompt)}
     {renderFieldError(validation?.fieldErrors.syntax)}

@@ -119,17 +119,6 @@ const ContentEditorPanel = ({
             ) : null}
           </header>
 
-          <label className="field">
-            <span className="label">Task heading</span>
-            <input
-              className="text-input"
-              value={activeTask.title}
-              onChange={(event) =>
-                onTaskUpdate(activeTask.id, { title: event.target.value })
-              }
-              placeholder="Optional heading"
-            />
-          </label>
           <HelpEditor
             label="Task help / hint"
             value={activeTask.helpText ?? ""}
