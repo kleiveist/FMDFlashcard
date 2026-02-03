@@ -137,7 +137,7 @@ export const ExamEditorView = ({
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [contentModalOpen, setContentModalOpen] = useState(false);
   const [paletteModalOpen, setPaletteModalOpen] = useState(false);
-  const [taskPropertiesModalOpen, setTaskPropertiesModalOpen] = useState(false);
+  const [propertiesModalOpen, setPropertiesModalOpen] = useState(false);
   const lastLoadedRef = useRef<{ path: string | null; markdown: string | null }>({
     path: null,
     markdown: null,
@@ -149,7 +149,7 @@ export const ExamEditorView = ({
   const isDesktopViewport = useMediaQuery("(min-width: 1201px)", false);
   const paletteOverlayActive = isStudyView && isPaletteOverlayMode;
   const contentPopupActive = isStudyView && isContentPopupMode;
-  const taskPropertiesPopupActive = isStudyView && isContentPopupMode;
+  const propertiesPopupActive = isStudyView && isContentPopupMode;
 
   const validation = useMemo(() => validateExamBlueprint(exam), [exam]);
   const canSave = validation.valid;
@@ -204,10 +204,10 @@ export const ExamEditorView = ({
   }, [contentPopupActive, mode]);
 
   useEffect(() => {
-    if (!taskPropertiesPopupActive || mode !== "structure") {
-      setTaskPropertiesModalOpen(false);
+    if (!propertiesPopupActive || mode !== "structure") {
+      setPropertiesModalOpen(false);
     }
-  }, [taskPropertiesPopupActive, mode]);
+  }, [propertiesPopupActive, mode]);
 
   useEffect(() => {
     if (!paletteOverlayActive || mode !== "structure") {
@@ -216,13 +216,13 @@ export const ExamEditorView = ({
   }, [paletteOverlayActive, mode]);
 
   useEffect(() => {
-    if (!taskPropertiesModalOpen) {
+    if (!propertiesModalOpen) {
       return;
     }
-    if (selection.type !== "task") {
-      setTaskPropertiesModalOpen(false);
+    if (selection.type === "exam") {
+      setPropertiesModalOpen(false);
     }
-  }, [selection.type, taskPropertiesModalOpen]);
+  }, [selection.type, propertiesModalOpen]);
 
   const updateTasks = useCallback(
     (updater: (tasks: ExamTaskBlueprint[]) => ExamTaskBlueprint[]) => {
@@ -963,9 +963,6 @@ export const ExamEditorView = ({
       selection={selection}
       onExamUpdate={handleExamUpdate}
       onTaskUpdate={handleTaskUpdate}
-      onCardUpdate={(taskId, cardId, updates) =>
-        handleCardUpdate(taskId, cardId, updates)
-      }
       onCardTypeChange={handleCardTypeChange}
     />
   );
@@ -973,16 +970,26 @@ export const ExamEditorView = ({
   const handleStructureTaskSelect = useCallback(
     (taskId: string) => {
       setSelection({ type: "task", taskId });
-      if (taskPropertiesPopupActive) {
-        setTaskPropertiesModalOpen(true);
+      if (propertiesPopupActive) {
+        setPropertiesModalOpen(true);
       }
     },
-    [taskPropertiesPopupActive],
+    [propertiesPopupActive],
   );
 
-  const handleTaskPropertiesClose = useCallback(() => {
-    setTaskPropertiesModalOpen(false);
-    setSelection((prev) => (prev.type === "task" ? { type: "exam" } : prev));
+  const handleStructureCardSelect = useCallback(
+    (taskId: string, cardId: string) => {
+      setSelection({ type: "card", taskId, cardId });
+      if (propertiesPopupActive) {
+        setPropertiesModalOpen(true);
+      }
+    },
+    [propertiesPopupActive],
+  );
+
+  const handlePropertiesClose = useCallback(() => {
+    setPropertiesModalOpen(false);
+    setSelection((prev) => (prev.type === "exam" ? prev : { type: "exam" }));
   }, []);
 
   const canvasProps = {
@@ -990,8 +997,7 @@ export const ExamEditorView = ({
     selection,
     validationSummary,
     onSelectTask: handleStructureTaskSelect,
-    onSelectCard: (taskId: string, cardId: string) =>
-      setSelection({ type: "card", taskId, cardId }),
+    onSelectCard: handleStructureCardSelect,
     onCanvasDrop: handleAddTask,
     onTaskDrop: handleAddCardToTask,
     onReorderTask: handleReorderTask,
@@ -1020,11 +1026,19 @@ export const ExamEditorView = ({
 
   const structureSplitLayout = isStudyView && isDesktopViewport;
   const showPropertiesInline = !structureSplitLayout;
-  const inlinePropertiesPanel = showPropertiesInline
-    ? !taskPropertiesPopupActive || selection.type !== "task"
-      ? propertiesPanel
-      : null
-    : null;
+  const inlineSelection =
+    propertiesPopupActive && (selection.type === "task" || selection.type === "card")
+      ? { type: "exam" }
+      : selection;
+  const inlinePropertiesPanel = showPropertiesInline ? (
+    <PropertiesPanel
+      exam={exam}
+      selection={inlineSelection}
+      onExamUpdate={handleExamUpdate}
+      onTaskUpdate={handleTaskUpdate}
+      onCardTypeChange={handleCardTypeChange}
+    />
+  ) : null;
   const topContent = showPropertiesInline
     ? inlinePropertiesPanel || alerts
       ? (
@@ -1066,15 +1080,15 @@ export const ExamEditorView = ({
                 />
               </ModalShell>
             ) : null}
-            {taskPropertiesPopupActive &&
-            taskPropertiesModalOpen &&
-            selection.type === "task" ? (
+            {propertiesPopupActive &&
+            propertiesModalOpen &&
+            selection.type !== "exam" ? (
               <ModalShell
-                isOpen={taskPropertiesModalOpen}
-                title="Task Properties"
-                onClose={handleTaskPropertiesClose}
-                className="task-properties-modal-panel"
-                bodyClassName="task-properties-modal-body"
+                isOpen={propertiesModalOpen}
+                title={selection.type === "card" ? "Card Properties" : "Task Properties"}
+                onClose={handlePropertiesClose}
+                className="properties-modal-panel"
+                bodyClassName="properties-modal-body"
               >
                 {propertiesPanel}
               </ModalShell>

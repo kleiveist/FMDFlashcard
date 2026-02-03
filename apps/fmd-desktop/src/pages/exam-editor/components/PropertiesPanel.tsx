@@ -6,7 +6,6 @@ import type { ExamBlueprint, CardType } from "../../../features/exam-editor/type
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
 import type { ExamEditorSelection } from "../types";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
-import { HelpEditor } from "./HelpEditor";
 
 const CARD_TYPES: CardType[] = ["qa", "tf", "m1", "m2", "cl", "cd", "cld"];
 
@@ -16,9 +15,8 @@ type PropertiesPanelProps = {
   onExamUpdate: (updates: Pick<ExamBlueprint, "title" | "description">) => void;
   onTaskUpdate: (
     taskId: string,
-    updates: { title?: string; helpText?: string; useCardWrapper?: boolean },
+    updates: { title?: string; useCardWrapper?: boolean },
   ) => void;
-  onCardUpdate: (taskId: string, cardId: string, updates: { helpText?: string }) => void;
   onCardTypeChange: (taskId: string, cardId: string, type: CardType) => void;
 };
 
@@ -27,7 +25,6 @@ export const PropertiesPanel = ({
   selection,
   onExamUpdate,
   onTaskUpdate,
-  onCardUpdate,
   onCardTypeChange,
 }: PropertiesPanelProps) => {
   if (selection.type === "task") {
@@ -40,7 +37,7 @@ export const PropertiesPanel = ({
         <header className="panel-header">
           <div>
             <h2>Task properties</h2>
-            <p className="muted">Edit task title and hints.</p>
+            <p className="muted">Edit task title and wrapper.</p>
           </div>
         </header>
         <div className="panel-body">
@@ -57,25 +54,23 @@ export const PropertiesPanel = ({
           </label>
           <div className="field">
             <span className="label">Card wrapper</span>
-            <label className="choice-pill">
-              <input
-                type="checkbox"
-                checked={task.useCardWrapper}
-                onChange={(event) =>
-                  onTaskUpdate(task.id, { useCardWrapper: event.target.checked })
-                }
-              />
-              Wrap task in #card block
+            <label className="choice-row">
+              <span className="switch">
+                <input
+                  type="checkbox"
+                  checked={task.useCardWrapper}
+                  onChange={(event) =>
+                    onTaskUpdate(task.id, { useCardWrapper: event.target.checked })
+                  }
+                />
+                <span className="slider" />
+              </span>
+              <span>Wrap task in #card block</span>
             </label>
             <span className="muted small">
               Applies to the full task, including all parts.
             </span>
           </div>
-          <HelpEditor
-            label="Task help / hint"
-            value={task.helpText ?? ""}
-            onChange={(value) => onTaskUpdate(task.id, { helpText: value })}
-          />
         </div>
       </aside>
     );
@@ -92,7 +87,7 @@ export const PropertiesPanel = ({
         <header className="panel-header">
           <div>
             <h2>Card properties</h2>
-            <p className="muted">Configure type and hints.</p>
+            <p className="muted">Configure card type.</p>
           </div>
         </header>
         <div className="panel-body">
@@ -115,11 +110,6 @@ export const PropertiesPanel = ({
               Changing the type resets card-specific content.
             </span>
           </label>
-          <HelpEditor
-            label="Card help / hint"
-            value={card.helpText ?? ""}
-            onChange={(value) => onCardUpdate(task.id, card.id, { helpText: value })}
-          />
         </div>
       </aside>
     );
