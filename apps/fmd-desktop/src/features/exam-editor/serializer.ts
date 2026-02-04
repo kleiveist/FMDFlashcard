@@ -130,19 +130,18 @@ const serializeCardContent = (card: CardBlueprint) => {
 };
 
 const serializeCardBlock = (card: CardBlueprint, stripTaskNumber: boolean) => {
-  // Keep card help adjacent to its content inside the card scope.
-  const helpLines = serializeHelpBlock(card.helpText);
   const contentLines = serializeCardContent(card);
   const sanitizedContent = stripTaskNumber
     ? stripLeadingTaskNumberLine(contentLines)
     : contentLines;
-  return [...helpLines, ...sanitizedContent];
+  return sanitizedContent;
 };
 
 const serializeTask = (task: ExamTaskBlueprint, index: number) => {
   const lines: string[] = [];
   const title = task.title.trim();
   lines.push(`${index + 1})${title ? ` ${title}` : ""}`);
+  lines.push(...serializeHelpBlock(task.helpText));
   const wrapTask = task.useCardWrapper;
   if (wrapTask) {
     lines.push("#card");
@@ -152,12 +151,11 @@ const serializeTask = (task: ExamTaskBlueprint, index: number) => {
       lines.push("---");
     }
     lines.push(...serializeCardBlock(card, cardIndex === 0));
+    lines.push(...serializeHelpBlock(card.helpText));
   });
   if (wrapTask) {
     lines.push("#");
   }
-  // Place task-level help at the end of the task, outside the card wrapper.
-  lines.push(...serializeHelpBlock(task.helpText));
   return lines;
 };
 

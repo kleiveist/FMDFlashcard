@@ -165,10 +165,11 @@ describe("serializeExamBlueprint", () => {
     const cardEndIndex = markdown.indexOf("\n#\n");
 
     expect(taskHelpIndex).toBeGreaterThan(-1);
+    expect(cardStartIndex).toBeGreaterThan(-1);
     expect(cardHelpIndex).toBeGreaterThan(-1);
+    expect(taskHelpIndex).toBeLessThan(cardStartIndex);
     expect(cardHelpIndex).toBeGreaterThan(cardStartIndex);
-    expect(cardEndIndex).toBeGreaterThan(cardHelpIndex);
-    expect(taskHelpIndex).toBeGreaterThan(cardEndIndex);
+    expect(cardHelpIndex).toBeLessThan(cardEndIndex);
   });
 
   it("omits #card wrapper when disabled", () => {

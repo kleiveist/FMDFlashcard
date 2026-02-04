@@ -168,6 +168,43 @@ End hint
     expect(imported.blueprint.tasks[1]?.helpText).toBe("End hint");
   });
 
+  it("keeps card help separate from task help", () => {
+    const markdown = `
+#exam
+5) Task5
+#help
+Card M1 help
+#helpend
+Task description
+a) Alpha
+-a
+---
+#help
+Card TF help
+#helpend
+Task TF description
+-false
+#help
+Task help
+#helpend
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    if (!task) {
+      throw new Error("Expected task after import.");
+    }
+    expect(task.helpText).toBe("Task help");
+    expect(task.cards[0]?.helpText).toBe("Card M1 help");
+    expect(task.cards[1]?.helpText).toBe("Card TF help");
+  });
+
   it("ignores task help markers inside fenced code blocks", () => {
     const markdown = `
 #exam

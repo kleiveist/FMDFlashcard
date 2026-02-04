@@ -234,8 +234,8 @@
       "userStateById": {
         "58dad9c3-8e03-4476-80ce-ef54dd3766f9": {
           "cardStates": {},
-          "lastLoadedAt": null,
-          "completedPerDay": {}
+          "completedPerDay": {},
+          "lastLoadedAt": null
         }
       },
       "lastActiveUserId": "58dad9c3-8e03-4476-80ce-ef54dd3766f9"

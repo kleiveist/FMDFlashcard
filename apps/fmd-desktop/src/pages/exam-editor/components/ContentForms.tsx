@@ -266,13 +266,13 @@ const ClozeCardForm = ({
     <div className="card-form">
       {renderPromptField(card, validation, onPromptChange)}
       <div className="hint-box">
-      {card.type === "cl" ? (
-        <p>Use %answer% to create typed blanks.</p>
-      ) : card.type === "cd" ? (
-        <p>Use "token" to create drag blanks.</p>
-      ) : (
-        <p>Combine %blanks% with "tokens" for mixed cloze.</p>
-      )}
+        {card.type === "cl" ? (
+          <p>Use %answer% to create typed blanks.</p>
+        ) : card.type === "cd" ? (
+          <p>Use "token" to create drag blanks.</p>
+        ) : (
+          <p>Combine %blanks% with "tokens" for mixed cloze.</p>
+        )}
       </div>
       <div className="cloze-preview">
         <div className="cloze-preview-header">
