@@ -193,7 +193,7 @@ const resolveProfileStatus = (
     if (!spacedRepetition.spacedRepetitionSelectedUserId) {
       return { message: "No user selected.", tone: "error" };
     }
-    if (!spacedRepetition.spacedRepetitionActiveUserId) {
+    if (!spacedRepetition.spacedRepetitionActiveUser) {
       return { message: "No active user loaded.", tone: "error" };
     }
   }

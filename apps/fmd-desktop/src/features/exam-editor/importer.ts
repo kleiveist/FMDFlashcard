@@ -6,14 +6,13 @@
  */
 
 import { parseExamTasks, splitAnswerBlock } from "../../lib/exam";
-import { falseTokens, trueTokens } from "../../lib/flashcardKeywords";
 import type {
   ClozeSegment,
   FlashcardPart,
   MultipleChoiceCard,
   TrueFalseCard,
 } from "../../lib/flashcards";
-import { hasClozeMarker, parseFlashcards, splitAnswerCard } from "../../lib/flashcards";
+import { hasClozeMarker, parseFlashcards } from "../../lib/flashcards";
 import { findTableLineIndices } from "../../lib/markdownTables";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
@@ -83,8 +82,6 @@ const separatorLinePattern = /^\s*---\s*$/;
 const fencePattern = /^\s*(```|~~~)/;
 const cardStartPattern = /^\s*#card\s*$/i;
 const cardEndPattern = /^\s*#(?:endcard)?\s*$/i;
-const optionPattern = /^([A-Za-z])\)\s*(.*)$/;
-const markerPattern = /^-([A-Za-z])$/;
 const taskLinePattern = /^(?:-\s*)?(?:\*\*)?(\d+)\)?\s*(?:\*\*)?\s*(.*)$/;
 
 const isHelpStartLine = (line: string) => helpStartPattern.test(line);
@@ -92,43 +89,6 @@ const isHelpEndLine = (line: string) => helpEndPattern.test(line);
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 const isCardBoundaryLine = (line: string) =>
   cardStartPattern.test(line) || cardEndPattern.test(line);
-const isOptionLine = (line: string) => optionPattern.test(line.trim());
-const isCorrectMarkerLine = (line: string) => markerPattern.test(line.trim());
-const isAnswerMarkerLine = (line: string) =>
-  Boolean(splitAnswerCard([line], { answerMatch: "line-start" }));
-
-const normalizeKeyword = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "");
-
-const normalizedTrueTokens = new Set(trueTokens.map(normalizeKeyword));
-const normalizedFalseTokens = new Set(falseTokens.map(normalizeKeyword));
-
-const normalizeTrueFalseMarker = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed.startsWith("-")) {
-    return null;
-  }
-  const rawToken = trimmed.slice(1).trim();
-  if (!rawToken) {
-    return null;
-  }
-  const cleaned = rawToken.replace(/[.,;:!?]+$/g, "");
-  const normalized = normalizeKeyword(cleaned);
-  if (normalizedTrueTokens.has(normalized)) {
-    return "true";
-  }
-  if (normalizedFalseTokens.has(normalized)) {
-    return "false";
-  }
-  return null;
-};
-
-const isTrueFalseMarkerLine = (line: string) =>
-  normalizeTrueFalseMarker(line) !== null;
 
 type TaskHeadingInfo = {
   heading: string;
@@ -185,9 +145,6 @@ const resolveTaskHelpBlock = (
       !block.inCard &&
       isHelpDirectlyAfterHeader(lines, headerIndex, block.startIndex),
   );
-  if (primary) {
-    return primary;
-  }
 
   const helpLineIndices = new Set<number>();
   helpBlocks.forEach((block) => {
@@ -212,17 +169,90 @@ const resolveTaskHelpBlock = (
     break;
   }
 
+  let secondary: HelpBlockInfo | null = null;
   for (let index = helpBlocks.length - 1; index >= 0; index -= 1) {
     const block = helpBlocks[index];
     if (block.inCard) {
       continue;
     }
     if (lastContentIndex === -1 || block.endIndex >= lastContentIndex) {
-      return block;
+      secondary = block;
+      break;
     }
   }
 
-  return null;
+  if (!primary) {
+    return secondary;
+  }
+  if (!secondary || primary === secondary) {
+    return primary;
+  }
+
+  const tableLineIndices = findTableLineIndices(lines);
+  const lineBlockIndex: number[] = Array(lines.length).fill(-1);
+  const blockHasContent: boolean[] = [];
+  let inFence = false;
+  let fenceToken = "";
+  let blockIndex = 0;
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      lineBlockIndex[index] = blockIndex;
+      if (!helpLineIndices.has(index) && line.trim() !== "") {
+        blockHasContent[blockIndex] = true;
+      }
+      return;
+    }
+
+    if (!inFence && isSeparatorLine(line) && !tableLineIndices.has(index)) {
+      lineBlockIndex[index] = -1;
+      blockIndex += 1;
+      return;
+    }
+
+    lineBlockIndex[index] = blockIndex;
+    if (!helpLineIndices.has(index) && line.trim() !== "") {
+      blockHasContent[blockIndex] = true;
+    }
+  });
+
+  const blockToCardIndex = new Map<number, number>();
+  let cardIndex = 0;
+  for (let index = 0; index <= blockIndex; index += 1) {
+    if (blockHasContent[index]) {
+      blockToCardIndex.set(index, cardIndex);
+      cardIndex += 1;
+    }
+  }
+
+  const scoreAlignment = (candidate: HelpBlockInfo) => {
+    const remaining = helpBlocks.filter((block) => block !== candidate);
+    let score = 0;
+    remaining.forEach((block, index) => {
+      const blockIndexForLine = lineBlockIndex[block.startIndex] ?? -1;
+      const mappedCardIndex = blockToCardIndex.get(blockIndexForLine);
+      if (mappedCardIndex === index) {
+        score += 1;
+      }
+    });
+    return score;
+  };
+
+  const primaryScore = scoreAlignment(primary);
+  const secondaryScore = scoreAlignment(secondary);
+  if (secondaryScore > primaryScore) {
+    return secondary;
+  }
+  return primary;
 };
 
 const deriveTaskHeadingInfo = (
@@ -428,7 +458,7 @@ const stripHelpBlocksFromLines = (lines: string[]) => {
   let inFence = false;
   let fenceToken = "";
 
-  lines.forEach((line, index) => {
+  lines.forEach((line) => {
     const trimmed = line.trimStart();
     const fenceMatch = trimmed.match(fencePattern);
     if (fenceMatch) {

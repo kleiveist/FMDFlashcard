@@ -191,7 +191,13 @@ export const serializeExamBlueprint = (exam: ExamBlueprint) => {
       while (trimmed.length > 0 && trimmed[trimmed.length - 1]?.trim() === "") {
         trimmed.pop();
       }
-      lines.push(...trimmed, "---");
+      const lastLine = trimmed[trimmed.length - 1] ?? "";
+      const endsWithHelp = /^\s*#helpend\s*$/i.test(lastLine);
+      if (endsWithHelp) {
+        lines.push(...trimmed, "", "---");
+      } else {
+        lines.push(...trimmed, "---");
+      }
     });
   lines.push("#examend");
   return lines.join("\n");

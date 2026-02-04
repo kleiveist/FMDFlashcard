@@ -46,9 +46,7 @@ const UserVaultProfileSetupModal = ({
   const activeUserName = spacedRepetition.spacedRepetitionActiveUser?.trim() ?? "";
   const hasValidRoot =
     Boolean(userVault.resolvedPath) && userVault.status === "idle";
-  const hasActiveUser = Boolean(
-    spacedRepetition.spacedRepetitionActiveUserId && activeUserName,
-  );
+  const hasActiveUser = Boolean(activeUserName);
   const canClose = hasValidRoot && hasActiveUser;
   return (
     <ModalShell
