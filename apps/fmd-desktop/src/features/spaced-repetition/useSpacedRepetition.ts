@@ -794,7 +794,8 @@ const storageKey = useMemo(
       });
       setSpacedRepetitionUsers((prev) => {
         const next = prev.filter((user) => user.id !== deletedId);
-        const nextSelected = next[0]?.id ?? "";
+        const clearSelection = spacedRepetitionActiveUserId === deletedId;
+        const nextSelected = clearSelection ? "" : next[0]?.id ?? "";
         if (spacedRepetitionActiveUserId === deletedId) {
           setSpacedRepetitionActiveUserId(null);
         }

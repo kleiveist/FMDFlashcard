@@ -222,10 +222,34 @@
         }
       },
       "lastActiveUserId": "8968e153-ed4c-476d-939a-d613b472d174"
+    },
+    "565b3dd9": {
+      "users": [
+        {
+          "id": "58dad9c3-8e03-4476-80ce-ef54dd3766f9",
+          "name": "Ly",
+          "createdAt": "2026-02-04T12:35:06.660Z"
+        }
+      ],
+      "userStateById": {
+        "58dad9c3-8e03-4476-80ce-ef54dd3766f9": {
+          "cardStates": {},
+          "lastLoadedAt": null,
+          "completedPerDay": {}
+        }
+      },
+      "lastActiveUserId": "58dad9c3-8e03-4476-80ce-ef54dd3766f9"
+    },
+    "5bdfd7b4": {
+      "users": [],
+      "userStateById": {},
+      "lastActiveUserId": null
     }
   },
   "migratedVaultIds": [
     "b19bb94f",
-    "f636d0e3"
+    "f636d0e3",
+    "565b3dd9",
+    "5bdfd7b4"
   ]
 }

@@ -5,80 +5,18 @@
  * - Rendert Onboarding-Gates fuer den Wallet-Flow.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { UserVaultState } from "../features/user-vault/useUserVault";
 import { ModalShell } from "./ModalShell";
-import {
-  ActivePathSection,
-  SyncProviderSection,
-} from "./settings/DataSyncTabContent";
-import {
-  UserRegistryControls,
-  type UserRegistryControlsProps,
-} from "./UserToolsPanel";
-import { SrDeleteModal } from "../pages/spaced-repetition/components/SrDeleteModal";
+import { SyncProviderSection } from "./settings/DataSyncTabContent";
+import { ProfileSetupView } from "./settings/ProfileSetupSections";
+import { type UserRegistryControlsProps } from "./UserToolsPanel";
 
 type GateModalProps = {
   isOpen: boolean;
   onClose: () => void;
   userVault: UserVaultState;
   spacedRepetition: UserRegistryControlsProps["spacedRepetition"];
-};
-
-const UserRegistryModalBody = ({
-  spacedRepetition,
-}: {
-  spacedRepetition: UserRegistryControlsProps["spacedRepetition"];
-}) => {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
-  const selectedUser = spacedRepetition.spacedRepetitionUsers.find(
-    (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
-  );
-  const deleteTargetName = selectedUser?.name ?? "";
-  const deleteInputValue = deleteConfirmInput.trim();
-  const canConfirmDelete =
-    Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
-
-  const handleDeleteOpen = () => {
-    if (!selectedUser) {
-      return;
-    }
-    setDeleteConfirmInput("");
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleDeleteCancel = () => {
-    setIsDeleteDialogOpen(false);
-    setDeleteConfirmInput("");
-  };
-
-  const handleDeleteConfirm = () => {
-    if (!canConfirmDelete) {
-      return;
-    }
-    spacedRepetition.handleSpacedRepetitionDeleteUser();
-    setIsDeleteDialogOpen(false);
-    setDeleteConfirmInput("");
-  };
-
-  return (
-    <>
-      <UserRegistryControls
-        spacedRepetition={spacedRepetition}
-        handleDeleteOpen={handleDeleteOpen}
-      />
-      <SrDeleteModal
-        isDeleteDialogOpen={isDeleteDialogOpen}
-        deleteTargetName={deleteTargetName}
-        deleteConfirmInput={deleteConfirmInput}
-        setDeleteConfirmInput={setDeleteConfirmInput}
-        handleDeleteCancel={handleDeleteCancel}
-        handleDeleteConfirm={handleDeleteConfirm}
-        canConfirmDelete={canConfirmDelete}
-      />
-    </>
-  );
 };
 
 const useFocusRestore = (isOpen: boolean) => {
@@ -98,52 +36,47 @@ const useFocusRestore = (isOpen: boolean) => {
   }, [isOpen]);
 };
 
-export const UserVaultCustomPathModal = ({
+const UserVaultProfileSetupModal = ({
   isOpen,
   onClose,
   userVault,
   spacedRepetition,
 }: GateModalProps) => {
   useFocusRestore(isOpen);
-  return (
-    <ModalShell
-      isOpen={isOpen}
-      title="Active path required"
-      onClose={onClose}
-      bodyClassName="hub-modal-scroll"
-    >
-      <div className="settings-tab-content">
-        <ActivePathSection
-          userVault={userVault}
-          label="ACTIVE PATH"
-          helperText="Pick a folder outside the vault if you prefer."
-          allowPickWhenAuto
-        />
-        <UserRegistryModalBody spacedRepetition={spacedRepetition} />
-      </div>
-    </ModalShell>
+  const activeUserName = spacedRepetition.spacedRepetitionActiveUser?.trim() ?? "";
+  const hasValidRoot =
+    Boolean(userVault.resolvedPath) && userVault.status === "idle";
+  const hasActiveUser = Boolean(
+    spacedRepetition.spacedRepetitionActiveUserId && activeUserName,
   );
-};
-
-export const UserVaultProfileModal = ({
-  isOpen,
-  onClose,
-  spacedRepetition,
-}: GateModalProps) => {
-  useFocusRestore(isOpen);
+  const canClose = hasValidRoot && hasActiveUser;
   return (
     <ModalShell
       isOpen={isOpen}
       title="Profile setup"
       onClose={onClose}
+      canClose={canClose}
+      initialFocusSelector='[data-autofocus="profile-source"]'
       bodyClassName="hub-modal-scroll"
     >
       <div className="settings-tab-content">
-        <UserRegistryModalBody spacedRepetition={spacedRepetition} />
+        <ProfileSetupView
+          userVault={userVault}
+          spacedRepetition={spacedRepetition}
+          autoFocusSource
+        />
       </div>
     </ModalShell>
   );
 };
+
+export const UserVaultCustomPathModal = (props: GateModalProps) => (
+  <UserVaultProfileSetupModal {...props} />
+);
+
+export const UserVaultProfileModal = (props: GateModalProps) => (
+  <UserVaultProfileSetupModal {...props} />
+);
 
 export const UserVaultSyncProviderModal = ({
   isOpen,

@@ -4,12 +4,12 @@
   "name": "Kleif",
   "createdAt": "2026-01-14T00:00:00.000Z",
   "settings": {
-    "active_note_path": "Test/IDBS01-TestL2.md",
+    "active_note_path": null,
     "vault_path": "/home/kleif/Projects/EXAM",
     "recent_vaults": [
       {
         "path": "/home/kleif/Projects/EXAM",
-        "lastOpenedAt": "2026-01-26T07:47:29.920Z"
+        "lastOpenedAt": "2026-02-04T12:35:50.347Z"
       },
       {
         "path": "/run/media/kleif/T7-1TB/workspace/IUFS",
@@ -20,11 +20,6 @@
         "lastOpenedAt": "2026-01-22T07:32:59.542Z"
       }
     ],
-    "user_vault_mode": "auto",
-    "user_vault_custom_path": "/home/kleif/Projects/FMDFlashcard/docs/dev/test/archive/test_editor/user",
-    "user_vault_last_path": null,
-    "user_vault_selected_auto_path": null,
-    "user_vault_selected_custom_path": null,
     "theme": "light",
     "accent_color": "#77767B",
     "markdownEditor": {

@@ -26,11 +26,8 @@ import { useState } from "react";
 import type { UserVaultImportStrategy } from "../../lib/userVault";
 import type { UserVaultState } from "../../features/user-vault/useUserVault";
 import { isSyncProviderEnabled, isWordPressEnabled } from "../../lib/featureFlags";
-import {
-  UserRegistryControls,
-  type UserRegistryControlsProps,
-} from "../UserToolsPanel";
-import { SrDeleteModal } from "../../pages/spaced-repetition/components/SrDeleteModal";
+import type { UserRegistryControlsProps } from "../UserToolsPanel";
+import { ProfileSetupView } from "./ProfileSetupSections";
 
 type AppLanguage = "de" | "en";
 
@@ -58,89 +55,6 @@ type DataSyncSettingsViewProps = {
   userVault: UserVaultState;
   spacedRepetition: UserRegistryControlsProps["spacedRepetition"];
   mode?: DataSyncSettingsViewMode;
-};
-
-
-type UserVaultModeSectionProps = {
-  userVault: UserVaultState;
-};
-
-const UserVaultModeSection = ({ userVault }: UserVaultModeSectionProps) => (
-  <div className="setting-row">
-    <span className="label">Profile Source</span>
-    <div className="pill-grid">
-      <button
-        type="button"
-        className={`pill pill-button ${userVault.mode === "auto" ? "active" : ""}`}
-        aria-pressed={userVault.mode === "auto"}
-        onClick={() => userVault.handleModeChange("auto")}
-      >
-        Auto (Vault/profile)
-      </button>
-      <button
-        type="button"
-        className={`pill pill-button ${userVault.mode === "custom" ? "active" : ""}`}
-        aria-pressed={userVault.mode === "custom"}
-        onClick={() => userVault.handleModeChange("custom")}
-      >
-        Custom path
-      </button>
-      <button type="button" className="pill pill-button" disabled>
-        Sync provider
-      </button>
-    </div>
-    <span className="helper-text">
-      Auto uses the current vault profile root. Custom stays fixed across vault switches.
-    </span>
-  </div>
-);
-
-type ActivePathSectionProps = {
-  userVault: UserVaultState;
-  label?: string;
-  helperText?: string;
-  allowPickWhenAuto?: boolean;
-};
-
-export const ActivePathSection = ({
-  userVault,
-  label = "Profile root",
-  helperText,
-  allowPickWhenAuto = false,
-}: ActivePathSectionProps) => {
-  const isCustomMode = userVault.mode === "custom";
-  const canPick = allowPickWhenAuto ? !userVault.isBusy : isCustomMode && !userVault.isBusy;
-  const rootPath = isCustomMode ? userVault.customRootPath : userVault.autoRootPath;
-  const resolvedHelper =
-    helperText ??
-    (isCustomMode
-      ? "Pick a profile root folder that contains users."
-      : "Select a vault to enable Auto profile root.");
-
-  const handlePickPath = async () => {
-    if (allowPickWhenAuto && userVault.mode !== "custom") {
-      userVault.handleModeChange("custom");
-    }
-    await userVault.handlePickCustomPath();
-  };
-
-  return (
-    <div className="setting-row">
-      <span className="label">{label}</span>
-      <div className="setting-inline">
-        <span className="value path-value">{rootPath ?? "—"}</span>
-        <button
-          type="button"
-          className="ghost small"
-          onClick={handlePickPath}
-          disabled={!canPick}
-        >
-          Change
-        </button>
-      </div>
-      <span className="helper-text">{resolvedHelper}</span>
-    </div>
-  );
 };
 
 type SyncProviderSectionProps = {
@@ -176,37 +90,6 @@ export const DataSyncSettingsView = ({
   mode = "settings",
 }: DataSyncSettingsViewProps) => {
   const isOnboarding = mode === "onboarding";
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
-  const selectedUser = spacedRepetition.spacedRepetitionUsers.find(
-    (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
-  );
-  const deleteTargetName = selectedUser?.name ?? "";
-  const deleteInputValue = deleteConfirmInput.trim();
-  const canConfirmDelete =
-    Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
-
-  const handleDeleteOpen = () => {
-    if (!selectedUser) {
-      return;
-    }
-    setDeleteConfirmInput("");
-    setIsDeleteDialogOpen(true);
-  };
-
-  const handleDeleteCancel = () => {
-    setIsDeleteDialogOpen(false);
-    setDeleteConfirmInput("");
-  };
-
-  const handleDeleteConfirm = () => {
-    if (!canConfirmDelete) {
-      return;
-    }
-    spacedRepetition.handleSpacedRepetitionDeleteUser();
-    setIsDeleteDialogOpen(false);
-    setDeleteConfirmInput("");
-  };
 
   return (
     <>
@@ -225,38 +108,8 @@ export const DataSyncSettingsView = ({
         </section>
       ) : null}
       {!isOnboarding ? (
-        <UserVaultModeSection userVault={userVault} />
+        <ProfileSetupView userVault={userVault} spacedRepetition={spacedRepetition} />
       ) : null}
-      {!isOnboarding ? (
-        <ActivePathSection userVault={userVault} />
-      ) : null}
-      {!isOnboarding ? (
-        <UserRegistryControls
-          spacedRepetition={spacedRepetition}
-          handleDeleteOpen={handleDeleteOpen}
-        />
-      ) : null}
-      {userVault.migrationWarning ? (
-        <div className="setting-row">
-          <span className="label">Warning</span>
-          <span className="helper-text">{userVault.migrationWarning}</span>
-        </div>
-      ) : null}
-      {userVault.error ? (
-        <div className="setting-row">
-          <span className="label">Status</span>
-          <span className="helper-text error-text">{userVault.error}</span>
-        </div>
-      ) : null}
-      <SrDeleteModal
-        isDeleteDialogOpen={isDeleteDialogOpen}
-        deleteTargetName={deleteTargetName}
-        deleteConfirmInput={deleteConfirmInput}
-        setDeleteConfirmInput={setDeleteConfirmInput}
-        handleDeleteCancel={handleDeleteCancel}
-        handleDeleteConfirm={handleDeleteConfirm}
-        canConfirmDelete={canConfirmDelete}
-      />
     </>
   );
 };

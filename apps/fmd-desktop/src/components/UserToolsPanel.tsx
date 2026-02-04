@@ -110,12 +110,20 @@ export type UserRegistryControlsProps = {
   spacedRepetition: UserRegistryState;
   handleDeleteOpen: () => void;
   showActiveUser?: boolean;
+  disableCreate?: boolean;
+  disableLoad?: boolean;
+  disableDelete?: boolean;
+  disableSelect?: boolean;
 };
 
 export const UserRegistryControls = ({
   spacedRepetition,
   handleDeleteOpen,
   showActiveUser = true,
+  disableCreate = false,
+  disableLoad = false,
+  disableDelete = false,
+  disableSelect = false,
 }: UserRegistryControlsProps) => (
   <>
     {showActiveUser ? (
@@ -137,6 +145,7 @@ export const UserRegistryControls = ({
           spacedRepetition.setSpacedRepetitionSelectedUserId(event.target.value)
         }
         aria-label="Select user"
+        disabled={disableSelect}
       >
         <option value="">Select user</option>
         {spacedRepetition.spacedRepetitionUsers.map((user) => (
@@ -166,6 +175,7 @@ export const UserRegistryControls = ({
           type="button"
           className="ghost small"
           onClick={spacedRepetition.handleSpacedRepetitionCreateUser}
+          disabled={disableCreate}
         >
           Create
         </button>
@@ -183,7 +193,9 @@ export const UserRegistryControls = ({
           type="button"
           className="ghost small"
           onClick={spacedRepetition.handleSpacedRepetitionLoadUser}
-          disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
+          disabled={
+            disableLoad || !spacedRepetition.spacedRepetitionSelectedUserId
+          }
         >
           Load
         </button>
@@ -191,7 +203,9 @@ export const UserRegistryControls = ({
           type="button"
           className="ghost small"
           onClick={handleDeleteOpen}
-          disabled={!spacedRepetition.spacedRepetitionSelectedUserId}
+          disabled={
+            disableDelete || !spacedRepetition.spacedRepetitionSelectedUserId
+          }
         >
           Delete
         </button>

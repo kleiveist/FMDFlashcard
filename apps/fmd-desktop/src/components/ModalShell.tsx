@@ -6,7 +6,7 @@
  */
 
 import type { KeyboardEvent, ReactNode } from "react";
-import { useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { CloseIcon } from "./icons";
@@ -18,6 +18,8 @@ type ModalShellProps = {
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  canClose?: boolean;
+  initialFocusSelector?: string;
 };
 
 const focusableSelector = [
@@ -36,10 +38,18 @@ export const ModalShell = ({
   children,
   className,
   bodyClassName,
+  canClose = true,
+  initialFocusSelector,
 }: ModalShellProps) => {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const handleClose = useCallback(() => {
+    if (!canClose) {
+      return;
+    }
+    onClose();
+  }, [canClose, onClose]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -49,16 +59,25 @@ export const ModalShell = ({
       id: `modal-shell-${titleId}`,
       priority: 240,
       isActive: () => true,
-      onClose,
+      onClose: handleClose,
     });
-  }, [isOpen, onClose, titleId]);
+  }, [handleClose, isOpen, titleId]);
 
   useEffect(() => {
     if (!isOpen) {
       return;
     }
-    closeButtonRef.current?.focus();
-  }, [isOpen]);
+    const panel = panelRef.current;
+    const focusTarget =
+      (initialFocusSelector && panel
+        ? panel.querySelector<HTMLElement>(initialFocusSelector)
+        : null) ?? closeButtonRef.current;
+    if (focusTarget?.hasAttribute("disabled")) {
+      panel?.querySelector<HTMLElement>(focusableSelector)?.focus();
+      return;
+    }
+    focusTarget?.focus();
+  }, [initialFocusSelector, isOpen]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Tab") {
@@ -106,7 +125,7 @@ export const ModalShell = ({
     .filter(Boolean)
     .join(" ");
   const modal = (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+    <div className="modal-backdrop" role="presentation" onClick={handleClose}>
       <div
         ref={panelRef}
         className={panelClassName}
@@ -124,8 +143,9 @@ export const ModalShell = ({
             ref={closeButtonRef}
             type="button"
             className="modal-panel-close"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
+            disabled={!canClose}
           >
             <CloseIcon />
           </button>

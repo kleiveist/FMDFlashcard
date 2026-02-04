@@ -17,9 +17,15 @@
         }
       },
       "lastActiveUserId": "39a69f2c-6ff6-4602-bf4b-280784f1aa18"
+    },
+    "565b3dd9": {
+      "users": [],
+      "userStateById": {},
+      "lastActiveUserId": null
     }
   },
   "migratedVaultIds": [
-    "5bdfd7b4"
+    "5bdfd7b4",
+    "565b3dd9"
   ]
 }
