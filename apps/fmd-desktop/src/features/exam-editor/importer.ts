@@ -77,9 +77,6 @@ const stripLeadingTaskNumberLine = (lines: string[]) => {
   return next;
 };
 
-const stripLeadingTaskNumber = (text: string) =>
-  stripLeadingTaskNumberLine(text.replace(/\r\n?/g, "\n").split("\n")).join("\n");
-
 const helpStartPattern = /^\s*#help\s*$/;
 const helpEndPattern = /^\s*#helpend\s*$/;
 const separatorLinePattern = /^\s*---\s*$/;
@@ -132,98 +129,6 @@ const normalizeTrueFalseMarker = (value: string) => {
 
 const isTrueFalseMarkerLine = (line: string) =>
   normalizeTrueFalseMarker(line) !== null;
-
-const collectDescriptionLines = (lines: string[]) => {
-  const tableLineIndices = findTableLineIndices(lines);
-  const output: string[] = [];
-  let inFence = false;
-  let fenceToken = "";
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    const fenceMatch = line.trimStart().match(fencePattern);
-    if (fenceMatch) {
-      if (inFence && fenceMatch[1] === fenceToken) {
-        inFence = false;
-        fenceToken = "";
-      } else if (!inFence) {
-        inFence = true;
-        fenceToken = fenceMatch[1] ?? "";
-      }
-      output.push(line);
-      continue;
-    }
-
-    if (inFence || tableLineIndices.has(index)) {
-      output.push(line);
-      continue;
-    }
-
-    if (
-      isCardBoundaryLine(line) ||
-      isAnswerMarkerLine(line) ||
-      isTrueFalseMarkerLine(line) ||
-      isOptionLine(line) ||
-      isCorrectMarkerLine(line) ||
-      hasClozeMarker(line)
-    ) {
-      break;
-    }
-
-    output.push(line);
-  }
-
-  return trimEmptyLines(output);
-};
-
-type HeadingParagraphInfo = {
-  text: string;
-  lineCount: number;
-};
-
-const isTaskNumberLine = (line: string) => taskLinePattern.test(line.trim());
-
-const extractHeadingParagraph = (lines: string[]): HeadingParagraphInfo => {
-  const tableLineIndices = findTableLineIndices(lines);
-  const headingLines: string[] = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (headingLines.length === 0 && isTaskNumberLine(line)) {
-      break;
-    }
-    if (line.trim() === "") {
-      break;
-    }
-    if (tableLineIndices.has(index)) {
-      break;
-    }
-    if (
-      isCardBoundaryLine(line) ||
-      isAnswerMarkerLine(line) ||
-      isTrueFalseMarkerLine(line) ||
-      isOptionLine(line) ||
-      isCorrectMarkerLine(line) ||
-      hasClozeMarker(line)
-    ) {
-      break;
-    }
-    headingLines.push(line);
-  }
-  const text = trimEmptyLines(headingLines).join("\n").trim();
-  return { text, lineCount: headingLines.length };
-};
-
-const stripTaskNumberFromLines = (lines: string[]) => {
-  const index = lines.findIndex((line) => line.trim() !== "");
-  if (index === -1) {
-    return lines;
-  }
-  const match = lines[index]?.trim().match(taskLinePattern);
-  if (!match) {
-    return lines;
-  }
-  return lines.slice(index + 1);
-};
 
 type TaskHeadingInfo = {
   heading: string;
@@ -320,104 +225,17 @@ const resolveTaskHelpBlock = (
   return null;
 };
 
-const resolveHeadingParagraph = (lines: string[], expectedTaskNumber?: string) => {
-  const tableLineIndices = findTableLineIndices(lines);
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (expectedTaskNumber) {
-      const match = line.trim().match(taskLinePattern);
-      if (match && (match[1] ?? "") === expectedTaskNumber) {
-        // Duplicate task numbers (e.g. "1) Question ...") belong to the prompt/description,
-        // not the task title/heading continuation.
-        return {
-          continuationLines: lines.slice(0, index),
-          descriptionStartIndex: index,
-        };
-      }
-    }
-    if (line.trim() === "") {
-      return {
-        continuationLines: lines.slice(0, index),
-        descriptionStartIndex: index + 1,
-      };
-    }
-    if (line.trimStart().match(fencePattern)) {
-      return {
-        continuationLines: lines.slice(0, index),
-        descriptionStartIndex: index,
-      };
-    }
-    if (tableLineIndices.has(index)) {
-      return {
-        continuationLines: lines.slice(0, index),
-        descriptionStartIndex: index,
-      };
-    }
-    if (
-      isCardBoundaryLine(line) ||
-      isAnswerMarkerLine(line) ||
-      isTrueFalseMarkerLine(line) ||
-      isOptionLine(line) ||
-      isCorrectMarkerLine(line) ||
-      hasClozeMarker(line)
-    ) {
-      return {
-        continuationLines: lines.slice(0, index),
-        descriptionStartIndex: lines.length,
-      };
-    }
-  }
-  return {
-    continuationLines: lines.slice(),
-    descriptionStartIndex: lines.length,
-  };
-};
-
 const deriveTaskHeadingInfo = (
   rawLines: string[],
-  firstBlockLines: string[],
-  taskIndex: number,
   hasCardWrapper: boolean,
 ): TaskHeadingInfo => {
   const numberInfo = extractTaskNumberInfo(rawLines);
-  const numberText = numberInfo?.text ?? "";
-  const numberLineHasText = Boolean(numberText);
-  let descriptionSource = hasCardWrapper
-    ? firstBlockLines
-    : stripTaskNumberFromLines(firstBlockLines);
-  let heading = numberText;
-  let headingLineCount = 0;
-
-  if (numberLineHasText && !hasCardWrapper) {
-    const { continuationLines, descriptionStartIndex } =
-      resolveHeadingParagraph(descriptionSource, numberInfo?.number);
-    headingLineCount = 1 + continuationLines.length;
-    heading = [numberText, ...continuationLines].join("\n").trim();
-    descriptionSource =
-      descriptionStartIndex < descriptionSource.length
-        ? descriptionSource.slice(descriptionStartIndex)
-        : [];
-  }
-
-  const descriptionLines = collectDescriptionLines(descriptionSource);
-
-  if (!heading) {
-    const paragraph = extractHeadingParagraph(descriptionLines);
-    if (paragraph.text) {
-      heading = paragraph.text;
-      headingLineCount = paragraph.lineCount;
-    }
-  }
-  if (!heading) {
-    const fallbackNumber = numberInfo?.number || String(taskIndex + 1);
-    heading = `Task ${fallbackNumber}`;
-  }
-
+  const heading = (numberInfo?.text ?? "").trim();
+  const numberLineHasText = Boolean(heading);
   return {
     heading,
-    headingLineCount,
-    removeHeadingFromPrompt:
-      !hasCardWrapper && numberLineHasText && descriptionLines.length > 0,
+    headingLineCount: numberLineHasText ? 1 : 0,
+    removeHeadingFromPrompt: !hasCardWrapper && numberLineHasText,
   };
 };
 
@@ -755,12 +573,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     const cardSourceLines =
       task.cardLines.length > 0 ? task.cardLines : rawLines;
     const cardBlocks = splitCardBlocks(stripHelpBlocksFromLines(cardSourceLines));
-    const headingInfo = deriveTaskHeadingInfo(
-      rawLines,
-      cardBlocks[0]?.contentLines ?? [],
-      index,
-      task.cardWrapper,
-    );
+    const headingInfo = deriveTaskHeadingInfo(rawLines, task.cardWrapper);
     let hasCardContent = false;
     let cardHelpIndex = 0;
     const pushCard = (card: CardBlueprint) => {
@@ -822,17 +635,27 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
 
     if (cards.length === 0) {
       if (task.officialAnswer !== undefined) {
+        let fallbackLines = stripLeadingTaskNumberLine(
+          trimEmptyLines(normalizeLines(task.prompt)),
+        );
+        if (headingInfo.removeHeadingFromPrompt && fallbackLines.length > 0) {
+          const dropCount = Math.min(
+            headingInfo.headingLineCount || 1,
+            fallbackLines.length,
+          );
+          fallbackLines = fallbackLines.slice(dropCount);
+        }
         pushCard({
           id: createBlueprintId("card"),
           type: "qa",
-          prompt: stripLeadingTaskNumber(task.prompt),
+          prompt: fallbackLines.join("\n").trim(),
           answer: task.officialAnswer ?? "",
         });
       } else if (!hasCardContent) {
         pushCard({
           id: createBlueprintId("card"),
           type: "qa",
-          prompt: headingInfo.heading,
+          prompt: "",
           answer: "",
         });
       }

@@ -105,6 +105,32 @@ Answer: B
     expect(serialized).not.toContain("\n2) Another question");
   });
 
+  it("keeps heading separate from description", () => {
+    const markdown = `
+#exam
+2) Task heading
+Task description
+Answer: A
+#examend
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    if (!task) {
+      throw new Error("Expected task after import.");
+    }
+    expect(task.title).toBe("Task heading");
+    const card = task.cards[0];
+    if (card?.type === "qa") {
+      expect(card.prompt).toBe("Task description");
+    }
+  });
+
   it("imports cld tasks with tables and tokens", () => {
     const markdown = `
 #exam
