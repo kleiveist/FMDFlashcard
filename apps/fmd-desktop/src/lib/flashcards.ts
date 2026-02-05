@@ -1045,18 +1045,23 @@ const parseCardLines = (
   if (questionIndex === -1) {
     return null;
   }
-  const question = cardLines[questionIndex].trim();
-  const bodyLines = cardLines.slice(questionIndex + 1);
+  const questionLine = cardLines[questionIndex];
+  const questionOption = parseOptionHeader(questionLine);
+  const questionIsOption = Boolean(questionOption);
+  const question = questionIsOption ? "" : questionLine.trim();
+  const bodyLines = questionIsOption
+    ? cardLines.slice(questionIndex)
+    : cardLines.slice(questionIndex + 1);
   const contentLines = cardLines.slice(questionIndex);
   const tableLineIndices = findTableLineIndices(contentLines);
 
   const options: FlashcardOption[] = [];
   const correctKeys: string[] = [];
-  const questionLine = cardLines[questionIndex];
   const includeQuestionLine =
-    hasClozeMarker(questionLine) || tableLineIndices.has(0);
+    !questionIsOption &&
+    (hasClozeMarker(questionLine) || tableLineIndices.has(0));
   const clozeLines: string[] = includeQuestionLine ? [questionLine] : [];
-  const nonOptionLines: string[] = [questionLine];
+  const nonOptionLines: string[] = questionIsOption ? [] : [questionLine];
   let hasAssignmentLines = false;
   const fencePattern = fenceLinePattern;
   let inFence = false;

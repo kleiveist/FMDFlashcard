@@ -82,7 +82,7 @@ const separatorLinePattern = /^\s*---\s*$/;
 const fencePattern = /^\s*(```|~~~)/;
 const cardStartPattern = /^\s*#card\s*$/i;
 const cardEndPattern = /^\s*#(?:endcard)?\s*$/i;
-const taskLinePattern = /^(?:-\s*)?(?:\*\*)?(\d+)\)?\s*(?:\*\*)?\s*(.*)$/;
+const taskLinePattern = /^\s*(\d+)\)\s*(.*)$/;
 
 const isHelpStartLine = (line: string) => helpStartPattern.test(line);
 const isHelpEndLine = (line: string) => helpEndPattern.test(line);

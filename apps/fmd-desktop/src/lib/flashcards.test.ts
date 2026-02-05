@@ -69,6 +69,28 @@ d) DCL
     }
   });
 
+  it("keeps option-first cards from using a) as the question", () => {
+    const markdown = `#card
+a) Option A
+b) Option B
+-a
+#`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("multiple-choice");
+    if (part.kind === "multiple-choice") {
+      expect(part.question).toBe("");
+      expect(part.options).toEqual([
+        { key: "a", text: "Option A" },
+        { key: "b", text: "Option B" },
+      ]);
+      expect(part.correctKeys).toEqual(["a"]);
+    }
+  });
+
   it("parses cards with case-insensitive #card markers", () => {
     const markdown = `#CaRd
 What is 2+2?

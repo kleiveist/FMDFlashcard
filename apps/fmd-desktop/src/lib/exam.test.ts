@@ -160,6 +160,42 @@ Still first task
     expect(tasks[1]?.prompt).toContain("2) Second task");
   });
 
+  it("ignores non-numeric ) sequences as task starts", () => {
+    const markdown = `#exam
+1) Task one
+a) Option A
+Text with x) marker
+2) Task two
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(2);
+    expect(tasks[0]?.prompt).toContain("a) Option A");
+    expect(tasks[0]?.prompt).toContain("x) marker");
+    expect(tasks[1]?.prompt).toContain("2) Task two");
+  });
+
+  it("ignores numeric task headers inside code blocks and tables", () => {
+    const markdown = `#exam
+1) Task one
+\`\`\`
+2) Not a task
+\`\`\`
+| Col | Value |
+| --- | --- |
+| Row | 3) Not a task |
+2) Task two
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(2);
+    expect(tasks[0]?.prompt).toContain("2) Not a task");
+    expect(tasks[0]?.prompt).toContain("| Row | 3) Not a task |");
+    expect(tasks[1]?.prompt).toContain("2) Task two");
+  });
+
   it("keeps card/exam tags inside table cells", () => {
     const markdown = `#exam
 1) Table tags

@@ -26,6 +26,7 @@ import {
   type FlashcardMetadata,
   type FlashcardPart,
 } from "./flashcards";
+import { findTableLineIndices } from "./markdownTables";
 
 export type ExamTaskSourceRange = {
   startLine: number;
@@ -85,6 +86,8 @@ const examEndPattern = /^\s*#examend\s*$/i;
 const cardStartPattern = /^\s*#card\s*$/i;
 const cardEndPattern = /^\s*#(?:endcard)?\s*$/i;
 const taskSeparatorPattern = /^\s*---\s*$/;
+const taskHeaderPattern = /^\s*(\d+)\)\s*(.*)$/;
+const fencePattern = /^\s*(```|~~~)/;
 
 const isWrapperLine = (line: string) => wrapperLinePattern.test(line);
 const isExamStartLine = (line: string) => examStartPattern.test(line);
@@ -152,20 +155,7 @@ const resolveTaskGradingMode = (
 };
 
 const getExamTaskStartNumber = (line: string) => {
-  let trimmed = line.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  if (trimmed.startsWith("**")) {
-    trimmed = trimmed.slice(2).trimStart();
-  }
-
-  if (trimmed.startsWith("-")) {
-    trimmed = trimmed.slice(1);
-  }
-
-  const numberMatch = trimmed.match(/^(\d+)/);
+  const numberMatch = line.match(taskHeaderPattern);
   if (!numberMatch) {
     return null;
   }
@@ -180,19 +170,7 @@ const getExamTaskStartNumber = (line: string) => {
     return null;
   }
 
-  let remainder = trimmed.slice(numberRaw.length);
-  if (remainder.startsWith(")")) {
-    remainder = remainder.slice(1);
-  }
-  if (remainder.startsWith("**")) {
-    remainder = remainder.slice(2);
-  }
-
-  if (remainder.length === 0 || /^\s/.test(remainder)) {
-    return number;
-  }
-
-  return null;
+  return number;
 };
 
 const normalizeTaskLines = (lines: string[]) => {
@@ -345,12 +323,15 @@ const parseTaskChunk = (
 
 export const parseExamTasks = (markdown: string): ExamParseResult => {
   const lines = normalizeLines(markdown);
+  const tableLineIndices = findTableLineIndices(lines);
   const tasks: ExamTask[] = [];
   let inExam = false;
   let currentTaskStart: number | null = null;
   let currentTaskNumber: number | null = null;
   let sawExamStart = false;
   let sawExamEnd = false;
+  let inFence = false;
+  let fenceToken = "";
 
   const resolveTaskEndLine = (startLine: number, endLine: number) => {
     let last = endLine;
@@ -392,6 +373,23 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   };
 
   lines.forEach((line, index) => {
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      return;
+    }
+
+    if (inFence || tableLineIndices.has(index)) {
+      return;
+    }
+
     if (!inExam) {
       if (isExamStartLine(line)) {
         inExam = true;
