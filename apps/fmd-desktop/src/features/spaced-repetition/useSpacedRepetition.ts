@@ -30,7 +30,6 @@ import {
   useState,
   type DragEvent,
 } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import {
   evaluateFlashcardResult,
   getClozeDragPayload,
@@ -65,6 +64,7 @@ import {
   saveSpacedRepetitionStore,
   type SpacedRepetitionProfileStore,
 } from "../user-vault/storage";
+import type { UserVaultMode } from "../../lib/userVault";
 
 export type SpacedRepetitionPageSize = 1 | 2 | 3 | 5;
 export type SpacedRepetitionBoxes = 3 | 5 | 8;
@@ -79,6 +79,7 @@ export const DEFAULT_SPACED_REPETITION_PAGE_SIZE: SpacedRepetitionPageSize = 2;
 export const SPACED_REPETITION_BOXES: SpacedRepetitionBoxes[] = [3, 5, 8];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BERLIN_TIME_ZONE = "Europe/Berlin";
+const PROFILE_SCOPED_VAULT_KEY = "__profile__";
 const berlinDateFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: BERLIN_TIME_ZONE,
   year: "numeric",
@@ -145,8 +146,10 @@ type UseSpacedRepetitionOptions = {
     updateIndex?: boolean;
   }) => Promise<Flashcard[]>;
   setIsFlashcardScanning: (value: boolean) => void;
+  beforeUserAction?: (reason: string) => Promise<boolean>;
   userVaultProfilePath: string | null;
   userVaultRevision: number;
+  userVaultMode: UserVaultMode;
   vaultPath: string | null;
   settings: {
     spacedRepetitionBoxes: SpacedRepetitionBoxes;
@@ -168,8 +171,10 @@ export const useSpacedRepetition = ({
   isFlashcardScanning,
   scanFlashcards,
   setIsFlashcardScanning,
+  beforeUserAction,
   userVaultProfilePath,
   userVaultRevision,
+  userVaultMode,
   vaultPath,
   settings,
 }: UseSpacedRepetitionOptions) => {
@@ -179,20 +184,20 @@ export const useSpacedRepetition = ({
     spacedRepetitionPageSize,
     spacedRepetitionRepetitionStrength,
     spacedRepetitionStatsView,
-  setSpacedRepetitionBoxes,
-  setSpacedRepetitionOrder,
-  setSpacedRepetitionPageSize,
-  setSpacedRepetitionRepetitionStrength,
-  setSpacedRepetitionStatsView,
-} = settings;
-const vaultId = useMemo(
-  () => (vaultPath ? hashString(vaultPath) : null),
-  [vaultPath],
-);
-const storageKey = useMemo(
-  () => (vaultId ? `spacedRepetition:${vaultId}` : null),
-  [vaultId],
-);
+    setSpacedRepetitionBoxes,
+    setSpacedRepetitionOrder,
+    setSpacedRepetitionPageSize,
+    setSpacedRepetitionRepetitionStrength,
+    setSpacedRepetitionStatsView,
+  } = settings;
+  const vaultId = useMemo(
+    () => (vaultPath ? hashString(vaultPath) : null),
+    [vaultPath],
+  );
+  const storageScopeId = useMemo(
+    () => (userVaultMode === "custom" ? PROFILE_SCOPED_VAULT_KEY : vaultId),
+    [userVaultMode, vaultId],
+  );
   const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<
     SpacedRepetitionUser[]
   >([]);
@@ -212,6 +217,7 @@ const storageKey = useMemo(
     Record<string, SpacedRepetitionSession>
   >({});
   const spacedRepetitionStoreRef = useRef<SpacedRepetitionProfileStore | null>(null);
+  const restoreContextRef = useRef<string | null>(null);
 
   const spacedRepetitionActiveUser = spacedRepetitionActiveUserId
     ? spacedRepetitionUsers.find((user) => user.id === spacedRepetitionActiveUserId)
@@ -505,60 +511,50 @@ const storageKey = useMemo(
       setSpacedRepetitionDataLoaded(false);
     };
 
-    if (!storageKey) {
+    if (!userVaultProfilePath || !storageScopeId) {
       resetState();
       spacedRepetitionStoreRef.current = null;
+      restoreContextRef.current = null;
       return () => {
         cancelled = true;
       };
     }
 
-    resetState();
+    const contextKey = `${userVaultProfilePath}|${storageScopeId}`;
+    const shouldReset = restoreContextRef.current !== contextKey;
+    if (shouldReset) {
+      resetState();
+    } else {
+      setSpacedRepetitionDataLoaded(false);
+    }
 
     const restoreSpacedRepetitionData = async () => {
       try {
-        if (userVaultProfilePath) {
-          const store = await loadSpacedRepetitionStore(userVaultProfilePath);
-          let nextStore: SpacedRepetitionProfileStore = store;
-          let storage = vaultId ? store.byVaultId[vaultId] ?? null : null;
-          const migratedVaultIds = store.migratedVaultIds ?? [];
-          if (vaultId && !storage && !migratedVaultIds.includes(vaultId)) {
-            const legacy = await invoke<SpacedRepetitionStorage>(
-              "load_spaced_repetition_data",
-              { key: storageKey },
-            );
-            const hasLegacyData =
-              (Array.isArray(legacy?.users) && legacy.users.length > 0) ||
-              (legacy?.userStateById &&
-                Object.keys(legacy.userStateById).length > 0);
-            storage = hasLegacyData ? legacy : null;
-            const migrated = new Set([...migratedVaultIds, vaultId]);
+        const store = await loadSpacedRepetitionStore(userVaultProfilePath);
+        let nextStore = store;
+        let storage = store.byVaultId[storageScopeId] ?? null;
+        // Migrate legacy custom-path data from vault-scoped storage to profile-scoped key.
+        if (userVaultMode === "custom" && !storage && vaultId) {
+          const legacyStorage = store.byVaultId[vaultId] ?? null;
+          if (legacyStorage) {
+            storage = legacyStorage;
             nextStore = {
               ...store,
-              byVaultId: storage
-                ? { ...store.byVaultId, [vaultId]: storage }
-                : store.byVaultId,
-              migratedVaultIds: Array.from(migrated),
+              byVaultId: {
+                ...store.byVaultId,
+                [PROFILE_SCOPED_VAULT_KEY]: legacyStorage,
+              },
             };
             await saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
           }
-          spacedRepetitionStoreRef.current = nextStore;
-          if (cancelled) {
-            return;
-          }
-          if (storage) {
-            hydrateFromStorage(storage);
-          }
-          return;
         }
-        const storage = await invoke<SpacedRepetitionStorage>(
-          "load_spaced_repetition_data",
-          { key: storageKey },
-        );
+        spacedRepetitionStoreRef.current = nextStore;
         if (cancelled) {
           return;
         }
-        hydrateFromStorage(storage);
+        if (storage) {
+          hydrateFromStorage(storage);
+        }
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load spaced repetition data", error);
@@ -566,6 +562,7 @@ const storageKey = useMemo(
         }
       } finally {
         if (!cancelled) {
+          restoreContextRef.current = contextKey;
           setSpacedRepetitionDataLoaded(true);
         }
       }
@@ -576,10 +573,10 @@ const storageKey = useMemo(
     return () => {
       cancelled = true;
     };
-  }, [storageKey, userVaultProfilePath, userVaultRevision, vaultId]);
+  }, [storageScopeId, userVaultMode, userVaultProfilePath, userVaultRevision, vaultId]);
 
   useEffect(() => {
-    if (!spacedRepetitionDataLoaded || !storageKey) {
+    if (!spacedRepetitionDataLoaded || !userVaultProfilePath || !storageScopeId) {
       return;
     }
     const storage: SpacedRepetitionStorage = {
@@ -587,29 +584,20 @@ const storageKey = useMemo(
       userStateById: spacedRepetitionUserStateById,
       lastActiveUserId: spacedRepetitionActiveUserId,
     };
-    if (userVaultProfilePath && vaultId) {
-      const store = spacedRepetitionStoreRef.current ?? createEmptySpacedRepetitionStore();
-      const nextStore = {
-        ...store,
-        byVaultId: { ...store.byVaultId, [vaultId]: storage },
-      };
-      spacedRepetitionStoreRef.current = nextStore;
-      void saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
-      return;
-    }
-    void invoke("save_spaced_repetition_data", { key: storageKey, storage }).catch(
-      (error) => {
-        console.error("Failed to save spaced repetition data", error);
-      },
-    );
+    const store = spacedRepetitionStoreRef.current ?? createEmptySpacedRepetitionStore();
+    const nextStore = {
+      ...store,
+      byVaultId: { ...store.byVaultId, [storageScopeId]: storage },
+    };
+    spacedRepetitionStoreRef.current = nextStore;
+    void saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
   }, [
     spacedRepetitionActiveUserId,
     spacedRepetitionDataLoaded,
     spacedRepetitionUserStateById,
     spacedRepetitionUsers,
-    storageKey,
+    storageScopeId,
     userVaultProfilePath,
-    vaultId,
   ]);
 
   useEffect(() => {
@@ -809,27 +797,102 @@ const storageKey = useMemo(
   );
 
   const handleSpacedRepetitionCreateUser = useCallback(() => {
-    const trimmed = spacedRepetitionNewUserName.trim();
-    if (!trimmed) {
-      setSpacedRepetitionUserError("User name is required.");
-      return;
-    }
-    createUser(trimmed);
-  }, [createUser, spacedRepetitionNewUserName]);
+    void (async () => {
+      let hasProfileContext = Boolean(
+        userVaultProfilePath && (userVaultMode === "custom" || vaultId),
+      );
+      if (beforeUserAction) {
+        try {
+          hasProfileContext = await beforeUserAction("beforeUserAction:createUser");
+        } catch (error) {
+          console.warn("Failed to bootstrap profile context before create user", error);
+        }
+      }
+      if (!hasProfileContext) {
+        setSpacedRepetitionUserError(
+          "No active profile selected. Create or load a profile first.",
+        );
+        return;
+      }
+      const trimmed = spacedRepetitionNewUserName.trim();
+      if (!trimmed) {
+        setSpacedRepetitionUserError("User name is required.");
+        return;
+      }
+      createUser(trimmed);
+    })();
+  }, [
+    beforeUserAction,
+    createUser,
+    spacedRepetitionNewUserName,
+    userVaultProfilePath,
+    userVaultMode,
+    vaultId,
+  ]);
 
   const handleSpacedRepetitionLoadUser = useCallback(() => {
-    if (!spacedRepetitionSelectedUserId) {
-      return;
-    }
-    setActiveUser(spacedRepetitionSelectedUserId);
-  }, [setActiveUser, spacedRepetitionSelectedUserId]);
+    void (async () => {
+      let hasProfileContext = Boolean(
+        userVaultProfilePath && (userVaultMode === "custom" || vaultId),
+      );
+      if (beforeUserAction) {
+        try {
+          hasProfileContext = await beforeUserAction("beforeUserAction:loadUser");
+        } catch (error) {
+          console.warn("Failed to bootstrap profile context before load user", error);
+        }
+      }
+      if (!hasProfileContext) {
+        setSpacedRepetitionUserError(
+          "No active profile selected. Create or load a profile first.",
+        );
+        return;
+      }
+      if (!spacedRepetitionSelectedUserId) {
+        return;
+      }
+      setActiveUser(spacedRepetitionSelectedUserId);
+    })();
+  }, [
+    beforeUserAction,
+    setActiveUser,
+    spacedRepetitionSelectedUserId,
+    userVaultProfilePath,
+    userVaultMode,
+    vaultId,
+  ]);
 
   const handleSpacedRepetitionDeleteUser = useCallback(() => {
-    if (!spacedRepetitionSelectedUserId) {
-      return;
-    }
-    deleteUser(spacedRepetitionSelectedUserId);
-  }, [deleteUser, spacedRepetitionSelectedUserId]);
+    void (async () => {
+      let hasProfileContext = Boolean(
+        userVaultProfilePath && (userVaultMode === "custom" || vaultId),
+      );
+      if (beforeUserAction) {
+        try {
+          hasProfileContext = await beforeUserAction("beforeUserAction:deleteUser");
+        } catch (error) {
+          console.warn("Failed to bootstrap profile context before delete user", error);
+        }
+      }
+      if (!hasProfileContext) {
+        setSpacedRepetitionUserError(
+          "No active profile selected. Create or load a profile first.",
+        );
+        return;
+      }
+      if (!spacedRepetitionSelectedUserId) {
+        return;
+      }
+      deleteUser(spacedRepetitionSelectedUserId);
+    })();
+  }, [
+    beforeUserAction,
+    deleteUser,
+    spacedRepetitionSelectedUserId,
+    userVaultProfilePath,
+    userVaultMode,
+    vaultId,
+  ]);
 
   const handleSpacedRepetitionActiveUserLoadCards = useCallback(async (
     options?: { boxFilter?: number | null },

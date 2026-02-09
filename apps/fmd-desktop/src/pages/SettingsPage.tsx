@@ -533,6 +533,22 @@ export const SettingsPage = () => {
       Manage Vaults
     </button>
   );
+  const profileSetupVaultSelection = useMemo(
+    () => ({
+      activeVaultPath: vault.vaultPath,
+      recentVaultPaths: settings.recentVaults.map((entry) => entry.path),
+      onSelectVault: actions.handleSwitchVault,
+      onPickVault: actions.handlePickVault,
+      isVaultBusy: vault.listState === "loading",
+    }),
+    [
+      actions.handlePickVault,
+      actions.handleSwitchVault,
+      settings.recentVaults,
+      vault.listState,
+      vault.vaultPath,
+    ],
+  );
 
   const renderSettingsContent = () => {
     switch (activeItem.id) {
@@ -877,6 +893,7 @@ export const SettingsPage = () => {
                 <DataSyncSettingsView
                   userVault={userVault}
                   spacedRepetition={spacedRepetition}
+                  vaultSelection={profileSetupVaultSelection}
                 />
               )}
             </div>

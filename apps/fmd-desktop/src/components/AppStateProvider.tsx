@@ -176,6 +176,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     customPath: settings.userVaultCustomPath,
     setCustomPath: settings.setUserVaultCustomPath,
   });
+  const handleBeforeUserAction = useCallback(
+    async (reason: string) => {
+      const result = await userVault.bootstrapProfileContext(reason);
+      return result.ok && Boolean(result.activeProfileId);
+    },
+    [userVault.bootstrapProfileContext],
+  );
   useEffect(() => {
     setUserVaultProfileContext(userVault.activeProfilePath, userVault.revision);
   }, [setUserVaultProfileContext, userVault.activeProfilePath, userVault.revision]);
@@ -236,8 +243,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     isFlashcardScanning: flashcards.isFlashcardScanning,
     scanFlashcards: flashcards.scanFlashcards,
     setIsFlashcardScanning: flashcards.setIsFlashcardScanning,
+    beforeUserAction: handleBeforeUserAction,
     userVaultProfilePath: userVault.activeProfilePath,
     userVaultRevision: userVault.revision,
+    userVaultMode: userVault.mode,
     vaultPath: vault.vaultPath,
     settings: {
       setSpacedRepetitionBoxes: settings.setSpacedRepetitionBoxes,

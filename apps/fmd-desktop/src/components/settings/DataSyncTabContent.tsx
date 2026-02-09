@@ -22,12 +22,15 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { UserVaultImportStrategy } from "../../lib/userVault";
 import type { UserVaultState } from "../../features/user-vault/useUserVault";
 import { isSyncProviderEnabled, isWordPressEnabled } from "../../lib/featureFlags";
 import type { UserRegistryControlsProps } from "../UserToolsPanel";
-import { ProfileSetupView } from "./ProfileSetupSections";
+import {
+  ProfileSetupView,
+  type ProfileSetupVaultSelection,
+} from "./ProfileSetupSections";
 
 type AppLanguage = "de" | "en";
 
@@ -54,6 +57,7 @@ type DataSyncSettingsViewMode = "settings" | "onboarding";
 type DataSyncSettingsViewProps = {
   userVault: UserVaultState;
   spacedRepetition: UserRegistryControlsProps["spacedRepetition"];
+  vaultSelection: ProfileSetupVaultSelection;
   mode?: DataSyncSettingsViewMode;
 };
 
@@ -87,9 +91,23 @@ export const SyncProviderSection = ({ label = "SYNC PROVIDER" }: SyncProviderSec
 export const DataSyncSettingsView = ({
   userVault,
   spacedRepetition,
+  vaultSelection,
   mode = "settings",
 }: DataSyncSettingsViewProps) => {
   const isOnboarding = mode === "onboarding";
+  const didBootstrapRef = useRef(false);
+
+  useEffect(() => {
+    if (isOnboarding) {
+      didBootstrapRef.current = false;
+      return;
+    }
+    if (didBootstrapRef.current) {
+      return;
+    }
+    didBootstrapRef.current = true;
+    void userVault.bootstrapProfileContext("profileSetupOpened:settings");
+  }, [isOnboarding, userVault.bootstrapProfileContext]);
 
   return (
     <>
@@ -108,7 +126,11 @@ export const DataSyncSettingsView = ({
         </section>
       ) : null}
       {!isOnboarding ? (
-        <ProfileSetupView userVault={userVault} spacedRepetition={spacedRepetition} />
+        <ProfileSetupView
+          userVault={userVault}
+          spacedRepetition={spacedRepetition}
+          vaultSelection={vaultSelection}
+        />
       ) : null}
     </>
   );

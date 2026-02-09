@@ -7,7 +7,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { appendExamRunStore, loadProfileSettings } from "./storage";
+import {
+  appendExamRunStore,
+  ensureProfileRoot,
+  loadProfileSettings,
+} from "./storage";
 import type { ExamRun } from "../../lib/examRuns";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -16,6 +20,9 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 const invokeMock = vi.mocked(invoke);
 const files = new Map<string, string>();
+const directories = new Set<string>();
+
+const normalizePath = (value: string) => value.replace(/\\/g, "/").replace(/\/+$/, "");
 
 const buildRun = (id: string): ExamRun => ({
   id,
@@ -42,6 +49,7 @@ const getExamRunsPath = (profilePath: string) =>
 
 beforeEach(() => {
   files.clear();
+  directories.clear();
   invokeMock.mockReset();
   invokeMock.mockImplementation(async (command, args) => {
     if (command === "read_json_file") {
@@ -66,7 +74,76 @@ beforeEach(() => {
       files.set(to, contents);
       return null;
     }
+    if (command === "get_path_info") {
+      const path = normalizePath(String((args as { path?: string })?.path ?? ""));
+      const isDir = directories.has(path);
+      const isFile = files.has(path);
+      return {
+        exists: isDir || isFile,
+        isDir,
+      };
+    }
+    if (command === "ensure_directory") {
+      const path = normalizePath(String((args as { path?: string })?.path ?? ""));
+      directories.add(path);
+      return null;
+    }
+    if (command === "list_directories") {
+      const path = normalizePath(String((args as { path?: string })?.path ?? ""));
+      if (!directories.has(path)) {
+        throw new Error("Path does not exist");
+      }
+      const prefix = path ? `${path}/` : "";
+      const entries = new Set<string>();
+      directories.forEach((entry) => {
+        if (!prefix || !entry.startsWith(prefix)) {
+          return;
+        }
+        const rest = entry.slice(prefix.length);
+        const first = rest.split("/")[0] ?? "";
+        if (first) {
+          entries.add(first);
+        }
+      });
+      return Array.from(entries);
+    }
     throw new Error(`Unknown command: ${String(command)}`);
+  });
+});
+
+describe("ensureProfileRoot", () => {
+  it("creates a missing profile root and initializes user-vault.json", async () => {
+    const profileRoot = "/vault/profile";
+
+    const result = await ensureProfileRoot(profileRoot);
+
+    expect(result).toEqual({ ok: true, reason: "" });
+    expect(directories.has("/vault/profile")).toBe(true);
+    const meta = JSON.parse(files.get("/vault/profile/user-vault.json") ?? "{}");
+    expect(meta.schemaVersion).toBe(1);
+    expect(meta.activeProfileId).toBeNull();
+  });
+
+  it("rewrites invalid user-vault.json metadata", async () => {
+    const profileRoot = "/vault/profile";
+    directories.add(profileRoot);
+    files.set("/vault/profile/user-vault.json", "{broken");
+
+    const result = await ensureProfileRoot(profileRoot);
+
+    expect(result).toEqual({ ok: true, reason: "" });
+    const meta = JSON.parse(files.get("/vault/profile/user-vault.json") ?? "{}");
+    expect(meta.schemaVersion).toBe(1);
+    expect(meta.activeProfileId).toBeNull();
+  });
+
+  it("returns an error when the profile root points to a file", async () => {
+    files.set("/vault/profile", "{}");
+
+    const result = await ensureProfileRoot("/vault/profile");
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("Profile root is not a directory.");
   });
 });
 

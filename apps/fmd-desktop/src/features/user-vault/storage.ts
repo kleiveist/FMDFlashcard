@@ -86,6 +86,11 @@ const isMissingPathError = (message: string) =>
   message.includes("Path is not a directory") ||
   message.includes("File not found");
 
+const createEmptyUserVaultMeta = (): UserVaultMetaStore => ({
+  schemaVersion: USER_VAULT_SCHEMA_VERSION,
+  activeProfileId: null,
+});
+
 const hasProfileIdentity = async (profilePath: string): Promise<boolean> => {
   try {
     await invoke<string>("read_json_file", {
@@ -129,7 +134,7 @@ const readJsonFileWithStatus = async <T,>(path: string): Promise<JsonReadResult<
     }
   } catch (error) {
     const message = asErrorMessage(error, "Unknown error");
-    if (message.includes("File not found")) {
+    if (isMissingPathError(message)) {
       return { value: null, error: "missing" };
     }
     return { value: null, error: "unknown" };
@@ -308,51 +313,107 @@ export const migrateLegacyProfileRoot = async (
 export const validateProfileRoot = async (
   profileRoot: string,
 ): Promise<ValidateProfileRootResult> => {
+  return ensureProfileRoot(profileRoot);
+};
+
+export const ensureProfileRoot = async (
+  profileRoot: string,
+): Promise<ValidateProfileRootResult> => {
   try {
     const info = await invoke<PathInfo>("get_path_info", { path: profileRoot });
-    if (!info.exists) {
-      return { ok: false, reason: "Profile root does not exist." };
-    }
     if (!info.isDir) {
-      return { ok: false, reason: "Profile root is not a directory." };
+      if (!info.exists) {
+        await ensureDirectory(profileRoot);
+      } else {
+        return { ok: false, reason: "Profile root is not a directory." };
+      }
     }
   } catch (error) {
-    return {
-      ok: false,
-      reason: asErrorMessage(error, "Profile root could not be inspected."),
-    };
+    const message = asErrorMessage(error, "Profile root could not be inspected.");
+    if (isMissingPathError(message)) {
+      try {
+        await ensureDirectory(profileRoot);
+      } catch (createError) {
+        return {
+          ok: false,
+          reason: asErrorMessage(createError, "Profile root could not be created."),
+        };
+      }
+    } else {
+      return { ok: false, reason: message };
+    }
   }
 
   const metaPath = resolveUserVaultMetaPath(profileRoot);
-  try {
-    await invoke<string>("read_json_file", { path: metaPath });
-  } catch (error) {
-    const message = asErrorMessage(error, "Profile meta could not be read.");
-    if (message.includes("File not found")) {
+  const meta = await readJsonFileWithStatus<UserVaultMetaStore>(metaPath);
+  if (
+    meta.error ||
+    !meta.value ||
+    typeof meta.value !== "object" ||
+    Array.isArray(meta.value)
+  ) {
+    try {
+      await writeJsonFile(metaPath, createEmptyUserVaultMeta());
+    } catch (error) {
       return {
         ok: false,
-        reason: "Missing user-vault.json in the selected folder.",
+        reason: asErrorMessage(error, "Profile meta could not be initialized."),
       };
     }
-    return { ok: false, reason: message };
+  } else {
+    const normalizedMeta: UserVaultMetaStore = {
+      schemaVersion: USER_VAULT_SCHEMA_VERSION,
+      activeProfileId:
+        typeof meta.value.activeProfileId === "string"
+          ? meta.value.activeProfileId
+          : null,
+    };
+    const needsRewrite =
+      normalizedMeta.schemaVersion !== meta.value.schemaVersion ||
+      normalizedMeta.activeProfileId !== meta.value.activeProfileId;
+    if (needsRewrite) {
+      try {
+        await writeJsonFile(metaPath, normalizedMeta);
+      } catch (error) {
+        return {
+          ok: false,
+          reason: asErrorMessage(error, "Profile meta could not be updated."),
+        };
+      }
+    }
   }
 
   try {
     await listDirectories(profileRoot);
   } catch (error) {
-    return {
-      ok: false,
-      reason: asErrorMessage(error, "Profile root is not accessible."),
-    };
+    const message = asErrorMessage(error, "Profile root is not accessible.");
+    if (isMissingPathError(message)) {
+      try {
+        await ensureDirectory(profileRoot);
+      } catch (createError) {
+        return {
+          ok: false,
+          reason: asErrorMessage(createError, "Profile root could not be created."),
+        };
+      }
+      try {
+        await listDirectories(profileRoot);
+      } catch (listError) {
+        return {
+          ok: false,
+          reason: asErrorMessage(listError, "Profile root is not accessible."),
+        };
+      }
+    } else {
+      return {
+        ok: false,
+        reason: message,
+      };
+    }
   }
 
   return { ok: true, reason: "" };
 };
-
-const createEmptyUserVaultMeta = (): UserVaultMetaStore => ({
-  schemaVersion: USER_VAULT_SCHEMA_VERSION,
-  activeProfileId: null,
-});
 
 export const createEmptySpacedRepetitionStore = (): SpacedRepetitionProfileStore => ({
   schemaVersion: USER_VAULT_SCHEMA_VERSION,

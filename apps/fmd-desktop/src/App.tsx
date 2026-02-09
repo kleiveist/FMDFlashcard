@@ -118,7 +118,6 @@ const AppContent = () => {
   );
   const activeUserName = spacedRepetition.spacedRepetitionActiveUser?.trim() ?? "";
   const isWalletOpen = Boolean(vault.vaultPath);
-  const isUserVaultReady = userVault.status !== "loading";
   const isActivePathReady =
     Boolean(userVault.resolvedPath) && userVault.status !== "error";
   const isProfileReady = Boolean(
@@ -129,7 +128,7 @@ const AppContent = () => {
   const syncProviderConfigured = false; // TODO: wire to persisted sync provider config.
   const shouldGateSyncProvider =
     syncProviderEnabled && syncProviderRequired && !syncProviderConfigured;
-  const nextGate: WalletGateId | null = !isWalletOpen || !isUserVaultReady
+  const nextGate: WalletGateId | null = !isWalletOpen
     ? null
     : !isActivePathReady
       ? "custom-path"
@@ -163,6 +162,22 @@ const AppContent = () => {
         },
       }[nextGate]
     : null;
+  const profileSetupVaultSelection = useMemo(
+    () => ({
+      activeVaultPath: vault.vaultPath,
+      recentVaultPaths: settings.recentVaults.map((entry) => entry.path),
+      onSelectVault: actions.handleSwitchVault,
+      onPickVault: actions.handlePickVault,
+      isVaultBusy: vault.listState === "loading",
+    }),
+    [
+      actions.handlePickVault,
+      actions.handleSwitchVault,
+      settings.recentVaults,
+      vault.listState,
+      vault.vaultPath,
+    ],
+  );
   const requestDashboardViewChange = useCallback(
     (nextView: DashboardView) => {
       if (activeTab === "dashboard" && dashboardRef.current) {
@@ -494,18 +509,21 @@ const AppContent = () => {
         onClose={handleGateClose}
         userVault={userVault}
         spacedRepetition={spacedRepetition}
+        vaultSelection={profileSetupVaultSelection}
       />
       <UserVaultProfileModal
         isOpen={openGateId === "profile"}
         onClose={handleGateClose}
         userVault={userVault}
         spacedRepetition={spacedRepetition}
+        vaultSelection={profileSetupVaultSelection}
       />
       <UserVaultSyncProviderModal
         isOpen={openGateId === "sync-provider"}
         onClose={handleGateClose}
         userVault={userVault}
         spacedRepetition={spacedRepetition}
+        vaultSelection={profileSetupVaultSelection}
       />
       <button
         type="button"

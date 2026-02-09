@@ -5,7 +5,7 @@
  * - Verwaltet User Vault State und Aktionen fuer die UI.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
@@ -26,6 +26,7 @@ import {
   createEmptyFastFlashcardStore,
   createEmptySpacedRepetitionStore,
   createUserVaultProfile,
+  ensureProfileRoot,
   loadProfileData,
   loadUserVaultMeta,
   listUserVaultProfiles,
@@ -35,7 +36,6 @@ import {
   saveProfileSettings,
   saveSpacedRepetitionStore,
   setActiveProfileId,
-  validateProfileRoot,
   type UserVaultProfileSummary,
 } from "./storage";
 
@@ -55,6 +55,19 @@ type UseUserVaultOptions = {
 
 type ExportScope = "active" | "all";
 
+type BootstrapOverrides = {
+  mode?: UserVaultMode;
+  vaultPath?: string | null;
+  customPath?: string | null;
+};
+
+type BootstrapResult = {
+  ok: boolean;
+  resolvedRoot: string | null;
+  activeProfileId: string | null;
+  reason: string;
+};
+
 const readJsonFile = async (path: string) => {
   const raw = await invoke<string>("read_json_file", { path });
   return JSON.parse(raw) as UserVaultExportPayload;
@@ -67,6 +80,11 @@ const writeJsonFile = async (path: string, payload: unknown) => {
 
 const ensureJsonExtension = (path: string) =>
   path.toLowerCase().endsWith(".json") ? path : `${path}.json`;
+
+const resolveCustomPath = (value: string | null | undefined) => {
+  const trimmed = value?.trim() ?? "";
+  return trimmed ? trimmed : null;
+};
 
 export const useUserVault = ({
   vaultPath,
@@ -83,13 +101,18 @@ export const useUserVault = ({
   const [revision, setRevision] = useState(0);
   const [profileRootPath, setProfileRootPath] = useState<string | null>(null);
   const [migrationWarning, setMigrationWarning] = useState<string | null>(null);
+  const bootstrapRequestIdRef = useRef(0);
+  const bootstrapInFlightRef = useRef<{
+    key: string;
+    promise: Promise<BootstrapResult>;
+  } | null>(null);
 
   const autoRootPath = useMemo(
     () => (vaultPath ? joinPath(vaultPath, PROFILE_ROOT_DIR) : null),
     [vaultPath],
   );
 
-  const customRootPath = useMemo(() => customPath?.trim() ?? null, [customPath]);
+  const customRootPath = useMemo(() => resolveCustomPath(customPath), [customPath]);
 
   const resolvedPath = profileRootPath;
 
@@ -103,140 +126,284 @@ export const useUserVault = ({
     [activeProfile],
   );
 
-  const refreshProfiles = useCallback(async () => {
-    setStatus("loading");
-    setError("");
+  const bootstrapProfileContext = useCallback(
+    async (
+      reason: string,
+      overrides: BootstrapOverrides = {},
+    ): Promise<BootstrapResult> => {
+      const effectiveMode = overrides.mode ?? mode;
+      const effectiveVaultPath =
+        overrides.vaultPath !== undefined ? overrides.vaultPath : vaultPath;
+      const effectiveCustomRoot =
+        overrides.customPath !== undefined
+          ? resolveCustomPath(overrides.customPath)
+          : customRootPath;
+      const bootstrapKey = [
+        effectiveMode,
+        effectiveVaultPath ?? "",
+        effectiveCustomRoot ?? "",
+      ].join("|");
+      const inFlight = bootstrapInFlightRef.current;
+      if (inFlight && inFlight.key === bootstrapKey) {
+        return inFlight.promise;
+      }
 
-    if (vaultPath) {
-      const migration = await migrateLegacyProfileRoot(vaultPath);
-      if (migration.conflict) {
-        setMigrationWarning(
-          "Both /user and /profile exist in this vault. Choose which profile root to use.",
+      const run = (async (): Promise<BootstrapResult> => {
+        const requestId = ++bootstrapRequestIdRef.current;
+
+        setStatus("loading");
+        setError("");
+
+        let nextMigrationWarning: string | null = null;
+
+        if (effectiveVaultPath) {
+          const migration = await migrateLegacyProfileRoot(effectiveVaultPath);
+          if (migration.conflict) {
+            nextMigrationWarning =
+              "Both /user and /profile exist in this vault. Choose which profile root to use.";
+          } else if (migration.error) {
+            nextMigrationWarning = migration.error;
+          }
+          if (migration.moved) {
+            logUserVaultEvent("profile.migrated", {
+              vaultPath: effectiveVaultPath,
+              reason,
+            });
+          }
+        }
+
+        const commit = (next: {
+          status: "idle" | "loading" | "error";
+          error: string;
+          profileRootPath: string | null;
+          profiles: UserVaultProfileSummary[];
+          activeProfileId: string | null;
+        }) => {
+          if (bootstrapRequestIdRef.current !== requestId) {
+            return;
+          }
+          setMigrationWarning(nextMigrationWarning);
+          setProfileRootPath(next.profileRootPath);
+          setProfiles(next.profiles);
+          setActiveProfileIdState(next.activeProfileId);
+          setError(next.error);
+          setStatus(next.status);
+        };
+
+        if (effectiveMode === "auto" && !effectiveVaultPath) {
+          commit({
+            status: "idle",
+            error: "",
+            profileRootPath: null,
+            profiles: [],
+            activeProfileId: null,
+          });
+          logUserVaultEvent("profile.vault_missing", {
+            reason,
+            mode: effectiveMode,
+          });
+          return {
+            ok: false,
+            resolvedRoot: null,
+            activeProfileId: null,
+            reason: "No active vault selected.",
+          };
+        }
+
+        const resolvedRoot = resolveActiveProfileRoot(
+          effectiveMode,
+          effectiveVaultPath,
+          effectiveCustomRoot,
         );
-      } else if (migration.error) {
-        setMigrationWarning(migration.error);
-      } else {
-        setMigrationWarning(null);
-      }
-      if (migration.moved) {
-        logUserVaultEvent("profile.migrated", {
-          vaultPath,
-        });
-      }
-    } else {
-      setMigrationWarning(null);
-    }
-    const resolvedRoot = resolveActiveProfileRoot(
-      mode,
-      vaultPath,
-      customRootPath,
-    );
-    if (!resolvedRoot) {
-      const reason =
-        mode === "custom"
-          ? "Custom path is required."
-          : "Select a vault to enable Auto profile root.";
-      setStatus("error");
-      setError(reason);
-      setProfiles([]);
-      setActiveProfileIdState(null);
-      setProfileRootPath(null);
-      logUserVaultEvent("profile.resolve_failed", {
-        mode,
-        reason,
-        autoRootPath,
-        customRootPath,
-      });
-      return;
-    }
 
-    const validation = await validateProfileRoot(resolvedRoot);
-    if (!validation.ok) {
-      setStatus("error");
-      setError(validation.reason);
-      setProfiles([]);
-      setActiveProfileIdState(null);
-      setProfileRootPath(null);
-      logUserVaultEvent("profile.validation_failed", {
-        mode,
-        profileRoot: resolvedRoot,
-        reason: validation.reason,
-      });
-      return;
-    }
+        if (!resolvedRoot) {
+          const message =
+            effectiveMode === "custom"
+              ? "Custom path is required."
+              : "Select a vault to enable Auto profile root.";
+          commit({
+            status: "error",
+            error: message,
+            profileRootPath: null,
+            profiles: [],
+            activeProfileId: null,
+          });
+          logUserVaultEvent("profile.resolve_failed", {
+            reason,
+            mode: effectiveMode,
+            autoRootPath,
+            customRootPath: effectiveCustomRoot,
+          });
+          return {
+            ok: false,
+            resolvedRoot: null,
+            activeProfileId: null,
+            reason: message,
+          };
+        }
 
-    setProfileRootPath(resolvedRoot);
+        const ensured = await ensureProfileRoot(resolvedRoot);
+        if (!ensured.ok) {
+          commit({
+            status: "error",
+            error: ensured.reason,
+            profileRootPath: resolvedRoot,
+            profiles: [],
+            activeProfileId: null,
+          });
+          logUserVaultEvent("profile.ensure_failed", {
+            reason,
+            mode: effectiveMode,
+            profileRoot: resolvedRoot,
+            ensureReason: ensured.reason,
+          });
+          return {
+            ok: false,
+            resolvedRoot,
+            activeProfileId: null,
+            reason: ensured.reason,
+          };
+        }
 
-    let nextProfiles = await listUserVaultProfiles(resolvedRoot);
-    if (nextProfiles.length === 0) {
+        try {
+          const [listedProfiles, meta] = await Promise.all([
+            listUserVaultProfiles(resolvedRoot),
+            loadUserVaultMeta(resolvedRoot),
+          ]);
+          let nextProfiles = listedProfiles;
+          if (nextProfiles.length === 0) {
+            try {
+              const created = await createUserVaultProfile(resolvedRoot, "default");
+              nextProfiles = [created];
+              logUserVaultEvent("profile.auto_created", {
+                reason,
+                mode: effectiveMode,
+                profileRoot: resolvedRoot,
+                id: created.id,
+              });
+            } catch (createError) {
+              const message = asErrorMessage(
+                createError,
+                "Profile could not be created.",
+              );
+              commit({
+                status: "error",
+                error: message,
+                profileRootPath: resolvedRoot,
+                profiles: [],
+                activeProfileId: null,
+              });
+              logUserVaultEvent("profile.create_failed", {
+                reason,
+                mode: effectiveMode,
+                profileRoot: resolvedRoot,
+                error: message,
+              });
+              return {
+                ok: false,
+                resolvedRoot,
+                activeProfileId: null,
+                reason: message,
+              };
+            }
+          }
+          let nextActive = meta.activeProfileId;
+
+          if (nextActive && !nextProfiles.some((profile) => profile.id === nextActive)) {
+            nextActive = null;
+          }
+
+          if (!nextActive && nextProfiles.length > 0) {
+            nextActive = nextProfiles[0]?.id ?? null;
+          }
+
+          if (nextActive !== meta.activeProfileId) {
+            await setActiveProfileId(resolvedRoot, nextActive);
+          }
+
+          commit({
+            status: "idle",
+            error: "",
+            profileRootPath: resolvedRoot,
+            profiles: nextProfiles,
+            activeProfileId: nextActive,
+          });
+
+          logUserVaultEvent("profile.loaded", {
+            reason,
+            mode: effectiveMode,
+            profileRoot: resolvedRoot,
+            users: nextProfiles.length,
+            activeUserId: nextActive,
+          });
+
+          return {
+            ok: true,
+            resolvedRoot,
+            activeProfileId: nextActive,
+            reason: "ok",
+          };
+        } catch (loadError) {
+          const message = asErrorMessage(loadError, "Profile root could not be loaded.");
+          commit({
+            status: "error",
+            error: message,
+            profileRootPath: resolvedRoot,
+            profiles: [],
+            activeProfileId: null,
+          });
+          logUserVaultEvent("profile.load_failed", {
+            reason,
+            mode: effectiveMode,
+            profileRoot: resolvedRoot,
+            error: message,
+          });
+          return {
+            ok: false,
+            resolvedRoot,
+            activeProfileId: null,
+            reason: message,
+          };
+        }
+      })();
+
+      bootstrapInFlightRef.current = { key: bootstrapKey, promise: run };
       try {
-        const created = await createUserVaultProfile(resolvedRoot, "default");
-        nextProfiles = [created];
-        logUserVaultEvent("profile.auto_created", {
-          profileRoot: resolvedRoot,
-          id: created.id,
-        });
-      } catch (createError) {
-        setStatus("error");
-        setError(asErrorMessage(createError, "No users found in the profile root."));
-        setProfiles([]);
-        setActiveProfileIdState(null);
-        setProfileRootPath(resolvedRoot);
-        logUserVaultEvent("profile.create_failed", {
-          profileRoot: resolvedRoot,
-          reason: asErrorMessage(createError, "Failed to create profile."),
-        });
-        return;
-      }
-    }
-    const meta = await loadUserVaultMeta(resolvedRoot);
-    let nextActive = meta.activeProfileId;
-    if (nextActive && !nextProfiles.some((profile) => profile.id === nextActive)) {
-      nextActive = null;
-    }
-    if (!nextActive && nextProfiles.length > 0) {
-      nextActive = nextProfiles[0]?.id ?? null;
-      if (nextActive) {
-        await setActiveProfileId(resolvedRoot, nextActive);
-      }
-    }
-    setProfiles(nextProfiles);
-    setActiveProfileIdState(nextActive);
-    if (nextProfiles.length === 0) {
-      setError("No users found in the selected profile root.");
-    }
-    setStatus("idle");
-    logUserVaultEvent("profile.loaded", {
-      mode,
-      profileRoot: resolvedRoot,
-      users: nextProfiles.length,
-      activeUserId: nextActive,
-    });
-  }, [autoRootPath, customRootPath, mode, vaultPath]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        await refreshProfiles();
-      } catch (loadError) {
-        if (!cancelled) {
-          setStatus("error");
-          setError(asErrorMessage(loadError, "Profile root could not be loaded."));
+        return await run;
+      } finally {
+        if (bootstrapInFlightRef.current?.promise === run) {
+          bootstrapInFlightRef.current = null;
         }
       }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
+    },
+    [autoRootPath, customRootPath, mode, vaultPath],
+  );
+
+  const refreshProfiles = useCallback(async () => {
+    await bootstrapProfileContext("refreshProfiles");
+  }, [bootstrapProfileContext]);
+
+  useEffect(() => {
+    void refreshProfiles();
   }, [refreshProfiles]);
 
   const handleModeChange = useCallback(
     (value: UserVaultMode) => {
       setMode(value);
+      void bootstrapProfileContext("sourceChanged", { mode: value });
     },
-    [setMode],
+    [bootstrapProfileContext, setMode],
+  );
+
+  const handleCustomPathChange = useCallback(
+    (value: string | null) => {
+      const normalized = resolveCustomPath(value);
+      setCustomPath(normalized);
+      void bootstrapProfileContext("customPathChanged", {
+        customPath: normalized,
+      });
+    },
+    [bootstrapProfileContext, setCustomPath],
   );
 
   const handlePickCustomPath = useCallback(async () => {
@@ -246,20 +413,23 @@ export const useUserVault = ({
       multiple: false,
     });
     if (typeof selected === "string") {
-      setCustomPath(selected);
+      handleCustomPathChange(selected);
     }
-  }, [setCustomPath]);
+  }, [handleCustomPathChange]);
 
   const handleCreateProfile = useCallback(
     async (name: string) => {
-      if (!resolvedPath) {
-        return;
-      }
       setIsBusy(true);
       setError("");
       try {
-        const profile = await createUserVaultProfile(resolvedPath, name);
-        await setActiveProfileId(resolvedPath, profile.id);
+        const bootstrapped = await bootstrapProfileContext(
+          "beforeUserAction:createProfile",
+        );
+        if (!bootstrapped.ok || !bootstrapped.resolvedRoot) {
+          return;
+        }
+        const profile = await createUserVaultProfile(bootstrapped.resolvedRoot, name);
+        await setActiveProfileId(bootstrapped.resolvedRoot, profile.id);
         setActiveProfileIdState(profile.id);
         setProfiles((prev) => {
           const next = [...prev.filter((item) => item.id !== profile.id), profile];
@@ -271,18 +441,21 @@ export const useUserVault = ({
         setIsBusy(false);
       }
     },
-    [resolvedPath],
+    [bootstrapProfileContext],
   );
 
   const handleSelectProfile = useCallback(
     async (profileId: string) => {
-      if (!resolvedPath) {
-        return;
-      }
       setIsBusy(true);
       setError("");
       try {
-        await setActiveProfileId(resolvedPath, profileId);
+        const bootstrapped = await bootstrapProfileContext(
+          "beforeUserAction:selectProfile",
+        );
+        if (!bootstrapped.ok || !bootstrapped.resolvedRoot) {
+          return;
+        }
+        await setActiveProfileId(bootstrapped.resolvedRoot, profileId);
         setActiveProfileIdState(profileId);
       } catch (loadError) {
         setError(asErrorMessage(loadError, "User could not be loaded."));
@@ -290,17 +463,18 @@ export const useUserVault = ({
         setIsBusy(false);
       }
     },
-    [resolvedPath],
+    [bootstrapProfileContext],
   );
 
   const handleExport = useCallback(
     async (scope: ExportScope) => {
-      if (!resolvedPath) {
-        return;
-      }
       setIsBusy(true);
       setError("");
       try {
+        const bootstrapped = await bootstrapProfileContext("beforeUserAction:export");
+        if (!bootstrapped.ok || !bootstrapped.resolvedRoot) {
+          return;
+        }
         const targetPath = await save({
           title: "Export User",
           filters: [{ name: "JSON", extensions: ["json"] }],
@@ -349,17 +523,21 @@ export const useUserVault = ({
         setIsBusy(false);
       }
     },
-    [activeProfile, profiles, resolvedPath],
+    [activeProfile, bootstrapProfileContext, profiles],
   );
 
   const handleImport = useCallback(
     async (strategy: UserVaultImportStrategy) => {
-      if (!activeProfilePath || !activeProfile) {
-        return;
-      }
       setIsBusy(true);
       setError("");
       try {
+        const bootstrapped = await bootstrapProfileContext("beforeUserAction:import");
+        if (!bootstrapped.ok) {
+          return;
+        }
+        if (!activeProfilePath || !activeProfile) {
+          return;
+        }
         const selected = await open({
           title: "Import User",
           filters: [{ name: "JSON", extensions: ["json"] }],
@@ -399,7 +577,7 @@ export const useUserVault = ({
         setIsBusy(false);
       }
     },
-    [activeProfile, activeProfilePath],
+    [activeProfile, activeProfilePath, bootstrapProfileContext],
   );
 
   return {
@@ -407,10 +585,12 @@ export const useUserVault = ({
     activeProfileId,
     activeProfilePath,
     autoRootPath,
+    bootstrapProfileContext,
     customPath,
     customRootPath,
     error,
     handleCreateProfile,
+    handleCustomPathChange,
     handleExport,
     handleImport,
     handleModeChange,

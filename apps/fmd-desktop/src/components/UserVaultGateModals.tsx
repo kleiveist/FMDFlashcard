@@ -9,7 +9,10 @@ import { useEffect, useRef } from "react";
 import type { UserVaultState } from "../features/user-vault/useUserVault";
 import { ModalShell } from "./ModalShell";
 import { SyncProviderSection } from "./settings/DataSyncTabContent";
-import { ProfileSetupView } from "./settings/ProfileSetupSections";
+import {
+  ProfileSetupView,
+  type ProfileSetupVaultSelection,
+} from "./settings/ProfileSetupSections";
 import { type UserRegistryControlsProps } from "./UserToolsPanel";
 
 type GateModalProps = {
@@ -17,6 +20,7 @@ type GateModalProps = {
   onClose: () => void;
   userVault: UserVaultState;
   spacedRepetition: UserRegistryControlsProps["spacedRepetition"];
+  vaultSelection: ProfileSetupVaultSelection;
 };
 
 const useFocusRestore = (isOpen: boolean) => {
@@ -41,26 +45,34 @@ const UserVaultProfileSetupModal = ({
   onClose,
   userVault,
   spacedRepetition,
+  vaultSelection,
 }: GateModalProps) => {
   useFocusRestore(isOpen);
-  const activeUserName = spacedRepetition.spacedRepetitionActiveUser?.trim() ?? "";
-  const hasValidRoot =
-    Boolean(userVault.resolvedPath) && userVault.status === "idle";
-  const hasActiveUser = Boolean(activeUserName);
-  const canClose = hasValidRoot && hasActiveUser;
+  const didBootstrapRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen) {
+      didBootstrapRef.current = false;
+      return;
+    }
+    if (didBootstrapRef.current) {
+      return;
+    }
+    didBootstrapRef.current = true;
+    void userVault.bootstrapProfileContext("profileSetupOpened:popup");
+  }, [isOpen, userVault.bootstrapProfileContext]);
   return (
     <ModalShell
       isOpen={isOpen}
       title="Profile setup"
       onClose={onClose}
-      canClose={canClose}
-      initialFocusSelector='[data-autofocus="profile-source"]'
+      initialFocusSelector='[data-autofocus="active-vault"]'
       bodyClassName="hub-modal-scroll"
     >
       <div className="settings-tab-content">
         <ProfileSetupView
           userVault={userVault}
           spacedRepetition={spacedRepetition}
+          vaultSelection={vaultSelection}
           autoFocusSource
         />
       </div>
