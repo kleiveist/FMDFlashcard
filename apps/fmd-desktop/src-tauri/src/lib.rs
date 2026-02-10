@@ -116,6 +116,7 @@ struct AppSettings {
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
     exam_auto_cards_enabled: Option<bool>,
+    exam_auto_cards_types: Option<HashMap<String, bool>>,
     exam_auto_cards_return_on_correct: Option<bool>,
     exam_grade_scale: Option<String>,
     exam_help_enabled: Option<bool>,
@@ -255,6 +256,7 @@ impl AppSettings {
             && self.exam_task_points.is_none()
             && self.exam_ai_evaluation.is_none()
             && self.exam_auto_cards_enabled.is_none()
+            && self.exam_auto_cards_types.is_none()
             && self.exam_auto_cards_return_on_correct.is_none()
             && self.exam_grade_scale.is_none()
             && self.exam_help_enabled.is_none()
@@ -503,6 +505,7 @@ fn save_app_settings(
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
     exam_auto_cards_enabled: Option<bool>,
+    exam_auto_cards_types: Option<HashMap<String, bool>>,
     exam_auto_cards_return_on_correct: Option<bool>,
     exam_grade_scale: Option<String>,
     exam_help_enabled: Option<bool>,
@@ -561,6 +564,7 @@ fn save_app_settings(
         exam_task_points,
         exam_ai_evaluation,
         exam_auto_cards_enabled,
+        exam_auto_cards_types,
         exam_auto_cards_return_on_correct,
         exam_grade_scale,
         exam_help_enabled,

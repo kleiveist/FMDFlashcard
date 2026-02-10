@@ -47,7 +47,9 @@ import {
 } from "../../../lib/examRuns";
 import {
   applyExamCardWrapperActions,
+  AUTO_CARD_TYPES,
   type ExamCardWrapperAction,
+  resolveExamTaskAutoCardTypes,
 } from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import { type VaultFile } from "../../../lib/tree";
@@ -485,7 +487,8 @@ export const useExamSimulationViewModel = () => {
       setStage("finished");
       return;
     }
-    const autoCardsEnabled = settings.examAutoCardsEnabled;
+    const autoCardsTypes = settings.examAutoCardsTypes;
+    const autoCardsEnabled = AUTO_CARD_TYPES.some((type) => autoCardsTypes[type]);
     const autoCardsReturnOnCorrect = settings.examAutoCardsReturnOnCorrect;
     const hasManualConversions = runTasks.some(
       (_task, index) => conversionDecisions[index],
@@ -525,7 +528,10 @@ export const useExamSimulationViewModel = () => {
         return "remove";
       }
       if (autoCardsEnabled) {
-        return "add";
+        const detectedTypes = resolveExamTaskAutoCardTypes(task);
+        if (detectedTypes.some((type) => autoCardsTypes[type])) {
+          return "add";
+        }
       }
       return conversionDecisions[index] ? "add" : "keep";
     };
@@ -573,7 +579,7 @@ export const useExamSimulationViewModel = () => {
     preview,
     runTasks,
     runTaskPoints,
-    settings.examAutoCardsEnabled,
+    settings.examAutoCardsTypes,
     settings.examAutoCardsReturnOnCorrect,
     stage,
   ]);

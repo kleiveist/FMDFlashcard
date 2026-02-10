@@ -6,8 +6,13 @@
  */
 
 import type { ExamTask, ExamTaskSourceRange } from "../exam";
+import type { FlashcardPart } from "../flashcards";
 
 export type ExamCardWrapperAction = "add" | "remove" | "keep";
+
+export const AUTO_CARD_TYPES = ["qa", "tf", "m1", "m2", "cl", "cd", "cld"] as const;
+export type AutoCardType = (typeof AUTO_CARD_TYPES)[number];
+export type AutoCardTypeMap = Record<AutoCardType, boolean>;
 
 type WrapperMatch = {
   startIndex: number;
@@ -61,6 +66,35 @@ const findLastNonEmptyInRange = (
     }
   }
   return null;
+};
+
+const resolveAutoCardType = (part: FlashcardPart): AutoCardType | null => {
+  switch (part.kind) {
+    case "free-text":
+      return "qa";
+    case "true-false":
+      return "tf";
+    case "multiple-choice":
+      return part.correctKeys.length > 1 ? "m2" : "m1";
+    case "cloze":
+      return part.subtype;
+    default: {
+      const _exhaustive: never = part;
+      void _exhaustive;
+      return null;
+    }
+  }
+};
+
+export const resolveExamTaskAutoCardTypes = (task: ExamTask): AutoCardType[] => {
+  const detected = new Set<AutoCardType>();
+  task.card.parts.forEach((part) => {
+    const resolved = resolveAutoCardType(part);
+    if (resolved) {
+      detected.add(resolved);
+    }
+  });
+  return Array.from(detected);
 };
 
 export const findExamTaskWrapper = (

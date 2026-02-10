@@ -16,6 +16,7 @@
  * Exportiert:
  * - ExamSettingsPanel: React-Komponente.
  * - ExamTogglesPanel: React-Komponente.
+ * - AutoCardsSettingsPanel: React-Komponente.
  *
  * Hinweise:
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
@@ -23,6 +24,7 @@
 
 import { useMemo } from "react";
 import type { ExamAiEvaluation } from "../../features/settings/useAppSettings";
+import type { AutoCardType, AutoCardTypeMap } from "../../lib/exam/autoCards";
 
 type ExamSettingsPanelProps = {
   maxTotalPoints: number;
@@ -41,14 +43,10 @@ type ExamTogglesPanelProps = {
   timeLimitEnabled: boolean;
   showTimeline: boolean;
   helpEnabled: boolean;
-  autoCardsEnabled: boolean;
-  autoCardsReturnOnCorrect: boolean;
   aiEvaluation: ExamAiEvaluation;
   onTimeLimitToggle: (value: boolean) => void;
   setShowTimeline: (value: boolean) => void;
   setHelpEnabled: (value: boolean) => void;
-  setAutoCardsEnabled: (value: boolean) => void;
-  setAutoCardsReturnOnCorrect: (value: boolean) => void;
 };
 
 const clampInput = (value: string) => {
@@ -181,14 +179,10 @@ export const ExamTogglesPanel = ({
   timeLimitEnabled,
   showTimeline,
   helpEnabled,
-  autoCardsEnabled,
-  autoCardsReturnOnCorrect,
   aiEvaluation,
   onTimeLimitToggle,
   setShowTimeline,
   setHelpEnabled,
-  setAutoCardsEnabled,
-  setAutoCardsReturnOnCorrect,
 }: ExamTogglesPanelProps) => (
   <section className="panel exam-settings-toggles-panel">
     <div className="panel-header">
@@ -241,37 +235,6 @@ export const ExamTogglesPanel = ({
       </div>
 
       <div className="setting-row">
-        <span className="label">AUTO CARDS</span>
-        <div className="setting-inline">
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={autoCardsEnabled}
-              onChange={(event) => setAutoCardsEnabled(event.target.checked)}
-            />
-            <span className="slider" />
-          </label>
-          <span className="muted">Auto add cards after grading.</span>
-        </div>
-      </div>
-      <div className="setting-row">
-        <span className="label">RETURN CARD</span>
-        <div className="setting-inline">
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={autoCardsReturnOnCorrect}
-              onChange={(event) =>
-                setAutoCardsReturnOnCorrect(event.target.checked)
-              }
-            />
-            <span className="slider" />
-          </label>
-          <span className="muted">Remove cards again when correct.</span>
-        </div>
-      </div>
-
-      <div className="setting-row">
         <span className="label">AI EVALUATION</span>
         <div className="setting-inline">
           <label className="switch">
@@ -280,6 +243,124 @@ export const ExamTogglesPanel = ({
           </label>
           <span className="muted">Coming soon.</span>
         </div>
+      </div>
+    </div>
+  </section>
+);
+
+type AutoCardsSettingsPanelProps = {
+  enabledTypes: AutoCardTypeMap;
+  onTypeToggle: (type: AutoCardType, value: boolean) => void;
+  returnCardsEnabled: boolean;
+  setReturnCardsEnabled: (value: boolean) => void;
+};
+
+const AUTO_CARD_TYPE_OPTIONS: Array<{
+  type: AutoCardType;
+  label: string;
+  description: string;
+}> = [
+  {
+    type: "qa",
+    label: "Q&A (QA)",
+    description: "Free-text answers with an official solution.",
+  },
+  {
+    type: "tf",
+    label: "True/False (TF)",
+    description: "Statement-based true/false interactions.",
+  },
+  {
+    type: "m1",
+    label: "Multiple Choice (M1)",
+    description: "Single-correct multiple choice.",
+  },
+  {
+    type: "m2",
+    label: "Multiple Choice (M2)",
+    description: "Multiple-correct multiple choice.",
+  },
+  {
+    type: "cl",
+    label: "Cloze Typed (CL)",
+    description: "Typed blanks only.",
+  },
+  {
+    type: "cd",
+    label: "Cloze Drag (CD)",
+    description: "Drag-token blanks only.",
+  },
+  {
+    type: "cld",
+    label: "Cloze Mixed (CLD)",
+    description: "Combination of typed blanks and drag tokens.",
+  },
+];
+
+export const AutoCardsSettingsPanel = ({
+  enabledTypes,
+  onTypeToggle,
+  returnCardsEnabled,
+  setReturnCardsEnabled,
+}: AutoCardsSettingsPanelProps) => (
+  <section className="panel exam-auto-cards-panel">
+    <div className="panel-header">
+      <div>
+        <h2>Auto Cards</h2>
+        <p className="muted">
+          Choose which interaction types are converted into auto cards after grading.
+        </p>
+      </div>
+    </div>
+    <div className="panel-body">
+      <div className="settings-subsection">
+        <h3>Auto-Card Sources</h3>
+        <p className="muted">
+          Combined tasks are included when at least one enabled type appears.
+        </p>
+      </div>
+      {AUTO_CARD_TYPE_OPTIONS.map((option) => (
+        <div key={option.type} className="setting-row">
+          <span className="label">{option.label}</span>
+          <div className="setting-inline">
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={enabledTypes[option.type]}
+                onChange={(event) => onTypeToggle(option.type, event.target.checked)}
+              />
+              <span className="slider" />
+            </label>
+            <span className="muted">
+              {enabledTypes[option.type] ? "Enabled" : "Disabled"}
+            </span>
+          </div>
+          <span className="helper-text">{option.description}</span>
+        </div>
+      ))}
+
+      <div className="settings-subsection">
+        <h3>Return Cards</h3>
+        <p className="muted">
+          When enabled, correctly answered auto cards are removed again.
+        </p>
+      </div>
+      <div className="setting-row">
+        <span className="label">RETURN CARDS</span>
+        <div className="setting-inline">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={returnCardsEnabled}
+              onChange={(event) => setReturnCardsEnabled(event.target.checked)}
+            />
+            <span className="slider" />
+          </label>
+          <span className="muted">{returnCardsEnabled ? "Enabled" : "Disabled"}</span>
+        </div>
+        <span className="helper-text">
+          Remove auto cards again when they are answered correctly.
+        </span>
       </div>
     </div>
   </section>

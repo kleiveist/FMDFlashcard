@@ -33,6 +33,7 @@ import {
 import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import {
+  AutoCardsSettingsPanel,
   ExamSettingsPanel,
   ExamTogglesPanel,
 } from "../components/settings/ExamSettingsSection";
@@ -616,14 +617,17 @@ export const SettingsPage = () => {
                 timeLimitEnabled={settings.examTimeLimitEnabled}
                 showTimeline={settings.examShowTimeline}
                 helpEnabled={settings.examHelpEnabled}
-                autoCardsEnabled={settings.examAutoCardsEnabled}
-                autoCardsReturnOnCorrect={settings.examAutoCardsReturnOnCorrect}
                 aiEvaluation={settings.examAiEvaluation}
                 onTimeLimitToggle={handleExamTimeLimitToggle}
                 setShowTimeline={settings.setExamShowTimeline}
                 setHelpEnabled={settings.setExamHelpEnabled}
-                setAutoCardsEnabled={settings.setExamAutoCardsEnabled}
-                setAutoCardsReturnOnCorrect={settings.setExamAutoCardsReturnOnCorrect}
+              />
+            ) : activeSubPageId === "auto-cards" ? (
+              <AutoCardsSettingsPanel
+                enabledTypes={settings.examAutoCardsTypes}
+                onTypeToggle={settings.setExamAutoCardsTypeEnabled}
+                returnCardsEnabled={settings.examAutoCardsReturnOnCorrect}
+                setReturnCardsEnabled={settings.setExamAutoCardsReturnOnCorrect}
               />
             ) : (
               <ExamSettingsPanel

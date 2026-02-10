@@ -30,6 +30,7 @@ export type SettingsNavIcon =
 export type SettingsSubPageId =
   | "exam-settings"
   | "exam-toggles"
+  | "auto-cards"
   | "flashcard-tools"
   | "fast-flashcard-tools"
   | "spaced-repetition-tools"
@@ -72,6 +73,7 @@ export const SETTINGS_NAV_MODEL = [
     subPages: [
       { id: "exam-settings", label: "Exam Settings" },
       { id: "exam-toggles", label: "Exam Toggles" },
+      { id: "auto-cards", label: "Auto Cards" },
     ],
   },
   {
