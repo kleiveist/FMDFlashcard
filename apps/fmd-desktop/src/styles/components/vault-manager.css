@@ -57,6 +57,11 @@
   background: var(--accent-weak-bg);
 }
 
+.vault-manager-item:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
 .vault-manager-item.active {
   background: var(--accent-active-bg);
   border-color: var(--accent-weak-border);

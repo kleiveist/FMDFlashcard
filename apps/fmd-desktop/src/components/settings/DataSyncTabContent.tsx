@@ -130,6 +130,7 @@ export const DataSyncSettingsView = ({
           userVault={userVault}
           spacedRepetition={spacedRepetition}
           vaultSelection={vaultSelection}
+          showActiveVault={false}
         />
       ) : null}
     </>

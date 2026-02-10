@@ -5,7 +5,14 @@
  * - Rendert das Vault Manager Modal.
  */
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { asErrorMessage } from "../lib/errors";
 import { normalizeVaultPath, vaultBaseName } from "../lib/path";
@@ -229,6 +236,54 @@ export const VaultManagerModal = ({
     }
   }, [onOpenVault]);
 
+  const handleSelectVaultPath = useCallback((path: string) => {
+    setSelectedVaultPath(path);
+    setActionError("");
+  }, []);
+
+  const handleActivateVaultPath = useCallback(
+    async (path: string) => {
+      if (!path) {
+        return;
+      }
+      handleSelectVaultPath(path);
+      if (isBusy) {
+        return;
+      }
+      const normalizedTarget = normalizeVaultPath(path);
+      if (!normalizedTarget || normalizedTarget === activeVaultKey) {
+        return;
+      }
+      setIsBusy(true);
+      try {
+        const switched = await onSwitchVault(path);
+        if (!switched) {
+          setActionError("Vault could not be opened.");
+        }
+      } catch (error) {
+        setActionError(asErrorMessage(error, "Vault could not be opened."));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [activeVaultKey, handleSelectVaultPath, isBusy, onSwitchVault],
+  );
+
+  const handleVaultKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>, path: string) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void handleActivateVaultPath(path);
+        return;
+      }
+      if (event.key === " " || event.key === "Spacebar" || event.key === "Space") {
+        event.preventDefault();
+        handleSelectVaultPath(path);
+      }
+    },
+    [handleActivateVaultPath, handleSelectVaultPath],
+  );
+
   const handleLoadProfile = useCallback(async () => {
     if (!resolvedUserVaultPath) {
       return;
@@ -318,16 +373,16 @@ export const VaultManagerModal = ({
   );
 
   const openContextMenu = useCallback(
-    (event: MouseEvent<HTMLButtonElement>, path: string) => {
+    (event: MouseEvent<HTMLDivElement>, path: string) => {
       event.preventDefault();
-      setSelectedVaultPath(path);
+      handleSelectVaultPath(path);
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
         path,
       });
     },
-    [],
+    [handleSelectVaultPath],
   );
 
   const closeContextMenu = useCallback(() => {
@@ -426,7 +481,11 @@ export const VaultManagerModal = ({
           </button>
         </div>
         <div className="vault-manager-content">
-          <aside className="vault-manager-list" aria-label="Vault list">
+          <aside
+            className="vault-manager-list"
+            role="listbox"
+            aria-label="Vault list"
+          >
             {vaults.length === 0 ? (
               <div className="empty-state">No vaults found.</div>
             ) : (
@@ -437,18 +496,18 @@ export const VaultManagerModal = ({
                 const info = pathInfo[entry.path];
                 const isMissing = info ? !info.exists || !info.isDir : false;
                 return (
-                  <button
+                  <div
                     key={entry.path}
-                    type="button"
                     className={`vault-manager-item${
                       isSelected ? " active" : ""
                     }`}
-                    onClick={() => {
-                      setSelectedVaultPath(entry.path);
-                      setActionError("");
-                    }}
+                    role="option"
+                    aria-selected={isSelected}
+                    tabIndex={0}
+                    onClick={() => handleSelectVaultPath(entry.path)}
+                    onDoubleClick={() => void handleActivateVaultPath(entry.path)}
+                    onKeyDown={(event) => handleVaultKeyDown(event, entry.path)}
                     onContextMenu={(event) => openContextMenu(event, entry.path)}
-                    aria-pressed={isSelected}
                     title={entry.path}
                   >
                     <span className="vault-manager-item-main">
@@ -461,7 +520,7 @@ export const VaultManagerModal = ({
                       {isActive ? <span className="chip">Active</span> : null}
                       {isMissing ? <span className="chip">Missing</span> : null}
                     </span>
-                  </button>
+                  </div>
                 );
               })
             )}

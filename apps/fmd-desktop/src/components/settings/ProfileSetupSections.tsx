@@ -363,6 +363,7 @@ type ProfileSetupViewProps = {
   vaultSelection: ProfileSetupVaultSelection;
   autoFocusSource?: boolean;
   showActiveUser?: boolean;
+  showActiveVault?: boolean;
 };
 
 export const ProfileSetupView = ({
@@ -371,10 +372,13 @@ export const ProfileSetupView = ({
   vaultSelection,
   autoFocusSource = false,
   showActiveUser = true,
+  showActiveVault = true,
 }: ProfileSetupViewProps) => {
   return (
     <>
-      <ActiveVaultSection userVault={userVault} selection={vaultSelection} />
+      {showActiveVault ? (
+        <ActiveVaultSection userVault={userVault} selection={vaultSelection} />
+      ) : null}
       <ProfileSourceSection userVault={userVault} autoFocus={autoFocusSource} />
       <ProfileRootSection userVault={userVault} />
       <UserListSection
