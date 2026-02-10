@@ -569,7 +569,7 @@ h2 {
   flex-direction: column;
 }
 
-.workspace > .panel .panel-body,
+.workspace > .panel:not(.list-panel):not(.preview-panel) .panel-body,
 .workspace > .vault-details .vault-body {
   flex: 1;
   min-height: 0;
