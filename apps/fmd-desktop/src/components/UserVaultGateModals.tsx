@@ -65,7 +65,7 @@ const UserVaultProfileSetupModal = ({
       isOpen={isOpen}
       title="Profile setup"
       onClose={onClose}
-      initialFocusSelector='[data-autofocus="active-vault"]'
+      initialFocusSelector='[data-autofocus="profile-source"]'
       bodyClassName="hub-modal-scroll"
     >
       <div className="settings-tab-content">
@@ -74,6 +74,7 @@ const UserVaultProfileSetupModal = ({
           spacedRepetition={spacedRepetition}
           vaultSelection={vaultSelection}
           autoFocusSource
+          showActiveVault={false}
         />
       </div>
     </ModalShell>
