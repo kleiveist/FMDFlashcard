@@ -9,7 +9,6 @@
 │   ├── 📄 indextools.json
 │   └── 📝summarytools.md
 ├── 📁 build
-│   └── 🐍buildwin_linux.py
 ├── 📁 fixes
 │   └── 🐍pacman_keyring_fix.py
 ├── 📁 inst
@@ -23,10 +22,12 @@
 │   ├── 📁 build
 │   │   ├── 📁 __pycache__
 │   │   │   └── 📄 build_lin.cpython-314.pyc
+│   │   ├── 🐍build_copy.py
 │   │   ├── 🐍build_lin.py
 │   │   ├── 🐍build_mac.py
 │   │   ├── 🐍build_win.py
-│   │   └── 🐍build_win_p.py
+│   │   ├── 🐍build_win_p.py
+│   │   └── 🐍buildwin_linux.py
 │   ├── 📁 linux
 │   │   ├── 🐍installuix.py
 │   │   ├── 🐍installuixarc.py

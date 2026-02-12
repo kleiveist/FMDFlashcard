@@ -28,10 +28,10 @@ from typing import Callable, cast
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# New structure:
-#   tools/build/build_*.py
-# Legacy (optional):
+# Build scripts (canonical):
 #   tools/inst/build/build_*.py
+# Legacy fallback (optional):
+#   tools/build/build_*.py
 INST_DIR = SCRIPT_DIR / "inst"
 BUILD_DIR = SCRIPT_DIR / "build"
 LEGACY_BUILD_DIR = INST_DIR / "build"
@@ -44,8 +44,8 @@ extra_dirs = (
     INST_DIR / "linux",
     INST_DIR / "mac",
     INST_DIR / "win",
-    LEGACY_BUILD_DIR,
     BUILD_DIR,
+    LEGACY_BUILD_DIR,
 )
 for extra_dir in extra_dirs:
     if extra_dir.exists() and str(extra_dir) not in sys.path:
@@ -194,7 +194,7 @@ def _load_run_runner() -> Callable[..., int] | None:
 
 
 def _load_build_lin_runner() -> Callable[..., int] | None:
-    """Load tools/build/build_lin.py (runner for pnpm tauri build)."""
+    """Load tools/inst/build/build_lin.py (runner for pnpm tauri build)."""
     mod_name = "build_lin"
     try:
         mod = importlib.import_module(mod_name)
@@ -232,10 +232,11 @@ def _print_build_helper() -> None:
     info("  --build-win  Windows build (default bundles via WIN_BUNDLES). Use -p for portable.")
     info("  --build-mac  macOS bundles (MAC_BUNDLES=app,dmg, ALLOW_CROSS).")
     info("  --build --winlinux  Windows cross-compile on Linux (cargo-xwin, portable exe).")
+    info("  --build --copy  Copy produced bundles to AppInsall target folders.")
 
 
 def _load_build_win_runner() -> Callable[..., int] | None:
-    """Load tools/build/build_win.py (runner for Windows build)."""
+    """Load tools/inst/build/build_win.py (runner for Windows build)."""
     mod_name = "build_win"
     try:
         mod = importlib.import_module(mod_name)
@@ -251,7 +252,7 @@ def _load_build_win_runner() -> Callable[..., int] | None:
 
 
 def _load_build_win_portable_runner() -> Callable[..., int] | None:
-    """Load tools/build/build_win_p.py (runner for Windows portable build)."""
+    """Load tools/inst/build/build_win_p.py (runner for Windows portable build)."""
     mod_name = "build_win_p"
     try:
         mod = importlib.import_module(mod_name)
@@ -269,7 +270,7 @@ def _load_build_win_portable_runner() -> Callable[..., int] | None:
 
 
 def _load_build_mac_runner() -> Callable[..., int] | None:
-    """Load tools/build/build_mac.py (runner for macOS build)."""
+    """Load tools/inst/build/build_mac.py (runner for macOS build)."""
     mod_name = "build_mac"
     try:
         mod = importlib.import_module(mod_name)
@@ -285,7 +286,7 @@ def _load_build_mac_runner() -> Callable[..., int] | None:
 
 
 def _load_build_winlinux_runner() -> Callable[..., int] | None:
-    """Load tools/build/buildwin_linux.py (runner for Windows cross build on Linux)."""
+    """Load tools/inst/build/buildwin_linux.py (runner for Windows cross build on Linux)."""
     mod_name = "buildwin_linux"
     try:
         mod = importlib.import_module(mod_name)
@@ -298,6 +299,22 @@ def _load_build_winlinux_runner() -> Callable[..., int] | None:
         print(
             f"Windows Linux build module '{mod_name}' has no run_install(dry_run=...) function."
         )
+        return None
+    return cast(Callable[..., int], fn)
+
+
+def _load_build_copy_runner() -> Callable[..., int] | None:
+    """Load tools/inst/build/build_copy.py (runner for bundle copy)."""
+    mod_name = "build_copy"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load bundle copy module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"Bundle copy module '{mod_name}' has no run_install(dry_run=...) function.")
         return None
     return cast(Callable[..., int], fn)
 
@@ -352,6 +369,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--winlinux",
         action="store_true",
         help="Enable Windows cross-compile on Linux (use with --build).",
+    )
+    parser.add_argument(
+        "--copy",
+        action="store_true",
+        help="Copy produced bundles into the AppInsall destination folders (use with --build).",
     )
     parser.add_argument(
         "--build-lin",
@@ -452,7 +474,7 @@ def main(argv: list[str] | None = None) -> int:
         console_section("Windows Build (Linux cross)")
         run_build_winlinux = _load_build_winlinux_runner()
         if not run_build_winlinux:
-            print("No Windows cross build routine found. Expected: tools/build/buildwin_linux.py")
+            print("No Windows cross build routine found. Expected: tools/inst/build/buildwin_linux.py")
             exit_code = max(exit_code, 1)
         else:
             try:
@@ -463,7 +485,25 @@ def main(argv: list[str] | None = None) -> int:
                     exit_code = max(exit_code, run_build_winlinux(args.dry_run))
             except Exception:
                 exit_code = max(exit_code, run_build_winlinux(args.dry_run))
-    elif args.build:
+
+    if args.build and args.copy:
+        handled = True
+        console_section("Build Copy")
+        run_build_copy = _load_build_copy_runner()
+        if not run_build_copy:
+            print("No bundle copy routine found. Expected: tools/inst/build/build_copy.py")
+            exit_code = max(exit_code, 1)
+        else:
+            try:
+                sig = inspect.signature(run_build_copy)
+                if len(sig.parameters) == 0:
+                    exit_code = max(exit_code, run_build_copy())
+                else:
+                    exit_code = max(exit_code, run_build_copy(args.dry_run))
+            except Exception:
+                exit_code = max(exit_code, run_build_copy(args.dry_run))
+
+    if args.build and not args.winlinux and not args.copy:
         handled = True
         _print_build_helper()
 
@@ -489,7 +529,7 @@ def main(argv: list[str] | None = None) -> int:
         console_section("Linux Build")
         run_build_lin = _load_build_lin_runner()
         if not run_build_lin:
-            print("No Linux build routine found. Expected: tools/build/build_lin.py")
+            print("No Linux build routine found. Expected: tools/inst/build/build_lin.py")
             exit_code = max(exit_code, 1)
         else:
             try:
@@ -509,9 +549,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         if not run_build_win:
             if args.portable:
-                print("No Windows portable build routine found. Expected: tools/build/build_win_p.py")
+                print("No Windows portable build routine found. Expected: tools/inst/build/build_win_p.py")
             else:
-                print("No Windows build routine found. Expected: tools/build/build_win.py")
+                print("No Windows build routine found. Expected: tools/inst/build/build_win.py")
             exit_code = max(exit_code, 1)
         else:
             try:
@@ -528,7 +568,7 @@ def main(argv: list[str] | None = None) -> int:
         console_section("macOS Build")
         run_build_mac = _load_build_mac_runner()
         if not run_build_mac:
-            print("No macOS build routine found. Expected: tools/build/build_mac.py")
+            print("No macOS build routine found. Expected: tools/inst/build/build_mac.py")
             exit_code = max(exit_code, 1)
         else:
             try:
@@ -543,6 +583,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.winlinux and not args.build:
         handled = True
         print("Use --winlinux with --build (example: python3 tools/control.py --winlinux --build).")
+        exit_code = max(exit_code, 1)
+
+    if args.copy and not args.build:
+        handled = True
+        print("Use --copy with --build (example: python3 tools/control.py --copy --build).")
         exit_code = max(exit_code, 1)
 
     if args.doctor or args.check:

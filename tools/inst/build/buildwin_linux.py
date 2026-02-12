@@ -41,8 +41,9 @@ from console import (
 )
 
 
-def _repo_root_from_tools_build() -> Path:
-    return Path(__file__).resolve().parents[2]
+def _repo_root_from_tools_inst_build() -> Path:
+    # tools/inst/build/buildwin_linux.py -> repo root is parents[3].
+    return Path(__file__).resolve().parents[3]
 
 
 def _ensure_cargo_bin_on_path() -> None:
@@ -294,7 +295,7 @@ def run_install(dry_run: bool = False) -> int:
         err("Windows cross-compile is Linux-only in this script.")
         return 2
 
-    repo_root = _repo_root_from_tools_build()
+    repo_root = _repo_root_from_tools_inst_build()
     app_dir = (repo_root / "apps" / "fmd-desktop").resolve()
     legacy_dir = (repo_root / "tools" / "apps" / "fmd-desktop").resolve()
     using_legacy = False
