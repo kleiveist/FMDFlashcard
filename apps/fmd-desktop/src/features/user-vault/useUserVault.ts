@@ -14,6 +14,7 @@ import {
   USER_VAULT_SCHEMA_VERSION,
   PROFILE_ROOT_DIR,
   resolveActiveProfileRoot,
+  resolveCustomProfileRootPath,
   createEmptyProfileData,
   mergeProfileData,
   selectProfileFromExport,
@@ -82,8 +83,7 @@ const ensureJsonExtension = (path: string) =>
   path.toLowerCase().endsWith(".json") ? path : `${path}.json`;
 
 const resolveCustomPath = (value: string | null | undefined) => {
-  const trimmed = value?.trim() ?? "";
-  return trimmed ? trimmed : null;
+  return resolveCustomProfileRootPath(value ?? null);
 };
 
 export const useUserVault = ({
@@ -389,21 +389,27 @@ export const useUserVault = ({
 
   const handleModeChange = useCallback(
     (value: UserVaultMode) => {
+      if (value === mode) {
+        return;
+      }
       setMode(value);
       void bootstrapProfileContext("sourceChanged", { mode: value });
     },
-    [bootstrapProfileContext, setMode],
+    [bootstrapProfileContext, mode, setMode],
   );
 
   const handleCustomPathChange = useCallback(
     (value: string | null) => {
       const normalized = resolveCustomPath(value);
+      if ((customRootPath ?? null) === (normalized ?? null)) {
+        return;
+      }
       setCustomPath(normalized);
       void bootstrapProfileContext("customPathChanged", {
         customPath: normalized,
       });
     },
-    [bootstrapProfileContext, setCustomPath],
+    [bootstrapProfileContext, customRootPath, setCustomPath],
   );
 
   const handlePickCustomPath = useCallback(async () => {

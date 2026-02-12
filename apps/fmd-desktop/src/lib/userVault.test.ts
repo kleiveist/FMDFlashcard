@@ -13,6 +13,7 @@ import {
   mergeProfileData,
   parseProfileId,
   resolveActiveProfileRoot,
+  resolveCustomProfileRootPath,
   sanitizeProfileName,
   selectProfileFromExport,
   type UserVaultExportPayload,
@@ -58,10 +59,26 @@ describe("resolveActiveProfileRoot", () => {
     );
   });
 
-  it("returns custom path when set", () => {
+  it("normalizes custom path to a profile subfolder", () => {
     expect(
       resolveActiveProfileRoot("custom", "/vault/main", "  /data/user "),
-    ).toBe("/data/user");
+    ).toBe("/data/user/profile");
+    expect(
+      resolveActiveProfileRoot("custom", "/vault/main", "C:\\Vault\\Portable\\"),
+    ).toBe("C:\\Vault\\Portable\\profile");
+  });
+
+  it("keeps custom path when it already points to profile", () => {
+    expect(
+      resolveActiveProfileRoot("custom", "/vault/main", "/data/user/profile"),
+    ).toBe("/data/user/profile");
+    expect(
+      resolveActiveProfileRoot(
+        "custom",
+        "/vault/main",
+        "C:\\Vault\\Portable\\profile\\",
+      ),
+    ).toBe("C:\\Vault\\Portable\\profile");
   });
 
   it("returns null when custom mode has no path", () => {
@@ -73,6 +90,34 @@ describe("resolveActiveProfileRoot", () => {
     expect(resolveActiveProfileRoot("auto", "/vault/main", "/custom/root")).toBe(
       "/vault/main/profile",
     );
+  });
+});
+
+describe("resolveCustomProfileRootPath", () => {
+  it("appends profile when selecting a parent folder", () => {
+    expect(resolveCustomProfileRootPath("/workspace/IUFS")).toBe(
+      "/workspace/IUFS/profile",
+    );
+    expect(resolveCustomProfileRootPath("D:\\workspace\\IUFS\\")).toBe(
+      "D:\\workspace\\IUFS\\profile",
+    );
+    expect(resolveCustomProfileRootPath("X:\\workspace\\IUFS\\SE1")).toBe(
+      "X:\\workspace\\IUFS\\SE1\\profile",
+    );
+  });
+
+  it("keeps existing profile folders untouched", () => {
+    expect(resolveCustomProfileRootPath("/workspace/IUFS/profile")).toBe(
+      "/workspace/IUFS/profile",
+    );
+    expect(resolveCustomProfileRootPath("D:\\workspace\\IUFS\\profile\\")).toBe(
+      "D:\\workspace\\IUFS\\profile",
+    );
+  });
+
+  it("returns null for empty values", () => {
+    expect(resolveCustomProfileRootPath(null)).toBeNull();
+    expect(resolveCustomProfileRootPath("   ")).toBeNull();
   });
 });
 

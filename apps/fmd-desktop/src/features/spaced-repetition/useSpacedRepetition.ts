@@ -137,6 +137,37 @@ const normalizeSpacedRepetitionPageSize = (value: number) => {
     : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
 };
 
+const getSpacedRepetitionStorageScore = (storage: SpacedRepetitionStorage) => {
+  const users = Array.isArray(storage.users) ? storage.users.length : 0;
+  const states =
+    storage.userStateById && typeof storage.userStateById === "object"
+      ? Object.keys(storage.userStateById).length
+      : 0;
+  const hasActive = storage.lastActiveUserId ? 1 : 0;
+  return users * 10 + states * 3 + hasActive;
+};
+
+const resolveLegacySpacedRepetitionStorage = (
+  byVaultId: Record<string, SpacedRepetitionStorage>,
+  vaultId: string | null,
+) => {
+  if (vaultId && byVaultId[vaultId]) {
+    return { key: vaultId, storage: byVaultId[vaultId] };
+  }
+  const legacyEntries = Object.entries(byVaultId).filter(
+    ([key]) => key !== PROFILE_SCOPED_VAULT_KEY,
+  );
+  if (legacyEntries.length === 0) {
+    return null;
+  }
+  const ranked = [...legacyEntries].sort(
+    (a, b) =>
+      getSpacedRepetitionStorageScore(b[1]) - getSpacedRepetitionStorageScore(a[1]),
+  );
+  const [key, storage] = ranked[0];
+  return key && storage ? { key, storage } : null;
+};
+
 type UseSpacedRepetitionOptions = {
   isFlashcardScanning: boolean;
   scanFlashcards: (options?: {
@@ -194,10 +225,7 @@ export const useSpacedRepetition = ({
     () => (vaultPath ? hashString(vaultPath) : null),
     [vaultPath],
   );
-  const storageScopeId = useMemo(
-    () => (userVaultMode === "custom" ? PROFILE_SCOPED_VAULT_KEY : vaultId),
-    [userVaultMode, vaultId],
-  );
+  const storageScopeId = PROFILE_SCOPED_VAULT_KEY;
   const [spacedRepetitionUsers, setSpacedRepetitionUsers] = useState<
     SpacedRepetitionUser[]
   >([]);
@@ -511,7 +539,7 @@ export const useSpacedRepetition = ({
       setSpacedRepetitionDataLoaded(false);
     };
 
-    if (!userVaultProfilePath || !storageScopeId) {
+    if (!userVaultProfilePath) {
       resetState();
       spacedRepetitionStoreRef.current = null;
       restoreContextRef.current = null;
@@ -533,17 +561,19 @@ export const useSpacedRepetition = ({
         const store = await loadSpacedRepetitionStore(userVaultProfilePath);
         let nextStore = store;
         let storage = store.byVaultId[storageScopeId] ?? null;
-        // Migrate legacy custom-path data from vault-scoped storage to profile-scoped key.
-        if (userVaultMode === "custom" && !storage && vaultId) {
-          const legacyStorage = store.byVaultId[vaultId] ?? null;
-          if (legacyStorage) {
-            storage = legacyStorage;
+        if (!storage) {
+          const legacy = resolveLegacySpacedRepetitionStorage(store.byVaultId, vaultId);
+          if (legacy) {
+            storage = legacy.storage;
             nextStore = {
               ...store,
               byVaultId: {
                 ...store.byVaultId,
-                [PROFILE_SCOPED_VAULT_KEY]: legacyStorage,
+                [PROFILE_SCOPED_VAULT_KEY]: legacy.storage,
               },
+              migratedVaultIds: Array.from(
+                new Set([...(store.migratedVaultIds ?? []), legacy.key]),
+              ),
             };
             await saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
           }
@@ -573,10 +603,10 @@ export const useSpacedRepetition = ({
     return () => {
       cancelled = true;
     };
-  }, [storageScopeId, userVaultMode, userVaultProfilePath, userVaultRevision, vaultId]);
+  }, [storageScopeId, userVaultProfilePath, userVaultRevision, vaultId]);
 
   useEffect(() => {
-    if (!spacedRepetitionDataLoaded || !userVaultProfilePath || !storageScopeId) {
+    if (!spacedRepetitionDataLoaded || !userVaultProfilePath) {
       return;
     }
     const storage: SpacedRepetitionStorage = {

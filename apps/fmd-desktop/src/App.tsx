@@ -128,9 +128,10 @@ const AppContent = () => {
   const syncProviderConfigured = false; // TODO: wire to persisted sync provider config.
   const shouldGateSyncProvider =
     syncProviderEnabled && syncProviderRequired && !syncProviderConfigured;
+  const needsCustomPathSetup = userVault.mode === "custom" && !isActivePathReady;
   const nextGate: WalletGateId | null = !isWalletOpen
     ? null
-    : !isActivePathReady
+    : needsCustomPathSetup
       ? "custom-path"
       : !isProfileReady
         ? "profile"

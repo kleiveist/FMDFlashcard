@@ -89,14 +89,27 @@ export const parseProfileId = (value: string) => {
   return { dateStamp: match[1] ?? "", name: match[2] ?? value };
 };
 
+export const resolveCustomProfileRootPath = (customPath: string | null) => {
+  const trimmed = customPath?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+  const normalized = trimmed.replace(/[\\/]+$/, "");
+  const parts = normalized.split(/[\\/]/);
+  const last = (parts[parts.length - 1] ?? "").toLowerCase();
+  if (last === PROFILE_ROOT_DIR) {
+    return normalized;
+  }
+  return joinPath(normalized, PROFILE_ROOT_DIR);
+};
+
 export const resolveActiveProfileRoot = (
   mode: UserVaultMode,
   vaultPath: string | null,
   customPath: string | null,
 ): string | null => {
   if (mode === "custom") {
-    const trimmed = customPath?.trim() ?? "";
-    return trimmed ? trimmed : null;
+    return resolveCustomProfileRootPath(customPath);
   }
   if (mode === "auto") {
     return vaultPath ? joinPath(vaultPath, PROFILE_ROOT_DIR) : null;

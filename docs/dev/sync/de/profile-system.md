@@ -10,7 +10,7 @@ Diese Doku beschreibt das aktuelle Profil-/User-Storage-System auf Basis des imp
 | Begriff | Bedeutung | Source of Truth / Owner |
 | --- | --- | --- |
 | Vault | Geoeffneter Markdown-Ordner in der App. | AppState + Vault-Feature (`apps/fmd-desktop/src/components/AppStateProvider.tsx:197`) |
-| Profile-Root | Wurzel fuer Profil-Dateien (`auto`: `<vault>/profile`, `custom`: frei waehlbarer Pfad). | Resolver in `resolveActiveProfileRoot` (`apps/fmd-desktop/src/lib/userVault.ts:92`) |
+| Profile-Root | Wurzel fuer Profil-Dateien (`auto`: `<vault>/profile`, `custom`: ausgewaehlter Pfad wird auf `<auswahl>/profile` normalisiert, ausser er endet bereits auf `profile`). | Resolver in `resolveActiveProfileRoot` + `resolveCustomProfileRootPath` (`apps/fmd-desktop/src/lib/userVault.ts:92`, `apps/fmd-desktop/src/lib/userVault.ts:106`) |
 | Profil | Dateisystem-Ordner mit mindestens `profile.json`; enthaelt Feature-Stores je Profil. | Storage-Service (`apps/fmd-desktop/src/features/user-vault/storage.ts:660`) |
 | "User" (SR-User) | Fachlicher User innerhalb Spaced Repetition (mehrere pro Profil moeglich). | `spaced-repetition.json` unter `byVaultId[*].users` (`apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts:426`) |
 
@@ -163,9 +163,8 @@ Quellen Beispiele:
 Beim Hydratisieren werden User-/State-Eintraege normalisiert, card progress repariert (`apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts:426`).
 
 Wichtige Key-Regel:
-- Auto-Mode: `byVaultId`-Key = Hash des Vault-Pfads (`apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts:193`).
-- Custom-Mode: Key ist konstant `__profile__` (`apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts:82`).
-- Legacy-Migration in Custom-Mode kopiert alten Vault-Hash-Key nach `__profile__` (`apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts:537`).
+- Aktuelles Verhalten nutzt fuer alle Profil-Modi (Auto/Custom) den stabilen Key `__profile__`, damit SR-User immer mit dem Profilordner mitwandern (`apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts:197`).
+- Legacy-Keys auf Basis des Vault-Pfad-Hash werden bei Bedarf automatisch nach `__profile__` migriert; zuerst wird der aktuelle Vault-Hash bevorzugt, sonst der am besten befuellte Legacy-Eintrag (`apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts:157`, `apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts:560`).
 
 Beispiel (gekuerzt, echte Keys):
 
@@ -256,7 +255,8 @@ Quelle Beispiel: `docs/dev/test/archive/test_editor/user/profiles/2026-01-14_Kle
 
 1. `resolveActiveProfileRoot(mode, vaultPath, customPath)`:
    - `auto` -> `<vault>/profile`
-   - `custom` -> `trim(customPath)` oder `null` (`apps/fmd-desktop/src/lib/userVault.ts:92`)
+   - `custom` -> `resolveCustomProfileRootPath(customPath)`:
+     ausgewaehlter Elternordner wird zu `<auswahl>/profile`; bei bestehendem Suffix `profile` bleibt der Pfad unveraendert (`apps/fmd-desktop/src/lib/userVault.ts:92`, `apps/fmd-desktop/src/lib/userVault.ts:106`)
 2. In `auto` ohne Vault gibt es keinen Root (`No active vault selected`) (`apps/fmd-desktop/src/features/user-vault/useUserVault.ts:193`).
 3. In `custom` ohne Pfad -> Fehler `Custom path is required.` (`apps/fmd-desktop/src/features/user-vault/useUserVault.ts:221`).
 
