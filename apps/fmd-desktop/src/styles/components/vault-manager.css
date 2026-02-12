@@ -95,6 +95,49 @@
   flex-shrink: 0;
 }
 
+.vault-manager-item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vault-manager-item-action {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.vault-manager-item-action:hover {
+  background: var(--accent-weak-bg);
+}
+
+.vault-manager-item-action-text {
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--block-bg);
+  color: var(--ink);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.vault-manager-item-action-text:hover {
+  background: var(--accent-weak-bg);
+}
+
+.vault-manager-item-action:disabled,
+.vault-manager-item-action-text:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .vault-manager-details {
   border: 1px solid var(--line-soft);
   border-radius: 14px;
@@ -144,6 +187,25 @@
   border: 1px solid var(--error-border);
   background: var(--error-bg);
   color: var(--error-ink);
+}
+
+.vault-manager-warning-detail {
+  margin-top: 6px;
+  font-size: 0.82rem;
+}
+
+.vault-manager-feedback {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--block-bg);
+  color: var(--ink);
+}
+
+.vault-manager-feedback.success {
+  border-color: var(--accent-weak-border);
+  background: var(--accent-weak-bg);
+  color: var(--accent-strong);
 }
 
 .vault-manager-context-backdrop {

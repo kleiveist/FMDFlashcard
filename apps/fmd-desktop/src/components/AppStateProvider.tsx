@@ -27,11 +27,14 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { isValidHex, normalizeHex } from "../lib/color";
+import { asErrorMessage } from "../lib/errors";
 import { isHiddenPath, normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
@@ -39,7 +42,12 @@ import type { LoadState } from "../lib/types";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
 import { useFlashcardNoteFiles } from "../features/flashcards/useFlashcardNoteFiles";
 import { usePreview } from "../features/preview/usePreview";
-import { useAppSettings } from "../features/settings/useAppSettings";
+import {
+  buildRecentVaultId,
+  createRecentVaultEntry,
+  useAppSettings,
+  type RecentVaultEntry,
+} from "../features/settings/useAppSettings";
 import { type SettingsPageId } from "../features/settings/settingsNavigation";
 import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepetition";
 import { useUserVault } from "../features/user-vault/useUserVault";
@@ -118,6 +126,23 @@ const parseVaultWarningThreshold = (value: string) => {
 };
 
 const MAX_RECENT_VAULTS = 10;
+
+type VaultPathInfo = {
+  exists: boolean;
+  isDir: boolean;
+};
+
+type VaultRecheckResult = {
+  vaultId: string;
+  path: string | null;
+  available: boolean;
+  loaded: boolean;
+  lastError: string | null;
+  message: string;
+};
+
+const describeMissingVaultPath = (info: VaultPathInfo) =>
+  info.exists ? "Pfad ist kein Ordner." : "Pfad existiert nicht.";
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
@@ -294,6 +319,163 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     takeSnapshot: takeFlashcardsSnapshot,
   } = flashcards;
   const { resetFlashcards: resetFastFlashcards } = fastFlashcards;
+  const autoRecheckRunningRef = useRef(false);
+
+  const activeVaultEntry = useMemo(() => {
+    const normalizedActivePath = normalizeVaultPath(vaultPath ?? "");
+    if (!normalizedActivePath) {
+      return null;
+    }
+    return (
+      recentVaults.find(
+        (entry) => normalizeVaultPath(entry.path) === normalizedActivePath,
+      ) ?? null
+    );
+  }, [recentVaults, vaultPath]);
+
+  const persistRecentVaultRegistry = useCallback(
+    async (entries: RecentVaultEntry[]) => {
+      if (!settingsLoaded) {
+        return false;
+      }
+      return persistSettings({
+        recentVaults: entries.slice(0, MAX_RECENT_VAULTS),
+      });
+    },
+    [persistSettings, settingsLoaded],
+  );
+
+  const updateRecentVaultEntry = useCallback(
+    async (vaultId: string, updates: Partial<RecentVaultEntry>) => {
+      const index = recentVaults.findIndex((entry) => entry.id === vaultId);
+      if (index < 0) {
+        return null;
+      }
+      const current = recentVaults[index];
+      const nextEntry = createRecentVaultEntry(updates.path ?? current.path, {
+        ...current,
+        ...updates,
+        id: current.id,
+        lastOpenedAt: updates.lastOpenedAt ?? current.lastOpenedAt,
+        status: updates.status ?? current.status,
+        lastSeenAt:
+          typeof updates.lastSeenAt === "undefined"
+            ? current.lastSeenAt
+            : updates.lastSeenAt,
+        lastError:
+          typeof updates.lastError === "undefined"
+            ? current.lastError ?? null
+            : updates.lastError,
+      });
+      const unchanged =
+        current.path === nextEntry.path &&
+        current.lastOpenedAt === nextEntry.lastOpenedAt &&
+        current.status === nextEntry.status &&
+        current.lastSeenAt === nextEntry.lastSeenAt &&
+        (current.lastError ?? null) === (nextEntry.lastError ?? null);
+      if (unchanged) {
+        return current;
+      }
+      const nextPathKey = normalizeVaultPath(nextEntry.path);
+      const next = recentVaults.reduce<RecentVaultEntry[]>((acc, entry, entryIndex) => {
+        if (entryIndex === index) {
+          acc.push(nextEntry);
+          return acc;
+        }
+        if (entry.id === nextEntry.id) {
+          return acc;
+        }
+        if (nextPathKey && normalizeVaultPath(entry.path) === nextPathKey) {
+          return acc;
+        }
+        acc.push(entry);
+        return acc;
+      }, []);
+      await persistRecentVaultRegistry(next);
+      return nextEntry;
+    },
+    [persistRecentVaultRegistry, recentVaults],
+  );
+
+  const markRecentVaultAvailable = useCallback(
+    async (path: string) => {
+      const normalizedPath = normalizeVaultPath(path);
+      if (!normalizedPath) {
+        return null;
+      }
+      const now = new Date().toISOString();
+      const existing =
+        recentVaults.find(
+          (entry) => normalizeVaultPath(entry.path) === normalizedPath,
+        ) ?? null;
+      const nextEntry = createRecentVaultEntry(path, {
+        id: existing?.id ?? buildRecentVaultId(path),
+        lastOpenedAt: now,
+        status: "available",
+        lastSeenAt: now,
+        lastError: null,
+      });
+      const next = [
+        nextEntry,
+        ...recentVaults.filter((entry) => {
+          if (entry.id === nextEntry.id) {
+            return false;
+          }
+          return normalizeVaultPath(entry.path) !== normalizedPath;
+        }),
+      ].slice(0, MAX_RECENT_VAULTS);
+      await persistRecentVaultRegistry(next);
+      return nextEntry;
+    },
+    [persistRecentVaultRegistry, recentVaults],
+  );
+
+  const markRecentVaultMissingByPath = useCallback(
+    async (path: string, lastError: string) => {
+      const normalizedPath = normalizeVaultPath(path);
+      if (!normalizedPath) {
+        return null;
+      }
+      const existing =
+        recentVaults.find(
+          (entry) => normalizeVaultPath(entry.path) === normalizedPath,
+        ) ?? null;
+      if (existing) {
+        return updateRecentVaultEntry(existing.id, {
+          status: "missing",
+          lastError,
+        });
+      }
+      const nextEntry = createRecentVaultEntry(path, {
+        id: buildRecentVaultId(path),
+        status: "missing",
+        lastSeenAt: null,
+        lastError,
+      });
+      const next = [nextEntry, ...recentVaults].slice(0, MAX_RECENT_VAULTS);
+      await persistRecentVaultRegistry(next);
+      return nextEntry;
+    },
+    [persistRecentVaultRegistry, recentVaults, updateRecentVaultEntry],
+  );
+
+  const inspectVaultPath = useCallback(async (path: string) => {
+    try {
+      const info = await invoke<VaultPathInfo>("get_path_info", { path });
+      if (info.exists && info.isDir) {
+        return { available: true as const, lastError: null };
+      }
+      return {
+        available: false as const,
+        lastError: describeMissingVaultPath(info),
+      };
+    } catch (error) {
+      return {
+        available: false as const,
+        lastError: asErrorMessage(error, "Pfadpruefung fehlgeschlagen."),
+      };
+    }
+  }, []);
 
   const setActiveFolderPath = useCallback((value: string | null) => {
     if (value === null) {
@@ -326,8 +508,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
           "Saved vault is unavailable. Please reselect.",
       });
       if (!results && !cancelled) {
-        setVaultPath(null);
-        await persistSettings({ vaultPath: null });
+        await markRecentVaultMissingByPath(
+          storedVaultPath,
+          "Saved vault is unavailable. Please reselect.",
+        );
       }
     };
 
@@ -336,7 +520,12 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
-  }, [loadVault, persistSettings, setVaultPath, settingsLoaded, storedVaultPath]);
+  }, [
+    loadVault,
+    markRecentVaultMissingByPath,
+    settingsLoaded,
+    storedVaultPath,
+  ]);
 
   useEffect(() => {
     if (!settingsLoaded) {
@@ -472,6 +661,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         setListError(errorMessage);
         restorePreviewSnapshot(previewSnapshot);
         restoreFlashcardsSnapshot(flashcardsSnapshot);
+        const inspected = await inspectVaultPath(path);
+        await markRecentVaultMissingByPath(
+          path,
+          inspected.lastError ?? errorMessage,
+        );
         return false;
       }
 
@@ -483,10 +677,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         setLargeVaultWarningCount(null);
       }
 
+      await markRecentVaultAvailable(path);
+      lastRecentVaultRef.current = normalizeVaultPath(path);
+
       return true;
     },
     [
+      inspectVaultPath,
       loadVault,
+      markRecentVaultAvailable,
+      markRecentVaultMissingByPath,
       maxFilesPerScan,
       resetFlashcards,
       resetPreview,
@@ -505,22 +705,178 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
 
   const updateRecentVaults = useCallback(
     async (path: string) => {
-      if (!settingsLoaded) {
-        return;
-      }
-      const normalized = normalizeVaultPath(path);
-      if (!normalized) {
-        return;
-      }
-      const next = [
-        { path, lastOpenedAt: new Date().toISOString() },
-        ...recentVaults.filter(
-          (entry) => normalizeVaultPath(entry.path) !== normalized,
-        ),
-      ].slice(0, MAX_RECENT_VAULTS);
-      await persistSettings({ recentVaults: next });
+      await markRecentVaultAvailable(path);
     },
-    [persistSettings, recentVaults, settingsLoaded],
+    [markRecentVaultAvailable],
+  );
+
+  const handleRecheckVault = useCallback(
+    async (
+      vaultId: string,
+      options: { loadIfAvailable?: boolean; source?: string } = {},
+    ): Promise<VaultRecheckResult> => {
+      const entry = recentVaults.find((candidate) => candidate.id === vaultId);
+      if (!entry) {
+        return {
+          vaultId,
+          path: null,
+          available: false,
+          loaded: false,
+          lastError: "Vault-Eintrag nicht gefunden.",
+          message: "Vault-Eintrag nicht gefunden.",
+        };
+      }
+      const source = options.source ?? "unknown";
+      if (import.meta.env.DEV) {
+        console.info("[vault] Recheck requested", {
+          vaultId,
+          source,
+          path: entry.path,
+        });
+      }
+      const inspected = await inspectVaultPath(entry.path);
+      if (!inspected.available) {
+        const reason = inspected.lastError ?? "Vault path unavailable.";
+        await updateRecentVaultEntry(entry.id, {
+          status: "missing",
+          lastError: reason,
+        });
+        return {
+          vaultId: entry.id,
+          path: entry.path,
+          available: false,
+          loaded: false,
+          lastError: reason,
+          message: `Vault noch missing: ${reason}`,
+        };
+      }
+
+      const now = new Date().toISOString();
+      await updateRecentVaultEntry(entry.id, {
+        status: "available",
+        lastSeenAt: now,
+        lastError: null,
+      });
+
+      let loaded = false;
+      if (options.loadIfAvailable) {
+        const normalizedActivePath = normalizeVaultPath(vaultPath ?? "");
+        const normalizedEntryPath = normalizeVaultPath(entry.path);
+        if (
+          normalizedActivePath &&
+          normalizedEntryPath &&
+          normalizedActivePath === normalizedEntryPath
+        ) {
+          loaded = listState !== "loading" ? await rescanVault() : false;
+        } else {
+          loaded = await handleSwitchVault(entry.path);
+        }
+      }
+
+      return {
+        vaultId: entry.id,
+        path: entry.path,
+        available: true,
+        loaded,
+        lastError: null,
+        message: loaded
+          ? "Vault verfuegbar und geladen."
+          : options.loadIfAvailable
+            ? "Vault verfuegbar, Laden fehlgeschlagen."
+            : "Vault verfuegbar.",
+      };
+    },
+    [
+      handleSwitchVault,
+      inspectVaultPath,
+      listState,
+      recentVaults,
+      rescanVault,
+      updateRecentVaultEntry,
+      vaultPath,
+    ],
+  );
+
+  const handleRelinkVault = useCallback(
+    async (
+      vaultId: string,
+      nextPath: string,
+      source = "unknown",
+    ): Promise<VaultRecheckResult> => {
+      const entry = recentVaults.find((candidate) => candidate.id === vaultId);
+      if (!entry) {
+        return {
+          vaultId,
+          path: null,
+          available: false,
+          loaded: false,
+          lastError: "Vault-Eintrag nicht gefunden.",
+          message: "Vault-Eintrag nicht gefunden.",
+        };
+      }
+      const trimmedPath = nextPath.trim();
+      const normalizedPath = normalizeVaultPath(trimmedPath);
+      if (!trimmedPath || !normalizedPath) {
+        return {
+          vaultId: entry.id,
+          path: entry.path,
+          available: false,
+          loaded: false,
+          lastError: "Ungueltiger Vault-Pfad.",
+          message: "Ungueltiger Vault-Pfad.",
+        };
+      }
+      if (import.meta.env.DEV) {
+        console.info("[vault] Relink requested", {
+          vaultId: entry.id,
+          fromPath: entry.path,
+          toPath: trimmedPath,
+          source,
+        });
+      }
+      const inspected = await inspectVaultPath(trimmedPath);
+      if (!inspected.available) {
+        const reason = inspected.lastError ?? "Vault path unavailable.";
+        await updateRecentVaultEntry(entry.id, {
+          path: trimmedPath,
+          status: "missing",
+          lastSeenAt: null,
+          lastError: reason,
+        });
+        return {
+          vaultId: entry.id,
+          path: trimmedPath,
+          available: false,
+          loaded: false,
+          lastError: reason,
+          message: `Vault noch missing: ${reason}`,
+        };
+      }
+      const now = new Date().toISOString();
+      await updateRecentVaultEntry(entry.id, {
+        path: trimmedPath,
+        status: "available",
+        lastSeenAt: now,
+        lastError: null,
+      });
+      const loaded = await handleSwitchVault(trimmedPath);
+      return {
+        vaultId: entry.id,
+        path: trimmedPath,
+        available: true,
+        loaded,
+        lastError: null,
+        message: loaded
+          ? "Vault verfuegbar und geladen."
+          : "Vault verfuegbar, Laden fehlgeschlagen.",
+      };
+    },
+    [
+      handleSwitchVault,
+      inspectVaultPath,
+      recentVaults,
+      updateRecentVaultEntry,
+    ],
   );
 
   const handleRemoveRecentVault = useCallback(
@@ -564,6 +920,54 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     lastRecentVaultRef.current = normalized;
     void updateRecentVaults(vault.vaultPath);
   }, [settingsLoaded, updateRecentVaults, vault.listState, vault.vaultPath]);
+
+  const missingVaultEntries = useMemo(
+    () => recentVaults.filter((entry) => entry.status === "missing"),
+    [recentVaults],
+  );
+
+  useEffect(() => {
+    if (!settingsLoaded || missingVaultEntries.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    const run = async (source: string) => {
+      if (cancelled || autoRecheckRunningRef.current) {
+        return;
+      }
+      autoRecheckRunningRef.current = true;
+      try {
+        for (const entry of missingVaultEntries) {
+          if (cancelled) {
+            return;
+          }
+          const shouldLoad = activeVaultEntry?.id === entry.id;
+          await handleRecheckVault(entry.id, {
+            loadIfAvailable: shouldLoad,
+            source,
+          });
+        }
+      } finally {
+        autoRecheckRunningRef.current = false;
+      }
+    };
+
+    void run("auto:startup");
+
+    const handleFocus = () => {
+      void run("auto:focus");
+    };
+    window.addEventListener("focus", handleFocus);
+    const timer = window.setInterval(() => {
+      void run("auto:timer");
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", handleFocus);
+      window.clearInterval(timer);
+    };
+  }, [activeVaultEntry?.id, handleRecheckVault, missingVaultEntries, settingsLoaded]);
 
   const handleOpenVaultManager = useCallback(() => {
     setIsVaultManagerOpen(true);
@@ -654,12 +1058,51 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     if (import.meta.env.DEV) {
       console.info("[vault] Refresh requested", { vaultPath, source });
     }
+    if (activeVaultEntry?.status === "missing") {
+      const result = await handleRecheckVault(activeVaultEntry.id, {
+        loadIfAvailable: true,
+        source: `${source}:active-missing`,
+      });
+      if (!result.available) {
+        setListError(result.message);
+      }
+      return result.available && result.loaded;
+    }
     const success = await rescanVault();
+    if (success) {
+      if (activeVaultEntry) {
+        await updateRecentVaultEntry(activeVaultEntry.id, {
+          status: "available",
+          lastSeenAt: new Date().toISOString(),
+          lastError: null,
+        });
+      } else {
+        await markRecentVaultAvailable(vaultPath);
+      }
+    } else if (activeVaultEntry) {
+      const inspected = await inspectVaultPath(vaultPath);
+      if (!inspected.available) {
+        await updateRecentVaultEntry(activeVaultEntry.id, {
+          status: "missing",
+          lastError: inspected.lastError ?? "Vault path unavailable.",
+        });
+      }
+    }
     if (!success && import.meta.env.DEV) {
       console.warn("[vault] Refresh failed", { vaultPath, source });
     }
     return success;
-  }, [listState, rescanVault, setListError, vaultPath]);
+  }, [
+    activeVaultEntry,
+    handleRecheckVault,
+    inspectVaultPath,
+    listState,
+    markRecentVaultAvailable,
+    rescanVault,
+    setListError,
+    updateRecentVaultEntry,
+    vaultPath,
+  ]);
 
   const handleResetIndex = useCallback(() => {
     if (!vaultPath) {
@@ -764,6 +1207,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         onClose={handleCloseVaultManager}
         onOpenVault={handlePickVault}
         onRescanVault={handleRescanVault}
+        onRecheckVault={handleRecheckVault}
+        onRelinkVault={handleRelinkVault}
         onSwitchVault={handleSwitchVault}
         onRemoveVault={handleRemoveRecentVault}
         onClearVault={handleClearVault}

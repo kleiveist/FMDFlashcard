@@ -31,4 +31,26 @@ describe("normalizeSettings", () => {
     expect(settings.editorBlueprintGridIntensity).toBe("medium");
     expect(settings.markdownPreviewDefaultMode).toBe("markdown");
   });
+
+  it("normalizes vault registry entries with status and error metadata", () => {
+    const stored = {
+      recent_vaults: [
+        {
+          path: "/vaults/missing-one",
+          last_opened_at: "2025-01-01T00:00:00.000Z",
+          status: "missing",
+          last_error: "Path does not exist.",
+        },
+      ],
+    } as AppSettings;
+    const { settings } = normalizeSettings(stored);
+
+    expect(settings.recentVaults).toHaveLength(1);
+    expect(settings.recentVaults[0]).toMatchObject({
+      id: "vault:/vaults/missing-one",
+      path: "/vaults/missing-one",
+      status: "missing",
+      lastError: "Path does not exist.",
+    });
+  });
 });

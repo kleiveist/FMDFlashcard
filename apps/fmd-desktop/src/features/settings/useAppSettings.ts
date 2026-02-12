@@ -88,9 +88,15 @@ export type ExamAiEvaluation = {
   provider: ExamAiProvider | null;
 };
 
+export type VaultRegistryStatus = "available" | "missing";
+
 export type RecentVaultEntry = {
+  id: string;
   path: string;
   lastOpenedAt: string;
+  status: VaultRegistryStatus;
+  lastSeenAt: string | null;
+  lastError?: string | null;
 };
 
 export type NormalizedSettingsResult = {
@@ -333,6 +339,58 @@ const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
 };
 const DEFAULT_EXAM_GRADE_SCALE: ExamGradeScale = "standard-1-6";
 
+const normalizeVaultRegistryStatus = (value: unknown): VaultRegistryStatus =>
+  value === "missing" ? "missing" : "available";
+
+export const buildRecentVaultId = (path: string) => {
+  const normalized = normalizeVaultPath(path.trim());
+  return normalized ? `vault:${normalized}` : `vault:${path.trim()}`;
+};
+
+type RecentVaultEntryOverrides = Partial<RecentVaultEntry> & {
+  id?: string;
+};
+
+export const createRecentVaultEntry = (
+  path: string,
+  overrides: RecentVaultEntryOverrides = {},
+): RecentVaultEntry => {
+  const trimmedPath = path.trim();
+  const now = new Date().toISOString();
+  const status = normalizeVaultRegistryStatus(overrides.status);
+  const lastOpenedAt =
+    typeof overrides.lastOpenedAt === "string" && overrides.lastOpenedAt.trim()
+      ? overrides.lastOpenedAt
+      : now;
+  const explicitLastSeenAt = overrides.lastSeenAt;
+  const lastSeenAt =
+    typeof explicitLastSeenAt === "string"
+      ? explicitLastSeenAt
+      : explicitLastSeenAt === null
+        ? null
+        : status === "available"
+          ? lastOpenedAt
+          : null;
+  const lastError =
+    typeof overrides.lastError === "string"
+      ? overrides.lastError
+      : overrides.lastError === null
+        ? null
+        : null;
+
+  return {
+    id:
+      typeof overrides.id === "string" && overrides.id.trim()
+        ? overrides.id
+        : buildRecentVaultId(trimmedPath),
+    path: trimmedPath,
+    lastOpenedAt,
+    status,
+    lastSeenAt,
+    lastError,
+  };
+};
+
 const parseInteger = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return Math.floor(value);
@@ -513,13 +571,22 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
     return [];
   }
   const entries: RecentVaultEntry[] = [];
-  const seen = new Set<string>();
+  const seenIds = new Set<string>();
+  const seenPaths = new Set<string>();
   value.forEach((entry) => {
     if (!entry || typeof entry !== "object") {
       return;
     }
     const candidate = entry as {
+      id?: unknown;
+      vaultId?: unknown;
+      vault_id?: unknown;
       path?: unknown;
+      status?: unknown;
+      lastSeenAt?: unknown;
+      last_seen_at?: unknown;
+      lastError?: unknown;
+      last_error?: unknown;
       lastOpenedAt?: unknown;
       last_opened_at?: unknown;
     };
@@ -531,17 +598,52 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
       return;
     }
     const normalized = normalizeVaultPath(trimmedPath);
-    if (!normalized || seen.has(normalized)) {
+    if (!normalized || seenPaths.has(normalized)) {
       return;
     }
-    seen.add(normalized);
+    const rawId =
+      typeof candidate.id === "string" && candidate.id.trim()
+        ? candidate.id
+        : typeof candidate.vaultId === "string" && candidate.vaultId.trim()
+          ? candidate.vaultId
+          : typeof candidate.vault_id === "string" && candidate.vault_id.trim()
+            ? candidate.vault_id
+            : buildRecentVaultId(trimmedPath);
+    if (seenIds.has(rawId)) {
+      return;
+    }
+    seenIds.add(rawId);
+    seenPaths.add(normalized);
     const lastOpenedAt =
       typeof candidate.lastOpenedAt === "string"
         ? candidate.lastOpenedAt
         : typeof candidate.last_opened_at === "string"
           ? candidate.last_opened_at
           : FALLBACK_RECENT_OPENED_AT;
-    entries.push({ path: trimmedPath, lastOpenedAt });
+    const status = normalizeVaultRegistryStatus(candidate.status);
+    const lastSeenAt =
+      typeof candidate.lastSeenAt === "string"
+        ? candidate.lastSeenAt
+        : typeof candidate.last_seen_at === "string"
+          ? candidate.last_seen_at
+          : status === "available"
+            ? lastOpenedAt
+            : null;
+    const lastError =
+      typeof candidate.lastError === "string"
+        ? candidate.lastError
+        : typeof candidate.last_error === "string"
+          ? candidate.last_error
+          : null;
+    entries.push(
+      createRecentVaultEntry(trimmedPath, {
+        id: rawId,
+        lastOpenedAt,
+        status,
+        lastSeenAt,
+        lastError,
+      }),
+    );
   });
   return entries.slice(0, MAX_RECENT_VAULTS);
 };

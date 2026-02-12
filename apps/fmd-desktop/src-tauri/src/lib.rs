@@ -43,8 +43,12 @@ struct KeyboardShortcutSettings {
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 struct RecentVaultEntry {
+    id: Option<String>,
     path: String,
     last_opened_at: Option<String>,
+    status: Option<String>,
+    last_seen_at: Option<String>,
+    last_error: Option<String>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone)]

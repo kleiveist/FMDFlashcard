@@ -13,6 +13,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
 } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { createPortal } from "react-dom";
 import { asErrorMessage } from "../lib/errors";
 import { normalizeVaultPath, vaultBaseName } from "../lib/path";
@@ -25,7 +26,6 @@ import {
   setActiveProfileId,
   type UserVaultProfileSummary,
 } from "../features/user-vault/storage";
-import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
 import type { RecentVaultEntry } from "../features/settings/useAppSettings";
 import type { UserVaultState } from "../features/user-vault/useUserVault";
 
@@ -39,7 +39,22 @@ type ProfileState = {
 type ContextMenuState = {
   x: number;
   y: number;
+  vaultId: string;
   path: string;
+};
+
+type VaultRecheckResult = {
+  vaultId: string;
+  path: string | null;
+  available: boolean;
+  loaded: boolean;
+  lastError: string | null;
+  message: string;
+};
+
+type ActionFeedback = {
+  tone: "success" | "info";
+  message: string;
 };
 
 type VaultManagerModalProps = {
@@ -51,6 +66,15 @@ type VaultManagerModalProps = {
   onClose: () => void;
   onOpenVault: () => Promise<boolean>;
   onRescanVault: (source?: string) => Promise<boolean>;
+  onRecheckVault: (
+    vaultId: string,
+    options?: { loadIfAvailable?: boolean; source?: string },
+  ) => Promise<VaultRecheckResult>;
+  onRelinkVault: (
+    vaultId: string,
+    nextPath: string,
+    source?: string,
+  ) => Promise<VaultRecheckResult>;
   onSwitchVault: (path: string) => Promise<boolean>;
   onRemoveVault: (path: string) => void;
   onClearVault: () => void;
@@ -72,6 +96,8 @@ export const VaultManagerModal = ({
   onClose,
   onOpenVault,
   onRescanVault,
+  onRecheckVault,
+  onRelinkVault,
   onSwitchVault,
   onRemoveVault,
   onClearVault,
@@ -79,16 +105,30 @@ export const VaultManagerModal = ({
   const [selectedVaultPath, setSelectedVaultPath] = useState<string | null>(null);
   const [profileState, setProfileState] = useState<ProfileState>(emptyProfileState);
   const [actionError, setActionError] = useState("");
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [pendingRemovePath, setPendingRemovePath] = useState<string | null>(null);
 
-  const vaultPaths = useMemo(() => vaults.map((entry) => entry.path), [vaults]);
-  const pathInfo = useVaultPathInfo(vaultPaths, isOpen);
   const activeVaultKey = useMemo(
     () => normalizeVaultPath(activeVaultPath ?? ""),
     [activeVaultPath],
   );
+  const activeVaultEntry = useMemo(
+    () =>
+      vaults.find((entry) => normalizeVaultPath(entry.path) === activeVaultKey) ??
+      null,
+    [activeVaultKey, vaults],
+  );
+  const activeVaultMissing = activeVaultEntry?.status === "missing";
+  const activeVaultActionLabel = activeVaultMissing
+    ? "Recheck Active Vault"
+    : "Refresh Active Vault";
+  const selectedEntry = useMemo(
+    () => vaults.find((entry) => entry.path === selectedVaultPath) ?? null,
+    [selectedVaultPath, vaults],
+  );
+  const selectedVaultMissing = selectedEntry?.status === "missing";
 
   const resolvedUserVaultPath = useMemo(
     () =>
@@ -99,13 +139,6 @@ export const VaultManagerModal = ({
       ),
     [selectedVaultPath, userVault.customPath, userVault.mode],
   );
-
-  const selectedPathInfo = selectedVaultPath
-    ? pathInfo[selectedVaultPath] ?? null
-    : null;
-  const selectedVaultMissing =
-    Boolean(selectedPathInfo) &&
-    (!selectedPathInfo?.exists || !selectedPathInfo?.isDir);
 
   const reloadProfileState = useCallback(async () => {
     if (!resolvedUserVaultPath) {
@@ -162,12 +195,14 @@ export const VaultManagerModal = ({
   useEffect(() => {
     if (!isOpen) {
       setActionError("");
+      setActionFeedback(null);
       setProfileState(emptyProfileState);
       setContextMenu(null);
       setPendingRemovePath(null);
       return;
     }
     setActionError("");
+    setActionFeedback(null);
     void reloadProfileState();
   }, [isOpen, reloadProfileState, selectedVaultPath]);
 
@@ -226,6 +261,7 @@ export const VaultManagerModal = ({
 
   const handleOpenVault = useCallback(async () => {
     setActionError("");
+    setActionFeedback(null);
     setIsBusy(true);
     try {
       await onOpenVault();
@@ -239,6 +275,7 @@ export const VaultManagerModal = ({
   const handleSelectVaultPath = useCallback((path: string) => {
     setSelectedVaultPath(path);
     setActionError("");
+    setActionFeedback(null);
   }, []);
 
   const handleActivateVaultPath = useCallback(
@@ -254,6 +291,7 @@ export const VaultManagerModal = ({
       if (!normalizedTarget || normalizedTarget === activeVaultKey) {
         return;
       }
+      setActionFeedback(null);
       setIsBusy(true);
       try {
         const switched = await onSwitchVault(path);
@@ -269,19 +307,123 @@ export const VaultManagerModal = ({
     [activeVaultKey, handleSelectVaultPath, isBusy, onSwitchVault],
   );
 
+  const applyRecheckFeedback = useCallback((result: VaultRecheckResult) => {
+    if (result.available && result.loaded) {
+      setActionFeedback({
+        tone: "success",
+        message: "Vault verfuegbar und geladen.",
+      });
+      return;
+    }
+    if (!result.available) {
+      setActionFeedback({
+        tone: "info",
+        message: result.lastError
+          ? `Vault noch missing: ${result.lastError}`
+          : "Vault noch missing.",
+      });
+      return;
+    }
+    setActionFeedback({
+      tone: "info",
+      message: "Vault verfuegbar.",
+    });
+  }, []);
+
+  const runVaultRecheck = useCallback(
+    async (
+      vaultId: string,
+      options: { loadIfAvailable?: boolean; source?: string } = {},
+    ) => {
+      setActionError("");
+      setActionFeedback(null);
+      setIsBusy(true);
+      try {
+        const result = await onRecheckVault(vaultId, options);
+        if (result.path) {
+          setSelectedVaultPath(result.path);
+        }
+        if (result.available && result.path && result.path === selectedVaultPath) {
+          await reloadProfileState();
+        }
+        applyRecheckFeedback(result);
+      } catch (error) {
+        setActionError(asErrorMessage(error, "Vault recheck failed."));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [
+      applyRecheckFeedback,
+      onRecheckVault,
+      reloadProfileState,
+      selectedVaultPath,
+    ],
+  );
+
+  const handleLocateVault = useCallback(
+    async (vaultId: string) => {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Vault-Ordner auswaehlen",
+      });
+      if (!selected || Array.isArray(selected)) {
+        return;
+      }
+      setActionError("");
+      setActionFeedback(null);
+      setIsBusy(true);
+      try {
+        const result = await onRelinkVault(
+          vaultId,
+          selected,
+          "vault-manager:locate",
+        );
+        if (result.path) {
+          setSelectedVaultPath(result.path);
+        }
+        applyRecheckFeedback(result);
+      } catch (error) {
+        setActionError(asErrorMessage(error, "Vault relink failed."));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [applyRecheckFeedback, onRelinkVault],
+  );
+
+  const handleActivateVaultEntry = useCallback(
+    async (entry: RecentVaultEntry) => {
+      handleSelectVaultPath(entry.path);
+      if (isBusy) {
+        return;
+      }
+      if (entry.status === "missing") {
+        await runVaultRecheck(entry.id, {
+          loadIfAvailable: true,
+          source: "vault-manager:dblclick-missing",
+        });
+        return;
+      }
+      await handleActivateVaultPath(entry.path);
+    },
+    [handleActivateVaultPath, handleSelectVaultPath, isBusy, runVaultRecheck],
+  );
+
   const handleVaultKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLDivElement>, path: string) => {
+    (event: ReactKeyboardEvent<HTMLDivElement>, entry: RecentVaultEntry) => {
       if (event.key === "Enter") {
         event.preventDefault();
-        void handleActivateVaultPath(path);
+        void handleActivateVaultEntry(entry);
         return;
       }
       if (event.key === " " || event.key === "Spacebar" || event.key === "Space") {
         event.preventDefault();
-        handleSelectVaultPath(path);
+        handleSelectVaultPath(entry.path);
       }
     },
-    [handleActivateVaultPath, handleSelectVaultPath],
+    [handleActivateVaultEntry, handleSelectVaultPath],
   );
 
   const handleLoadProfile = useCallback(async () => {
@@ -292,6 +434,7 @@ export const VaultManagerModal = ({
       return;
     }
     setActionError("");
+    setActionFeedback(null);
     setIsBusy(true);
     try {
       if (!(await ensureVaultActive())) {
@@ -326,6 +469,7 @@ export const VaultManagerModal = ({
       return;
     }
     setActionError("");
+    setActionFeedback(null);
     setIsBusy(true);
     try {
       if (!(await ensureVaultActive())) {
@@ -353,10 +497,18 @@ export const VaultManagerModal = ({
 
   const handleRefreshActiveVault = useCallback(
     async (source: string) => {
-      if (!activeVaultKey) {
+      if (!activeVaultEntry) {
+        return;
+      }
+      if (activeVaultEntry.status === "missing") {
+        await runVaultRecheck(activeVaultEntry.id, {
+          loadIfAvailable: true,
+          source: `${source}:active-missing`,
+        });
         return;
       }
       setActionError("");
+      setActionFeedback(null);
       setIsBusy(true);
       try {
         const success = await onRescanVault(source);
@@ -369,17 +521,23 @@ export const VaultManagerModal = ({
         setIsBusy(false);
       }
     },
-    [activeVaultError, activeVaultKey, onRescanVault],
+    [
+      activeVaultEntry,
+      activeVaultError,
+      onRescanVault,
+      runVaultRecheck,
+    ],
   );
 
   const openContextMenu = useCallback(
-    (event: MouseEvent<HTMLDivElement>, path: string) => {
+    (event: MouseEvent<HTMLDivElement>, vault: RecentVaultEntry) => {
       event.preventDefault();
-      handleSelectVaultPath(path);
+      handleSelectVaultPath(vault.path);
       setContextMenu({
         x: event.clientX,
         y: event.clientY,
-        path,
+        path: vault.path,
+        vaultId: vault.id,
       });
     },
     [handleSelectVaultPath],
@@ -401,6 +559,7 @@ export const VaultManagerModal = ({
     const targetPath = pendingRemovePath;
     setPendingRemovePath(null);
     setActionError("");
+    setActionFeedback(null);
     setIsBusy(true);
     try {
       const normalizedTarget = normalizeVaultPath(targetPath);
@@ -453,18 +612,19 @@ export const VaultManagerModal = ({
   }
 
   const portalTarget = typeof document === "undefined" ? null : document.body;
-  const selectedEntry = selectedVaultPath
-    ? vaults.find((entry) => entry.path === selectedVaultPath) ?? null
-    : null;
   const profileCount = profileState.profiles.length;
   const isProfileReady = profileState.status === "idle";
   const canManageProfiles = Boolean(resolvedUserVaultPath) && !selectedVaultMissing;
   const canLoadProfile = canManageProfiles && isProfileReady && profileCount > 0;
   const canCreateProfile = canManageProfiles && isProfileReady && profileCount === 0;
-  const hasActiveVault = Boolean(activeVaultKey);
+  const hasActiveVault = Boolean(activeVaultPath);
   const pendingRemoveName = pendingRemovePath
     ? vaultBaseName(pendingRemovePath)
     : "";
+  const contextEntry = contextMenu
+    ? vaults.find((entry) => entry.id === contextMenu.vaultId) ?? null
+    : null;
+  const contextVaultMissing = contextEntry?.status === "missing";
 
   const modal = (
     <div className="modal-backdrop" role="presentation">
@@ -493,11 +653,10 @@ export const VaultManagerModal = ({
                 const entryKey = normalizeVaultPath(entry.path);
                 const isActive = entryKey === activeVaultKey;
                 const isSelected = entry.path === selectedVaultPath;
-                const info = pathInfo[entry.path];
-                const isMissing = info ? !info.exists || !info.isDir : false;
+                const isMissing = entry.status === "missing";
                 return (
                   <div
-                    key={entry.path}
+                    key={entry.id}
                     className={`vault-manager-item${
                       isSelected ? " active" : ""
                     }`}
@@ -505,9 +664,9 @@ export const VaultManagerModal = ({
                     aria-selected={isSelected}
                     tabIndex={0}
                     onClick={() => handleSelectVaultPath(entry.path)}
-                    onDoubleClick={() => void handleActivateVaultPath(entry.path)}
-                    onKeyDown={(event) => handleVaultKeyDown(event, entry.path)}
-                    onContextMenu={(event) => openContextMenu(event, entry.path)}
+                    onDoubleClick={() => void handleActivateVaultEntry(entry)}
+                    onKeyDown={(event) => handleVaultKeyDown(event, entry)}
+                    onContextMenu={(event) => openContextMenu(event, entry)}
                     title={entry.path}
                   >
                     <span className="vault-manager-item-main">
@@ -519,6 +678,37 @@ export const VaultManagerModal = ({
                     <span className="vault-manager-item-meta">
                       {isActive ? <span className="chip">Active</span> : null}
                       {isMissing ? <span className="chip">Missing</span> : null}
+                      {isMissing ? (
+                        <span className="vault-manager-item-actions">
+                          <button
+                            type="button"
+                            className="vault-manager-item-action"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void runVaultRecheck(entry.id, {
+                                loadIfAvailable: false,
+                                source: "vault-manager:item-recheck",
+                              });
+                            }}
+                            disabled={isBusy}
+                            title="Recheck vault"
+                            aria-label="Recheck vault"
+                          >
+                            ↻
+                          </button>
+                          <button
+                            type="button"
+                            className="vault-manager-item-action-text"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleLocateVault(entry.id);
+                            }}
+                            disabled={isBusy}
+                          >
+                            Locate...
+                          </button>
+                        </span>
+                      ) : null}
                     </span>
                   </div>
                 );
@@ -535,7 +725,7 @@ export const VaultManagerModal = ({
                   onClick={() => void handleRefreshActiveVault("vault-manager:actions")}
                   disabled={!hasActiveVault || isBusy}
                 >
-                  Refresh Active Vault
+                  {activeVaultActionLabel}
                 </button>
                 <button
                   type="button"
@@ -552,6 +742,18 @@ export const VaultManagerModal = ({
                 {actionError}
               </div>
             ) : null}
+            {actionFeedback ? (
+              <div
+                className={
+                  actionFeedback.tone === "success"
+                    ? "vault-manager-feedback success"
+                    : "vault-manager-feedback"
+                }
+                role="status"
+              >
+                {actionFeedback.message}
+              </div>
+            ) : null}
             {selectedEntry ? (
               <>
                 <div className="vault-manager-section">
@@ -560,8 +762,13 @@ export const VaultManagerModal = ({
                 </div>
                 {selectedVaultMissing ? (
                   <div className="vault-manager-warning">
-                    Vault folder is missing. Remove it from the list if it is no
-                    longer available.
+                    Vault folder is marked missing. Recheck or locate the folder to
+                    recover this entry.
+                    {selectedEntry.lastError ? (
+                      <div className="vault-manager-warning-detail">
+                        Last error: {selectedEntry.lastError}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 <div className="vault-manager-section">
@@ -604,6 +811,29 @@ export const VaultManagerModal = ({
                 </div>
                 {selectedVaultMissing ? (
                   <div className="vault-manager-section">
+                    <div className="vault-manager-profile-actions">
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={() =>
+                          void runVaultRecheck(selectedEntry.id, {
+                            loadIfAvailable: true,
+                            source: "vault-manager:selected-recheck",
+                          })
+                        }
+                        disabled={isBusy}
+                      >
+                        Recheck
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={() => void handleLocateVault(selectedEntry.id)}
+                        disabled={isBusy}
+                      >
+                        Locate...
+                      </button>
+                    </div>
                     <button
                       type="button"
                       className="ghost small"
@@ -633,15 +863,44 @@ export const VaultManagerModal = ({
             >
               <button
                 type="button"
-              className="context-menu-item"
-              onClick={() => {
-                closeContextMenu();
-                void handleRefreshActiveVault("vault-manager:context-menu");
-              }}
-              disabled={!hasActiveVault || isBusy}
-            >
-              Refresh Active Vault
-            </button>
+                className="context-menu-item"
+                onClick={() => {
+                  closeContextMenu();
+                  void handleRefreshActiveVault("vault-manager:context-menu");
+                }}
+                disabled={!hasActiveVault || isBusy}
+              >
+                {activeVaultActionLabel}
+              </button>
+              {contextVaultMissing && contextEntry ? (
+                <>
+                  <button
+                    type="button"
+                    className="context-menu-item"
+                    onClick={() => {
+                      closeContextMenu();
+                      void runVaultRecheck(contextEntry.id, {
+                        loadIfAvailable: true,
+                        source: "vault-manager:context-recheck",
+                      });
+                    }}
+                    disabled={isBusy}
+                  >
+                    Recheck
+                  </button>
+                  <button
+                    type="button"
+                    className="context-menu-item"
+                    onClick={() => {
+                      closeContextMenu();
+                      void handleLocateVault(contextEntry.id);
+                    }}
+                    disabled={isBusy}
+                  >
+                    Locate...
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
                 className="context-menu-item"
