@@ -5,6 +5,7 @@
  * - Serialisiert Exam-Blueprints zu Exam-Markdown.
  */
 
+import { normalizeCardWrapperPlacement } from "../../lib/exam/autoCards";
 import type {
   CardBlueprint,
   CardType,
@@ -139,13 +140,13 @@ const serializeCardBlock = (card: CardBlueprint, stripTaskNumber: boolean) => {
 
 const serializeTask = (task: ExamTaskBlueprint, index: number) => {
   const lines: string[] = [];
-  const title = task.title.trim();
-  lines.push(`${index + 1})${title ? ` ${title}` : ""}`);
-  lines.push(...serializeHelpBlock(task.helpText));
   const wrapTask = task.useCardWrapper;
   if (wrapTask) {
     lines.push("#card");
   }
+  const title = task.title.trim();
+  lines.push(`${index + 1})${title ? ` ${title}` : ""}`);
+  lines.push(...serializeHelpBlock(task.helpText));
   task.cards.forEach((card, cardIndex) => {
     if (cardIndex > 0) {
       lines.push("---");
@@ -200,7 +201,7 @@ export const serializeExamBlueprint = (exam: ExamBlueprint) => {
       }
     });
   lines.push("#examend");
-  return lines.join("\n");
+  return normalizeCardWrapperPlacement(lines.join("\n")).content;
 };
 
 export const serializeCardTypeLabel = (cardType: CardType) => {

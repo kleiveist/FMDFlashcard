@@ -122,6 +122,7 @@ describe("serializeExamBlueprint", () => {
 
     expect(markdown).toContain("#exam");
     expect(markdown).toContain("#examend");
+    expect(markdown).toContain("#card\n1) QA");
     expect(markdown).toContain("1) QA");
     expect(markdown).toContain("Answer: 4");
     expect(markdown).toContain("-true");
@@ -167,7 +168,7 @@ describe("serializeExamBlueprint", () => {
     expect(taskHelpIndex).toBeGreaterThan(-1);
     expect(cardStartIndex).toBeGreaterThan(-1);
     expect(cardHelpIndex).toBeGreaterThan(-1);
-    expect(taskHelpIndex).toBeLessThan(cardStartIndex);
+    expect(cardStartIndex).toBeLessThan(taskHelpIndex);
     expect(cardHelpIndex).toBeGreaterThan(cardStartIndex);
     expect(cardHelpIndex).toBeLessThan(cardEndIndex);
   });

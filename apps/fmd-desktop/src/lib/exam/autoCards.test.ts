@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { parseExamTasks } from "../exam";
 import {
   applyExamCardWrapperActions,
+  normalizeCardWrapperPlacement,
   removeExamTaskWrapper,
 } from "./autoCards";
 
@@ -34,6 +35,89 @@ describe("addExamTaskWrapper", () => {
     ).content;
 
     expect(secondPass).toBe(firstPass);
+  });
+});
+
+describe("normalizeCardWrapperPlacement", () => {
+  it("keeps canonical wrappers stable", () => {
+    const markdown = [
+      "#exam",
+      "#card",
+      "1) Canonical",
+      "Question?",
+      "Answer: A",
+      "#",
+      "#examend",
+    ].join("\n");
+
+    const normalized = normalizeCardWrapperPlacement(markdown).content;
+    expect(normalized).toBe(markdown);
+    expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(true);
+  });
+
+  it("moves legacy internal #card before task start", () => {
+    const markdown = [
+      "#exam",
+      "1) Legacy",
+      "#card",
+      "Question?",
+      "Answer: A",
+      "#",
+      "#examend",
+    ].join("\n");
+
+    const normalized = normalizeCardWrapperPlacement(markdown).content;
+    expect(normalized).toContain("#card\n1) Legacy");
+    expect((normalized.match(/^#card$/gm) ?? []).length).toBe(1);
+    expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(true);
+  });
+
+  it("removes duplicated #card markers and keeps one canonical opener", () => {
+    const markdown = [
+      "#exam",
+      "#card",
+      "1) Duplicate",
+      "#card",
+      "Question?",
+      "Answer: A",
+      "#",
+      "#examend",
+    ].join("\n");
+
+    const normalized = normalizeCardWrapperPlacement(markdown).content;
+    expect((normalized.match(/^#card$/gm) ?? []).length).toBe(1);
+    expect(normalized).toContain("#card\n1) Duplicate");
+    expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(true);
+  });
+
+  it("does not auto-complete partial wrappers without a closing marker", () => {
+    const markdown = [
+      "#exam",
+      "1) Partial",
+      "#card",
+      "Question?",
+      "Answer: A",
+      "#examend",
+    ].join("\n");
+
+    const normalized = normalizeCardWrapperPlacement(markdown).content;
+    expect(normalized).not.toMatch(/\n#\n#examend$/);
+    expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(false);
+  });
+
+  it("does not treat markdown headings as wrapper closers", () => {
+    const markdown = [
+      "#exam",
+      "1) Wrong close",
+      "#card",
+      "Question?",
+      "Answer: A",
+      "# Title",
+      "#examend",
+    ].join("\n");
+
+    const normalized = normalizeCardWrapperPlacement(markdown).content;
+    expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(false);
   });
 });
 
@@ -63,6 +147,39 @@ describe("auto cards return-on-correct", () => {
     expect(wrapperCount).toBe(1);
     expect(incorrectOnly).toContain("#card\n2) Second task");
     expect(incorrectOnly).not.toContain("#card\n1) First task");
+  });
+
+  it("writes canonical wrappers on add and removes canonical pair on remove", () => {
+    const source = [
+      "#exam",
+      "1) Task",
+      "#help",
+      "Hint",
+      "#helpend",
+      "#card",
+      "Question?",
+      "Answer: A",
+      "#",
+      "#examend",
+    ].join("\n");
+
+    const addResult = applyExamCardWrapperActions(
+      source,
+      parseExamTasks(source).tasks,
+      () => "add",
+    ).content;
+    expect(addResult).toContain("#card\n1) Task");
+    expect((addResult.match(/^#card$/gm) ?? []).length).toBe(1);
+    expect(addResult).toMatch(/\n#\n#examend$/);
+
+    const removeResult = applyExamCardWrapperActions(
+      addResult,
+      parseExamTasks(addResult).tasks,
+      () => "remove",
+    ).content;
+    expect(removeResult).not.toMatch(/^#card$/m);
+    expect(removeResult).not.toMatch(/\n#\n#examend$/);
+    expect(removeResult).toContain("#help\nHint\n#helpend");
   });
 });
 

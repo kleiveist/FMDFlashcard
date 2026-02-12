@@ -6,6 +6,7 @@
  */
 
 import { parseExamTasks, splitAnswerBlock } from "../../lib/exam";
+import { normalizeCardWrapperPlacement } from "../../lib/exam/autoCards";
 import type {
   ClozeSegment,
   FlashcardPart,
@@ -82,6 +83,8 @@ const separatorLinePattern = /^\s*---\s*$/;
 const fencePattern = /^\s*(```|~~~)/;
 const cardStartPattern = /^\s*#card\s*$/i;
 const cardEndPattern = /^\s*#(?:endcard)?\s*$/i;
+const examStartPattern = /^\s*#exam\s*$/i;
+const examEndPattern = /^\s*#examend\s*$/i;
 const taskLinePattern = /^\s*(\d+)\)\s*(.*)$/;
 
 const isHelpStartLine = (line: string) => helpStartPattern.test(line);
@@ -89,6 +92,16 @@ const isHelpEndLine = (line: string) => helpEndPattern.test(line);
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 const isCardBoundaryLine = (line: string) =>
   cardStartPattern.test(line) || cardEndPattern.test(line);
+const isExamMetaMarkerLine = (line: string) =>
+  helpStartPattern.test(line) ||
+  helpEndPattern.test(line) ||
+  cardStartPattern.test(line) ||
+  cardEndPattern.test(line) ||
+  examStartPattern.test(line) ||
+  examEndPattern.test(line);
+
+const sanitizeExamMetaLines = (lines: string[]) =>
+  lines.filter((line) => !isExamMetaMarkerLine(line));
 
 type TaskHeadingInfo = {
   heading: string;
@@ -97,7 +110,7 @@ type TaskHeadingInfo = {
 };
 
 const extractTaskNumberInfo = (lines: string[]) => {
-  const index = lines.findIndex((line) => line.trim() !== "");
+  const index = lines.findIndex((line) => taskLinePattern.test(line.trim()));
   if (index === -1) {
     return null;
   }
@@ -140,10 +153,15 @@ const resolveTaskHelpBlock = (
     return null;
   }
   const headerIndex = findTaskHeaderIndex(lines);
+  const firstRelevantIndex = lines.findIndex((line) => line.trim() !== "");
+  const wrapperBeforeHeader =
+    firstRelevantIndex !== -1 &&
+    headerIndex > firstRelevantIndex &&
+    cardStartPattern.test(lines[firstRelevantIndex] ?? "");
   const primary = helpBlocks.find(
     (block) =>
-      !block.inCard &&
-      isHelpDirectlyAfterHeader(lines, headerIndex, block.startIndex),
+      isHelpDirectlyAfterHeader(lines, headerIndex, block.startIndex) &&
+      (!block.inCard || wrapperBeforeHeader),
   );
 
   const helpLineIndices = new Set<number>();
@@ -262,10 +280,14 @@ const deriveTaskHeadingInfo = (
   const numberInfo = extractTaskNumberInfo(rawLines);
   const heading = (numberInfo?.text ?? "").trim();
   const numberLineHasText = Boolean(heading);
+  const firstRelevantLine = rawLines.find((line) => line.trim() !== "") ?? "";
+  const wrapperBeforeHeader =
+    hasCardWrapper && cardStartPattern.test(firstRelevantLine);
   return {
     heading,
     headingLineCount: numberLineHasText ? 1 : 0,
-    removeHeadingFromPrompt: !hasCardWrapper && numberLineHasText,
+    removeHeadingFromPrompt:
+      numberLineHasText && (!hasCardWrapper || wrapperBeforeHeader),
   };
 };
 
@@ -548,20 +570,23 @@ const parseCardBlock = (lines: string[]): FlashcardPart[] => {
 
 const extractExamMeta = (markdown: string, taskStartLine: number | null) => {
   const lines = normalizeLines(markdown);
-  const examStartIndex = lines.findIndex((line) => /^\s*#exam\s*$/i.test(line));
+  const examStartIndex = lines.findIndex((line) => examStartPattern.test(line));
   if (examStartIndex === -1) {
     return { title: "", description: "" };
   }
   const endIndex = taskStartLine ?? lines.length;
-  const metaLines = trimEmptyLines(lines.slice(examStartIndex + 1, endIndex));
+  const metaLines = sanitizeExamMetaLines(
+    trimEmptyLines(lines.slice(examStartIndex + 1, endIndex)),
+  );
   if (metaLines.length === 0) {
     return { title: "", description: "" };
   }
   const headingMatch = metaLines[0]?.match(/^\s*#{1,6}\s+(.*)$/);
   if (headingMatch) {
+    const descriptionLines = sanitizeExamMetaLines(metaLines.slice(1));
     return {
       title: (headingMatch[1] ?? "").trim(),
-      description: metaLines.slice(1).join("\n").trim(),
+      description: descriptionLines.join("\n").trim(),
     };
   }
   return {
@@ -571,10 +596,12 @@ const extractExamMeta = (markdown: string, taskStartLine: number | null) => {
 };
 
 export const isExamMarkdown = (markdown: string) =>
-  parseExamTasks(markdown).hasExamBlock;
+  parseExamTasks(normalizeCardWrapperPlacement(markdown).content).hasExamBlock;
 
 export const importExamMarkdown = (markdown: string): ExamImportResult | null => {
-  const parsed = parseExamTasks(markdown);
+  const originalParsed = parseExamTasks(markdown);
+  const normalizedMarkdown = normalizeCardWrapperPlacement(markdown).content;
+  const parsed = parseExamTasks(normalizedMarkdown);
   if (!parsed.hasExamBlock) {
     return null;
   }
@@ -583,7 +610,10 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
   const firstTaskLine = parsed.tasks
     .map((task) => task.sourceRange.startLine)
     .sort((a, b) => a - b)[0];
-  const meta = extractExamMeta(markdown, Number.isFinite(firstTaskLine) ? firstTaskLine : null);
+  const meta = extractExamMeta(
+    normalizedMarkdown,
+    Number.isFinite(firstTaskLine) ? firstTaskLine : null,
+  );
 
   const blueprint: ExamBlueprint = {
     ...createExamBlueprint(),
@@ -593,10 +623,12 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
   };
 
   blueprint.tasks = parsed.tasks.map((task, index) => {
+    const originalTask = originalParsed.tasks[index];
+    const helpSourceLines = originalTask?.rawLines ?? task.rawLines;
     const cards: CardBlueprint[] = [];
     const rawLines = task.rawLines;
-    const helpBlocks = collectHelpBlocks(rawLines);
-    const taskHelpBlock = resolveTaskHelpBlock(rawLines, helpBlocks);
+    const helpBlocks = collectHelpBlocks(helpSourceLines);
+    const taskHelpBlock = resolveTaskHelpBlock(helpSourceLines, helpBlocks);
     const cardHelpTexts = helpBlocks
       .filter((block) => block !== taskHelpBlock)
       .map((block) => block.text);

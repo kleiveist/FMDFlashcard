@@ -243,6 +243,82 @@ Answer: Secret solution
       expect(answerPart.back).toBe("Secret solution");
     }
   });
+
+  it("detects wrapper when #card is directly before task start", () => {
+    const markdown = `#exam
+#card
+1) Wrapped before start
+Question?
+Answer: A
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.cardWrapper).toBe(true);
+    expect(tasks[0]?.rawLines[0]?.trim()).toBe("#card");
+  });
+
+  it("does not mark wrapper as canonical when #card starts inside the task", () => {
+    const markdown = `#exam
+1) Wrapped inside
+#card
+Question?
+Answer: A
+#
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.cardWrapper).toBe(false);
+  });
+
+  it("does not mark wrapper as full when closing # is missing", () => {
+    const markdown = `#exam
+1) Missing close
+#card
+Question?
+Answer: A
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.cardWrapper).toBe(false);
+  });
+
+  it("does not mark wrapper as full when content exists after closing #", () => {
+    const markdown = `#exam
+1) Trailing content
+#card
+Question?
+Answer: A
+#
+Still task content
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.cardWrapper).toBe(false);
+  });
+
+  it("does not treat markdown headings as card closing markers", () => {
+    const markdown = `#exam
+1) Heading line
+#card
+Question?
+Answer: A
+# Title
+#examend`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.cardWrapper).toBe(false);
+  });
 });
 
 describe("exam QA composite parsing", () => {

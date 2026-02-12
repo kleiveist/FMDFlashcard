@@ -95,6 +95,9 @@ const isExamEndLine = (line: string) => examEndPattern.test(line);
 const isCardStartLine = (line: string) => cardStartPattern.test(line);
 const isCardEndLine = (line: string) => cardEndPattern.test(line);
 const isTaskSeparatorLine = (line: string) => taskSeparatorPattern.test(line);
+const isStrictCardWrapperStartLine = (line: string) =>
+  line.trim().toLowerCase() === "#card";
+const isStrictCardWrapperEndLine = (line: string) => line.trim() === "#";
 
 const stripWrapperLines = (lines: string[]) =>
   lines.filter((line) => !isWrapperLine(line));
@@ -182,7 +185,6 @@ type ExamTaskLineSplit = {
   combinedLines: string[];
   taskLines: string[];
   cardLines: string[];
-  hasCardBlock: boolean;
 };
 
 const splitExamTaskLines = (lines: string[]): ExamTaskLineSplit => {
@@ -190,12 +192,10 @@ const splitExamTaskLines = (lines: string[]): ExamTaskLineSplit => {
   const taskLines: string[] = [];
   const cardLines: string[] = [];
   let inCard = false;
-  let hasCardBlock = false;
 
   lines.forEach((line) => {
     if (isCardStartLine(line)) {
       inCard = true;
-      hasCardBlock = true;
       return;
     }
     if (isCardEndLine(line)) {
@@ -217,8 +217,60 @@ const splitExamTaskLines = (lines: string[]): ExamTaskLineSplit => {
     combinedLines: trimEmptyLines(combinedLines),
     taskLines: trimEmptyLines(taskLines),
     cardLines: trimEmptyLines(cardLines),
-    hasCardBlock,
   };
+};
+
+const findLastNonEmptyIndex = (lines: string[]) => {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index]?.trim() !== "") {
+      return index;
+    }
+  }
+  return -1;
+};
+
+const findPreviousNonEmptyIndex = (lines: string[], startIndex: number) => {
+  for (let index = startIndex - 1; index >= 0; index -= 1) {
+    if (lines[index]?.trim() !== "") {
+      return index;
+    }
+  }
+  return -1;
+};
+
+const findTaskHeaderIndex = (lines: string[]) =>
+  lines.findIndex((line) => taskHeaderPattern.test(line.trim()));
+
+const isTaskFullyWrappedInCard = (taskChunkLines: string[]) => {
+  const taskHeaderIndex = findTaskHeaderIndex(taskChunkLines);
+  if (taskHeaderIndex === -1) {
+    return false;
+  }
+
+  const openerIndex = findPreviousNonEmptyIndex(taskChunkLines, taskHeaderIndex);
+  if (
+    openerIndex === -1 ||
+    !isStrictCardWrapperStartLine(taskChunkLines[openerIndex] ?? "")
+  ) {
+    return false;
+  }
+
+  if (findPreviousNonEmptyIndex(taskChunkLines, openerIndex) !== -1) {
+    return false;
+  }
+
+  const lastNonEmpty = findLastNonEmptyIndex(taskChunkLines);
+  if (lastNonEmpty === -1) {
+    return false;
+  }
+  if (!isStrictCardWrapperEndLine(taskChunkLines[lastNonEmpty] ?? "")) {
+    return false;
+  }
+  if (openerIndex >= lastNonEmpty) {
+    return false;
+  }
+
+  return true;
 };
 
 const toCompositeCard = (card: Flashcard): ExamCompositeFlashcard => {
@@ -261,8 +313,8 @@ const parseTaskChunk = (
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
   const normalizedLines = normalizeTaskLines(chunkLines);
-  const { combinedLines, taskLines, cardLines, hasCardBlock } =
-    splitExamTaskLines(chunkLines);
+  const { combinedLines, taskLines, cardLines } = splitExamTaskLines(chunkLines);
+  const hasCardWrapper = isTaskFullyWrappedInCard(chunkLines);
   const { helpText: taskHelpText, contentLines: taskContentLines } =
     extractHelpBlocksFromLines(taskLines);
   const { contentLines: combinedContentLines } =
@@ -316,7 +368,7 @@ const parseTaskChunk = (
     card,
     warnings,
     helpText: taskHelpText.length > 0 ? taskHelpText : undefined,
-    cardWrapper: hasCardBlock,
+    cardWrapper: hasCardWrapper,
     cardLines: cardInputLines,
   };
 };
@@ -333,15 +385,31 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   let inFence = false;
   let fenceToken = "";
 
+  const findPreviousNonEmptyLineIndex = (startIndex: number) => {
+    for (let index = startIndex - 1; index >= 0; index -= 1) {
+      if (lines[index]?.trim() !== "") {
+        return index;
+      }
+    }
+    return null;
+  };
+
+  const resolveTaskStartLine = (taskHeaderIndex: number) => {
+    const previousNonEmpty = findPreviousNonEmptyLineIndex(taskHeaderIndex);
+    if (
+      previousNonEmpty !== null &&
+      isCardStartLine(lines[previousNonEmpty] ?? "")
+    ) {
+      return previousNonEmpty;
+    }
+    return taskHeaderIndex;
+  };
+
   const resolveTaskEndLine = (startLine: number, endLine: number) => {
     let last = endLine;
     while (last >= startLine) {
       const line = lines[last] ?? "";
-      if (
-        line.trim() === "" ||
-        isTaskSeparatorLine(line) ||
-        isWrapperLine(line)
-      ) {
+      if (line.trim() === "" || isTaskSeparatorLine(line)) {
         last -= 1;
         continue;
       }
@@ -411,13 +479,14 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
 
     const taskNumber = getExamTaskStartNumber(line);
     if (taskNumber !== null) {
+      const taskStartLine = resolveTaskStartLine(index);
       if (currentTaskStart !== null && currentTaskNumber === taskNumber) {
         return;
       }
       if (currentTaskStart !== null) {
-        flushTask(index - 1);
+        flushTask(taskStartLine - 1);
       }
-      currentTaskStart = index;
+      currentTaskStart = taskStartLine;
       currentTaskNumber = taskNumber;
     }
   });

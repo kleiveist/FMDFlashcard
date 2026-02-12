@@ -3,9 +3,10 @@
  *
  * Zweck:
  * - Utilities zum Hinzufuegen/Entfernen von #card Wrappern in Exam-Tasks.
+ * - Erzwingt eine kanonische Wrapper-Schreibform.
  */
 
-import type { ExamTask, ExamTaskSourceRange } from "../exam";
+import { parseExamTasks, type ExamTask, type ExamTaskSourceRange } from "../exam";
 import type { FlashcardPart } from "../flashcards";
 
 export type ExamCardWrapperAction = "add" | "remove" | "keep";
@@ -19,35 +20,33 @@ type WrapperMatch = {
   endIndex: number;
 };
 
+type TaskChunkNormalizationAction = "add" | "remove" | "keep";
+
+type TaskChunkAnalysis = {
+  headerIndex: number | null;
+  lastNonEmptyIndex: number | null;
+  canonicalCloser: boolean;
+  canonicalOpenerIndex: number | null;
+  permissiveOpenerIndex: number | null;
+  fullyWrappedCanonical: boolean;
+  fullyWrappedPermissive: boolean;
+  wrapperStartIndices: number[];
+};
+
 const normalizeLines = (content: string) => content.replace(/\r\n?/g, "\n").split("\n");
 
-const isWrapperStart = (line: string) => line.trim() === "#card";
+const taskHeaderPattern = /^\s*(\d+)\)\s*(.*)$/;
+const helpStartPattern = /^\s*#help\s*$/i;
+const helpEndPattern = /^\s*#helpend\s*$/i;
+
+const isWrapperStart = (line: string) => line.trim().toLowerCase() === "#card";
 const isWrapperEnd = (line: string) => line.trim() === "#";
+const isTaskHeader = (line: string) => taskHeaderPattern.test(line.trim());
+const isHelpStart = (line: string) => helpStartPattern.test(line);
+const isHelpEnd = (line: string) => helpEndPattern.test(line);
 
 const findPreviousNonEmptyIndex = (lines: string[], startIndex: number) => {
   for (let i = startIndex - 1; i >= 0; i -= 1) {
-    if (lines[i]?.trim() !== "") {
-      return i;
-    }
-  }
-  return null;
-};
-
-const findNextNonEmptyIndex = (lines: string[], startIndex: number) => {
-  for (let i = startIndex + 1; i < lines.length; i += 1) {
-    if (lines[i]?.trim() !== "") {
-      return i;
-    }
-  }
-  return null;
-};
-
-const findFirstNonEmptyInRange = (
-  lines: string[],
-  startIndex: number,
-  endIndex: number,
-) => {
-  for (let i = startIndex; i <= endIndex; i += 1) {
     if (lines[i]?.trim() !== "") {
       return i;
     }
@@ -66,6 +65,321 @@ const findLastNonEmptyInRange = (
     }
   }
   return null;
+};
+
+const findNextNonEmptyInRange = (
+  lines: string[],
+  startIndex: number,
+  endIndex: number,
+) => {
+  for (let i = startIndex; i <= endIndex; i += 1) {
+    if (lines[i]?.trim() !== "") {
+      return i;
+    }
+  }
+  return null;
+};
+
+const findTaskHeaderInRange = (
+  lines: string[],
+  startIndex: number,
+  endIndex: number,
+) => {
+  for (let i = startIndex; i <= endIndex; i += 1) {
+    if (isTaskHeader(lines[i] ?? "")) {
+      return i;
+    }
+  }
+  return null;
+};
+
+const skipRepeatedTaskHeaderLines = (
+  lines: string[],
+  startIndex: number,
+  endIndex: number,
+) => {
+  let index = startIndex;
+  let expectedNumber: string | null = null;
+
+  while (index <= endIndex) {
+    const line = lines[index] ?? "";
+    if (line.trim() === "") {
+      index += 1;
+      continue;
+    }
+    const match = line.trim().match(taskHeaderPattern);
+    if (!match) {
+      break;
+    }
+    const number = match[1] ?? "";
+    if (!expectedNumber) {
+      expectedNumber = number;
+    } else if (number !== expectedNumber) {
+      break;
+    }
+    index += 1;
+  }
+
+  return index;
+};
+
+const skipLeadingTaskHelpBlocks = (
+  lines: string[],
+  startIndex: number,
+  endIndex: number,
+) => {
+  let index = startIndex;
+
+  while (index <= endIndex) {
+    const helpStartIndex = findNextNonEmptyInRange(lines, index, endIndex);
+    if (helpStartIndex === null || !isHelpStart(lines[helpStartIndex] ?? "")) {
+      return index;
+    }
+
+    let cursor = helpStartIndex + 1;
+    let foundEnd = false;
+    while (cursor <= endIndex) {
+      if (isHelpEnd(lines[cursor] ?? "")) {
+        foundEnd = true;
+        cursor += 1;
+        break;
+      }
+      cursor += 1;
+    }
+
+    if (!foundEnd) {
+      return startIndex;
+    }
+    index = cursor;
+  }
+
+  return index;
+};
+
+const collectWrapperStartIndices = (lines: string[]) =>
+  lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line }) => isWrapperStart(line))
+    .map(({ index }) => index);
+
+const areLinesEqual = (left: string[], right: string[]) =>
+  left.length === right.length &&
+  left.every((line, index) => line === right[index]);
+
+const resolveLegacyInternalOpenerIndex = (
+  lines: string[],
+  headerIndex: number,
+  lastNonEmptyIndex: number,
+) => {
+  if (headerIndex >= lastNonEmptyIndex) {
+    return null;
+  }
+
+  const afterHeader = skipRepeatedTaskHeaderLines(lines, headerIndex, lastNonEmptyIndex);
+  const afterTaskHelp = skipLeadingTaskHelpBlocks(lines, afterHeader, lastNonEmptyIndex);
+  const candidate = findNextNonEmptyInRange(
+    lines,
+    afterTaskHelp,
+    Math.max(afterTaskHelp, lastNonEmptyIndex - 1),
+  );
+  if (candidate === null || candidate >= lastNonEmptyIndex) {
+    return null;
+  }
+  return isWrapperStart(lines[candidate] ?? "") ? candidate : null;
+};
+
+const analyzeTaskChunk = (chunkLines: string[]): TaskChunkAnalysis => {
+  const headerIndex =
+    chunkLines.length > 0
+      ? findTaskHeaderInRange(chunkLines, 0, chunkLines.length - 1)
+      : null;
+  const lastNonEmptyIndex =
+    chunkLines.length > 0
+      ? findLastNonEmptyInRange(chunkLines, 0, chunkLines.length - 1)
+      : null;
+  const canonicalCloser =
+    lastNonEmptyIndex !== null && isWrapperEnd(chunkLines[lastNonEmptyIndex] ?? "");
+  const directOpenerBeforeHeader =
+    headerIndex !== null
+      ? findPreviousNonEmptyIndex(chunkLines, headerIndex)
+      : null;
+  const canonicalOpenerIndex =
+    directOpenerBeforeHeader !== null &&
+    isWrapperStart(chunkLines[directOpenerBeforeHeader] ?? "") &&
+    findPreviousNonEmptyIndex(chunkLines, directOpenerBeforeHeader) === null
+      ? directOpenerBeforeHeader
+      : null;
+
+  let permissiveOpenerIndex = canonicalOpenerIndex;
+  if (
+    permissiveOpenerIndex === null &&
+    headerIndex !== null &&
+    lastNonEmptyIndex !== null
+  ) {
+    permissiveOpenerIndex = resolveLegacyInternalOpenerIndex(
+      chunkLines,
+      headerIndex,
+      lastNonEmptyIndex,
+    );
+  }
+
+  const fullyWrappedCanonical =
+    canonicalCloser &&
+    canonicalOpenerIndex !== null &&
+    lastNonEmptyIndex !== null &&
+    canonicalOpenerIndex < lastNonEmptyIndex;
+  const fullyWrappedPermissive =
+    canonicalCloser &&
+    permissiveOpenerIndex !== null &&
+    lastNonEmptyIndex !== null &&
+    permissiveOpenerIndex < lastNonEmptyIndex;
+
+  return {
+    headerIndex,
+    lastNonEmptyIndex,
+    canonicalCloser,
+    canonicalOpenerIndex,
+    permissiveOpenerIndex,
+    fullyWrappedCanonical,
+    fullyWrappedPermissive,
+    wrapperStartIndices: collectWrapperStartIndices(chunkLines),
+  };
+};
+
+const removeAllWrapperStartMarkers = (chunkLines: string[]) =>
+  chunkLines.filter((line) => !isWrapperStart(line));
+
+const dedupeWrapperStartMarkers = (
+  chunkLines: string[],
+  preferredKeepIndex: number | null,
+) => {
+  const startIndices = collectWrapperStartIndices(chunkLines);
+  if (startIndices.length <= 1) {
+    return [...chunkLines];
+  }
+  const keepIndex =
+    preferredKeepIndex !== null && startIndices.includes(preferredKeepIndex)
+      ? preferredKeepIndex
+      : (startIndices[0] ?? null);
+  if (keepIndex === null) {
+    return [...chunkLines];
+  }
+  return chunkLines.filter(
+    (line, index) => !isWrapperStart(line) || index === keepIndex,
+  );
+};
+
+const ensureCanonicalWrapperOpen = (chunkLines: string[]) => {
+  const withoutStarts = removeAllWrapperStartMarkers(chunkLines);
+  if (withoutStarts.length === 0) {
+    return withoutStarts;
+  }
+  const headerIndex = findTaskHeaderInRange(withoutStarts, 0, withoutStarts.length - 1);
+  if (headerIndex === null) {
+    return withoutStarts;
+  }
+  const next = [...withoutStarts];
+  next.splice(headerIndex, 0, "#card");
+  return next;
+};
+
+const ensureCanonicalWrapperClose = (chunkLines: string[]) => {
+  if (chunkLines.length === 0) {
+    return ["#"];
+  }
+  const lastNonEmpty = findLastNonEmptyInRange(chunkLines, 0, chunkLines.length - 1);
+  if (lastNonEmpty === null) {
+    return [...chunkLines, "#"];
+  }
+  if (isWrapperEnd(chunkLines[lastNonEmpty] ?? "")) {
+    return [...chunkLines];
+  }
+  const next = [...chunkLines];
+  next.splice(lastNonEmpty + 1, 0, "#");
+  return next;
+};
+
+const removeCanonicalWrapperClose = (chunkLines: string[]) => {
+  const lastNonEmpty = findLastNonEmptyInRange(chunkLines, 0, chunkLines.length - 1);
+  if (lastNonEmpty === null || !isWrapperEnd(chunkLines[lastNonEmpty] ?? "")) {
+    return [...chunkLines];
+  }
+  const next = [...chunkLines];
+  next.splice(lastNonEmpty, 1);
+  return next;
+};
+
+const normalizeTaskChunk = (
+  chunkLines: string[],
+  action: TaskChunkNormalizationAction,
+) => {
+  const analysis = analyzeTaskChunk(chunkLines);
+
+  if (action === "add") {
+    return ensureCanonicalWrapperClose(ensureCanonicalWrapperOpen(chunkLines));
+  }
+
+  if (action === "remove") {
+    const withoutCanonicalOpener = chunkLines.filter(
+      (line, index) =>
+        !(
+          analysis.canonicalOpenerIndex !== null &&
+          index === analysis.canonicalOpenerIndex &&
+          isWrapperStart(line)
+        ),
+    );
+    const deduped = dedupeWrapperStartMarkers(withoutCanonicalOpener, null);
+    return removeCanonicalWrapperClose(deduped);
+  }
+
+  if (analysis.fullyWrappedPermissive) {
+    return ensureCanonicalWrapperOpen(chunkLines);
+  }
+
+  if (analysis.wrapperStartIndices.length > 1) {
+    const preferredKeepIndex =
+      analysis.headerIndex !== null
+        ? (() => {
+            const direct = findPreviousNonEmptyIndex(chunkLines, analysis.headerIndex);
+            if (direct === null) {
+              return null;
+            }
+            return isWrapperStart(chunkLines[direct] ?? "") ? direct : null;
+          })()
+        : null;
+    return dedupeWrapperStartMarkers(chunkLines, preferredKeepIndex);
+  }
+
+  return [...chunkLines];
+};
+
+const replaceRange = (
+  lines: string[],
+  range: ExamTaskSourceRange,
+  nextChunk: string[],
+) => {
+  if (!lines.length) {
+    return { lines, delta: 0, changed: false };
+  }
+
+  const startLine = Math.max(0, range.startLine);
+  const endLine = Math.min(lines.length - 1, range.endLine);
+  if (startLine > endLine) {
+    return { lines, delta: 0, changed: false };
+  }
+
+  const currentChunk = lines.slice(startLine, endLine + 1);
+  if (areLinesEqual(currentChunk, nextChunk)) {
+    return { lines, delta: 0, changed: false };
+  }
+
+  const next = [...lines];
+  next.splice(startLine, endLine - startLine + 1, ...nextChunk);
+  return {
+    lines: next,
+    delta: nextChunk.length - currentChunk.length,
+    changed: true,
+  };
 };
 
 const resolveAutoCardType = (part: FlashcardPart): AutoCardType | null => {
@@ -97,6 +411,37 @@ export const resolveExamTaskAutoCardTypes = (task: ExamTask): AutoCardType[] => 
   return Array.from(detected);
 };
 
+export const normalizeCardWrapperPlacement = (content: string) => {
+  const parsed = parseExamTasks(content);
+  if (!parsed.hasExamBlock || parsed.tasks.length === 0) {
+    return { content, changed: false };
+  }
+
+  let lines = normalizeLines(content);
+  let changed = false;
+
+  const tasksDescending = [...parsed.tasks].sort(
+    (a, b) => b.sourceRange.startLine - a.sourceRange.startLine,
+  );
+
+  tasksDescending.forEach((task) => {
+    const startLine = Math.max(0, task.sourceRange.startLine);
+    const endLine = Math.min(lines.length - 1, task.sourceRange.endLine);
+    if (startLine > endLine) {
+      return;
+    }
+    const chunk = lines.slice(startLine, endLine + 1);
+    const normalizedChunk = normalizeTaskChunk(chunk, "keep");
+    if (areLinesEqual(chunk, normalizedChunk)) {
+      return;
+    }
+    lines.splice(startLine, endLine - startLine + 1, ...normalizedChunk);
+    changed = true;
+  });
+
+  return { content: lines.join("\n"), changed };
+};
+
 export const findExamTaskWrapper = (
   lines: string[],
   range: ExamTaskSourceRange,
@@ -104,65 +449,57 @@ export const findExamTaskWrapper = (
   if (!lines.length) {
     return null;
   }
+
   const startLine = Math.max(0, range.startLine);
   const endLine = Math.min(lines.length - 1, range.endLine);
   if (startLine > endLine) {
     return null;
   }
 
-  const beforeIndex = findPreviousNonEmptyIndex(lines, startLine);
-  const afterIndex = findNextNonEmptyIndex(lines, endLine);
-  const firstInside = findFirstNonEmptyInRange(lines, startLine, endLine);
-  const lastInside = findLastNonEmptyInRange(lines, startLine, endLine);
-
-  const startIndex =
-    (beforeIndex !== null && isWrapperStart(lines[beforeIndex])
-      ? beforeIndex
-      : null) ??
-    (firstInside !== null && isWrapperStart(lines[firstInside])
-      ? firstInside
-      : null);
-  const endIndex =
-    (afterIndex !== null && isWrapperEnd(lines[afterIndex])
-      ? afterIndex
-      : null) ??
-    (lastInside !== null && isWrapperEnd(lines[lastInside]) ? lastInside : null);
-
-  if (startIndex === null || endIndex === null || startIndex >= endIndex) {
+  const chunk = lines.slice(startLine, endLine + 1);
+  const analysis = analyzeTaskChunk(chunk);
+  if (
+    !analysis.fullyWrappedCanonical ||
+    analysis.canonicalOpenerIndex === null ||
+    analysis.lastNonEmptyIndex === null
+  ) {
     return null;
   }
 
-  return { startIndex, endIndex };
+  return {
+    startIndex: startLine + analysis.canonicalOpenerIndex,
+    endIndex: startLine + analysis.lastNonEmptyIndex,
+  };
 };
 
 export const addExamTaskWrapper = (
   lines: string[],
   range: ExamTaskSourceRange,
 ) => {
-  const match = findExamTaskWrapper(lines, range);
-  if (match) {
+  const startLine = Math.max(0, range.startLine);
+  const endLine = Math.min(lines.length - 1, range.endLine);
+  if (startLine > endLine) {
     return { lines, delta: 0, changed: false };
   }
-  const next = [...lines];
-  const start = Math.max(0, Math.min(next.length, range.startLine));
-  const end = Math.max(start, Math.min(next.length - 1, range.endLine));
-  next.splice(start, 0, "#card");
-  next.splice(end + 2, 0, "#");
-  return { lines: next, delta: 2, changed: true };
+
+  const currentChunk = lines.slice(startLine, endLine + 1);
+  const nextChunk = normalizeTaskChunk(currentChunk, "add");
+  return replaceRange(lines, range, nextChunk);
 };
 
 export const removeExamTaskWrapper = (
   lines: string[],
   range: ExamTaskSourceRange,
 ) => {
-  const match = findExamTaskWrapper(lines, range);
-  if (!match) {
+  const startLine = Math.max(0, range.startLine);
+  const endLine = Math.min(lines.length - 1, range.endLine);
+  if (startLine > endLine) {
     return { lines, delta: 0, changed: false };
   }
-  const next = [...lines];
-  next.splice(match.endIndex, 1);
-  next.splice(match.startIndex, 1);
-  return { lines: next, delta: -2, changed: true };
+
+  const currentChunk = lines.slice(startLine, endLine + 1);
+  const nextChunk = normalizeTaskChunk(currentChunk, "remove");
+  return replaceRange(lines, range, nextChunk);
 };
 
 export const applyExamCardWrapperActions = (
@@ -170,29 +507,34 @@ export const applyExamCardWrapperActions = (
   tasks: ExamTask[],
   getAction: (task: ExamTask, index: number) => ExamCardWrapperAction,
 ) => {
-  const sortedTasks = [...tasks].sort(
+  const plannedActions = new Map<number, ExamCardWrapperAction>();
+  tasks.forEach((task) => {
+    plannedActions.set(task.index, getAction(task, task.index));
+  });
+
+  const normalized = normalizeCardWrapperPlacement(content);
+  let lines = normalizeLines(normalized.content);
+  let changed = normalized.changed;
+  let offset = 0;
+
+  const normalizedTasks = parseExamTasks(normalized.content).tasks.sort(
     (a, b) => a.sourceRange.startLine - b.sourceRange.startLine,
   );
-  let lines = normalizeLines(content);
-  let offset = 0;
-  let changed = false;
 
-  sortedTasks.forEach((task) => {
-    const action = getAction(task, task.index);
+  normalizedTasks.forEach((task) => {
+    const action = plannedActions.get(task.index) ?? "keep";
     if (action === "keep") {
       return;
     }
+
     const startLine = task.sourceRange.startLine + offset;
     const endLine = task.sourceRange.endLine + offset;
     const range = { startLine, endLine };
-    if (action === "add") {
-      const result = addExamTaskWrapper(lines, range);
-      lines = result.lines;
-      offset += result.delta;
-      changed = changed || result.changed;
-      return;
-    }
-    const result = removeExamTaskWrapper(lines, range);
+    const result =
+      action === "add"
+        ? addExamTaskWrapper(lines, range)
+        : removeExamTaskWrapper(lines, range);
+
     lines = result.lines;
     offset += result.delta;
     changed = changed || result.changed;
