@@ -42,7 +42,7 @@ describe("normalizeSettings", () => {
           last_error: "Path does not exist.",
         },
       ],
-    } as AppSettings;
+    } as unknown as AppSettings;
     const { settings } = normalizeSettings(stored);
 
     expect(settings.recentVaults).toHaveLength(1);

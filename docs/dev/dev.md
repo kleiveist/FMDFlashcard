@@ -15,12 +15,6 @@
 - 📝 [Developer setup (run from source)](setup_lin.md)
 - 📝 [Windows developer setup (PowerShell, run from source)](setup_win.md)
 - 📝 [Testing](testing.md)
-- 📝 [User Vault (Dev Notes)](user-vault.md)
-
-## 📁 Issus
-- 🗂️ [Overview](issus/issus.md)
-- 📝 [Issus note](issus/issus_note.md)
-- 📝 [Issustabel](issus/issustabel.md)
 
 ## 📁 Rendering
 - 🗂️ [Overview](rendering/rendering.md)
@@ -28,6 +22,11 @@
 - 📝 [Rendering markdown tabel](rendering/rendering_markdown_tabel.md)
 - 📝 [Recommendation: Extend your table by 3 meta columns](rendering/rendering_markdown_types.md)
 - 📝 [Rendering tabelcard](rendering/rendering_tabelcard.md)
+
+## 📁 SYNC
+- 🗂️ [Overview](sync/sync.md)
+- 📝 [Profile System (Developer Documentation)](sync/profile-system.md)
+- 📝 [User Vault (Dev Notes)](sync/user-vault.md)
 
 ## 📁 TEST
 - 🗂️ [Overview](test/test.md)

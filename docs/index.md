@@ -26,7 +26,6 @@
 - 📝 [Developer setup (run from source)](dev/setup_lin.md)
 - 📝 [Windows developer setup (PowerShell, run from source)](dev/setup_win.md)
 - 📝 [Testing](dev/testing.md)
-- 📝 [User Vault (Dev Notes)](dev/user-vault.md)
 
 ## 📁 USER
 - 🗂️ [Overview](user/user.md)

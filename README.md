@@ -48,7 +48,6 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Developer setup (run from source)](docs/dev/setup_lin.md)
 - 📝 [Windows developer setup (PowerShell, run from source)](docs/dev/setup_win.md)
 - 📝 [Testing](docs/dev/testing.md)
-- 📝 [User Vault (Dev Notes)](docs/dev/user-vault.md)
 
 ## 📁 USER
 - 🗂️ [Overview](docs/user/user.md)
