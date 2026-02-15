@@ -21,7 +21,6 @@
  */
 
 import type { LoadState } from "../../../lib/types";
-import type { VaultFile } from "../../../lib/tree";
 import type { MissingExamSetting } from "../../../features/settings/validateExamSettings";
 
 type ExamEmptyState = {
@@ -30,7 +29,7 @@ type ExamEmptyState = {
 };
 
 type ExamIdlePanelProps = {
-  selectedFile: VaultFile | null;
+  selectedCount: number;
   previewState: LoadState;
   previewError: string;
   examEmptyState: ExamEmptyState | null;
@@ -38,6 +37,7 @@ type ExamIdlePanelProps = {
   plannedTaskCount: number;
   plannedMaxPoints: number;
   hasTaskCountMismatch: boolean;
+  sessionInvalidationMessage?: string;
   onStartExam: () => void;
   startDisabled: boolean;
   missingSettings: MissingExamSetting[];
@@ -45,7 +45,7 @@ type ExamIdlePanelProps = {
 };
 
 export const ExamIdlePanel = ({
-  selectedFile,
+  selectedCount,
   previewState,
   previewError,
   examEmptyState,
@@ -53,6 +53,7 @@ export const ExamIdlePanel = ({
   plannedTaskCount,
   plannedMaxPoints,
   hasTaskCountMismatch,
+  sessionInvalidationMessage,
   onStartExam,
   startDisabled,
   missingSettings,
@@ -62,10 +63,10 @@ export const ExamIdlePanel = ({
   const hasBlockingMissing =
     missingSettings.length > 0 &&
     missingSettings.some((item) => item.severity !== "warning");
-  if (!selectedFile) {
+  if (selectedCount === 0) {
     return (
       <div className="empty-state">
-        Select an exam file to begin.
+        Waehle mindestens eine Exam-Datei, um zu starten.
       </div>
     );
   }
@@ -107,6 +108,9 @@ export const ExamIdlePanel = ({
       <p className="muted">
         {availableTaskCount} tasks detected. Max points this run: {plannedMaxPoints}.
       </p>
+      {sessionInvalidationMessage ? (
+        <p className="exam-session-invalidated">{sessionInvalidationMessage}</p>
+      ) : null}
       {hasTaskCountMismatch ? (
         <p className="muted">
           Only {availableTaskCount} tasks available. The exam will run {plannedTaskCount}.

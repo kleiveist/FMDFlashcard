@@ -30,9 +30,13 @@ import { HelpButton, hasHelpContent } from "../../../components/HelpButton";
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
 
 type ExamTaskPhase = "exam" | "review" | "scoring";
+type ExamTaskWithSource = ExamTask & {
+  sourceTitle?: string;
+  originalTaskNumber?: number;
+};
 
 type ExamTaskRunnerProps = {
-  task: ExamTask;
+  task: ExamTaskWithSource;
   taskIndex: number;
   taskCount: number;
   maxPoints: number;
@@ -137,6 +141,11 @@ export const ExamTaskRunner = ({
           <p className="eyebrow">{phaseLabel}</p>
           <h2>{formatTaskTitle(taskIndex + 1, taskCount)}</h2>
           <p className="muted">Max points: {maxPoints}</p>
+          {task.sourceTitle ? (
+            <span className="exam-task-source-badge">
+              Quelle: {task.sourceTitle}
+            </span>
+          ) : null}
         </div>
         <div className="exam-task-nav">
           <button

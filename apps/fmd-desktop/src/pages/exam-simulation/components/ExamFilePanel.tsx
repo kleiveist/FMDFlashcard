@@ -27,9 +27,9 @@ type ExamFilePanelProps = {
   files: VaultFile[];
   listState: LoadState;
   listError: string;
-  selectedFile: VaultFile | null;
+  selectedPaths: string[];
   vaultPath: string | null;
-  onSelectFile: (file: VaultFile) => void;
+  onToggleFile: (file: VaultFile) => void;
   className?: string;
 };
 
@@ -37,11 +37,13 @@ export const ExamFilePanel = ({
   files,
   listState,
   listError,
-  selectedFile,
+  selectedPaths,
   vaultPath,
-  onSelectFile,
+  onToggleFile,
   className,
 }: ExamFilePanelProps) => {
+  const selectedSet = new Set(selectedPaths);
+  const selectedCount = selectedPaths.length;
   const fileCountLabel = !vaultPath
     ? "No vault selected"
     : files.length === 0
@@ -56,7 +58,14 @@ export const ExamFilePanel = ({
           <h2>Exam Files</h2>
           <p className="muted">{fileCountLabel}</p>
         </div>
-        {listState === "loading" ? <span className="chip">Scanne...</span> : null}
+        <div className="exam-file-panel-status">
+          {selectedCount > 0 ? (
+            <span className="chip exam-file-selected-chip">
+              {selectedCount} ausgewaehlt
+            </span>
+          ) : null}
+          {listState === "loading" ? <span className="chip">Scanne...</span> : null}
+        </div>
       </div>
       <div className="panel-body">
         {!vaultPath ? (
@@ -71,19 +80,29 @@ export const ExamFilePanel = ({
         {vaultPath && listState !== "error" ? (
           <div className={`exam-file-list ${isScrollable ? "is-scrollable" : ""}`}>
             <ul className="file-list">
-              {files.map((file) => (
-                <li key={file.path}>
-                  <button
-                    type="button"
-                    className={`file-item ${
-                      selectedFile?.path === file.path ? "active" : ""
-                    }`}
-                    onClick={() => onSelectFile(file)}
-                  >
-                    <span className="file-name">{file.relative_path}</span>
-                  </button>
-                </li>
-              ))}
+              {files.map((file) => {
+                const isSelected = selectedSet.has(file.path);
+                return (
+                  <li key={file.path}>
+                    <button
+                      type="button"
+                      className={`file-item exam-file-item ${
+                        isSelected ? "selected active" : ""
+                      }`}
+                      onClick={() => onToggleFile(file)}
+                      aria-pressed={isSelected}
+                    >
+                      <span
+                        className={`exam-file-check ${isSelected ? "selected" : ""}`}
+                        aria-hidden="true"
+                      >
+                        {isSelected ? "✓" : ""}
+                      </span>
+                      <span className="file-name">{file.relative_path}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         ) : null}

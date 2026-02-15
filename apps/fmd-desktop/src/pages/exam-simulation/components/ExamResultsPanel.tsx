@@ -21,6 +21,9 @@
 
 type ExamTaskBreakdown = {
   index: number;
+  sessionTaskId: string;
+  sourceTitle: string;
+  originalTaskNumber: number;
   awardedPoints: number;
   maxPoints: number;
   isCorrect: boolean | null;
@@ -60,12 +63,15 @@ export const ExamResultsPanel = ({ results }: ExamResultsPanelProps) => {
         {results.breakdown.map((item) => {
           const showCorrectness = item.isCorrect !== null;
           return (
-            <div key={`exam-result-${item.index}`} className="status-item">
+            <div key={item.sessionTaskId} className="status-item">
               <div className="status-row">
                 <span>Task {item.index}</span>
                 <span>
                   {item.awardedPoints} / {item.maxPoints}
                 </span>
+              </div>
+              <div className="muted">
+                Quelle: {item.sourceTitle} (#{item.originalTaskNumber})
               </div>
               {showCorrectness ? (
                 <div className="muted">

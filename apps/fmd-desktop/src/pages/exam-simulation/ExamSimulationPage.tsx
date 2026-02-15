@@ -31,7 +31,6 @@ import {
 } from "../../components/UserToolsPanel";
 import { ModalShell } from "../../components/ModalShell";
 import { FileIcon } from "../../components/icons";
-import type { VaultFile } from "../../lib/tree";
 import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
@@ -59,8 +58,6 @@ const studySubmitCommand = getShortcutById("studySubmit");
 
 export const ExamSimulationPage = () => {
   const {
-    actions,
-    preview,
     settings,
     spacedRepetition,
     vault,
@@ -69,8 +66,16 @@ export const ExamSimulationPage = () => {
     examFilesError,
     examRuns,
     examRunDeleteError,
-    selectedExamFile,
+    selectedExamPaths,
+    selectedExamCount,
+    selectedExamParseState,
+    selectedExamParseError,
+    sessionInvalidationMessage,
     previewExamParse,
+    mixSeed,
+    mixSessionEnabled,
+    mixSessionExamFiles,
+    canReshuffleMix,
     plannedTaskCount,
     plannedMaxPoints,
     hasTaskCountMismatch,
@@ -96,7 +101,9 @@ export const ExamSimulationPage = () => {
     conversionPending,
     conversionError,
     handleDeleteExamRun,
+    handleToggleExamSelection,
     handleStartExam,
+    handleReshuffleMix,
     handleResetExam,
     handleSubmitExam,
     handleStartScoring,
@@ -144,18 +151,11 @@ export const ExamSimulationPage = () => {
     setIsExamFilesOpen(false);
   }, []);
 
-  const handleExamFileSelect = useCallback(
-    (file: VaultFile) => {
-      actions.handleSelectFile(file);
-      setIsExamFilesOpen(false);
-    },
-    [actions],
-  );
   const examFilePanelProps = {
     files: examFiles,
     listState: examFilesState,
     listError: examFilesError,
-    selectedFile: selectedExamFile,
+    selectedPaths: selectedExamPaths,
     vaultPath: vault.vaultPath,
   };
 
@@ -238,6 +238,12 @@ export const ExamSimulationPage = () => {
   const deleteTargetName = selectedUser?.name ?? "";
   const canConfirmDelete =
     Boolean(deleteTargetName) && deleteConfirmInput.trim() === deleteTargetName;
+  const shortenExamLabel = useCallback((value: string, maxLength = 24) => {
+    if (value.length <= maxLength) {
+      return value;
+    }
+    return `${value.slice(0, Math.max(1, maxLength - 3))}...`;
+  }, []);
   const renderOverviewToggle = () => (
     <div className="exam-overview-toggle">
       <div className="exam-overview-toggle-header">
@@ -483,19 +489,57 @@ export const ExamSimulationPage = () => {
                 </button>
               ) : null}
             </div>
+            {mixSessionEnabled ? (
+              <div className="exam-mix-info">
+                <div className="exam-mix-info-header">
+                  <strong>
+                    Mix-Modus aktiv: {mixSessionExamFiles.length} Exams geladen
+                  </strong>
+                  <div className="exam-mix-actions">
+                    <span className="muted" title={mixSeed ?? undefined}>
+                      Seed: {mixSeed ?? "-"}
+                    </span>
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleReshuffleMix}
+                      disabled={!canReshuffleMix}
+                    >
+                      Neu mischen
+                    </button>
+                  </div>
+                </div>
+                <div className="exam-mix-stack" role="list" aria-label="Exam mix sources">
+                  {mixSessionExamFiles.map((file) => {
+                    const label = file.relative_path || file.path;
+                    return (
+                      <span
+                        key={file.path}
+                        className="exam-mix-segment"
+                        role="listitem"
+                        title={label}
+                      >
+                        {shortenExamLabel(label)}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             {stage === "idle" ? (
               <div className="exam-overview">
                 <div className="exam-overview-body">
                   {overviewTab === "ready" ? (
                     <ExamIdlePanel
-                      selectedFile={selectedExamFile}
-                      previewState={preview.previewState}
-                      previewError={preview.previewError}
+                      selectedCount={selectedExamCount}
+                      previewState={selectedExamParseState}
+                      previewError={selectedExamParseError}
                       examEmptyState={examEmptyState}
                       availableTaskCount={previewExamParse.tasks.length}
                       plannedTaskCount={plannedTaskCount}
                       plannedMaxPoints={plannedMaxPoints}
                       hasTaskCountMismatch={hasTaskCountMismatch}
+                      sessionInvalidationMessage={sessionInvalidationMessage}
                       onStartExam={phaseButton.onClick}
                       startDisabled={phaseButton.disabled}
                       missingSettings={missingExamSettings}
@@ -587,7 +631,7 @@ export const ExamSimulationPage = () => {
           />
           <ExamFilePanel
             {...examFilePanelProps}
-            onSelectFile={actions.handleSelectFile}
+            onToggleFile={handleToggleExamSelection}
             className="exam-files-panel"
           />
         </div>
@@ -610,7 +654,7 @@ export const ExamSimulationPage = () => {
       >
         <ExamFilePanel
           {...examFilePanelProps}
-          onSelectFile={handleExamFileSelect}
+          onToggleFile={handleToggleExamSelection}
         />
       </ModalShell>
     </div>

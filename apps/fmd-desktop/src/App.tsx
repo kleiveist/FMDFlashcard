@@ -70,6 +70,7 @@ const AppContent = () => {
     examFiles,
     examFilesError,
     examFilesState,
+    selectedExamFilePaths,
     flashcards,
     fastFlashcards,
     help,
@@ -318,8 +319,6 @@ const AppContent = () => {
   );
   const isExamNoteFiles = noteDialogSection === "exam";
   const noteModalTitle = isExamNoteFiles ? "Exam Files" : "Note";
-  const selectedExamFile =
-    examFiles.find((file) => file.path === preview.selectedFile?.path) ?? null;
 
   useEffect(() => {
     if (!nextGate) {
@@ -480,9 +479,9 @@ const AppContent = () => {
             files={examFiles}
             listState={examFilesState}
             listError={examFilesError}
-            selectedFile={selectedExamFile}
+            selectedPaths={selectedExamFilePaths}
             vaultPath={vault.vaultPath}
-            onSelectFile={actions.handleSelectFile}
+            onToggleFile={actions.handleToggleExamFileSelection}
           />
         ) : (
           <NoteFilesPanel

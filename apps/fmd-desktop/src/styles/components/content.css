@@ -873,6 +873,15 @@ body.focus-mode .spaced-repetition-sidebar {
   min-width: 0;
 }
 
+.exam-files-panel {
+  flex: 0 1 auto;
+  height: auto;
+}
+
+.exam-files-panel .panel-body {
+  min-height: 0;
+}
+
 .exam-panel {
   min-height: 0;
   min-width: 0;
@@ -885,6 +894,52 @@ body.focus-mode .spaced-repetition-sidebar {
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+.exam-mix-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--accent-border);
+  background: color-mix(in srgb, var(--accent-active-bg) 58%, transparent);
+}
+
+.exam-mix-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.exam-mix-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.exam-mix-stack {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exam-mix-segment {
+  flex: 1 1 120px;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--panel);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .exam-timeline-block {
@@ -1197,6 +1252,18 @@ body.focus-mode .spaced-repetition-sidebar {
   --exam-file-row-height: 44px;
 }
 
+.exam-file-panel-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exam-file-selected-chip {
+  background: color-mix(in srgb, var(--accent) 12%, var(--chip-bg));
+  border-color: var(--accent-border);
+}
+
 .exam-file-list .file-list {
   overflow: visible;
 }
@@ -1205,6 +1272,39 @@ body.focus-mode .spaced-repetition-sidebar {
   max-height: calc(var(--exam-file-row-height) * 5 + 32px);
   overflow-y: auto;
   padding-right: 4px;
+}
+
+.exam-file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.exam-file-item.selected {
+  border-color: var(--accent-border);
+  background: var(--accent-active-bg);
+}
+
+.exam-file-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: transparent;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.exam-file-check.selected {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent) 86%, white 14%);
+  color: var(--accent-contrast);
 }
 
 .exam-idle-header {
@@ -1217,6 +1317,12 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-idle-header .eyebrow {
   margin: 0;
+}
+
+.exam-session-invalidated {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--accent-strong);
 }
 
 .exam-ready-header {
@@ -1363,6 +1469,19 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-task-header > div {
   min-width: 0;
+}
+
+.exam-task-source-badge {
+  display: inline-flex;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--chip-bg) 78%, transparent);
+  color: var(--muted);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .exam-task-nav {

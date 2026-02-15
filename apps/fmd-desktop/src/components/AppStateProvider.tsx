@@ -64,6 +64,9 @@ type AppActions = {
   handleOpenVaultManager: () => void;
   handleClearVault: () => void;
   handleSelectFile: (file: VaultFile) => void;
+  handleToggleExamFileSelection: (file: VaultFile) => void;
+  handleSetSelectedExamFiles: (paths: string[]) => void;
+  handleClearSelectedExamFiles: () => void;
   handleThemeChange: (nextTheme: ThemeMode) => void;
   handleAccentPick: (value: string) => void;
   handleAccentInputChange: (value: string) => void;
@@ -81,6 +84,7 @@ type AppState = {
   examFiles: VaultFile[];
   examFilesState: LoadState;
   examFilesError: string;
+  selectedExamFilePaths: string[];
   flashcardNoteFiles: ReturnType<typeof useFlashcards>["flashcardFiles"];
   flashcardNoteFilesState: LoadState;
   flashcardNoteFilesError: string;
@@ -158,6 +162,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [isVaultManagerOpen, setIsVaultManagerOpen] = useState(false);
   const [activeSettingsPage, setActiveSettingsPage] =
     useState<SettingsPageId>("appearance");
+  const [selectedExamFilePaths, setSelectedExamFilePaths] = useState<string[]>([]);
   const {
     activeNotePath,
     accentColor,
@@ -256,6 +261,44 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     files: vault.files,
     vaultPath: vault.vaultPath,
   });
+  const examFilePathSet = useMemo(
+    () => new Set(examFiles.map((file) => file.path)),
+    [examFiles],
+  );
+  const normalizeSelectedExamFiles = useCallback(
+    (paths: string[]) =>
+      Array.from(new Set(paths)).filter((path) => examFilePathSet.has(path)),
+    [examFilePathSet],
+  );
+  const handleSetSelectedExamFiles = useCallback(
+    (paths: string[]) => {
+      setSelectedExamFilePaths(normalizeSelectedExamFiles(paths));
+    },
+    [normalizeSelectedExamFiles],
+  );
+  const handleToggleExamFileSelection = useCallback(
+    (file: VaultFile) => {
+      if (!examFilePathSet.has(file.path)) {
+        return;
+      }
+      setSelectedExamFilePaths((previous) =>
+        previous.includes(file.path)
+          ? previous.filter((path) => path !== file.path)
+          : [...previous, file.path],
+      );
+    },
+    [examFilePathSet],
+  );
+  const handleClearSelectedExamFiles = useCallback(() => {
+    setSelectedExamFilePaths([]);
+  }, []);
+
+  useEffect(() => {
+    setSelectedExamFilePaths((previous) => {
+      const next = previous.filter((path) => examFilePathSet.has(path));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [examFilePathSet]);
   const {
     noteFiles: flashcardNoteFiles,
     noteFilesState: flashcardNoteFilesState,
@@ -1113,6 +1156,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     resetFastFlashcards();
     setActiveFolderPath(null);
     setLargeVaultWarningCount(null);
+    setSelectedExamFilePaths([]);
     setFiles([]);
     setListError("");
     setListState("idle");
@@ -1127,6 +1171,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setActiveFolderPath,
     setFiles,
     setLargeVaultWarningCount,
+    setSelectedExamFilePaths,
     setListError,
     setListState,
     setVaultPath,
@@ -1159,6 +1204,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleOpenVaultManager,
       handleClearVault,
       handleSelectFile,
+      handleToggleExamFileSelection,
+      handleSetSelectedExamFiles,
+      handleClearSelectedExamFiles,
       handleThemeChange,
       handleAccentPick,
       handleAccentInputChange,
@@ -1173,6 +1221,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     examFiles,
     examFilesState,
     examFilesError,
+    selectedExamFilePaths,
     flashcardNoteFiles,
     flashcardNoteFilesState,
     flashcardNoteFilesError,

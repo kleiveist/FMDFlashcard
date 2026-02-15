@@ -52,7 +52,16 @@ import {
   resolveExamTaskAutoCardTypes,
 } from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
+import {
+  buildMixedSessionTasks,
+  buildSingleSessionTasks,
+  createMixSeed,
+  type DuplicateTaskNumberWarning,
+  type ExamSessionSource,
+  type ExamSessionTask,
+} from "../../../lib/examMixedSession";
 import { type VaultFile } from "../../../lib/tree";
+import type { LoadState } from "../../../lib/types";
 import {
   appendExamRunStore,
   deleteExamRunStoreEntry,
@@ -78,10 +87,27 @@ type ExamSettingsSnapshot = {
 
 type ExamTaskResult = {
   index: number;
+  sessionTaskId: string;
+  sourceTitle: string;
+  originalTaskNumber: number;
   awardedPoints: number;
   maxPoints: number;
   isCorrect: boolean | null;
 };
+
+type SelectedExamParseEntry = {
+  tasks: ExamTask[];
+  hasExamBlock: boolean;
+};
+
+type PreviewSession = {
+  tasks: ExamSessionTask[];
+  hasExamBlock: boolean;
+  duplicateTaskNumberWarnings: DuplicateTaskNumberWarning[];
+};
+
+const buildSelectionSignature = (paths: string[]) =>
+  paths.slice().sort((left, right) => left.localeCompare(right)).join("|");
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -116,15 +142,25 @@ export const useExamSimulationViewModel = () => {
     examFiles,
     examFilesState,
     examFilesError,
+    selectedExamFilePaths,
   } = useAppState();
   const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
   const [examRunsLoaded, setExamRunsLoaded] = useState(false);
   const [examRunDeleteError, setExamRunDeleteError] = useState("");
   const [, setExamRunsMigratedFromLegacy] = useState(false);
   const [stage, setStage] = useState<ExamStage>("idle");
+  const [selectedExamParses, setSelectedExamParses] = useState<
+    Record<string, SelectedExamParseEntry>
+  >({});
+  const [selectedExamParseState, setSelectedExamParseState] =
+    useState<LoadState>("idle");
+  const [selectedExamParseError, setSelectedExamParseError] = useState("");
+  const [mixSeed, setMixSeed] = useState<string>(() => createMixSeed());
+  const [sessionInvalidationMessage, setSessionInvalidationMessage] = useState("");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
-  const [activeExamTasks, setActiveExamTasks] = useState<ExamTask[]>([]);
-  const [activeExamFile, setActiveExamFile] = useState<VaultFile | null>(null);
+  const [activeExamTasks, setActiveExamTasks] = useState<ExamSessionTask[]>([]);
+  const [activeExamFiles, setActiveExamFiles] = useState<VaultFile[]>([]);
+  const [activeMixSeed, setActiveMixSeed] = useState<string | null>(null);
   const [activeSettings, setActiveSettings] = useState<ExamSettingsSnapshot | null>(
     null,
   );
@@ -150,6 +186,8 @@ export const useExamSimulationViewModel = () => {
   const examTimerEndRef = useRef<number | null>(null);
   const examStartTimeRef = useRef<number | null>(null);
   const examRunRecordedRef = useRef(false);
+  const selectionSignatureRef = useRef("");
+  const duplicateWarningSignatureRef = useRef("");
 
 
   useEffect(() => {
@@ -223,19 +261,177 @@ export const useExamSimulationViewModel = () => {
     });
   }, [examRuns, examRunsLoaded, userVault.activeProfilePath]);
 
-  const selectedExamFile = useMemo(() => {
-    if (!preview.selectedFile) {
-      return null;
-    }
-    return examFiles.find((file) => file.path === preview.selectedFile?.path) ?? null;
-  }, [examFiles, preview.selectedFile]);
+  const examFilesByPath = useMemo(
+    () => new Map(examFiles.map((file) => [file.path, file])),
+    [examFiles],
+  );
+  const selectedExamPaths = selectedExamFilePaths;
 
-  const previewExamParse = useMemo(() => {
-    if (!selectedExamFile || preview.previewState !== "idle") {
-      return { tasks: [], hasExamBlock: false };
+  const selectedExamFiles = useMemo(
+    () =>
+      selectedExamPaths
+        .map((path) => examFilesByPath.get(path))
+        .filter((file): file is VaultFile => Boolean(file)),
+    [examFilesByPath, selectedExamPaths],
+  );
+  const selectedExamCount = selectedExamFiles.length;
+  const mixModeEnabled = selectedExamCount >= 2;
+  const selectedExamSelectionSignature = useMemo(
+    () => buildSelectionSignature(selectedExamPaths),
+    [selectedExamPaths],
+  );
+
+  useEffect(() => {
+    if (selectedExamCount === 0) {
+      setSelectedExamParses({});
+      setSelectedExamParseState("idle");
+      setSelectedExamParseError("");
+      return;
     }
-    return parseExamTasks(preview.preview);
-  }, [preview.preview, preview.previewState, selectedExamFile]);
+
+    let cancelled = false;
+    setSelectedExamParseState("loading");
+    setSelectedExamParseError("");
+
+    const parseSelectedExamFiles = async () => {
+      const results = await Promise.allSettled(
+        selectedExamFiles.map(async (file) => {
+          const contents = await invoke<string>("read_text_file", {
+            path: file.path,
+          });
+          return {
+            file,
+            parsed: parseExamTasks(contents),
+          };
+        }),
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      const nextParses: Record<string, SelectedExamParseEntry> = {};
+      let failures = 0;
+
+      results.forEach((result, index) => {
+        const file = selectedExamFiles[index];
+        if (!file) {
+          return;
+        }
+        if (result.status === "fulfilled") {
+          nextParses[file.path] = result.value.parsed;
+          return;
+        }
+        failures += 1;
+        console.warn("Failed to parse selected exam file", file.path, result.reason);
+      });
+
+      setSelectedExamParses(nextParses);
+      if (failures > 0) {
+        setSelectedExamParseError(
+          failures === selectedExamFiles.length
+            ? "Ausgewaehlte Exam-Dateien konnten nicht geladen werden."
+            : `${failures} ausgewaehlte Exam-Datei(en) konnten nicht geladen werden.`,
+        );
+      }
+      setSelectedExamParseState("idle");
+    };
+
+    void parseSelectedExamFiles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedExamCount, selectedExamFiles]);
+
+  const selectedExamSources = useMemo(
+    () =>
+      selectedExamFiles
+        .map((file) => {
+          const parsed = selectedExamParses[file.path];
+          if (!parsed) {
+            return null;
+          }
+          return {
+            examPath: file.path,
+            sourceTitle: file.relative_path || file.path,
+            tasks: parsed.tasks,
+          } satisfies ExamSessionSource;
+        })
+        .filter((source): source is ExamSessionSource => Boolean(source)),
+    [selectedExamFiles, selectedExamParses],
+  );
+
+  const previewSession = useMemo<PreviewSession>(() => {
+    const hasAllParses = selectedExamSources.length === selectedExamCount;
+    if (selectedExamCount === 0 || selectedExamParseState !== "idle" || !hasAllParses) {
+      return {
+        tasks: [] as ExamSessionTask[],
+        hasExamBlock: false,
+        duplicateTaskNumberWarnings: [],
+      };
+    }
+
+    if (selectedExamCount === 1) {
+      const source = selectedExamSources[0];
+      if (!source) {
+        return {
+          tasks: [] as ExamSessionTask[],
+          hasExamBlock: false,
+          duplicateTaskNumberWarnings: [],
+        };
+      }
+      return {
+        tasks: buildSingleSessionTasks(source, mixSeed),
+        hasExamBlock: selectedExamParses[source.examPath]?.hasExamBlock ?? false,
+        duplicateTaskNumberWarnings: [],
+      };
+    }
+
+    const mixed = buildMixedSessionTasks(selectedExamSources, mixSeed);
+    const hasExamBlock = selectedExamSources.every(
+      (source) => selectedExamParses[source.examPath]?.hasExamBlock ?? false,
+    );
+    return {
+      tasks: mixed.tasks,
+      hasExamBlock,
+      duplicateTaskNumberWarnings: mixed.duplicateTaskNumberWarnings,
+    };
+  }, [
+    mixSeed,
+    selectedExamCount,
+    selectedExamParseState,
+    selectedExamParses,
+    selectedExamSources,
+  ]);
+
+  useEffect(() => {
+    const warnings = previewSession.duplicateTaskNumberWarnings;
+    if (warnings.length === 0) {
+      duplicateWarningSignatureRef.current = "";
+      return;
+    }
+    const signature = warnings
+      .map((warning) => `${warning.examPath}:${warning.taskNumber}:${warning.count}`)
+      .join("|");
+    if (duplicateWarningSignatureRef.current === signature) {
+      return;
+    }
+    duplicateWarningSignatureRef.current = signature;
+    warnings.forEach((warning) => {
+      console.warn(
+        `Duplicate task number ${warning.taskNumber}) in ${warning.sourceTitle} (${warning.count} entries).`,
+      );
+    });
+  }, [previewSession.duplicateTaskNumberWarnings]);
+
+  const previewExamParse = useMemo(
+    () => ({
+      tasks: previewSession.tasks,
+      hasExamBlock: previewSession.hasExamBlock,
+    }),
+    [previewSession.hasExamBlock, previewSession.tasks],
+  );
 
   const plannedTaskCount = Math.min(
     previewExamParse.tasks.length,
@@ -298,8 +494,8 @@ export const useExamSimulationViewModel = () => {
   const isSettingsValid = !hasSettingsBlockers;
 
   const canStartExam =
-    Boolean(selectedExamFile) &&
-    preview.previewState === "idle" &&
+    selectedExamCount > 0 &&
+    selectedExamParseState === "idle" &&
     previewExamParse.tasks.length > 0 &&
     isSettingsValid;
   const examRunning = stage !== "idle";
@@ -308,7 +504,8 @@ export const useExamSimulationViewModel = () => {
     setStage("idle");
     setActiveTaskIndex(0);
     setActiveExamTasks([]);
-    setActiveExamFile(null);
+    setActiveExamFiles([]);
+    setActiveMixSeed(null);
     setActiveSettings(null);
     setPartStates({});
     setAwardedPoints({});
@@ -323,12 +520,65 @@ export const useExamSimulationViewModel = () => {
     examRunRecordedRef.current = false;
   }, []);
 
+  const handleToggleExamSelection = useCallback(
+    (file: VaultFile) => {
+      actions.handleToggleExamFileSelection(file);
+      setSessionInvalidationMessage("");
+    },
+    [actions],
+  );
+
   useEffect(() => {
-    resetExamState();
-  }, [selectedExamFile?.path, resetExamState]);
+    const previousSelection = selectionSignatureRef.current;
+    if (!previousSelection) {
+      selectionSignatureRef.current = selectedExamSelectionSignature;
+      return;
+    }
+    if (previousSelection === selectedExamSelectionSignature) {
+      return;
+    }
+    selectionSignatureRef.current = selectedExamSelectionSignature;
+    if (stage !== "idle") {
+      resetExamState();
+      setSessionInvalidationMessage("Session muss neu gestartet werden.");
+      return;
+    }
+    setSessionInvalidationMessage("");
+  }, [resetExamState, selectedExamSelectionSignature, stage]);
+
+  const handleReshuffleMix = useCallback(() => {
+    if (selectedExamCount < 2) {
+      return;
+    }
+    setMixSeed(createMixSeed());
+    if (stage !== "idle") {
+      resetExamState();
+      setSessionInvalidationMessage("Session muss neu gestartet werden.");
+      return;
+    }
+    setSessionInvalidationMessage("");
+  }, [resetExamState, selectedExamCount, stage]);
 
   const handleStartExam = useCallback(() => {
-    if (!canStartExam || !selectedExamFile) {
+    if (!canStartExam) {
+      return;
+    }
+    const hasAllParses = selectedExamSources.length === selectedExamCount;
+    if (!hasAllParses || selectedExamCount === 0) {
+      return;
+    }
+    const sessionSeed = createMixSeed();
+    let sessionTasks: ExamSessionTask[] = [];
+    if (selectedExamCount >= 2) {
+      sessionTasks = buildMixedSessionTasks(selectedExamSources, sessionSeed).tasks;
+    } else {
+      const primarySource = selectedExamSources[0];
+      if (!primarySource) {
+        return;
+      }
+      sessionTasks = buildSingleSessionTasks(primarySource, sessionSeed);
+    }
+    if (sessionTasks.length === 0) {
       return;
     }
     const snapshot: ExamSettingsSnapshot = {
@@ -342,8 +592,11 @@ export const useExamSimulationViewModel = () => {
     // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
     examStartTimeRef.current = Date.now();
     examRunRecordedRef.current = false;
-    setActiveExamTasks(previewExamParse.tasks);
-    setActiveExamFile(selectedExamFile);
+    setSessionInvalidationMessage("");
+    setMixSeed(sessionSeed);
+    setActiveMixSeed(selectedExamCount >= 2 ? sessionSeed : null);
+    setActiveExamTasks(sessionTasks);
+    setActiveExamFiles(selectedExamFiles);
     setActiveSettings(snapshot);
     setStage("running");
     setActiveTaskIndex(0);
@@ -363,8 +616,9 @@ export const useExamSimulationViewModel = () => {
     }
   }, [
     canStartExam,
-    previewExamParse.tasks,
-    selectedExamFile,
+    selectedExamCount,
+    selectedExamFiles,
+    selectedExamSources,
     settings.examAiEvaluation,
     settings.examMaxTotalPoints,
     settings.examTaskCount,
@@ -483,7 +737,7 @@ export const useExamSimulationViewModel = () => {
     if (stage !== "scoring" || conversionPending) {
       return;
     }
-    if (!activeExamFile) {
+    if (activeExamFiles.length === 0) {
       setStage("finished");
       return;
     }
@@ -504,20 +758,18 @@ export const useExamSimulationViewModel = () => {
     setConversionPending(true);
     setConversionError("");
 
-    const resolveWrapperAction = (
-      task: ExamTask,
-      index: number,
-    ): ExamCardWrapperAction => {
+    const resolveWrapperAction = (task: ExamSessionTask): ExamCardWrapperAction => {
+      const runIndex = task.sessionIndex - 1;
       const isCorrect = autoCardsReturnOnCorrect
         ? task.gradingMode === "auto"
-          ? isTaskCorrect(task, partStates[index] ?? [])
+          ? isTaskCorrect(task, partStates[runIndex] ?? [])
           : (() => {
-              const maxPoints = runTaskPoints[index] ?? 0;
+              const maxPoints = runTaskPoints[runIndex] ?? 0;
               if (maxPoints <= 0) {
                 return false;
               }
               const awarded = normalizeAwardedPoints(
-                awardedPoints[index] ?? null,
+                awardedPoints[runIndex] ?? null,
                 maxPoints,
               );
               return awarded >= maxPoints;
@@ -533,31 +785,52 @@ export const useExamSimulationViewModel = () => {
           return "add";
         }
       }
-      return conversionDecisions[index] ? "add" : "keep";
+      return conversionDecisions[runIndex] ? "add" : "keep";
     };
 
     const applyConversions = async () => {
       try {
-        const contents = await invoke<string>("read_text_file", {
-          path: activeExamFile.path,
+        const tasksBySource = new Map<string, ExamSessionTask[]>();
+        runTasks.forEach((task) => {
+          const bucket = tasksBySource.get(task.sourceExamPath) ?? [];
+          bucket.push(task);
+          tasksBySource.set(task.sourceExamPath, bucket);
         });
-        const { content: nextContents, changed } = applyExamCardWrapperActions(
-          contents,
-          runTasks,
-          resolveWrapperAction,
-        );
 
-        if (changed) {
+        let hasChanges = false;
+
+        for (const sourceFile of activeExamFiles) {
+          const sourceTasks = tasksBySource.get(sourceFile.path) ?? [];
+          if (sourceTasks.length === 0) {
+            continue;
+          }
+
+          const contents = await invoke<string>("read_text_file", {
+            path: sourceFile.path,
+          });
+          const { content: nextContents, changed } = applyExamCardWrapperActions(
+            contents,
+            sourceTasks,
+            (task) => resolveWrapperAction(task as ExamSessionTask),
+          );
+
+          if (!changed) {
+            continue;
+          }
+
+          hasChanges = true;
           await invoke("write_text_file", {
-            path: activeExamFile.path,
+            path: sourceFile.path,
             contents: nextContents,
           });
 
-          if (preview.selectedFile?.path === activeExamFile.path) {
+          if (preview.selectedFile?.path === sourceFile.path) {
             preview.setPreview(nextContents);
           }
+        }
 
-          actions.handleRescanVault();
+        if (hasChanges) {
+          void actions.handleRescanVault("exam-conversion");
         }
 
         setStage("finished");
@@ -570,7 +843,7 @@ export const useExamSimulationViewModel = () => {
 
     void applyConversions();
   }, [
-    activeExamFile,
+    activeExamFiles,
     actions,
     awardedPoints,
     conversionDecisions,
@@ -761,6 +1034,9 @@ export const useExamSimulationViewModel = () => {
         const decidedCorrect = autoGradeDecisions[index] ?? isCorrect;
         return {
           index: index + 1,
+          sessionTaskId: task.sessionTaskId,
+          sourceTitle: task.sourceTitle,
+          originalTaskNumber: task.originalTaskNumber,
           awardedPoints: decidedCorrect ? maxPoints : 0,
           maxPoints,
           isCorrect: decidedCorrect,
@@ -769,6 +1045,9 @@ export const useExamSimulationViewModel = () => {
       const awarded = normalizeAwardedPoints(awardedPoints[index] ?? null, maxPoints);
       return {
         index: index + 1,
+        sessionTaskId: task.sessionTaskId,
+        sourceTitle: task.sourceTitle,
+        originalTaskNumber: task.originalTaskNumber,
         awardedPoints: awarded,
         maxPoints,
         isCorrect: null,
@@ -803,10 +1082,14 @@ export const useExamSimulationViewModel = () => {
       examRunRecordedRef.current = false;
       return;
     }
-    if (!results || !activeExamFile || !examRunsLoaded) {
+    if (!results || activeExamFiles.length === 0 || !examRunsLoaded) {
       return;
     }
     if (examRunRecordedRef.current) {
+      return;
+    }
+    const firstExamFile = activeExamFiles[0];
+    if (!firstExamFile) {
       return;
     }
 
@@ -820,6 +1103,12 @@ export const useExamSimulationViewModel = () => {
     const percent = calculateExamPercent(results.totalAwarded, results.totalMax);
     const passed = isExamPassed(percent);
     const grade = resolveExamGrade(settings.examGradeScale, percent);
+    const examFilePath =
+      activeExamFiles.length === 1
+        ? firstExamFile.relative_path || firstExamFile.path
+        : `Mixed (${activeExamFiles.length}): ${activeExamFiles
+            .map((file) => file.relative_path || file.path)
+            .join(", ")}`;
 
     const run: ExamRun = {
       id: buildExamRunId(),
@@ -828,7 +1117,7 @@ export const useExamSimulationViewModel = () => {
       durationMs,
       userId: spacedRepetition.spacedRepetitionActiveUserId ?? null,
       userName: spacedRepetition.spacedRepetitionActiveUser ?? "Unknown",
-      examFilePath: activeExamFile.relative_path || activeExamFile.path,
+      examFilePath,
       tasksDetected: runTasks.length,
       maxPoints: results.totalMax,
       achievedPoints: results.totalAwarded,
@@ -844,7 +1133,7 @@ export const useExamSimulationViewModel = () => {
     setExamRuns((prev) => sortExamRunsByDateDesc([run, ...prev]));
     examRunRecordedRef.current = true;
   }, [
-    activeExamFile,
+    activeExamFiles,
     examRunsLoaded,
     results,
     runTasks.length,
@@ -868,9 +1157,18 @@ export const useExamSimulationViewModel = () => {
     activeTask ? awardedPoints[activeTaskIndex] ?? null : null;
   const activeTaskAutoDecision =
     activeTask ? autoGradeDecisions[activeTaskIndex] : undefined;
+  const selectionPreviewState: LoadState =
+    selectedExamCount === 0 ? "idle" : selectedExamParseState;
+  const selectionPreviewError = selectedExamParseError;
   const examEmptyState = useMemo(() => {
-    if (!selectedExamFile || preview.previewState !== "idle") {
+    if (selectedExamCount === 0 || selectionPreviewState !== "idle") {
       return null;
+    }
+    if (selectionPreviewError) {
+      return {
+        title: "Dateien konnten nicht geladen werden",
+        message: selectionPreviewError,
+      };
     }
     if (!previewExamParse.hasExamBlock) {
       return {
@@ -881,16 +1179,30 @@ export const useExamSimulationViewModel = () => {
     if (previewExamParse.tasks.length === 0) {
       return {
         title: "No tasks found",
-        message: "Add Punktaufgaben inside the exam block to start an exam.",
+        message:
+          selectedExamCount >= 2
+            ? "Fuer den aktuellen Mix wurden keine passenden Aufgaben gefunden."
+            : "Add Punktaufgaben inside the exam block to start an exam.",
       };
     }
     return null;
   }, [
-    preview.previewState,
     previewExamParse.hasExamBlock,
     previewExamParse.tasks.length,
-    selectedExamFile,
+    selectedExamCount,
+    selectionPreviewError,
+    selectionPreviewState,
   ]);
+  const sessionExamFiles = stage === "idle" ? selectedExamFiles : activeExamFiles;
+  const mixSessionEnabled = sessionExamFiles.length >= 2;
+  const mixSessionSeed =
+    stage === "idle"
+      ? selectedExamCount >= 2
+        ? mixSeed
+        : null
+      : activeMixSeed;
+  const canReshuffleMix =
+    selectedExamCount >= 2 && stage === "idle" && selectedExamParseState === "idle";
 
   return {
     actions,
@@ -903,8 +1215,18 @@ export const useExamSimulationViewModel = () => {
     examFilesError,
     examRuns,
     examRunDeleteError,
-    selectedExamFile,
+    selectedExamFiles,
+    selectedExamPaths,
+    selectedExamCount,
+    selectedExamParseState: selectionPreviewState,
+    selectedExamParseError: selectionPreviewError,
+    sessionInvalidationMessage,
     previewExamParse,
+    mixModeEnabled,
+    mixSeed: mixSessionSeed,
+    mixSessionEnabled,
+    mixSessionExamFiles: sessionExamFiles,
+    canReshuffleMix,
     plannedTaskCount,
     plannedMaxPoints,
     hasTaskCountMismatch,
@@ -916,6 +1238,7 @@ export const useExamSimulationViewModel = () => {
     activeTaskPartStates,
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
+    activeMixedTasks: activeExamTasks,
     runTasks,
     runTaskPoints,
     runMaxPoints,
@@ -935,7 +1258,9 @@ export const useExamSimulationViewModel = () => {
     conversionPending,
     conversionError,
     handleDeleteExamRun,
+    handleToggleExamSelection,
     handleStartExam,
+    handleReshuffleMix,
     handleResetExam,
     handleSubmitExam,
     handleStartScoring,

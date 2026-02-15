@@ -34,7 +34,7 @@ describe("ExamIdlePanel", () => {
     const onOpenExamSettings = vi.fn();
     const { container, cleanup } = render(
       createElement(ExamIdlePanel, {
-        selectedFile: { path: "/exam.md", relative_path: "exam.md" },
+        selectedCount: 1,
         previewState: "idle",
         previewError: "",
         examEmptyState: null,
