@@ -66,7 +66,7 @@ export const ExamIdlePanel = ({
   if (selectedCount === 0) {
     return (
       <div className="empty-state">
-        Waehle mindestens eine Exam-Datei, um zu starten.
+        Select at least one exam file to start.
       </div>
     );
   }

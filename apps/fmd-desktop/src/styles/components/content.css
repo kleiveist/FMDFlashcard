@@ -1164,6 +1164,14 @@ body.focus-mode .spaced-repetition-sidebar {
   gap: 4px;
 }
 
+.exam-file-value {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .exam-history {
   display: flex;
   flex-direction: column;
@@ -1222,6 +1230,10 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-history-cell.user,
 .exam-history-cell.file {
   text-align: left;
+}
+
+.exam-history-cell.file {
+  min-width: 0;
 }
 
 .exam-history-cell.action {

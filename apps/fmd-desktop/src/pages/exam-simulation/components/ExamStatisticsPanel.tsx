@@ -125,6 +125,7 @@ export const ExamStatisticsPanel = ({
       ? ({ "--stat-fill": `${percentFill * 100}%` } as CSSProperties)
       : undefined;
     const statusToneClass = statusDescriptor ? ` status-${statusDescriptor.tone}` : "";
+    const lastRunFileName = lastRun ? getExamFileName(lastRun.examFilePath) : "—";
     return (
       <div className="exam-last-session">
         <div className="exam-stats-grid">
@@ -159,8 +160,11 @@ export const ExamStatisticsPanel = ({
             </div>
             <div className="exam-stats-meta-row">
               <span className="label">Exam file</span>
-              <span className="value" title={lastRun?.examFilePath}>
-                {lastRun ? getExamFileName(lastRun.examFilePath) : "—"}
+              <span
+                className="value exam-file-value"
+                title={hasLastRun ? lastRunFileName : undefined}
+              >
+                {lastRunFileName}
               </span>
             </div>
             <div className="exam-stats-meta-row">
@@ -255,58 +259,61 @@ export const ExamStatisticsPanel = ({
               <span className="exam-history-cell">Grade</span>
               <span className="exam-history-cell action" aria-hidden="true" />
             </div>
-            {filteredRuns.map((run) => (
-              <div key={run.id} className="exam-history-row">
-                <span className="exam-history-cell timestamp">
-                  {formatExamTimestamp(run.endedAt)}
-                </span>
-                <span className="exam-history-cell user">
-                  {run.userName || "Unknown"}
-                </span>
-                <span className="exam-history-cell file" title={run.examFilePath}>
-                  {getExamFileName(run.examFilePath)}
-                </span>
-                <span className="exam-history-cell">
-                  {run.achievedPoints} / {run.maxPoints}
-                </span>
-                <span className="exam-history-cell">{run.percent}%</span>
-                <span className="exam-history-cell">
-                  {getStatusDescriptor(run.percent).token}
-                </span>
-                <span className="exam-history-cell">
-                  {formatExamDuration(run.durationMs)}
-                </span>
-                <span className="exam-history-cell">{run.grade ?? "—"}</span>
-                <span className="exam-history-cell action">
-                  <button
-                    type="button"
-                    className="ghost small danger exam-history-delete"
-                    aria-label="Eintrag loeschen"
-                    title="Loeschen"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onDeleteRun(run.id);
-                    }}
-                  >
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+            {filteredRuns.map((run) => {
+              const fileName = getExamFileName(run.examFilePath);
+              return (
+                <div key={run.id} className="exam-history-row">
+                  <span className="exam-history-cell timestamp">
+                    {formatExamTimestamp(run.endedAt)}
+                  </span>
+                  <span className="exam-history-cell user">
+                    {run.userName || "Unknown"}
+                  </span>
+                  <span className="exam-history-cell file" title={fileName}>
+                    <span className="exam-file-value">{fileName}</span>
+                  </span>
+                  <span className="exam-history-cell">
+                    {run.achievedPoints} / {run.maxPoints}
+                  </span>
+                  <span className="exam-history-cell">{run.percent}%</span>
+                  <span className="exam-history-cell">
+                    {getStatusDescriptor(run.percent).token}
+                  </span>
+                  <span className="exam-history-cell">
+                    {formatExamDuration(run.durationMs)}
+                  </span>
+                  <span className="exam-history-cell">{run.grade ?? "—"}</span>
+                  <span className="exam-history-cell action">
+                    <button
+                      type="button"
+                      className="ghost small danger exam-history-delete"
+                      aria-label="Eintrag loeschen"
+                      title="Loeschen"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDeleteRun(run.id);
+                      }}
                     >
-                      <path d="M3 6h18" />
-                      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      <path d="M10 11v6" />
-                      <path d="M14 11v6" />
-                    </svg>
-                  </button>
-                </span>
-              </div>
-            ))}
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                      </svg>
+                    </button>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
         {deleteError ? (
