@@ -22,21 +22,35 @@
 
 import {
   type CSSProperties,
+  type DragEvent,
   type FocusEvent,
   type MouseEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
+  useState,
 } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import {
+  addFrontmatterProperty,
+  type FrontmatterProperty,
+  type FrontmatterPropertyIcon,
+  type FrontmatterPropertyKind,
+  composeMarkdownWithBody,
+  normalizeWikilinkValue,
+  parseFrontmatterDocument,
+  reorderFrontmatterProperties,
+  updateFrontmatterProperty,
+} from "../features/preview/frontmatter";
 import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
-import { CodeIcon, MarkdownIcon } from "./icons";
+import { ChevronDownIcon, CodeIcon, MarkdownIcon } from "./icons";
 
 const markdownSchema = {
   ...defaultSchema,
@@ -124,6 +138,7 @@ type PreviewPanelProps = {
     origin?: "raw" | "markdown";
   }) => void;
   onToggleRawPreview: () => void;
+  onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
 };
 
 export const canStartPreviewEdit = ({
@@ -1040,6 +1055,749 @@ export const applyInteractionSpacing = (markdown: string) => {
   return normalized.join("\n");
 };
 
+const FrontmatterTextIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M6 6h12" />
+    <path d="M6 12h12" />
+    <path d="M6 18h8" />
+  </svg>
+);
+
+const FrontmatterNumberIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M8 5L6 19" />
+    <path d="M16 5l-2 14" />
+    <path d="M4 10h16" />
+    <path d="M3 15h16" />
+  </svg>
+);
+
+const FrontmatterToggleIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="8" width="18" height="8" rx="4" />
+    <circle cx="9" cy="12" r="2.5" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const FrontmatterTagIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 13l-7 7-9-9V4h7l9 9z" />
+    <circle cx="8.5" cy="8.5" r="1.4" />
+  </svg>
+);
+
+const FrontmatterLinkIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1" />
+    <path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1" />
+  </svg>
+);
+
+const FrontmatterImageIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="9" cy="10" r="1.6" />
+    <path d="M3 16l5-4 4 3 3-2 6 5" />
+  </svg>
+);
+
+const FrontmatterUnknownIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.6 9.2a2.4 2.4 0 0 1 4.8 0c0 1.4-1.5 1.9-2.3 2.5-.5.3-.7.7-.7 1.3" />
+    <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const FrontmatterGripIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <circle cx="8" cy="7" r="1.2" />
+    <circle cx="8" cy="12" r="1.2" />
+    <circle cx="8" cy="17" r="1.2" />
+    <circle cx="16" cy="7" r="1.2" />
+    <circle cx="16" cy="12" r="1.2" />
+    <circle cx="16" cy="17" r="1.2" />
+  </svg>
+);
+
+const FrontmatterPropertyIconView = ({
+  icon,
+}: {
+  icon: FrontmatterPropertyIcon;
+}) => {
+  switch (icon) {
+    case "cover":
+      return <FrontmatterImageIcon />;
+    case "number":
+      return <FrontmatterNumberIcon />;
+    case "boolean":
+      return <FrontmatterToggleIcon />;
+    case "tags":
+      return <FrontmatterTagIcon />;
+    case "link":
+      return <FrontmatterLinkIcon />;
+    case "unknown":
+      return <FrontmatterUnknownIcon />;
+    default:
+      return <FrontmatterTextIcon />;
+  }
+};
+
+const stringifyPropertyValue = (property: FrontmatterProperty) => {
+  if (Array.isArray(property.value)) {
+    return property.value.join(", ");
+  }
+  if (typeof property.value === "number") {
+    return String(property.value);
+  }
+  if (typeof property.value === "boolean") {
+    return property.value ? "true" : "false";
+  }
+  return property.value ?? "";
+};
+
+const normalizeTags = (value: string[]) => {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  value.forEach((tag) => {
+    const clean = tag.trim();
+    if (!clean || seen.has(clean)) {
+      return;
+    }
+    seen.add(clean);
+    normalized.push(clean);
+  });
+  return normalized;
+};
+
+type FrontmatterPropertiesPanelProps = {
+  sourceMarkdown: string;
+  properties: FrontmatterProperty[];
+  canEdit: boolean;
+  onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
+};
+
+const FrontmatterPropertiesPanel = ({
+  sourceMarkdown,
+  properties,
+  canEdit,
+  onFrontmatterSave,
+}: FrontmatterPropertiesPanelProps) => {
+  const initialDrafts = useMemo(() => {
+    const next: Record<string, string> = {};
+    properties.forEach((property) => {
+      next[property.key] = stringifyPropertyValue(property);
+    });
+    return next;
+  }, [properties]);
+  const [drafts, setDrafts] = useState<Record<string, string>>(initialDrafts);
+  const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [panelError, setPanelError] = useState("");
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [addKeyDraft, setAddKeyDraft] = useState("");
+  const [addValueDraft, setAddValueDraft] = useState("");
+  const [addError, setAddError] = useState("");
+  const [dragPropertyKey, setDragPropertyKey] = useState<string | null>(null);
+  const [dropHint, setDropHint] = useState<{
+    key: string;
+    position: "before" | "after";
+  } | null>(null);
+
+  useEffect(() => {
+    setDrafts(initialDrafts);
+    setTagInputs({});
+    setRowErrors({});
+    setPanelError("");
+    setDragPropertyKey(null);
+    setDropHint(null);
+  }, [initialDrafts]);
+
+  const resetDraftsFromProperties = useCallback(() => {
+    setDrafts(initialDrafts);
+    setTagInputs({});
+    setRowErrors({});
+  }, [initialDrafts]);
+
+  const saveBusy = savingKey !== null;
+  const controlsDisabled = !canEdit || !onFrontmatterSave || saveBusy;
+
+  const commitPropertyChange = useCallback(
+    async ({
+      property,
+      kind,
+      value,
+    }: {
+      property: FrontmatterProperty;
+      kind: FrontmatterPropertyKind;
+      value: string | number | boolean | string[] | null;
+    }) => {
+      if (!onFrontmatterSave || !canEdit || saveBusy) {
+        return;
+      }
+      const updated = updateFrontmatterProperty({
+        markdown: sourceMarkdown,
+        key: property.key,
+        kind,
+        value,
+      });
+      if (updated.error) {
+        setPanelError(updated.error);
+        resetDraftsFromProperties();
+        return;
+      }
+
+      setPanelError("");
+      setSavingKey(property.key);
+      let saved = false;
+      try {
+        saved = await onFrontmatterSave(updated.markdown);
+      } catch {
+        saved = false;
+      } finally {
+        setSavingKey(null);
+      }
+      if (!saved) {
+        setPanelError("Eigenschaften konnten nicht gespeichert werden.");
+        resetDraftsFromProperties();
+      }
+    },
+    [canEdit, onFrontmatterSave, resetDraftsFromProperties, saveBusy, sourceMarkdown],
+  );
+
+  const handleAddProperty = useCallback(async () => {
+    if (controlsDisabled || !onFrontmatterSave) {
+      return;
+    }
+    const nextKey = addKeyDraft.trim();
+    if (!nextKey) {
+      setAddError("Bitte einen Attribut-Namen angeben.");
+      return;
+    }
+    if (nextKey.includes(":")) {
+      setAddError("Attribut-Name darf kein ':' enthalten.");
+      return;
+    }
+    const duplicate = properties.some((property) => property.key === nextKey);
+    if (duplicate) {
+      setAddError(`Attribut "${nextKey}" existiert bereits.`);
+      return;
+    }
+    const updated = addFrontmatterProperty({
+      markdown: sourceMarkdown,
+      key: nextKey,
+      value: addValueDraft,
+    });
+    if (updated.error) {
+      setAddError(updated.error);
+      return;
+    }
+
+    setAddError("");
+    setPanelError("");
+    setSavingKey("__add__");
+    let saved = false;
+    try {
+      saved = await onFrontmatterSave(updated.markdown);
+    } catch {
+      saved = false;
+    } finally {
+      setSavingKey(null);
+    }
+    if (!saved) {
+      setPanelError("Eigenschaften konnten nicht gespeichert werden.");
+      return;
+    }
+    setAddKeyDraft("");
+    setAddValueDraft("");
+  }, [
+    addKeyDraft,
+    addValueDraft,
+    controlsDisabled,
+    onFrontmatterSave,
+    properties,
+    sourceMarkdown,
+  ]);
+
+  const resolveDropPosition = useCallback(
+    (event: Pick<DragEvent<HTMLDivElement>, "currentTarget" | "clientY">) => {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const midpoint = rect.top + rect.height / 2;
+      return event.clientY > midpoint ? "after" : "before";
+    },
+    [],
+  );
+
+  const commitReorder = useCallback(
+    async ({
+      fromKey,
+      toKey,
+      position,
+    }: {
+      fromKey: string;
+      toKey: string;
+      position: "before" | "after";
+    }) => {
+      if (controlsDisabled || !onFrontmatterSave) {
+        return;
+      }
+      if (fromKey === toKey) {
+        return;
+      }
+      const updated = reorderFrontmatterProperties({
+        markdown: sourceMarkdown,
+        fromKey,
+        toKey,
+        position,
+      });
+      if (updated.error) {
+        setPanelError(updated.error);
+        return;
+      }
+      setPanelError("");
+      setSavingKey("__reorder__");
+      let saved = false;
+      try {
+        saved = await onFrontmatterSave(updated.markdown);
+      } catch {
+        saved = false;
+      } finally {
+        setSavingKey(null);
+      }
+      if (!saved) {
+        setPanelError("Eigenschaften konnten nicht gespeichert werden.");
+      }
+    },
+    [controlsDisabled, onFrontmatterSave, sourceMarkdown],
+  );
+
+  const toggleCollapsed = useCallback(() => {
+    setIsCollapsed((current) => !current);
+  }, []);
+
+  return (
+    <section className="frontmatter-panel" aria-label="Eigenschaften">
+      <div className="frontmatter-header">
+        <button
+          type="button"
+          className="frontmatter-title-button"
+          aria-expanded={!isCollapsed}
+          onClick={toggleCollapsed}
+        >
+          <h3>Eigenschaften</h3>
+        </button>
+        <div className="frontmatter-header-actions">
+          {saveBusy ? <span className="chip">Speichere...</span> : null}
+          <button
+            type="button"
+            className={`ghost small frontmatter-collapse-button ${isCollapsed ? "collapsed" : ""}`}
+            aria-label={isCollapsed ? "Eigenschaften aufklappen" : "Eigenschaften einklappen"}
+            aria-expanded={!isCollapsed}
+            onClick={toggleCollapsed}
+          >
+            <span className="frontmatter-collapse-icon" aria-hidden="true">
+              <ChevronDownIcon />
+            </span>
+          </button>
+        </div>
+      </div>
+      {!isCollapsed ? (
+        <>
+          <div className="frontmatter-grid" role="table" aria-label="Frontmatter properties">
+            {properties.map((property) => {
+              const isRowSaving = savingKey === property.key;
+              const rowDisabled = controlsDisabled || isRowSaving;
+              const tags = Array.isArray(property.value) ? property.value : [];
+              const rowError = rowErrors[property.key] ?? "";
+
+              const renderValueEditor = () => {
+                switch (property.kind) {
+                  case "boolean":
+                    return (
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={property.value === true}
+                          disabled={rowDisabled}
+                          aria-label={`${property.key} value`}
+                          onChange={(event) => {
+                            void commitPropertyChange({
+                              property,
+                              kind: "boolean",
+                              value: event.target.checked,
+                            });
+                          }}
+                        />
+                        <span className="slider" />
+                      </label>
+                    );
+                  case "number":
+                    return (
+                      <div className="frontmatter-input-wrap">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className="text-input frontmatter-input"
+                          placeholder="Kein Wert"
+                          aria-label={`${property.key} value`}
+                          value={drafts[property.key] ?? ""}
+                          disabled={rowDisabled}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            setDrafts((current) => ({ ...current, [property.key]: next }));
+                            if (rowErrors[property.key]) {
+                              setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                            }
+                          }}
+                          onBlur={() => {
+                            const value = (drafts[property.key] ?? "").trim();
+                            if (!value) {
+                              setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                              void commitPropertyChange({
+                                property,
+                                kind: "number",
+                                value: null,
+                              });
+                              return;
+                            }
+                            const parsed = Number(value);
+                            if (!Number.isFinite(parsed)) {
+                              setRowErrors((current) => ({
+                                ...current,
+                                [property.key]: "Bitte eine gueltige Zahl eingeben.",
+                              }));
+                              return;
+                            }
+                            setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                            void commitPropertyChange({
+                              property,
+                              kind: "number",
+                              value: parsed,
+                            });
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              event.currentTarget.blur();
+                            }
+                          }}
+                        />
+                        {rowError ? <span className="frontmatter-row-error">{rowError}</span> : null}
+                      </div>
+                    );
+                  case "tags":
+                    return (
+                      <div className="frontmatter-tags-editor">
+                        {tags.length > 0 ? (
+                          <div className="frontmatter-tag-list">
+                            {tags.map((tag, tagIndex) => (
+                              <span
+                                key={`${property.key}-${tag}-${tagIndex}`}
+                                className="frontmatter-tag-chip"
+                              >
+                                <span>{tag}</span>
+                                <button
+                                  type="button"
+                                  className="frontmatter-tag-remove"
+                                  onClick={() => {
+                                    const nextTags = tags.filter((item) => item !== tag);
+                                    void commitPropertyChange({
+                                      property,
+                                      kind: "tags",
+                                      value: nextTags,
+                                    });
+                                  }}
+                                  disabled={rowDisabled}
+                                  aria-label={`${tag} entfernen`}
+                                >
+                                  x
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="frontmatter-empty-value">Kein Wert</span>
+                        )}
+                        <input
+                          type="text"
+                          className="text-input frontmatter-input"
+                          placeholder="Tag hinzufuegen"
+                          aria-label={`${property.key} add tag`}
+                          value={tagInputs[property.key] ?? ""}
+                          disabled={rowDisabled}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            setTagInputs((current) => ({ ...current, [property.key]: next }));
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter") {
+                              return;
+                            }
+                            event.preventDefault();
+                            const value = (tagInputs[property.key] ?? "").trim();
+                            if (!value) {
+                              return;
+                            }
+                            const nextTags = normalizeTags([...tags, value]);
+                            setTagInputs((current) => ({ ...current, [property.key]: "" }));
+                            void commitPropertyChange({
+                              property,
+                              kind: "tags",
+                              value: nextTags,
+                            });
+                          }}
+                        />
+                      </div>
+                    );
+                  case "link":
+                  case "cover":
+                  case "unknown":
+                  case "text":
+                  default:
+                    return (
+                      <input
+                        type="text"
+                        className="text-input frontmatter-input"
+                        placeholder="Kein Wert"
+                        aria-label={`${property.key} value`}
+                        value={drafts[property.key] ?? ""}
+                        disabled={rowDisabled}
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setDrafts((current) => ({ ...current, [property.key]: next }));
+                        }}
+                        onBlur={() => {
+                          const raw = drafts[property.key] ?? "";
+                          const nextValue = property.kind === "link" ||
+                              property.kind === "cover"
+                            ? normalizeWikilinkValue(raw)
+                            : raw;
+                          setDrafts((current) => ({
+                            ...current,
+                            [property.key]: nextValue,
+                          }));
+                          void commitPropertyChange({
+                            property,
+                            kind: property.kind,
+                            value: nextValue.trim() === "" ? null : nextValue,
+                          });
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            event.currentTarget.blur();
+                          }
+                        }}
+                      />
+                    );
+                }
+              };
+
+              return (
+                <div
+                  key={property.key}
+                  className={`frontmatter-row ${
+                    dragPropertyKey === property.key ? "is-dragging" : ""
+                  } ${
+                    dropHint?.key === property.key
+                      ? dropHint.position === "before"
+                        ? "drop-before"
+                        : "drop-after"
+                      : ""
+                  }`.trim()}
+                  role="row"
+                  data-frontmatter-key={property.key}
+                  onDragOver={(event) => {
+                    if (controlsDisabled || !dragPropertyKey) {
+                      return;
+                    }
+                    if (dragPropertyKey === property.key) {
+                      setDropHint(null);
+                      return;
+                    }
+                    event.preventDefault();
+                    const position = resolveDropPosition(event);
+                    setDropHint({
+                      key: property.key,
+                      position,
+                    });
+                  }}
+                  onDrop={(event) => {
+                    if (controlsDisabled || !dragPropertyKey) {
+                      return;
+                    }
+                    event.preventDefault();
+                    const position = resolveDropPosition(event);
+                    const fromKey = dragPropertyKey;
+                    setDragPropertyKey(null);
+                    setDropHint(null);
+                    void commitReorder({
+                      fromKey,
+                      toKey: property.key,
+                      position,
+                    });
+                  }}
+                >
+                  <div
+                    className={`frontmatter-key ${controlsDisabled ? "" : "is-drag-handle"}`.trim()}
+                    role="cell"
+                    draggable={!controlsDisabled}
+                    onDragStart={(event) => {
+                      if (controlsDisabled) {
+                        return;
+                      }
+                      setDragPropertyKey(property.key);
+                      if (event.dataTransfer) {
+                        event.dataTransfer.effectAllowed = "move";
+                        try {
+                          event.dataTransfer.setData("text/plain", property.key);
+                        } catch {
+                          // ignore dataTransfer limitations in certain runtimes
+                        }
+                      }
+                    }}
+                    onDragEnd={() => {
+                      setDragPropertyKey(null);
+                      setDropHint(null);
+                    }}
+                  >
+                    <span className="frontmatter-grip" aria-hidden="true">
+                      <FrontmatterGripIcon />
+                    </span>
+                    <span className="frontmatter-icon" aria-hidden="true">
+                      <FrontmatterPropertyIconView icon={property.icon} />
+                    </span>
+                    <span className="frontmatter-label">{property.key}</span>
+                  </div>
+                  <div className="frontmatter-value" role="cell">
+                    {renderValueEditor()}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="frontmatter-add-row">
+            <input
+              type="text"
+              className="text-input frontmatter-add-key"
+              placeholder="Neues Attribut"
+              aria-label="Neues Attribut"
+              value={addKeyDraft}
+              disabled={controlsDisabled}
+              onChange={(event) => {
+                setAddKeyDraft(event.target.value);
+                if (addError) {
+                  setAddError("");
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleAddProperty();
+                }
+              }}
+            />
+            <input
+              type="text"
+              className="text-input frontmatter-add-value"
+              placeholder="Wert (optional)"
+              aria-label="Neuer Wert"
+              value={addValueDraft}
+              disabled={controlsDisabled}
+              onChange={(event) => {
+                setAddValueDraft(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleAddProperty();
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="ghost small frontmatter-add-button"
+              onClick={() => {
+                void handleAddProperty();
+              }}
+              disabled={controlsDisabled}
+            >
+              Attribut +
+            </button>
+          </div>
+          {addError ? <div className="frontmatter-row-error">{addError}</div> : null}
+        </>
+      ) : (
+        <p className="frontmatter-collapsed-hint">
+          {properties.length} Attribute
+        </p>
+      )}
+      {panelError ? <div className="error frontmatter-error">{panelError}</div> : null}
+    </section>
+  );
+};
+
 export const PreviewPanel = ({
   editDraft,
   editError,
@@ -1059,6 +1817,7 @@ export const PreviewPanel = ({
   onEditExit,
   onEditStart,
   onToggleRawPreview,
+  onFrontmatterSave,
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
@@ -1067,6 +1826,28 @@ export const PreviewPanel = ({
   const markdownEditorReadyRef = useRef(false);
   const scrollStateRef = useRef({ top: 0, left: 0 });
   const lastCaretIndexRef = useRef<number | null>(null);
+  const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
+
+  const previewFrontmatter = useMemo(
+    () => parseFrontmatterDocument(preview),
+    [preview],
+  );
+  const editFrontmatter = useMemo(() => parseFrontmatterDocument(editDraft), [editDraft]);
+  const markdownPreviewBody = previewFrontmatter.hasFrontmatter
+    ? previewFrontmatter.body
+    : preview;
+  const markdownEditBody = editFrontmatter.hasFrontmatter
+    ? editFrontmatter.body
+    : editDraft;
+  const markdownEditBodyStartOffset = editFrontmatter.hasFrontmatter
+    ? editFrontmatter.bodyStartOffset
+    : 0;
+  const hasFrontmatterError = previewFrontmatter.hasFrontmatter &&
+    Boolean(previewFrontmatter.error);
+
+  useEffect(() => {
+    setShowFrontmatterTextFallback(false);
+  }, [preview]);
 
   const captureScroll = useCallback((element: HTMLElement | null) => {
     if (!element) {
@@ -1140,7 +1921,11 @@ export const PreviewPanel = ({
       return;
     }
     const editor = markdownEditorRef.current;
-    const plainOffset = mapRawIndexToPlainOffset(editDraft, editCaretIndex);
+    const bodyCaretIndex = Math.max(
+      0,
+      editCaretIndex - markdownEditBodyStartOffset,
+    );
+    const plainOffset = mapRawIndexToPlainOffset(markdownEditBody, bodyCaretIndex);
     const handle = window.requestAnimationFrame(() => {
       editor.focus();
       setCaretAtPlainOffset(editor, plainOffset);
@@ -1150,7 +1935,14 @@ export const PreviewPanel = ({
       onEditCaretApplied();
     });
     return () => window.cancelAnimationFrame(handle);
-  }, [editCaretIndex, editDraft, isEditing, onEditCaretApplied, rawPreview]);
+  }, [
+    editCaretIndex,
+    isEditing,
+    markdownEditBody,
+    markdownEditBodyStartOffset,
+    onEditCaretApplied,
+    rawPreview,
+  ]);
 
   const handlePreviewLinkClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -1185,6 +1977,13 @@ export const PreviewPanel = ({
       if (!canStartPreviewEdit({ rawPreview, markdownViewEditEnabled })) {
         return;
       }
+      if (!rawPreview && hasFrontmatterError && showFrontmatterTextFallback) {
+        return;
+      }
+      const eventElement = resolveEventElement(event.target);
+      if (!rawPreview && eventElement?.closest(".frontmatter-panel")) {
+        return;
+      }
       if (event.button !== 0) {
         return;
       }
@@ -1198,7 +1997,19 @@ export const PreviewPanel = ({
         }
       }
       const origin = rawPreview ? "raw" : "markdown";
-      let caretIndex = preview.length === 0 ? 0 : null;
+      const bodyStartOffset = previewFrontmatter.hasFrontmatter
+        ? previewFrontmatter.bodyStartOffset
+        : 0;
+      const markdownSource = previewFrontmatter.hasFrontmatter
+        ? previewFrontmatter.body
+        : preview;
+      let caretIndex = rawPreview
+        ? preview.length === 0
+          ? 0
+          : null
+        : markdownSource.length === 0
+          ? bodyStartOffset
+          : null;
       if (previewRef.current) {
         const container = previewRef.current;
         captureScroll(container);
@@ -1209,9 +2020,9 @@ export const PreviewPanel = ({
         const range = getRangeFromEvent(event, container);
         const resolvedIndex = rawPreview
           ? resolveRawCaretIndex(container, range)
-          : resolveMarkdownCaretIndex(container, preview, range);
+          : resolveMarkdownCaretIndex(container, markdownSource, range);
         if (typeof resolvedIndex === "number") {
-          caretIndex = resolvedIndex;
+          caretIndex = rawPreview ? resolvedIndex : bodyStartOffset + resolvedIndex;
         }
         if (!rawPreview) {
           markdownEditorHtmlRef.current = container.innerHTML;
@@ -1222,8 +2033,10 @@ export const PreviewPanel = ({
       if (caretIndex === null) {
         if (typeof lastCaretIndexRef.current === "number") {
           caretIndex = lastCaretIndexRef.current;
-        } else if (preview.length > 0) {
+        } else if (rawPreview && preview.length > 0) {
           caretIndex = preview.length;
+        } else if (!rawPreview && markdownSource.length > 0) {
+          caretIndex = bodyStartOffset + markdownSource.length;
         }
       }
       if (typeof caretIndex === "number") {
@@ -1238,7 +2051,12 @@ export const PreviewPanel = ({
       markdownViewEditEnabled,
       onEditStart,
       preview,
+      hasFrontmatterError,
+      previewFrontmatter.body,
+      previewFrontmatter.bodyStartOffset,
+      previewFrontmatter.hasFrontmatter,
       rawPreview,
+      showFrontmatterTextFallback,
     ],
   );
 
@@ -1259,28 +2077,44 @@ export const PreviewPanel = ({
   const handleMarkdownEditorBlur = useCallback(
     (event: FocusEvent<HTMLDivElement>) => {
       captureScroll(event.currentTarget);
-      const caretIndex = resolveMarkdownCaretIndex(
+      const bodyCaretIndex = resolveMarkdownCaretIndex(
         event.currentTarget,
-        editDraft,
+        markdownEditBody,
         null,
       );
-      if (typeof caretIndex === "number") {
-        lastCaretIndexRef.current = caretIndex;
+      if (typeof bodyCaretIndex === "number") {
+        lastCaretIndexRef.current = markdownEditBodyStartOffset + bodyCaretIndex;
       }
       onEditExit();
     },
-    [captureScroll, editDraft, onEditExit],
+    [captureScroll, markdownEditBody, markdownEditBodyStartOffset, onEditExit],
   );
 
   const handleMarkdownInput = useCallback(() => {
     if (!markdownEditorRef.current) {
       return;
     }
-    const nextValue = serializeMarkdownFromHtml(markdownEditorRef.current);
+    const nextBody = serializeMarkdownFromHtml(markdownEditorRef.current);
+    const nextValue = composeMarkdownWithBody(editDraft, nextBody);
     onEditChange(nextValue);
-  }, [onEditChange]);
+  }, [editDraft, onEditChange]);
 
-  const renderedPreview = rawPreview ? preview : applyInteractionSpacing(preview);
+  const markdownSource = rawPreview
+    ? preview
+    : hasFrontmatterError && showFrontmatterTextFallback
+      ? preview
+      : markdownPreviewBody;
+  const renderedPreview = rawPreview
+    ? preview
+    : applyInteractionSpacing(markdownSource);
+  const hasVisiblePreviewContent = rawPreview
+    ? preview.length > 0
+    : markdownSource.length > 0;
+  const showFrontmatterPanel = !rawPreview &&
+    !isEditing &&
+    previewState === "idle" &&
+    previewFrontmatter.hasFrontmatter &&
+    !previewFrontmatter.error;
   const previewToggleLabel = rawPreview
     ? "Switch to Markdown preview"
     : "Switch to Rohtext";
@@ -1317,6 +2151,31 @@ export const PreviewPanel = ({
         {previewState === "error" ? (
           <div className="error">{previewError}</div>
         ) : null}
+        {previewState === "idle" && !rawPreview && previewFrontmatter.hasFrontmatter &&
+        previewFrontmatter.error ? (
+          <section className="frontmatter-panel frontmatter-panel-error" aria-label="Eigenschaften">
+            <div className="frontmatter-header">
+              <h3>Eigenschaften</h3>
+            </div>
+            <div className="error">
+              <p>YAML-Frontmatter konnte nicht gelesen werden.</p>
+              <p className="frontmatter-parse-message">{previewFrontmatter.error}</p>
+            </div>
+            <div className="frontmatter-error-actions">
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => {
+                  setShowFrontmatterTextFallback((current) => !current);
+                }}
+              >
+                {showFrontmatterTextFallback
+                  ? "Frontmatter wieder ausblenden"
+                  : "Frontmatter als Text anzeigen"}
+              </button>
+            </div>
+          </section>
+        ) : null}
         <div
           className="preview-content"
           onClick={handlePreviewLinkClick}
@@ -1351,7 +2210,7 @@ export const PreviewPanel = ({
                   aria-label="Edit markdown preview"
                 />
               ) : null
-            ) : preview ? (
+            ) : hasVisiblePreviewContent ? (
               <div
                 key={rawPreview ? "raw-view" : "markdown-view"}
                 ref={previewRef}
@@ -1363,22 +2222,32 @@ export const PreviewPanel = ({
                 {rawPreview ? (
                   <pre>{preview}</pre>
                 ) : (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
-                    components={{
-                      table: ({ node: _node, ...props }) => (
-                        <div className="markdown-table">
-                          <table {...props} />
-                        </div>
-                      ),
-                      img: ({ node: _node, ...props }) => (
-                        <img {...props} draggable={false} />
-                      ),
-                    }}
-                  >
-                    {renderedPreview}
-                  </ReactMarkdown>
+                  <>
+                    {showFrontmatterPanel ? (
+                      <FrontmatterPropertiesPanel
+                        sourceMarkdown={preview}
+                        properties={previewFrontmatter.properties}
+                        canEdit={canEdit && previewState === "idle"}
+                        onFrontmatterSave={onFrontmatterSave}
+                      />
+                    ) : null}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+                      components={{
+                        table: ({ node: _node, ...props }) => (
+                          <div className="markdown-table">
+                            <table {...props} />
+                          </div>
+                        ),
+                        img: ({ node: _node, ...props }) => (
+                          <img {...props} draggable={false} />
+                        ),
+                      }}
+                    >
+                      {renderedPreview}
+                    </ReactMarkdown>
+                  </>
                 )}
               </div>
             ) : (

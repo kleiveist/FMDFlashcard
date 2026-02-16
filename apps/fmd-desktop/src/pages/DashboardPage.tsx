@@ -310,6 +310,33 @@ const DashboardPageInner = (
     }
   }, [editDraft, isEditing, isSaving, preview]);
 
+  const handleFrontmatterSave = useCallback(
+    async (nextMarkdown: string) => {
+      if (!preview.selectedFile || isEditing || isSaving) {
+        return false;
+      }
+      if (nextMarkdown === preview.preview) {
+        return true;
+      }
+      setIsSaving(true);
+      setEditError("");
+      try {
+        await invoke("write_text_file", {
+          path: preview.selectedFile.path,
+          contents: nextMarkdown,
+        });
+        preview.setPreview(nextMarkdown);
+        return true;
+      } catch (error) {
+        setEditError(asErrorMessage(error, "Failed to save file."));
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [isEditing, isSaving, preview],
+  );
+
   const handleVaultViewChange = useCallback(
     async (nextView: DashboardView) => {
       if (nextView === vaultView) {
@@ -463,6 +490,7 @@ const DashboardPageInner = (
             onEditExit={handleEditAutosave}
             onEditStart={handleEditStart}
             onToggleRawPreview={handleToggleRawPreview}
+            onFrontmatterSave={handleFrontmatterSave}
           />
         ) : (
           <ExamEditorView

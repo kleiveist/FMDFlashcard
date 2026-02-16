@@ -55,10 +55,18 @@ const render = (element: ReactElement) => {
 
 const buildHarness = (
   markdown: string,
-  options: { markdownViewEditEnabled?: boolean; rawPreview?: boolean } = {},
+  options: {
+    markdownViewEditEnabled?: boolean;
+    rawPreview?: boolean;
+    onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
+  } = {},
 ) => {
   const onEditExit = vi.fn();
-  const { markdownViewEditEnabled = true, rawPreview = false } = options;
+  const {
+    markdownViewEditEnabled = true,
+    rawPreview = false,
+    onFrontmatterSave,
+  } = options;
 
   const Harness = () => {
     const [isEditing, setIsEditing] = useState(false);
@@ -94,6 +102,7 @@ const buildHarness = (
       onEditExit,
       onEditStart: handleEditStart,
       onToggleRawPreview: () => {},
+      onFrontmatterSave,
     });
   };
 
@@ -214,5 +223,209 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector("sup")).toBeTruthy();
     expect(container.querySelector("sub")).toBeTruthy();
     expect(container.querySelector("kbd")).toBeTruthy();
+  });
+
+  it("shows a properties panel and hides frontmatter text in markdown view", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "---",
+        "title: Demo",
+        "tags:",
+        "  - alpha",
+        "---",
+        "# Body",
+        "Visible text",
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const propertiesPanel = container.querySelector(".frontmatter-panel");
+    const previewText = container.querySelector(".preview.markdown")?.textContent ?? "";
+
+    expect(propertiesPanel).toBeTruthy();
+    expect(previewText).toContain("Body");
+    expect(previewText).toContain("Visible text");
+    expect(previewText).not.toContain("title: Demo");
+    expect(previewText).not.toContain("tags:");
+  });
+
+  it("shows an error panel for invalid frontmatter", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "Title: A", "Title: B", "---", "Body"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const errorPanel = container.querySelector(".frontmatter-panel-error");
+    expect(errorPanel).toBeTruthy();
+    expect(errorPanel?.textContent ?? "").toContain(
+      "YAML-Frontmatter konnte nicht gelesen werden.",
+    );
+  });
+
+  it("writes updated frontmatter values through save callback", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const input = container.querySelector(
+      'input[aria-label="title value"]',
+    ) as HTMLInputElement | null;
+    expect(input).toBeTruthy();
+
+    act(() => {
+      if (!input) {
+        return;
+      }
+      input.value = "Changed title";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    act(() => {
+      input?.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).toContain("title: Changed title");
+    expect(nextMarkdown).toContain("---\nBody line");
+  });
+
+  it("can collapse and expand the properties panel", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "title: Demo", "---", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const collapseButton = container.querySelector(
+      ".frontmatter-collapse-button",
+    ) as HTMLButtonElement | null;
+    expect(collapseButton).toBeTruthy();
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+
+    act(() => {
+      collapseButton?.click();
+    });
+
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+    expect(container.querySelector(".frontmatter-collapsed-hint")).toBeTruthy();
+
+    act(() => {
+      collapseButton?.click();
+    });
+
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+  });
+
+  it("collapses when clicking the Eigenschaften title", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "title: Demo", "---", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const titleButton = container.querySelector(
+      ".frontmatter-title-button",
+    ) as HTMLButtonElement | null;
+    expect(titleButton).toBeTruthy();
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+
+    act(() => {
+      titleButton?.click();
+    });
+
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+    expect(container.querySelector(".frontmatter-collapsed-hint")).toBeTruthy();
+  });
+
+  it("reorders properties via drag and drop", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = [
+      "---",
+      "title: Demo",
+      "rank: SE1",
+      "section: IUFS",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const rankRow = container.querySelector(
+      '[data-frontmatter-key="rank"]',
+    ) as HTMLDivElement | null;
+    const titleRow = container.querySelector(
+      '[data-frontmatter-key="title"]',
+    ) as HTMLDivElement | null;
+    const rankHandle = rankRow?.querySelector(
+      ".frontmatter-key",
+    ) as HTMLDivElement | null;
+    expect(rankRow).toBeTruthy();
+    expect(titleRow).toBeTruthy();
+    expect(rankHandle).toBeTruthy();
+
+    act(() => {
+      rankHandle?.dispatchEvent(new Event("dragstart", { bubbles: true, cancelable: true }));
+      titleRow?.dispatchEvent(new Event("dragover", { bubbles: true, cancelable: true }));
+      titleRow?.dispatchEvent(new Event("drop", { bubbles: true, cancelable: true }));
+      rankHandle?.dispatchEvent(new Event("dragend", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).toContain("rank: SE1\ntitle: Demo\nsection: IUFS");
+    expect(nextMarkdown).toContain("---\nBody line");
+  });
+
+  it("adds a new property via add button", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    const valueInput = container.querySelector(
+      'input[aria-label="Neuer Wert"]',
+    ) as HTMLInputElement | null;
+    const addButton = container.querySelector(
+      ".frontmatter-add-button",
+    ) as HTMLButtonElement | null;
+
+    expect(keyInput).toBeTruthy();
+    expect(valueInput).toBeTruthy();
+    expect(addButton).toBeTruthy();
+
+    act(() => {
+      if (!keyInput || !valueInput) {
+        return;
+      }
+      keyInput.value = "Section";
+      keyInput.dispatchEvent(new Event("input", { bubbles: true }));
+      valueInput.value = "IUFS";
+      valueInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    act(() => {
+      addButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).toContain("Section: IUFS");
+    expect(nextMarkdown).toContain("---\nBody line");
   });
 });
