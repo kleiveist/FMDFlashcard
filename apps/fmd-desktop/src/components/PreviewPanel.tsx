@@ -602,6 +602,28 @@ const setCaretAtPlainOffset = (container: HTMLElement, offset: number) => {
   selection.addRange(range);
 };
 
+const replaceHeadingElementLevel = (heading: HTMLElement, level: number) => {
+  const normalizedLevel = Math.max(1, Math.min(6, level));
+  const targetTag = `h${normalizedLevel}`;
+  if (heading.tagName.toLowerCase() === targetTag) {
+    return heading;
+  }
+
+  const replacement = heading.ownerDocument.createElement(targetTag);
+  Array.from(heading.attributes).forEach((attribute) => {
+    if (attribute.name === "data-md-heading-active") {
+      return;
+    }
+    replacement.setAttribute(attribute.name, attribute.value);
+  });
+
+  while (heading.firstChild) {
+    replacement.appendChild(heading.firstChild);
+  }
+  heading.replaceWith(replacement);
+  return replacement;
+};
+
 const isInteractionMarkerLine = (line: string) => {
   const trimmed = line.trim().toLowerCase();
   return trimmed === "-true" ||
@@ -927,12 +949,77 @@ const serializeTableCell = (
   return escapeMarkdownTableCell(text);
 };
 
+const normalizeSerializedTableLine = (line: string) =>
+  line.trim().replace(/\\\|/g, "|");
+
+const isSerializedTableRowLine = (line: string) =>
+  /^\|(?:[^|]*\|)+\s*$/.test(normalizeSerializedTableLine(line));
+
+const isSerializedTableSeparatorLine = (line: string) =>
+  /^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|$/.test(
+    normalizeSerializedTableLine(line),
+  );
+
+const normalizeSerializedTables = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+  const sourceLines = markdown.split("\n");
+  const normalized: string[] = [];
+  let inCodeFence = false;
+
+  for (let i = 0; i < sourceLines.length; i += 1) {
+    const line = sourceLines[i] ?? "";
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      normalized.push(line);
+      continue;
+    }
+    if (inCodeFence) {
+      normalized.push(line);
+      continue;
+    }
+    const nextLine = sourceLines[i + 1] ?? "";
+    const isTableStart = isSerializedTableRowLine(line) &&
+      isSerializedTableSeparatorLine(nextLine);
+
+    if (!isTableStart) {
+      normalized.push(line);
+      continue;
+    }
+
+    const lastLine = normalized[normalized.length - 1] ?? "";
+    if (normalized.length > 0 && lastLine.trim() !== "") {
+      normalized.push("");
+    }
+
+    while (i < sourceLines.length) {
+      const tableLine = sourceLines[i] ?? "";
+      if (!isSerializedTableRowLine(tableLine)) {
+        break;
+      }
+      normalized.push(normalizeSerializedTableLine(tableLine));
+      i += 1;
+    }
+
+    i -= 1;
+    const lineAfterBlock = sourceLines[i + 1] ?? "";
+    if (lineAfterBlock.trim() !== "") {
+      normalized.push("");
+    }
+  }
+
+  return normalized.join("\n");
+};
+
 export const serializeMarkdownFromHtml = (container: HTMLElement) => {
-  return serializeMarkdownChildren(container, {
+  const serialized = serializeMarkdownChildren(container, {
     listDepth: 0,
     escapePipes: true,
     inContentEditable: true,
   });
+  return normalizeSerializedTables(serialized);
 };
 
 export const buildEditableMarkdownHtml = (container: HTMLElement) => {
@@ -949,10 +1036,11 @@ export const buildEditableMarkdownHtml = (container: HTMLElement) => {
     if (/^\s*\\?#{1,6}(?:\s|$)/.test(text)) {
       return;
     }
-    heading.insertBefore(
-      heading.ownerDocument.createTextNode(`${"#".repeat(level)} `),
-      heading.firstChild,
-    );
+    const marker = heading.ownerDocument.createElement("span");
+    marker.className = "md-heading-marker";
+    marker.setAttribute("aria-hidden", "true");
+    marker.textContent = `${"#".repeat(level)} `;
+    heading.insertBefore(marker, heading.firstChild);
   });
   return clone.innerHTML;
 };
@@ -1937,6 +2025,7 @@ export const PreviewPanel = ({
   onFrontmatterSave,
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const markdownViewRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const markdownEditorScrollRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
@@ -1984,6 +2073,73 @@ export const PreviewPanel = ({
     element.scrollLeft = scrollStateRef.current.left;
   }, []);
 
+  const syncMarkdownDraftFromEditor = useCallback(() => {
+    if (!markdownEditorRef.current) {
+      return;
+    }
+    const nextBody = serializeMarkdownFromHtml(markdownEditorRef.current);
+    const nextValue = composeMarkdownWithBody(editDraft, nextBody);
+    if (nextValue !== editDraft) {
+      onEditChange(nextValue);
+    }
+  }, [editDraft, onEditChange]);
+
+  const syncActiveMarkdownHeading = useCallback(() => {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+    const headings = Array.from(
+      editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"),
+    );
+    if (headings.length === 0) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    const range = selection && selection.rangeCount > 0
+      ? selection.getRangeAt(0)
+      : null;
+    const inEditor = range ? editor.contains(range.startContainer) : false;
+    const activeHeading = inEditor
+      ? (range?.startContainer instanceof Element
+          ? range.startContainer
+          : range?.startContainer.parentElement
+        )?.closest("h1,h2,h3,h4,h5,h6")
+      : null;
+    const retagQueue: Array<{
+      heading: HTMLElement;
+      resolvedLevel: number;
+    }> = [];
+
+    headings.forEach((heading) => {
+      const levelRaw = Number.parseInt(heading.tagName.slice(1), 10);
+      const fallbackLevel = Number.isNaN(levelRaw)
+        ? Number.parseInt(heading.getAttribute("data-md-heading-level") ?? "1", 10)
+        : levelRaw;
+      const levelMatch = (heading.textContent ?? "").match(/^\s*\\?(#{1,6})(?:\s+|$)/);
+      const resolvedLevel = levelMatch
+        ? Math.max(1, Math.min(6, levelMatch[1].length))
+        : Math.max(1, Math.min(6, Number.isFinite(fallbackLevel) ? fallbackLevel : 1));
+      heading.setAttribute("data-md-heading-level", String(resolvedLevel));
+
+      if (heading === activeHeading) {
+        heading.setAttribute("data-md-heading-active", "true");
+      } else {
+        heading.removeAttribute("data-md-heading-active");
+        if (resolvedLevel !== levelRaw) {
+          retagQueue.push({ heading, resolvedLevel });
+        }
+      }
+    });
+
+    retagQueue.forEach(({ heading, resolvedLevel }) => {
+      const retagged = replaceHeadingElementLevel(heading, resolvedLevel);
+      retagged.setAttribute("data-md-heading-level", String(resolvedLevel));
+      retagged.removeAttribute("data-md-heading-active");
+    });
+  }, []);
+
   useLayoutEffect(() => {
     if (!isEditing || rawPreview) {
       markdownEditorReadyRef.current = false;
@@ -1997,7 +2153,22 @@ export const PreviewPanel = ({
     }
     markdownEditorRef.current.innerHTML = markdownEditorHtmlRef.current ?? "";
     markdownEditorReadyRef.current = true;
-  }, [isEditing, rawPreview]);
+    syncActiveMarkdownHeading();
+  }, [isEditing, rawPreview, syncActiveMarkdownHeading]);
+
+  useEffect(() => {
+    if (!isEditing || rawPreview) {
+      return;
+    }
+    const handleSelectionChange = () => {
+      syncMarkdownDraftFromEditor();
+      syncActiveMarkdownHeading();
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
+    };
+  }, [isEditing, rawPreview, syncActiveMarkdownHeading, syncMarkdownDraftFromEditor]);
 
   useLayoutEffect(() => {
     if (isEditing) {
@@ -2131,22 +2302,24 @@ export const PreviewPanel = ({
         : markdownSource.length === 0
           ? bodyStartOffset
           : null;
-      if (previewRef.current) {
-        const container = previewRef.current;
-        captureScroll(container);
-        const selection = getSelectionRange(container);
+      const selectionContainer = rawPreview
+        ? previewRef.current
+        : (markdownViewRef.current ?? previewRef.current);
+      if (selectionContainer) {
+        captureScroll(previewRef.current ?? selectionContainer);
+        const selection = getSelectionRange(selectionContainer);
         if (selection && !selection.collapsed) {
           return;
         }
-        const range = getRangeFromEvent(event, container);
+        const range = getRangeFromEvent(event, selectionContainer);
         const resolvedIndex = rawPreview
-          ? resolveRawCaretIndex(container, range)
-          : resolveMarkdownCaretIndex(container, markdownSource, range);
+          ? resolveRawCaretIndex(selectionContainer, range)
+          : resolveMarkdownCaretIndex(selectionContainer, markdownSource, range);
         if (typeof resolvedIndex === "number") {
           caretIndex = rawPreview ? resolvedIndex : bodyStartOffset + resolvedIndex;
         }
         if (!rawPreview) {
-          markdownEditorHtmlRef.current = buildEditableMarkdownHtml(container);
+          markdownEditorHtmlRef.current = buildEditableMarkdownHtml(selectionContainer);
         }
       } else if (!rawPreview) {
         markdownEditorHtmlRef.current = "";
@@ -2219,15 +2392,9 @@ export const PreviewPanel = ({
   );
 
   const handleMarkdownInput = useCallback(() => {
-    if (!markdownEditorRef.current) {
-      return;
-    }
-    const nextBody = serializeMarkdownFromHtml(markdownEditorRef.current);
-    const nextValue = composeMarkdownWithBody(editDraft, nextBody);
-    if (nextValue !== editDraft) {
-      onEditChange(nextValue);
-    }
-  }, [editDraft, onEditChange]);
+    syncMarkdownDraftFromEditor();
+    syncActiveMarkdownHeading();
+  }, [syncActiveMarkdownHeading, syncMarkdownDraftFromEditor]);
 
   const markdownSource = rawPreview
     ? preview
@@ -2353,6 +2520,9 @@ export const PreviewPanel = ({
                     suppressContentEditableWarning
                     onInput={handleMarkdownInput}
                     onBlur={handleMarkdownEditorBlur}
+                    onFocus={syncActiveMarkdownHeading}
+                    onKeyUp={syncActiveMarkdownHeading}
+                    onMouseUp={syncActiveMarkdownHeading}
                     role="textbox"
                     aria-multiline="true"
                     aria-label="Edit markdown preview"
@@ -2382,22 +2552,24 @@ export const PreviewPanel = ({
                         onFrontmatterSave={onFrontmatterSave}
                       />
                     ) : null}
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkPreserveSoftBreaks]}
-                      rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
-                      components={{
-                        table: ({ node: _node, ...props }) => (
-                          <div className="markdown-table">
-                            <table {...props} />
-                          </div>
-                        ),
-                        img: ({ node: _node, ...props }) => (
-                          <img {...props} draggable={false} />
-                        ),
-                      }}
-                    >
-                      {renderedPreview}
-                    </ReactMarkdown>
+                    <div ref={markdownViewRef}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkPreserveSoftBreaks]}
+                        rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+                        components={{
+                          table: ({ node: _node, ...props }) => (
+                            <div className="markdown-table">
+                              <table {...props} />
+                            </div>
+                          ),
+                          img: ({ node: _node, ...props }) => (
+                            <img {...props} draggable={false} />
+                          ),
+                        }}
+                      >
+                        {renderedPreview}
+                      </ReactMarkdown>
+                    </div>
                   </>
                 )}
               </div>

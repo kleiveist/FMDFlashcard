@@ -180,6 +180,63 @@ describe("serializeMarkdownFromHtml", () => {
 
     expect(result).toBe("- A\n- B\n");
   });
+
+  it("keeps a blank line before and after tables", () => {
+    const container = document.createElement("div");
+    const above = document.createElement("p");
+    above.textContent = "Einleitung";
+    const table = document.createElement("table");
+    table.innerHTML = [
+      "<thead><tr><th>Modell</th><th>Fokus</th></tr></thead>",
+      "<tbody><tr><td>ACID</td><td>Konsistenz</td></tr></tbody>",
+    ].join("");
+    const below = document.createElement("p");
+    below.textContent = "Nachsatz";
+    container.appendChild(above);
+    container.appendChild(table);
+    container.appendChild(below);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe([
+      "Einleitung",
+      "",
+      "| Modell | Fokus |",
+      "| --- | --- |",
+      "| ACID | Konsistenz |",
+      "",
+      "Nachsatz",
+      "",
+    ].join("\n"));
+  });
+
+  it("detaches table lines from numbered items and removes table indentation", () => {
+    const container = document.createElement("div");
+    const list = document.createElement("ol");
+    const item = document.createElement("li");
+    item.appendChild(document.createTextNode("Bestimmen Sie die Aussage"));
+    item.appendChild(document.createElement("br"));
+    item.appendChild(document.createTextNode("| Modell | Fokus |"));
+    item.appendChild(document.createElement("br"));
+    item.appendChild(document.createTextNode("| --- | --- |"));
+    item.appendChild(document.createElement("br"));
+    item.appendChild(document.createTextNode("| ACID | Konsistenz |"));
+    list.appendChild(item);
+    container.appendChild(list);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe([
+      "1. Bestimmen Sie die Aussage",
+      "",
+      "| Modell | Fokus |",
+      "| --- | --- |",
+      "| ACID | Konsistenz |",
+      "",
+    ].join("\n"));
+    expect(result).not.toContain("  |");
+    expect(result).not.toContain("\\|");
+  });
 });
 
 describe("canStartPreviewEdit", () => {
@@ -227,6 +284,8 @@ describe("buildEditableMarkdownHtml", () => {
 
     const html = buildEditableMarkdownHtml(container);
 
-    expect(html).toContain("## Heading");
+    expect(html).toContain("md-heading-marker");
+    expect(html).toContain("## ");
+    expect(html).toContain("Heading");
   });
 });

@@ -272,6 +272,86 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(panelWhileEditing?.textContent ?? "").toContain("title");
   });
 
+  it("applies edited heading level after leaving the heading line", async () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["## Titel", "", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const heading = editable?.querySelector("h2") as HTMLHeadingElement | null;
+    const marker = heading?.querySelector(".md-heading-marker") as HTMLSpanElement | null;
+    const headingTextNode = heading?.childNodes.item(1) ?? null;
+    expect(editable).toBeTruthy();
+    expect(heading).toBeTruthy();
+    expect(marker).toBeTruthy();
+    expect(headingTextNode).toBeTruthy();
+
+    act(() => {
+      if (!headingTextNode) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(headingTextNode, 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    act(() => {
+      if (!marker) {
+        return;
+      }
+      marker.textContent = "# ";
+      marker.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(editable?.querySelector("h2")).toBeTruthy();
+    expect(editable?.querySelector("h1")).toBeNull();
+
+    const bodyParagraph = editable?.querySelector("p")?.firstChild ?? null;
+    act(() => {
+      if (!bodyParagraph) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(bodyParagraph, 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const promotedHeading = editable?.querySelector("h1") as HTMLHeadingElement | null;
+    expect(promotedHeading).toBeTruthy();
+    expect(promotedHeading?.textContent ?? "").toContain("Titel");
+    expect(editable?.querySelector("h2")).toBeNull();
+  });
+
   it("keeps frontmatter collapsed when switching to markdown edit mode", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["---", "title: Demo", "---", "Body line"].join("\n"),

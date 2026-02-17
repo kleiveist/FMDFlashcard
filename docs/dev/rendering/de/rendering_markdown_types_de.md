@@ -68,3 +68,32 @@
     - automatisch umnummeriert werden
     - strukturell „fixiert“ sein
     - nur über UI-Controls statt Text editierbar sein
+
+---
+
+## Markdown Engine V2 (Obsidian-ähnlich)
+
+### Bereits umgesetzt (2026-02)
+
+- Markdown-View-Edit nutzt jetzt editierbare Überschriften-Marker (`#` bis `######`) statt fixer Level.
+- Softbreaks (Zeilenumbrüche ohne Leerzeile) werden in der Preview als echte Zeilenumbrüche behandelt.
+- Frontmatter-Panel-Markup wird vor dem Markdown-Edit aus dem Edit-DOM entfernt.
+- ContentEditable-Serialisierung erzwingt keine zusätzlichen Leerabsätze mehr nach Blockelementen (Ausnahme: Tabellen werden bewusst mit Leerzeile davor/danach stabilisiert).
+
+### Zielbild für die vollständige Engine
+
+- Eine zentrale AST-Pipeline als Single Source of Truth (Parse -> Normalize -> Render -> Edit -> Serialize).
+- Verlustarmer Roundtrip für alle unterstützten Markdown-Typen aus Tabelle 1.
+- Struktur-Marker (`#`, `-`, `1.`, `>`, Fence-Marker) bleiben immer sichtbar und editierbar.
+- Differenzierte Edit-Modi:
+- `Source`: reiner Rohtext.
+- `Live Preview`: Obsidian-ähnlich, aber mit editierbaren Markern.
+- `Read Preview`: reine Lesedarstellung ohne Edit-Eingriffe.
+- Deterministische Snapshot-Tests für Roundtrip-Stabilität je Markdown-Typ.
+
+### Umsetzungsphasen
+
+- Phase 1: Stabiler Roundtrip für Überschriften, Absätze, Listen, Blockquotes, Code, Tabellen.
+- Phase 2: Vollständige AST-Edit-Operationen (Split, Merge, Lift, Sink, Marker-Toggle).
+- Phase 3: Erweiterte Syntax (Callouts, Footnotes, Math, HTML-Blöcke, Wikilinks) ohne Formatverlust.
+- Phase 4: Performance-Optimierung für große Dateien (inkrementelles Parsing, Teil-Render, Caching).

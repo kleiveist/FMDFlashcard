@@ -428,6 +428,64 @@ textarea.preview-editor {
   caret-color: var(--md-editor-caret);
 }
 
+.preview-markdown-editable h1,
+.preview-markdown-editable h2,
+.preview-markdown-editable h3,
+.preview-markdown-editable h4,
+.preview-markdown-editable h5,
+.preview-markdown-editable h6 {
+  position: static;
+  padding-left: 0;
+}
+
+.preview-markdown-editable .md-heading-marker {
+  display: none;
+  color: var(--muted);
+  pointer-events: none;
+  user-select: none;
+  white-space: pre;
+}
+
+.preview-markdown-editable h1[data-md-heading-active="true"] > .md-heading-marker,
+.preview-markdown-editable h2[data-md-heading-active="true"] > .md-heading-marker,
+.preview-markdown-editable h3[data-md-heading-active="true"] > .md-heading-marker,
+.preview-markdown-editable h4[data-md-heading-active="true"] > .md-heading-marker,
+.preview-markdown-editable h5[data-md-heading-active="true"] > .md-heading-marker,
+.preview-markdown-editable h6[data-md-heading-active="true"] > .md-heading-marker {
+  display: inline;
+  opacity: 0.9;
+}
+
+.preview-markdown-editable [data-md-heading-level="1"] {
+  font-size: 1.4rem;
+  margin: 0 0 0.6rem;
+}
+
+.preview-markdown-editable [data-md-heading-level="2"] {
+  font-size: 1.2rem;
+  margin: 1.2rem 0 0.6rem;
+}
+
+.preview-markdown-editable [data-md-heading-level="3"] {
+  font-size: 1.05rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.preview-markdown-editable [data-md-heading-level="4"] {
+  font-size: 1rem;
+  margin: 0.9rem 0 0.5rem;
+}
+
+.preview-markdown-editable [data-md-heading-level="5"] {
+  font-size: 0.95rem;
+  margin: 0.8rem 0 0.45rem;
+}
+
+.preview-markdown-editable [data-md-heading-level="6"] {
+  font-size: 0.9rem;
+  margin: 0.7rem 0 0.4rem;
+}
+
 .preview.preview-editor.markdown a {
   cursor: text;
 }
