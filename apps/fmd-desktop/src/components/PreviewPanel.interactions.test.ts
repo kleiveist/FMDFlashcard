@@ -249,6 +249,59 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(previewText).not.toContain("tags:");
   });
 
+  it("keeps properties panel visible in markdown edit mode", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "title: Demo", "---", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".frontmatter-panel")).toBeTruthy();
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editor = container.querySelector(".preview.preview-editor.markdown");
+    const panelWhileEditing = container.querySelector(".frontmatter-panel");
+
+    expect(editor).toBeTruthy();
+    expect(panelWhileEditing).toBeTruthy();
+    expect(panelWhileEditing?.textContent ?? "").toContain("title");
+  });
+
+  it("keeps frontmatter collapsed when switching to markdown edit mode", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "title: Demo", "---", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const collapseButton = container.querySelector(
+      ".frontmatter-collapse-button",
+    ) as HTMLButtonElement | null;
+    expect(collapseButton).toBeTruthy();
+
+    act(() => {
+      collapseButton?.click();
+    });
+
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+    expect(container.querySelector(".frontmatter-collapsed-hint")).toBeTruthy();
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    expect(container.querySelector(".preview.preview-editor.markdown")).toBeTruthy();
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+    expect(container.querySelector(".frontmatter-collapsed-hint")).toBeTruthy();
+  });
+
   it("shows an error panel for invalid frontmatter", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["---", "Title: A", "Title: B", "---", "Body"].join("\n"),
@@ -282,8 +335,11 @@ describe("PreviewPanel edit-safe interactions", () => {
       input.value = "Changed title";
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
+    await act(async () => {
+      await Promise.resolve();
+    });
     act(() => {
-      input?.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      input?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     });
     await act(async () => {
       await Promise.resolve();
@@ -371,8 +427,18 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     act(() => {
       rankHandle?.dispatchEvent(new Event("dragstart", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
       titleRow?.dispatchEvent(new Event("dragover", { bubbles: true, cancelable: true }));
       titleRow?.dispatchEvent(new Event("drop", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
       rankHandle?.dispatchEvent(new Event("dragend", { bubbles: true, cancelable: true }));
     });
     await act(async () => {
@@ -415,6 +481,9 @@ describe("PreviewPanel edit-safe interactions", () => {
       keyInput.dispatchEvent(new Event("input", { bubbles: true }));
       valueInput.value = "IUFS";
       valueInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
     });
     act(() => {
       addButton?.click();

@@ -264,6 +264,10 @@ const parsePropertyValue = (tail: string, continuationLines: string[]): ParsedYa
   if (normalizedTail.startsWith("{") && normalizedTail.endsWith("}")) {
     return { type: "unknown", rawValue: normalizedTail };
   }
+  if (/^\[\[[^\]]+\]\]$/.test(normalizedTail)) {
+    // Treat wikilinks as scalar strings, not YAML flow arrays.
+    return { type: "scalar", value: normalizedTail };
+  }
   if (normalizedTail.startsWith("[") && normalizedTail.endsWith("]")) {
     const flowArray = parseFlowStringArray(normalizedTail);
     if (flowArray) {

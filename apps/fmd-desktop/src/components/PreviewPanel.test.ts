@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyInteractionSpacing,
+  buildEditableMarkdownHtml,
   canStartPreviewEdit,
   serializeMarkdownFromHtml,
 } from "./PreviewPanel";
@@ -63,6 +64,41 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe("a) A\nb) B\n-b\n-c\n");
   });
 
+  it("ignores whitespace-only newline text nodes between block lines", () => {
+    const container = document.createElement("div");
+    const first = document.createElement("div");
+    first.textContent = "a) A";
+    const second = document.createElement("div");
+    second.textContent = "b) B";
+    const third = document.createElement("div");
+    third.textContent = "c) C";
+
+    container.appendChild(first);
+    container.appendChild(document.createTextNode("\n"));
+    container.appendChild(second);
+    container.appendChild(document.createTextNode("\n  "));
+    container.appendChild(third);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("a) A\nb) B\nc) C\n");
+  });
+
+  it("ignores duplicated newline text nodes around br markers", () => {
+    const container = document.createElement("div");
+    const paragraph = document.createElement("p");
+    paragraph.appendChild(document.createTextNode("a) A"));
+    paragraph.appendChild(document.createElement("br"));
+    paragraph.appendChild(document.createTextNode("\nb) B"));
+    paragraph.appendChild(document.createElement("br"));
+    paragraph.appendChild(document.createTextNode("\nc) C"));
+    container.appendChild(paragraph);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("a) A\nb) B\nc) C\n");
+  });
+
   it("serializes contentEditable p lines without extra blank lines", () => {
     const container = document.createElement("div");
     ["a) A", "b) B", "-b", "-c"].forEach((line) => {
@@ -106,6 +142,44 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe("#exam\n1) Prompt\n#examend\n");
     expect(result).not.toContain("\\#");
   });
+
+  it("keeps heading marker edits from markdown view", () => {
+    const container = document.createElement("div");
+    const heading = document.createElement("h2");
+    heading.textContent = "# Neue Ebene";
+    container.appendChild(heading);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("# Neue Ebene\n");
+  });
+
+  it("keeps heading level when marker is not edited", () => {
+    const container = document.createElement("div");
+    const heading = document.createElement("h3");
+    heading.textContent = "Titel";
+    container.appendChild(heading);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("### Titel\n");
+  });
+
+  it("does not force extra blank lines after lists in contentEditable mode", () => {
+    const container = document.createElement("div");
+    const list = document.createElement("ul");
+    const itemA = document.createElement("li");
+    const itemB = document.createElement("li");
+    itemA.textContent = "A";
+    itemB.textContent = "B";
+    list.appendChild(itemA);
+    list.appendChild(itemB);
+    container.appendChild(list);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("- A\n- B\n");
+  });
 });
 
 describe("canStartPreviewEdit", () => {
@@ -125,5 +199,34 @@ describe("canStartPreviewEdit", () => {
         markdownViewEditEnabled: false,
       }),
     ).toBe(false);
+  });
+});
+
+describe("buildEditableMarkdownHtml", () => {
+  it("removes frontmatter panel markup from markdown edit html", () => {
+    const container = document.createElement("div");
+    const panel = document.createElement("section");
+    panel.className = "frontmatter-panel";
+    panel.textContent = "title: Demo";
+    const body = document.createElement("p");
+    body.textContent = "Body";
+    container.appendChild(panel);
+    container.appendChild(body);
+
+    const html = buildEditableMarkdownHtml(container);
+
+    expect(html).not.toContain("frontmatter-panel");
+    expect(html).toContain("Body");
+  });
+
+  it("injects editable heading markers for markdown edit mode", () => {
+    const container = document.createElement("div");
+    const heading = document.createElement("h2");
+    heading.textContent = "Heading";
+    container.appendChild(heading);
+
+    const html = buildEditableMarkdownHtml(container);
+
+    expect(html).toContain("## Heading");
   });
 });

@@ -116,6 +116,42 @@ const resolveAnchorTarget = (target: EventTarget | null) => {
 const isModifierClick = (event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlKey">) =>
   event.metaKey || event.ctrlKey;
 
+type MarkdownAstNode = {
+  type?: string;
+  value?: string;
+  children?: MarkdownAstNode[];
+};
+
+const normalizeSoftBreaks = (node: MarkdownAstNode) => {
+  if (!Array.isArray(node.children) || node.children.length === 0) {
+    return;
+  }
+
+  const normalizedChildren: MarkdownAstNode[] = [];
+  node.children.forEach((child) => {
+    normalizeSoftBreaks(child);
+    if (child.type !== "text" || typeof child.value !== "string" || !child.value.includes("\n")) {
+      normalizedChildren.push(child);
+      return;
+    }
+    const parts = child.value.split("\n");
+    parts.forEach((part, index) => {
+      if (part.length > 0) {
+        normalizedChildren.push({ ...child, value: part });
+      }
+      if (index < parts.length - 1) {
+        normalizedChildren.push({ type: "break" });
+      }
+    });
+  });
+
+  node.children = normalizedChildren;
+};
+
+const remarkPreserveSoftBreaks = () => (tree: MarkdownAstNode) => {
+  normalizeSoftBreaks(tree);
+};
+
 type PreviewPanelProps = {
   editDraft: string;
   editError: string;
@@ -202,10 +238,22 @@ const getRangeFromEvent = (
   return getSelectionRange(container);
 };
 
-const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
+type MarkdownOffsetMapOptions = {
+  skipStructuralMarkers?: boolean;
+};
+
+const shouldSkipStructuralMarkers = (options?: MarkdownOffsetMapOptions) =>
+  options?.skipStructuralMarkers ?? true;
+
+const mapPlainOffsetToRawIndex = (
+  rawMarkdown: string,
+  plainOffset: number,
+  options?: MarkdownOffsetMapOptions,
+) => {
   if (plainOffset <= 0) {
     return 0;
   }
+  const skipStructuralMarkers = shouldSkipStructuralMarkers(options);
   let rawIndex = 0;
   let plainIndex = 0;
   let inFence = false;
@@ -253,7 +301,7 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
       continue;
     }
 
-    if (!isEscaped && lineStart && !inFence) {
+    if (!isEscaped && lineStart && !inFence && skipStructuralMarkers) {
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -345,10 +393,15 @@ const mapPlainOffsetToRawIndex = (rawMarkdown: string, plainOffset: number) => {
   return rawMarkdown.length;
 };
 
-const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) => {
+const mapRawIndexToPlainOffset = (
+  rawMarkdown: string,
+  rawIndexTarget: number,
+  options?: MarkdownOffsetMapOptions,
+) => {
   if (rawIndexTarget <= 0) {
     return 0;
   }
+  const skipStructuralMarkers = shouldSkipStructuralMarkers(options);
   const target = Math.min(rawIndexTarget, rawMarkdown.length);
   let rawIndex = 0;
   let plainIndex = 0;
@@ -394,7 +447,7 @@ const mapRawIndexToPlainOffset = (rawMarkdown: string, rawIndexTarget: number) =
       continue;
     }
 
-    if (!isEscaped && lineStart && !inFence) {
+    if (!isEscaped && lineStart && !inFence && skipStructuralMarkers) {
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -652,7 +705,7 @@ const wrapCodeBlock = (text: string) => {
     : 3;
   const fence = "`".repeat(Math.max(3, fenceLength));
   const trimmed = normalized.replace(/\n$/, "");
-  return `${fence}\n${trimmed}\n${fence}\n\n`;
+  return `${fence}\n${trimmed}\n${fence}\n`;
 };
 
 type MarkdownSerializeContext = {
@@ -674,7 +727,31 @@ const serializeMarkdownNode = (
   context: MarkdownSerializeContext,
 ): string => {
   if (node.nodeType === Node.TEXT_NODE) {
-    return escapeMarkdownText(node.nodeValue ?? "", context.escapePipes);
+    let value = node.nodeValue ?? "";
+    if (context.inContentEditable) {
+      if (value.trim() === "" && /[\r\n]/.test(value)) {
+        // Ignore editor-only whitespace separators between block nodes to avoid
+        // rewriting single-line sequences into paragraph-separated output.
+        return "";
+      }
+
+      const previousTag = node.previousSibling instanceof HTMLElement
+        ? node.previousSibling.tagName.toLowerCase()
+        : null;
+      const nextTag = node.nextSibling instanceof HTMLElement
+        ? node.nextSibling.tagName.toLowerCase()
+        : null;
+
+      // Browsers can inject newline text nodes around <br> in contentEditable.
+      // Keep line breaks owned by <br> and strip duplicate newline chars from text.
+      if (previousTag === "br") {
+        value = value.replace(/^[\r\n]+[ \t]*/g, "");
+      }
+      if (nextTag === "br") {
+        value = value.replace(/[ \t]*[\r\n]+$/g, "");
+      }
+    }
+    return escapeMarkdownText(value, context.escapePipes);
   }
   if (node.nodeType !== Node.ELEMENT_NODE) {
     return "";
@@ -702,10 +779,17 @@ const serializeMarkdownNode = (
   }
 
   if (tag.startsWith("h") && tag.length === 2) {
-    const level = Number(tag[1]);
-    if (!Number.isNaN(level)) {
+    const levelFromTag = Number(tag[1]);
+    if (!Number.isNaN(levelFromTag)) {
       const content = serializeMarkdownChildren(element, context).trim();
-      return `${"#".repeat(level)} ${content}\n\n`;
+      const markerMatch = content.match(/^\\?(#{1,6})(?:\s+|$)([\s\S]*)$/);
+      const manualLevel = markerMatch ? markerMatch[1].length : null;
+      const manualContent = markerMatch ? markerMatch[2].trimStart() : content;
+      const resolvedLevel = Math.max(1, Math.min(6, manualLevel ?? levelFromTag));
+      const newlineSuffix = context.inContentEditable ? "\n" : "\n\n";
+      return manualContent
+        ? `${"#".repeat(resolvedLevel)} ${manualContent}${newlineSuffix}`
+        : `${"#".repeat(resolvedLevel)}${newlineSuffix}`;
     }
   }
 
@@ -730,13 +814,15 @@ const serializeMarkdownNode = (
 
   if (tag === "pre") {
     const code = element.querySelector("code")?.textContent ?? element.textContent ?? "";
-    return wrapCodeBlock(code);
+    const block = wrapCodeBlock(code);
+    return context.inContentEditable ? block : `${block}\n`;
   }
 
   if (tag === "blockquote") {
     const content = serializeMarkdownChildren(element, context).trim();
     const lines = content.split("\n");
-    return `${lines.map((line) => (line ? `> ${line}` : ">")).join("\n")}\n\n`;
+    const block = lines.map((line) => (line ? `> ${line}` : ">")).join("\n");
+    return context.inContentEditable ? `${block}\n` : `${block}\n\n`;
   }
 
   if (tag === "ul" || tag === "ol") {
@@ -757,7 +843,7 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "hr") {
-    return "---\n\n";
+    return context.inContentEditable ? "---\n" : "---\n\n";
   }
 
   if (tag === "table") {
@@ -796,7 +882,8 @@ const serializeMarkdownList = (
     });
   });
 
-  return `${lines.join("\n")}\n\n`;
+  const block = `${lines.join("\n")}\n`;
+  return context.inContentEditable ? block : `${block}\n`;
 };
 
 const serializeMarkdownTable = (
@@ -823,7 +910,8 @@ const serializeMarkdownTable = (
     return `| ${cells.join(" | ")} |`;
   });
 
-  return `${[headerLine, separatorLine, ...bodyLines].join("\n")}\n\n`;
+  const block = `${[headerLine, separatorLine, ...bodyLines].join("\n")}\n`;
+  return context.inContentEditable ? block : `${block}\n`;
 };
 
 const serializeTableCell = (
@@ -847,6 +935,28 @@ export const serializeMarkdownFromHtml = (container: HTMLElement) => {
   });
 };
 
+export const buildEditableMarkdownHtml = (container: HTMLElement) => {
+  const clone = container.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll(".frontmatter-panel").forEach((panel) => panel.remove());
+  clone.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6").forEach((heading) => {
+    const levelRaw = Number.parseInt(heading.tagName.slice(1), 10);
+    if (Number.isNaN(levelRaw)) {
+      return;
+    }
+    const level = Math.max(1, Math.min(6, levelRaw));
+    heading.setAttribute("data-md-heading-level", String(level));
+    const text = heading.textContent ?? "";
+    if (/^\s*\\?#{1,6}(?:\s|$)/.test(text)) {
+      return;
+    }
+    heading.insertBefore(
+      heading.ownerDocument.createTextNode(`${"#".repeat(level)} `),
+      heading.firstChild,
+    );
+  });
+  return clone.innerHTML;
+};
+
 const resolveRawCaretIndex = (container: HTMLElement, range: Range | null) => {
   const resolvedRange = range ?? getSelectionRange(container);
   if (!resolvedRange) {
@@ -859,6 +969,7 @@ const resolveMarkdownCaretIndex = (
   container: HTMLElement,
   rawMarkdown: string,
   range: Range | null,
+  options?: MarkdownOffsetMapOptions,
 ) => {
   const resolvedRange = range ?? getSelectionRange(container);
   if (!resolvedRange) {
@@ -868,7 +979,7 @@ const resolveMarkdownCaretIndex = (
   if (rawMarkdown.length === 0) {
     return 0;
   }
-  return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset);
+  return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset, options);
 };
 
 const isExamTaskStartLine = (line: string) => {
@@ -1234,6 +1345,8 @@ type FrontmatterPropertiesPanelProps = {
   sourceMarkdown: string;
   properties: FrontmatterProperty[];
   canEdit: boolean;
+  isCollapsed: boolean;
+  onToggleCollapsed: () => void;
   onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
 };
 
@@ -1241,6 +1354,8 @@ const FrontmatterPropertiesPanel = ({
   sourceMarkdown,
   properties,
   canEdit,
+  isCollapsed,
+  onToggleCollapsed,
   onFrontmatterSave,
 }: FrontmatterPropertiesPanelProps) => {
   const initialDrafts = useMemo(() => {
@@ -1255,10 +1370,11 @@ const FrontmatterPropertiesPanel = ({
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [panelError, setPanelError] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [addKeyDraft, setAddKeyDraft] = useState("");
   const [addValueDraft, setAddValueDraft] = useState("");
   const [addError, setAddError] = useState("");
+  const addKeyInputRef = useRef<HTMLInputElement | null>(null);
+  const addValueInputRef = useRef<HTMLInputElement | null>(null);
   const [dragPropertyKey, setDragPropertyKey] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{
     key: string;
@@ -1330,7 +1446,8 @@ const FrontmatterPropertiesPanel = ({
     if (controlsDisabled || !onFrontmatterSave) {
       return;
     }
-    const nextKey = addKeyDraft.trim();
+    const nextKey = (addKeyInputRef.current?.value ?? addKeyDraft).trim();
+    const nextValue = addValueInputRef.current?.value ?? addValueDraft;
     if (!nextKey) {
       setAddError("Bitte einen Attribut-Namen angeben.");
       return;
@@ -1347,7 +1464,7 @@ const FrontmatterPropertiesPanel = ({
     const updated = addFrontmatterProperty({
       markdown: sourceMarkdown,
       key: nextKey,
-      value: addValueDraft,
+      value: nextValue,
     });
     if (updated.error) {
       setAddError(updated.error);
@@ -1375,6 +1492,8 @@ const FrontmatterPropertiesPanel = ({
     addKeyDraft,
     addValueDraft,
     controlsDisabled,
+    addKeyInputRef,
+    addValueInputRef,
     onFrontmatterSave,
     properties,
     sourceMarkdown,
@@ -1432,10 +1551,6 @@ const FrontmatterPropertiesPanel = ({
     [controlsDisabled, onFrontmatterSave, sourceMarkdown],
   );
 
-  const toggleCollapsed = useCallback(() => {
-    setIsCollapsed((current) => !current);
-  }, []);
-
   return (
     <section className="frontmatter-panel" aria-label="Eigenschaften">
       <div className="frontmatter-header">
@@ -1443,7 +1558,7 @@ const FrontmatterPropertiesPanel = ({
           type="button"
           className="frontmatter-title-button"
           aria-expanded={!isCollapsed}
-          onClick={toggleCollapsed}
+          onClick={onToggleCollapsed}
         >
           <h3>Eigenschaften</h3>
         </button>
@@ -1454,7 +1569,7 @@ const FrontmatterPropertiesPanel = ({
             className={`ghost small frontmatter-collapse-button ${isCollapsed ? "collapsed" : ""}`}
             aria-label={isCollapsed ? "Eigenschaften aufklappen" : "Eigenschaften einklappen"}
             aria-expanded={!isCollapsed}
-            onClick={toggleCollapsed}
+            onClick={onToggleCollapsed}
           >
             <span className="frontmatter-collapse-icon" aria-hidden="true">
               <ChevronDownIcon />
@@ -1627,8 +1742,8 @@ const FrontmatterPropertiesPanel = ({
                           const next = event.target.value;
                           setDrafts((current) => ({ ...current, [property.key]: next }));
                         }}
-                        onBlur={() => {
-                          const raw = drafts[property.key] ?? "";
+                        onBlur={(event) => {
+                          const raw = event.currentTarget.value;
                           const nextValue = property.kind === "link" ||
                               property.kind === "cover"
                             ? normalizeWikilinkValue(raw)
@@ -1739,6 +1854,7 @@ const FrontmatterPropertiesPanel = ({
           </div>
           <div className="frontmatter-add-row">
             <input
+              ref={addKeyInputRef}
               type="text"
               className="text-input frontmatter-add-key"
               placeholder="Neues Attribut"
@@ -1759,6 +1875,7 @@ const FrontmatterPropertiesPanel = ({
               }}
             />
             <input
+              ref={addValueInputRef}
               type="text"
               className="text-input frontmatter-add-value"
               placeholder="Wert (optional)"
@@ -1821,12 +1938,14 @@ export const PreviewPanel = ({
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const markdownEditorScrollRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
   const scrollStateRef = useRef({ top: 0, left: 0 });
   const lastCaretIndexRef = useRef<number | null>(null);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
+  const [isFrontmatterPanelCollapsed, setIsFrontmatterPanelCollapsed] = useState(false);
 
   const previewFrontmatter = useMemo(
     () => parseFrontmatterDocument(preview),
@@ -1885,7 +2004,7 @@ export const PreviewPanel = ({
       if (rawPreview) {
         restoreScroll(editorRef.current);
       } else {
-        restoreScroll(markdownEditorRef.current);
+        restoreScroll(markdownEditorScrollRef.current);
       }
       return;
     }
@@ -1925,7 +2044,9 @@ export const PreviewPanel = ({
       0,
       editCaretIndex - markdownEditBodyStartOffset,
     );
-    const plainOffset = mapRawIndexToPlainOffset(markdownEditBody, bodyCaretIndex);
+    const plainOffset = mapRawIndexToPlainOffset(markdownEditBody, bodyCaretIndex, {
+      skipStructuralMarkers: false,
+    });
     const handle = window.requestAnimationFrame(() => {
       editor.focus();
       setCaretAtPlainOffset(editor, plainOffset);
@@ -2025,7 +2146,7 @@ export const PreviewPanel = ({
           caretIndex = rawPreview ? resolvedIndex : bodyStartOffset + resolvedIndex;
         }
         if (!rawPreview) {
-          markdownEditorHtmlRef.current = container.innerHTML;
+          markdownEditorHtmlRef.current = buildEditableMarkdownHtml(container);
         }
       } else if (!rawPreview) {
         markdownEditorHtmlRef.current = "";
@@ -2076,18 +2197,25 @@ export const PreviewPanel = ({
 
   const handleMarkdownEditorBlur = useCallback(
     (event: FocusEvent<HTMLDivElement>) => {
-      captureScroll(event.currentTarget);
+      captureScroll(markdownEditorScrollRef.current);
       const bodyCaretIndex = resolveMarkdownCaretIndex(
         event.currentTarget,
         markdownEditBody,
         null,
+        { skipStructuralMarkers: false },
       );
       if (typeof bodyCaretIndex === "number") {
         lastCaretIndexRef.current = markdownEditBodyStartOffset + bodyCaretIndex;
       }
       onEditExit();
     },
-    [captureScroll, markdownEditBody, markdownEditBodyStartOffset, onEditExit],
+    [
+      captureScroll,
+      markdownEditBody,
+      markdownEditBodyStartOffset,
+      markdownEditorScrollRef,
+      onEditExit,
+    ],
   );
 
   const handleMarkdownInput = useCallback(() => {
@@ -2096,7 +2224,9 @@ export const PreviewPanel = ({
     }
     const nextBody = serializeMarkdownFromHtml(markdownEditorRef.current);
     const nextValue = composeMarkdownWithBody(editDraft, nextBody);
-    onEditChange(nextValue);
+    if (nextValue !== editDraft) {
+      onEditChange(nextValue);
+    }
   }, [editDraft, onEditChange]);
 
   const markdownSource = rawPreview
@@ -2106,12 +2236,13 @@ export const PreviewPanel = ({
       : markdownPreviewBody;
   const renderedPreview = rawPreview
     ? preview
-    : applyInteractionSpacing(markdownSource);
+    : markdownViewEditEnabled
+      ? markdownSource
+      : applyInteractionSpacing(markdownSource);
   const hasVisiblePreviewContent = rawPreview
     ? preview.length > 0
     : markdownSource.length > 0;
   const showFrontmatterPanel = !rawPreview &&
-    !isEditing &&
     previewState === "idle" &&
     previewFrontmatter.hasFrontmatter &&
     !previewFrontmatter.error;
@@ -2120,6 +2251,9 @@ export const PreviewPanel = ({
     : "Switch to Rohtext";
   const ToggleIcon = rawPreview ? MarkdownIcon : CodeIcon;
   const showMarkdownEditor = markdownViewEditEnabled && !rawPreview;
+  const handleToggleFrontmatterPanelCollapsed = useCallback(() => {
+    setIsFrontmatterPanelCollapsed((current) => !current);
+  }, []);
 
   return (
     <section className="panel preview-panel" style={markdownEditorStyle}>
@@ -2198,17 +2332,32 @@ export const PreviewPanel = ({
               ) : showMarkdownEditor ? (
                 <div
                   key="markdown-edit"
-                  ref={markdownEditorRef}
+                  ref={markdownEditorScrollRef}
                   className="preview preview-editor markdown md-preview"
-                  contentEditable
-                  suppressContentEditableWarning
-                  onInput={handleMarkdownInput}
-                  onBlur={handleMarkdownEditorBlur}
                   onScroll={(event) => captureScroll(event.currentTarget)}
-                  role="textbox"
-                  aria-multiline="true"
-                  aria-label="Edit markdown preview"
-                />
+                >
+                  {showFrontmatterPanel ? (
+                    <FrontmatterPropertiesPanel
+                      sourceMarkdown={preview}
+                      properties={previewFrontmatter.properties}
+                      canEdit={canEdit && previewState === "idle" && !isEditing}
+                      isCollapsed={isFrontmatterPanelCollapsed}
+                      onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
+                      onFrontmatterSave={onFrontmatterSave}
+                    />
+                  ) : null}
+                  <div
+                    ref={markdownEditorRef}
+                    className="preview-markdown-editable md-preview"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={handleMarkdownInput}
+                    onBlur={handleMarkdownEditorBlur}
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-label="Edit markdown preview"
+                  />
+                </div>
               ) : null
             ) : hasVisiblePreviewContent ? (
               <div
@@ -2228,11 +2377,13 @@ export const PreviewPanel = ({
                         sourceMarkdown={preview}
                         properties={previewFrontmatter.properties}
                         canEdit={canEdit && previewState === "idle"}
+                        isCollapsed={isFrontmatterPanelCollapsed}
+                        onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                         onFrontmatterSave={onFrontmatterSave}
                       />
                     ) : null}
                     <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
+                      remarkPlugins={[remarkGfm, remarkPreserveSoftBreaks]}
                       rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
                       components={{
                         table: ({ node: _node, ...props }) => (
