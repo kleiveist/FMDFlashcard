@@ -221,6 +221,53 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe("- A\n- B\n");
   });
 
+  it("keeps edited list marker styles including 1) and task checkboxes", () => {
+    const container = document.createElement("div");
+
+    const ordered = document.createElement("ol");
+    const orderedItem = document.createElement("li");
+    const orderedMarker = document.createElement("span");
+    orderedMarker.className = "md-list-marker";
+    orderedMarker.textContent = "1) ";
+    orderedItem.appendChild(orderedMarker);
+    orderedItem.appendChild(document.createTextNode("Ordered"));
+    ordered.appendChild(orderedItem);
+    container.appendChild(ordered);
+
+    const unordered = document.createElement("ul");
+    const taskItem = document.createElement("li");
+    const taskMarker = document.createElement("span");
+    taskMarker.className = "md-list-marker";
+    taskMarker.textContent = "- [x] ";
+    taskItem.appendChild(taskMarker);
+    taskItem.appendChild(document.createTextNode("Done"));
+    unordered.appendChild(taskItem);
+    container.appendChild(unordered);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toContain("1) Ordered");
+    expect(result).toContain("- [x] Done");
+  });
+
+  it("does not inject escaped list markers when serializing editable list marker spans", () => {
+    const container = document.createElement("div");
+    const list = document.createElement("ul");
+    const item = document.createElement("li");
+    const marker = document.createElement("span");
+    marker.className = "md-list-marker";
+    marker.textContent = "- ";
+    item.appendChild(marker);
+    item.appendChild(document.createTextNode("Alpha"));
+    list.appendChild(item);
+    container.appendChild(list);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("- Alpha\n");
+    expect(result).not.toContain("\\-");
+  });
+
   it("keeps a blank line before and after tables", () => {
     const container = document.createElement("div");
     const above = document.createElement("p");
@@ -339,5 +386,51 @@ describe("buildEditableMarkdownHtml", () => {
     expect(html).toContain('data-md-hr-line="true"');
     expect(html).toContain("md-hr-marker");
     expect(html).toContain("---");
+  });
+
+  it("injects editable list markers for unordered, ordered and task list items", () => {
+    const container = document.createElement("div");
+    container.innerHTML = [
+      "<ul><li>Bullet</li></ul>",
+      "<ol start=\"3\"><li>Numbered</li></ol>",
+      "<ul><li class=\"task-list-item\"><input type=\"checkbox\" checked>Done</li></ul>",
+    ].join("");
+
+    const html = buildEditableMarkdownHtml(container);
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const markers = Array.from(
+      wrapper.querySelectorAll<HTMLElement>("li > .md-list-marker"),
+    ).map((marker) => marker.textContent);
+
+    expect(markers).toContain("- ");
+    expect(markers).toContain("3. ");
+    expect(markers).toContain("- [x] ");
+  });
+
+  it("keeps ordered list marker delimiter from markdown source as 1)", () => {
+    const container = document.createElement("div");
+    container.innerHTML = "<ol><li>First</li></ol>";
+
+    const html = buildEditableMarkdownHtml(container, "1) First");
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const marker = wrapper.querySelector<HTMLElement>("li > .md-list-marker");
+
+    expect(marker?.textContent).toBe("1) ");
+  });
+
+  it("keeps ordered delimiter attributes in markdown edit html", () => {
+    const container = document.createElement("div");
+    container.innerHTML = "<ol data-md-ordered-delimiter=\")\"><li>First</li></ol>";
+
+    const html = buildEditableMarkdownHtml(container, "1) First");
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const list = wrapper.querySelector("ol");
+    const marker = wrapper.querySelector<HTMLElement>("li > .md-list-marker");
+
+    expect(list?.getAttribute("data-md-ordered-delimiter")).toBe(")");
+    expect(marker?.textContent).toBe("1) ");
   });
 });

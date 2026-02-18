@@ -71,6 +71,7 @@ const markdownSchema = {
   ],
   attributes: {
     ...defaultSchema.attributes,
+    ol: [...(defaultSchema.attributes?.ol ?? []), "data-md-ordered-delimiter"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
     th: [...(defaultSchema.attributes?.th ?? []), "align"],
     td: [...(defaultSchema.attributes?.td ?? []), "align"],
@@ -119,6 +120,16 @@ const isModifierClick = (event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlK
 type MarkdownAstNode = {
   type?: string;
   value?: string;
+  ordered?: boolean;
+  data?: {
+    hProperties?: Record<string, unknown>;
+  };
+  position?: {
+    start?: {
+      offset?: number;
+      line?: number;
+    };
+  };
   children?: MarkdownAstNode[];
 };
 
@@ -151,6 +162,84 @@ const normalizeSoftBreaks = (node: MarkdownAstNode) => {
 const remarkPreserveSoftBreaks = () => (tree: MarkdownAstNode) => {
   normalizeSoftBreaks(tree);
 };
+
+const resolveOrderedListDelimiterFromLine = (line: string) => {
+  const markerMatch = line.match(/^\s*\d+([.)])(?:\s|$)/);
+  return markerMatch?.[1] ?? null;
+};
+
+const resolveOrderedListDelimiterAtOffset = (source: string, offset?: number) => {
+  if (typeof offset !== "number" || offset < 0 || offset >= source.length) {
+    return null;
+  }
+  let lineStart = offset;
+  while (lineStart > 0) {
+    const previous = source[lineStart - 1];
+    if (previous === "\n" || previous === "\r") {
+      break;
+    }
+    lineStart -= 1;
+  }
+  let lineEnd = offset;
+  while (lineEnd < source.length) {
+    const current = source[lineEnd];
+    if (current === "\n" || current === "\r") {
+      break;
+    }
+    lineEnd += 1;
+  }
+  return resolveOrderedListDelimiterFromLine(source.slice(lineStart, lineEnd));
+};
+
+const resolveOrderedListDelimiterAtLine = (source: string, lineNumber?: number) => {
+  if (typeof lineNumber !== "number" || lineNumber < 1) {
+    return null;
+  }
+  const lines = source.split(/\r?\n/);
+  const line = lines[lineNumber - 1] ?? "";
+  return resolveOrderedListDelimiterFromLine(line);
+};
+
+const resolveOrderedListDelimiter = (
+  source: string,
+  position?: {
+    offset?: number;
+    line?: number;
+  },
+) => {
+  const delimiterFromOffset = resolveOrderedListDelimiterAtOffset(source, position?.offset);
+  if (delimiterFromOffset) {
+    return delimiterFromOffset;
+  }
+  return resolveOrderedListDelimiterAtLine(source, position?.line);
+};
+
+const preserveOrderedListDelimiter = (node: MarkdownAstNode, source: string) => {
+  if (node.type === "list" && node.ordered) {
+    const firstItem = node.children?.[0];
+    const delimiter = resolveOrderedListDelimiter(source, firstItem?.position?.start);
+    if (delimiter === ")") {
+      const data = node.data ?? {};
+      const props = data.hProperties ?? {};
+      props["data-md-ordered-delimiter"] = ")";
+      data.hProperties = props;
+      node.data = data;
+    }
+  }
+  if (!node.children || node.children.length === 0) {
+    return;
+  }
+  node.children.forEach((child) => preserveOrderedListDelimiter(child, source));
+};
+
+const remarkPreserveOrderedListDelimiters = () =>
+  (tree: MarkdownAstNode, file: { value?: unknown }) => {
+    const source = typeof file.value === "string" ? file.value : "";
+    if (!source) {
+      return;
+    }
+    preserveOrderedListDelimiter(tree, source);
+  };
 
 type PreviewPanelProps = {
   editDraft: string;
@@ -245,6 +334,41 @@ type MarkdownOffsetMapOptions = {
 const shouldSkipStructuralMarkers = (options?: MarkdownOffsetMapOptions) =>
   options?.skipStructuralMarkers ?? true;
 
+const resolveListLineMarkerEnd = (rawMarkdown: string, startIndex: number) => {
+  const first = rawMarkdown[startIndex];
+  if (first === "-" || first === "*" || first === "+") {
+    if (rawMarkdown[startIndex + 1] !== " ") {
+      return null;
+    }
+    if (
+      rawMarkdown[startIndex + 2] === "[" &&
+      (rawMarkdown[startIndex + 3] === " " ||
+        rawMarkdown[startIndex + 3] === "x" ||
+        rawMarkdown[startIndex + 3] === "X") &&
+      rawMarkdown[startIndex + 4] === "]" &&
+      rawMarkdown[startIndex + 5] === " "
+    ) {
+      return startIndex + 6;
+    }
+    return startIndex + 2;
+  }
+
+  if (first >= "0" && first <= "9") {
+    let index = startIndex;
+    while (rawMarkdown[index] >= "0" && rawMarkdown[index] <= "9") {
+      index += 1;
+    }
+    if (
+      (rawMarkdown[index] === "." || rawMarkdown[index] === ")") &&
+      rawMarkdown[index + 1] === " "
+    ) {
+      return index + 2;
+    }
+  }
+
+  return null;
+};
+
 const resolveThematicBreakLineEnd = (rawMarkdown: string, startIndex: number) => {
   let index = startIndex;
   let dashCount = 0;
@@ -326,6 +450,11 @@ const mapPlainOffsetToRawIndex = (
         rawIndex = thematicBreakEnd;
         continue;
       }
+      const listMarkerEnd = resolveListLineMarkerEnd(rawMarkdown, rawIndex);
+      if (listMarkerEnd !== null) {
+        rawIndex = listMarkerEnd;
+        continue;
+      }
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -341,27 +470,6 @@ const mapPlainOffsetToRawIndex = (
           rawIndex += 1;
         }
         continue;
-      }
-      if (
-        (char === "-" || char === "*" || char === "+") &&
-        rawMarkdown[rawIndex + 1] === " "
-      ) {
-        rawIndex += 2;
-        continue;
-      }
-      if (char >= "0" && char <= "9") {
-        const markerStart = rawIndex;
-        while (rawMarkdown[rawIndex] >= "0" && rawMarkdown[rawIndex] <= "9") {
-          rawIndex += 1;
-        }
-        if (
-          rawMarkdown[rawIndex] === "." &&
-          rawMarkdown[rawIndex + 1] === " "
-        ) {
-          rawIndex += 2;
-          continue;
-        }
-        rawIndex = markerStart;
       }
     }
 
@@ -477,6 +585,11 @@ const mapRawIndexToPlainOffset = (
         rawIndex = thematicBreakEnd;
         continue;
       }
+      const listMarkerEnd = resolveListLineMarkerEnd(rawMarkdown, rawIndex);
+      if (listMarkerEnd !== null) {
+        rawIndex = listMarkerEnd;
+        continue;
+      }
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -492,27 +605,6 @@ const mapRawIndexToPlainOffset = (
           rawIndex += 1;
         }
         continue;
-      }
-      if (
-        (char === "-" || char === "*" || char === "+") &&
-        rawMarkdown[rawIndex + 1] === " "
-      ) {
-        rawIndex += 2;
-        continue;
-      }
-      if (char >= "0" && char <= "9") {
-        const markerStart = rawIndex;
-        while (rawMarkdown[rawIndex] >= "0" && rawMarkdown[rawIndex] <= "9") {
-          rawIndex += 1;
-        }
-        if (
-          rawMarkdown[rawIndex] === "." &&
-          rawMarkdown[rawIndex + 1] === " "
-        ) {
-          rawIndex += 2;
-          continue;
-        }
-        rawIndex = markerStart;
       }
     }
 
@@ -919,13 +1011,58 @@ const serializeMarkdownList = (
   );
   const lines: string[] = [];
 
+  const resolveDefaultMarker = (itemIndex: number) =>
+    isOrdered ? `${index + itemIndex}. ` : "- ";
+
+  const resolveManualMarker = (value: string, fallback: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return fallback;
+    }
+    const taskMatch = trimmed.match(/^([-+*])\s+\[([ xX])\]$/);
+    if (taskMatch) {
+      const taskBullet = taskMatch[1] ?? "-";
+      const taskState = taskMatch[2] ?? " ";
+      const state = taskState.toLowerCase() === "x" ? "x" : " ";
+      return `${taskBullet} [${state}] `;
+    }
+    const orderedMatch = trimmed.match(/^(\d+)([.)])$/);
+    if (orderedMatch) {
+      const number = orderedMatch[1] ?? "1";
+      const delimiter = orderedMatch[2] ?? ".";
+      return `${number}${delimiter} `;
+    }
+    if (/^[-+*]$/.test(trimmed)) {
+      return `${trimmed} `;
+    }
+    return fallback;
+  };
+
   items.forEach((item, itemIndex) => {
-    const content = serializeMarkdownChildren(item, {
+    const defaultMarker = resolveDefaultMarker(itemIndex);
+    const markerElement = item.firstElementChild instanceof HTMLElement &&
+        item.firstElementChild.classList.contains("md-list-marker")
+      ? item.firstElementChild
+      : null;
+    const rawMarker = markerElement?.textContent ?? "";
+    const marker = resolveManualMarker(rawMarker, defaultMarker);
+    const contentSource = markerElement
+      ? (() => {
+          const clone = item.cloneNode(true) as HTMLElement;
+          if (
+            clone.firstElementChild instanceof HTMLElement &&
+            clone.firstElementChild.classList.contains("md-list-marker")
+          ) {
+            clone.firstElementChild.remove();
+          }
+          return clone;
+        })()
+      : item;
+    const content = serializeMarkdownChildren(contentSource, {
       ...context,
       listDepth: context.listDepth + 1,
     })
       .trim();
-    const marker = isOrdered ? `${index + itemIndex}. ` : "- ";
     const itemLines = content ? content.split("\n") : [""];
     lines.push(`${indent}${marker}${itemLines[0]}`);
     itemLines.slice(1).forEach((line) => {
@@ -1075,9 +1212,132 @@ export const serializeMarkdownFromHtml = (container: HTMLElement) => {
   });
 };
 
-export const buildEditableMarkdownHtml = (container: HTMLElement) => {
+export const buildEditableMarkdownHtml = (
+  container: HTMLElement,
+  rawMarkdown?: string,
+) => {
   const clone = container.cloneNode(true) as HTMLElement;
+  const parseListMarkersFromMarkdown = (markdown: string) => {
+    if (!markdown) {
+      return [] as string[];
+    }
+    const markers: string[] = [];
+    const lines = markdown.split("\n");
+    let inCodeFence = false;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("```")) {
+        inCodeFence = !inCodeFence;
+        continue;
+      }
+      if (inCodeFence) {
+        continue;
+      }
+      const taskMatch = line.match(/^\s*([-+*])\s+\[([ xX])\](?:\s|$)/);
+      if (taskMatch) {
+        const bullet = taskMatch[1] ?? "-";
+        const stateRaw = taskMatch[2] ?? " ";
+        const state = stateRaw.toLowerCase() === "x" ? "x" : " ";
+        markers.push(`${bullet} [${state}] `);
+        continue;
+      }
+      const orderedMatch = line.match(/^\s*(\d+)([.)])(?:\s|$)/);
+      if (orderedMatch) {
+        const number = orderedMatch[1] ?? "1";
+        const delimiter = orderedMatch[2] ?? ".";
+        markers.push(`${number}${delimiter} `);
+        continue;
+      }
+      const unorderedMatch = line.match(/^\s*([-+*])(?:\s|$)/);
+      if (unorderedMatch) {
+        const bullet = unorderedMatch[1] ?? "-";
+        markers.push(`${bullet} `);
+      }
+    }
+    return markers;
+  };
+
+  const resolveOrderedMarker = (listItem: HTMLElement) => {
+    const parent = listItem.parentElement;
+    if (!parent || parent.tagName.toLowerCase() !== "ol") {
+      return "1. ";
+    }
+    const start = Number.parseInt(parent.getAttribute("start") ?? "1", 10);
+    const base = Number.isNaN(start) ? 1 : start;
+    const siblings = Array.from(parent.children).filter(
+      (child) => child.tagName.toLowerCase() === "li",
+    );
+    const itemIndex = siblings.indexOf(listItem);
+    const resolvedIndex = itemIndex < 0 ? base : base + itemIndex;
+    return `${resolvedIndex}. `;
+  };
+
+  const resolveTaskMarker = (listItem: HTMLElement) => {
+    const checkbox = Array.from(listItem.children).find(
+      (child): child is HTMLInputElement =>
+        child instanceof HTMLInputElement &&
+        child.type.toLowerCase() === "checkbox",
+    );
+    if (!checkbox && !listItem.classList.contains("task-list-item")) {
+      return null;
+    }
+    const checked = checkbox?.checked || checkbox?.hasAttribute("checked");
+    return `- [${checked ? "x" : " "}] `;
+  };
+
+  const removeTaskCheckboxes = (listItem: HTMLElement) => {
+    const checkboxes = Array.from(listItem.children).filter(
+      (child): child is HTMLInputElement =>
+        child instanceof HTMLInputElement &&
+        child.type.toLowerCase() === "checkbox",
+    );
+    checkboxes.forEach((checkbox) => {
+      const nextSibling = checkbox.nextSibling;
+      checkbox.remove();
+      if (
+        nextSibling &&
+        nextSibling.nodeType === Node.TEXT_NODE &&
+        (nextSibling.nodeValue ?? "").trim() === ""
+      ) {
+        nextSibling.remove();
+      }
+    });
+  };
+
+  const resolveListMarker = (listItem: HTMLElement, hint: string | null) => {
+    if (hint) {
+      return hint;
+    }
+    const taskMarker = resolveTaskMarker(listItem);
+    if (taskMarker) {
+      return taskMarker;
+    }
+    const parent = listItem.parentElement;
+    if (parent?.tagName.toLowerCase() === "ol") {
+      return resolveOrderedMarker(listItem);
+    }
+    return "- ";
+  };
+  const listMarkerHints = parseListMarkersFromMarkdown(rawMarkdown ?? "");
+  let listMarkerHintIndex = 0;
+
   clone.querySelectorAll(".frontmatter-panel").forEach((panel) => panel.remove());
+  clone.querySelectorAll<HTMLElement>("li").forEach((item) => {
+    if (
+      item.firstElementChild instanceof HTMLElement &&
+      item.firstElementChild.classList.contains("md-list-marker")
+    ) {
+      return;
+    }
+    const markerHint = listMarkerHints[listMarkerHintIndex] ?? null;
+    listMarkerHintIndex += 1;
+    const markerText = resolveListMarker(item, markerHint);
+    removeTaskCheckboxes(item);
+    const marker = item.ownerDocument.createElement("span");
+    marker.className = "md-list-marker";
+    marker.textContent = markerText;
+    item.insertBefore(marker, item.firstChild);
+  });
   clone.querySelectorAll<HTMLElement>("hr").forEach((rule) => {
     const markerLine = rule.ownerDocument.createElement("p");
     markerLine.setAttribute("data-md-hr-line", "true");
@@ -2157,7 +2417,14 @@ export const PreviewPanel = ({
     const hrLines = Array.from(
       editor.querySelectorAll<HTMLElement>('[data-md-hr-line="true"]'),
     );
-    if (headings.length === 0 && hrLines.length === 0) {
+    const listItems = Array.from(
+      editor.querySelectorAll<HTMLElement>("li"),
+    ).filter(
+      (item) =>
+        item.firstElementChild instanceof HTMLElement &&
+        item.firstElementChild.classList.contains("md-list-marker"),
+    );
+    if (headings.length === 0 && hrLines.length === 0 && listItems.length === 0) {
       return;
     }
 
@@ -2177,6 +2444,12 @@ export const PreviewPanel = ({
           ? range.startContainer
           : range?.startContainer.parentElement
         )?.closest('[data-md-hr-line="true"]')
+      : null;
+    const activeListItem = inEditor
+      ? (range?.startContainer instanceof Element
+          ? range.startContainer
+          : range?.startContainer.parentElement
+        )?.closest("li")
       : null;
     const retagQueue: Array<{
       heading: HTMLElement;
@@ -2215,6 +2488,14 @@ export const PreviewPanel = ({
         line.setAttribute("data-md-hr-active", "true");
       } else {
         line.removeAttribute("data-md-hr-active");
+      }
+    });
+
+    listItems.forEach((item) => {
+      if (item === activeListItem) {
+        item.setAttribute("data-md-list-active", "true");
+      } else {
+        item.removeAttribute("data-md-list-active");
       }
     });
   }, []);
@@ -2418,7 +2699,10 @@ export const PreviewPanel = ({
           caretIndex = rawPreview ? resolvedIndex : bodyStartOffset + resolvedIndex;
         }
         if (!rawPreview) {
-          markdownEditorHtmlRef.current = buildEditableMarkdownHtml(selectionContainer);
+          markdownEditorHtmlRef.current = buildEditableMarkdownHtml(
+            selectionContainer,
+            markdownSource,
+          );
         }
       } else if (!rawPreview) {
         markdownEditorHtmlRef.current = "";
@@ -2656,9 +2940,52 @@ export const PreviewPanel = ({
                     ) : null}
                     <div ref={markdownViewRef}>
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkPreserveSoftBreaks]}
+                        remarkPlugins={[
+                          remarkGfm,
+                          remarkPreserveSoftBreaks,
+                          remarkPreserveOrderedListDelimiters,
+                        ]}
                         rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
                         components={{
+                          ol: ({ node, ...props }) => {
+                            const delimiterFromNode =
+                              node &&
+                              typeof node === "object" &&
+                              "properties" in node &&
+                              node.properties &&
+                              typeof node.properties === "object"
+                                ? (node.properties as Record<string, unknown>)[
+                                    "data-md-ordered-delimiter"
+                                  ]
+                                : null;
+                            const delimiterFromPosition = resolveOrderedListDelimiter(
+                              renderedPreview,
+                              node &&
+                                typeof node === "object" &&
+                                "position" in node &&
+                                node.position &&
+                                typeof node.position === "object" &&
+                                "start" in node.position &&
+                                node.position.start &&
+                                typeof node.position.start === "object" &&
+                                ("offset" in node.position.start || "line" in node.position.start)
+                                ? (node.position.start as { offset?: number; line?: number })
+                                : undefined,
+                            );
+                            if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
+                              return <ol {...props} />;
+                            }
+                            const startRaw = props.start;
+                            const startValue = typeof startRaw === "number"
+                              ? startRaw
+                              : Number.parseInt(String(startRaw ?? "1"), 10);
+                            const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
+                            const style = {
+                              ...(props.style ?? {}),
+                              "--md-ordered-start": String(previous),
+                            } as CSSProperties;
+                            return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
+                          },
                           table: ({ node: _node, ...props }) => (
                             <div className="markdown-table">
                               <table {...props} />

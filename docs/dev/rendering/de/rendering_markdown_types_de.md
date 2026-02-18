@@ -77,6 +77,8 @@
 
 - Markdown-View-Edit nutzt jetzt editierbare Überschriften-Marker (`#` bis `######`) statt fixer Level.
 - Markdown-View-Edit zeigt Trennlinien (`---`) als editierbaren Marker, sobald die Trennlinien-Zeile aktiv ist.
+- Markdown-View-Edit zeigt Listenmarker (`-`, `1.`, `1)`, `- [ ]`, `- [x]`) als editierbare Marker, sobald die Listenzeile aktiv ist.
+- Bei geordneten Listen bleibt der eingegebene Delimiter erhalten (z. B. `1)` statt erzwungen `1.`) sowohl in View als auch im Edit-Marker.
 - Softbreaks (Zeilenumbrüche ohne Leerzeile) werden in der Preview als echte Zeilenumbrüche behandelt.
 - Frontmatter-Panel-Markup wird vor dem Markdown-Edit aus dem Edit-DOM entfernt.
 - ContentEditable-Serialisierung erzwingt keine zusätzlichen Leerabsätze mehr nach Blockelementen (Ausnahme: Tabellen werden bewusst mit Leerzeile davor/danach stabilisiert).

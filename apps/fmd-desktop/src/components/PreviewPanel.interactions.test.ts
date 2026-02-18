@@ -250,6 +250,20 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
   });
 
+  it("renders 1) markers as ordered list items", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["1) Erste", "2) Zweite"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const orderedList = container.querySelector('.preview.markdown ol[data-md-ordered-delimiter=")"]');
+    const orderedItems = container.querySelectorAll(".preview.markdown ol > li");
+    expect(orderedList).toBeTruthy();
+    expect(orderedItems.length).toBe(2);
+    expect(orderedItems[0]?.textContent ?? "").toContain("Erste");
+    expect(orderedItems[1]?.textContent ?? "").toContain("Zweite");
+  });
+
   it("shows a properties panel and hides frontmatter text in markdown view", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       [
@@ -420,6 +434,61 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
 
     expect(hrLine?.getAttribute("data-md-hr-active")).toBe("true");
+  });
+
+  it("shows editable list markers when a list line is focused", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "- Bullet",
+        "",
+        "1. Numbered",
+        "2) Numbered alt",
+        "",
+        "- [ ] Open",
+        "- [x] Done",
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const markers = Array.from(
+      editable?.querySelectorAll<HTMLElement>("li > .md-list-marker") ?? [],
+    );
+    const markerToActivate = markers[0] ?? null;
+    expect(markers.length).toBeGreaterThanOrEqual(4);
+    expect(markers.some((marker) => marker.textContent?.includes("2)"))).toBe(true);
+    expect(markers.some((marker) => marker.textContent?.includes("[ ]"))).toBe(true);
+    expect(markers.some((marker) => marker.textContent?.includes("[x]"))).toBe(true);
+    expect(markerToActivate).toBeTruthy();
+
+    act(() => {
+      const markerText = markerToActivate?.firstChild;
+      if (!markerText) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(markerText, markerText.textContent?.length ?? 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const activeListItem = markerToActivate?.closest("li");
+    expect(activeListItem?.getAttribute("data-md-list-active")).toBe("true");
   });
 
   it("keeps frontmatter collapsed when switching to markdown edit mode", () => {

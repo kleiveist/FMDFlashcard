@@ -456,6 +456,25 @@ textarea.preview-editor {
   opacity: 0.9;
 }
 
+.preview-markdown-editable .md-list-marker {
+  display: none;
+  color: var(--muted);
+  white-space: pre;
+  pointer-events: none;
+  user-select: none;
+}
+
+.preview-markdown-editable li[data-md-list-active="true"] {
+  list-style-type: none;
+}
+
+.preview-markdown-editable li[data-md-list-active="true"] > .md-list-marker {
+  display: inline;
+  opacity: 0.9;
+  pointer-events: auto;
+  user-select: text;
+}
+
 .preview-markdown-editable [data-md-hr-line="true"] {
   position: relative;
   margin: 0.9rem 0;
@@ -693,6 +712,32 @@ textarea.preview-editor {
 .md-preview ol {
   margin: 0 0 0.8rem;
   padding-left: 1.4rem;
+}
+
+.preview.markdown.md-preview:not(.preview-editor) ol[data-md-ordered-delimiter=")"] {
+  list-style: none;
+  counter-reset: md-ordered var(--md-ordered-start, 0);
+}
+
+.preview.markdown.md-preview:not(.preview-editor) ol[data-md-ordered-delimiter=")"] > li {
+  counter-increment: md-ordered;
+}
+
+.preview.markdown.md-preview:not(.preview-editor) ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered) ") ";
+}
+
+.preview-markdown-editable ol[data-md-ordered-delimiter=")"] {
+  list-style: none;
+  counter-reset: md-ordered var(--md-ordered-start, 0);
+}
+
+.preview-markdown-editable ol[data-md-ordered-delimiter=")"] > li {
+  counter-increment: md-ordered;
+}
+
+.preview-markdown-editable ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+  content: counter(md-ordered) ") ";
 }
 
 .md-preview a {
