@@ -781,6 +781,68 @@ export const normalizeWikilinkValue = (value: string) => {
   return `[[${cleaned}]]`;
 };
 
+const parseDraftValueForKind = (
+  kind: FrontmatterPropertyKind,
+  input: string,
+): { value: FrontmatterPropertyValue; error: string | null } => {
+  const trimmed = input.trim();
+
+  if (kind === "number") {
+    if (trimmed === "") {
+      return { value: null, error: null };
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) {
+      return { value: null, error: "Nur Zahlen erlaubt." };
+    }
+    return { value: parsed, error: null };
+  }
+
+  if (kind === "boolean") {
+    if (trimmed === "") {
+      return { value: null, error: null };
+    }
+    if (/^(true|false)$/i.test(trimmed)) {
+      return { value: trimmed.toLowerCase() === "true", error: null };
+    }
+    return { value: null, error: "Nur true oder false erlaubt." };
+  }
+
+  if (kind === "tags") {
+    if (trimmed === "") {
+      return { value: null, error: null };
+    }
+    const tags = input
+      .split(/[\n,]/)
+      .map((tag) => tag.trim())
+      .filter((tag) => tag !== "");
+    return { value: tags.length > 0 ? tags : null, error: null };
+  }
+
+  if (kind === "link") {
+    if (trimmed === "") {
+      return { value: null, error: null };
+    }
+    return { value: normalizeWikilinkValue(trimmed), error: null };
+  }
+
+  if (kind === "cover") {
+    if (trimmed === "") {
+      return { value: null, error: null };
+    }
+    const normalized = normalizeWikilinkValue(trimmed);
+    if (!normalized || !isImageWikilink(normalized)) {
+      return { value: null, error: "Cover erwartet Bild-Link." };
+    }
+    return { value: normalized, error: null };
+  }
+
+  if (trimmed === "") {
+    return { value: null, error: null };
+  }
+  return { value: input, error: null };
+};
+
 const isLinksArrayKey = (key: string) => normalizeSchemaKey(key) === "links";
 const isLinkSequenceKey = (key: string) => LINK_KEY_PATTERN.test(key.trim());
 
@@ -1224,10 +1286,12 @@ export const addFrontmatterProperty = ({
   markdown,
   key,
   value,
+  kind,
 }: {
   markdown: string;
   key: string;
   value: string;
+  kind?: FrontmatterPropertyKind;
 }): { markdown: string; error: string | null } => {
   const parsed = parseFrontmatterDocumentInternal(markdown);
   if (!parsed.hasFrontmatter) {
@@ -1260,17 +1324,27 @@ export const addFrontmatterProperty = ({
     };
   }
 
-  const parsedDraftValue = parseDraftValue(value);
-  const kind = inferKindFromValue(nextKey, parsedDraftValue);
+  const resolvedKind = kind;
+  const typedDraft = resolvedKind
+    ? parseDraftValueForKind(resolvedKind, value)
+    : { value: parseDraftValue(value), error: null };
+  if (typedDraft.error) {
+    return {
+      markdown,
+      error: typedDraft.error,
+    };
+  }
+  const parsedDraftValue = typedDraft.value;
+  const inferredKind = resolvedKind ?? inferKindFromValue(nextKey, parsedDraftValue);
   const normalizedValue = normalizePropertyUpdateValue(
-    kind,
-    coerceValueForKind(kind, parsedDraftValue),
+    inferredKind,
+    coerceValueForKind(inferredKind, parsedDraftValue),
   );
   const nextProperty: ParsedFrontmatterProperty = {
     key: nextKey,
-    kind,
+    kind: inferredKind,
     value: normalizedValue,
-    icon: resolvePropertyIcon(nextKey, kind),
+    icon: resolvePropertyIcon(nextKey, inferredKind),
     rawLines: [],
     preserveRaw: false,
   };

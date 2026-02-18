@@ -1166,4 +1166,325 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(nextMarkdown).toContain("Section: IUFS");
     expect(nextMarkdown).toContain("---\nBody line");
   });
+
+  it("shows add-row type selector with available options", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+    expect(typeButton).toBeTruthy();
+    expect(typeButton?.textContent ?? "").toContain("Text");
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const typeSuggestionText =
+      container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
+    expect(typeSuggestionText).toContain("Text");
+    expect(typeSuggestionText).toContain("Links");
+    expect(typeSuggestionText).toContain("Nur Zahlen");
+    expect(typeSuggestionText).toContain("Cover");
+    expect(typeSuggestionText).toContain("Tags");
+  });
+
+  it("validates number type before adding a property", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    const valueInput = container.querySelector(
+      'input[aria-label="Neuer Wert"]',
+    ) as HTMLInputElement | null;
+    const addButton = container.querySelector(
+      ".frontmatter-add-button",
+    ) as HTMLButtonElement | null;
+    expect(typeButton).toBeTruthy();
+    expect(keyInput).toBeTruthy();
+    expect(valueInput).toBeTruthy();
+    expect(addButton).toBeTruthy();
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const numberOption = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".frontmatter-type-option"),
+    ).find((button) => (button.textContent ?? "").includes("Nur Zahlen"));
+    act(() => {
+      numberOption?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      keyInput?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!keyInput) {
+        return;
+      }
+      keyInput.value = "Punkte";
+      keyInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      valueInput?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!valueInput) {
+        return;
+      }
+      valueInput.value = "abc";
+      valueInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      addButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).not.toHaveBeenCalled();
+    expect(container.textContent ?? "").toContain("Nur Zahlen erlaubt.");
+
+    act(() => {
+      if (!valueInput) {
+        return;
+      }
+      valueInput.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!valueInput) {
+        return;
+      }
+      valueInput.value = "42";
+      valueInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      addButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).toContain("Punkte: 42");
+  });
+
+  it("normalizes plain values when adding a links-typed property", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    const valueInput = container.querySelector(
+      'input[aria-label="Neuer Wert"]',
+    ) as HTMLInputElement | null;
+    const addButton = container.querySelector(
+      ".frontmatter-add-button",
+    ) as HTMLButtonElement | null;
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const linkOption = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".frontmatter-type-option"),
+    ).find((button) => (button.textContent ?? "").includes("Links"));
+    act(() => {
+      linkOption?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(keyInput?.value ?? "").toBe("links");
+    expect(keyInput?.readOnly).toBe(true);
+
+    act(() => {
+      valueInput?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!valueInput) {
+        return;
+      }
+      valueInput.value = "IDBS01-TestL7";
+      valueInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      addButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).toContain("links: [[IDBS01-TestL7]]");
+  });
+
+  it("auto-fills and locks key name for links and tags types", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    expect(typeButton).toBeTruthy();
+    expect(keyInput).toBeTruthy();
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const linkOption = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".frontmatter-type-option"),
+    ).find((button) => (button.textContent ?? "").includes("Links"));
+    act(() => {
+      linkOption?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(keyInput?.value ?? "").toBe("links");
+    expect(keyInput?.readOnly).toBe(true);
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const tagsOption = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".frontmatter-type-option"),
+    ).find((button) => (button.textContent ?? "").includes("Tags"));
+    act(() => {
+      tagsOption?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(keyInput?.value ?? "").toBe("tags");
+    expect(keyInput?.readOnly).toBe(true);
+  });
+
+  it("hides links and tags from type selection when already present", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "link1: [[IDBS01-TestL1]]",
+      "tags:",
+      "  - alpha",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const typeSuggestionText =
+      container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
+    expect(typeSuggestionText).toContain("Text");
+    expect(typeSuggestionText).toContain("Nur Zahlen");
+    expect(typeSuggestionText).toContain("Cover");
+    expect(typeSuggestionText).not.toContain("Links");
+    expect(typeSuggestionText).not.toContain("Tags");
+  });
+
+  it("never suggests links/tags keys in text attribute key suggestions", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      keySuggestions: ["Section", "Rank", "links", "link1", "tags"],
+    });
+    cleanup = localCleanup;
+
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    expect(keyInput).toBeTruthy();
+
+    act(() => {
+      keyInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("Section");
+    expect(suggestionText).toContain("Rank");
+    expect(suggestionText).not.toContain("links");
+    expect(suggestionText).not.toContain("link1");
+    expect(suggestionText).not.toContain("tags");
+  });
 });

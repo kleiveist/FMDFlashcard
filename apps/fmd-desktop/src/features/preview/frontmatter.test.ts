@@ -240,6 +240,90 @@ describe("addFrontmatterProperty", () => {
 
     expect(updated.error).toContain("already exists");
   });
+
+  it("normalizes links when adding a link-typed property", () => {
+    const source = ["---", "title: Demo", "---", "Body"].join("\n");
+
+    const updated = addFrontmatterProperty({
+      markdown: source,
+      key: "link1",
+      value: "IDBS01-TestL7",
+      kind: "link",
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toContain("link1: [[IDBS01-TestL7]]");
+  });
+
+  it("validates number-typed properties", () => {
+    const source = ["---", "title: Demo", "---", "Body"].join("\n");
+
+    const invalid = addFrontmatterProperty({
+      markdown: source,
+      key: "points",
+      value: "abc",
+      kind: "number",
+    });
+    const valid = addFrontmatterProperty({
+      markdown: source,
+      key: "points",
+      value: "42",
+      kind: "number",
+    });
+
+    expect(invalid.error).toContain("Nur Zahlen erlaubt");
+    expect(valid.error).toBeNull();
+    expect(valid.markdown).toContain("points: 42");
+  });
+
+  it("validates cover-typed properties as image links", () => {
+    const source = ["---", "title: Demo", "---", "Body"].join("\n");
+
+    const invalid = addFrontmatterProperty({
+      markdown: source,
+      key: "Cover",
+      value: "NotAnImageDoc",
+      kind: "cover",
+    });
+    const valid = addFrontmatterProperty({
+      markdown: source,
+      key: "Cover",
+      value: "IDBS01KS-01-01.png",
+      kind: "cover",
+    });
+
+    expect(invalid.error).toContain("Cover erwartet Bild-Link");
+    expect(valid.error).toBeNull();
+    expect(valid.markdown).toContain("Cover: [[IDBS01KS-01-01.png]]");
+  });
+
+  it("keeps text-typed numeric values as text", () => {
+    const source = ["---", "title: Demo", "---", "Body"].join("\n");
+
+    const updated = addFrontmatterProperty({
+      markdown: source,
+      key: "Code",
+      value: "00123",
+      kind: "text",
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toContain("Code: '00123'");
+  });
+
+  it("creates tags list when adding a tags-typed property", () => {
+    const source = ["---", "title: Demo", "---", "Body"].join("\n");
+
+    const updated = addFrontmatterProperty({
+      markdown: source,
+      key: "tags",
+      value: "alpha, beta, alpha",
+      kind: "tags",
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toContain("tags:\n  - alpha\n  - beta");
+  });
 });
 
 describe("reorderFrontmatterProperties", () => {

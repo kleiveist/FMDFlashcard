@@ -431,7 +431,7 @@
 
 .frontmatter-add-row {
   display: grid;
-  grid-template-columns: minmax(140px, 0.9fr) minmax(140px, 1fr) auto;
+  grid-template-columns: minmax(128px, 0.7fr) minmax(140px, 0.9fr) minmax(140px, 1fr) auto;
   gap: 6px;
   align-items: start;
   position: relative;
@@ -453,6 +453,74 @@
   min-width: 0;
 }
 
+.frontmatter-add-type-wrap {
+  min-width: 0;
+}
+
+.frontmatter-type-select {
+  width: 100%;
+  min-height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  background: var(--field-bg);
+  color: var(--ink);
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.frontmatter-type-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.frontmatter-type-select:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.frontmatter-type-select-icon,
+.frontmatter-type-option-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.frontmatter-type-select-icon svg,
+.frontmatter-type-option-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.frontmatter-type-select-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.frontmatter-type-select-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.frontmatter-type-select-chevron svg {
+  width: 100%;
+  height: 100%;
+}
+
 .frontmatter-add-button {
   white-space: nowrap;
   align-self: stretch;
@@ -472,6 +540,32 @@
   right: 0;
   margin-top: 0;
   z-index: 24;
+}
+
+.frontmatter-type-suggestions {
+  max-height: 196px;
+}
+
+.frontmatter-type-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.frontmatter-type-option-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.frontmatter-type-option-label {
+  font-size: 0.78rem;
+}
+
+.frontmatter-type-option-description {
+  font-size: 0.7rem;
+  color: var(--muted);
 }
 
 .frontmatter-error-actions {

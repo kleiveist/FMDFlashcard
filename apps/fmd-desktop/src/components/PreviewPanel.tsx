@@ -1820,8 +1820,99 @@ const mergeSuggestionKeyLists = (...sources: string[][]) => {
   return merged;
 };
 
+type FrontmatterAddPropertyType = "text" | "link" | "number" | "cover" | "tags";
+
+type FrontmatterAddTypeOption = {
+  kind: FrontmatterAddPropertyType;
+  icon: FrontmatterPropertyIcon;
+  label: string;
+  description: string;
+};
+
+const FRONTMATTER_DEFAULT_ADD_TYPE: FrontmatterAddPropertyType = "text";
+
+const FRONTMATTER_ADD_TYPE_OPTIONS: FrontmatterAddTypeOption[] = [
+  {
+    kind: "text",
+    icon: "text",
+    label: "Text",
+    description: "Freier Text",
+  },
+  {
+    kind: "link",
+    icon: "link",
+    label: "Links",
+    description: "Wikilink oder Name",
+  },
+  {
+    kind: "number",
+    icon: "number",
+    label: "Nur Zahlen",
+    description: "Nur numerische Werte",
+  },
+  {
+    kind: "cover",
+    icon: "cover",
+    label: "Cover",
+    description: "Bild-Wikilink",
+  },
+  {
+    kind: "tags",
+    icon: "tags",
+    label: "Tags",
+    description: "Tag-Liste",
+  },
+];
+
+const addTypeSuggestionScope = "__frontmatter_add_type__";
 const addKeySuggestionScope = "__frontmatter_add_key__";
 const addValueSuggestionScope = "__frontmatter_add_value__";
+
+const resolveAutoAddKeyForType = (kind: FrontmatterAddPropertyType) => {
+  if (kind === "link") {
+    return "links";
+  }
+  if (kind === "tags") {
+    return "tags";
+  }
+  return null;
+};
+
+const isReservedTextSuggestionKey = (key: string) => {
+  const normalized = key.trim().toLowerCase();
+  return isLinkPropertyKey(key) || normalized === "tags" || normalized === "tag";
+};
+
+const imageSuggestionExtensionPattern = /\.(png|jpe?g|webp|gif|svg)$/i;
+
+const isImageSuggestionValue = (value: string) => {
+  const normalized = normalizeWikilinkValue(value);
+  if (!normalized.startsWith("[[") || !normalized.endsWith("]]")) {
+    return false;
+  }
+  const inner = normalized.slice(2, -2);
+  const [targetRaw] = inner.split("|");
+  const target = targetRaw?.trim() ?? "";
+  if (!target) {
+    return false;
+  }
+  const [pathPart] = target.split(/[?#]/);
+  return imageSuggestionExtensionPattern.test(pathPart ?? "");
+};
+
+const normalizeStableSuggestions = (values: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  values.forEach((value) => {
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      return;
+    }
+    seen.add(trimmed);
+    next.push(trimmed);
+  });
+  return next;
+};
 
 const isScalarEditableKind = (kind: FrontmatterPropertyKind) =>
   kind === "text" ||
@@ -1930,13 +2021,18 @@ const FrontmatterPropertiesPanel = ({
   const [panelError, setPanelError] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [linksInputDraft, setLinksInputDraft] = useState("");
+  const [addTypeDraft, setAddTypeDraft] = useState<FrontmatterAddPropertyType>(
+    FRONTMATTER_DEFAULT_ADD_TYPE,
+  );
   const [addKeyDraft, setAddKeyDraft] = useState("");
   const [addValueDraft, setAddValueDraft] = useState("");
   const [addError, setAddError] = useState("");
   const [addEditorModes, setAddEditorModes] = useState<{
+    type: FrontmatterEditorMode;
     key: FrontmatterEditorMode;
     value: FrontmatterEditorMode;
   }>({
+    type: "idle",
     key: "idle",
     value: "idle",
   });
@@ -1944,6 +2040,7 @@ const FrontmatterPropertiesPanel = ({
   const [openSuggestionsKey, setOpenSuggestionsKey] = useState<string | null>(null);
   const [suggestionCursor, setSuggestionCursor] = useState<Record<string, number>>({});
   const valueInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const addTypeButtonRef = useRef<HTMLButtonElement | null>(null);
   const addKeyInputRef = useRef<HTMLInputElement | null>(null);
   const addValueInputRef = useRef<HTMLInputElement | null>(null);
   const [dragPropertyKey, setDragPropertyKey] = useState<string | null>(null);
@@ -1955,11 +2052,32 @@ const FrontmatterPropertiesPanel = ({
     () => new Set(properties.map((property) => property.key.toLowerCase())),
     [properties],
   );
+  const hasExistingLinkAttributes = useMemo(
+    () => properties.some((property) => isLinkPropertyKey(property.key)),
+    [properties],
+  );
+  const hasExistingTagsAttribute = useMemo(
+    () => properties.some((property) => property.key.trim().toLowerCase() === "tags"),
+    [properties],
+  );
+  const addTypeOptions = useMemo(
+    () =>
+      FRONTMATTER_ADD_TYPE_OPTIONS.filter((option) => {
+        if (option.kind === "link" && hasExistingLinkAttributes) {
+          return false;
+        }
+        if (option.kind === "tags" && hasExistingTagsAttribute) {
+          return false;
+        }
+        return true;
+      }),
+    [hasExistingLinkAttributes, hasExistingTagsAttribute],
+  );
 
   useEffect(() => {
     setDrafts(initialDrafts);
     setEditorModes({});
-    setAddEditorModes({ key: "idle", value: "idle" });
+    setAddEditorModes({ type: "idle", key: "idle", value: "idle" });
     setOpenSuggestionsKey(null);
     setSuggestionCursor({});
     setTagInputs({});
@@ -1977,10 +2095,17 @@ const FrontmatterPropertiesPanel = ({
     setSuggestionKeys(initialKeySuggestions);
   }, [initialKeySuggestions]);
 
+  useEffect(() => {
+    if (addTypeOptions.some((option) => option.kind === addTypeDraft)) {
+      return;
+    }
+    setAddTypeDraft(FRONTMATTER_DEFAULT_ADD_TYPE);
+  }, [addTypeDraft, addTypeOptions]);
+
   const resetDraftsFromProperties = useCallback(() => {
     setDrafts(initialDrafts);
     setEditorModes({});
-    setAddEditorModes({ key: "idle", value: "idle" });
+    setAddEditorModes({ type: "idle", key: "idle", value: "idle" });
     setOpenSuggestionsKey(null);
     setSuggestionCursor({});
     setTagInputs({});
@@ -2057,24 +2182,50 @@ const FrontmatterPropertiesPanel = ({
         if (existingPropertyKeys.has(normalized)) {
           return false;
         }
+        if (addTypeDraft === "text" && isReservedTextSuggestionKey(key)) {
+          return false;
+        }
         if (!query) {
           return true;
         }
         return normalized.includes(query);
       });
     },
-    [existingPropertyKeys, suggestionKeys],
+    [addTypeDraft, existingPropertyKeys, suggestionKeys],
   );
 
   const resolveAddValueSuggestions = useCallback(
     ({
       key,
+      kind,
       rawInput,
     }: {
       key: string;
+      kind: FrontmatterAddPropertyType;
       rawInput: string;
     }) => {
-      const source = resolveValueSuggestionsForAddKey(key);
+      const rawSource = resolveValueSuggestionsForAddKey(key);
+      if (rawSource.length === 0) {
+        return [];
+      }
+      let source = normalizeStableSuggestions(rawSource);
+      if (kind === "number") {
+        source = sortSuggestionValues(source.filter(isNumericSuggestionValue));
+      } else if (kind === "link") {
+        source = sortSuggestionValues(
+          normalizeStableSuggestions(source.map((value) => normalizeWikilinkValue(value))),
+        );
+      } else if (kind === "cover") {
+        source = sortSuggestionValues(
+          normalizeStableSuggestions(
+            source
+              .map((value) => normalizeWikilinkValue(value))
+              .filter((value) => isImageSuggestionValue(value)),
+          ),
+        );
+      } else {
+        source = sortSuggestionValues(source);
+      }
       if (source.length === 0) {
         return [];
       }
@@ -2101,7 +2252,7 @@ const FrontmatterPropertiesPanel = ({
     }));
   }, []);
 
-  const activateAddInput = useCallback((field: "key" | "value") => {
+  const activateAddInput = useCallback((field: "type" | "key" | "value") => {
     setAddEditorModes((current) => ({
       ...current,
       [field]:
@@ -2111,7 +2262,7 @@ const FrontmatterPropertiesPanel = ({
     }));
   }, []);
 
-  const beginAddEditing = useCallback((field: "key" | "value") => {
+  const beginAddEditing = useCallback((field: "type" | "key" | "value") => {
     setAddEditorModes((current) => ({
       ...current,
       [field]: "editing",
@@ -2230,11 +2381,69 @@ const FrontmatterPropertiesPanel = ({
     [commitLinksChange, controlsDisabled, linksDocument.links],
   );
 
+  const resolveSuggestionValuesFromAddedDraft = useCallback(
+    ({
+      kind,
+      value,
+    }: {
+      kind: FrontmatterAddPropertyType;
+      value: string;
+    }) => {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return [];
+      }
+      if (kind === "number") {
+        const parsed = Number(trimmed);
+        return Number.isFinite(parsed) ? [String(parsed)] : [];
+      }
+      if (kind === "link" || kind === "cover") {
+        const normalized = normalizeWikilinkValue(trimmed);
+        return normalized ? [normalized] : [];
+      }
+      if (kind === "tags") {
+        return normalizeTags(
+          value
+            .split(/[\n,]/)
+            .map((tag) => tag.trim())
+            .filter((tag) => tag !== ""),
+        );
+      }
+      return [trimmed];
+    },
+    [],
+  );
+
+  const setAddTypeSelection = useCallback(
+    (kind: FrontmatterAddPropertyType) => {
+      const autoKey = resolveAutoAddKeyForType(kind);
+      setAddTypeDraft(kind);
+      setOpenSuggestionsKey(null);
+      setAddEditorModes((current) => ({
+        ...current,
+        type: "active",
+        key: autoKey ? "idle" : current.key,
+      }));
+      if (addError) {
+        setAddError("");
+      }
+      window.requestAnimationFrame(() => {
+        if (autoKey) {
+          addValueInputRef.current?.focus();
+          return;
+        }
+        addKeyInputRef.current?.focus();
+      });
+    },
+    [addError],
+  );
+
   const handleAddProperty = useCallback(async () => {
     if (controlsDisabled || !onFrontmatterSave) {
       return;
     }
-    const nextKey = (addKeyInputRef.current?.value ?? addKeyDraft).trim();
+    const autoKey = resolveAutoAddKeyForType(addTypeDraft);
+    const nextKey = (autoKey ?? (addKeyInputRef.current?.value ?? addKeyDraft)).trim();
     const nextValue = addValueInputRef.current?.value ?? addValueDraft;
     if (!nextKey) {
       setAddError("Bitte einen Attribut-Namen angeben.");
@@ -2244,6 +2453,21 @@ const FrontmatterPropertiesPanel = ({
       setAddError("Attribut-Name darf kein ':' enthalten.");
       return;
     }
+    if (addTypeDraft === "link") {
+      const hasLinks = properties.some((property) => isLinkPropertyKey(property.key));
+      if (hasLinks) {
+        setAddError("Links existiert bereits.");
+        return;
+      }
+    }
+    if (addTypeDraft === "tags") {
+      const hasTags = properties.some((property) => property.key.trim().toLowerCase() === "tags");
+      if (hasTags) {
+        setAddError("Tags existiert bereits.");
+        return;
+      }
+    }
+
     const duplicate = properties.some((property) => property.key === nextKey);
     if (duplicate) {
       setAddError(`Attribut "${nextKey}" existiert bereits.`);
@@ -2253,6 +2477,7 @@ const FrontmatterPropertiesPanel = ({
       markdown: sourceMarkdown,
       key: nextKey,
       value: nextValue,
+      kind: addTypeDraft,
     });
     if (updated.error) {
       setAddError(updated.error);
@@ -2275,20 +2500,26 @@ const FrontmatterPropertiesPanel = ({
       return;
     }
     updateKeySuggestionCache([nextKey]);
-    const normalizedValue = nextValue.trim();
-    if (normalizedValue) {
-      updateSuggestionCache(nextKey, [normalizedValue]);
+    const normalizedValues = resolveSuggestionValuesFromAddedDraft({
+      kind: addTypeDraft,
+      value: nextValue,
+    });
+    if (normalizedValues.length > 0) {
+      updateSuggestionCache(nextKey, normalizedValues);
     }
+    setAddTypeDraft(FRONTMATTER_DEFAULT_ADD_TYPE);
     setAddKeyDraft("");
     setAddValueDraft("");
-    setAddEditorModes({ key: "idle", value: "idle" });
+    setAddEditorModes({ type: "idle", key: "idle", value: "idle" });
     setOpenSuggestionsKey(null);
     setSuggestionCursor((current) => ({
       ...current,
+      [addTypeSuggestionScope]: 0,
       [addKeySuggestionScope]: 0,
       [addValueSuggestionScope]: 0,
     }));
   }, [
+    addTypeDraft,
     addKeyDraft,
     addValueDraft,
     controlsDisabled,
@@ -2299,6 +2530,7 @@ const FrontmatterPropertiesPanel = ({
     sourceMarkdown,
     updateKeySuggestionCache,
     updateSuggestionCache,
+    resolveSuggestionValuesFromAddedDraft,
   ]);
 
   const resolveDropPosition = useCallback(
@@ -2384,18 +2616,31 @@ const FrontmatterPropertiesPanel = ({
     [controlsDisabled, onFrontmatterSave, sourceMarkdown],
   );
 
+  const addTypeOption = FRONTMATTER_ADD_TYPE_OPTIONS.find(
+    (option) => option.kind === addTypeDraft,
+  ) ?? addTypeOptions[0]!;
+  const autoManagedAddKey = resolveAutoAddKeyForType(addTypeDraft);
+  const isAddKeyAutoManaged = autoManagedAddKey !== null;
   const isAddKeyEditing = addEditorModes.key === "editing";
   const isAddValueEditing = addEditorModes.value === "editing";
-  const addKeySuggestions = resolveAddKeySuggestions(isAddKeyEditing ? addKeyDraft : "");
-  const selectedAddKey = (addKeyInputRef.current?.value ?? addKeyDraft).trim();
+  const isAddTypeDropdownOpen =
+    openSuggestionsKey === addTypeSuggestionScope &&
+    addTypeOptions.length > 0 &&
+    !controlsDisabled;
+  const addKeySuggestions = isAddKeyAutoManaged
+    ? []
+    : resolveAddKeySuggestions(isAddKeyEditing ? addKeyDraft : "");
+  const selectedAddKey = (autoManagedAddKey ?? (addKeyInputRef.current?.value ?? addKeyDraft)).trim();
   const addValueSuggestions = resolveAddValueSuggestions({
     key: selectedAddKey,
+    kind: addTypeDraft,
     rawInput: isAddValueEditing ? addValueDraft : "",
   });
   const isAddValueEnabled = selectedAddKey.length > 0;
   const isAddKeyDropdownOpen =
     openSuggestionsKey === addKeySuggestionScope &&
     addKeySuggestions.length > 0 &&
+    !isAddKeyAutoManaged &&
     !controlsDisabled;
   const isAddValueDropdownOpen =
     openSuggestionsKey === addValueSuggestionScope &&
@@ -2404,6 +2649,16 @@ const FrontmatterPropertiesPanel = ({
     isAddValueEnabled;
   const addKeySuggestionListId = "frontmatter-add-key-suggestions";
   const addValueSuggestionListId = "frontmatter-add-value-suggestions";
+  const addTypeSuggestionListId = "frontmatter-add-type-suggestions";
+  const safeAddTypeSuggestionIndex = Math.max(
+    0,
+    Math.min(
+      suggestionCursor[addTypeSuggestionScope] ?? addTypeOptions.findIndex(
+        (option) => option.kind === addTypeDraft,
+      ),
+      Math.max(0, addTypeOptions.length - 1),
+    ),
+  );
   const safeAddKeySuggestionIndex = Math.max(
     0,
     Math.min(
@@ -2421,6 +2676,7 @@ const FrontmatterPropertiesPanel = ({
   const activeAddKeySuggestion = addKeySuggestions[safeAddKeySuggestionIndex] ?? null;
   const activeAddValueSuggestion =
     addValueSuggestions[safeAddValueSuggestionIndex] ?? null;
+  const activeAddTypeSuggestion = addTypeOptions[safeAddTypeSuggestionIndex] ?? null;
 
   return (
     <section className="frontmatter-panel" aria-label="Eigenschaften">
@@ -3028,22 +3284,179 @@ const FrontmatterPropertiesPanel = ({
             ) : null}
           </div>
           <div className="frontmatter-add-row">
+            <div className="frontmatter-add-input-wrap frontmatter-add-type-wrap">
+              <button
+                ref={addTypeButtonRef}
+                type="button"
+                className="frontmatter-type-select"
+                aria-label="Attribut-Typ"
+                aria-haspopup="listbox"
+                aria-expanded={isAddTypeDropdownOpen}
+                aria-controls={isAddTypeDropdownOpen ? addTypeSuggestionListId : undefined}
+                disabled={controlsDisabled}
+                onFocus={() => {
+                  if (controlsDisabled) {
+                    return;
+                  }
+                  activateAddInput("type");
+                  setOpenSuggestionsKey(addTypeSuggestionScope);
+                  setSuggestionCursor((current) => ({
+                    ...current,
+                    [addTypeSuggestionScope]: Math.max(
+                      0,
+                      addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
+                    ),
+                  }));
+                }}
+                onClick={() => {
+                  if (controlsDisabled) {
+                    return;
+                  }
+                  activateAddInput("type");
+                  setOpenSuggestionsKey(addTypeSuggestionScope);
+                  setSuggestionCursor((current) => ({
+                    ...current,
+                    [addTypeSuggestionScope]: Math.max(
+                      0,
+                      addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
+                    ),
+                  }));
+                }}
+                onDoubleClick={() => {
+                  if (controlsDisabled) {
+                    return;
+                  }
+                  beginAddEditing("type");
+                  setOpenSuggestionsKey(addTypeSuggestionScope);
+                }}
+                onBlur={() => {
+                  setOpenSuggestionsKey((current) =>
+                    current === addTypeSuggestionScope ? null : current
+                  );
+                  setAddEditorModes((current) => ({
+                    ...current,
+                    type: "idle",
+                  }));
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "F2") {
+                    event.preventDefault();
+                    beginAddEditing("type");
+                    setOpenSuggestionsKey(addTypeSuggestionScope);
+                    return;
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setOpenSuggestionsKey((current) =>
+                      current === addTypeSuggestionScope ? null : current
+                    );
+                    setAddEditorModes((current) => ({
+                      ...current,
+                      type: "idle",
+                    }));
+                    return;
+                  }
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    if (!isAddTypeDropdownOpen) {
+                      setOpenSuggestionsKey(addTypeSuggestionScope);
+                      setSuggestionCursor((current) => ({
+                        ...current,
+                        [addTypeSuggestionScope]: Math.max(
+                          0,
+                          addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
+                        ),
+                      }));
+                      return;
+                    }
+                    const offset = event.key === "ArrowDown" ? 1 : -1;
+                    setSuggestionCursor((current) => {
+                      const existing = current[addTypeSuggestionScope] ?? 0;
+                      const next =
+                        (existing + offset + addTypeOptions.length) %
+                        addTypeOptions.length;
+                      return { ...current, [addTypeSuggestionScope]: next };
+                    });
+                    return;
+                  }
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    if (isAddTypeDropdownOpen && activeAddTypeSuggestion) {
+                      setAddTypeSelection(activeAddTypeSuggestion.kind);
+                      return;
+                    }
+                    setOpenSuggestionsKey(addTypeSuggestionScope);
+                    return;
+                  }
+                  if (event.key === "Tab") {
+                    setOpenSuggestionsKey((current) =>
+                      current === addTypeSuggestionScope ? null : current
+                    );
+                  }
+                }}
+              >
+                <span className="frontmatter-type-select-icon" aria-hidden="true">
+                  <FrontmatterPropertyIconView icon={addTypeOption.icon} />
+                </span>
+                <span className="frontmatter-type-select-label">{addTypeOption.label}</span>
+                <span className="frontmatter-type-select-chevron" aria-hidden="true">
+                  <ChevronDownIcon />
+                </span>
+              </button>
+              {isAddTypeDropdownOpen ? (
+                <ul
+                  id={addTypeSuggestionListId}
+                  className="frontmatter-suggestions frontmatter-type-suggestions"
+                  role="listbox"
+                  aria-label="Attribut-Typ Vorschlaege"
+                >
+                  {addTypeOptions.map((option, optionIndex) => (
+                    <li key={`add-type-${option.kind}`}>
+                      <button
+                        type="button"
+                        className={`frontmatter-suggestion-option frontmatter-type-option ${
+                          optionIndex === safeAddTypeSuggestionIndex ? "active" : ""
+                        }`}
+                        role="option"
+                        aria-selected={optionIndex === safeAddTypeSuggestionIndex}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                        }}
+                        onClick={() => {
+                          setAddTypeSelection(option.kind);
+                        }}
+                      >
+                        <span className="frontmatter-type-option-icon" aria-hidden="true">
+                          <FrontmatterPropertyIconView icon={option.icon} />
+                        </span>
+                        <span className="frontmatter-type-option-copy">
+                          <span className="frontmatter-type-option-label">{option.label}</span>
+                          <span className="frontmatter-type-option-description">
+                            {option.description}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
             <div className="frontmatter-add-input-wrap">
               <input
                 ref={addKeyInputRef}
                 type="text"
                 className="text-input frontmatter-add-key"
-                placeholder="Neues Attribut"
+                placeholder={isAddKeyAutoManaged ? "Automatischer Name" : "Neues Attribut"}
                 aria-label="Neues Attribut"
                 role="combobox"
                 aria-autocomplete="list"
                 aria-expanded={isAddKeyDropdownOpen}
                 aria-controls={isAddKeyDropdownOpen ? addKeySuggestionListId : undefined}
-                value={addKeyDraft}
-                readOnly={!isAddKeyEditing}
+                value={autoManagedAddKey ?? addKeyDraft}
+                readOnly={isAddKeyAutoManaged || !isAddKeyEditing}
                 disabled={controlsDisabled}
                 onChange={(event) => {
-                  if (!isAddKeyEditing) {
+                  if (isAddKeyAutoManaged || !isAddKeyEditing) {
                     return;
                   }
                   setAddKeyDraft(event.target.value);
@@ -3060,6 +3473,16 @@ const FrontmatterPropertiesPanel = ({
                   if (controlsDisabled) {
                     return;
                   }
+                  if (isAddKeyAutoManaged) {
+                    setOpenSuggestionsKey((current) =>
+                      current === addKeySuggestionScope ? null : current
+                    );
+                    setAddEditorModes((current) => ({
+                      ...current,
+                      key: "idle",
+                    }));
+                    return;
+                  }
                   activateAddInput("key");
                   setOpenSuggestionsKey(addKeySuggestionScope);
                   setSuggestionCursor((current) => ({
@@ -3071,11 +3494,20 @@ const FrontmatterPropertiesPanel = ({
                   if (controlsDisabled) {
                     return;
                   }
+                  if (isAddKeyAutoManaged) {
+                    setOpenSuggestionsKey((current) =>
+                      current === addKeySuggestionScope ? null : current
+                    );
+                    window.requestAnimationFrame(() => {
+                      addValueInputRef.current?.focus();
+                    });
+                    return;
+                  }
                   activateAddInput("key");
                   setOpenSuggestionsKey(addKeySuggestionScope);
                 }}
                 onDoubleClick={() => {
-                  if (controlsDisabled) {
+                  if (controlsDisabled || isAddKeyAutoManaged) {
                     return;
                   }
                   beginAddEditing("key");
@@ -3091,6 +3523,33 @@ const FrontmatterPropertiesPanel = ({
                   }));
                 }}
                 onKeyDown={(event) => {
+                  if (isAddKeyAutoManaged) {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      window.requestAnimationFrame(() => {
+                        addValueInputRef.current?.focus();
+                      });
+                      return;
+                    }
+                    if (event.key === "Tab") {
+                      setOpenSuggestionsKey((current) =>
+                        current === addKeySuggestionScope ? null : current
+                      );
+                      return;
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setOpenSuggestionsKey((current) =>
+                        current === addKeySuggestionScope ? null : current
+                      );
+                      event.currentTarget.blur();
+                      return;
+                    }
+                    if (isPrintableCharacterKey(event) || event.key === "Backspace" || event.key === "Delete") {
+                      event.preventDefault();
+                    }
+                    return;
+                  }
                   if (event.key === "F2") {
                     event.preventDefault();
                     beginAddEditing("key");
