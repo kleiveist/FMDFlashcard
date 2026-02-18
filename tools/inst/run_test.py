@@ -6,12 +6,13 @@ control.py entry:
   python3 tools/control.py --test
 
 Default behavior:
-  - pnpm -C apps/fmd-desktop test
+  - pnpm -C apps/fmd-desktop exec vitest run --watch=false
 """
 
 from __future__ import annotations
 
 import os
+import signal
 import shutil
 import subprocess
 import time
@@ -43,15 +44,50 @@ def _which_pnpm() -> str:
     raise SystemExit("pnpm not found in PATH. Install pnpm (or enable corepack) and retry.")
 
 
-def _run(cmd: list[str], cwd: Path, env: dict[str, str], dry_run: bool) -> tuple[int, float]:
+def _run(
+    cmd: list[str],
+    cwd: Path,
+    env: dict[str, str],
+    dry_run: bool,
+    timeout_seconds: float | None = None,
+) -> tuple[int, float]:
     action(f"{' '.join(cmd)}")
     info(f"cwd={cwd}")
     start = time.perf_counter()
     if dry_run:
         warn("Dry run: command not executed.")
         return 0, time.perf_counter() - start
-    process = subprocess.Popen(cmd, cwd=str(cwd), env=env)
-    rc = process.wait()
+    process = subprocess.Popen(
+        cmd,
+        cwd=str(cwd),
+        env=env,
+        start_new_session=(os.name != "nt"),
+    )
+    try:
+        rc = process.wait(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        err(
+            "Test process timed out. Terminating to avoid indefinite hang "
+            f"(timeout: {timeout_seconds:.0f}s)."
+        )
+        if os.name != "nt":
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+        else:
+            process.terminate()
+        try:
+            rc = process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            if os.name != "nt":
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            else:
+                process.kill()
+            rc = process.wait()
     return rc, time.perf_counter() - start
 
 
@@ -67,6 +103,9 @@ def run_install(dry_run: bool = False) -> int:
 
     pnpm = _which_pnpm()
     env = os.environ.copy()
+    # Ensure non-interactive CI-like behavior (no watch-mode fallbacks).
+    env["CI"] = "1"
+    timeout_seconds = float(env.get("FMD_TEST_TIMEOUT_SECONDS", "300"))
 
     section("Test suite")
     info(f"Repo root: {repo_root}")
@@ -74,8 +113,15 @@ def run_install(dry_run: bool = False) -> int:
     if dry_run:
         warn("Dry run mode enabled: commands will not run.")
 
-    cmd = [pnpm, "-C", str(app_dir), "test"]
-    rc, duration = _run(cmd, cwd=repo_root, env=env, dry_run=dry_run)
+    # Call Vitest directly with explicit non-watch flags.
+    cmd = [pnpm, "-C", str(app_dir), "exec", "vitest", "run", "--watch=false"]
+    rc, duration = _run(
+        cmd,
+        cwd=repo_root,
+        env=env,
+        dry_run=dry_run,
+        timeout_seconds=timeout_seconds,
+    )
     if rc == 0:
         ok("pnpm test succeeded.")
     else:
@@ -87,4 +133,3 @@ def run_install(dry_run: bool = False) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(run_install(False))
-

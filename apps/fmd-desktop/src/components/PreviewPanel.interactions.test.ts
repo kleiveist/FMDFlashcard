@@ -1120,7 +1120,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(addButton).toBeTruthy();
 
     act(() => {
-      keyInput.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });
     await act(async () => {
       await Promise.resolve();
