@@ -11,6 +11,7 @@ import {
   applyInteractionSpacing,
   buildEditableMarkdownHtml,
   canStartPreviewEdit,
+  normalizeTableSpacingForRender,
   serializeMarkdownFromHtml,
 } from "./PreviewPanel";
 
@@ -47,6 +48,45 @@ describe("applyInteractionSpacing", () => {
     expect(inlineIndex).toBeGreaterThan(-1);
     expect(lines[inlineIndex].endsWith("  ")).toBe(true);
     expect(lines[inlineIndex + 1].trim()).toBe("-a");
+  });
+});
+
+describe("normalizeTableSpacingForRender", () => {
+  it("adds blank lines around valid table blocks", () => {
+    const source = [
+      "sinnvoll sind. Nutzen Sie eine saubere Gliederung.",
+      "| Modell | Kerngedanke | Typischer Fokus |",
+      "| --- | --- | --- |",
+      "| ACID | Strikte Transaktionssicherheit | starke Konsistenz |",
+      "| BASE | Eventual Consistency akzeptiert | hohe Verfuegbarkeit |",
+      "#help",
+    ].join("\n");
+
+    const result = normalizeTableSpacingForRender(source);
+
+    expect(result).toBe([
+      "sinnvoll sind. Nutzen Sie eine saubere Gliederung.",
+      "",
+      "| Modell | Kerngedanke | Typischer Fokus |",
+      "| --- | --- | --- |",
+      "| ACID | Strikte Transaktionssicherheit | starke Konsistenz |",
+      "| BASE | Eventual Consistency akzeptiert | hohe Verfuegbarkeit |",
+      "",
+      "#help",
+    ].join("\n"));
+  });
+
+  it("does not change non-table pipe lines", () => {
+    const source = [
+      "A | B | C",
+      "---",
+      "| just text",
+      "tail",
+    ].join("\n");
+
+    const result = normalizeTableSpacingForRender(source);
+
+    expect(result).toBe(source);
   });
 });
 
@@ -287,5 +327,17 @@ describe("buildEditableMarkdownHtml", () => {
     expect(html).toContain("md-heading-marker");
     expect(html).toContain("## ");
     expect(html).toContain("Heading");
+  });
+
+  it("replaces horizontal rules with editable markdown markers", () => {
+    const container = document.createElement("div");
+    const rule = document.createElement("hr");
+    container.appendChild(rule);
+
+    const html = buildEditableMarkdownHtml(container);
+
+    expect(html).toContain('data-md-hr-line="true"');
+    expect(html).toContain("md-hr-marker");
+    expect(html).toContain("---");
   });
 });

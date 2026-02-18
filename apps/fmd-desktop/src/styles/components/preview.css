@@ -456,6 +456,52 @@ textarea.preview-editor {
   opacity: 0.9;
 }
 
+.preview-markdown-editable [data-md-hr-line="true"] {
+  position: relative;
+  margin: 0.9rem 0;
+  height: 1.2rem;
+  min-height: 1.2rem;
+  line-height: 0;
+}
+
+.preview-markdown-editable [data-md-hr-line="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px solid var(--line-soft);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.preview-markdown-editable .md-hr-marker {
+  position: relative;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.preview-markdown-editable [data-md-hr-line="true"][data-md-hr-active="true"]::before {
+  display: none;
+}
+
+.preview-markdown-editable [data-md-hr-line="true"][data-md-hr-active="true"] {
+  height: auto;
+  line-height: 1.6;
+}
+
+.preview-markdown-editable [data-md-hr-line="true"][data-md-hr-active="true"] > .md-hr-marker {
+  color: var(--muted);
+  opacity: 0.9;
+  font-size: inherit;
+  line-height: inherit;
+  pointer-events: auto;
+  user-select: text;
+}
+
 .preview-markdown-editable [data-md-heading-level="1"] {
   font-size: 1.4rem;
   margin: 0 0 0.6rem;
@@ -631,6 +677,16 @@ textarea.preview-editor {
 
 .md-preview p {
   margin: 0 0 0.8rem;
+}
+
+.md-preview hr {
+  margin: 0.9rem 0;
+  height: 1.2rem;
+  border: 0;
+  background-image: linear-gradient(var(--line-soft), var(--line-soft));
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 1px;
 }
 
 .md-preview ul,

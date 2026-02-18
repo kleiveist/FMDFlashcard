@@ -76,9 +76,11 @@
 ### Bereits umgesetzt (2026-02)
 
 - Markdown-View-Edit nutzt jetzt editierbare Überschriften-Marker (`#` bis `######`) statt fixer Level.
+- Markdown-View-Edit zeigt Trennlinien (`---`) als editierbaren Marker, sobald die Trennlinien-Zeile aktiv ist.
 - Softbreaks (Zeilenumbrüche ohne Leerzeile) werden in der Preview als echte Zeilenumbrüche behandelt.
 - Frontmatter-Panel-Markup wird vor dem Markdown-Edit aus dem Edit-DOM entfernt.
 - ContentEditable-Serialisierung erzwingt keine zusätzlichen Leerabsätze mehr nach Blockelementen (Ausnahme: Tabellen werden bewusst mit Leerzeile davor/danach stabilisiert).
+- Tabellenblöcke ohne Leerzeile davor/danach werden in der Markdown-Preview automatisch mit Blockabstand normalisiert.
 
 ### Zielbild für die vollständige Engine
 

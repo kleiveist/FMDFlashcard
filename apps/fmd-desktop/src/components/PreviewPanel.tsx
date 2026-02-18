@@ -245,6 +245,25 @@ type MarkdownOffsetMapOptions = {
 const shouldSkipStructuralMarkers = (options?: MarkdownOffsetMapOptions) =>
   options?.skipStructuralMarkers ?? true;
 
+const resolveThematicBreakLineEnd = (rawMarkdown: string, startIndex: number) => {
+  let index = startIndex;
+  let dashCount = 0;
+  while (index < rawMarkdown.length && rawMarkdown[index] !== "\n") {
+    const char = rawMarkdown[index];
+    if (char === "-") {
+      dashCount += 1;
+      index += 1;
+      continue;
+    }
+    if (char === " " || char === "\t") {
+      index += 1;
+      continue;
+    }
+    return null;
+  }
+  return dashCount >= 3 ? index : null;
+};
+
 const mapPlainOffsetToRawIndex = (
   rawMarkdown: string,
   plainOffset: number,
@@ -302,6 +321,11 @@ const mapPlainOffsetToRawIndex = (
     }
 
     if (!isEscaped && lineStart && !inFence && skipStructuralMarkers) {
+      const thematicBreakEnd = resolveThematicBreakLineEnd(rawMarkdown, rawIndex);
+      if (thematicBreakEnd !== null) {
+        rawIndex = thematicBreakEnd;
+        continue;
+      }
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -448,6 +472,11 @@ const mapRawIndexToPlainOffset = (
     }
 
     if (!isEscaped && lineStart && !inFence && skipStructuralMarkers) {
+      const thematicBreakEnd = resolveThematicBreakLineEnd(rawMarkdown, rawIndex);
+      if (thematicBreakEnd !== null) {
+        rawIndex = thematicBreakEnd;
+        continue;
+      }
       if (char === "#") {
         while (rawMarkdown[rawIndex] === "#") {
           rawIndex += 1;
@@ -949,18 +978,37 @@ const serializeTableCell = (
   return escapeMarkdownTableCell(text);
 };
 
-const normalizeSerializedTableLine = (line: string) =>
-  line.trim().replace(/\\\|/g, "|");
+type NormalizeMarkdownTablesOptions = {
+  unescapeEscapedBoundaryPipes?: boolean;
+};
 
-const isSerializedTableRowLine = (line: string) =>
-  /^\|(?:[^|]*\|)+\s*$/.test(normalizeSerializedTableLine(line));
+const normalizeMarkdownTableLine = (
+  line: string,
+  options?: NormalizeMarkdownTablesOptions,
+) => {
+  const trimmed = line.trim();
+  if (options?.unescapeEscapedBoundaryPipes && trimmed.startsWith("\\|")) {
+    return trimmed.replace(/\\\|/g, "|");
+  }
+  return trimmed;
+};
 
-const isSerializedTableSeparatorLine = (line: string) =>
-  /^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|$/.test(
-    normalizeSerializedTableLine(line),
-  );
+const isMarkdownTableRowLine = (
+  line: string,
+  options?: NormalizeMarkdownTablesOptions,
+) => /^\|(?:[^|]*\|)+\s*$/.test(normalizeMarkdownTableLine(line, options));
 
-const normalizeSerializedTables = (markdown: string) => {
+const isMarkdownTableSeparatorLine = (
+  line: string,
+  options?: NormalizeMarkdownTablesOptions,
+) => /^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|$/.test(
+  normalizeMarkdownTableLine(line, options),
+);
+
+const normalizeMarkdownTables = (
+  markdown: string,
+  options?: NormalizeMarkdownTablesOptions,
+) => {
   if (!markdown) {
     return markdown;
   }
@@ -981,8 +1029,8 @@ const normalizeSerializedTables = (markdown: string) => {
       continue;
     }
     const nextLine = sourceLines[i + 1] ?? "";
-    const isTableStart = isSerializedTableRowLine(line) &&
-      isSerializedTableSeparatorLine(nextLine);
+    const isTableStart = isMarkdownTableRowLine(line, options) &&
+      isMarkdownTableSeparatorLine(nextLine, options);
 
     if (!isTableStart) {
       normalized.push(line);
@@ -996,10 +1044,10 @@ const normalizeSerializedTables = (markdown: string) => {
 
     while (i < sourceLines.length) {
       const tableLine = sourceLines[i] ?? "";
-      if (!isSerializedTableRowLine(tableLine)) {
+      if (!isMarkdownTableRowLine(tableLine, options)) {
         break;
       }
-      normalized.push(normalizeSerializedTableLine(tableLine));
+      normalized.push(normalizeMarkdownTableLine(tableLine, options));
       i += 1;
     }
 
@@ -1013,18 +1061,32 @@ const normalizeSerializedTables = (markdown: string) => {
   return normalized.join("\n");
 };
 
+export const normalizeTableSpacingForRender = (markdown: string) =>
+  normalizeMarkdownTables(markdown);
+
 export const serializeMarkdownFromHtml = (container: HTMLElement) => {
   const serialized = serializeMarkdownChildren(container, {
     listDepth: 0,
     escapePipes: true,
     inContentEditable: true,
   });
-  return normalizeSerializedTables(serialized);
+  return normalizeMarkdownTables(serialized, {
+    unescapeEscapedBoundaryPipes: true,
+  });
 };
 
 export const buildEditableMarkdownHtml = (container: HTMLElement) => {
   const clone = container.cloneNode(true) as HTMLElement;
   clone.querySelectorAll(".frontmatter-panel").forEach((panel) => panel.remove());
+  clone.querySelectorAll<HTMLElement>("hr").forEach((rule) => {
+    const markerLine = rule.ownerDocument.createElement("p");
+    markerLine.setAttribute("data-md-hr-line", "true");
+    const marker = rule.ownerDocument.createElement("span");
+    marker.className = "md-hr-marker";
+    marker.textContent = "---";
+    markerLine.appendChild(marker);
+    rule.replaceWith(markerLine);
+  });
   clone.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6").forEach((heading) => {
     const levelRaw = Number.parseInt(heading.tagName.slice(1), 10);
     if (Number.isNaN(levelRaw)) {
@@ -2092,7 +2154,10 @@ export const PreviewPanel = ({
     const headings = Array.from(
       editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"),
     );
-    if (headings.length === 0) {
+    const hrLines = Array.from(
+      editor.querySelectorAll<HTMLElement>('[data-md-hr-line="true"]'),
+    );
+    if (headings.length === 0 && hrLines.length === 0) {
       return;
     }
 
@@ -2106,6 +2171,12 @@ export const PreviewPanel = ({
           ? range.startContainer
           : range?.startContainer.parentElement
         )?.closest("h1,h2,h3,h4,h5,h6")
+      : null;
+    const activeHrLine = inEditor
+      ? (range?.startContainer instanceof Element
+          ? range.startContainer
+          : range?.startContainer.parentElement
+        )?.closest('[data-md-hr-line="true"]')
       : null;
     const retagQueue: Array<{
       heading: HTMLElement;
@@ -2137,6 +2208,14 @@ export const PreviewPanel = ({
       const retagged = replaceHeadingElementLevel(heading, resolvedLevel);
       retagged.setAttribute("data-md-heading-level", String(resolvedLevel));
       retagged.removeAttribute("data-md-heading-active");
+    });
+
+    hrLines.forEach((line) => {
+      if (line === activeHrLine) {
+        line.setAttribute("data-md-hr-active", "true");
+      } else {
+        line.removeAttribute("data-md-hr-active");
+      }
     });
   }, []);
 
@@ -2218,15 +2297,35 @@ export const PreviewPanel = ({
     const plainOffset = mapRawIndexToPlainOffset(markdownEditBody, bodyCaretIndex, {
       skipStructuralMarkers: false,
     });
+    const desiredScrollTop = scrollStateRef.current.top;
+    const desiredScrollLeft = scrollStateRef.current.left;
+    let settleHandle: number | null = null;
+    const enforceScroll = () => {
+      editor.scrollTop = desiredScrollTop;
+      editor.scrollLeft = desiredScrollLeft;
+    };
     const handle = window.requestAnimationFrame(() => {
-      editor.focus();
+      try {
+        editor.focus({ preventScroll: true });
+      } catch {
+        editor.focus();
+      }
       setCaretAtPlainOffset(editor, plainOffset);
-      lastCaretIndexRef.current = editCaretIndex;
-      scrollStateRef.current.top = editor.scrollTop;
-      scrollStateRef.current.left = editor.scrollLeft;
-      onEditCaretApplied();
+      enforceScroll();
+      settleHandle = window.requestAnimationFrame(() => {
+        enforceScroll();
+        lastCaretIndexRef.current = editCaretIndex;
+        scrollStateRef.current.top = editor.scrollTop;
+        scrollStateRef.current.left = editor.scrollLeft;
+        onEditCaretApplied();
+      });
     });
-    return () => window.cancelAnimationFrame(handle);
+    return () => {
+      window.cancelAnimationFrame(handle);
+      if (settleHandle !== null) {
+        window.cancelAnimationFrame(settleHandle);
+      }
+    };
   }, [
     editCaretIndex,
     isEditing,
@@ -2401,11 +2500,14 @@ export const PreviewPanel = ({
     : hasFrontmatterError && showFrontmatterTextFallback
       ? preview
       : markdownPreviewBody;
+  const normalizedMarkdownSource = rawPreview
+    ? preview
+    : normalizeTableSpacingForRender(markdownSource);
   const renderedPreview = rawPreview
     ? preview
     : markdownViewEditEnabled
-      ? markdownSource
-      : applyInteractionSpacing(markdownSource);
+      ? normalizedMarkdownSource
+      : applyInteractionSpacing(normalizedMarkdownSource);
   const hasVisiblePreviewContent = rawPreview
     ? preview.length > 0
     : markdownSource.length > 0;

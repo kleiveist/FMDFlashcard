@@ -225,6 +225,31 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector("kbd")).toBeTruthy();
   });
 
+  it("renders table blocks even when surrounding blank lines are missing", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "Before text",
+        "| Modell | Fokus |",
+        "| --- | --- |",
+        "| ACID | Konsistenz |",
+        "After text",
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const preview = container.querySelector(".preview.markdown");
+    const table = preview?.querySelector("table");
+    const paragraphs = Array.from(preview?.querySelectorAll("p") ?? []);
+
+    expect(table).toBeTruthy();
+    expect(paragraphs.some((paragraph) => paragraph.textContent?.trim() === "Before text")).toBe(
+      true,
+    );
+    expect(paragraphs.some((paragraph) => paragraph.textContent?.trim() === "After text")).toBe(
+      true,
+    );
+  });
+
   it("shows a properties panel and hides frontmatter text in markdown view", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       [
@@ -350,6 +375,51 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(promotedHeading).toBeTruthy();
     expect(promotedHeading?.textContent ?? "").toContain("Titel");
     expect(editable?.querySelector("h2")).toBeNull();
+  });
+
+  it("shows editable --- marker when a separator line is focused", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["A", "", "---", "", "B"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const hrLine = editable?.querySelector(
+      '[data-md-hr-line="true"]',
+    ) as HTMLParagraphElement | null;
+    const marker = hrLine?.querySelector(".md-hr-marker") as HTMLSpanElement | null;
+
+    expect(hrLine).toBeTruthy();
+    expect(marker?.textContent).toBe("---");
+    expect(hrLine?.hasAttribute("data-md-hr-active")).toBe(false);
+
+    act(() => {
+      const markerText = marker?.firstChild;
+      if (!markerText) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(markerText, markerText.textContent?.length ?? 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    expect(hrLine?.getAttribute("data-md-hr-active")).toBe("true");
   });
 
   it("keeps frontmatter collapsed when switching to markdown edit mode", () => {
