@@ -59,6 +59,9 @@ const buildHarness = (
     markdownViewEditEnabled?: boolean;
     rawPreview?: boolean;
     onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
+    onNavigateWikilink?: (wikilink: string) => void;
+    valueSuggestionsByKey?: Record<string, string[]>;
+    keySuggestions?: string[];
   } = {},
 ) => {
   const onEditExit = vi.fn();
@@ -66,6 +69,9 @@ const buildHarness = (
     markdownViewEditEnabled = true,
     rawPreview = false,
     onFrontmatterSave,
+    onNavigateWikilink,
+    valueSuggestionsByKey,
+    keySuggestions,
   } = options;
 
   const Harness = () => {
@@ -103,6 +109,9 @@ const buildHarness = (
       onEditStart: handleEditStart,
       onToggleRawPreview: () => {},
       onFrontmatterSave,
+      onNavigateWikilink,
+      valueSuggestionsByKey,
+      keySuggestions,
     });
   };
 
@@ -548,6 +557,12 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(input).toBeTruthy();
 
     act(() => {
+      input?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
       if (!input) {
         return;
       }
@@ -568,6 +583,219 @@ describe("PreviewPanel edit-safe interactions", () => {
     const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
     expect(nextMarkdown).toContain("title: Changed title");
     expect(nextMarkdown).toContain("---\nBody line");
+  });
+
+  it("opens suggestions on first click without immediate commit", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = ["---", "Section: IUFS", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+      valueSuggestionsByKey: {
+        Section: ["IUFS", "DBA"],
+      },
+    });
+    cleanup = localCleanup;
+
+    const input = container.querySelector(
+      'input[aria-label="Section value"]',
+    ) as HTMLInputElement | null;
+    expect(input).toBeTruthy();
+
+    act(() => {
+      input?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      input?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const suggestionList = container.querySelector(
+      ".frontmatter-suggestions",
+    ) as HTMLUListElement | null;
+    expect(suggestionList).toBeTruthy();
+    expect(suggestionList?.textContent ?? "").toContain("IUFS");
+    expect(onFrontmatterSave).not.toHaveBeenCalled();
+  });
+
+  it("keeps suggestions strictly separated by property key", async () => {
+    const markdown = ["---", "Section: IUFS", "Rank: SE1", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      valueSuggestionsByKey: {
+        Section: ["IUFS", "DBA"],
+        Rank: ["SE1", "SE2"],
+      },
+    });
+    cleanup = localCleanup;
+
+    const sectionInput = container.querySelector(
+      'input[aria-label="Section value"]',
+    ) as HTMLInputElement | null;
+    const rankInput = container.querySelector(
+      'input[aria-label="Rank value"]',
+    ) as HTMLInputElement | null;
+    expect(sectionInput).toBeTruthy();
+    expect(rankInput).toBeTruthy();
+
+    act(() => {
+      sectionInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      sectionInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    let suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("IUFS");
+    expect(suggestionText).not.toContain("SE1");
+
+    act(() => {
+      rankInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      rankInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("SE1");
+    expect(suggestionText).not.toContain("IUFS");
+  });
+
+  it("adds links via links input and writes link keys", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = ["---", "title: Demo", "link1: [[IDBS01-TestL5]]", "---", "Body line"].join(
+      "\n",
+    );
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const linkInput = container.querySelector(
+      'input[aria-label="Link hinzufuegen"]',
+    ) as HTMLInputElement | null;
+    expect(linkInput).toBeTruthy();
+
+    act(() => {
+      if (!linkInput) {
+        return;
+      }
+      linkInput.value = "IDBS01-TestL7";
+      linkInput.dispatchEvent(new Event("input", { bubbles: true }));
+      linkInput.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).toContain("link1: [[IDBS01-TestL5]]");
+    expect(nextMarkdown).toContain("link2: [[IDBS01-TestL7]]");
+  });
+
+  it("navigates and removes links from the links section", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const onNavigateWikilink = vi.fn();
+    const markdown = [
+      "---",
+      "title: Demo",
+      "link1: [[IDBS01-TestL5]]",
+      "link2: [[IDBS01-TestL6]]",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+      onNavigateWikilink,
+    });
+    cleanup = localCleanup;
+
+    const firstLinkButton = container.querySelector(
+      ".frontmatter-inline-link",
+    ) as HTMLButtonElement | null;
+    const firstRemoveButton = container.querySelector(
+      ".frontmatter-link-remove",
+    ) as HTMLButtonElement | null;
+    expect(firstLinkButton).toBeTruthy();
+    expect(firstRemoveButton).toBeTruthy();
+
+    act(() => {
+      firstLinkButton?.click();
+    });
+    expect(onNavigateWikilink).toHaveBeenCalledWith("[[IDBS01-TestL5]]");
+
+    act(() => {
+      firstRemoveButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).toContain("link1: [[IDBS01-TestL6]]");
+    expect(nextMarkdown).not.toContain("IDBS01-TestL5");
+  });
+
+  it("removes all links via the links attribute remove button", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = [
+      "---",
+      "title: Demo",
+      "link1: [[IDBS01-TestL5]]",
+      "link2: [[IDBS01-TestL6]]",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const linksRow = container.querySelector(
+      '[data-frontmatter-key="__links__"]',
+    ) as HTMLDivElement | null;
+    const removeButton = linksRow?.querySelector(
+      '.frontmatter-property-remove[aria-label="Links entfernen"]',
+    ) as HTMLButtonElement | null;
+    expect(removeButton).toBeTruthy();
+
+    act(() => {
+      removeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).not.toContain("link1:");
+    expect(nextMarkdown).not.toContain("link2:");
+    expect(nextMarkdown).toContain("title: Demo");
+    expect(nextMarkdown).toContain("---\nBody line");
+  });
+
+  it("shows links editor when an empty links attribute exists", () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "links: null",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const linksRow = container.querySelector(
+      '[data-frontmatter-key="__links__"]',
+    ) as HTMLDivElement | null;
+    const linkInput = container.querySelector(
+      'input[aria-label="Link hinzufuegen"]',
+    ) as HTMLInputElement | null;
+
+    expect(linksRow).toBeTruthy();
+    expect(linkInput).toBeTruthy();
   });
 
   it("can collapse and expand the properties panel", () => {
@@ -670,6 +898,205 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(nextMarkdown).toContain("---\nBody line");
   });
 
+  it("removes an attribute row and persists frontmatter", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = [
+      "---",
+      "title: Demo",
+      "rank: SE1",
+      "section: IUFS",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const rankRow = container.querySelector(
+      '[data-frontmatter-key="rank"]',
+    ) as HTMLDivElement | null;
+    const removeButton = rankRow?.querySelector(
+      ".frontmatter-property-remove",
+    ) as HTMLButtonElement | null;
+    expect(rankRow).toBeTruthy();
+    expect(removeButton).toBeTruthy();
+
+    act(() => {
+      removeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
+    const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
+    expect(nextMarkdown).toContain("title: Demo");
+    expect(nextMarkdown).toContain("section: IUFS");
+    expect(nextMarkdown).not.toContain("rank: SE1");
+    expect(nextMarkdown).toContain("---\nBody line");
+  });
+
+  it("opens add-row key suggestions on first click without changing input", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+      keySuggestions: ["Section", "Rank", "tags"],
+    });
+    cleanup = localCleanup;
+
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    expect(keyInput).toBeTruthy();
+    expect(keyInput?.value ?? "").toBe("");
+
+    act(() => {
+      keyInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("Section");
+    expect(suggestionText).toContain("Rank");
+    expect(keyInput?.value ?? "").toBe("");
+    expect(onFrontmatterSave).not.toHaveBeenCalled();
+  });
+
+  it("hides already existing keys from add-row key suggestions", async () => {
+    const markdown = ["---", "title: Demo", "Section: IUFS", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      keySuggestions: ["Section", "Rank", "title"],
+    });
+    cleanup = localCleanup;
+
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    expect(keyInput).toBeTruthy();
+
+    act(() => {
+      keyInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("Rank");
+    expect(suggestionText).not.toContain("Section");
+    expect(suggestionText).not.toContain("title");
+  });
+
+  it("scopes add-row value suggestions to the selected key only", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      keySuggestions: ["Section", "Rank"],
+      valueSuggestionsByKey: {
+        Section: ["IUFS", "DBA"],
+        Rank: ["SE1", "SE2"],
+      },
+    });
+    cleanup = localCleanup;
+
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    const valueInput = container.querySelector(
+      'input[aria-label="Neuer Wert"]',
+    ) as HTMLInputElement | null;
+    expect(keyInput).toBeTruthy();
+    expect(valueInput).toBeTruthy();
+
+    act(() => {
+      keyInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const clickSuggestionByLabel = (label: string) => {
+      const button = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(".frontmatter-suggestion-option"),
+      ).find((option) => option.textContent?.trim() === label);
+      act(() => {
+        button?.click();
+      });
+    };
+
+    clickSuggestionByLabel("Section");
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      valueInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      valueInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    let suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("IUFS");
+    expect(suggestionText).not.toContain("SE1");
+
+    act(() => {
+      keyInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    clickSuggestionByLabel("Rank");
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      valueInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      valueInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("SE1");
+    expect(suggestionText).not.toContain("IUFS");
+  });
+
+  it("does not open add-row value suggestions when key is empty", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      valueSuggestionsByKey: {
+        Section: ["IUFS"],
+      },
+    });
+    cleanup = localCleanup;
+
+    const valueInput = container.querySelector(
+      'input[aria-label="Neuer Wert"]',
+    ) as HTMLInputElement | null;
+    expect(valueInput).toBeTruthy();
+
+    act(() => {
+      valueInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      valueInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector(".frontmatter-suggestions")).toBeNull();
+  });
+
   it("adds a new property via add button", async () => {
     const onFrontmatterSave = vi.fn().mockResolvedValue(true);
     const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
@@ -693,11 +1120,34 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(addButton).toBeTruthy();
 
     act(() => {
-      if (!keyInput || !valueInput) {
+      keyInput.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!keyInput) {
         return;
       }
       keyInput.value = "Section";
       keyInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!valueInput) {
+        return;
+      }
+      valueInput.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!valueInput) {
+        return;
+      }
       valueInput.value = "IUFS";
       valueInput.dispatchEvent(new Event("input", { bubbles: true }));
     });

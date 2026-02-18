@@ -42,6 +42,20 @@ export type FrontmatterDocument = {
   properties: FrontmatterProperty[];
 };
 
+export type FrontmatterLinksLayout = "link-keys" | "links-array";
+
+export type FrontmatterLinksDocument = {
+  hasFrontmatter: boolean;
+  error: string | null;
+  links: string[];
+  layout: FrontmatterLinksLayout;
+};
+
+export type FrontmatterSuggestionIndex = {
+  keyIndex: Record<string, number>;
+  valueIndex: Record<string, Record<string, number>>;
+};
+
 type FrontmatterSchemaEntry = {
   kind?: FrontmatterPropertyKind;
   icon?: FrontmatterPropertyIcon;
@@ -57,6 +71,7 @@ type ParsedYamlValue =
 type ParsedFrontmatterProperty = FrontmatterProperty & {
   rawLines: string[];
   preserveRaw: boolean;
+  hidden?: boolean;
 };
 
 type ParsedFrontmatterDocumentInternal = FrontmatterDocument & {
@@ -68,6 +83,7 @@ const FRONTMATTER_PATTERN =
   /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
 
 const IMAGE_EXTENSION_PATTERN = /\.(png|jpe?g|webp|gif|svg)$/i;
+const LINK_KEY_PATTERN = /^link\d+$/i;
 
 const PROPERTY_SCHEMA: Record<string, FrontmatterSchemaEntry> = {
   tags: { kind: "tags", icon: "tags" },
@@ -373,6 +389,7 @@ const parseYamlFrontmatter = (
   const lines = normalizedYaml.split("\n");
   const properties: ParsedFrontmatterProperty[] = [];
   const seenKeys = new Set<string>();
+  let looseLinkCounter = 1;
 
   let lineIndex = 0;
   while (lineIndex < lines.length) {
@@ -390,6 +407,22 @@ const parseYamlFrontmatter = (
 
     const separatorIndex = line.indexOf(":");
     if (separatorIndex <= 0) {
+      const looseCandidate = line.trim();
+      if (isWikilink(looseCandidate)) {
+        const kind = isImageWikilink(looseCandidate) ? "cover" : "link";
+        properties.push({
+          key: `__loose_link_${looseLinkCounter}`,
+          kind,
+          value: looseCandidate,
+          icon: resolvePropertyIcon("link", kind),
+          rawLines: [line],
+          preserveRaw: true,
+          hidden: true,
+        });
+        looseLinkCounter += 1;
+        lineIndex += 1;
+        continue;
+      }
       return {
         properties: [],
         error: `Invalid YAML key/value pair at line ${lineIndex + 1}.`,
@@ -497,7 +530,9 @@ const parseFrontmatterDocumentInternal = (
     body,
     bodyStartOffset,
     lineEnding: detectLineEnding(rawBlock),
-    properties: parsed.properties.map(({ rawLines, preserveRaw, ...property }) => property),
+    properties: parsed.properties
+      .filter((property) => !property.hidden)
+      .map(({ rawLines, preserveRaw, hidden: _hidden, ...property }) => property),
     frontmatterPrefix: markdown.slice(0, bodyStartOffset),
     parsedProperties: parsed.properties,
   };
@@ -746,6 +781,349 @@ export const normalizeWikilinkValue = (value: string) => {
   return `[[${cleaned}]]`;
 };
 
+const isLinksArrayKey = (key: string) => normalizeSchemaKey(key) === "links";
+const isLinkSequenceKey = (key: string) => LINK_KEY_PATTERN.test(key.trim());
+
+export const isLinkPropertyKey = (key: string) =>
+  isLinkSequenceKey(key) || isLinksArrayKey(key);
+
+export const extractWikilinkTarget = (value: string) => getWikilinkTarget(value);
+
+const dedupeStable = (values: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  values.forEach((value) => {
+    if (seen.has(value)) {
+      return;
+    }
+    seen.add(value);
+    next.push(value);
+  });
+  return next;
+};
+
+const normalizeWikilinkList = (values: string[]) =>
+  dedupeStable(
+    values
+      .map((value) => normalizeWikilinkValue(value))
+      .filter((value) => value.trim() !== ""),
+  );
+
+const collectWikilinksFromProperty = (property: ParsedFrontmatterProperty) => {
+  if (typeof property.value === "string") {
+    const normalized = normalizeWikilinkValue(property.value);
+    return normalized ? [normalized] : [];
+  }
+  if (Array.isArray(property.value)) {
+    return normalizeWikilinkList(property.value);
+  }
+  return [];
+};
+
+const resolveLinkInsertionIndex = ({
+  removedIndices,
+  insertionSourceIndex,
+}: {
+  removedIndices: Set<number>;
+  insertionSourceIndex: number;
+}) => {
+  let index = 0;
+  for (let sourceIndex = 0; sourceIndex < insertionSourceIndex; sourceIndex += 1) {
+    if (!removedIndices.has(sourceIndex)) {
+      index += 1;
+    }
+  }
+  return index;
+};
+
+const normalizeSuggestionValue = (value: FrontmatterPropertyValue): string[] => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? [String(value)] : [];
+  }
+  if (typeof value === "boolean") {
+    return [value ? "true" : "false"];
+  }
+  return [];
+};
+
+const isNumericSuggestionValue = (value: string) => numberPattern.test(value.trim());
+
+const sortSuggestionValuesByCount = (valueCounts: Record<string, number>) => {
+  const values = Object.keys(valueCounts);
+  const allNumeric = values.length > 0 && values.every(isNumericSuggestionValue);
+  const sorted = values.slice();
+  if (allNumeric) {
+    sorted.sort((left, right) => Number(left) - Number(right));
+    return sorted;
+  }
+  sorted.sort((left, right) => {
+    const leftCount = valueCounts[left] ?? 0;
+    const rightCount = valueCounts[right] ?? 0;
+    if (leftCount !== rightCount) {
+      return rightCount - leftCount;
+    }
+    return left.localeCompare(right, undefined, { sensitivity: "base" });
+  });
+  return sorted;
+};
+
+const sortKeySuggestionsByCount = (keyCounts: Record<string, number>) =>
+  Object.keys(keyCounts).sort((left, right) => {
+    const leftCount = keyCounts[left] ?? 0;
+    const rightCount = keyCounts[right] ?? 0;
+    if (leftCount !== rightCount) {
+      return rightCount - leftCount;
+    }
+    return left.localeCompare(right, undefined, { sensitivity: "base" });
+  });
+
+const collectSuggestionIndexFromProperties = (
+  keyIndex: Map<string, number>,
+  valueIndex: Map<string, Map<string, number>>,
+  properties: FrontmatterProperty[],
+) => {
+  properties.forEach((property) => {
+    const currentKeyCount = keyIndex.get(property.key) ?? 0;
+    keyIndex.set(property.key, currentKeyCount + 1);
+
+    const nextValues = normalizeSuggestionValue(property.value);
+    if (nextValues.length === 0) {
+      return;
+    }
+    let bucket = valueIndex.get(property.key);
+    if (!bucket) {
+      bucket = new Map<string, number>();
+      valueIndex.set(property.key, bucket);
+    }
+    nextValues.forEach((value) => {
+      const currentValueCount = bucket?.get(value) ?? 0;
+      bucket?.set(value, currentValueCount + 1);
+    });
+  });
+};
+
+const toSuggestionIndexRecord = ({
+  keyIndex,
+  valueIndex,
+}: {
+  keyIndex: Map<string, number>;
+  valueIndex: Map<string, Map<string, number>>;
+}): FrontmatterSuggestionIndex => {
+  const keyRecord: Record<string, number> = {};
+  keyIndex.forEach((count, key) => {
+    keyRecord[key] = count;
+  });
+
+  const valueRecord: Record<string, Record<string, number>> = {};
+  valueIndex.forEach((values, key) => {
+    const next: Record<string, number> = {};
+    values.forEach((count, value) => {
+      next[value] = count;
+    });
+    valueRecord[key] = next;
+  });
+
+  return {
+    keyIndex: keyRecord,
+    valueIndex: valueRecord,
+  };
+};
+
+export const sortFrontmatterKeySuggestions = (keyCounts: Record<string, number>) =>
+  sortKeySuggestionsByCount(keyCounts);
+
+export const buildFrontmatterValueSuggestionMapFromIndex = (
+  valueCountsByKey: Record<string, Record<string, number>>,
+) => {
+  const output: Record<string, string[]> = {};
+  Object.entries(valueCountsByKey).forEach(([key, valueCounts]) => {
+    output[key] = sortSuggestionValuesByCount(valueCounts);
+  });
+  return output;
+};
+
+export const collectFrontmatterSuggestionIndex = (properties: FrontmatterProperty[]) => {
+  const keyIndex = new Map<string, number>();
+  const valueIndex = new Map<string, Map<string, number>>();
+  collectSuggestionIndexFromProperties(keyIndex, valueIndex, properties);
+  return toSuggestionIndexRecord({ keyIndex, valueIndex });
+};
+
+export const buildFrontmatterSuggestionIndex = (markdownDocuments: string[]) => {
+  const keyIndex = new Map<string, number>();
+  const valueIndex = new Map<string, Map<string, number>>();
+  markdownDocuments.forEach((markdown) => {
+    const parsed = parseFrontmatterDocument(markdown);
+    if (!parsed.hasFrontmatter || parsed.error) {
+      return;
+    }
+    collectSuggestionIndexFromProperties(keyIndex, valueIndex, parsed.properties);
+  });
+  return toSuggestionIndexRecord({ keyIndex, valueIndex });
+};
+
+export const buildFrontmatterKeySuggestionList = (markdownDocuments: string[]) =>
+  sortFrontmatterKeySuggestions(buildFrontmatterSuggestionIndex(markdownDocuments).keyIndex);
+
+export const collectFrontmatterValueSuggestions = (
+  properties: FrontmatterProperty[],
+) => {
+  const index = collectFrontmatterSuggestionIndex(properties);
+  return buildFrontmatterValueSuggestionMapFromIndex(index.valueIndex);
+};
+
+export const buildFrontmatterValueSuggestionMap = (markdownDocuments: string[]) => {
+  const index = buildFrontmatterSuggestionIndex(markdownDocuments);
+  return buildFrontmatterValueSuggestionMapFromIndex(index.valueIndex);
+};
+
+export const parseFrontmatterLinks = (markdown: string): FrontmatterLinksDocument => {
+  const parsed = parseFrontmatterDocumentInternal(markdown);
+  if (!parsed.hasFrontmatter) {
+    return {
+      hasFrontmatter: false,
+      error: null,
+      links: [],
+      layout: "link-keys",
+    };
+  }
+  if (parsed.error) {
+    return {
+      hasFrontmatter: true,
+      error: parsed.error,
+      links: [],
+      layout: "link-keys",
+    };
+  }
+
+  const links: string[] = [];
+  let hasLinkSequence = false;
+  let hasLinksArray = false;
+  parsed.parsedProperties.forEach((property) => {
+    if (property.hidden) {
+      links.push(...collectWikilinksFromProperty(property));
+      return;
+    }
+    if (isLinkSequenceKey(property.key)) {
+      hasLinkSequence = true;
+      links.push(...collectWikilinksFromProperty(property));
+      return;
+    }
+    if (isLinksArrayKey(property.key)) {
+      hasLinksArray = true;
+      links.push(...collectWikilinksFromProperty(property));
+    }
+  });
+
+  return {
+    hasFrontmatter: true,
+    error: null,
+    links: normalizeWikilinkList(links),
+    layout: hasLinksArray && !hasLinkSequence ? "links-array" : "link-keys",
+  };
+};
+
+export const updateFrontmatterLinks = ({
+  markdown,
+  links,
+}: {
+  markdown: string;
+  links: string[];
+}): { markdown: string; error: string | null } => {
+  const parsed = parseFrontmatterDocumentInternal(markdown);
+  if (!parsed.hasFrontmatter) {
+    return {
+      markdown,
+      error: "No YAML frontmatter block found at document start.",
+    };
+  }
+  if (parsed.error) {
+    return {
+      markdown,
+      error: parsed.error,
+    };
+  }
+
+  const normalizedLinks = normalizeWikilinkList(links);
+  const linkSequenceIndices: number[] = [];
+  const linksArrayIndices: number[] = [];
+  const looseLinkIndices: number[] = [];
+
+  parsed.parsedProperties.forEach((property, index) => {
+    if (property.hidden) {
+      looseLinkIndices.push(index);
+      return;
+    }
+    if (isLinkSequenceKey(property.key)) {
+      linkSequenceIndices.push(index);
+      return;
+    }
+    if (isLinksArrayKey(property.key)) {
+      linksArrayIndices.push(index);
+    }
+  });
+
+  const layout: FrontmatterLinksLayout =
+    linksArrayIndices.length > 0 && linkSequenceIndices.length === 0
+      ? "links-array"
+      : "link-keys";
+  const sourceIndices = [...linkSequenceIndices, ...linksArrayIndices, ...looseLinkIndices];
+  const removedIndices = new Set(sourceIndices);
+  const nextProperties = parsed.parsedProperties.filter(
+    (_property, index) => !removedIndices.has(index),
+  );
+  const insertionSourceIndex = sourceIndices.length > 0
+    ? Math.min(...sourceIndices)
+    : parsed.parsedProperties.length;
+  const insertionIndex = resolveLinkInsertionIndex({
+    removedIndices,
+    insertionSourceIndex,
+  });
+
+  const linkProperties: ParsedFrontmatterProperty[] = [];
+  if (normalizedLinks.length > 0) {
+    if (layout === "links-array") {
+      linkProperties.push({
+        key: "links",
+        kind: "tags",
+        value: normalizedLinks,
+        icon: "link",
+        rawLines: [],
+        preserveRaw: false,
+      });
+    } else {
+      normalizedLinks.forEach((link, index) => {
+        const key = `link${index + 1}`;
+        const kind = inferKindFromValue(key, link);
+        linkProperties.push({
+          key,
+          kind,
+          value: link,
+          icon: resolvePropertyIcon(key, kind),
+          rawLines: [],
+          preserveRaw: false,
+        });
+      });
+    }
+  }
+
+  const mergedProperties = [
+    ...nextProperties.slice(0, insertionIndex),
+    ...linkProperties,
+    ...nextProperties.slice(insertionIndex),
+  ];
+
+  return applyFrontmatterUpdate({
+    parsed,
+    markdown,
+    properties: mergedProperties,
+  });
+};
+
 export const updateFrontmatterProperty = ({
   markdown,
   key,
@@ -792,6 +1170,48 @@ export const updateFrontmatterProperty = ({
     preserveRaw: false,
     rawLines: [],
   };
+
+  return applyFrontmatterUpdate({
+    parsed,
+    markdown,
+    properties: nextProperties,
+  });
+};
+
+export const removeFrontmatterProperty = ({
+  markdown,
+  key,
+}: {
+  markdown: string;
+  key: string;
+}): { markdown: string; error: string | null } => {
+  const parsed = parseFrontmatterDocumentInternal(markdown);
+  if (!parsed.hasFrontmatter) {
+    return {
+      markdown,
+      error: "No YAML frontmatter block found at document start.",
+    };
+  }
+  if (parsed.error) {
+    return {
+      markdown,
+      error: parsed.error,
+    };
+  }
+
+  const propertyIndex = parsed.parsedProperties.findIndex(
+    (property) => property.key === key,
+  );
+  if (propertyIndex === -1) {
+    return {
+      markdown,
+      error: `Frontmatter key "${key}" was not found.`,
+    };
+  }
+
+  const nextProperties = parsed.parsedProperties.filter(
+    (_property, index) => index !== propertyIndex,
+  );
 
   return applyFrontmatterUpdate({
     parsed,

@@ -39,6 +39,12 @@ import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
 import { isValidHex, normalizeHex } from "../lib/color";
+import {
+  buildFrontmatterSuggestionIndex,
+  buildFrontmatterValueSuggestionMapFromIndex,
+  extractWikilinkTarget,
+  sortFrontmatterKeySuggestions,
+} from "../features/preview/frontmatter";
 import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -47,6 +53,9 @@ import type { ExamEditorControlsState } from "./exam-editor/types";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 const notePanelStorageKey = "fmd.notePanelCollapsed";
+
+const stripMarkdownExtension = (value: string) =>
+  value.replace(/\.md$/i, "");
 
 export type DashboardView = "markdown" | "exam";
 
@@ -125,6 +134,12 @@ const DashboardPageInner = (
       return false;
     }
   });
+  const [frontmatterValueSuggestions, setFrontmatterValueSuggestions] = useState<
+    Record<string, string[]>
+  >({});
+  const [frontmatterKeySuggestions, setFrontmatterKeySuggestions] = useState<string[]>(
+    [],
+  );
   const isExamDesktop = vaultView === "exam" && isDesktopViewport;
   const panelsCollapsed = isExamDesktop ? examPanelsCollapsed : noteCollapsed;
   const normalizedActiveFolderPath = useMemo(() => {
@@ -142,6 +157,33 @@ const DashboardPageInner = (
       normalizeRelativePath(file.relative_path).startsWith(prefix),
     );
   }, [normalizedActiveFolderPath, vault.files]);
+  const wikilinkFileLookup = useMemo(() => {
+    const byExactRelative = new Map<string, (typeof vault.files)[number]>();
+    const byRelativeWithoutExtension = new Map<string, (typeof vault.files)[number]>();
+    const byBasenameWithoutExtension = new Map<string, (typeof vault.files)[number]>();
+
+    vault.files.forEach((file) => {
+      const relative = normalizeRelativePath(file.relative_path);
+      const relativeLower = relative.toLowerCase();
+      const withoutExtension = stripMarkdownExtension(relativeLower);
+      const basename = withoutExtension.split("/").pop() ?? withoutExtension;
+      if (!byExactRelative.has(relativeLower)) {
+        byExactRelative.set(relativeLower, file);
+      }
+      if (!byRelativeWithoutExtension.has(withoutExtension)) {
+        byRelativeWithoutExtension.set(withoutExtension, file);
+      }
+      if (!byBasenameWithoutExtension.has(basename)) {
+        byBasenameWithoutExtension.set(basename, file);
+      }
+    });
+
+    return {
+      byExactRelative,
+      byRelativeWithoutExtension,
+      byBasenameWithoutExtension,
+    };
+  }, [vault.files]);
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
       return "No vault selected";
@@ -244,6 +286,44 @@ const DashboardPageInner = (
   }, [noteCollapsed]);
 
   useEffect(() => {
+    let cancelled = false;
+    const rebuildSuggestions = async () => {
+      if (!vault.vaultPath || vault.files.length === 0) {
+        if (!cancelled) {
+          setFrontmatterValueSuggestions({});
+          setFrontmatterKeySuggestions([]);
+        }
+        return;
+      }
+      const markdownDocuments = await Promise.all(
+        vault.files.map(async (file) => {
+          try {
+            return await invoke<string>("read_text_file", {
+              path: file.path,
+            });
+          } catch {
+            return "";
+          }
+        }),
+      );
+      if (cancelled) {
+        return;
+      }
+      const suggestionIndex = buildFrontmatterSuggestionIndex(markdownDocuments);
+      setFrontmatterValueSuggestions(
+        buildFrontmatterValueSuggestionMapFromIndex(suggestionIndex.valueIndex),
+      );
+      setFrontmatterKeySuggestions(
+        sortFrontmatterKeySuggestions(suggestionIndex.keyIndex),
+      );
+    };
+    void rebuildSuggestions();
+    return () => {
+      cancelled = true;
+    };
+  }, [preview.preview, preview.selectedFile?.path, vault.files, vault.vaultPath]);
+
+  useEffect(() => {
     if (!panelsCollapsed || typeof document === "undefined") {
       return;
     }
@@ -335,6 +415,34 @@ const DashboardPageInner = (
       }
     },
     [isEditing, isSaving, preview],
+  );
+
+  const handleFrontmatterWikilinkNavigate = useCallback(
+    (wikilink: string) => {
+      const target = extractWikilinkTarget(wikilink);
+      if (!target) {
+        return;
+      }
+      const pathPartRaw = target.split(/[?#]/)[0] ?? "";
+      const pathPart = pathPartRaw.trim();
+      if (!pathPart) {
+        return;
+      }
+      const normalizedTarget = normalizeRelativePath(pathPart).replace(/^\/+/, "");
+      const targetLower = normalizedTarget.toLowerCase();
+      const targetWithoutExtension = stripMarkdownExtension(targetLower);
+      const basenameWithoutExtension =
+        targetWithoutExtension.split("/").pop() ?? targetWithoutExtension;
+      const resolvedFile =
+        wikilinkFileLookup.byExactRelative.get(targetLower) ??
+        wikilinkFileLookup.byExactRelative.get(`${targetWithoutExtension}.md`) ??
+        wikilinkFileLookup.byRelativeWithoutExtension.get(targetWithoutExtension) ??
+        wikilinkFileLookup.byBasenameWithoutExtension.get(basenameWithoutExtension);
+      if (resolvedFile) {
+        actions.handleSelectFile(resolvedFile);
+      }
+    },
+    [actions, wikilinkFileLookup],
   );
 
   const handleVaultViewChange = useCallback(
@@ -491,6 +599,9 @@ const DashboardPageInner = (
             onEditStart={handleEditStart}
             onToggleRawPreview={handleToggleRawPreview}
             onFrontmatterSave={handleFrontmatterSave}
+            onNavigateWikilink={handleFrontmatterWikilinkNavigate}
+            valueSuggestionsByKey={frontmatterValueSuggestions}
+            keySuggestions={frontmatterKeySuggestions}
           />
         ) : (
           <ExamEditorView

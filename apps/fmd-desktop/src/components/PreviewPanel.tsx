@@ -24,6 +24,7 @@ import {
   type CSSProperties,
   type DragEvent,
   type FocusEvent,
+  type KeyboardEvent,
   type MouseEvent,
   useCallback,
   useEffect,
@@ -39,13 +40,19 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import {
   addFrontmatterProperty,
+  collectFrontmatterValueSuggestions,
+  extractWikilinkTarget,
   type FrontmatterProperty,
   type FrontmatterPropertyIcon,
   type FrontmatterPropertyKind,
   composeMarkdownWithBody,
+  isLinkPropertyKey,
   normalizeWikilinkValue,
   parseFrontmatterDocument,
+  parseFrontmatterLinks,
+  removeFrontmatterProperty,
   reorderFrontmatterProperties,
+  updateFrontmatterLinks,
   updateFrontmatterProperty,
 } from "../features/preview/frontmatter";
 import { type LoadState } from "../lib/types";
@@ -264,6 +271,9 @@ type PreviewPanelProps = {
   }) => void;
   onToggleRawPreview: () => void;
   onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
+  onNavigateWikilink?: (wikilink: string) => void;
+  valueSuggestionsByKey?: Record<string, string[]>;
+  keySuggestions?: string[];
 };
 
 export const canStartPreviewEdit = ({
@@ -1751,6 +1761,113 @@ const normalizeTags = (value: string[]) => {
   return normalized;
 };
 
+type FrontmatterEditorMode = "idle" | "active" | "editing" | "committing";
+
+const numericSuggestionPattern = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/;
+
+const isNumericSuggestionValue = (value: string) =>
+  numericSuggestionPattern.test(value.trim());
+
+const sortSuggestionValues = (values: string[]) => {
+  const allNumeric = values.length > 0 && values.every(isNumericSuggestionValue);
+  const sorted = values.slice();
+  if (allNumeric) {
+    sorted.sort((left, right) => Number(left) - Number(right));
+    return sorted;
+  }
+  sorted.sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
+  return sorted;
+};
+
+const mergeSuggestionRecords = (...sources: Array<Record<string, string[]>>) => {
+  const buckets = new Map<string, Set<string>>();
+  sources.forEach((source) => {
+    Object.entries(source).forEach(([key, values]) => {
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = new Set<string>();
+        buckets.set(key, bucket);
+      }
+      values.forEach((value) => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return;
+        }
+        bucket?.add(trimmed);
+      });
+    });
+  });
+  const merged: Record<string, string[]> = {};
+  Array.from(buckets.entries()).forEach(([key, values]) => {
+    merged[key] = sortSuggestionValues(Array.from(values));
+  });
+  return merged;
+};
+
+const mergeSuggestionKeyLists = (...sources: string[][]) => {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  sources.forEach((source) => {
+    source.forEach((key) => {
+      const trimmed = key.trim();
+      if (!trimmed || seen.has(trimmed)) {
+        return;
+      }
+      seen.add(trimmed);
+      merged.push(trimmed);
+    });
+  });
+  return merged;
+};
+
+const addKeySuggestionScope = "__frontmatter_add_key__";
+const addValueSuggestionScope = "__frontmatter_add_value__";
+
+const isScalarEditableKind = (kind: FrontmatterPropertyKind) =>
+  kind === "text" ||
+  kind === "unknown" ||
+  kind === "link" ||
+  kind === "cover" ||
+  kind === "number";
+
+const isPrintableCharacterKey = (
+  event: Pick<KeyboardEvent<HTMLInputElement>, "key" | "metaKey" | "ctrlKey" | "altKey">,
+) =>
+  event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+
+const resolveSuggestionValuesFromCommitted = (
+  value: string | number | boolean | string[] | null,
+) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? [String(value)] : [];
+  }
+  if (typeof value === "boolean") {
+    return [value ? "true" : "false"];
+  }
+  return [];
+};
+
+const resolveWikilinkLabel = (wikilink: string) => {
+  const trimmed = wikilink.trim();
+  if (!trimmed.startsWith("[[") || !trimmed.endsWith("]]")) {
+    return trimmed;
+  }
+  const inner = trimmed.slice(2, -2).trim();
+  if (!inner) {
+    return trimmed;
+  }
+  const [targetRaw, aliasRaw] = inner.split("|");
+  const alias = aliasRaw?.trim();
+  if (alias) {
+    return alias;
+  }
+  return targetRaw?.trim() ?? trimmed;
+};
+
 type FrontmatterPropertiesPanelProps = {
   sourceMarkdown: string;
   properties: FrontmatterProperty[];
@@ -1758,6 +1875,9 @@ type FrontmatterPropertiesPanelProps = {
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
   onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
+  onNavigateWikilink?: (wikilink: string) => void;
+  valueSuggestionsByKey?: Record<string, string[]>;
+  keySuggestions?: string[];
 };
 
 const FrontmatterPropertiesPanel = ({
@@ -1767,22 +1887,63 @@ const FrontmatterPropertiesPanel = ({
   isCollapsed,
   onToggleCollapsed,
   onFrontmatterSave,
+  onNavigateWikilink,
+  valueSuggestionsByKey = {},
+  keySuggestions = [],
 }: FrontmatterPropertiesPanelProps) => {
+  const linksDocument = useMemo(
+    () => parseFrontmatterLinks(sourceMarkdown),
+    [sourceMarkdown],
+  );
+  const visibleProperties = useMemo(
+    () => properties.filter((property) => !isLinkPropertyKey(property.key)),
+    [properties],
+  );
   const initialDrafts = useMemo(() => {
     const next: Record<string, string> = {};
-    properties.forEach((property) => {
+    visibleProperties.forEach((property) => {
       next[property.key] = stringifyPropertyValue(property);
     });
     return next;
-  }, [properties]);
+  }, [visibleProperties]);
+  const initialSuggestionValues = useMemo(
+    () =>
+      mergeSuggestionRecords(
+        valueSuggestionsByKey,
+        collectFrontmatterValueSuggestions(visibleProperties),
+      ),
+    [valueSuggestionsByKey, visibleProperties],
+  );
+  const initialKeySuggestions = useMemo(
+    () => mergeSuggestionKeyLists(keySuggestions),
+    [keySuggestions],
+  );
   const [drafts, setDrafts] = useState<Record<string, string>>(initialDrafts);
+  const [suggestionValuesByKey, setSuggestionValuesByKey] = useState<Record<string, string[]>>(
+    initialSuggestionValues,
+  );
+  const [suggestionKeys, setSuggestionKeys] = useState<string[]>(
+    initialKeySuggestions,
+  );
   const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [panelError, setPanelError] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [linksInputDraft, setLinksInputDraft] = useState("");
   const [addKeyDraft, setAddKeyDraft] = useState("");
   const [addValueDraft, setAddValueDraft] = useState("");
   const [addError, setAddError] = useState("");
+  const [addEditorModes, setAddEditorModes] = useState<{
+    key: FrontmatterEditorMode;
+    value: FrontmatterEditorMode;
+  }>({
+    key: "idle",
+    value: "idle",
+  });
+  const [editorModes, setEditorModes] = useState<Record<string, FrontmatterEditorMode>>({});
+  const [openSuggestionsKey, setOpenSuggestionsKey] = useState<string | null>(null);
+  const [suggestionCursor, setSuggestionCursor] = useState<Record<string, number>>({});
+  const valueInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const addKeyInputRef = useRef<HTMLInputElement | null>(null);
   const addValueInputRef = useRef<HTMLInputElement | null>(null);
   const [dragPropertyKey, setDragPropertyKey] = useState<string | null>(null);
@@ -1790,9 +1951,17 @@ const FrontmatterPropertiesPanel = ({
     key: string;
     position: "before" | "after";
   } | null>(null);
+  const existingPropertyKeys = useMemo(
+    () => new Set(properties.map((property) => property.key.toLowerCase())),
+    [properties],
+  );
 
   useEffect(() => {
     setDrafts(initialDrafts);
+    setEditorModes({});
+    setAddEditorModes({ key: "idle", value: "idle" });
+    setOpenSuggestionsKey(null);
+    setSuggestionCursor({});
     setTagInputs({});
     setRowErrors({});
     setPanelError("");
@@ -1800,14 +1969,154 @@ const FrontmatterPropertiesPanel = ({
     setDropHint(null);
   }, [initialDrafts]);
 
+  useEffect(() => {
+    setSuggestionValuesByKey(initialSuggestionValues);
+  }, [initialSuggestionValues]);
+
+  useEffect(() => {
+    setSuggestionKeys(initialKeySuggestions);
+  }, [initialKeySuggestions]);
+
   const resetDraftsFromProperties = useCallback(() => {
     setDrafts(initialDrafts);
+    setEditorModes({});
+    setAddEditorModes({ key: "idle", value: "idle" });
+    setOpenSuggestionsKey(null);
+    setSuggestionCursor({});
     setTagInputs({});
     setRowErrors({});
   }, [initialDrafts]);
 
   const saveBusy = savingKey !== null;
   const controlsDisabled = !canEdit || !onFrontmatterSave || saveBusy;
+  const hasLinksRow =
+    linksDocument.links.length > 0 ||
+    properties.some((property) => isLinkPropertyKey(property.key));
+  const collapsedAttributeCount = visibleProperties.length + (hasLinksRow ? 1 : 0);
+
+  const updateSuggestionCache = useCallback((key: string, values: string[]) => {
+    if (values.length === 0) {
+      return;
+    }
+    setSuggestionValuesByKey((current) =>
+      mergeSuggestionRecords(current, { [key]: values }),
+    );
+  }, []);
+
+  const updateKeySuggestionCache = useCallback((keys: string[]) => {
+    if (keys.length === 0) {
+      return;
+    }
+    setSuggestionKeys((current) => mergeSuggestionKeyLists(current, keys));
+  }, []);
+
+  const resolveSuggestionsForKey = useCallback(
+    (key: string, rawInput: string) => {
+      const source = suggestionValuesByKey[key] ?? [];
+      if (source.length === 0) {
+        return [];
+      }
+      const query = rawInput.trim().toLowerCase();
+      if (!query) {
+        return source;
+      }
+      return source.filter((value) => value.toLowerCase().includes(query));
+    },
+    [suggestionValuesByKey],
+  );
+
+  const resolveValueSuggestionsForAddKey = useCallback(
+    (rawKey: string) => {
+      const key = rawKey.trim();
+      if (!key) {
+        return [];
+      }
+      if (suggestionValuesByKey[key]) {
+        return suggestionValuesByKey[key] ?? [];
+      }
+      const normalizedKey = key.toLowerCase();
+      const resolvedKey = Object.keys(suggestionValuesByKey).find(
+        (candidate) => candidate.toLowerCase() === normalizedKey,
+      );
+      if (!resolvedKey) {
+        return [];
+      }
+      return suggestionValuesByKey[resolvedKey] ?? [];
+    },
+    [suggestionValuesByKey],
+  );
+
+  const resolveAddKeySuggestions = useCallback(
+    (rawInput: string) => {
+      if (suggestionKeys.length === 0) {
+        return [];
+      }
+      const query = rawInput.trim().toLowerCase();
+      return suggestionKeys.filter((key) => {
+        const normalized = key.toLowerCase();
+        if (existingPropertyKeys.has(normalized)) {
+          return false;
+        }
+        if (!query) {
+          return true;
+        }
+        return normalized.includes(query);
+      });
+    },
+    [existingPropertyKeys, suggestionKeys],
+  );
+
+  const resolveAddValueSuggestions = useCallback(
+    ({
+      key,
+      rawInput,
+    }: {
+      key: string;
+      rawInput: string;
+    }) => {
+      const source = resolveValueSuggestionsForAddKey(key);
+      if (source.length === 0) {
+        return [];
+      }
+      const query = rawInput.trim().toLowerCase();
+      if (!query) {
+        return source;
+      }
+      return source.filter((value) => value.toLowerCase().includes(query));
+    },
+    [resolveValueSuggestionsForAddKey],
+  );
+
+  const activateEditor = useCallback((key: string) => {
+    setEditorModes((current) => ({
+      ...current,
+      [key]: current[key] === "editing" || current[key] === "committing" ? current[key] : "active",
+    }));
+  }, []);
+
+  const beginEditing = useCallback((key: string) => {
+    setEditorModes((current) => ({
+      ...current,
+      [key]: "editing",
+    }));
+  }, []);
+
+  const activateAddInput = useCallback((field: "key" | "value") => {
+    setAddEditorModes((current) => ({
+      ...current,
+      [field]:
+        current[field] === "editing" || current[field] === "committing"
+          ? current[field]
+          : "active",
+    }));
+  }, []);
+
+  const beginAddEditing = useCallback((field: "key" | "value") => {
+    setAddEditorModes((current) => ({
+      ...current,
+      [field]: "editing",
+    }));
+  }, []);
 
   const commitPropertyChange = useCallback(
     async ({
@@ -1818,9 +2127,9 @@ const FrontmatterPropertiesPanel = ({
       property: FrontmatterProperty;
       kind: FrontmatterPropertyKind;
       value: string | number | boolean | string[] | null;
-    }) => {
+    }): Promise<boolean> => {
       if (!onFrontmatterSave || !canEdit || saveBusy) {
-        return;
+        return false;
       }
       const updated = updateFrontmatterProperty({
         markdown: sourceMarkdown,
@@ -1831,7 +2140,7 @@ const FrontmatterPropertiesPanel = ({
       if (updated.error) {
         setPanelError(updated.error);
         resetDraftsFromProperties();
-        return;
+        return false;
       }
 
       setPanelError("");
@@ -1847,9 +2156,78 @@ const FrontmatterPropertiesPanel = ({
       if (!saved) {
         setPanelError("Eigenschaften konnten nicht gespeichert werden.");
         resetDraftsFromProperties();
+        return false;
       }
+      updateSuggestionCache(property.key, resolveSuggestionValuesFromCommitted(value));
+      return true;
     },
-    [canEdit, onFrontmatterSave, resetDraftsFromProperties, saveBusy, sourceMarkdown],
+    [
+      canEdit,
+      onFrontmatterSave,
+      resetDraftsFromProperties,
+      saveBusy,
+      sourceMarkdown,
+      updateSuggestionCache,
+    ],
+  );
+
+  const commitLinksChange = useCallback(
+    async (links: string[]) => {
+      if (controlsDisabled || !onFrontmatterSave) {
+        return false;
+      }
+      const updated = updateFrontmatterLinks({
+        markdown: sourceMarkdown,
+        links,
+      });
+      if (updated.error) {
+        setPanelError(updated.error);
+        return false;
+      }
+      setPanelError("");
+      setSavingKey("__links__");
+      let saved = false;
+      try {
+        saved = await onFrontmatterSave(updated.markdown);
+      } catch {
+        saved = false;
+      } finally {
+        setSavingKey(null);
+      }
+      if (!saved) {
+        setPanelError("Eigenschaften konnten nicht gespeichert werden.");
+      }
+      return saved;
+    },
+    [controlsDisabled, onFrontmatterSave, sourceMarkdown],
+  );
+
+  const handleAddLink = useCallback(async () => {
+    if (controlsDisabled) {
+      return;
+    }
+    const normalized = normalizeWikilinkValue(linksInputDraft);
+    if (!normalized) {
+      return;
+    }
+    if (linksDocument.links.includes(normalized)) {
+      setLinksInputDraft("");
+      return;
+    }
+    const saved = await commitLinksChange([...linksDocument.links, normalized]);
+    if (saved) {
+      setLinksInputDraft("");
+    }
+  }, [commitLinksChange, controlsDisabled, linksDocument.links, linksInputDraft]);
+
+  const handleRemoveLink = useCallback(
+    (link: string) => {
+      if (controlsDisabled) {
+        return;
+      }
+      void commitLinksChange(linksDocument.links.filter((item) => item !== link));
+    },
+    [commitLinksChange, controlsDisabled, linksDocument.links],
   );
 
   const handleAddProperty = useCallback(async () => {
@@ -1896,8 +2274,20 @@ const FrontmatterPropertiesPanel = ({
       setPanelError("Eigenschaften konnten nicht gespeichert werden.");
       return;
     }
+    updateKeySuggestionCache([nextKey]);
+    const normalizedValue = nextValue.trim();
+    if (normalizedValue) {
+      updateSuggestionCache(nextKey, [normalizedValue]);
+    }
     setAddKeyDraft("");
     setAddValueDraft("");
+    setAddEditorModes({ key: "idle", value: "idle" });
+    setOpenSuggestionsKey(null);
+    setSuggestionCursor((current) => ({
+      ...current,
+      [addKeySuggestionScope]: 0,
+      [addValueSuggestionScope]: 0,
+    }));
   }, [
     addKeyDraft,
     addValueDraft,
@@ -1907,6 +2297,8 @@ const FrontmatterPropertiesPanel = ({
     onFrontmatterSave,
     properties,
     sourceMarkdown,
+    updateKeySuggestionCache,
+    updateSuggestionCache,
   ]);
 
   const resolveDropPosition = useCallback(
@@ -1961,6 +2353,75 @@ const FrontmatterPropertiesPanel = ({
     [controlsDisabled, onFrontmatterSave, sourceMarkdown],
   );
 
+  const commitRemoveProperty = useCallback(
+    async (key: string) => {
+      if (controlsDisabled || !onFrontmatterSave) {
+        return false;
+      }
+      const updated = removeFrontmatterProperty({
+        markdown: sourceMarkdown,
+        key,
+      });
+      if (updated.error) {
+        setPanelError(updated.error);
+        return false;
+      }
+      setPanelError("");
+      setSavingKey(key);
+      let saved = false;
+      try {
+        saved = await onFrontmatterSave(updated.markdown);
+      } catch {
+        saved = false;
+      } finally {
+        setSavingKey(null);
+      }
+      if (!saved) {
+        setPanelError("Eigenschaften konnten nicht gespeichert werden.");
+      }
+      return saved;
+    },
+    [controlsDisabled, onFrontmatterSave, sourceMarkdown],
+  );
+
+  const isAddKeyEditing = addEditorModes.key === "editing";
+  const isAddValueEditing = addEditorModes.value === "editing";
+  const addKeySuggestions = resolveAddKeySuggestions(isAddKeyEditing ? addKeyDraft : "");
+  const selectedAddKey = (addKeyInputRef.current?.value ?? addKeyDraft).trim();
+  const addValueSuggestions = resolveAddValueSuggestions({
+    key: selectedAddKey,
+    rawInput: isAddValueEditing ? addValueDraft : "",
+  });
+  const isAddValueEnabled = selectedAddKey.length > 0;
+  const isAddKeyDropdownOpen =
+    openSuggestionsKey === addKeySuggestionScope &&
+    addKeySuggestions.length > 0 &&
+    !controlsDisabled;
+  const isAddValueDropdownOpen =
+    openSuggestionsKey === addValueSuggestionScope &&
+    addValueSuggestions.length > 0 &&
+    !controlsDisabled &&
+    isAddValueEnabled;
+  const addKeySuggestionListId = "frontmatter-add-key-suggestions";
+  const addValueSuggestionListId = "frontmatter-add-value-suggestions";
+  const safeAddKeySuggestionIndex = Math.max(
+    0,
+    Math.min(
+      suggestionCursor[addKeySuggestionScope] ?? 0,
+      Math.max(0, addKeySuggestions.length - 1),
+    ),
+  );
+  const safeAddValueSuggestionIndex = Math.max(
+    0,
+    Math.min(
+      suggestionCursor[addValueSuggestionScope] ?? 0,
+      Math.max(0, addValueSuggestions.length - 1),
+    ),
+  );
+  const activeAddKeySuggestion = addKeySuggestions[safeAddKeySuggestionIndex] ?? null;
+  const activeAddValueSuggestion =
+    addValueSuggestions[safeAddValueSuggestionIndex] ?? null;
+
   return (
     <section className="frontmatter-panel" aria-label="Eigenschaften">
       <div className="frontmatter-header">
@@ -1990,11 +2451,69 @@ const FrontmatterPropertiesPanel = ({
       {!isCollapsed ? (
         <>
           <div className="frontmatter-grid" role="table" aria-label="Frontmatter properties">
-            {properties.map((property) => {
+            {visibleProperties.map((property) => {
               const isRowSaving = savingKey === property.key;
               const rowDisabled = controlsDisabled || isRowSaving;
               const tags = Array.isArray(property.value) ? property.value : [];
               const rowError = rowErrors[property.key] ?? "";
+              const editorMode = editorModes[property.key] ?? "idle";
+              const isEditorEditing = editorMode === "editing";
+              const suggestions = resolveSuggestionsForKey(
+                property.key,
+                drafts[property.key] ?? "",
+              );
+              const suggestionListId = `frontmatter-suggestions-${property.key
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]+/g, "-")}`;
+              const safeSuggestionIndex = Math.max(
+                0,
+                Math.min(suggestionCursor[property.key] ?? 0, Math.max(0, suggestions.length - 1)),
+              );
+              const activeSuggestion = suggestions[safeSuggestionIndex] ?? null;
+              const isDropdownOpen = openSuggestionsKey === property.key &&
+                suggestions.length > 0 &&
+                !rowDisabled &&
+                isScalarEditableKind(property.kind);
+
+              const commitScalarDraft = async (rawInput: string) => {
+                if (property.kind === "number") {
+                  const value = rawInput.trim();
+                  if (!value) {
+                    setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                    return commitPropertyChange({
+                      property,
+                      kind: "number",
+                      value: null,
+                    });
+                  }
+                  const parsed = Number(value);
+                  if (!Number.isFinite(parsed)) {
+                    setRowErrors((current) => ({
+                      ...current,
+                      [property.key]: "Bitte eine gueltige Zahl eingeben.",
+                    }));
+                    return false;
+                  }
+                  setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                  return commitPropertyChange({
+                    property,
+                    kind: "number",
+                    value: parsed,
+                  });
+                }
+                const nextValue = property.kind === "link" || property.kind === "cover"
+                  ? normalizeWikilinkValue(rawInput)
+                  : rawInput;
+                setDrafts((current) => ({
+                  ...current,
+                  [property.key]: nextValue,
+                }));
+                return commitPropertyChange({
+                  property,
+                  kind: property.kind,
+                  value: nextValue.trim() === "" ? null : nextValue,
+                });
+              };
 
               const renderValueEditor = () => {
                 switch (property.kind) {
@@ -2016,60 +2535,6 @@ const FrontmatterPropertiesPanel = ({
                         />
                         <span className="slider" />
                       </label>
-                    );
-                  case "number":
-                    return (
-                      <div className="frontmatter-input-wrap">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="text-input frontmatter-input"
-                          placeholder="Kein Wert"
-                          aria-label={`${property.key} value`}
-                          value={drafts[property.key] ?? ""}
-                          disabled={rowDisabled}
-                          onChange={(event) => {
-                            const next = event.target.value;
-                            setDrafts((current) => ({ ...current, [property.key]: next }));
-                            if (rowErrors[property.key]) {
-                              setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                            }
-                          }}
-                          onBlur={() => {
-                            const value = (drafts[property.key] ?? "").trim();
-                            if (!value) {
-                              setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                              void commitPropertyChange({
-                                property,
-                                kind: "number",
-                                value: null,
-                              });
-                              return;
-                            }
-                            const parsed = Number(value);
-                            if (!Number.isFinite(parsed)) {
-                              setRowErrors((current) => ({
-                                ...current,
-                                [property.key]: "Bitte eine gueltige Zahl eingeben.",
-                              }));
-                              return;
-                            }
-                            setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                            void commitPropertyChange({
-                              property,
-                              kind: "number",
-                              value: parsed,
-                            });
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              event.currentTarget.blur();
-                            }
-                          }}
-                        />
-                        {rowError ? <span className="frontmatter-row-error">{rowError}</span> : null}
-                      </div>
                     );
                   case "tags":
                     return (
@@ -2135,46 +2600,252 @@ const FrontmatterPropertiesPanel = ({
                         />
                       </div>
                     );
+                  case "number":
                   case "link":
                   case "cover":
                   case "unknown":
                   case "text":
                   default:
                     return (
-                      <input
-                        type="text"
-                        className="text-input frontmatter-input"
-                        placeholder="Kein Wert"
-                        aria-label={`${property.key} value`}
-                        value={drafts[property.key] ?? ""}
-                        disabled={rowDisabled}
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          setDrafts((current) => ({ ...current, [property.key]: next }));
-                        }}
-                        onBlur={(event) => {
-                          const raw = event.currentTarget.value;
-                          const nextValue = property.kind === "link" ||
-                              property.kind === "cover"
-                            ? normalizeWikilinkValue(raw)
-                            : raw;
-                          setDrafts((current) => ({
-                            ...current,
-                            [property.key]: nextValue,
-                          }));
-                          void commitPropertyChange({
-                            property,
-                            kind: property.kind,
-                            value: nextValue.trim() === "" ? null : nextValue,
-                          });
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            event.currentTarget.blur();
-                          }
-                        }}
-                      />
+                      <div className="frontmatter-input-wrap">
+                        <input
+                          type="text"
+                          inputMode={property.kind === "number" ? "decimal" : undefined}
+                          className="text-input frontmatter-input"
+                          placeholder="Kein Wert"
+                          aria-label={`${property.key} value`}
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-expanded={isDropdownOpen}
+                          aria-controls={isDropdownOpen ? suggestionListId : undefined}
+                          value={drafts[property.key] ?? ""}
+                          readOnly={!isEditorEditing}
+                          disabled={rowDisabled}
+                          onChange={(event) => {
+                            if (!isEditorEditing) {
+                              return;
+                            }
+                            const next = event.target.value;
+                            setDrafts((current) => ({ ...current, [property.key]: next }));
+                            if (rowErrors[property.key]) {
+                              setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                            }
+                            setOpenSuggestionsKey(property.key);
+                            setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                          }}
+                          onFocus={() => {
+                            if (rowDisabled) {
+                              return;
+                            }
+                            activateEditor(property.key);
+                            setOpenSuggestionsKey(property.key);
+                            setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                          }}
+                          onClick={() => {
+                            if (rowDisabled) {
+                              return;
+                            }
+                            activateEditor(property.key);
+                            setOpenSuggestionsKey(property.key);
+                          }}
+                          onDoubleClick={() => {
+                            if (rowDisabled) {
+                              return;
+                            }
+                            beginEditing(property.key);
+                            setOpenSuggestionsKey(property.key);
+                          }}
+                          onBlur={(event) => {
+                            setOpenSuggestionsKey((current) =>
+                              current === property.key ? null : current
+                            );
+                            const mode = editorModes[property.key] ?? "idle";
+                            if (mode !== "editing") {
+                              setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
+                              setDrafts((current) => ({
+                                ...current,
+                                [property.key]: stringifyPropertyValue(property),
+                              }));
+                              return;
+                            }
+                            const raw = event.currentTarget.value;
+                            setEditorModes((current) => ({
+                              ...current,
+                              [property.key]: "committing",
+                            }));
+                            void (async () => {
+                              const saved = await commitScalarDraft(raw);
+                              setEditorModes((current) => ({
+                                ...current,
+                                [property.key]: saved ? "idle" : "editing",
+                              }));
+                            })();
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "F2") {
+                              event.preventDefault();
+                              beginEditing(property.key);
+                              setOpenSuggestionsKey(property.key);
+                              return;
+                            }
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              setOpenSuggestionsKey((current) =>
+                                current === property.key ? null : current
+                              );
+                              setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
+                              setDrafts((current) => ({
+                                ...current,
+                                [property.key]: stringifyPropertyValue(property),
+                              }));
+                              event.currentTarget.blur();
+                              return;
+                            }
+                            if (isDropdownOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+                              event.preventDefault();
+                              const offset = event.key === "ArrowDown" ? 1 : -1;
+                              setSuggestionCursor((current) => {
+                                const existing = current[property.key] ?? 0;
+                                const next = (existing + offset + suggestions.length) %
+                                  suggestions.length;
+                                return { ...current, [property.key]: next };
+                              });
+                              return;
+                            }
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              if (isDropdownOpen && activeSuggestion) {
+                                setDrafts((current) => ({
+                                  ...current,
+                                  [property.key]: activeSuggestion,
+                                }));
+                                setOpenSuggestionsKey(null);
+                                setEditorModes((current) => ({
+                                  ...current,
+                                  [property.key]: "committing",
+                                }));
+                                void (async () => {
+                                  const saved = await commitScalarDraft(activeSuggestion);
+                                  setEditorModes((current) => ({
+                                    ...current,
+                                    [property.key]: saved ? "idle" : "editing",
+                                  }));
+                                })();
+                                return;
+                              }
+                              if (!isEditorEditing && suggestions.length > 0) {
+                                const firstSuggestion = suggestions[0] ?? "";
+                                if (!firstSuggestion) {
+                                  return;
+                                }
+                                setDrafts((current) => ({
+                                  ...current,
+                                  [property.key]: firstSuggestion,
+                                }));
+                                setOpenSuggestionsKey(null);
+                                setEditorModes((current) => ({
+                                  ...current,
+                                  [property.key]: "committing",
+                                }));
+                                void (async () => {
+                                  const saved = await commitScalarDraft(firstSuggestion);
+                                  setEditorModes((current) => ({
+                                    ...current,
+                                    [property.key]: saved ? "idle" : "editing",
+                                  }));
+                                })();
+                                return;
+                              }
+                              event.currentTarget.blur();
+                              return;
+                            }
+                            if (event.key === "Tab") {
+                              setOpenSuggestionsKey((current) =>
+                                current === property.key ? null : current
+                              );
+                              return;
+                            }
+                            if (!isEditorEditing) {
+                              if (isPrintableCharacterKey(event)) {
+                                event.preventDefault();
+                                const nextValue = `${drafts[property.key] ?? ""}${event.key}`;
+                                setDrafts((current) => ({ ...current, [property.key]: nextValue }));
+                                beginEditing(property.key);
+                                setOpenSuggestionsKey(property.key);
+                                setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                                window.requestAnimationFrame(() => {
+                                  const input = valueInputRefs.current[property.key];
+                                  if (!input) {
+                                    return;
+                                  }
+                                  input.focus();
+                                  input.setSelectionRange(nextValue.length, nextValue.length);
+                                });
+                                return;
+                              }
+                              if (event.key === "Backspace" || event.key === "Delete") {
+                                event.preventDefault();
+                                const currentValue = drafts[property.key] ?? "";
+                                const nextValue = event.key === "Backspace"
+                                  ? currentValue.slice(0, -1)
+                                  : "";
+                                setDrafts((current) => ({ ...current, [property.key]: nextValue }));
+                                beginEditing(property.key);
+                                setOpenSuggestionsKey(property.key);
+                                setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                              }
+                            }
+                          }}
+                          ref={(element) => {
+                            valueInputRefs.current[property.key] = element;
+                          }}
+                        />
+                        {isDropdownOpen ? (
+                          <ul
+                            id={suggestionListId}
+                            className="frontmatter-suggestions"
+                            role="listbox"
+                            aria-label={`${property.key} Vorschlaege`}
+                          >
+                            {suggestions.map((suggestion, suggestionIndex) => (
+                              <li key={`${property.key}-${suggestion}`}>
+                                <button
+                                  type="button"
+                                  className={`frontmatter-suggestion-option ${
+                                    suggestionIndex === safeSuggestionIndex ? "active" : ""
+                                  }`}
+                                  role="option"
+                                  aria-selected={suggestionIndex === safeSuggestionIndex}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                  }}
+                                  onClick={() => {
+                                    setDrafts((current) => ({
+                                      ...current,
+                                      [property.key]: suggestion,
+                                    }));
+                                    setOpenSuggestionsKey(null);
+                                    setEditorModes((current) => ({
+                                      ...current,
+                                      [property.key]: "committing",
+                                    }));
+                                    void (async () => {
+                                      const saved = await commitScalarDraft(suggestion);
+                                      setEditorModes((current) => ({
+                                        ...current,
+                                        [property.key]: saved ? "idle" : "editing",
+                                      }));
+                                    })();
+                                  }}
+                                >
+                                  {suggestion}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {rowError ? <span className="frontmatter-row-error">{rowError}</span> : null}
+                      </div>
                     );
                 }
               };
@@ -2254,6 +2925,24 @@ const FrontmatterPropertiesPanel = ({
                       <FrontmatterPropertyIconView icon={property.icon} />
                     </span>
                     <span className="frontmatter-label">{property.key}</span>
+                    <button
+                      type="button"
+                      className="frontmatter-property-remove"
+                      disabled={rowDisabled}
+                      draggable={false}
+                      aria-label={`${property.key} entfernen`}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void commitRemoveProperty(property.key);
+                      }}
+                    >
+                      x
+                    </button>
                   </div>
                   <div className="frontmatter-value" role="cell">
                     {renderValueEditor()}
@@ -2261,47 +2950,478 @@ const FrontmatterPropertiesPanel = ({
                 </div>
               );
             })}
+            {hasLinksRow ? (
+              <div className="frontmatter-row frontmatter-links-row" role="row" data-frontmatter-key="__links__">
+                <div className="frontmatter-key" role="cell">
+                  <span className="frontmatter-icon" aria-hidden="true">
+                    <FrontmatterLinkIcon />
+                  </span>
+                  <span className="frontmatter-label">Links</span>
+                  <button
+                    type="button"
+                    className="frontmatter-property-remove"
+                    disabled={controlsDisabled}
+                    draggable={false}
+                    aria-label="Links entfernen"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void commitLinksChange([]);
+                    }}
+                  >
+                    x
+                  </button>
+                </div>
+                <div className="frontmatter-value" role="cell">
+                  <div className="frontmatter-links-editor">
+                    <input
+                      type="text"
+                      className="text-input frontmatter-input"
+                      placeholder="Link hinzufuegen ..."
+                      aria-label="Link hinzufuegen"
+                      value={linksInputDraft}
+                      disabled={controlsDisabled}
+                      onChange={(event) => {
+                        setLinksInputDraft(event.target.value);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void handleAddLink();
+                        }
+                      }}
+                    />
+                    <ul className="frontmatter-links-list">
+                      {linksDocument.links.map((link) => (
+                        <li key={link} className="frontmatter-links-item">
+                          <button
+                            type="button"
+                            className="frontmatter-inline-link"
+                            onClick={() => {
+                              onNavigateWikilink?.(link);
+                            }}
+                            title={extractWikilinkTarget(link) ?? link}
+                          >
+                            {resolveWikilinkLabel(link)}
+                          </button>
+                          <button
+                            type="button"
+                            className="frontmatter-link-remove"
+                            disabled={controlsDisabled}
+                            onClick={() => {
+                              handleRemoveLink(link);
+                            }}
+                            aria-label={`${link} entfernen`}
+                          >
+                            x
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
           <div className="frontmatter-add-row">
-            <input
-              ref={addKeyInputRef}
-              type="text"
-              className="text-input frontmatter-add-key"
-              placeholder="Neues Attribut"
-              aria-label="Neues Attribut"
-              value={addKeyDraft}
-              disabled={controlsDisabled}
-              onChange={(event) => {
-                setAddKeyDraft(event.target.value);
-                if (addError) {
-                  setAddError("");
-                }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void handleAddProperty();
-                }
-              }}
-            />
-            <input
-              ref={addValueInputRef}
-              type="text"
-              className="text-input frontmatter-add-value"
-              placeholder="Wert (optional)"
-              aria-label="Neuer Wert"
-              value={addValueDraft}
-              disabled={controlsDisabled}
-              onChange={(event) => {
-                setAddValueDraft(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void handleAddProperty();
-                }
-              }}
-            />
+            <div className="frontmatter-add-input-wrap">
+              <input
+                ref={addKeyInputRef}
+                type="text"
+                className="text-input frontmatter-add-key"
+                placeholder="Neues Attribut"
+                aria-label="Neues Attribut"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={isAddKeyDropdownOpen}
+                aria-controls={isAddKeyDropdownOpen ? addKeySuggestionListId : undefined}
+                value={addKeyDraft}
+                readOnly={!isAddKeyEditing}
+                disabled={controlsDisabled}
+                onChange={(event) => {
+                  if (!isAddKeyEditing) {
+                    return;
+                  }
+                  setAddKeyDraft(event.target.value);
+                  if (addError) {
+                    setAddError("");
+                  }
+                  setOpenSuggestionsKey(addKeySuggestionScope);
+                  setSuggestionCursor((current) => ({
+                    ...current,
+                    [addKeySuggestionScope]: 0,
+                  }));
+                }}
+                onFocus={() => {
+                  if (controlsDisabled) {
+                    return;
+                  }
+                  activateAddInput("key");
+                  setOpenSuggestionsKey(addKeySuggestionScope);
+                  setSuggestionCursor((current) => ({
+                    ...current,
+                    [addKeySuggestionScope]: 0,
+                  }));
+                }}
+                onClick={() => {
+                  if (controlsDisabled) {
+                    return;
+                  }
+                  activateAddInput("key");
+                  setOpenSuggestionsKey(addKeySuggestionScope);
+                }}
+                onDoubleClick={() => {
+                  if (controlsDisabled) {
+                    return;
+                  }
+                  beginAddEditing("key");
+                  setOpenSuggestionsKey(addKeySuggestionScope);
+                }}
+                onBlur={() => {
+                  setOpenSuggestionsKey((current) =>
+                    current === addKeySuggestionScope ? null : current
+                  );
+                  setAddEditorModes((current) => ({
+                    ...current,
+                    key: "idle",
+                  }));
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "F2") {
+                    event.preventDefault();
+                    beginAddEditing("key");
+                    setOpenSuggestionsKey(addKeySuggestionScope);
+                    return;
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setOpenSuggestionsKey((current) =>
+                      current === addKeySuggestionScope ? null : current
+                    );
+                    setAddEditorModes((current) => ({
+                      ...current,
+                      key: "idle",
+                    }));
+                    event.currentTarget.blur();
+                    return;
+                  }
+                  if (
+                    isAddKeyDropdownOpen &&
+                    (event.key === "ArrowDown" || event.key === "ArrowUp")
+                  ) {
+                    event.preventDefault();
+                    const offset = event.key === "ArrowDown" ? 1 : -1;
+                    setSuggestionCursor((current) => {
+                      const existing = current[addKeySuggestionScope] ?? 0;
+                      const next =
+                        (existing + offset + addKeySuggestions.length) %
+                        addKeySuggestions.length;
+                      return { ...current, [addKeySuggestionScope]: next };
+                    });
+                    return;
+                  }
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (isAddKeyDropdownOpen && activeAddKeySuggestion) {
+                      setAddKeyDraft(activeAddKeySuggestion);
+                      setOpenSuggestionsKey(null);
+                      setAddEditorModes((current) => ({
+                        ...current,
+                        key: "active",
+                      }));
+                      if (addError) {
+                        setAddError("");
+                      }
+                      window.requestAnimationFrame(() => {
+                        addValueInputRef.current?.focus();
+                      });
+                      return;
+                    }
+                    window.requestAnimationFrame(() => {
+                      addValueInputRef.current?.focus();
+                    });
+                    return;
+                  }
+                  if (event.key === "Tab") {
+                    setOpenSuggestionsKey((current) =>
+                      current === addKeySuggestionScope ? null : current
+                    );
+                    return;
+                  }
+                  if (!isAddKeyEditing) {
+                    if (isPrintableCharacterKey(event)) {
+                      event.preventDefault();
+                      const nextValue = `${addKeyDraft}${event.key}`;
+                      setAddKeyDraft(nextValue);
+                      beginAddEditing("key");
+                      setOpenSuggestionsKey(addKeySuggestionScope);
+                      setSuggestionCursor((current) => ({
+                        ...current,
+                        [addKeySuggestionScope]: 0,
+                      }));
+                      if (addError) {
+                        setAddError("");
+                      }
+                      window.requestAnimationFrame(() => {
+                        const input = addKeyInputRef.current;
+                        if (!input) {
+                          return;
+                        }
+                        input.focus();
+                        input.setSelectionRange(nextValue.length, nextValue.length);
+                      });
+                      return;
+                    }
+                    if (event.key === "Backspace" || event.key === "Delete") {
+                      event.preventDefault();
+                      const nextValue =
+                        event.key === "Backspace" ? addKeyDraft.slice(0, -1) : "";
+                      setAddKeyDraft(nextValue);
+                      beginAddEditing("key");
+                      setOpenSuggestionsKey(addKeySuggestionScope);
+                      setSuggestionCursor((current) => ({
+                        ...current,
+                        [addKeySuggestionScope]: 0,
+                      }));
+                      if (addError) {
+                        setAddError("");
+                      }
+                    }
+                  }
+                }}
+              />
+              {isAddKeyDropdownOpen ? (
+                <ul
+                  id={addKeySuggestionListId}
+                  className="frontmatter-suggestions"
+                  role="listbox"
+                  aria-label="Attribut Vorschlaege"
+                >
+                  {addKeySuggestions.map((suggestion, suggestionIndex) => (
+                    <li key={`add-key-${suggestion}`}>
+                      <button
+                        type="button"
+                        className={`frontmatter-suggestion-option ${
+                          suggestionIndex === safeAddKeySuggestionIndex ? "active" : ""
+                        }`}
+                        role="option"
+                        aria-selected={suggestionIndex === safeAddKeySuggestionIndex}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                        }}
+                        onClick={() => {
+                          setAddKeyDraft(suggestion);
+                          setOpenSuggestionsKey(null);
+                          setAddEditorModes((current) => ({
+                            ...current,
+                            key: "active",
+                          }));
+                          if (addError) {
+                            setAddError("");
+                          }
+                          window.requestAnimationFrame(() => {
+                            addValueInputRef.current?.focus();
+                          });
+                        }}
+                      >
+                        {suggestion}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <div className="frontmatter-add-input-wrap">
+              <input
+                ref={addValueInputRef}
+                type="text"
+                className="text-input frontmatter-add-value"
+                placeholder="Wert (optional)"
+                aria-label="Neuer Wert"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={isAddValueDropdownOpen}
+                aria-controls={isAddValueDropdownOpen ? addValueSuggestionListId : undefined}
+                value={addValueDraft}
+                readOnly={!isAddValueEditing}
+                disabled={controlsDisabled}
+                onChange={(event) => {
+                  if (!isAddValueEditing) {
+                    return;
+                  }
+                  setAddValueDraft(event.target.value);
+                  setOpenSuggestionsKey(addValueSuggestionScope);
+                  setSuggestionCursor((current) => ({
+                    ...current,
+                    [addValueSuggestionScope]: 0,
+                  }));
+                }}
+                onFocus={() => {
+                  if (controlsDisabled || !isAddValueEnabled) {
+                    return;
+                  }
+                  activateAddInput("value");
+                  setOpenSuggestionsKey(addValueSuggestionScope);
+                  setSuggestionCursor((current) => ({
+                    ...current,
+                    [addValueSuggestionScope]: 0,
+                  }));
+                }}
+                onClick={() => {
+                  if (controlsDisabled || !isAddValueEnabled) {
+                    return;
+                  }
+                  activateAddInput("value");
+                  setOpenSuggestionsKey(addValueSuggestionScope);
+                }}
+                onDoubleClick={() => {
+                  if (controlsDisabled || !isAddValueEnabled) {
+                    return;
+                  }
+                  beginAddEditing("value");
+                  setOpenSuggestionsKey(addValueSuggestionScope);
+                }}
+                onBlur={() => {
+                  setOpenSuggestionsKey((current) =>
+                    current === addValueSuggestionScope ? null : current
+                  );
+                  setAddEditorModes((current) => ({
+                    ...current,
+                    value: "idle",
+                  }));
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "F2" && isAddValueEnabled) {
+                    event.preventDefault();
+                    beginAddEditing("value");
+                    setOpenSuggestionsKey(addValueSuggestionScope);
+                    return;
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setOpenSuggestionsKey((current) =>
+                      current === addValueSuggestionScope ? null : current
+                    );
+                    setAddEditorModes((current) => ({
+                      ...current,
+                      value: "idle",
+                    }));
+                    event.currentTarget.blur();
+                    return;
+                  }
+                  if (
+                    isAddValueDropdownOpen &&
+                    (event.key === "ArrowDown" || event.key === "ArrowUp")
+                  ) {
+                    event.preventDefault();
+                    const offset = event.key === "ArrowDown" ? 1 : -1;
+                    setSuggestionCursor((current) => {
+                      const existing = current[addValueSuggestionScope] ?? 0;
+                      const next =
+                        (existing + offset + addValueSuggestions.length) %
+                        addValueSuggestions.length;
+                      return { ...current, [addValueSuggestionScope]: next };
+                    });
+                    return;
+                  }
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (isAddValueDropdownOpen && activeAddValueSuggestion) {
+                      setAddValueDraft(activeAddValueSuggestion);
+                      setOpenSuggestionsKey(null);
+                      setAddEditorModes((current) => ({
+                        ...current,
+                        value: "active",
+                      }));
+                      return;
+                    }
+                    void handleAddProperty();
+                    return;
+                  }
+                  if (event.key === "Tab") {
+                    setOpenSuggestionsKey((current) =>
+                      current === addValueSuggestionScope ? null : current
+                    );
+                    return;
+                  }
+                  if (!isAddValueEnabled) {
+                    return;
+                  }
+                  if (!isAddValueEditing) {
+                    if (isPrintableCharacterKey(event)) {
+                      event.preventDefault();
+                      const nextValue = `${addValueDraft}${event.key}`;
+                      setAddValueDraft(nextValue);
+                      beginAddEditing("value");
+                      setOpenSuggestionsKey(addValueSuggestionScope);
+                      setSuggestionCursor((current) => ({
+                        ...current,
+                        [addValueSuggestionScope]: 0,
+                      }));
+                      window.requestAnimationFrame(() => {
+                        const input = addValueInputRef.current;
+                        if (!input) {
+                          return;
+                        }
+                        input.focus();
+                        input.setSelectionRange(nextValue.length, nextValue.length);
+                      });
+                      return;
+                    }
+                    if (event.key === "Backspace" || event.key === "Delete") {
+                      event.preventDefault();
+                      const nextValue =
+                        event.key === "Backspace" ? addValueDraft.slice(0, -1) : "";
+                      setAddValueDraft(nextValue);
+                      beginAddEditing("value");
+                      setOpenSuggestionsKey(addValueSuggestionScope);
+                      setSuggestionCursor((current) => ({
+                        ...current,
+                        [addValueSuggestionScope]: 0,
+                      }));
+                    }
+                  }
+                }}
+              />
+              {isAddValueDropdownOpen ? (
+                <ul
+                  id={addValueSuggestionListId}
+                  className="frontmatter-suggestions"
+                  role="listbox"
+                  aria-label="Wert Vorschlaege"
+                >
+                  {addValueSuggestions.map((suggestion, suggestionIndex) => (
+                    <li key={`add-value-${selectedAddKey}-${suggestion}`}>
+                      <button
+                        type="button"
+                        className={`frontmatter-suggestion-option ${
+                          suggestionIndex === safeAddValueSuggestionIndex ? "active" : ""
+                        }`}
+                        role="option"
+                        aria-selected={suggestionIndex === safeAddValueSuggestionIndex}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                        }}
+                        onClick={() => {
+                          setAddValueDraft(suggestion);
+                          setOpenSuggestionsKey(null);
+                          setAddEditorModes((current) => ({
+                            ...current,
+                            value: "active",
+                          }));
+                        }}
+                      >
+                        {suggestion}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
             <button
               type="button"
               className="ghost small frontmatter-add-button"
@@ -2317,7 +3437,7 @@ const FrontmatterPropertiesPanel = ({
         </>
       ) : (
         <p className="frontmatter-collapsed-hint">
-          {properties.length} Attribute
+          {collapsedAttributeCount} Attribute
         </p>
       )}
       {panelError ? <div className="error frontmatter-error">{panelError}</div> : null}
@@ -2345,6 +3465,9 @@ export const PreviewPanel = ({
   onEditStart,
   onToggleRawPreview,
   onFrontmatterSave,
+  onNavigateWikilink,
+  valueSuggestionsByKey,
+  keySuggestions,
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const markdownViewRef = useRef<HTMLDivElement | null>(null);
@@ -2897,6 +4020,9 @@ export const PreviewPanel = ({
                       isCollapsed={isFrontmatterPanelCollapsed}
                       onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                       onFrontmatterSave={onFrontmatterSave}
+                      onNavigateWikilink={onNavigateWikilink}
+                      valueSuggestionsByKey={valueSuggestionsByKey}
+                      keySuggestions={keySuggestions}
                     />
                   ) : null}
                   <div
@@ -2936,6 +4062,9 @@ export const PreviewPanel = ({
                         isCollapsed={isFrontmatterPanelCollapsed}
                         onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                         onFrontmatterSave={onFrontmatterSave}
+                        onNavigateWikilink={onNavigateWikilink}
+                        valueSuggestionsByKey={valueSuggestionsByKey}
+                        keySuggestions={keySuggestions}
                       />
                     ) : null}
                     <div ref={markdownViewRef}>

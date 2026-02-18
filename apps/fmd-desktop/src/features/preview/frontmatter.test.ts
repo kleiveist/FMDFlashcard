@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
   addFrontmatterProperty,
+  buildFrontmatterKeySuggestionList,
+  buildFrontmatterSuggestionIndex,
+  buildFrontmatterValueSuggestionMap,
+  buildFrontmatterValueSuggestionMapFromIndex,
+  collectFrontmatterValueSuggestions,
   composeMarkdownWithBody,
+  extractWikilinkTarget,
+  isLinkPropertyKey,
   normalizeWikilinkValue,
   parseFrontmatterDocument,
+  parseFrontmatterLinks,
+  removeFrontmatterProperty,
   reorderFrontmatterProperties,
+  updateFrontmatterLinks,
   updateFrontmatterProperty,
 } from "./frontmatter";
 
@@ -95,6 +105,25 @@ describe("parseFrontmatterDocument", () => {
       "link",
     );
   });
+
+  it("accepts loose wikilink lines and keeps normal properties visible", () => {
+    const source = [
+      "---",
+      "title: Demo",
+      "[[IDBS01-TestL6]]",
+      "rank: SE1",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const parsed = parseFrontmatterDocument(source);
+
+    expect(parsed.error).toBeNull();
+    expect(parsed.properties.map((property) => property.key)).toEqual([
+      "title",
+      "rank",
+    ]);
+  });
 });
 
 describe("composeMarkdownWithBody", () => {
@@ -157,6 +186,30 @@ describe("updateFrontmatterProperty", () => {
     expect(updatedTags.markdown).toContain("tags:\n  - one\n  - two");
     expect(clearedTitle.error).toBeNull();
     expect(clearedTitle.markdown).toContain("title: null");
+  });
+});
+
+describe("removeFrontmatterProperty", () => {
+  it("removes a key while keeping body unchanged", () => {
+    const source = [
+      "---",
+      "title: Demo",
+      "rank: SE1",
+      "section: IUFS",
+      "---",
+      "Body line",
+    ].join("\n");
+
+    const updated = removeFrontmatterProperty({
+      markdown: source,
+      key: "rank",
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toContain("title: Demo");
+    expect(updated.markdown).toContain("section: IUFS");
+    expect(updated.markdown).not.toContain("rank: SE1");
+    expect(updated.markdown).toContain("---\nBody line");
   });
 });
 
@@ -232,5 +285,176 @@ describe("normalizeWikilinkValue", () => {
     expect(normalizeWikilinkValue("[[Already/Linked]]")).toBe(
       "[[Already/Linked]]",
     );
+  });
+});
+
+describe("wikilink helpers", () => {
+  it("extracts wikilink targets", () => {
+    expect(extractWikilinkTarget("[[Folder/Note|Alias]]")).toBe("Folder/Note");
+    expect(extractWikilinkTarget("plain")).toBeNull();
+  });
+
+  it("recognizes link property keys", () => {
+    expect(isLinkPropertyKey("link1")).toBe(true);
+    expect(isLinkPropertyKey("links")).toBe(true);
+    expect(isLinkPropertyKey("Section")).toBe(false);
+  });
+});
+
+describe("parseFrontmatterLinks", () => {
+  it("collects links from link keys and loose wikilink lines", () => {
+    const source = [
+      "---",
+      "link1: [[IDBS01-TestL5]]",
+      "[[IDBS01-TestL6]]",
+      "link2: [[IDBS01-TestL7]]",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const parsed = parseFrontmatterLinks(source);
+
+    expect(parsed.error).toBeNull();
+    expect(parsed.layout).toBe("link-keys");
+    expect(parsed.links).toEqual([
+      "[[IDBS01-TestL5]]",
+      "[[IDBS01-TestL6]]",
+      "[[IDBS01-TestL7]]",
+    ]);
+  });
+});
+
+describe("updateFrontmatterLinks", () => {
+  it("keeps link key format when linkN keys already exist", () => {
+    const source = [
+      "---",
+      "title: Demo",
+      "link1: [[IDBS01-TestL5]]",
+      "link2: [[IDBS01-TestL6]]",
+      "rank: SE1",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const updated = updateFrontmatterLinks({
+      markdown: source,
+      links: ["[[IDBS01-TestL7]]", "IDBS01-TestL8", "[[IDBS01-TestL7]]"],
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toContain("link1: [[IDBS01-TestL7]]");
+    expect(updated.markdown).toContain("link2: [[IDBS01-TestL8]]");
+    expect(updated.markdown).not.toContain("links:");
+    expect(updated.markdown).toContain("---\nBody");
+  });
+
+  it("keeps links array format when links array is already used", () => {
+    const source = [
+      "---",
+      "title: Demo",
+      "links:",
+      "  - [[IDBS01-TestL1]]",
+      "  - [[IDBS01-TestL2]]",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const updated = updateFrontmatterLinks({
+      markdown: source,
+      links: ["IDBS01-TestL3"],
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toContain("links:\n  - [[IDBS01-TestL3]]");
+    expect(updated.markdown).not.toContain("link1:");
+  });
+
+  it("removes all link fields when the links list is empty", () => {
+    const source = [
+      "---",
+      "title: Demo",
+      "link1: [[IDBS01-TestL1]]",
+      "link2: [[IDBS01-TestL2]]",
+      "rank: SE1",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const updated = updateFrontmatterLinks({
+      markdown: source,
+      links: [],
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toContain("title: Demo");
+    expect(updated.markdown).toContain("rank: SE1");
+    expect(updated.markdown).not.toContain("link1:");
+    expect(updated.markdown).not.toContain("link2:");
+    expect(updated.markdown).toContain("---\nBody");
+  });
+});
+
+describe("frontmatter value suggestions", () => {
+  it("collects values by exact key without mixing", () => {
+    const suggestions = collectFrontmatterValueSuggestions([
+      { key: "Section", kind: "text", value: "IUFS", icon: "text" },
+      { key: "Section", kind: "text", value: "DBA", icon: "text" },
+      { key: "Rank", kind: "text", value: "SE1", icon: "text" },
+      { key: "Rank", kind: "number", value: 2, icon: "number" },
+      { key: "tags", kind: "tags", value: ["a", "b"], icon: "tags" },
+    ]);
+
+    expect(suggestions.Section).toEqual(["DBA", "IUFS"]);
+    expect(suggestions.Rank).toEqual(["2", "SE1"]);
+    expect(suggestions.tags).toBeUndefined();
+  });
+
+  it("builds a key-based value map from markdown documents", () => {
+    const suggestions = buildFrontmatterValueSuggestionMap([
+      ["---", "Section: IUFS", "Rank: 2", "---", "Body"].join("\n"),
+      ["---", "Section: DBA", "Rank: 10", "---", "Body"].join("\n"),
+      "No frontmatter",
+    ]);
+
+    expect(suggestions.Section).toEqual(["DBA", "IUFS"]);
+    expect(suggestions.Rank).toEqual(["2", "10"]);
+  });
+});
+
+describe("frontmatter suggestion index", () => {
+  it("builds key and value counts across markdown documents", () => {
+    const index = buildFrontmatterSuggestionIndex([
+      ["---", "Section: IUFS", "Rank: SE1", "tags:", "  - alpha", "---", "Body"].join(
+        "\n",
+      ),
+      ["---", "Section: IUFS", "Rank: SE2", "---", "Body"].join("\n"),
+      ["---", "Rank: SE2", "---", "Body"].join("\n"),
+    ]);
+
+    expect(index.keyIndex.Section).toBe(2);
+    expect(index.keyIndex.Rank).toBe(3);
+    expect(index.keyIndex.tags).toBe(1);
+    expect(index.valueIndex.Section?.IUFS).toBe(2);
+    expect(index.valueIndex.Rank?.SE2).toBe(2);
+  });
+
+  it("sorts key suggestions by frequency desc and then alphabetically", () => {
+    const keys = buildFrontmatterKeySuggestionList([
+      ["---", "Rank: SE1", "Section: IUFS", "---", "Body"].join("\n"),
+      ["---", "Rank: SE2", "---", "Body"].join("\n"),
+      ["---", "Cover: [[img.png]]", "---", "Body"].join("\n"),
+    ]);
+
+    expect(keys).toEqual(["Rank", "Cover", "Section"]);
+  });
+
+  it("builds value map from index with numeric sort and count ordering", () => {
+    const map = buildFrontmatterValueSuggestionMapFromIndex({
+      Rank: { "10": 1, "2": 4 },
+      Section: { IUFS: 3, DBA: 1, ACA: 1 },
+    });
+
+    expect(map.Rank).toEqual(["2", "10"]);
+    expect(map.Section).toEqual(["IUFS", "ACA", "DBA"]);
   });
 });
