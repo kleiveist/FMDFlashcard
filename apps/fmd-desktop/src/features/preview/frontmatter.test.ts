@@ -252,7 +252,7 @@ describe("addFrontmatterProperty", () => {
     });
 
     expect(updated.error).toBeNull();
-    expect(updated.markdown).toContain("link1: [[IDBS01-TestL7]]");
+    expect(updated.markdown).toContain("link1: '[[IDBS01-TestL7]]'");
   });
 
   it("validates number-typed properties", () => {
@@ -294,7 +294,7 @@ describe("addFrontmatterProperty", () => {
 
     expect(invalid.error).toContain("Cover erwartet Bild-Link");
     expect(valid.error).toBeNull();
-    expect(valid.markdown).toContain("Cover: [[IDBS01KS-01-01.png]]");
+    expect(valid.markdown).toContain("Cover: '[[IDBS01KS-01-01.png]]'");
   });
 
   it("keeps text-typed numeric values as text", () => {
@@ -426,8 +426,8 @@ describe("updateFrontmatterLinks", () => {
     });
 
     expect(updated.error).toBeNull();
-    expect(updated.markdown).toContain("link1: [[IDBS01-TestL7]]");
-    expect(updated.markdown).toContain("link2: [[IDBS01-TestL8]]");
+    expect(updated.markdown).toContain("link1: '[[IDBS01-TestL7]]'");
+    expect(updated.markdown).toContain("link2: '[[IDBS01-TestL8]]'");
     expect(updated.markdown).not.toContain("links:");
     expect(updated.markdown).toContain("---\nBody");
   });
@@ -449,7 +449,7 @@ describe("updateFrontmatterLinks", () => {
     });
 
     expect(updated.error).toBeNull();
-    expect(updated.markdown).toContain("links:\n  - [[IDBS01-TestL3]]");
+    expect(updated.markdown).toContain("links:\n  - '[[IDBS01-TestL3]]'");
     expect(updated.markdown).not.toContain("link1:");
   });
 

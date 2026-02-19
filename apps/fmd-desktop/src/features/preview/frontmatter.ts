@@ -547,7 +547,8 @@ const shouldKeepAsPlainString = (value: string) => {
     return false;
   }
   if (isWikilink(value)) {
-    return true;
+    // Keep wikilinks quoted in YAML to force string semantics.
+    return false;
   }
   if (value.trim() !== value) {
     return false;

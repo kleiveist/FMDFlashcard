@@ -809,8 +809,8 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
     const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
-    expect(nextMarkdown).toContain("link1: [[IDBS01-TestL5]]");
-    expect(nextMarkdown).toContain("link2: [[IDBS01-TestL7]]");
+    expect(nextMarkdown).toContain("link1: '[[IDBS01-TestL5]]'");
+    expect(nextMarkdown).toContain("link2: '[[IDBS01-TestL7]]'");
   });
 
   it("navigates and removes links from the links section", async () => {
@@ -853,7 +853,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
     const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
-    expect(nextMarkdown).toContain("link1: [[IDBS01-TestL6]]");
+    expect(nextMarkdown).toContain("link1: '[[IDBS01-TestL6]]'");
     expect(nextMarkdown).not.toContain("IDBS01-TestL5");
   });
 
@@ -1492,7 +1492,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     expect(onFrontmatterSave).toHaveBeenCalledTimes(1);
     const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
-    expect(nextMarkdown).toContain("links: [[IDBS01-TestL7]]");
+    expect(nextMarkdown).toContain("links: '[[IDBS01-TestL7]]'");
   });
 
   it("auto-fills and locks key name for links and tags types", async () => {
