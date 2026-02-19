@@ -23,6 +23,15 @@ export type VaultFile = {
   relative_path: string;
 };
 
+export type VaultPngAsset = {
+  path: string;
+  relative_path: string;
+  file_name: string;
+  extension: "png";
+  size_bytes?: number | null;
+  last_modified?: number | null;
+};
+
 export type TreeNode = {
   name: string;
   path: string;

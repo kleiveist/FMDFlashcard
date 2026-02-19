@@ -342,6 +342,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     restoreSnapshot: restoreVaultSnapshot,
     listState,
     setFiles,
+    setPngAssets,
     setListError,
     setLastRefreshAt,
     setListState,
@@ -1158,6 +1159,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setLargeVaultWarningCount(null);
     setSelectedExamFilePaths([]);
     setFiles([]);
+    setPngAssets([]);
     setListError("");
     setListState("idle");
     setLastRefreshAt(null);
@@ -1174,6 +1176,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setSelectedExamFilePaths,
     setListError,
     setListState,
+    setPngAssets,
     setVaultPath,
     vaultPath,
   ]);

@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Component, Path, PathBuf},
+    time::UNIX_EPOCH,
 };
 
 use tauri::Manager;
@@ -14,8 +15,19 @@ struct VaultFile {
 }
 
 #[derive(serde::Serialize)]
+struct VaultPngAsset {
+    path: String,
+    relative_path: String,
+    file_name: String,
+    extension: String,
+    size_bytes: Option<u64>,
+    last_modified: Option<u64>,
+}
+
+#[derive(serde::Serialize)]
 struct VaultScanResults {
     files: Vec<VaultFile>,
+    png_assets: Vec<VaultPngAsset>,
     folders: Vec<String>,
 }
 
@@ -279,6 +291,13 @@ fn is_markdown(path: &Path) -> bool {
                 || ext.eq_ignore_ascii_case("markdown")
                 || ext.eq_ignore_ascii_case("mdx")
         }
+        None => false,
+    }
+}
+
+fn is_png(path: &Path) -> bool {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some(ext) => ext.eq_ignore_ascii_case("png"),
         None => false,
     }
 }
@@ -663,6 +682,7 @@ fn list_vault_entries(
     }
 
     let mut files = Vec::new();
+    let mut png_assets = Vec::new();
     let mut folders = Vec::new();
     let include_hidden = show_hidden_folders.unwrap_or(false);
     for entry in WalkDir::new(&root)
@@ -679,7 +699,7 @@ fn list_vault_entries(
                 continue;
             }
             let relative = path.strip_prefix(&root).unwrap_or(path);
-            let relative = relative.to_string_lossy().to_string();
+            let relative = format_relative_path(relative);
             if !relative.is_empty() {
                 folders.push(relative);
             }
@@ -689,14 +709,47 @@ fn list_vault_entries(
             let relative = path.strip_prefix(&root).unwrap_or(path);
             files.push(VaultFile {
                 path: path.to_string_lossy().to_string(),
-                relative_path: relative.to_string_lossy().to_string(),
+                relative_path: format_relative_path(relative),
+            });
+            continue;
+        }
+        if entry.file_type().is_file() && is_png(path) {
+            let relative = path.strip_prefix(&root).unwrap_or(path);
+            let metadata = entry.metadata().ok();
+            let size_bytes = metadata.as_ref().map(|value| value.len());
+            let last_modified = metadata
+                .and_then(|value| value.modified().ok())
+                .and_then(|value| value.duration_since(UNIX_EPOCH).ok())
+                .and_then(|value| {
+                    let millis = value.as_millis();
+                    if millis > u64::MAX as u128 {
+                        return None;
+                    }
+                    Some(millis as u64)
+                });
+            let file_name = path
+                .file_name()
+                .map(|value| value.to_string_lossy().to_string())
+                .unwrap_or_else(|| format_relative_path(relative));
+            png_assets.push(VaultPngAsset {
+                path: path.to_string_lossy().to_string(),
+                relative_path: format_relative_path(relative),
+                file_name,
+                extension: "png".to_string(),
+                size_bytes,
+                last_modified,
             });
         }
     }
 
     files.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
+    png_assets.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
     folders.sort();
-    Ok(VaultScanResults { files, folders })
+    Ok(VaultScanResults {
+        files,
+        png_assets,
+        folders,
+    })
 }
 
 #[tauri::command]
@@ -728,7 +781,7 @@ fn list_markdown_files(
                 let relative = path.strip_prefix(&root).unwrap_or(path);
                 files.push(VaultFile {
                     path: path.to_string_lossy().to_string(),
-                    relative_path: relative.to_string_lossy().to_string(),
+                    relative_path: format_relative_path(relative),
                 });
             }
         }

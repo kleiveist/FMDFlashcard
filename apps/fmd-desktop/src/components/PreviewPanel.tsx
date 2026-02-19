@@ -55,8 +55,10 @@ import {
   updateFrontmatterLinks,
   updateFrontmatterProperty,
 } from "../features/preview/frontmatter";
+import { normalizeRelativePath } from "../lib/path";
+import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
 import { type LoadState } from "../lib/types";
-import { type VaultFile } from "../lib/tree";
+import { type VaultFile, type VaultPngAsset } from "../lib/tree";
 import { ChevronDownIcon, CodeIcon, MarkdownIcon } from "./icons";
 
 const markdownSchema = {
@@ -295,6 +297,10 @@ type PreviewPanelProps = {
   rawPreview: boolean;
   markdownViewEditEnabled: boolean;
   selectedFile: VaultFile | null;
+  vaultFiles?: VaultFile[];
+  vaultPngAssets?: VaultPngAsset[];
+  vaultPath?: string | null;
+  sourceRelativePath?: string | null;
   canEdit: boolean;
   markdownEditorStyle?: CSSProperties;
   onEditChange: (value: string) => void;
@@ -2105,6 +2111,9 @@ const resolveAutoAddKeyForType = (kind: FrontmatterAddPropertyType) => {
   if (kind === "tags") {
     return "tags";
   }
+  if (kind === "cover") {
+    return "Cover";
+  }
   return null;
 };
 
@@ -2113,7 +2122,33 @@ const isReservedTextSuggestionKey = (key: string) => {
   return isLinkPropertyKey(key) || normalized === "tags" || normalized === "tag";
 };
 
+const COVER_KEY_NAMES = new Set(["cover", "image", "thumbnail"]);
+
+const isCoverKeyName = (key: string) => COVER_KEY_NAMES.has(key.trim().toLowerCase());
+
+const resolveRelativePathCandidates = (
+  target: string,
+  sourceRelativePath?: string | null,
+) => {
+  const normalizedTarget = normalizeRelativePath(target).replace(/^\/+/, "");
+  if (!normalizedTarget) {
+    return [] as string[];
+  }
+  const candidates = new Set<string>();
+  candidates.add(normalizedTarget);
+  if (!normalizedTarget.includes("/") && sourceRelativePath) {
+    const sourceNormalized = normalizeRelativePath(sourceRelativePath);
+    const sourceSegments = sourceNormalized.split("/").filter(Boolean);
+    sourceSegments.pop();
+    if (sourceSegments.length > 0) {
+      candidates.add([...sourceSegments, normalizedTarget].join("/"));
+    }
+  }
+  return Array.from(candidates);
+};
+
 const imageSuggestionExtensionPattern = /\.(png|jpe?g|webp|gif|svg)$/i;
+const coverPickerExtensionPattern = /\.png$/i;
 
 const isImageSuggestionValue = (value: string) => {
   const normalized = normalizeWikilinkValue(value);
@@ -2192,6 +2227,10 @@ const resolveWikilinkLabel = (wikilink: string) => {
 type FrontmatterPropertiesPanelProps = {
   sourceMarkdown: string;
   properties: FrontmatterProperty[];
+  sourceRelativePath?: string | null;
+  vaultFiles?: VaultFile[];
+  vaultPngAssets?: VaultPngAsset[];
+  vaultPath?: string | null;
   canEdit: boolean;
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
@@ -2207,6 +2246,10 @@ const EMPTY_KEY_SUGGESTIONS: string[] = [];
 const FrontmatterPropertiesPanel = ({
   sourceMarkdown,
   properties,
+  sourceRelativePath,
+  vaultFiles,
+  vaultPngAssets,
+  vaultPath,
   canEdit,
   isCollapsed,
   onToggleCollapsed,
@@ -2278,11 +2321,17 @@ const FrontmatterPropertiesPanel = ({
   const addKeyInputRef = useRef<HTMLInputElement | null>(null);
   const addValueInputRef = useRef<HTMLInputElement | null>(null);
   const pendingFrameHandlesRef = useRef<Set<number>>(new Set());
+  const frontmatterGridRef = useRef<HTMLDivElement | null>(null);
   const [dragPropertyKey, setDragPropertyKey] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{
     key: string;
     position: "before" | "after";
   } | null>(null);
+  const [activeCoverKey, setActiveCoverKey] = useState<string | null>(null);
+  const [isCoverPickerOpen, setIsCoverPickerOpen] = useState(false);
+  const [coverImageErrors, setCoverImageErrors] = useState<
+    Record<string, { src: string; relativePath: string; absolutePath: string }>
+  >({});
   const existingPropertyKeys = useMemo(
     () => new Set(properties.map((property) => property.key.toLowerCase())),
     [properties],
@@ -2295,6 +2344,20 @@ const FrontmatterPropertiesPanel = ({
     () => properties.some((property) => property.key.trim().toLowerCase() === "tags"),
     [properties],
   );
+  const hasExistingCoverAttribute = useMemo(
+    () =>
+      visibleProperties.some(
+        (property) => property.kind === "cover" || isCoverKeyName(property.key),
+      ),
+    [visibleProperties],
+  );
+  const existingCoverPropertyKey = useMemo(
+    () =>
+      visibleProperties.find(
+        (property) => property.kind === "cover" || isCoverKeyName(property.key),
+      )?.key ?? null,
+    [visibleProperties],
+  );
   const addTypeOptions = useMemo(
     () =>
       FRONTMATTER_ADD_TYPE_OPTIONS.filter((option) => {
@@ -2304,9 +2367,12 @@ const FrontmatterPropertiesPanel = ({
         if (option.kind === "tags" && hasExistingTagsAttribute) {
           return false;
         }
+        if (option.kind === "cover" && hasExistingCoverAttribute) {
+          return false;
+        }
         return true;
       }),
-    [hasExistingLinkAttributes, hasExistingTagsAttribute],
+    [hasExistingCoverAttribute, hasExistingLinkAttributes, hasExistingTagsAttribute],
   );
 
   useEffect(() => {
@@ -2320,6 +2386,9 @@ const FrontmatterPropertiesPanel = ({
     setPanelError("");
     setDragPropertyKey(null);
     setDropHint(null);
+    setActiveCoverKey(null);
+    setIsCoverPickerOpen(false);
+    setCoverImageErrors({});
   }, [initialDrafts]);
 
   useEffect(() => {
@@ -2363,6 +2432,9 @@ const FrontmatterPropertiesPanel = ({
     setSuggestionCursor({});
     setTagInputs({});
     setRowErrors({});
+    setActiveCoverKey(null);
+    setIsCoverPickerOpen(false);
+    setCoverImageErrors({});
   }, [initialDrafts]);
 
   const saveBusy = savingKey !== null;
@@ -2371,6 +2443,36 @@ const FrontmatterPropertiesPanel = ({
     linksDocument.links.length > 0 ||
     properties.some((property) => isLinkPropertyKey(property.key));
   const collapsedAttributeCount = visibleProperties.length + (hasLinksRow ? 1 : 0);
+
+  const coverImageEntries = useMemo(
+    () =>
+      (vaultPngAssets && vaultPngAssets.length > 0
+        ? vaultPngAssets
+        : (vaultFiles ?? [])
+            .filter((file) => coverPickerExtensionPattern.test(file.relative_path))
+            .map((file) => ({
+              path: file.path,
+              relative_path: file.relative_path,
+              file_name: normalizeRelativePath(file.relative_path).split("/").pop() ?? file.relative_path,
+            })))
+        .map((asset) => {
+          const relativePath = normalizeRelativePath(asset.relative_path);
+          const fileName = asset.file_name?.trim() || relativePath.split("/").pop() || relativePath;
+          const src = resolveVaultImageSrc({
+            vaultPath,
+            absolutePath: asset.path,
+            relativePath,
+          });
+          return {
+            path: asset.path,
+            relativePath,
+            fileName,
+            src,
+          };
+        })
+        .sort((left, right) => left.relativePath.localeCompare(right.relativePath)),
+    [vaultFiles, vaultPngAssets, vaultPath],
+  );
 
   const updateSuggestionCache = useCallback((key: string, values: string[]) => {
     if (values.length === 0) {
@@ -2387,6 +2489,68 @@ const FrontmatterPropertiesPanel = ({
     }
     setSuggestionKeys((current) => mergeSuggestionKeyLists(current, keys));
   }, []);
+
+  const resolveCoverImageFromTarget = useCallback(
+    (target: string | null) => {
+      if (!target) {
+        return null;
+      }
+      const candidatePaths = resolveRelativePathCandidates(target, sourceRelativePath);
+      if (candidatePaths.length > 0) {
+        const exact = coverImageEntries.find((entry) =>
+          candidatePaths.some((candidate) => candidate === entry.relativePath)
+        );
+        if (exact) {
+          return exact;
+        }
+      }
+
+      const targetFileName = normalizeRelativePath(target).split("/").pop()?.toLowerCase() ?? "";
+      if (!targetFileName) {
+        return null;
+      }
+      return coverImageEntries.find((entry) => entry.fileName.toLowerCase() === targetFileName) ??
+        null;
+    },
+    [coverImageEntries, sourceRelativePath],
+  );
+
+  const focusExistingCoverRow = useCallback(() => {
+    const normalizedKey = existingCoverPropertyKey?.trim().toLowerCase();
+    if (!normalizedKey) {
+      return;
+    }
+    const row = Array.from(
+      frontmatterGridRef.current?.querySelectorAll<HTMLDivElement>(".frontmatter-row") ?? [],
+    ).find((candidate) =>
+      (candidate.getAttribute("data-frontmatter-key") ?? "").trim().toLowerCase() === normalizedKey
+    );
+    if (!row) {
+      return;
+    }
+    if (typeof row.scrollIntoView === "function") {
+      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    setActiveCoverKey(existingCoverPropertyKey);
+  }, [existingCoverPropertyKey]);
+
+  const filteredCoverImageEntries = useMemo(
+    () => coverImageEntries.filter((entry) => coverPickerExtensionPattern.test(entry.relativePath)),
+    [coverImageEntries],
+  );
+
+  const activateCoverRow = useCallback(
+    (
+      property: FrontmatterProperty,
+      options?: {
+        openImagePicker?: boolean;
+      },
+    ) => {
+      setActiveCoverKey(property.key);
+      setIsCoverPickerOpen(options?.openImagePicker ?? false);
+    },
+    [],
+  );
 
   const resolveSuggestionsForKey = useCallback(
     (key: string, rawInput: string) => {
@@ -2438,13 +2602,16 @@ const FrontmatterPropertiesPanel = ({
         if (addTypeDraft === "text" && isReservedTextSuggestionKey(key)) {
           return false;
         }
+        if (hasExistingCoverAttribute && isCoverKeyName(key)) {
+          return false;
+        }
         if (!query) {
           return true;
         }
         return normalized.includes(query);
       });
     },
-    [addTypeDraft, existingPropertyKeys, suggestionKeys],
+    [addTypeDraft, existingPropertyKeys, hasExistingCoverAttribute, suggestionKeys],
   );
 
   const resolveAddValueSuggestions = useCallback(
@@ -2457,7 +2624,13 @@ const FrontmatterPropertiesPanel = ({
       kind: FrontmatterAddPropertyType;
       rawInput: string;
     }) => {
-      const rawSource = resolveValueSuggestionsForAddKey(key);
+      let rawSource = resolveValueSuggestionsForAddKey(key);
+      if (kind === "cover") {
+        rawSource = normalizeStableSuggestions([
+          ...rawSource,
+          ...coverImageEntries.map((entry) => normalizeWikilinkValue(entry.relativePath)),
+        ]);
+      }
       if (rawSource.length === 0) {
         return [];
       }
@@ -2488,7 +2661,7 @@ const FrontmatterPropertiesPanel = ({
       }
       return source.filter((value) => value.toLowerCase().includes(query));
     },
-    [resolveValueSuggestionsForAddKey],
+    [coverImageEntries, resolveValueSuggestionsForAddKey],
   );
 
   const activateEditor = useCallback((key: string) => {
@@ -2732,6 +2905,11 @@ const FrontmatterPropertiesPanel = ({
         return;
       }
     }
+    if (hasExistingCoverAttribute && (addTypeDraft === "cover" || isCoverKeyName(nextKey))) {
+      setAddError("Cover existiert bereits - nur ein Cover moeglich.");
+      focusExistingCoverRow();
+      return;
+    }
 
     const duplicate = properties.some((property) => property.key === nextKey);
     if (duplicate) {
@@ -2791,6 +2969,8 @@ const FrontmatterPropertiesPanel = ({
     addKeyInputRef,
     addValueInputRef,
     onFrontmatterSave,
+    hasExistingCoverAttribute,
+    focusExistingCoverRow,
     properties,
     sourceMarkdown,
     updateKeySuggestionCache,
@@ -2972,7 +3152,12 @@ const FrontmatterPropertiesPanel = ({
       </div>
       {!isCollapsed ? (
         <>
-          <div className="frontmatter-grid" role="table" aria-label="Frontmatter properties">
+          <div
+            ref={frontmatterGridRef}
+            className="frontmatter-grid"
+            role="table"
+            aria-label="Frontmatter properties"
+          >
             {visibleProperties.map((property) => {
               const isRowSaving = savingKey === property.key;
               const rowDisabled = controlsDisabled || isRowSaving;
@@ -2996,6 +3181,38 @@ const FrontmatterPropertiesPanel = ({
                 suggestions.length > 0 &&
                 !rowDisabled &&
                 isScalarEditableKind(property.kind);
+              const isCoverRow = property.kind === "cover";
+              const isCoverRowActive = isCoverRow && activeCoverKey === property.key;
+              const coverCurrentValue = typeof property.value === "string" ? property.value : "";
+              const coverDraftValue = drafts[property.key] ?? "";
+              const coverPreferredValue = coverDraftValue || coverCurrentValue;
+              const coverActiveWikilink = normalizeWikilinkValue(coverPreferredValue);
+              const coverTarget =
+                extractWikilinkTarget(coverActiveWikilink) ??
+                extractVaultAssetRelativePath(coverPreferredValue);
+              const coverTargetCandidates = coverTarget
+                ? resolveRelativePathCandidates(coverTarget, sourceRelativePath)
+                : [];
+              const resolvedCoverImage = resolveCoverImageFromTarget(coverTarget);
+              const coverImageSrc = resolvedCoverImage
+                ? (resolvedCoverImage.src ?? resolvedCoverImage.path)
+                : "";
+              const coverImageError = resolvedCoverImage
+                ? coverImageErrors[resolvedCoverImage.relativePath]
+                : undefined;
+              const hasCoverImageLoadError = Boolean(
+                coverImageError && coverImageError.src === coverImageSrc,
+              );
+              const coverDisplayWikilink = coverActiveWikilink ||
+                (coverTarget ? normalizeWikilinkValue(coverTarget) : "");
+              const coverDisplayName = coverDisplayWikilink || "Kein Wert";
+              const coverDisplaySubline = coverDisplayWikilink;
+              const isCoverBroken = Boolean(coverTarget) &&
+                (!resolvedCoverImage || hasCoverImageLoadError);
+              const coverPickerListId = `frontmatter-cover-picker-${property.key
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]+/g, "-")}`;
+              const isCoverPickerListOpen = isCoverRowActive && isCoverPickerOpen && !rowDisabled;
 
               const commitScalarDraft = async (rawInput: string) => {
                 if (property.kind === "number") {
@@ -3036,6 +3253,248 @@ const FrontmatterPropertiesPanel = ({
                   value: nextValue.trim() === "" ? null : nextValue,
                 });
               };
+
+              const renderScalarInput = () => (
+                <div className="frontmatter-input-wrap">
+                  <input
+                    type="text"
+                    inputMode={property.kind === "number" ? "decimal" : undefined}
+                    className="text-input frontmatter-input"
+                    placeholder="Kein Wert"
+                    aria-label={`${property.key} value`}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={isDropdownOpen}
+                    aria-controls={isDropdownOpen ? suggestionListId : undefined}
+                    value={drafts[property.key] ?? ""}
+                    readOnly={!isEditorEditing}
+                    disabled={rowDisabled}
+                    onChange={(event) => {
+                      if (!isEditorEditing) {
+                        return;
+                      }
+                      const next = event.target.value;
+                      setDrafts((current) => ({ ...current, [property.key]: next }));
+                      if (rowErrors[property.key]) {
+                        setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                      }
+                      setOpenSuggestionsKey(property.key);
+                      setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                    }}
+                    onFocus={() => {
+                      if (rowDisabled) {
+                        return;
+                      }
+                      activateEditor(property.key);
+                      setOpenSuggestionsKey(property.key);
+                      setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                    }}
+                    onClick={() => {
+                      if (rowDisabled) {
+                        return;
+                      }
+                      activateEditor(property.key);
+                      setOpenSuggestionsKey(property.key);
+                    }}
+                    onDoubleClick={() => {
+                      if (rowDisabled) {
+                        return;
+                      }
+                      beginEditing(property.key);
+                      setOpenSuggestionsKey(property.key);
+                    }}
+                    onBlur={(event) => {
+                      setOpenSuggestionsKey((current) =>
+                        current === property.key ? null : current
+                      );
+                      const mode = editorModes[property.key] ?? "idle";
+                      if (mode !== "editing") {
+                        setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
+                        setDrafts((current) => ({
+                          ...current,
+                          [property.key]: stringifyPropertyValue(property),
+                        }));
+                        return;
+                      }
+                      const raw = event.currentTarget.value;
+                      setEditorModes((current) => ({
+                        ...current,
+                        [property.key]: "committing",
+                      }));
+                      void (async () => {
+                        const saved = await commitScalarDraft(raw);
+                        setEditorModes((current) => ({
+                          ...current,
+                          [property.key]: saved ? "idle" : "editing",
+                        }));
+                      })();
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "F2") {
+                        event.preventDefault();
+                        beginEditing(property.key);
+                        setOpenSuggestionsKey(property.key);
+                        return;
+                      }
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setOpenSuggestionsKey((current) =>
+                          current === property.key ? null : current
+                        );
+                        setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
+                        setDrafts((current) => ({
+                          ...current,
+                          [property.key]: stringifyPropertyValue(property),
+                        }));
+                        event.currentTarget.blur();
+                        return;
+                      }
+                      if (isDropdownOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+                        event.preventDefault();
+                        const offset = event.key === "ArrowDown" ? 1 : -1;
+                        setSuggestionCursor((current) => {
+                          const existing = current[property.key] ?? 0;
+                          const next = (existing + offset + suggestions.length) %
+                            suggestions.length;
+                          return { ...current, [property.key]: next };
+                        });
+                        return;
+                      }
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (isDropdownOpen && activeSuggestion) {
+                          setDrafts((current) => ({
+                            ...current,
+                            [property.key]: activeSuggestion,
+                          }));
+                          setOpenSuggestionsKey(null);
+                          setEditorModes((current) => ({
+                            ...current,
+                            [property.key]: "committing",
+                          }));
+                          void (async () => {
+                            const saved = await commitScalarDraft(activeSuggestion);
+                            setEditorModes((current) => ({
+                              ...current,
+                              [property.key]: saved ? "idle" : "editing",
+                            }));
+                          })();
+                          return;
+                        }
+                        if (!isEditorEditing && suggestions.length > 0) {
+                          const firstSuggestion = suggestions[0] ?? "";
+                          if (!firstSuggestion) {
+                            return;
+                          }
+                          setDrafts((current) => ({
+                            ...current,
+                            [property.key]: firstSuggestion,
+                          }));
+                          setOpenSuggestionsKey(null);
+                          setEditorModes((current) => ({
+                            ...current,
+                            [property.key]: "committing",
+                          }));
+                          void (async () => {
+                            const saved = await commitScalarDraft(firstSuggestion);
+                            setEditorModes((current) => ({
+                              ...current,
+                              [property.key]: saved ? "idle" : "editing",
+                            }));
+                          })();
+                          return;
+                        }
+                        event.currentTarget.blur();
+                        return;
+                      }
+                      if (event.key === "Tab") {
+                        setOpenSuggestionsKey((current) =>
+                          current === property.key ? null : current
+                        );
+                        return;
+                      }
+                      if (!isEditorEditing) {
+                        if (isPrintableCharacterKey(event)) {
+                          event.preventDefault();
+                          const nextValue = `${drafts[property.key] ?? ""}${event.key}`;
+                          setDrafts((current) => ({ ...current, [property.key]: nextValue }));
+                          beginEditing(property.key);
+                          setOpenSuggestionsKey(property.key);
+                          setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                          scheduleAnimationFrame(() => {
+                            const input = valueInputRefs.current[property.key];
+                            if (!input) {
+                              return;
+                            }
+                            input.focus();
+                            input.setSelectionRange(nextValue.length, nextValue.length);
+                          });
+                          return;
+                        }
+                        if (event.key === "Backspace" || event.key === "Delete") {
+                          event.preventDefault();
+                          const currentValue = drafts[property.key] ?? "";
+                          const nextValue = event.key === "Backspace"
+                            ? currentValue.slice(0, -1)
+                            : "";
+                          setDrafts((current) => ({ ...current, [property.key]: nextValue }));
+                          beginEditing(property.key);
+                          setOpenSuggestionsKey(property.key);
+                          setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                        }
+                      }
+                    }}
+                    ref={(element) => {
+                      valueInputRefs.current[property.key] = element;
+                    }}
+                  />
+                  {isDropdownOpen ? (
+                    <ul
+                      id={suggestionListId}
+                      className="frontmatter-suggestions"
+                      role="listbox"
+                      aria-label={`${property.key} Vorschlaege`}
+                    >
+                      {suggestions.map((suggestion, suggestionIndex) => (
+                        <li key={`${property.key}-${suggestion}`}>
+                          <button
+                            type="button"
+                            className={`frontmatter-suggestion-option ${
+                              suggestionIndex === safeSuggestionIndex ? "active" : ""
+                            }`}
+                            role="option"
+                            aria-selected={suggestionIndex === safeSuggestionIndex}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                            }}
+                            onClick={() => {
+                              setDrafts((current) => ({
+                                ...current,
+                                [property.key]: suggestion,
+                              }));
+                              setOpenSuggestionsKey(null);
+                              setEditorModes((current) => ({
+                                ...current,
+                                [property.key]: "committing",
+                              }));
+                              void (async () => {
+                                const saved = await commitScalarDraft(suggestion);
+                                setEditorModes((current) => ({
+                                  ...current,
+                                  [property.key]: saved ? "idle" : "editing",
+                                }));
+                              })();
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {rowError ? <span className="frontmatter-row-error">{rowError}</span> : null}
+                </div>
+              );
 
               const renderValueEditor = () => {
                 switch (property.kind) {
@@ -3122,253 +3581,239 @@ const FrontmatterPropertiesPanel = ({
                         />
                       </div>
                     );
-                  case "number":
-                  case "link":
                   case "cover":
-                  case "unknown":
-                  case "text":
-                  default:
                     return (
-                      <div className="frontmatter-input-wrap">
-                        <input
-                          type="text"
-                          inputMode={property.kind === "number" ? "decimal" : undefined}
-                          className="text-input frontmatter-input"
-                          placeholder="Kein Wert"
-                          aria-label={`${property.key} value`}
-                          role="combobox"
-                          aria-autocomplete="list"
-                          aria-expanded={isDropdownOpen}
-                          aria-controls={isDropdownOpen ? suggestionListId : undefined}
-                          value={drafts[property.key] ?? ""}
-                          readOnly={!isEditorEditing}
-                          disabled={rowDisabled}
-                          onChange={(event) => {
-                            if (!isEditorEditing) {
-                              return;
+                      <div className="frontmatter-cover-editor">
+                        <div className="frontmatter-cover-display">
+                          <button
+                            type="button"
+                            className="frontmatter-cover-thumbnail-button"
+                            disabled={rowDisabled}
+                            aria-label={coverTarget ? "Cover oeffnen" : "Cover auswaehlen"}
+                            title={
+                              hasCoverImageLoadError
+                                ? "Bild konnte nicht geladen werden. Klicken zum erneuten Laden."
+                                : undefined
                             }
-                            const next = event.target.value;
-                            setDrafts((current) => ({ ...current, [property.key]: next }));
-                            if (rowErrors[property.key]) {
-                              setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                            }
-                            setOpenSuggestionsKey(property.key);
-                            setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                          }}
-                          onFocus={() => {
-                            if (rowDisabled) {
-                              return;
-                            }
-                            activateEditor(property.key);
-                            setOpenSuggestionsKey(property.key);
-                            setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                          }}
-                          onClick={() => {
-                            if (rowDisabled) {
-                              return;
-                            }
-                            activateEditor(property.key);
-                            setOpenSuggestionsKey(property.key);
-                          }}
-                          onDoubleClick={() => {
-                            if (rowDisabled) {
-                              return;
-                            }
-                            beginEditing(property.key);
-                            setOpenSuggestionsKey(property.key);
-                          }}
-                          onBlur={(event) => {
-                            setOpenSuggestionsKey((current) =>
-                              current === property.key ? null : current
-                            );
-                            const mode = editorModes[property.key] ?? "idle";
-                            if (mode !== "editing") {
-                              setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
-                              setDrafts((current) => ({
-                                ...current,
-                                [property.key]: stringifyPropertyValue(property),
-                              }));
-                              return;
-                            }
-                            const raw = event.currentTarget.value;
-                            setEditorModes((current) => ({
-                              ...current,
-                              [property.key]: "committing",
-                            }));
-                            void (async () => {
-                              const saved = await commitScalarDraft(raw);
-                              setEditorModes((current) => ({
-                                ...current,
-                                [property.key]: saved ? "idle" : "editing",
-                              }));
-                            })();
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "F2") {
+                            onMouseDown={(event) => {
                               event.preventDefault();
-                              beginEditing(property.key);
-                              setOpenSuggestionsKey(property.key);
-                              return;
-                            }
-                            if (event.key === "Escape") {
+                              event.stopPropagation();
+                            }}
+                            onClick={(event) => {
                               event.preventDefault();
-                              setOpenSuggestionsKey((current) =>
-                                current === property.key ? null : current
-                              );
-                              setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
-                              setDrafts((current) => ({
-                                ...current,
-                                [property.key]: stringifyPropertyValue(property),
-                              }));
-                              event.currentTarget.blur();
-                              return;
-                            }
-                            if (isDropdownOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
-                              event.preventDefault();
-                              const offset = event.key === "ArrowDown" ? 1 : -1;
-                              setSuggestionCursor((current) => {
-                                const existing = current[property.key] ?? 0;
-                                const next = (existing + offset + suggestions.length) %
-                                  suggestions.length;
-                                return { ...current, [property.key]: next };
-                              });
-                              return;
-                            }
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              if (isDropdownOpen && activeSuggestion) {
-                                setDrafts((current) => ({
-                                  ...current,
-                                  [property.key]: activeSuggestion,
-                                }));
-                                setOpenSuggestionsKey(null);
-                                setEditorModes((current) => ({
-                                  ...current,
-                                  [property.key]: "committing",
-                                }));
-                                void (async () => {
-                                  const saved = await commitScalarDraft(activeSuggestion);
-                                  setEditorModes((current) => ({
-                                    ...current,
-                                    [property.key]: saved ? "idle" : "editing",
-                                  }));
-                                })();
+                              event.stopPropagation();
+                              if (rowDisabled) {
                                 return;
                               }
-                              if (!isEditorEditing && suggestions.length > 0) {
-                                const firstSuggestion = suggestions[0] ?? "";
-                                if (!firstSuggestion) {
-                                  return;
-                                }
-                                setDrafts((current) => ({
-                                  ...current,
-                                  [property.key]: firstSuggestion,
-                                }));
-                                setOpenSuggestionsKey(null);
-                                setEditorModes((current) => ({
-                                  ...current,
-                                  [property.key]: "committing",
-                                }));
-                                void (async () => {
-                                  const saved = await commitScalarDraft(firstSuggestion);
-                                  setEditorModes((current) => ({
-                                    ...current,
-                                    [property.key]: saved ? "idle" : "editing",
-                                  }));
-                                })();
+                              if ((event.metaKey || event.ctrlKey) && coverActiveWikilink) {
+                                onNavigateWikilink?.(coverActiveWikilink);
                                 return;
                               }
-                              event.currentTarget.blur();
-                              return;
-                            }
-                            if (event.key === "Tab") {
-                              setOpenSuggestionsKey((current) =>
-                                current === property.key ? null : current
-                              );
-                              return;
-                            }
-                            if (!isEditorEditing) {
-                              if (isPrintableCharacterKey(event)) {
-                                event.preventDefault();
-                                const nextValue = `${drafts[property.key] ?? ""}${event.key}`;
-                                setDrafts((current) => ({ ...current, [property.key]: nextValue }));
-                                beginEditing(property.key);
-                                setOpenSuggestionsKey(property.key);
-                                setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                                scheduleAnimationFrame(() => {
-                                  const input = valueInputRefs.current[property.key];
-                                  if (!input) {
-                                    return;
+                              if (resolvedCoverImage && hasCoverImageLoadError) {
+                                setCoverImageErrors((current) => {
+                                  if (!current[resolvedCoverImage.relativePath]) {
+                                    return current;
                                   }
-                                  input.focus();
-                                  input.setSelectionRange(nextValue.length, nextValue.length);
+                                  const next = { ...current };
+                                  delete next[resolvedCoverImage.relativePath];
+                                  return next;
                                 });
+                              }
+                              if (!isCoverRowActive) {
+                                activateCoverRow(property, { openImagePicker: true });
                                 return;
                               }
-                              if (event.key === "Backspace" || event.key === "Delete") {
-                                event.preventDefault();
-                                const currentValue = drafts[property.key] ?? "";
-                                const nextValue = event.key === "Backspace"
-                                  ? currentValue.slice(0, -1)
-                                  : "";
-                                setDrafts((current) => ({ ...current, [property.key]: nextValue }));
-                                beginEditing(property.key);
-                                setOpenSuggestionsKey(property.key);
-                                setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                              }
-                            }
-                          }}
-                          ref={(element) => {
-                            valueInputRefs.current[property.key] = element;
-                          }}
-                        />
-                        {isDropdownOpen ? (
-                          <ul
-                            id={suggestionListId}
-                            className="frontmatter-suggestions"
-                            role="listbox"
-                            aria-label={`${property.key} Vorschlaege`}
+                              setIsCoverPickerOpen((current) => !current);
+                            }}
                           >
-                            {suggestions.map((suggestion, suggestionIndex) => (
-                              <li key={`${property.key}-${suggestion}`}>
-                                <button
-                                  type="button"
-                                  className={`frontmatter-suggestion-option ${
-                                    suggestionIndex === safeSuggestionIndex ? "active" : ""
-                                  }`}
-                                  role="option"
-                                  aria-selected={suggestionIndex === safeSuggestionIndex}
-                                  onMouseDown={(event) => {
-                                    event.preventDefault();
-                                  }}
-                                  onClick={() => {
-                                    setDrafts((current) => ({
-                                      ...current,
-                                      [property.key]: suggestion,
-                                    }));
-                                    setOpenSuggestionsKey(null);
-                                    setEditorModes((current) => ({
-                                      ...current,
-                                      [property.key]: "committing",
-                                    }));
-                                    void (async () => {
-                                      const saved = await commitScalarDraft(suggestion);
-                                      setEditorModes((current) => ({
-                                        ...current,
-                                        [property.key]: saved ? "idle" : "editing",
-                                      }));
-                                    })();
-                                  }}
+                            {resolvedCoverImage && !hasCoverImageLoadError ? (
+                              <img
+                                src={resolvedCoverImage.src ?? resolvedCoverImage.path}
+                                alt={coverDisplayName}
+                                className="frontmatter-cover-thumbnail"
+                                draggable={false}
+                                onLoad={() => {
+                                  setCoverImageErrors((current) => {
+                                    if (!current[resolvedCoverImage.relativePath]) {
+                                      return current;
+                                    }
+                                    const next = { ...current };
+                                    delete next[resolvedCoverImage.relativePath];
+                                    return next;
+                                  });
+                                }}
+                                onError={(event) => {
+                                  const failedSrc =
+                                    event.currentTarget.currentSrc ||
+                                    event.currentTarget.src ||
+                                    resolvedCoverImage.src ||
+                                    resolvedCoverImage.path;
+                                  setCoverImageErrors((current) => ({
+                                    ...current,
+                                    [resolvedCoverImage.relativePath]: {
+                                      src: failedSrc,
+                                      relativePath: resolvedCoverImage.relativePath,
+                                      absolutePath: resolvedCoverImage.path,
+                                    },
+                                  }));
+                                }}
+                              />
+                            ) : (
+                              <span className="frontmatter-cover-placeholder" aria-hidden="true">
+                                <FrontmatterImageIcon />
+                              </span>
+                            )}
+                          </button>
+                          <div className="frontmatter-cover-copy">
+                            <span className="frontmatter-cover-name" title={coverDisplayName}>
+                              {coverDisplayName}
+                            </span>
+                            {coverDisplaySubline ? (
+                              <span
+                                className="frontmatter-cover-target"
+                                title={coverDisplaySubline}
+                              >
+                                {coverDisplaySubline}
+                              </span>
+                            ) : (
+                              <span className="frontmatter-empty-value">Kein Wert</span>
+                            )}
+                            {isCoverBroken ? (
+                              <span
+                                className="frontmatter-row-error"
+                                title={hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : undefined}
+                              >
+                                {hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : "Datei nicht gefunden."}
+                              </span>
+                            ) : null}
+                            {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
+                              <span className="frontmatter-cover-debug" title={coverImageError.src}>
+                                src: {coverImageError.src}
+                              </span>
+                            ) : null}
+                            {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
+                              <span className="frontmatter-cover-debug" title={coverImageError.absolutePath}>
+                                path: {coverImageError.absolutePath}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        {isCoverRowActive ? (
+                          <div className="frontmatter-cover-controls">
+                            <div className="frontmatter-cover-control frontmatter-cover-picker-control">
+                              {isCoverPickerListOpen ? (
+                                <ul
+                                  id={coverPickerListId}
+                                  className="frontmatter-cover-picker"
+                                  role="listbox"
+                                  aria-label="Cover Bildauswahl"
                                 >
-                                  {suggestion}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
+                                  {filteredCoverImageEntries.length === 0 ? (
+                                    <li className="frontmatter-cover-picker-empty">
+                                      Keine PNG im aktiven Vault.
+                                    </li>
+                                  ) : (
+                                    filteredCoverImageEntries.map((entry) => {
+                                      const pickerSrc = entry.src ?? entry.path;
+                                      const pickerImageError = coverImageErrors[entry.relativePath];
+                                      const hasPickerImageError = Boolean(
+                                        pickerImageError && pickerImageError.src === pickerSrc,
+                                      );
+                                      return (
+                                        <li key={`cover-image-${entry.relativePath}`}>
+                                          <button
+                                            type="button"
+                                            className={`frontmatter-cover-picker-option ${
+                                              coverTargetCandidates.includes(entry.relativePath)
+                                                ? "active"
+                                                : ""
+                                            }`}
+                                            role="option"
+                                            aria-selected={coverTargetCandidates.includes(
+                                              entry.relativePath,
+                                            )}
+                                            onMouseDown={(event) => {
+                                              event.preventDefault();
+                                              event.stopPropagation();
+                                            }}
+                                            onClick={() => {
+                                              const nextValue = normalizeWikilinkValue(
+                                                entry.relativePath,
+                                              );
+                                              setDrafts((current) => ({
+                                                ...current,
+                                                [property.key]: nextValue,
+                                              }));
+                                              setRowErrors((current) => ({
+                                                ...current,
+                                                [property.key]: "",
+                                              }));
+                                              void (async () => {
+                                                const saved = await commitPropertyChange({
+                                                  property,
+                                                  kind: "cover",
+                                                  value: nextValue,
+                                                });
+                                                if (saved) {
+                                                  setIsCoverPickerOpen(false);
+                                                }
+                                              })();
+                                            }}
+                                          >
+                                            {hasPickerImageError ? (
+                                              <span className="frontmatter-cover-picker-thumb-placeholder" aria-hidden="true">
+                                                <FrontmatterImageIcon />
+                                              </span>
+                                            ) : (
+                                              <img
+                                                src={pickerSrc}
+                                                alt={entry.fileName}
+                                                className="frontmatter-cover-picker-thumb"
+                                                draggable={false}
+                                                onError={(event) => {
+                                                  const failedSrc =
+                                                    event.currentTarget.currentSrc ||
+                                                    event.currentTarget.src ||
+                                                    entry.src ||
+                                                    entry.path;
+                                                  setCoverImageErrors((current) => ({
+                                                    ...current,
+                                                    [entry.relativePath]: {
+                                                      src: failedSrc,
+                                                      relativePath: entry.relativePath,
+                                                      absolutePath: entry.path,
+                                                    },
+                                                  }));
+                                                }}
+                                              />
+                                            )}
+                                            <span className="frontmatter-cover-picker-copy">
+                                              <span title={entry.fileName}>
+                                                {entry.fileName}
+                                              </span>
+                                              <span title={entry.relativePath}>
+                                                {entry.relativePath}
+                                              </span>
+                                            </span>
+                                          </button>
+                                        </li>
+                                      );
+                                    })
+                                  )}
+                                </ul>
+                              ) : null}
+                            </div>
+                          </div>
                         ) : null}
                         {rowError ? <span className="frontmatter-row-error">{rowError}</span> : null}
                       </div>
                     );
+                  case "number":
+                  case "link":
+                  case "unknown":
+                  case "text":
+                  default:
+                    return renderScalarInput();
                 }
               };
 
@@ -3378,6 +3823,8 @@ const FrontmatterPropertiesPanel = ({
                   className={`frontmatter-row ${
                     dragPropertyKey === property.key ? "is-dragging" : ""
                   } ${
+                    isCoverRowActive ? "frontmatter-row-cover-active" : ""
+                  } ${
                     dropHint?.key === property.key
                       ? dropHint.position === "before"
                         ? "drop-before"
@@ -3386,6 +3833,18 @@ const FrontmatterPropertiesPanel = ({
                   }`.trim()}
                   role="row"
                   data-frontmatter-key={property.key}
+                  onClick={() => {
+                    if (rowDisabled) {
+                      return;
+                    }
+                    if (property.kind === "cover") {
+                      setActiveCoverKey(property.key);
+                      setIsCoverPickerOpen(false);
+                      return;
+                    }
+                    setActiveCoverKey(null);
+                    setIsCoverPickerOpen(false);
+                  }}
                   onDragOver={(event) => {
                     if (controlsDisabled || !dragPropertyKey) {
                       return;
@@ -3969,7 +4428,7 @@ const FrontmatterPropertiesPanel = ({
                 ref={addValueInputRef}
                 type="text"
                 className="text-input frontmatter-add-value"
-                placeholder="Wert (optional)"
+                placeholder={addTypeDraft === "cover" ? "Bild aus Vault waehlen ..." : "Wert (optional)"}
                 aria-label="Neuer Wert"
                 role="combobox"
                 aria-autocomplete="list"
@@ -4117,33 +4576,108 @@ const FrontmatterPropertiesPanel = ({
               {isAddValueDropdownOpen ? (
                 <ul
                   id={addValueSuggestionListId}
-                  className="frontmatter-suggestions"
+                  className={`frontmatter-suggestions ${
+                    addTypeDraft === "cover" ? "frontmatter-add-cover-suggestions" : ""
+                  }`.trim()}
                   role="listbox"
                   aria-label="Wert Vorschlaege"
                 >
                   {addValueSuggestions.map((suggestion, suggestionIndex) => (
                     <li key={`add-value-${selectedAddKey}-${suggestion}`}>
-                      <button
-                        type="button"
-                        className={`frontmatter-suggestion-option ${
-                          suggestionIndex === safeAddValueSuggestionIndex ? "active" : ""
-                        }`}
-                        role="option"
-                        aria-selected={suggestionIndex === safeAddValueSuggestionIndex}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                        }}
-                        onClick={() => {
-                          setAddValueDraft(suggestion);
-                          setOpenSuggestionsKey(null);
-                          setAddEditorModes((current) => ({
-                            ...current,
-                            value: "active",
-                          }));
-                        }}
-                      >
-                        {suggestion}
-                      </button>
+                      {addTypeDraft === "cover" ? (
+                        (() => {
+                          const suggestionTarget = extractWikilinkTarget(suggestion);
+                          const suggestionImage = resolveCoverImageFromTarget(suggestionTarget);
+                          const suggestionImageSrc = suggestionImage
+                            ? (suggestionImage.src ?? suggestionImage.path)
+                            : "";
+                          const suggestionImageError = suggestionImage
+                            ? coverImageErrors[suggestionImage.relativePath]
+                            : undefined;
+                          const hasSuggestionImageError = Boolean(
+                            suggestionImageError && suggestionImageError.src === suggestionImageSrc,
+                          );
+                          return (
+                            <button
+                              type="button"
+                              className={`frontmatter-suggestion-option frontmatter-add-cover-option ${
+                                suggestionIndex === safeAddValueSuggestionIndex ? "active" : ""
+                              }`}
+                              role="option"
+                              aria-selected={suggestionIndex === safeAddValueSuggestionIndex}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                              }}
+                              onClick={() => {
+                                setAddValueDraft(suggestion);
+                                setOpenSuggestionsKey(null);
+                                setAddEditorModes((current) => ({
+                                  ...current,
+                                  value: "active",
+                                }));
+                              }}
+                            >
+                              {suggestionImage && !hasSuggestionImageError ? (
+                                <img
+                                  src={suggestionImageSrc}
+                                  alt={suggestionImage.fileName}
+                                  className="frontmatter-add-cover-thumb"
+                                  draggable={false}
+                                  onError={(event) => {
+                                    const failedSrc =
+                                      event.currentTarget.currentSrc ||
+                                      event.currentTarget.src ||
+                                      suggestionImage.src ||
+                                      suggestionImage.path;
+                                    setCoverImageErrors((current) => ({
+                                      ...current,
+                                      [suggestionImage.relativePath]: {
+                                        src: failedSrc,
+                                        relativePath: suggestionImage.relativePath,
+                                        absolutePath: suggestionImage.path,
+                                      },
+                                    }));
+                                  }}
+                                />
+                              ) : (
+                                <span className="frontmatter-add-cover-thumb-placeholder" aria-hidden="true">
+                                  <FrontmatterImageIcon />
+                                </span>
+                              )}
+                              <span className="frontmatter-add-cover-copy">
+                                <span title={suggestionImage?.fileName ?? resolveWikilinkLabel(suggestion)}>
+                                  {suggestionImage?.fileName ?? resolveWikilinkLabel(suggestion)}
+                                </span>
+                                <span title={suggestionTarget ?? suggestion}>
+                                  {suggestionTarget ?? suggestion}
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        })()
+                      ) : (
+                        <button
+                          type="button"
+                          className={`frontmatter-suggestion-option ${
+                            suggestionIndex === safeAddValueSuggestionIndex ? "active" : ""
+                          }`}
+                          role="option"
+                          aria-selected={suggestionIndex === safeAddValueSuggestionIndex}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                          }}
+                          onClick={() => {
+                            setAddValueDraft(suggestion);
+                            setOpenSuggestionsKey(null);
+                            setAddEditorModes((current) => ({
+                              ...current,
+                              value: "active",
+                            }));
+                          }}
+                        >
+                          {suggestion}
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -4184,6 +4718,10 @@ export const PreviewPanel = ({
   rawPreview,
   markdownViewEditEnabled,
   selectedFile,
+  vaultFiles,
+  vaultPngAssets,
+  vaultPath,
+  sourceRelativePath,
   canEdit,
   markdownEditorStyle,
   onEditChange,
@@ -4820,6 +5358,10 @@ export const PreviewPanel = ({
                     <FrontmatterPropertiesPanel
                       sourceMarkdown={preview}
                       properties={previewFrontmatter.properties}
+                      sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
+                      vaultFiles={vaultFiles}
+                      vaultPngAssets={vaultPngAssets}
+                      vaultPath={vaultPath}
                       canEdit={canEdit && previewState === "idle" && !isEditing}
                       isCollapsed={isFrontmatterPanelCollapsed}
                       onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
@@ -4864,6 +5406,10 @@ export const PreviewPanel = ({
                       <FrontmatterPropertiesPanel
                         sourceMarkdown={preview}
                         properties={previewFrontmatter.properties}
+                        sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
+                        vaultFiles={vaultFiles}
+                        vaultPngAssets={vaultPngAssets}
+                        vaultPath={vaultPath}
                         canEdit={canEdit && previewState === "idle"}
                         isCollapsed={isFrontmatterPanelCollapsed}
                         onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}

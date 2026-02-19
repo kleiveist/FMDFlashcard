@@ -17,7 +17,7 @@ import {
 import { createRoot } from "react-dom/client";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { PreviewPanel } from "./PreviewPanel";
-import { type VaultFile } from "../lib/tree";
+import { type VaultFile, type VaultPngAsset } from "../lib/tree";
 
 const testEnv = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
@@ -62,6 +62,9 @@ const buildHarness = (
     onNavigateWikilink?: (wikilink: string) => void;
     valueSuggestionsByKey?: Record<string, string[]>;
     keySuggestions?: string[];
+    vaultFiles?: VaultFile[];
+    vaultPngAssets?: VaultPngAsset[];
+    vaultPath?: string;
   } = {},
 ) => {
   const onEditExit = vi.fn();
@@ -72,6 +75,9 @@ const buildHarness = (
     onNavigateWikilink,
     valueSuggestionsByKey,
     keySuggestions,
+    vaultFiles,
+    vaultPngAssets,
+    vaultPath = "/vault",
   } = options;
 
   const Harness = () => {
@@ -102,6 +108,10 @@ const buildHarness = (
       rawPreview,
       markdownViewEditEnabled,
       selectedFile: baseFile,
+      vaultPath,
+      sourceRelativePath: baseFile.relative_path,
+      vaultFiles,
+      vaultPngAssets,
       canEdit: true,
       onEditChange: setEditDraft,
       onEditCaretApplied: () => setEditCaretIndex(null),
@@ -1546,6 +1556,71 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(keyInput?.readOnly).toBe(true);
   });
 
+  it("auto-fills and locks key name for cover type", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      vaultFiles: [
+        {
+          path: "/vault/assets/new-cover.png",
+          relative_path: "assets/new-cover.png",
+        },
+      ],
+      vaultPngAssets: [
+        {
+          path: "/vault/assets/new-cover.png",
+          relative_path: "assets/new-cover.png",
+          file_name: "new-cover.png",
+          extension: "png",
+        },
+      ],
+    });
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    const valueInput = container.querySelector(
+      'input[aria-label="Neuer Wert"]',
+    ) as HTMLInputElement | null;
+    expect(typeButton).toBeTruthy();
+    expect(keyInput).toBeTruthy();
+    expect(valueInput).toBeTruthy();
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const coverOption = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".frontmatter-type-option"),
+    ).find((button) => (button.textContent ?? "").includes("Cover"));
+    act(() => {
+      coverOption?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(keyInput?.value ?? "").toBe("Cover");
+    expect(keyInput?.readOnly).toBe(true);
+    expect(valueInput?.getAttribute("placeholder")).toBe("Bild aus Vault waehlen ...");
+
+    act(() => {
+      valueInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      valueInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("new-cover.png");
+  });
+
   it("hides links and tags from type selection when already present", async () => {
     const markdown = [
       "---",
@@ -1577,6 +1652,243 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(typeSuggestionText).toContain("Cover");
     expect(typeSuggestionText).not.toContain("Links");
     expect(typeSuggestionText).not.toContain("Tags");
+  });
+
+  it("hides cover from type selection when a cover attribute already exists", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "Cover: '[[assets/cover.png]]'",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+    expect(typeButton).toBeTruthy();
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const typeSuggestionText =
+      container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
+    expect(typeSuggestionText).toContain("Text");
+    expect(typeSuggestionText).toContain("Links");
+    expect(typeSuggestionText).toContain("Nur Zahlen");
+    expect(typeSuggestionText).not.toContain("Cover");
+  });
+
+  it("filters cover key suggestions when cover already exists", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "Cover: '[[assets/cover.png]]'",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      keySuggestions: ["Section", "Cover", "Rank"],
+    });
+    cleanup = localCleanup;
+
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    expect(keyInput).toBeTruthy();
+
+    act(() => {
+      keyInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const suggestionText = container.querySelector(".frontmatter-suggestions")?.textContent ?? "";
+    expect(suggestionText).toContain("Section");
+    expect(suggestionText).toContain("Rank");
+    expect(suggestionText).not.toContain("Cover");
+  });
+
+  it("blocks creating a second cover via manual key input", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = [
+      "---",
+      "title: Demo",
+      "Cover: '[[assets/cover.png]]'",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+    });
+    cleanup = localCleanup;
+
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    const valueInput = container.querySelector(
+      'input[aria-label="Neuer Wert"]',
+    ) as HTMLInputElement | null;
+    const addButton = container.querySelector(
+      ".frontmatter-add-button",
+    ) as HTMLButtonElement | null;
+    expect(keyInput).toBeTruthy();
+    expect(valueInput).toBeTruthy();
+    expect(addButton).toBeTruthy();
+
+    act(() => {
+      keyInput?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!keyInput) {
+        return;
+      }
+      keyInput.value = "Cover";
+      keyInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      valueInput?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => {
+      if (!valueInput) {
+        return;
+      }
+      valueInput.value = "assets/other.png";
+      valueInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      addButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).not.toHaveBeenCalled();
+    expect(container.textContent ?? "").toContain(
+      "Cover existiert bereits - nur ein Cover moeglich.",
+    );
+  });
+
+  it("renders cover thumbnail and shows PNG vault images in the picker", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "Cover: '[[assets/cover.png]]'",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      vaultFiles: [
+        {
+          path: "/vault/assets/cover.png",
+          relative_path: "assets/cover.png",
+        },
+        {
+          path: "/vault/assets/alt.jpg",
+          relative_path: "assets/alt.jpg",
+        },
+        {
+          path: "/vault/Note.md",
+          relative_path: "Note.md",
+        },
+      ],
+      vaultPngAssets: [
+        {
+          path: "/vault/assets/cover.png",
+          relative_path: "assets/cover.png",
+          file_name: "cover.png",
+          extension: "png",
+        },
+      ],
+    });
+    cleanup = localCleanup;
+
+    const coverThumb = container.querySelector(
+      ".frontmatter-cover-thumbnail",
+    ) as HTMLImageElement | null;
+    expect(coverThumb).toBeTruthy();
+    expect(coverThumb?.getAttribute("src") ?? "").toContain("cover.png");
+    expect(coverThumb?.closest(".frontmatter-cover-thumbnail-button")).toBeTruthy();
+
+    const coverValueInput = container.querySelector(
+      'input[aria-label="Cover value"]',
+    ) as HTMLInputElement | null;
+    expect(coverValueInput).toBeNull();
+
+    const coverNameText = (
+      container.querySelector(".frontmatter-cover-name") as HTMLSpanElement | null
+    )?.textContent?.trim();
+    const coverTargetText = (
+      container.querySelector(".frontmatter-cover-target") as HTMLSpanElement | null
+    )?.textContent?.trim();
+    expect(coverNameText).toBe("[[assets/cover.png]]");
+    expect(coverTargetText).toBe("[[assets/cover.png]]");
+
+    const coverRow = container.querySelector(
+      '[data-frontmatter-key="Cover"]',
+    ) as HTMLDivElement | null;
+    const coverLabel = coverRow?.querySelector(".frontmatter-label") as HTMLSpanElement | null;
+    expect(coverRow).toBeTruthy();
+    expect(coverLabel).toBeTruthy();
+
+    act(() => {
+      coverRow?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(
+      container.querySelector('[aria-label="Cover Dateityp Auswahl"]'),
+    ).toBeNull();
+    expect(container.textContent ?? "").not.toContain("Typ: PNG");
+
+    act(() => {
+      coverRow?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(
+      container.querySelector('[aria-label="Cover Dateityp Auswahl"]'),
+    ).toBeNull();
+
+    act(() => {
+      coverThumb?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const pickerButton = container.querySelector(
+      'button[aria-label="Cover Bild aus Vault waehlen"]',
+    ) as HTMLButtonElement | null;
+    expect(pickerButton).toBeNull();
+
+    const pickerText = container.querySelector(".frontmatter-cover-picker")?.textContent ?? "";
+    expect(pickerText).toContain("cover.png");
+    expect(pickerText).not.toContain("alt.jpg");
+    expect(pickerText).not.toContain("Note.md");
   });
 
   it("never suggests links/tags keys in text attribute key suggestions", async () => {

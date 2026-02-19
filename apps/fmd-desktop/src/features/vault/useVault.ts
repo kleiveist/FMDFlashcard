@@ -26,11 +26,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
 import { type LoadState } from "../../lib/types";
-import { type VaultFile } from "../../lib/tree";
+import { type VaultFile, type VaultPngAsset } from "../../lib/tree";
 
 type VaultScanResults = {
   files: VaultFile[];
   folders: string[];
+  png_assets?: VaultPngAsset[];
 };
 
 type LoadOptions = {
@@ -48,6 +49,7 @@ type PickOptions = {
 export type VaultSnapshot = {
   vaultPath: string | null;
   files: VaultFile[];
+  pngAssets: VaultPngAsset[];
   folders: string[];
   listState: LoadState;
   listError: string;
@@ -62,6 +64,7 @@ type UseVaultOptions = {
 export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions) => {
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
+  const [pngAssets, setPngAssets] = useState<VaultPngAsset[]>([]);
   const [folders, setFolders] = useState<string[]>([]);
   const [listState, setListState] = useState<LoadState>("idle");
   const [listError, setListError] = useState("");
@@ -72,17 +75,19 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     (): VaultSnapshot => ({
       vaultPath,
       files,
+      pngAssets,
       folders,
       listState,
       listError,
       lastRefreshAt,
     }),
-    [files, folders, lastRefreshAt, listError, listState, vaultPath],
+    [files, folders, lastRefreshAt, listError, listState, pngAssets, vaultPath],
   );
 
   const restoreSnapshot = useCallback((snapshot: VaultSnapshot) => {
     setVaultPath(snapshot.vaultPath);
     setFiles(snapshot.files);
+    setPngAssets(snapshot.pngAssets);
     setFolders(snapshot.folders);
     setListState(snapshot.listState);
     setListError(snapshot.listError);
@@ -94,6 +99,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
       setListError("");
       setVaultPath(path);
       setFiles([]);
+      setPngAssets([]);
       setFolders([]);
       setListState("loading");
       try {
@@ -102,6 +108,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
           showHiddenFolders,
         });
         setFiles(results.files);
+        setPngAssets(results.png_assets ?? []);
         setFolders(results.folders);
         setLastRefreshAt(new Date().toISOString());
         setListState("idle");
@@ -110,7 +117,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
         }
         return results;
       } catch (error) {
-        const message = asErrorMessage(error, "Failed to list markdown files.");
+        const message = asErrorMessage(error, "Failed to list vault entries.");
         setListError(options.errorMessage ?? message);
         setListState("error");
         if (options.clearOnFailure) {
@@ -170,6 +177,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
         showHiddenFolders,
       });
       setFiles(results.files);
+      setPngAssets(results.png_assets ?? []);
       setFolders(results.folders);
       setLastRefreshAt(new Date().toISOString());
       setListState("idle");
@@ -195,6 +203,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
 
   return {
     files,
+    pngAssets,
     folders,
     listError,
     listState,
@@ -204,6 +213,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
     rescanVault,
     restoreSnapshot,
     setFiles,
+    setPngAssets,
     setFolders,
     setListError,
     setListState,
