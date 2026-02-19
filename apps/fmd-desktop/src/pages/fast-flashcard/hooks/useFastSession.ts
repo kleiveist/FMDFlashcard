@@ -43,6 +43,10 @@ import {
   loadFastFlashcardStore,
   saveFastFlashcardStore,
 } from "../../../features/user-vault/storage";
+import {
+  processSessionResults,
+  type SessionResultResolver,
+} from "./sessionResults";
 
 export const fastFlashcardStatusLabel = "Not scanned yet";
 
@@ -133,28 +137,7 @@ export const formatSessionTimestamp = (value: string) => {
 export const formatSessionPace = (pace: number) =>
   Number.isFinite(pace) ? pace.toFixed(1) : "0.0";
 
-export type SessionResultResolver = (
-  index: number,
-) => FastFlashcardResult | null;
-
-export const processSessionResults = (
-  indices: number[],
-  counted: Set<number>,
-  resolve: SessionResultResolver,
-  register: (index: number, result: FastFlashcardResult) => void,
-) => {
-  indices.forEach((index) => {
-    if (counted.has(index)) {
-      return;
-    }
-    const result = resolve(index);
-    if (!result) {
-      return;
-    }
-    register(index, result);
-    counted.add(index);
-  });
-};
+export { processSessionResults, type SessionResultResolver };
 
 export const useFastSession = () => {
   const { fastFlashcards, settings, userVault } = useAppState();

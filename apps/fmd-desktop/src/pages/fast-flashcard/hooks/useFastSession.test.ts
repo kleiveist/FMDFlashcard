@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { FastFlashcardResult } from "./useFastSession";
-import { processSessionResults } from "./useFastSession";
+import type { FastFlashcardResult } from "../../../../lib/fastFlashcard";
+import { processSessionResults } from "./sessionResults";
 
 describe("processSessionResults", () => {
   it("only registers a submission once after a pending state", () => {

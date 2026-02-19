@@ -50,6 +50,10 @@ import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
 import type { ExamEditorControlsState } from "./exam-editor/types";
+import {
+  shouldApplyPreviewDefaultMode,
+  type DashboardView,
+} from "./dashboardPreviewMode";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 const notePanelStorageKey = "fmd.notePanelCollapsed";
@@ -57,19 +61,7 @@ const notePanelStorageKey = "fmd.notePanelCollapsed";
 const stripMarkdownExtension = (value: string) =>
   value.replace(/\.md$/i, "");
 
-export type DashboardView = "markdown" | "exam";
-
-export const shouldApplyPreviewDefaultMode = ({
-  didApplyDefault,
-  settingsLoaded,
-  isEditing,
-  vaultView,
-}: {
-  didApplyDefault: boolean;
-  settingsLoaded: boolean;
-  isEditing: boolean;
-  vaultView: DashboardView;
-}) => settingsLoaded && !didApplyDefault && !isEditing && vaultView === "markdown";
+export { shouldApplyPreviewDefaultMode, type DashboardView };
 
 type DashboardPageProps = {
   initialVaultView?: DashboardView;

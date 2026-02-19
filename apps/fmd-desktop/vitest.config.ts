@@ -24,5 +24,16 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    setupFiles: ["./vitest.setup.ts"],
+    fileParallelism: false,
+    minWorkers: 1,
+    maxWorkers: 1,
+    pool: "forks",
+    teardownTimeout: 3000,
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
   },
 });

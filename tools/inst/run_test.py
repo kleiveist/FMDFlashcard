@@ -28,6 +28,9 @@ from console import (
     warn,
 )
 
+TIMEOUT_EXIT_CODE = 124
+USER_ABORT_EXIT_CODE = 130
+
 
 def _repo_root_from_here() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -65,34 +68,134 @@ def _run(
     )
     try:
         rc = process.wait(timeout=timeout_seconds)
+    except KeyboardInterrupt:
+        warn("Test run aborted by user (Ctrl+C). Stopping child process...")
+        _terminate_process(process, graceful_signal=signal.SIGINT)
+        return USER_ABORT_EXIT_CODE, time.perf_counter() - start
     except subprocess.TimeoutExpired:
         err(
             "Test process timed out. Terminating to avoid indefinite hang "
             f"(timeout: {timeout_seconds:.0f}s)."
         )
-        if os.name != "nt":
-            try:
-                os.killpg(process.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-        else:
-            process.terminate()
-        try:
-            rc = process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            if os.name != "nt":
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-            else:
-                process.kill()
-            rc = process.wait()
+        _log_process_tree(process)
+        _terminate_process(process, graceful_signal=signal.SIGTERM)
+        return TIMEOUT_EXIT_CODE, time.perf_counter() - start
     return rc, time.perf_counter() - start
 
 
 def _format_duration(seconds: float) -> str:
     return f"{seconds:.2f}s"
+
+
+def _vitest_base_cmd(pnpm: str, app_dir: Path) -> list[str]:
+    return [
+        pnpm,
+        "-C",
+        str(app_dir),
+        "exec",
+        "vitest",
+        "run",
+        "--watch=false",
+        "--pool=forks",
+        "--teardownTimeout=3000",
+    ]
+
+
+def _discover_test_files(app_dir: Path) -> list[str]:
+    src_dir = app_dir / "src"
+    if not src_dir.exists():
+        return []
+    return sorted(
+        path.relative_to(app_dir).as_posix()
+        for path in src_dir.rglob("*.test.ts")
+    )
+
+
+def _terminate_process(
+    process: subprocess.Popen[bytes],
+    *,
+    graceful_signal: int,
+) -> int:
+    if process.poll() is not None:
+        return process.returncode
+
+    if os.name != "nt":
+        try:
+            os.killpg(process.pid, graceful_signal)
+        except ProcessLookupError:
+            pass
+    else:
+        process.terminate()
+
+    try:
+        return process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        warn("Process did not exit after graceful signal; escalating to SIGKILL.")
+        if os.name != "nt":
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        else:
+            process.kill()
+        try:
+            return process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            warn("Process did not exit after SIGKILL; continuing without blocking.")
+            return TIMEOUT_EXIT_CODE
+
+
+def _log_process_tree(process: subprocess.Popen[bytes]) -> None:
+    if os.name == "nt":
+        return
+    try:
+        # start_new_session=True => process pid is also process-group id.
+        snapshot = subprocess.run(
+            ["ps", "-o", "pid,ppid,stat,cmd", "--forest", "-g", str(process.pid)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        output = (snapshot.stdout or "").strip()
+        if output:
+            warn("Process tree at timeout:")
+            print(output)
+    except Exception as dump_error:
+        warn(f"Could not capture process tree at timeout: {dump_error}")
+
+
+def _run_tests_per_file(
+    *,
+    pnpm: str,
+    app_dir: Path,
+    repo_root: Path,
+    env: dict[str, str],
+    dry_run: bool,
+) -> tuple[int, float, str | None]:
+    test_files = _discover_test_files(app_dir)
+    if not test_files:
+        warn("No test files discovered for per-file isolation.")
+        return 0, 0.0, None
+
+    section("Timeout isolation")
+    info(f"Running {len(test_files)} files individually to locate hangs.")
+    timeout_seconds = float(env.get("FMD_TEST_FILE_TIMEOUT_SECONDS", "45"))
+    start = time.perf_counter()
+
+    for index, test_file in enumerate(test_files, start=1):
+        info(f"[{index}/{len(test_files)}] {test_file}")
+        cmd = [*_vitest_base_cmd(pnpm, app_dir), "--reporter=verbose", test_file]
+        rc, _ = _run(
+            cmd,
+            cwd=repo_root,
+            env=env,
+            dry_run=dry_run,
+            timeout_seconds=timeout_seconds,
+        )
+        if rc != 0:
+            return rc, time.perf_counter() - start, test_file
+
+    return 0, time.perf_counter() - start, None
 
 
 def run_install(dry_run: bool = False) -> int:
@@ -105,16 +208,25 @@ def run_install(dry_run: bool = False) -> int:
     env = os.environ.copy()
     # Ensure non-interactive CI-like behavior (no watch-mode fallbacks).
     env["CI"] = "1"
-    timeout_seconds = float(env.get("FMD_TEST_TIMEOUT_SECONDS", "300"))
+    timeout_seconds = float(env.get("FMD_TEST_TIMEOUT_SECONDS", "90"))
+    isolate_on_timeout = env.get("FMD_TEST_ISOLATE_ON_TIMEOUT", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+    }
 
     section("Test suite")
     info(f"Repo root: {repo_root}")
     info(f"App dir:  {app_dir}")
+    info(
+        "Timeouts: suite="
+        f"{timeout_seconds:.0f}s, file={float(env.get('FMD_TEST_FILE_TIMEOUT_SECONDS', '45')):.0f}s"
+    )
     if dry_run:
         warn("Dry run mode enabled: commands will not run.")
 
     # Call Vitest directly with explicit non-watch flags.
-    cmd = [pnpm, "-C", str(app_dir), "exec", "vitest", "run", "--watch=false"]
+    cmd = _vitest_base_cmd(pnpm, app_dir)
     rc, duration = _run(
         cmd,
         cwd=repo_root,
@@ -122,8 +234,44 @@ def run_install(dry_run: bool = False) -> int:
         dry_run=dry_run,
         timeout_seconds=timeout_seconds,
     )
+
+    if (
+        rc == TIMEOUT_EXIT_CODE
+        and isolate_on_timeout
+        and not dry_run
+    ):
+        warn("Full-suite run timed out. Retrying per-file isolation.")
+        isolated_rc, isolated_duration, failed_file = _run_tests_per_file(
+            pnpm=pnpm,
+            app_dir=app_dir,
+            repo_root=repo_root,
+            env=env,
+            dry_run=dry_run,
+        )
+        kv("Isolation", _format_duration(isolated_duration))
+        total_duration = duration + isolated_duration
+
+        if isolated_rc == 0:
+            warn("All files passed individually. Full-suite shutdown is hanging.")
+            ok("pnpm test succeeded in isolated mode.")
+            kv("Duration", _format_duration(total_duration))
+            return 0
+        if isolated_rc == USER_ABORT_EXIT_CODE:
+            warn("Isolation run aborted by user.")
+            kv("Duration", _format_duration(total_duration))
+            return isolated_rc
+        if failed_file:
+            err(f"Hanging/failing file in isolation: {failed_file}")
+        err("pnpm test failed during isolation.")
+        kv("Duration", _format_duration(total_duration))
+        return isolated_rc
+
     if rc == 0:
         ok("pnpm test succeeded.")
+    elif rc == USER_ABORT_EXIT_CODE:
+        warn("pnpm test aborted by user.")
+    elif rc == TIMEOUT_EXIT_CODE:
+        err("pnpm test timed out.")
     else:
         err("pnpm test failed.")
 

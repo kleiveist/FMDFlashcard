@@ -1971,6 +1971,9 @@ type FrontmatterPropertiesPanelProps = {
   keySuggestions?: string[];
 };
 
+const EMPTY_VALUE_SUGGESTIONS: Record<string, string[]> = {};
+const EMPTY_KEY_SUGGESTIONS: string[] = [];
+
 const FrontmatterPropertiesPanel = ({
   sourceMarkdown,
   properties,
@@ -1979,8 +1982,8 @@ const FrontmatterPropertiesPanel = ({
   onToggleCollapsed,
   onFrontmatterSave,
   onNavigateWikilink,
-  valueSuggestionsByKey = {},
-  keySuggestions = [],
+  valueSuggestionsByKey = EMPTY_VALUE_SUGGESTIONS,
+  keySuggestions = EMPTY_KEY_SUGGESTIONS,
 }: FrontmatterPropertiesPanelProps) => {
   const linksDocument = useMemo(
     () => parseFrontmatterLinks(sourceMarkdown),
@@ -2040,9 +2043,11 @@ const FrontmatterPropertiesPanel = ({
   const [openSuggestionsKey, setOpenSuggestionsKey] = useState<string | null>(null);
   const [suggestionCursor, setSuggestionCursor] = useState<Record<string, number>>({});
   const valueInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const linksInputRef = useRef<HTMLInputElement | null>(null);
   const addTypeButtonRef = useRef<HTMLButtonElement | null>(null);
   const addKeyInputRef = useRef<HTMLInputElement | null>(null);
   const addValueInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingFrameHandlesRef = useRef<Set<number>>(new Set());
   const [dragPropertyKey, setDragPropertyKey] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{
     key: string;
@@ -2102,6 +2107,24 @@ const FrontmatterPropertiesPanel = ({
     setAddTypeDraft(FRONTMATTER_DEFAULT_ADD_TYPE);
   }, [addTypeDraft, addTypeOptions]);
 
+  const scheduleAnimationFrame = useCallback((callback: () => void) => {
+    const handle = window.requestAnimationFrame(() => {
+      pendingFrameHandlesRef.current.delete(handle);
+      callback();
+    });
+    pendingFrameHandlesRef.current.add(handle);
+    return handle;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      pendingFrameHandlesRef.current.forEach((handle) => {
+        window.cancelAnimationFrame(handle);
+      });
+      pendingFrameHandlesRef.current.clear();
+    };
+  }, []);
+
   const resetDraftsFromProperties = useCallback(() => {
     setDrafts(initialDrafts);
     setEditorModes({});
@@ -2113,7 +2136,7 @@ const FrontmatterPropertiesPanel = ({
   }, [initialDrafts]);
 
   const saveBusy = savingKey !== null;
-  const controlsDisabled = !canEdit || !onFrontmatterSave || saveBusy;
+  const controlsDisabled = !canEdit || saveBusy;
   const hasLinksRow =
     linksDocument.links.length > 0 ||
     properties.some((property) => isLinkPropertyKey(property.key));
@@ -2353,11 +2376,13 @@ const FrontmatterPropertiesPanel = ({
     [controlsDisabled, onFrontmatterSave, sourceMarkdown],
   );
 
-  const handleAddLink = useCallback(async () => {
+  const handleAddLink = useCallback(async (rawInput?: string) => {
     if (controlsDisabled) {
       return;
     }
-    const normalized = normalizeWikilinkValue(linksInputDraft);
+    const normalized = normalizeWikilinkValue(
+      rawInput ?? linksInputRef.current?.value ?? linksInputDraft,
+    );
     if (!normalized) {
       return;
     }
@@ -2427,7 +2452,7 @@ const FrontmatterPropertiesPanel = ({
       if (addError) {
         setAddError("");
       }
-      window.requestAnimationFrame(() => {
+      scheduleAnimationFrame(() => {
         if (autoKey) {
           addValueInputRef.current?.focus();
           return;
@@ -2435,7 +2460,7 @@ const FrontmatterPropertiesPanel = ({
         addKeyInputRef.current?.focus();
       });
     },
-    [addError],
+    [addError, scheduleAnimationFrame],
   );
 
   const handleAddProperty = useCallback(async () => {
@@ -2443,8 +2468,18 @@ const FrontmatterPropertiesPanel = ({
       return;
     }
     const autoKey = resolveAutoAddKeyForType(addTypeDraft);
-    const nextKey = (autoKey ?? (addKeyInputRef.current?.value ?? addKeyDraft)).trim();
-    const nextValue = addValueInputRef.current?.value ?? addValueDraft;
+    const keyFromState = (autoKey ?? addKeyDraft).trim();
+    const keyFromDom = (autoKey ?? (addKeyInputRef.current?.value ?? "")).trim();
+    const nextKey = keyFromState || keyFromDom;
+    const nextValue = addValueInputRef.current
+      ? addValueInputRef.current.value
+      : addValueDraft;
+    if (!autoKey && keyFromDom && keyFromDom !== addKeyDraft) {
+      setAddKeyDraft(keyFromDom);
+    }
+    if (nextValue !== addValueDraft) {
+      setAddValueDraft(nextValue);
+    }
     if (!nextKey) {
       setAddError("Bitte einen Attribut-Namen angeben.");
       return;
@@ -2630,7 +2665,8 @@ const FrontmatterPropertiesPanel = ({
   const addKeySuggestions = isAddKeyAutoManaged
     ? []
     : resolveAddKeySuggestions(isAddKeyEditing ? addKeyDraft : "");
-  const selectedAddKey = (autoManagedAddKey ?? (addKeyInputRef.current?.value ?? addKeyDraft)).trim();
+  const selectedAddKey = ((autoManagedAddKey ?? addKeyDraft).trim()) ||
+    ((autoManagedAddKey ?? (addKeyInputRef.current?.value ?? "")).trim());
   const addValueSuggestions = resolveAddValueSuggestions({
     key: selectedAddKey,
     kind: addTypeDraft,
@@ -3029,7 +3065,7 @@ const FrontmatterPropertiesPanel = ({
                                 beginEditing(property.key);
                                 setOpenSuggestionsKey(property.key);
                                 setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                                window.requestAnimationFrame(() => {
+                                scheduleAnimationFrame(() => {
                                   const input = valueInputRefs.current[property.key];
                                   if (!input) {
                                     return;
@@ -3235,6 +3271,7 @@ const FrontmatterPropertiesPanel = ({
                 <div className="frontmatter-value" role="cell">
                   <div className="frontmatter-links-editor">
                     <input
+                      ref={linksInputRef}
                       type="text"
                       className="text-input frontmatter-input"
                       placeholder="Link hinzufuegen ..."
@@ -3247,7 +3284,7 @@ const FrontmatterPropertiesPanel = ({
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
                           event.preventDefault();
-                          void handleAddLink();
+                          void handleAddLink(event.currentTarget.value);
                         }
                       }}
                     />
@@ -3455,11 +3492,11 @@ const FrontmatterPropertiesPanel = ({
                 value={autoManagedAddKey ?? addKeyDraft}
                 readOnly={isAddKeyAutoManaged || !isAddKeyEditing}
                 disabled={controlsDisabled}
-                onChange={(event) => {
-                  if (isAddKeyAutoManaged || !isAddKeyEditing) {
+                onInput={(event) => {
+                  if (isAddKeyAutoManaged) {
                     return;
                   }
-                  setAddKeyDraft(event.target.value);
+                  setAddKeyDraft(event.currentTarget.value);
                   if (addError) {
                     setAddError("");
                   }
@@ -3498,7 +3535,7 @@ const FrontmatterPropertiesPanel = ({
                     setOpenSuggestionsKey((current) =>
                       current === addKeySuggestionScope ? null : current
                     );
-                    window.requestAnimationFrame(() => {
+                    scheduleAnimationFrame(() => {
                       addValueInputRef.current?.focus();
                     });
                     return;
@@ -3513,7 +3550,10 @@ const FrontmatterPropertiesPanel = ({
                   beginAddEditing("key");
                   setOpenSuggestionsKey(addKeySuggestionScope);
                 }}
-                onBlur={() => {
+                onBlur={(event) => {
+                  if (!isAddKeyAutoManaged) {
+                    setAddKeyDraft(event.currentTarget.value);
+                  }
                   setOpenSuggestionsKey((current) =>
                     current === addKeySuggestionScope ? null : current
                   );
@@ -3526,7 +3566,7 @@ const FrontmatterPropertiesPanel = ({
                   if (isAddKeyAutoManaged) {
                     if (event.key === "Enter") {
                       event.preventDefault();
-                      window.requestAnimationFrame(() => {
+                      scheduleAnimationFrame(() => {
                         addValueInputRef.current?.focus();
                       });
                       return;
@@ -3595,12 +3635,12 @@ const FrontmatterPropertiesPanel = ({
                       if (addError) {
                         setAddError("");
                       }
-                      window.requestAnimationFrame(() => {
+                      scheduleAnimationFrame(() => {
                         addValueInputRef.current?.focus();
                       });
                       return;
                     }
-                    window.requestAnimationFrame(() => {
+                    scheduleAnimationFrame(() => {
                       addValueInputRef.current?.focus();
                     });
                     return;
@@ -3625,7 +3665,7 @@ const FrontmatterPropertiesPanel = ({
                       if (addError) {
                         setAddError("");
                       }
-                      window.requestAnimationFrame(() => {
+                      scheduleAnimationFrame(() => {
                         const input = addKeyInputRef.current;
                         if (!input) {
                           return;
@@ -3682,7 +3722,7 @@ const FrontmatterPropertiesPanel = ({
                           if (addError) {
                             setAddError("");
                           }
-                          window.requestAnimationFrame(() => {
+                          scheduleAnimationFrame(() => {
                             addValueInputRef.current?.focus();
                           });
                         }}
@@ -3708,11 +3748,8 @@ const FrontmatterPropertiesPanel = ({
                 value={addValueDraft}
                 readOnly={!isAddValueEditing}
                 disabled={controlsDisabled}
-                onChange={(event) => {
-                  if (!isAddValueEditing) {
-                    return;
-                  }
-                  setAddValueDraft(event.target.value);
+                onInput={(event) => {
+                  setAddValueDraft(event.currentTarget.value);
                   setOpenSuggestionsKey(addValueSuggestionScope);
                   setSuggestionCursor((current) => ({
                     ...current,
@@ -3744,7 +3781,8 @@ const FrontmatterPropertiesPanel = ({
                   beginAddEditing("value");
                   setOpenSuggestionsKey(addValueSuggestionScope);
                 }}
-                onBlur={() => {
+                onBlur={(event) => {
+                  setAddValueDraft(event.currentTarget.value);
                   setOpenSuggestionsKey((current) =>
                     current === addValueSuggestionScope ? null : current
                   );
@@ -3821,7 +3859,7 @@ const FrontmatterPropertiesPanel = ({
                         ...current,
                         [addValueSuggestionScope]: 0,
                       }));
-                      window.requestAnimationFrame(() => {
+                      scheduleAnimationFrame(() => {
                         const input = addValueInputRef.current;
                         if (!input) {
                           return;
@@ -3935,6 +3973,7 @@ export const PreviewPanel = ({
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
+  const applyingMarkdownCaretRef = useRef(false);
   const scrollStateRef = useRef({ top: 0, left: 0 });
   const lastCaretIndexRef = useRef<number | null>(null);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
@@ -3979,6 +4018,9 @@ export const PreviewPanel = ({
 
   const syncMarkdownDraftFromEditor = useCallback(() => {
     if (!markdownEditorRef.current) {
+      return;
+    }
+    if (applyingMarkdownCaretRef.current) {
       return;
     }
     const nextBody = serializeMarkdownFromHtml(markdownEditorRef.current);
@@ -4103,14 +4145,21 @@ export const PreviewPanel = ({
       return;
     }
     const handleSelectionChange = () => {
-      syncMarkdownDraftFromEditor();
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || !editor.contains(selection.anchorNode)) {
+        return;
+      }
       syncActiveMarkdownHeading();
     };
     document.addEventListener("selectionchange", handleSelectionChange);
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [isEditing, rawPreview, syncActiveMarkdownHeading, syncMarkdownDraftFromEditor]);
+  }, [isEditing, rawPreview, syncActiveMarkdownHeading]);
 
   useLayoutEffect(() => {
     if (isEditing) {
@@ -4153,6 +4202,7 @@ export const PreviewPanel = ({
       return;
     }
     const editor = markdownEditorRef.current;
+    applyingMarkdownCaretRef.current = true;
     const bodyCaretIndex = Math.max(
       0,
       editCaretIndex - markdownEditBodyStartOffset,
@@ -4162,7 +4212,6 @@ export const PreviewPanel = ({
     });
     const desiredScrollTop = scrollStateRef.current.top;
     const desiredScrollLeft = scrollStateRef.current.left;
-    let settleHandle: number | null = null;
     const enforceScroll = () => {
       editor.scrollTop = desiredScrollTop;
       editor.scrollLeft = desiredScrollLeft;
@@ -4173,21 +4222,20 @@ export const PreviewPanel = ({
       } catch {
         editor.focus();
       }
-      setCaretAtPlainOffset(editor, plainOffset);
-      enforceScroll();
-      settleHandle = window.requestAnimationFrame(() => {
+      try {
+        setCaretAtPlainOffset(editor, plainOffset);
         enforceScroll();
         lastCaretIndexRef.current = editCaretIndex;
         scrollStateRef.current.top = editor.scrollTop;
         scrollStateRef.current.left = editor.scrollLeft;
+      } finally {
+        applyingMarkdownCaretRef.current = false;
         onEditCaretApplied();
-      });
+      }
     });
     return () => {
       window.cancelAnimationFrame(handle);
-      if (settleHandle !== null) {
-        window.cancelAnimationFrame(settleHandle);
-      }
+      applyingMarkdownCaretRef.current = false;
     };
   }, [
     editCaretIndex,

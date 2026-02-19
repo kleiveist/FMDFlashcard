@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { shouldApplyPreviewDefaultMode } from "./DashboardPage";
+import { shouldApplyPreviewDefaultMode } from "./dashboardPreviewMode";
 
 describe("shouldApplyPreviewDefaultMode", () => {
   it("applies once when settings are loaded, not editing, and in markdown view", () => {
