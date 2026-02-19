@@ -88,6 +88,30 @@ describe("normalizeTableSpacingForRender", () => {
 
     expect(result).toBe(source);
   });
+
+  it("adds blank lines around fenced code blocks", () => {
+    const source = [
+      "Vorher",
+      "```http",
+      "GET /book/1",
+      "200 OK",
+      "```",
+      "Nachher",
+    ].join("\n");
+
+    const result = normalizeTableSpacingForRender(source);
+
+    expect(result).toBe([
+      "Vorher",
+      "",
+      "```http",
+      "GET /book/1",
+      "200 OK",
+      "```",
+      "",
+      "Nachher",
+    ].join("\n"));
+  });
 });
 
 describe("serializeMarkdownFromHtml", () => {
@@ -268,6 +292,81 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).not.toContain("\\-");
   });
 
+  it("keeps edited code fence markers in markdown edit mode", () => {
+    const container = document.createElement("div");
+    const pre = document.createElement("pre");
+    pre.setAttribute("data-md-code-block", "true");
+
+    const openLine = document.createElement("span");
+    openLine.className = "md-code-fence-line md-code-fence-open";
+    const openMarker = document.createElement("span");
+    openMarker.className = "md-code-fence-marker";
+    openMarker.textContent = "```http";
+    openLine.appendChild(openMarker);
+    pre.appendChild(openLine);
+
+    const code = document.createElement("code");
+    code.textContent = "GET /book/1\n200 OK";
+    pre.appendChild(code);
+
+    const closeLine = document.createElement("span");
+    closeLine.className = "md-code-fence-line md-code-fence-close";
+    const closeMarker = document.createElement("span");
+    closeMarker.className = "md-code-fence-marker";
+    closeMarker.textContent = "```";
+    closeLine.appendChild(closeMarker);
+    pre.appendChild(closeLine);
+    container.appendChild(pre);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("```http\nGET /book/1\n200 OK\n```\n");
+  });
+
+  it("serializes empty code blocks without inserting an inner blank line", () => {
+    const container = document.createElement("div");
+    const pre = document.createElement("pre");
+    const code = document.createElement("code");
+    code.textContent = "";
+    pre.appendChild(code);
+    container.appendChild(pre);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("```\n```\n");
+  });
+
+  it("serializes empty editable code blocks without inner blank lines", () => {
+    const container = document.createElement("div");
+    const pre = document.createElement("pre");
+    pre.setAttribute("data-md-code-block", "true");
+
+    const openLine = document.createElement("span");
+    openLine.className = "md-code-fence-line md-code-fence-open";
+    const openMarker = document.createElement("span");
+    openMarker.className = "md-code-fence-marker";
+    openMarker.textContent = "```http";
+    openLine.appendChild(openMarker);
+    pre.appendChild(openLine);
+
+    const code = document.createElement("code");
+    code.textContent = "";
+    pre.appendChild(code);
+
+    const closeLine = document.createElement("span");
+    closeLine.className = "md-code-fence-line md-code-fence-close";
+    const closeMarker = document.createElement("span");
+    closeMarker.className = "md-code-fence-marker";
+    closeMarker.textContent = "```";
+    closeLine.appendChild(closeMarker);
+    pre.appendChild(closeLine);
+    container.appendChild(pre);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("```http\n```\n");
+  });
+
   it("keeps a blank line before and after tables", () => {
     const container = document.createElement("div");
     const above = document.createElement("p");
@@ -432,5 +531,33 @@ describe("buildEditableMarkdownHtml", () => {
 
     expect(list?.getAttribute("data-md-ordered-delimiter")).toBe(")");
     expect(marker?.textContent).toBe("1) ");
+  });
+
+  it("injects editable code fence markers and keeps a copy control", () => {
+    const container = document.createElement("div");
+    container.innerHTML = [
+      "<div class=\"md-code-block\">",
+      "<button class=\"md-code-copy-button\" type=\"button\">copy</button>",
+      "<pre><code>GET /book/1</code></pre>",
+      "</div>",
+    ].join("");
+
+    const html = buildEditableMarkdownHtml(container, "```http\nGET /book/1\n```");
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+
+    const copyButton = wrapper.querySelector(".md-code-copy-button");
+    const pre = wrapper.querySelector("pre[data-md-code-block=\"true\"]");
+    const openMarker = wrapper.querySelector(
+      "pre > .md-code-fence-open > .md-code-fence-marker",
+    ) as HTMLElement | null;
+    const closeMarker = wrapper.querySelector(
+      "pre > .md-code-fence-close > .md-code-fence-marker",
+    ) as HTMLElement | null;
+
+    expect(copyButton).toBeTruthy();
+    expect(pre).toBeTruthy();
+    expect(openMarker?.textContent).toBe("```http");
+    expect(closeMarker?.textContent).toBe("```");
   });
 });

@@ -121,6 +121,41 @@ const resolveAnchorTarget = (target: EventTarget | null) => {
   return element?.closest("a[href]") as HTMLAnchorElement | null;
 };
 
+const copyTextToClipboard = async (value: string) => {
+  if (!value) {
+    return;
+  }
+  const normalized = value.replace(/\r\n?/g, "\n").replace(/\n$/, "");
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText === "function"
+  ) {
+    await navigator.clipboard.writeText(normalized);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = normalized;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    const exec = (document as Document & {
+      execCommand?: (command: string) => boolean;
+    }).execCommand;
+    if (typeof exec === "function") {
+      exec.call(document, "copy");
+    }
+  } finally {
+    textarea.remove();
+  }
+};
+
 const isModifierClick = (event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlKey">) =>
   event.metaKey || event.ctrlKey;
 
@@ -858,7 +893,45 @@ const wrapCodeBlock = (text: string) => {
     : 3;
   const fence = "`".repeat(Math.max(3, fenceLength));
   const trimmed = normalized.replace(/\n$/, "");
+  if (trimmed.trim().length === 0) {
+    return `${fence}\n${fence}\n`;
+  }
   return `${fence}\n${trimmed}\n${fence}\n`;
+};
+
+const resolveCodeFenceFromOpenMarker = (openMarker: string) =>
+  openMarker.match(/^`{3,}/)?.[0] ?? "```";
+
+const normalizeOpenCodeFenceMarker = (value: string | null) => {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed || !/^`{3,}/.test(trimmed)) {
+    return "```";
+  }
+  return trimmed;
+};
+
+const normalizeCloseCodeFenceMarker = (
+  value: string | null,
+  openMarker: string,
+) => {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed || !/^`{3,}$/.test(trimmed)) {
+    return resolveCodeFenceFromOpenMarker(openMarker);
+  }
+  return trimmed;
+};
+
+const wrapCodeBlockWithMarkers = (
+  text: string,
+  openMarker: string,
+  closeMarker: string,
+) => {
+  const normalized = text.replace(/\r\n?/g, "\n");
+  const trimmed = normalized.replace(/\n$/, "");
+  if (trimmed.trim().length === 0) {
+    return `${openMarker}\n${closeMarker}\n`;
+  }
+  return `${openMarker}\n${trimmed}\n${closeMarker}\n`;
 };
 
 type MarkdownSerializeContext = {
@@ -913,6 +986,10 @@ const serializeMarkdownNode = (
   const element = node as HTMLElement;
   const tag = element.tagName.toLowerCase();
 
+  if (tag === "button" && element.classList.contains("md-code-copy-button")) {
+    return "";
+  }
+
   if (tag === "br") {
     return "\n";
   }
@@ -966,7 +1043,26 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "pre") {
-    const code = element.querySelector("code")?.textContent ?? element.textContent ?? "";
+    const contentClone = element.cloneNode(true) as HTMLElement;
+    contentClone.querySelectorAll(".md-code-fence-line").forEach((line) => line.remove());
+    const code = contentClone.querySelector("code")?.textContent ?? contentClone.textContent ?? "";
+    if (context.inContentEditable) {
+      const openMarkerText = element.querySelector(
+        ".md-code-fence-open > .md-code-fence-marker",
+      )?.textContent ?? null;
+      const closeMarkerText = element.querySelector(
+        ".md-code-fence-close > .md-code-fence-marker",
+      )?.textContent ?? null;
+      if (
+        element.hasAttribute("data-md-code-block") ||
+        openMarkerText !== null ||
+        closeMarkerText !== null
+      ) {
+        const openMarker = normalizeOpenCodeFenceMarker(openMarkerText);
+        const closeMarker = normalizeCloseCodeFenceMarker(closeMarkerText, openMarker);
+        return wrapCodeBlockWithMarkers(code, openMarker, closeMarker);
+      }
+    }
     const block = wrapCodeBlock(code);
     return context.inContentEditable ? block : `${block}\n`;
   }
@@ -1152,6 +1248,12 @@ const isMarkdownTableSeparatorLine = (
   normalizeMarkdownTableLine(line, options),
 );
 
+const isMarkdownCodeFenceLine = (line: string) =>
+  /^\s*`{3,}/.test(line);
+
+const isMarkdownCodeFenceClosingLine = (line: string) =>
+  /^\s*`{3,}\s*$/.test(line);
+
 const normalizeMarkdownTables = (
   markdown: string,
   options?: NormalizeMarkdownTablesOptions,
@@ -1165,14 +1267,24 @@ const normalizeMarkdownTables = (
 
   for (let i = 0; i < sourceLines.length; i += 1) {
     const line = sourceLines[i] ?? "";
-    const trimmed = line.trim();
-    if (trimmed.startsWith("```")) {
-      inCodeFence = !inCodeFence;
+    if (!inCodeFence && isMarkdownCodeFenceLine(line)) {
+      const lastLine = normalized[normalized.length - 1] ?? "";
+      if (normalized.length > 0 && lastLine.trim() !== "") {
+        normalized.push("");
+      }
       normalized.push(line);
+      inCodeFence = true;
       continue;
     }
     if (inCodeFence) {
       normalized.push(line);
+      if (isMarkdownCodeFenceClosingLine(line)) {
+        inCodeFence = false;
+        const nextLine = sourceLines[i + 1] ?? "";
+        if (nextLine.trim() !== "") {
+          normalized.push("");
+        }
+      }
       continue;
     }
     const nextLine = sourceLines[i + 1] ?? "";
@@ -1267,6 +1379,50 @@ export const buildEditableMarkdownHtml = (
     return markers;
   };
 
+  const parseCodeFenceMarkersFromMarkdown = (markdown: string) => {
+    if (!markdown) {
+      return [] as Array<{ open: string; close: string }>;
+    }
+    const lines = markdown.split("\n");
+    const markers: Array<{ open: string; close: string }> = [];
+    let inFence = false;
+    let openMarker = "";
+
+    for (const line of lines) {
+      if (!inFence) {
+        const openMatch = line.match(/^\s*(`{3,}.*)$/);
+        if (!openMatch) {
+          continue;
+        }
+        openMarker = (openMatch[1] ?? "").trim();
+        inFence = true;
+        continue;
+      }
+
+      const closeMatch = line.match(/^\s*(`{3,})\s*$/);
+      if (!closeMatch) {
+        continue;
+      }
+      const normalizedOpen = normalizeOpenCodeFenceMarker(openMarker);
+      markers.push({
+        open: normalizedOpen,
+        close: normalizeCloseCodeFenceMarker(closeMatch[1] ?? null, normalizedOpen),
+      });
+      openMarker = "";
+      inFence = false;
+    }
+
+    if (inFence) {
+      const normalizedOpen = normalizeOpenCodeFenceMarker(openMarker);
+      markers.push({
+        open: normalizedOpen,
+        close: resolveCodeFenceFromOpenMarker(normalizedOpen),
+      });
+    }
+
+    return markers;
+  };
+
   const resolveOrderedMarker = (listItem: HTMLElement) => {
     const parent = listItem.parentElement;
     if (!parent || parent.tagName.toLowerCase() !== "ol") {
@@ -1329,9 +1485,83 @@ export const buildEditableMarkdownHtml = (
     return "- ";
   };
   const listMarkerHints = parseListMarkersFromMarkdown(rawMarkdown ?? "");
+  const codeFenceHints = parseCodeFenceMarkersFromMarkdown(rawMarkdown ?? "");
   let listMarkerHintIndex = 0;
+  let codeFenceHintIndex = 0;
+
+  const createCodeCopyButton = (doc: Document) => {
+    const button = doc.createElement("button");
+    button.type = "button";
+    button.className = "md-code-copy-button";
+    button.setAttribute("aria-label", "Copy code block");
+    button.setAttribute("title", "Copy code block");
+    button.setAttribute("contenteditable", "false");
+    button.setAttribute("tabindex", "-1");
+
+    const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+
+    const rect = doc.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", "9");
+    rect.setAttribute("y", "9");
+    rect.setAttribute("width", "10");
+    rect.setAttribute("height", "10");
+    rect.setAttribute("rx", "2");
+    rect.setAttribute("stroke", "currentColor");
+    rect.setAttribute("stroke-width", "1.7");
+
+    const path = doc.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "1.7");
+    path.setAttribute("stroke-linecap", "round");
+
+    svg.appendChild(rect);
+    svg.appendChild(path);
+    button.appendChild(svg);
+    return button;
+  };
 
   clone.querySelectorAll(".frontmatter-panel").forEach((panel) => panel.remove());
+  clone.querySelectorAll(".md-code-copy-button").forEach((button) => button.remove());
+  clone.querySelectorAll<HTMLElement>("pre").forEach((codeBlock) => {
+    let wrapper = codeBlock.parentElement;
+    if (!wrapper || !wrapper.classList.contains("md-code-block")) {
+      const createdWrapper = codeBlock.ownerDocument.createElement("div");
+      createdWrapper.className = "md-code-block";
+      codeBlock.replaceWith(createdWrapper);
+      createdWrapper.appendChild(codeBlock);
+      wrapper = createdWrapper;
+    }
+    wrapper.insertBefore(createCodeCopyButton(codeBlock.ownerDocument), wrapper.firstChild);
+
+    codeBlock.setAttribute("data-md-code-block", "true");
+    codeBlock.removeAttribute("data-md-code-active");
+    if (codeBlock.querySelector(".md-code-fence-line")) {
+      return;
+    }
+    const markerHint = codeFenceHints[codeFenceHintIndex] ?? null;
+    codeFenceHintIndex += 1;
+    const openMarkerText = markerHint?.open ?? "```";
+    const closeMarkerText = markerHint?.close ?? "```";
+    const openLine = codeBlock.ownerDocument.createElement("span");
+    openLine.className = "md-code-fence-line md-code-fence-open";
+    const openMarker = codeBlock.ownerDocument.createElement("span");
+    openMarker.className = "md-code-fence-marker";
+    openMarker.textContent = openMarkerText;
+    openLine.appendChild(openMarker);
+    codeBlock.insertBefore(openLine, codeBlock.firstChild);
+
+    const closeLine = codeBlock.ownerDocument.createElement("span");
+    closeLine.className = "md-code-fence-line md-code-fence-close";
+    const closeMarker = codeBlock.ownerDocument.createElement("span");
+    closeMarker.className = "md-code-fence-marker";
+    closeMarker.textContent = closeMarkerText;
+    closeLine.appendChild(closeMarker);
+    codeBlock.appendChild(closeLine);
+  });
   clone.querySelectorAll<HTMLElement>("li").forEach((item) => {
     if (
       item.firstElementChild instanceof HTMLElement &&
@@ -4048,7 +4278,15 @@ export const PreviewPanel = ({
         item.firstElementChild instanceof HTMLElement &&
         item.firstElementChild.classList.contains("md-list-marker"),
     );
-    if (headings.length === 0 && hrLines.length === 0 && listItems.length === 0) {
+    const codeBlocks = Array.from(
+      editor.querySelectorAll<HTMLElement>('pre[data-md-code-block="true"]'),
+    );
+    if (
+      headings.length === 0 &&
+      hrLines.length === 0 &&
+      listItems.length === 0 &&
+      codeBlocks.length === 0
+    ) {
       return;
     }
 
@@ -4074,6 +4312,12 @@ export const PreviewPanel = ({
           ? range.startContainer
           : range?.startContainer.parentElement
         )?.closest("li")
+      : null;
+    const activeCodeBlock = inEditor
+      ? (range?.startContainer instanceof Element
+          ? range.startContainer
+          : range?.startContainer.parentElement
+        )?.closest('pre[data-md-code-block="true"]')
       : null;
     const retagQueue: Array<{
       heading: HTMLElement;
@@ -4120,6 +4364,14 @@ export const PreviewPanel = ({
         item.setAttribute("data-md-list-active", "true");
       } else {
         item.removeAttribute("data-md-list-active");
+      }
+    });
+
+    codeBlocks.forEach((block) => {
+      if (block === activeCodeBlock) {
+        block.setAttribute("data-md-code-active", "true");
+      } else {
+        block.removeAttribute("data-md-code-active");
       }
     });
   }, []);
@@ -4245,6 +4497,51 @@ export const PreviewPanel = ({
     onEditCaretApplied,
     rawPreview,
   ]);
+
+  const handleCodeCopyClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const codeBlock = event.currentTarget.closest(".md-code-block");
+      const code = codeBlock?.querySelector("pre > code")?.textContent ?? "";
+      if (!code) {
+        return;
+      }
+      void copyTextToClipboard(code);
+    },
+    [],
+  );
+
+  const handleMarkdownEditorMouseDown = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const target = resolveEventElement(event.target);
+      if (!target?.closest(".md-code-copy-button")) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [],
+  );
+
+  const handleMarkdownEditorClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const target = resolveEventElement(event.target);
+      const copyButton = target?.closest(".md-code-copy-button");
+      if (!copyButton) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const codeBlock = copyButton.closest(".md-code-block");
+      const code = codeBlock?.querySelector("pre > code")?.textContent ?? "";
+      if (!code) {
+        return;
+      }
+      void copyTextToClipboard(code);
+    },
+    [],
+  );
 
   const handlePreviewLinkClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -4541,7 +4838,9 @@ export const PreviewPanel = ({
                     onBlur={handleMarkdownEditorBlur}
                     onFocus={syncActiveMarkdownHeading}
                     onKeyUp={syncActiveMarkdownHeading}
+                    onMouseDown={handleMarkdownEditorMouseDown}
                     onMouseUp={syncActiveMarkdownHeading}
+                    onClick={handleMarkdownEditorClick}
                     role="textbox"
                     aria-multiline="true"
                     aria-label="Edit markdown preview"
@@ -4622,6 +4921,44 @@ export const PreviewPanel = ({
                             } as CSSProperties;
                             return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
                           },
+                          pre: ({ node: _node, ...props }) => (
+                            <div className="md-code-block">
+                              <button
+                                type="button"
+                                className="md-code-copy-button"
+                                aria-label="Copy code block"
+                                title="Copy code block"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                }}
+                                onMouseUp={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                }}
+                                onClick={handleCodeCopyClick}
+                              >
+                                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                                  <rect
+                                    x="9"
+                                    y="9"
+                                    width="10"
+                                    height="10"
+                                    rx="2"
+                                    stroke="currentColor"
+                                    strokeWidth="1.7"
+                                  />
+                                  <path
+                                    d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
+                                    stroke="currentColor"
+                                    strokeWidth="1.7"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                              </button>
+                              <pre {...props} />
+                            </div>
+                          ),
                           table: ({ node: _node, ...props }) => (
                             <div className="markdown-table">
                               <table {...props} />

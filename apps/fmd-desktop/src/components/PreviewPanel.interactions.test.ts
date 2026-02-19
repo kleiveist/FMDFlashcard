@@ -445,6 +445,102 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(hrLine?.getAttribute("data-md-hr-active")).toBe("true");
   });
 
+  it("shows editable ``` markers when a code block is focused", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["```http", "GET /book/1", "200 OK", "```", "", "Tail"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const codeBlock = editable?.querySelector(
+      'pre[data-md-code-block="true"]',
+    ) as HTMLElement | null;
+    const openMarker = codeBlock?.querySelector(
+      ".md-code-fence-open > .md-code-fence-marker",
+    ) as HTMLElement | null;
+    const closeMarker = codeBlock?.querySelector(
+      ".md-code-fence-close > .md-code-fence-marker",
+    ) as HTMLElement | null;
+    const codeTextNode = codeBlock?.querySelector("code")?.firstChild ?? null;
+    const paragraphTextNode = editable?.querySelector("p")?.firstChild ?? null;
+
+    expect(codeBlock).toBeTruthy();
+    expect(openMarker?.textContent).toBe("```http");
+    expect(closeMarker?.textContent).toBe("```");
+    expect(codeBlock?.hasAttribute("data-md-code-active")).toBe(false);
+
+    act(() => {
+      if (!codeTextNode) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(codeTextNode, 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    expect(codeBlock?.getAttribute("data-md-code-active")).toBe("true");
+
+    act(() => {
+      if (!paragraphTextNode) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(paragraphTextNode, 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    expect(codeBlock?.hasAttribute("data-md-code-active")).toBe(false);
+  });
+
+  it("shows a copy control in markdown edit mode outside the code element", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["```http", "GET /book/1", "200 OK", "```"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const copyButton = editable?.querySelector(
+      ".md-code-block > .md-code-copy-button",
+    ) as HTMLButtonElement | null;
+    const pre = editable?.querySelector(".md-code-block > pre");
+
+    expect(copyButton).toBeTruthy();
+    expect(pre).toBeTruthy();
+    expect(copyButton?.closest("pre")).toBeNull();
+  });
+
   it("shows editable list markers when a list line is focused", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       [
@@ -498,6 +594,29 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const activeListItem = markerToActivate?.closest("li");
     expect(activeListItem?.getAttribute("data-md-list-active")).toBe("true");
+  });
+
+  it("shows a copy control on code blocks without forcing edit mode", async () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["```http", "GET /book/1", "200 OK", "```"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const copyButton = container.querySelector(
+      ".preview.markdown .md-code-copy-button",
+    ) as HTMLButtonElement | null;
+    expect(copyButton).toBeTruthy();
+
+    act(() => {
+      copyButton?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+      copyButton?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+      copyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, button: 0 }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector(".preview.preview-editor.markdown")).toBeNull();
   });
 
   it("keeps frontmatter collapsed when switching to markdown edit mode", () => {

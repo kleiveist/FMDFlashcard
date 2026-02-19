@@ -704,6 +704,39 @@ textarea.preview-editor {
   user-select: text;
 }
 
+.preview-markdown-editable li > p {
+  margin: 0;
+}
+
+.preview-markdown-editable li[data-md-list-active="true"] > .md-list-marker + p:last-child {
+  display: inline;
+}
+
+.preview-markdown-editable pre[data-md-code-block="true"] {
+  position: relative;
+}
+
+.preview-markdown-editable pre[data-md-code-block="true"] > .md-code-fence-line {
+  display: none;
+}
+
+.preview-markdown-editable pre[data-md-code-block="true"] > .md-code-fence-line > .md-code-fence-marker {
+  color: var(--muted);
+  font-size: inherit;
+  line-height: inherit;
+  opacity: 0.9;
+  pointer-events: auto;
+  user-select: text;
+}
+
+.preview-markdown-editable pre[data-md-code-block="true"][data-md-code-active="true"] > .md-code-fence-line {
+  display: block;
+}
+
+.preview-markdown-editable pre[data-md-code-block="true"][data-md-code-active="true"] > .md-code-fence-line > .md-code-fence-marker {
+  color: var(--muted);
+}
+
 .preview-markdown-editable [data-md-hr-line="true"] {
   position: relative;
   margin: 0.9rem 0;
@@ -994,6 +1027,51 @@ textarea.preview-editor {
   border: 1px solid var(--preview-code-border);
   border-radius: 12px;
   overflow-x: auto;
+}
+
+.md-code-block {
+  position: relative;
+}
+
+.md-code-block > .md-code-copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  color: var(--muted);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  cursor: pointer;
+}
+
+.preview.markdown .md-code-block > .md-code-copy-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.md-code-block > .md-code-copy-button > svg {
+  width: 15px;
+  height: 15px;
+}
+
+.md-code-block:hover > .md-code-copy-button,
+.md-code-block:focus-within > .md-code-copy-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.md-code-block > .md-code-copy-button:hover {
+  color: var(--preview-ink);
+  border-color: var(--line-strong);
 }
 
 .md-preview pre code {
