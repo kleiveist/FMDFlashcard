@@ -1,4 +1,4 @@
-import type { FastFlashcardResult } from "../../../../lib/fastFlashcard";
+import type { FastFlashcardResult } from "../../../lib/fastFlashcard";
 
 export type SessionResultResolver = (
   index: number,

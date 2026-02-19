@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { FastFlashcardResult } from "../../../../lib/fastFlashcard";
+import type { FastFlashcardResult } from "../../../lib/fastFlashcard";
 import { processSessionResults } from "./sessionResults";
 
 describe("processSessionResults", () => {
