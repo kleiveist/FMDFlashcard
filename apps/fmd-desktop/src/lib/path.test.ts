@@ -16,8 +16,15 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { isHiddenPath } from "./path";
+import { isHiddenPath, normalizeRelativePath } from "./path";
 import { filterHiddenFiles, type VaultFile } from "./tree";
+
+describe("normalizeRelativePath", () => {
+  it("converts separators, removes leading slashes and collapses duplicates", () => {
+    expect(normalizeRelativePath("///images\\\\A.PNG")).toBe("images/A.PNG");
+    expect(normalizeRelativePath("images//nested///file.md")).toBe("images/nested/file.md");
+  });
+});
 
 describe("isHiddenPath", () => {
   it("detects dot-prefixed segments", () => {

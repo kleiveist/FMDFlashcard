@@ -17,7 +17,7 @@
  */
 
 export const normalizeRelativePath = (value: string) =>
-  value.replace(/\\/g, "/").replace(/^\/+/, "");
+  value.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+/, "");
 
 export const isHiddenPath = (value: string) => {
   const normalized = normalizeRelativePath(value);

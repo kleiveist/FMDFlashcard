@@ -10,6 +10,7 @@ import { normalizeSettings, type AppSettings } from "./useAppSettings";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+  convertFileSrc: vi.fn((path: string) => path),
 }));
 
 describe("normalizeSettings", () => {

@@ -11,6 +11,7 @@ import { listUserVaultProfiles } from "./storage";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+  convertFileSrc: vi.fn((path: string) => path),
 }));
 
 const invokeMock = vi.mocked(invoke);

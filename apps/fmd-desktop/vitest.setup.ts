@@ -7,6 +7,7 @@ testEnv.IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+  convertFileSrc: vi.fn((path: string) => path),
 }));
 
 vi.mock("@tauri-apps/plugin-opener", () => ({
