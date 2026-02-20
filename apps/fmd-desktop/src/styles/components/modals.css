@@ -87,6 +87,14 @@
   min-height: 0;
 }
 
+.settings-modal-panel {
+  width: 940px;
+  max-width: 940px;
+  height: 710px;
+  max-height: 710px;
+  overflow: hidden;
+}
+
 .note-modal-panel {
   width: min(400px, 92vw);
   max-height: min(745px, calc(100vh - 2rem));
@@ -100,6 +108,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.settings-modal-body {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .note-modal-body {

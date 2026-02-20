@@ -34,6 +34,8 @@ export type SettingsSubPageId =
   | "flashcard-tools"
   | "fast-flashcard-tools"
   | "spaced-repetition-tools"
+  | "vault-index"
+  | "vault-data"
   | "data-sync"
   | "export-import";
 
@@ -60,8 +62,8 @@ export const SETTINGS_NAV_MODEL = [
   {
     type: "item",
     id: "exam-editor",
-    label: "Editor Settings",
-    title: "Exam editor",
+    label: "Exam Editor",
+    title: "Exam Editor",
     icon: "exam-editor",
   },
   { type: "divider", label: "STUDY" },
@@ -113,6 +115,10 @@ export const SETTINGS_NAV_MODEL = [
     id: "vault-index",
     label: "Vault & Index",
     icon: "vault-index",
+    subPages: [
+      { id: "vault-index", label: "Vault & Index" },
+      { id: "vault-data", label: "Vault Data" },
+    ],
   },
   {
     type: "item",

@@ -499,10 +499,14 @@ const AppContent = () => {
           <HelpPage onCloseHelp={handleCloseHelp} />
         </div>
       </ModalShell>
-      <ModalShell isOpen={isSettingsOpen} title="Settings" onClose={handleCloseSettings}>
-        <div className="hub-modal-scroll">
-          <SettingsPage />
-        </div>
+      <ModalShell
+        isOpen={isSettingsOpen}
+        title="Settings"
+        onClose={handleCloseSettings}
+        className="settings-modal-panel"
+        bodyClassName="settings-modal-body"
+      >
+        <SettingsPage />
       </ModalShell>
       <UserVaultCustomPathModal
         isOpen={openGateId === "custom-path"}

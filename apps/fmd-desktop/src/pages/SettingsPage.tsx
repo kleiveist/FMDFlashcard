@@ -55,7 +55,6 @@ import { VaultIndexSection } from "../components/settings/VaultIndexSection";
 import {
   AppearanceIcon,
   CardsIcon,
-  ChevronDownIcon,
   ExamEditorIcon,
   FileIcon,
   FolderIcon,
@@ -104,6 +103,7 @@ const SETTINGS_NAV_ICONS: Record<SettingsNavIcon, () => ReactElement> = {
 const SETTINGS_NAV_ITEMS = SETTINGS_NAV_MODEL.filter(
   (entry): entry is SettingsNavItem => entry.type === "item",
 );
+const SETTINGS_COMPACT_BP = 1200;
 
 const buildDefaultSubPages = () => {
   const defaults: Partial<Record<SettingsPageId, SettingsSubPageId>> = {};
@@ -151,84 +151,14 @@ const SettingsNav = ({ items, activeId, onSelect }: SettingsNavProps) => (
   </nav>
 );
 
-type SettingsMobileToolbarProps = {
-  items: readonly SettingsNavEntry[];
-  activeId: SettingsPageId;
-  isOpen: boolean;
-  toolbarId: string;
-  onNavigate: (id: SettingsPageId) => void;
-};
-
-const SettingsMobileToolbar = ({
-  items,
-  activeId,
-  isOpen,
-  toolbarId,
-  onNavigate,
-}: SettingsMobileToolbarProps) => {
-  const firstItemRef = useRef<HTMLButtonElement | null>(null);
-  const firstItemId =
-    items.find((entry): entry is SettingsNavItem => entry.type === "item")?.id ??
-    null;
-
-  useEffect(() => {
-    if (!isOpen || !firstItemRef.current) {
-      return;
-    }
-    firstItemRef.current.focus({ preventScroll: true });
-  }, [isOpen]);
-
-  return (
-    <div id={toolbarId} className="settings-mobile-toolbar" hidden={!isOpen}>
-      <nav className="settings-mobile-toolbar-nav" aria-label="Settings sections">
-        {items.map((entry, index) => {
-          if (entry.type === "divider") {
-            return (
-              <div
-                key={`settings-mobile-divider-${entry.label}-${index}`}
-                className="settings-nav-divider"
-              >
-                {entry.label}
-              </div>
-            );
-          }
-          const Icon = SETTINGS_NAV_ICONS[entry.icon];
-          const isActive = activeId === entry.id;
-          const isFirstItem = entry.id === firstItemId;
-          return (
-            <button
-              key={entry.id}
-              ref={isFirstItem ? firstItemRef : undefined}
-              type="button"
-              className={`settings-nav-item ${isActive ? "active" : ""}`}
-              onClick={() => onNavigate(entry.id)}
-              aria-current={isActive ? "page" : undefined}
-            >
-              <span className="settings-nav-icon">
-                <Icon />
-              </span>
-              <span className="settings-nav-label">{entry.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-    </div>
-  );
-};
-
 type SettingsPanelProps = {
   activeItem: SettingsNavItem;
   activeSubPageId: SettingsSubPageId | null;
   onSubPageChange: (id: SettingsSubPageId) => void;
   actions?: ReactNode;
   children: ReactNode;
-  mobileToolbar?: {
-    items: readonly SettingsNavEntry[];
-    activeId: SettingsPageId;
-    isOpen: boolean;
-    onToggle: () => void;
-    onNavigate: (id: SettingsPageId) => void;
-  };
+  compactMode?: boolean;
+  onBack?: () => void;
 };
 
 const SettingsPanel = ({
@@ -237,7 +167,8 @@ const SettingsPanel = ({
   onSubPageChange,
   actions,
   children,
-  mobileToolbar,
+  compactMode = false,
+  onBack,
 }: SettingsPanelProps) => {
   const Icon = SETTINGS_NAV_ICONS[activeItem.icon];
   const title = activeItem.title ?? activeItem.label;
@@ -251,9 +182,6 @@ const SettingsPanel = ({
   const labelledBy = resolvedSubPageId
     ? `settings-subpage-tab-${activeItem.id}-${resolvedSubPageId}`
     : headingId;
-  const mobileToolbarId = mobileToolbar
-    ? `settings-mobile-toolbar-${activeItem.id}`
-    : null;
 
   return (
     <section className="settings-panel" aria-labelledby={headingId}>
@@ -266,38 +194,20 @@ const SettingsPanel = ({
             <h2 id={headingId} className="settings-panel-title-heading">
               {title}
             </h2>
-            {mobileToolbar && mobileToolbarId ? (
+            {compactMode && onBack ? (
               <button
                 type="button"
-                className="settings-section-header-btn"
-                onClick={mobileToolbar.onToggle}
-                aria-expanded={mobileToolbar.isOpen}
-                aria-controls={mobileToolbarId}
+                className="settings-section-header-btn settings-section-back-btn"
+                onClick={onBack}
+                aria-label={`Back to settings list from ${title}`}
               >
                 <span className="settings-section-header-text">{title}</span>
-                <span
-                  className={`settings-section-header-chevron ${
-                    mobileToolbar.isOpen ? "is-open" : ""
-                  }`}
-                  aria-hidden="true"
-                >
-                  <ChevronDownIcon />
-                </span>
               </button>
             ) : null}
           </div>
         </div>
         {actions ? <div className="panel-actions">{actions}</div> : null}
       </div>
-      {mobileToolbar && mobileToolbarId ? (
-        <SettingsMobileToolbar
-          toolbarId={mobileToolbarId}
-          items={mobileToolbar.items}
-          activeId={mobileToolbar.activeId}
-          isOpen={mobileToolbar.isOpen}
-          onNavigate={mobileToolbar.onNavigate}
-        />
-      ) : null}
       {hasSubPages ? (
         <div className="settings-tabs" role="tablist" aria-label={`${title} pages`}>
           {activeItem.subPages?.map((subPage) => {
@@ -309,6 +219,7 @@ const SettingsPanel = ({
                 className={`pill pill-button ${isActive ? "active" : ""}`}
                 role="tab"
                 aria-selected={isActive}
+                aria-current={isActive ? "page" : undefined}
                 aria-controls={`settings-subpage-${activeItem.id}-${subPage.id}`}
                 id={`settings-subpage-tab-${activeItem.id}-${subPage.id}`}
                 onClick={() => onSubPageChange(subPage.id)}
@@ -369,8 +280,11 @@ export const SettingsPage = () => {
   const [activeSubPages, setActiveSubPages] = useState<
     Partial<Record<SettingsPageId, SettingsSubPageId>>
   >(() => buildDefaultSubPages());
-  const isSmartMode = useMediaQuery("(max-width: 980px)", false);
-  const [openToolbarSectionId, setOpenToolbarSectionId] = useState<
+  const isCompactSettings = useMediaQuery(
+    `(max-width: ${SETTINGS_COMPACT_BP - 0.02}px)`,
+    false,
+  );
+  const [compactActiveSectionId, setCompactActiveSectionId] = useState<
     SettingsPageId | null
   >(null);
   const [pendingFocusRequest, setPendingFocusRequest] =
@@ -398,6 +312,9 @@ export const SettingsPage = () => {
         ...prev,
         [request.pageId]: request.subPageId,
       }));
+    }
+    if (isCompactSettings) {
+      setCompactActiveSectionId(request.pageId);
     }
     setPendingFocusRequest(null);
     consumeSettingsFocusRequest();
@@ -440,7 +357,12 @@ export const SettingsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeSettingsPage, pendingFocusRequest, setActiveSettingsPage]);
+  }, [
+    activeSettingsPage,
+    isCompactSettings,
+    pendingFocusRequest,
+    setActiveSettingsPage,
+  ]);
 
   useEffect(() => {
     if (settings.examDurationMinutes > 0) {
@@ -509,21 +431,37 @@ export const SettingsPage = () => {
     [activeItem],
   );
 
-  const handleMobileToolbarToggle = useCallback((sectionId: SettingsPageId) => {
-    setOpenToolbarSectionId((prev) => (prev === sectionId ? null : sectionId));
-  }, []);
-
-  const handleMobileNavigate = useCallback(
+  const handleSettingsSelect = useCallback(
     (nextId: SettingsPageId) => {
       setActiveSettingsPage(nextId);
-      setOpenToolbarSectionId(null);
+      if (isCompactSettings) {
+        setCompactActiveSectionId(nextId);
+      }
     },
-    [setActiveSettingsPage],
+    [isCompactSettings, setActiveSettingsPage],
   );
 
+  const handleCompactBack = useCallback(() => {
+    setCompactActiveSectionId(null);
+  }, []);
+
+  const previousCompactModeRef = useRef(isCompactSettings);
+  const previousActiveSettingsPageRef = useRef(activeSettingsPage);
+
   useEffect(() => {
-    setOpenToolbarSectionId(null);
-  }, [activeSettingsPage]);
+    const compactModeChanged = previousCompactModeRef.current !== isCompactSettings;
+    const activePageChanged =
+      previousActiveSettingsPageRef.current !== activeSettingsPage;
+
+    if (compactModeChanged && isCompactSettings) {
+      setCompactActiveSectionId(activeSettingsPage);
+    } else if (isCompactSettings && activePageChanged) {
+      setCompactActiveSectionId(activeSettingsPage);
+    }
+
+    previousCompactModeRef.current = isCompactSettings;
+    previousActiveSettingsPageRef.current = activeSettingsPage;
+  }, [activeSettingsPage, isCompactSettings]);
 
   const headerActions = (
     <button
@@ -575,25 +513,17 @@ export const SettingsPage = () => {
               markdownEditorAccentEnabled={settings.markdownEditorAccentEnabled}
               markdownEditorAccentLightHex={settings.markdownEditorAccentLightHex}
               markdownEditorAccentDarkHex={settings.markdownEditorAccentDarkHex}
-              markdownEditorAccentCustomSwatches={
-                settings.markdownEditorAccentCustomSwatches
-              }
               editorBlueprintGrid={settings.editorBlueprintGrid}
               editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
-              markdownViewEditEnabled={settings.markdownViewEditEnabled}
               markdownPreviewDefaultMode={settings.markdownPreviewDefaultMode}
               onMarkdownEditorAccentEnabledToggle={
                 settings.setMarkdownEditorAccentEnabled
               }
               onMarkdownEditorAccentHexChange={settings.setMarkdownEditorAccentHex}
-              onMarkdownEditorAccentCustomSwatchAdd={
-                settings.addMarkdownEditorAccentCustomSwatch
-              }
               onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
               onEditorBlueprintGridIntensityChange={
                 settings.setEditorBlueprintGridIntensity
               }
-              onMarkdownViewEditToggle={settings.setMarkdownViewEditEnabled}
               onMarkdownPreviewDefaultModeChange={
                 settings.setMarkdownPreviewDefaultMode
               }
@@ -867,10 +797,13 @@ export const SettingsPage = () => {
             </section>
           </div>
         );
-      case "vault-index":
+      case "vault-index": {
+        const vaultSubPageId =
+          activeSubPageId === "vault-data" ? "vault-data" : "vault-index";
         return (
           <div className="settings-page settings-single-column">
             <VaultIndexSection
+              activeSubPageId={vaultSubPageId}
               lastOpenedFile={lastOpenedFile}
               listState={vault.listState}
               listError={vault.listError}
@@ -887,20 +820,23 @@ export const SettingsPage = () => {
             />
           </div>
         );
+      }
       case "data-sync":
         return (
           <div className="settings-page settings-single-column">
-            <div className="settings-tab-content">
-              {activeSubPageId === "export-import" ? (
-                <ExportImportSettingsView userVault={userVault} />
-              ) : (
-                <DataSyncSettingsView
-                  userVault={userVault}
-                  spacedRepetition={spacedRepetition}
-                  vaultSelection={profileSetupVaultSelection}
-                />
-              )}
-            </div>
+            <section className="panel">
+              <div className="panel-body">
+                {activeSubPageId === "export-import" ? (
+                  <ExportImportSettingsView userVault={userVault} />
+                ) : (
+                  <DataSyncSettingsView
+                    userVault={userVault}
+                    spacedRepetition={spacedRepetition}
+                    vaultSelection={profileSetupVaultSelection}
+                  />
+                )}
+              </div>
+            </section>
           </div>
         );
       default:
@@ -912,35 +848,38 @@ export const SettingsPage = () => {
     return null;
   }
 
+  const showCompactListOnly = isCompactSettings && compactActiveSectionId === null;
+
   return (
     <>
       <div className="settings-layout">
-        {!isSmartMode ? (
+        {showCompactListOnly ? (
           <SettingsNav
             items={SETTINGS_NAV_MODEL}
             activeId={activeSettingsPage}
-            onSelect={setActiveSettingsPage}
+            onSelect={handleSettingsSelect}
           />
-        ) : null}
-        <SettingsPanel
-          activeItem={activeItem}
-          activeSubPageId={activeSubPageId}
-          onSubPageChange={handleSubPageChange}
-          actions={headerActions}
-          mobileToolbar={
-            isSmartMode
-              ? {
-                  items: SETTINGS_NAV_MODEL,
-                  activeId: activeSettingsPage,
-                  isOpen: openToolbarSectionId === activeItem.id,
-                  onToggle: () => handleMobileToolbarToggle(activeItem.id),
-                  onNavigate: handleMobileNavigate,
-                }
-              : undefined
-          }
-        >
-          {renderSettingsContent()}
-        </SettingsPanel>
+        ) : (
+          <>
+            {!isCompactSettings ? (
+              <SettingsNav
+                items={SETTINGS_NAV_MODEL}
+                activeId={activeSettingsPage}
+                onSelect={handleSettingsSelect}
+              />
+            ) : null}
+            <SettingsPanel
+              activeItem={activeItem}
+              activeSubPageId={activeSubPageId}
+              onSubPageChange={handleSubPageChange}
+              actions={headerActions}
+              compactMode={isCompactSettings}
+              onBack={isCompactSettings ? handleCompactBack : undefined}
+            >
+              {renderSettingsContent()}
+            </SettingsPanel>
+          </>
+        )}
       </div>
       <ResetSessionHistoryModal
         isOpen={isResetHistoryOpen}

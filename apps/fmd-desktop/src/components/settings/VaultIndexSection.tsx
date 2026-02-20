@@ -22,8 +22,12 @@
 
 import type { ChangeEvent } from "react";
 import { type LoadState } from "../../lib/types";
+import type { SettingsSubPageId } from "../../features/settings/settingsNavigation";
+
+type VaultSubPageId = Extract<SettingsSubPageId, "vault-index" | "vault-data">;
 
 type VaultIndexSectionProps = {
+  activeSubPageId: VaultSubPageId;
   lastOpenedFile: string | null;
   listState: LoadState;
   listError: string;
@@ -40,6 +44,7 @@ type VaultIndexSectionProps = {
 };
 
 export const VaultIndexSection = ({
+  activeSubPageId,
   lastOpenedFile,
   listState,
   listError,
@@ -60,20 +65,66 @@ export const VaultIndexSection = ({
   const handleShowEmptyFoldersChange = (event: ChangeEvent<HTMLInputElement>) => {
     onShowEmptyFoldersToggle(event.target.checked);
   };
+
+  if (activeSubPageId === "vault-data") {
+    const showHiddenFoldersInputId = "settings-vault-data-show-hidden-folders";
+    const showEmptyFoldersInputId = "settings-vault-data-show-empty-folders";
+    return (
+      <section className="panel vault-data-panel">
+        <div className="panel-body">
+          <div className="setting-row">
+            <label className="label" htmlFor={showHiddenFoldersInputId}>
+              Show Hidden Folders
+            </label>
+            <div className="theme-toggle">
+              <span className="toggle-label">Off</span>
+              <label className="switch">
+                <input
+                  id={showHiddenFoldersInputId}
+                  type="checkbox"
+                  checked={showHiddenFolders}
+                  onChange={handleShowHiddenFoldersChange}
+                  aria-label="Show Hidden Folders"
+                />
+                <span className="slider" />
+              </label>
+              <span className="toggle-label">On</span>
+            </div>
+          </div>
+          <div className="setting-row">
+            <label className="label" htmlFor={showEmptyFoldersInputId}>
+              Show Empty Folders
+            </label>
+            <div className="theme-toggle">
+              <span className="toggle-label">Off</span>
+              <label className="switch">
+                <input
+                  id={showEmptyFoldersInputId}
+                  type="checkbox"
+                  checked={showEmptyFolders}
+                  onChange={handleShowEmptyFoldersChange}
+                  aria-label="Show Empty Folders"
+                />
+                <span className="slider" />
+              </label>
+              <span className="toggle-label">On</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   const isRefreshing = listState === "loading";
   const lastRefreshLabel = lastRefreshAt
     ? new Date(lastRefreshAt).toLocaleString()
     : "Not refreshed yet";
+  const hasLastOpenedFile =
+    typeof lastOpenedFile === "string" && lastOpenedFile.trim().length > 0;
 
   return (
     <section className="panel vault-index-panel">
-      <div className="panel-header">
-        <div>
-          <h2>Vault &amp; Index</h2>
-        </div>
-      </div>
       <div className="panel-body">
-        <p className="muted">Vault path, last opened note, and index status.</p>
         <div className="setting-row">
           <span className="label">Current vault path</span>
           <div className="setting-inline">
@@ -88,50 +139,12 @@ export const VaultIndexSection = ({
             </button>
           </div>
         </div>
-        <div className="setting-row">
-          <span className="label">Last opened</span>
-          <span className="value path-value">
-            {lastOpenedFile ?? "Not loaded yet"}
-          </span>
-        </div>
-        <div className="setting-row">
-          <span className="label">Show hidden folders</span>
-          <div className="theme-toggle">
-            <span className="toggle-label">Off</span>
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={showHiddenFolders}
-                onChange={handleShowHiddenFoldersChange}
-                aria-label="Show hidden folders"
-              />
-              <span className="slider" />
-            </label>
-            <span className="toggle-label">On</span>
+        {hasLastOpenedFile ? (
+          <div className="setting-row">
+            <span className="label">Last opened</span>
+            <span className="value path-value">{lastOpenedFile}</span>
           </div>
-          <span className="helper-text">
-            Folders starting with a dot (e.g., .git, .obsidian).
-          </span>
-        </div>
-        <div className="setting-row">
-          <span className="label">Show empty folders</span>
-          <div className="theme-toggle">
-            <span className="toggle-label">Off</span>
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={showEmptyFolders}
-                onChange={handleShowEmptyFoldersChange}
-                aria-label="Show empty folders"
-              />
-              <span className="slider" />
-            </label>
-            <span className="toggle-label">On</span>
-          </div>
-          <span className="helper-text">
-            Show folders that do not contain markdown files.
-          </span>
-        </div>
+        ) : null}
         <div className="setting-row">
           <span className="label">Status indicators</span>
           <div className="status-list">
