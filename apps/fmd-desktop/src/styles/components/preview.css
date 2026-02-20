@@ -443,13 +443,14 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  min-height: 176px;
+  min-height: 104px;
 }
 
 .frontmatter-cover-thumbnail-button {
   width: 176px;
   min-width: 176px;
-  height: 176px;
+  height: auto;
+  aspect-ratio: 16 / 9;
   border-radius: 8px;
   border: 1px solid var(--line-soft);
   background: var(--panel);
