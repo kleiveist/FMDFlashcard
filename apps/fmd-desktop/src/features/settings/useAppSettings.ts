@@ -164,6 +164,8 @@ export type AppSettings = {
   exam_auto_cards_return_on_correct?: boolean | null;
   exam_grade_scale?: string | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
+  input_debug_enabled?: boolean | null;
+  input_debug_redact_content?: boolean | null;
   keyboard_shortcuts?: KeyboardShortcutSettings | null;
 };
 
@@ -222,6 +224,8 @@ type PersistUpdates = {
   examAutoCardsReturnOnCorrect?: boolean;
   examGradeScale?: ExamGradeScale;
   examAiEvaluation?: ExamAiEvaluation;
+  inputDebugEnabled?: boolean;
+  inputDebugRedactContent?: boolean;
   keyboardShortcuts?: KeyboardShortcutSettings;
 };
 
@@ -280,6 +284,8 @@ export type SettingsSnapshot = {
   examAutoCardsReturnOnCorrect: boolean;
   examGradeScale: ExamGradeScale;
   examAiEvaluation: ExamAiEvaluation;
+  inputDebugEnabled: boolean;
+  inputDebugRedactContent: boolean;
   keyboardShortcuts: KeyboardShortcutSettings;
 };
 
@@ -338,6 +344,8 @@ const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
   provider: null,
 };
 const DEFAULT_EXAM_GRADE_SCALE: ExamGradeScale = "standard-1-6";
+const DEFAULT_INPUT_DEBUG_ENABLED = false;
+const DEFAULT_INPUT_DEBUG_REDACT_CONTENT = true;
 
 const normalizeVaultRegistryStatus = (value: unknown): VaultRegistryStatus =>
   value === "missing" ? "missing" : "available";
@@ -728,6 +736,8 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   exam_auto_cards_return_on_correct: settings.examAutoCardsReturnOnCorrect,
   exam_grade_scale: settings.examGradeScale,
   exam_ai_evaluation: settings.examAiEvaluation,
+  input_debug_enabled: settings.inputDebugEnabled,
+  input_debug_redact_content: settings.inputDebugRedactContent,
   keyboard_shortcuts: settings.keyboardShortcuts,
 });
 
@@ -1002,6 +1012,14 @@ export const normalizeSettings = (
   const storedExamAiEvaluation = normalizeExamAiEvaluation(
     stored.exam_ai_evaluation,
   );
+  const storedInputDebugEnabled =
+    typeof stored.input_debug_enabled === "boolean"
+      ? stored.input_debug_enabled
+      : DEFAULT_INPUT_DEBUG_ENABLED;
+  const storedInputDebugRedactContent =
+    typeof stored.input_debug_redact_content === "boolean"
+      ? stored.input_debug_redact_content
+      : DEFAULT_INPUT_DEBUG_REDACT_CONTENT;
   const {
     settings: storedKeyboardShortcuts,
     needsMigration: needsKeyboardShortcutsMigration,
@@ -1063,6 +1081,8 @@ export const normalizeSettings = (
       examAutoCardsReturnOnCorrect: storedExamAutoCardsReturnOnCorrect,
       examGradeScale: storedExamGradeScale,
       examAiEvaluation: storedExamAiEvaluation,
+      inputDebugEnabled: storedInputDebugEnabled,
+      inputDebugRedactContent: storedInputDebugRedactContent,
       keyboardShortcuts: storedKeyboardShortcuts,
     },
     needsShowHiddenFoldersMigration,
@@ -1210,6 +1230,12 @@ export const useAppSettings = () => {
   const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
     DEFAULT_EXAM_AI_EVALUATION,
   );
+  const [inputDebugEnabled, setInputDebugEnabledState] = useState(
+    DEFAULT_INPUT_DEBUG_ENABLED,
+  );
+  const [inputDebugRedactContent, setInputDebugRedactContentState] = useState(
+    DEFAULT_INPUT_DEBUG_REDACT_CONTENT,
+  );
   const [keyboardShortcuts, setKeyboardShortcutsState] =
     useState<KeyboardShortcutSettings>(DEFAULT_KEYBOARD_SHORTCUTS);
   const autoSaveReady = useRef(false);
@@ -1277,6 +1303,14 @@ export const useAppSettings = () => {
       enabled: Boolean(value?.enabled),
       provider: value?.provider === "shared-gpt" ? "shared-gpt" : null,
     });
+  }, []);
+
+  const setInputDebugEnabled = useCallback((value: boolean) => {
+    setInputDebugEnabledState(Boolean(value));
+  }, []);
+
+  const setInputDebugRedactContent = useCallback((value: boolean) => {
+    setInputDebugRedactContentState(Boolean(value));
   }, []);
 
   const setExamGradeScale = useCallback((value: ExamGradeScale) => {
@@ -1474,6 +1508,8 @@ export const useAppSettings = () => {
       examAutoCardsReturnOnCorrect,
       examGradeScale,
       examAiEvaluation,
+      inputDebugEnabled,
+      inputDebugRedactContent,
       keyboardShortcuts,
     }),
     [
@@ -1498,6 +1534,8 @@ export const useAppSettings = () => {
       examAutoCardsReturnOnCorrect,
       examGradeScale,
       examHelpEnabled,
+      inputDebugEnabled,
+      inputDebugRedactContent,
       keyboardShortcuts,
       flashcardMode,
       flashcardOrder,
@@ -1602,6 +1640,8 @@ export const useAppSettings = () => {
           examAutoCardsReturnOnCorrect: settings.examAutoCardsReturnOnCorrect,
           examGradeScale: settings.examGradeScale,
           examAiEvaluation: settings.examAiEvaluation,
+          inputDebugEnabled: settings.inputDebugEnabled,
+          inputDebugRedactContent: settings.inputDebugRedactContent,
           keyboardShortcuts: settings.keyboardShortcuts,
         });
         return true;
@@ -1709,6 +1749,9 @@ export const useAppSettings = () => {
         examGradeScale:
           updates.examGradeScale ?? examGradeScale,
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
+        inputDebugEnabled: updates.inputDebugEnabled ?? inputDebugEnabled,
+        inputDebugRedactContent:
+          updates.inputDebugRedactContent ?? inputDebugRedactContent,
         keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
       };
       const saved = await saveSettings(nextSettings);
@@ -1737,6 +1780,8 @@ export const useAppSettings = () => {
       examEditorShowMoveButtons,
       examAiEvaluation,
       examGradeScale,
+      inputDebugEnabled,
+      inputDebugRedactContent,
       examMaxTotalPoints,
       examTaskCount,
       examTaskPoints,
@@ -1857,6 +1902,8 @@ export const useAppSettings = () => {
     setExamAutoCardsReturnOnCorrectState(normalized.examAutoCardsReturnOnCorrect);
     setExamGradeScaleState(normalized.examGradeScale);
     setExamAiEvaluationState(normalized.examAiEvaluation);
+    setInputDebugEnabledState(normalized.inputDebugEnabled);
+    setInputDebugRedactContentState(normalized.inputDebugRedactContent);
     setKeyboardShortcutsState(normalized.keyboardShortcuts);
   }, []);
 
@@ -2017,6 +2064,8 @@ export const useAppSettings = () => {
     markdownPreviewDefaultMode,
     examEditorShowMoveButtons,
     examAiEvaluation,
+    inputDebugEnabled,
+    inputDebugRedactContent,
     examMaxTotalPoints,
     examTaskCount,
     examTaskPoints,
@@ -2057,6 +2106,8 @@ export const useAppSettings = () => {
     setMarkdownPreviewDefaultMode,
     setExamEditorShowMoveButtons,
     setExamAiEvaluation,
+    setInputDebugEnabled,
+    setInputDebugRedactContent,
     setExamMaxTotalPoints,
     setExamTaskCount,
     setExamTaskPoints,

@@ -47,6 +47,7 @@ import { getActiveCloseLayer } from "./lib/shortcuts/closeOrBack";
 import { getShortcutById } from "./lib/shortcuts/registry";
 import { isSyncProviderEnabled, logWordPressFeatureStatus } from "./lib/featureFlags";
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
+import { useInputDebugInstrumentation } from "./features/input-debug/useInputDebug";
 import { subscribeSettingsFocus } from "./features/settings/settingsDeepLink";
 import { DashboardPage, type DashboardPageHandle, type DashboardView } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
@@ -81,6 +82,10 @@ const AppContent = () => {
     userVault,
     vault,
   } = useAppState();
+  useInputDebugInstrumentation({
+    enabled: settings.inputDebugEnabled,
+    redactContent: settings.inputDebugRedactContent,
+  });
   const [activeTab, setActiveTab] = useState<StudySectionKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");

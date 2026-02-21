@@ -131,6 +131,8 @@ struct AppSettings {
     exam_task_count: Option<u32>,
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
+    input_debug_enabled: Option<bool>,
+    input_debug_redact_content: Option<bool>,
     exam_auto_cards_enabled: Option<bool>,
     exam_auto_cards_types: Option<HashMap<String, bool>>,
     exam_auto_cards_return_on_correct: Option<bool>,
@@ -271,6 +273,8 @@ impl AppSettings {
             && self.exam_task_count.is_none()
             && self.exam_task_points.is_none()
             && self.exam_ai_evaluation.is_none()
+            && self.input_debug_enabled.is_none()
+            && self.input_debug_redact_content.is_none()
             && self.exam_auto_cards_enabled.is_none()
             && self.exam_auto_cards_types.is_none()
             && self.exam_auto_cards_return_on_correct.is_none()
@@ -305,6 +309,13 @@ fn is_png(path: &Path) -> bool {
 fn is_json(path: &Path) -> bool {
     match path.extension().and_then(|ext| ext.to_str()) {
         Some(ext) => ext.eq_ignore_ascii_case("json"),
+        None => false,
+    }
+}
+
+fn is_jsonl(path: &Path) -> bool {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some(ext) => ext.eq_ignore_ascii_case("jsonl"),
         None => false,
     }
 }
@@ -527,6 +538,8 @@ fn save_app_settings(
     exam_task_count: Option<u32>,
     exam_task_points: Option<Vec<u32>>,
     exam_ai_evaluation: Option<ExamAiEvaluation>,
+    input_debug_enabled: Option<bool>,
+    input_debug_redact_content: Option<bool>,
     exam_auto_cards_enabled: Option<bool>,
     exam_auto_cards_types: Option<HashMap<String, bool>>,
     exam_auto_cards_return_on_correct: Option<bool>,
@@ -586,6 +599,8 @@ fn save_app_settings(
         exam_task_count,
         exam_task_points,
         exam_ai_evaluation,
+        input_debug_enabled,
+        input_debug_redact_content,
         exam_auto_cards_enabled,
         exam_auto_cards_types,
         exam_auto_cards_return_on_correct,
@@ -890,6 +905,19 @@ fn rename_json_file(from: String, to: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn export_input_debug_log(path: String, payload: String) -> Result<String, String> {
+    let path = PathBuf::from(path);
+    if !is_jsonl(&path) {
+        return Err("Only JSONL files are supported.".to_string());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    fs::write(&path, payload).map_err(|err| err.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> {
     let path = PathBuf::from(path);
     if !path.exists() {
@@ -1149,6 +1177,7 @@ pub fn run() {
             read_json_file,
             write_json_file,
             rename_json_file,
+            export_input_debug_log,
             read_text_file,
             write_text_file,
             delete_markdown_file,

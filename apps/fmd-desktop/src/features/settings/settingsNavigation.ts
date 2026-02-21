@@ -34,6 +34,8 @@ export type SettingsSubPageId =
   | "flashcard-tools"
   | "fast-flashcard-tools"
   | "spaced-repetition-tools"
+  | "performance-general"
+  | "performance-debug"
   | "vault-index"
   | "vault-data"
   | "data-sync"
@@ -109,6 +111,10 @@ export const SETTINGS_NAV_MODEL = [
     id: "performance",
     label: "Performance",
     icon: "performance",
+    subPages: [
+      { id: "performance-general", label: "Performance" },
+      { id: "performance-debug", label: "Debug" },
+    ],
   },
   {
     type: "item",

@@ -307,9 +307,6 @@ export const AutoCardsSettingsPanel = ({
     <div className="panel-header">
       <div>
         <h2>Auto Cards</h2>
-        <p className="muted">
-          Choose which interaction types are converted into auto cards after grading.
-        </p>
       </div>
     </div>
     <div className="panel-body">

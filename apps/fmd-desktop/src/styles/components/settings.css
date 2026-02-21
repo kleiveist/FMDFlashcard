@@ -208,9 +208,7 @@
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
+  overflow: hidden;
   padding-right: 4px;
 }
 
@@ -219,16 +217,41 @@
   flex-direction: column;
   gap: 20px;
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .settings-page .panel {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.settings-page .panel .panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .settings-single-column {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.settings-single-column > .editor-settings-block {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .settings-app-grid {
@@ -378,6 +401,53 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.input-debug-panel .panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.input-debug-panel .setting-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.input-debug-meta {
+  margin: 0;
+}
+
+.input-debug-status {
+  margin: 0;
+}
+
+.input-debug-status.is-error {
+  color: var(--accent-strong);
+}
+
+.input-debug-warning {
+  color: var(--accent-strong);
+}
+
+.input-debug-hints {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--field-bg);
+}
+
+.input-debug-hints h3 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.input-debug-hints ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 @media (max-width: 1199.98px) {

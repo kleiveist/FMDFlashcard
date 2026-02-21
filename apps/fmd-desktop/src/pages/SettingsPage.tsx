@@ -38,6 +38,7 @@ import {
   ExamTogglesPanel,
 } from "../components/settings/ExamSettingsSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
+import { InputDebugSection } from "../components/settings/InputDebugSection";
 import { KeyboardShortcutsSection } from "../components/settings/KeyboardShortcutsSection";
 import {
   ExamEditorSection,
@@ -779,22 +780,31 @@ export const SettingsPage = () => {
       case "performance":
         return (
           <div className="settings-page settings-single-column">
-            <section className="panel settings-performance-panel">
-              <div className="panel-header">
-                <div>
-                  <h2>Performance</h2>
-                  <p className="muted">Tune vault scans for larger libraries.</p>
+            {activeSubPageId === "performance-debug" ? (
+              <InputDebugSection
+                enabled={settings.inputDebugEnabled}
+                redactContent={settings.inputDebugRedactContent}
+                setEnabled={settings.setInputDebugEnabled}
+                setRedactContent={settings.setInputDebugRedactContent}
+              />
+            ) : (
+              <section className="panel settings-performance-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Performance</h2>
+                    <p className="muted">Tune vault scans for larger libraries.</p>
+                  </div>
                 </div>
-              </div>
-              <div className="panel-body">
-                <PerformanceTabContent
-                  maxFilesPerScan={settings.maxFilesPerScan}
-                  onMaxFilesPerScanChange={actions.handleMaxFilesPerScanChange}
-                  scanParallelism={settings.scanParallelism}
-                  setScanParallelism={settings.setScanParallelism}
-                />
-              </div>
-            </section>
+                <div className="panel-body">
+                  <PerformanceTabContent
+                    maxFilesPerScan={settings.maxFilesPerScan}
+                    onMaxFilesPerScanChange={actions.handleMaxFilesPerScanChange}
+                    scanParallelism={settings.scanParallelism}
+                    setScanParallelism={settings.setScanParallelism}
+                  />
+                </div>
+              </section>
+            )}
           </div>
         );
       case "vault-index": {

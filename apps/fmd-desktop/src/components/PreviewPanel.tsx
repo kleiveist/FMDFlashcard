@@ -5341,6 +5341,7 @@ export const PreviewPanel = ({
                   key="raw-edit"
                   ref={editorRef}
                   className="preview-editor"
+                  data-input-scope="editor"
                   value={editDraft}
                   onChange={(event) => onEditChange(event.target.value)}
                   onBlur={handleRawEditorBlur}
@@ -5352,6 +5353,7 @@ export const PreviewPanel = ({
                   key="markdown-edit"
                   ref={markdownEditorScrollRef}
                   className="preview preview-editor markdown md-preview"
+                  data-input-scope="editor"
                   onScroll={(event) => captureScroll(event.currentTarget)}
                 >
                   {showFrontmatterPanel ? (
@@ -5374,6 +5376,7 @@ export const PreviewPanel = ({
                   <div
                     ref={markdownEditorRef}
                     className="preview-markdown-editable md-preview"
+                    data-input-scope="editor"
                     contentEditable
                     suppressContentEditableWarning
                     onInput={handleMarkdownInput}

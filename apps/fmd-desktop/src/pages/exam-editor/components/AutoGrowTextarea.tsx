@@ -59,6 +59,7 @@ export const AutoGrowTextarea = ({
     <textarea
       ref={textareaRef}
       className={className}
+      data-input-scope="editor"
       rows={rows}
       value={value}
       placeholder={placeholder}
