@@ -30,6 +30,7 @@ type MarkdownEditorSectionProps = {
   markdownEditorAccentDarkHex: string;
   editorBlueprintGrid: boolean;
   editorBlueprintGridIntensity: "light" | "medium" | "strong";
+  cursorAccessoryEnabled: boolean;
   markdownPreviewDefaultMode: "markdown" | "raw";
   onMarkdownEditorAccentEnabledToggle: (value: boolean) => void;
   onMarkdownEditorAccentHexChange: (mode: AccentMode, value: string) => void;
@@ -37,6 +38,7 @@ type MarkdownEditorSectionProps = {
   onEditorBlueprintGridIntensityChange: (
     value: "light" | "medium" | "strong",
   ) => void;
+  onCursorAccessoryEnabledToggle: (value: boolean) => void;
   onMarkdownPreviewDefaultModeChange: (value: "markdown" | "raw") => void;
 };
 
@@ -85,11 +87,13 @@ export const MarkdownEditorSection = ({
   markdownEditorAccentDarkHex,
   editorBlueprintGrid,
   editorBlueprintGridIntensity,
+  cursorAccessoryEnabled,
   markdownPreviewDefaultMode,
   onMarkdownEditorAccentEnabledToggle,
   onMarkdownEditorAccentHexChange,
   onEditorBlueprintGridToggle,
   onEditorBlueprintGridIntensityChange,
+  onCursorAccessoryEnabledToggle,
   onMarkdownPreviewDefaultModeChange,
 }: MarkdownEditorSectionProps) => {
   const [accentMode, setAccentMode] = useState<AccentMode>("light");
@@ -298,6 +302,28 @@ export const MarkdownEditorSection = ({
               ))}
             </div>
           </div>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">Backspace-Hilfstaste anzeigen</span>
+        <div className="setting-subrow">
+          <div className="theme-toggle">
+            <span className="toggle-label">Off</span>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={cursorAccessoryEnabled}
+                onChange={(event) => onCursorAccessoryEnabledToggle(event.target.checked)}
+                aria-label="Backspace-Hilfstaste anzeigen"
+              />
+              <span className="slider" />
+            </label>
+            <span className="toggle-label">On</span>
+          </div>
+          <span className="helper-text">
+            Zeigt bei kleinen Bildschirmbreiten eine zusaetzliche Backspace-
+            Hilfstaste an, sobald ein Textfeld aktiv ist.
+          </span>
         </div>
       </div>
       <div className="setting-row">

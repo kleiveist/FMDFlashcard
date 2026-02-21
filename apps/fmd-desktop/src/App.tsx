@@ -28,6 +28,7 @@ import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ModalShell } from "./components/ModalShell";
 import { NoteModal } from "./components/NoteModal";
 import { NoteFilesPanel } from "./components/NoteFilesPanel";
+import { CursorAccessoryOverlay } from "./components/CursorAccessoryOverlay";
 import { SidebarNav } from "./components/SidebarNav";
 import { StudySectionNav } from "./components/StudySectionNav";
 import {
@@ -534,6 +535,7 @@ const AppContent = () => {
         spacedRepetition={spacedRepetition}
         vaultSelection={profileSetupVaultSelection}
       />
+      <CursorAccessoryOverlay enabled={settings.cursorAccessoryEnabled} />
       <button
         type="button"
         className="mobile-nav-backdrop"

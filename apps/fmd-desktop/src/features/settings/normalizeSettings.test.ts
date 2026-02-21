@@ -33,6 +33,18 @@ describe("normalizeSettings", () => {
     expect(settings.markdownPreviewDefaultMode).toBe("markdown");
   });
 
+  it("supports new and legacy cursor accessory settings keys", () => {
+    const fromNewKey = normalizeSettings({
+      ui_cursor_accessory_enabled: false,
+    } as AppSettings);
+    expect(fromNewKey.settings.cursorAccessoryEnabled).toBe(false);
+
+    const fromLegacyKey = normalizeSettings({
+      editor_markdown_backslash_enabled: false,
+    } as AppSettings);
+    expect(fromLegacyKey.settings.cursorAccessoryEnabled).toBe(false);
+  });
+
   it("normalizes vault registry entries with status and error metadata", () => {
     const stored = {
       recent_vaults: [

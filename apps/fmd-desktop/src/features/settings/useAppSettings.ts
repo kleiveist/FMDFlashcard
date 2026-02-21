@@ -122,6 +122,8 @@ export type AppSettings = {
   editor_markdown_custom_accent_hex?: string | null;
   editor_blueprint_grid?: boolean | null;
   editor_blueprint_grid_intensity?: string | null;
+  ui_cursor_accessory_enabled?: boolean | null;
+  editor_markdown_backslash_enabled?: boolean | null;
   editor_markdown_view_edit_enabled?: boolean | null;
   editor_markdown_preview_default_mode?: string | null;
   exam_editor_show_move_buttons?: boolean | null;
@@ -186,6 +188,7 @@ type PersistUpdates = {
   markdownEditorAccentCustomSwatches?: string[];
   editorBlueprintGrid?: boolean;
   editorBlueprintGridIntensity?: EditorGridIntensity;
+  cursorAccessoryEnabled?: boolean;
   markdownViewEditEnabled?: boolean;
   markdownPreviewDefaultMode?: MarkdownPreviewDefaultMode;
   examEditorShowMoveButtons?: boolean;
@@ -246,6 +249,7 @@ export type SettingsSnapshot = {
   markdownEditorAccentCustomSwatches: string[];
   editorBlueprintGrid: boolean;
   editorBlueprintGridIntensity: EditorGridIntensity;
+  cursorAccessoryEnabled: boolean;
   markdownViewEditEnabled: boolean;
   markdownPreviewDefaultMode: MarkdownPreviewDefaultMode;
   examEditorShowMoveButtons: boolean;
@@ -295,6 +299,14 @@ const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
 const DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS = false;
 const DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED = false;
+const CURSOR_ACCESSORY_VIEWPORT_BREAKPOINT = 1200;
+const resolveDefaultCursorAccessoryEnabled = () => {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  return window.innerWidth < CURSOR_ACCESSORY_VIEWPORT_BREAKPOINT;
+};
+const DEFAULT_CURSOR_ACCESSORY_ENABLED = resolveDefaultCursorAccessoryEnabled();
 const DEFAULT_MARKDOWN_VIEW_EDIT_ENABLED = false;
 const DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE: MarkdownPreviewDefaultMode =
   "markdown";
@@ -697,6 +709,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   editor_markdown_exact_colors_enabled: settings.markdownEditorAccentEnabled,
   editor_blueprint_grid: settings.editorBlueprintGrid,
   editor_blueprint_grid_intensity: settings.editorBlueprintGridIntensity,
+  ui_cursor_accessory_enabled: settings.cursorAccessoryEnabled,
   editor_markdown_view_edit_enabled: settings.markdownViewEditEnabled,
   editor_markdown_preview_default_mode: settings.markdownPreviewDefaultMode,
   exam_editor_show_move_buttons: settings.examEditorShowMoveButtons,
@@ -781,6 +794,12 @@ export const normalizeSettings = (
     stored.editor_blueprint_grid_intensity === "medium"
       ? stored.editor_blueprint_grid_intensity
       : DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY;
+  const storedCursorAccessoryEnabled =
+    typeof stored.ui_cursor_accessory_enabled === "boolean"
+      ? stored.ui_cursor_accessory_enabled
+      : typeof stored.editor_markdown_backslash_enabled === "boolean"
+        ? stored.editor_markdown_backslash_enabled
+      : DEFAULT_CURSOR_ACCESSORY_ENABLED;
   const storedMarkdownViewEditEnabled =
     typeof stored.editor_markdown_view_edit_enabled === "boolean"
       ? stored.editor_markdown_view_edit_enabled
@@ -1043,6 +1062,7 @@ export const normalizeSettings = (
       markdownEditorAccentCustomSwatches: storedMarkdownAccentCustomSwatches,
       editorBlueprintGrid: storedEditorBlueprintGrid,
       editorBlueprintGridIntensity: storedEditorBlueprintGridIntensity,
+      cursorAccessoryEnabled: storedCursorAccessoryEnabled,
       markdownViewEditEnabled: storedMarkdownViewEditEnabled,
       markdownPreviewDefaultMode: storedMarkdownPreviewDefaultMode,
       examEditorShowMoveButtons: storedExamEditorShowMoveButtons,
@@ -1110,6 +1130,9 @@ export const useAppSettings = () => {
   );
   const [editorBlueprintGridIntensity, setEditorBlueprintGridIntensity] =
     useState<EditorGridIntensity>(DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY);
+  const [cursorAccessoryEnabled, setCursorAccessoryEnabledState] = useState(
+    DEFAULT_CURSOR_ACCESSORY_ENABLED,
+  );
   const [markdownViewEditEnabled, setMarkdownViewEditEnabledState] = useState(
     DEFAULT_MARKDOWN_VIEW_EDIT_ENABLED,
   );
@@ -1441,6 +1464,10 @@ export const useAppSettings = () => {
     setMarkdownViewEditEnabledState(Boolean(value));
   }, []);
 
+  const setCursorAccessoryEnabled = useCallback((value: boolean) => {
+    setCursorAccessoryEnabledState(Boolean(value));
+  }, []);
+
   const setMarkdownPreviewDefaultMode = useCallback(
     (value: MarkdownPreviewDefaultMode) => {
       setMarkdownPreviewDefaultModeState(value === "raw" ? "raw" : "markdown");
@@ -1470,6 +1497,7 @@ export const useAppSettings = () => {
       markdownEditorAccentCustomSwatches,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      cursorAccessoryEnabled,
       markdownViewEditEnabled,
       markdownPreviewDefaultMode,
       examEditorShowMoveButtons,
@@ -1521,6 +1549,7 @@ export const useAppSettings = () => {
       markdownEditorAccentCustomSwatches,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      cursorAccessoryEnabled,
       markdownViewEditEnabled,
       markdownPreviewDefaultMode,
       examEditorShowMoveButtons,
@@ -1601,6 +1630,7 @@ export const useAppSettings = () => {
           },
           editorBlueprintGrid: settings.editorBlueprintGrid,
           editorBlueprintGridIntensity: settings.editorBlueprintGridIntensity,
+          uiCursorAccessoryEnabled: settings.cursorAccessoryEnabled,
           editorMarkdownViewEditEnabled: settings.markdownViewEditEnabled,
           editorMarkdownPreviewDefaultMode: settings.markdownPreviewDefaultMode,
           examEditorShowMoveButtons: settings.examEditorShowMoveButtons,
@@ -1683,6 +1713,8 @@ export const useAppSettings = () => {
         editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
         editorBlueprintGridIntensity:
           updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
+        cursorAccessoryEnabled:
+          updates.cursorAccessoryEnabled ?? cursorAccessoryEnabled,
         markdownViewEditEnabled:
           updates.markdownViewEditEnabled ?? markdownViewEditEnabled,
         markdownPreviewDefaultMode:
@@ -1775,6 +1807,7 @@ export const useAppSettings = () => {
       markdownEditorAccentCustomSwatches,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
+      cursorAccessoryEnabled,
       markdownViewEditEnabled,
       markdownPreviewDefaultMode,
       examEditorShowMoveButtons,
@@ -1854,6 +1887,7 @@ export const useAppSettings = () => {
     );
     setEditorBlueprintGrid(normalized.editorBlueprintGrid);
     setEditorBlueprintGridIntensity(normalized.editorBlueprintGridIntensity);
+    setCursorAccessoryEnabledState(normalized.cursorAccessoryEnabled);
     setMarkdownViewEditEnabledState(normalized.markdownViewEditEnabled);
     setMarkdownPreviewDefaultModeState(normalized.markdownPreviewDefaultMode);
     setExamEditorShowMoveButtonsState(normalized.examEditorShowMoveButtons);
@@ -2060,6 +2094,7 @@ export const useAppSettings = () => {
     markdownEditorAccentCustomSwatches,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
+    cursorAccessoryEnabled,
     markdownViewEditEnabled,
     markdownPreviewDefaultMode,
     examEditorShowMoveButtons,
@@ -2102,6 +2137,7 @@ export const useAppSettings = () => {
     addMarkdownEditorAccentCustomSwatch,
     setEditorBlueprintGrid,
     setEditorBlueprintGridIntensity,
+    setCursorAccessoryEnabled,
     setMarkdownViewEditEnabled,
     setMarkdownPreviewDefaultMode,
     setExamEditorShowMoveButtons,

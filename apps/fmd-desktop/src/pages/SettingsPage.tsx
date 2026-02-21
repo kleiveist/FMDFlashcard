@@ -516,6 +516,7 @@ export const SettingsPage = () => {
               markdownEditorAccentDarkHex={settings.markdownEditorAccentDarkHex}
               editorBlueprintGrid={settings.editorBlueprintGrid}
               editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
+              cursorAccessoryEnabled={settings.cursorAccessoryEnabled}
               markdownPreviewDefaultMode={settings.markdownPreviewDefaultMode}
               onMarkdownEditorAccentEnabledToggle={
                 settings.setMarkdownEditorAccentEnabled
@@ -525,6 +526,7 @@ export const SettingsPage = () => {
               onEditorBlueprintGridIntensityChange={
                 settings.setEditorBlueprintGridIntensity
               }
+              onCursorAccessoryEnabledToggle={settings.setCursorAccessoryEnabled}
               onMarkdownPreviewDefaultModeChange={
                 settings.setMarkdownPreviewDefaultMode
               }

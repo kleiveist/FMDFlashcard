@@ -1,0 +1,47 @@
+.cursor-accessory-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483647;
+}
+
+.cursor-accessory-button {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  color: var(--accent-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.cursor-accessory-button:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-hover-bg);
+}
+
+.cursor-accessory-button:active {
+  background: var(--accent-active-bg);
+}
+
+.cursor-accessory-button:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.cursor-accessory-icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
