@@ -869,6 +869,16 @@
   gap: 8px;
 }
 
+.content-nav-header-slot {
+  width: 100%;
+}
+
+.exam-task-profile-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .content-nav .panel-body,
 .content-editor .panel-body {
   overflow-y: auto;
@@ -955,6 +965,193 @@
   gap: 16px;
 }
 
+.exam-editor-points {
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+}
+
+.exam-editor-points .exam-editor-panel,
+.points-profile-editor,
+.points-profile-nav {
+  min-width: 0;
+}
+
+.points-profile-content-box {
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  background: var(--block-bg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.points-profile-nav .panel-body,
+.points-profile-editor .panel-body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+.points-profile-editor .panel-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.points-profile-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.points-profile-list li {
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.points-profile-list li.active {
+  border-color: var(--accent-border);
+}
+
+.points-profile-button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.points-profile-create {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.points-profile-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.points-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.points-profile-form .setting-row {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.points-profile-form .setting-row:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.points-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.points-profile-grid .setting-row {
+  min-width: 0;
+}
+
+.points-profile-duration-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.points-profile-duration-input .text-input {
+  width: 120px;
+}
+
+.points-type-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.points-type-row {
+  display: grid;
+  grid-template-columns: minmax(64px, 84px) minmax(72px, 1fr) minmax(120px, 1.1fr) minmax(
+      72px,
+      1fr
+    );
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.points-type-row > * {
+  min-width: 0;
+}
+
+.points-type-row .text-input {
+  width: 100%;
+}
+
+.points-profile-editor .exam-points-table {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  max-height: 420px;
+  min-width: 0;
+  gap: 8px 10px;
+  align-content: start;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.points-profile-editor .exam-points-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+.points-profile-editor .exam-points-row .label {
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.points-profile-editor .exam-points-row .text-input {
+  width: 88px;
+  min-width: 70px;
+}
+
+.points-type-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
 .content-task-header {
   display: flex;
   justify-content: space-between;
@@ -1017,11 +1214,27 @@
   .exam-editor-layout {
     grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr);
   }
+
+  .exam-editor-points {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {
   .exam-editor-layout,
   .exam-editor-content {
+    grid-template-columns: 1fr;
+  }
+
+  .points-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .points-type-row {
+    grid-template-columns: 1fr;
+  }
+
+  .points-profile-editor .exam-points-table {
     grid-template-columns: 1fr;
   }
 

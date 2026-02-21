@@ -97,7 +97,7 @@ const DashboardPageInner = (
   }: DashboardPageProps,
   ref: ForwardedRef<DashboardPageHandle>,
 ) => {
-  const { actions, preview, settings, vault } = useAppState();
+  const { actions, pointsProfiles, preview, settings, vault } = useAppState();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState("");
@@ -609,6 +609,7 @@ const DashboardPageInner = (
             activeFolderPath={normalizedActiveFolderPath || null}
             vaultFiles={vault.files}
             vaultPath={vault.vaultPath ?? null}
+            pointsProfiles={pointsProfiles}
             showMoveButtons={settings.examEditorShowMoveButtons}
             variant="study"
             onControlsReady={setExamControls}
@@ -680,6 +681,17 @@ const DashboardPageInner = (
                       aria-selected={examControls.mode === "content"}
                     >
                       Content
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        examControls.mode === "points" ? "active" : ""
+                      }`}
+                      onClick={() => examControls.onModeChange("points")}
+                      role="tab"
+                      aria-selected={examControls.mode === "points"}
+                    >
+                      Points
                     </button>
                   </div>
                   <div className="exam-editor-action-buttons">

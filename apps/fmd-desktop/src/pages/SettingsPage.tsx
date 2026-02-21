@@ -34,7 +34,6 @@ import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import {
   AutoCardsSettingsPanel,
-  ExamSettingsPanel,
   ExamTogglesPanel,
 } from "../components/settings/ExamSettingsSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
@@ -243,14 +242,6 @@ const SettingsPanel = ({
   );
 };
 
-const clampInput = (value: string) => {
-  if (value.trim() === "") {
-    return 0;
-  }
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 export const SettingsPage = () => {
   const {
     actions,
@@ -290,9 +281,6 @@ export const SettingsPage = () => {
   >(null);
   const [pendingFocusRequest, setPendingFocusRequest] =
     useState<SettingsFocusRequest | null>(null);
-  const lastDurationRef = useRef<number>(
-    settings.examDurationMinutes > 0 ? settings.examDurationMinutes : 30,
-  );
 
   useEffect(() => {
     return subscribeSettingsFocus((request) => {
@@ -365,12 +353,6 @@ export const SettingsPage = () => {
     setActiveSettingsPage,
   ]);
 
-  useEffect(() => {
-    if (settings.examDurationMinutes > 0) {
-      lastDurationRef.current = settings.examDurationMinutes;
-    }
-  }, [settings.examDurationMinutes]);
-
   const handleResetHistoryConfirm = useCallback(async () => {
     setIsResetHistoryPending(true);
     const success = await resetFastFlashcardHistory(userVault.activeProfilePath);
@@ -386,32 +368,11 @@ export const SettingsPage = () => {
     setIsResetExamStatsPending(false);
   }, [resetExamRunHistory, userVault.activeProfilePath]);
 
-  const handleExamDurationChange = useCallback(
-    (value: string) => {
-      const parsed = clampInput(value);
-      const clamped = Math.min(240, Math.max(0, parsed));
-      if (clamped > 0) {
-        lastDurationRef.current = clamped;
-      }
-      settings.setExamDurationMinutes(clamped);
-    },
-    [settings.setExamDurationMinutes],
-  );
-
   const handleExamTimeLimitToggle = useCallback(
     (nextEnabled: boolean) => {
       settings.setExamTimeLimitEnabled(nextEnabled);
-      if (nextEnabled && settings.examDurationMinutes === 0) {
-        const nextDuration =
-          lastDurationRef.current > 0 ? lastDurationRef.current : 30;
-        settings.setExamDurationMinutes(nextDuration);
-      }
     },
-    [
-      settings.examDurationMinutes,
-      settings.setExamDurationMinutes,
-      settings.setExamTimeLimitEnabled,
-    ],
+    [settings.setExamTimeLimitEnabled],
   );
 
   const activeItem =
@@ -545,17 +506,7 @@ export const SettingsPage = () => {
       case "exam-settings":
         return (
           <div className="settings-page settings-single-column">
-            {activeSubPageId === "exam-toggles" ? (
-              <ExamTogglesPanel
-                timeLimitEnabled={settings.examTimeLimitEnabled}
-                showTimeline={settings.examShowTimeline}
-                helpEnabled={settings.examHelpEnabled}
-                aiEvaluation={settings.examAiEvaluation}
-                onTimeLimitToggle={handleExamTimeLimitToggle}
-                setShowTimeline={settings.setExamShowTimeline}
-                setHelpEnabled={settings.setExamHelpEnabled}
-              />
-            ) : activeSubPageId === "auto-cards" ? (
+            {activeSubPageId === "auto-cards" ? (
               <AutoCardsSettingsPanel
                 enabledTypes={settings.examAutoCardsTypes}
                 onTypeToggle={settings.setExamAutoCardsTypeEnabled}
@@ -563,17 +514,16 @@ export const SettingsPage = () => {
                 setReturnCardsEnabled={settings.setExamAutoCardsReturnOnCorrect}
               />
             ) : (
-              <ExamSettingsPanel
-                maxTotalPoints={settings.examMaxTotalPoints}
-                taskCount={settings.examTaskCount}
-                taskPoints={settings.examTaskPoints.slice(0, settings.examTaskCount)}
-                durationMinutes={settings.examDurationMinutes}
+              <ExamTogglesPanel
                 resetStatisticsPending={isResetExamStatsPending}
-                setMaxTotalPoints={settings.setExamMaxTotalPoints}
-                setTaskCount={settings.setExamTaskCount}
-                setTaskPoints={settings.setExamTaskPoints}
-                onDurationChange={handleExamDurationChange}
                 onResetStatistics={handleResetExamStatistics}
+                timeLimitEnabled={settings.examTimeLimitEnabled}
+                showTimeline={settings.examShowTimeline}
+                helpEnabled={settings.examHelpEnabled}
+                aiEvaluation={settings.examAiEvaluation}
+                onTimeLimitToggle={handleExamTimeLimitToggle}
+                setShowTimeline={settings.setExamShowTimeline}
+                setHelpEnabled={settings.setExamHelpEnabled}
               />
             )}
           </div>

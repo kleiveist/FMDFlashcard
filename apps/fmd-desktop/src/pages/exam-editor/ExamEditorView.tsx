@@ -9,6 +9,7 @@ import { asErrorMessage } from "../../lib/errors";
 import { joinPath, normalizeRelativePath, normalizeVaultPath } from "../../lib/path";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { type VaultFile } from "../../lib/tree";
+import { composeMarkdownWithBody } from "../../features/preview/frontmatter";
 import {
   cloneTaskBlueprint,
   createCardBlueprint,
@@ -30,6 +31,22 @@ import {
 import { isCompositeTask, validateExamBlueprint } from "../../features/exam-editor/validation";
 import { importExamMarkdown, isExamMarkdown } from "../../features/exam-editor/importer";
 import { findNextNewExamFilename } from "../../features/exam-editor/fileNaming";
+import type { UseExamPointsProfilesHandle } from "../../features/exam-points/useExamPointsProfiles";
+import {
+  EXAM_POINTS_DEFAULT_DURATION_MINUTES,
+  EXAM_POINTS_DEFAULT_PROFILE_NAME,
+  EXAM_POINTS_MAX_TASK_COUNT,
+  createDefaultTypeRules,
+  normalizeTaskPoints,
+  normalizeTypeRules,
+  type ExamPointsDistribution,
+  type ExamPointsProfile,
+} from "../../lib/exam/pointsProfiles";
+import {
+  resolveExamTaskFrontmatterValue,
+  upsertExamTaskFrontmatterValue,
+} from "../../features/exam-points/frontmatterTask";
+import { AUTO_CARD_TYPES } from "../../lib/exam/autoCards";
 import { CardsIcon } from "../../components/icons";
 import { CardPalette } from "./components/CardPalette";
 import { ExamCanvas } from "./components/ExamCanvas";
@@ -54,10 +71,63 @@ type ExamEditorViewProps = {
   activeFolderPath?: string | null;
   vaultFiles?: VaultFile[];
   vaultPath?: string | null;
+  pointsProfiles: UseExamPointsProfilesHandle;
   showMoveButtons?: boolean;
   variant?: "exam" | "study";
   onControlsReady?: (controls: ExamEditorControlsState | null) => void;
   onSave?: (payload: { path: string; markdown: string }) => void;
+};
+
+type DraftPointsTypeRule = {
+  points: string;
+  mode: "all-or-nothing" | "partial";
+  penalty: string;
+};
+
+type DraftPointsTypeRuleMap = Record<string, DraftPointsTypeRule>;
+
+const clampNonNegativeInteger = (value: string | number, fallback = 0) => {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number.parseInt(String(value).trim() || String(fallback), 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.max(0, Math.floor(parsed));
+};
+
+const toTaskPointsDraft = (profile: ExamPointsProfile) =>
+  profile.taskPoints
+    .slice(0, EXAM_POINTS_MAX_TASK_COUNT)
+    .map((points) => String(Math.max(0, Math.floor(points))));
+
+const toTypeRulesDraft = (profile: ExamPointsProfile): DraftPointsTypeRuleMap =>
+  AUTO_CARD_TYPES.reduce((acc, type) => {
+    const rule = profile.typeRules[type];
+    acc[type] = {
+      points: String(Math.max(0, Math.floor(rule?.points ?? 0))),
+      mode: rule?.mode === "partial" ? "partial" : "all-or-nothing",
+      penalty: String(Math.max(0, Math.floor(rule?.penalty ?? 0))),
+    };
+    return acc;
+  }, {} as DraftPointsTypeRuleMap);
+
+const resolveMarkdownWithTaskProfile = ({
+  sourceMarkdown,
+  bodyMarkdown,
+  profileName,
+}: {
+  sourceMarkdown: string;
+  bodyMarkdown: string;
+  profileName: string;
+}) => {
+  const composed = composeMarkdownWithBody(sourceMarkdown, bodyMarkdown);
+  const updated = upsertExamTaskFrontmatterValue({
+    markdown: composed,
+    profileName,
+  });
+  return updated.error ? composed : updated.markdown;
 };
 
 const isPathInsideVault = (path: string, vaultPath: string | null) => {
@@ -121,6 +191,7 @@ export const ExamEditorView = ({
   activeFolderPath,
   vaultFiles,
   vaultPath,
+  pointsProfiles,
   showMoveButtons,
   variant = "exam",
   onControlsReady,
@@ -133,8 +204,41 @@ export const ExamEditorView = ({
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState<string | null>(null);
+  const [sourceDocumentMarkdown, setSourceDocumentMarkdown] = useState("");
+  const [assignedTaskProfileName, setAssignedTaskProfileName] = useState<string | null>(
+    null,
+  );
   const [importMessage, setImportMessage] = useState("");
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [pointsMessage, setPointsMessage] = useState("");
+  const [pointsError, setPointsError] = useState("");
+  const [newPointsProfileName, setNewPointsProfileName] = useState("");
+  const [draftProfileName, setDraftProfileName] = useState("");
+  const [draftDistribution, setDraftDistribution] =
+    useState<ExamPointsDistribution>("task-order");
+  const [draftTaskCount, setDraftTaskCount] = useState("5");
+  const [draftMaxTotalPoints, setDraftMaxTotalPoints] = useState("20");
+  const [draftDurationMinutes, setDraftDurationMinutes] = useState(
+    String(EXAM_POINTS_DEFAULT_DURATION_MINUTES),
+  );
+  const [draftTaskPoints, setDraftTaskPoints] = useState<string[]>(
+    Array.from({ length: EXAM_POINTS_MAX_TASK_COUNT }, () => "0"),
+  );
+  const [draftTypeRules, setDraftTypeRules] = useState<DraftPointsTypeRuleMap>(() =>
+    toTypeRulesDraft({
+      id: "draft",
+      name: "draft",
+      distribution: "task-order",
+      durationMinutes: EXAM_POINTS_DEFAULT_DURATION_MINUTES,
+      taskCount: 5,
+      maxTotalPoints: 20,
+      taskPoints: Array.from({ length: EXAM_POINTS_MAX_TASK_COUNT }, () => 0),
+      typeRules: createDefaultTypeRules(1),
+      createdAt: "",
+      updatedAt: "",
+      version: 1,
+    }),
+  );
   const [contentModalOpen, setContentModalOpen] = useState(false);
   const [paletteModalOpen, setPaletteModalOpen] = useState(false);
   const [propertiesModalOpen, setPropertiesModalOpen] = useState(false);
@@ -154,7 +258,24 @@ export const ExamEditorView = ({
   const validation = useMemo(() => validateExamBlueprint(exam), [exam]);
   const canSave = validation.valid;
   const isSaving = saveState === "saving";
-  const markdown = useMemo(() => serializeExamBlueprint(exam), [exam]);
+  const examBodyMarkdown = useMemo(() => serializeExamBlueprint(exam), [exam]);
+  const effectiveProfileName = useMemo(() => {
+    const trimmed = assignedTaskProfileName?.trim() ?? "";
+    if (trimmed) {
+      return trimmed;
+    }
+    const fallback = pointsProfiles.defaultProfile?.name?.trim() ?? "";
+    return fallback || EXAM_POINTS_DEFAULT_PROFILE_NAME;
+  }, [assignedTaskProfileName, pointsProfiles.defaultProfile?.name]);
+  const markdown = useMemo(
+    () =>
+      resolveMarkdownWithTaskProfile({
+        sourceMarkdown: sourceDocumentMarkdown,
+        bodyMarkdown: examBodyMarkdown,
+        profileName: effectiveProfileName,
+      }),
+    [effectiveProfileName, examBodyMarkdown, sourceDocumentMarkdown],
+  );
   const validationSummary = useMemo(() => {
     if (validation.valid) {
       return null;
@@ -196,6 +317,37 @@ export const ExamEditorView = ({
       messages: messages.slice(0, 3),
     };
   }, [exam.tasks, validation]);
+
+  const assignedProfileResolution = useMemo(
+    () => pointsProfiles.resolveAssignedProfile(assignedTaskProfileName),
+    [assignedTaskProfileName, pointsProfiles],
+  );
+  const assignedProfileNameForSelect = assignedProfileResolution.missing
+    ? "__missing__"
+    : assignedProfileResolution.profile?.name ?? effectiveProfileName;
+
+  useEffect(() => {
+    const selectedProfile = pointsProfiles.selectedProfile;
+    if (!selectedProfile) {
+      return;
+    }
+    setDraftProfileName(selectedProfile.name);
+    setDraftDistribution(selectedProfile.distribution);
+    setDraftDurationMinutes(String(selectedProfile.durationMinutes));
+    setDraftTaskCount(String(selectedProfile.taskCount));
+    setDraftMaxTotalPoints(String(selectedProfile.maxTotalPoints));
+    setDraftTaskPoints(toTaskPointsDraft(selectedProfile));
+    setDraftTypeRules(toTypeRulesDraft(selectedProfile));
+    setPointsError("");
+    setPointsMessage("");
+  }, [pointsProfiles.selectedProfile]);
+
+  useEffect(() => {
+    if (!assignedTaskProfileName || assignedTaskProfileName.trim()) {
+      return;
+    }
+    setAssignedTaskProfileName(null);
+  }, [assignedTaskProfileName]);
 
   useEffect(() => {
     if (!contentPopupActive || mode !== "content") {
@@ -578,6 +730,214 @@ export const ExamEditorView = ({
     [handleCardUpdate],
   );
 
+  const handleAssignTaskProfileName = useCallback((value: string) => {
+    const next = value.trim();
+    setAssignedTaskProfileName(next || null);
+    setSaveState("idle");
+  }, []);
+
+  const handleCreatePointsProfile = useCallback(async () => {
+    const requestedName = newPointsProfileName.trim();
+    if (!requestedName) {
+      setPointsError("Profile name is required.");
+      return;
+    }
+    setPointsError("");
+    setPointsMessage("");
+    const created = await pointsProfiles.createProfile(requestedName, {
+      seedFromProfileId: pointsProfiles.selectedProfileId,
+    });
+    if (!created.ok || !created.profile) {
+      setPointsError(created.error ?? "Profile could not be created.");
+      return;
+    }
+    setNewPointsProfileName("");
+    setPointsMessage(`Profile "${created.profile.name}" created.`);
+  }, [newPointsProfileName, pointsProfiles]);
+
+  const handleSetSelectedProfileAsDefault = useCallback(async () => {
+    const selectedId = pointsProfiles.selectedProfileId;
+    if (!selectedId) {
+      return;
+    }
+    const ok = await pointsProfiles.setDefaultProfileId(selectedId);
+    if (!ok) {
+      setPointsError("Default profile could not be updated.");
+      return;
+    }
+    setPointsError("");
+    setPointsMessage("Default profile updated.");
+  }, [pointsProfiles]);
+
+  const handleDeleteSelectedPointsProfile = useCallback(async () => {
+    const selected = pointsProfiles.selectedProfile;
+    if (!selected) {
+      return;
+    }
+    if (
+      assignedProfileResolution.profile &&
+      assignedProfileResolution.profile.id === selected.id
+    ) {
+      setPointsError(
+        `Profile "${selected.name}" is assigned to the current exam (Task). Reassign first.`,
+      );
+      return;
+    }
+    if (vaultFiles && vaultFiles.length > 0) {
+      const markdownFiles = vaultFiles.filter((file) =>
+        file.relative_path.toLowerCase().endsWith(".md"),
+      );
+      const usages = await Promise.all(
+        markdownFiles.map(async (file) => {
+          try {
+            const contents = await invoke<string>("read_text_file", { path: file.path });
+            const assigned = resolveExamTaskFrontmatterValue(contents);
+            return assigned?.trim() === selected.name
+              ? file.relative_path || file.path
+              : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const matches = usages.filter((entry): entry is string => Boolean(entry));
+      if (matches.length > 0) {
+        const preview = matches.slice(0, 3).join(", ");
+        const suffix = matches.length > 3 ? ` (+${matches.length - 3} more)` : "";
+        setPointsError(
+          `Profile "${selected.name}" is still used in ${matches.length} file(s): ${preview}${suffix}`,
+        );
+        return;
+      }
+    }
+    setPointsError("");
+    setPointsMessage("");
+    const deleted = await pointsProfiles.deleteProfile(selected.id);
+    if (!deleted.ok || !deleted.profile) {
+      setPointsError(deleted.error ?? "Profile could not be deleted.");
+      return;
+    }
+    setPointsMessage(`Profile "${deleted.profile.name}" deleted.`);
+  }, [assignedProfileResolution.profile, pointsProfiles, vaultFiles]);
+
+  const handleDraftTaskPointChange = useCallback((index: number, value: string) => {
+    setDraftTaskPoints((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }, []);
+
+  const handleDraftTypeRuleChange = useCallback(
+    (
+      type: string,
+      field: keyof DraftPointsTypeRule,
+      value: DraftPointsTypeRule[keyof DraftPointsTypeRule],
+    ) => {
+      setDraftTypeRules((prev) => {
+        const current = prev[type];
+        if (!current) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [type]: {
+            ...current,
+            [field]: value,
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const handleSavePointsProfile = useCallback(async () => {
+    const selected = pointsProfiles.selectedProfile;
+    if (!selected) {
+      return;
+    }
+    const nextName = draftProfileName.trim();
+    if (!nextName) {
+      setPointsError("Profile name is required.");
+      return;
+    }
+
+    setPointsError("");
+    setPointsMessage("");
+
+    let renamedName = selected.name;
+    if (nextName !== selected.name) {
+      const renamed = await pointsProfiles.renameProfile(selected.id, nextName);
+      if (!renamed.ok || !renamed.profile) {
+        setPointsError(renamed.error ?? "Profile could not be renamed.");
+        return;
+      }
+      renamedName = renamed.profile.name;
+      if (
+        assignedTaskProfileName &&
+        assignedTaskProfileName.trim() === selected.name
+      ) {
+        setAssignedTaskProfileName(renamedName);
+      }
+    }
+
+    const normalizedTaskCount = Math.min(
+      EXAM_POINTS_MAX_TASK_COUNT,
+      Math.max(1, clampNonNegativeInteger(draftTaskCount, selected.taskCount)),
+    );
+    const normalizedMax = clampNonNegativeInteger(
+      draftMaxTotalPoints,
+      selected.maxTotalPoints,
+    );
+    const normalizedDurationMinutes = Math.min(
+      240,
+      clampNonNegativeInteger(draftDurationMinutes, selected.durationMinutes),
+    );
+    const nextTaskPoints = normalizeTaskPoints(
+      draftTaskPoints.map((entry) => clampNonNegativeInteger(entry, 0)),
+      normalizedTaskCount,
+      normalizedMax,
+    );
+    const nextTypeRules = normalizeTypeRules(
+      AUTO_CARD_TYPES.reduce((acc, type) => {
+        const draft = draftTypeRules[type];
+        acc[type] = {
+          points: clampNonNegativeInteger(draft?.points ?? "0", 0),
+          mode: draft?.mode === "partial" ? "partial" : "all-or-nothing",
+          penalty: clampNonNegativeInteger(draft?.penalty ?? "0", 0),
+        };
+        return acc;
+      }, {} as Record<string, { points: number; mode: string; penalty: number }>),
+      1,
+    );
+
+    const updated = await pointsProfiles.updateProfile(selected.id, (profile) => ({
+      ...profile,
+      name: renamedName,
+      distribution: draftDistribution,
+      durationMinutes: normalizedDurationMinutes,
+      taskCount: normalizedTaskCount,
+      maxTotalPoints: normalizedMax,
+      taskPoints: nextTaskPoints,
+      typeRules: nextTypeRules,
+    }));
+    if (!updated.ok || !updated.profile) {
+      setPointsError(updated.error ?? "Profile could not be saved.");
+      return;
+    }
+    setPointsMessage(`Profile "${updated.profile.name}" saved.`);
+  }, [
+    assignedTaskProfileName,
+    draftDistribution,
+    draftDurationMinutes,
+    draftMaxTotalPoints,
+    draftProfileName,
+    draftTaskCount,
+    draftTaskPoints,
+    draftTypeRules,
+    pointsProfiles,
+  ]);
+
   const handleNewExam = useCallback(async () => {
     setSaveError("");
     setImportMessage("");
@@ -605,7 +965,12 @@ export const ExamEditorView = ({
 
     const targetPath = joinPath(vaultPath, targetRelativeDir, nextFilename);
     const nextExam = createExamBlueprint();
-    const initialMarkdown = serializeExamBlueprint(nextExam);
+    const bodyMarkdown = serializeExamBlueprint(nextExam);
+    const initialMarkdown = resolveMarkdownWithTaskProfile({
+      sourceMarkdown: "",
+      bodyMarkdown,
+      profileName: effectiveProfileName,
+    });
 
     setSaveState("saving");
     try {
@@ -618,6 +983,7 @@ export const ExamEditorView = ({
       setSavePath(targetPath);
       setSaveState("saved");
       setLastSavedContent(initialMarkdown);
+      setSourceDocumentMarkdown(initialMarkdown);
       onSave?.({ path: targetPath, markdown: initialMarkdown });
     } catch (error) {
       setSaveError(asErrorMessage(error, "Failed to create new exam file."));
@@ -625,6 +991,7 @@ export const ExamEditorView = ({
     }
   }, [
     activeFolderPath,
+    effectiveProfileName,
     onSave,
     sourceRelativePath,
     vaultFiles,
@@ -677,6 +1044,7 @@ export const ExamEditorView = ({
         setSavePath(nextSavePath ?? targetPath);
         setSaveState("saved");
         setLastSavedContent(markdown);
+        setSourceDocumentMarkdown(markdown);
         onSave?.({ path: targetPath, markdown });
       } catch (error) {
         setSaveError(asErrorMessage(error, "Failed to save exam."));
@@ -806,8 +1174,17 @@ export const ExamEditorView = ({
         if (isEditableTarget(event.target)) {
           return;
         }
-        const nextMode = event.key === "ArrowLeft" ? "structure" : "content";
-        if (mode !== nextMode) {
+        const modes: ExamEditorMode[] = ["structure", "content", "points"];
+        const currentIndex = modes.indexOf(mode);
+        if (currentIndex === -1) {
+          return;
+        }
+        const nextIndex =
+          event.key === "ArrowLeft"
+            ? Math.max(0, currentIndex - 1)
+            : Math.min(modes.length - 1, currentIndex + 1);
+        const nextMode = modes[nextIndex];
+        if (nextMode && mode !== nextMode) {
           setMode(nextMode);
         }
       }
@@ -886,10 +1263,14 @@ export const ExamEditorView = ({
     lastLoadedRef.current = { path: sourcePath ?? null, markdown: sourceMarkdown };
     setImportWarnings([]);
     setImportMessage("");
+    setPointsMessage("");
+    setPointsError("");
     setSaveState("idle");
     setSaveError("");
 
     if (!sourcePath) {
+      setSourceDocumentMarkdown("");
+      setAssignedTaskProfileName(pointsProfiles.defaultProfile?.name ?? null);
       return;
     }
     if (!sourceMarkdown.trim()) {
@@ -898,6 +1279,12 @@ export const ExamEditorView = ({
       setSelection({ type: "exam" });
       setSavePath(sourcePath);
       setLastSavedContent(sourceMarkdown);
+      setSourceDocumentMarkdown(sourceMarkdown);
+      setAssignedTaskProfileName(
+        resolveExamTaskFrontmatterValue(sourceMarkdown) ??
+          pointsProfiles.defaultProfile?.name ??
+          null,
+      );
       return;
     }
     if (!isExamMarkdown(sourceMarkdown)) {
@@ -908,6 +1295,12 @@ export const ExamEditorView = ({
       setSelection({ type: "exam" });
       setSavePath(null);
       setLastSavedContent(null);
+      setSourceDocumentMarkdown(sourceMarkdown);
+      setAssignedTaskProfileName(
+        resolveExamTaskFrontmatterValue(sourceMarkdown) ??
+          pointsProfiles.defaultProfile?.name ??
+          null,
+      );
       return;
     }
     const imported = importExamMarkdown(sourceMarkdown);
@@ -917,6 +1310,12 @@ export const ExamEditorView = ({
       setSelection({ type: "exam" });
       setSavePath(null);
       setLastSavedContent(null);
+      setSourceDocumentMarkdown(sourceMarkdown);
+      setAssignedTaskProfileName(
+        resolveExamTaskFrontmatterValue(sourceMarkdown) ??
+          pointsProfiles.defaultProfile?.name ??
+          null,
+      );
       return;
     }
     setExam(imported.blueprint);
@@ -924,7 +1323,30 @@ export const ExamEditorView = ({
     setImportWarnings(imported.warnings);
     setSavePath(sourcePath);
     setLastSavedContent(sourceMarkdown);
-  }, [lastSavedContent, savePath, sourceMarkdown, sourcePath]);
+    setSourceDocumentMarkdown(sourceMarkdown);
+    setAssignedTaskProfileName(
+      resolveExamTaskFrontmatterValue(sourceMarkdown) ??
+        pointsProfiles.defaultProfile?.name ??
+        null,
+    );
+  }, [
+    lastSavedContent,
+    pointsProfiles.defaultProfile?.name,
+    savePath,
+    sourceMarkdown,
+    sourcePath,
+  ]);
+
+  useEffect(() => {
+    if (assignedTaskProfileName && assignedTaskProfileName.trim()) {
+      return;
+    }
+    const fallbackName = pointsProfiles.defaultProfile?.name?.trim() ?? "";
+    if (!fallbackName) {
+      return;
+    }
+    setAssignedTaskProfileName(fallbackName);
+  }, [assignedTaskProfileName, pointsProfiles.defaultProfile?.name]);
 
   const getTaskWarning = useCallback(
     (task: ExamTaskBlueprint) =>
@@ -942,6 +1364,24 @@ export const ExamEditorView = ({
     [contentPopupActive],
   );
 
+  const handleTaskProfileSelectChange = useCallback(
+    (value: string) => {
+      if (value === "__missing__") {
+        return;
+      }
+      handleAssignTaskProfileName(value);
+    },
+    [handleAssignTaskProfileName],
+  );
+
+  const profileNameOptions = useMemo(
+    () =>
+      pointsProfiles.profiles
+        .map((profile) => profile.name)
+        .sort((left, right) => left.localeCompare(right)),
+    [pointsProfiles.profiles],
+  );
+
   const hasAlerts = Boolean(importMessage || importWarnings.length > 0 || saveError);
   const alerts = hasAlerts ? (
     <>
@@ -956,6 +1396,287 @@ export const ExamEditorView = ({
       {saveError ? <div className="error">{saveError}</div> : null}
     </>
   ) : null;
+
+  const taskProfileSelect = (
+    <div className="exam-task-profile-select">
+      <label className="label" htmlFor="exam-task-profile-select">
+        Task profile
+      </label>
+      <select
+        id="exam-task-profile-select"
+        className="text-input"
+        value={assignedProfileNameForSelect}
+        onChange={(event) => handleTaskProfileSelectChange(event.target.value)}
+      >
+        {assignedProfileResolution.missing && assignedProfileResolution.requestedName ? (
+          <option value="__missing__">
+            Missing: {assignedProfileResolution.requestedName}
+          </option>
+        ) : null}
+        {profileNameOptions.map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </select>
+      {assignedProfileResolution.missing && assignedProfileResolution.requestedName ? (
+        <div className="error">
+          Missing points profile "{assignedProfileResolution.requestedName}". Create or
+          reassign in the Points tab.
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const normalizedDraftTaskCount = Math.min(
+    EXAM_POINTS_MAX_TASK_COUNT,
+    Math.max(1, clampNonNegativeInteger(draftTaskCount, 1)),
+  );
+  const draftTaskPointsSum = draftTaskPoints
+    .slice(0, normalizedDraftTaskCount)
+    .reduce((sum, value) => sum + clampNonNegativeInteger(value, 0), 0);
+
+  const pointsMode = (
+    <div className="exam-editor-content exam-editor-points">
+      <aside className="panel exam-editor-panel points-profile-nav">
+        <header className="panel-header">
+          <div>
+            <h2>Points Profiles</h2>
+            <p className="muted">Create and select profile presets.</p>
+          </div>
+        </header>
+        <div className="panel-body">
+          {pointsProfiles.error ? <div className="error">{pointsProfiles.error}</div> : null}
+          <ul className="points-profile-list">
+            {pointsProfiles.profiles.map((profile) => {
+              const active = profile.id === pointsProfiles.selectedProfileId;
+              const isDefault = profile.id === pointsProfiles.defaultProfileId;
+              return (
+                <li key={profile.id} className={active ? "active" : undefined}>
+                  <button
+                    type="button"
+                    className="points-profile-button"
+                    onClick={() => pointsProfiles.setSelectedProfileId(profile.id)}
+                  >
+                    <span>{profile.name}</span>
+                    {isDefault ? <span className="muted small">Default</span> : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="points-profile-create">
+            <input
+              type="text"
+              className="text-input"
+              placeholder="New profile name"
+              value={newPointsProfileName}
+              onChange={(event) => setNewPointsProfileName(event.target.value)}
+            />
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => void handleCreatePointsProfile()}
+              disabled={pointsProfiles.saving}
+            >
+              Create
+            </button>
+          </div>
+          <div className="points-profile-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => void handleSetSelectedProfileAsDefault()}
+              disabled={
+                !pointsProfiles.selectedProfileId ||
+                pointsProfiles.selectedProfileId === pointsProfiles.defaultProfileId
+              }
+            >
+              Set as default
+            </button>
+            <button
+              type="button"
+              className="ghost small danger"
+              onClick={() => void handleDeleteSelectedPointsProfile()}
+              disabled={!pointsProfiles.selectedProfileId}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </aside>
+      <section className="panel exam-editor-panel points-profile-editor">
+        <header className="panel-header">
+          <div>
+            <h2>Profile Editor</h2>
+            <p className="muted">
+              Configure scoring rules for task order or task type.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="primary small"
+            onClick={() => void handleSavePointsProfile()}
+            disabled={!pointsProfiles.selectedProfile || pointsProfiles.saving}
+          >
+            Save profile
+          </button>
+        </header>
+        <div className="panel-body">
+          <div className="points-profile-content-box">
+            {pointsMessage ? <div className="muted">{pointsMessage}</div> : null}
+            {pointsError ? <div className="error">{pointsError}</div> : null}
+            {!pointsProfiles.selectedProfile ? (
+              <div className="exam-canvas-empty">
+                <p>Select a profile to edit.</p>
+              </div>
+            ) : (
+              <div className="points-profile-form">
+                <label className="setting-row">
+                  <span className="label">PROFILE NAME</span>
+                  <input
+                    type="text"
+                    className="text-input"
+                    value={draftProfileName}
+                    onChange={(event) => setDraftProfileName(event.target.value)}
+                  />
+                </label>
+                <div className="setting-row">
+                  <span className="label">DISTRIBUTION</span>
+                  <div className="pill-grid">
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        draftDistribution === "task-order" ? "active" : ""
+                      }`}
+                      onClick={() => setDraftDistribution("task-order")}
+                    >
+                      Task order
+                    </button>
+                    <button
+                      type="button"
+                      className={`pill pill-button ${
+                        draftDistribution === "task-type" ? "active" : ""
+                      }`}
+                      onClick={() => setDraftDistribution("task-type")}
+                    >
+                      Task type
+                    </button>
+                  </div>
+                </div>
+                <label className="setting-row">
+                  <span className="label">DURATION</span>
+                  <div className="points-profile-duration-input">
+                    <input
+                      type="number"
+                      min={0}
+                      max={240}
+                      className="text-input exam-compact-input"
+                      value={draftDurationMinutes}
+                      onChange={(event) => setDraftDurationMinutes(event.target.value)}
+                    />
+                    <span className="muted">min</span>
+                  </div>
+                </label>
+                {draftDistribution === "task-order" ? (
+                  <>
+                    <div className="points-profile-grid">
+                      <label className="setting-row">
+                        <span className="label">TASK COUNT</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={EXAM_POINTS_MAX_TASK_COUNT}
+                          className="text-input exam-compact-input"
+                          value={draftTaskCount}
+                          onChange={(event) => setDraftTaskCount(event.target.value)}
+                        />
+                      </label>
+                      <label className="setting-row">
+                        <span className="label">MAX TOTAL POINTS</span>
+                        <input
+                          type="number"
+                          min={0}
+                          className="text-input exam-compact-input"
+                          value={draftMaxTotalPoints}
+                          onChange={(event) => setDraftMaxTotalPoints(event.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <div className="exam-points-table">
+                      {Array.from({ length: normalizedDraftTaskCount }, (_, index) => (
+                        <div key={`points-task-${index}`} className="exam-points-row">
+                          <span className="label">TASK {index + 1}</span>
+                          <input
+                            type="number"
+                            min={0}
+                            className="text-input exam-compact-input"
+                            value={draftTaskPoints[index] ?? "0"}
+                            onChange={(event) =>
+                              handleDraftTaskPointChange(index, event.target.value)
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="muted">
+                      Sum assigned: {draftTaskPointsSum} / Max total:{" "}
+                      {clampNonNegativeInteger(draftMaxTotalPoints, 0)}
+                    </div>
+                  </>
+                ) : (
+                  <div className="points-type-rules">
+                    {AUTO_CARD_TYPES.map((type) => {
+                      const rule = draftTypeRules[type];
+                      return (
+                        <div key={type} className="points-type-row">
+                          <div className="points-type-label">{type.toUpperCase()}</div>
+                          <input
+                            type="number"
+                            min={0}
+                            className="text-input exam-compact-input"
+                            value={rule?.points ?? "0"}
+                            onChange={(event) =>
+                              handleDraftTypeRuleChange(type, "points", event.target.value)
+                            }
+                          />
+                          <select
+                            className="text-input"
+                            value={rule?.mode ?? "all-or-nothing"}
+                            onChange={(event) =>
+                              handleDraftTypeRuleChange(
+                                type,
+                                "mode",
+                                event.target.value === "partial"
+                                  ? "partial"
+                                  : "all-or-nothing",
+                              )
+                            }
+                          >
+                            <option value="all-or-nothing">All-or-nothing</option>
+                            <option value="partial">Partial</option>
+                          </select>
+                          <input
+                            type="number"
+                            min={0}
+                            className="text-input exam-compact-input"
+                            value={rule?.penalty ?? "0"}
+                            onChange={(event) =>
+                              handleDraftTypeRuleChange(type, "penalty", event.target.value)
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 
   const propertiesPanel = (
     <PropertiesPanel
@@ -1104,54 +1825,63 @@ export const ExamEditorView = ({
             </div>
           </div>
         )
-      ) : isStudyView ? (
-        <div className="exam-editor-structure">
-          <ExamCanvas
-            {...canvasProps}
-            topContent={alerts}
-            bodyContent={
-              <ContentMode
-                exam={exam}
-                selection={selection}
-                validation={validation}
-                onSelectTask={handleContentTaskSelect}
-                onTaskUpdate={handleTaskUpdate}
-                onCardUpdate={(taskId, cardId, updates) =>
-                  handleCardUpdate(taskId, cardId, updates)
-                }
-                onCardHelpChange={handleCardHelpChange}
-                onOptionTextChange={handleOptionTextChange}
-                onOptionToggle={handleOptionToggle}
-                onOptionSelect={handleOptionSelect}
-                onOptionAdd={handleOptionAdd}
-                onOptionRemove={handleOptionRemove}
-                popupMode={contentPopupActive}
-                popupOpen={contentModalOpen}
-                onPopupOpen={() => setContentModalOpen(true)}
-                onPopupClose={() => setContentModalOpen(false)}
-              />
-            }
-          />
-        </div>
+      ) : mode === "content" ? (
+        isStudyView ? (
+          <div className="exam-editor-structure">
+            <ExamCanvas
+              {...canvasProps}
+              topContent={alerts}
+              bodyContent={
+                <ContentMode
+                  exam={exam}
+                  selection={selection}
+                  validation={validation}
+                  tasksHeaderSlot={taskProfileSelect}
+                  onSelectTask={handleContentTaskSelect}
+                  onTaskUpdate={handleTaskUpdate}
+                  onCardUpdate={(taskId, cardId, updates) =>
+                    handleCardUpdate(taskId, cardId, updates)
+                  }
+                  onCardHelpChange={handleCardHelpChange}
+                  onOptionTextChange={handleOptionTextChange}
+                  onOptionToggle={handleOptionToggle}
+                  onOptionSelect={handleOptionSelect}
+                  onOptionAdd={handleOptionAdd}
+                  onOptionRemove={handleOptionRemove}
+                  popupMode={contentPopupActive}
+                  popupOpen={contentModalOpen}
+                  onPopupOpen={() => setContentModalOpen(true)}
+                  onPopupClose={() => setContentModalOpen(false)}
+                />
+              }
+            />
+          </div>
+        ) : (
+          <>
+            {alerts}
+            <ContentMode
+              exam={exam}
+              selection={selection}
+              validation={validation}
+              tasksHeaderSlot={taskProfileSelect}
+              onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
+              onTaskUpdate={handleTaskUpdate}
+              onCardUpdate={(taskId, cardId, updates) =>
+                handleCardUpdate(taskId, cardId, updates)
+              }
+              onCardHelpChange={handleCardHelpChange}
+              onOptionTextChange={handleOptionTextChange}
+              onOptionToggle={handleOptionToggle}
+              onOptionSelect={handleOptionSelect}
+              onOptionAdd={handleOptionAdd}
+              onOptionRemove={handleOptionRemove}
+            />
+          </>
+        )
       ) : (
         <>
           {alerts}
-          <ContentMode
-            exam={exam}
-            selection={selection}
-            validation={validation}
-            onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
-            onTaskUpdate={handleTaskUpdate}
-            onCardUpdate={(taskId, cardId, updates) =>
-              handleCardUpdate(taskId, cardId, updates)
-            }
-            onCardHelpChange={handleCardHelpChange}
-            onOptionTextChange={handleOptionTextChange}
-            onOptionToggle={handleOptionToggle}
-            onOptionSelect={handleOptionSelect}
-            onOptionAdd={handleOptionAdd}
-            onOptionRemove={handleOptionRemove}
-          />
+          {pointsMode}
         </>
       )}
     </div>

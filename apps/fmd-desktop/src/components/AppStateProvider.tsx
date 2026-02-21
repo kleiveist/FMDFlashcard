@@ -53,6 +53,7 @@ import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepe
 import { useUserVault } from "../features/user-vault/useUserVault";
 import { useVault } from "../features/vault/useVault";
 import { useExamFiles } from "../features/exam/useExamFiles";
+import { useExamPointsProfiles } from "../features/exam-points/useExamPointsProfiles";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 import { VaultManagerModal } from "./VaultManagerModal";
 import { DEFAULT_HELP_TOPIC_ID } from "../pages/help/helpContent";
@@ -96,6 +97,7 @@ type AppState = {
     activeSettingsPage: SettingsPageId;
     setActiveSettingsPage: (value: SettingsPageId) => void;
   };
+  pointsProfiles: ReturnType<typeof useExamPointsProfiles>;
   preview: ReturnType<typeof usePreview>;
   settings: ReturnType<typeof useAppSettings>;
   spacedRepetition: ReturnType<typeof useSpacedRepetition>;
@@ -205,6 +207,25 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setMode: settings.setUserVaultMode,
     customPath: settings.userVaultCustomPath,
     setCustomPath: settings.setUserVaultCustomPath,
+  });
+  const legacyPointsDefaults = useMemo(
+    () => ({
+      durationMinutes: settings.examDurationMinutes,
+      maxTotalPoints: settings.examMaxTotalPoints,
+      taskCount: settings.examTaskCount,
+      taskPoints: settings.examTaskPoints,
+    }),
+    [
+      settings.examDurationMinutes,
+      settings.examMaxTotalPoints,
+      settings.examTaskCount,
+      settings.examTaskPoints,
+    ],
+  );
+  const pointsProfiles = useExamPointsProfiles({
+    profilePath: userVault.activeProfilePath,
+    profileRevision: userVault.revision,
+    legacyDefaults: legacyPointsDefaults,
   });
   const handleBeforeUserAction = useCallback(
     async (reason: string) => {
@@ -1236,6 +1257,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       activeSettingsPage,
       setActiveSettingsPage,
     },
+    pointsProfiles,
     preview,
     settings,
     spacedRepetition,

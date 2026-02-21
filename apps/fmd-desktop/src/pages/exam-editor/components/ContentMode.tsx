@@ -2,6 +2,7 @@
  * @file apps/fmd-desktop/src/pages/exam-editor/components/ContentMode.tsx
  */
 
+import type { ReactNode } from "react";
 import type { ExamBlueprint, ExamTaskBlueprint } from "../../../features/exam-editor/types";
 import type {
   ExamValidation,
@@ -23,6 +24,7 @@ type ContentModeProps = {
   exam: ExamBlueprint;
   selection: ExamEditorSelection;
   validation: ExamValidation;
+  tasksHeaderSlot?: ReactNode;
   onSelectTask: (taskId: string) => void;
   onTaskUpdate: (
     taskId: string,
@@ -174,6 +176,7 @@ export const ContentMode = ({
   exam,
   selection,
   validation,
+  tasksHeaderSlot,
   onSelectTask,
   onTaskUpdate,
   onCardUpdate,
@@ -226,6 +229,9 @@ export const ContentMode = ({
             <h2>Tasks</h2>
             <p className="muted">Jump to a task to edit content.</p>
           </div>
+          {tasksHeaderSlot ? (
+            <div className="content-nav-header-slot">{tasksHeaderSlot}</div>
+          ) : null}
         </header>
         <div className="panel-body">
           <ol className="content-task-list">

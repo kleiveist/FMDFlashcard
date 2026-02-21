@@ -136,7 +136,7 @@ export const ExamSimulationPage = () => {
       missingExamSettings[0];
     requestSettingsFocus({
       pageId: "exam-settings",
-      subPageId: "exam-settings",
+      subPageId: "exam-toggles",
       scrollSelector: "#exam-settings-section",
       focusSelector: focusTarget?.fieldSelector,
       highlight: true,

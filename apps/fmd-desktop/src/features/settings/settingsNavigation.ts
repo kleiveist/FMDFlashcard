@@ -28,7 +28,6 @@ export type SettingsNavIcon =
   | "data-sync";
 
 export type SettingsSubPageId =
-  | "exam-settings"
   | "exam-toggles"
   | "auto-cards"
   | "flashcard-tools"
@@ -75,7 +74,6 @@ export const SETTINGS_NAV_MODEL = [
     label: "Exam Settings",
     icon: "exam-settings",
     subPages: [
-      { id: "exam-settings", label: "Exam Settings" },
       { id: "exam-toggles", label: "Exam Toggles" },
       { id: "auto-cards", label: "Auto Cards" },
     ],

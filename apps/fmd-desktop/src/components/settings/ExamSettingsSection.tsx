@@ -40,6 +40,8 @@ type ExamSettingsPanelProps = {
 };
 
 type ExamTogglesPanelProps = {
+  resetStatisticsPending?: boolean;
+  onResetStatistics?: () => void;
   timeLimitEnabled: boolean;
   showTimeline: boolean;
   helpEnabled: boolean;
@@ -176,6 +178,8 @@ export const ExamSettingsPanel = ({
 };
 
 export const ExamTogglesPanel = ({
+  resetStatisticsPending,
+  onResetStatistics,
   timeLimitEnabled,
   showTimeline,
   helpEnabled,
@@ -184,7 +188,7 @@ export const ExamTogglesPanel = ({
   setShowTimeline,
   setHelpEnabled,
 }: ExamTogglesPanelProps) => (
-  <section className="panel exam-settings-toggles-panel">
+  <section className="panel exam-settings-toggles-panel" id="exam-settings-section">
     <div className="panel-header">
       <div>
         <h2>Exam Toggles</h2>
@@ -244,6 +248,21 @@ export const ExamTogglesPanel = ({
           <span className="muted">Coming soon.</span>
         </div>
       </div>
+      {onResetStatistics ? (
+        <div className="setting-row">
+          <span className="label">RUN HISTORY</span>
+          <div className="setting-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onResetStatistics}
+              disabled={resetStatisticsPending}
+            >
+              Reset Statistics
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   </section>
 );

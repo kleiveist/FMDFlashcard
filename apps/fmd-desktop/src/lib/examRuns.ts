@@ -13,6 +13,16 @@ import {
 
 export type ExamGradeScaleId = "standard-1-6";
 
+export type ExamRunPointsProfileAssignment = {
+  examPath: string;
+  sourceTitle: string;
+  requestedName: string | null;
+  profileId: string | null;
+  profileName: string | null;
+  profileVersion: number | null;
+  missing: boolean;
+};
+
 export type ExamRun = {
   id: string;
   startedAt: string;
@@ -28,6 +38,10 @@ export type ExamRun = {
   passed: boolean;
   grade: string | null;
   gradeScaleId: ExamGradeScaleId;
+  pointsProfileId?: string | null;
+  pointsProfileName?: string | null;
+  pointsProfileVersion?: number | null;
+  pointsProfileAssignments?: ExamRunPointsProfileAssignment[];
 };
 
 export type ExamRunStorage = {

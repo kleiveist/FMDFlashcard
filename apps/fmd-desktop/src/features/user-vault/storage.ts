@@ -21,6 +21,12 @@ import {
 } from "../../lib/userVault";
 import type { FastFlashcardSessionSummary } from "../../lib/fastFlashcard";
 import type { ExamRun } from "../../lib/examRuns";
+import {
+  EXAM_POINTS_PROFILE_SCHEMA_VERSION,
+  createEmptyExamPointsProfilesStore,
+  normalizeExamPointsProfilesStore,
+  type ExamPointsProfilesStore,
+} from "../../lib/exam/pointsProfiles";
 import type { SpacedRepetitionStorage } from "../spaced-repetition/logic";
 
 type PathInfo = {
@@ -70,6 +76,8 @@ export type ExamRunProfileStore = {
   migratedFromAppData: boolean;
 };
 
+export type ExamPointsProfileStore = ExamPointsProfilesStore;
+
 const USER_VAULT_META_FILE = "user-vault.json";
 const USER_VAULT_PROFILES_DIR = "profiles";
 const USER_VAULT_USERS_DIR = "users";
@@ -77,9 +85,12 @@ const USER_VAULT_PROFILE_FILE = "profile.json";
 const USER_VAULT_SPACED_REPETITION_FILE = "spaced-repetition.json";
 const USER_VAULT_FAST_FLASHCARD_FILE = "fast-flashcard.json";
 const USER_VAULT_EXAM_RUNS_FILE = "exam-runs.json";
+const USER_VAULT_EXAM_POINTS_PROFILES_FILE = "exam-points-profiles.json";
 
 const USER_VAULT_PROFILE_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
 const USER_VAULT_EXAM_RUNS_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
+const USER_VAULT_EXAM_POINTS_PROFILE_SCHEMA_VERSION =
+  EXAM_POINTS_PROFILE_SCHEMA_VERSION;
 
 const isMissingPathError = (message: string) =>
   message.includes("Path does not exist") ||
@@ -203,6 +214,9 @@ const resolveFastFlashcardPath = (profilePath: string) =>
 
 const resolveExamRunsPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_EXAM_RUNS_FILE);
+
+const resolveExamPointsProfilesPath = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_EXAM_POINTS_PROFILES_FILE);
 
 const resolveProfileIdFromPath = (profilePath: string) => {
   const trimmed = profilePath.replace(/[\\/]+$/, "");
@@ -536,6 +550,42 @@ const normalizeExamRun = (value: unknown): ExamRun | null => {
   if (!id || !startedAt || !endedAt) {
     return null;
   }
+  const rawAssignments = Array.isArray(candidate.pointsProfileAssignments)
+    ? candidate.pointsProfileAssignments
+    : [];
+  const pointsProfileAssignments = rawAssignments
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+      const record = entry as Record<string, unknown>;
+      const examPath =
+        typeof record.examPath === "string" ? record.examPath : "";
+      const sourceTitle =
+        typeof record.sourceTitle === "string" ? record.sourceTitle : examPath;
+      if (!examPath) {
+        return null;
+      }
+      return {
+        examPath,
+        sourceTitle,
+        requestedName:
+          typeof record.requestedName === "string" ? record.requestedName : null,
+        profileId: typeof record.profileId === "string" ? record.profileId : null,
+        profileName:
+          typeof record.profileName === "string" ? record.profileName : null,
+        profileVersion:
+          typeof record.profileVersion === "number" &&
+          Number.isFinite(record.profileVersion)
+            ? Math.max(0, Math.floor(record.profileVersion))
+            : null,
+        missing: Boolean(record.missing),
+      };
+    })
+    .filter(
+      (entry): entry is NonNullable<typeof entry> =>
+        entry !== null,
+    );
   const grade =
     typeof candidate.grade === "string"
       ? candidate.grade
@@ -578,6 +628,20 @@ const normalizeExamRun = (value: unknown): ExamRun | null => {
       candidate.gradeScaleId === "standard-1-6"
         ? candidate.gradeScaleId
         : "standard-1-6",
+    pointsProfileId:
+      typeof candidate.pointsProfileId === "string"
+        ? candidate.pointsProfileId
+        : null,
+    pointsProfileName:
+      typeof candidate.pointsProfileName === "string"
+        ? candidate.pointsProfileName
+        : null,
+    pointsProfileVersion:
+      typeof candidate.pointsProfileVersion === "number" &&
+      Number.isFinite(candidate.pointsProfileVersion)
+        ? Math.max(0, Math.floor(candidate.pointsProfileVersion))
+        : null,
+    pointsProfileAssignments,
   };
 };
 
@@ -608,6 +672,25 @@ const migrateExamRunStore = (
     },
     didMigrate,
   };
+};
+
+const migrateExamPointsProfileStore = (
+  value: unknown,
+): MigrationResult<ExamPointsProfileStore> => {
+  if (!value || typeof value !== "object") {
+    return { store: createEmptyExamPointsProfilesStore(), didMigrate: true };
+  }
+  const candidate = value as Partial<ExamPointsProfileStore>;
+  const storedVersion =
+    typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
+  const rawProfiles = Array.isArray(candidate.profiles) ? candidate.profiles : [];
+  const store = normalizeExamPointsProfilesStore(candidate);
+  const didMigrate =
+    storedVersion !== USER_VAULT_EXAM_POINTS_PROFILE_SCHEMA_VERSION ||
+    !Array.isArray(candidate.profiles) ||
+    rawProfiles.length !== store.profiles.length ||
+    candidate.defaultProfileId !== store.defaultProfileId;
+  return { store, didMigrate };
 };
 
 export const loadUserVaultMeta = async (
@@ -829,6 +912,66 @@ export const saveFastFlashcardStore = async (
   } catch (error) {
     console.error(
       "Failed to save fast flashcard user vault data",
+      asErrorMessage(error, "Unknown error"),
+    );
+  }
+};
+
+export const loadExamPointsProfileStore = async (
+  profilePath: string,
+): Promise<ExamPointsProfileStore> => {
+  const path = resolveExamPointsProfilesPath(profilePath);
+  const { value, error } = await readJsonFileWithStatus<ExamPointsProfileStore>(path);
+  if (error) {
+    if (error === "parse") {
+      const backupPath = buildCorruptBackupPath(path);
+      try {
+        await renameJsonFile(path, backupPath);
+      } catch (renameError) {
+        console.warn(
+          "Failed to archive corrupt exam points profile store",
+          asErrorMessage(renameError, "Unknown error"),
+        );
+      }
+    }
+    const empty = createEmptyExamPointsProfilesStore();
+    try {
+      await writeJsonFileAtomic(path, empty);
+    } catch (writeError) {
+      console.warn(
+        "Failed to recover exam points profile store",
+        asErrorMessage(writeError, "Unknown error"),
+      );
+    }
+    return empty;
+  }
+  const { store, didMigrate } = migrateExamPointsProfileStore(value);
+  if (didMigrate) {
+    try {
+      await writeJsonFileAtomic(path, store);
+    } catch (writeError) {
+      console.warn(
+        "Failed to migrate exam points profile store",
+        asErrorMessage(writeError, "Unknown error"),
+      );
+    }
+  }
+  return store;
+};
+
+export const saveExamPointsProfileStore = async (
+  profilePath: string,
+  store: ExamPointsProfileStore,
+) => {
+  try {
+    const normalized = normalizeExamPointsProfilesStore(store);
+    await writeJsonFileAtomic(resolveExamPointsProfilesPath(profilePath), {
+      ...normalized,
+      schemaVersion: USER_VAULT_EXAM_POINTS_PROFILE_SCHEMA_VERSION,
+    });
+  } catch (error) {
+    console.error(
+      "Failed to save exam points profile store",
       asErrorMessage(error, "Unknown error"),
     );
   }

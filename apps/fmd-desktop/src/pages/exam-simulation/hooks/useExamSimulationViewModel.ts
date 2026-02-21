@@ -33,7 +33,8 @@ import {
   type TrueFalseSelection,
 } from "../../../features/flashcards/logic";
 import { type ExamAiEvaluation } from "../../../features/settings/useAppSettings";
-import { validateExamSettings } from "../../../features/settings/validateExamSettings";
+import { validatePointsProfile } from "../../../features/exam-points/validatePointsProfile";
+import type { MissingExamSetting } from "../../../features/settings/validateExamSettings";
 import { asErrorMessage } from "../../../lib/errors";
 import {
   buildExamRunId,
@@ -42,6 +43,7 @@ import {
   resolveExamGrade,
   subscribeExamRunHistoryReset,
   sortExamRunsByDateDesc,
+  type ExamRunPointsProfileAssignment,
   type ExamRun,
   type ExamRunStorage,
 } from "../../../lib/examRuns";
@@ -52,6 +54,14 @@ import {
   resolveExamTaskAutoCardTypes,
 } from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
+import {
+  EXAM_POINTS_DEFAULT_DURATION_MINUTES,
+  type ExamPointsProfile,
+} from "../../../lib/exam/pointsProfiles";
+import {
+  resolveExamTaskPointType,
+  resolveTaskMaxPointsFromProfile,
+} from "../../../lib/exam/pointsScoring";
 import {
   buildMixedSessionTasks,
   buildSingleSessionTasks,
@@ -68,6 +78,7 @@ import {
   loadExamRunStore,
   saveExamRunStore,
 } from "../../../features/user-vault/storage";
+import { resolveExamTaskFrontmatterValue } from "../../../features/exam-points/frontmatterTask";
 
 type ExamStage =
   | "idle"
@@ -83,6 +94,7 @@ type ExamSettingsSnapshot = {
   durationMinutes: number;
   timeLimitEnabled: boolean;
   aiEvaluation: ExamAiEvaluation;
+  pointsProfileAssignments: ExamRunPointsProfileAssignment[];
 };
 
 type ExamTaskResult = {
@@ -98,6 +110,7 @@ type ExamTaskResult = {
 type SelectedExamParseEntry = {
   tasks: ExamTask[];
   hasExamBlock: boolean;
+  taskProfileName: string | null;
 };
 
 type PreviewSession = {
@@ -106,17 +119,49 @@ type PreviewSession = {
   duplicateTaskNumberWarnings: DuplicateTaskNumberWarning[];
 };
 
+type ResolvedExamProfileAssignment = {
+  examPath: string;
+  sourceTitle: string;
+  requestedName: string | null;
+  profile: ExamPointsProfile | null;
+  missing: boolean;
+};
+
+type SessionTaskPointsPlan = {
+  taskPoints: number[];
+  maxTotalPoints: number;
+  profileAssignments: ExamRunPointsProfileAssignment[];
+  missingAssignments: ResolvedExamProfileAssignment[];
+};
+
 const buildSelectionSignature = (paths: string[]) =>
   paths.slice().sort((left, right) => left.localeCompare(right)).join("|");
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
+const normalizeDurationMinutes = (value: number) =>
+  Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+
 const normalizeAwardedPoints = (value: number | null, maxPoints: number) => {
   if (value === null || Number.isNaN(value)) {
     return 0;
   }
   return clampNumber(Math.floor(value), 0, maxPoints);
+};
+
+const resolveDurationFromProfileAssignments = (
+  assignments: ResolvedExamProfileAssignment[],
+  fallbackDuration: number,
+) => {
+  const assignedDurations = assignments
+    .map((assignment) => assignment.profile)
+    .filter((profile): profile is ExamPointsProfile => Boolean(profile))
+    .map((profile) => normalizeDurationMinutes(profile.durationMinutes));
+  if (assignedDurations.length > 0) {
+    return Math.max(...assignedDurations);
+  }
+  return normalizeDurationMinutes(fallbackDuration);
 };
 
 const isAutoGradedTask = (task: ExamTask) =>
@@ -136,6 +181,7 @@ export const useExamSimulationViewModel = () => {
     actions,
     preview,
     settings,
+    pointsProfiles,
     spacedRepetition,
     userVault,
     vault,
@@ -302,6 +348,7 @@ export const useExamSimulationViewModel = () => {
           return {
             file,
             parsed: parseExamTasks(contents),
+            taskProfileName: resolveExamTaskFrontmatterValue(contents),
           };
         }),
       );
@@ -319,7 +366,10 @@ export const useExamSimulationViewModel = () => {
           return;
         }
         if (result.status === "fulfilled") {
-          nextParses[file.path] = result.value.parsed;
+          nextParses[file.path] = {
+            ...result.value.parsed,
+            taskProfileName: result.value.taskProfileName,
+          };
           return;
         }
         failures += 1;
@@ -433,24 +483,97 @@ export const useExamSimulationViewModel = () => {
     [previewSession.hasExamBlock, previewSession.tasks],
   );
 
-  const plannedTaskCount = Math.min(
-    previewExamParse.tasks.length,
-    settings.examTaskCount,
+  const selectedExamProfileAssignments = useMemo<ResolvedExamProfileAssignment[]>(
+    () =>
+      selectedExamFiles.map((file) => {
+        const parsed = selectedExamParses[file.path];
+        const requestedName = parsed?.taskProfileName ?? null;
+        const resolved = pointsProfiles.resolveAssignedProfile(requestedName);
+        return {
+          examPath: file.path,
+          sourceTitle: file.relative_path || file.path,
+          requestedName: resolved.requestedName,
+          profile: resolved.profile,
+          missing: resolved.missing,
+        };
+      }),
+    [pointsProfiles, selectedExamFiles, selectedExamParses],
   );
-  const activeTaskPoints = useMemo(
-    () => settings.examTaskPoints.slice(0, settings.examTaskCount),
-    [settings.examTaskCount, settings.examTaskPoints],
-  );
-  const plannedTaskPoints = activeTaskPoints.slice(0, plannedTaskCount);
-  const plannedMaxPoints = plannedTaskPoints.reduce((sum, value) => sum + value, 0);
 
-  const hasTaskCountMismatch = previewExamParse.tasks.length < settings.examTaskCount;
+  const selectedExamProfileAssignmentMap = useMemo(
+    () =>
+      new Map(
+        selectedExamProfileAssignments.map((assignment) => [
+          assignment.examPath,
+          assignment,
+        ]),
+      ),
+    [selectedExamProfileAssignments],
+  );
+  const defaultProfileDurationMinutes = normalizeDurationMinutes(
+    pointsProfiles.defaultProfile?.durationMinutes ?? EXAM_POINTS_DEFAULT_DURATION_MINUTES,
+  );
+  const previewDurationMinutes = useMemo(
+    () =>
+      resolveDurationFromProfileAssignments(
+        selectedExamProfileAssignments,
+        defaultProfileDurationMinutes,
+      ),
+    [defaultProfileDurationMinutes, selectedExamProfileAssignments],
+  );
+
+  const resolveSessionTaskPointsPlan = useCallback(
+    (tasks: ExamSessionTask[]): SessionTaskPointsPlan => {
+      const profileAssignments = selectedExamProfileAssignments.map((assignment) => ({
+        examPath: assignment.examPath,
+        sourceTitle: assignment.sourceTitle,
+        requestedName: assignment.requestedName,
+        profileId: assignment.profile?.id ?? null,
+        profileName: assignment.profile?.name ?? null,
+        profileVersion: assignment.profile?.version ?? null,
+        missing: assignment.missing,
+      }));
+      const missingAssignments = selectedExamProfileAssignments.filter(
+        (assignment) => assignment.missing,
+      );
+      const taskPoints = tasks.map((task) => {
+        const assignment = selectedExamProfileAssignmentMap.get(task.sourceExamPath);
+        const profile = assignment?.profile ?? null;
+        if (!profile) {
+          return 0;
+        }
+        const taskType = resolveExamTaskPointType(task);
+        const taskIndex = Math.max(0, task.index);
+        return resolveTaskMaxPointsFromProfile({
+          profile,
+          taskIndex,
+          taskType,
+        });
+      });
+      const maxTotalPoints = taskPoints.reduce((sum, value) => sum + value, 0);
+      return {
+        taskPoints,
+        maxTotalPoints,
+        profileAssignments,
+        missingAssignments,
+      };
+    },
+    [selectedExamProfileAssignmentMap, selectedExamProfileAssignments],
+  );
+
+  const previewTaskPlan = useMemo(
+    () => resolveSessionTaskPointsPlan(previewExamParse.tasks),
+    [previewExamParse.tasks, resolveSessionTaskPointsPlan],
+  );
+  const plannedTaskCount = previewTaskPlan.taskPoints.length;
+  const plannedMaxPoints = previewTaskPlan.maxTotalPoints;
+  const hasTaskCountMismatch = false;
 
   const activeTasks = stage === "idle" ? previewExamParse.tasks : activeExamTasks;
   const activeExamSettings = stage === "idle" ? null : activeSettings;
   const examDurationMinutes = activeExamSettings
     ? activeExamSettings.durationMinutes
-    : settings.examDurationMinutes;
+    : previewDurationMinutes;
   const examTimerEnabled = activeExamSettings
     ? activeExamSettings.timeLimitEnabled && examDurationMinutes > 0
     : settings.examTimeLimitEnabled && examDurationMinutes > 0;
@@ -460,34 +583,52 @@ export const useExamSimulationViewModel = () => {
     ? Math.min(activeTasks.length, activeExamSettings.taskCount)
     : plannedTaskCount;
   const runTasks = activeTasks.slice(0, activeTaskCount);
-  const runTaskPoints = (activeExamSettings
-    ? activeExamSettings.taskPoints
-    : activeTaskPoints
+  const runTaskPoints = (
+    activeExamSettings ? activeExamSettings.taskPoints : previewTaskPlan.taskPoints
   ).slice(0, activeTaskCount);
   const runMaxPoints = runTaskPoints.reduce((sum, value) => sum + value, 0);
 
   const activeTask = runTasks[activeTaskIndex] ?? null;
   const activeTaskMaxPoints = runTaskPoints[activeTaskIndex] ?? 0;
 
-  const taskPointsSum = activeTaskPoints.reduce((sum, value) => sum + value, 0);
-  const remainingPoints = settings.examMaxTotalPoints - taskPointsSum;
-  const missingExamSettings = useMemo(
-    () =>
-      validateExamSettings({
-        examMaxTotalPoints: settings.examMaxTotalPoints,
-        examTaskCount: settings.examTaskCount,
-        examTaskPoints: settings.examTaskPoints,
-        examDurationMinutes: settings.examDurationMinutes,
-        examTimeLimitEnabled: settings.examTimeLimitEnabled,
-      }),
-    [
-      settings.examDurationMinutes,
-      settings.examMaxTotalPoints,
-      settings.examTaskCount,
-      settings.examTaskPoints,
-      settings.examTimeLimitEnabled,
-    ],
-  );
+  const remainingPoints = 0;
+  const missingExamSettings = useMemo(() => {
+    const missing: MissingExamSetting[] = [];
+    if (settings.examTimeLimitEnabled && previewDurationMinutes <= 0) {
+      missing.push({
+        id: "exam.duration",
+        label: "Time limit ist aktiv, aber Profil-Dauer fehlt",
+        description: "Setze im Points-Profil eine Dauer groesser als 0 Minuten.",
+        severity: "blocker",
+      });
+    }
+    selectedExamProfileAssignments.forEach((assignment) => {
+      if (assignment.missing) {
+        missing.push({
+          id: `exam.points.profile.missing.${assignment.examPath}`,
+          label: `Points-Profil fehlt (${assignment.sourceTitle})`,
+          description: assignment.requestedName
+            ? `Task "${assignment.requestedName}" verweist auf kein vorhandenes Profil.`
+            : "Task verweist auf kein vorhandenes Profil.",
+          severity: "blocker",
+        });
+        return;
+      }
+      const blockers = validatePointsProfile(assignment.profile);
+      blockers.forEach((item) => {
+        missing.push({
+          ...item,
+          id: `${item.id}.${assignment.examPath}`,
+          label: `${item.label} (${assignment.sourceTitle})`,
+        });
+      });
+    });
+    return missing;
+  }, [
+    previewDurationMinutes,
+    selectedExamProfileAssignments,
+    settings.examTimeLimitEnabled,
+  ]);
   const hasSettingsBlockers = missingExamSettings.some(
     (item) => item.severity !== "warning",
   );
@@ -496,6 +637,7 @@ export const useExamSimulationViewModel = () => {
   const canStartExam =
     selectedExamCount > 0 &&
     selectedExamParseState === "idle" &&
+    !pointsProfiles.loading &&
     previewExamParse.tasks.length > 0 &&
     isSettingsValid;
   const examRunning = stage !== "idle";
@@ -581,13 +723,18 @@ export const useExamSimulationViewModel = () => {
     if (sessionTasks.length === 0) {
       return;
     }
+    const sessionTaskPlan = resolveSessionTaskPointsPlan(sessionTasks);
+    if (sessionTaskPlan.missingAssignments.length > 0) {
+      return;
+    }
     const snapshot: ExamSettingsSnapshot = {
-      maxTotalPoints: settings.examMaxTotalPoints,
-      taskCount: settings.examTaskCount,
-      taskPoints: activeTaskPoints,
-      durationMinutes: settings.examDurationMinutes,
+      maxTotalPoints: sessionTaskPlan.maxTotalPoints,
+      taskCount: sessionTaskPlan.taskPoints.length,
+      taskPoints: sessionTaskPlan.taskPoints,
+      durationMinutes: previewDurationMinutes,
       timeLimitEnabled: settings.examTimeLimitEnabled,
       aiEvaluation: settings.examAiEvaluation,
+      pointsProfileAssignments: sessionTaskPlan.profileAssignments,
     };
     // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
     examStartTimeRef.current = Date.now();
@@ -620,13 +767,11 @@ export const useExamSimulationViewModel = () => {
     selectedExamFiles,
     selectedExamSources,
     settings.examAiEvaluation,
-    settings.examMaxTotalPoints,
-    settings.examTaskCount,
-    settings.examDurationMinutes,
     settings.examTimeLimitEnabled,
-    activeTaskPoints,
+    previewDurationMinutes,
     examTimeLimitMs,
     examTimerEnabled,
+    resolveSessionTaskPointsPlan,
   ]);
 
   const handleResetExam = useCallback(() => {
@@ -1109,6 +1254,17 @@ export const useExamSimulationViewModel = () => {
         : `Mixed (${activeExamFiles.length}): ${activeExamFiles
             .map((file) => file.relative_path || file.path)
             .join(", ")}`;
+    const profileAssignments = activeExamSettings?.pointsProfileAssignments ?? [];
+    const resolvedAssignments = profileAssignments.filter(
+      (assignment) => !assignment.missing && assignment.profileId,
+    );
+    const uniqueProfileKeys = new Set(
+      resolvedAssignments.map((assignment) =>
+        [assignment.profileId, assignment.profileName].join("|"),
+      ),
+    );
+    const singleResolvedProfile =
+      uniqueProfileKeys.size === 1 ? resolvedAssignments[0] ?? null : null;
 
     const run: ExamRun = {
       id: buildExamRunId(),
@@ -1125,6 +1281,10 @@ export const useExamSimulationViewModel = () => {
       passed,
       grade,
       gradeScaleId: settings.examGradeScale,
+      pointsProfileId: singleResolvedProfile?.profileId ?? null,
+      pointsProfileName: singleResolvedProfile?.profileName ?? null,
+      pointsProfileVersion: singleResolvedProfile?.profileVersion ?? null,
+      pointsProfileAssignments: profileAssignments,
     };
 
     if (userVault.activeProfilePath) {
@@ -1133,6 +1293,7 @@ export const useExamSimulationViewModel = () => {
     setExamRuns((prev) => sortExamRunsByDateDesc([run, ...prev]));
     examRunRecordedRef.current = true;
   }, [
+    activeExamSettings,
     activeExamFiles,
     examRunsLoaded,
     results,
