@@ -614,6 +614,10 @@ export const useExamSimulationViewModel = () => {
             typePoints: taskTypePointsSource,
           });
         }
+        if (!profile) {
+          // Defensive fallback: missing profiles should already resolve via taskTypePointsSource.
+          return 0;
+        }
         return resolveTaskMaxPointsFromProfile({
           profile,
           taskIndex: Math.max(0, task.index),
