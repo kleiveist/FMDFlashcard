@@ -23,7 +23,10 @@
  */
 
 import { useMemo } from "react";
-import type { ExamAiEvaluation } from "../../features/settings/useAppSettings";
+import {
+  DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS,
+  type ExamAiEvaluation,
+} from "../../features/settings/useAppSettings";
 import type { AutoCardType, AutoCardTypeMap } from "../../lib/exam/autoCards";
 
 type ExamSettingsPanelProps = {
@@ -274,6 +277,12 @@ type AutoCardsSettingsPanelProps = {
   setReturnCardsEnabled: (value: boolean) => void;
 };
 
+type ExamTaskTypeDefaultsPanelProps = {
+  pointsByType: Record<AutoCardType, number>;
+  onPointChange: (type: AutoCardType, value: string) => void;
+  onResetPreset: () => void;
+};
+
 const AUTO_CARD_TYPE_OPTIONS: Array<{
   type: AutoCardType;
   label: string;
@@ -378,6 +387,56 @@ export const AutoCardsSettingsPanel = ({
           Remove auto cards again when they are answered correctly.
         </span>
       </div>
+    </div>
+  </section>
+);
+
+export const ExamTaskTypeDefaultsPanel = ({
+  pointsByType,
+  onPointChange,
+  onResetPreset,
+}: ExamTaskTypeDefaultsPanelProps) => (
+  <section className="panel exam-task-type-defaults-panel" id="exam-settings-task-type-defaults">
+    <div className="panel-header">
+      <div>
+        <h2>Task Type Points</h2>
+        <p className="muted">
+          Standardwerte fuer Exams ohne zugewiesenes Points-Profil.
+        </p>
+      </div>
+      <button type="button" className="ghost small" onClick={onResetPreset}>
+        Preset wiederherstellen
+      </button>
+    </div>
+    <div className="panel-body">
+      <div className="muted">
+        Preset: QA {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.qa}, TF{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.tf}, M1{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.m1}, M2{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.m2}, CL{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cl}, CD{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cd}, CLD{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cld}
+      </div>
+      <div className="muted">
+        Ein zugewiesenes Points-Profil hat Vorrang. Diese Werte gelten nur ohne
+        Profilzuordnung.
+      </div>
+      {AUTO_CARD_TYPE_OPTIONS.map((option) => (
+        <div key={option.type} className="setting-row">
+          <span className="label">{option.label}</span>
+          <div className="setting-inline">
+            <input
+              type="number"
+              min={0}
+              className="text-input exam-compact-input"
+              value={pointsByType[option.type]}
+              onChange={(event) => onPointChange(option.type, event.target.value)}
+            />
+            <span className="muted">points</span>
+          </div>
+        </div>
+      ))}
     </div>
   </section>
 );

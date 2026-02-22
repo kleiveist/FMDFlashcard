@@ -163,6 +163,7 @@ export type AppSettings = {
   exam_time_limit_enabled?: boolean | null;
   exam_auto_cards_enabled?: boolean | null;
   exam_auto_cards_types?: Partial<AutoCardTypeMap> | null;
+  exam_task_type_default_points?: Partial<Record<AutoCardType, number>> | null;
   exam_auto_cards_return_on_correct?: boolean | null;
   exam_grade_scale?: string | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
@@ -224,6 +225,7 @@ type PersistUpdates = {
   examDurationMinutes?: number;
   examTimeLimitEnabled?: boolean;
   examAutoCardsTypes?: Partial<AutoCardTypeMap>;
+  examTaskTypeDefaultPoints?: Partial<Record<AutoCardType, number>>;
   examAutoCardsReturnOnCorrect?: boolean;
   examGradeScale?: ExamGradeScale;
   examAiEvaluation?: ExamAiEvaluation;
@@ -285,6 +287,7 @@ export type SettingsSnapshot = {
   examDurationMinutes: number;
   examTimeLimitEnabled: boolean;
   examAutoCardsTypes: AutoCardTypeMap;
+  examTaskTypeDefaultPoints: Record<AutoCardType, number>;
   examAutoCardsReturnOnCorrect: boolean;
   examGradeScale: ExamGradeScale;
   examAiEvaluation: ExamAiEvaluation;
@@ -341,6 +344,15 @@ const DEFAULT_EXAM_MAX_TOTAL_POINTS = 20;
 const DEFAULT_EXAM_TASK_COUNT = 5;
 const DEFAULT_EXAM_DURATION_MINUTES = 30;
 const DEFAULT_EXAM_TIME_LIMIT_ENABLED = true;
+export const DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS: Record<AutoCardType, number> = {
+  qa: 6,
+  tf: 2,
+  m1: 3,
+  m2: 5,
+  cl: 4,
+  cd: 5,
+  cld: 8,
+};
 const buildDefaultAutoCardTypes = (value: boolean): AutoCardTypeMap =>
   AUTO_CARD_TYPES.reduce(
     (acc, type) => {
@@ -471,6 +483,14 @@ const clampExamDurationMinutes = (value: unknown) => {
   return Math.min(240, Math.max(0, parsed));
 };
 
+const clampExamTaskTypeDefaultPoints = (value: unknown, fallback: number) => {
+  const parsed = parseInteger(value);
+  if (parsed === null) {
+    return Math.max(0, Math.floor(fallback));
+  }
+  return Math.max(0, parsed);
+};
+
 const isAutoCardType = (value: unknown): value is AutoCardType =>
   AUTO_CARD_TYPES.includes(value as AutoCardType);
 
@@ -518,6 +538,39 @@ const mergeExamAutoCardsTypes = (
   AUTO_CARD_TYPES.forEach((type) => {
     if (typeof updates[type] === "boolean") {
       next[type] = updates[type] ?? false;
+    }
+  });
+  return next;
+};
+
+const normalizeExamTaskTypeDefaultPoints = (
+  value: unknown,
+): Record<AutoCardType, number> => {
+  const next = { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS };
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return next;
+  }
+  const candidate = value as Partial<Record<AutoCardType, unknown>>;
+  AUTO_CARD_TYPES.forEach((type) => {
+    next[type] = clampExamTaskTypeDefaultPoints(
+      candidate[type],
+      DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS[type],
+    );
+  });
+  return next;
+};
+
+const mergeExamTaskTypeDefaultPoints = (
+  current: Record<AutoCardType, number>,
+  updates?: Partial<Record<AutoCardType, number>>,
+): Record<AutoCardType, number> => {
+  if (!updates) {
+    return current;
+  }
+  const next = { ...current };
+  AUTO_CARD_TYPES.forEach((type) => {
+    if (typeof updates[type] === "number" && Number.isFinite(updates[type])) {
+      next[type] = clampExamTaskTypeDefaultPoints(updates[type], current[type]);
     }
   });
   return next;
@@ -746,6 +799,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   exam_duration_minutes: settings.examDurationMinutes,
   exam_time_limit_enabled: settings.examTimeLimitEnabled,
   exam_auto_cards_types: settings.examAutoCardsTypes,
+  exam_task_type_default_points: settings.examTaskTypeDefaultPoints,
   exam_auto_cards_return_on_correct: settings.examAutoCardsReturnOnCorrect,
   exam_grade_scale: settings.examGradeScale,
   exam_ai_evaluation: settings.examAiEvaluation,
@@ -1020,6 +1074,9 @@ export const normalizeSettings = (
     stored.exam_auto_cards_types,
     legacyExamAutoCardsEnabled,
   );
+  const storedExamTaskTypeDefaultPoints = normalizeExamTaskTypeDefaultPoints(
+    stored.exam_task_type_default_points,
+  );
   const storedExamAutoCardsReturnOnCorrect =
     typeof stored.exam_auto_cards_return_on_correct === "boolean"
       ? stored.exam_auto_cards_return_on_correct
@@ -1098,6 +1155,7 @@ export const normalizeSettings = (
       examDurationMinutes: storedExamDurationMinutes,
       examTimeLimitEnabled: storedExamTimeLimitEnabled,
       examAutoCardsTypes: storedExamAutoCardsTypes,
+      examTaskTypeDefaultPoints: storedExamTaskTypeDefaultPoints,
       examAutoCardsReturnOnCorrect: storedExamAutoCardsReturnOnCorrect,
       examGradeScale: storedExamGradeScale,
       examAiEvaluation: storedExamAiEvaluation,
@@ -1245,6 +1303,9 @@ export const useAppSettings = () => {
   const [examAutoCardsTypes, setExamAutoCardsTypesState] = useState<
     AutoCardTypeMap
   >(() => ({ ...DEFAULT_EXAM_AUTO_CARDS_TYPES }));
+  const [examTaskTypeDefaultPoints, setExamTaskTypeDefaultPointsState] = useState<
+    Record<AutoCardType, number>
+  >(() => ({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS }));
   const [examAutoCardsReturnOnCorrect, setExamAutoCardsReturnOnCorrectState] =
     useState(DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT);
   const [examGradeScale, setExamGradeScaleState] = useState<ExamGradeScale>(
@@ -1316,6 +1377,20 @@ export const useAppSettings = () => {
     },
     [],
   );
+
+  const setExamTaskTypeDefaultPoint = useCallback(
+    (type: AutoCardType, value: number) => {
+      setExamTaskTypeDefaultPointsState((prev) => ({
+        ...prev,
+        [type]: clampExamTaskTypeDefaultPoints(value, prev[type]),
+      }));
+    },
+    [],
+  );
+
+  const resetExamTaskTypeDefaultPoints = useCallback(() => {
+    setExamTaskTypeDefaultPointsState({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS });
+  }, []);
 
   const setExamAutoCardsReturnOnCorrect = useCallback((value: boolean) => {
     setExamAutoCardsReturnOnCorrectState(Boolean(value));
@@ -1533,6 +1608,7 @@ export const useAppSettings = () => {
       examDurationMinutes,
       examTimeLimitEnabled,
       examAutoCardsTypes,
+      examTaskTypeDefaultPoints,
       examAutoCardsReturnOnCorrect,
       examGradeScale,
       examAiEvaluation,
@@ -1560,6 +1636,7 @@ export const useAppSettings = () => {
       examDurationMinutes,
       examTimeLimitEnabled,
       examAutoCardsTypes,
+      examTaskTypeDefaultPoints,
       examAutoCardsReturnOnCorrect,
       examGradeScale,
       examHelpEnabled,
@@ -1667,6 +1744,7 @@ export const useAppSettings = () => {
           examDurationMinutes: settings.examDurationMinutes,
           examTimeLimitEnabled: settings.examTimeLimitEnabled,
           examAutoCardsTypes: settings.examAutoCardsTypes,
+          examTaskTypeDefaultPoints: settings.examTaskTypeDefaultPoints,
           examAutoCardsReturnOnCorrect: settings.examAutoCardsReturnOnCorrect,
           examGradeScale: settings.examGradeScale,
           examAiEvaluation: settings.examAiEvaluation,
@@ -1776,6 +1854,10 @@ export const useAppSettings = () => {
           examAutoCardsTypes,
           updates.examAutoCardsTypes,
         ),
+        examTaskTypeDefaultPoints: mergeExamTaskTypeDefaultPoints(
+          examTaskTypeDefaultPoints,
+          updates.examTaskTypeDefaultPoints,
+        ),
         examAutoCardsReturnOnCorrect:
           updates.examAutoCardsReturnOnCorrect ?? examAutoCardsReturnOnCorrect,
         examGradeScale:
@@ -1821,6 +1903,7 @@ export const useAppSettings = () => {
       examDurationMinutes,
       examTimeLimitEnabled,
       examAutoCardsTypes,
+      examTaskTypeDefaultPoints,
       examAutoCardsReturnOnCorrect,
       keyboardShortcuts,
       flashcardMode,
@@ -1933,6 +2016,7 @@ export const useAppSettings = () => {
     setExamDurationMinutesState(normalized.examDurationMinutes);
     setExamTimeLimitEnabledState(normalized.examTimeLimitEnabled);
     setExamAutoCardsTypesState(normalized.examAutoCardsTypes);
+    setExamTaskTypeDefaultPointsState(normalized.examTaskTypeDefaultPoints);
     setExamAutoCardsReturnOnCorrectState(normalized.examAutoCardsReturnOnCorrect);
     setExamGradeScaleState(normalized.examGradeScale);
     setExamAiEvaluationState(normalized.examAiEvaluation);
@@ -2107,6 +2191,7 @@ export const useAppSettings = () => {
     examDurationMinutes,
     examTimeLimitEnabled,
     examAutoCardsTypes,
+    examTaskTypeDefaultPoints,
     examAutoCardsReturnOnCorrect,
     examGradeScale,
     flashcardMode,
@@ -2150,6 +2235,8 @@ export const useAppSettings = () => {
     setExamDurationMinutes,
     setExamTimeLimitEnabled,
     setExamAutoCardsTypeEnabled,
+    setExamTaskTypeDefaultPoint,
+    resetExamTaskTypeDefaultPoints,
     setExamAutoCardsReturnOnCorrect,
     setExamGradeScale,
     setFlashcardMode,

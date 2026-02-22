@@ -59,8 +59,9 @@ import {
   type ExamPointsProfile,
 } from "../../../lib/exam/pointsProfiles";
 import {
-  resolveExamTaskPointType,
+  resolveExamTaskPointTypes,
   resolveTaskMaxPointsFromProfile,
+  resolveTaskTypePointsFromMap,
 } from "../../../lib/exam/pointsScoring";
 import {
   buildMixedSessionTasks,
@@ -487,8 +488,17 @@ export const useExamSimulationViewModel = () => {
     () =>
       selectedExamFiles.map((file) => {
         const parsed = selectedExamParses[file.path];
-        const requestedName = parsed?.taskProfileName ?? null;
-        const resolved = pointsProfiles.resolveAssignedProfile(requestedName);
+        const requestedNameRaw = parsed?.taskProfileName?.trim() ?? "";
+        if (!requestedNameRaw) {
+          return {
+            examPath: file.path,
+            sourceTitle: file.relative_path || file.path,
+            requestedName: null,
+            profile: null,
+            missing: false,
+          };
+        }
+        const resolved = pointsProfiles.resolveAssignedProfile(requestedNameRaw);
         return {
           examPath: file.path,
           sourceTitle: file.relative_path || file.path,
@@ -539,15 +549,17 @@ export const useExamSimulationViewModel = () => {
       const taskPoints = tasks.map((task) => {
         const assignment = selectedExamProfileAssignmentMap.get(task.sourceExamPath);
         const profile = assignment?.profile ?? null;
+        const taskTypes = resolveExamTaskPointTypes(task);
         if (!profile) {
-          return 0;
+          return resolveTaskTypePointsFromMap({
+            taskTypes,
+            typePoints: settings.examTaskTypeDefaultPoints,
+          });
         }
-        const taskType = resolveExamTaskPointType(task);
-        const taskIndex = Math.max(0, task.index);
         return resolveTaskMaxPointsFromProfile({
           profile,
-          taskIndex,
-          taskType,
+          taskIndex: Math.max(0, task.index),
+          taskTypes,
         });
       });
       const maxTotalPoints = taskPoints.reduce((sum, value) => sum + value, 0);
@@ -558,7 +570,11 @@ export const useExamSimulationViewModel = () => {
         missingAssignments,
       };
     },
-    [selectedExamProfileAssignmentMap, selectedExamProfileAssignments],
+    [
+      selectedExamProfileAssignmentMap,
+      selectedExamProfileAssignments,
+      settings.examTaskTypeDefaultPoints,
+    ],
   );
 
   const previewTaskPlan = useMemo(
@@ -612,6 +628,9 @@ export const useExamSimulationViewModel = () => {
             : "Task verweist auf kein vorhandenes Profil.",
           severity: "blocker",
         });
+        return;
+      }
+      if (!assignment.profile) {
         return;
       }
       const blockers = validatePointsProfile(assignment.profile);

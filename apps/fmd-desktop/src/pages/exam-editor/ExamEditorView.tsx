@@ -34,7 +34,6 @@ import { findNextNewExamFilename } from "../../features/exam-editor/fileNaming";
 import type { UseExamPointsProfilesHandle } from "../../features/exam-points/useExamPointsProfiles";
 import {
   EXAM_POINTS_DEFAULT_DURATION_MINUTES,
-  EXAM_POINTS_DEFAULT_PROFILE_NAME,
   EXAM_POINTS_MAX_TASK_COUNT,
   createDefaultTypeRules,
   normalizeTaskPoints,
@@ -43,6 +42,7 @@ import {
   type ExamPointsProfile,
 } from "../../lib/exam/pointsProfiles";
 import {
+  removeExamTaskFrontmatterValue,
   resolveExamTaskFrontmatterValue,
   upsertExamTaskFrontmatterValue,
 } from "../../features/exam-points/frontmatterTask";
@@ -120,12 +120,17 @@ const resolveMarkdownWithTaskProfile = ({
 }: {
   sourceMarkdown: string;
   bodyMarkdown: string;
-  profileName: string;
+  profileName: string | null;
 }) => {
   const composed = composeMarkdownWithBody(sourceMarkdown, bodyMarkdown);
+  const nextName = profileName?.trim() ?? "";
+  if (!nextName) {
+    const removed = removeExamTaskFrontmatterValue({ markdown: composed });
+    return removed.error ? composed : removed.markdown;
+  }
   const updated = upsertExamTaskFrontmatterValue({
     markdown: composed,
-    profileName,
+    profileName: nextName,
   });
   return updated.error ? composed : updated.markdown;
 };
@@ -261,12 +266,8 @@ export const ExamEditorView = ({
   const examBodyMarkdown = useMemo(() => serializeExamBlueprint(exam), [exam]);
   const effectiveProfileName = useMemo(() => {
     const trimmed = assignedTaskProfileName?.trim() ?? "";
-    if (trimmed) {
-      return trimmed;
-    }
-    const fallback = pointsProfiles.defaultProfile?.name?.trim() ?? "";
-    return fallback || EXAM_POINTS_DEFAULT_PROFILE_NAME;
-  }, [assignedTaskProfileName, pointsProfiles.defaultProfile?.name]);
+    return trimmed || null;
+  }, [assignedTaskProfileName]);
   const markdown = useMemo(
     () =>
       resolveMarkdownWithTaskProfile({
@@ -318,13 +319,20 @@ export const ExamEditorView = ({
     };
   }, [exam.tasks, validation]);
 
-  const assignedProfileResolution = useMemo(
-    () => pointsProfiles.resolveAssignedProfile(assignedTaskProfileName),
-    [assignedTaskProfileName, pointsProfiles],
-  );
+  const assignedProfileResolution = useMemo(() => {
+    const requestedNameRaw = assignedTaskProfileName?.trim() ?? "";
+    if (!requestedNameRaw) {
+      return {
+        requestedName: null,
+        profile: null,
+        missing: false,
+      };
+    }
+    return pointsProfiles.resolveAssignedProfile(requestedNameRaw);
+  }, [assignedTaskProfileName, pointsProfiles]);
   const assignedProfileNameForSelect = assignedProfileResolution.missing
     ? "__missing__"
-    : assignedProfileResolution.profile?.name ?? effectiveProfileName;
+    : assignedProfileResolution.profile?.name ?? "__standard__";
 
   useEffect(() => {
     const selectedProfile = pointsProfiles.selectedProfile;
@@ -730,8 +738,8 @@ export const ExamEditorView = ({
     [handleCardUpdate],
   );
 
-  const handleAssignTaskProfileName = useCallback((value: string) => {
-    const next = value.trim();
+  const handleAssignTaskProfileName = useCallback((value: string | null) => {
+    const next = typeof value === "string" ? value.trim() : "";
     setAssignedTaskProfileName(next || null);
     setSaveState("idle");
   }, []);
@@ -1270,7 +1278,7 @@ export const ExamEditorView = ({
 
     if (!sourcePath) {
       setSourceDocumentMarkdown("");
-      setAssignedTaskProfileName(pointsProfiles.defaultProfile?.name ?? null);
+      setAssignedTaskProfileName(null);
       return;
     }
     if (!sourceMarkdown.trim()) {
@@ -1280,11 +1288,7 @@ export const ExamEditorView = ({
       setSavePath(sourcePath);
       setLastSavedContent(sourceMarkdown);
       setSourceDocumentMarkdown(sourceMarkdown);
-      setAssignedTaskProfileName(
-        resolveExamTaskFrontmatterValue(sourceMarkdown) ??
-          pointsProfiles.defaultProfile?.name ??
-          null,
-      );
+      setAssignedTaskProfileName(resolveExamTaskFrontmatterValue(sourceMarkdown));
       return;
     }
     if (!isExamMarkdown(sourceMarkdown)) {
@@ -1296,11 +1300,7 @@ export const ExamEditorView = ({
       setSavePath(null);
       setLastSavedContent(null);
       setSourceDocumentMarkdown(sourceMarkdown);
-      setAssignedTaskProfileName(
-        resolveExamTaskFrontmatterValue(sourceMarkdown) ??
-          pointsProfiles.defaultProfile?.name ??
-          null,
-      );
+      setAssignedTaskProfileName(resolveExamTaskFrontmatterValue(sourceMarkdown));
       return;
     }
     const imported = importExamMarkdown(sourceMarkdown);
@@ -1311,11 +1311,7 @@ export const ExamEditorView = ({
       setSavePath(null);
       setLastSavedContent(null);
       setSourceDocumentMarkdown(sourceMarkdown);
-      setAssignedTaskProfileName(
-        resolveExamTaskFrontmatterValue(sourceMarkdown) ??
-          pointsProfiles.defaultProfile?.name ??
-          null,
-      );
+      setAssignedTaskProfileName(resolveExamTaskFrontmatterValue(sourceMarkdown));
       return;
     }
     setExam(imported.blueprint);
@@ -1324,29 +1320,13 @@ export const ExamEditorView = ({
     setSavePath(sourcePath);
     setLastSavedContent(sourceMarkdown);
     setSourceDocumentMarkdown(sourceMarkdown);
-    setAssignedTaskProfileName(
-      resolveExamTaskFrontmatterValue(sourceMarkdown) ??
-        pointsProfiles.defaultProfile?.name ??
-        null,
-    );
+    setAssignedTaskProfileName(resolveExamTaskFrontmatterValue(sourceMarkdown));
   }, [
     lastSavedContent,
-    pointsProfiles.defaultProfile?.name,
     savePath,
     sourceMarkdown,
     sourcePath,
   ]);
-
-  useEffect(() => {
-    if (assignedTaskProfileName && assignedTaskProfileName.trim()) {
-      return;
-    }
-    const fallbackName = pointsProfiles.defaultProfile?.name?.trim() ?? "";
-    if (!fallbackName) {
-      return;
-    }
-    setAssignedTaskProfileName(fallbackName);
-  }, [assignedTaskProfileName, pointsProfiles.defaultProfile?.name]);
 
   const getTaskWarning = useCallback(
     (task: ExamTaskBlueprint) =>
@@ -1367,6 +1347,10 @@ export const ExamEditorView = ({
   const handleTaskProfileSelectChange = useCallback(
     (value: string) => {
       if (value === "__missing__") {
+        return;
+      }
+      if (value === "__standard__") {
+        handleAssignTaskProfileName(null);
         return;
       }
       handleAssignTaskProfileName(value);
@@ -1413,6 +1397,7 @@ export const ExamEditorView = ({
             Missing: {assignedProfileResolution.requestedName}
           </option>
         ) : null}
+        <option value="__standard__">Standard (no profile)</option>
         {profileNameOptions.map((name) => (
           <option key={name} value={name}>
             {name}
@@ -1640,31 +1625,7 @@ export const ExamEditorView = ({
                               handleDraftTypeRuleChange(type, "points", event.target.value)
                             }
                           />
-                          <select
-                            className="text-input"
-                            value={rule?.mode ?? "all-or-nothing"}
-                            onChange={(event) =>
-                              handleDraftTypeRuleChange(
-                                type,
-                                "mode",
-                                event.target.value === "partial"
-                                  ? "partial"
-                                  : "all-or-nothing",
-                              )
-                            }
-                          >
-                            <option value="all-or-nothing">All-or-nothing</option>
-                            <option value="partial">Partial</option>
-                          </select>
-                          <input
-                            type="number"
-                            min={0}
-                            className="text-input exam-compact-input"
-                            value={rule?.penalty ?? "0"}
-                            onChange={(event) =>
-                              handleDraftTypeRuleChange(type, "penalty", event.target.value)
-                            }
-                          />
+                          <span className="muted small">Points per detected type</span>
                         </div>
                       );
                     })}

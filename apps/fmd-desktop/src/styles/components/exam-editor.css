@@ -1094,10 +1094,7 @@
 
 .points-type-row {
   display: grid;
-  grid-template-columns: minmax(64px, 84px) minmax(72px, 1fr) minmax(120px, 1.1fr) minmax(
-      72px,
-      1fr
-    );
+  grid-template-columns: minmax(64px, 84px) minmax(72px, 120px) minmax(180px, 1fr);
   gap: 8px;
   align-items: center;
   min-width: 0;

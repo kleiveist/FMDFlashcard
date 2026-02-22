@@ -34,6 +34,7 @@ import { useAppState } from "../components/AppStateProvider";
 import { AppearanceSection } from "../components/settings/AppearanceSection";
 import {
   AutoCardsSettingsPanel,
+  ExamTaskTypeDefaultsPanel,
   ExamTogglesPanel,
 } from "../components/settings/ExamSettingsSection";
 import { FlashcardsSettingsSection } from "../components/settings/FlashcardsSettingsSection";
@@ -375,6 +376,15 @@ export const SettingsPage = () => {
     [settings.setExamTimeLimitEnabled],
   );
 
+  const handleExamTaskTypeDefaultPointChange = useCallback(
+    (type: keyof typeof settings.examTaskTypeDefaultPoints, value: string) => {
+      const parsed = Number.parseInt(value, 10);
+      const normalized = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+      settings.setExamTaskTypeDefaultPoint(type, normalized);
+    },
+    [settings.setExamTaskTypeDefaultPoint],
+  );
+
   const activeItem =
     SETTINGS_NAV_ITEMS.find((item) => item.id === activeSettingsPage) ??
     SETTINGS_NAV_ITEMS[0];
@@ -512,6 +522,12 @@ export const SettingsPage = () => {
                 onTypeToggle={settings.setExamAutoCardsTypeEnabled}
                 returnCardsEnabled={settings.examAutoCardsReturnOnCorrect}
                 setReturnCardsEnabled={settings.setExamAutoCardsReturnOnCorrect}
+              />
+            ) : activeSubPageId === "task-type-defaults" ? (
+              <ExamTaskTypeDefaultsPanel
+                pointsByType={settings.examTaskTypeDefaultPoints}
+                onPointChange={handleExamTaskTypeDefaultPointChange}
+                onResetPreset={settings.resetExamTaskTypeDefaultPoints}
               />
             ) : (
               <ExamTogglesPanel

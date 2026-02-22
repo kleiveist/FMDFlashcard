@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  removeExamTaskFrontmatterValue,
   resolveExamTaskFrontmatterValue,
   upsertExamTaskFrontmatterValue,
 } from "./frontmatterTask";
@@ -44,5 +45,21 @@ describe("exam points frontmatter task helpers", () => {
     expect(updated.error).toBeNull();
     expect(updated.markdown.startsWith("---\nTask: 'Exam'\n---\n")).toBe(true);
     expect(updated.markdown).toContain("#exam");
+  });
+
+  it("removes Task key while preserving other frontmatter keys", () => {
+    const markdown = ["---", "Task: Exam", "Title: Demo", "---", "Body"].join("\n");
+    const updated = removeExamTaskFrontmatterValue({ markdown });
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).not.toContain("Task:");
+    expect(updated.markdown).toContain("Title: Demo");
+    expect(updated.markdown.endsWith("Body")).toBe(true);
+  });
+
+  it("keeps markdown unchanged when Task key is missing", () => {
+    const markdown = ["---", "Title: Demo", "---", "Body"].join("\n");
+    const updated = removeExamTaskFrontmatterValue({ markdown });
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toBe(markdown);
   });
 });

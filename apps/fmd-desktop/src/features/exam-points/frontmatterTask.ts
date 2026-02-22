@@ -8,6 +8,7 @@
 import {
   addFrontmatterProperty,
   parseFrontmatterDocument,
+  removeFrontmatterProperty,
   updateFrontmatterProperty,
 } from "../preview/frontmatter";
 import { EXAM_POINTS_FRONTMATTER_KEY } from "../../lib/exam/pointsProfiles";
@@ -91,5 +92,32 @@ export const upsertExamTaskFrontmatterValue = ({
     key: EXAM_POINTS_FRONTMATTER_KEY,
     value: nextName,
     kind: "text",
+  });
+};
+
+export const removeExamTaskFrontmatterValue = ({
+  markdown,
+}: {
+  markdown: string;
+}): { markdown: string; error: string | null } => {
+  const parsed = parseFrontmatterDocument(markdown);
+  if (!parsed.hasFrontmatter || parsed.error) {
+    return {
+      markdown,
+      error: parsed.error,
+    };
+  }
+
+  const taskKey = resolveTaskKey(parsed.properties.map((property) => property.key));
+  if (!taskKey) {
+    return {
+      markdown,
+      error: null,
+    };
+  }
+
+  return removeFrontmatterProperty({
+    markdown,
+    key: taskKey,
   });
 };

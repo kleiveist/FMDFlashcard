@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { parseExamTasks } from "../exam";
 import { buildExamPointsProfile, createDefaultTypeRules } from "./pointsProfiles";
 import {
-  resolveExamTaskPointType,
+  resolveExamTaskPointTypes,
   resolveTaskMaxPointsFromProfile,
+  resolveTaskTypePointsFromMap,
 } from "./pointsScoring";
 
 describe("pointsScoring", () => {
@@ -25,7 +26,7 @@ describe("pointsScoring", () => {
     const points = resolveTaskMaxPointsFromProfile({
       profile,
       taskIndex: task.index,
-      taskType: resolveExamTaskPointType(task),
+      taskTypes: resolveExamTaskPointTypes(task),
     });
     expect(points).toBe(2);
   });
@@ -50,8 +51,49 @@ describe("pointsScoring", () => {
     const points = resolveTaskMaxPointsFromProfile({
       profile,
       taskIndex: 0,
-      taskType: resolveExamTaskPointType(task),
+      taskTypes: resolveExamTaskPointTypes(task),
     });
     expect(points).toBe(6);
+  });
+
+  it("adds points for composite task types", () => {
+    const parsed = parseExamTasks(
+      [
+        "#exam",
+        "1) Mixed",
+        "#card",
+        "[tf]",
+        "Aussage:",
+        "Statement",
+        "-true",
+        "",
+        "[m1]",
+        "Welche Zahl ist prim?",
+        "a) 4",
+        "b) 5",
+        "-b",
+        "#",
+        "#examend",
+      ].join("\n"),
+    );
+    const task = parsed.tasks[0];
+    expect(task).toBeTruthy();
+    if (!task) {
+      return;
+    }
+
+    const points = resolveTaskTypePointsFromMap({
+      taskTypes: resolveExamTaskPointTypes(task),
+      typePoints: {
+        qa: 6,
+        tf: 2,
+        m1: 3,
+        m2: 5,
+        cl: 4,
+        cd: 5,
+        cld: 8,
+      },
+    });
+    expect(points).toBe(5);
   });
 });

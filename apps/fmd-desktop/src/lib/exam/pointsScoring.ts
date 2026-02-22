@@ -30,23 +30,57 @@ export const resolvePrimaryAutoCardType = (
   return prioritized ?? "qa";
 };
 
-export const resolveExamTaskPointType = (task: ExamTask): AutoCardType => {
+export const normalizeTaskTypeList = (detectedTypes: AutoCardType[]) => {
+  const unique = Array.from(new Set(detectedTypes));
+  return TASK_TYPE_PRIORITY.filter((type) => unique.includes(type));
+};
+
+export const resolveExamTaskPointTypes = (task: ExamTask): AutoCardType[] => {
   const detected = resolveExamTaskAutoCardTypes(task);
-  return resolvePrimaryAutoCardType(detected);
+  const normalized = normalizeTaskTypeList(detected);
+  if (normalized.length > 0) {
+    return normalized;
+  }
+  return [resolvePrimaryAutoCardType(detected)];
+};
+
+export const resolveTaskTypePointsFromMap = ({
+  taskTypes,
+  typePoints,
+}: {
+  taskTypes: AutoCardType[];
+  typePoints: Record<AutoCardType, number>;
+}) => {
+  const normalizedTypes = normalizeTaskTypeList(taskTypes);
+  if (normalizedTypes.length === 0) {
+    return 0;
+  }
+  return normalizedTypes.reduce(
+    (sum, type) => sum + clampNonNegative(typePoints[type] ?? 0),
+    0,
+  );
 };
 
 export const resolveTaskMaxPointsFromProfile = ({
   profile,
   taskIndex,
-  taskType,
+  taskTypes,
 }: {
   profile: ExamPointsProfile;
   taskIndex: number;
-  taskType: AutoCardType;
+  taskTypes: AutoCardType[];
 }) => {
   if (profile.distribution === "task-type") {
-    const rule = profile.typeRules[taskType];
-    return clampNonNegative(rule?.points ?? 0);
+    return resolveTaskTypePointsFromMap({
+      taskTypes,
+      typePoints: TASK_TYPE_PRIORITY.reduce(
+        (acc, type) => {
+          acc[type] = clampNonNegative(profile.typeRules[type]?.points ?? 0);
+          return acc;
+        },
+        {} as Record<AutoCardType, number>,
+      ),
+    });
   }
   const points = profile.taskPoints[taskIndex] ?? 0;
   return clampNonNegative(points);
