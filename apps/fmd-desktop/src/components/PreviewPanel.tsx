@@ -26,6 +26,7 @@ import {
   type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
+  type SyntheticEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -60,6 +61,443 @@ import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaul
 import { type LoadState } from "../lib/types";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
 import { ChevronDownIcon, CodeIcon, MarkdownIcon } from "./icons";
+
+type CoverThumbnailSource = {
+  src?: string | null;
+  path: string;
+  relativePath: string;
+  lastModified?: number | null;
+  sizeBytes?: number | null;
+};
+
+type CoverAlphaCropRect = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+type CoverThumbnailCropScanResult =
+  | { kind: "none" }
+  | {
+      kind: "crop";
+      sourceWidth: number;
+      sourceHeight: number;
+      rect: CoverAlphaCropRect;
+    };
+
+const COVER_THUMBNAIL_ALPHA_THRESHOLD = 12;
+const COVER_THUMBNAIL_CROP_PADDING_PX = 3;
+const COVER_THUMBNAIL_NEAR_FULL_RATIO = 0.95;
+const COVER_THUMBNAIL_MAX_SCAN_SIDE = 512;
+const COVER_THUMBNAIL_FALLBACK_WIDTH = 176;
+const COVER_THUMBNAIL_FALLBACK_HEIGHT = 99;
+
+const coverThumbnailCropCache = new Map<string, CoverThumbnailCropScanResult>();
+const coverThumbnailCropPending = new Map<string, Promise<CoverThumbnailCropScanResult>>();
+
+const isPngImagePath = (value: string) => /\.png$/i.test(value);
+
+const buildCoverThumbnailCropCacheKey = (source: CoverThumbnailSource) =>
+  [
+    normalizeRelativePath(source.relativePath || source.path || source.src || ""),
+    source.lastModified ?? "na",
+    source.sizeBytes ?? "na",
+  ].join("::");
+
+const clampCoverCropRect = (
+  rect: CoverAlphaCropRect,
+  width: number,
+  height: number,
+): CoverAlphaCropRect => {
+  const x = Math.max(0, Math.min(width - 1, Math.floor(rect.x)));
+  const y = Math.max(0, Math.min(height - 1, Math.floor(rect.y)));
+  const maxWidth = Math.max(1, width - x);
+  const maxHeight = Math.max(1, height - y);
+  const w = Math.max(1, Math.min(maxWidth, Math.ceil(rect.w)));
+  const h = Math.max(1, Math.min(maxHeight, Math.ceil(rect.h)));
+  return { x, y, w, h };
+};
+
+const loadImageElement = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    if (typeof Image === "undefined") {
+      reject(new Error("Image API unavailable"));
+      return;
+    }
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+    image.src = src;
+  });
+
+const loadImageBitmapFromBlob = async (src: string) => {
+  if (typeof fetch !== "function" || typeof createImageBitmap !== "function") {
+    return null;
+  }
+  const response = await fetch(src);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status}`);
+  }
+  const blob = await response.blob();
+  if (!blob) {
+    return null;
+  }
+  return createImageBitmap(blob);
+};
+
+const tryReadCanvasPixels = (
+  draw: (context: CanvasRenderingContext2D, width: number, height: number) => void,
+  width: number,
+  height: number,
+) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = (canvas.getContext(
+    "2d",
+    { willReadFrequently: true } as CanvasRenderingContext2DSettings,
+  ) ?? canvas.getContext("2d")) as CanvasRenderingContext2D | null;
+  if (!context) {
+    return null;
+  }
+  context.clearRect(0, 0, width, height);
+  draw(context, width, height);
+  return context.getImageData(0, 0, width, height).data;
+};
+
+const scanCoverThumbnailCrop = async (source: CoverThumbnailSource): Promise<CoverThumbnailCropScanResult> => {
+  const src = source.src ?? source.path;
+  if (!src) {
+    return { kind: "none" };
+  }
+  if (!isPngImagePath(source.relativePath || source.path || src)) {
+    return { kind: "none" };
+  }
+  if (typeof document === "undefined") {
+    return { kind: "none" };
+  }
+
+  try {
+    const image = await loadImageElement(src);
+    const sourceWidth = Math.max(1, image.naturalWidth || image.width || 0);
+    const sourceHeight = Math.max(1, image.naturalHeight || image.height || 0);
+    if (sourceWidth <= 0 || sourceHeight <= 0) {
+      return { kind: "none" };
+    }
+
+    const longestSide = Math.max(sourceWidth, sourceHeight);
+    const scanScale = Math.min(1, COVER_THUMBNAIL_MAX_SCAN_SIDE / longestSide);
+    const scanWidth = Math.max(1, Math.round(sourceWidth * scanScale));
+    const scanHeight = Math.max(1, Math.round(sourceHeight * scanScale));
+
+    let pixels: Uint8ClampedArray;
+    try {
+      const imagePixels = tryReadCanvasPixels(
+        (context) => {
+          context.drawImage(image, 0, 0, scanWidth, scanHeight);
+        },
+        scanWidth,
+        scanHeight,
+      );
+      if (!imagePixels) {
+        return { kind: "none" };
+      }
+      pixels = imagePixels;
+    } catch {
+      // Fallback for custom protocols / tainted canvas by decoding via Blob+ImageBitmap.
+      try {
+        const bitmap = await loadImageBitmapFromBlob(src);
+        if (!bitmap) {
+          return { kind: "none" };
+        }
+        try {
+          const bitmapPixels = tryReadCanvasPixels(
+            (context) => {
+              context.drawImage(bitmap, 0, 0, scanWidth, scanHeight);
+            },
+            scanWidth,
+            scanHeight,
+          );
+          if (!bitmapPixels) {
+            return { kind: "none" };
+          }
+          pixels = bitmapPixels;
+        } finally {
+          bitmap.close();
+        }
+      } catch {
+        return { kind: "none" };
+      }
+    }
+
+    let minX = scanWidth;
+    let minY = scanHeight;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < scanHeight; y += 1) {
+      for (let x = 0; x < scanWidth; x += 1) {
+        const alpha = pixels[(y * scanWidth + x) * 4 + 3] ?? 0;
+        if (alpha <= COVER_THUMBNAIL_ALPHA_THRESHOLD) {
+          continue;
+        }
+        if (x < minX) {
+          minX = x;
+        }
+        if (y < minY) {
+          minY = y;
+        }
+        if (x > maxX) {
+          maxX = x;
+        }
+        if (y > maxY) {
+          maxY = y;
+        }
+      }
+    }
+
+    if (maxX < 0 || maxY < 0) {
+      return { kind: "none" };
+    }
+
+    const scaleBackX = sourceWidth / scanWidth;
+    const scaleBackY = sourceHeight / scanHeight;
+    const baseRect = {
+      x: Math.floor(minX * scaleBackX),
+      y: Math.floor(minY * scaleBackY),
+      w: Math.ceil((maxX - minX + 1) * scaleBackX),
+      h: Math.ceil((maxY - minY + 1) * scaleBackY),
+    };
+    const paddedRect = clampCoverCropRect(
+      {
+        x: baseRect.x - COVER_THUMBNAIL_CROP_PADDING_PX,
+        y: baseRect.y - COVER_THUMBNAIL_CROP_PADDING_PX,
+        w: baseRect.w + COVER_THUMBNAIL_CROP_PADDING_PX * 2,
+        h: baseRect.h + COVER_THUMBNAIL_CROP_PADDING_PX * 2,
+      },
+      sourceWidth,
+      sourceHeight,
+    );
+
+    const widthRatio = paddedRect.w / sourceWidth;
+    const heightRatio = paddedRect.h / sourceHeight;
+    if (
+      widthRatio >= COVER_THUMBNAIL_NEAR_FULL_RATIO &&
+      heightRatio >= COVER_THUMBNAIL_NEAR_FULL_RATIO
+    ) {
+      return { kind: "none" };
+    }
+
+    return {
+      kind: "crop",
+      sourceWidth,
+      sourceHeight,
+      rect: paddedRect,
+    };
+  } catch {
+    return { kind: "none" };
+  }
+};
+
+const getCoverThumbnailCropCached = async (
+  source: CoverThumbnailSource,
+): Promise<CoverThumbnailCropScanResult> => {
+  const cacheKey = buildCoverThumbnailCropCacheKey(source);
+  const cached = coverThumbnailCropCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  const pending = coverThumbnailCropPending.get(cacheKey);
+  if (pending) {
+    return pending;
+  }
+
+  const nextPromise = scanCoverThumbnailCrop(source)
+    .then((result) => {
+      coverThumbnailCropCache.set(cacheKey, result);
+      return result;
+    })
+    .finally(() => {
+      coverThumbnailCropPending.delete(cacheKey);
+    });
+
+  coverThumbnailCropPending.set(cacheKey, nextPromise);
+  return nextPromise;
+};
+
+const useCoverThumbnailCrop = (source: CoverThumbnailSource | null) => {
+  const cacheKey = useMemo(
+    () => (source ? buildCoverThumbnailCropCacheKey(source) : null),
+    [source],
+  );
+  const [result, setResult] = useState<CoverThumbnailCropScanResult | null>(() =>
+    cacheKey ? (coverThumbnailCropCache.get(cacheKey) ?? null) : null,
+  );
+
+  useEffect(() => {
+    if (!source || !cacheKey) {
+      setResult(null);
+      return;
+    }
+
+    const cached = coverThumbnailCropCache.get(cacheKey);
+    if (cached) {
+      setResult(cached);
+      return;
+    }
+
+    setResult(null);
+    let cancelled = false;
+    let timeoutHandle = 0;
+    let idleHandle: number | null = null;
+
+    const run = () => {
+      void getCoverThumbnailCropCached(source).then((next) => {
+        if (cancelled) {
+          return;
+        }
+        setResult(next);
+      });
+    };
+
+    const idleWindow = typeof window !== "undefined"
+      ? (window as Window & {
+          requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+          cancelIdleCallback?: (handle: number) => void;
+        })
+      : null;
+
+    if (idleWindow?.requestIdleCallback) {
+      idleHandle = idleWindow.requestIdleCallback(run, { timeout: 120 });
+    } else if (typeof window !== "undefined") {
+      timeoutHandle = window.setTimeout(run, 24);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleHandle !== null) {
+        idleWindow?.cancelIdleCallback?.(idleHandle);
+      }
+      if (timeoutHandle) {
+        window.clearTimeout(timeoutHandle);
+      }
+    };
+  }, [cacheKey, source]);
+
+  return result;
+};
+
+type CoverThumbnailImageProps = {
+  image: CoverThumbnailSource;
+  alt: string;
+  onLoad: () => void;
+  onError: (event: SyntheticEvent<HTMLImageElement>) => void;
+};
+
+const CoverThumbnailImage = ({
+  image,
+  alt,
+  onLoad,
+  onError,
+}: CoverThumbnailImageProps) => {
+  const viewportRef = useRef<HTMLSpanElement | null>(null);
+  const [viewportSize, setViewportSize] = useState({
+    width: COVER_THUMBNAIL_FALLBACK_WIDTH,
+    height: COVER_THUMBNAIL_FALLBACK_HEIGHT,
+  });
+  const crop = useCoverThumbnailCrop(image);
+
+  useLayoutEffect(() => {
+    const element = viewportRef.current;
+    if (!element) {
+      return;
+    }
+
+    let frame = 0;
+    const measure = () => {
+      const nextWidth = element.clientWidth || COVER_THUMBNAIL_FALLBACK_WIDTH;
+      const nextHeight = element.clientHeight || COVER_THUMBNAIL_FALLBACK_HEIGHT;
+      setViewportSize((current) =>
+        current.width === nextWidth && current.height === nextHeight
+          ? current
+          : { width: nextWidth, height: nextHeight }
+      );
+    };
+    const scheduleMeasure = () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      frame = requestAnimationFrame(measure);
+    };
+
+    scheduleMeasure();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", scheduleMeasure);
+      return () => {
+        if (frame) {
+          cancelAnimationFrame(frame);
+        }
+        window.removeEventListener("resize", scheduleMeasure);
+      };
+    }
+
+    const observer = new ResizeObserver(scheduleMeasure);
+    observer.observe(element);
+    return () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      observer.disconnect();
+    };
+  }, []);
+
+  const croppedStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!crop || crop.kind !== "crop") {
+      return undefined;
+    }
+    const thumbWidth = Math.max(1, viewportSize.width);
+    const thumbHeight = Math.max(1, viewportSize.height);
+    const { rect, sourceWidth, sourceHeight } = crop;
+    if (rect.w <= 0 || rect.h <= 0 || sourceWidth <= 0 || sourceHeight <= 0) {
+      return undefined;
+    }
+    const scaleX = thumbWidth / rect.w;
+    const scaleY = thumbHeight / rect.h;
+    // Minimal zoom: remove transparent borders without extra "cover" zoom/cropping.
+    const scale = Math.min(scaleX, scaleY);
+    const offsetX = (thumbWidth - rect.w * scale) / 2;
+    const offsetY = (thumbHeight - rect.h * scale) / 2;
+    const translateX = offsetX - rect.x * scale;
+    const translateY = offsetY - rect.y * scale;
+    return {
+      width: `${sourceWidth}px`,
+      height: `${sourceHeight}px`,
+      transformOrigin: "top left",
+      transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
+    };
+  }, [crop, viewportSize.height, viewportSize.width]);
+
+  const isCropped = Boolean(croppedStyle);
+
+  return (
+    <span ref={viewportRef} className="frontmatter-cover-thumbnail-viewport">
+      <img
+        src={image.src ?? image.path}
+        alt={alt}
+        className={`frontmatter-cover-thumbnail ${
+          isCropped ? "frontmatter-cover-thumbnail-cropped" : ""
+        }`}
+        style={croppedStyle}
+        draggable={false}
+        onLoad={onLoad}
+        onError={onError}
+      />
+    </span>
+  );
+};
 
 const markdownSchema = {
   ...defaultSchema,
@@ -2526,6 +2964,8 @@ const FrontmatterPropertiesPanel = ({
               path: file.path,
               relative_path: file.relative_path,
               file_name: normalizeRelativePath(file.relative_path).split("/").pop() ?? file.relative_path,
+              last_modified: null,
+              size_bytes: null,
             })))
         .map((asset) => {
           const relativePath = normalizeRelativePath(asset.relative_path);
@@ -2540,6 +2980,8 @@ const FrontmatterPropertiesPanel = ({
             relativePath,
             fileName,
             src,
+            lastModified: asset.last_modified ?? null,
+            sizeBytes: asset.size_bytes ?? null,
           };
         })
         .sort((left, right) => left.relativePath.localeCompare(right.relativePath)),
@@ -3721,11 +4163,9 @@ const FrontmatterPropertiesPanel = ({
                             }}
                           >
                             {resolvedCoverImage && !hasCoverImageLoadError ? (
-                              <img
-                                src={resolvedCoverImage.src ?? resolvedCoverImage.path}
+                              <CoverThumbnailImage
+                                image={resolvedCoverImage}
                                 alt={coverDisplayName}
-                                className="frontmatter-cover-thumbnail"
-                                draggable={false}
                                 onLoad={() => {
                                   setCoverImageErrors((current) => {
                                     if (!current[resolvedCoverImage.relativePath]) {
