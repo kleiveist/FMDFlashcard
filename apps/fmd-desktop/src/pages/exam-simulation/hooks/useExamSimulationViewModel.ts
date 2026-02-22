@@ -40,7 +40,7 @@ import {
   buildExamRunId,
   calculateExamPercent,
   isExamPassed,
-  resolveExamGrade,
+  resolveExamStatusDescriptor,
   subscribeExamRunHistoryReset,
   sortExamRunsByDateDesc,
   type ExamRunPointsProfileAssignment,
@@ -52,6 +52,7 @@ import {
   AUTO_CARD_TYPES,
   type ExamCardWrapperAction,
   resolveExamTaskAutoCardTypes,
+  resolveFlashcardPartAutoCardType,
 } from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import {
@@ -80,6 +81,7 @@ import {
   saveExamRunStore,
 } from "../../../features/user-vault/storage";
 import { resolveExamTaskFrontmatterValue } from "../../../features/exam-points/frontmatterTask";
+import { upsertExamResultStatsFrontmatter } from "../../../features/exam-results/frontmatterStats";
 
 type ExamStage =
   | "idle"
@@ -106,6 +108,13 @@ type ExamTaskResult = {
   awardedPoints: number;
   maxPoints: number;
   isCorrect: boolean | null;
+  detail: {
+    task: ExamSessionTask;
+    partStates: CompositePartState[];
+    awardedPoints: number | null;
+    autoGradeDecision?: boolean;
+    conversionDecision?: boolean;
+  };
 };
 
 type SelectedExamParseEntry = {
@@ -553,6 +562,33 @@ export const useExamSimulationViewModel = () => {
     [defaultProfileDurationMinutes, selectedExamProfileAssignments],
   );
 
+  const resolveTaskTypePointsSourceMap = useCallback(
+    (task: ExamSessionTask) => {
+      const assignment = selectedExamProfileAssignmentMap.get(task.sourceExamPath);
+      const profile = assignment?.profile ?? null;
+      const useDefaultTaskTypeFallback =
+        (assignment && taskOrderProfileFallbackByExamPath.get(task.sourceExamPath)) ?? false;
+      if (!profile || useDefaultTaskTypeFallback) {
+        return settings.examTaskTypeDefaultPoints;
+      }
+      if (profile.distribution !== "task-type") {
+        return null;
+      }
+      return AUTO_CARD_TYPES.reduce(
+        (acc, type) => {
+          acc[type] = Math.max(0, Math.floor(profile.typeRules[type]?.points ?? 0));
+          return acc;
+        },
+        {} as Record<(typeof AUTO_CARD_TYPES)[number], number>,
+      );
+    },
+    [
+      selectedExamProfileAssignmentMap,
+      settings.examTaskTypeDefaultPoints,
+      taskOrderProfileFallbackByExamPath,
+    ],
+  );
+
   const resolveSessionTaskPointsPlan = useCallback(
     (tasks: ExamSessionTask[]): SessionTaskPointsPlan => {
       const profileAssignments = selectedExamProfileAssignments.map((assignment) => ({
@@ -571,12 +607,11 @@ export const useExamSimulationViewModel = () => {
         const assignment = selectedExamProfileAssignmentMap.get(task.sourceExamPath);
         const profile = assignment?.profile ?? null;
         const taskTypes = resolveExamTaskPointTypes(task);
-        const useDefaultTaskTypeFallback =
-          (assignment && taskOrderProfileFallbackByExamPath.get(task.sourceExamPath)) ?? false;
-        if (!profile || useDefaultTaskTypeFallback) {
+        const taskTypePointsSource = resolveTaskTypePointsSourceMap(task);
+        if (taskTypePointsSource) {
           return resolveTaskTypePointsFromMap({
             taskTypes,
-            typePoints: settings.examTaskTypeDefaultPoints,
+            typePoints: taskTypePointsSource,
           });
         }
         return resolveTaskMaxPointsFromProfile({
@@ -594,10 +629,9 @@ export const useExamSimulationViewModel = () => {
       };
     },
     [
+      resolveTaskTypePointsSourceMap,
       selectedExamProfileAssignmentMap,
       selectedExamProfileAssignments,
-      taskOrderProfileFallbackByExamPath,
-      settings.examTaskTypeDefaultPoints,
     ],
   );
 
@@ -1221,17 +1255,47 @@ export const useExamSimulationViewModel = () => {
 
     const breakdown: ExamTaskResult[] = runTasks.map((task, index) => {
       const maxPoints = runTaskPoints[index] ?? 0;
+      const taskPartStates = partStates[index] ?? [];
       if (isAutoGradedTask(task)) {
-        const isCorrect = isTaskCorrect(task, partStates[index]);
-        const decidedCorrect = autoGradeDecisions[index] ?? isCorrect;
+        const isCorrect = isTaskCorrect(task, taskPartStates);
+        const overrideDecision = autoGradeDecisions[index];
+        const decidedCorrect = overrideDecision ?? isCorrect;
+        const taskTypePointsSource = resolveTaskTypePointsSourceMap(task);
+        const autoAwarded = (() => {
+          if (typeof overrideDecision === "boolean") {
+            return overrideDecision ? maxPoints : 0;
+          }
+          if (!taskTypePointsSource) {
+            return isCorrect ? maxPoints : 0;
+          }
+          const summed = task.card.parts.reduce((sum, part, partIndex) => {
+            const result = evaluateFlashcardPartResult(part, taskPartStates[partIndex] ?? {});
+            if (result !== "correct") {
+              return sum;
+            }
+            const type = resolveFlashcardPartAutoCardType(part);
+            if (!type) {
+              return sum;
+            }
+            return sum + Math.max(0, Math.floor(taskTypePointsSource[type] ?? 0));
+          }, 0);
+          return clampNumber(summed, 0, maxPoints);
+        })();
         return {
           index: index + 1,
           sessionTaskId: task.sessionTaskId,
           sourceTitle: task.sourceTitle,
           originalTaskNumber: task.originalTaskNumber,
-          awardedPoints: decidedCorrect ? maxPoints : 0,
+          awardedPoints: autoAwarded,
           maxPoints,
           isCorrect: decidedCorrect,
+          detail: {
+            task,
+            partStates: taskPartStates,
+            awardedPoints: autoAwarded,
+            autoGradeDecision: overrideDecision,
+            conversionDecision: conversionDecisions[index],
+          },
         };
       }
       const awarded = normalizeAwardedPoints(awardedPoints[index] ?? null, maxPoints);
@@ -1243,6 +1307,12 @@ export const useExamSimulationViewModel = () => {
         awardedPoints: awarded,
         maxPoints,
         isCorrect: null,
+        detail: {
+          task,
+          partStates: taskPartStates,
+          awardedPoints: awarded,
+          conversionDecision: conversionDecisions[index],
+        },
       };
     });
 
@@ -1263,7 +1333,9 @@ export const useExamSimulationViewModel = () => {
     activeExamSettings,
     autoGradeDecisions,
     awardedPoints,
+    conversionDecisions,
     partStates,
+    resolveTaskTypePointsSourceMap,
     runTaskPoints,
     runTasks,
     stage,
@@ -1294,7 +1366,6 @@ export const useExamSimulationViewModel = () => {
       : 0;
     const percent = calculateExamPercent(results.totalAwarded, results.totalMax);
     const passed = isExamPassed(percent);
-    const grade = resolveExamGrade(settings.examGradeScale, percent);
     const examFilePath =
       activeExamFiles.length === 1
         ? firstExamFile.relative_path || firstExamFile.path
@@ -1326,7 +1397,7 @@ export const useExamSimulationViewModel = () => {
       achievedPoints: results.totalAwarded,
       percent,
       passed,
-      grade,
+      grade: null,
       gradeScaleId: settings.examGradeScale,
       pointsProfileId: singleResolvedProfile?.profileId ?? null,
       pointsProfileName: singleResolvedProfile?.profileName ?? null,
@@ -1338,6 +1409,51 @@ export const useExamSimulationViewModel = () => {
       void appendExamRunStore(userVault.activeProfilePath, run);
     }
     setExamRuns((prev) => sortExamRunsByDateDesc([run, ...prev]));
+    if (activeExamFiles.length === 1) {
+      const singleExamFile = activeExamFiles[0];
+      if (!singleExamFile) {
+        examRunRecordedRef.current = true;
+        return;
+      }
+      const scoreValue = `${results.totalAwarded}/${results.totalMax}`;
+      const percentValue = `${percent}%`;
+      const statusValue = resolveExamStatusDescriptor(percent).token;
+      void (async () => {
+        try {
+          const contents = await invoke<string>("read_text_file", {
+            path: singleExamFile.path,
+          });
+          if (!parseExamTasks(contents).hasExamBlock) {
+            return;
+          }
+          const updated = upsertExamResultStatsFrontmatter({
+            markdown: contents,
+            score: scoreValue,
+            percent: percentValue,
+            status: statusValue,
+          });
+          if (updated.error) {
+            console.warn("Failed to write exam result stats to markdown", updated.error);
+            return;
+          }
+          if (updated.markdown === contents) {
+            return;
+          }
+          await invoke("write_text_file", {
+            path: singleExamFile.path,
+            contents: updated.markdown,
+          });
+          if (preview.selectedFile?.path === singleExamFile.path) {
+            preview.setPreview(updated.markdown);
+          }
+        } catch (error) {
+          console.warn(
+            "Failed to persist exam result stats to markdown",
+            asErrorMessage(error, "Unknown error"),
+          );
+        }
+      })();
+    }
     examRunRecordedRef.current = true;
   }, [
     activeExamSettings,
@@ -1350,6 +1466,7 @@ export const useExamSimulationViewModel = () => {
     spacedRepetition.spacedRepetitionActiveUserId,
     stage,
     userVault.activeProfilePath,
+    preview,
   ]);
 
   const handleConversionDecision = useCallback(

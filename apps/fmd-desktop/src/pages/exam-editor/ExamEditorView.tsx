@@ -219,8 +219,7 @@ export const ExamEditorView = ({
   const [pointsError, setPointsError] = useState("");
   const [newPointsProfileName, setNewPointsProfileName] = useState("");
   const [draftProfileName, setDraftProfileName] = useState("");
-  const [draftDistribution, setDraftDistribution] =
-    useState<ExamPointsDistribution>("task-order");
+  const [, setDraftDistribution] = useState<ExamPointsDistribution>("task-order");
   const [draftTaskCount, setDraftTaskCount] = useState("5");
   const [draftMaxTotalPoints, setDraftMaxTotalPoints] = useState("20");
   const [draftDurationMinutes, setDraftDurationMinutes] = useState(
@@ -340,7 +339,7 @@ export const ExamEditorView = ({
       return;
     }
     setDraftProfileName(selectedProfile.name);
-    setDraftDistribution(selectedProfile.distribution);
+    setDraftDistribution("task-order");
     setDraftDurationMinutes(String(selectedProfile.durationMinutes));
     setDraftTaskCount(String(selectedProfile.taskCount));
     setDraftMaxTotalPoints(String(selectedProfile.maxTotalPoints));
@@ -864,29 +863,6 @@ export const ExamEditorView = ({
     });
   }, []);
 
-  const handleDraftTypeRuleChange = useCallback(
-    (
-      type: string,
-      field: keyof DraftPointsTypeRule,
-      value: DraftPointsTypeRule[keyof DraftPointsTypeRule],
-    ) => {
-      setDraftTypeRules((prev) => {
-        const current = prev[type];
-        if (!current) {
-          return prev;
-        }
-        return {
-          ...prev,
-          [type]: {
-            ...current,
-            [field]: value,
-          },
-        };
-      });
-    },
-    [],
-  );
-
   const handleSavePointsProfile = useCallback(async () => {
     const selected = pointsProfiles.selectedProfile;
     if (!selected) {
@@ -950,7 +926,7 @@ export const ExamEditorView = ({
     const updated = await pointsProfiles.updateProfile(selected.id, (profile) => ({
       ...profile,
       name: renamedName,
-      distribution: draftDistribution,
+      distribution: "task-order",
       durationMinutes: normalizedDurationMinutes,
       taskCount: normalizedTaskCount,
       maxTotalPoints: normalizedMax,
@@ -964,7 +940,6 @@ export const ExamEditorView = ({
     setPointsMessage(`Profile "${updated.profile.name}" saved.`);
   }, [
     assignedTaskProfileName,
-    draftDistribution,
     draftDurationMinutes,
     draftMaxTotalPoints,
     draftProfileName,
@@ -1522,9 +1497,7 @@ export const ExamEditorView = ({
         <header className="panel-header">
           <div>
             <h2>Profile Editor</h2>
-            <p className="muted">
-              Configure scoring rules for task order or task type.
-            </p>
+            <p className="muted">Configure scoring rules for task order.</p>
           </div>
           <button
             type="button"
@@ -1554,29 +1527,6 @@ export const ExamEditorView = ({
                     onChange={(event) => setDraftProfileName(event.target.value)}
                   />
                 </label>
-                <div className="setting-row">
-                  <span className="label">DISTRIBUTION</span>
-                  <div className="pill-grid">
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        draftDistribution === "task-order" ? "active" : ""
-                      }`}
-                      onClick={() => setDraftDistribution("task-order")}
-                    >
-                      Task order
-                    </button>
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        draftDistribution === "task-type" ? "active" : ""
-                      }`}
-                      onClick={() => setDraftDistribution("task-type")}
-                    >
-                      Task type
-                    </button>
-                  </div>
-                </div>
                 <label className="setting-row">
                   <span className="label">DURATION</span>
                   <div className="points-profile-duration-input">
@@ -1591,74 +1541,49 @@ export const ExamEditorView = ({
                     <span className="muted">min</span>
                   </div>
                 </label>
-                {draftDistribution === "task-order" ? (
-                  <>
-                    <div className="points-profile-grid">
-                      <label className="setting-row">
-                        <span className="label">TASK COUNT</span>
-                        <input
-                          type="number"
-                          min={1}
-                          max={EXAM_POINTS_MAX_TASK_COUNT}
-                          className="text-input exam-compact-input"
-                          value={draftTaskCount}
-                          onChange={(event) => setDraftTaskCount(event.target.value)}
-                        />
-                      </label>
-                      <label className="setting-row">
-                        <span className="label">MAX TOTAL POINTS</span>
-                        <input
-                          type="number"
-                          min={0}
-                          className="text-input exam-compact-input"
-                          value={draftMaxTotalPoints}
-                          onChange={(event) => setDraftMaxTotalPoints(event.target.value)}
-                        />
-                      </label>
+                <div className="points-profile-grid">
+                  <label className="setting-row">
+                    <span className="label">TASK COUNT</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={EXAM_POINTS_MAX_TASK_COUNT}
+                      className="text-input exam-compact-input"
+                      value={draftTaskCount}
+                      onChange={(event) => setDraftTaskCount(event.target.value)}
+                    />
+                  </label>
+                  <label className="setting-row">
+                    <span className="label">MAX TOTAL POINTS</span>
+                    <input
+                      type="number"
+                      min={0}
+                      className="text-input exam-compact-input"
+                      value={draftMaxTotalPoints}
+                      onChange={(event) => setDraftMaxTotalPoints(event.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="exam-points-table">
+                  {Array.from({ length: normalizedDraftTaskCount }, (_, index) => (
+                    <div key={`points-task-${index}`} className="exam-points-row">
+                      <span className="label">TASK {index + 1}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        className="text-input exam-compact-input"
+                        value={draftTaskPoints[index] ?? "0"}
+                        onChange={(event) =>
+                          handleDraftTaskPointChange(index, event.target.value)
+                        }
+                      />
                     </div>
-                    <div className="exam-points-table">
-                      {Array.from({ length: normalizedDraftTaskCount }, (_, index) => (
-                        <div key={`points-task-${index}`} className="exam-points-row">
-                          <span className="label">TASK {index + 1}</span>
-                          <input
-                            type="number"
-                            min={0}
-                            className="text-input exam-compact-input"
-                            value={draftTaskPoints[index] ?? "0"}
-                            onChange={(event) =>
-                              handleDraftTaskPointChange(index, event.target.value)
-                            }
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="muted">
-                      Sum assigned: {draftTaskPointsSum} / Max total:{" "}
-                      {clampNonNegativeInteger(draftMaxTotalPoints, 0)}
-                    </div>
-                  </>
-                ) : (
-                  <div className="points-type-rules">
-                    {AUTO_CARD_TYPES.map((type) => {
-                      const rule = draftTypeRules[type];
-                      return (
-                        <div key={type} className="points-type-row">
-                          <div className="points-type-label">{type.toUpperCase()}</div>
-                          <input
-                            type="number"
-                            min={0}
-                            className="text-input exam-compact-input"
-                            value={rule?.points ?? "0"}
-                            onChange={(event) =>
-                              handleDraftTypeRuleChange(type, "points", event.target.value)
-                            }
-                          />
-                          <span className="muted small">Points per detected type</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                  ))}
+                </div>
+                <div className="muted">
+                  Sum assigned: {draftTaskPointsSum} / Max total:{" "}
+                  {clampNonNegativeInteger(draftMaxTotalPoints, 0)}
+                </div>
               </div>
             )}
           </div>

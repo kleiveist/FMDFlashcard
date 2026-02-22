@@ -606,7 +606,10 @@ export const ExamSimulationPage = () => {
                       </div>
                     </section>
                     <section className="panel exam-panel">
-                      <ExamResultsPanel results={results} />
+                      <ExamResultsPanel
+                        results={results}
+                        helpEnabled={settings.examHelpEnabled}
+                      />
                     </section>
                   </>
                 ) : (

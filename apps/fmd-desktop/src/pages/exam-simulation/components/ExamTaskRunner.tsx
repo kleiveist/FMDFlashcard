@@ -83,6 +83,9 @@ type ExamTaskRunnerProps = {
   canGoBack: boolean;
   canGoNext: boolean;
   helpEnabled?: boolean;
+  showNavigation?: boolean;
+  scoringReadOnly?: boolean;
+  showConversionControls?: boolean;
 };
 
 const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
@@ -106,6 +109,7 @@ export const ExamTaskRunner = ({
   phase,
   partStates,
   awardedPoints,
+  autoGradeDecision,
   conversionDecision,
   conversionPending,
   conversionError,
@@ -124,12 +128,26 @@ export const ExamTaskRunner = ({
   canGoBack,
   canGoNext,
   helpEnabled = false,
+  showNavigation = true,
+  scoringReadOnly = false,
+  showConversionControls = true,
 }: ExamTaskRunnerProps) => {
   const isScoring = phase === "scoring";
   const canRevealOfficialSolution = phase === "review" || phase === "scoring";
   const isAutoGraded = task.gradingMode === "auto";
   const taskIsCorrect = isAutoGraded ? isTaskCorrect(task, partStates) : false;
-  const autoAwardedPoints = isAutoGraded && taskIsCorrect ? maxPoints : 0;
+  const effectiveAutoDecision = isAutoGraded
+    ? (autoGradeDecision ?? taskIsCorrect)
+    : false;
+  const autoAwardedPoints = (() => {
+    if (!isAutoGraded) {
+      return 0;
+    }
+    if (typeof awardedPoints === "number" && Number.isFinite(awardedPoints)) {
+      return Math.min(maxPoints, Math.max(0, Math.floor(awardedPoints)));
+    }
+    return effectiveAutoDecision ? maxPoints : 0;
+  })();
   const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
   const inputLocked = phase !== "exam" || conversionPending;
   const hasHelp = helpEnabled && hasHelpContent(task.helpText);
@@ -147,24 +165,26 @@ export const ExamTaskRunner = ({
             </span>
           ) : null}
         </div>
-        <div className="exam-task-nav">
-          <button
-            type="button"
-            className="ghost small"
-            onClick={onBack}
-            disabled={!canGoBack}
-          >
-            Previous
-          </button>
-          <button
-            type="button"
-            className="ghost small"
-            onClick={onNext}
-            disabled={!canGoNext}
-          >
-            Next
-          </button>
-        </div>
+        {showNavigation ? (
+          <div className="exam-task-nav">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onBack}
+              disabled={!canGoBack}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onNext}
+              disabled={!canGoNext}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
       </header>
 
       {task.warnings.length > 0 ? (
@@ -206,10 +226,10 @@ export const ExamTaskRunner = ({
             <div className="exam-points-input">
               <span
                 className={`flashcard-result ${
-                  taskIsCorrect ? "correct" : "incorrect"
+                  effectiveAutoDecision ? "correct" : "incorrect"
                 }`}
               >
-                {taskIsCorrect ? "Correct" : "Incorrect"}
+                {effectiveAutoDecision ? "Correct" : "Incorrect"}
               </span>
             </div>
           </div>
@@ -227,36 +247,40 @@ export const ExamTaskRunner = ({
         <div className="exam-points-row">
           <span className="label">AWARDED</span>
           <div className="exam-points-input">
-            <input
-              type="number"
-              min={0}
-              max={maxPoints}
-              className="text-input"
-              value={awardedPoints ?? ""}
-              onChange={(event) =>
-                onAwardedPointsChange(taskIndex, event.target.value, maxPoints)
-              }
-              aria-label="Awarded points"
-              disabled={conversionPending}
-            />
+            {scoringReadOnly ? (
+              <span>{awardedPoints ?? 0}</span>
+            ) : (
+              <input
+                type="number"
+                min={0}
+                max={maxPoints}
+                className="text-input"
+                value={awardedPoints ?? ""}
+                onChange={(event) =>
+                  onAwardedPointsChange(taskIndex, event.target.value, maxPoints)
+                }
+                aria-label="Awarded points"
+                disabled={conversionPending}
+              />
+            )}
             <span className="muted">/ {maxPoints}</span>
           </div>
         </div>
       ) : null}
 
-      {isScoring ? (
+      {isScoring && showConversionControls ? (
         <label className="exam-conversion-toggle">
           <input
             type="checkbox"
             checked={conversionDecision ?? false}
             onChange={(event) => onConversionDecision(taskIndex, event.target.checked)}
-            disabled={conversionPending}
+            disabled={conversionPending || scoringReadOnly}
           />
           Convert to flashcard
         </label>
       ) : null}
 
-      {isScoring && conversionError ? (
+      {isScoring && showConversionControls && conversionError ? (
         <div className="error">{conversionError}</div>
       ) : null}
 

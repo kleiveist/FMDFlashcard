@@ -6,7 +6,7 @@
  */
 
 import type { ExamTask } from "../exam";
-import { resolveExamTaskAutoCardTypes, type AutoCardType } from "./autoCards";
+import { resolveExamTaskAutoCardTypeInstances, type AutoCardType } from "./autoCards";
 import type { ExamPointsProfile } from "./pointsProfiles";
 
 const TASK_TYPE_PRIORITY: AutoCardType[] = [
@@ -36,12 +36,8 @@ export const normalizeTaskTypeList = (detectedTypes: AutoCardType[]) => {
 };
 
 export const resolveExamTaskPointTypes = (task: ExamTask): AutoCardType[] => {
-  const detected = resolveExamTaskAutoCardTypes(task);
-  const normalized = normalizeTaskTypeList(detected);
-  if (normalized.length > 0) {
-    return normalized;
-  }
-  return [resolvePrimaryAutoCardType(detected)];
+  // Keep one entry per detected card instance so scoring can sum repeated types.
+  return resolveExamTaskAutoCardTypeInstances(task);
 };
 
 export const resolveTaskTypePointsFromMap = ({
@@ -51,14 +47,16 @@ export const resolveTaskTypePointsFromMap = ({
   taskTypes: AutoCardType[];
   typePoints: Record<AutoCardType, number>;
 }) => {
-  const normalizedTypes = normalizeTaskTypeList(taskTypes);
-  if (normalizedTypes.length === 0) {
+  if (taskTypes.length === 0) {
     return 0;
   }
-  return normalizedTypes.reduce(
-    (sum, type) => sum + clampNonNegative(typePoints[type] ?? 0),
-    0,
-  );
+  const allowedTypes = new Set<AutoCardType>(TASK_TYPE_PRIORITY);
+  return taskTypes.reduce((sum, type) => {
+    if (!allowedTypes.has(type)) {
+      return sum;
+    }
+    return sum + clampNonNegative(typePoints[type] ?? 0);
+  }, 0);
 };
 
 export const resolveTaskMaxPointsFromProfile = ({

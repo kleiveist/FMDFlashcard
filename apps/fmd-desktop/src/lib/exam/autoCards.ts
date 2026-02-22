@@ -382,7 +382,9 @@ const replaceRange = (
   };
 };
 
-const resolveAutoCardType = (part: FlashcardPart): AutoCardType | null => {
+export const resolveFlashcardPartAutoCardType = (
+  part: FlashcardPart,
+): AutoCardType | null => {
   switch (part.kind) {
     case "free-text":
       return "qa";
@@ -400,13 +402,15 @@ const resolveAutoCardType = (part: FlashcardPart): AutoCardType | null => {
   }
 };
 
+export const resolveExamTaskAutoCardTypeInstances = (task: ExamTask): AutoCardType[] =>
+  task.card.parts
+    .map((part) => resolveFlashcardPartAutoCardType(part))
+    .filter((type): type is AutoCardType => Boolean(type));
+
 export const resolveExamTaskAutoCardTypes = (task: ExamTask): AutoCardType[] => {
   const detected = new Set<AutoCardType>();
-  task.card.parts.forEach((part) => {
-    const resolved = resolveAutoCardType(part);
-    if (resolved) {
-      detected.add(resolved);
-    }
+  resolveExamTaskAutoCardTypeInstances(task).forEach((resolved) => {
+    detected.add(resolved);
   });
   return Array.from(detected);
 };

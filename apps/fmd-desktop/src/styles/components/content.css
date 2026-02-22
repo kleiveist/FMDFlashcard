@@ -1224,7 +1224,6 @@ body.focus-mode .spaced-repetition-sidebar {
     minmax(0, 0.6fr)
     minmax(0, 0.7fr)
     minmax(0, 0.7fr)
-    minmax(0, 0.5fr)
     minmax(32px, 40px);
   gap: 8px;
   align-items: center;
@@ -1611,6 +1610,30 @@ body.focus-mode .spaced-repetition-sidebar {
   gap: 16px;
 }
 
+.exam-results-task-trigger {
+  appearance: none;
+  width: 100%;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.exam-results-task-trigger:hover {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent-soft) 20%, var(--panel));
+}
+
+.exam-results-task-trigger:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
 .exam-results-summary {
   display: flex;
   justify-content: space-between;
@@ -1631,6 +1654,26 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-results-percent {
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+.exam-results-task-modal-panel {
+  width: min(980px, 96vw);
+  max-height: min(88vh, 860px);
+}
+
+.exam-results-task-modal-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.exam-results-task-modal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
 }
 
 .exam-conversion-actions {

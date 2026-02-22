@@ -10,6 +10,7 @@ import {
   calculateExamPercent,
   filterExamRuns,
   isExamPassed,
+  resolveExamStatusDescriptor,
   type ExamRun,
 } from "./examRuns";
 
@@ -46,6 +47,18 @@ describe("isExamPassed", () => {
   it("passes at 50 percent or higher", () => {
     expect(isExamPassed(50)).toBe(true);
     expect(isExamPassed(49)).toBe(false);
+  });
+});
+
+describe("resolveExamStatusDescriptor", () => {
+  it("returns status tokens in '<number> <emoji>' format with correct thresholds", () => {
+    expect(resolveExamStatusDescriptor(100).token).toBe("1 💎");
+    expect(resolveExamStatusDescriptor(95).token).toBe("1 🔵");
+    expect(resolveExamStatusDescriptor(85).token).toBe("2 🟢");
+    expect(resolveExamStatusDescriptor(80).token).toBe("3 🟡");
+    expect(resolveExamStatusDescriptor(70).token).toBe("4 🟠");
+    expect(resolveExamStatusDescriptor(10).token).toBe("5 🔴");
+    expect(resolveExamStatusDescriptor(0).token).toBe("0 ⚪");
   });
 });
 

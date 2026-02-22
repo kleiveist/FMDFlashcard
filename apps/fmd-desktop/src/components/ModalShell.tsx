@@ -11,6 +11,9 @@ import { createPortal } from "react-dom";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { CloseIcon } from "./icons";
 
+let modalBodyScrollLockCount = 0;
+let previousBodyOverflow = "";
+
 type ModalShellProps = {
   isOpen: boolean;
   title: string;
@@ -78,6 +81,24 @@ export const ModalShell = ({
     }
     focusTarget?.focus();
   }, [initialFocusSelector, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || typeof document === "undefined") {
+      return;
+    }
+    const body = document.body;
+    if (modalBodyScrollLockCount === 0) {
+      previousBodyOverflow = body.style.overflow;
+      body.style.overflow = "hidden";
+    }
+    modalBodyScrollLockCount += 1;
+    return () => {
+      modalBodyScrollLockCount = Math.max(0, modalBodyScrollLockCount - 1);
+      if (modalBodyScrollLockCount === 0) {
+        body.style.overflow = previousBodyOverflow;
+      }
+    };
+  }, [isOpen]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Tab") {

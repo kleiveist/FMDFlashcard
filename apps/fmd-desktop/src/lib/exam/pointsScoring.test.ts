@@ -96,4 +96,78 @@ describe("pointsScoring", () => {
     });
     expect(points).toBe(5);
   });
+
+  it("counts repeated card instances of the same type", () => {
+    const parsed = parseExamTasks(
+      [
+        "#exam",
+        "1) True false set",
+        "#card",
+        "[tf]",
+        "A",
+        "-true",
+        "",
+        "[tf]",
+        "B",
+        "-false",
+        "",
+        "[tf]",
+        "C",
+        "-true",
+        "#",
+        "#examend",
+      ].join("\n"),
+    );
+    const task = parsed.tasks[0];
+    expect(task).toBeTruthy();
+    if (!task) {
+      return;
+    }
+    const rules = createDefaultTypeRules(0);
+    rules.tf.points = 2;
+    const profile = buildExamPointsProfile({
+      id: "p-repeat-tf",
+      name: "RepeatTF",
+      distribution: "task-type",
+      typeRules: rules,
+    });
+    const points = resolveTaskMaxPointsFromProfile({
+      profile,
+      taskIndex: task.index,
+      taskTypes: resolveExamTaskPointTypes(task),
+    });
+    expect(points).toBe(6);
+  });
+
+  it("adds repeated mixed types (e.g. 2x QA + 1x TF)", () => {
+    const points = resolveTaskTypePointsFromMap({
+      taskTypes: ["qa", "qa", "tf"],
+      typePoints: {
+        qa: 1,
+        tf: 2,
+        m1: 3,
+        m2: 5,
+        cl: 4,
+        cd: 5,
+        cld: 8,
+      },
+    });
+    expect(points).toBe(4);
+  });
+
+  it("returns 0 when no known point types are detected", () => {
+    const points = resolveTaskTypePointsFromMap({
+      taskTypes: [],
+      typePoints: {
+        qa: 1,
+        tf: 2,
+        m1: 3,
+        m2: 5,
+        cl: 4,
+        cd: 5,
+        cld: 8,
+      },
+    });
+    expect(points).toBe(0);
+  });
 });

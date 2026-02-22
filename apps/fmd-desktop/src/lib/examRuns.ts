@@ -82,6 +82,22 @@ export const resetExamRunHistory = async (profilePath?: string | null) => {
 
 export type ExamRunStatusFilter = "all" | "passed" | "failed";
 
+export type ExamStatusTone =
+  | "zero"
+  | "red"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "diamond";
+
+export type ExamStatusDescriptor = {
+  value: number;
+  emoji: string;
+  token: string;
+  tone: ExamStatusTone;
+};
+
 export type ExamRunFilters = {
   userId: string;
   status: ExamRunStatusFilter;
@@ -122,6 +138,29 @@ export const calculateExamPercent = (achievedPoints: number, maxPoints: number) 
   maxPoints > 0 ? Math.round((achievedPoints / maxPoints) * 100) : 0;
 
 export const isExamPassed = (percent: number) => percent >= 50;
+
+export const resolveExamStatusDescriptor = (percent: number): ExamStatusDescriptor => {
+  const normalized = Math.max(0, Math.min(100, Math.round(percent)));
+  if (normalized === 100) {
+    return { value: 1, emoji: "💎", token: "1 💎", tone: "diamond" };
+  }
+  if (normalized >= 91) {
+    return { value: 1, emoji: "🔵", token: "1 🔵", tone: "blue" };
+  }
+  if (normalized >= 82) {
+    return { value: 2, emoji: "🟢", token: "2 🟢", tone: "green" };
+  }
+  if (normalized >= 76) {
+    return { value: 3, emoji: "🟡", token: "3 🟡", tone: "yellow" };
+  }
+  if (normalized >= 51) {
+    return { value: 4, emoji: "🟠", token: "4 🟠", tone: "orange" };
+  }
+  if (normalized >= 1) {
+    return { value: 5, emoji: "🔴", token: "5 🔴", tone: "red" };
+  }
+  return { value: 0, emoji: "⚪", token: "0 ⚪", tone: "zero" };
+};
 
 export const resolveExamGradeScale = (scaleId?: ExamGradeScaleId) =>
   EXAM_GRADE_SCALES[scaleId ?? DEFAULT_EXAM_GRADE_SCALE] ??

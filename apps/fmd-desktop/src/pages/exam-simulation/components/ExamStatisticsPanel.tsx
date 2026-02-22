@@ -13,6 +13,7 @@ import {
   formatExamTimestamp,
   getExamFileName,
   getExamRunUserKey,
+  resolveExamStatusDescriptor,
   sortExamRunsByDateDesc,
   type ExamGradeScaleId,
   type ExamRun,
@@ -28,37 +29,6 @@ type ExamStatisticsPanelProps = {
 };
 
 type StatsTab = "last" | "history";
-
-type StatusTone =
-  | "zero"
-  | "red"
-  | "orange"
-  | "yellow"
-  | "green"
-  | "blue"
-  | "diamond";
-
-const getStatusDescriptor = (percent: number) => {
-  if (percent === 100) {
-    return { token: "💎 1", tone: "diamond" as StatusTone };
-  }
-  if (percent >= 91) {
-    return { token: "🔵 1", tone: "blue" as StatusTone };
-  }
-  if (percent >= 82) {
-    return { token: "🟢 2", tone: "green" as StatusTone };
-  }
-  if (percent >= 76) {
-    return { token: "🟡 3", tone: "yellow" as StatusTone };
-  }
-  if (percent >= 51) {
-    return { token: "🟠 4", tone: "orange" as StatusTone };
-  }
-  if (percent >= 1) {
-    return { token: "🔴 5", tone: "red" as StatusTone };
-  }
-  return { token: "⚪ 0", tone: "zero" as StatusTone };
-};
 
 export const ExamStatisticsPanel = ({
   runs,
@@ -108,9 +78,8 @@ export const ExamStatisticsPanel = ({
       ? `${lastRun.achievedPoints} / ${lastRun.maxPoints}`
       : "—";
     const percentLabel = lastRun ? `${lastRun.percent}%` : "—";
-    const statusDescriptor = lastRun ? getStatusDescriptor(lastRun.percent) : null;
+    const statusDescriptor = lastRun ? resolveExamStatusDescriptor(lastRun.percent) : null;
     const statusLabel = statusDescriptor ? statusDescriptor.token : "—";
-    const gradeLabel = lastRun?.grade ?? "—";
     const scoreFill =
       lastRun && lastRun.maxPoints > 0
         ? Math.min(1, Math.max(0, lastRun.achievedPoints / lastRun.maxPoints))
@@ -146,10 +115,6 @@ export const ExamStatisticsPanel = ({
           <div className="exam-stats-card">
             <span className="exam-stats-label">Status</span>
             <span className="exam-stats-value">{statusLabel}</span>
-          </div>
-          <div className="exam-stats-card">
-            <span className="exam-stats-label">Grade</span>
-            <span className="exam-stats-value">{gradeLabel}</span>
           </div>
         </div>
         {hasLastRun ? (
@@ -256,7 +221,6 @@ export const ExamStatisticsPanel = ({
               <span className="exam-history-cell">Percent</span>
               <span className="exam-history-cell">Status</span>
               <span className="exam-history-cell">Duration</span>
-              <span className="exam-history-cell">Grade</span>
               <span className="exam-history-cell action" aria-hidden="true" />
             </div>
             {filteredRuns.map((run) => {
@@ -277,12 +241,11 @@ export const ExamStatisticsPanel = ({
                   </span>
                   <span className="exam-history-cell">{run.percent}%</span>
                   <span className="exam-history-cell">
-                    {getStatusDescriptor(run.percent).token}
+                    {resolveExamStatusDescriptor(run.percent).token}
                   </span>
                   <span className="exam-history-cell">
                     {formatExamDuration(run.durationMs)}
                   </span>
-                  <span className="exam-history-cell">{run.grade ?? "—"}</span>
                   <span className="exam-history-cell action">
                     <button
                       type="button"
