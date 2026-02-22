@@ -1317,6 +1317,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     const typeSuggestionText =
       container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
     expect(typeSuggestionText).toContain("Text");
+    expect(typeSuggestionText).toContain("Task");
     expect(typeSuggestionText).toContain("Links");
     expect(typeSuggestionText).toContain("Nur Zahlen");
     expect(typeSuggestionText).toContain("Cover");
@@ -1648,6 +1649,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     const typeSuggestionText =
       container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
     expect(typeSuggestionText).toContain("Text");
+    expect(typeSuggestionText).toContain("Task");
     expect(typeSuggestionText).toContain("Nur Zahlen");
     expect(typeSuggestionText).toContain("Cover");
     expect(typeSuggestionText).not.toContain("Links");
@@ -1680,6 +1682,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     const typeSuggestionText =
       container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
     expect(typeSuggestionText).toContain("Text");
+    expect(typeSuggestionText).toContain("Task");
     expect(typeSuggestionText).toContain("Links");
     expect(typeSuggestionText).toContain("Nur Zahlen");
     expect(typeSuggestionText).not.toContain("Cover");

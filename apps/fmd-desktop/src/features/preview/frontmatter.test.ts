@@ -124,6 +124,18 @@ describe("parseFrontmatterDocument", () => {
       "rank",
     ]);
   });
+
+  it("parses Task attribute as dedicated task kind", () => {
+    const source = ["---", "Task: Exam", "---", "Body"].join("\n");
+    const parsed = parseFrontmatterDocument(source);
+    const task = parsed.properties.find((property) => property.key === "Task");
+    expect(task).toMatchObject({
+      key: "Task",
+      kind: "task",
+      icon: "task",
+      value: "Exam",
+    });
+  });
 });
 
 describe("composeMarkdownWithBody", () => {

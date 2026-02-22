@@ -35,6 +35,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
 import { NoteModal } from "../components/NoteModal";
+import { ModalShell } from "../components/ModalShell";
 import { PreviewPanel } from "../components/PreviewPanel";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
@@ -107,6 +108,9 @@ const DashboardPageInner = (
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
   );
+  const [isTaskProfileEditorModalOpen, setIsTaskProfileEditorModalOpen] = useState(false);
+  const [taskProfileEditorControls, setTaskProfileEditorControls] =
+    useState<ExamEditorControlsState | null>(null);
   const isDesktopViewport = useMediaQuery("(min-width: 1201px)", false);
   const [examPanelsCollapsed, setExamPanelsCollapsed] = useState(() => {
     if (typeof window === "undefined") {
@@ -131,6 +135,19 @@ const DashboardPageInner = (
   >({});
   const [frontmatterKeySuggestions, setFrontmatterKeySuggestions] = useState<string[]>(
     [],
+  );
+  const frontmatterTaskProfileSummaries = useMemo(
+    () =>
+      Object.fromEntries(
+        pointsProfiles.profiles.map((profile) => [
+          profile.name.trim().toLowerCase(),
+          {
+            taskCount: profile.taskCount,
+            maxTotalPoints: profile.maxTotalPoints,
+          },
+        ]),
+      ),
+    [pointsProfiles.profiles],
   );
   const isExamDesktop = vaultView === "exam" && isDesktopViewport;
   const panelsCollapsed = isExamDesktop ? examPanelsCollapsed : noteCollapsed;
@@ -500,6 +517,52 @@ const DashboardPageInner = (
       vault.setFiles,
     ],
   );
+  const handleCloseTaskProfileEditorModal = useCallback(() => {
+    setIsTaskProfileEditorModalOpen(false);
+    setTaskProfileEditorControls(null);
+  }, []);
+
+  const handleOpenTaskProfileEditor = useCallback(
+    async ({ taskValue }: { taskValue: string | null; propertyKey: string }) => {
+      const requestedName = taskValue?.trim() ?? "";
+      if (requestedName) {
+        const existing = pointsProfiles.resolveProfileByName(requestedName);
+        if (existing) {
+          pointsProfiles.setSelectedProfileId(existing.id);
+        } else {
+          const created = await pointsProfiles.createProfile(requestedName, {
+            seedFromProfileId:
+              pointsProfiles.selectedProfileId ?? pointsProfiles.defaultProfileId ?? null,
+          });
+          if (!created.ok) {
+            console.warn("Failed to auto-create points profile from Task attribute", created.error);
+          } else if (created.profile) {
+            pointsProfiles.setSelectedProfileId(created.profile.id);
+          }
+        }
+      } else if (pointsProfiles.defaultProfileId) {
+        pointsProfiles.setSelectedProfileId(pointsProfiles.defaultProfileId);
+      }
+      setIsTaskProfileEditorModalOpen(true);
+    },
+    [
+      pointsProfiles,
+      pointsProfiles.createProfile,
+      pointsProfiles.defaultProfileId,
+      pointsProfiles.resolveProfileByName,
+      pointsProfiles.selectedProfileId,
+      pointsProfiles.setSelectedProfileId,
+    ],
+  );
+
+  useEffect(() => {
+    if (!isTaskProfileEditorModalOpen || !taskProfileEditorControls) {
+      return;
+    }
+    if (taskProfileEditorControls.mode !== "points") {
+      taskProfileEditorControls.onModeChange("points");
+    }
+  }, [isTaskProfileEditorModalOpen, taskProfileEditorControls]);
 
   const noteModalActive = noteModalEnabled && isNoteModalOpen;
   const handleNoteModalClose = useCallback(() => {
@@ -596,6 +659,8 @@ const DashboardPageInner = (
             onToggleRawPreview={handleToggleRawPreview}
             onFrontmatterSave={handleFrontmatterSave}
             onNavigateWikilink={handleFrontmatterWikilinkNavigate}
+            onOpenTaskProfileEditor={handleOpenTaskProfileEditor}
+            taskProfileSummariesByName={frontmatterTaskProfileSummaries}
             valueSuggestionsByKey={frontmatterValueSuggestions}
             keySuggestions={frontmatterKeySuggestions}
           />
@@ -761,6 +826,27 @@ const DashboardPageInner = (
           />
         </NoteModal>
       ) : null}
+      <ModalShell
+        isOpen={isTaskProfileEditorModalOpen}
+        title="Points Profile Editor"
+        onClose={handleCloseTaskProfileEditorModal}
+        className="task-profile-editor-modal-panel"
+        bodyClassName="task-profile-editor-modal-body"
+      >
+        <ExamEditorView
+          sourcePath={preview.selectedFile?.path ?? null}
+          sourceRelativePath={preview.selectedFile?.relative_path ?? null}
+          sourceMarkdown={preview.previewState === "idle" ? preview.preview : undefined}
+          activeFolderPath={normalizedActiveFolderPath || null}
+          vaultFiles={vault.files}
+          vaultPath={vault.vaultPath ?? null}
+          pointsProfiles={pointsProfiles}
+          showMoveButtons={settings.examEditorShowMoveButtons}
+          variant="study"
+          onControlsReady={setTaskProfileEditorControls}
+          onSave={handleExamSave}
+        />
+      </ModalShell>
     </div>
   );
 };

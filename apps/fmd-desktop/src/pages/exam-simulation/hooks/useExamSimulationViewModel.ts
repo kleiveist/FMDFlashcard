@@ -520,6 +520,27 @@ export const useExamSimulationViewModel = () => {
       ),
     [selectedExamProfileAssignments],
   );
+  const taskOrderProfileFallbackByExamPath = useMemo(() => {
+    const fallbackMap = new Map<string, boolean>();
+    selectedExamProfileAssignments.forEach((assignment) => {
+      const profile = assignment.profile;
+      if (!profile || profile.distribution !== "task-order") {
+        fallbackMap.set(assignment.examPath, false);
+        return;
+      }
+      const parsed = selectedExamParses[assignment.examPath];
+      const tasks = parsed?.tasks ?? [];
+      const shouldFallback = tasks.some((task) => {
+        const points = profile.taskPoints[Math.max(0, task.index)];
+        if (!Number.isFinite(points)) {
+          return true;
+        }
+        return Math.floor(points) <= 0;
+      });
+      fallbackMap.set(assignment.examPath, shouldFallback);
+    });
+    return fallbackMap;
+  }, [selectedExamParses, selectedExamProfileAssignments]);
   const defaultProfileDurationMinutes = normalizeDurationMinutes(
     pointsProfiles.defaultProfile?.durationMinutes ?? EXAM_POINTS_DEFAULT_DURATION_MINUTES,
   );
@@ -550,7 +571,9 @@ export const useExamSimulationViewModel = () => {
         const assignment = selectedExamProfileAssignmentMap.get(task.sourceExamPath);
         const profile = assignment?.profile ?? null;
         const taskTypes = resolveExamTaskPointTypes(task);
-        if (!profile) {
+        const useDefaultTaskTypeFallback =
+          (assignment && taskOrderProfileFallbackByExamPath.get(task.sourceExamPath)) ?? false;
+        if (!profile || useDefaultTaskTypeFallback) {
           return resolveTaskTypePointsFromMap({
             taskTypes,
             typePoints: settings.examTaskTypeDefaultPoints,
@@ -573,6 +596,7 @@ export const useExamSimulationViewModel = () => {
     [
       selectedExamProfileAssignmentMap,
       selectedExamProfileAssignments,
+      taskOrderProfileFallbackByExamPath,
       settings.examTaskTypeDefaultPoints,
     ],
   );
@@ -633,6 +657,9 @@ export const useExamSimulationViewModel = () => {
       if (!assignment.profile) {
         return;
       }
+      if (taskOrderProfileFallbackByExamPath.get(assignment.examPath)) {
+        return;
+      }
       const blockers = validatePointsProfile(assignment.profile);
       blockers.forEach((item) => {
         missing.push({
@@ -646,6 +673,7 @@ export const useExamSimulationViewModel = () => {
   }, [
     previewDurationMinutes,
     selectedExamProfileAssignments,
+    taskOrderProfileFallbackByExamPath,
     settings.examTimeLimitEnabled,
   ]);
   const hasSettingsBlockers = missingExamSettings.some(

@@ -8,6 +8,7 @@
 
 export type FrontmatterPropertyKind =
   | "text"
+  | "task"
   | "number"
   | "boolean"
   | "tags"
@@ -17,6 +18,7 @@ export type FrontmatterPropertyKind =
 
 export type FrontmatterPropertyIcon =
   | "text"
+  | "task"
   | "number"
   | "boolean"
   | "tags"
@@ -86,6 +88,7 @@ const IMAGE_EXTENSION_PATTERN = /\.(png|jpe?g|webp|gif|svg)$/i;
 const LINK_KEY_PATTERN = /^link\d+$/i;
 
 const PROPERTY_SCHEMA: Record<string, FrontmatterSchemaEntry> = {
+  task: { kind: "task", icon: "task" },
   tags: { kind: "tags", icon: "tags" },
   tag: { kind: "tags", icon: "tags" },
   cover: { kind: "cover", icon: "cover" },
@@ -359,6 +362,8 @@ const resolvePropertyIcon = (
   switch (kind) {
     case "cover":
       return "cover";
+    case "task":
+      return "task";
     case "number":
       return "number";
     case "boolean":

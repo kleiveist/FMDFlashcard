@@ -557,6 +557,22 @@ h2 {
   min-height: 0;
 }
 
+.task-profile-editor-modal-panel {
+  width: min(1520px, 97vw);
+}
+
+.task-profile-editor-modal-body {
+  height: min(88vh, 980px);
+  overflow: hidden;
+  padding: 0;
+}
+
+.task-profile-editor-modal-body .exam-editor-page {
+  height: 100%;
+  min-height: 0;
+  padding: 14px;
+}
+
 .workspace > * {
   min-height: 0;
 }

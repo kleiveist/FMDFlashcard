@@ -782,21 +782,29 @@ export const ExamEditorView = ({
     if (!selected) {
       return;
     }
-    if (
-      assignedProfileResolution.profile &&
-      assignedProfileResolution.profile.id === selected.id
-    ) {
-      setPointsError(
-        `Profile "${selected.name}" is assigned to the current exam (Task). Reassign first.`,
-      );
-      return;
-    }
+    const isAssignedToCurrentExam =
+      assignedProfileResolution.profile?.id === selected.id;
+    const remainingProfiles = pointsProfiles.profiles.filter((profile) => profile.id !== selected.id);
+    const fallbackAssignedProfile =
+      selected.id === pointsProfiles.defaultProfileId
+        ? (remainingProfiles[0] ?? null)
+        : (pointsProfiles.defaultProfile ?? remainingProfiles[0] ?? null);
+    const currentRelativePath = normalizeRelativePath(sourceRelativePath ?? "");
+    const currentAbsolutePath = normalizeVaultPath(sourcePath ?? "");
     if (vaultFiles && vaultFiles.length > 0) {
       const markdownFiles = vaultFiles.filter((file) =>
         file.relative_path.toLowerCase().endsWith(".md"),
       );
       const usages = await Promise.all(
         markdownFiles.map(async (file) => {
+          const fileRelativePath = normalizeRelativePath(file.relative_path ?? "");
+          const fileAbsolutePath = normalizeVaultPath(file.path ?? "");
+          const isCurrentSourceFile =
+            (Boolean(currentRelativePath) && fileRelativePath === currentRelativePath) ||
+            (Boolean(currentAbsolutePath) && fileAbsolutePath === currentAbsolutePath);
+          if (isAssignedToCurrentExam && isCurrentSourceFile) {
+            return null;
+          }
           try {
             const contents = await invoke<string>("read_text_file", { path: file.path });
             const assigned = resolveExamTaskFrontmatterValue(contents);
@@ -825,8 +833,28 @@ export const ExamEditorView = ({
       setPointsError(deleted.error ?? "Profile could not be deleted.");
       return;
     }
+    if (isAssignedToCurrentExam) {
+      handleAssignTaskProfileName(fallbackAssignedProfile?.name ?? null);
+      if (fallbackAssignedProfile?.name) {
+        setPointsMessage(
+          `Profile "${deleted.profile.name}" deleted. Current exam switched to default "${fallbackAssignedProfile.name}".`,
+        );
+      } else {
+        setPointsMessage(
+          `Profile "${deleted.profile.name}" deleted. Current exam switched to standard.`,
+        );
+      }
+      return;
+    }
     setPointsMessage(`Profile "${deleted.profile.name}" deleted.`);
-  }, [assignedProfileResolution.profile, pointsProfiles, vaultFiles]);
+  }, [
+    assignedProfileResolution.profile,
+    handleAssignTaskProfileName,
+    pointsProfiles,
+    sourcePath,
+    sourceRelativePath,
+    vaultFiles,
+  ]);
 
   const handleDraftTaskPointChange = useCallback((index: number, value: string) => {
     setDraftTaskPoints((prev) => {

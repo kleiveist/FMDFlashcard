@@ -313,6 +313,17 @@ type PreviewPanelProps = {
   onToggleRawPreview: () => void;
   onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
   onNavigateWikilink?: (wikilink: string) => void;
+  onOpenTaskProfileEditor?: (params: {
+    taskValue: string | null;
+    propertyKey: string;
+  }) => Promise<void> | void;
+  taskProfileSummariesByName?: Record<
+    string,
+    {
+      taskCount: number;
+      maxTotalPoints: number;
+    }
+  >;
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
 };
@@ -1838,6 +1849,23 @@ const FrontmatterTextIcon = () => (
   </svg>
 );
 
+const FrontmatterTaskIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="4" y="4" width="16" height="16" rx="2.5" />
+    <path d="M8 9h8" />
+    <path d="M8 13h5" />
+    <path d="M8 17h3" />
+  </svg>
+);
+
 const FrontmatterNumberIcon = () => (
   <svg
     aria-hidden="true"
@@ -1955,6 +1983,8 @@ const FrontmatterPropertyIconView = ({
   switch (icon) {
     case "cover":
       return <FrontmatterImageIcon />;
+    case "task":
+      return <FrontmatterTaskIcon />;
     case "number":
       return <FrontmatterNumberIcon />;
     case "boolean":
@@ -2056,7 +2086,13 @@ const mergeSuggestionKeyLists = (...sources: string[][]) => {
   return merged;
 };
 
-type FrontmatterAddPropertyType = "text" | "link" | "number" | "cover" | "tags";
+type FrontmatterAddPropertyType =
+  | "text"
+  | "task"
+  | "link"
+  | "number"
+  | "cover"
+  | "tags";
 
 type FrontmatterAddTypeOption = {
   kind: FrontmatterAddPropertyType;
@@ -2073,6 +2109,12 @@ const FRONTMATTER_ADD_TYPE_OPTIONS: FrontmatterAddTypeOption[] = [
     icon: "text",
     label: "Text",
     description: "Freier Text",
+  },
+  {
+    kind: "task",
+    icon: "task",
+    label: "Task",
+    description: "Points-Profil Zuordnung",
   },
   {
     kind: "link",
@@ -2105,6 +2147,9 @@ const addKeySuggestionScope = "__frontmatter_add_key__";
 const addValueSuggestionScope = "__frontmatter_add_value__";
 
 const resolveAutoAddKeyForType = (kind: FrontmatterAddPropertyType) => {
+  if (kind === "task") {
+    return "Task";
+  }
   if (kind === "link") {
     return "links";
   }
@@ -2125,6 +2170,7 @@ const isReservedTextSuggestionKey = (key: string) => {
 const COVER_KEY_NAMES = new Set(["cover", "image", "thumbnail"]);
 
 const isCoverKeyName = (key: string) => COVER_KEY_NAMES.has(key.trim().toLowerCase());
+const isTaskKeyName = (key: string) => key.trim().toLowerCase() === "task";
 
 const resolveRelativePathCandidates = (
   target: string,
@@ -2181,6 +2227,7 @@ const normalizeStableSuggestions = (values: string[]) => {
 
 const isScalarEditableKind = (kind: FrontmatterPropertyKind) =>
   kind === "text" ||
+  kind === "task" ||
   kind === "unknown" ||
   kind === "link" ||
   kind === "cover" ||
@@ -2236,6 +2283,17 @@ type FrontmatterPropertiesPanelProps = {
   onToggleCollapsed: () => void;
   onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
   onNavigateWikilink?: (wikilink: string) => void;
+  onOpenTaskProfileEditor?: (params: {
+    taskValue: string | null;
+    propertyKey: string;
+  }) => Promise<void> | void;
+  taskProfileSummariesByName?: Record<
+    string,
+    {
+      taskCount: number;
+      maxTotalPoints: number;
+    }
+  >;
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
 };
@@ -2255,6 +2313,8 @@ const FrontmatterPropertiesPanel = ({
   onToggleCollapsed,
   onFrontmatterSave,
   onNavigateWikilink,
+  onOpenTaskProfileEditor,
+  taskProfileSummariesByName,
   valueSuggestionsByKey = EMPTY_VALUE_SUGGESTIONS,
   keySuggestions = EMPTY_KEY_SUGGESTIONS,
 }: FrontmatterPropertiesPanelProps) => {
@@ -2344,6 +2404,10 @@ const FrontmatterPropertiesPanel = ({
     () => properties.some((property) => property.key.trim().toLowerCase() === "tags"),
     [properties],
   );
+  const hasExistingTaskAttribute = useMemo(
+    () => visibleProperties.some((property) => property.kind === "task" || isTaskKeyName(property.key)),
+    [visibleProperties],
+  );
   const hasExistingCoverAttribute = useMemo(
     () =>
       visibleProperties.some(
@@ -2367,12 +2431,20 @@ const FrontmatterPropertiesPanel = ({
         if (option.kind === "tags" && hasExistingTagsAttribute) {
           return false;
         }
+        if (option.kind === "task" && hasExistingTaskAttribute) {
+          return false;
+        }
         if (option.kind === "cover" && hasExistingCoverAttribute) {
           return false;
         }
         return true;
       }),
-    [hasExistingCoverAttribute, hasExistingLinkAttributes, hasExistingTagsAttribute],
+    [
+      hasExistingCoverAttribute,
+      hasExistingLinkAttributes,
+      hasExistingTagsAttribute,
+      hasExistingTaskAttribute,
+    ],
   );
 
   useEffect(() => {
@@ -2602,6 +2674,9 @@ const FrontmatterPropertiesPanel = ({
         if (addTypeDraft === "text" && isReservedTextSuggestionKey(key)) {
           return false;
         }
+        if (hasExistingTaskAttribute && isTaskKeyName(key)) {
+          return false;
+        }
         if (hasExistingCoverAttribute && isCoverKeyName(key)) {
           return false;
         }
@@ -2611,7 +2686,13 @@ const FrontmatterPropertiesPanel = ({
         return normalized.includes(query);
       });
     },
-    [addTypeDraft, existingPropertyKeys, hasExistingCoverAttribute, suggestionKeys],
+    [
+      addTypeDraft,
+      existingPropertyKeys,
+      hasExistingCoverAttribute,
+      hasExistingTaskAttribute,
+      suggestionKeys,
+    ],
   );
 
   const resolveAddValueSuggestions = useCallback(
@@ -2905,6 +2986,10 @@ const FrontmatterPropertiesPanel = ({
         return;
       }
     }
+    if (hasExistingTaskAttribute && (addTypeDraft === "task" || isTaskKeyName(nextKey))) {
+      setAddError("Task existiert bereits - nur ein Task-Attribut moeglich.");
+      return;
+    }
     if (hasExistingCoverAttribute && (addTypeDraft === "cover" || isCoverKeyName(nextKey))) {
       setAddError("Cover existiert bereits - nur ein Cover moeglich.");
       focusExistingCoverRow();
@@ -2970,6 +3055,7 @@ const FrontmatterPropertiesPanel = ({
     addValueInputRef,
     onFrontmatterSave,
     hasExistingCoverAttribute,
+    hasExistingTaskAttribute,
     focusExistingCoverRow,
     properties,
     sourceMarkdown,
@@ -3165,9 +3251,10 @@ const FrontmatterPropertiesPanel = ({
               const rowError = rowErrors[property.key] ?? "";
               const editorMode = editorModes[property.key] ?? "idle";
               const isEditorEditing = editorMode === "editing";
+              const isTaskRow = property.kind === "task" || isTaskKeyName(property.key);
               const suggestions = resolveSuggestionsForKey(
                 property.key,
-                drafts[property.key] ?? "",
+                isTaskRow ? "" : (drafts[property.key] ?? ""),
               );
               const suggestionListId = `frontmatter-suggestions-${property.key
                 .toLowerCase()
@@ -3183,6 +3270,13 @@ const FrontmatterPropertiesPanel = ({
                 isScalarEditableKind(property.kind);
               const isCoverRow = property.kind === "cover";
               const isCoverRowActive = isCoverRow && activeCoverKey === property.key;
+              const taskCommittedValue =
+                typeof property.value === "string" ? (property.value.trim() || null) : null;
+              const taskDraftValue = (drafts[property.key] ?? "").trim() || null;
+              const taskPropertyValue = taskDraftValue ?? taskCommittedValue;
+              const taskProfileSummary = isTaskRow && taskPropertyValue
+                ? (taskProfileSummariesByName?.[taskPropertyValue.toLowerCase()] ?? null)
+                : null;
               const coverCurrentValue = typeof property.value === "string" ? property.value : "";
               const coverDraftValue = drafts[property.key] ?? "";
               const coverPreferredValue = coverDraftValue || coverCurrentValue;
@@ -3810,6 +3904,7 @@ const FrontmatterPropertiesPanel = ({
                     );
                   case "number":
                   case "link":
+                  case "task":
                   case "unknown":
                   case "text":
                   default:
@@ -3822,6 +3917,8 @@ const FrontmatterPropertiesPanel = ({
                   key={property.key}
                   className={`frontmatter-row ${
                     dragPropertyKey === property.key ? "is-dragging" : ""
+                  } ${
+                    isTaskRow ? "is-task-row" : ""
                   } ${
                     isCoverRowActive ? "frontmatter-row-cover-active" : ""
                   } ${
@@ -3905,7 +4002,31 @@ const FrontmatterPropertiesPanel = ({
                     <span className="frontmatter-icon" aria-hidden="true">
                       <FrontmatterPropertyIconView icon={property.icon} />
                     </span>
-                    <span className="frontmatter-label">{property.key}</span>
+                    {isTaskRow ? (
+                      <button
+                        type="button"
+                        className="frontmatter-label frontmatter-label-button"
+                        disabled={rowDisabled}
+                        draggable={false}
+                        title="Points Profile Editor oeffnen"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void onOpenTaskProfileEditor?.({
+                            taskValue: taskPropertyValue,
+                            propertyKey: property.key,
+                          });
+                        }}
+                      >
+                        {property.key}
+                      </button>
+                    ) : (
+                      <span className="frontmatter-label">{property.key}</span>
+                    )}
                     <button
                       type="button"
                       className="frontmatter-property-remove"
@@ -3926,6 +4047,27 @@ const FrontmatterPropertiesPanel = ({
                     </button>
                   </div>
                   <div className="frontmatter-value" role="cell">
+                    {isTaskRow ? (
+                      <div
+                        className={`frontmatter-task-meta ${
+                          taskProfileSummary ? "" : "is-missing"
+                        }`.trim()}
+                        aria-label="Task Profil Info"
+                      >
+                        <span className="frontmatter-task-meta-item">
+                          <span className="frontmatter-task-meta-label">TASK COUNT</span>
+                          <span className="frontmatter-task-meta-value">
+                            {taskProfileSummary ? taskProfileSummary.taskCount : "-"}
+                          </span>
+                        </span>
+                        <span className="frontmatter-task-meta-item">
+                          <span className="frontmatter-task-meta-label">MAX TOTAL POINTS</span>
+                          <span className="frontmatter-task-meta-value">
+                            {taskProfileSummary ? taskProfileSummary.maxTotalPoints : "-"}
+                          </span>
+                        </span>
+                      </div>
+                    ) : null}
                     {renderValueEditor()}
                   </div>
                 </div>
@@ -4731,6 +4873,8 @@ export const PreviewPanel = ({
   onToggleRawPreview,
   onFrontmatterSave,
   onNavigateWikilink,
+  onOpenTaskProfileEditor,
+  taskProfileSummariesByName,
   valueSuggestionsByKey,
   keySuggestions,
 }: PreviewPanelProps) => {
@@ -5369,6 +5513,8 @@ export const PreviewPanel = ({
                       onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                       onFrontmatterSave={onFrontmatterSave}
                       onNavigateWikilink={onNavigateWikilink}
+                      onOpenTaskProfileEditor={onOpenTaskProfileEditor}
+                      taskProfileSummariesByName={taskProfileSummariesByName}
                       valueSuggestionsByKey={valueSuggestionsByKey}
                       keySuggestions={keySuggestions}
                     />
@@ -5418,6 +5564,8 @@ export const PreviewPanel = ({
                         onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                         onFrontmatterSave={onFrontmatterSave}
                         onNavigateWikilink={onNavigateWikilink}
+                        onOpenTaskProfileEditor={onOpenTaskProfileEditor}
+                        taskProfileSummariesByName={taskProfileSummariesByName}
                         valueSuggestionsByKey={valueSuggestionsByKey}
                         keySuggestions={keySuggestions}
                       />
