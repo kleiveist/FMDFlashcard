@@ -390,24 +390,148 @@ const useCoverThumbnailCrop = (source: CoverThumbnailSource | null) => {
 };
 
 type CoverThumbnailImageProps = {
+  variant: "main" | "picker" | "add";
   image: CoverThumbnailSource;
   alt: string;
-  onLoad: () => void;
-  onError: (event: SyntheticEvent<HTMLImageElement>) => void;
+  onLoad?: (event: SyntheticEvent<HTMLImageElement>) => void;
+  onError?: (event: SyntheticEvent<HTMLImageElement>) => void;
+};
+
+type CoverThumbnailRect = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+type CoverThumbnailTransformMode = "contain" | "cover";
+
+type CoverThumbnailTransformResult = {
+  style: CSSProperties;
+  contentWidth: number;
+  contentHeight: number;
+};
+
+const COVER_THUMBNAIL_BACKDROP_SCALE_BOOST = 1.1;
+const COVER_THUMBNAIL_BAR_EPSILON_PX = 1;
+
+const resolveCoverThumbnailFallbackSize = (variant: CoverThumbnailImageProps["variant"]) => {
+  if (variant === "picker") {
+    return { width: 26, height: 26 };
+  }
+  if (variant === "add") {
+    return { width: 24, height: 24 };
+  }
+  return {
+    width: COVER_THUMBNAIL_FALLBACK_WIDTH,
+    height: COVER_THUMBNAIL_FALLBACK_HEIGHT,
+  };
+};
+
+const resolveCoverThumbnailFrameClassName = (variant: CoverThumbnailImageProps["variant"]) => {
+  if (variant === "picker") {
+    return "frontmatter-cover-thumb-frame frontmatter-cover-picker-thumb-frame";
+  }
+  if (variant === "add") {
+    return "frontmatter-cover-thumb-frame frontmatter-add-cover-thumb-frame";
+  }
+  return "frontmatter-cover-thumbnail-viewport frontmatter-cover-thumb-frame";
+};
+
+const resolveCoverThumbnailForegroundClassName = (
+  variant: CoverThumbnailImageProps["variant"],
+  transformed: boolean,
+) => {
+  const transformedClass = transformed
+    ? " frontmatter-cover-thumb-transformed frontmatter-cover-thumbnail-cropped"
+    : "";
+  if (variant === "picker") {
+    return `frontmatter-cover-thumb-foreground frontmatter-cover-picker-thumb-foreground${transformedClass}`;
+  }
+  if (variant === "add") {
+    return `frontmatter-cover-thumb-foreground frontmatter-add-cover-thumb-foreground${transformedClass}`;
+  }
+  return `frontmatter-cover-thumbnail frontmatter-cover-thumb-foreground${transformedClass}`;
+};
+
+const resolveCoverThumbnailBackdropClassName = (variant: CoverThumbnailImageProps["variant"]) => {
+  if (variant === "picker") {
+    return "frontmatter-cover-thumb-backdrop frontmatter-cover-picker-thumb-backdrop";
+  }
+  if (variant === "add") {
+    return "frontmatter-cover-thumb-backdrop frontmatter-add-cover-thumb-backdrop";
+  }
+  return "frontmatter-cover-thumb-backdrop frontmatter-cover-thumbnail-backdrop";
+};
+
+const resolveCoverThumbnailTransform = ({
+  viewportWidth,
+  viewportHeight,
+  sourceWidth,
+  sourceHeight,
+  rect,
+  mode,
+  scaleBoost = 1,
+}: {
+  viewportWidth: number;
+  viewportHeight: number;
+  sourceWidth: number;
+  sourceHeight: number;
+  rect: CoverThumbnailRect;
+  mode: CoverThumbnailTransformMode;
+  scaleBoost?: number;
+}): CoverThumbnailTransformResult | null => {
+  if (
+    viewportWidth <= 0 ||
+    viewportHeight <= 0 ||
+    sourceWidth <= 0 ||
+    sourceHeight <= 0 ||
+    rect.w <= 0 ||
+    rect.h <= 0
+  ) {
+    return null;
+  }
+
+  const scaleX = viewportWidth / rect.w;
+  const scaleY = viewportHeight / rect.h;
+  const baseScale = mode === "cover" ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
+  const scale = baseScale * Math.max(1, scaleBoost);
+  const contentWidth = rect.w * scale;
+  const contentHeight = rect.h * scale;
+  const offsetX = (viewportWidth - contentWidth) / 2;
+  const offsetY = (viewportHeight - contentHeight) / 2;
+  const translateX = offsetX - rect.x * scale;
+  const translateY = offsetY - rect.y * scale;
+
+  return {
+    contentWidth,
+    contentHeight,
+    style: {
+      width: `${sourceWidth}px`,
+      height: `${sourceHeight}px`,
+      transformOrigin: "top left",
+      transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
+    },
+  };
 };
 
 const CoverThumbnailImage = ({
+  variant,
   image,
   alt,
   onLoad,
   onError,
 }: CoverThumbnailImageProps) => {
   const viewportRef = useRef<HTMLSpanElement | null>(null);
-  const [viewportSize, setViewportSize] = useState({
-    width: COVER_THUMBNAIL_FALLBACK_WIDTH,
-    height: COVER_THUMBNAIL_FALLBACK_HEIGHT,
-  });
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [viewportSize, setViewportSize] = useState(() =>
+    resolveCoverThumbnailFallbackSize(variant)
+  );
   const crop = useCoverThumbnailCrop(image);
+
+  useEffect(() => {
+    setNaturalSize(null);
+  }, [image.path, image.relativePath, image.src]);
 
   useLayoutEffect(() => {
     const element = viewportRef.current;
@@ -417,8 +541,9 @@ const CoverThumbnailImage = ({
 
     let frame = 0;
     const measure = () => {
-      const nextWidth = element.clientWidth || COVER_THUMBNAIL_FALLBACK_WIDTH;
-      const nextHeight = element.clientHeight || COVER_THUMBNAIL_FALLBACK_HEIGHT;
+      const fallback = resolveCoverThumbnailFallbackSize(variant);
+      const nextWidth = element.clientWidth || fallback.width;
+      const nextHeight = element.clientHeight || fallback.height;
       setViewportSize((current) =>
         current.width === nextWidth && current.height === nextHeight
           ? current
@@ -452,48 +577,111 @@ const CoverThumbnailImage = ({
       }
       observer.disconnect();
     };
-  }, []);
+  }, [variant]);
 
-  const croppedStyle = useMemo<CSSProperties | undefined>(() => {
-    if (!crop || crop.kind !== "crop") {
-      return undefined;
+  const sourceMetrics = useMemo(() => {
+    if (crop?.kind === "crop") {
+      return {
+        width: crop.sourceWidth,
+        height: crop.sourceHeight,
+        rect: crop.rect as CoverThumbnailRect,
+      };
     }
-    const thumbWidth = Math.max(1, viewportSize.width);
-    const thumbHeight = Math.max(1, viewportSize.height);
-    const { rect, sourceWidth, sourceHeight } = crop;
-    if (rect.w <= 0 || rect.h <= 0 || sourceWidth <= 0 || sourceHeight <= 0) {
-      return undefined;
+    if (!naturalSize) {
+      return null;
     }
-    const scaleX = thumbWidth / rect.w;
-    const scaleY = thumbHeight / rect.h;
-    // Minimal zoom: remove transparent borders without extra "cover" zoom/cropping.
-    const scale = Math.min(scaleX, scaleY);
-    const offsetX = (thumbWidth - rect.w * scale) / 2;
-    const offsetY = (thumbHeight - rect.h * scale) / 2;
-    const translateX = offsetX - rect.x * scale;
-    const translateY = offsetY - rect.y * scale;
     return {
-      width: `${sourceWidth}px`,
-      height: `${sourceHeight}px`,
-      transformOrigin: "top left",
-      transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
+      width: naturalSize.width,
+      height: naturalSize.height,
+      rect: {
+        x: 0,
+        y: 0,
+        w: naturalSize.width,
+        h: naturalSize.height,
+      } satisfies CoverThumbnailRect,
     };
-  }, [crop, viewportSize.height, viewportSize.width]);
+  }, [crop, naturalSize]);
 
-  const isCropped = Boolean(croppedStyle);
+  const foregroundTransform = useMemo(
+    () =>
+      sourceMetrics
+        ? resolveCoverThumbnailTransform({
+            viewportWidth: Math.max(1, viewportSize.width),
+            viewportHeight: Math.max(1, viewportSize.height),
+            sourceWidth: sourceMetrics.width,
+            sourceHeight: sourceMetrics.height,
+            rect: sourceMetrics.rect,
+            mode: "contain",
+          })
+        : null,
+    [sourceMetrics, viewportSize.height, viewportSize.width],
+  );
+
+  const backdropTransform = useMemo(
+    () =>
+      sourceMetrics
+        ? resolveCoverThumbnailTransform({
+            viewportWidth: Math.max(1, viewportSize.width),
+            viewportHeight: Math.max(1, viewportSize.height),
+            sourceWidth: sourceMetrics.width,
+            sourceHeight: sourceMetrics.height,
+            rect: sourceMetrics.rect,
+            mode: "cover",
+            scaleBoost: COVER_THUMBNAIL_BACKDROP_SCALE_BOOST,
+          })
+        : null,
+    [sourceMetrics, viewportSize.height, viewportSize.width],
+  );
+
+  const hasBars = useMemo(() => {
+    if (!foregroundTransform) {
+      return false;
+    }
+    const freeX = Math.max(0, viewportSize.width - foregroundTransform.contentWidth);
+    const freeY = Math.max(0, viewportSize.height - foregroundTransform.contentHeight);
+    return freeX > COVER_THUMBNAIL_BAR_EPSILON_PX || freeY > COVER_THUMBNAIL_BAR_EPSILON_PX;
+  }, [foregroundTransform, viewportSize.height, viewportSize.width]);
+
+  const showBackdrop = Boolean(backdropTransform && hasBars);
+  const isTransformed = Boolean(foregroundTransform);
+  const src = image.src ?? image.path;
+  const frameClassName = resolveCoverThumbnailFrameClassName(variant);
+  const foregroundClassName = resolveCoverThumbnailForegroundClassName(variant, isTransformed);
+  const backdropClassName = resolveCoverThumbnailBackdropClassName(variant);
 
   return (
-    <span ref={viewportRef} className="frontmatter-cover-thumbnail-viewport">
+    <span ref={viewportRef} className={frameClassName}>
+      {showBackdrop ? (
+        <img
+          src={src}
+          alt=""
+          aria-hidden="true"
+          className={backdropClassName}
+          style={backdropTransform?.style}
+          draggable={false}
+        />
+      ) : null}
       <img
-        src={image.src ?? image.path}
+        src={src}
         alt={alt}
-        className={`frontmatter-cover-thumbnail ${
-          isCropped ? "frontmatter-cover-thumbnail-cropped" : ""
-        }`}
-        style={croppedStyle}
+        className={foregroundClassName}
+        style={foregroundTransform?.style}
         draggable={false}
-        onLoad={onLoad}
-        onError={onError}
+        onLoad={(event) => {
+          const nextWidth = event.currentTarget.naturalWidth || event.currentTarget.width || 0;
+          const nextHeight = event.currentTarget.naturalHeight || event.currentTarget.height || 0;
+          if (nextWidth > 0 && nextHeight > 0) {
+            setNaturalSize((current) =>
+              current && current.width === nextWidth && current.height === nextHeight
+                ? current
+                : { width: nextWidth, height: nextHeight }
+            );
+          }
+          onLoad?.(event);
+        }}
+        onError={(event) => {
+          onError?.(event);
+        }}
       />
     </span>
   );
@@ -4164,6 +4352,7 @@ const FrontmatterPropertiesPanel = ({
                           >
                             {resolvedCoverImage && !hasCoverImageLoadError ? (
                               <CoverThumbnailImage
+                                variant="main"
                                 image={resolvedCoverImage}
                                 alt={coverDisplayName}
                                 onLoad={() => {
@@ -4299,11 +4488,10 @@ const FrontmatterPropertiesPanel = ({
                                                 <FrontmatterImageIcon />
                                               </span>
                                             ) : (
-                                              <img
-                                                src={pickerSrc}
+                                              <CoverThumbnailImage
+                                                variant="picker"
+                                                image={entry}
                                                 alt={entry.fileName}
-                                                className="frontmatter-cover-picker-thumb"
-                                                draggable={false}
                                                 onError={(event) => {
                                                   const failedSrc =
                                                     event.currentTarget.currentSrc ||
@@ -5200,11 +5388,10 @@ const FrontmatterPropertiesPanel = ({
                               }}
                             >
                               {suggestionImage && !hasSuggestionImageError ? (
-                                <img
-                                  src={suggestionImageSrc}
+                                <CoverThumbnailImage
+                                  variant="add"
+                                  image={suggestionImage}
                                   alt={suggestionImage.fileName}
-                                  className="frontmatter-add-cover-thumb"
-                                  draggable={false}
                                   onError={(event) => {
                                     const failedSrc =
                                       event.currentTarget.currentSrc ||

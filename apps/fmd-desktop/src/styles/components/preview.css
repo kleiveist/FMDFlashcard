@@ -538,6 +538,8 @@
   height: 100%;
   object-fit: contain;
   display: block;
+  position: relative;
+  z-index: 1;
 }
 
 .frontmatter-cover-thumbnail-viewport {
@@ -548,7 +550,34 @@
   overflow: hidden;
 }
 
-.frontmatter-cover-thumbnail-cropped {
+.frontmatter-cover-thumb-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+.frontmatter-cover-thumb-backdrop {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  pointer-events: none;
+  opacity: 0.9;
+  will-change: transform;
+}
+
+.frontmatter-cover-thumbnail-backdrop {
+  filter: blur(12px) saturate(1.05);
+}
+
+.frontmatter-cover-thumb-foreground {
+  position: relative;
+  z-index: 1;
+}
+
+.frontmatter-cover-thumbnail-cropped,
+.frontmatter-cover-thumb-transformed {
   position: absolute;
   top: 0;
   left: 0;
@@ -558,6 +587,50 @@
   max-height: none;
   object-fit: initial;
   will-change: transform;
+}
+
+.frontmatter-cover-picker-thumb-frame {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  display: block;
+  flex: 0 0 auto;
+}
+
+.frontmatter-cover-picker-thumb-foreground {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.frontmatter-cover-picker-thumb-backdrop {
+  filter: blur(6px) saturate(1.03);
+}
+
+.frontmatter-add-cover-thumb-frame {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  display: block;
+  flex: 0 0 auto;
+}
+
+.frontmatter-add-cover-thumb-foreground {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.frontmatter-add-cover-thumb-backdrop {
+  filter: blur(6px) saturate(1.03);
 }
 
 .frontmatter-cover-placeholder {
@@ -663,16 +736,6 @@
   background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
 }
 
-.frontmatter-cover-picker-thumb {
-  width: 26px;
-  min-width: 26px;
-  height: 26px;
-  border-radius: 5px;
-  border: 1px solid var(--line-soft);
-  object-fit: contain;
-  background: var(--panel);
-}
-
 .frontmatter-cover-picker-thumb-placeholder {
   width: 26px;
   min-width: 26px;
@@ -723,7 +786,6 @@
   gap: 8px;
 }
 
-.frontmatter-add-cover-thumb,
 .frontmatter-add-cover-thumb-placeholder {
   width: 24px;
   min-width: 24px;
@@ -731,11 +793,6 @@
   border-radius: 5px;
   border: 1px solid var(--line-soft);
   background: var(--panel);
-}
-
-.frontmatter-add-cover-thumb {
-  object-fit: contain;
-  display: block;
 }
 
 .frontmatter-add-cover-thumb-placeholder {
