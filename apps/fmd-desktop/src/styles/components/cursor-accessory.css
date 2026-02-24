@@ -7,9 +7,9 @@
 
 .cursor-accessory-button {
   position: absolute;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  width: var(--cursor-accessory-size, 36px);
+  height: var(--cursor-accessory-size, 36px);
+  border-radius: var(--cursor-accessory-radius, 11px);
   border: 1px solid var(--line-soft);
   background: var(--panel);
   color: var(--accent-strong);
@@ -37,8 +37,8 @@
 }
 
 .cursor-accessory-icon {
-  width: 18px;
-  height: 18px;
+  width: var(--cursor-accessory-icon-size, 18px);
+  height: var(--cursor-accessory-icon-size, 18px);
   stroke: currentColor;
   stroke-width: 2.2;
   stroke-linecap: round;

@@ -28,12 +28,61 @@ import {
 } from "../lib/tabletInputAccessory";
 
 const CURSOR_ACCESSORY_LAYER_ID = "cursor-accessory-overlay-root";
-const CURSOR_ACCESSORY_VIEWPORT_BREAKPOINT = 1200;
+const CURSOR_ACCESSORY_MAX_VISIBLE_VIEWPORT_WIDTH = 1600;
+const CURSOR_ACCESSORY_MEDIUM_VIEWPORT_BREAKPOINT = 1200;
+const CURSOR_ACCESSORY_SMALL_VIEWPORT_BREAKPOINT = 980;
 const CURSOR_ACCESSORY_RESIZE_DEBOUNCE_MS = 100;
 const CURSOR_ACCESSORY_BLUR_DELAY_MS = 120;
-const CURSOR_ACCESSORY_BUTTON_SIZE = 36;
 const CURSOR_ACCESSORY_OFFSET_X = 14;
 const CURSOR_ACCESSORY_EDGE_PADDING = 8;
+
+type CursorAccessoryViewportConfig = {
+  isVisibleViewport: boolean;
+  buttonSize: number;
+  iconSize: number;
+  borderRadius: number;
+};
+
+type CursorAccessoryButtonStyle = CSSProperties & {
+  "--cursor-accessory-size"?: string;
+  "--cursor-accessory-radius"?: string;
+  "--cursor-accessory-icon-size"?: string;
+};
+
+const resolveCursorAccessoryViewportConfig = (
+  width: number,
+): CursorAccessoryViewportConfig => {
+  if (width > CURSOR_ACCESSORY_MAX_VISIBLE_VIEWPORT_WIDTH) {
+    return {
+      isVisibleViewport: false,
+      buttonSize: 32,
+      iconSize: 16,
+      borderRadius: 10,
+    };
+  }
+  if (width > CURSOR_ACCESSORY_MEDIUM_VIEWPORT_BREAKPOINT) {
+    return {
+      isVisibleViewport: true,
+      buttonSize: 32,
+      iconSize: 16,
+      borderRadius: 10,
+    };
+  }
+  if (width > CURSOR_ACCESSORY_SMALL_VIEWPORT_BREAKPOINT) {
+    return {
+      isVisibleViewport: true,
+      buttonSize: 48,
+      iconSize: 22,
+      borderRadius: 14,
+    };
+  }
+  return {
+    isVisibleViewport: true,
+    buttonSize: 64,
+    iconSize: 28,
+    borderRadius: 18,
+  };
+};
 
 type OverlayPosition = {
   left: number;
@@ -84,11 +133,11 @@ export const CursorAccessoryOverlay = ({
     null,
   );
   const [position, setPosition] = useState<OverlayPosition | null>(null);
-  const [isCompactViewport, setIsCompactViewport] = useState(() => {
+  const [viewportConfig, setViewportConfig] = useState(() => {
     if (typeof window === "undefined") {
-      return false;
+      return resolveCursorAccessoryViewportConfig(CURSOR_ACCESSORY_SMALL_VIEWPORT_BREAKPOINT);
     }
-    return window.innerWidth < CURSOR_ACCESSORY_VIEWPORT_BREAKPOINT;
+    return resolveCursorAccessoryViewportConfig(window.innerWidth);
   });
 
   const blurTimerRef = useRef<number | null>(null);
@@ -96,6 +145,7 @@ export const CursorAccessoryOverlay = ({
   const createdRootRef = useRef<HTMLElement | null>(null);
   const overlayRootRef = useRef<HTMLElement | null>(null);
   const activeTargetRef = useRef<TabletAccessoryTarget | null>(null);
+  const viewportConfigRef = useRef<CursorAccessoryViewportConfig>(viewportConfig);
 
   useEffect(() => {
     overlayRootRef.current = overlayRoot;
@@ -104,6 +154,10 @@ export const CursorAccessoryOverlay = ({
   useEffect(() => {
     activeTargetRef.current = activeTarget;
   }, [activeTarget]);
+
+  useEffect(() => {
+    viewportConfigRef.current = viewportConfig;
+  }, [viewportConfig]);
 
   const clearBlurTimer = useCallback(() => {
     if (blurTimerRef.current !== null) {
@@ -144,17 +198,18 @@ export const CursorAccessoryOverlay = ({
         : resolveSelectionCaretRect(resolvedTarget);
 
     const viewport = resolveViewportBounds();
+    const buttonSize = viewportConfigRef.current.buttonSize;
     const minLeft = viewport.left + CURSOR_ACCESSORY_EDGE_PADDING;
     const maxLeft =
       viewport.left +
       viewport.width -
-      CURSOR_ACCESSORY_BUTTON_SIZE -
+      buttonSize -
       CURSOR_ACCESSORY_EDGE_PADDING;
     const minTop = viewport.top + CURSOR_ACCESSORY_EDGE_PADDING;
     const maxTop =
       viewport.top +
       viewport.height -
-      CURSOR_ACCESSORY_BUTTON_SIZE -
+      buttonSize -
       CURSOR_ACCESSORY_EDGE_PADDING;
     const safeMaxLeft = Math.max(minLeft, maxLeft);
     const safeMaxTop = Math.max(minTop, maxTop);
@@ -168,7 +223,7 @@ export const CursorAccessoryOverlay = ({
         (caretRect
           ? caretRect.top + caretRect.height / 2
           : rect.top + rect.height / 2) -
-          CURSOR_ACCESSORY_BUTTON_SIZE / 2,
+          buttonSize / 2,
         minTop,
       ),
       safeMaxTop,
@@ -259,7 +314,9 @@ export const CursorAccessoryOverlay = ({
     let resizeTimer: number | null = null;
 
     const applyViewportState = () => {
-      setIsCompactViewport(window.innerWidth < CURSOR_ACCESSORY_VIEWPORT_BREAKPOINT);
+      const nextViewportConfig = resolveCursorAccessoryViewportConfig(window.innerWidth);
+      viewportConfigRef.current = nextViewportConfig;
+      setViewportConfig(nextViewportConfig);
       schedulePositionSync();
     };
 
@@ -313,21 +370,27 @@ export const CursorAccessoryOverlay = ({
   const isVisible = useMemo(
     () =>
       enabled &&
-      isCompactViewport &&
+      viewportConfig.isVisibleViewport &&
       Boolean(activeTarget) &&
       position !== null,
-    [activeTarget, enabled, isCompactViewport, position],
+    [activeTarget, enabled, position, viewportConfig.isVisibleViewport],
   );
 
-  const buttonStyle = useMemo<CSSProperties | undefined>(() => {
+  const buttonStyle = useMemo<CursorAccessoryButtonStyle | undefined>(() => {
     if (!position) {
       return undefined;
     }
     return {
       left: `${position.left}px`,
       top: `${position.top}px`,
+      width: `${viewportConfig.buttonSize}px`,
+      height: `${viewportConfig.buttonSize}px`,
+      borderRadius: `${viewportConfig.borderRadius}px`,
+      "--cursor-accessory-size": `${viewportConfig.buttonSize}px`,
+      "--cursor-accessory-radius": `${viewportConfig.borderRadius}px`,
+      "--cursor-accessory-icon-size": `${viewportConfig.iconSize}px`,
     };
-  }, [position]);
+  }, [position, viewportConfig.buttonSize, viewportConfig.borderRadius, viewportConfig.iconSize]);
 
   const handleButtonPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLButtonElement>) => {

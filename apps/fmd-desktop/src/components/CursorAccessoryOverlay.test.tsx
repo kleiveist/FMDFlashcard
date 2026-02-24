@@ -14,6 +14,14 @@ type RenderHandle = {
   cleanup: () => void;
 };
 
+const setViewportWidth = (width: number) => {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    writable: true,
+    value: width,
+  });
+};
+
 const mockRect = (
   element: HTMLElement,
   rect: {
@@ -104,12 +112,8 @@ afterEach(() => {
 });
 
 describe("CursorAccessoryOverlay", () => {
-  it("shows one global cursor button for focused editable fields on compact viewports", () => {
-    Object.defineProperty(window, "innerWidth", {
-      configurable: true,
-      writable: true,
-      value: 980,
-    });
+  it("shows one global cursor button for focused editable fields on supported viewports", () => {
+    setViewportWidth(980);
     cleanup = renderOverlay(true).cleanup;
 
     const input = document.createElement("input");
@@ -126,14 +130,12 @@ describe("CursorAccessoryOverlay", () => {
     expect(button).toBeTruthy();
     expect(document.querySelectorAll(".cursor-accessory-button")).toHaveLength(1);
     expect(button?.querySelector(".cursor-accessory-icon")).toBeTruthy();
+    expect((button as HTMLButtonElement).style.width).toBe("64px");
+    expect((button as HTMLButtonElement).style.height).toBe("64px");
   });
 
-  it("does not render on viewports >= 1200px", () => {
-    Object.defineProperty(window, "innerWidth", {
-      configurable: true,
-      writable: true,
-      value: 1300,
-    });
+  it("renders on viewports up to 1600px and hides above 1600px", () => {
+    setViewportWidth(1300);
     cleanup = renderOverlay(true).cleanup;
 
     const input = document.createElement("input");
@@ -146,15 +148,77 @@ describe("CursorAccessoryOverlay", () => {
       input.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
     });
 
+    const visibleButton = document.querySelector(
+      ".cursor-accessory-button",
+    ) as HTMLButtonElement | null;
+    expect(visibleButton).toBeTruthy();
+    expect(visibleButton?.style.width).toBe("32px");
+    expect(visibleButton?.style.height).toBe("32px");
+    cleanup?.();
+    cleanup = null;
+
+    setViewportWidth(1700);
+    cleanup = renderOverlay(true).cleanup;
+
+    const wideInput = document.createElement("input");
+    wideInput.type = "search";
+    mockRect(wideInput, { left: 80, top: 90, width: 240, height: 40 });
+    document.body.appendChild(wideInput);
+
+    act(() => {
+      wideInput.focus();
+      wideInput.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    });
+
     expect(document.querySelector(".cursor-accessory-button")).toBeNull();
   });
 
-  it("keeps focus on the active field and deletes backward on tap", () => {
-    Object.defineProperty(window, "innerWidth", {
-      configurable: true,
-      writable: true,
-      value: 980,
+  it("uses 32px buttons between 1201px and 1600px", () => {
+    setViewportWidth(1300);
+    cleanup = renderOverlay(true).cleanup;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    mockRect(input, { left: 100, top: 120, width: 220, height: 44 });
+    document.body.appendChild(input);
+
+    act(() => {
+      input.focus();
+      input.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
     });
+
+    const button = document.querySelector(
+      ".cursor-accessory-button",
+    ) as HTMLButtonElement | null;
+    expect(button).toBeTruthy();
+    expect(button?.style.width).toBe("32px");
+    expect(button?.style.height).toBe("32px");
+  });
+
+  it("uses 48px buttons between 981px and 1200px", () => {
+    setViewportWidth(1100);
+    cleanup = renderOverlay(true).cleanup;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    mockRect(input, { left: 100, top: 120, width: 220, height: 44 });
+    document.body.appendChild(input);
+
+    act(() => {
+      input.focus();
+      input.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    });
+
+    const button = document.querySelector(
+      ".cursor-accessory-button",
+    ) as HTMLButtonElement | null;
+    expect(button).toBeTruthy();
+    expect(button?.style.width).toBe("48px");
+    expect(button?.style.height).toBe("48px");
+  });
+
+  it("keeps focus on the active field and deletes backward on tap", () => {
+    setViewportWidth(980);
     cleanup = renderOverlay(true).cleanup;
 
     const textarea = document.createElement("textarea");
@@ -184,11 +248,7 @@ describe("CursorAccessoryOverlay", () => {
   });
 
   it("supports role=textbox targets", () => {
-    Object.defineProperty(window, "innerWidth", {
-      configurable: true,
-      writable: true,
-      value: 980,
-    });
+    setViewportWidth(980);
     cleanup = renderOverlay(true).cleanup;
 
     const textbox = document.createElement("div");
