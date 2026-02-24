@@ -330,66 +330,32 @@ export const AutoCardsSettingsPanel = ({
   onTypeToggle,
   returnCardsEnabled,
   setReturnCardsEnabled,
-}: AutoCardsSettingsPanelProps) => (
-  <section className="panel exam-auto-cards-panel">
-    <div className="panel-header">
-      <div>
-        <h2>Auto Cards</h2>
-      </div>
-    </div>
-    <div className="panel-body">
-      <div className="settings-subsection">
-        <h3>Auto-Card Sources</h3>
-        <p className="muted">
-          Combined tasks are included when at least one enabled type appears.
-        </p>
-      </div>
-      {AUTO_CARD_TYPE_OPTIONS.map((option) => (
-        <div key={option.type} className="setting-row">
-          <span className="label">{option.label}</span>
-          <div className="setting-inline">
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={enabledTypes[option.type]}
-                onChange={(event) => onTypeToggle(option.type, event.target.checked)}
-              />
-              <span className="slider" />
-            </label>
-            <span className="muted">
-              {enabledTypes[option.type] ? "Enabled" : "Disabled"}
-            </span>
-          </div>
-          <span className="helper-text">{option.description}</span>
-        </div>
-      ))}
+}: AutoCardsSettingsPanelProps) => {
+  void enabledTypes;
+  void onTypeToggle;
+  void returnCardsEnabled;
+  void setReturnCardsEnabled;
 
-      <div className="settings-subsection">
-        <h3>Return Cards</h3>
-        <p className="muted">
-          When enabled, correctly answered auto cards are removed again.
-        </p>
-      </div>
-      <div className="setting-row">
-        <span className="label">RETURN CARDS</span>
-        <div className="setting-inline">
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={returnCardsEnabled}
-              onChange={(event) => setReturnCardsEnabled(event.target.checked)}
-            />
-            <span className="slider" />
-          </label>
-          <span className="muted">{returnCardsEnabled ? "Enabled" : "Disabled"}</span>
+  return (
+    <section className="panel exam-auto-cards-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Auto Cards</h2>
         </div>
-        <span className="helper-text">
-          Remove auto cards again when they are answered correctly.
-        </span>
       </div>
-    </div>
-  </section>
-);
+      <div className="panel-body">
+        <div className="muted">
+          Exam finish-time auto card conversion was removed.
+        </div>
+        <div className="muted">
+          Use the task detail popup in Exam Results to wrap or unwrap a task with
+          <code> #card ... #endcard </code>
+          directly in the source file.
+        </div>
+      </div>
+    </section>
+  );
+};
 
 export const ExamTaskTypeDefaultsPanel = ({
   pointsByType,

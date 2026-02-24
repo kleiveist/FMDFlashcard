@@ -97,7 +97,7 @@ Du hast `---` als Trennlinie, aber wichtig ist: `---` hat mehrere Bedeutungen:
 
 Du hast das in Text erwähnt, aber nicht in deiner Typ-Tabelle als eigene Kategorie. Das würde ich ergänzen, weil es funktional entscheidend ist:
 
-- Container: `#exam … #examend`, `#card … #`
+- Container: `#exam … #endexam`, `#card … #endcard`
 - Marker: `-a`, `-b`, `-true/-false`, `Answer:`/`Antwort:`
 - Optionslabels: `a)` `b)` etc.
 - Editfaktor: blockweise oder inline je nach Zeile, aber immer 100% editierbar
@@ -164,8 +164,8 @@ Damit wird sie als Spezifikation deutlich stärker:
 | Definition / Fußnote Marker  | `[^1]`                     | ✔️          | Textabschnitt            |
 | Fußnoten-Block               | `[^1]: …`                  | ✔️          | vollständiger Block      |
 | Callout / Admonition         | `> [!note]`                | ✔️          | vollständiger Block      |
-| Exam-Container               | `#exam … #examend`         | ✔️          | vollständiger Block      |
-| Flashcard-Container          | `#card … #`                | ✔️          | vollständiger Block      |
+| Exam-Container               | `#exam … #endexam`         | ✔️          | vollständiger Block      |
+| Flashcard-Container          | `#card … #endcard`                | ✔️          | vollständiger Block      |
 | MC-Option                    | `a)` `b)`                  | ✔️          | Absatz                   |
 | MC-Antwortmarker             | `-a` `-b`                  | ✔️          | nur Marker               |
 | True/False-Marker            | `-true` / `-false`         | ✔️          | nur Marker               |

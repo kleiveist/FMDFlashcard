@@ -18,10 +18,10 @@ Markiert einen Bereich als **Exam-Session**.
 ```md
 #exam
 ... Inhalt ...
-#examend
+#endexam
 Regeln
 
-#exam und #examend stehen jeweils allein in einer Zeile.
+#exam und #endexam stehen jeweils allein in einer Zeile.
 
 Innerhalb des Exam-Containers entstehen interaktive Aufgaben über Exam-Tasks (ea) (Nummerierung).
 
@@ -45,7 +45,7 @@ Eine Zeile, die genau --- enthält (Composite/Separator)
 
 Die nächste nummerierte Aufgabe startet (z. B. 5) / 6.)
 
-#examend
+#endexam
 
 Empfehlung
 
@@ -62,10 +62,10 @@ md
 Code kopieren
 #card
 ... Karteninhalt ...
-#
+#endcard
 Regeln
 
-#card und # stehen jeweils allein in einer Zeile.
+#card und #endcard stehen jeweils allein in einer Zeile.
 
 Innerhalb eines #card können Interaktionen stehen (qa/tf/m1/m2/cl/cd/cld).
 
@@ -92,7 +92,7 @@ Erkläre das Prinzip der geringsten Privilegien.
 Antwort:
 1. Rechte nur nach Bedarf vergeben.
 2. Rollen sauber trennen.
-#
+#endcard
 Wichtig
 
 Marker muss am Zeilenanfang stehen (optional mit Formatierung wie **Antwort:**).
@@ -109,7 +109,7 @@ Code kopieren
 #card
 Aussage: Der HTTP-Statuscode 404 bedeutet "Not Found".
 -true
-#
+#endcard
 Regeln
 
 Marker beginnt mit - und dann true oder false (ggf. auch lokalisierte Varianten).
@@ -129,7 +129,7 @@ a) Physical
 b) Transport
 c) Application
 -b
-#
+#endcard
 Regeln
 
 Optionen als a) ..., b) ..., c) ... usw.
@@ -154,7 +154,7 @@ d) PUT
 -a
 -b
 -d
-#
+#endcard
 Regeln
 
 Optionen wie bei m1
@@ -170,7 +170,7 @@ md
 Code kopieren
 #card
 Die Hauptstadt von Frankreich ist %Paris%.
-#
+#endcard
 Regeln
 
 Jedes %...% erzeugt ein Eingabefeld.
@@ -186,7 +186,7 @@ md
 Code kopieren
 #card
 Ordne zu: HTTP ist ein "application-layer" Protokoll.
-#
+#endcard
 Regeln
 
 Tokens werden mit `"token"` markiert.
@@ -202,7 +202,7 @@ md
 Code kopieren
 #card
 Die API liefert %JSON% und verwendet typischerweise "GET" für das Abrufen von Ressourcen.
-#
+#endcard
 Regeln
 
 %...% für Typed Blanks
@@ -226,7 +226,7 @@ Die Erde ist ein Planet.
 ---
 Teil B (QA):
 Antwort: Kurze Begründung ...
-#
+#endcard
 Hinweis
 Wenn Composite im UI nicht vollständig unterstützt ist, nutze lieber separate Aufgaben.
 ```

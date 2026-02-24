@@ -80,11 +80,11 @@ const trimEmptyLines = (lines: string[]) => {
   return lines.slice(start, end);
 };
 
-const wrapperLinePattern = /^\s*#(?:examend|exam|card|endcard)?\s*$/i;
+const wrapperLinePattern = /^\s*#(?:endexam|exam|card|endcard)\s*$/i;
 const examStartPattern = /^\s*#exam\s*$/i;
-const examEndPattern = /^\s*#examend\s*$/i;
+const examEndPattern = /^\s*#endexam\s*$/i;
 const cardStartPattern = /^\s*#card\s*$/i;
-const cardEndPattern = /^\s*#(?:endcard)?\s*$/i;
+const cardEndPattern = /^\s*#endcard\s*$/i;
 const taskSeparatorPattern = /^\s*---\s*$/;
 const taskHeaderPattern = /^\s*(\d+)\)\s*(.*)$/;
 const fencePattern = /^\s*(```|~~~)/;
@@ -97,7 +97,10 @@ const isCardEndLine = (line: string) => cardEndPattern.test(line);
 const isTaskSeparatorLine = (line: string) => taskSeparatorPattern.test(line);
 const isStrictCardWrapperStartLine = (line: string) =>
   line.trim().toLowerCase() === "#card";
-const isStrictCardWrapperEndLine = (line: string) => line.trim() === "#";
+const isStrictCardWrapperEndLine = (line: string) => {
+  const trimmed = line.trim().toLowerCase();
+  return trimmed === "#endcard";
+};
 
 const stripWrapperLines = (lines: string[]) =>
   lines.filter((line) => !isWrapperLine(line));
@@ -322,7 +325,7 @@ const parseTaskChunk = (
   const cardInputLines =
     cardLines.length > 0 ? cardLines : taskContentLines.length > 0 ? taskContentLines : normalizedLines;
   const answerSplit = splitAnswerBlockLines(combinedContentLines);
-  const cardSource = `#card\n${cardInputLines.join("\n")}\n#`;
+  const cardSource = `#card\n${cardInputLines.join("\n")}\n#endcard`;
   const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
   let card: CompositeFlashcard | null = null;
   let officialAnswer: string | undefined;

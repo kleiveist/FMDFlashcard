@@ -18,7 +18,7 @@ export const clozeTypedEntry: SyntaxEntry = {
         whatItIs:
           "Cloze cards hide parts of a sentence inside %...% and require typed input for each blank.",
         rules: [
-          "Wrap the card with #card and # on their own lines.",
+          "Wrap the card with #card and #endcard on their own lines.",
           "The first non-empty line is the prompt.",
           "Use %...% to mark each typed blank.",
           "Each blank must have content inside the %...% markers.",
@@ -34,12 +34,12 @@ export const clozeTypedEntry: SyntaxEntry = {
           "Template:",
           "#card",
           "{{prompt_with_%cloze%}}",
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
           "Fill in: The capital of France is %Paris%.",
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Leaving an empty %...% segment.",
@@ -50,7 +50,7 @@ export const clozeTypedEntry: SyntaxEntry = {
         whatItIs:
           "Cloze-Karten verstecken Teile eines Satzes in %...% und erwarten eine getippte Eingabe fuer jede Luecke.",
         rules: [
-          "Karte mit #card und # auf eigenen Zeilen umschliessen.",
+          "Karte mit #card und #endcard auf eigenen Zeilen umschliessen.",
           "Die erste nicht-leere Zeile ist die Frage.",
           "%...% fuer jede Eingabe-Luecke nutzen.",
           "Jede Luecke muss Inhalt zwischen %...% haben.",
@@ -66,12 +66,12 @@ export const clozeTypedEntry: SyntaxEntry = {
           "Template:",
           "#card",
           "{{frage_mit_%cloze%}}",
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
           "Ergaenze: Die Hauptstadt von Frankreich ist %Paris%.",
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Leere %...%-Luecken lassen.",

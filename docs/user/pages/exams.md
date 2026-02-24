@@ -6,7 +6,7 @@
 
 ## Purpose
 
-The Exams page runs exam sessions authored in Markdown. Exams are wrapped in `#exam ... #examend` and consist of numbered tasks.
+The Exams page runs exam sessions authored in Markdown. Exams are wrapped in `#exam ... #endexam` and consist of numbered tasks.
 
 ## Main areas
 
@@ -25,7 +25,7 @@ The Exams page runs exam sessions authored in Markdown. Exams are wrapped in `#e
 
 ### Author a reliable exam file
 
-1. Use `#exam` and `#examend` on their own lines.
+1. Use `#exam` and `#endexam` on their own lines.
 2. Start each task with a number (1–20).
 3. Prefer one interaction type per task; use composites only when needed.
 

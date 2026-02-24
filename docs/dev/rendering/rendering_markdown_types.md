@@ -62,8 +62,8 @@ This makes it substantially stronger as a specification:
 | Definition / footnote marker | `[^1]`                     | ✔️       | text segment              |
 | Footnote block               | `[^1]: …`                  | ✔️       | full block                |
 | Callout / admonition         | `> [!note]`                | ✔️       | full block                |
-| Exam container               | `#exam … #examend`         | ✔️       | full block                |
-| Flashcard container          | `#card … #`                | ✔️       | full block                |
+| Exam container               | `#exam … #endexam`         | ✔️       | full block                |
+| Flashcard container          | `#card … #endcard`                | ✔️       | full block                |
 | MC option                    | `a)` `b)`                  | ✔️       | paragraph                 |
 | MC answer marker             | `-a` `-b`                  | ✔️       | marker only               |
 | True/False marker            | `-true` / `-false`         | ✔️       | marker only               |

@@ -7,7 +7,7 @@ const collectKeys = (markdown: string) =>
 
 describe("upsertExamResultStatsFrontmatter", () => {
   it("creates frontmatter when none exists", () => {
-    const markdown = ["#exam", "1) Demo", "#examend"].join("\n");
+    const markdown = ["#exam", "1) Demo", "#endexam"].join("\n");
     const result = upsertExamResultStatsFrontmatter({
       markdown,
       score: "7/10",
@@ -32,7 +32,7 @@ describe("upsertExamResultStatsFrontmatter", () => {
       "---",
       "#exam",
       "1) Demo",
-      "#examend",
+      "#endexam",
     ].join("\n");
 
     const result = upsertExamResultStatsFrontmatter({
@@ -52,7 +52,7 @@ describe("upsertExamResultStatsFrontmatter", () => {
   });
 
   it("keeps exactly one set of stats keys across repeated writes", () => {
-    const initial = ["---", "Task: Exam", "---", "#exam", "1) Demo", "#examend"].join("\n");
+    const initial = ["---", "Task: Exam", "---", "#exam", "1) Demo", "#endexam"].join("\n");
     const first = upsertExamResultStatsFrontmatter({
       markdown: initial,
       score: "3/10",

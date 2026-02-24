@@ -48,11 +48,11 @@ import {
   type ExamRunStorage,
 } from "../../../lib/examRuns";
 import {
-  applyExamCardWrapperActions,
   AUTO_CARD_TYPES,
-  type ExamCardWrapperAction,
-  resolveExamTaskAutoCardTypes,
+  findExamTaskWrapper,
   resolveFlashcardPartAutoCardType,
+  unwrapExamTask,
+  wrapExamTask,
 } from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import {
@@ -113,7 +113,6 @@ type ExamTaskResult = {
     partStates: CompositePartState[];
     awardedPoints: number | null;
     autoGradeDecision?: boolean;
-    conversionDecision?: boolean;
   };
 };
 
@@ -229,11 +228,15 @@ export const useExamSimulationViewModel = () => {
   const [autoGradeDecisions, setAutoGradeDecisions] = useState<
     Record<number, boolean>
   >({});
-  const [conversionDecisions, setConversionDecisions] = useState<
-    Record<number, boolean>
+  const [resultTaskCardWrapPendingById, setResultTaskCardWrapPendingById] = useState<
+    Record<string, boolean>
   >({});
-  const [conversionPending, setConversionPending] = useState(false);
-  const [conversionError, setConversionError] = useState("");
+  const [resultTaskCardWrapErrorById, setResultTaskCardWrapErrorById] = useState<
+    Record<string, string>
+  >({});
+  const [resultTaskCardWrapNoticeById, setResultTaskCardWrapNoticeById] = useState<
+    Record<string, string>
+  >({});
   const [examTimeRemainingMs, setExamTimeRemainingMs] = useState<number | null>(
     null,
   );
@@ -737,9 +740,9 @@ export const useExamSimulationViewModel = () => {
     setPartStates({});
     setAwardedPoints({});
     setAutoGradeDecisions({});
-    setConversionDecisions({});
-    setConversionPending(false);
-    setConversionError("");
+    setResultTaskCardWrapPendingById({});
+    setResultTaskCardWrapErrorById({});
+    setResultTaskCardWrapNoticeById({});
     setExamTimeRemainingMs(null);
     setExamTimeUp(false);
     examTimerEndRef.current = null;
@@ -835,9 +838,9 @@ export const useExamSimulationViewModel = () => {
     setPartStates({});
     setAwardedPoints({});
     setAutoGradeDecisions({});
-    setConversionDecisions({});
-    setConversionError("");
-    setConversionPending(false);
+    setResultTaskCardWrapPendingById({});
+    setResultTaskCardWrapErrorById({});
+    setResultTaskCardWrapNoticeById({});
     setExamTimeUp(false);
     if (examTimerEnabled) {
       setExamTimeRemainingMs(examTimeLimitMs);
@@ -964,128 +967,11 @@ export const useExamSimulationViewModel = () => {
   }, [stage]);
 
   const handleFinishScoring = useCallback(() => {
-    if (stage !== "scoring" || conversionPending) {
+    if (stage !== "scoring") {
       return;
     }
-    if (activeExamFiles.length === 0) {
-      setStage("finished");
-      return;
-    }
-    const autoCardsTypes = settings.examAutoCardsTypes;
-    const autoCardsEnabled = AUTO_CARD_TYPES.some((type) => autoCardsTypes[type]);
-    const autoCardsReturnOnCorrect = settings.examAutoCardsReturnOnCorrect;
-    const hasManualConversions = runTasks.some(
-      (_task, index) => conversionDecisions[index],
-    );
-    const shouldApplyCards =
-      autoCardsEnabled || autoCardsReturnOnCorrect || hasManualConversions;
-
-    if (!shouldApplyCards) {
-      setStage("finished");
-      return;
-    }
-
-    setConversionPending(true);
-    setConversionError("");
-
-    const resolveWrapperAction = (task: ExamSessionTask): ExamCardWrapperAction => {
-      const runIndex = task.sessionIndex - 1;
-      const isCorrect = autoCardsReturnOnCorrect
-        ? task.gradingMode === "auto"
-          ? isTaskCorrect(task, partStates[runIndex] ?? [])
-          : (() => {
-              const maxPoints = runTaskPoints[runIndex] ?? 0;
-              if (maxPoints <= 0) {
-                return false;
-              }
-              const awarded = normalizeAwardedPoints(
-                awardedPoints[runIndex] ?? null,
-                maxPoints,
-              );
-              return awarded >= maxPoints;
-            })()
-        : false;
-
-      if (autoCardsReturnOnCorrect && isCorrect) {
-        return "remove";
-      }
-      if (autoCardsEnabled) {
-        const detectedTypes = resolveExamTaskAutoCardTypes(task);
-        if (detectedTypes.some((type) => autoCardsTypes[type])) {
-          return "add";
-        }
-      }
-      return conversionDecisions[runIndex] ? "add" : "keep";
-    };
-
-    const applyConversions = async () => {
-      try {
-        const tasksBySource = new Map<string, ExamSessionTask[]>();
-        runTasks.forEach((task) => {
-          const bucket = tasksBySource.get(task.sourceExamPath) ?? [];
-          bucket.push(task);
-          tasksBySource.set(task.sourceExamPath, bucket);
-        });
-
-        let hasChanges = false;
-
-        for (const sourceFile of activeExamFiles) {
-          const sourceTasks = tasksBySource.get(sourceFile.path) ?? [];
-          if (sourceTasks.length === 0) {
-            continue;
-          }
-
-          const contents = await invoke<string>("read_text_file", {
-            path: sourceFile.path,
-          });
-          const { content: nextContents, changed } = applyExamCardWrapperActions(
-            contents,
-            sourceTasks,
-            (task) => resolveWrapperAction(task as ExamSessionTask),
-          );
-
-          if (!changed) {
-            continue;
-          }
-
-          hasChanges = true;
-          await invoke("write_text_file", {
-            path: sourceFile.path,
-            contents: nextContents,
-          });
-
-          if (preview.selectedFile?.path === sourceFile.path) {
-            preview.setPreview(nextContents);
-          }
-        }
-
-        if (hasChanges) {
-          void actions.handleRescanVault("exam-conversion");
-        }
-
-        setStage("finished");
-      } catch (error) {
-        setConversionError(asErrorMessage(error, "Failed to update cards."));
-      } finally {
-        setConversionPending(false);
-      }
-    };
-
-    void applyConversions();
-  }, [
-    activeExamFiles,
-    actions,
-    awardedPoints,
-    conversionDecisions,
-    conversionPending,
-    partStates,
-    preview,
-    runTasks,
-    runTaskPoints,
-    settings.examAutoCardsTypes,
-    settings.examAutoCardsReturnOnCorrect,
-    stage,
-  ]);
+    setStage("finished");
+  }, [stage]);
 
   const updatePartState = useCallback(
     (
@@ -1298,7 +1184,6 @@ export const useExamSimulationViewModel = () => {
             partStates: taskPartStates,
             awardedPoints: autoAwarded,
             autoGradeDecision: overrideDecision,
-            conversionDecision: conversionDecisions[index],
           },
         };
       }
@@ -1315,7 +1200,6 @@ export const useExamSimulationViewModel = () => {
           task,
           partStates: taskPartStates,
           awardedPoints: awarded,
-          conversionDecision: conversionDecisions[index],
         },
       };
     });
@@ -1337,7 +1221,6 @@ export const useExamSimulationViewModel = () => {
     activeExamSettings,
     autoGradeDecisions,
     awardedPoints,
-    conversionDecisions,
     partStates,
     resolveTaskTypePointsSourceMap,
     runTaskPoints,
@@ -1473,11 +1356,173 @@ export const useExamSimulationViewModel = () => {
     preview,
   ]);
 
-  const handleConversionDecision = useCallback(
-    (taskIndex: number, shouldConvert: boolean) => {
-      setConversionDecisions((prev) => ({ ...prev, [taskIndex]: shouldConvert }));
+  const getTaskCardWrapDisabledReason = useCallback(
+    (task: ExamSessionTask) => {
+      if (stage !== "finished") {
+        return "Card wrapper toggle is available after scoring is finished.";
+      }
+      if (!task.sourceExamPath) {
+        return "This task has no source file reference.";
+      }
+      const matchingSourceFiles = activeExamFiles.filter(
+        (file) => file.path === task.sourceExamPath,
+      );
+      if (matchingSourceFiles.length !== 1) {
+        return "Task source file is not uniquely available in this exam session.";
+      }
+      const range = task.sourceRange;
+      if (
+        !range ||
+        !Number.isFinite(range.startLine) ||
+        !Number.isFinite(range.endLine) ||
+        range.startLine < 0 ||
+        range.endLine < range.startLine
+      ) {
+        return "Task source range is unavailable.";
+      }
+      return "";
     },
-    [],
+    [activeExamFiles, stage],
+  );
+
+  const handleResultTaskCardWrapperToggle = useCallback(
+    (sessionTaskId: string, nextWrapped: boolean) => {
+      if (stage !== "finished") {
+        return;
+      }
+      const targetTask = runTasks.find((task) => task.sessionTaskId === sessionTaskId);
+      if (!targetTask) {
+        setResultTaskCardWrapErrorById((prev) => ({
+          ...prev,
+          [sessionTaskId]: "Task not found in current exam results.",
+        }));
+        return;
+      }
+      if (resultTaskCardWrapPendingById[sessionTaskId]) {
+        return;
+      }
+
+      const disabledReason = getTaskCardWrapDisabledReason(targetTask);
+      if (disabledReason) {
+        setResultTaskCardWrapErrorById((prev) => ({
+          ...prev,
+          [sessionTaskId]: disabledReason,
+        }));
+        return;
+      }
+
+      const sourcePath = targetTask.sourceExamPath;
+      const sourceRange = targetTask.sourceRange;
+
+      setResultTaskCardWrapPendingById((prev) => ({ ...prev, [sessionTaskId]: true }));
+      setResultTaskCardWrapErrorById((prev) => ({ ...prev, [sessionTaskId]: "" }));
+      setResultTaskCardWrapNoticeById((prev) => ({ ...prev, [sessionTaskId]: "" }));
+
+      const applyToggle = async () => {
+        try {
+          const contents = await invoke<string>("read_text_file", {
+            path: sourcePath,
+          });
+          let lines = contents.replace(/\r\n?/g, "\n").split("\n");
+
+          if (!nextWrapped && !findExamTaskWrapper(lines, sourceRange)) {
+            throw new Error(
+              "Could not identify an exact #card/#endcard wrapper for this task.",
+            );
+          }
+
+          const mutation = nextWrapped
+            ? wrapExamTask(lines, sourceRange)
+            : unwrapExamTask(lines, sourceRange);
+          lines = mutation.lines;
+          const nextContents = lines.join("\n");
+          const wroteFile = mutation.changed;
+
+          if (wroteFile) {
+            await invoke("write_text_file_atomic", {
+              path: sourcePath,
+              contents: nextContents,
+            });
+            if (preview.selectedFile?.path === sourcePath) {
+              preview.setPreview(nextContents);
+            }
+          }
+
+          const reparsed = parseExamTasks(nextContents);
+          setSelectedExamParses((prev) => {
+            const current = prev[sourcePath];
+            if (!current) {
+              return prev;
+            }
+            return {
+              ...prev,
+              [sourcePath]: {
+                ...current,
+                tasks: reparsed.tasks,
+                hasExamBlock: reparsed.hasExamBlock,
+              },
+            };
+          });
+
+          setActiveExamTasks((prev) => {
+            const parsedByIndex = new Map(
+              reparsed.tasks.map((task) => [task.index, task] as const),
+            );
+            let changed = false;
+            const next = prev.map((task) => {
+              if (task.sourceExamPath !== sourcePath) {
+                return task;
+              }
+              const parsedTask = parsedByIndex.get(task.index);
+              if (!parsedTask) {
+                return task;
+              }
+              changed = true;
+              return {
+                ...parsedTask,
+                sessionTaskId: task.sessionTaskId,
+                sourceExamPath: task.sourceExamPath,
+                sourceTitle: task.sourceTitle,
+                originalTaskNumber: task.originalTaskNumber,
+                sessionIndex: task.sessionIndex,
+              };
+            });
+            return changed ? next : prev;
+          });
+
+          const rescanOk = await actions.handleRescanVault("exam-results-card-toggle");
+          if (!rescanOk) {
+            setResultTaskCardWrapNoticeById((prev) => ({
+              ...prev,
+              [sessionTaskId]:
+                wroteFile
+                  ? "File saved, but vault refresh failed. Some views may update after a manual refresh."
+                  : "Vault refresh failed. Some views may update after a manual refresh.",
+            }));
+          }
+        } catch (error) {
+          setResultTaskCardWrapErrorById((prev) => ({
+            ...prev,
+            [sessionTaskId]: asErrorMessage(error, "Failed to update task wrapper."),
+          }));
+        } finally {
+          setResultTaskCardWrapPendingById((prev) => ({
+            ...prev,
+            [sessionTaskId]: false,
+          }));
+        }
+      };
+
+      void applyToggle();
+    },
+    [
+      actions,
+      getTaskCardWrapDisabledReason,
+      preview,
+      resultTaskCardWrapPendingById,
+      runTasks,
+      stage,
+    ],
   );
 
   const activeTaskPartStates =
@@ -1502,7 +1547,7 @@ export const useExamSimulationViewModel = () => {
     if (!previewExamParse.hasExamBlock) {
       return {
         title: "No exam block",
-        message: "This file does not include a #exam ... #examend wrapper.",
+        message: "This file does not include a #exam ... #endexam wrapper.",
       };
     }
     if (previewExamParse.tasks.length === 0) {
@@ -1583,9 +1628,9 @@ export const useExamSimulationViewModel = () => {
     canStartExam,
     examEmptyState,
     results,
-    conversionDecisions,
-    conversionPending,
-    conversionError,
+    resultTaskCardWrapPendingById,
+    resultTaskCardWrapErrorById,
+    resultTaskCardWrapNoticeById,
     handleDeleteExamRun,
     handleToggleExamSelection,
     handleStartExam,
@@ -1606,6 +1651,7 @@ export const useExamSimulationViewModel = () => {
     handleAutoGradeDecision,
     handleTaskBack,
     handleTaskNext,
-    handleConversionDecision,
+    handleResultTaskCardWrapperToggle,
+    getTaskCardWrapDisabledReason,
   };
 };

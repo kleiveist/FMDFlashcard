@@ -18,7 +18,7 @@ export const helpBlockEntry: SyntaxEntry = {
       whatItIs:
         "The help block is a non-graded hint area. If a #help ... #helpend block exists, the UI can show it as optional guidance without changing the detected interaction type or scoring.",
       rules: [
-        "Place #help ... #helpend inside a #card ... # block or inside an exam task.",
+        "Place #help ... #helpend inside a #card ... #endcard block or inside an exam task.",
         "#help and #helpend must be on their own lines.",
         "Hints are optional and only shown if the block exists.",
         "Help content never affects grading or the detected card type.",
@@ -42,7 +42,7 @@ export const helpBlockEntry: SyntaxEntry = {
         "- {{hint_1}}",
         "- {{hint_2}}",
         "#helpend",
-        "#",
+        "#endcard",
       ]),
       example: joinLines([
         "#card",
@@ -57,7 +57,7 @@ export const helpBlockEntry: SyntaxEntry = {
         "- Check divisibility by 2 or 3 first.",
         "- If it has another divisor, it is not prime.",
         "#helpend",
-        "#",
+        "#endcard",
       ]),
       mistakes: [
         "Forgetting #helpend (the help block may swallow following lines).",
@@ -69,7 +69,7 @@ export const helpBlockEntry: SyntaxEntry = {
       whatItIs:
         "Der Help-Block ist ein nicht-bewerteter Hinweisbereich. Wenn ein #help ... #helpend Block existiert, kann die UI ihn optional anzeigen, ohne Kartentyp oder Bewertung zu aendern.",
       rules: [
-        "#help ... #helpend innerhalb eines #card ... # Blocks oder innerhalb einer Exam-Aufgabe platzieren.",
+        "#help ... #helpend innerhalb eines #card ... #endcard Blocks oder innerhalb einer Exam-Aufgabe platzieren.",
         "#help und #helpend muessen jeweils auf eigenen Zeilen stehen.",
         "Hinweise sind optional und werden nur angezeigt, wenn der Block existiert.",
         "Help-Inhalt beeinflusst weder Kartentyp noch Bewertung.",
@@ -93,7 +93,7 @@ export const helpBlockEntry: SyntaxEntry = {
         "- {{hinweis_1}}",
         "- {{hinweis_2}}",
         "#helpend",
-        "#",
+        "#endcard",
       ]),
       example: joinLines([
         "#card",
@@ -108,7 +108,7 @@ export const helpBlockEntry: SyntaxEntry = {
         "- Pruefe zuerst Teilbarkeit durch 2 oder 3.",
         "- Gibt es einen weiteren Teiler, ist es keine Primzahl.",
         "#helpend",
-        "#",
+        "#endcard",
       ]),
       mistakes: [
         "#helpend vergessen (der Block kann nachfolgende Zeilen verschlucken).",

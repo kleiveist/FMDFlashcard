@@ -18,7 +18,7 @@ export const trueFalseEntry: SyntaxEntry = {
         whatItIs:
           "A statement followed by -true or -false. You can stack multiple statements in one card, as long as every statement line is immediately followed by its marker.",
         rules: [
-          "Wrap the card with #card and # on their own lines.",
+          "Wrap the card with #card and #endcard on their own lines.",
           "The first non-empty line is the first statement.",
           "Each statement line must be followed by -true/-false or -wahr/-falsch.",
           "You may stack multiple statement/marker pairs.",
@@ -38,7 +38,7 @@ export const trueFalseEntry: SyntaxEntry = {
           "-{{true_or_false_1}}",
           "{{statement_2}}",
           "-{{true_or_false_2}}",
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
@@ -46,7 +46,7 @@ export const trueFalseEntry: SyntaxEntry = {
           "-true",
           "Pluto is a planet.",
           "-false",
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Writing two statements and only one marker.",
@@ -57,7 +57,7 @@ export const trueFalseEntry: SyntaxEntry = {
         whatItIs:
           "Eine Aussage gefolgt von -true oder -false. Du kannst mehrere Aussagen stapeln, solange jede Aussage direkt ihren Marker hat.",
         rules: [
-          "Karte mit #card und # auf eigenen Zeilen umschliessen.",
+          "Karte mit #card und #endcard auf eigenen Zeilen umschliessen.",
           "Die erste nicht-leere Zeile ist die erste Aussage.",
           "Jede Aussage braucht direkt danach -true/-false oder -wahr/-falsch.",
           "Mehrere Aussage/Marker-Paare sind erlaubt.",
@@ -77,7 +77,7 @@ export const trueFalseEntry: SyntaxEntry = {
           "-{{true_oder_false_1}}",
           "{{aussage_2}}",
           "-{{true_oder_false_2}}",
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
@@ -85,7 +85,7 @@ export const trueFalseEntry: SyntaxEntry = {
           "-true",
           "Pluto ist ein Planet.",
           "-false",
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Zwei Aussagen schreiben, aber nur einen Marker setzen.",

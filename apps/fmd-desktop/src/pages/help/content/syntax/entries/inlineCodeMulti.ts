@@ -18,7 +18,7 @@ export const inlineCodeMultiEntry: SyntaxEntry = {
         whatItIs:
           'Drag tokens ("...") become draggable blanks. You can place multiple tokens in one line to create multiple blanks.',
         rules: [
-          "Wrap the card with #card and # on their own lines.",
+          "Wrap the card with #card and #endcard on their own lines.",
           "The first non-empty line is the prompt.",
           'Use "..." around each drag token.',
           "Multiple tokens per line are allowed.",
@@ -35,13 +35,13 @@ export const inlineCodeMultiEntry: SyntaxEntry = {
           "#card",
           "{{prompt}}",
           '{{text_with_"token_1"_and_"token_2"}}',
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
           "Complete the command:",
           '"git" "status" shows changes.',
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           'Using backticks instead of "..."',
@@ -52,7 +52,7 @@ export const inlineCodeMultiEntry: SyntaxEntry = {
         whatItIs:
           'Drag-Tokens ("...") werden zu Drag-Luecken. Du kannst mehrere Tokens in einer Zeile setzen, um mehrere Luecken zu erzeugen.',
         rules: [
-          "Karte mit #card und # auf eigenen Zeilen umschliessen.",
+          "Karte mit #card und #endcard auf eigenen Zeilen umschliessen.",
           "Die erste nicht-leere Zeile ist die Frage.",
           'Tokens mit "..." markieren.',
           "Mehrere Tokens pro Zeile sind erlaubt.",
@@ -69,13 +69,13 @@ export const inlineCodeMultiEntry: SyntaxEntry = {
           "#card",
           "{{frage}}",
           '{{text_mit_"token_1"_und_"token_2"}}',
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
           "Vervollstaendige den Befehl:",
           '"git" "status" zeigt Aenderungen.',
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           'Backticks statt "..." nutzen.',

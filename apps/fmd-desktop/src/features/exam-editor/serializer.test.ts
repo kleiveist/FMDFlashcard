@@ -121,8 +121,9 @@ describe("serializeExamBlueprint", () => {
     const markdown = serializeExamBlueprint(buildExam());
 
     expect(markdown).toContain("#exam");
-    expect(markdown).toContain("#examend");
+    expect(markdown).toContain("#endexam");
     expect(markdown).toContain("#card\n1) QA");
+    expect(markdown).toContain("#endcard");
     expect(markdown).toContain("1) QA");
     expect(markdown).toContain("Answer: 4");
     expect(markdown).toContain("-true");
@@ -163,7 +164,7 @@ describe("serializeExamBlueprint", () => {
     const taskHelpIndex = markdown.indexOf("#help\nTask hint\n#helpend");
     const cardStartIndex = markdown.indexOf("#card");
     const cardHelpIndex = markdown.indexOf("#help\nCard hint\n#helpend");
-    const cardEndIndex = markdown.indexOf("\n#\n");
+    const cardEndIndex = markdown.indexOf("\n#endcard\n");
 
     expect(taskHelpIndex).toBeGreaterThan(-1);
     expect(cardStartIndex).toBeGreaterThan(-1);
@@ -242,7 +243,7 @@ describe("serializeExamBlueprint", () => {
     const separatorLines = markdown.split("\n").filter((line) => line === "---");
     expect(separatorLines).toHaveLength(2);
     expect(markdown).toMatch(/1\)[\s\S]*---\n2\)/);
-    expect(markdown).toContain("---\n#examend");
+    expect(markdown).toContain("---\n#endexam");
   });
 
   it("strips leading task numbers from card content", () => {

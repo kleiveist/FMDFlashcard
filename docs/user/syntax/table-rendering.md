@@ -8,7 +8,7 @@
 Tables in FMDFlashcard are primarily a **layout tool**: they let you structure prompts and answers in a clear grid without changing the learning logic. This applies to:
 
 - `#card` blocks (flashcards)
-- `#exam … #examend` blocks (exam tasks)
+- `#exam … #endexam` blocks (exam tasks)
 
 Important: A table is **presentation only**. Evaluation (e.g., Cloze typed blanks and drag tokens) behaves the same as in normal text.
 
@@ -51,7 +51,7 @@ Typed blanks are marked with `%...%` and can appear inside any table cell.
 |---|---|
 | Only rows with matches in both tables | %INNER JOIN% |
 | All rows from the left + matching right rows | %LEFT JOIN% |
-#
+#endcard
 ```
 ### CD (drag tokens) in tables
 
@@ -62,7 +62,7 @@ Drag tokens are marked with `"..."` and can be placed in table cells.
 |---|---|
 | Filter rows | "WHERE" |
 | Sort results | "ORDER BY" |
-#
+#endcard
 ```
 ### CLD (typed blanks + drag tokens) in tables
 
@@ -73,7 +73,7 @@ Combination of drag tokens and typed blanks inside table cells.
 |---|---|
 | Filter | "WHERE" SELECT * FROM users WHERE age > %18%; |
 | Limit  | "LIMIT" SELECT * FROM users ORDER BY id LIMIT %10%; |
-#
+#endcard
 ```
 ## Tables inside exam blocks
 
@@ -93,7 +93,7 @@ Tables can also be part of an exam prompt within `#exam`.
 |---|---|
 | Filter | "WHERE" SELECT * FROM users WHERE age > %18%; |
 | Sort   | "ORDER BY" SELECT * FROM users ORDER BY created_at %DESC%; |
-#examend
+#endexam
 
 ```
 ## Troubleshooting

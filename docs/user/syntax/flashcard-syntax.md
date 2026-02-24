@@ -10,12 +10,12 @@ Markdown flashcards keep your notes readable and the parser precise. The only re
 ```md
 #card
 ...
-#
+#endcard
 ```
 
 - `#card` opens a block.
 - Everything after `#card` up until a standalone `#` belongs to the same card.
-- A single file can contain multiple `#card … #` blocks; they can appear anywhere in your vault.
+- A single file can contain multiple `#card … #endcard` blocks; they can appear anywhere in your vault.
 - Use `---` inside the block to separate multiple interaction chunks (for example, QA followed by MC). Each chunk is treated independently but still scores as a single composite card.
 - For detailed explanations of each interaction type, see the short-code reference examples in `docs/user/examples/` (qa, tf, m1, m2, cl, cd, etc.).
 - For tables inside card prompts or answers, follow `table-rendering.md` (pipe tables, layout rules, token constraints).
@@ -35,7 +35,7 @@ Markdown flashcards keep your notes readable and the parser precise. The only re
 
 ## Exam content
 
-- If you are authoring a dedicated exam file, wrap your tasks between `#exam` and `#examend` and refer to `docs/user/exam-syntax.md` for the exam-specific wrappers (`e`, `ea`, etc.).
+- If you are authoring a dedicated exam file, wrap your tasks between `#exam` and `#endexam` and refer to `docs/user/exam-syntax.md` for the exam-specific wrappers (`e`, `ea`, etc.).
 - `#exam` does not change how `#card` behaves; it only controls whether the Exams page includes the section.
 
 ## Notes

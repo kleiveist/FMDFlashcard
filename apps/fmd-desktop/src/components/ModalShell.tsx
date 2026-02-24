@@ -23,6 +23,7 @@ type ModalShellProps = {
   bodyClassName?: string;
   canClose?: boolean;
   initialFocusSelector?: string;
+  headerActions?: ReactNode;
 };
 
 const focusableSelector = [
@@ -43,6 +44,7 @@ export const ModalShell = ({
   bodyClassName,
   canClose = true,
   initialFocusSelector,
+  headerActions,
 }: ModalShellProps) => {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -160,16 +162,19 @@ export const ModalShell = ({
           <h2 id={titleId} className="modal-panel-title">
             {title}
           </h2>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            className="modal-panel-close"
-            onClick={handleClose}
-            aria-label="Close"
-            disabled={!canClose}
-          >
-            <CloseIcon />
-          </button>
+          <div className="modal-panel-header-actions">
+            {headerActions}
+            <button
+              ref={closeButtonRef}
+              type="button"
+              className="modal-panel-close"
+              onClick={handleClose}
+              aria-label="Close"
+              disabled={!canClose}
+            >
+              <CloseIcon />
+            </button>
+          </div>
         </div>
         <div className={bodyClassNames}>{children}</div>
       </div>

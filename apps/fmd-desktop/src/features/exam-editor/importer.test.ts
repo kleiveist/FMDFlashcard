@@ -18,11 +18,11 @@ Answer: One
 ---
 Statement two
 -true
-#
+#endcard
 2) Solo
 Question two
 Answer: Two
-#examend
+#endexam
 `.trim();
 
 describe("importExamMarkdown", () => {
@@ -44,8 +44,8 @@ d) OPTIONS D
 #help
 TASK1 HELP / HINT
 #helpend
-#
-#examend
+#endcard
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -55,7 +55,9 @@ TASK1 HELP / HINT
     }
 
     expect(imported.blueprint.description).toBe("");
-    expect(imported.blueprint.description).not.toMatch(/#card|#help|#helpend|^\s*#\s*$/m);
+    expect(imported.blueprint.description).not.toMatch(
+      /#card|#endcard|#exam|#endexam|#help|#helpend/m,
+    );
     expect(imported.blueprint.tasks).toHaveLength(1);
     const task = imported.blueprint.tasks[0];
     expect(task?.useCardWrapper).toBe(true);
@@ -67,7 +69,7 @@ TASK1 HELP / HINT
     const cases: Array<{ name: string; taskLines: string[]; expected: boolean }> = [
       {
         name: "wrapper starts inside task and closes at end",
-        taskLines: ["1) Wrapped inside", "#card", "Question?", "Answer: A", "#"],
+        taskLines: ["1) Wrapped inside", "#card", "Question?", "Answer: A", "#endcard"],
         expected: true,
       },
       {
@@ -82,7 +84,7 @@ TASK1 HELP / HINT
           "#card",
           "Question?",
           "Answer: A",
-          "#",
+          "#endcard",
           "Still content",
         ],
         expected: false,
@@ -95,7 +97,7 @@ TASK1 HELP / HINT
     ];
 
     cases.forEach(({ name, taskLines, expected }) => {
-      const markdown = ["#exam", ...taskLines, "#examend"].join("\n");
+      const markdown = ["#exam", ...taskLines, "#endexam"].join("\n");
       const imported = importExamMarkdown(markdown);
       expect(imported).not.toBeNull();
       if (!imported) {
@@ -105,15 +107,15 @@ TASK1 HELP / HINT
     });
   });
 
-  it("rewrites legacy internal wrapper markers to canonical placement on serialize", () => {
+  it("rewrites internal wrapper markers to canonical placement on serialize", () => {
     const markdown = [
       "#exam",
       "1) Legacy",
       "#card",
       "Question?",
       "Answer: A",
-      "#",
-      "#examend",
+      "#endcard",
+      "#endexam",
     ].join("\n");
 
     const imported = importExamMarkdown(markdown);
@@ -124,6 +126,7 @@ TASK1 HELP / HINT
 
     const serialized = serializeExamBlueprint(imported.blueprint);
     expect(serialized).toContain("#card\n1) Legacy");
+    expect(serialized).toContain("#endcard");
     expect((serialized.match(/^#card$/gm) ?? []).length).toBe(1);
     expect(serialized).not.toContain("1) Legacy\n#card");
   });
@@ -153,7 +156,7 @@ TASK1 HELP / HINT
 #EXAM
 1) Uppercase wrapper
 Answer: A
-#ExamEnd
+#EnDeXaM
     `.trim();
     const imported = importExamMarkdown(markdown);
     expect(imported).not.toBeNull();
@@ -177,6 +180,7 @@ Answer: A
     expect(roundtrip.blueprint.tasks[0]?.cards).toHaveLength(2);
     expect(roundtrip.blueprint.tasks[0]?.useCardWrapper).toBe(true);
     expect(serialized.match(/^#card$/gm)?.length ?? 0).toBe(1);
+    expect(serialized.match(/^#endcard$/gm)?.length ?? 0).toBe(1);
     expect(serialized).toContain("---");
   });
 
@@ -193,8 +197,8 @@ Answer: A
 #help
 Card hint
 #helpend
-#
-#examend
+#endcard
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -214,7 +218,7 @@ Card hint
     };
     const serializedOff = serializeExamBlueprint(withoutWrapper);
     expect(serializedOff).not.toMatch(/^#card$/m);
-    expect(serializedOff).not.toMatch(/^#$/m);
+    expect(serializedOff).not.toMatch(/^#endcard$/m);
     expect(serializedOff).toContain("Task hint");
     expect(serializedOff).toContain("Card hint");
 
@@ -234,7 +238,7 @@ Card hint
     };
     const serializedOn = serializeExamBlueprint(withWrapperAgain);
     expect(serializedOn.match(/^#card$/gm)?.length ?? 0).toBe(1);
-    expect(serializedOn.match(/^#$/gm)?.length ?? 0).toBe(1);
+    expect(serializedOn.match(/^#endcard$/gm)?.length ?? 0).toBe(1);
     expect(serializedOn).toContain("Task hint");
     expect(serializedOn).toContain("Card hint");
 
@@ -244,7 +248,9 @@ Card hint
       return;
     }
     expect(onRoundtrip.blueprint.tasks[0]?.useCardWrapper).toBe(true);
-    expect(onRoundtrip.blueprint.description).not.toMatch(/#card|#help|#helpend|^\s*#\s*$/m);
+    expect(onRoundtrip.blueprint.description).not.toMatch(
+      /#card|#endcard|#exam|#endexam|#help|#helpend/m,
+    );
   });
 
   it("removes duplicated task numbers from content on roundtrip", () => {
@@ -256,7 +262,7 @@ Answer: A
 2) Second task
 2) Another question
 Answer: B
-#examend
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -280,7 +286,7 @@ Answer: B
 2) Task heading
 Task description
 Answer: A
-#examend
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -309,8 +315,8 @@ Fill %col% using "token".
 | Col | Value |
 | --- | --- |
 | A | "alpha" |
-#
-#examend
+#endcard
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -349,7 +355,7 @@ Answer: B
 End hint
 #helpend
 ---
-#examend
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -382,7 +388,7 @@ Task TF description
 #help
 Task help
 #helpend
-#examend
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -412,7 +418,7 @@ Not help
 Question?
 Answer: A
 ---
-#examend
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -434,7 +440,7 @@ Antwort: Some answer
 ## Abschnitt 3: Erlaeuterungsfrage (qa)
 9) Next task
 Antwort: Next answer
-#examend
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -463,7 +469,7 @@ Answer: A
 ## Abschnitt heading
 2) Second task
 Answer: B
-#examend
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -487,8 +493,8 @@ Question?
 ---
 \`\`\`
 Answer: A
-#
-#examend
+#endcard
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -516,8 +522,8 @@ Question?
 | --- | --- |
 | A | --- |
 Answer: A
-#
-#examend
+#endcard
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);
@@ -544,7 +550,7 @@ Answer: A
 ---
 Just context without an answer marker.
 ---
-#examend
+#endexam
     `.trim();
 
     const imported = importExamMarkdown(markdown);

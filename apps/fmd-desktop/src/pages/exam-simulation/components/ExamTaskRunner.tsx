@@ -44,9 +44,6 @@ type ExamTaskRunnerProps = {
   partStates: CompositePartState[];
   awardedPoints: number | null;
   autoGradeDecision?: boolean;
-  conversionDecision?: boolean;
-  conversionPending: boolean;
-  conversionError: string;
   onOptionSelect: (taskIndex: number, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     taskIndex: number,
@@ -77,7 +74,6 @@ type ExamTaskRunnerProps = {
   onTextInputChange: (taskIndex: number, partIndex: number, value: string) => void;
   onAwardedPointsChange: (taskIndex: number, value: string, maxPoints: number) => void;
   onAutoGradeDecision: (taskIndex: number, decision: boolean) => void;
-  onConversionDecision: (taskIndex: number, shouldConvert: boolean) => void;
   onBack: () => void;
   onNext: () => void;
   canGoBack: boolean;
@@ -85,7 +81,6 @@ type ExamTaskRunnerProps = {
   helpEnabled?: boolean;
   showNavigation?: boolean;
   scoringReadOnly?: boolean;
-  showConversionControls?: boolean;
 };
 
 const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
@@ -110,9 +105,6 @@ export const ExamTaskRunner = ({
   partStates,
   awardedPoints,
   autoGradeDecision,
-  conversionDecision,
-  conversionPending,
-  conversionError,
   onOptionSelect,
   onTrueFalseSelect,
   onClozeInputChange,
@@ -122,7 +114,6 @@ export const ExamTaskRunner = ({
   onBlankDragOver,
   onTextInputChange,
   onAwardedPointsChange,
-  onConversionDecision,
   onBack,
   onNext,
   canGoBack,
@@ -130,7 +121,6 @@ export const ExamTaskRunner = ({
   helpEnabled = false,
   showNavigation = true,
   scoringReadOnly = false,
-  showConversionControls = true,
 }: ExamTaskRunnerProps) => {
   const isScoring = phase === "scoring";
   const canRevealOfficialSolution = phase === "review" || phase === "scoring";
@@ -149,7 +139,7 @@ export const ExamTaskRunner = ({
     return effectiveAutoDecision ? maxPoints : 0;
   })();
   const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
-  const inputLocked = phase !== "exam" || conversionPending;
+  const inputLocked = phase !== "exam";
   const hasHelp = helpEnabled && hasHelpContent(task.helpText);
 
   return (
@@ -260,28 +250,11 @@ export const ExamTaskRunner = ({
                   onAwardedPointsChange(taskIndex, event.target.value, maxPoints)
                 }
                 aria-label="Awarded points"
-                disabled={conversionPending}
               />
             )}
             <span className="muted">/ {maxPoints}</span>
           </div>
         </div>
-      ) : null}
-
-      {isScoring && showConversionControls ? (
-        <label className="exam-conversion-toggle">
-          <input
-            type="checkbox"
-            checked={conversionDecision ?? false}
-            onChange={(event) => onConversionDecision(taskIndex, event.target.checked)}
-            disabled={conversionPending || scoringReadOnly}
-          />
-          Convert to flashcard
-        </label>
-      ) : null}
-
-      {isScoring && showConversionControls && conversionError ? (
-        <div className="error">{conversionError}</div>
       ) : null}
 
       {hasHelp ? (

@@ -21,7 +21,7 @@ Example:
 ```md
 #card
 The `capital` of France is %Paris%.
-#
+#endcard
 ```
 ---
 ### Drag tokens
@@ -31,7 +31,7 @@ Example:
 ```md
 #card
 The colors are "black", "red", and "gold".
-#
+#endcard
 ```
 ---
 ### Typed mit Codeblock
@@ -41,5 +41,5 @@ The colors are "black", "red", and "gold".
 ```c#
 The "capital" of France is %Paris%.
 ```
-#
+#endcard
 ````

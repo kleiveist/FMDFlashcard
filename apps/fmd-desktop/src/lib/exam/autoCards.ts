@@ -40,7 +40,10 @@ const helpStartPattern = /^\s*#help\s*$/i;
 const helpEndPattern = /^\s*#helpend\s*$/i;
 
 const isWrapperStart = (line: string) => line.trim().toLowerCase() === "#card";
-const isWrapperEnd = (line: string) => line.trim() === "#";
+const isWrapperEnd = (line: string) => {
+  const trimmed = line.trim().toLowerCase();
+  return trimmed === "#endcard";
+};
 const isTaskHeader = (line: string) => taskHeaderPattern.test(line.trim());
 const isHelpStart = (line: string) => helpStartPattern.test(line);
 const isHelpEnd = (line: string) => helpEndPattern.test(line);
@@ -285,17 +288,19 @@ const ensureCanonicalWrapperOpen = (chunkLines: string[]) => {
 
 const ensureCanonicalWrapperClose = (chunkLines: string[]) => {
   if (chunkLines.length === 0) {
-    return ["#"];
+    return ["#endcard"];
   }
   const lastNonEmpty = findLastNonEmptyInRange(chunkLines, 0, chunkLines.length - 1);
   if (lastNonEmpty === null) {
-    return [...chunkLines, "#"];
+    return [...chunkLines, "#endcard"];
   }
   if (isWrapperEnd(chunkLines[lastNonEmpty] ?? "")) {
-    return [...chunkLines];
+    const next = [...chunkLines];
+    next[lastNonEmpty] = "#endcard";
+    return next;
   }
   const next = [...chunkLines];
-  next.splice(lastNonEmpty + 1, 0, "#");
+  next.splice(lastNonEmpty + 1, 0, "#endcard");
   return next;
 };
 
@@ -333,7 +338,7 @@ const normalizeTaskChunk = (
   }
 
   if (analysis.fullyWrappedPermissive) {
-    return ensureCanonicalWrapperOpen(chunkLines);
+    return ensureCanonicalWrapperClose(ensureCanonicalWrapperOpen(chunkLines));
   }
 
   if (analysis.wrapperStartIndices.length > 1) {
@@ -505,6 +510,12 @@ export const removeExamTaskWrapper = (
   const nextChunk = normalizeTaskChunk(currentChunk, "remove");
   return replaceRange(lines, range, nextChunk);
 };
+
+export const isExamTaskWrapped = findExamTaskWrapper;
+
+export const wrapExamTask = addExamTaskWrapper;
+
+export const unwrapExamTask = removeExamTaskWrapper;
 
 export const applyExamCardWrapperActions = (
   content: string,

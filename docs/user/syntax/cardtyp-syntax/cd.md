@@ -8,7 +8,7 @@ Drag tokens use the `"token"` syntax to create draggable pieces learners can dro
 ```md
 #card
 The colors of the German flag are "black", "red", and "gold".
-#
+#endcard
 ```
 
 - Each `"token"` marker becomes a drag token that learners can drag into the drop zone associated with that blank.
@@ -30,5 +30,5 @@ The colors of the German flag are "black", "red", and "gold".
 ```q
 The colors of the German flag are "black", "red", and "gold".
 ```
-#
+#endcard
 ````

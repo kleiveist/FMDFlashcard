@@ -1453,10 +1453,10 @@ const isFmdDirectiveLine = (line: string) => {
   }
   const lowered = trimmed.toLowerCase();
   if (
-    lowered === "#" ||
     lowered === "#exam" ||
-    lowered === "#examend" ||
+    lowered === "#endexam" ||
     lowered === "#card" ||
+    lowered === "#endcard" ||
     lowered === "#help" ||
     lowered === "#helpend"
   ) {
@@ -2332,8 +2332,7 @@ const escapeExamTaskListMarker = (line: string) => {
 
 const shouldExpandInlineExamLine = (line: string) => {
   const lowered = line.toLowerCase();
-  return lowered.includes("#card") ||
-    /\s-[a-d]\b/.test(lowered) ||
+  return /\s-[a-d]\b/.test(lowered) ||
     /\s-(true|false)\b/.test(lowered) ||
     /\b[a-d]\)\s+\S/.test(lowered);
 };
@@ -2369,12 +2368,8 @@ const expandInlineExamLine = (line: string) => {
   }
 
   let expanded = line;
-  expanded = expanded.replace(/\s*#card\s*/gi, "\n#card\n");
   expanded = expanded.replace(/\s-((?:true|false)|[a-d])\b/gi, "\n-$1");
   expanded = expanded.replace(/\s([a-d]\))\s*/gi, "\n$1 ");
-  if (expanded.toLowerCase().includes("#card")) {
-    expanded = expanded.replace(/\s#(?![A-Za-z0-9_])\s*/g, "\n#\n");
-  }
 
   return splitExpandedExamLine(expanded);
 };

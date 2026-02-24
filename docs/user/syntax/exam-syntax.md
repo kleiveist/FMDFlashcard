@@ -3,19 +3,19 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Exam syntax
 
-The Exams page treats blocks wrapped between `#exam` and `#examend` differently than the standard flashcard scan. This document covers the wrappers, task numbering, and how interaction types behave inside an exam file.
+The Exams page treats blocks wrapped between `#exam` and `#endexam` differently than the standard flashcard scan. This document covers the wrappers, task numbering, and how interaction types behave inside an exam file.
 
 ## Wrapping an exam
 
 ```md
 #exam
 ... exam sections ...
-#examend
+#endexam
 ```
 
-- `#exam` and `#examend` must each appear on their own line. Do not show them in the UI—they exist only to signal exam parsing (`e`).
+- `#exam` and `#endexam` must each appear on their own line. Do not show them in the UI—they exist only to signal exam parsing (`e`).
 - Everything between the wrappers is considered exam content. Free text is allowed, but only numbered tasks (`ea`) produce interactive items.
-- You can still embed `#card … #` blocks inside exam tasks; they behave the same as outside, but the Exams page uses them as prompts.
+- You can still embed `#card … #endcard` blocks inside exam tasks; they behave the same as outside, but the Exams page uses them as prompts.
 - If your tasks include tables, follow `table-rendering.md` for the table syntax and layout rules.
 
 ## Numbered tasks (`ea`)
@@ -31,7 +31,7 @@ After the numeric prefix, the parser expects whitespace (or closing punctuation)
 
 1. A line containing `---` (separator for composite tasks).
 2. The next numbered task line.
-3. `#examend`.
+3. `#endexam`.
 
 Use tasks to wrap a single interaction type (qa/tf/m1/m2/cl/cd). If you need multiple interactions, separate them with `---` inside the `#card` block so the parser treats each chunk independently.
 
@@ -57,6 +57,6 @@ The `examples/e.md` guide also lists the combination matrix and short rules per 
 ## Best practices
 
 1. Keep each task focused on a single interaction type. Use `---` when composing mixed interactions.
-2. Only include `#card … #` blocks inside tasks when you need formatting or multiple Q/A segments.
-3. Avoid showing `#exam`, `#examend`, or numbered prefixes as visible text—the UI hides them.
+2. Only include `#card … #endcard` blocks inside tasks when you need formatting or multiple Q/A segments.
+3. Avoid showing `#exam`, `#endexam`, or numbered prefixes as visible text—the UI hides them.
 4. Mirror this doc when authoring exam material in other languages; the parser only relies on the numeric pattern and answer markers, not the language itself.

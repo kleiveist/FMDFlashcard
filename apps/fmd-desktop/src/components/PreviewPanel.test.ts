@@ -25,7 +25,7 @@ describe("applyInteractionSpacing", () => {
       "-b",
       "---",
       "2) Inline markers -a #card final #",
-      "#examend",
+      "#endexam",
     ].join("\n");
 
     const output = applyInteractionSpacing(source);
@@ -33,8 +33,8 @@ describe("applyInteractionSpacing", () => {
 
     expect(lines).toContain("---");
     expect(lines).toContain("-b");
-    expect(lines.some((line) => line.trim() === "#card")).toBe(true);
-    expect(lines.some((line) => line.trim() === "#")).toBe(true);
+    expect(lines.some((line) => line.trim() === "#card")).toBe(false);
+    expect(lines.some((line) => line.trim() === "#")).toBe(false);
 
     const promptLine = lines.find((line) => line.startsWith("1\\) Prompt line"));
     expect(promptLine).toBe("1\\) Prompt line  ");
@@ -47,7 +47,7 @@ describe("applyInteractionSpacing", () => {
     );
     expect(inlineIndex).toBeGreaterThan(-1);
     expect(lines[inlineIndex].endsWith("  ")).toBe(true);
-    expect(lines[inlineIndex + 1].trim()).toBe("-a");
+    expect(lines[inlineIndex + 1].trim()).toBe("-a #card final #");
   });
 });
 
@@ -195,7 +195,7 @@ describe("serializeMarkdownFromHtml", () => {
 
   it("preserves FMD directive markers without escaping", () => {
     const container = document.createElement("div");
-    ["#exam", "1) Prompt", "#examend"].forEach((line) => {
+    ["#exam", "1) Prompt", "#endexam"].forEach((line) => {
       const div = document.createElement("div");
       div.textContent = line;
       container.appendChild(div);
@@ -203,7 +203,7 @@ describe("serializeMarkdownFromHtml", () => {
 
     const result = serializeMarkdownFromHtml(container);
 
-    expect(result).toBe("#exam\n1) Prompt\n#examend\n");
+    expect(result).toBe("#exam\n1) Prompt\n#endexam\n");
     expect(result).not.toContain("\\#");
   });
 

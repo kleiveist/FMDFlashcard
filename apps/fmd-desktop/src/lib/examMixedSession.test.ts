@@ -21,9 +21,8 @@ const buildSource = (
   const lines = ["#exam"];
   taskNumbers.forEach((taskNumber) => {
     lines.push(`${taskNumber}) ${sourceTitle} task ${taskNumber}`);
-    lines.push("#");
   });
-  lines.push("#examend");
+  lines.push("#endexam");
 
   const tasks = parseExamTasks(lines.join("\n")).tasks;
   return {

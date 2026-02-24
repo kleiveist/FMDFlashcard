@@ -9,7 +9,7 @@ import {
 
 describe("pointsScoring", () => {
   it("uses task-order profile points by task index", () => {
-    const parsed = parseExamTasks(["#exam", "1) Q", "Answer: A", "---", "#examend"].join("\n"));
+    const parsed = parseExamTasks(["#exam", "1) Q", "Answer: A", "---", "#endexam"].join("\n"));
     const task = parsed.tasks[0];
     expect(task).toBeTruthy();
     if (!task) {
@@ -33,7 +33,7 @@ describe("pointsScoring", () => {
 
   it("uses task-type profile points by detected card type", () => {
     const parsed = parseExamTasks(
-      ["#exam", "1) Statement", "-true", "---", "#examend"].join("\n"),
+      ["#exam", "1) Statement", "-true", "---", "#endexam"].join("\n"),
     );
     const task = parsed.tasks[0];
     expect(task).toBeTruthy();
@@ -72,8 +72,8 @@ describe("pointsScoring", () => {
         "a) 4",
         "b) 5",
         "-b",
-        "#",
-        "#examend",
+        "#endcard",
+        "#endexam",
       ].join("\n"),
     );
     const task = parsed.tasks[0];
@@ -114,8 +114,8 @@ describe("pointsScoring", () => {
         "[tf]",
         "C",
         "-true",
-        "#",
-        "#examend",
+        "#endcard",
+        "#endexam",
       ].join("\n"),
     );
     const task = parsed.tasks[0];

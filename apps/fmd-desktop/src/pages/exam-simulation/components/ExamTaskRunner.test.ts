@@ -126,12 +126,6 @@ const noopAutoGradeDecision: ExamTaskRunnerProps["onAutoGradeDecision"] = (
 ) => {
   void args;
 };
-const noopConversionDecision: ExamTaskRunnerProps["onConversionDecision"] = (
-  ...args
-) => {
-  void args;
-};
-
 const buildProps = (
   overrides: Partial<ExamTaskRunnerProps> = {},
 ): ExamTaskRunnerProps => ({
@@ -142,8 +136,6 @@ const buildProps = (
   phase: "exam",
   partStates: [{}],
   awardedPoints: null,
-  conversionPending: false,
-  conversionError: "",
   onOptionSelect: noopOptionSelect,
   onTrueFalseSelect: noopTrueFalseSelect,
   onClozeInputChange: noopClozeInputChange,
@@ -154,7 +146,6 @@ const buildProps = (
   onTextInputChange: noopTextInputChange,
   onAwardedPointsChange: noopAwardedPointsChange,
   onAutoGradeDecision: noopAutoGradeDecision,
-  onConversionDecision: noopConversionDecision,
   onBack: () => {},
   onNext: () => {},
   canGoBack: false,
@@ -269,7 +260,7 @@ describe("ExamTaskRunner", () => {
 | --- | --- |
 | Alpha | Beta |
 Answer: Done
-#`, "manual");
+#endcard`, "manual");
 
     const markup = renderToStaticMarkup(
       createElement(ExamTaskRunner, buildProps({ phase: "review", task })),
@@ -285,7 +276,7 @@ Answer: Done
 | --- | --- |
 | Alpha | %one% |
 | Beta | "two" |
-#`);
+#endcard`);
 
     const markup = renderToStaticMarkup(
       createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
@@ -311,7 +302,7 @@ Which method reads data?
 a) POST
 b) GET
 -b
-#`);
+#endcard`);
 
     const markup = renderToStaticMarkup(
       createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
@@ -331,7 +322,7 @@ Decide if the statement is true or false.
 
 Statement: The Sun is a star.
 -true
-#`);
+#endcard`);
 
     const markup = renderToStaticMarkup(
       createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
@@ -418,5 +409,13 @@ Statement: The Sun is a star.
     expect(scoringMarkup).toContain("AWARDED");
     expect(scoringMarkup).not.toContain("RESULT");
     expect(scoringMarkup).not.toContain("POINTS");
+  });
+
+  it("does not render legacy convert-to-flashcard controls in scoring view", () => {
+    const scoringMarkup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "scoring" })),
+    );
+
+    expect(scoringMarkup).not.toContain("Convert to flashcard");
   });
 });

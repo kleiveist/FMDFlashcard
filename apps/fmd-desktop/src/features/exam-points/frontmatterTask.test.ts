@@ -7,7 +7,7 @@ import {
 
 describe("exam points frontmatter task helpers", () => {
   it("reads Task from frontmatter", () => {
-    const markdown = ["---", "Task: Exam", "---", "#exam", "1) Demo", "#examend"].join(
+    const markdown = ["---", "Task: Exam", "---", "#exam", "1) Demo", "#endexam"].join(
       "\n",
     );
     expect(resolveExamTaskFrontmatterValue(markdown)).toBe("Exam");
@@ -37,7 +37,7 @@ describe("exam points frontmatter task helpers", () => {
   });
 
   it("creates frontmatter when document has none", () => {
-    const markdown = ["#exam", "1) Demo", "#examend"].join("\n");
+    const markdown = ["#exam", "1) Demo", "#endexam"].join("\n");
     const updated = upsertExamTaskFrontmatterValue({
       markdown,
       profileName: "Exam",

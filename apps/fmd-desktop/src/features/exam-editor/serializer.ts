@@ -155,7 +155,7 @@ const serializeTask = (task: ExamTaskBlueprint, index: number) => {
     lines.push(...serializeHelpBlock(card.helpText));
   });
   if (wrapTask) {
-    lines.push("#");
+    lines.push("#endcard");
   }
   return lines;
 };
@@ -200,7 +200,7 @@ export const serializeExamBlueprint = (exam: ExamBlueprint) => {
         lines.push(...trimmed, "---");
       }
     });
-  lines.push("#examend");
+  lines.push("#endexam");
   return normalizeCardWrapperPlacement(lines.join("\n")).content;
 };
 

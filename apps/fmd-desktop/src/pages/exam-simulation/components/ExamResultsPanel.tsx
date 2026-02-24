@@ -38,7 +38,6 @@ type ExamTaskBreakdown = {
     partStates: CompositePartState[];
     awardedPoints: number | null;
     autoGradeDecision?: boolean;
-    conversionDecision?: boolean;
   };
 };
 
@@ -52,6 +51,11 @@ type ExamResults = {
 type ExamResultsPanelProps = {
   results: ExamResults;
   helpEnabled?: boolean;
+  onToggleTaskCardWrapper: (sessionTaskId: string, nextWrapped: boolean) => void;
+  taskCardWrapPendingById: Record<string, boolean>;
+  taskCardWrapErrorById: Record<string, string>;
+  taskCardWrapNoticeById?: Record<string, string>;
+  getTaskCardWrapDisabledReason: (task: ExamSessionTask) => string;
 };
 
 const noopOptionSelect = (
@@ -100,12 +104,16 @@ const noopAwardedPointsChange = (
   _maxPoints: number,
 ) => {};
 const noopAutoGradeDecision = (_taskIndex: number, _decision: boolean) => {};
-const noopConversionDecision = (_taskIndex: number, _shouldConvert: boolean) => {};
 const noopNav = () => {};
 
 export const ExamResultsPanel = ({
   results,
   helpEnabled = false,
+  onToggleTaskCardWrapper,
+  taskCardWrapPendingById,
+  taskCardWrapErrorById,
+  taskCardWrapNoticeById = {},
+  getTaskCardWrapDisabledReason,
 }: ExamResultsPanelProps) => {
   const [selectedTaskSessionId, setSelectedTaskSessionId] = useState<string | null>(null);
   const selectedBreakdownItem = useMemo(
@@ -115,6 +123,21 @@ export const ExamResultsPanel = ({
         : null,
     [results.breakdown, selectedTaskSessionId],
   );
+  const selectedTask = selectedBreakdownItem?.detail.task ?? null;
+  const selectedSessionTaskId = selectedBreakdownItem?.sessionTaskId ?? null;
+  const selectedTogglePending = selectedSessionTaskId
+    ? (taskCardWrapPendingById[selectedSessionTaskId] ?? false)
+    : false;
+  const selectedToggleError = selectedSessionTaskId
+    ? (taskCardWrapErrorById[selectedSessionTaskId] ?? "")
+    : "";
+  const selectedToggleNotice = selectedSessionTaskId
+    ? (taskCardWrapNoticeById[selectedSessionTaskId] ?? "")
+    : "";
+  const selectedToggleDisabledReason = selectedTask
+    ? getTaskCardWrapDisabledReason(selectedTask)
+    : "";
+  const selectedToggleDisabled = selectedTogglePending || Boolean(selectedToggleDisabledReason);
 
   return (
     <div className="exam-results">
@@ -175,9 +198,46 @@ export const ExamResultsPanel = ({
         onClose={() => setSelectedTaskSessionId(null)}
         className="exam-results-task-modal-panel"
         bodyClassName="exam-results-task-modal-body"
+        headerActions={
+          selectedBreakdownItem && selectedTask ? (
+            <div className="exam-results-task-modal-toolbar">
+              <label className="exam-results-card-wrap-toggle">
+                <input
+                  type="checkbox"
+                  checked={selectedTask.cardWrapper}
+                  disabled={selectedToggleDisabled}
+                  onChange={(event) =>
+                    onToggleTaskCardWrapper(
+                      selectedBreakdownItem.sessionTaskId,
+                      event.target.checked,
+                    )
+                  }
+                  aria-label="Wrap task in #card block"
+                />
+                <span>Wrap in #card</span>
+              </label>
+              {selectedTogglePending ? (
+                <span className="muted small">Saving...</span>
+              ) : null}
+            </div>
+          ) : null
+        }
       >
         {selectedBreakdownItem ? (
           <div className="exam-results-task-modal-scroll">
+            {selectedToggleDisabledReason ? (
+              <div className="muted exam-results-task-modal-note">
+                {selectedToggleDisabledReason}
+              </div>
+            ) : null}
+            {selectedToggleError ? (
+              <div className="error">{selectedToggleError}</div>
+            ) : null}
+            {!selectedToggleError && selectedToggleNotice ? (
+              <div className="muted exam-results-task-modal-note">
+                {selectedToggleNotice}
+              </div>
+            ) : null}
             <ExamTaskRunner
               task={selectedBreakdownItem.detail.task}
               taskIndex={selectedBreakdownItem.index - 1}
@@ -187,9 +247,6 @@ export const ExamResultsPanel = ({
               partStates={selectedBreakdownItem.detail.partStates}
               awardedPoints={selectedBreakdownItem.detail.awardedPoints}
               autoGradeDecision={selectedBreakdownItem.detail.autoGradeDecision}
-              conversionDecision={selectedBreakdownItem.detail.conversionDecision}
-              conversionPending={false}
-              conversionError=""
               onOptionSelect={noopOptionSelect}
               onTrueFalseSelect={noopTrueFalseSelect}
               onClozeInputChange={noopClozeInputChange}
@@ -200,7 +257,6 @@ export const ExamResultsPanel = ({
               onTextInputChange={noopTextInputChange}
               onAwardedPointsChange={noopAwardedPointsChange}
               onAutoGradeDecision={noopAutoGradeDecision}
-              onConversionDecision={noopConversionDecision}
               onBack={noopNav}
               onNext={noopNav}
               canGoBack={false}
@@ -208,7 +264,6 @@ export const ExamResultsPanel = ({
               helpEnabled={helpEnabled}
               showNavigation={false}
               scoringReadOnly
-              showConversionControls={false}
             />
           </div>
         ) : null}

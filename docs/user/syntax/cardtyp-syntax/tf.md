@@ -12,7 +12,7 @@ True/false interactions count as `tf` and render as two-button questions where t
 Is the following statement true?
 The Sun is a star.
 -true
-#
+#endcard
 ```
 
 - The question line(s) appear first, followed by a dedicated result marker on the next non-empty line (no blank line between question and marker is required but allowed).

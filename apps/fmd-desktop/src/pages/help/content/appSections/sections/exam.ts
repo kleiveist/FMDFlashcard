@@ -9,8 +9,8 @@ export const examSection: AppSectionData = {
   action: { en: "Start an exam", de: "Exam starten" },
   detail: {
     whatIs: {
-      en: "Exam runs interactive tasks extracted from #exam … #examend blocks. Each numbered task becomes one exam item.",
-      de: "Exam fuehrt interaktive Aufgaben aus #exam … #examend-Bloecken aus. Jede nummerierte Aufgabe wird zu einem Exam-Item.",
+      en: "Exam runs interactive tasks extracted from #exam … #endexam blocks. Each numbered task becomes one exam item.",
+      de: "Exam fuehrt interaktive Aufgaben aus #exam … #endexam-Bloecken aus. Jede nummerierte Aufgabe wird zu einem Exam-Item.",
     },
     purpose: [
       {

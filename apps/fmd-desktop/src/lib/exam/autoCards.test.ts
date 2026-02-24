@@ -9,15 +9,18 @@ import { describe, expect, it } from "vitest";
 import { parseExamTasks } from "../exam";
 import {
   applyExamCardWrapperActions,
+  isExamTaskWrapped,
   normalizeCardWrapperPlacement,
   removeExamTaskWrapper,
+  unwrapExamTask,
+  wrapExamTask,
 } from "./autoCards";
 
 const baseExamContent = [
   "#exam",
   "1) First task",
   "2) Second task",
-  "#examend",
+  "#endexam",
 ].join("\n");
 
 describe("addExamTaskWrapper", () => {
@@ -46,8 +49,8 @@ describe("normalizeCardWrapperPlacement", () => {
       "1) Canonical",
       "Question?",
       "Answer: A",
-      "#",
-      "#examend",
+      "#endcard",
+      "#endexam",
     ].join("\n");
 
     const normalized = normalizeCardWrapperPlacement(markdown).content;
@@ -55,19 +58,20 @@ describe("normalizeCardWrapperPlacement", () => {
     expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(true);
   });
 
-  it("moves legacy internal #card before task start", () => {
+  it("moves internal #card before task start", () => {
     const markdown = [
       "#exam",
       "1) Legacy",
       "#card",
       "Question?",
       "Answer: A",
-      "#",
-      "#examend",
+      "#endcard",
+      "#endexam",
     ].join("\n");
 
     const normalized = normalizeCardWrapperPlacement(markdown).content;
     expect(normalized).toContain("#card\n1) Legacy");
+    expect(normalized).toContain("#endcard");
     expect((normalized.match(/^#card$/gm) ?? []).length).toBe(1);
     expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(true);
   });
@@ -80,8 +84,8 @@ describe("normalizeCardWrapperPlacement", () => {
       "#card",
       "Question?",
       "Answer: A",
-      "#",
-      "#examend",
+      "#endcard",
+      "#endexam",
     ].join("\n");
 
     const normalized = normalizeCardWrapperPlacement(markdown).content;
@@ -97,11 +101,11 @@ describe("normalizeCardWrapperPlacement", () => {
       "#card",
       "Question?",
       "Answer: A",
-      "#examend",
+      "#endexam",
     ].join("\n");
 
     const normalized = normalizeCardWrapperPlacement(markdown).content;
-    expect(normalized).not.toMatch(/\n#\n#examend$/);
+    expect(normalized).not.toMatch(/\n#endcard\n#endexam$/);
     expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(false);
   });
 
@@ -113,7 +117,7 @@ describe("normalizeCardWrapperPlacement", () => {
       "Question?",
       "Answer: A",
       "# Title",
-      "#examend",
+      "#endexam",
     ].join("\n");
 
     const normalized = normalizeCardWrapperPlacement(markdown).content;
@@ -159,8 +163,8 @@ describe("auto cards return-on-correct", () => {
       "#card",
       "Question?",
       "Answer: A",
-      "#",
-      "#examend",
+      "#endcard",
+      "#endexam",
     ].join("\n");
 
     const addResult = applyExamCardWrapperActions(
@@ -170,7 +174,7 @@ describe("auto cards return-on-correct", () => {
     ).content;
     expect(addResult).toContain("#card\n1) Task");
     expect((addResult.match(/^#card$/gm) ?? []).length).toBe(1);
-    expect(addResult).toMatch(/\n#\n#examend$/);
+    expect(addResult).toMatch(/\n#endcard\n#endexam$/);
 
     const removeResult = applyExamCardWrapperActions(
       addResult,
@@ -178,8 +182,25 @@ describe("auto cards return-on-correct", () => {
       () => "remove",
     ).content;
     expect(removeResult).not.toMatch(/^#card$/m);
-    expect(removeResult).not.toMatch(/\n#\n#examend$/);
+    expect(removeResult).not.toMatch(/\n#endcard\n#endexam$/);
     expect(removeResult).toContain("#help\nHint\n#helpend");
+  });
+});
+
+describe("shared wrapper aliases", () => {
+  it("exposes wrap/isWrapped/unwrap behavior via exported aliases", () => {
+    const tasks = parseExamTasks(baseExamContent).tasks;
+    const firstTask = tasks[0]!;
+    const wrapped = wrapExamTask(baseExamContent.split("\n"), firstTask.sourceRange);
+    expect(wrapped.changed).toBe(true);
+    const wrappedMarkdown = wrapped.lines.join("\n");
+    expect(wrappedMarkdown).toContain("#card\n1) First task");
+    expect(wrappedMarkdown).toContain("#endcard");
+    const wrappedTask = parseExamTasks(wrappedMarkdown).tasks[0]!;
+    expect(isExamTaskWrapped(wrapped.lines, wrappedTask.sourceRange)).not.toBeNull();
+
+    const unwrapped = unwrapExamTask(wrapped.lines, wrappedTask.sourceRange);
+    expect(unwrapped.lines.join("\n")).toBe(baseExamContent);
   });
 });
 
@@ -191,7 +212,7 @@ describe("markdown tables", () => {
       "| A | B |",
       "| - | - |",
       "| 1 | 2 |",
-      "#examend",
+      "#endexam",
     ].join("\n");
     const tasks = parseExamTasks(tableContent).tasks;
     const wrapped = applyExamCardWrapperActions(tableContent, tasks, () => "add").content;

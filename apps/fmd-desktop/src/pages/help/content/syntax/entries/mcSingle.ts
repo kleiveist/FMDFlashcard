@@ -18,7 +18,7 @@ export const mcSingleEntry: SyntaxEntry = {
         whatItIs:
           "A multiple choice card with exactly one correct option. Label options as a), b), c) and mark the correct option with a single -a, -b, or -c line.",
         rules: [
-          "Wrap the card with #card and # on their own lines.",
+          "Wrap the card with #card and #endcard on their own lines.",
           "The first non-empty line is the prompt.",
           "Provide at least two options labeled a), b), c) ...",
           "Include exactly one correct marker (-a, -b, ...).",
@@ -39,7 +39,7 @@ export const mcSingleEntry: SyntaxEntry = {
           "b) {{option_b}}",
           "c) {{option_c}}",
           "-{{correct_letter}}",
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
@@ -48,7 +48,7 @@ export const mcSingleEntry: SyntaxEntry = {
           "b) Mars",
           "c) Venus",
           "-b",
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Marking more than one correct option.",
@@ -59,7 +59,7 @@ export const mcSingleEntry: SyntaxEntry = {
         whatItIs:
           "Eine Multiple-Choice-Karte mit genau einer richtigen Antwort. Optionen als a), b), c) schreiben und genau einen Marker -a, -b oder -c setzen.",
         rules: [
-          "Karte mit #card und # auf eigenen Zeilen umschliessen.",
+          "Karte mit #card und #endcard auf eigenen Zeilen umschliessen.",
           "Die erste nicht-leere Zeile ist die Frage.",
           "Mindestens zwei Optionen mit a), b), c) ...",
           "Genau einen korrekten Marker setzen (-a, -b, ...).",
@@ -80,7 +80,7 @@ export const mcSingleEntry: SyntaxEntry = {
           "b) {{option_b}}",
           "c) {{option_c}}",
           "-{{korrekt}}",
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
@@ -89,7 +89,7 @@ export const mcSingleEntry: SyntaxEntry = {
           "b) Mars",
           "c) Venus",
           "-b",
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Mehrere richtige Marker setzen.",

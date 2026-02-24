@@ -50,7 +50,7 @@ c) TCL
 d) DCL
 
 -d
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -74,7 +74,7 @@ d) DCL
 a) Option A
 b) Option B
 -a
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -95,7 +95,7 @@ b) Option B
     const markdown = `#CaRd
 What is 2+2?
 Answer: 4
-#`;
+#EnDcArD`;
     const cards = parseFlashcards(markdown);
     expect(cards).toHaveLength(1);
   });
@@ -114,7 +114,7 @@ console.log("hi");
 \`\`\`
 d) Done
 -d
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -141,7 +141,7 @@ a)
 | Beta | 2 |
 b) Another option
 -a
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -165,7 +165,7 @@ First question?
 a) One
 b) Two
 -b
-#
+#endcard
 
 Some notes between.
 
@@ -173,7 +173,7 @@ Some notes between.
 Second question?
 a) Alpha
 b) Beta
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -211,7 +211,7 @@ c) Gamma
 
 Cloze sample.
 Use %token% with "drag".
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -260,7 +260,7 @@ Pick one.
 a) First
 b) Second
 -a
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -283,7 +283,7 @@ b) Second
     ---
 Second question?
 Answer: Two
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -303,11 +303,11 @@ Answer: Two
     }
   });
 
-  it("keeps '# Title' lines inside a card and uses '#' as the only terminator", () => {
+  it("keeps '# Title' lines inside a card and uses '#endcard' as the only terminator", () => {
     const markdown = `#card
 # Heading inside
 Answer: heading text stays inside
-#
+#endcard
 `;
 
     const cards = parseFlashcards(markdown);
@@ -321,7 +321,7 @@ Answer: heading text stays inside
     const markdown = `#card
 #exam should be kept
 Answer: yep
-#
+#endcard
 `;
 
     const cards = parseFlashcards(markdown);
@@ -345,7 +345,7 @@ Tabellen Raenderring ok/no
 ${table}
 a) Alpha
 -a
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -374,7 +374,7 @@ Cloze chain: %first% and "token".
 ---
 QA check.
 Answer: Confirmed.
-#
+#endcard
 `;
 
     const cards = parseFlashcards(markdown);
@@ -406,7 +406,7 @@ Answer: Confirmed.
 | Alpha | %first% |
 | Beta | "second" |
 | Gamma | "third" and %fourth% |
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -438,7 +438,7 @@ Answer: Confirmed.
 | --- | --- |
 | Alpha | %first% |
 | Beta | "second" |
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -465,7 +465,7 @@ SQL cld example with %Outside% and "token".
 "FROM" ADRESSE a
 "WHERE" k.NAME = %Nachname%
 \`\`\`
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -501,7 +501,7 @@ SQL cld example with %Outside% and "token".
 ---
 Second prompt?
 Answer: Table stays in the first part.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -523,7 +523,7 @@ Answer: Table stays in the first part.
 
 Statement: The Sun is a star.
 -true
-#
+#endcard
 
 #card
 3) Task (M1): Choose exactly one correct answer. Use the context table below.
@@ -539,7 +539,7 @@ a) POST
 b) GET
 c) DELETE
 -b
-#
+#endcard
 
 #card
 4) Task (M2): Choose all correct answers. Use the context table below.
@@ -558,7 +558,7 @@ d) Process
 -a
 -b
 -c
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -598,7 +598,7 @@ d) Process
     const markdown = `#card
 What is SQL used for as a common interface?
 Answer: SQL is used to define, manipulate, manage permissions, and handle transactions.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -616,7 +616,7 @@ Answer: SQL is used to define, manipulate, manage permissions, and handle transa
   it("parses a front/back card with inline Answer marker", () => {
     const markdown = `#card
 Define foreign key. Answer: An attribute that references a primary key.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -633,7 +633,7 @@ Define foreign key. Answer: An attribute that references a primary key.
     const markdown = `#card
 What is DNS?
 answer: Domain name system.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -650,7 +650,7 @@ answer: Domain name system.
     const markdown = `#card
 What is DNS?
 Answer : Domain name system.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -666,7 +666,7 @@ Answer : Domain name system.
   it("parses answer-only cards", () => {
     const markdown = `#card
 Answer: True.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -683,7 +683,7 @@ Answer: True.
     const markdown = `#card
 What is RAM?
 **Answer:** Random access memory.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -700,7 +700,7 @@ What is RAM?
     const markdown = `#card
 What is CPU?
 **Answer**: Central processing unit.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -718,7 +718,7 @@ What is CPU?
 1. Was ist eine Transaktion?
 Antwort:
 Eine Transaktion ist eine atomare Einheit von Operationen.
-#
+#endcard
 `;
 
     const cards = parseFlashcards(markdown);
@@ -754,7 +754,7 @@ Eine Transaktion ist eine atomare Einheit von Operationen.
     const markdown = `#card
 Que signifie SQL ?
 Reponse: SQL est un langage pour interroger des bases de donnees.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -773,7 +773,7 @@ Reponse: SQL est un langage pour interroger des bases de donnees.
     const markdown = `#card
 1. The earth orbits the sun. Wahr/Falsch?
 -wahr
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -795,7 +795,7 @@ Reponse: SQL est un langage pour interroger des bases de donnees.
     const markdown = `#card
 La tierra orbita el sol.
 -verdadero
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -819,7 +819,7 @@ La tierra orbita el sol.
 -wahr
 3. The moon is a planet. Wahr/Falsch?
 -falsch
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -852,7 +852,7 @@ La tierra orbita el sol.
   it("skips true/false questions without valid markers", () => {
     const markdown = `#card
 Missing marker. Wahr/Falsch?
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -863,7 +863,7 @@ Missing marker. Wahr/Falsch?
     const markdown = `#card
 Case check. Wahr/Falsch?
 -FALSCH
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -879,7 +879,7 @@ Case check. Wahr/Falsch?
     const markdown = `#card
 Spacing check.
 - falsch,
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -900,7 +900,7 @@ c) Three
 
 -a
 -d
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -920,7 +920,7 @@ b) Beta
 c) Gamma
 
 -c
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -938,7 +938,7 @@ c) Gamma
 #card
 Question?
 a) Option
-#
+#endcard
 More text.`;
 
     const cards = parseFlashcards(markdown);
@@ -957,12 +957,12 @@ More text.`;
 #card
 First.
 Fill %one% and "alpha".
-#
+#endcard
 ---
 #card
 Second.
 Only "beta".
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1005,7 +1005,7 @@ a) Option`;
     const markdown = `#card
 Define foreign key.
 A foreign key is an % attribute or attribute set % that references a %primary key% in another % table %.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1037,7 +1037,7 @@ A foreign key is an % attribute or attribute set % that references a %primary ke
     const markdown = `#card
 Short cloze.
 %alpha% and % beta % then %gamma%.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1060,7 +1060,7 @@ Short cloze.
     const markdown = `#card
 Drag token example.
 Use "Paris".
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1081,7 +1081,7 @@ Use "Paris".
     const markdown = `#card
 Inline code sample.
 Use %answer% with \`foo()\`.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1102,7 +1102,7 @@ Use %answer% with \`foo()\`.
     const markdown = `#card
 Inline code only: \`"alpha"\` and \`%beta%\`.
 Outside "gamma" and %delta%.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1127,7 +1127,7 @@ Code sample:
 \`\`\`js
 const q = \`SELECT %col% FROM "table"\`;
 \`\`\`
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1145,7 +1145,7 @@ const q = \`SELECT %col% FROM "table"\`;
     const markdown = `#card
 Mixed cloze.
 %Answer% and "Token".
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1168,7 +1168,7 @@ Mixed cloze.
     const markdown = `#card
 Mixed markers.
 Use %blank% with "alpha" and "beta".
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1197,7 +1197,7 @@ Use %blank% with "alpha" and "beta".
     const markdown = `#card
 Only tokens.
 Use "alpha" and "beta" here.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1224,7 +1224,7 @@ Use "alpha" and "beta" here.
     const markdown = `#card
 Duplicate tokens.
 Use "same" and "same" again.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1243,7 +1243,7 @@ Use "same" and "same" again.
     const markdown = `#card
 Broken markers.
 Valid %answer% and %unfinished.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1264,7 +1264,7 @@ Valid %answer% and %unfinished.
     const markdown = `#card
 Broken token.
 Valid %answer% and "unfinished.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1290,7 +1290,7 @@ Code:
 %not%
 ~~~
 Outside "token" and %blank%.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1324,7 +1324,7 @@ SELECT "COUNT"(*) FROM orders
 WHERE column = %sort_spalte%
 \`\`\`
 Outside token: "SELECT"
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1353,7 +1353,7 @@ Outside token: "SELECT"
     const markdown = `#card
 Empty blank.
 % %
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1372,7 +1372,7 @@ Between "token2".
 %second%
 ~~~
 After.
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 
@@ -1406,7 +1406,7 @@ Question?
 Answer: decoy
 #helpend
 Answer: Real answer
-#`;
+#endcard`;
 
     const cards = parseFlashcards(markdown);
 

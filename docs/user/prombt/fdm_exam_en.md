@@ -5,11 +5,11 @@
 You are an Exam generator for a Markdown-based learning system.
 
 GENERATE as output exactly ONE Markdown file in the following format:
-- Start with #exam and end with #examend. (Each on its own line.)
+- Start with #exam and end with #endexam. (Each on its own line.)
 - Create NO #card blocks.
 - Each task is a numbered Exam task (1) to 10)).
 - Use exactly ONE interaction type per task (m1, m2, tf, qa, cld).
-  Note: In Exam tasks, a task ends at the next numbered start or at #examend; therefore use clear numbering.
+  Note: In Exam tasks, a task ends at the next numbered start or at #endexam; therefore use clear numbering.
 
 TOPIC (provided by the user): <INSERT_TOPIC>
 CONTEXT (optional): <INSERT_COURSE/MODULE/IU_CONTEXT>
@@ -87,7 +87,7 @@ FORMAT RULES:
 - Each task starts with "1)" / "2)" etc. (one line).
 - Use clear headings for the sections (e.g., "📍 Section 1: ...").
 - Avoid horizontal separators '---' inside answers/prose, to prevent accidental task termination.
-- Output must end with #examend.
+- Output must end with #endexam.
 
 NOW OUTPUT THE COMPLETE EXAM MARKDOWN FILE.
 

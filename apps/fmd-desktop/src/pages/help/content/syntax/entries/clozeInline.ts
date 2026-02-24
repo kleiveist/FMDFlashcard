@@ -18,7 +18,7 @@ export const clozeInlineEntry: SyntaxEntry = {
         whatItIs:
           'Cloze blanks (%...%) are typed inputs, while drag tokens ("...") become drag blanks. You can use both in one card and combine with other syntaxes if desired.',
         rules: [
-          "Wrap the card with #card and # on their own lines.",
+          "Wrap the card with #card and #endcard on their own lines.",
           "The first non-empty line is the prompt.",
           "Use %...% for typed cloze blanks.",
           'Use "..." for drag tokens.',
@@ -35,12 +35,12 @@ export const clozeInlineEntry: SyntaxEntry = {
           "Template:",
           "#card",
           '{{prompt_with_%cloze%_and_"token"}}',
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
           'Fill in: The capital of France is %Paris% and the river is "Seine".',
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Leaving an empty %...% segment.",
@@ -51,7 +51,7 @@ export const clozeInlineEntry: SyntaxEntry = {
         whatItIs:
           'Cloze-Luecken (%...%) sind Eingabefelder, Drag-Tokens ("...") werden zu Drag-Luecken. Beides kann in einer Karte stehen und mit anderen Syntaxen kombiniert werden.',
         rules: [
-          "Karte mit #card und # auf eigenen Zeilen umschliessen.",
+          "Karte mit #card und #endcard auf eigenen Zeilen umschliessen.",
           "Die erste nicht-leere Zeile ist die Frage.",
           "%...% fuer Cloze-Eingaben nutzen.",
           '"..." fuer Drag-Tokens nutzen.',
@@ -68,12 +68,12 @@ export const clozeInlineEntry: SyntaxEntry = {
           "Template:",
           "#card",
           '{{frage_mit_%cloze%_und_"token"}}',
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
           'Fill in: Die Hauptstadt von Frankreich ist %Paris% und der Fluss ist "Seine".',
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Leere %...%-Blaenke lassen.",

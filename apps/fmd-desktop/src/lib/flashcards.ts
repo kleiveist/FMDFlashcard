@@ -147,7 +147,7 @@ const assignmentPattern = /^(.+?)=>\s*(.+)$/;
 const fenceLinePattern = /^\s*(```|~~~)/;
 const separatorLinePattern = /^\s*---\s*$/;
 const cardStartPattern = /^\s*#card\s*$/i;
-const cardEndPattern = /^\s*#\s*$/;
+const cardEndPattern = /^\s*#endcard\s*$/i;
 const helpStartPattern = /^\s*#help\s*$/;
 const helpEndPattern = /^\s*#helpend\s*$/;
 

@@ -102,7 +102,7 @@ You have `---` as a horizontal rule, but it is important that `---` has multiple
 
 You mention this in text, but not in your type table as its own category. I would add it because it is functionally decisive:
 
-- Containers: `#exam … #examend`, `#card … #`
+- Containers: `#exam … #endexam`, `#card … #endcard`
 - Markers: `-a`, `-b`, `-true/-false`, `Answer:`/`Antwort:`
 - Option labels: `a)` `b)` etc.
 - Edit factor: blockwise or inline depending on line, but always 100% editable
@@ -169,8 +169,8 @@ This makes it substantially stronger as a specification:
 | Definition / footnote marker | `[^1]`                     | ✔️       | text segment              |
 | Footnote block               | `[^1]: …`                  | ✔️       | full block                |
 | Callout / admonition         | `> [!note]`                | ✔️       | full block                |
-| Exam container               | `#exam … #examend`         | ✔️       | full block                |
-| Flashcard container          | `#card … #`                | ✔️       | full block                |
+| Exam container               | `#exam … #endexam`         | ✔️       | full block                |
+| Flashcard container          | `#card … #endcard`                | ✔️       | full block                |
 | MC option                    | `a)` `b)`                  | ✔️       | paragraph                 |
 | MC answer marker             | `-a` `-b`                  | ✔️       | marker only               |
 | True/False marker            | `-true` / `-false`         | ✔️       | marker only               |

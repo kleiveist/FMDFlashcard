@@ -28,7 +28,7 @@ Example:
 #card
 Explain the principle of least privilege.
 Answer: Keep permissions as tight as possible so users only see what they need.
-#
+#endcard
 ```
 
 ## Exam-specific caution

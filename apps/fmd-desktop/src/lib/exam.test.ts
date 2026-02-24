@@ -25,13 +25,13 @@ import {
 
 describe("parseExamTasks", () => {
   it("strips wrapper lines while keeping markdown headings", () => {
-const markdown = `#exam
+    const markdown = `#exam
 #card
 # Title
 Answer: Secret solution
+#endcard
 #
-#
-#examend`;
+#endexam`;
 
     const stripped = stripExamAndFlashcardWrapperLines(markdown).split("\n");
 
@@ -39,8 +39,8 @@ Answer: Secret solution
     expect(stripped).not.toContain("#exam");
     expect(stripped).not.toContain("#card");
     expect(stripped).not.toContain("#endcard");
-    expect(stripped).not.toContain("#examend");
-    expect(stripped).not.toContain("#");
+    expect(stripped).not.toContain("#endexam");
+    expect(stripped).toContain("#");
   });
 
   it("splits answer blocks only at line start markers", () => {
@@ -61,8 +61,7 @@ Answer: Secret solution
   it("keeps inline Answer markers as prompt text", () => {
     const markdown = `#exam
 1) Define foreign key. Answer: A foreign key is an attribute.
-#
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -87,8 +86,7 @@ Answer: Secret solution
 Answer: Decoy
 #helpend
 Answer: Real
-#
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -109,8 +107,8 @@ Answer: Real
 Answer: Decoy
 #helpend
 Answer: Real
-#
-#examend`;
+#endcard
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -128,8 +126,7 @@ Answer: Real
 | Term | Answer |
 | --- | --- |
 | Alpha | %one% |
-#
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -147,8 +144,7 @@ Answer: Real
 Still first task
 ---
 2) Second task
-#
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -166,7 +162,7 @@ Still first task
 a) Option A
 Text with x) marker
 2) Task two
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -186,7 +182,7 @@ Text with x) marker
 | --- | --- |
 | Row | 3) Not a task |
 2) Task two
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -203,8 +199,7 @@ Text with x) marker
 | --- | --- |
 | Alpha | #exam |
 | Beta | #card |
-#
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -221,8 +216,8 @@ a) First
 b) Second
 -a
 Answer: Secret solution
-#
-#examend`;
+#endcard
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -244,14 +239,14 @@ Answer: Secret solution
     }
   });
 
-  it("detects wrapper when #card is directly before task start", () => {
+  it("detects wrapper when #card is directly before task start and closes with #endcard", () => {
     const markdown = `#exam
 #card
 1) Wrapped before start
 Question?
 Answer: A
-#
-#examend`;
+#endcard
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -260,14 +255,29 @@ Answer: A
     expect(tasks[0]?.rawLines[0]?.trim()).toBe("#card");
   });
 
+  it("does not detect wrapper when a bare '#' is used as a legacy close", () => {
+    const markdown = `#exam
+#card
+1) Legacy close
+Question?
+Answer: A
+#
+#endexam`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.cardWrapper).toBe(false);
+  });
+
   it("does not mark wrapper as canonical when #card starts inside the task", () => {
     const markdown = `#exam
 1) Wrapped inside
 #card
 Question?
 Answer: A
-#
-#examend`;
+#endcard
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -275,13 +285,13 @@ Answer: A
     expect(tasks[0]?.cardWrapper).toBe(false);
   });
 
-  it("does not mark wrapper as full when closing # is missing", () => {
+  it("does not mark wrapper as full when closing #endcard is missing", () => {
     const markdown = `#exam
 1) Missing close
 #card
 Question?
 Answer: A
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -289,15 +299,15 @@ Answer: A
     expect(tasks[0]?.cardWrapper).toBe(false);
   });
 
-  it("does not mark wrapper as full when content exists after closing #", () => {
+  it("does not mark wrapper as full when content exists after closing #endcard", () => {
     const markdown = `#exam
 1) Trailing content
 #card
 Question?
 Answer: A
-#
+#endcard
 Still task content
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -312,7 +322,7 @@ Still task content
 Question?
 Answer: A
 # Title
-#examend`;
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
 
@@ -361,8 +371,8 @@ Colors: "schwarz", "rot", "gold".`;
 ${index}) ${title}
 #card
 ${body}
-#
-#examend
+#endcard
+#endexam
 `;
   const parseTask = (title: string, body: string) => {
     const { tasks } = parseExamTasks(buildExamMarkdown(title, body));
@@ -429,26 +439,26 @@ ${body}
 });
 
 describe("exam parser container rules", () => {
-  it("treats '#' lines as plain text and closes only at '#examend'", () => {
+  it("treats '#' lines as plain text and closes only at '#endexam'", () => {
     const markdown = `#exam
 1) First question
 #
 ## Section title
 Answer: Keep it internal
 #
-#examend`;
+#endexam`;
 
     const { tasks, hasExamBlock } = parseExamTasks(markdown);
     expect(hasExamBlock).toBe(true);
     expect(tasks).toHaveLength(1);
   });
 
-  it("ends the exam only when '#examend' is seen after '#'", () => {
+  it("ends the exam only when '#endexam' is seen after '#'", () => {
     const markdown = `#exam
 1) Alpha
 #
 2) Beta
-#examend`;
+#endexam`;
     const { tasks } = parseExamTasks(markdown);
     expect(tasks).toHaveLength(2);
   });
@@ -458,8 +468,8 @@ Answer: Keep it internal
 #card
 1) Nested card text
 Answer: Plain text remains
-#
-#examend`;
+#endcard
+#endexam`;
 
     const { tasks } = parseExamTasks(markdown);
     expect(tasks).toHaveLength(1);
@@ -469,13 +479,13 @@ Answer: Plain text remains
     const markdown = `#ExAm
 1) Alpha
 Answer: A
-#eXaMeNd`;
+#eNdExAm`;
     const { tasks, hasExamBlock } = parseExamTasks(markdown);
     expect(hasExamBlock).toBe(true);
     expect(tasks).toHaveLength(1);
   });
 
-  it("requires both #exam and #examend for hasExamBlock", () => {
+  it("requires both #exam and #endexam for hasExamBlock", () => {
     const markdown = `#exam
 1) Missing end marker
 Answer: A`;

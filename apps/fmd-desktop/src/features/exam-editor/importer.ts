@@ -82,9 +82,9 @@ const helpEndPattern = /^\s*#helpend\s*$/;
 const separatorLinePattern = /^\s*---\s*$/;
 const fencePattern = /^\s*(```|~~~)/;
 const cardStartPattern = /^\s*#card\s*$/i;
-const cardEndPattern = /^\s*#(?:endcard)?\s*$/i;
+const cardEndPattern = /^\s*#endcard\s*$/i;
 const examStartPattern = /^\s*#exam\s*$/i;
-const examEndPattern = /^\s*#examend\s*$/i;
+const examEndPattern = /^\s*#endexam\s*$/i;
 const taskLinePattern = /^\s*(\d+)\)\s*(.*)$/;
 
 const isHelpStartLine = (line: string) => helpStartPattern.test(line);
@@ -560,7 +560,7 @@ const parseCardBlock = (lines: string[]): FlashcardPart[] => {
   if (trimmed.length === 0) {
     return [];
   }
-  const cardSource = ["#card", ...trimmed, "#"].join("\n");
+  const cardSource = ["#card", ...trimmed, "#endcard"].join("\n");
   const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
   if (parsed.length === 0 || parsed[0].kind !== "composite") {
     return [];

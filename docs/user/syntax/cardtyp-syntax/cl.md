@@ -8,7 +8,7 @@ Typed clozes use the `%...%` syntax to turn inline fragments into input fields (
 ```md
 #card
 The capital of France is %Paris%.
-#
+#endcard
 ```
 
 - Each `%…%` pair becomes an input blank. The parser trims the text inside; blanks without any content are rejected.
@@ -27,5 +27,5 @@ The capital of France is %Paris%.
 ```sql
 The capital of France is %Paris%.
 ```
-#
+#endcard
 ````

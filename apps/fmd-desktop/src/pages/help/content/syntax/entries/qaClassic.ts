@@ -18,7 +18,7 @@ export const qaClassicEntry: SyntaxEntry = {
         whatItIs:
           "Use a direct question on the first non-empty line and provide the answer after the Answer: marker. The answer may be inline or on the following lines. Answer: and Antwort: behave identically; only the label language changes.",
         rules: [
-          "Wrap the card with #card and # on their own lines.",
+          "Wrap the card with #card and #endcard on their own lines.",
           "The first non-empty line is the prompt.",
           "Start the answer with Answer: (or Antwort:) inside the block.",
           "Answer: and Antwort: behave identically; only the label language changes.",
@@ -35,17 +35,17 @@ export const qaClassicEntry: SyntaxEntry = {
           "#card",
           "{{prompt}}",
           "Answer: {{answer}}",
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
           "What is SQL?",
           "Answer: A language for querying databases.",
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Placing Answer: before the prompt.",
-          "Putting #card and # on the same line.",
+          "Putting #card and #endcard on the same line.",
           "Mixing with multiple choice or true/false.",
         ],
       },
@@ -53,7 +53,7 @@ export const qaClassicEntry: SyntaxEntry = {
         whatItIs:
           "Nutze eine direkte Frage in der ersten nicht-leeren Zeile und schreibe die Antwort nach dem Marker Antwort: (oder Answer:). Die Antwort darf in derselben Zeile oder in den folgenden Zeilen stehen. Answer: und Antwort: verhalten sich identisch; nur die Sprache des Labels aendert sich.",
         rules: [
-          "Karte mit #card und # auf eigenen Zeilen umschliessen.",
+          "Karte mit #card und #endcard auf eigenen Zeilen umschliessen.",
           "Die erste nicht-leere Zeile ist die Frage.",
           "Antwort mit Antwort: (oder Answer:) starten.",
           "Answer: und Antwort: verhalten sich identisch; nur die Sprache des Labels aendert sich.",
@@ -70,17 +70,17 @@ export const qaClassicEntry: SyntaxEntry = {
           "#card",
           "{{frage}}",
           "Antwort: {{antwort}}",
-          "#",
+          "#endcard",
         ]),
         example: joinLines([
           "#card",
           "Was ist SQL?",
           "Antwort: Eine Sprache zum Abfragen von Datenbanken.",
-          "#",
+          "#endcard",
         ]),
         mistakes: [
           "Antwort: vor die Frage setzen.",
-          "#card und # in derselben Zeile schreiben.",
+          "#card und #endcard in derselben Zeile schreiben.",
           "Mit Multiple Choice oder True/False mischen.",
         ],
       },

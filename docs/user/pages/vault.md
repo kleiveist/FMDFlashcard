@@ -92,8 +92,8 @@ Tabelle 1 – Markdown-Typen & Editfaktor (vollständig)
 | Definition / Fußnote Marker  | `[^1]`                     | ✔️          | Textabschnitt            |
 | Fußnoten-Block               | `[^1]: …`                  | ✔️          | vollständiger Block      |
 | Callout / Admonition         | `> [!note]`                | ✔️          | vollständiger Block      |
-| Exam-Container               | `#exam … #examend`         | ✔️          | vollständiger Block      |
-| Flashcard-Container          | `#card … #`                | ✔️          | vollständiger Block      |
+| Exam-Container               | `#exam … #endexam`         | ✔️          | vollständiger Block      |
+| Flashcard-Container          | `#card … #endcard`                | ✔️          | vollständiger Block      |
 | MC-Option                    | `a)` `b)`                  | ✔️          | Absatz                   |
 | MC-Antwortmarker             | `-a` `-b`                  | ✔️          | nur Marker               |
 | True/False-Marker            | `-true` / `-false`         | ✔️          | nur Marker               |

@@ -3,7 +3,7 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Code `f`: Flashcard block container
 
-A `#card … #` block (`f`) declares the flashcard boundaries that the parser scans. You can use it inside or outside exam content. Inside an exam, the block is only processed if it sits inside a numbered task (`ea`).
+A `#card … #endcard` block (`f`) declares the flashcard boundaries that the parser scans. You can use it inside or outside exam content. Inside an exam, the block is only processed if it sits inside a numbered task (`ea`).
 
 ## Syntax
 
@@ -11,7 +11,7 @@ A `#card … #` block (`f`) declares the flashcard boundaries that the parser sc
 #card
 Question or prompt text
 Answer: The answer text
-#
+#endcard
 ```
 
 - The opening `#card` and the closing `#` must each sit on their own line.

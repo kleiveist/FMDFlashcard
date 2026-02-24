@@ -97,9 +97,9 @@ export const ExamSimulationPage = () => {
     missingExamSettings,
     examEmptyState,
     results,
-    conversionDecisions,
-    conversionPending,
-    conversionError,
+    resultTaskCardWrapPendingById,
+    resultTaskCardWrapErrorById,
+    resultTaskCardWrapNoticeById,
     handleDeleteExamRun,
     handleToggleExamSelection,
     handleStartExam,
@@ -120,7 +120,8 @@ export const ExamSimulationPage = () => {
     handleAutoGradeDecision,
     handleTaskBack,
     handleTaskNext,
-    handleConversionDecision,
+    handleResultTaskCardWrapperToggle,
+    getTaskCardWrapDisabledReason,
   } = useExamSimulationViewModel();
   const [isViewMode, setIsViewMode] = useState(false);
   const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
@@ -168,7 +169,7 @@ export const ExamSimulationPage = () => {
     () => ({
       stage,
       canStartExam,
-      finishPending: conversionPending,
+      finishPending: false,
       onStartExam: handleStartExam,
       onSubmitExam: handleSubmitExam,
       onStartScoring: handleStartScoring,
@@ -177,7 +178,6 @@ export const ExamSimulationPage = () => {
     }),
     [
       canStartExam,
-      conversionPending,
       handleFinishScoring,
       handleResetExam,
       handleStartExam,
@@ -566,9 +566,6 @@ export const ExamSimulationPage = () => {
                     partStates={activeTaskPartStates}
                     awardedPoints={activeTaskAwardedPoints}
                     autoGradeDecision={activeTaskAutoDecision}
-                    conversionDecision={conversionDecisions[activeTaskIndex]}
-                    conversionPending={conversionPending}
-                    conversionError={conversionError}
                     onOptionSelect={handleOptionSelect}
                     onTrueFalseSelect={handleTrueFalseSelect}
                     onClozeInputChange={handleClozeInputChange}
@@ -579,7 +576,6 @@ export const ExamSimulationPage = () => {
                     onTextInputChange={handleTextInputChange}
                     onAwardedPointsChange={handleAwardedPointsChange}
                     onAutoGradeDecision={handleAutoGradeDecision}
-                    onConversionDecision={handleConversionDecision}
                     onBack={handleTaskBack}
                     onNext={handleTaskNext}
                     canGoBack={activeTaskIndex > 0}
@@ -609,6 +605,11 @@ export const ExamSimulationPage = () => {
                       <ExamResultsPanel
                         results={results}
                         helpEnabled={settings.examHelpEnabled}
+                        onToggleTaskCardWrapper={handleResultTaskCardWrapperToggle}
+                        taskCardWrapPendingById={resultTaskCardWrapPendingById}
+                        taskCardWrapErrorById={resultTaskCardWrapErrorById}
+                        taskCardWrapNoticeById={resultTaskCardWrapNoticeById}
+                        getTaskCardWrapDisabledReason={getTaskCardWrapDisabledReason}
                       />
                     </section>
                   </>

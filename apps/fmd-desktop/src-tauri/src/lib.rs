@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Component, Path, PathBuf},
-    time::UNIX_EPOCH,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use tauri::Manager;
@@ -955,6 +955,57 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn write_text_file_atomic(path: String, contents: String) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    if !is_markdown(&path) {
+        return Err("Only markdown files are supported.".to_string());
+    }
+    if path.exists() {
+        if !path.is_file() {
+            return Err("Path is not a file.".to_string());
+        }
+    } else if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+
+    let parent = path
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let file_name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("markdown.md");
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let temp_name = format!(".{}.{}.tmp", file_name, timestamp);
+    let temp_path = parent.join(temp_name);
+
+    fs::write(&temp_path, contents).map_err(|err| err.to_string())?;
+
+    match fs::rename(&temp_path, &path) {
+        Ok(()) => Ok(()),
+        Err(rename_err) => {
+            if path.exists() {
+                fs::remove_file(&path).map_err(|err| {
+                    let _ = fs::remove_file(&temp_path);
+                    err.to_string()
+                })?;
+                fs::rename(&temp_path, &path).map_err(|err| {
+                    let _ = fs::remove_file(&temp_path);
+                    err.to_string()
+                })
+            } else {
+                let _ = fs::remove_file(&temp_path);
+                Err(rename_err.to_string())
+            }
+        }
+    }
+}
+
+#[tauri::command]
 fn delete_markdown_file(
     vault_path: String,
     relative_path: String,
@@ -1186,6 +1237,7 @@ pub fn run() {
             export_input_debug_log,
             read_text_file,
             write_text_file,
+            write_text_file_atomic,
             delete_markdown_file,
             move_markdown_file,
             move_directory,
