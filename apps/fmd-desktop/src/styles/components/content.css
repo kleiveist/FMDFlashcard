@@ -1678,22 +1678,32 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-results-task-modal-toolbar {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 10px;
   min-width: 0;
 }
 
-.exam-results-card-wrap-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  color: var(--ink);
-  white-space: nowrap;
+.exam-results-task-card-wrapper-field {
+  min-width: min(360px, calc(96vw - 160px));
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg-raised) 12%);
 }
 
-.exam-results-card-wrap-toggle input {
-  margin: 0;
+.exam-results-task-card-wrapper-field .choice-row {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.exam-results-task-card-wrapper-field .choice-row > :last-child {
+  min-width: 0;
+}
+
+.exam-results-task-card-wrapper-field code {
+  font-size: 0.85em;
 }
 
 .exam-results-task-modal-note {
@@ -1701,6 +1711,16 @@ body.focus-mode .spaced-repetition-sidebar {
   border-radius: 10px;
   padding: 8px 10px;
   background: color-mix(in srgb, var(--panel) 80%, var(--bg-raised) 20%);
+}
+
+@media (max-width: 860px) {
+  .exam-results-task-card-wrapper-field {
+    min-width: min(280px, calc(96vw - 120px));
+  }
+
+  .exam-results-task-card-wrapper-field .choice-row {
+    flex-wrap: wrap;
+  }
 }
 
 .exam-conversion-actions {

@@ -201,21 +201,32 @@ export const ExamResultsPanel = ({
         headerActions={
           selectedBreakdownItem && selectedTask ? (
             <div className="exam-results-task-modal-toolbar">
-              <label className="exam-results-card-wrap-toggle">
-                <input
-                  type="checkbox"
-                  checked={selectedTask.cardWrapper}
-                  disabled={selectedToggleDisabled}
-                  onChange={(event) =>
-                    onToggleTaskCardWrapper(
-                      selectedBreakdownItem.sessionTaskId,
-                      event.target.checked,
-                    )
-                  }
-                  aria-label="Wrap task in #card block"
-                />
-                <span>Wrap in #card</span>
-              </label>
+              <div className="field exam-results-task-card-wrapper-field">
+                <span className="label">Card wrapper</span>
+                <label className="choice-row">
+                  <span className="switch">
+                    <input
+                      type="checkbox"
+                      checked={selectedTask.cardWrapper}
+                      disabled={selectedToggleDisabled}
+                      onChange={(event) =>
+                        onToggleTaskCardWrapper(
+                          selectedBreakdownItem.sessionTaskId,
+                          event.target.checked,
+                        )
+                      }
+                      aria-label="Wrap task in #card block"
+                    />
+                    <span className="slider" />
+                  </span>
+                  <span>
+                    Wrap task in <code>#card</code> block
+                  </span>
+                </label>
+                <span className="muted small">
+                  Applies to the full task, including all parts.
+                </span>
+              </div>
               {selectedTogglePending ? (
                 <span className="muted small">Saving...</span>
               ) : null}

@@ -2,7 +2,8 @@
  * @file apps/fmd-desktop/src/features/flashcards/useFlashcardNoteFiles.ts
  *
  * Zweck:
- * - Liefert eine zentrale Liste von Markdown-Dateien mit #card-Markern.
+ * - Liefert eine zentrale Liste von Markdown-Dateien mit gueltigen
+ *   #card ... #endcard-Flashcard-Bloecken.
  */
 
 import { useEffect, useState } from "react";
@@ -10,18 +11,14 @@ import { invoke } from "@tauri-apps/api/core";
 import type { LoadState } from "../../lib/types";
 import type { VaultFile } from "../../lib/tree";
 import type { FlashcardFileEntry } from "./useFlashcards";
+import { parseFlashcards } from "../../lib/flashcards";
 
 type UseFlashcardNoteFilesOptions = {
   files: VaultFile[];
   vaultPath: string | null;
 };
 
-const cardMarkerPattern = /^\s*#card\s*$/gim;
-
-const countCardMarkers = (markdown: string) => {
-  const matches = markdown.match(cardMarkerPattern);
-  return matches ? matches.length : 0;
-};
+const countFlashcardBlocks = (markdown: string) => parseFlashcards(markdown).length;
 
 export const useFlashcardNoteFiles = ({
   files,
@@ -58,8 +55,8 @@ export const useFlashcardNoteFiles = ({
           const contents = await invoke<string>("read_text_file", {
             path: file.path,
           });
-          const markerCount = countCardMarkers(contents);
-          return markerCount > 0 ? { ...file, flashcardCount: markerCount } : null;
+          const flashcardCount = countFlashcardBlocks(contents);
+          return flashcardCount > 0 ? { ...file, flashcardCount } : null;
         }),
       );
 
