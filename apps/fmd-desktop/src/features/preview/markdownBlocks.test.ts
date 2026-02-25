@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  normalizeHelpBlockSource,
   normalizeOrderedListBlockSource,
   parseMarkdownBlocks,
 } from "./markdownBlocks";
@@ -46,6 +47,65 @@ describe("markdownBlocks", () => {
     expect(blocks[0]?.kind).toBe("ordered-list");
     expect(blocks[0]?.raw).toContain("continuation");
   });
+
+  it("treats #help ... #helpend as a single special block", () => {
+    const markdown = [
+      "Vorher",
+      "#help",
+      "# Testtitel",
+      "1. Liste",
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+      "#helpend",
+      "Nachher",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "help-block",
+      "paragraph",
+    ]);
+    expect(blocks[1]?.raw).toBe(
+      [
+        "#help",
+        "# Testtitel",
+        "1. Liste",
+        "| A | B |",
+        "| --- | --- |",
+        "| 1 | 2 |",
+        "#helpend",
+      ].join("\n"),
+    );
+  });
+
+  it("splits lists around an indented help block and keeps help as its own block", () => {
+    const markdown = [
+      "1. Erste Zeile",
+      "   Fortsetzung",
+      "   #help",
+      "   1. bleibt im help-block roh",
+      "   #helpend   ",
+      "2. Zweite Zeile",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "ordered-list",
+      "help-block",
+      "ordered-list",
+    ]);
+    expect(blocks[0]?.raw).toBe(["1. Erste Zeile", "   Fortsetzung"].join("\n"));
+    expect(blocks[1]?.raw).toBe(
+      [
+        "   #help",
+        "   1. bleibt im help-block roh",
+        "   #helpend   ",
+      ].join("\n"),
+    );
+    expect(blocks[2]?.raw).toBe("2. Zweite Zeile");
+  });
 });
 
 describe("normalizeOrderedListBlockSource", () => {
@@ -74,3 +134,23 @@ describe("normalizeOrderedListBlockSource", () => {
   });
 });
 
+describe("normalizeHelpBlockSource", () => {
+  it("forces #helpend to be left-aligned without spaces or tabs", () => {
+    const input = [
+      "#help",
+      "Inhalt",
+      "   #helpend   ",
+      "\t#helpend\t",
+    ].join("\n");
+
+    const normalized = normalizeHelpBlockSource(input);
+    expect(normalized).toBe(
+      [
+        "#help",
+        "Inhalt",
+        "#helpend",
+        "#helpend",
+      ].join("\n"),
+    );
+  });
+});

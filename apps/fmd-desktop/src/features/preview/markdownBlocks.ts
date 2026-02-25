@@ -10,6 +10,7 @@ export type MarkdownBlockKind =
   | "blank"
   | "heading"
   | "paragraph"
+  | "help-block"
   | "ordered-list"
   | "unordered-list"
   | "table"
@@ -41,6 +42,8 @@ const isHeadingLine = (line: string) => /^\s{0,3}#{1,6}(?:\s+|$)/.test(line);
 const isBlockquoteLine = (line: string) => /^\s*>/.test(line);
 const isHorizontalRuleLine = (line: string) =>
   /^\s{0,3}(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
+const isHelpBlockStartLine = (line: string) => line.trim().toLowerCase() === "#help";
+const isHelpBlockEndLine = (line: string) => line.trim().toLowerCase() === "#helpend";
 
 const isMarkdownTableRowLine = (line: string) =>
   /^\|(?:[^|]*\|)+\s*$/.test(line.trim());
@@ -67,6 +70,9 @@ const isListContinuationLine = (line: string) => {
   if (isBlankLine(line)) {
     return false;
   }
+  if (isHelpBlockStartLine(line) || isHelpBlockEndLine(line)) {
+    return false;
+  }
   if (isListStartLine(line)) {
     return true;
   }
@@ -80,6 +86,9 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
     return true;
   }
   if (isCodeFenceLine(line)) {
+    return true;
+  }
+  if (isHelpBlockStartLine(line)) {
     return true;
   }
   if (isHeadingLine(line)) {
@@ -170,6 +179,20 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
         }
       }
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "code-fence", i, end));
+      blockIndex += 1;
+      i = end + 1;
+      continue;
+    }
+
+    if (isHelpBlockStartLine(line)) {
+      let end = i;
+      for (let j = i + 1; j < lines.length; j += 1) {
+        end = j;
+        if (isHelpBlockEndLine(lines[j] ?? "")) {
+          break;
+        }
+      }
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "help-block", i, end));
       blockIndex += 1;
       i = end + 1;
       continue;
@@ -295,6 +318,22 @@ export const normalizeOrderedListBlockSource = (blockRaw: string) => {
     .join("\n");
 };
 
+export const normalizeHelpBlockSource = (blockRaw: string) => {
+  if (!blockRaw) {
+    return blockRaw;
+  }
+  return blockRaw
+    .split("\n")
+    .map((line) => {
+      if (line.trim().toLowerCase() !== "#helpend") {
+        return line;
+      }
+      // Sonderregel: Endmarker immer linksbuendig und ohne zusaetzliche Leerzeichen/Tabs.
+      return "#helpend";
+    })
+    .join("\n");
+};
+
 export const isSingleLineCommitBlock = (block: MarkdownBlock) => {
   if (block.startLine !== block.endLine) {
     return false;
@@ -302,9 +341,9 @@ export const isSingleLineCommitBlock = (block: MarkdownBlock) => {
   return !(
     block.kind === "table" ||
     block.kind === "code-fence" ||
+    block.kind === "help-block" ||
     block.kind === "ordered-list" ||
     block.kind === "unordered-list" ||
     block.kind === "blockquote"
   );
 };
-

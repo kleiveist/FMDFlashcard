@@ -21,13 +21,17 @@
  */
 
 import {
+  Children,
   type CSSProperties,
   type DragEvent,
   type FormEvent,
   type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
+  cloneElement,
+  isValidElement,
   type SyntheticEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -73,7 +77,7 @@ import {
   outdentSelectedListItems,
   type CommandResult,
 } from "./previewMarkdownListCommands";
-import { ChevronDownIcon, CodeIcon, MarkdownIcon } from "./icons";
+import { ChevronDownIcon, CodeIcon, EditIcon, MarkdownIcon } from "./icons";
 
 type CoverThumbnailSource = {
   src?: string | null;
@@ -923,6 +927,112 @@ const remarkPreserveOrderedListDelimiters = () =>
     }
     preserveOrderedListDelimiter(tree, source);
   };
+
+type MarkdownInlineSyntaxKind = "hash-tag" | "cloze" | "quoted-token";
+
+// Highlight inline FMD-style hash directives/tags like "#card", "#text", "#test".
+// Headings are unaffected because Markdown headings require "# " (hash + space),
+// while this pattern only matches hash tokens without a following space.
+const markdownInlineSyntaxPattern = /#[A-Za-z0-9_-]+\b|%[^%\n]+%|"[^"\n]+"/g;
+
+const resolveInlineSyntaxKind = (token: string): MarkdownInlineSyntaxKind | null => {
+  if (/^#[A-Za-z0-9_-]+\b/.test(token)) {
+    return "hash-tag";
+  }
+  if (/^%[^%\n]+%$/.test(token)) {
+    return "cloze";
+  }
+  if (/^"[^"\n]+"$/.test(token)) {
+    return "quoted-token";
+  }
+  return null;
+};
+
+const shouldSkipInlineSyntaxHighlight = (tagName: string | null) =>
+  tagName === "code" ||
+  tagName === "pre" ||
+  tagName === "a" ||
+  tagName === "kbd" ||
+  tagName === "svg" ||
+  tagName === "path" ||
+  tagName === "button" ||
+  tagName === "input" ||
+  tagName === "textarea";
+
+const highlightInlineSyntaxInText = (text: string, keyPrefix: string): ReactNode => {
+  if (!text || !markdownInlineSyntaxPattern.test(text)) {
+    markdownInlineSyntaxPattern.lastIndex = 0;
+    return text;
+  }
+  markdownInlineSyntaxPattern.lastIndex = 0;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let tokenIndex = 0;
+  let match = markdownInlineSyntaxPattern.exec(text);
+
+  while (match) {
+    const token = match[0] ?? "";
+    const startIndex = match.index;
+    const endIndex = startIndex + token.length;
+    if (startIndex > lastIndex) {
+      parts.push(text.slice(lastIndex, startIndex));
+    }
+    const kind = resolveInlineSyntaxKind(token);
+    if (!kind) {
+      parts.push(token);
+    } else {
+      parts.push(
+        <span
+          key={`${keyPrefix}-${tokenIndex}`}
+          className={`md-inline-syntax md-inline-syntax-${kind}`}
+          data-md-inline-syntax={kind}
+        >
+          {token}
+        </span>,
+      );
+    }
+    lastIndex = endIndex;
+    tokenIndex += 1;
+    match = markdownInlineSyntaxPattern.exec(text);
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+};
+
+const highlightInlineSyntaxInNode = (node: ReactNode, keyPrefix = "md-inline"): ReactNode => {
+  if (typeof node === "string") {
+    return highlightInlineSyntaxInText(node, keyPrefix);
+  }
+  if (typeof node === "number" || typeof node === "boolean" || node == null) {
+    return node;
+  }
+  if (!isValidElement<{ children?: ReactNode }>(node)) {
+    return node;
+  }
+
+  const tagName = typeof node.type === "string" ? node.type.toLowerCase() : null;
+  if (shouldSkipInlineSyntaxHighlight(tagName)) {
+    return node;
+  }
+
+  const rawChildren = node.props.children;
+  if (rawChildren == null) {
+    return node;
+  }
+  const nextChildren = Children.map(rawChildren, (child, index) =>
+    highlightInlineSyntaxInNode(child, `${keyPrefix}-${index}`),
+  );
+  return cloneElement(node, undefined, nextChildren);
+};
+
+const renderHighlightedInlineSyntaxChildren = (children: ReactNode, keyPrefix: string) =>
+  Children.map(children, (child, index) =>
+    highlightInlineSyntaxInNode(child, `${keyPrefix}-${index}`),
+  );
 
 type PreviewPanelProps = {
   editDraft: string;
@@ -5540,6 +5650,7 @@ export const PreviewPanel = ({
   const lastCaretIndexRef = useRef<number | null>(null);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
   const [isFrontmatterPanelCollapsed, setIsFrontmatterPanelCollapsed] = useState(false);
+  const [isHybridEditModeActive, setIsHybridEditModeActive] = useState(true);
 
   const previewFrontmatter = useMemo(
     () => parseFrontmatterDocument(preview),
@@ -5561,6 +5672,16 @@ export const PreviewPanel = ({
   useEffect(() => {
     setShowFrontmatterTextFallback(false);
   }, [preview]);
+
+  useEffect(() => {
+    setIsHybridEditModeActive(true);
+  }, [selectedFile?.path]);
+
+  useEffect(() => {
+    if (documentMode === "write") {
+      setIsHybridEditModeActive(true);
+    }
+  }, [documentMode]);
 
   const captureScroll = useCallback((element: HTMLElement | null) => {
     if (!element) {
@@ -6134,6 +6255,41 @@ export const PreviewPanel = ({
         ]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
         components={{
+          h1: ({ node: _node, children, ...props }) => (
+            <h1 {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "h1")}
+            </h1>
+          ),
+          h2: ({ node: _node, children, ...props }) => (
+            <h2 {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "h2")}
+            </h2>
+          ),
+          h3: ({ node: _node, children, ...props }) => (
+            <h3 {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "h3")}
+            </h3>
+          ),
+          h4: ({ node: _node, children, ...props }) => (
+            <h4 {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "h4")}
+            </h4>
+          ),
+          h5: ({ node: _node, children, ...props }) => (
+            <h5 {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "h5")}
+            </h5>
+          ),
+          h6: ({ node: _node, children, ...props }) => (
+            <h6 {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "h6")}
+            </h6>
+          ),
+          p: ({ node: _node, children, ...props }) => (
+            <p {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "p")}
+            </p>
+          ),
           ol: ({ node, ...props }) => {
             const delimiterFromNode =
               node &&
@@ -6171,6 +6327,16 @@ export const PreviewPanel = ({
             } as CSSProperties;
             return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
           },
+          li: ({ node: _node, children, ...props }) => (
+            <li {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "li")}
+            </li>
+          ),
+          blockquote: ({ node: _node, children, ...props }) => (
+            <blockquote {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "blockquote")}
+            </blockquote>
+          ),
           pre: ({ node: _node, ...props }) => (
             <div className="md-code-block">
               <button
@@ -6214,6 +6380,16 @@ export const PreviewPanel = ({
               <table {...props} />
             </div>
           ),
+          th: ({ node: _node, children, ...props }) => (
+            <th {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "th")}
+            </th>
+          ),
+          td: ({ node: _node, children, ...props }) => (
+            <td {...props}>
+              {renderHighlightedInlineSyntaxChildren(children, "td")}
+            </td>
+          ),
           img: ({ node: _node, ...props }) => (
             <img {...props} draggable={false} />
           ),
@@ -6245,16 +6421,25 @@ export const PreviewPanel = ({
     previewState === "idle" &&
     previewFrontmatter.hasFrontmatter &&
     !previewFrontmatter.error;
-  const previewToggleLabel = rawPreview
-    ? "Switch to Markdown preview"
-    : "Switch to Rohtext";
-  const ToggleIcon = rawPreview ? MarkdownIcon : CodeIcon;
-  const showMarkdownEditor = markdownViewEditEnabled && !rawPreview;
-  const showHybridMarkdownEditor = Boolean(
+  const canUseHybridMarkdownEditor = Boolean(
     markdownHybridEnabled &&
-      showMarkdownEditor &&
       canEdit &&
       previewState === "idle" &&
+      !hasFrontmatterError,
+  );
+  const isEditModeActive = documentMode === "write" || isHybridEditModeActive;
+  const showMarkdownEditor = markdownViewEditEnabled && !rawPreview;
+  const showHybridMarkdownEditor = Boolean(
+    canUseHybridMarkdownEditor &&
+      !rawPreview &&
+      isEditModeActive,
+  );
+  const disableLegacyPreviewClick = Boolean(markdownHybridEnabled);
+  const canToggleEditMode = Boolean(
+    markdownHybridEnabled &&
+      selectedFile &&
+      previewState === "idle" &&
+      documentMode !== "write" &&
       !hasFrontmatterError,
   );
   const handleToggleFrontmatterPanelCollapsed = useCallback(() => {
@@ -6271,11 +6456,60 @@ export const PreviewPanel = ({
           </p>
         </div>
         <div className="preview-actions">
-          {markdownHybridEnabled && selectedFile ? (
-            <span className={`chip ${documentMode === "write" ? "warning" : ""}`}>
-              {documentMode === "write" ? "Write" : "Edit"}
-            </span>
-          ) : null}
+          <div className="preview-mode-toggle" role="group" aria-label="Preview mode">
+            <button
+              type="button"
+              className={`ghost small preview-mode-button ${rawPreview ? "active" : ""}`}
+              onClick={() => {
+                if (!rawPreview) {
+                  onToggleRawPreview();
+                }
+              }}
+              aria-pressed={rawPreview}
+              disabled={!selectedFile}
+              aria-label="Code view"
+              title="Code view"
+            >
+              <CodeIcon />
+            </button>
+            <button
+              type="button"
+              className={`ghost small preview-mode-button ${!rawPreview ? "active" : ""}`}
+              onClick={() => {
+                if (rawPreview) {
+                  onToggleRawPreview();
+                }
+              }}
+              aria-pressed={!rawPreview}
+              disabled={!selectedFile}
+              aria-label="Markdown view"
+              title="Markdown view"
+            >
+              <MarkdownIcon />
+            </button>
+            <button
+              type="button"
+              className={`ghost small preview-mode-button ${
+                isEditModeActive ? "active edit-active" : ""
+              }`}
+              onClick={() => {
+                if (!canToggleEditMode) {
+                  return;
+                }
+                setIsHybridEditModeActive((current) => !current);
+              }}
+              aria-pressed={isEditModeActive}
+              disabled={!canToggleEditMode}
+              aria-label="Edit mode"
+              title={
+                documentMode === "write"
+                  ? "Edit mode is required while writing"
+                  : "Toggle edit mode"
+              }
+            >
+              <EditIcon />
+            </button>
+          </div>
           {documentMode === "write" && selectedFile ? (
             <>
               <button
@@ -6300,19 +6534,6 @@ export const PreviewPanel = ({
               </button>
             </>
           ) : null}
-          <button
-            type="button"
-            className={`ghost small preview-toggle-button ${rawPreview ? "active" : ""}`}
-            onClick={onToggleRawPreview}
-            aria-pressed={rawPreview}
-            aria-label={previewToggleLabel}
-            title={previewToggleLabel}
-            disabled={!selectedFile}
-          >
-            <span className="preview-toggle-icon" aria-hidden="true">
-              <ToggleIcon />
-            </span>
-          </button>
           {previewState === "loading" ? <span className="chip">Lade...</span> : null}
         </div>
       </div>
@@ -6349,7 +6570,7 @@ export const PreviewPanel = ({
           className="preview-content"
           onClick={handlePreviewLinkClick}
           onAuxClick={handlePreviewLinkClick}
-          onMouseUp={showHybridMarkdownEditor ? undefined : handlePreviewClick}
+          onMouseUp={disableLegacyPreviewClick ? undefined : handlePreviewClick}
         >
           <div className="preview-surface">
             {showHybridMarkdownEditor ? (
@@ -6495,6 +6716,41 @@ export const PreviewPanel = ({
                         ]}
                         rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
                         components={{
+                          h1: ({ node: _node, children, ...props }) => (
+                            <h1 {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-h1")}
+                            </h1>
+                          ),
+                          h2: ({ node: _node, children, ...props }) => (
+                            <h2 {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-h2")}
+                            </h2>
+                          ),
+                          h3: ({ node: _node, children, ...props }) => (
+                            <h3 {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-h3")}
+                            </h3>
+                          ),
+                          h4: ({ node: _node, children, ...props }) => (
+                            <h4 {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-h4")}
+                            </h4>
+                          ),
+                          h5: ({ node: _node, children, ...props }) => (
+                            <h5 {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-h5")}
+                            </h5>
+                          ),
+                          h6: ({ node: _node, children, ...props }) => (
+                            <h6 {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-h6")}
+                            </h6>
+                          ),
+                          p: ({ node: _node, children, ...props }) => (
+                            <p {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-p")}
+                            </p>
+                          ),
                           ol: ({ node, ...props }) => {
                             const delimiterFromNode =
                               node &&
@@ -6534,6 +6790,16 @@ export const PreviewPanel = ({
                             } as CSSProperties;
                             return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
                           },
+                          li: ({ node: _node, children, ...props }) => (
+                            <li {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-li")}
+                            </li>
+                          ),
+                          blockquote: ({ node: _node, children, ...props }) => (
+                            <blockquote {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-blockquote")}
+                            </blockquote>
+                          ),
                           pre: ({ node: _node, ...props }) => (
                             <div className="md-code-block">
                               <button
@@ -6576,6 +6842,16 @@ export const PreviewPanel = ({
                             <div className="markdown-table">
                               <table {...props} />
                             </div>
+                          ),
+                          th: ({ node: _node, children, ...props }) => (
+                            <th {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-th")}
+                            </th>
+                          ),
+                          td: ({ node: _node, children, ...props }) => (
+                            <td {...props}>
+                              {renderHighlightedInlineSyntaxChildren(children, "view-td")}
+                            </td>
                           ),
                           img: ({ node: _node, ...props }) => (
                             <img {...props} draggable={false} />

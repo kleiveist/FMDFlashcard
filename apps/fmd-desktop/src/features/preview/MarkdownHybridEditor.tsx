@@ -19,6 +19,7 @@ import {
 } from "react";
 import {
   isSingleLineCommitBlock,
+  normalizeHelpBlockSource,
   normalizeOrderedListBlockSource,
   parseMarkdownBlocks,
   replaceMarkdownBlock,
@@ -40,6 +41,11 @@ export type MarkdownHybridEditorMode = "edit" | "write";
 type PendingActivation = {
   index: number;
   caret: "start" | "end";
+};
+
+type BlockSelectionRange = {
+  anchorIndex: number;
+  focusIndex: number;
 };
 
 type MarkdownHybridEditorProps = {
@@ -65,11 +71,57 @@ const isRedoShortcut = (event: KeyboardEvent<HTMLElement>) =>
   ((event.shiftKey && event.key.toLowerCase() === "z") ||
     (!event.metaKey && event.key.toLowerCase() === "y"));
 
+const isDeleteRangeShortcut = (event: KeyboardEvent<HTMLElement>) =>
+  !event.altKey &&
+  !event.ctrlKey &&
+  !event.metaKey &&
+  (event.key === "Delete" || event.key === "Backspace");
+
 const clampIndex = (value: number, maxExclusive: number) => {
   if (maxExclusive <= 0) {
     return 0;
   }
   return Math.max(0, Math.min(value, maxExclusive - 1));
+};
+
+const normalizeBlockSelectionRange = (range: BlockSelectionRange) => ({
+  start: Math.min(range.anchorIndex, range.focusIndex),
+  end: Math.max(range.anchorIndex, range.focusIndex),
+});
+
+const isBlockIndexInSelectedRange = (range: BlockSelectionRange | null, index: number) => {
+  if (!range) {
+    return false;
+  }
+  const normalized = normalizeBlockSelectionRange(range);
+  return index >= normalized.start && index <= normalized.end;
+};
+
+const deleteMarkdownBlockRange = (
+  sourceMarkdown: string,
+  blocks: MarkdownBlock[],
+  range: BlockSelectionRange,
+) => {
+  if (blocks.length === 0) {
+    return sourceMarkdown;
+  }
+  const normalized = normalizeBlockSelectionRange(range);
+  const firstBlock = blocks[normalized.start];
+  const lastBlock = blocks[normalized.end];
+  if (!firstBlock || !lastBlock) {
+    return sourceMarkdown;
+  }
+
+  let removeStart = firstBlock.startOffset;
+  let removeEnd = lastBlock.endOffset;
+
+  if (sourceMarkdown[removeEnd] === "\n") {
+    removeEnd += 1;
+  } else if (removeStart > 0 && sourceMarkdown[removeStart - 1] === "\n") {
+    removeStart -= 1;
+  }
+
+  return `${sourceMarkdown.slice(0, removeStart)}${sourceMarkdown.slice(removeEnd)}`;
 };
 
 const resolveSessionMarkdown = (
@@ -108,6 +160,11 @@ export const MarkdownHybridEditor = ({
   const [pendingActivation, setPendingActivation] = useState<PendingActivation | null>(
     null,
   );
+  const [selectedBlockRange, setSelectedBlockRange] = useState<BlockSelectionRange | null>(
+    null,
+  );
+  const [isRightDragSelecting, setIsRightDragSelecting] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingCaretRef = useRef<"start" | "end" | null>(null);
   const autoActivatedWriteKeyRef = useRef<string | null>(null);
@@ -133,9 +190,40 @@ export const MarkdownHybridEditor = ({
     setActiveDraft("");
     setActiveDirty(false);
     setPendingActivation(null);
+    setSelectedBlockRange(null);
+    setIsRightDragSelecting(false);
     setHistory(createMarkdownHistory(markdown));
     autoActivatedWriteKeyRef.current = null;
   }, [historyKey]);
+
+  useEffect(() => {
+    if (!selectedBlockRange) {
+      return;
+    }
+    if (blocks.length === 0) {
+      setSelectedBlockRange(null);
+      setIsRightDragSelecting(false);
+      return;
+    }
+    if (
+      selectedBlockRange.anchorIndex >= blocks.length ||
+      selectedBlockRange.focusIndex >= blocks.length
+    ) {
+      setSelectedBlockRange(null);
+      setIsRightDragSelecting(false);
+    }
+  }, [blocks.length, selectedBlockRange]);
+
+  useEffect(() => {
+    if (!isRightDragSelecting) {
+      return;
+    }
+    const handleMouseUp = () => {
+      setIsRightDragSelecting(false);
+    };
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, [isRightDragSelecting]);
 
   useEffect(() => {
     if (activeBlockIndex === null) {
@@ -215,6 +303,9 @@ export const MarkdownHybridEditor = ({
       setActiveBlockIndex(null);
       setActiveDraft("");
       setActiveDirty(false);
+      setPendingActivation(null);
+      setSelectedBlockRange(null);
+      setIsRightDragSelecting(false);
       onChange(nextHistory.present.markdown);
     },
     [onChange],
@@ -277,6 +368,8 @@ export const MarkdownHybridEditor = ({
       let nextBlockRaw = activeDraft;
       if (block.kind === "ordered-list") {
         nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
+      } else if (block.kind === "help-block") {
+        nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
       }
       const currentResolvedMarkdown = resolveSessionMarkdown(
         markdown,
@@ -335,9 +428,75 @@ export const MarkdownHybridEditor = ({
     [activeBlockIndex, blocks, disabled],
   );
 
+  const focusContainer = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    try {
+      container.focus({ preventScroll: true });
+    } catch {
+      container.focus();
+    }
+  }, []);
+
+  const clearSelectedBlockRange = useCallback(() => {
+    setSelectedBlockRange(null);
+    setIsRightDragSelecting(false);
+  }, []);
+
+  const startRightDragSelection = useCallback(
+    (index: number) => {
+      if (disabled || blocks.length === 0) {
+        return;
+      }
+      const nextIndex = clampIndex(index, blocks.length);
+      setSelectedBlockRange({ anchorIndex: nextIndex, focusIndex: nextIndex });
+      setIsRightDragSelecting(true);
+      focusContainer();
+    },
+    [blocks.length, disabled, focusContainer],
+  );
+
+  const deleteSelectedBlocks = useCallback(() => {
+    if (disabled || activeBlockIndex !== null || !selectedBlockRange) {
+      return false;
+    }
+    const nextMarkdown = deleteMarkdownBlockRange(markdown, blocks, selectedBlockRange);
+    if (nextMarkdown === markdown) {
+      clearSelectedBlockRange();
+      return false;
+    }
+
+    setActiveBlockIndex(null);
+    setActiveDraft("");
+    setActiveDirty(false);
+    setPendingActivation(null);
+    setSelectedBlockRange(null);
+    setIsRightDragSelecting(false);
+    onChange(nextMarkdown);
+    setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-delete"));
+    return true;
+  }, [
+    activeBlockIndex,
+    blocks,
+    clearSelectedBlockRange,
+    disabled,
+    markdown,
+    onChange,
+    selectedBlockRange,
+  ]);
+
   const handleContainerKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (disabled || activeBlockIndex !== null) {
+        return;
+      }
+      if (selectedBlockRange && isDeleteRangeShortcut(event)) {
+        if (deleteSelectedBlocks()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
         return;
       }
       if (isUndoShortcut(event)) {
@@ -354,29 +513,41 @@ export const MarkdownHybridEditor = ({
         }
       }
     },
-    [activeBlockIndex, disabled, handleGlobalRedo, handleGlobalUndo],
+    [
+      activeBlockIndex,
+      deleteSelectedBlocks,
+      disabled,
+      handleGlobalRedo,
+      handleGlobalUndo,
+      selectedBlockRange,
+    ],
   );
 
   const handleTextareaChange = useCallback(
     (value: string) => {
+      let nextValue = value;
+      const activeBlock = activeBlockIndex === null ? null : (blocks[activeBlockIndex] ?? null);
+      if (activeBlock?.kind === "help-block") {
+        nextValue = normalizeHelpBlockSource(nextValue);
+      }
       if (blocks.length === 0 && activeBlockIndex === 0) {
-        setActiveDraft(value);
+        setActiveDraft(nextValue);
         setActiveDirty(true);
-        if (value !== markdown) {
-          onChange(value);
+        if (nextValue !== markdown) {
+          onChange(nextValue);
         }
         return;
       }
       if (activeBlockIndex === null) {
         return;
       }
-      setActiveDraft(value);
+      setActiveDraft(nextValue);
       setActiveDirty(true);
-      const block = blocks[activeBlockIndex];
+      const block = activeBlock;
       if (!block) {
         return;
       }
-      const nextMarkdown = replaceMarkdownBlock(markdown, block, value);
+      const nextMarkdown = replaceMarkdownBlock(markdown, block, nextValue);
       if (nextMarkdown !== markdown) {
         onChange(nextMarkdown);
       }
@@ -486,21 +657,92 @@ export const MarkdownHybridEditor = ({
         return;
       }
       const target = event.target;
-      if (target instanceof HTMLElement && target.closest("a[href],button,input,textarea")) {
+      const isInteractiveElement = target instanceof HTMLElement &&
+        Boolean(target.closest("a[href],button,input"));
+      const isTextareaElement = target instanceof HTMLElement &&
+        Boolean(target.closest("textarea"));
+      if (isInteractiveElement) {
+        return;
+      }
+
+      if (event.button === 2) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (activeBlockIndex !== null) {
+          commitActiveBlock({ deactivate: true });
+        }
+        startRightDragSelection(index);
+        return;
+      }
+
+      if (event.button !== 0) {
+        return;
+      }
+      if (isTextareaElement || activeBlockIndex === index) {
         return;
       }
       event.preventDefault();
+      clearSelectedBlockRange();
       activateBlock(index, "end");
     },
-    [activateBlock, disabled],
+    [
+      activateBlock,
+      activeBlockIndex,
+      clearSelectedBlockRange,
+      commitActiveBlock,
+      disabled,
+      startRightDragSelection,
+    ],
+  );
+
+  const handleBlockMouseEnter = useCallback(
+    (index: number) => (event: MouseEvent<HTMLDivElement>) => {
+      if (disabled || !isRightDragSelecting || blocks.length === 0) {
+        return;
+      }
+      if ((event.buttons & 2) !== 2) {
+        return;
+      }
+      const nextIndex = clampIndex(index, blocks.length);
+      setSelectedBlockRange((current) => {
+        if (!current) {
+          return { anchorIndex: nextIndex, focusIndex: nextIndex };
+        }
+        if (current.focusIndex === nextIndex) {
+          return current;
+        }
+        return { ...current, focusIndex: nextIndex };
+      });
+    },
+    [blocks.length, disabled, isRightDragSelecting],
+  );
+
+  const handleHybridEditorContextMenu = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (disabled) {
+        return;
+      }
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest("a[href],button,input")
+      ) {
+        return;
+      }
+      if (event.target instanceof HTMLElement && event.target.closest(".markdown-hybrid-block")) {
+        event.preventDefault();
+      }
+    },
+    [disabled],
   );
 
   if (blocks.length === 0) {
     return (
       <div
-        className="markdown-hybrid-editor"
+        ref={containerRef}
+        className={`markdown-hybrid-editor${disabled ? " is-disabled" : ""}`}
         tabIndex={0}
         onKeyDown={handleContainerKeyDown}
+        onContextMenu={handleHybridEditorContextMenu}
       >
         <div
           className={`markdown-hybrid-block markdown-hybrid-block-empty${
@@ -510,7 +752,11 @@ export const MarkdownHybridEditor = ({
             if (disabled) {
               return;
             }
+            if (event.button !== 0) {
+              return;
+            }
             event.preventDefault();
+            clearSelectedBlockRange();
             setActiveBlockIndex(0);
             setActiveDraft("");
             setActiveDirty(false);
@@ -538,21 +784,27 @@ export const MarkdownHybridEditor = ({
 
   return (
     <div
+      ref={containerRef}
       className={`markdown-hybrid-editor${disabled ? " is-disabled" : ""}`}
       tabIndex={0}
       onKeyDown={handleContainerKeyDown}
+      onContextMenu={handleHybridEditorContextMenu}
     >
       {blocks.map((block, index) => {
         const isActive = activeBlockIndex === index && !disabled;
+        const isRangeSelected = !disabled && isBlockIndexInSelectedRange(selectedBlockRange, index);
         return (
           <div
             key={block.id}
             className={`markdown-hybrid-block markdown-hybrid-block-${block.kind}${
               isActive ? " is-active" : ""
-            }`}
+            }${isRangeSelected ? " is-range-selected" : ""}`}
+            aria-selected={isRangeSelected || undefined}
+            data-md-block-selected={isRangeSelected ? "true" : undefined}
             data-md-block-kind={block.kind}
             data-md-block-index={index}
-            onMouseDown={isActive ? undefined : handleBlockMouseDown(index)}
+            onMouseDown={handleBlockMouseDown(index)}
+            onMouseEnter={handleBlockMouseEnter(index)}
           >
             {isActive ? (
               <textarea

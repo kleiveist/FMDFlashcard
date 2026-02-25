@@ -7,6 +7,7 @@
 
 export type MarkdownHistoryReason =
   | "block-commit"
+  | "block-delete"
   | "write-save"
   | "cancel"
   | "external-load";
@@ -106,4 +107,3 @@ export const redoMarkdownHistory = (state: MarkdownHistoryState): MarkdownHistor
     future: rest,
   };
 };
-
