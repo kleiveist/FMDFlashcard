@@ -1107,18 +1107,50 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-editor {
-  display: flex;
-  flex-direction: column;
+  --mdh-left-gutter-width: 56px;
+  --mdh-right-gutter-width: 34px;
+  position: relative;
   gap: 6px;
   min-height: 100%;
   outline: none;
 }
 
+.markdown-hybrid-content-layer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 100%;
+  padding-left: var(--mdh-left-gutter-width);
+  padding-right: var(--mdh-right-gutter-width);
+}
+
+.markdown-hybrid-controls-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.markdown-hybrid-editor.is-right-drag-selecting,
+.markdown-hybrid-editor.is-right-drag-selecting *,
+.markdown-hybrid-editor.is-selection-dragging,
+.markdown-hybrid-editor.is-selection-dragging * {
+  user-select: none;
+}
+
 .markdown-hybrid-block {
+  position: relative;
+  display: block;
   border: 1px solid transparent;
   border-radius: 10px;
   padding: 2px 4px;
-  transition: border-color 0.12s ease, background-color 0.12s ease;
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.12s ease,
+    transform 0.12s ease;
 }
 
 .markdown-hybrid-block:hover {
@@ -1140,6 +1172,285 @@ textarea.preview-editor {
 .markdown-hybrid-block.is-active.is-range-selected {
   border-color: color-mix(in srgb, var(--accent-border) 78%, var(--line-soft));
   background: color-mix(in srgb, var(--accent-soft) 16%, transparent);
+}
+
+.markdown-hybrid-block.is-dragging {
+  opacity: 0.72;
+  box-shadow: 0 10px 24px color-mix(in srgb, black 28%, transparent);
+}
+
+.markdown-hybrid-block::before,
+.markdown-hybrid-block::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.markdown-hybrid-block::before {
+  top: -4px;
+}
+
+.markdown-hybrid-block::after {
+  bottom: -4px;
+}
+
+.markdown-hybrid-block.has-drop-indicator-top::before,
+.markdown-hybrid-block.has-drop-indicator-bottom::after {
+  background: color-mix(in srgb, var(--accent-border) 88%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-border) 24%, transparent);
+}
+
+.markdown-hybrid-overlay-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.markdown-hybrid-overlay-rail {
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start;
+}
+
+.markdown-hybrid-overlay-rail-left {
+  position: relative;
+  width: var(--mdh-left-gutter-width);
+  min-width: var(--mdh-left-gutter-width);
+  gap: 4px;
+  padding: 4px 0 0 4px;
+  justify-content: flex-start;
+}
+
+.markdown-hybrid-overlay-rail-right {
+  width: var(--mdh-right-gutter-width);
+  min-width: var(--mdh-right-gutter-width);
+  padding: 4px 4px 0 0;
+  justify-content: flex-end;
+}
+
+.markdown-hybrid-overlay-control {
+  pointer-events: auto;
+}
+
+.markdown-hybrid-overlay-right-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12px;
+  height: 22px;
+  line-height: 1;
+  color: var(--muted);
+  opacity: 0.45;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 999px;
+  transition:
+    color 0.12s ease,
+    opacity 0.12s ease,
+    background-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.markdown-hybrid-overlay-right-status.is-selected {
+  color: color-mix(in srgb, var(--accent-strong) 80%, var(--text));
+  opacity: 0.95;
+}
+
+.markdown-hybrid-overlay-right-status.is-active {
+  color: color-mix(in srgb, var(--accent-strong) 95%, var(--text));
+  opacity: 1;
+  background: color-mix(in srgb, var(--accent-soft) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 20%, transparent);
+}
+
+.markdown-hybrid-overlay-right-status.is-dragging {
+  color: color-mix(in srgb, white 90%, var(--text));
+  opacity: 1;
+}
+
+.markdown-hybrid-block-gutter {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 4px;
+  padding-top: 2px;
+  min-width: 44px;
+}
+
+.markdown-hybrid-block-body {
+  min-width: 0;
+}
+
+.markdown-hybrid-block-control {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.markdown-hybrid-block-control:hover:not(:disabled) {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--line-soft) 85%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+}
+
+.markdown-hybrid-block-control:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.markdown-hybrid-block-drag-handle {
+  cursor: grab;
+}
+
+.markdown-hybrid-block-drag-handle:active {
+  cursor: grabbing;
+}
+
+.markdown-hybrid-block-drag-handle > span {
+  line-height: 1;
+  font-size: 12px;
+  letter-spacing: -1px;
+}
+
+.markdown-hybrid-block-insert-button > span {
+  line-height: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.markdown-hybrid-insert-menu {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 6px);
+  z-index: 20;
+  width: min(260px, 70vw);
+  border: 1px solid color-mix(in srgb, var(--line-soft) 85%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 92%, black 8%);
+  box-shadow:
+    0 18px 34px color-mix(in srgb, black 36%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 3%, transparent);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.markdown-hybrid-insert-menu-overlay {
+  pointer-events: auto;
+}
+
+.markdown-hybrid-insert-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.markdown-hybrid-insert-menu-title {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.markdown-hybrid-insert-menu-nav {
+  border: 1px solid color-mix(in srgb, var(--line-soft) 85%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 3px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.markdown-hybrid-insert-menu-list {
+  display: grid;
+  gap: 4px;
+}
+
+.markdown-hybrid-insert-menu-item,
+.markdown-hybrid-insert-menu-close {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 7px 9px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.markdown-hybrid-insert-menu-item:hover,
+.markdown-hybrid-insert-menu-close:hover {
+  border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+}
+
+.markdown-hybrid-insert-menu-close {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.markdown-hybrid-selection-menu {
+  position: fixed;
+  z-index: 30;
+  min-width: 180px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 85%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 94%, black 6%);
+  box-shadow:
+    0 14px 30px color-mix(in srgb, black 34%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 3%, transparent);
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.markdown-hybrid-selection-menu-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 7px 9px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.markdown-hybrid-selection-menu-item:hover {
+  border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 72%, transparent);
+}
+
+.markdown-hybrid-selection-menu-item.is-danger {
+  color: color-mix(in srgb, #ffb4b4 65%, var(--text));
+}
+
+.markdown-hybrid-selection-menu-item.is-danger:hover {
+  border-color: color-mix(in srgb, #ff7a7a 35%, var(--line-soft));
+  background: color-mix(in srgb, #ff6a6a 10%, transparent);
 }
 
 .markdown-hybrid-block-preview > :last-child {
