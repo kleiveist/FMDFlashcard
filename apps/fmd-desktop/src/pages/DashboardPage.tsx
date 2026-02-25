@@ -64,6 +64,8 @@ const stripMarkdownExtension = (value: string) =>
 
 export { shouldApplyPreviewDefaultMode, type DashboardView };
 
+type MarkdownDocumentMode = "edit" | "write";
+
 type DashboardPageProps = {
   initialVaultView?: DashboardView;
   onVaultViewChange?: (nextView: DashboardView) => void;
@@ -104,6 +106,9 @@ const DashboardPageInner = (
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+  const [isHybridBlockDirty, setIsHybridBlockDirty] = useState(false);
+  const [documentMode, setDocumentMode] = useState<MarkdownDocumentMode>("edit");
+  const [pendingWriteFilePath, setPendingWriteFilePath] = useState<string | null>(null);
   const [vaultView, setVaultView] = useState<DashboardView>(initialVaultView);
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
@@ -206,6 +211,8 @@ const DashboardPageInner = (
   }, [normalizedActiveFolderPath, visibleFiles.length, vault.vaultPath]);
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
+  const hasUnsavedMarkdownDraftChanges =
+    Boolean(preview.selectedFile) && editDraft !== preview.preview;
   const markdownEditorAccentHex = useMemo(() => {
     if (!settings.markdownEditorAccentEnabled) {
       return settings.accentColor;
@@ -260,7 +267,36 @@ const DashboardPageInner = (
     setEditError("");
     setIsSaving(false);
     setEditCaretIndex(null);
+    setIsHybridBlockDirty(false);
+    setDocumentMode("edit");
   }, [preview.selectedFile?.path]);
+
+  useEffect(() => {
+    if (!preview.selectedFile || preview.previewState !== "idle") {
+      return;
+    }
+    setEditDraft(preview.preview);
+  }, [preview.preview, preview.previewState, preview.selectedFile?.path]);
+
+  useEffect(() => {
+    if (!pendingWriteFilePath) {
+      return;
+    }
+    if (preview.selectedFile?.path !== pendingWriteFilePath) {
+      return;
+    }
+    if (preview.previewState !== "idle") {
+      return;
+    }
+    setDocumentMode("write");
+    setEditDraft(preview.preview);
+    setPendingWriteFilePath(null);
+  }, [
+    pendingWriteFilePath,
+    preview.preview,
+    preview.previewState,
+    preview.selectedFile?.path,
+  ]);
 
   useEffect(() => {
     if (
@@ -371,37 +407,188 @@ const DashboardPageInner = (
     [preview],
   );
 
+  const saveDraftToDisk = useCallback(
+    async ({
+      closeLegacyEditor = false,
+      exitWriteMode = false,
+    }: {
+      closeLegacyEditor?: boolean;
+      exitWriteMode?: boolean;
+    } = {}) => {
+      if (!preview.selectedFile || isSaving) {
+        return false;
+      }
+      if (editDraft === preview.preview) {
+        setIsHybridBlockDirty(false);
+        if (closeLegacyEditor) {
+          setIsEditing(false);
+          setEditCaretIndex(null);
+        }
+        if (exitWriteMode) {
+          setDocumentMode("edit");
+        }
+        return true;
+      }
+      setIsSaving(true);
+      setEditError("");
+      try {
+        await invoke("write_text_file", {
+          path: preview.selectedFile.path,
+          contents: editDraft,
+        });
+        preview.setPreview(editDraft);
+        setIsHybridBlockDirty(false);
+        if (closeLegacyEditor) {
+          setIsEditing(false);
+          setEditCaretIndex(null);
+        }
+        if (exitWriteMode) {
+          setDocumentMode("edit");
+        }
+        return true;
+      } catch (error) {
+        setEditError(asErrorMessage(error, "Failed to save file."));
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [editDraft, isSaving, preview],
+  );
+
   const handleEditAutosave = useCallback(async () => {
-    if (!preview.selectedFile || !isEditing || isSaving) {
+    if (!preview.selectedFile || !isEditing) {
       return false;
     }
-    if (editDraft === preview.preview) {
-      setIsEditing(false);
-      setEditCaretIndex(null);
-      return true;
+    return saveDraftToDisk({ closeLegacyEditor: true });
+  }, [isEditing, preview.selectedFile, saveDraftToDisk]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
     }
-    setIsSaving(true);
+    if (vaultView !== "markdown") {
+      return;
+    }
+    if (documentMode !== "edit") {
+      return;
+    }
+    if (preview.rawPreview || isEditing) {
+      return;
+    }
+    if (isHybridBlockDirty) {
+      return;
+    }
+    if (!settings.markdownViewEditEnabled) {
+      return;
+    }
+    if (!preview.selectedFile || preview.previewState !== "idle") {
+      return;
+    }
+    if (!hasUnsavedMarkdownDraftChanges || isSaving) {
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      void saveDraftToDisk();
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [
+    documentMode,
+    hasUnsavedMarkdownDraftChanges,
+    isHybridBlockDirty,
+    isEditing,
+    isSaving,
+    preview.previewState,
+    preview.rawPreview,
+    preview.selectedFile,
+    saveDraftToDisk,
+    settings.markdownViewEditEnabled,
+    vaultView,
+  ]);
+
+  const handleWriteSave = useCallback(async () => {
+    await saveDraftToDisk({ exitWriteMode: true });
+  }, [saveDraftToDisk]);
+
+  const handleWriteCancel = useCallback(() => {
     setEditError("");
-    try {
-      await invoke("write_text_file", {
-        path: preview.selectedFile.path,
-        contents: editDraft,
-      });
-      preview.setPreview(editDraft);
-      setIsEditing(false);
-      setEditCaretIndex(null);
-      return true;
-    } catch (error) {
-      setEditError(asErrorMessage(error, "Failed to save file."));
+    setEditDraft(preview.preview);
+    setIsHybridBlockDirty(false);
+    setDocumentMode("edit");
+    setIsEditing(false);
+    setEditCaretIndex(null);
+  }, [preview.preview]);
+
+  const persistMarkdownBeforeNavigation = useCallback(async () => {
+    if (documentMode === "write") {
+      setEditError("Bitte Write-Entwurf zuerst speichern oder abbrechen.");
       return false;
-    } finally {
-      setIsSaving(false);
     }
-  }, [editDraft, isEditing, isSaving, preview]);
+    if (isHybridBlockDirty) {
+      setEditError("Bitte den aktiven Block zuerst abschliessen.");
+      return false;
+    }
+    if (isEditing) {
+      return handleEditAutosave();
+    }
+    if (
+      documentMode === "edit" &&
+      vaultView === "markdown" &&
+      settings.markdownViewEditEnabled &&
+      hasUnsavedMarkdownDraftChanges
+    ) {
+      return saveDraftToDisk();
+    }
+    return true;
+  }, [
+    documentMode,
+    handleEditAutosave,
+    hasUnsavedMarkdownDraftChanges,
+    isHybridBlockDirty,
+    isEditing,
+    saveDraftToDisk,
+    settings.markdownViewEditEnabled,
+    vaultView,
+  ]);
+
+  const handleNoteFileCreated = useCallback(
+    (
+      file: { path: string },
+      meta: { origin: "new-button" | "context-menu" },
+    ) => {
+      if (meta.origin !== "new-button") {
+        return;
+      }
+      setPendingWriteFilePath(file.path);
+    },
+    [],
+  );
+
+  const handleSelectMarkdownFile = useCallback(
+    (file: Parameters<typeof actions.handleSelectFile>[0]) => {
+      void (async () => {
+        const saved = await persistMarkdownBeforeNavigation();
+        if (!saved) {
+          return;
+        }
+        setDocumentMode("edit");
+        actions.handleSelectFile(file);
+      })();
+    },
+    [actions, persistMarkdownBeforeNavigation],
+  );
 
   const handleFrontmatterSave = useCallback(
     async (nextMarkdown: string) => {
       if (!preview.selectedFile || isEditing || isSaving) {
+        return false;
+      }
+      if (documentMode === "write") {
+        setEditError("Frontmatter-Aenderungen sind im Write-Modus deaktiviert.");
+        return false;
+      }
+      if (editDraft !== preview.preview) {
+        setEditError("Bitte zuerst die offenen Text-Aenderungen speichern.");
         return false;
       }
       if (nextMarkdown === preview.preview) {
@@ -415,6 +602,7 @@ const DashboardPageInner = (
           contents: nextMarkdown,
         });
         preview.setPreview(nextMarkdown);
+        setEditDraft(nextMarkdown);
         return true;
       } catch (error) {
         setEditError(asErrorMessage(error, "Failed to save file."));
@@ -423,7 +611,7 @@ const DashboardPageInner = (
         setIsSaving(false);
       }
     },
-    [isEditing, isSaving, preview],
+    [documentMode, editDraft, isEditing, isSaving, preview],
   );
 
   const handleFrontmatterWikilinkNavigate = useCallback(
@@ -448,10 +636,10 @@ const DashboardPageInner = (
         wikilinkFileLookup.byRelativeWithoutExtension.get(targetWithoutExtension) ??
         wikilinkFileLookup.byBasenameWithoutExtension.get(basenameWithoutExtension);
       if (resolvedFile) {
-        actions.handleSelectFile(resolvedFile);
+        handleSelectMarkdownFile(resolvedFile);
       }
     },
-    [actions, wikilinkFileLookup],
+    [handleSelectMarkdownFile, wikilinkFileLookup],
   );
 
   const handleVaultViewChange = useCallback(
@@ -459,16 +647,14 @@ const DashboardPageInner = (
       if (nextView === vaultView) {
         return;
       }
-      if (isEditing) {
-        const saved = await handleEditAutosave();
-        if (!saved) {
-          return;
-        }
+      const saved = await persistMarkdownBeforeNavigation();
+      if (!saved) {
+        return;
       }
       setVaultView(nextView);
       onVaultViewChange?.(nextView);
     },
-    [handleEditAutosave, isEditing, onVaultViewChange, vaultView],
+    [onVaultViewChange, persistMarkdownBeforeNavigation, vaultView],
   );
 
   useImperativeHandle(
@@ -482,14 +668,12 @@ const DashboardPageInner = (
   );
 
   const handleToggleRawPreview = useCallback(async () => {
-    if (isEditing) {
-      const saved = await handleEditAutosave();
-      if (!saved) {
-        return;
-      }
+    const saved = await persistMarkdownBeforeNavigation();
+    if (!saved) {
+      return;
     }
     preview.setRawPreview((current) => !current);
-  }, [handleEditAutosave, isEditing, preview]);
+  }, [persistMarkdownBeforeNavigation, preview]);
   const handleEditCaretApplied = useCallback(() => {
     setEditCaretIndex(null);
   }, []);
@@ -645,6 +829,8 @@ const DashboardPageInner = (
             previewState={preview.previewState}
             rawPreview={preview.rawPreview}
             markdownViewEditEnabled={settings.markdownViewEditEnabled}
+            documentMode={documentMode}
+            markdownHybridEnabled
             selectedFile={preview.selectedFile}
             vaultFiles={vault.files}
             vaultPngAssets={vault.pngAssets}
@@ -653,10 +839,13 @@ const DashboardPageInner = (
             canEdit={canEdit}
             markdownEditorStyle={markdownEditorStyle}
             onEditChange={setEditDraft}
+            onHybridDirtyChange={setIsHybridBlockDirty}
             onEditCaretApplied={handleEditCaretApplied}
             onEditExit={handleEditAutosave}
             onEditStart={handleEditStart}
             onToggleRawPreview={handleToggleRawPreview}
+            onWriteSave={handleWriteSave}
+            onWriteCancel={handleWriteCancel}
             onFrontmatterSave={handleFrontmatterSave}
             onNavigateWikilink={handleFrontmatterWikilinkNavigate}
             onOpenTaskProfileEditor={handleOpenTaskProfileEditor}
@@ -692,8 +881,9 @@ const DashboardPageInner = (
               listError={vault.listError}
               listState={vault.listState}
               onClearSelection={preview.resetPreview}
+              onFileCreated={handleNoteFileCreated}
               onRescanVault={actions.handleRescanVault}
-              onSelectFile={actions.handleSelectFile}
+              onSelectFile={handleSelectMarkdownFile}
               onToggleCollapsed={handleToggleNoteCollapsed}
               selectedFile={preview.selectedFile}
               vaultPath={vault.vaultPath}
@@ -796,8 +986,9 @@ const DashboardPageInner = (
                 listError={vault.listError}
                 listState={vault.listState}
                 onClearSelection={preview.resetPreview}
+                onFileCreated={handleNoteFileCreated}
                 onRescanVault={actions.handleRescanVault}
-                onSelectFile={actions.handleSelectFile}
+                onSelectFile={handleSelectMarkdownFile}
                 onToggleCollapsed={handleTogglePanelsCollapsed}
                 selectedFile={preview.selectedFile}
                 showCollapseStrip
@@ -817,8 +1008,9 @@ const DashboardPageInner = (
             listError={vault.listError}
             listState={vault.listState}
             onClearSelection={preview.resetPreview}
+            onFileCreated={handleNoteFileCreated}
             onRescanVault={actions.handleRescanVault}
-            onSelectFile={actions.handleSelectFile}
+            onSelectFile={handleSelectMarkdownFile}
             onToggleCollapsed={handleToggleNoteCollapsed}
             selectedFile={preview.selectedFile}
             showCollapseStrip={vaultView === "exam"}

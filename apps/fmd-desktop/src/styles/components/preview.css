@@ -29,6 +29,12 @@
   overflow-y: auto;
 }
 
+.note-list-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
 .file-item {
   width: 100%;
   text-align: left;
@@ -1049,6 +1055,65 @@ textarea.preview-editor {
   font-size: 0.95rem;
   line-height: 1.6;
   white-space: normal;
+}
+
+.markdown-hybrid-surface {
+  gap: 10px;
+}
+
+.markdown-hybrid-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 100%;
+  outline: none;
+}
+
+.markdown-hybrid-block {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 2px 4px;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.markdown-hybrid-block:hover {
+  border-color: color-mix(in srgb, var(--line-soft) 85%, transparent);
+}
+
+.markdown-hybrid-block.is-active {
+  border-color: color-mix(in srgb, var(--accent-border) 70%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 14%, transparent);
+}
+
+.markdown-hybrid-block-preview > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-hybrid-block-preview > :first-child {
+  margin-top: 0;
+}
+
+.markdown-hybrid-block-editor {
+  width: 100%;
+  min-height: 1.8rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  resize: vertical;
+  outline: none;
+  padding: 2px 0;
+  white-space: pre-wrap;
+}
+
+.markdown-hybrid-blank-preview,
+.markdown-hybrid-empty-placeholder {
+  min-height: 1.2rem;
+}
+
+.markdown-hybrid-block-empty {
+  min-height: 1.6rem;
 }
 
 .preview-markdown-editable {

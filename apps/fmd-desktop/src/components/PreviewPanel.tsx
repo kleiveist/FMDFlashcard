@@ -23,6 +23,7 @@
 import {
   type CSSProperties,
   type DragEvent,
+  type FormEvent,
   type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
@@ -39,6 +40,10 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import {
+  MarkdownHybridEditor,
+  type MarkdownHybridEditorMode,
+} from "../features/preview/MarkdownHybridEditor";
 import {
   addFrontmatterProperty,
   collectFrontmatterValueSuggestions,
@@ -60,6 +65,14 @@ import { normalizeRelativePath } from "../lib/path";
 import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
 import { type LoadState } from "../lib/types";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
+import {
+  handleListEnterExitToRootParagraph,
+  handleListSoftBreak,
+  indentSelectedListItems,
+  normalizeEditableListMarkers,
+  outdentSelectedListItems,
+  type CommandResult,
+} from "./previewMarkdownListCommands";
 import { ChevronDownIcon, CodeIcon, MarkdownIcon } from "./icons";
 
 type CoverThumbnailSource = {
@@ -922,6 +935,8 @@ type PreviewPanelProps = {
   previewState: LoadState;
   rawPreview: boolean;
   markdownViewEditEnabled: boolean;
+  markdownHybridEnabled?: boolean;
+  documentMode?: MarkdownHybridEditorMode;
   selectedFile: VaultFile | null;
   vaultFiles?: VaultFile[];
   vaultPngAssets?: VaultPngAsset[];
@@ -930,6 +945,7 @@ type PreviewPanelProps = {
   canEdit: boolean;
   markdownEditorStyle?: CSSProperties;
   onEditChange: (value: string) => void;
+  onHybridDirtyChange?: (dirty: boolean) => void;
   onEditCaretApplied: () => void;
   onEditExit: () => void;
   onEditStart: (options?: {
@@ -937,6 +953,8 @@ type PreviewPanelProps = {
     origin?: "raw" | "markdown";
   }) => void;
   onToggleRawPreview: () => void;
+  onWriteSave?: () => void;
+  onWriteCancel?: () => void;
   onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
   onNavigateWikilink?: (wikilink: string) => void;
   onOpenTaskProfileEditor?: (params: {
@@ -1760,8 +1778,13 @@ const serializeMarkdownList = (
   );
   const lines: string[] = [];
 
-  const resolveDefaultMarker = (itemIndex: number) =>
-    isOrdered ? `${index + itemIndex}. ` : "- ";
+  const resolveDefaultMarker = (itemIndex: number) => {
+    if (!isOrdered) {
+      return "- ";
+    }
+    const delimiter = element.getAttribute("data-md-ordered-delimiter") === ")" ? ")" : ".";
+    return `${index + itemIndex}${delimiter} `;
+  };
 
   const resolveManualMarker = (value: string, fallback: string) => {
     const trimmed = value.trim();
@@ -5481,6 +5504,8 @@ export const PreviewPanel = ({
   previewState,
   rawPreview,
   markdownViewEditEnabled,
+  markdownHybridEnabled = false,
+  documentMode = "edit",
   selectedFile,
   vaultFiles,
   vaultPngAssets,
@@ -5489,10 +5514,13 @@ export const PreviewPanel = ({
   canEdit,
   markdownEditorStyle,
   onEditChange,
+  onHybridDirtyChange,
   onEditCaretApplied,
   onEditExit,
   onEditStart,
   onToggleRawPreview,
+  onWriteSave,
+  onWriteCancel,
   onFrontmatterSave,
   onNavigateWikilink,
   onOpenTaskProfileEditor,
@@ -6005,10 +6033,197 @@ export const PreviewPanel = ({
     ],
   );
 
+  const applyMarkdownEditorCommand = useCallback(
+    (command: (editor: HTMLElement) => CommandResult) => {
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return { handled: false, changed: false };
+      }
+      const result = command(editor);
+      if (result.changed) {
+        normalizeEditableListMarkers(editor);
+        syncMarkdownDraftFromEditor();
+        syncActiveMarkdownHeading();
+      }
+      return result;
+    },
+    [syncActiveMarkdownHeading, syncMarkdownDraftFromEditor],
+  );
+
+  const handleMarkdownEditorBeforeInput = useCallback(
+    (event: FormEvent<HTMLDivElement>) => {
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return;
+      }
+      const nativeEvent = event.nativeEvent as Event & {
+        inputType?: string;
+        isComposing?: boolean;
+      };
+      if (nativeEvent.isComposing) {
+        return;
+      }
+      const inputType = nativeEvent.inputType ?? "";
+      if (inputType !== "insertParagraph" && inputType !== "insertLineBreak") {
+        return;
+      }
+
+      const result = applyMarkdownEditorCommand(
+        inputType === "insertLineBreak"
+          ? handleListSoftBreak
+          : handleListEnterExitToRootParagraph,
+      );
+      if (result.handled) {
+        event.preventDefault();
+      }
+    },
+    [applyMarkdownEditorCommand],
+  );
+
+  const handleMarkdownEditorKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.isComposing) {
+        return;
+      }
+
+      if (event.key === "Tab") {
+        const result = applyMarkdownEditorCommand(
+          event.shiftKey ? outdentSelectedListItems : indentSelectedListItems,
+        );
+        if (result.handled) {
+          event.preventDefault();
+        }
+        return;
+      }
+
+      // Fallback for environments where beforeinput is unreliable.
+      if (event.key === "Enter") {
+        const result = applyMarkdownEditorCommand(
+          event.shiftKey ? handleListSoftBreak : handleListEnterExitToRootParagraph,
+        );
+        if (result.handled) {
+          event.preventDefault();
+        }
+      }
+    },
+    [applyMarkdownEditorCommand],
+  );
+
   const handleMarkdownInput = useCallback(() => {
     syncMarkdownDraftFromEditor();
     syncActiveMarkdownHeading();
   }, [syncActiveMarkdownHeading, syncMarkdownDraftFromEditor]);
+
+  const handleHybridBodyChange = useCallback(
+    (nextBody: string) => {
+      const nextValue = composeMarkdownWithBody(editDraft, nextBody);
+      if (nextValue !== editDraft) {
+        onEditChange(nextValue);
+      }
+    },
+    [editDraft, onEditChange],
+  );
+
+  const renderHybridMarkdownPreview = useCallback(
+    (sourceMarkdown: string) => (
+      <ReactMarkdown
+        remarkPlugins={[
+          remarkGfm,
+          remarkPreserveSoftBreaks,
+          remarkPreserveOrderedListDelimiters,
+        ]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+        components={{
+          ol: ({ node, ...props }) => {
+            const delimiterFromNode =
+              node &&
+              typeof node === "object" &&
+              "properties" in node &&
+              node.properties &&
+              typeof node.properties === "object"
+                ? (node.properties as Record<string, unknown>)["data-md-ordered-delimiter"]
+                : null;
+            const delimiterFromPosition = resolveOrderedListDelimiter(
+              sourceMarkdown,
+              node &&
+                typeof node === "object" &&
+                "position" in node &&
+                node.position &&
+                typeof node.position === "object" &&
+                "start" in node.position &&
+                node.position.start &&
+                typeof node.position.start === "object" &&
+                ("offset" in node.position.start || "line" in node.position.start)
+                ? (node.position.start as { offset?: number; line?: number })
+                : undefined,
+            );
+            if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
+              return <ol {...props} />;
+            }
+            const startRaw = props.start;
+            const startValue = typeof startRaw === "number"
+              ? startRaw
+              : Number.parseInt(String(startRaw ?? "1"), 10);
+            const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
+            const style = {
+              ...(props.style ?? {}),
+              "--md-ordered-start": String(previous),
+            } as CSSProperties;
+            return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
+          },
+          pre: ({ node: _node, ...props }) => (
+            <div className="md-code-block">
+              <button
+                type="button"
+                className="md-code-copy-button"
+                aria-label="Copy code block"
+                title="Copy code block"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onMouseUp={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onClick={handleCodeCopyClick}
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                  <rect
+                    x="9"
+                    y="9"
+                    width="10"
+                    height="10"
+                    rx="2"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                  />
+                  <path
+                    d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+              <pre {...props} />
+            </div>
+          ),
+          table: ({ node: _node, ...props }) => (
+            <div className="markdown-table">
+              <table {...props} />
+            </div>
+          ),
+          img: ({ node: _node, ...props }) => (
+            <img {...props} draggable={false} />
+          ),
+        }}
+      >
+        {sourceMarkdown}
+      </ReactMarkdown>
+    ),
+    [handleCodeCopyClick],
+  );
 
   const markdownSource = rawPreview
     ? preview
@@ -6035,6 +6250,13 @@ export const PreviewPanel = ({
     : "Switch to Rohtext";
   const ToggleIcon = rawPreview ? MarkdownIcon : CodeIcon;
   const showMarkdownEditor = markdownViewEditEnabled && !rawPreview;
+  const showHybridMarkdownEditor = Boolean(
+    markdownHybridEnabled &&
+      showMarkdownEditor &&
+      canEdit &&
+      previewState === "idle" &&
+      !hasFrontmatterError,
+  );
   const handleToggleFrontmatterPanelCollapsed = useCallback(() => {
     setIsFrontmatterPanelCollapsed((current) => !current);
   }, []);
@@ -6049,6 +6271,35 @@ export const PreviewPanel = ({
           </p>
         </div>
         <div className="preview-actions">
+          {markdownHybridEnabled && selectedFile ? (
+            <span className={`chip ${documentMode === "write" ? "warning" : ""}`}>
+              {documentMode === "write" ? "Write" : "Edit"}
+            </span>
+          ) : null}
+          {documentMode === "write" && selectedFile ? (
+            <>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => {
+                  onWriteCancel?.();
+                }}
+                disabled={!selectedFile}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary small"
+                onClick={() => {
+                  onWriteSave?.();
+                }}
+                disabled={!selectedFile}
+              >
+                Save
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             className={`ghost small preview-toggle-button ${rawPreview ? "active" : ""}`}
@@ -6098,10 +6349,51 @@ export const PreviewPanel = ({
           className="preview-content"
           onClick={handlePreviewLinkClick}
           onAuxClick={handlePreviewLinkClick}
-          onMouseUp={handlePreviewClick}
+          onMouseUp={showHybridMarkdownEditor ? undefined : handlePreviewClick}
         >
           <div className="preview-surface">
-            {isEditing ? (
+            {showHybridMarkdownEditor ? (
+              <div
+                key="markdown-hybrid-edit"
+                ref={previewRef}
+                className="preview preview-editor markdown md-preview markdown-hybrid-surface"
+                data-input-scope="editor"
+                onScroll={(event) => captureScroll(event.currentTarget)}
+              >
+                {showFrontmatterPanel ? (
+                  <FrontmatterPropertiesPanel
+                    sourceMarkdown={preview}
+                    properties={previewFrontmatter.properties}
+                    sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
+                    vaultFiles={vaultFiles}
+                    vaultPngAssets={vaultPngAssets}
+                    vaultPath={vaultPath}
+                    canEdit={
+                      canEdit &&
+                      previewState === "idle" &&
+                      documentMode !== "write"
+                    }
+                    isCollapsed={isFrontmatterPanelCollapsed}
+                    onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
+                    onFrontmatterSave={onFrontmatterSave}
+                    onNavigateWikilink={onNavigateWikilink}
+                    onOpenTaskProfileEditor={onOpenTaskProfileEditor}
+                    taskProfileSummariesByName={taskProfileSummariesByName}
+                    valueSuggestionsByKey={valueSuggestionsByKey}
+                    keySuggestions={keySuggestions}
+                  />
+                ) : null}
+                <MarkdownHybridEditor
+                  historyKey={selectedFile?.path ?? "none"}
+                  markdown={markdownEditBody}
+                  mode={documentMode}
+                  onChange={handleHybridBodyChange}
+                  onDirtyChange={onHybridDirtyChange}
+                  renderPreview={(source) =>
+                    renderHybridMarkdownPreview(normalizeTableSpacingForRender(source))}
+                />
+              </div>
+            ) : isEditing ? (
               rawPreview ? (
                 <textarea
                   key="raw-edit"
@@ -6147,9 +6439,11 @@ export const PreviewPanel = ({
                     data-input-scope="editor"
                     contentEditable
                     suppressContentEditableWarning
+                    onBeforeInput={handleMarkdownEditorBeforeInput}
                     onInput={handleMarkdownInput}
                     onBlur={handleMarkdownEditorBlur}
                     onFocus={syncActiveMarkdownHeading}
+                    onKeyDown={handleMarkdownEditorKeyDown}
                     onKeyUp={syncActiveMarkdownHeading}
                     onMouseDown={handleMarkdownEditorMouseDown}
                     onMouseUp={syncActiveMarkdownHeading}

@@ -113,6 +113,10 @@ type FileListProps = {
   listState: LoadState;
   onClearSelection?: () => void;
   onRescanVault?: (source?: string) => Promise<boolean>;
+  onFileCreated?: (
+    file: VaultFile,
+    meta: { origin: "new-button" | "context-menu" },
+  ) => void;
   onSelectFile: (file: VaultFile) => void;
   onToggleCollapsed: () => void;
   selectedFile: VaultFile | null;
@@ -129,6 +133,7 @@ export const FileList = ({
   listState,
   onClearSelection,
   onRescanVault,
+  onFileCreated,
   onSelectFile,
   onToggleCollapsed,
   selectedFile,
@@ -145,6 +150,9 @@ export const FileList = ({
   const [createName, setCreateName] = useState(DEFAULT_FILE_NAME);
   const [createError, setCreateError] = useState("");
   const [createDirPath, setCreateDirPath] = useState("");
+  const [createOrigin, setCreateOrigin] = useState<"new-button" | "context-menu">(
+    "context-menu",
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<VaultFile | null>(null);
@@ -223,10 +231,14 @@ export const FileList = ({
   );
 
   const openCreateModal = useCallback(
-    (target: { kind: "file"; file: VaultFile } | { kind: "empty" }) => {
+    (
+      target: { kind: "file"; file: VaultFile } | { kind: "empty" },
+      origin: "new-button" | "context-menu" = "context-menu",
+    ) => {
       setCreateDirPath(resolveCreateDirPath(target));
       setCreateName(DEFAULT_FILE_NAME);
       setCreateError("");
+      setCreateOrigin(origin);
       setIsCreateOpen(true);
       setContextMenu(null);
     },
@@ -264,18 +276,29 @@ export const FileList = ({
         relativePath,
       });
       onSelectFile(created);
+      onFileCreated?.(created, { origin: createOrigin });
       if (onRescanVault) {
         void onRescanVault("note-list:create");
       }
       setIsCreateOpen(false);
       setCreateName(DEFAULT_FILE_NAME);
       setCreateDirPath("");
+      setCreateOrigin("context-menu");
     } catch (error) {
       setCreateError(asErrorMessage(error, "Failed to create file."));
     } finally {
       setIsCreating(false);
     }
-  }, [createDirPath, createName, files, onRescanVault, onSelectFile, vaultPath]);
+  }, [
+    createDirPath,
+    createName,
+    createOrigin,
+    files,
+    onFileCreated,
+    onRescanVault,
+    onSelectFile,
+    vaultPath,
+  ]);
 
   const handleCreateCancel = useCallback(() => {
     if (isCreating) {
@@ -285,6 +308,7 @@ export const FileList = ({
     setCreateName(DEFAULT_FILE_NAME);
     setCreateError("");
     setCreateDirPath("");
+    setCreateOrigin("context-menu");
   }, [isCreating]);
 
   const closeDeleteModal = useCallback(() => {
@@ -561,6 +585,17 @@ export const FileList = ({
         tabIndex={0}
         onContextMenu={(event) => openContextMenu(event, { kind: "empty" })}
       >
+        {vaultPath ? (
+          <div className="note-list-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => openCreateModal({ kind: "empty" }, "new-button")}
+            >
+              Neu
+            </button>
+          </div>
+        ) : null}
         {!vaultPath ? (
           <div className="empty-state">Waehle einen Vault, um die Liste zu fuellen.</div>
         ) : null}
