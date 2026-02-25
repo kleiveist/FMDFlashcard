@@ -5646,6 +5646,8 @@ export const PreviewPanel = ({
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
   const applyingMarkdownCaretRef = useRef(false);
+  const suppressRawEditorBlurExitRef = useRef(false);
+  const rawCodeToggleClosePendingRef = useRef(false);
   const scrollStateRef = useRef({ top: 0, left: 0 });
   const lastCaretIndexRef = useRef<number | null>(null);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
@@ -5900,6 +5902,30 @@ export const PreviewPanel = ({
   }, [editCaretIndex, isEditing, onEditCaretApplied, rawPreview]);
 
   useEffect(() => {
+    const isCodeEditEnabled = documentMode === "write" || isHybridEditModeActive;
+    if (!rawPreview || !isCodeEditEnabled || !isEditing || !editorRef.current) {
+      return;
+    }
+    if (typeof editCaretIndex === "number") {
+      return;
+    }
+    const editor = editorRef.current;
+    const nextIndex = typeof lastCaretIndexRef.current === "number"
+      ? Math.max(0, Math.min(lastCaretIndexRef.current, editor.value.length))
+      : editor.value.length;
+    const handle = window.requestAnimationFrame(() => {
+      try {
+        editor.focus({ preventScroll: true });
+      } catch {
+        editor.focus();
+      }
+      editor.setSelectionRange(nextIndex, nextIndex);
+      lastCaretIndexRef.current = nextIndex;
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [documentMode, editCaretIndex, isEditing, isHybridEditModeActive, rawPreview]);
+
+  useEffect(() => {
     if (!isEditing || rawPreview || !markdownEditorRef.current) {
       return;
     }
@@ -6125,6 +6151,10 @@ export const PreviewPanel = ({
         lastCaretIndexRef.current = caretIndex;
       } else {
         lastCaretIndexRef.current = event.currentTarget.value.length;
+      }
+      if (suppressRawEditorBlurExitRef.current) {
+        suppressRawEditorBlurExitRef.current = false;
+        return;
       }
       onEditExit();
     },
@@ -6427,12 +6457,20 @@ export const PreviewPanel = ({
       previewState === "idle" &&
       !hasFrontmatterError,
   );
+  const viewMode = rawPreview ? "code" : "preview";
   const isEditModeActive = documentMode === "write" || isHybridEditModeActive;
+  const editEnabled = isEditModeActive;
   const showMarkdownEditor = markdownViewEditEnabled && !rawPreview;
   const showHybridMarkdownEditor = Boolean(
     canUseHybridMarkdownEditor &&
       !rawPreview &&
-      isEditModeActive,
+      editEnabled,
+  );
+  const shouldAutoManageRawCodeEditSession = Boolean(
+    rawPreview &&
+      canEdit &&
+      selectedFile &&
+      previewState === "idle",
   );
   const disableLegacyPreviewClick = Boolean(markdownHybridEnabled);
   const canToggleEditMode = Boolean(
@@ -6446,8 +6484,52 @@ export const PreviewPanel = ({
     setIsFrontmatterPanelCollapsed((current) => !current);
   }, []);
 
+  useEffect(() => {
+    if (!isEditing) {
+      rawCodeToggleClosePendingRef.current = false;
+      suppressRawEditorBlurExitRef.current = false;
+    }
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (!shouldAutoManageRawCodeEditSession) {
+      return;
+    }
+
+    if (editEnabled) {
+      rawCodeToggleClosePendingRef.current = false;
+      if (isEditing) {
+        return;
+      }
+      const fallbackCaretIndex = typeof lastCaretIndexRef.current === "number"
+        ? Math.max(0, Math.min(lastCaretIndexRef.current, preview.length))
+        : preview.length;
+      onEditStart({ caretIndex: fallbackCaretIndex, origin: "raw" });
+      return;
+    }
+
+    if (!isEditing || rawCodeToggleClosePendingRef.current) {
+      return;
+    }
+    rawCodeToggleClosePendingRef.current = true;
+    suppressRawEditorBlurExitRef.current = true;
+    void onEditExit();
+  }, [
+    editEnabled,
+    isEditing,
+    onEditExit,
+    onEditStart,
+    preview.length,
+    shouldAutoManageRawCodeEditSession,
+  ]);
+
   return (
-    <section className="panel preview-panel" style={markdownEditorStyle}>
+    <section
+      className="panel preview-panel"
+      style={markdownEditorStyle}
+      data-view-mode={viewMode}
+      data-edit-enabled={editEnabled ? "true" : "false"}
+    >
       <div className="panel-header">
         <div>
           <h2>Preview</h2>
@@ -6614,7 +6696,7 @@ export const PreviewPanel = ({
                     renderHybridMarkdownPreview(normalizeTableSpacingForRender(source))}
                 />
               </div>
-            ) : isEditing ? (
+            ) : isEditing && (!rawPreview || editEnabled) ? (
               rawPreview ? (
                 <textarea
                   key="raw-edit"
@@ -6626,6 +6708,7 @@ export const PreviewPanel = ({
                   onBlur={handleRawEditorBlur}
                   onScroll={(event) => captureScroll(event.currentTarget)}
                   aria-label="Edit markdown preview"
+                  readOnly={!editEnabled}
                 />
               ) : showMarkdownEditor ? (
                 <div

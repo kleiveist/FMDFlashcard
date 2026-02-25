@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   normalizeHelpBlockSource,
+  normalizeHorizontalRuleBlockSource,
+  normalizeHorizontalRuleSpacingInMarkdown,
   normalizeOrderedListBlockSource,
   parseMarkdownBlocks,
 } from "./markdownBlocks";
@@ -106,6 +108,22 @@ describe("markdownBlocks", () => {
     );
     expect(blocks[2]?.raw).toBe("2. Zweite Zeile");
   });
+
+  it("treats blank + hr + blank as a single hr block without separate blank rows", () => {
+    const markdown = ["Text davor", "", "---", "", "Text danach"].join("\n");
+    const blocks = parseMarkdownBlocks(markdown);
+
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "hr", "paragraph"]);
+    expect(blocks[1]?.raw).toBe(["", "---", ""].join("\n"));
+  });
+
+  it("keeps hr as one block even when only one side already has a blank line", () => {
+    const withLeadingBlank = parseMarkdownBlocks(["Text", "", "---", "Text"].join("\n"));
+    expect(withLeadingBlank.map((block) => block.kind)).toEqual(["paragraph", "hr", "paragraph"]);
+
+    const withTrailingBlank = parseMarkdownBlocks(["Text", "---", "", "Text"].join("\n"));
+    expect(withTrailingBlank.map((block) => block.kind)).toEqual(["paragraph", "hr", "paragraph"]);
+  });
 });
 
 describe("normalizeOrderedListBlockSource", () => {
@@ -172,5 +190,39 @@ describe("normalizeHelpBlockSource", () => {
         "#helpend",
       ].join("\n"),
     );
+  });
+});
+
+describe("normalizeHorizontalRuleBlockSource", () => {
+  it("normalizes hr blocks to exactly one blank line above and below", () => {
+    expect(normalizeHorizontalRuleBlockSource("---")).toBe(["", "---", ""].join("\n"));
+    expect(normalizeHorizontalRuleBlockSource(["", "", "---", "", ""].join("\n"))).toBe(
+      ["", "---", ""].join("\n"),
+    );
+  });
+
+  it("preserves the delimiter style while trimming outer whitespace", () => {
+    expect(normalizeHorizontalRuleBlockSource("  ***  ")).toBe(["", "***", ""].join("\n"));
+    expect(normalizeHorizontalRuleBlockSource(" ___ ")).toBe(["", "___", ""].join("\n"));
+  });
+});
+
+describe("normalizeHorizontalRuleSpacingInMarkdown", () => {
+  it("inserts missing blank lines around a horizontal rule", () => {
+    const input = ["A", "---", "B"].join("\n");
+    const normalized = normalizeHorizontalRuleSpacingInMarkdown(input);
+    expect(normalized).toBe(["A", "", "---", "", "B"].join("\n"));
+  });
+
+  it("collapses multiple blank lines directly around a horizontal rule", () => {
+    const input = ["A", "", "", "---", "", "", "B"].join("\n");
+    const normalized = normalizeHorizontalRuleSpacingInMarkdown(input);
+    expect(normalized).toBe(["A", "", "---", "", "B"].join("\n"));
+  });
+
+  it("does not treat --- inside code fences as horizontal rules", () => {
+    const input = ["```txt", "---", "```"].join("\n");
+    const normalized = normalizeHorizontalRuleSpacingInMarkdown(input);
+    expect(normalized).toBe(input);
   });
 });

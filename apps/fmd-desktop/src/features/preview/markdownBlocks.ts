@@ -41,7 +41,7 @@ const isClosingCodeFenceLine = (line: string) => /^\s*`{3,}\s*$/.test(line);
 const isHeadingLine = (line: string) => /^\s{0,3}#{1,6}(?:\s+|$)/.test(line);
 const isBlockquoteLine = (line: string) => /^\s*>/.test(line);
 const isHorizontalRuleLine = (line: string) =>
-  /^\s{0,3}(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
+  /^\s{0,3}(?:(?:-\s*){3,}|(?:\*\s*){3,})$/.test(line);
 const isHelpBlockStartLine = (line: string) => line.trim().toLowerCase() === "#help";
 const isHelpBlockEndLine = (line: string) => line.trim().toLowerCase() === "#helpend";
 
@@ -148,6 +148,15 @@ const buildBlock = (
   };
 };
 
+const findHorizontalRuleLineInBlockRaw = (blockRaw: string) => {
+  for (const line of blockRaw.split("\n")) {
+    if (isHorizontalRuleLine(line)) {
+      return line.trim();
+    }
+  }
+  return null;
+};
+
 export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
   if (markdown.length === 0) {
     return [];
@@ -162,6 +171,19 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
   while (i < lines.length) {
     const line = lines[i] ?? "";
     const nextLine = lines[i + 1] ?? "";
+
+    // HR-Sonderregel: blank + hr (+ blank) als EIN Block behandeln, damit
+    // die impliziten Absaetze nicht als separate blank-Bloecke erscheinen.
+    if (isBlankLine(line) && isHorizontalRuleLine(nextLine)) {
+      let end = i + 1;
+      if (isBlankLine(lines[i + 2] ?? "")) {
+        end = i + 2;
+      }
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "hr", i, end));
+      blockIndex += 1;
+      i = end + 1;
+      continue;
+    }
 
     if (isBlankLine(line)) {
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "blank", i, i));
@@ -217,9 +239,13 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
     }
 
     if (isHorizontalRuleLine(line)) {
-      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "hr", i, i));
+      let end = i;
+      if (isBlankLine(lines[i + 1] ?? "")) {
+        end = i + 1;
+      }
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "hr", i, end));
       blockIndex += 1;
-      i += 1;
+      i = end + 1;
       continue;
     }
 
@@ -339,7 +365,45 @@ export const normalizeHelpBlockSource = (blockRaw: string) => {
   return normalizedLines.join("\n");
 };
 
+export const normalizeHorizontalRuleBlockSource = (blockRaw: string) => {
+  if (!blockRaw) {
+    return blockRaw;
+  }
+  const hrLine = findHorizontalRuleLineInBlockRaw(blockRaw);
+  if (!hrLine) {
+    return blockRaw;
+  }
+  return ["", hrLine, ""].join("\n");
+};
+
+export const normalizeHorizontalRuleSpacingInMarkdown = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+  const blocks = parseMarkdownBlocks(markdown);
+  if (blocks.length === 0) {
+    return markdown;
+  }
+
+  const normalizedRawBlocks: string[] = [];
+  for (let i = 0; i < blocks.length; i += 1) {
+    const block = blocks[i]!;
+
+    if (block.kind === "hr") {
+      normalizedRawBlocks.push(normalizeHorizontalRuleBlockSource(block.raw));
+      continue;
+    }
+
+    normalizedRawBlocks.push(block.raw);
+  }
+
+  return normalizedRawBlocks.join("\n");
+};
+
 export const isSingleLineCommitBlock = (block: MarkdownBlock) => {
+  if (block.kind === "hr") {
+    return true;
+  }
   if (block.startLine !== block.endLine) {
     return false;
   }

@@ -1461,6 +1461,47 @@ textarea.preview-editor {
   margin-top: 0;
 }
 
+.markdown-hybrid-block-hr .markdown-hybrid-block-preview {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.markdown-hybrid-block-hr .markdown-hybrid-block-preview > hr {
+  margin: 0;
+}
+
+.markdown-hybrid-block-blank.is-structural-separator {
+  display: none;
+}
+
+.markdown-hybrid-hr-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-hybrid-hr-shell .markdown-hybrid-block-preview {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.markdown-hybrid-hr-enter-zone {
+  display: block;
+  width: 100%;
+  min-height: 0.75rem;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: text;
+  appearance: none;
+}
+
+.markdown-hybrid-hr-enter-zone:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--accent-border) 60%, transparent);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--accent-soft) 14%, transparent);
+}
+
 .markdown-hybrid-block-preview .md-inline-syntax,
 .md-preview .md-inline-syntax {
   display: inline-flex;
@@ -1866,8 +1907,21 @@ textarea.preview-editor {
   counter-increment: md-ordered;
 }
 
+.preview.markdown.md-preview:not(.preview-editor) ol[data-md-ordered-delimiter=")"] > li,
+.preview-markdown-editable ol[data-md-ordered-delimiter=")"] > li,
+.markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li {
+  position: relative;
+  padding-left: 2.1rem;
+  margin-left: -2.1rem;
+}
+
 .preview.markdown.md-preview:not(.preview-editor) ol[data-md-ordered-delimiter=")"] > li::before {
   content: counter(md-ordered) ") ";
+  position: absolute;
+  left: 0;
+  width: 1.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .preview-markdown-editable ol[data-md-ordered-delimiter=")"] {
@@ -1881,6 +1935,29 @@ textarea.preview-editor {
 
 .preview-markdown-editable ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
   content: counter(md-ordered) ") ";
+  position: absolute;
+  left: 0;
+  width: 1.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] {
+  list-style: none;
+  counter-reset: md-ordered var(--md-ordered-start, 0);
+}
+
+.markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li {
+  counter-increment: md-ordered;
+}
+
+.markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered) ") ";
+  position: absolute;
+  left: 0;
+  width: 1.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .md-preview a {

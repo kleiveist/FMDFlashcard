@@ -22,6 +22,8 @@ import {
 import {
   isSingleLineCommitBlock,
   normalizeHelpBlockSource,
+  normalizeHorizontalRuleBlockSource,
+  normalizeHorizontalRuleSpacingInMarkdown,
   normalizeOrderedListBlockSource,
   parseMarkdownBlocks,
   replaceMarkdownBlock,
@@ -99,6 +101,7 @@ type InsertMenuItemId =
   | "heading-3"
   | "bullet-list"
   | "ordered-list"
+  | "ordered-list-paren"
   | "todo-list"
   | "collapsible-list"
   | "page"
@@ -156,6 +159,11 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
   lists: [
     { id: "bullet-list", label: "Aufzaehlung", template: "- Listeneintrag" },
     { id: "ordered-list", label: "Nummerierung", template: "1. Listeneintrag" },
+    {
+      id: "ordered-list-paren",
+      label: "Nummerierung (1))",
+      template: "1) Listeneintrag",
+    },
     { id: "todo-list", label: "To-do-Liste", template: "- [ ] Aufgabe" },
     {
       id: "collapsible-list",
@@ -376,6 +384,10 @@ const withInsertedRawBlock = (
 ) => {
   const nextRawBlocks = blocks.map((block) => block.raw);
   const targetIndex = Math.max(0, Math.min(atIndex, nextRawBlocks.length));
+  if (insertedRaw.trim().length === 0) {
+    nextRawBlocks.splice(targetIndex, 0, "");
+    return nextRawBlocks.join("\n");
+  }
   const insertionParts: string[] = [];
   const previousRaw = nextRawBlocks[targetIndex - 1] ?? null;
   const nextRaw = nextRawBlocks[targetIndex] ?? null;
@@ -399,21 +411,41 @@ type StableRenderKeyToken = {
   signature: string;
 };
 
-const getBlockSignature = (block: MarkdownBlock) => `${block.kind}\u0000${block.raw}`;
+// Content-derived signatures remount active block editors on each keystroke and
+// can trigger blur/exit loops. Use a structural block identity instead.
+const getBlockSignature = (block: MarkdownBlock) => block.id;
 
 const assignStableRenderKeys = (
   blocks: MarkdownBlock[],
   previousTokens: StableRenderKeyToken[],
   nextCounter: { current: number },
+  activeBlockIndex?: number | null,
 ) => {
   const nextTokens: StableRenderKeyToken[] = [];
   const usedPrevIndices = new Set<number>();
   const keys: string[] = [];
 
-  for (const block of blocks) {
+  for (let blockIndex = 0; blockIndex < blocks.length; blockIndex += 1) {
+    const block = blocks[blockIndex]!;
     const signature = getBlockSignature(block);
     let matchedPrevIndex = -1;
+
+    // Pin the active editor row to its previous render key so content/kind changes
+    // (e.g. blank -> paragraph -> heading while typing "# ") do not remount the textarea.
+    if (
+      typeof activeBlockIndex === "number" &&
+      blockIndex === activeBlockIndex &&
+      blockIndex >= 0 &&
+      blockIndex < previousTokens.length &&
+      !usedPrevIndices.has(blockIndex)
+    ) {
+      matchedPrevIndex = blockIndex;
+    }
+
     for (let i = 0; i < previousTokens.length; i += 1) {
+      if (matchedPrevIndex >= 0) {
+        break;
+      }
       if (usedPrevIndices.has(i)) {
         continue;
       }
@@ -443,6 +475,147 @@ const assignStableRenderKeys = (
 const orderedListLikeLinePattern = /^\s*\d+(?:\.|\)|\.\))\s+\S/;
 const unorderedListLikeLinePattern = /^\s*[-+*]\s+\S/;
 const indentedContinuationLinePattern = /^(?:\s{2,}\S|\t+\S)/;
+const editorOrderedListLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
+const editorTaskListLinePattern = /^(\s*)([-+*])(\s+\[[ xX]\])(\s+)(.*)$/;
+const editorUnorderedListLinePattern = /^(\s*)([-+*])(\s+)(.*)$/;
+const editorListContinuationLinePattern = /^(\s{2,}|\t+)(.*)$/;
+
+type EditorListLineInfo =
+  | {
+    kind: "ordered";
+    indent: string;
+    spacing: string;
+    content: string;
+    prefixLength: number;
+    orderedNumber: number;
+    orderedDelimiter: "." | ")";
+  }
+  | {
+    kind: "task";
+    indent: string;
+    spacing: string;
+    content: string;
+    prefixLength: number;
+    bullet: "-" | "+" | "*";
+  }
+  | {
+    kind: "unordered";
+    indent: string;
+    spacing: string;
+    content: string;
+    prefixLength: number;
+    bullet: "-" | "+" | "*";
+  };
+
+type LineRange = {
+  start: number;
+  end: number;
+  lineIndex: number;
+  line: string;
+};
+
+const parseEditorListLine = (line: string): EditorListLineInfo | null => {
+  const taskMatch = line.match(editorTaskListLinePattern);
+  if (taskMatch) {
+    const indent = taskMatch[1] ?? "";
+    const bullet = ((taskMatch[2] ?? "-") as "-" | "+" | "*");
+    const taskMarker = taskMatch[3] ?? " [ ]";
+    const spacing = taskMatch[4] ?? " ";
+    const content = taskMatch[5] ?? "";
+    return {
+      kind: "task",
+      indent,
+      bullet,
+      spacing,
+      content,
+      prefixLength: indent.length + bullet.length + taskMarker.length + spacing.length,
+    };
+  }
+
+  const orderedMatch = line.match(editorOrderedListLinePattern);
+  if (orderedMatch) {
+    const indent = orderedMatch[1] ?? "";
+    const numberRaw = orderedMatch[2] ?? "1";
+    const delimiterRaw = orderedMatch[3] ?? ".";
+    const spacing = orderedMatch[4] ?? " ";
+    const content = orderedMatch[5] ?? "";
+    return {
+      kind: "ordered",
+      indent,
+      spacing,
+      content,
+      prefixLength: indent.length + numberRaw.length + delimiterRaw.length + spacing.length,
+      orderedNumber: Number.parseInt(numberRaw, 10) || 1,
+      orderedDelimiter: delimiterRaw === "." ? "." : ")",
+    };
+  }
+
+  const unorderedMatch = line.match(editorUnorderedListLinePattern);
+  if (unorderedMatch) {
+    const indent = unorderedMatch[1] ?? "";
+    const bullet = ((unorderedMatch[2] ?? "-") as "-" | "+" | "*");
+    const spacing = unorderedMatch[3] ?? " ";
+    const content = unorderedMatch[4] ?? "";
+    return {
+      kind: "unordered",
+      indent,
+      bullet,
+      spacing,
+      content,
+      prefixLength: indent.length + bullet.length + spacing.length,
+    };
+  }
+
+  return null;
+};
+
+const getLineRangeAtOffset = (value: string, offset: number): LineRange => {
+  const safeOffset = Math.max(0, Math.min(offset, value.length));
+  let lineStart = safeOffset;
+  while (lineStart > 0 && value[lineStart - 1] !== "\n") {
+    lineStart -= 1;
+  }
+  let lineEnd = safeOffset;
+  while (lineEnd < value.length && value[lineEnd] !== "\n") {
+    lineEnd += 1;
+  }
+  let lineIndex = 0;
+  for (let i = 0; i < lineStart; i += 1) {
+    if (value[i] === "\n") {
+      lineIndex += 1;
+    }
+  }
+  return {
+    start: lineStart,
+    end: lineEnd,
+    lineIndex,
+    line: value.slice(lineStart, lineEnd),
+  };
+};
+
+const getLineStartOffsetByIndex = (lines: string[], targetIndex: number) => {
+  let offset = 0;
+  for (let i = 0; i < targetIndex; i += 1) {
+    offset += (lines[i] ?? "").length + 1;
+  }
+  return offset;
+};
+
+const isTextLikeBlockKind = (kind: MarkdownBlock["kind"]) =>
+  kind === "paragraph" || kind === "heading" || kind === "blockquote";
+
+const isStructuralSeparatorBlankBlock = (blocks: MarkdownBlock[], index: number) => {
+  const block = blocks[index];
+  if (!block || block.kind !== "blank") {
+    return false;
+  }
+  const previous = blocks[index - 1];
+  const next = blocks[index + 1];
+  if (!previous || !next) {
+    return false;
+  }
+  return isTextLikeBlockKind(previous.kind) && isTextLikeBlockKind(next.kind);
+};
 
 const needsHelpEndPreviewSeparator = (line: string) =>
   orderedListLikeLinePattern.test(line) ||
@@ -476,6 +649,40 @@ const normalizeHelpBlockPreviewSource = (blockRaw: string) => {
   return previewLines.join("\n");
 };
 
+const isUnderscoreRuleLikeLine = (line: string) =>
+  /^\s{0,3}(?:_\s*){3,}$/.test(line);
+
+const escapeUnderscoreRulePreviewSource = (source: string) =>
+  source
+    .split("\n")
+    .map((line) => (isUnderscoreRuleLikeLine(line) ? line.replace(/_/g, "\\_") : line))
+    .join("\n");
+
+const extractHorizontalRuleEditorDraft = (blockRaw: string) => {
+  const normalized = normalizeHorizontalRuleBlockSource(blockRaw);
+  for (const line of normalized.split("\n")) {
+    if (line.trim().length > 0) {
+      return line;
+    }
+  }
+  return "---";
+};
+
+const serializeHorizontalRuleEditorDraft = (draft: string) =>
+  normalizeHorizontalRuleBlockSource(draft);
+
+const toEditorDraftForBlock = (
+  block: Pick<MarkdownBlock, "kind" | "raw">,
+) => (block.kind === "hr" ? extractHorizontalRuleEditorDraft(block.raw) : block.raw);
+
+const toPersistedBlockRawForDraft = (
+  block: Pick<MarkdownBlock, "kind">,
+  draft: string,
+) => (block.kind === "hr" ? serializeHorizontalRuleEditorDraft(draft) : draft);
+
+const applyEditorMarkdownNormalization = (value: string) =>
+  normalizeHorizontalRuleSpacingInMarkdown(value);
+
 const resolveSessionMarkdown = (
   markdown: string,
   blocks: MarkdownBlock[],
@@ -489,7 +696,8 @@ const resolveSessionMarkdown = (
   if (!block) {
     return markdown;
   }
-  return replaceMarkdownBlock(markdown, block, activeDraft);
+  const nextBlockRaw = toPersistedBlockRawForDraft(block, activeDraft);
+  return replaceMarkdownBlock(markdown, block, nextBlockRaw);
 };
 
 export const MarkdownHybridEditor = ({
@@ -539,15 +747,17 @@ export const MarkdownHybridEditor = ({
   const overlayScrollContainerRef = useRef<HTMLElement | null>(null);
   const stableBlockRenderTokensRef = useRef<StableRenderKeyToken[]>([]);
   const stableBlockRenderKeyCounterRef = useRef(0);
+  const pendingActivationMarkdownRef = useRef<string | null>(null);
   const blockRenderKeys = useMemo(() => {
     const assigned = assignStableRenderKeys(
       blocks,
       stableBlockRenderTokensRef.current,
       stableBlockRenderKeyCounterRef,
+      activeBlockIndex,
     );
     stableBlockRenderTokensRef.current = assigned.tokens;
     return assigned.keys;
-  }, [blocks]);
+  }, [activeBlockIndex, blocks]);
   const overlayRows = useMemo(
     () =>
       Array.from(overlayLayout.byIndex.values()).sort((left, right) => left.index - right.index),
@@ -645,6 +855,7 @@ export const MarkdownHybridEditor = ({
     setActiveDraft("");
     setActiveDirty(false);
     setPendingActivation(null);
+    pendingActivationMarkdownRef.current = null;
     setSelectedBlockSelection(null);
     setIsSelectionDragging(false);
     setDraggedBlockIndex(null);
@@ -660,6 +871,7 @@ export const MarkdownHybridEditor = ({
     selectionGestureRef.current = null;
     suppressNextBlockContextMenuRef.current = false;
     stableBlockRenderTokensRef.current = [];
+    pendingActivationMarkdownRef.current = null;
   }, [historyKey]);
 
   useEffect(
@@ -867,8 +1079,9 @@ export const MarkdownHybridEditor = ({
       setActiveDirty(false);
       return;
     }
-    if (!activeDirty && nextBlock.raw !== activeDraft) {
-      setActiveDraft(nextBlock.raw);
+    const nextDraft = toEditorDraftForBlock(nextBlock);
+    if (!activeDirty && nextDraft !== activeDraft) {
+      setActiveDraft(nextDraft);
     }
   }, [activeBlockIndex, activeDirty, activeDraft, blocks]);
 
@@ -897,17 +1110,61 @@ export const MarkdownHybridEditor = ({
     if (!pendingActivation) {
       return;
     }
+    if (
+      pendingActivationMarkdownRef.current !== null &&
+      markdown !== pendingActivationMarkdownRef.current
+    ) {
+      return;
+    }
     if (blocks.length === 0) {
+      pendingActivationMarkdownRef.current = null;
       setPendingActivation(null);
       return;
     }
     const nextIndex = clampIndex(pendingActivation.index, blocks.length);
+    const targetBlock = blocks[nextIndex];
+    if (targetBlock?.kind === "hr") {
+      setActiveBlockIndex(null);
+      setActiveDraft("");
+      setActiveDirty(false);
+      pendingActivationMarkdownRef.current = null;
+      setPendingActivation(null);
+      const zoneSelector = pendingActivation.caret === "end"
+        ? ".markdown-hybrid-hr-enter-zone-bottom"
+        : ".markdown-hybrid-hr-enter-zone-top";
+      const handle = window.requestAnimationFrame(() => {
+        const row = containerRef.current?.querySelector<HTMLElement>(
+          `.markdown-hybrid-block[data-md-block-index="${nextIndex}"]`,
+        );
+        const zone = row?.querySelector<HTMLButtonElement>(zoneSelector);
+        if (!zone) {
+          const container = containerRef.current;
+          if (container) {
+            try {
+              container.focus({ preventScroll: true });
+            } catch {
+              container.focus();
+            }
+          }
+          return;
+        }
+        try {
+          zone.focus({ preventScroll: true });
+        } catch {
+          zone.focus();
+        }
+      });
+      return () => window.cancelAnimationFrame(handle);
+    }
     pendingCaretRef.current = pendingActivation.caret;
     setActiveBlockIndex(nextIndex);
-    setActiveDraft(blocks[nextIndex]?.raw ?? "");
+    setActiveDraft(
+      blocks[nextIndex] ? toEditorDraftForBlock(blocks[nextIndex]!) : "",
+    );
     setActiveDirty(false);
+    pendingActivationMarkdownRef.current = null;
     setPendingActivation(null);
-  }, [blocks, pendingActivation]);
+  }, [blocks, markdown, pendingActivation]);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -943,6 +1200,7 @@ export const MarkdownHybridEditor = ({
       setSelectionContextMenuState(null);
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
+      pendingActivationMarkdownRef.current = null;
       onChange(nextHistory.present.markdown);
     },
     [onChange],
@@ -972,7 +1230,7 @@ export const MarkdownHybridEditor = ({
       const block = blocks[activeBlockIndex];
       if (!block) {
         if (blocks.length === 0 && activeBlockIndex === 0) {
-          const nextResolvedMarkdown = activeDraft;
+          const nextResolvedMarkdown = applyEditorMarkdownNormalization(activeDraft);
           if (nextResolvedMarkdown !== markdown) {
             onChange(nextResolvedMarkdown);
           }
@@ -997,27 +1255,32 @@ export const MarkdownHybridEditor = ({
           setActiveDirty(false);
         }
         if (options?.nextActivation) {
+          pendingActivationMarkdownRef.current = null;
           setPendingActivation(options.nextActivation);
         }
         return markdown;
       }
 
-      let nextBlockRaw = activeDraft;
+      let nextBlockRaw = toPersistedBlockRawForDraft(block, activeDraft);
       if (block.kind === "ordered-list") {
         nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
       } else if (block.kind === "help-block") {
         nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
+      } else if (block.kind === "hr") {
+        nextBlockRaw = normalizeHorizontalRuleBlockSource(nextBlockRaw);
       }
-      const currentResolvedMarkdown = resolveSessionMarkdown(
-        markdown,
-        blocks,
-        activeBlockIndex,
-        activeDraft,
+      const currentResolvedMarkdown = applyEditorMarkdownNormalization(
+        resolveSessionMarkdown(markdown, blocks, activeBlockIndex, activeDraft),
       );
-      const nextResolvedMarkdown = replaceMarkdownBlock(markdown, block, nextBlockRaw);
+      const nextResolvedMarkdown = applyEditorMarkdownNormalization(
+        replaceMarkdownBlock(markdown, block, nextBlockRaw),
+      );
 
       if (nextResolvedMarkdown !== currentResolvedMarkdown) {
+        pendingActivationMarkdownRef.current = options?.nextActivation ? nextResolvedMarkdown : null;
         onChange(nextResolvedMarkdown);
+      } else if (options?.nextActivation) {
+        pendingActivationMarkdownRef.current = null;
       }
       setHistory((current) => pushMarkdownHistory(current, nextResolvedMarkdown, "block-commit"));
       onCommit?.(nextResolvedMarkdown, { block: { ...block, raw: nextBlockRaw } });
@@ -1026,7 +1289,7 @@ export const MarkdownHybridEditor = ({
         setActiveBlockIndex(null);
         setActiveDraft("");
       } else {
-        setActiveDraft(nextBlockRaw);
+        setActiveDraft(toEditorDraftForBlock({ kind: block.kind, raw: nextBlockRaw }));
       }
       setActiveDirty(false);
 
@@ -1054,12 +1317,12 @@ export const MarkdownHybridEditor = ({
       }
       if (activeBlockIndex === nextIndex) {
         pendingCaretRef.current = caret;
-        setActiveDraft(nextBlock.raw);
+        setActiveDraft(toEditorDraftForBlock(nextBlock));
         return;
       }
       pendingCaretRef.current = caret;
       setActiveBlockIndex(nextIndex);
-      setActiveDraft(nextBlock.raw);
+      setActiveDraft(toEditorDraftForBlock(nextBlock));
       setActiveDirty(false);
     },
     [activeBlockIndex, blocks, disabled],
@@ -1220,11 +1483,12 @@ export const MarkdownHybridEditor = ({
     if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
       return false;
     }
-    const nextMarkdown = deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection);
-    if (nextMarkdown === markdown) {
+    const nextMarkdownRaw = deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection);
+    if (nextMarkdownRaw === markdown) {
       clearSelectedBlockRange();
       return false;
     }
+    const nextMarkdown = applyEditorMarkdownNormalization(nextMarkdownRaw);
 
     setActiveBlockIndex(null);
     setActiveDraft("");
@@ -1256,13 +1520,15 @@ export const MarkdownHybridEditor = ({
         return false;
       }
       const targetIndex = insertAbove ? blockIndex : blockIndex + 1;
-      const nextMarkdown = withInsertedRawBlock(blocks, targetIndex, insertedRaw);
+      const nextMarkdown = applyEditorMarkdownNormalization(
+        withInsertedRawBlock(blocks, targetIndex, insertedRaw),
+      );
       if (nextMarkdown === markdown) {
         return false;
       }
 
       const nextBlocks = parseMarkdownBlocks(nextMarkdown);
-      const insertedBlocks = parseMarkdownBlocks(insertedRaw);
+      const insertedBlocks = parseMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
       const primaryInsertedBlock = insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
       let activationIndex = -1;
       if (primaryInsertedBlock) {
@@ -1288,11 +1554,26 @@ export const MarkdownHybridEditor = ({
             break;
           }
         }
+      } else if (insertedRaw.trim().length === 0 && nextBlocks.length > 0) {
+        const startSearchIndex = Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
+        for (let offset = 0; offset < nextBlocks.length; offset += 1) {
+          const forwardIndex = startSearchIndex + offset;
+          if (forwardIndex < nextBlocks.length && nextBlocks[forwardIndex]?.kind === "blank") {
+            activationIndex = forwardIndex;
+            break;
+          }
+          const backwardIndex = startSearchIndex - offset;
+          if (offset > 0 && backwardIndex >= 0 && nextBlocks[backwardIndex]?.kind === "blank") {
+            activationIndex = backwardIndex;
+            break;
+          }
+        }
       }
 
       setActiveBlockIndex(null);
       setActiveDraft("");
       setActiveDirty(false);
+      pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
       setPendingActivation(
         activationIndex >= 0 ? { index: activationIndex, caret: "end" } : null,
       );
@@ -1311,6 +1592,34 @@ export const MarkdownHybridEditor = ({
     [blocks, disabled, markdown, onChange],
   );
 
+  const getEmptyParagraphInsertRawForSlot = useCallback(
+    (targetIndex: number) => {
+      const previousKind = blocks[targetIndex - 1]?.kind ?? null;
+      const nextKind = blocks[targetIndex]?.kind ?? null;
+      const adjacentHrCount = Number(previousKind === "hr") + Number(nextKind === "hr");
+      if (adjacentHrCount >= 2) {
+        return "\n\n";
+      }
+      if (adjacentHrCount === 1) {
+        return "\n";
+      }
+      return "";
+    },
+    [blocks],
+  );
+
+  const insertEmptyParagraphRelativeTo = useCallback(
+    (blockIndex: number, insertAbove: boolean) => {
+      const targetIndex = insertAbove ? blockIndex : blockIndex + 1;
+      return insertBlockRelativeTo(
+        blockIndex,
+        getEmptyParagraphInsertRawForSlot(targetIndex),
+        insertAbove,
+      );
+    },
+    [getEmptyParagraphInsertRawForSlot, insertBlockRelativeTo],
+  );
+
   const reorderBlockByDrop = useCallback(
     (fromIndex: number, toSlotIndex: number) => {
       if (disabled) {
@@ -1320,7 +1629,9 @@ export const MarkdownHybridEditor = ({
       if (reorderedBlocks === blocks) {
         return false;
       }
-      const nextMarkdown = serializeMarkdownFromBlocks(reorderedBlocks);
+      const nextMarkdown = applyEditorMarkdownNormalization(
+        serializeMarkdownFromBlocks(reorderedBlocks),
+      );
       if (nextMarkdown === markdown) {
         return false;
       }
@@ -1330,6 +1641,7 @@ export const MarkdownHybridEditor = ({
       setActiveBlockIndex(null);
       setActiveDraft("");
       setActiveDirty(false);
+      pendingActivationMarkdownRef.current = nextMarkdown;
       setPendingActivation({ index: clampIndex(insertIndex, reorderedBlocks.length), caret: "end" });
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
@@ -1479,6 +1791,38 @@ export const MarkdownHybridEditor = ({
     [insertBlockRelativeTo, insertMenuState],
   );
 
+  const handleHrEnterZoneMouseDown = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+    },
+    [],
+  );
+
+  const handleHrEnterZoneClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+    },
+    [],
+  );
+
+  const handleHrEnterZoneKeyDown = useCallback(
+    (blockIndex: number, insertAbove: boolean) => (event: KeyboardEvent<HTMLButtonElement>) => {
+      if (
+        event.key !== "Enter" ||
+        event.shiftKey ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      insertEmptyParagraphRelativeTo(blockIndex, insertAbove);
+    },
+    [insertEmptyParagraphRelativeTo],
+  );
+
   const handleSelectionContextMenuDelete = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
@@ -1575,13 +1919,70 @@ export const MarkdownHybridEditor = ({
       if (activeBlockIndex === null) {
         return;
       }
+      if (activeBlock?.kind === "blank" && nextValue.length > 0) {
+        const previousBlock = blocks[activeBlockIndex - 1] ?? null;
+        const nextBlock = blocks[activeBlockIndex + 1] ?? null;
+        const needsSeparatorBefore = previousBlock?.kind === "paragraph";
+        const needsSeparatorAfter = nextBlock?.kind === "paragraph";
+        const replacementRaw = `${needsSeparatorBefore ? "\n" : ""}${nextValue}${
+          needsSeparatorAfter ? "\n" : ""
+        }`;
+        const nextMarkdown = applyEditorMarkdownNormalization(
+          replaceMarkdownBlock(markdown, activeBlock, replacementRaw),
+        );
+        const nextBlocks = parseMarkdownBlocks(nextMarkdown);
+        const preferredKind = parseMarkdownBlocks(nextValue)[0]?.kind ?? "paragraph";
+        let activationIndex = -1;
+        const startSearchIndex = Math.max(
+          0,
+          Math.min(activeBlockIndex + (needsSeparatorBefore ? 1 : 0), nextBlocks.length - 1),
+        );
+
+        for (let offset = 0; offset < nextBlocks.length; offset += 1) {
+          const forwardIndex = startSearchIndex + offset;
+          if (
+            forwardIndex < nextBlocks.length &&
+            nextBlocks[forwardIndex]?.raw === nextValue &&
+            nextBlocks[forwardIndex]?.kind === preferredKind
+          ) {
+            activationIndex = forwardIndex;
+            break;
+          }
+          const backwardIndex = startSearchIndex - offset;
+          if (
+            offset > 0 &&
+            backwardIndex >= 0 &&
+            nextBlocks[backwardIndex]?.raw === nextValue &&
+            nextBlocks[backwardIndex]?.kind === preferredKind
+          ) {
+            activationIndex = backwardIndex;
+            break;
+          }
+        }
+
+        if (activationIndex < 0) {
+          activationIndex = clampIndex(
+            activeBlockIndex + (needsSeparatorBefore ? 1 : 0),
+            nextBlocks.length,
+          );
+        }
+
+        setActiveBlockIndex(null);
+        setActiveDraft("");
+        setActiveDirty(false);
+        pendingActivationMarkdownRef.current = nextMarkdown;
+        setPendingActivation({ index: activationIndex, caret: "end" });
+        onChange(nextMarkdown);
+        return;
+      }
       setActiveDraft(nextValue);
       setActiveDirty(true);
       const block = activeBlock;
       if (!block) {
         return;
       }
-      const nextMarkdown = replaceMarkdownBlock(markdown, block, nextValue);
+      const nextBlockRaw = toPersistedBlockRawForDraft(block, nextValue);
+      const nextMarkdown = replaceMarkdownBlock(markdown, block, nextBlockRaw);
       if (nextMarkdown !== markdown) {
         onChange(nextMarkdown);
       }
@@ -1592,6 +1993,83 @@ export const MarkdownHybridEditor = ({
   const handleTextareaBlur = useCallback(() => {
     commitActiveBlock({ deactivate: true });
   }, [commitActiveBlock]);
+
+  const scheduleTextareaCaret = useCallback((nextPosition: number) => {
+    const handle = window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        return;
+      }
+      const safe = Math.max(0, Math.min(nextPosition, textarea.value.length));
+      try {
+        textarea.focus({ preventScroll: true });
+      } catch {
+        textarea.focus();
+      }
+      textarea.setSelectionRange(safe, safe);
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, []);
+
+  const applyActiveBlockDraft = useCallback(
+    (nextDraft: string, nextCaretPosition?: number) => {
+      if (activeBlockIndex === null) {
+        return false;
+      }
+      const block = blocks[activeBlockIndex];
+      if (!block) {
+        return false;
+      }
+      setActiveDraft(nextDraft);
+      setActiveDirty(true);
+      const nextBlockRaw = toPersistedBlockRawForDraft(block, nextDraft);
+      const nextMarkdown = replaceMarkdownBlock(markdown, block, nextBlockRaw);
+      if (nextMarkdown !== markdown) {
+        onChange(nextMarkdown);
+      }
+      if (typeof nextCaretPosition === "number") {
+        scheduleTextareaCaret(nextCaretPosition);
+      }
+      return true;
+    },
+    [activeBlockIndex, blocks, markdown, onChange, scheduleTextareaCaret],
+  );
+
+  const replaceActiveBlockWithSegments = useCallback(
+    (segments: string[], options?: { activateSegmentIndex?: number; caret?: "start" | "end" }) => {
+      if (activeBlockIndex === null) {
+        return false;
+      }
+      const block = blocks[activeBlockIndex];
+      if (!block) {
+        return false;
+      }
+
+      const nextBlockRaw = segments.join("\n");
+      const nextMarkdown = applyEditorMarkdownNormalization(
+        replaceMarkdownBlock(markdown, block, nextBlockRaw),
+      );
+      const nextBlocks = parseMarkdownBlocks(nextMarkdown);
+      const rawTargetIndex = activeBlockIndex + (options?.activateSegmentIndex ?? 0);
+      const targetIndex = nextBlocks.length > 0
+        ? clampIndex(rawTargetIndex, nextBlocks.length)
+        : 0;
+
+      setActiveBlockIndex(null);
+      setActiveDraft("");
+      setActiveDirty(false);
+      pendingActivationMarkdownRef.current = nextBlocks.length > 0 ? nextMarkdown : null;
+      setPendingActivation(
+        nextBlocks.length > 0
+          ? { index: targetIndex, caret: options?.caret ?? "start" }
+          : null,
+      );
+      onChange(nextMarkdown);
+      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+      return true;
+    },
+    [activeBlockIndex, blocks, markdown, onChange],
+  );
 
   const handleTextareaKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1627,16 +2105,208 @@ export const MarkdownHybridEditor = ({
       const hasSelection = textarea.selectionStart !== textarea.selectionEnd;
       const atStart = !hasSelection && textarea.selectionStart === 0;
       const atEnd = !hasSelection && textarea.selectionEnd === textarea.value.length;
-
-      if (
-        event.key === "Enter" &&
-        !event.shiftKey &&
+      const isPlainEnter = event.key === "Enter" &&
         !event.altKey &&
         !event.ctrlKey &&
-        !event.metaKey &&
+        !event.metaKey;
+
+      if (event.key === "Enter" && event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
+        const listLineInfo = parseEditorListLine(lineRange.line);
+        let continuationPrefix = "  ";
+        if (listLineInfo) {
+          const continuationPadding = Math.max(
+            2,
+            listLineInfo.prefixLength - listLineInfo.indent.length,
+          );
+          continuationPrefix = `${listLineInfo.indent}${" ".repeat(continuationPadding)}`;
+        } else {
+          const continuationMatch = lineRange.line.match(editorListContinuationLinePattern);
+          if (continuationMatch) {
+            continuationPrefix = continuationMatch[1] ?? "  ";
+          }
+        }
+        const nextDraft = `${activeDraft.slice(0, selectionStart)}\n${continuationPrefix}${
+          activeDraft.slice(selectionEnd)
+        }`;
+        const nextCaret = selectionStart + 1 + continuationPrefix.length;
+        event.preventDefault();
+        event.stopPropagation();
+        applyActiveBlockDraft(nextDraft, nextCaret);
+        return;
+      }
+
+      if (isPlainEnter && !event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
+        const listLineInfo = parseEditorListLine(lineRange.line);
+        const lineLocalSelectionStart = selectionStart - lineRange.start;
+
+        if (
+          !hasSelection &&
+          listLineInfo &&
+          lineLocalSelectionStart >= listLineInfo.prefixLength
+        ) {
+          const lines = activeDraft.split("\n");
+          const lineIndex = lineRange.lineIndex;
+          const beforeContent = lineRange.line.slice(listLineInfo.prefixLength, lineLocalSelectionStart);
+          const afterContent = lineRange.line.slice(lineLocalSelectionStart);
+          const isEmptyItem = listLineInfo.content.trim().length === 0;
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (isEmptyItem) {
+            const beforeLines = lines.slice(0, lineIndex);
+            const afterLines = lines.slice(lineIndex + 1);
+            const segments: string[] = [];
+            if (beforeLines.length > 0) {
+              segments.push(beforeLines.join("\n"));
+            }
+            const insertBlankSegmentIndex = segments.length;
+            segments.push("");
+            if (afterLines.length === 0 && blocks[activeBlockIndex + 1]?.kind === "hr") {
+              segments.push("");
+            }
+            if (afterLines.length > 0) {
+              segments.push(afterLines.join("\n"));
+            }
+            replaceActiveBlockWithSegments(segments, {
+              activateSegmentIndex: insertBlankSegmentIndex,
+              caret: "start",
+            });
+            return;
+          }
+
+          const currentLinePrefix = lineRange.line.slice(0, listLineInfo.prefixLength);
+          const currentLine = `${currentLinePrefix}${beforeContent}`;
+          let nextLinePrefix = "";
+          if (listLineInfo.kind === "ordered") {
+            nextLinePrefix = `${listLineInfo.indent}${listLineInfo.orderedNumber + 1}${listLineInfo.orderedDelimiter}${listLineInfo.spacing}`;
+          } else if (listLineInfo.kind === "task") {
+            nextLinePrefix = `${listLineInfo.indent}${listLineInfo.bullet} [ ]${listLineInfo.spacing}`;
+          } else {
+            nextLinePrefix = `${listLineInfo.indent}${listLineInfo.bullet}${listLineInfo.spacing}`;
+          }
+          const nextLine = `${nextLinePrefix}${afterContent}`;
+
+          const nextLines = [...lines];
+          nextLines.splice(lineIndex, 1, currentLine, nextLine);
+          let nextDraft = nextLines.join("\n");
+          if (block.kind === "ordered-list") {
+            nextDraft = normalizeOrderedListBlockSource(nextDraft);
+          }
+          const resolvedLines = nextDraft.split("\n");
+          const insertedLine = resolvedLines[lineIndex + 1] ?? nextLine;
+          const insertedLineInfo = parseEditorListLine(insertedLine);
+          const nextCaret = getLineStartOffsetByIndex(resolvedLines, lineIndex + 1) +
+            (insertedLineInfo?.prefixLength ?? nextLinePrefix.length);
+          applyActiveBlockDraft(nextDraft, nextCaret);
+          return;
+        }
+
+        if (!hasSelection) {
+          // If we cannot resolve a list marker safely, stay in a single input target and let the
+          // browser insert a plain newline in the active textarea (no block handoff).
+          return;
+        }
+      }
+
+      if (event.key === "Enter" && event.shiftKey && block.kind === "heading") {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      if (isPlainEnter && !event.shiftKey && block.kind === "blank") {
+        event.preventDefault();
+        event.stopPropagation();
+        replaceActiveBlockWithSegments(["", ""], {
+          activateSegmentIndex: 1,
+          caret: "start",
+        });
+        return;
+      }
+
+      if (isPlainEnter && !event.shiftKey && block.kind === "heading") {
+        event.preventDefault();
+        event.stopPropagation();
+        replaceActiveBlockWithSegments(
+          blocks[activeBlockIndex + 1]?.kind === "hr" ? [activeDraft, "", ""] : [activeDraft, ""],
+          {
+          activateSegmentIndex: 1,
+          caret: "start",
+          },
+        );
+        return;
+      }
+
+      if (isPlainEnter && !event.shiftKey && block.kind === "hr") {
+        event.preventDefault();
+        event.stopPropagation();
+        replaceActiveBlockWithSegments([toPersistedBlockRawForDraft(block, activeDraft), ""], {
+          activateSegmentIndex: 1,
+          caret: "start",
+        });
+        return;
+      }
+
+      if (isPlainEnter && !event.shiftKey && block.kind === "paragraph") {
+        event.preventDefault();
+        event.stopPropagation();
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const before = activeDraft.slice(0, selectionStart);
+        const after = activeDraft.slice(selectionEnd);
+        const segments: string[] = [];
+        let blankSegmentIndex = 0;
+        let activationIndex = 0;
+
+        if (before.length > 0) {
+          segments.push(before);
+        }
+        blankSegmentIndex = segments.length;
+        segments.push("");
+
+        if (after.length > 0) {
+          segments.push(after);
+          activationIndex = segments.length - 1;
+        } else {
+          activationIndex = blankSegmentIndex;
+          if (blocks[activeBlockIndex + 1]?.kind === "hr") {
+            segments.push("");
+          }
+        }
+        replaceActiveBlockWithSegments(segments, {
+          activateSegmentIndex: activationIndex,
+          caret: "start",
+        });
+        return;
+      }
+
+      if (isPlainEnter && !event.shiftKey && block.kind === "blockquote" && atEnd) {
+        event.preventDefault();
+        event.stopPropagation();
+        replaceActiveBlockWithSegments(
+          blocks[activeBlockIndex + 1]?.kind === "hr" ? [activeDraft, "", ""] : [activeDraft, ""],
+          {
+          activateSegmentIndex: 1,
+          caret: "start",
+          },
+        );
+        return;
+      }
+
+      if (
+        isPlainEnter &&
+        !event.shiftKey &&
         isSingleLineCommitBlock(block)
       ) {
         event.preventDefault();
+        event.stopPropagation();
         commitActiveBlock({
           deactivate: true,
           nextActivation: { index: activeBlockIndex + 1, caret: "start" },
@@ -1677,11 +2347,14 @@ export const MarkdownHybridEditor = ({
     },
     [
       activeBlockIndex,
+      activeDraft,
+      applyActiveBlockDraft,
       activeDirty,
       blocks,
       commitActiveBlock,
       handleGlobalRedo,
       handleGlobalUndo,
+      replaceActiveBlockWithSegments,
     ],
   );
 
@@ -1773,6 +2446,12 @@ export const MarkdownHybridEditor = ({
       if (isTextareaElement) {
         return;
       }
+      if (
+        blocks[index]?.kind === "blank" &&
+        isStructuralSeparatorBlankBlock(blocks, index)
+      ) {
+        return;
+      }
       if (selectedBlockSelection) {
         clearSelectedBlockRange();
       }
@@ -1785,6 +2464,7 @@ export const MarkdownHybridEditor = ({
     [
       activateBlock,
       activeBlockIndex,
+      blocks,
       clearSelectedBlockRange,
       disabled,
       selectedBlockSelection,
@@ -2237,19 +2917,26 @@ export const MarkdownHybridEditor = ({
       <div ref={contentLayerRef} className="markdown-hybrid-content-layer">
         {blocks.map((block, index) => {
           const isActive = activeBlockIndex === index && !disabled;
+          const isStructuralBlankSeparator =
+            !isActive && isStructuralSeparatorBlankBlock(blocks, index);
           const isRangeSelected = !disabled && isBlockIndexSelected(selectedBlockSelection, index);
           const isDragging = draggedBlockIndex === index;
           const hasDropIndicatorTop = dropIndicatorIndex === index;
           const hasDropIndicatorBottom = dropIndicatorIndex === index + 1;
-          const previewBlockSource = block.kind === "help-block"
+          let previewBlockSource = block.kind === "help-block"
             ? normalizeHelpBlockPreviewSource(block.raw)
             : block.raw;
+          if (block.kind !== "hr" && block.kind !== "code-fence") {
+            previewBlockSource = escapeUnderscoreRulePreviewSource(previewBlockSource);
+          }
           return (
             <div
               key={blockRenderKeys[index] ?? block.id}
               className={`markdown-hybrid-block markdown-hybrid-block-${block.kind}${
                 isActive ? " is-active" : ""
-              }${isRangeSelected ? " is-range-selected" : ""}${
+              }${isStructuralBlankSeparator ? " is-structural-separator" : ""}${
+                isRangeSelected ? " is-range-selected" : ""
+              }${
                 isDragging ? " is-dragging" : ""
               }${hasDropIndicatorTop ? " has-drop-indicator-top" : ""}${
                 hasDropIndicatorBottom ? " has-drop-indicator-bottom" : ""
@@ -2279,6 +2966,32 @@ export const MarkdownHybridEditor = ({
                   />
                 ) : block.kind === "blank" ? (
                   <div className="markdown-hybrid-blank-preview" aria-hidden="true" />
+                ) : block.kind === "hr" ? (
+                  <div className="markdown-hybrid-hr-shell">
+                    <button
+                      type="button"
+                      className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-top"
+                      data-md-block-control="true"
+                      onMouseDown={handleHrEnterZoneMouseDown}
+                      onClick={handleHrEnterZoneClick}
+                      onKeyDown={handleHrEnterZoneKeyDown(index, true)}
+                      aria-label="Textblock oberhalb der Trennlinie einfuegen"
+                      title="Enterbereich oberhalb der Trennlinie"
+                    />
+                    <div className="markdown-hybrid-block-preview">
+                      {renderPreview(previewBlockSource)}
+                    </div>
+                    <button
+                      type="button"
+                      className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-bottom"
+                      data-md-block-control="true"
+                      onMouseDown={handleHrEnterZoneMouseDown}
+                      onClick={handleHrEnterZoneClick}
+                      onKeyDown={handleHrEnterZoneKeyDown(index, false)}
+                      aria-label="Textblock unterhalb der Trennlinie einfuegen"
+                      title="Enterbereich unterhalb der Trennlinie"
+                    />
+                  </div>
                 ) : (
                   <div className="markdown-hybrid-block-preview">
                     {renderPreview(previewBlockSource)}
@@ -2290,13 +3003,20 @@ export const MarkdownHybridEditor = ({
         })}
       </div>
       <div className="markdown-hybrid-controls-overlay">
-        {overlayRows.map((overlayRow) =>
-          renderOverlayRow({
+        {overlayRows.map((overlayRow) => {
+          if (
+            activeBlockIndex !== overlayRow.index &&
+            isStructuralSeparatorBlankBlock(blocks, overlayRow.index)
+          ) {
+            return null;
+          }
+          return renderOverlayRow({
             blockIndex: overlayRow.index,
             kind: overlayRow.kind,
             top: overlayRow.top,
             height: overlayRow.height,
-          }))}
+          });
+        })}
       </div>
       {selectionContextMenu}
     </div>
