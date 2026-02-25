@@ -525,6 +525,107 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(codeBlock?.hasAttribute("data-md-code-active")).toBe(false);
   });
 
+  it("moves Enter inside a list item to a root paragraph in markdown edit mode", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["1) Alpha", "2) Beta"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const firstItem = editable?.querySelector("ol > li") as HTMLLIElement | null;
+    const firstTextNode = firstItem?.childNodes.item(1) as Text | null;
+
+    expect(editable).toBeTruthy();
+    expect(firstItem).toBeTruthy();
+    expect(firstTextNode).toBeTruthy();
+
+    act(() => {
+      if (!firstTextNode) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(firstTextNode, 2);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      editable?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "Enter",
+        }),
+      );
+    });
+
+    const rootOrderedList = editable?.firstElementChild;
+    const rootParagraph = editable?.lastElementChild;
+
+    expect(rootOrderedList).toBeTruthy();
+    expect(rootParagraph).toBeTruthy();
+    expect(rootParagraph?.textContent ?? "").toContain("pha");
+  });
+
+  it("indents selected list items with Tab in markdown edit mode", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["1) Alpha", "2) Beta", "3) Gamma"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const items = Array.from(editable?.querySelectorAll("ol > li") ?? []);
+    const secondText = items[1]?.childNodes.item(1) as Text | null;
+    const thirdText = items[2]?.childNodes.item(1) as Text | null;
+
+    expect(items).toHaveLength(3);
+
+    act(() => {
+      if (!secondText || !thirdText) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(secondText, 0);
+      range.setEnd(thirdText, thirdText.nodeValue?.length ?? 0);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      editable?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "Tab",
+        }),
+      );
+    });
+
+    const rootList = editable?.querySelector("ol");
+    const topItems = Array.from(rootList?.children ?? []).filter((node): node is HTMLLIElement =>
+      node instanceof HTMLLIElement
+    );
+    expect(topItems).toHaveLength(1);
+    expect(topItems[0]?.querySelector("ol")?.children.length ?? 0).toBe(2);
+  });
+
   it("shows a copy control in markdown edit mode outside the code element", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["```http", "GET /book/1", "200 OK", "```"].join("\n"),

@@ -274,6 +274,25 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toContain("- [x] Done");
   });
 
+  it("uses ordered delimiter fallback from list data when marker spans are missing", () => {
+    const container = document.createElement("div");
+    const ordered = document.createElement("ol");
+    ordered.setAttribute("data-md-ordered-delimiter", ")");
+
+    const itemA = document.createElement("li");
+    itemA.appendChild(document.createTextNode("Alpha"));
+    const itemB = document.createElement("li");
+    itemB.appendChild(document.createTextNode("Beta"));
+
+    ordered.appendChild(itemA);
+    ordered.appendChild(itemB);
+    container.appendChild(ordered);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("1) Alpha\n2) Beta\n");
+  });
+
   it("does not inject escaped list markers when serializing editable list marker spans", () => {
     const container = document.createElement("div");
     const list = document.createElement("ul");
