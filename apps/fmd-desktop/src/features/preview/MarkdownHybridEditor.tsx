@@ -124,6 +124,42 @@ const deleteMarkdownBlockRange = (
   return `${sourceMarkdown.slice(0, removeStart)}${sourceMarkdown.slice(removeEnd)}`;
 };
 
+const orderedListLikeLinePattern = /^\s*\d+(?:\.|\)|\.\))\s+\S/;
+const unorderedListLikeLinePattern = /^\s*[-+*]\s+\S/;
+const indentedContinuationLinePattern = /^(?:\s{2,}\S|\t+\S)/;
+
+const needsHelpEndPreviewSeparator = (line: string) =>
+  orderedListLikeLinePattern.test(line) ||
+  unorderedListLikeLinePattern.test(line) ||
+  indentedContinuationLinePattern.test(line);
+
+const normalizeHelpBlockPreviewSource = (blockRaw: string) => {
+  const normalized = normalizeHelpBlockSource(blockRaw);
+  if (!normalized) {
+    return normalized;
+  }
+
+  const lines = normalized.split("\n");
+  const previewLines: string[] = [];
+
+  for (const line of lines) {
+    if (line !== "#helpend") {
+      previewLines.push(line);
+      continue;
+    }
+
+    const previousLine = previewLines[previewLines.length - 1] ?? "";
+    // Preview-only: break out of markdown list parsing before "#helpend"
+    // without changing the persisted source formatting.
+    if (previousLine && needsHelpEndPreviewSeparator(previousLine)) {
+      previewLines.push("");
+    }
+    previewLines.push(line);
+  }
+
+  return previewLines.join("\n");
+};
+
 const resolveSessionMarkdown = (
   markdown: string,
   blocks: MarkdownBlock[],
@@ -793,6 +829,9 @@ export const MarkdownHybridEditor = ({
       {blocks.map((block, index) => {
         const isActive = activeBlockIndex === index && !disabled;
         const isRangeSelected = !disabled && isBlockIndexInSelectedRange(selectedBlockRange, index);
+        const previewBlockSource = block.kind === "help-block"
+          ? normalizeHelpBlockPreviewSource(block.raw)
+          : block.raw;
         return (
           <div
             key={block.id}
@@ -821,7 +860,7 @@ export const MarkdownHybridEditor = ({
               <div className="markdown-hybrid-blank-preview" aria-hidden="true" />
             ) : (
               <div className="markdown-hybrid-block-preview">
-                {renderPreview(block.raw)}
+                {renderPreview(previewBlockSource)}
               </div>
             )}
           </div>

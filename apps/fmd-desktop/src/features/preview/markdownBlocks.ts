@@ -322,16 +322,21 @@ export const normalizeHelpBlockSource = (blockRaw: string) => {
   if (!blockRaw) {
     return blockRaw;
   }
-  return blockRaw
-    .split("\n")
-    .map((line) => {
-      if (line.trim().toLowerCase() !== "#helpend") {
-        return line;
-      }
-      // Sonderregel: Endmarker immer linksbuendig und ohne zusaetzliche Leerzeichen/Tabs.
-      return "#helpend";
-    })
-    .join("\n");
+  const normalizedLines: string[] = [];
+  for (const line of blockRaw.split("\n")) {
+    if (line.trim().toLowerCase() !== "#helpend") {
+      normalizedLines.push(line);
+      continue;
+    }
+
+    // Sonderregel: Keine Leerzeile direkt vor dem Endmarker behalten.
+    while (normalizedLines.length > 0 && /^\s*$/.test(normalizedLines[normalizedLines.length - 1] ?? "")) {
+      normalizedLines.pop();
+    }
+    // Endmarker immer linksbuendig und ohne zusaetzliche Leerzeichen/Tabs.
+    normalizedLines.push("#helpend");
+  }
+  return normalizedLines.join("\n");
 };
 
 export const isSingleLineCommitBlock = (block: MarkdownBlock) => {

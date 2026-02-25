@@ -153,4 +153,24 @@ describe("normalizeHelpBlockSource", () => {
       ].join("\n"),
     );
   });
+
+  it("removes blank lines directly before #helpend", () => {
+    const input = [
+      "#help",
+      "Hint Zeile",
+      "",
+      "   ",
+      "\t",
+      "  #helpend  ",
+    ].join("\n");
+
+    const normalized = normalizeHelpBlockSource(input);
+    expect(normalized).toBe(
+      [
+        "#help",
+        "Hint Zeile",
+        "#helpend",
+      ].join("\n"),
+    );
+  });
 });
