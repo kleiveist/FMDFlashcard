@@ -6362,6 +6362,25 @@ export const PreviewPanel = ({
               {renderHighlightedInlineSyntaxChildren(children, "li")}
             </li>
           ),
+          input: ({ node: _node, ...props }) => {
+            const inputType = typeof props.type === "string" ? props.type.toLowerCase() : "";
+            if (inputType !== "checkbox") {
+              return <input {...props} />;
+            }
+            const className = [props.className, "md-task-list-checkbox"]
+              .filter(Boolean)
+              .join(" ");
+            return (
+              <input
+                {...props}
+                type="checkbox"
+                className={className}
+                data-md-task-checkbox="true"
+                disabled={false}
+                onChange={() => {}}
+              />
+            );
+          },
           blockquote: ({ node: _node, children, ...props }) => (
             <blockquote {...props}>
               {renderHighlightedInlineSyntaxChildren(children, "blockquote")}

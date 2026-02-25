@@ -38,7 +38,7 @@ const taskListLinePattern = /^(\s*)([-+*])\s+\[[ xX]\](?:\s+|$)/;
 const isBlankLine = (line: string) => /^\s*$/.test(line);
 const isCodeFenceLine = (line: string) => /^\s*`{3,}/.test(line);
 const isClosingCodeFenceLine = (line: string) => /^\s*`{3,}\s*$/.test(line);
-const isHeadingLine = (line: string) => /^\s{0,3}#{1,6}(?:\s+|$)/.test(line);
+const isHeadingLine = (line: string) => /^\s{0,3}#{1,4}(?:\s+|$)/.test(line);
 const isBlockquoteLine = (line: string) => /^\s*>/.test(line);
 const isHorizontalRuleLine = (line: string) =>
   /^\s{0,3}(?:(?:-\s*){3,}|(?:\*\s*){3,})$/.test(line);

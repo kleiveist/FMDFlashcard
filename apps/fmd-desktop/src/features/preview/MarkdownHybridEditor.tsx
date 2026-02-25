@@ -9,6 +9,7 @@
 import {
   type CSSProperties,
   type DragEvent,
+  type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -74,6 +75,13 @@ type SelectionContextMenuState = {
   y: number;
 };
 
+type SelectionMarqueeRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
 type OverlayBlockRect = {
   index: number;
   top: number;
@@ -99,6 +107,7 @@ type InsertMenuItemId =
   | "heading-1"
   | "heading-2"
   | "heading-3"
+  | "heading-4"
   | "bullet-list"
   | "ordered-list"
   | "ordered-list-paren"
@@ -142,56 +151,51 @@ type MarkdownHybridEditorProps = {
 };
 
 const INSERT_MENU_CATEGORIES: InsertMenuCategory[] = [
-  { id: "text-headings", label: "Text & Ueberschriften" },
-  { id: "lists", label: "Listen" },
-  { id: "structure", label: "Struktur" },
+  { id: "text-headings", label: "Text & Headings" },
+  { id: "lists", label: "Lists" },
+  { id: "structure", label: "Structure" },
   { id: "links", label: "Links" },
-  { id: "advanced", label: "Erweitert" },
+  { id: "advanced", label: "Advanced" },
 ];
 
 const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem[]> = {
   "text-headings": [
-    { id: "text", label: "Text", template: "Neuer Text" },
-    { id: "heading-1", label: "Ueberschrift 1", template: "# Ueberschrift" },
-    { id: "heading-2", label: "Ueberschrift 2", template: "## Ueberschrift" },
-    { id: "heading-3", label: "Ueberschrift 3", template: "### Ueberschrift" },
+    { id: "text", label: "Text", template: "New text" },
+    { id: "heading-1", label: "Heading 1", template: "# Heading" },
+    { id: "heading-2", label: "Heading 2", template: "## Heading" },
+    { id: "heading-3", label: "Heading 3", template: "### Heading" },
+    { id: "heading-4", label: "Heading 4", template: "#### Heading" },
   ],
   lists: [
-    { id: "bullet-list", label: "Aufzaehlung", template: "- Listeneintrag" },
-    { id: "ordered-list", label: "Nummerierung", template: "1. Listeneintrag" },
+    { id: "bullet-list", label: "- Bullet List", template: "- List item" },
+    { id: "ordered-list", label: "1. Numbered List", template: "1. List item" },
     {
       id: "ordered-list-paren",
-      label: "Nummerierung (1))",
-      template: "1) Listeneintrag",
+      label: "1)  Numbered List",
+      template: "1) List item",
     },
-    { id: "todo-list", label: "To-do-Liste", template: "- [ ] Aufgabe" },
-    {
-      id: "collapsible-list",
-      label: "Aufklappbare Liste",
-      template:
-        "<details>\n<summary>Liste</summary>\n<ul>\n<li>Eintrag</li>\n</ul>\n</details>",
-    },
+    { id: "todo-list", label: "To-do List", template: "- [ ] Task" },
   ],
   structure: [
     {
       id: "page",
-      label: "Seite",
-      template: "#card\nFrage oder Titel\nAnswer: Antwort oder Inhalt\n#endcard",
+      label: "Page",
+      template: "#card\nQuestion or title\nAnswer: Answer or content\n#endcard",
     },
-    { id: "blockquote", label: "Zitat", template: "> Zitat" },
+    { id: "blockquote", label: "Quote", template: "> Quote" },
     {
       id: "table",
-      label: "Tabelle",
-      template: "| Spalte A | Spalte B |\n| --- | --- |\n| Wert 1 | Wert 2 |",
+      label: "Table",
+      template: "| Column A | Column B |\n| --- | --- |\n| Value 1 | Value 2 |",
     },
-    { id: "divider", label: "Trennlinie", template: "---" },
+    { id: "divider", label: "Divider", template: "---" },
   ],
   links: [
-    { id: "page-link", label: "Seite verlinken", template: "[[Seite]]" },
+    { id: "page-link", label: "Link Page", template: "[[Page]]" },
   ],
   advanced: [
-    { id: "code-block", label: "Code-Block", template: "```txt\nCode\n```" },
-    { id: "formula-block", label: "Formel-Block", template: "```math\nx = y\n```" },
+    { id: "code-block", label: "Code Block", template: "```txt\nCode\n```" },
+    { id: "formula-block", label: "Formula Block", template: "```math\nx = y\n```" },
   ],
 };
 
@@ -377,6 +381,48 @@ const moveBlockInList = <T,>(items: T[], fromIndex: number, toSlotIndex: number)
   return next;
 };
 
+const moveBlockSelectionInList = <T,>(
+  items: T[],
+  selectedIndices: number[],
+  toSlotIndex: number,
+) => {
+  if (items.length === 0) {
+    return { items, insertIndex: 0, movedIndices: [] as number[] };
+  }
+  const normalizedSelected = sortUniqueSelectionIndices(
+    selectedIndices.filter((index) => index >= 0 && index < items.length),
+  );
+  if (normalizedSelected.length === 0) {
+    return { items, insertIndex: 0, movedIndices: [] as number[] };
+  }
+  if (normalizedSelected.length === 1) {
+    const [singleIndex] = normalizedSelected;
+    const nextItems = moveBlockInList(items, singleIndex!, toSlotIndex);
+    const normalizedToSlot = Math.max(0, Math.min(toSlotIndex, items.length));
+    const insertIndex = normalizedToSlot > singleIndex! ? normalizedToSlot - 1 : normalizedToSlot;
+    return {
+      items: nextItems,
+      insertIndex: Math.max(0, Math.min(insertIndex, nextItems.length - 1)),
+      movedIndices: [Math.max(0, Math.min(insertIndex, nextItems.length - 1))],
+    };
+  }
+
+  const selectedSet = new Set(normalizedSelected);
+  const movingItems = normalizedSelected.map((index) => items[index]!).filter((item) => item !== undefined);
+  if (movingItems.length === 0) {
+    return { items, insertIndex: 0, movedIndices: [] as number[] };
+  }
+  const remainingItems = items.filter((_item, index) => !selectedSet.has(index));
+  const normalizedToSlot = Math.max(0, Math.min(toSlotIndex, items.length));
+  const removedBeforeSlot = normalizedSelected.filter((index) => index < normalizedToSlot).length;
+  const rawInsertIndex = normalizedToSlot - removedBeforeSlot;
+  const insertIndex = Math.max(0, Math.min(rawInsertIndex, remainingItems.length));
+  const nextItems = [...remainingItems];
+  nextItems.splice(insertIndex, 0, ...movingItems);
+  const movedIndices = movingItems.map((_item, offset) => insertIndex + offset);
+  return { items: nextItems, insertIndex, movedIndices };
+};
+
 const withInsertedRawBlock = (
   blocks: MarkdownBlock[],
   atIndex: number,
@@ -479,6 +525,7 @@ const editorOrderedListLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
 const editorTaskListLinePattern = /^(\s*)([-+*])(\s+\[[ xX]\])(\s+)(.*)$/;
 const editorUnorderedListLinePattern = /^(\s*)([-+*])(\s+)(.*)$/;
 const editorListContinuationLinePattern = /^(\s{2,}|\t+)(.*)$/;
+const markdownTaskListLinePattern = /^(\s*[-+*]\s+\[)([ xX])(\])(.*)$/;
 
 type EditorListLineInfo =
   | {
@@ -601,6 +648,46 @@ const getLineStartOffsetByIndex = (lines: string[], targetIndex: number) => {
   return offset;
 };
 
+const toggleTaskCheckboxInBlockRaw = (
+  blockRaw: string,
+  checkboxIndex: number,
+  nextChecked: boolean,
+) => {
+  if (!blockRaw || checkboxIndex < 0) {
+    return blockRaw;
+  }
+  const lines = blockRaw.split("\n");
+  let taskLineIndex = 0;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    const taskMatch = line.match(markdownTaskListLinePattern);
+    if (!taskMatch) {
+      continue;
+    }
+    if (taskLineIndex !== checkboxIndex) {
+      taskLineIndex += 1;
+      continue;
+    }
+    lines[i] = `${taskMatch[1] ?? ""}${nextChecked ? "x" : " "}${taskMatch[3] ?? "]"}${
+      taskMatch[4] ?? ""
+    }`;
+    return lines.join("\n");
+  }
+
+  return blockRaw;
+};
+
+const buildNextListLinePrefixFromInfo = (listLineInfo: EditorListLineInfo) => {
+  if (listLineInfo.kind === "ordered") {
+    return `${listLineInfo.indent}${listLineInfo.orderedNumber + 1}${listLineInfo.orderedDelimiter}${listLineInfo.spacing}`;
+  }
+  if (listLineInfo.kind === "task") {
+    return `${listLineInfo.indent}${listLineInfo.bullet} [ ]${listLineInfo.spacing}`;
+  }
+  return `${listLineInfo.indent}${listLineInfo.bullet}${listLineInfo.spacing}`;
+};
+
 const isTextLikeBlockKind = (kind: MarkdownBlock["kind"]) =>
   kind === "paragraph" || kind === "heading" || kind === "blockquote";
 
@@ -652,10 +739,26 @@ const normalizeHelpBlockPreviewSource = (blockRaw: string) => {
 const isUnderscoreRuleLikeLine = (line: string) =>
   /^\s{0,3}(?:_\s*){3,}$/.test(line);
 
-const escapeUnderscoreRulePreviewSource = (source: string) =>
+const isUnsupportedHeadingLine = (line: string) =>
+  /^\s{0,3}#{5,6}(?:\s+|$)/.test(line);
+
+const encodeHashesAsEntities = (hashes: string) => hashes.replaceAll("#", "&#35;");
+
+const escapeHybridPreviewSpecialLines = (source: string) =>
   source
     .split("\n")
-    .map((line) => (isUnderscoreRuleLikeLine(line) ? line.replace(/_/g, "\\_") : line))
+    .map((line) => {
+      if (isUnderscoreRuleLikeLine(line)) {
+        return line.replace(/_/g, "\\_");
+      }
+      if (isUnsupportedHeadingLine(line)) {
+        return line.replace(
+          /^(\s{0,3})(#{5,6})/,
+          (_match, indent: string, hashes: string) => `${indent}${encodeHashesAsEntities(hashes)}`,
+        );
+      }
+      return line;
+    })
     .join("\n");
 
 const extractHorizontalRuleEditorDraft = (blockRaw: string) => {
@@ -670,6 +773,72 @@ const extractHorizontalRuleEditorDraft = (blockRaw: string) => {
 
 const serializeHorizontalRuleEditorDraft = (draft: string) =>
   normalizeHorizontalRuleBlockSource(draft);
+
+type HeadingEditorPlaceholder = {
+  level: number;
+  prefix: string;
+  label: string;
+};
+
+const resolveHeadingEditorPlaceholder = (
+  block: Pick<MarkdownBlock, "kind"> | null | undefined,
+  draft: string,
+): HeadingEditorPlaceholder | null => {
+  if (!block || block.kind !== "heading") {
+    return null;
+  }
+  const match = draft.match(/^(\s{0,3})(#{1,6})(\s*)(.*)$/);
+  if (!match) {
+    return null;
+  }
+  const indent = match[1] ?? "";
+  const hashes = match[2] ?? "";
+  const rawSpaces = match[3] ?? "";
+  const content = match[4] ?? "";
+  if (!hashes || hashes.length > 4) {
+    return null;
+  }
+  if (content.trim().length > 0) {
+    return null;
+  }
+  const spacing = rawSpaces.length > 0 ? rawSpaces : " ";
+  return {
+    level: hashes.length,
+    prefix: `${indent}${hashes}${spacing}`,
+    label: `Heading ${hashes.length}`,
+  };
+};
+
+const normalizeLeadingHeadingSpacing = (
+  value: string,
+  blockKind: MarkdownBlock["kind"] | null | undefined,
+) => {
+  if (!blockKind || (blockKind !== "blank" && blockKind !== "paragraph" && blockKind !== "heading")) {
+    return null;
+  }
+  const match = value.match(/^(\s{0,3})(#{1,4})(\S.*)$/);
+  if (!match) {
+    return null;
+  }
+  const indent = match[1] ?? "";
+  const hashes = match[2] ?? "";
+  const remainder = match[3] ?? "";
+  if (remainder.length === 0) {
+    return null;
+  }
+  // Single-hash prefixes are used for product directives/tags and must never
+  // be auto-normalized (user explicitly requested no auto-space for "#...").
+  if (hashes.length === 1) {
+    return null;
+  }
+  if (/^\d/.test(remainder)) {
+    return null;
+  }
+  return {
+    value: `${indent}${hashes} ${remainder}`,
+    insertionIndex: indent.length + hashes.length,
+  };
+};
 
 const toEditorDraftForBlock = (
   block: Pick<MarkdownBlock, "kind" | "raw">,
@@ -729,6 +898,9 @@ export const MarkdownHybridEditor = ({
   const [insertMenuState, setInsertMenuState] = useState<InsertMenuState | null>(null);
   const [selectionContextMenuState, setSelectionContextMenuState] =
     useState<SelectionContextMenuState | null>(null);
+  const [selectionMarqueeRect, setSelectionMarqueeRect] = useState<SelectionMarqueeRect | null>(
+    null,
+  );
   const [overlayLayout, setOverlayLayout] = useState<OverlayLayoutState>(() => ({
     byIndex: new Map(),
     contentPaddingLeft: OVERLAY_LEFT_GUTTER_WIDTH,
@@ -834,6 +1006,110 @@ export const MarkdownHybridEditor = ({
     });
   }, [measureOverlayLayout]);
 
+  const getContainerLocalPoint = useCallback((clientX: number, clientY: number) => {
+    const container = containerRef.current;
+    if (!container) {
+      return null;
+    }
+    const rect = container.getBoundingClientRect();
+    return {
+      x: clientX - rect.left + container.scrollLeft,
+      y: clientY - rect.top + container.scrollTop,
+    };
+  }, []);
+
+  const setSelectionMarqueeFromClientPoints = useCallback(
+    (startClientX: number, startClientY: number, endClientX: number, endClientY: number) => {
+      const startPoint = getContainerLocalPoint(startClientX, startClientY);
+      const endPoint = getContainerLocalPoint(endClientX, endClientY);
+      if (!startPoint || !endPoint) {
+        setSelectionMarqueeRect(null);
+        return;
+      }
+      setSelectionMarqueeRect({
+        left: Math.min(startPoint.x, endPoint.x),
+        top: Math.min(startPoint.y, endPoint.y),
+        width: Math.abs(endPoint.x - startPoint.x),
+        height: Math.abs(endPoint.y - startPoint.y),
+      });
+    },
+    [getContainerLocalPoint],
+  );
+
+  const updateSelectionFromMarqueeClientPoints = useCallback(
+    (startClientX: number, startClientY: number, endClientX: number, endClientY: number) => {
+      const contentLayer = contentLayerRef.current;
+      if (!contentLayer || blocks.length === 0) {
+        return;
+      }
+      const left = Math.min(startClientX, endClientX);
+      const right = Math.max(startClientX, endClientX);
+      const top = Math.min(startClientY, endClientY);
+      const bottom = Math.max(startClientY, endClientY);
+      const rowElements = contentLayer.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index]",
+      );
+      const intersectedIndices: number[] = [];
+
+      for (const rowElement of rowElements) {
+        const rowRect = rowElement.getBoundingClientRect();
+        if (rowRect.width <= 0 || rowRect.height <= 0) {
+          continue;
+        }
+        const intersects =
+          rowRect.right >= left &&
+          rowRect.left <= right &&
+          rowRect.bottom >= top &&
+          rowRect.top <= bottom;
+        if (!intersects) {
+          continue;
+        }
+        const indexRaw = rowElement.dataset.mdBlockIndex;
+        if (typeof indexRaw !== "string") {
+          continue;
+        }
+        const parsedIndex = Number.parseInt(indexRaw, 10);
+        if (!Number.isFinite(parsedIndex)) {
+          continue;
+        }
+        const nextIndex = clampIndex(parsedIndex, blocks.length);
+        if (
+          blocks[nextIndex]?.kind === "blank" &&
+          isStructuralSeparatorBlankBlock(blocks, nextIndex)
+        ) {
+          continue;
+        }
+        intersectedIndices.push(nextIndex);
+      }
+
+      const selectedIndices = sortUniqueSelectionIndices(intersectedIndices);
+      const gestureAnchor = selectionGestureRef.current?.anchorIndex;
+      setSelectedBlockSelection((current) => {
+        if (selectedIndices.length === 0) {
+          return null;
+        }
+        const nextAnchor = typeof gestureAnchor === "number" && selectedIndices.includes(gestureAnchor)
+          ? gestureAnchor
+          : (current && selectedIndices.includes(current.anchorIndex)
+            ? current.anchorIndex
+            : selectedIndices[0]!);
+        if (
+          current &&
+          current.anchorIndex === nextAnchor &&
+          current.selectedIndices.length === selectedIndices.length &&
+          current.selectedIndices.every((value, index) => value === selectedIndices[index])
+        ) {
+          return current;
+        }
+        return {
+          anchorIndex: nextAnchor,
+          selectedIndices,
+        };
+      });
+    },
+    [blocks],
+  );
+
   useEffect(() => {
     onDirtyChange?.(activeDirty);
   }, [activeDirty, onDirtyChange]);
@@ -862,6 +1138,7 @@ export const MarkdownHybridEditor = ({
     setDropIndicatorIndex(null);
     setInsertMenuState(null);
     setSelectionContextMenuState(null);
+    setSelectionMarqueeRect(null);
     setHistory(createMarkdownHistory(markdown));
     setOverlayLayout((current) => ({
       ...current,
@@ -940,6 +1217,7 @@ export const MarkdownHybridEditor = ({
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
       setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
       selectionGestureRef.current = null;
       return;
     }
@@ -952,6 +1230,7 @@ export const MarkdownHybridEditor = ({
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
       setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
       selectionGestureRef.current = null;
       return;
     }
@@ -1040,6 +1319,7 @@ export const MarkdownHybridEditor = ({
       }
       selectionGestureRef.current = null;
       setIsSelectionDragging(false);
+      setSelectionMarqueeRect(null);
     };
 
     const handleMouseMove = (event: globalThis.MouseEvent) => {
@@ -1055,6 +1335,26 @@ export const MarkdownHybridEditor = ({
         endSelectionGesture("button-release");
         return;
       }
+      const movedFarEnough = Math.abs(event.clientX - gesture.startClientX) > 3 ||
+        Math.abs(event.clientY - gesture.startClientY) > 3;
+      if (gesture.source === "shift-left") {
+        setSelectionMarqueeFromClientPoints(
+          gesture.startClientX,
+          gesture.startClientY,
+          event.clientX,
+          event.clientY,
+        );
+        if (movedFarEnough) {
+          gesture.didDrag = true;
+          updateSelectionFromMarqueeClientPoints(
+            gesture.startClientX,
+            gesture.startClientY,
+            event.clientX,
+            event.clientY,
+          );
+          return;
+        }
+      }
       updateRangeFromPoint(event.clientX, event.clientY);
     };
     const handleMouseUp = () => {
@@ -1066,7 +1366,13 @@ export const MarkdownHybridEditor = ({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [blocks.length, disabled, isSelectionDragging]);
+  }, [
+    blocks.length,
+    disabled,
+    isSelectionDragging,
+    setSelectionMarqueeFromClientPoints,
+    updateSelectionFromMarqueeClientPoints,
+  ]);
 
   useEffect(() => {
     if (activeBlockIndex === null) {
@@ -1198,6 +1504,7 @@ export const MarkdownHybridEditor = ({
       setDropIndicatorIndex(null);
       setInsertMenuState(null);
       setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
       pendingActivationMarkdownRef.current = null;
@@ -1230,7 +1537,10 @@ export const MarkdownHybridEditor = ({
       const block = blocks[activeBlockIndex];
       if (!block) {
         if (blocks.length === 0 && activeBlockIndex === 0) {
-          const nextResolvedMarkdown = applyEditorMarkdownNormalization(activeDraft);
+          const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(activeDraft, "blank");
+          const nextResolvedMarkdown = applyEditorMarkdownNormalization(
+            normalizedHeadingSpacing?.value ?? activeDraft,
+          );
           if (nextResolvedMarkdown !== markdown) {
             onChange(nextResolvedMarkdown);
           }
@@ -1261,7 +1571,9 @@ export const MarkdownHybridEditor = ({
         return markdown;
       }
 
-      let nextBlockRaw = toPersistedBlockRawForDraft(block, activeDraft);
+      const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(activeDraft, block.kind);
+      const draftForPersist = normalizedHeadingSpacing?.value ?? activeDraft;
+      let nextBlockRaw = toPersistedBlockRawForDraft(block, draftForPersist);
       if (block.kind === "ordered-list") {
         nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
       } else if (block.kind === "help-block") {
@@ -1344,6 +1656,7 @@ export const MarkdownHybridEditor = ({
     setSelectedBlockSelection(null);
     setIsSelectionDragging(false);
     setSelectionContextMenuState(null);
+    setSelectionMarqueeRect(null);
     selectionGestureRef.current = null;
     suppressNextBlockContextMenuRef.current = false;
   }, []);
@@ -1456,6 +1769,7 @@ export const MarkdownHybridEditor = ({
       setDraggedBlockIndex(null);
       setDropIndicatorIndex(null);
       setSelectedBlockSelection({ anchorIndex: nextAnchor, selectedIndices: nextSelectedIndices });
+      setSelectionMarqueeRect(null);
       selectionGestureRef.current = {
         active: true,
         source: options.source,
@@ -1479,6 +1793,55 @@ export const MarkdownHybridEditor = ({
     ],
   );
 
+  const beginMarqueeSelectionGesture = useCallback(
+    (options: {
+      clientX: number;
+      clientY: number;
+      preserveAnchor?: boolean;
+    }) => {
+      if (disabled) {
+        return false;
+      }
+      if (activeBlockIndex !== null) {
+        commitActiveBlock({ deactivate: true });
+      }
+      const nextAnchor = options.preserveAnchor && selectedBlockSelection
+        ? selectedBlockSelection.anchorIndex
+        : (selectedBlockSelection?.anchorIndex ?? 0);
+      setPendingActivation(null);
+      setInsertMenuState(null);
+      setSelectionContextMenuState(null);
+      setDraggedBlockIndex(null);
+      setDropIndicatorIndex(null);
+      selectionGestureRef.current = {
+        active: true,
+        source: "shift-left",
+        anchorIndex: nextAnchor,
+        didDrag: false,
+        startClientX: options.clientX,
+        startClientY: options.clientY,
+      };
+      suppressNextBlockContextMenuRef.current = false;
+      setIsSelectionDragging(true);
+      setSelectionMarqueeFromClientPoints(
+        options.clientX,
+        options.clientY,
+        options.clientX,
+        options.clientY,
+      );
+      focusContainer();
+      return true;
+    },
+    [
+      activeBlockIndex,
+      commitActiveBlock,
+      disabled,
+      focusContainer,
+      selectedBlockSelection,
+      setSelectionMarqueeFromClientPoints,
+    ],
+  );
+
   const deleteSelectedBlocks = useCallback(() => {
     if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
       return false;
@@ -1497,6 +1860,7 @@ export const MarkdownHybridEditor = ({
     setSelectedBlockSelection(null);
     setIsSelectionDragging(false);
     setSelectionContextMenuState(null);
+    setSelectionMarqueeRect(null);
     selectionGestureRef.current = null;
     suppressNextBlockContextMenuRef.current = false;
     focusContainer();
@@ -1583,6 +1947,7 @@ export const MarkdownHybridEditor = ({
       setDropIndicatorIndex(null);
       setInsertMenuState(null);
       setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
       onChange(nextMarkdown);
@@ -1625,7 +1990,25 @@ export const MarkdownHybridEditor = ({
       if (disabled) {
         return false;
       }
-      const reorderedBlocks = moveBlockInList(blocks, fromIndex, toSlotIndex);
+      const shouldMoveSelectionGroup = Boolean(
+        selectedBlockSelection &&
+          selectedBlockSelection.selectedIndices.length > 1 &&
+          isBlockIndexSelected(selectedBlockSelection, fromIndex),
+      );
+      const moveResult = shouldMoveSelectionGroup
+        ? moveBlockSelectionInList(blocks, selectedBlockSelection!.selectedIndices, toSlotIndex)
+        : (() => {
+          const nextItems = moveBlockInList(blocks, fromIndex, toSlotIndex);
+          const normalizedToSlot = Math.max(0, Math.min(toSlotIndex, blocks.length));
+          const nextInsertIndex = normalizedToSlot > fromIndex ? normalizedToSlot - 1 : normalizedToSlot;
+          const clampedInsertIndex = Math.max(0, Math.min(nextInsertIndex, Math.max(0, nextItems.length - 1)));
+          return {
+            items: nextItems,
+            insertIndex: clampedInsertIndex,
+            movedIndices: [clampedInsertIndex],
+          };
+        })();
+      const reorderedBlocks = moveResult.items;
       if (reorderedBlocks === blocks) {
         return false;
       }
@@ -1635,27 +2018,35 @@ export const MarkdownHybridEditor = ({
       if (nextMarkdown === markdown) {
         return false;
       }
-      const normalizedToSlot = Math.max(0, Math.min(toSlotIndex, blocks.length));
-      const insertIndex = normalizedToSlot > fromIndex ? normalizedToSlot - 1 : normalizedToSlot;
+      const draggedRelativeIndex = shouldMoveSelectionGroup && selectedBlockSelection
+        ? Math.max(0, selectedBlockSelection.selectedIndices.indexOf(fromIndex))
+        : 0;
+      const activationIndex = shouldMoveSelectionGroup
+        ? moveResult.movedIndices[draggedRelativeIndex] ?? moveResult.insertIndex
+        : moveResult.insertIndex;
 
       setActiveBlockIndex(null);
       setActiveDraft("");
       setActiveDirty(false);
       pendingActivationMarkdownRef.current = nextMarkdown;
-      setPendingActivation({ index: clampIndex(insertIndex, reorderedBlocks.length), caret: "end" });
+      setPendingActivation({
+        index: clampIndex(activationIndex, reorderedBlocks.length),
+        caret: "end",
+      });
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
       setDraggedBlockIndex(null);
       setDropIndicatorIndex(null);
       setInsertMenuState(null);
       setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
       onChange(nextMarkdown);
       setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
       return true;
     },
-    [blocks, disabled, markdown, onChange],
+    [blocks, disabled, markdown, onChange, selectedBlockSelection],
   );
 
   useEffect(() => {
@@ -1720,6 +2111,28 @@ export const MarkdownHybridEditor = ({
       window.removeEventListener("keydown", handleWindowKeyDown);
     };
   }, [selectionContextMenuState]);
+
+  useEffect(() => {
+    if (!selectedBlockSelection) {
+      return;
+    }
+
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (containerRef.current?.contains(target)) {
+        return;
+      }
+      clearSelectedBlockRange();
+    };
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+    };
+  }, [clearSelectedBlockRange, selectedBlockSelection]);
 
   const handleOpenInsertMenu = useCallback(
     (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
@@ -2109,6 +2522,11 @@ export const MarkdownHybridEditor = ({
         !event.altKey &&
         !event.ctrlKey &&
         !event.metaKey;
+      const isPlainDeleteKey = (event.key === "Backspace" || event.key === "Delete") &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey;
 
       if (event.key === "Enter" && event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
         const selectionStart = textarea.selectionStart;
@@ -2136,6 +2554,47 @@ export const MarkdownHybridEditor = ({
         event.stopPropagation();
         applyActiveBlockDraft(nextDraft, nextCaret);
         return;
+      }
+
+      if (isPlainDeleteKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
+        if (!hasSelection) {
+          const selectionStart = textarea.selectionStart;
+          const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
+          const listLineInfo = parseEditorListLine(lineRange.line);
+          const continuationMatch = lineRange.line.match(editorListContinuationLinePattern);
+          const continuationContent = continuationMatch?.[2] ?? "";
+          const isEmptyListItemLine = Boolean(listLineInfo && listLineInfo.content.trim().length === 0);
+          const isEmptyContinuationLine = Boolean(
+            !listLineInfo &&
+              continuationMatch &&
+              continuationContent.trim().length === 0,
+          );
+
+          if (isEmptyListItemLine || isEmptyContinuationLine) {
+            const lines = activeDraft.split("\n");
+            if (lines.length > 1) {
+              event.preventDefault();
+              event.stopPropagation();
+              const lineIndex = lineRange.lineIndex;
+              const nextLines = [...lines];
+              nextLines.splice(lineIndex, 1);
+              let nextDraft = nextLines.join("\n");
+              if (block.kind === "ordered-list") {
+                nextDraft = normalizeOrderedListBlockSource(nextDraft);
+              }
+              const resolvedLines = nextDraft.length > 0 ? nextDraft.split("\n") : [""];
+              const targetLineIndex = event.key === "Delete"
+                ? Math.min(lineIndex, Math.max(0, resolvedLines.length - 1))
+                : Math.max(0, lineIndex - 1);
+              let nextCaret = getLineStartOffsetByIndex(resolvedLines, targetLineIndex);
+              if (event.key === "Backspace") {
+                nextCaret += (resolvedLines[targetLineIndex] ?? "").length;
+              }
+              applyActiveBlockDraft(nextDraft, nextCaret);
+              return;
+            }
+          }
+        }
       }
 
       if (isPlainEnter && !event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
@@ -2206,6 +2665,49 @@ export const MarkdownHybridEditor = ({
             (insertedLineInfo?.prefixLength ?? nextLinePrefix.length);
           applyActiveBlockDraft(nextDraft, nextCaret);
           return;
+        }
+
+        if (!hasSelection) {
+          const continuationMatch = lineRange.line.match(editorListContinuationLinePattern);
+          if (continuationMatch) {
+            const lines = activeDraft.split("\n");
+            const lineIndex = lineRange.lineIndex;
+            let anchorListLineInfo: EditorListLineInfo | null = null;
+            for (let scanIndex = lineIndex - 1; scanIndex >= 0; scanIndex -= 1) {
+              const candidateInfo = parseEditorListLine(lines[scanIndex] ?? "");
+              if (candidateInfo) {
+                anchorListLineInfo = candidateInfo;
+                break;
+              }
+            }
+
+            if (anchorListLineInfo) {
+              const continuationIndent = continuationMatch[1] ?? "";
+              const splitOffset = Math.max(continuationIndent.length, lineLocalSelectionStart);
+              const beforeContent = lineRange.line.slice(continuationIndent.length, splitOffset);
+              const afterContent = lineRange.line.slice(splitOffset);
+              const currentContinuationLine = `${continuationIndent}${beforeContent}`;
+              const nextLinePrefix = buildNextListLinePrefixFromInfo(anchorListLineInfo);
+              const nextListLine = `${nextLinePrefix}${afterContent}`;
+
+              event.preventDefault();
+              event.stopPropagation();
+
+              const nextLines = [...lines];
+              nextLines.splice(lineIndex, 1, currentContinuationLine, nextListLine);
+              let nextDraft = nextLines.join("\n");
+              if (block.kind === "ordered-list") {
+                nextDraft = normalizeOrderedListBlockSource(nextDraft);
+              }
+              const resolvedLines = nextDraft.split("\n");
+              const insertedLine = resolvedLines[lineIndex + 1] ?? nextListLine;
+              const insertedLineInfo = parseEditorListLine(insertedLine);
+              const nextCaret = getLineStartOffsetByIndex(resolvedLines, lineIndex + 1) +
+                (insertedLineInfo?.prefixLength ?? nextLinePrefix.length);
+              applyActiveBlockDraft(nextDraft, nextCaret);
+              return;
+            }
+          }
         }
 
         if (!hasSelection) {
@@ -2422,6 +2924,64 @@ export const MarkdownHybridEditor = ({
     ],
   );
 
+  const handleContentLayerMouseDownCapture = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (disabled) {
+        return;
+      }
+      if (event.button !== 0) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.closest("a[href],button,input,textarea,[data-md-block-control='true']")) {
+        return;
+      }
+      if (target.closest(".markdown-hybrid-block[data-md-block-index]")) {
+        return;
+      }
+      if (event.ctrlKey || event.metaKey) {
+        return;
+      }
+      if (selectedBlockSelection && !event.shiftKey) {
+        clearSelectedBlockRange();
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      beginMarqueeSelectionGesture({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        preserveAnchor: event.shiftKey && Boolean(selectedBlockSelection),
+      });
+    },
+    [beginMarqueeSelectionGesture, clearSelectedBlockRange, disabled, selectedBlockSelection],
+  );
+
+  const handleEditorRootMouseDownCapture = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (disabled || !selectedBlockSelection) {
+        return;
+      }
+      if (event.shiftKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.closest("textarea,a[href],button,input,[data-md-block-control='true']")) {
+        return;
+      }
+      if (target.closest(".markdown-hybrid-block[data-md-block-index]")) {
+        return;
+      }
+      clearSelectedBlockRange();
+    },
+    [clearSelectedBlockRange, disabled, selectedBlockSelection],
+  );
+
   const handleBlockMouseDown = useCallback(
     (index: number) => (event: MouseEvent<HTMLDivElement>) => {
       if (disabled) {
@@ -2471,6 +3031,53 @@ export const MarkdownHybridEditor = ({
     ],
   );
 
+  const handleRenderedTaskCheckboxChange = useCallback(
+    (blockIndex: number) => (event: FormEvent<HTMLDivElement>) => {
+      if (disabled) {
+        return;
+      }
+      const target = event.target;
+      if (
+        !(target instanceof HTMLInputElement) ||
+        target.type.toLowerCase() !== "checkbox" ||
+        target.dataset.mdTaskCheckbox !== "true"
+      ) {
+        return;
+      }
+
+      event.stopPropagation();
+
+      const block = blocks[blockIndex];
+      if (!block || block.kind === "hr") {
+        return;
+      }
+
+      const previewContainer = event.currentTarget;
+      const taskCheckboxes = Array.from(
+        previewContainer.querySelectorAll<HTMLInputElement>("input[data-md-task-checkbox='true']"),
+      );
+      const checkboxOrdinal = taskCheckboxes.indexOf(target);
+      if (checkboxOrdinal < 0) {
+        return;
+      }
+
+      const nextBlockRaw = toggleTaskCheckboxInBlockRaw(block.raw, checkboxOrdinal, target.checked);
+      if (nextBlockRaw === block.raw) {
+        return;
+      }
+
+      const nextMarkdown = applyEditorMarkdownNormalization(
+        replaceMarkdownBlock(markdown, block, nextBlockRaw),
+      );
+      if (nextMarkdown === markdown) {
+        return;
+      }
+      onChange(nextMarkdown);
+      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+    },
+    [blocks, disabled, markdown, onChange],
+  );
+
   const handleBlockMouseEnter = useCallback(
     (index: number) => (event: MouseEvent<HTMLDivElement>) => {
       if (disabled || !isSelectionDragging || blocks.length === 0) {
@@ -2478,6 +3085,9 @@ export const MarkdownHybridEditor = ({
       }
       const gesture = selectionGestureRef.current;
       if (!gesture?.active) {
+        return;
+      }
+      if (gesture.source !== "right") {
         return;
       }
       const expectedButtonMask = gesture.source === "right" ? 2 : 1;
@@ -2499,7 +3109,19 @@ export const MarkdownHybridEditor = ({
       if (activeBlockIndex !== null) {
         commitActiveBlock({ deactivate: true });
       }
-      clearSelectedBlockRange();
+      const draggingSelectionGroup = Boolean(
+        selectedBlockSelection &&
+          selectedBlockSelection.selectedIndices.length > 1 &&
+          isBlockIndexSelected(selectedBlockSelection, index),
+      );
+      if (!draggingSelectionGroup) {
+        clearSelectedBlockRange();
+      } else {
+        setIsSelectionDragging(false);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = null;
+      }
       setInsertMenuState(null);
       setDraggedBlockIndex(index);
       setDropIndicatorIndex(index);
@@ -2510,7 +3132,13 @@ export const MarkdownHybridEditor = ({
         // ignore restricted dataTransfer implementations
       }
     },
-    [activeBlockIndex, clearSelectedBlockRange, commitActiveBlock, disabled],
+    [
+      activeBlockIndex,
+      clearSelectedBlockRange,
+      commitActiveBlock,
+      disabled,
+      selectedBlockSelection,
+    ],
   );
 
   const handleDragHandleDragEnd = useCallback(() => {
@@ -2665,14 +3293,14 @@ export const MarkdownHybridEditor = ({
         className="markdown-hybrid-insert-menu markdown-hybrid-insert-menu-overlay"
         data-md-block-control="true"
         role="menu"
-        aria-label="Block einfuegen"
+        aria-label="Insert block"
         onMouseDown={(event) => {
           event.stopPropagation();
         }}
       >
         <div className="markdown-hybrid-insert-menu-header">
           <span className="markdown-hybrid-insert-menu-title">
-            {insertMenuState?.insertAbove ? "Einfuegen oberhalb" : "Einfuegen unterhalb"}
+            {insertMenuState?.insertAbove ? "Insert Above" : "Insert Below"}
           </span>
           {insertMenuState?.phase === "items" ? (
             <button
@@ -2680,7 +3308,7 @@ export const MarkdownHybridEditor = ({
               className="markdown-hybrid-insert-menu-nav"
               onClick={handleInsertMenuBack}
             >
-              Zurueck
+              Back
             </button>
           ) : null}
         </div>
@@ -2714,7 +3342,7 @@ export const MarkdownHybridEditor = ({
           className="markdown-hybrid-insert-menu-close"
           onClick={handleInsertMenuClose}
         >
-          Menue schliessen (Esc)
+          Close Menu (Esc)
         </button>
       </div>
     );
@@ -2731,7 +3359,15 @@ export const MarkdownHybridEditor = ({
     const blockIndex = options.blockIndex;
     const isSelected = !disabled && isBlockIndexSelected(selectedBlockSelection, blockIndex);
     const isActive = !disabled && activeBlockIndex === blockIndex;
-    const isDragging = draggedBlockIndex === blockIndex;
+    const isGroupDrag = Boolean(
+      draggedBlockIndex !== null &&
+        selectedBlockSelection &&
+        selectedBlockSelection.selectedIndices.length > 1 &&
+        isBlockIndexSelected(selectedBlockSelection, draggedBlockIndex),
+    );
+    const isDragging = isGroupDrag
+      ? isBlockIndexSelected(selectedBlockSelection, blockIndex)
+      : draggedBlockIndex === blockIndex;
     return (
       <div
         key={`overlay-row:${blockIndex}`}
@@ -2753,7 +3389,7 @@ export const MarkdownHybridEditor = ({
             onDragStart={handleDragHandleDragStart(blockIndex)}
             onDragEnd={handleDragHandleDragEnd}
             aria-label="Block verschieben"
-            title={options.isDragHandleDisabled ? "Kein Block vorhanden" : "Block verschieben"}
+            title={options.isDragHandleDisabled ? "No block available" : "Move block"}
             disabled={disabled || options.isDragHandleDisabled}
           >
             <span aria-hidden="true">⋮⋮</span>
@@ -2766,8 +3402,8 @@ export const MarkdownHybridEditor = ({
               event.stopPropagation();
             }}
             onClick={handleOpenInsertMenu(blockIndex)}
-            aria-label="Block einfuegen"
-            title={options.insertButtonTitle ?? "Block darunter einfuegen (Shift = darueber)"}
+            aria-label="Insert block"
+            title={options.insertButtonTitle ?? "Insert block below (Shift = above)"}
             disabled={disabled}
           >
             <span aria-hidden="true">+</span>
@@ -2843,10 +3479,15 @@ export const MarkdownHybridEditor = ({
         }`}
         style={editorSurfaceStyle}
         tabIndex={0}
+        onMouseDownCapture={handleEditorRootMouseDownCapture}
         onKeyDown={handleContainerKeyDown}
         onContextMenu={handleHybridEditorContextMenu}
       >
-        <div ref={contentLayerRef} className="markdown-hybrid-content-layer">
+        <div
+          ref={contentLayerRef}
+          className="markdown-hybrid-content-layer"
+          onMouseDownCapture={handleContentLayerMouseDownCapture}
+        >
           <div
             className={`markdown-hybrid-block markdown-hybrid-block-empty${
               disabled ? " is-disabled" : ""
@@ -2872,22 +3513,36 @@ export const MarkdownHybridEditor = ({
           >
             <div className="markdown-hybrid-block-body">
               {activeBlockIndex === 0 && !disabled ? (
-                <textarea
-                  ref={textareaRef}
-                  className="markdown-hybrid-block-editor"
-                  value={activeDraft}
-                  rows={1}
-                  onChange={(event) => handleTextareaChange(event.target.value)}
-                  onBlur={handleTextareaBlur}
-                  onKeyDown={handleTextareaKeyDown}
-                  aria-label="Markdown block editor"
-                />
+                <div className="markdown-hybrid-block-editor-shell">
+                  <textarea
+                    ref={textareaRef}
+                    className="markdown-hybrid-block-editor"
+                    value={activeDraft}
+                    rows={1}
+                    onChange={(event) => handleTextareaChange(event.target.value)}
+                    onBlur={handleTextareaBlur}
+                    onKeyDown={handleTextareaKeyDown}
+                    aria-label="Markdown block editor"
+                  />
+                </div>
               ) : (
                 <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />
               )}
             </div>
           </div>
         </div>
+        {selectionMarqueeRect ? (
+          <div
+            className="markdown-hybrid-selection-marquee"
+            aria-hidden="true"
+            style={{
+              left: selectionMarqueeRect.left,
+              top: selectionMarqueeRect.top,
+              width: selectionMarqueeRect.width,
+              height: selectionMarqueeRect.height,
+            }}
+          />
+        ) : null}
         <div className="markdown-hybrid-controls-overlay">
           {renderOverlayRow({
             blockIndex: 0,
@@ -2895,7 +3550,7 @@ export const MarkdownHybridEditor = ({
             top: emptyOverlayRect.top,
             height: emptyOverlayRect.height,
             isDragHandleDisabled: true,
-            insertButtonTitle: "Block einfuegen",
+            insertButtonTitle: "Insert block",
           })}
         </div>
         {selectionContextMenu}
@@ -2911,23 +3566,42 @@ export const MarkdownHybridEditor = ({
       }`}
       style={editorSurfaceStyle}
       tabIndex={0}
+      onMouseDownCapture={handleEditorRootMouseDownCapture}
       onKeyDown={handleContainerKeyDown}
       onContextMenu={handleHybridEditorContextMenu}
     >
-      <div ref={contentLayerRef} className="markdown-hybrid-content-layer">
+      <div
+        ref={contentLayerRef}
+        className="markdown-hybrid-content-layer"
+        onMouseDownCapture={handleContentLayerMouseDownCapture}
+      >
         {blocks.map((block, index) => {
           const isActive = activeBlockIndex === index && !disabled;
+          const headingEditorPlaceholder = isActive
+            ? resolveHeadingEditorPlaceholder(block, activeDraft)
+            : null;
+          const headingPreviewPlaceholder = !isActive
+            ? resolveHeadingEditorPlaceholder(block, block.raw)
+            : null;
           const isStructuralBlankSeparator =
             !isActive && isStructuralSeparatorBlankBlock(blocks, index);
           const isRangeSelected = !disabled && isBlockIndexSelected(selectedBlockSelection, index);
-          const isDragging = draggedBlockIndex === index;
+          const isGroupDrag = Boolean(
+            draggedBlockIndex !== null &&
+              selectedBlockSelection &&
+              selectedBlockSelection.selectedIndices.length > 1 &&
+              isBlockIndexSelected(selectedBlockSelection, draggedBlockIndex),
+          );
+          const isDragging = isGroupDrag
+            ? isBlockIndexSelected(selectedBlockSelection, index)
+            : draggedBlockIndex === index;
           const hasDropIndicatorTop = dropIndicatorIndex === index;
           const hasDropIndicatorBottom = dropIndicatorIndex === index + 1;
           let previewBlockSource = block.kind === "help-block"
             ? normalizeHelpBlockPreviewSource(block.raw)
             : block.raw;
           if (block.kind !== "hr" && block.kind !== "code-fence") {
-            previewBlockSource = escapeUnderscoreRulePreviewSource(previewBlockSource);
+            previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
           }
           return (
             <div
@@ -2954,18 +3628,42 @@ export const MarkdownHybridEditor = ({
             >
               <div className="markdown-hybrid-block-body">
                 {isActive ? (
-                  <textarea
-                    ref={textareaRef}
-                    className="markdown-hybrid-block-editor"
-                    value={activeDraft}
-                    rows={Math.max(1, activeDraft.split("\n").length)}
-                    onChange={(event) => handleTextareaChange(event.target.value)}
-                    onBlur={handleTextareaBlur}
-                    onKeyDown={handleTextareaKeyDown}
-                    aria-label="Markdown block editor"
-                  />
+                  <div className="markdown-hybrid-block-editor-shell">
+                    <textarea
+                      ref={textareaRef}
+                      className="markdown-hybrid-block-editor"
+                      value={activeDraft}
+                      rows={Math.max(1, activeDraft.split("\n").length)}
+                      onChange={(event) => handleTextareaChange(event.target.value)}
+                      onBlur={handleTextareaBlur}
+                      onKeyDown={handleTextareaKeyDown}
+                      aria-label="Markdown block editor"
+                    />
+                    {headingEditorPlaceholder ? (
+                      <div
+                        className={`markdown-hybrid-heading-editor-placeholder markdown-hybrid-heading-editor-placeholder-level-${headingEditorPlaceholder.level}`}
+                        aria-hidden="true"
+                      >
+                        <span className="markdown-hybrid-heading-editor-placeholder-prefix">
+                          {headingEditorPlaceholder.prefix}
+                        </span>
+                        <span className="markdown-hybrid-heading-editor-placeholder-text">
+                          {headingEditorPlaceholder.label}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : block.kind === "blank" ? (
                   <div className="markdown-hybrid-blank-preview" aria-hidden="true" />
+                ) : block.kind === "heading" && headingPreviewPlaceholder ? (
+                  <div className="markdown-hybrid-block-preview">
+                    <div
+                      className={`markdown-hybrid-heading-preview-placeholder markdown-hybrid-heading-preview-placeholder-level-${headingPreviewPlaceholder.level}`}
+                      aria-hidden="true"
+                    >
+                      {headingPreviewPlaceholder.label}
+                    </div>
+                  </div>
                 ) : block.kind === "hr" ? (
                   <div className="markdown-hybrid-hr-shell">
                     <button
@@ -2978,7 +3676,10 @@ export const MarkdownHybridEditor = ({
                       aria-label="Textblock oberhalb der Trennlinie einfuegen"
                       title="Enterbereich oberhalb der Trennlinie"
                     />
-                    <div className="markdown-hybrid-block-preview">
+                    <div
+                      className="markdown-hybrid-block-preview"
+                      onChange={handleRenderedTaskCheckboxChange(index)}
+                    >
                       {renderPreview(previewBlockSource)}
                     </div>
                     <button
@@ -2993,7 +3694,10 @@ export const MarkdownHybridEditor = ({
                     />
                   </div>
                 ) : (
-                  <div className="markdown-hybrid-block-preview">
+                  <div
+                    className="markdown-hybrid-block-preview"
+                    onChange={handleRenderedTaskCheckboxChange(index)}
+                  >
                     {renderPreview(previewBlockSource)}
                   </div>
                 )}
@@ -3002,6 +3706,18 @@ export const MarkdownHybridEditor = ({
           );
         })}
       </div>
+      {selectionMarqueeRect ? (
+        <div
+          className="markdown-hybrid-selection-marquee"
+          aria-hidden="true"
+          style={{
+            left: selectionMarqueeRect.left,
+            top: selectionMarqueeRect.top,
+            width: selectionMarqueeRect.width,
+            height: selectionMarqueeRect.height,
+          }}
+        />
+      ) : null}
       <div className="markdown-hybrid-controls-overlay">
         {overlayRows.map((overlayRow) => {
           if (
