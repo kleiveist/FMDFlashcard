@@ -41,7 +41,9 @@ const isClosingCodeFenceLine = (line: string) => /^\s*`{3,}\s*$/.test(line);
 const isHeadingLine = (line: string) => /^\s{0,3}#{1,4}(?:\s+|$)/.test(line);
 const isBlockquoteLine = (line: string) => /^\s*>/.test(line);
 const isHorizontalRuleLine = (line: string) =>
-  /^\s{0,3}(?:(?:-\s*){3,}|(?:\*\s*){3,})$/.test(line);
+  /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,})$/.test(line);
+const isHorizontalRuleLineForNormalization = (line: string) =>
+  /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
 const isHelpBlockStartLine = (line: string) => line.trim().toLowerCase() === "#help";
 const isHelpBlockEndLine = (line: string) => line.trim().toLowerCase() === "#helpend";
 
@@ -150,7 +152,7 @@ const buildBlock = (
 
 const findHorizontalRuleLineInBlockRaw = (blockRaw: string) => {
   for (const line of blockRaw.split("\n")) {
-    if (isHorizontalRuleLine(line)) {
+    if (isHorizontalRuleLineForNormalization(line)) {
       return line.trim();
     }
   }
@@ -388,6 +390,17 @@ export const normalizeHorizontalRuleSpacingInMarkdown = (markdown: string) => {
   const normalizedRawBlocks: string[] = [];
   for (let i = 0; i < blocks.length; i += 1) {
     const block = blocks[i]!;
+    const previousBlock = i > 0 ? blocks[i - 1] : null;
+    const nextBlock = i + 1 < blocks.length ? blocks[i + 1] : null;
+
+    if (
+      block.kind === "blank" &&
+      (previousBlock?.kind === "hr" || nextBlock?.kind === "hr")
+    ) {
+      // parseMarkdownBlocks already folds one blank line into the hr block itself.
+      // Any additional adjacent blank block here is extra spacing and should collapse.
+      continue;
+    }
 
     if (block.kind === "hr") {
       normalizedRawBlocks.push(normalizeHorizontalRuleBlockSource(block.raw));

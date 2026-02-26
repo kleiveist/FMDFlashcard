@@ -395,7 +395,7 @@ describe("MarkdownHybridEditor", () => {
         );
       });
 
-      currentPointerTarget = nestedListNode;
+      currentPointerTarget = nestedListNode ?? null;
       act(() => {
         window.dispatchEvent(
           new MouseEvent("mousemove", {

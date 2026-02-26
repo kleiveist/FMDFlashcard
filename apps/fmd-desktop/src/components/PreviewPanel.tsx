@@ -6233,7 +6233,8 @@ export const PreviewPanel = ({
 
   const handleMarkdownEditorKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
-      if (event.isComposing) {
+      const nativeKeyboardEvent = event.nativeEvent as Event & { isComposing?: boolean };
+      if (nativeKeyboardEvent.isComposing) {
         return;
       }
 

@@ -742,7 +742,7 @@ const isUnderscoreRuleLikeLine = (line: string) =>
 const isUnsupportedHeadingLine = (line: string) =>
   /^\s{0,3}#{5,6}(?:\s+|$)/.test(line);
 
-const encodeHashesAsEntities = (hashes: string) => hashes.replaceAll("#", "&#35;");
+const encodeHashesAsEntities = (hashes: string) => hashes.split("#").join("&#35;");
 
 const escapeHybridPreviewSpecialLines = (source: string) =>
   source
@@ -2486,7 +2486,8 @@ export const MarkdownHybridEditor = ({
 
   const handleTextareaKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.isComposing) {
+      const nativeKeyboardEvent = event.nativeEvent as Event & { isComposing?: boolean };
+      if (nativeKeyboardEvent.isComposing) {
         return;
       }
 
@@ -2599,7 +2600,6 @@ export const MarkdownHybridEditor = ({
 
       if (isPlainEnter && !event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
         const selectionStart = textarea.selectionStart;
-        const selectionEnd = textarea.selectionEnd;
         const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
         const listLineInfo = parseEditorListLine(lineRange.line);
         const lineLocalSelectionStart = selectionStart - lineRange.start;
@@ -3599,6 +3599,8 @@ export const MarkdownHybridEditor = ({
           const hasDropIndicatorBottom = dropIndicatorIndex === index + 1;
           let previewBlockSource = block.kind === "help-block"
             ? normalizeHelpBlockPreviewSource(block.raw)
+            : block.kind === "hr"
+            ? normalizeHorizontalRuleBlockSource(block.raw)
             : block.raw;
           if (block.kind !== "hr" && block.kind !== "code-fence") {
             previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);

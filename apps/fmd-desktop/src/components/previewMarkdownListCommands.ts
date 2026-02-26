@@ -120,11 +120,11 @@ const resolveOutermostListWithinEditor = (editor: HTMLElement, listItem: HTMLLIE
     return null;
   }
   while (currentList.parentElement && currentList.parentElement !== editor) {
-    const parentLi = currentList.parentElement.closest("li");
+    const parentLi: HTMLLIElement | null = currentList.parentElement.closest("li");
     if (!parentLi || !editor.contains(parentLi)) {
       break;
     }
-    const parentList = parentLi.parentElement;
+    const parentList: HTMLElement | null = parentLi.parentElement;
     if (!isListElement(parentList)) {
       break;
     }
