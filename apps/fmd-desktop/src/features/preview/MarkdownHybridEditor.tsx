@@ -13,6 +13,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type SyntheticEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -787,6 +788,97 @@ const escapeHybridPreviewSpecialLines = (source: string) =>
     })
     .join("\n");
 
+type EditorInlineSyntaxKind = "hash-tag" | "cloze" | "quoted-token";
+
+const editorInlineSyntaxPattern = /#[A-Za-z0-9_-]+\b|%[^%\n]+%|"[^"\n]+"/g;
+
+const resolveEditorInlineSyntaxKind = (token: string): EditorInlineSyntaxKind | null => {
+  if (/^#[A-Za-z0-9_-]+\b/.test(token)) {
+    return "hash-tag";
+  }
+  if (/^%[^%\n]+%$/.test(token)) {
+    return "cloze";
+  }
+  if (/^"[^"\n]+"$/.test(token)) {
+    return "quoted-token";
+  }
+  return null;
+};
+
+const renderEditorInlineSyntaxSegments = (text: string, keyPrefix: string) => {
+  if (!text) {
+    editorInlineSyntaxPattern.lastIndex = 0;
+    return null;
+  }
+  if (!editorInlineSyntaxPattern.test(text)) {
+    editorInlineSyntaxPattern.lastIndex = 0;
+    return text;
+  }
+  editorInlineSyntaxPattern.lastIndex = 0;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let tokenIndex = 0;
+  let match = editorInlineSyntaxPattern.exec(text);
+
+  while (match) {
+    const token = match[0] ?? "";
+    const startIndex = match.index;
+    const endIndex = startIndex + token.length;
+    if (startIndex > lastIndex) {
+      parts.push(text.slice(lastIndex, startIndex));
+    }
+    const kind = resolveEditorInlineSyntaxKind(token);
+    if (!kind) {
+      parts.push(token);
+    } else {
+      parts.push(
+        <span
+          key={`${keyPrefix}-${tokenIndex}`}
+          className={`md-inline-syntax md-inline-syntax-${kind}`}
+          data-md-inline-syntax={kind}
+        >
+          {token}
+        </span>,
+      );
+    }
+    lastIndex = endIndex;
+    tokenIndex += 1;
+    match = editorInlineSyntaxPattern.exec(text);
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+};
+
+const renderEditorInlineSyntaxOverlay = (
+  text: string,
+  activeSelectionStart: number | null,
+) => {
+  if (!text) {
+    return null;
+  }
+
+  let activeLineIndex: number | null = null;
+  if (typeof activeSelectionStart === "number") {
+    activeLineIndex = getLineRangeAtOffset(text, activeSelectionStart).lineIndex;
+  }
+
+  const lines = text.split("\n");
+  const nodes: ReactNode[] = [];
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    const lineNode = activeLineIndex === lineIndex
+      ? line
+      : renderEditorInlineSyntaxSegments(line, `mdh-editor-inline-line-${lineIndex}`);
+    nodes.push(lineNode);
+    if (lineIndex < lines.length - 1) {
+      nodes.push("\n");
+    }
+  }
+  return nodes;
+};
+
 type CardBlockPreviewParts = {
   parts: Array<{
     kind: "body" | "help";
@@ -930,11 +1022,20 @@ const resolveHeadingEditorPlaceholder = (
 const normalizeLeadingHeadingSpacing = (
   value: string,
   blockKind: MarkdownBlock["kind"] | null | undefined,
+  selectionOffset?: number | null,
 ) => {
   if (!blockKind || (blockKind !== "blank" && blockKind !== "paragraph" && blockKind !== "heading")) {
     return null;
   }
-  const match = value.match(/^(\s{0,3})(#{1,4})(\S.*)$/);
+  const lineRange = typeof selectionOffset === "number"
+    ? getLineRangeAtOffset(value, selectionOffset)
+    : {
+      start: 0,
+      end: value.indexOf("\n") >= 0 ? value.indexOf("\n") : value.length,
+      line: value.split("\n")[0] ?? "",
+    };
+  const line = lineRange.line;
+  const match = line.match(/^(\s{0,3})(#{1,4})(\S.*)$/);
   if (!match) {
     return null;
   }
@@ -952,9 +1053,13 @@ const normalizeLeadingHeadingSpacing = (
   if (/^\d/.test(remainder)) {
     return null;
   }
+  const normalizedLine = `${indent}${hashes} ${remainder}`;
+  if (normalizedLine === line) {
+    return null;
+  }
   return {
-    value: `${indent}${hashes} ${remainder}`,
-    insertionIndex: indent.length + hashes.length,
+    value: `${value.slice(0, lineRange.start)}${normalizedLine}${value.slice(lineRange.end)}`,
+    insertionIndex: lineRange.start + indent.length + hashes.length,
   };
 };
 
@@ -1019,6 +1124,9 @@ export const MarkdownHybridEditor = ({
   const [selectionMarqueeRect, setSelectionMarqueeRect] = useState<SelectionMarqueeRect | null>(
     null,
   );
+  const [editorOverlaySelectionStart, setEditorOverlaySelectionStart] = useState<number | null>(
+    null,
+  );
   const [overlayLayout, setOverlayLayout] = useState<OverlayLayoutState>(() => ({
     byIndex: new Map(),
     contentPaddingLeft: OVERLAY_LEFT_GUTTER_WIDTH,
@@ -1029,6 +1137,7 @@ export const MarkdownHybridEditor = ({
   const insertMenuRef = useRef<HTMLDivElement | null>(null);
   const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorSyntaxOverlayContentRef = useRef<HTMLDivElement | null>(null);
   const pendingCaretRef = useRef<"start" | "end" | null>(null);
   const pendingTextareaSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const autoActivatedWriteKeyRef = useRef<string | null>(null);
@@ -1071,6 +1180,10 @@ export const MarkdownHybridEditor = ({
       : insertMenuState.blockIndex + 1;
     return resolveInsertMenuContextForSlot(markdown, blocks, targetIndex);
   }, [blocks, insertMenuState, markdown]);
+  const activeEditorSyntaxOverlayContent = useMemo(
+    () => renderEditorInlineSyntaxOverlay(activeDraft, editorOverlaySelectionStart),
+    [activeDraft, editorOverlaySelectionStart],
+  );
 
   const measureOverlayLayout = useCallback(() => {
     const surface = containerRef.current;
@@ -1621,10 +1734,12 @@ export const MarkdownHybridEditor = ({
         const start = Math.max(0, Math.min(selection.start, max));
         const end = Math.max(start, Math.min(selection.end, max));
         textarea.setSelectionRange(start, end);
+        setEditorOverlaySelectionStart(start);
         return;
       }
       const nextPos = caret === "start" ? 0 : textarea.value.length;
       textarea.setSelectionRange(nextPos, nextPos);
+      setEditorOverlaySelectionStart(nextPos);
     });
     return () => window.cancelAnimationFrame(handle);
   }, [activeBlockIndex]);
@@ -1673,9 +1788,14 @@ export const MarkdownHybridEditor = ({
         return markdown;
       }
       const block = blocks[activeBlockIndex];
+      const activeSelectionStart = textareaRef.current?.selectionStart ?? null;
       if (!block) {
         if (blocks.length === 0 && activeBlockIndex === 0) {
-          const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(activeDraft, "blank");
+          const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(
+            activeDraft,
+            "blank",
+            activeSelectionStart,
+          );
           const nextResolvedMarkdown = applyEditorMarkdownNormalization(
             normalizedHeadingSpacing?.value ?? activeDraft,
           );
@@ -1709,7 +1829,11 @@ export const MarkdownHybridEditor = ({
         return markdown;
       }
 
-      const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(activeDraft, block.kind);
+      const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(
+        activeDraft,
+        block.kind,
+        activeSelectionStart,
+      );
       const draftForPersist = normalizedHeadingSpacing?.value ?? activeDraft;
       let nextBlockRaw = toPersistedBlockRawForDraft(block, draftForPersist);
       if (block.kind === "ordered-list") {
@@ -2473,8 +2597,11 @@ export const MarkdownHybridEditor = ({
   );
 
   const handleTextareaChange = useCallback(
-    (value: string) => {
+    (value: string, selectionStart?: number | null) => {
       let nextValue = value;
+      if (typeof selectionStart === "number") {
+        setEditorOverlaySelectionStart(selectionStart);
+      }
       const activeBlock = activeBlockIndex === null ? null : (blocks[activeBlockIndex] ?? null);
       if (activeBlock?.kind === "help-block") {
         nextValue = normalizeHelpBlockSource(nextValue);
@@ -2578,9 +2705,34 @@ export const MarkdownHybridEditor = ({
         textarea.focus();
       }
       textarea.setSelectionRange(safe, safe);
+      setEditorOverlaySelectionStart(safe);
     });
     return () => window.cancelAnimationFrame(handle);
   }, []);
+
+  const syncEditorSyntaxOverlayScroll = useCallback(() => {
+    const textarea = textareaRef.current;
+    const overlayContent = editorSyntaxOverlayContentRef.current;
+    if (!textarea || !overlayContent) {
+      return;
+    }
+    overlayContent.style.transform = `translate(${-textarea.scrollLeft}px, ${-textarea.scrollTop}px)`;
+  }, []);
+
+  const handleTextareaScroll = useCallback(() => {
+    syncEditorSyntaxOverlayScroll();
+  }, [syncEditorSyntaxOverlayScroll]);
+
+  const handleTextareaSelect = useCallback((event: SyntheticEvent<HTMLTextAreaElement>) => {
+    setEditorOverlaySelectionStart(event.currentTarget.selectionStart);
+  }, []);
+
+  useLayoutEffect(() => {
+    const handle = window.requestAnimationFrame(() => {
+      syncEditorSyntaxOverlayScroll();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [activeBlockIndex, activeDraft, syncEditorSyntaxOverlayScroll]);
 
   const applyActiveBlockDraft = useCallback(
     (nextDraft: string, nextCaretPosition?: number) => {
@@ -3776,16 +3928,30 @@ export const MarkdownHybridEditor = ({
             <div className="markdown-hybrid-block-body">
               {activeBlockIndex === 0 && !disabled ? (
                 <div className="markdown-hybrid-block-editor-shell">
-                  <textarea
-                    ref={textareaRef}
-                    className="markdown-hybrid-block-editor"
-                    value={activeDraft}
-                    rows={1}
-                    onChange={(event) => handleTextareaChange(event.target.value)}
-                    onBlur={handleTextareaBlur}
-                    onKeyDown={handleTextareaKeyDown}
-                    aria-label="Markdown block editor"
-                  />
+                  <div
+                    className="markdown-hybrid-block-editor-overlay"
+                    aria-hidden="true"
+                  >
+                    <div
+                      ref={editorSyntaxOverlayContentRef}
+                      className="markdown-hybrid-block-editor-overlay-content"
+                    >
+                      {activeEditorSyntaxOverlayContent}
+                    </div>
+                  </div>
+                    <textarea
+                      ref={textareaRef}
+                      className="markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay"
+                      value={activeDraft}
+                      rows={1}
+                      onChange={(event) =>
+                        handleTextareaChange(event.target.value, event.target.selectionStart)}
+                      onBlur={handleTextareaBlur}
+                      onKeyDown={handleTextareaKeyDown}
+                      onSelect={handleTextareaSelect}
+                      onScroll={handleTextareaScroll}
+                      aria-label="Markdown block editor"
+                    />
                 </div>
               ) : (
                 <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />
@@ -3896,14 +4062,28 @@ export const MarkdownHybridEditor = ({
               <div className="markdown-hybrid-block-body">
                 {isActive ? (
                   <div className="markdown-hybrid-block-editor-shell">
+                    <div
+                      className="markdown-hybrid-block-editor-overlay"
+                      aria-hidden="true"
+                    >
+                      <div
+                        ref={editorSyntaxOverlayContentRef}
+                        className="markdown-hybrid-block-editor-overlay-content"
+                      >
+                        {activeEditorSyntaxOverlayContent}
+                      </div>
+                    </div>
                     <textarea
                       ref={textareaRef}
-                      className="markdown-hybrid-block-editor"
+                      className="markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay"
                       value={activeDraft}
                       rows={Math.max(1, activeDraft.split("\n").length)}
-                      onChange={(event) => handleTextareaChange(event.target.value)}
+                      onChange={(event) =>
+                        handleTextareaChange(event.target.value, event.target.selectionStart)}
                       onBlur={handleTextareaBlur}
                       onKeyDown={handleTextareaKeyDown}
+                      onSelect={handleTextareaSelect}
+                      onScroll={handleTextareaScroll}
                       aria-label="Markdown block editor"
                     />
                     {headingEditorPlaceholder ? (

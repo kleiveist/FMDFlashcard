@@ -1563,6 +1563,7 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block-preview .md-inline-syntax,
+.markdown-hybrid-block-editor-overlay .md-inline-syntax,
 .md-preview .md-inline-syntax {
   display: inline-flex;
   align-items: center;
@@ -1576,6 +1577,7 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block-preview .md-inline-syntax-hash-tag,
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-hash-tag,
 .md-preview .md-inline-syntax-hash-tag {
   border-radius: 999px;
   background: color-mix(in srgb, var(--accent-soft) 30%, transparent);
@@ -1585,6 +1587,7 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block-preview .md-inline-syntax-cloze,
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-cloze,
 .md-preview .md-inline-syntax-cloze {
   border-radius: 8px;
   background:
@@ -1603,6 +1606,7 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block-preview .md-inline-syntax-quoted-token,
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-quoted-token,
 .md-preview .md-inline-syntax-quoted-token {
   border-radius: 6px;
   background: color-mix(in srgb, var(--accent-soft) 30%, transparent);
@@ -1624,8 +1628,37 @@ textarea.preview-editor {
   white-space: pre-wrap;
 }
 
+.markdown-hybrid-block-editor-syntax-overlay {
+  position: relative;
+  z-index: 1;
+  color: transparent;
+  caret-color: var(--text);
+  -webkit-text-fill-color: transparent;
+}
+
 .markdown-hybrid-block-editor-shell {
   position: relative;
+}
+
+.markdown-hybrid-block-editor-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  z-index: 0;
+}
+
+.markdown-hybrid-block-editor-overlay-content {
+  min-height: 1.8rem;
+  padding: 2px 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  transform: translate(0, 0);
+  will-change: transform;
 }
 
 .markdown-hybrid-heading-editor-placeholder {

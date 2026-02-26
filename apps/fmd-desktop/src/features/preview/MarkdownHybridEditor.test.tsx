@@ -895,4 +895,136 @@ describe("MarkdownHybridEditor", () => {
     expect(frameChildren[1]?.classList.contains("markdown-hybrid-card-help-subbox")).toBe(true);
     cleanup();
   });
+
+  it("normalizes hash heading spacing only when the caret is on that hash line", () => {
+    const initialMarkdown = ["##HeadingNoSpace", "Other line"].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <div>
+          <div data-testid="markdown-value">{markdown}</div>
+          <MarkdownHybridEditor
+            historyKey="hash-line-normalization-caret"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        </div>
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const readMarkdown = () =>
+      container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+    const block = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
+    expect(block).toBeTruthy();
+
+    act(() => {
+      block?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          buttons: 1,
+        }),
+      );
+    });
+
+    const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+    expect(textarea).toBeTruthy();
+
+    act(() => {
+      const pos = (textarea?.value.indexOf("Other line") ?? 0) + 1;
+      textarea?.setSelectionRange(pos, pos);
+      textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+    });
+
+    expect(readMarkdown()).toBe(initialMarkdown);
+
+    act(() => {
+      const refreshedBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='0']",
+      );
+      refreshedBlock?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          buttons: 1,
+        }),
+      );
+    });
+
+    const secondTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+    expect(secondTextarea).toBeTruthy();
+
+    act(() => {
+      secondTextarea?.setSelectionRange(2, 2);
+      secondTextarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+    });
+
+    expect(readMarkdown()).toBe(["## HeadingNoSpace", "Other line"].join("\n"));
+    cleanup();
+  });
+
+  it("shows inline hash syntax highlighting in non-active editor lines only", () => {
+    const initialMarkdown = ["#endcard", "#test", "#irgendwas"].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="editor-inline-syntax-overlay"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const block = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
+    expect(block).toBeTruthy();
+
+    act(() => {
+      block?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          buttons: 1,
+        }),
+      );
+    });
+
+    const overlay = container.querySelector<HTMLElement>(".markdown-hybrid-block-editor-overlay");
+    expect(overlay).toBeTruthy();
+    let hashSpans = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-block-editor-overlay [data-md-inline-syntax='hash-tag']",
+      ),
+    );
+    // Caret starts at the end of the block, so the last line stays raw.
+    expect(hashSpans.map((node) => node.textContent)).toEqual(["#endcard", "#test"]);
+
+    const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+    expect(textarea).toBeTruthy();
+    act(() => {
+      const line2Start = (textarea?.value.indexOf("#test") ?? 0);
+      textarea?.setSelectionRange(line2Start, line2Start);
+      textarea?.dispatchEvent(new Event("select", { bubbles: true }));
+    });
+
+    hashSpans = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-block-editor-overlay [data-md-inline-syntax='hash-tag']",
+      ),
+    );
+    expect(hashSpans.map((node) => node.textContent)).toEqual(["#endcard", "#irgendwas"]);
+
+    cleanup();
+  });
 });
