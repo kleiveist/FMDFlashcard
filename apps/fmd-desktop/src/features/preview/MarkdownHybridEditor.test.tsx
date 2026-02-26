@@ -35,6 +35,66 @@ const dispatchClick = (element: Element | null) => {
   });
 };
 
+const dispatchKeyDown = (
+  element: Element | null,
+  key: string,
+  options: Partial<KeyboardEventInit> = {},
+) => {
+  act(() => {
+    element?.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key,
+        ...options,
+      }),
+    );
+  });
+};
+
+const activateBlockEditor = (container: ParentNode, index = 0) => {
+  const block = container.querySelector<HTMLElement>(
+    `.markdown-hybrid-block[data-md-block-index='${index}']`,
+  );
+  act(() => {
+    block?.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        buttons: 1,
+      }),
+    );
+  });
+  return container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+};
+
+const setTextareaSelection = (
+  textarea: HTMLTextAreaElement | null,
+  start: number,
+  end = start,
+) => {
+  act(() => {
+    textarea?.setSelectionRange(start, end);
+    textarea?.dispatchEvent(new Event("select", { bubbles: true }));
+  });
+};
+
+const applyTextareaInput = (
+  textarea: HTMLTextAreaElement | null,
+  nextValue: string,
+  caret = nextValue.length,
+) => {
+  act(() => {
+    if (!textarea) {
+      return;
+    }
+    textarea.value = nextValue;
+    textarea.setSelectionRange(caret, caret);
+    textarea.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+  });
+};
+
 const findButtonByExactText = (container: ParentNode, label: string) =>
   Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
     (button) => button.textContent?.trim() === label,
@@ -1140,6 +1200,182 @@ describe("MarkdownHybridEditor", () => {
 
     expect(readMarkdown()).toBe(["## HeadingNoSpace", "Other line"].join("\n"));
     cleanup();
+  });
+
+  it("continues a quote block with Enter and keeps the quote prefix", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "> Quote text";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="quote-enter-continue"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("> Quote text\n> ");
+      expect(readMarkdown()).toBe("> Quote text\n> ");
+      expect(textarea?.selectionStart).toBe("> Quote text\n> ".length);
+      expect(textarea?.selectionEnd).toBe("> Quote text\n> ".length);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blockquote']"),
+      ).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("exits quote mode only when pressing Enter on an empty quote line", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["> Quote text", "> "].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="quote-enter-exit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      const blockKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(blockKinds[0]).toBe("blockquote");
+      expect(blockKinds[1]).toBe("blank");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
+      );
+      expect(textarea).toBeTruthy();
+      expect(textarea?.value).toBe("");
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue.startsWith("> Quote text\n")).toBe(true);
+      expect(markdownValue).not.toContain("\n> \n");
+
+      cleanup();
+    });
+  });
+
+  it("continues a nested quote block with Enter and preserves the >> prefix", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ">> Nested quote text";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="nested-quote-enter-continue"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe(">> Nested quote text\n>> ");
+      expect(textarea?.selectionStart).toBe(">> Nested quote text\n>> ".length);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blockquote']"),
+      ).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("keeps Shift+Enter inside quote blocks stable without block explosion", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "> Quote";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="quote-shift-enter-stable"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+
+      dispatchKeyDown(textarea, "Enter", { shiftKey: true });
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("> Quote\n> ");
+      applyTextareaInput(textarea, "> Quote\n> A");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      dispatchKeyDown(textarea, "Enter", { shiftKey: true });
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      applyTextareaInput(textarea, "> Quote\n> A\n> B");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      dispatchKeyDown(textarea, "Enter", { shiftKey: true });
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      applyTextareaInput(textarea, "> Quote\n> A\n> B\n> C");
+
+      expect(readMarkdown()).toBe("> Quote\n> A\n> B\n> C");
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blockquote']"),
+      ).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      cleanup();
+    });
   });
 
   it("shows inline hash syntax highlighting in non-active editor lines only", () => {

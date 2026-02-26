@@ -927,6 +927,7 @@ const editorOrderedListLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
 const editorTaskListLinePattern = /^(\s*)([-+*])(\s+\[[ xX]\])(\s+)(.*)$/;
 const editorUnorderedListLinePattern = /^(\s*)([-+*])(\s+)(.*)$/;
 const editorListContinuationLinePattern = /^(\s{2,}|\t+)(.*)$/;
+const editorQuoteLinePattern = /^(\s*)(>+)(\s*)(.*)$/;
 const markdownTaskListLinePattern = /^(\s*[-+*]\s+\[)([ xX])(\])(.*)$/;
 
 type EditorListLineInfo =
@@ -961,6 +962,16 @@ type LineRange = {
   end: number;
   lineIndex: number;
   line: string;
+};
+
+type EditorQuoteLineInfo = {
+  indent: string;
+  markers: string;
+  spacing: string;
+  content: string;
+  prefixLength: number;
+  continuationPrefix: string;
+  isEmpty: boolean;
 };
 
 const parseEditorListLine = (line: string): EditorListLineInfo | null => {
@@ -1016,6 +1027,26 @@ const parseEditorListLine = (line: string): EditorListLineInfo | null => {
   }
 
   return null;
+};
+
+const parseEditorQuoteLine = (line: string): EditorQuoteLineInfo | null => {
+  const quoteMatch = line.match(editorQuoteLinePattern);
+  if (!quoteMatch) {
+    return null;
+  }
+  const indent = quoteMatch[1] ?? "";
+  const markers = quoteMatch[2] ?? ">";
+  const spacing = quoteMatch[3] ?? "";
+  const content = quoteMatch[4] ?? "";
+  return {
+    indent,
+    markers,
+    spacing,
+    content,
+    prefixLength: indent.length + markers.length + spacing.length,
+    continuationPrefix: `${indent}${markers} `,
+    isEmpty: content.trim().length === 0,
+  };
 };
 
 const getLineRangeAtOffset = (value: string, offset: number): LineRange => {
@@ -3408,6 +3439,49 @@ export const MarkdownHybridEditor = ({
         return;
       }
 
+      if (isPlainEnter && block.kind === "blockquote") {
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
+        const quoteLineInfo = parseEditorQuoteLine(lineRange.line);
+
+        if (quoteLineInfo) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (!event.shiftKey && !hasSelection && quoteLineInfo.isEmpty) {
+            const lines = activeDraft.split("\n");
+            const lineIndex = lineRange.lineIndex;
+            const beforeLines = lines.slice(0, lineIndex);
+            const afterLines = lines.slice(lineIndex + 1);
+            const segments: string[] = [];
+            if (beforeLines.length > 0) {
+              segments.push(beforeLines.join("\n"));
+            }
+            const insertBlankSegmentIndex = segments.length;
+            segments.push("");
+            if (afterLines.length === 0 && blocks[activeBlockIndex + 1]?.kind === "hr") {
+              segments.push("");
+            }
+            if (afterLines.length > 0) {
+              segments.push(afterLines.join("\n"));
+            }
+            replaceActiveBlockWithSegments(segments, {
+              activateSegmentIndex: insertBlankSegmentIndex,
+              caret: "start",
+            });
+            return;
+          }
+
+          const nextDraft = `${activeDraft.slice(0, selectionStart)}\n${quoteLineInfo.continuationPrefix}${
+            activeDraft.slice(selectionEnd)
+          }`;
+          const nextCaret = selectionStart + 1 + quoteLineInfo.continuationPrefix.length;
+          applyActiveBlockDraft(nextDraft, nextCaret);
+          return;
+        }
+      }
+
       if (isPlainEnter && !event.shiftKey && block.kind === "blank") {
         event.preventDefault();
         event.stopPropagation();
@@ -3471,19 +3545,6 @@ export const MarkdownHybridEditor = ({
           activateSegmentIndex: activationIndex,
           caret: "start",
         });
-        return;
-      }
-
-      if (isPlainEnter && !event.shiftKey && block.kind === "blockquote" && atEnd) {
-        event.preventDefault();
-        event.stopPropagation();
-        replaceActiveBlockWithSegments(
-          blocks[activeBlockIndex + 1]?.kind === "hr" ? [activeDraft, "", ""] : [activeDraft, ""],
-          {
-          activateSegmentIndex: 1,
-          caret: "start",
-          },
-        );
         return;
       }
 
