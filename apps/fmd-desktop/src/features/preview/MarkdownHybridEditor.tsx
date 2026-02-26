@@ -84,6 +84,8 @@ type SelectionGestureState = {
   didDrag: boolean;
   startClientX: number;
   startClientY: number;
+  startContentX: number;
+  startContentY: number;
 };
 
 type SelectionContextMenuState = {
@@ -1057,16 +1059,27 @@ const clampIndex = (value: number, maxExclusive: number) => {
 
 const OVERLAY_LEFT_GUTTER_WIDTH = 56;
 const OVERLAY_RIGHT_GUTTER_WIDTH = 34;
+const SELECTION_DRAG_THRESHOLD_PX = 5;
+const SELECTION_AUTO_SCROLL_EDGE_PX = 48;
+const SELECTION_AUTO_SCROLL_MAX_STEP_PX = 22;
+
+const isVerticallyScrollable = (element: HTMLElement) => {
+  const style = window.getComputedStyle(element);
+  const overflowY = style.overflowY || style.overflow;
+  return /(auto|scroll|overlay)/.test(overflowY) && element.scrollHeight > element.clientHeight;
+};
 
 const findScrollableAncestor = (element: HTMLElement | null) => {
-  let current = element?.parentElement ?? null;
+  let current = element;
   while (current) {
-    const style = window.getComputedStyle(current);
-    const overflowY = style.overflowY || style.overflow;
-    if (/(auto|scroll|overlay)/.test(overflowY) && current.scrollHeight > current.clientHeight) {
+    if (isVerticallyScrollable(current)) {
       return current;
     }
     current = current.parentElement;
+  }
+  const scrollingElement = document.scrollingElement;
+  if (scrollingElement instanceof HTMLElement && isVerticallyScrollable(scrollingElement)) {
+    return scrollingElement;
   }
   return null;
 };
@@ -2027,7 +2040,9 @@ export const MarkdownHybridEditor = ({
   const selectionGestureRef = useRef<SelectionGestureState | null>(null);
   const suppressNextBlockContextMenuRef = useRef(false);
   const overlayMeasureFrameRef = useRef<number | null>(null);
-  const overlayScrollContainerRef = useRef<HTMLElement | null>(null);
+  const selectionAutoScrollFrameRef = useRef<number | null>(null);
+  const selectionDragUpdateFrameRef = useRef<number | null>(null);
+  const selectionDragPointerRef = useRef<{ x: number; y: number } | null>(null);
   const stableBlockRenderTokensRef = useRef<StableRenderKeyToken[]>([]);
   const stableBlockRenderKeyCounterRef = useRef(0);
   const pendingActivationMarkdownRef = useRef<string | null>(null);
@@ -2042,9 +2057,8 @@ export const MarkdownHybridEditor = ({
     return assigned.keys;
   }, [activeBlockIndex, blocks]);
   const overlayRows = useMemo(
-    () =>
-      Array.from(overlayLayout.byIndex.values()).sort((left, right) => left.index - right.index),
-    [overlayLayout],
+    () => Array.from(overlayLayout.byIndex.values()),
+    [overlayLayout.byIndex],
   );
   const editorSurfaceStyle = useMemo<CSSProperties>(
     () =>
@@ -2121,9 +2135,8 @@ export const MarkdownHybridEditor = ({
   );
 
   const measureOverlayLayout = useCallback(() => {
-    const surface = containerRef.current;
     const contentLayer = contentLayerRef.current;
-    if (!surface || !contentLayer) {
+    if (!contentLayer) {
       setOverlayLayout((current) => {
         if (current.byIndex.size === 0) {
           return current;
@@ -2136,11 +2149,13 @@ export const MarkdownHybridEditor = ({
       return;
     }
 
-    const surfaceRect = surface.getBoundingClientRect();
     const rowElements = Array.from(
       contentLayer.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
     );
     const nextByIndex = new Map<number, OverlayBlockRect>();
+    let fallbackTopCursor = 0;
+    let lastMeasuredTop = Number.NEGATIVE_INFINITY;
+    const fallbackRowGap = 6;
 
     for (const rowElement of rowElements) {
       const indexRaw = rowElement.dataset.mdBlockIndex;
@@ -2152,9 +2167,13 @@ export const MarkdownHybridEditor = ({
       if (!Number.isFinite(parsedIndex)) {
         continue;
       }
-      const rowRect = rowElement.getBoundingClientRect();
-      const top = Math.round((rowRect.top - surfaceRect.top + surface.scrollTop) * 100) / 100;
-      const height = Math.max(1, Math.round(rowRect.height * 100) / 100);
+      // Use layout-tree offsets (scroll-independent) to avoid expensive viewport rect reads
+      // on frequent overlay updates.
+      const measuredTop = Math.max(0, rowElement.offsetTop);
+      const height = Math.max(1, rowElement.offsetHeight);
+      const top = measuredTop > lastMeasuredTop ? measuredTop : fallbackTopCursor;
+      fallbackTopCursor = top + height + fallbackRowGap;
+      lastMeasuredTop = top;
       nextByIndex.set(parsedIndex, {
         index: parsedIndex,
         top,
@@ -2194,65 +2213,61 @@ export const MarkdownHybridEditor = ({
     };
   }, []);
 
-  const setSelectionMarqueeFromClientPoints = useCallback(
-    (startClientX: number, startClientY: number, endClientX: number, endClientY: number) => {
-      const startPoint = getContainerLocalPoint(startClientX, startClientY);
-      const endPoint = getContainerLocalPoint(endClientX, endClientY);
-      if (!startPoint || !endPoint) {
-        setSelectionMarqueeRect(null);
-        return;
-      }
-      setSelectionMarqueeRect({
-        left: Math.min(startPoint.x, endPoint.x),
-        top: Math.min(startPoint.y, endPoint.y),
-        width: Math.abs(endPoint.x - startPoint.x),
-        height: Math.abs(endPoint.y - startPoint.y),
+  const setSelectionMarqueeFromContentPoints = useCallback(
+    (startX: number, startY: number, endX: number, endY: number) => {
+      const nextRect = {
+        left: Math.min(startX, endX),
+        top: Math.min(startY, endY),
+        width: Math.abs(endX - startX),
+        height: Math.abs(endY - startY),
+      };
+      setSelectionMarqueeRect((current) => {
+        if (
+          current &&
+          current.left === nextRect.left &&
+          current.top === nextRect.top &&
+          current.width === nextRect.width &&
+          current.height === nextRect.height
+        ) {
+          return current;
+        }
+        return nextRect;
       });
     },
-    [getContainerLocalPoint],
+    [],
   );
 
-  const updateSelectionFromMarqueeClientPoints = useCallback(
-    (startClientX: number, startClientY: number, endClientX: number, endClientY: number) => {
-      const contentLayer = contentLayerRef.current;
-      if (!contentLayer || blocks.length === 0) {
+  const updateSelectionFromMarqueeContentPoints = useCallback(
+    (startX: number, startY: number, endX: number, endY: number) => {
+      if (blocks.length === 0 || overlayRows.length === 0) {
         return;
       }
-      const left = Math.min(startClientX, endClientX);
-      const right = Math.max(startClientX, endClientX);
-      const top = Math.min(startClientY, endClientY);
-      const bottom = Math.max(startClientY, endClientY);
-      const rowElements = contentLayer.querySelectorAll<HTMLElement>(
-        ".markdown-hybrid-block[data-md-block-index]",
-      );
+      const contentLayer = contentLayerRef.current;
+      const contentWidth = Math.max(contentLayer?.scrollWidth ?? 0, contentLayer?.clientWidth ?? 0, 1);
+      const left = Math.max(0, Math.min(contentWidth, Math.min(startX, endX)));
+      const right = Math.max(0, Math.min(contentWidth, Math.max(startX, endX)));
+      const top = Math.min(startY, endY);
+      const bottom = Math.max(startY, endY);
+      const rowLeft = 0;
+      const rowRight = contentWidth;
       const intersectedIndices: number[] = [];
 
-      for (const rowElement of rowElements) {
-        const rowRect = rowElement.getBoundingClientRect();
-        if (rowRect.width <= 0 || rowRect.height <= 0) {
-          continue;
-        }
-        const intersects =
-          rowRect.right >= left &&
-          rowRect.left <= right &&
-          rowRect.bottom >= top &&
-          rowRect.top <= bottom;
-        if (!intersects) {
-          continue;
-        }
-        const indexRaw = rowElement.dataset.mdBlockIndex;
-        if (typeof indexRaw !== "string") {
-          continue;
-        }
-        const parsedIndex = Number.parseInt(indexRaw, 10);
-        if (!Number.isFinite(parsedIndex)) {
-          continue;
-        }
-        const nextIndex = clampIndex(parsedIndex, blocks.length);
+      for (const row of overlayRows) {
+        const nextIndex = clampIndex(row.index, blocks.length);
         if (
           blocks[nextIndex]?.kind === "blank" &&
           isStructuralSeparatorBlankBlock(blocks, nextIndex)
         ) {
+          continue;
+        }
+        const rowTop = row.top;
+        const rowBottom = row.top + row.height;
+        const intersects =
+          rowRight >= left &&
+          rowLeft <= right &&
+          rowBottom >= top &&
+          rowTop <= bottom;
+        if (!intersects) {
           continue;
         }
         intersectedIndices.push(nextIndex);
@@ -2283,7 +2298,7 @@ export const MarkdownHybridEditor = ({
         };
       });
     },
-    [blocks],
+    [blocks, overlayRows],
   );
 
   useEffect(() => {
@@ -2321,6 +2336,15 @@ export const MarkdownHybridEditor = ({
       byIndex: new Map(),
     }));
     autoActivatedWriteKeyRef.current = null;
+    if (selectionAutoScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+      selectionAutoScrollFrameRef.current = null;
+    }
+    if (selectionDragUpdateFrameRef.current !== null) {
+      window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+      selectionDragUpdateFrameRef.current = null;
+    }
+    selectionDragPointerRef.current = null;
     selectionGestureRef.current = null;
     suppressNextBlockContextMenuRef.current = false;
     stableBlockRenderTokensRef.current = [];
@@ -2333,6 +2357,15 @@ export const MarkdownHybridEditor = ({
         window.cancelAnimationFrame(overlayMeasureFrameRef.current);
         overlayMeasureFrameRef.current = null;
       }
+      if (selectionAutoScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+        selectionAutoScrollFrameRef.current = null;
+      }
+      if (selectionDragUpdateFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+        selectionDragUpdateFrameRef.current = null;
+      }
+      selectionDragPointerRef.current = null;
     },
     [],
   );
@@ -2359,30 +2392,7 @@ export const MarkdownHybridEditor = ({
       scheduleOverlayLayoutMeasure();
     });
     observer.observe(contentLayer);
-    const rows = contentLayer.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]");
-    rows.forEach((row) => observer.observe(row));
     return () => observer.disconnect();
-  }, [blocks, activeBlockIndex, scheduleOverlayLayoutMeasure]);
-
-  useEffect(() => {
-    const surface = containerRef.current;
-    if (!surface) {
-      return;
-    }
-    const scrollContainer = findScrollableAncestor(surface);
-    overlayScrollContainerRef.current = scrollContainer;
-    const handlePositionAffectingEvent = () => {
-      scheduleOverlayLayoutMeasure();
-    };
-    scrollContainer?.addEventListener("scroll", handlePositionAffectingEvent, { passive: true });
-    window.addEventListener("resize", handlePositionAffectingEvent);
-    return () => {
-      scrollContainer?.removeEventListener("scroll", handlePositionAffectingEvent);
-      window.removeEventListener("resize", handlePositionAffectingEvent);
-      if (overlayScrollContainerRef.current === scrollContainer) {
-        overlayScrollContainerRef.current = null;
-      }
-    };
   }, [scheduleOverlayLayoutMeasure]);
 
   useEffect(() => {
@@ -2428,59 +2438,163 @@ export const MarkdownHybridEditor = ({
     if (!isSelectionDragging) {
       return;
     }
-    const updateRangeFromPoint = (clientX: number, clientY: number) => {
+
+    const stopSelectionAutoScroll = () => {
+      if (selectionAutoScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+        selectionAutoScrollFrameRef.current = null;
+      }
+    };
+
+    const stopSelectionDragUpdate = () => {
+      if (selectionDragUpdateFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+        selectionDragUpdateFrameRef.current = null;
+      }
+    };
+
+    const isDragThresholdExceeded = (gesture: SelectionGestureState, clientX: number, clientY: number) =>
+      Math.abs(clientX - gesture.startClientX) > SELECTION_DRAG_THRESHOLD_PX ||
+      Math.abs(clientY - gesture.startClientY) > SELECTION_DRAG_THRESHOLD_PX;
+
+    const applySelectionFromPointer = (
+      gesture: SelectionGestureState,
+      pointer: { x: number; y: number },
+      forceSelectionUpdate = false,
+    ) => {
+      const endPoint = getContainerLocalPoint(pointer.x, pointer.y);
+      if (!endPoint) {
+        return;
+      }
+
+      if (gesture.source === "shift-left") {
+        setSelectionMarqueeFromContentPoints(
+          gesture.startContentX,
+          gesture.startContentY,
+          endPoint.x,
+          endPoint.y,
+        );
+      }
+
+      if (!gesture.didDrag && !forceSelectionUpdate) {
+        return;
+      }
+
+      updateSelectionFromMarqueeContentPoints(
+        gesture.startContentX,
+        gesture.startContentY,
+        endPoint.x,
+        endPoint.y,
+      );
+    };
+
+    const flushSelectionDragUpdate = () => {
+      selectionDragUpdateFrameRef.current = null;
+      const gesture = selectionGestureRef.current;
+      const pointer = selectionDragPointerRef.current;
+      if (!gesture?.active || !pointer || disabled || blocks.length === 0) {
+        return;
+      }
+      applySelectionFromPointer(gesture, pointer);
+    };
+
+    const scheduleSelectionDragUpdate = () => {
+      if (selectionDragUpdateFrameRef.current !== null) {
+        return;
+      }
+      selectionDragUpdateFrameRef.current = window.requestAnimationFrame(flushSelectionDragUpdate);
+    };
+
+    const resolveAutoScrollDeltaY = () => {
+      const pointer = selectionDragPointerRef.current;
+      if (!pointer) {
+        return 0;
+      }
+      const container = containerRef.current;
+      const scrollHost = findScrollableAncestor(container);
+      if (!container || !scrollHost) {
+        return 0;
+      }
+      const hostRect = scrollHost.getBoundingClientRect();
+      if (hostRect.height <= 0) {
+        return 0;
+      }
+      const edgeSize = Math.min(
+        SELECTION_AUTO_SCROLL_EDGE_PX,
+        Math.max(16, Math.floor(hostRect.height * 0.18)),
+      );
+      if (pointer.y < hostRect.top + edgeSize) {
+        const distance = hostRect.top + edgeSize - pointer.y;
+        const intensity = Math.max(0, Math.min(1, distance / edgeSize));
+        return -Math.max(1, Math.round(SELECTION_AUTO_SCROLL_MAX_STEP_PX * intensity));
+      }
+      if (pointer.y > hostRect.bottom - edgeSize) {
+        const distance = pointer.y - (hostRect.bottom - edgeSize);
+        const intensity = Math.max(0, Math.min(1, distance / edgeSize));
+        return Math.max(1, Math.round(SELECTION_AUTO_SCROLL_MAX_STEP_PX * intensity));
+      }
+      return 0;
+    };
+
+    const stepSelectionAutoScroll = () => {
+      selectionAutoScrollFrameRef.current = null;
+      const gesture = selectionGestureRef.current;
+      if (!gesture?.active) {
+        return;
+      }
       if (disabled || blocks.length === 0) {
         return;
       }
-      const pointedElement = document.elementFromPoint(clientX, clientY);
-      if (!(pointedElement instanceof HTMLElement)) {
+      if (!gesture.didDrag) {
         return;
       }
-      if (!containerRef.current?.contains(pointedElement)) {
+      const pointer = selectionDragPointerRef.current;
+      if (!pointer) {
         return;
       }
-      const blockElement = pointedElement.closest<HTMLElement>(
-        ".markdown-hybrid-block[data-md-block-index]",
-      );
-      if (!blockElement || !containerRef.current?.contains(blockElement)) {
+      const container = containerRef.current;
+      const scrollHost = findScrollableAncestor(container);
+      if (!container || !scrollHost) {
         return;
       }
-      const blockIndexRaw = blockElement.dataset.mdBlockIndex;
-      if (typeof blockIndexRaw !== "string") {
-        return;
-      }
-      const parsedIndex = Number.parseInt(blockIndexRaw, 10);
-      if (!Number.isFinite(parsedIndex)) {
-        return;
-      }
-      const nextIndex = clampIndex(parsedIndex, blocks.length);
-      let didChangeFocus = false;
-      setSelectedBlockSelection((current) => {
-        const gesture = selectionGestureRef.current;
-        const anchorIndex = gesture?.anchorIndex ?? nextIndex;
-        const nextSelectedIndices = createSelectionIndexRange(anchorIndex, nextIndex);
-        if (!current) {
-          didChangeFocus = true;
-          return { anchorIndex, selectedIndices: nextSelectedIndices };
+
+      const deltaY = resolveAutoScrollDeltaY();
+      let didScroll = false;
+      if (deltaY !== 0) {
+        const prevScrollTop = scrollHost.scrollTop;
+        const maxScrollTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
+        const nextScrollTop = Math.max(0, Math.min(maxScrollTop, prevScrollTop + deltaY));
+        if (nextScrollTop !== prevScrollTop) {
+          scrollHost.scrollTop = nextScrollTop;
+          didScroll = true;
         }
-        const hasSameSelection = current.anchorIndex === anchorIndex &&
-          current.selectedIndices.length === nextSelectedIndices.length &&
-          current.selectedIndices.every((value, index) => value === nextSelectedIndices[index]);
-        if (hasSameSelection) {
-          return current;
-        }
-        didChangeFocus = true;
-        return { anchorIndex, selectedIndices: nextSelectedIndices };
-      });
+      }
+
+      applySelectionFromPointer(gesture, pointer, didScroll);
+
+      if (resolveAutoScrollDeltaY() !== 0) {
+        selectionAutoScrollFrameRef.current = window.requestAnimationFrame(stepSelectionAutoScroll);
+      }
+    };
+
+    const syncSelectionAutoScrollLoop = () => {
       const gesture = selectionGestureRef.current;
-      if (!gesture) {
+      if (!gesture?.active) {
+        stopSelectionAutoScroll();
         return;
       }
-      const movedFarEnough = Math.abs(clientX - gesture.startClientX) > 3 ||
-        Math.abs(clientY - gesture.startClientY) > 3;
-      if (movedFarEnough || didChangeFocus) {
-        gesture.didDrag = true;
+      if (!gesture.didDrag) {
+        stopSelectionAutoScroll();
+        return;
       }
+      if (resolveAutoScrollDeltaY() === 0) {
+        stopSelectionAutoScroll();
+        return;
+      }
+      if (selectionAutoScrollFrameRef.current !== null) {
+        return;
+      }
+      selectionAutoScrollFrameRef.current = window.requestAnimationFrame(stepSelectionAutoScroll);
     };
 
     const endSelectionGesture = (reason: "mouseup" | "button-release") => {
@@ -2493,6 +2607,9 @@ export const MarkdownHybridEditor = ({
       if (gesture) {
         gesture.active = false;
       }
+      selectionDragPointerRef.current = null;
+      stopSelectionAutoScroll();
+      stopSelectionDragUpdate();
       selectionGestureRef.current = null;
       setIsSelectionDragging(false);
       setSelectionMarqueeRect(null);
@@ -2506,48 +2623,53 @@ export const MarkdownHybridEditor = ({
       if (!gesture?.active) {
         return;
       }
+      selectionDragPointerRef.current = { x: event.clientX, y: event.clientY };
       const expectedButtonMask = gesture.source === "right" ? 2 : 1;
       if ((event.buttons & expectedButtonMask) !== expectedButtonMask) {
         endSelectionGesture("button-release");
         return;
       }
-      const movedFarEnough = Math.abs(event.clientX - gesture.startClientX) > 3 ||
-        Math.abs(event.clientY - gesture.startClientY) > 3;
-      if (gesture.source === "shift-left") {
-        setSelectionMarqueeFromClientPoints(
-          gesture.startClientX,
-          gesture.startClientY,
-          event.clientX,
-          event.clientY,
-        );
-        if (movedFarEnough) {
-          gesture.didDrag = true;
-          updateSelectionFromMarqueeClientPoints(
-            gesture.startClientX,
-            gesture.startClientY,
-            event.clientX,
-            event.clientY,
-          );
-          return;
-        }
+      if (isDragThresholdExceeded(gesture, event.clientX, event.clientY)) {
+        gesture.didDrag = true;
       }
-      updateRangeFromPoint(event.clientX, event.clientY);
+      if (gesture.source === "right" && gesture.didDrag) {
+        event.preventDefault();
+      }
+      scheduleSelectionDragUpdate();
+      syncSelectionAutoScrollLoop();
     };
+
     const handleMouseUp = () => {
       endSelectionGesture("mouseup");
     };
+
+    const handleWindowContextMenu = (event: globalThis.MouseEvent) => {
+      const gesture = selectionGestureRef.current;
+      if (!gesture?.active || gesture.source !== "right" || !gesture.didDrag) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("contextmenu", handleWindowContextMenu, true);
     return () => {
+      selectionDragPointerRef.current = null;
+      stopSelectionAutoScroll();
+      stopSelectionDragUpdate();
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("contextmenu", handleWindowContextMenu, true);
     };
   }, [
     blocks.length,
     disabled,
+    getContainerLocalPoint,
     isSelectionDragging,
-    setSelectionMarqueeFromClientPoints,
-    updateSelectionFromMarqueeClientPoints,
+    setSelectionMarqueeFromContentPoints,
+    updateSelectionFromMarqueeContentPoints,
   ]);
 
   useEffect(() => {
@@ -2976,10 +3098,19 @@ export const MarkdownHybridEditor = ({
   }, []);
 
   const clearSelectedBlockRange = useCallback(() => {
+    if (selectionAutoScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+      selectionAutoScrollFrameRef.current = null;
+    }
+    if (selectionDragUpdateFrameRef.current !== null) {
+      window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+      selectionDragUpdateFrameRef.current = null;
+    }
     setSelectedBlockSelection(null);
     setIsSelectionDragging(false);
     setSelectionContextMenuState(null);
     setSelectionMarqueeRect(null);
+    selectionDragPointerRef.current = null;
     selectionGestureRef.current = null;
     suppressNextBlockContextMenuRef.current = false;
   }, []);
@@ -3029,33 +3160,6 @@ export const MarkdownHybridEditor = ({
     [blocks.length, disabled],
   );
 
-  const updateSelectionRangeFocus = useCallback(
-    (index: number) => {
-      if (disabled || blocks.length === 0) {
-        return;
-      }
-      const nextIndex = clampIndex(index, blocks.length);
-      setSelectedBlockSelection((current) => {
-        const gesture = selectionGestureRef.current;
-        const anchorIndex = gesture?.anchorIndex ?? current?.anchorIndex ?? nextIndex;
-        const nextSelectedIndices = createSelectionIndexRange(anchorIndex, nextIndex);
-        if (!current) {
-          return { anchorIndex, selectedIndices: nextSelectedIndices };
-        }
-        const hasSameSelection = current.anchorIndex === anchorIndex &&
-          current.selectedIndices.length === nextSelectedIndices.length &&
-          current.selectedIndices.every((value, selectedIndex) =>
-            value === nextSelectedIndices[selectedIndex]
-          );
-        if (hasSameSelection) {
-          return current;
-        }
-        return { anchorIndex, selectedIndices: nextSelectedIndices };
-      });
-    },
-    [blocks.length, disabled],
-  );
-
   const beginSelectionGesture = useCallback(
     (options: {
       index: number;
@@ -3069,6 +3173,7 @@ export const MarkdownHybridEditor = ({
         return false;
       }
       const nextIndex = clampIndex(options.index, blocks.length);
+      const startPoint = getContainerLocalPoint(options.clientX, options.clientY);
       const shouldPreserveCurrentRange = Boolean(
         options.preserveCurrentRangeIfSelected &&
           selectedBlockSelection &&
@@ -3100,6 +3205,8 @@ export const MarkdownHybridEditor = ({
         didDrag: false,
         startClientX: options.clientX,
         startClientY: options.clientY,
+        startContentX: startPoint?.x ?? options.clientX,
+        startContentY: startPoint?.y ?? options.clientY,
       };
       suppressNextBlockContextMenuRef.current = false;
       setIsSelectionDragging(true);
@@ -3112,6 +3219,7 @@ export const MarkdownHybridEditor = ({
       commitActiveBlock,
       disabled,
       focusContainer,
+      getContainerLocalPoint,
       selectedBlockSelection,
     ],
   );
@@ -3125,6 +3233,7 @@ export const MarkdownHybridEditor = ({
       if (disabled) {
         return false;
       }
+      const startPoint = getContainerLocalPoint(options.clientX, options.clientY);
       if (activeBlockIndex !== null) {
         commitActiveBlock({ deactivate: true });
       }
@@ -3143,14 +3252,16 @@ export const MarkdownHybridEditor = ({
         didDrag: false,
         startClientX: options.clientX,
         startClientY: options.clientY,
+        startContentX: startPoint?.x ?? options.clientX,
+        startContentY: startPoint?.y ?? options.clientY,
       };
       suppressNextBlockContextMenuRef.current = false;
       setIsSelectionDragging(true);
-      setSelectionMarqueeFromClientPoints(
-        options.clientX,
-        options.clientY,
-        options.clientX,
-        options.clientY,
+      setSelectionMarqueeFromContentPoints(
+        startPoint?.x ?? options.clientX,
+        startPoint?.y ?? options.clientY,
+        startPoint?.x ?? options.clientX,
+        startPoint?.y ?? options.clientY,
       );
       focusContainer();
       return true;
@@ -3160,8 +3271,9 @@ export const MarkdownHybridEditor = ({
       commitActiveBlock,
       disabled,
       focusContainer,
+      getContainerLocalPoint,
       selectedBlockSelection,
-      setSelectionMarqueeFromClientPoints,
+      setSelectionMarqueeFromContentPoints,
     ],
   );
 
@@ -3831,6 +3943,18 @@ export const MarkdownHybridEditor = ({
     overlayContent.style.transform = `translate(${-textarea.scrollLeft}px, ${-textarea.scrollTop}px)`;
   }, []);
 
+  const syncActiveTextareaAutoHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+    // Auto-grow to visible wrapped content so activating long paragraph lines
+    // does not collapse the editor to the number of hard line breaks only.
+    textarea.style.height = "auto";
+    const nextHeight = Math.max(textarea.scrollHeight, 28);
+    textarea.style.height = `${nextHeight}px`;
+  }, []);
+
   const handleTextareaScroll = useCallback(() => {
     syncEditorSyntaxOverlayScroll();
   }, [syncEditorSyntaxOverlayScroll]);
@@ -3840,11 +3964,14 @@ export const MarkdownHybridEditor = ({
   }, []);
 
   useLayoutEffect(() => {
+    syncActiveTextareaAutoHeight();
+    syncEditorSyntaxOverlayScroll();
     const handle = window.requestAnimationFrame(() => {
+      syncActiveTextareaAutoHeight();
       syncEditorSyntaxOverlayScroll();
     });
     return () => window.cancelAnimationFrame(handle);
-  }, [activeBlockIndex, activeDraft, syncEditorSyntaxOverlayScroll]);
+  }, [activeBlockIndex, activeDraft, syncActiveTextareaAutoHeight, syncEditorSyntaxOverlayScroll]);
 
   const applyActiveBlockDraft = useCallback(
     (nextDraft: string, nextCaretPosition?: number) => {
@@ -4201,6 +4328,51 @@ export const MarkdownHybridEditor = ({
       if (event.key === "Enter" && event.shiftKey && block.kind === "heading") {
         event.preventDefault();
         event.stopPropagation();
+        return;
+      }
+
+      if (isPlainEnter && block.kind === "card-block") {
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const lines = activeDraft.split("\n");
+        const endCardLineIndex = lines.findIndex((line) => line.trim().toLowerCase() === "#endcard");
+        let shouldExitCard = false;
+
+        if (endCardLineIndex >= 0 && !hasSelection) {
+          const endCardLineStart = getLineStartOffsetByIndex(lines, endCardLineIndex);
+          if (selectionStart >= endCardLineStart) {
+            shouldExitCard = true;
+          }
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (shouldExitCard) {
+          const cardRaw = lines.slice(0, endCardLineIndex + 1).join("\n");
+          const trailingRaw = lines.slice(endCardLineIndex + 1).join("\n");
+          const segments: string[] = [cardRaw];
+          const activateSegmentIndex = 1;
+
+          if (trailingRaw.length > 0) {
+            segments.push(trailingRaw);
+          } else {
+            segments.push("");
+            if (blocks[activeBlockIndex + 1]?.kind === "hr") {
+              segments.push("");
+            }
+          }
+
+          replaceActiveBlockWithSegments(segments, {
+            activateSegmentIndex,
+            caret: "start",
+          });
+          return;
+        }
+
+        const nextDraft = `${activeDraft.slice(0, selectionStart)}\n${activeDraft.slice(selectionEnd)}`;
+        const nextCaret = selectionStart + 1;
+        applyActiveBlockDraft(nextDraft, nextCaret);
         return;
       }
 
@@ -4685,7 +4857,7 @@ export const MarkdownHybridEditor = ({
   );
 
   const handleBlockMouseEnter = useCallback(
-    (index: number) => (event: MouseEvent<HTMLDivElement>) => {
+    (_index: number) => (event: MouseEvent<HTMLDivElement>) => {
       if (disabled || !isSelectionDragging || blocks.length === 0) {
         return;
       }
@@ -4700,10 +4872,25 @@ export const MarkdownHybridEditor = ({
       if ((event.buttons & expectedButtonMask) !== expectedButtonMask) {
         return;
       }
+      selectionDragPointerRef.current = { x: event.clientX, y: event.clientY };
+      const movedFarEnough = Math.abs(event.clientX - gesture.startClientX) > SELECTION_DRAG_THRESHOLD_PX ||
+        Math.abs(event.clientY - gesture.startClientY) > SELECTION_DRAG_THRESHOLD_PX;
+      if (!movedFarEnough) {
+        return;
+      }
       gesture.didDrag = true;
-      updateSelectionRangeFocus(index);
+      const endPoint = getContainerLocalPoint(event.clientX, event.clientY);
+      if (!endPoint) {
+        return;
+      }
+      updateSelectionFromMarqueeContentPoints(
+        gesture.startContentX,
+        gesture.startContentY,
+        endPoint.x,
+        endPoint.y,
+      );
     },
-    [blocks.length, disabled, isSelectionDragging, updateSelectionRangeFocus],
+    [blocks.length, disabled, getContainerLocalPoint, isSelectionDragging, updateSelectionFromMarqueeContentPoints],
   );
 
   const handleDragHandleDragStart = useCallback(

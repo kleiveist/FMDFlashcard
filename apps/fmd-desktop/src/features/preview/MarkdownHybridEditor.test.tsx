@@ -262,8 +262,8 @@ describe("MarkdownHybridEditor", () => {
             button: 0,
             buttons: 1,
             shiftKey: true,
-            clientX: 5,
-            clientY: 5,
+            clientX: 2,
+            clientY: 0,
           }),
         );
       });
@@ -275,7 +275,7 @@ describe("MarkdownHybridEditor", () => {
             bubbles: true,
             cancelable: true,
             buttons: 1,
-            clientX: 16,
+            clientX: 18,
             clientY: 16,
           }),
         );
@@ -412,17 +412,20 @@ describe("MarkdownHybridEditor", () => {
           cancelable: true,
           button: 2,
           buttons: 2,
+          clientX: 2,
+          clientY: 0,
         }),
       );
     });
 
     act(() => {
-      blocks[2]?.dispatchEvent(
-        new MouseEvent("mouseover", {
+      window.dispatchEvent(
+        new MouseEvent("mousemove", {
           bubbles: true,
           cancelable: true,
-          button: 2,
           buttons: 2,
+          clientX: 20,
+          clientY: 16,
         }),
       );
     });
@@ -460,6 +463,103 @@ describe("MarkdownHybridEditor", () => {
 
     expect(readMarkdown()).toBe(initialMarkdown);
     cleanup();
+  });
+
+  it("auto-scrolls during right-drag and selects blocks beyond the initial viewport", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = Array.from({ length: 40 }, (_value, index) => `# Item ${index + 1}`).join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="right-drag-auto-scroll"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+      const scrollHost = editor?.parentElement;
+      const blocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
+      expect(editor).toBeTruthy();
+      expect(scrollHost).toBeTruthy();
+      expect(blocks.length).toBeGreaterThan(10);
+
+      const createRect = (top: number, bottom: number, width = 320) =>
+        ({
+          x: 0,
+          y: top,
+          left: 0,
+          top,
+          right: width,
+          bottom,
+          width,
+          height: bottom - top,
+          toJSON: () => ({ top, bottom }),
+        }) as DOMRect;
+
+      if (editor && scrollHost) {
+        scrollHost.style.overflowY = "auto";
+        (scrollHost as HTMLElement).scrollTop = 0;
+        Object.defineProperty(scrollHost, "scrollHeight", {
+          configurable: true,
+          value: 2400,
+        });
+        Object.defineProperty(scrollHost, "clientHeight", {
+          configurable: true,
+          value: 180,
+        });
+        Object.defineProperty(scrollHost, "getBoundingClientRect", {
+          configurable: true,
+          value: () => createRect(0, 180),
+        });
+        Object.defineProperty(editor, "getBoundingClientRect", {
+          configurable: true,
+          value: () => createRect(-(scrollHost as HTMLElement).scrollTop, 1200 - (scrollHost as HTMLElement).scrollTop),
+        });
+      }
+
+      act(() => {
+        blocks[0]?.dispatchEvent(
+          new MouseEvent("mousedown", {
+            bubbles: true,
+            cancelable: true,
+            button: 2,
+            buttons: 2,
+            clientX: 8,
+            clientY: 0,
+          }),
+        );
+      });
+
+      act(() => {
+        window.dispatchEvent(
+          new MouseEvent("mousemove", {
+            bubbles: true,
+            cancelable: true,
+            buttons: 2,
+            clientX: 18,
+            clientY: 176,
+          }),
+        );
+      });
+
+      act(() => {
+        window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      });
+
+      expect((scrollHost as HTMLElement | null)?.scrollTop ?? 0).toBeGreaterThan(0);
+      expect(container.querySelectorAll(".markdown-hybrid-block.is-range-selected").length).toBeGreaterThan(3);
+
+      cleanup();
+    });
   });
 
   it("marks ordered-list rows via right-drag even when hovering nested list content", () => {
@@ -716,8 +816,8 @@ describe("MarkdownHybridEditor", () => {
             cancelable: true,
             button: 2,
             buttons: 2,
-            clientX: 10,
-            clientY: 10,
+            clientX: 2,
+            clientY: 0,
           }),
         );
       });
@@ -729,8 +829,8 @@ describe("MarkdownHybridEditor", () => {
             bubbles: true,
             cancelable: true,
             buttons: 2,
-            clientX: 30,
-            clientY: 30,
+            clientX: 20,
+            clientY: 16,
           }),
         );
       });
@@ -1151,6 +1251,144 @@ describe("MarkdownHybridEditor", () => {
     const frameChildren = Array.from(cardFrame?.children ?? []);
     expect(frameChildren[1]?.classList.contains("markdown-hybrid-card-help-subbox")).toBe(true);
     cleanup();
+  });
+
+  it("keeps Enter inside a card body within the card block and does not create outer page blocks", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-enter-internal-no-leak"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      const caret = textarea?.value.indexOf("QUESTION TEXT") ?? -1;
+      expect(caret).toBeGreaterThanOrEqual(0);
+      setTextareaSelection(textarea, caret + "QUESTION TEXT".length);
+      dispatchKeyDown(textarea, "Enter");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe(["#card", "QUESTION TEXT", "", "#endcard"].join("\n"));
+      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "", "#endcard"].join("\n"));
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+      ).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("exits a card on Enter at #endcard and creates exactly one new empty text block", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-enter-exit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
+      const blockKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(blockKinds).toEqual(["card-block", "blank"]);
+
+      textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
+      );
+      expect(textarea).toBeTruthy();
+      expect(textarea?.value).toBe("");
+      expect(textarea?.selectionStart).toBe(0);
+      expect(textarea?.selectionEnd).toBe(0);
+
+      dispatchKeyDown(textarea, "Enter");
+      let blankBlocks = container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blank']");
+      expect(blankBlocks).toHaveLength(2);
+      textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block[data-md-block-index='2'] .markdown-hybrid-block-editor",
+      );
+      expect(textarea).toBeTruthy();
+
+      dispatchKeyDown(textarea, "Enter");
+      blankBlocks = container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blank']");
+      expect(blankBlocks).toHaveLength(3);
+
+      cleanup();
+    });
+  });
+
+  it("uses the same exit behavior for Shift+Enter at #endcard", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="card-shift-enter-exit"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter", { shiftKey: true });
+
+      const blockKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(blockKinds).toEqual(["card-block", "blank"]);
+      expect(
+        container.querySelector(".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor"),
+      ).toBeTruthy();
+
+      cleanup();
+    });
   });
 
   it("normalizes hash heading spacing only when the caret is on that hash line", () => {

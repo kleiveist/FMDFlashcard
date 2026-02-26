@@ -1858,10 +1858,11 @@ textarea.preview-editor {
   color: inherit;
   font: inherit;
   line-height: inherit;
-  resize: vertical;
+  resize: none;
   outline: none;
   padding: 2px 0;
   white-space: pre-wrap;
+  overflow: hidden;
 }
 
 .markdown-hybrid-block-editor-syntax-overlay {
