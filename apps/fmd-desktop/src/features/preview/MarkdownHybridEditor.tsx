@@ -7,9 +7,14 @@
  */
 
 import {
+  Children,
   type CSSProperties,
+  cloneElement,
+  createElement,
   type DragEvent,
+  type FocusEvent,
   type FormEvent,
+  isValidElement,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -21,6 +26,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { normalizeRelativePath } from "../../lib/path";
+import { type VaultFile } from "../../lib/tree";
 import {
   isSingleLineCommitBlock,
   normalizeHelpBlockSource,
@@ -139,6 +146,7 @@ type InsertMenuIconId =
   | "blocks"
   | "table"
   | "link"
+  | "page-file"
   | "sparkles"
   | "text"
   | "heading-1"
@@ -161,6 +169,8 @@ type MarkdownHybridEditorProps = {
   markdown: string;
   mode: MarkdownHybridEditorMode;
   disabled?: boolean;
+  vaultFiles?: VaultFile[];
+  onNavigateWikilink?: (wikilink: string) => void;
   onChange: (value: string) => void;
   onCommit?: (value: string, context: { block: MarkdownBlock }) => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -277,9 +287,8 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
     {
       id: "page-link",
       label: "Link Page",
-      template: "[[Page]]",
-      firstPlaceholder: "Page",
-      icon: "link",
+      template: "",
+      icon: "page-file",
     },
   ],
   advanced: [],
@@ -321,6 +330,15 @@ const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
           <path d="M10 14l4-4" />
           <path d="M8 16l-1.5 1.5a3 3 0 0 1-4.2-4.2L6 9.6a3 3 0 0 1 4.2 0" />
           <path d="M16 8l1.5-1.5a3 3 0 1 1 4.2 4.2L18 14.4a3 3 0 0 1-4.2 0" />
+        </svg>
+      );
+    case "page-file":
+      return (
+        <svg {...svgProps}>
+          <path d="M8 4.8h6.8l3.2 3.2V19a1.5 1.5 0 0 1-1.5 1.5h-8.5A1.5 1.5 0 0 1 6.5 19V6.3A1.5 1.5 0 0 1 8 4.8z" />
+          <path d="M14.8 4.8V8h3.2" />
+          <line x1="9.3" y1="12.2" x2="15.8" y2="12.2" />
+          <line x1="9.3" y1="15.4" x2="14" y2="15.4" />
         </svg>
       );
     case "sparkles":
@@ -559,6 +577,458 @@ const renderInsertMenuRowContent = ({
     </span>
   </>
 );
+
+type PageLinkPickerSource = "insert-menu" | "typed-trigger";
+
+type PageLinkPickerReplaceRange = {
+  start: number;
+  end: number;
+};
+
+type PendingPageLinkPickerRequest = {
+  source: PageLinkPickerSource;
+  replaceRange?: PageLinkPickerReplaceRange;
+};
+
+type PageLinkPickerState = {
+  source: PageLinkPickerSource;
+  blockIndex: number;
+  replaceRange: PageLinkPickerReplaceRange;
+  anchorLeft: number;
+  anchorTop: number;
+  query: string;
+  highlightedIndex: number;
+};
+
+type PageLinkCandidate = {
+  id: string;
+  target: string;
+  wikilink: string;
+  label: string;
+  sublabel?: string;
+  searchText: string;
+};
+
+type ResolvedInlinePageLink = {
+  wikilink: string;
+  label: string;
+  exists: boolean;
+};
+
+type AdjacentWikilinkRange = {
+  start: number;
+  end: number;
+};
+
+const inlineWikilinkTokenPattern = /\[\[[^\]\n]+?\]\]/g;
+const inlineWikilinkOpenTrigger = /\[\[$/;
+const inlineWikilinkSkipTags = new Set(["a", "code", "pre", "kbd", "samp"]);
+const reactMarkdownWikilinkWrappedTagNames = [
+  "p",
+  "li",
+  "blockquote",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "td",
+  "th",
+] as const;
+
+const stripMarkdownExtension = (value: string) => value.replace(/\.md$/i, "");
+
+const getPathBasename = (value: string) => {
+  const normalized = value.replace(/\\/g, "/");
+  const segments = normalized.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? normalized;
+};
+
+const resolveWikilinkLabelFromTarget = (target: string) => stripMarkdownExtension(getPathBasename(target.trim()));
+
+const parseInlineWikilink = (raw: string) => {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("[[") || !trimmed.endsWith("]]")) {
+    return null;
+  }
+  const inner = trimmed.slice(2, -2).trim();
+  if (!inner) {
+    return null;
+  }
+  const [targetRaw, aliasRaw] = inner.split("|");
+  const target = (targetRaw ?? "").trim();
+  if (!target) {
+    return null;
+  }
+  const alias = aliasRaw?.trim() || null;
+  return {
+    target,
+    alias,
+    label: alias || resolveWikilinkLabelFromTarget(target),
+  };
+};
+
+const canOpenPageLinkPickerInBlockKind = (kind: MarkdownBlock["kind"]) =>
+  kind !== "code-fence" && kind !== "hr" && kind !== "table";
+
+const detectTypedPageLinkTrigger = (
+  value: string,
+  selectionStart: number | null | undefined,
+): PageLinkPickerReplaceRange | null => {
+  if (typeof selectionStart !== "number") {
+    return null;
+  }
+  const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
+  const before = value.slice(0, safeSelectionStart);
+  if (!inlineWikilinkOpenTrigger.test(before)) {
+    return null;
+  }
+  return {
+    start: safeSelectionStart - 2,
+    end: safeSelectionStart,
+  };
+};
+
+const findAdjacentWikilinkRange = (
+  value: string,
+  caret: number,
+  direction: "Backspace" | "Delete",
+): AdjacentWikilinkRange | null => {
+  if (caret < 0 || caret > value.length) {
+    return null;
+  }
+  inlineWikilinkTokenPattern.lastIndex = 0;
+  let match = inlineWikilinkTokenPattern.exec(value);
+  while (match) {
+    const raw = match[0] ?? "";
+    const start = match.index;
+    const end = start + raw.length;
+    if (direction === "Backspace" && end === caret) {
+      return { start, end };
+    }
+    if (direction === "Delete" && start === caret) {
+      return { start, end };
+    }
+    if (start > caret && direction === "Delete") {
+      break;
+    }
+    match = inlineWikilinkTokenPattern.exec(value);
+  }
+  return null;
+};
+
+const buildPageLinkCandidates = (vaultFiles?: VaultFile[]): PageLinkCandidate[] => {
+  if (!vaultFiles || vaultFiles.length === 0) {
+    return [];
+  }
+  const seenTargets = new Set<string>();
+  const candidates: PageLinkCandidate[] = [];
+
+  for (const file of vaultFiles) {
+    const relative = normalizeRelativePath(file.relative_path ?? "");
+    if (!/\.md$/i.test(relative)) {
+      continue;
+    }
+    const normalizedRelative = relative.replace(/^\/+/, "");
+    const target = stripMarkdownExtension(normalizedRelative);
+    if (!target) {
+      continue;
+    }
+    const targetKey = target.toLowerCase();
+    if (seenTargets.has(targetKey)) {
+      continue;
+    }
+    seenTargets.add(targetKey);
+    const label = resolveWikilinkLabelFromTarget(target);
+    candidates.push({
+      id: `${targetKey}:${normalizedRelative.toLowerCase()}`,
+      target,
+      wikilink: `[[${target}]]`,
+      label,
+      sublabel: normalizedRelative === `${label}.md` ? undefined : normalizedRelative,
+      searchText: `${label} ${target} ${normalizedRelative}`.toLowerCase(),
+    });
+  }
+
+  candidates.sort((left, right) => {
+    const labelCompare = left.label.localeCompare(right.label, undefined, { sensitivity: "base" });
+    if (labelCompare !== 0) {
+      return labelCompare;
+    }
+    return left.target.localeCompare(right.target, undefined, { sensitivity: "base" });
+  });
+  return candidates;
+};
+
+type PageLinkLookup = {
+  byTarget: Map<string, PageLinkCandidate>;
+  byRelativeWithExtension: Map<string, PageLinkCandidate>;
+  byBasename: Map<string, PageLinkCandidate>;
+};
+
+const buildPageLinkLookup = (candidates: PageLinkCandidate[]): PageLinkLookup => {
+  const byTarget = new Map<string, PageLinkCandidate>();
+  const byRelativeWithExtension = new Map<string, PageLinkCandidate>();
+  const byBasename = new Map<string, PageLinkCandidate>();
+
+  for (const candidate of candidates) {
+    byTarget.set(candidate.target.toLowerCase(), candidate);
+    byRelativeWithExtension.set(`${candidate.target.toLowerCase()}.md`, candidate);
+    const basename = resolveWikilinkLabelFromTarget(candidate.target).toLowerCase();
+    if (!byBasename.has(basename)) {
+      byBasename.set(basename, candidate);
+    }
+  }
+
+  return {
+    byTarget,
+    byRelativeWithExtension,
+    byBasename,
+  };
+};
+
+const resolvePageLinkCandidate = (
+  lookup: PageLinkLookup,
+  target: string,
+): PageLinkCandidate | null => {
+  const normalizedTarget = normalizeRelativePath(target).replace(/^\/+/, "");
+  if (!normalizedTarget) {
+    return null;
+  }
+  const withoutExtension = stripMarkdownExtension(normalizedTarget);
+  const lowerWithoutExtension = withoutExtension.toLowerCase();
+  const lowerWithExtension = normalizedTarget.toLowerCase();
+  const basenameWithoutExtension = resolveWikilinkLabelFromTarget(normalizedTarget).toLowerCase();
+  return lookup.byTarget.get(lowerWithoutExtension) ??
+    lookup.byRelativeWithExtension.get(lowerWithExtension) ??
+    lookup.byBasename.get(basenameWithoutExtension) ??
+    null;
+};
+
+const filterPageLinkCandidates = (candidates: PageLinkCandidate[], query: string) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return candidates;
+  }
+  return candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery));
+};
+
+const escapeHtmlForMirror = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+const resolveTextareaCaretAnchor = (
+  textarea: HTMLTextAreaElement,
+  container: HTMLElement,
+  caret: number,
+) => {
+  const safeCaret = Math.max(0, Math.min(caret, textarea.value.length));
+  const computed = window.getComputedStyle(textarea);
+  const mirror = document.createElement("div");
+  const mirrorStyle = mirror.style;
+  mirrorStyle.position = "absolute";
+  mirrorStyle.visibility = "hidden";
+  mirrorStyle.pointerEvents = "none";
+  mirrorStyle.zIndex = "-1";
+  mirrorStyle.top = "0";
+  mirrorStyle.left = "-99999px";
+  mirrorStyle.whiteSpace = "pre-wrap";
+  mirrorStyle.wordBreak = "break-word";
+  mirrorStyle.overflowWrap = "break-word";
+  mirrorStyle.boxSizing = "border-box";
+  mirrorStyle.width = `${textarea.clientWidth}px`;
+  mirrorStyle.padding = computed.padding;
+  mirrorStyle.border = computed.border;
+  mirrorStyle.font = computed.font;
+  mirrorStyle.fontFamily = computed.fontFamily;
+  mirrorStyle.fontSize = computed.fontSize;
+  mirrorStyle.fontWeight = computed.fontWeight;
+  mirrorStyle.fontStyle = computed.fontStyle;
+  mirrorStyle.fontVariant = computed.fontVariant;
+  (mirrorStyle as CSSStyleDeclaration & { fontStretch?: string }).fontStretch =
+    (computed as CSSStyleDeclaration & { fontStretch?: string }).fontStretch ?? "normal";
+  mirrorStyle.lineHeight = computed.lineHeight;
+  mirrorStyle.letterSpacing = computed.letterSpacing;
+  mirrorStyle.textTransform = computed.textTransform;
+  mirrorStyle.textIndent = computed.textIndent;
+  (mirrorStyle as CSSStyleDeclaration & { tabSize?: string }).tabSize =
+    (computed as CSSStyleDeclaration & { tabSize?: string }).tabSize ?? "8";
+
+  const beforeText = escapeHtmlForMirror(textarea.value.slice(0, safeCaret))
+    .replace(/\n$/g, "\n ");
+  mirror.innerHTML = `${beforeText}<span data-md-caret-anchor=\"true\">&#8203;</span>`;
+  document.body.appendChild(mirror);
+
+  const marker = mirror.querySelector<HTMLElement>("[data-md-caret-anchor='true']");
+  const mirrorRect = mirror.getBoundingClientRect();
+  const markerRect = marker?.getBoundingClientRect() ?? mirrorRect;
+  const textareaRect = textarea.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  const resolvedLineHeight = Number.parseFloat(computed.lineHeight);
+  const lineHeight = Number.isFinite(resolvedLineHeight) && resolvedLineHeight > 0
+    ? resolvedLineHeight
+    : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
+
+  const anchorLeft = textareaRect.left - containerRect.left + container.scrollLeft +
+    (markerRect.left - mirrorRect.left) - textarea.scrollLeft;
+  const anchorTop = textareaRect.top - containerRect.top + container.scrollTop +
+    (markerRect.top - mirrorRect.top) - textarea.scrollTop + lineHeight;
+
+  mirror.remove();
+  return {
+    left: Math.max(0, Math.round(anchorLeft)),
+    top: Math.max(0, Math.round(anchorTop)),
+  };
+};
+
+const renderPreviewTextWithAtomicWikilinks = (
+  text: string,
+  keyPrefix: string,
+  options: {
+    resolveLink: (rawWikilink: string) => ResolvedInlinePageLink;
+    onClick?: (wikilink: string, exists: boolean, event: MouseEvent<HTMLButtonElement>) => void;
+  },
+): ReactNode => {
+  if (!text) {
+    inlineWikilinkTokenPattern.lastIndex = 0;
+    return text;
+  }
+  if (!inlineWikilinkTokenPattern.test(text)) {
+    inlineWikilinkTokenPattern.lastIndex = 0;
+    return text;
+  }
+  inlineWikilinkTokenPattern.lastIndex = 0;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match = inlineWikilinkTokenPattern.exec(text);
+  let tokenIndex = 0;
+  while (match) {
+    const rawWikilink = match[0] ?? "";
+    const start = match.index;
+    const end = start + rawWikilink.length;
+    if (start > lastIndex) {
+      parts.push(text.slice(lastIndex, start));
+    }
+    const resolved = options.resolveLink(rawWikilink);
+    parts.push(
+      <button
+        key={`${keyPrefix}:wikilink:${tokenIndex}`}
+        type="button"
+        className={`markdown-hybrid-inline-page-link${resolved.exists ? "" : " is-missing"}`}
+        data-md-inline-page-link="true"
+        data-md-inline-page-link-wikilink={resolved.wikilink}
+        data-md-inline-page-link-missing={resolved.exists ? undefined : "true"}
+        title={resolved.exists ? resolved.wikilink : `${resolved.label} (Missing page)`}
+        aria-label={resolved.exists ? `Open page ${resolved.label}` : `Missing page ${resolved.label}`}
+        onMouseDown={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          options.onClick?.(resolved.wikilink, resolved.exists, event);
+        }}
+      >
+        <span className="markdown-hybrid-inline-page-link-icon" aria-hidden="true">
+          <InsertMenuIconGraphic icon="page-file" />
+        </span>
+        <span className="markdown-hybrid-inline-page-link-label">{resolved.label}</span>
+      </button>,
+    );
+    lastIndex = end;
+    tokenIndex += 1;
+    match = inlineWikilinkTokenPattern.exec(text);
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+};
+
+const transformPreviewNodeWikilinks = (
+  node: ReactNode,
+  keyPrefix: string,
+  options: {
+    resolveLink: (rawWikilink: string) => ResolvedInlinePageLink;
+    onClick?: (wikilink: string, exists: boolean, event: MouseEvent<HTMLButtonElement>) => void;
+    skipTransform?: boolean;
+  },
+): ReactNode => {
+  if (typeof node === "string") {
+    return options.skipTransform
+      ? node
+      : renderPreviewTextWithAtomicWikilinks(node, keyPrefix, options);
+  }
+  if (Array.isArray(node)) {
+    return node.map((child, index) =>
+      transformPreviewNodeWikilinks(child, `${keyPrefix}:${index}`, options));
+  }
+  if (!isValidElement(node)) {
+    return node;
+  }
+
+  const tagName = typeof node.type === "string" ? node.type.toLowerCase() : null;
+  if (!tagName) {
+    const propsRecord = (node.props ?? {}) as Record<string, unknown>;
+    const originalChildren = propsRecord.children;
+    const originalComponents = propsRecord.components;
+    const looksLikeReactMarkdown = typeof originalChildren === "string" &&
+      originalComponents &&
+      typeof originalComponents === "object" &&
+      ("remarkPlugins" in propsRecord || "rehypePlugins" in propsRecord);
+    if (!looksLikeReactMarkdown) {
+      return node;
+    }
+
+    const componentsRecord = originalComponents as Record<string, unknown>;
+    const wrappedComponents: Record<string, unknown> = { ...componentsRecord };
+    for (const markdownTag of reactMarkdownWikilinkWrappedTagNames) {
+      const existingRenderer = componentsRecord[markdownTag];
+      if (typeof existingRenderer === "function") {
+        wrappedComponents[markdownTag] = (rendererProps: unknown) => {
+          const rendered = (existingRenderer as (props: unknown) => ReactNode)(rendererProps);
+          return transformPreviewNodeWikilinks(rendered, `${keyPrefix}:${markdownTag}`, options);
+        };
+        continue;
+      }
+      if (typeof existingRenderer === "string") {
+        wrappedComponents[markdownTag] = existingRenderer;
+        continue;
+      }
+      wrappedComponents[markdownTag] = (rendererProps: unknown) => {
+        const typedRendererProps = (rendererProps ?? {}) as {
+          node?: unknown;
+          children?: ReactNode;
+          [key: string]: unknown;
+        };
+        const { node: _node, children, ...rest } = typedRendererProps;
+        const rendered = createElement(markdownTag, rest, children);
+        return transformPreviewNodeWikilinks(rendered, `${keyPrefix}:${markdownTag}`, options);
+      };
+    }
+
+    return cloneElement(node, {
+      ...(node.props as object),
+      components: wrappedComponents,
+    });
+  }
+
+  const nextSkip = options.skipTransform || (tagName ? inlineWikilinkSkipTags.has(tagName) : false);
+  const hasChildren = Object.prototype.hasOwnProperty.call(node.props ?? {}, "children");
+  if (!hasChildren) {
+    return node;
+  }
+  const nextChildren = Children.map(node.props.children as ReactNode, (child, index) =>
+    transformPreviewNodeWikilinks(child, `${keyPrefix}:${index}`, {
+      ...options,
+      skipTransform: nextSkip,
+    }));
+  return cloneElement(node, undefined, nextChildren);
+};
 
 const isUndoShortcut = (event: KeyboardEvent<HTMLElement>) =>
   !event.shiftKey &&
@@ -1503,6 +1973,8 @@ export const MarkdownHybridEditor = ({
   markdown,
   mode,
   disabled = false,
+  vaultFiles,
+  onNavigateWikilink,
   onChange,
   onCommit,
   onDirtyChange,
@@ -1530,6 +2002,9 @@ export const MarkdownHybridEditor = ({
   const [selectionMarqueeRect, setSelectionMarqueeRect] = useState<SelectionMarqueeRect | null>(
     null,
   );
+  const [pendingPageLinkPickerRequest, setPendingPageLinkPickerRequest] =
+    useState<PendingPageLinkPickerRequest | null>(null);
+  const [pageLinkPickerState, setPageLinkPickerState] = useState<PageLinkPickerState | null>(null);
   const [editorOverlaySelectionStart, setEditorOverlaySelectionStart] = useState<number | null>(
     null,
   );
@@ -1542,6 +2017,8 @@ export const MarkdownHybridEditor = ({
   const contentLayerRef = useRef<HTMLDivElement | null>(null);
   const insertMenuRef = useRef<HTMLDivElement | null>(null);
   const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
+  const pageLinkPickerRef = useRef<HTMLDivElement | null>(null);
+  const pageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const editorSyntaxOverlayContentRef = useRef<HTMLDivElement | null>(null);
   const pendingCaretRef = useRef<"start" | "end" | null>(null);
@@ -1589,6 +2066,58 @@ export const MarkdownHybridEditor = ({
   const activeEditorSyntaxOverlayContent = useMemo(
     () => renderEditorInlineSyntaxOverlay(activeDraft, editorOverlaySelectionStart),
     [activeDraft, editorOverlaySelectionStart],
+  );
+  const pageLinkCandidates = useMemo(() => buildPageLinkCandidates(vaultFiles), [vaultFiles]);
+  const pageLinkLookup = useMemo(() => buildPageLinkLookup(pageLinkCandidates), [pageLinkCandidates]);
+  const filteredPageLinkCandidates = useMemo(
+    () => filterPageLinkCandidates(pageLinkCandidates, pageLinkPickerState?.query ?? ""),
+    [pageLinkCandidates, pageLinkPickerState?.query],
+  );
+  const resolveInlinePageLink = useCallback(
+    (rawWikilink: string): ResolvedInlinePageLink => {
+      const parsed = parseInlineWikilink(rawWikilink);
+      if (!parsed) {
+        return {
+          wikilink: rawWikilink,
+          label: rawWikilink,
+          exists: false,
+        };
+      }
+      const candidate = resolvePageLinkCandidate(pageLinkLookup, parsed.target);
+      if (!candidate) {
+        return {
+          wikilink: `[[${parsed.alias ? `${parsed.target}|${parsed.alias}` : parsed.target}]]`,
+          label: parsed.alias || parsed.label,
+          exists: false,
+        };
+      }
+      const wikilink = parsed.alias ? `[[${candidate.target}|${parsed.alias}]]` : candidate.wikilink;
+      return {
+        wikilink,
+        label: parsed.alias || candidate.label,
+        exists: true,
+      };
+    },
+    [pageLinkLookup],
+  );
+  const handleInlinePageLinkClick = useCallback(
+    (wikilink: string, exists: boolean, event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!exists) {
+        return;
+      }
+      onNavigateWikilink?.(wikilink);
+    },
+    [onNavigateWikilink],
+  );
+  const renderPreviewWithPageLinks = useCallback(
+    (source: string) =>
+      transformPreviewNodeWikilinks(renderPreview(source), "mdh-preview", {
+        resolveLink: resolveInlinePageLink,
+        onClick: handleInlinePageLinkClick,
+      }),
+    [handleInlinePageLinkClick, renderPreview, resolveInlinePageLink],
   );
 
   const measureOverlayLayout = useCallback(() => {
@@ -2150,6 +2679,130 @@ export const MarkdownHybridEditor = ({
     return () => window.cancelAnimationFrame(handle);
   }, [activeBlockIndex]);
 
+  const closePageLinkPicker = useCallback(() => {
+    setPendingPageLinkPickerRequest(null);
+    setPageLinkPickerState(null);
+  }, []);
+
+  const requestPageLinkPickerOpen = useCallback((request: PendingPageLinkPickerRequest) => {
+    setPendingPageLinkPickerRequest(request);
+    setPageLinkPickerState(null);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!pendingPageLinkPickerRequest) {
+      return;
+    }
+    if (activeBlockIndex === null) {
+      return;
+    }
+    const textarea = textareaRef.current;
+    const container = containerRef.current;
+    if (!textarea || !container) {
+      return;
+    }
+    const replaceRange = pendingPageLinkPickerRequest.replaceRange ?? {
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd,
+    };
+    const anchor = resolveTextareaCaretAnchor(textarea, container, replaceRange.end);
+    setPageLinkPickerState({
+      source: pendingPageLinkPickerRequest.source,
+      blockIndex: activeBlockIndex,
+      replaceRange: {
+        start: Math.max(0, Math.min(replaceRange.start, textarea.value.length)),
+        end: Math.max(0, Math.min(replaceRange.end, textarea.value.length)),
+      },
+      anchorLeft: anchor.left,
+      anchorTop: anchor.top,
+      query: "",
+      highlightedIndex: 0,
+    });
+    setPendingPageLinkPickerRequest(null);
+  }, [activeBlockIndex, pendingPageLinkPickerRequest, activeDraft]);
+
+  useEffect(() => {
+    if (!pageLinkPickerState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const input = pageLinkPickerSearchInputRef.current;
+      if (!input) {
+        return;
+      }
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+      input.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [pageLinkPickerState]);
+
+  useEffect(() => {
+    if (!pageLinkPickerState) {
+      return;
+    }
+    setPageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      if (activeBlockIndex === null || current.blockIndex !== activeBlockIndex) {
+        return null;
+      }
+      return current;
+    });
+  }, [activeBlockIndex, pageLinkPickerState]);
+
+  useEffect(() => {
+    if (!pageLinkPickerState) {
+      return;
+    }
+    setPageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextMaxIndex = Math.max(0, filteredPageLinkCandidates.length - 1);
+      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+      if (nextIndex === current.highlightedIndex) {
+        return current;
+      }
+      return {
+        ...current,
+        highlightedIndex: nextIndex,
+      };
+    });
+  }, [filteredPageLinkCandidates.length, pageLinkPickerState]);
+
+  useEffect(() => {
+    if (!pageLinkPickerState) {
+      return;
+    }
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (pageLinkPickerRef.current?.contains(target)) {
+        return;
+      }
+      closePageLinkPicker();
+    };
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      closePageLinkPicker();
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [closePageLinkPicker, pageLinkPickerState]);
+
   const applyGlobalHistory = useCallback(
     (nextHistory: MarkdownHistoryState) => {
       setHistory(nextHistory);
@@ -2164,6 +2817,8 @@ export const MarkdownHybridEditor = ({
       setInsertMenuState(null);
       setSelectionContextMenuState(null);
       setSelectionMarqueeRect(null);
+      setPendingPageLinkPickerRequest(null);
+      setPageLinkPickerState(null);
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
       pendingActivationMarkdownRef.current = null;
@@ -2885,11 +3540,30 @@ export const MarkdownHybridEditor = ({
       if (!insertMenuState) {
         return;
       }
+      if (item.id === "page-link") {
+        if (blocks.length === 0) {
+          pendingCaretRef.current = "start";
+          setActiveBlockIndex(0);
+          setActiveDraft("");
+          setActiveDirty(false);
+          setInsertMenuState(null);
+          requestPageLinkPickerOpen({ source: "insert-menu" });
+          return;
+        }
+        const inserted = insertEmptyParagraphRelativeTo(
+          insertMenuState.blockIndex,
+          insertMenuState.insertAbove,
+        );
+        if (inserted) {
+          requestPageLinkPickerOpen({ source: "insert-menu" });
+        }
+        return;
+      }
       insertBlockRelativeTo(insertMenuState.blockIndex, item.template, insertMenuState.insertAbove, {
         firstPlaceholder: item.firstPlaceholder,
       });
     },
-    [insertBlockRelativeTo, insertMenuState],
+    [blocks.length, insertBlockRelativeTo, insertEmptyParagraphRelativeTo, insertMenuState, requestPageLinkPickerOpen],
   );
 
   const handleHrEnterZoneMouseDown = useCallback(
@@ -3009,6 +3683,9 @@ export const MarkdownHybridEditor = ({
         setEditorOverlaySelectionStart(selectionStart);
       }
       const activeBlock = activeBlockIndex === null ? null : (blocks[activeBlockIndex] ?? null);
+      const typedPageLinkTrigger = pageLinkPickerState
+        ? null
+        : detectTypedPageLinkTrigger(nextValue, selectionStart);
       if (activeBlock?.kind === "help-block") {
         nextValue = normalizeHelpBlockSource(nextValue);
       }
@@ -3017,6 +3694,12 @@ export const MarkdownHybridEditor = ({
         setActiveDirty(true);
         if (nextValue !== markdown) {
           onChange(nextValue);
+        }
+        if (typedPageLinkTrigger) {
+          requestPageLinkPickerOpen({
+            source: "typed-trigger",
+            replaceRange: typedPageLinkTrigger,
+          });
         }
         return;
       }
@@ -3076,6 +3759,12 @@ export const MarkdownHybridEditor = ({
         setActiveDirty(false);
         pendingActivationMarkdownRef.current = nextMarkdown;
         setPendingActivation({ index: activationIndex, caret: "end" });
+        if (typedPageLinkTrigger) {
+          requestPageLinkPickerOpen({
+            source: "typed-trigger",
+            replaceRange: typedPageLinkTrigger,
+          });
+        }
         onChange(nextMarkdown);
         return;
       }
@@ -3090,11 +3779,28 @@ export const MarkdownHybridEditor = ({
       if (nextMarkdown !== markdown) {
         onChange(nextMarkdown);
       }
+      if (typedPageLinkTrigger && canOpenPageLinkPickerInBlockKind(block.kind)) {
+        requestPageLinkPickerOpen({
+          source: "typed-trigger",
+          replaceRange: typedPageLinkTrigger,
+        });
+      }
     },
-    [activeBlockIndex, blocks, markdown, onChange],
+    [
+      activeBlockIndex,
+      blocks,
+      markdown,
+      onChange,
+      pageLinkPickerState,
+      requestPageLinkPickerOpen,
+    ],
   );
 
-  const handleTextareaBlur = useCallback(() => {
+  const handleTextareaBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
+    const nextFocus = event.relatedTarget;
+    if (nextFocus instanceof Node && pageLinkPickerRef.current?.contains(nextFocus)) {
+      return;
+    }
     commitActiveBlock({ deactivate: true });
   }, [commitActiveBlock]);
 
@@ -3244,6 +3950,65 @@ export const MarkdownHybridEditor = ({
         !event.altKey &&
         !event.ctrlKey &&
         !event.metaKey;
+
+      if (event.key === "Escape" && pageLinkPickerState) {
+        event.preventDefault();
+        event.stopPropagation();
+        closePageLinkPicker();
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch {
+          textarea.focus();
+        }
+        return;
+      }
+
+      if (
+        isPlainDeleteKey &&
+        !hasSelection &&
+        canOpenPageLinkPickerInBlockKind(block.kind)
+      ) {
+        const adjacentLinkRange = findAdjacentWikilinkRange(
+          activeDraft,
+          textarea.selectionStart,
+          event.key as "Backspace" | "Delete",
+        );
+        if (adjacentLinkRange) {
+          event.preventDefault();
+          event.stopPropagation();
+          const nextDraft = `${activeDraft.slice(0, adjacentLinkRange.start)}${
+            activeDraft.slice(adjacentLinkRange.end)
+          }`;
+          closePageLinkPicker();
+          applyActiveBlockDraft(nextDraft, adjacentLinkRange.start);
+          return;
+        }
+      }
+
+      if (
+        (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+        !hasSelection &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        canOpenPageLinkPickerInBlockKind(block.kind)
+      ) {
+        const adjacentLinkRange = findAdjacentWikilinkRange(
+          activeDraft,
+          textarea.selectionStart,
+          event.key === "ArrowLeft" ? "Backspace" : "Delete",
+        );
+        if (adjacentLinkRange) {
+          event.preventDefault();
+          event.stopPropagation();
+          const nextCaret = event.key === "ArrowLeft"
+            ? adjacentLinkRange.start
+            : adjacentLinkRange.end;
+          scheduleTextareaCaret(nextCaret);
+          return;
+        }
+      }
 
       if (event.key === "Enter" && event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
         const selectionStart = textarea.selectionStart;
@@ -3599,10 +4364,105 @@ export const MarkdownHybridEditor = ({
       applyActiveBlockDraft,
       activeDirty,
       blocks,
+      closePageLinkPicker,
       commitActiveBlock,
       handleGlobalRedo,
       handleGlobalUndo,
+      pageLinkPickerState,
       replaceActiveBlockWithSegments,
+      scheduleTextareaCaret,
+    ],
+  );
+
+  const handlePageLinkPickerQueryChange = useCallback((value: string) => {
+    setPageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        query: value,
+        highlightedIndex: 0,
+      };
+    });
+  }, []);
+
+  const handlePageLinkPickerSelectCandidate = useCallback(
+    (candidate: PageLinkCandidate) => {
+      if (!pageLinkPickerState || activeBlockIndex === null || pageLinkPickerState.blockIndex !== activeBlockIndex) {
+        closePageLinkPicker();
+        return;
+      }
+      const replaceStart = Math.max(0, Math.min(pageLinkPickerState.replaceRange.start, activeDraft.length));
+      const replaceEnd = Math.max(replaceStart, Math.min(pageLinkPickerState.replaceRange.end, activeDraft.length));
+      const nextToken = candidate.wikilink;
+      const nextDraft = `${activeDraft.slice(0, replaceStart)}${nextToken}${activeDraft.slice(replaceEnd)}`;
+      const nextCaret = replaceStart + nextToken.length;
+      closePageLinkPicker();
+      applyActiveBlockDraft(nextDraft, nextCaret);
+    },
+    [activeBlockIndex, activeDraft, applyActiveBlockDraft, closePageLinkPicker, pageLinkPickerState],
+  );
+
+  const handlePageLinkPickerSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (!pageLinkPickerState) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closePageLinkPicker();
+        const textarea = textareaRef.current;
+        if (textarea) {
+          try {
+            textarea.focus({ preventScroll: true });
+          } catch {
+            textarea.focus();
+          }
+        }
+        return;
+      }
+      if (filteredPageLinkCandidates.length === 0) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        setPageLinkPickerState((current) => {
+          if (!current) {
+            return current;
+          }
+          const delta = event.key === "ArrowDown" ? 1 : -1;
+          const nextIndex = (current.highlightedIndex + delta + filteredPageLinkCandidates.length) %
+            filteredPageLinkCandidates.length;
+          return {
+            ...current,
+            highlightedIndex: nextIndex,
+          };
+        });
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const candidate = filteredPageLinkCandidates[pageLinkPickerState.highlightedIndex] ??
+          filteredPageLinkCandidates[0];
+        if (!candidate) {
+          return;
+        }
+        handlePageLinkPickerSelectCandidate(candidate);
+      }
+    },
+    [
+      closePageLinkPicker,
+      filteredPageLinkCandidates,
+      handlePageLinkPickerSelectCandidate,
+      pageLinkPickerState,
     ],
   );
 
@@ -4305,6 +5165,101 @@ export const MarkdownHybridEditor = ({
     );
   };
 
+  const pageLinkPickerPopup = pageLinkPickerState && !disabled ? (
+    <div
+      ref={pageLinkPickerRef}
+      className="markdown-hybrid-page-link-picker"
+      data-md-block-control="true"
+      role="dialog"
+      aria-label="Select page link"
+      style={{
+        left: pageLinkPickerState.anchorLeft,
+        top: pageLinkPickerState.anchorTop,
+      }}
+      onMouseDown={(event) => {
+        event.stopPropagation();
+      }}
+    >
+      <div className="markdown-hybrid-page-link-picker-search-shell">
+        <span className="markdown-hybrid-page-link-picker-search-icon" aria-hidden="true">
+          <InsertMenuIconGraphic icon="page-file" />
+        </span>
+        <input
+          ref={pageLinkPickerSearchInputRef}
+          type="text"
+          className="markdown-hybrid-page-link-picker-search"
+          value={pageLinkPickerState.query}
+          onChange={(event) => handlePageLinkPickerQueryChange(event.currentTarget.value)}
+          onKeyDown={handlePageLinkPickerSearchKeyDown}
+          placeholder="Search pages..."
+          aria-label="Search pages"
+          aria-autocomplete="list"
+          aria-controls="markdown-hybrid-page-link-picker-listbox"
+          aria-expanded="true"
+          aria-activedescendant={
+            filteredPageLinkCandidates[pageLinkPickerState.highlightedIndex]
+              ? `markdown-hybrid-page-link-picker-option-${pageLinkPickerState.highlightedIndex}`
+              : undefined
+          }
+        />
+      </div>
+      <div
+        id="markdown-hybrid-page-link-picker-listbox"
+        className="markdown-hybrid-page-link-picker-list"
+        role="listbox"
+        aria-label="Vault pages"
+      >
+        {filteredPageLinkCandidates.length === 0 ? (
+          <div className="markdown-hybrid-page-link-picker-empty" aria-live="polite">
+            No pages found
+          </div>
+        ) : filteredPageLinkCandidates.map((candidate, index) => {
+          const isActive = index === pageLinkPickerState.highlightedIndex;
+          return (
+            <button
+              key={candidate.id}
+              id={`markdown-hybrid-page-link-picker-option-${index}`}
+              type="button"
+              role="option"
+              aria-selected={isActive}
+              className={`markdown-hybrid-page-link-picker-option${isActive ? " is-active" : ""}`}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onMouseEnter={() => {
+                setPageLinkPickerState((current) => {
+                  if (!current) {
+                    return current;
+                  }
+                  if (current.highlightedIndex === index) {
+                    return current;
+                  }
+                  return {
+                    ...current,
+                    highlightedIndex: index,
+                  };
+                });
+              }}
+              onClick={() => handlePageLinkPickerSelectCandidate(candidate)}
+              title={candidate.target}
+            >
+              <span className="markdown-hybrid-page-link-picker-option-icon" aria-hidden="true">
+                <InsertMenuIconGraphic icon="page-file" />
+              </span>
+              <span className="markdown-hybrid-page-link-picker-option-text">
+                <span className="markdown-hybrid-page-link-picker-option-label">{candidate.label}</span>
+                {candidate.sublabel ? (
+                  <span className="markdown-hybrid-page-link-picker-option-meta">{candidate.sublabel}</span>
+                ) : null}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
   const selectionContextMenu = selectionContextMenuState && !disabled && selectedBlockSelection ? (
     <div
       ref={selectionContextMenuRef}
@@ -4439,6 +5394,7 @@ export const MarkdownHybridEditor = ({
             insertButtonTitle: "Insert block",
           })}
         </div>
+        {pageLinkPickerPopup}
         {selectionContextMenu}
       </div>
     );
@@ -4585,7 +5541,7 @@ export const MarkdownHybridEditor = ({
                       className="markdown-hybrid-block-preview"
                       onChange={handleRenderedTaskCheckboxChange(index)}
                     >
-                      {renderPreview(previewBlockSource)}
+                      {renderPreviewWithPageLinks(previewBlockSource)}
                     </div>
                     <button
                       type="button"
@@ -4611,7 +5567,7 @@ export const MarkdownHybridEditor = ({
                             className="markdown-hybrid-card-help-subbox"
                           >
                             <div className="markdown-hybrid-block-preview">
-                              {part.source.trim().length > 0 ? renderPreview(part.source) : null}
+                              {part.source.trim().length > 0 ? renderPreviewWithPageLinks(part.source) : null}
                             </div>
                           </div>
                         ) : part.source.trim().length > 0 ? (
@@ -4619,7 +5575,7 @@ export const MarkdownHybridEditor = ({
                             key={`card-part:${index}:${partIndex}`}
                             className="markdown-hybrid-block-preview"
                           >
-                            {renderPreview(part.source)}
+                            {renderPreviewWithPageLinks(part.source)}
                           </div>
                         ) : (
                           <div
@@ -4636,7 +5592,7 @@ export const MarkdownHybridEditor = ({
                     className="markdown-hybrid-block-preview"
                     onChange={handleRenderedTaskCheckboxChange(index)}
                   >
-                    {renderPreview(previewBlockSource)}
+                    {renderPreviewWithPageLinks(previewBlockSource)}
                   </div>
                 )}
               </div>
@@ -4672,6 +5628,7 @@ export const MarkdownHybridEditor = ({
           });
         })}
       </div>
+      {pageLinkPickerPopup}
       {selectionContextMenu}
     </div>
   );

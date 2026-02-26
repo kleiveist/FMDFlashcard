@@ -1529,6 +1529,143 @@ textarea.preview-editor {
   background: color-mix(in srgb, #ff6a6a 10%, transparent);
 }
 
+.markdown-hybrid-page-link-picker {
+  position: absolute;
+  z-index: 26;
+  width: min(340px, calc(100% - 20px));
+  max-width: min(340px, 88vw);
+  border: 1px solid color-mix(in srgb, var(--line-soft) 85%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 96%, black 4%);
+  box-shadow:
+    0 18px 34px color-mix(in srgb, black 34%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 4%, transparent);
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.markdown-hybrid-page-link-picker-search-shell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 78%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+  padding: 6px 8px;
+}
+
+.markdown-hybrid-page-link-picker-search-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: color-mix(in srgb, var(--muted) 86%, var(--text));
+}
+
+.markdown-hybrid-page-link-picker-search-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.markdown-hybrid-page-link-picker-search {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+  padding: 0;
+}
+
+.markdown-hybrid-page-link-picker-search::placeholder {
+  color: color-mix(in srgb, var(--muted) 84%, transparent);
+}
+
+.markdown-hybrid-page-link-picker-list {
+  display: grid;
+  gap: 4px;
+  max-height: min(40vh, 260px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.markdown-hybrid-page-link-picker-option {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  padding: 6px 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.markdown-hybrid-page-link-picker-option:hover,
+.markdown-hybrid-page-link-picker-option.is-active {
+  border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+}
+
+.markdown-hybrid-page-link-picker-option.is-active {
+  border-color: color-mix(in srgb, var(--accent-border) 48%, var(--line-soft));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 18%, transparent);
+}
+
+.markdown-hybrid-page-link-picker-option-icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--muted) 78%, var(--text));
+  margin-top: 1px;
+}
+
+.markdown-hybrid-page-link-picker-option-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.markdown-hybrid-page-link-picker-option-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.markdown-hybrid-page-link-picker-option-label {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-hybrid-page-link-picker-option-meta {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-hybrid-page-link-picker-empty {
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--panel-2) 32%, transparent);
+}
+
 .markdown-hybrid-block-preview > :last-child {
   margin-bottom: 0;
 }
@@ -1657,6 +1794,60 @@ textarea.preview-editor {
   background: color-mix(in srgb, var(--accent-soft) 30%, transparent);
   border-color: color-mix(in srgb, var(--accent-border) 48%, transparent);
   color: color-mix(in srgb, var(--accent-strong) 90%, var(--preview-ink));
+}
+
+.markdown-hybrid-inline-page-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0.05em;
+  padding: 0.05em 0.42em 0.08em;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent-border) 38%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 18%, transparent);
+  color: color-mix(in srgb, var(--accent-strong) 86%, var(--preview-ink));
+  line-height: 1.25;
+  vertical-align: baseline;
+  cursor: pointer;
+  white-space: nowrap;
+  font: inherit;
+}
+
+.markdown-hybrid-inline-page-link:hover {
+  border-color: color-mix(in srgb, var(--accent-border) 58%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 24%, transparent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.12em;
+}
+
+.markdown-hybrid-inline-page-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-border) 65%, transparent);
+  outline-offset: 1px;
+}
+
+.markdown-hybrid-inline-page-link.is-missing {
+  border-color: color-mix(in srgb, #ff8a8a 28%, var(--line-soft));
+  background: color-mix(in srgb, #ff6a6a 10%, transparent);
+  color: color-mix(in srgb, #ff9a9a 72%, var(--preview-ink));
+  text-decoration: none;
+}
+
+.markdown-hybrid-inline-page-link-icon {
+  display: inline-flex;
+  width: 0.95em;
+  height: 0.95em;
+  align-items: center;
+  justify-content: center;
+}
+
+.markdown-hybrid-inline-page-link-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.markdown-hybrid-inline-page-link-label {
+  min-width: 0;
 }
 
 .markdown-hybrid-block-editor {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement, useState, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MarkdownHybridEditor } from "./MarkdownHybridEditor";
 import { ADVANCED_INSERT_TEMPLATE_CATALOG } from "./insertTemplates";
 
@@ -108,6 +108,30 @@ const findMenuItemButtonByLabel = (container: ParentNode, label: string) => {
     return labelNode.closest<HTMLButtonElement>("button");
   }
   return findButtonByExactText(container, label);
+};
+
+const findPageLinkPickerOptionByLabel = (container: ParentNode, label: string) => {
+  const labelNode = Array.from(
+    container.querySelectorAll<HTMLElement>(".markdown-hybrid-page-link-picker-option-label"),
+  ).find((node) => node.textContent?.trim() === label);
+  return labelNode?.closest<HTMLButtonElement>("button") ?? null;
+};
+
+const applyTextInput = (
+  input: HTMLInputElement | HTMLTextAreaElement | null,
+  nextValue: string,
+  caret = nextValue.length,
+) => {
+  act(() => {
+    if (!input) {
+      return;
+    }
+    input.value = nextValue;
+    if ("setSelectionRange" in input) {
+      input.setSelectionRange(caret, caret);
+    }
+    input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+  });
 };
 
 const withImmediateRaf = <T,>(run: () => T) => {
@@ -1435,5 +1459,197 @@ describe("MarkdownHybridEditor", () => {
     expect(hashSpans.map((node) => node.textContent)).toEqual(["#endcard", "#irgendwas"]);
 
     cleanup();
+  });
+
+  it("opens a page picker for Link Page inserts without adding a [[Page]] placeholder", () => {
+    withImmediateRaf(() => {
+      const vaultFiles = [
+        { path: "/vault/Alpha.md", relative_path: "Alpha.md" },
+        { path: "/vault/Folder/Beta.md", relative_path: "Folder/Beta.md" },
+      ];
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("# One");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="page-link-picker-from-menu"
+              markdown={markdown}
+              mode="edit"
+              vaultFiles={vaultFiles}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+      dispatchClick(findButtonByExactText(container, "Links"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Link Page"));
+
+      expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeTruthy();
+      expect(readMarkdown()).not.toContain("[[Page]]");
+      expect(findPageLinkPickerOptionByLabel(container, "Alpha")).toBeTruthy();
+      expect(findPageLinkPickerOptionByLabel(container, "Beta")).toBeTruthy();
+
+      dispatchClick(findPageLinkPickerOptionByLabel(container, "Alpha"));
+
+      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(readMarkdown()).toContain("[[Alpha]]");
+      expect(textarea?.value).toBe("[[Alpha]]");
+      expect(textarea?.selectionStart).toBe("[[Alpha]]".length);
+      expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("opens the page picker on [[ typing and inserts the selected page link", () => {
+    withImmediateRaf(() => {
+      const vaultFiles = [
+        { path: "/vault/Alpha.md", relative_path: "Alpha.md" },
+        { path: "/vault/Folder/Beta.md", relative_path: "Folder/Beta.md" },
+      ];
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("Alpha ");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="page-link-picker-trigger"
+              markdown={markdown}
+              mode="edit"
+              vaultFiles={vaultFiles}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Alpha [[");
+
+      expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeTruthy();
+
+      const searchInput = container.querySelector<HTMLInputElement>(
+        ".markdown-hybrid-page-link-picker-search",
+      );
+      expect(searchInput).toBeTruthy();
+      applyTextInput(searchInput, "beta");
+
+      dispatchClick(findPageLinkPickerOptionByLabel(container, "Beta"));
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(readMarkdown()).toBe("Alpha [[Folder/Beta]]");
+      expect(textarea?.value).toBe("Alpha [[Folder/Beta]]");
+      expect(textarea?.selectionStart).toBe("Alpha [[Folder/Beta]]".length);
+      expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("renders wikilinks as clickable inline page links with missing-page state in preview mode", () => {
+    const onNavigateWikilink = vi.fn();
+    const vaultFiles = [{ path: "/vault/Docs/Intro.md", relative_path: "Docs/Intro.md" }];
+
+    const { container, cleanup } = render(
+      createElement(MarkdownHybridEditor, {
+        historyKey: "inline-page-link-preview",
+        markdown: "See [[Docs/Intro]] and [[Missing/Page]]",
+        mode: "edit",
+        vaultFiles,
+        onNavigateWikilink,
+        onChange: () => undefined,
+        renderPreview: (value: string) => <p>{value}</p>,
+      }),
+    );
+
+    const linkButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-inline-page-link"),
+    );
+    expect(linkButtons).toHaveLength(2);
+    expect(linkButtons[0]?.textContent).toContain("Intro");
+    expect(linkButtons[0]?.classList.contains("is-missing")).toBe(false);
+    expect(linkButtons[1]?.classList.contains("is-missing")).toBe(true);
+    expect(
+      container.querySelector(".markdown-hybrid-block-preview code")?.textContent ?? "",
+    ).not.toContain("[[");
+
+    dispatchClick(linkButtons[0] ?? null);
+    dispatchClick(linkButtons[1] ?? null);
+
+    expect(onNavigateWikilink).toHaveBeenCalledTimes(1);
+    expect(onNavigateWikilink).toHaveBeenCalledWith("[[Docs/Intro]]");
+
+    cleanup();
+  });
+
+  it("deletes wikilinks atomically with Backspace/Delete and skips them with ArrowLeft/ArrowRight", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "A [[Alpha]] B";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="inline-page-link-atomic-delete"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      const beforeIndex = textarea?.value.indexOf("[[") ?? -1;
+      const afterIndex = (textarea?.value.indexOf("]]") ?? -2) + 2;
+      expect(beforeIndex).toBeGreaterThanOrEqual(0);
+      expect(afterIndex).toBeGreaterThan(beforeIndex);
+
+      setTextareaSelection(textarea, afterIndex);
+      dispatchKeyDown(textarea, "Backspace");
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("A  B");
+      expect(readMarkdown()).toBe("A  B");
+
+      applyTextareaInput(textarea, initialMarkdown, beforeIndex);
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      dispatchKeyDown(textarea, "Delete");
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("A  B");
+      expect(readMarkdown()).toBe("A  B");
+
+      applyTextareaInput(textarea, initialMarkdown, beforeIndex);
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      dispatchKeyDown(textarea, "ArrowRight");
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.selectionStart).toBe(afterIndex);
+
+      dispatchKeyDown(textarea, "ArrowLeft");
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.selectionStart).toBe(beforeIndex);
+
+      cleanup();
+    });
   });
 });

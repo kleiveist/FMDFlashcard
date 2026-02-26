@@ -6709,6 +6709,8 @@ export const PreviewPanel = ({
                   historyKey={selectedFile?.path ?? "none"}
                   markdown={markdownEditBody}
                   mode={documentMode}
+                  vaultFiles={vaultFiles}
+                  onNavigateWikilink={onNavigateWikilink}
                   onChange={handleHybridBodyChange}
                   onDirtyChange={onHybridDirtyChange}
                   renderPreview={(source) =>
