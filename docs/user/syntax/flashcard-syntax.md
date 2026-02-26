@@ -14,7 +14,7 @@ Markdown flashcards keep your notes readable and the parser precise. The only re
 ```
 
 - `#card` opens a block.
-- Everything after `#card` up until a standalone `#` belongs to the same card.
+- Everything after `#card` up until a standalone `#endcard` belongs to the same card.
 - A single file can contain multiple `#card … #endcard` blocks; they can appear anywhere in your vault.
 - Use `---` inside the block to separate multiple interaction chunks (for example, QA followed by MC). Each chunk is treated independently but still scores as a single composite card.
 - For detailed explanations of each interaction type, see the short-code reference examples in `docs/user/examples/` (qa, tf, m1, m2, cl, cd, etc.).
@@ -40,5 +40,5 @@ Markdown flashcards keep your notes readable and the parser precise. The only re
 
 ## Notes
 
-- The parser trims whitespace aggressively, so keep markers on their own lines and avoid extra characters before `#card`, `#`, or the interaction markers.
+- The parser trims whitespace aggressively, so keep markers on their own lines and avoid extra characters before `#card`, `#endcard`, or the interaction markers.
 - Prefer the in-app Help to confirm the latest parsing tweaks and file an issue if behavior drifts from this guide.

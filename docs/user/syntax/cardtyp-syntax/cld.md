@@ -14,25 +14,16 @@
 ---
 ## Syntax
 
-### Typed blanks
-Use `%...%` to create an input field. The text inside is the **solution**.
-
-Example:
 ```md
 #card
-The `capital` of France is %Paris%.
-#endcard
-```
----
-### Drag tokens
-Use `"..."` to create a drag token. The text inside the quotes is the **solution**.
+SENTENCE BEFORE %ANSWER1% SENTENCE MIDDLE %ANSWER2% SENTENCE AFTER
 
-Example:
-```md
-#card
-The colors are "black", "red", and "gold".
+TOKEN BANK tocken "TOKENA", tocken "TOKENB", tocken "TOKENC"
 #endcard
 ```
+
+- Typed blanks use `%...%`.
+- Drag tokens are created from quoted tokens (`"..."`).
 ---
 ### Typed mit Codeblock
 

@@ -10,6 +10,7 @@ export type MarkdownBlockKind =
   | "blank"
   | "heading"
   | "paragraph"
+  | "card-block"
   | "help-block"
   | "ordered-list"
   | "unordered-list"
@@ -46,6 +47,8 @@ const isHorizontalRuleLineForNormalization = (line: string) =>
   /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
 const isHelpBlockStartLine = (line: string) => line.trim().toLowerCase() === "#help";
 const isHelpBlockEndLine = (line: string) => line.trim().toLowerCase() === "#helpend";
+const isCardBlockStartLine = (line: string) => line.trim().toLowerCase() === "#card";
+const isCardBlockEndLine = (line: string) => line.trim().toLowerCase() === "#endcard";
 
 const isMarkdownTableRowLine = (line: string) =>
   /^\|(?:[^|]*\|)+\s*$/.test(line.trim());
@@ -75,6 +78,9 @@ const isListContinuationLine = (line: string) => {
   if (isHelpBlockStartLine(line) || isHelpBlockEndLine(line)) {
     return false;
   }
+  if (isCardBlockStartLine(line) || isCardBlockEndLine(line)) {
+    return false;
+  }
   if (isListStartLine(line)) {
     return true;
   }
@@ -91,6 +97,9 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
     return true;
   }
   if (isHelpBlockStartLine(line)) {
+    return true;
+  }
+  if (isCardBlockStartLine(line)) {
     return true;
   }
   if (isHeadingLine(line)) {
@@ -203,6 +212,20 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
         }
       }
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "code-fence", i, end));
+      blockIndex += 1;
+      i = end + 1;
+      continue;
+    }
+
+    if (isCardBlockStartLine(line)) {
+      let end = i;
+      for (let j = i + 1; j < lines.length; j += 1) {
+        end = j;
+        if (isCardBlockEndLine(lines[j] ?? "")) {
+          break;
+        }
+      }
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "card-block", i, end));
       blockIndex += 1;
       i = end + 1;
       continue;
@@ -423,6 +446,7 @@ export const isSingleLineCommitBlock = (block: MarkdownBlock) => {
   return !(
     block.kind === "table" ||
     block.kind === "code-fence" ||
+    block.kind === "card-block" ||
     block.kind === "help-block" ||
     block.kind === "ordered-list" ||
     block.kind === "unordered-list" ||

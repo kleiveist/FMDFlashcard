@@ -9,12 +9,13 @@ A `#card … #endcard` block (`f`) declares the flashcard boundaries that the pa
 
 ```md
 #card
-Question or prompt text
-Answer: The answer text
+QUESTION TEXT
+
+OPTIONAL CONTEXT OR NOTE
 #endcard
 ```
 
-- The opening `#card` and the closing `#` must each sit on their own line.
+- The opening `#card` and the closing `#endcard` must each sit on their own line.
 - Everything between those markers is split into sub-blocks (`splitCardLines`), which may become QA text, true/false pairs, MC options, or cloze parts.
 - You can host multiple interactions inside a single `#card` by separating them with `---`. Each segment contributes one detected interaction type.
 - `#card` is unaffected by `#exam`; the exam wrapper only changes which cards are surfaced in the Exams view.

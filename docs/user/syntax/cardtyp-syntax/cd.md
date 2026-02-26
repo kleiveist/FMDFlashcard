@@ -7,7 +7,7 @@ Drag tokens use the `"token"` syntax to create draggable pieces learners can dro
 
 ```md
 #card
-The colors of the German flag are "black", "red", and "gold".
+SENTENCE WITH TOKENS tocken "TOKEN1", tocken "TOKEN2", tocken "TOKEN3".
 #endcard
 ```
 

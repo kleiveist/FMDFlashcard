@@ -82,6 +82,49 @@ describe("markdownBlocks", () => {
     );
   });
 
+  it("treats #card ... #endcard as a single card block and keeps nested help inside it", () => {
+    const markdown = [
+      "Vorher",
+      "#card",
+      "Frage",
+      "",
+      "#help",
+      "Hinweis",
+      "#helpend",
+      "",
+      "Answer: Antwort",
+      "#endcard",
+      "Nachher",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "card-block",
+      "paragraph",
+    ]);
+    expect(blocks[1]?.raw).toBe(
+      [
+        "#card",
+        "Frage",
+        "",
+        "#help",
+        "Hinweis",
+        "#helpend",
+        "",
+        "Answer: Antwort",
+        "#endcard",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps an empty #card/#endcard pair as one card block", () => {
+    const blocks = parseMarkdownBlocks(["#card", "#endcard"].join("\n"));
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]?.kind).toBe("card-block");
+    expect(blocks[0]?.raw).toBe(["#card", "#endcard"].join("\n"));
+  });
+
   it("splits lists around an indented help block and keeps help as its own block", () => {
     const markdown = [
       "1. Erste Zeile",

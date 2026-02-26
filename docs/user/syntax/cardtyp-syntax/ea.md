@@ -31,17 +31,13 @@ A task chunk is considered finished when one of these markers appears between th
 - You can still wrap the task text inside a `#card … #endcard` block; the parser adds the task prompt to a temporary card before detecting interactions.
 - The Exams page records the official answer when you add answer markers (`qa`) or any graded interaction (tf/m1/m2/cl/cd).
 
-Example:
+Example blueprint:
 
 ```md
-#exam
-1) Discuss the principle of least privilege.
-Answer: The principle says …
+1) TASK PROMPT TEXT
+TASK CONTEXT LINE
+Answer: OFFICIAL ANSWER TEXT
 ---
-2) Is the following statement true or false?
-The principle of least privilege limits what users can do.
--true
-#endexam
 ```
 
 Every numbered heading above becomes one `ea` task, with its own prompt and answer chunk.

@@ -40,12 +40,20 @@ import {
   pushMarkdownHistory,
   type MarkdownHistoryState,
 } from "./markdownHistory";
+import {
+  getAdvancedInsertTemplateSections,
+  type AdvancedInsertTemplateContext,
+} from "./insertTemplates";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
 
 type PendingActivation = {
   index: number;
   caret: "start" | "end";
+  selection?: {
+    start: number;
+    end: number;
+  };
 };
 
 type BlockSelectionRange = {
@@ -102,24 +110,7 @@ type InsertMenuCategoryId =
   | "links"
   | "advanced";
 
-type InsertMenuItemId =
-  | "text"
-  | "heading-1"
-  | "heading-2"
-  | "heading-3"
-  | "heading-4"
-  | "bullet-list"
-  | "ordered-list"
-  | "ordered-list-paren"
-  | "todo-list"
-  | "collapsible-list"
-  | "page"
-  | "blockquote"
-  | "table"
-  | "divider"
-  | "page-link"
-  | "code-block"
-  | "formula-block";
+type InsertMenuItemId = string;
 
 type InsertMenuState = {
   blockIndex: number;
@@ -137,6 +128,8 @@ type InsertMenuItem = {
   id: InsertMenuItemId;
   label: string;
   template: string;
+  description?: string;
+  firstPlaceholder?: string;
 };
 
 type MarkdownHybridEditorProps = {
@@ -177,11 +170,6 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
     { id: "todo-list", label: "To-do List", template: "- [ ] Task" },
   ],
   structure: [
-    {
-      id: "page",
-      label: "Page",
-      template: "#card\nQuestion or title\nAnswer: Answer or content\n#endcard",
-    },
     { id: "blockquote", label: "Quote", template: "> Quote" },
     {
       id: "table",
@@ -193,10 +181,7 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
   links: [
     { id: "page-link", label: "Link Page", template: "[[Page]]" },
   ],
-  advanced: [
-    { id: "code-block", label: "Code Block", template: "```txt\nCode\n```" },
-    { id: "formula-block", label: "Formula Block", template: "```math\nx = y\n```" },
-  ],
+  advanced: [],
 };
 
 const isUndoShortcut = (event: KeyboardEvent<HTMLElement>) =>
@@ -450,6 +435,47 @@ const withInsertedRawBlock = (
 
   nextRawBlocks.splice(targetIndex, 0, ...insertionParts);
   return nextRawBlocks.join("\n");
+};
+
+const isStandaloneDirectiveLine = (line: string, directive: string) =>
+  line.trim().toLowerCase() === directive;
+
+const resolveInsertMenuContextForSlot = (
+  markdown: string,
+  blocks: MarkdownBlock[],
+  atIndex: number,
+): AdvancedInsertTemplateContext => {
+  const normalizedAtIndex = Math.max(0, Math.min(atIndex, blocks.length));
+  const insertionOffset = normalizedAtIndex >= blocks.length
+    ? markdown.length
+    : (blocks[normalizedAtIndex]?.startOffset ?? markdown.length);
+  const textBeforeSlot = markdown.slice(0, insertionOffset);
+  const lines = textBeforeSlot.length === 0 ? [] : textBeforeSlot.split("\n");
+
+  let openCardDepth = 0;
+  let openExamDepth = 0;
+  for (const line of lines) {
+    if (isStandaloneDirectiveLine(line, "#card")) {
+      openCardDepth += 1;
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#endcard")) {
+      openCardDepth = Math.max(0, openCardDepth - 1);
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#exam")) {
+      openExamDepth += 1;
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#endexam")) {
+      openExamDepth = Math.max(0, openExamDepth - 1);
+    }
+  }
+
+  return {
+    insideCard: openCardDepth > 0,
+    insideExam: openExamDepth > 0,
+  };
 };
 
 type StableRenderKeyToken = {
@@ -761,6 +787,98 @@ const escapeHybridPreviewSpecialLines = (source: string) =>
     })
     .join("\n");
 
+type CardBlockPreviewParts = {
+  parts: Array<{
+    kind: "body" | "help";
+    source: string;
+  }>;
+};
+
+const isCardDirectivePreviewLine = (line: string, directive: "#card" | "#endcard") =>
+  line.trim().toLowerCase() === directive;
+
+const isHelpDirectivePreviewLine = (line: string, directive: "#help" | "#helpend") =>
+  line.trim().toLowerCase() === directive;
+
+const extractCardBlockPreviewParts = (blockRaw: string): CardBlockPreviewParts => {
+  const lines = blockRaw.split("\n");
+  if (lines.length === 0 || !isCardDirectivePreviewLine(lines[0] ?? "", "#card")) {
+    return {
+      parts: [
+        {
+          kind: "body",
+          source: escapeHybridPreviewSpecialLines(blockRaw),
+        },
+      ],
+    };
+  }
+
+  let closingIndex = -1;
+  for (let i = 1; i < lines.length; i += 1) {
+    if (isCardDirectivePreviewLine(lines[i] ?? "", "#endcard")) {
+      closingIndex = i;
+      break;
+    }
+  }
+  const scanEndExclusive = closingIndex >= 0 ? closingIndex : lines.length;
+  const parts: CardBlockPreviewParts["parts"] = [];
+
+  const pushBodyPart = (start: number, endExclusive: number) => {
+    if (endExclusive <= start) {
+      return;
+    }
+    const raw = lines.slice(start, endExclusive).join("\n");
+    if (raw.length === 0) {
+      return;
+    }
+    parts.push({
+      kind: "body",
+      source: escapeHybridPreviewSpecialLines(raw),
+    });
+  };
+
+  let segmentStart = 0;
+  for (let i = 1; i < scanEndExclusive; i += 1) {
+    if (!isHelpDirectivePreviewLine(lines[i] ?? "", "#help")) {
+      continue;
+    }
+
+    pushBodyPart(segmentStart, i);
+
+    let helpEndInclusive = i;
+    for (let j = i + 1; j < scanEndExclusive; j += 1) {
+      helpEndInclusive = j;
+      if (isHelpDirectivePreviewLine(lines[j] ?? "", "#helpend")) {
+        break;
+      }
+    }
+
+    const helpRaw = lines.slice(i, helpEndInclusive + 1).join("\n");
+    parts.push({
+      kind: "help",
+      source: escapeHybridPreviewSpecialLines(normalizeHelpBlockPreviewSource(helpRaw)),
+    });
+
+    segmentStart = helpEndInclusive + 1;
+    i = helpEndInclusive;
+  }
+
+  pushBodyPart(segmentStart, lines.length);
+
+  if (parts.length === 0) {
+    return {
+      parts: [
+        {
+          kind: "body",
+          source: escapeHybridPreviewSpecialLines(blockRaw),
+        },
+      ],
+    };
+  }
+
+  return { parts };
+};
+
 const extractHorizontalRuleEditorDraft = (blockRaw: string) => {
   const normalized = normalizeHorizontalRuleBlockSource(blockRaw);
   for (const line of normalized.split("\n")) {
@@ -912,6 +1030,7 @@ export const MarkdownHybridEditor = ({
   const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const pendingCaretRef = useRef<"start" | "end" | null>(null);
+  const pendingTextareaSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const autoActivatedWriteKeyRef = useRef<string | null>(null);
   const selectionGestureRef = useRef<SelectionGestureState | null>(null);
   const suppressNextBlockContextMenuRef = useRef(false);
@@ -943,6 +1062,15 @@ export const MarkdownHybridEditor = ({
       }) as CSSProperties,
     [overlayLayout.contentPaddingLeft, overlayLayout.contentPaddingRight],
   );
+  const activeInsertMenuContext = useMemo<AdvancedInsertTemplateContext>(() => {
+    if (!insertMenuState) {
+      return { insideCard: false, insideExam: false };
+    }
+    const targetIndex = insertMenuState.insertAbove
+      ? insertMenuState.blockIndex
+      : insertMenuState.blockIndex + 1;
+    return resolveInsertMenuContextForSlot(markdown, blocks, targetIndex);
+  }, [blocks, insertMenuState, markdown]);
 
   const measureOverlayLayout = useCallback(() => {
     const surface = containerRef.current;
@@ -1463,6 +1591,7 @@ export const MarkdownHybridEditor = ({
       return () => window.cancelAnimationFrame(handle);
     }
     pendingCaretRef.current = pendingActivation.caret;
+    pendingTextareaSelectionRef.current = pendingActivation.selection ?? null;
     setActiveBlockIndex(nextIndex);
     setActiveDraft(
       blocks[nextIndex] ? toEditorDraftForBlock(blocks[nextIndex]!) : "",
@@ -1478,12 +1607,21 @@ export const MarkdownHybridEditor = ({
       return;
     }
     const caret = pendingCaretRef.current;
+    const selection = pendingTextareaSelectionRef.current;
     pendingCaretRef.current = null;
+    pendingTextareaSelectionRef.current = null;
     const handle = window.requestAnimationFrame(() => {
       try {
         textarea.focus({ preventScroll: true });
       } catch {
         textarea.focus();
+      }
+      if (selection) {
+        const max = textarea.value.length;
+        const start = Math.max(0, Math.min(selection.start, max));
+        const end = Math.max(start, Math.min(selection.end, max));
+        textarea.setSelectionRange(start, end);
+        return;
       }
       const nextPos = caret === "start" ? 0 : textarea.value.length;
       textarea.setSelectionRange(nextPos, nextPos);
@@ -1879,7 +2017,12 @@ export const MarkdownHybridEditor = ({
   ]);
 
   const insertBlockRelativeTo = useCallback(
-    (blockIndex: number, insertedRaw: string, insertAbove: boolean) => {
+    (
+      blockIndex: number,
+      insertedRaw: string,
+      insertAbove: boolean,
+      options?: { firstPlaceholder?: string },
+    ) => {
       if (disabled) {
         return false;
       }
@@ -1894,8 +2037,19 @@ export const MarkdownHybridEditor = ({
       const nextBlocks = parseMarkdownBlocks(nextMarkdown);
       const insertedBlocks = parseMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
       const primaryInsertedBlock = insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
+      let activationSelection: PendingActivation["selection"] | undefined;
       let activationIndex = -1;
       if (primaryInsertedBlock) {
+        if (options?.firstPlaceholder && primaryInsertedBlock.kind !== "hr") {
+          const editorDraft = toEditorDraftForBlock(primaryInsertedBlock);
+          const placeholderStart = editorDraft.indexOf(options.firstPlaceholder);
+          if (placeholderStart >= 0) {
+            activationSelection = {
+              start: placeholderStart,
+              end: placeholderStart + options.firstPlaceholder.length,
+            };
+          }
+        }
         const startSearchIndex = Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
         for (let offset = 0; offset < nextBlocks.length; offset += 1) {
           const forwardIndex = startSearchIndex + offset;
@@ -1939,7 +2093,9 @@ export const MarkdownHybridEditor = ({
       setActiveDirty(false);
       pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
       setPendingActivation(
-        activationIndex >= 0 ? { index: activationIndex, caret: "end" } : null,
+        activationIndex >= 0
+          ? { index: activationIndex, caret: "end", selection: activationSelection }
+          : null,
       );
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
@@ -2199,7 +2355,9 @@ export const MarkdownHybridEditor = ({
       if (!insertMenuState) {
         return;
       }
-      insertBlockRelativeTo(insertMenuState.blockIndex, item.template, insertMenuState.insertAbove);
+      insertBlockRelativeTo(insertMenuState.blockIndex, item.template, insertMenuState.insertAbove, {
+        firstPlaceholder: item.firstPlaceholder,
+      });
     },
     [insertBlockRelativeTo, insertMenuState],
   );
@@ -3278,9 +3436,92 @@ export const MarkdownHybridEditor = ({
     [handleSelectionContextMenuDelete, handleSelectionContextMenuItemMouseDown],
   );
 
-  const activeInsertMenuItems = insertMenuState?.categoryId
-    ? (INSERT_MENU_ITEMS_BY_CATEGORY[insertMenuState.categoryId] ?? [])
+  const activeInsertMenuCategoryId = insertMenuState?.categoryId;
+  const activeInsertMenuItems = activeInsertMenuCategoryId &&
+    activeInsertMenuCategoryId !== "advanced"
+    ? (INSERT_MENU_ITEMS_BY_CATEGORY[activeInsertMenuCategoryId] ?? [])
     : [];
+  const activeAdvancedInsertTemplateSections = activeInsertMenuCategoryId === "advanced"
+    ? getAdvancedInsertTemplateSections(activeInsertMenuContext).map((section) => ({
+      ...section,
+      items: section.items.map<InsertMenuItem>((item) => ({
+        id: item.id,
+        label: item.label,
+        description: item.description,
+        template: item.payload,
+        firstPlaceholder: item.firstPlaceholder,
+      })),
+    }))
+    : [];
+
+  const handleInsertMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    const menuElement = insertMenuRef.current;
+    if (!menuElement) {
+      return;
+    }
+    const menuItems = Array.from(
+      menuElement.querySelectorAll<HTMLButtonElement>("button[role='menuitem']"),
+    );
+    if (menuItems.length === 0) {
+      return;
+    }
+    const activeElement = document.activeElement;
+    const currentIndex = menuItems.findIndex((item) => item === activeElement);
+    const focusMenuItem = (nextIndex: number) => {
+      const clampedIndex = clampIndex(nextIndex, menuItems.length);
+      const nextItem = menuItems[clampedIndex];
+      if (!nextItem) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        nextItem.focus({ preventScroll: true });
+      } catch {
+        nextItem.focus();
+      }
+    };
+
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+      focusMenuItem(currentIndex < 0 ? 0 : (currentIndex + 1) % menuItems.length);
+      return;
+    }
+    if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+      focusMenuItem(
+        currentIndex < 0
+          ? menuItems.length - 1
+          : (currentIndex - 1 + menuItems.length) % menuItems.length,
+      );
+      return;
+    }
+    if (event.key === "Home") {
+      focusMenuItem(0);
+      return;
+    }
+    if (event.key === "End") {
+      focusMenuItem(menuItems.length - 1);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!insertMenuState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const firstMenuItem = insertMenuRef.current?.querySelector<HTMLButtonElement>(
+        "button[role='menuitem']",
+      );
+      if (!firstMenuItem) {
+        return;
+      }
+      try {
+        firstMenuItem.focus({ preventScroll: true });
+      } catch {
+        firstMenuItem.focus();
+      }
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [insertMenuState]);
 
   const renderInsertMenuPanel = (blockIndex: number) => {
     const isInsertMenuOpen = Boolean(insertMenuState && insertMenuState.blockIndex === blockIndex);
@@ -3297,6 +3538,7 @@ export const MarkdownHybridEditor = ({
         onMouseDown={(event) => {
           event.stopPropagation();
         }}
+        onKeyDown={handleInsertMenuKeyDown}
       >
         <div className="markdown-hybrid-insert-menu-header">
           <span className="markdown-hybrid-insert-menu-title">
@@ -3325,6 +3567,26 @@ export const MarkdownHybridEditor = ({
                 {category.label}
               </button>
             ))
+            : insertMenuState?.categoryId === "advanced"
+            ? activeAdvancedInsertTemplateSections.flatMap((section) =>
+              section.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-tile"
+                  onClick={handleInsertMenuItemSelect(item)}
+                  role="menuitem"
+                  title={item.description}
+                >
+                  <span className="markdown-hybrid-insert-menu-item-label">{item.label}</span>
+                  {item.description ? (
+                    <span className="markdown-hybrid-insert-menu-item-description">
+                      {item.description}
+                    </span>
+                  ) : null}
+                </button>
+              ))
+            )
             : activeInsertMenuItems.map((item) => (
               <button
                 key={item.id}
@@ -3602,6 +3864,9 @@ export const MarkdownHybridEditor = ({
             : block.kind === "hr"
             ? normalizeHorizontalRuleBlockSource(block.raw)
             : block.raw;
+          const cardBlockPreviewParts = block.kind === "card-block"
+            ? extractCardBlockPreviewParts(block.raw)
+            : null;
           if (block.kind !== "hr" && block.kind !== "code-fence") {
             previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
           }
@@ -3694,6 +3959,39 @@ export const MarkdownHybridEditor = ({
                       aria-label="Textblock unterhalb der Trennlinie einfuegen"
                       title="Enterbereich unterhalb der Trennlinie"
                     />
+                  </div>
+                ) : block.kind === "card-block" && cardBlockPreviewParts ? (
+                  <div
+                    className="markdown-hybrid-card-block-preview"
+                    onChange={handleRenderedTaskCheckboxChange(index)}
+                  >
+                    <div className="markdown-hybrid-card-block-frame">
+                      {cardBlockPreviewParts.parts.map((part, partIndex) =>
+                        part.kind === "help" ? (
+                          <div
+                            key={`card-part:${index}:${partIndex}`}
+                            className="markdown-hybrid-card-help-subbox"
+                          >
+                            <div className="markdown-hybrid-block-preview">
+                              {part.source.trim().length > 0 ? renderPreview(part.source) : null}
+                            </div>
+                          </div>
+                        ) : part.source.trim().length > 0 ? (
+                          <div
+                            key={`card-part:${index}:${partIndex}`}
+                            className="markdown-hybrid-block-preview"
+                          >
+                            {renderPreview(part.source)}
+                          </div>
+                        ) : (
+                          <div
+                            key={`card-part:${index}:${partIndex}`}
+                            className="markdown-hybrid-card-block-empty"
+                            aria-hidden="true"
+                          />
+                        )
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div

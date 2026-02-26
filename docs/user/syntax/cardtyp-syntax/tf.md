@@ -7,10 +7,9 @@ True/false interactions count as `tf` and render as two-button questions where t
 
 ## Format
 
-```
+```md
 #card
-Is the following statement true?
-The Sun is a star.
+STATEMENT TEXT
 -true
 #endcard
 ```

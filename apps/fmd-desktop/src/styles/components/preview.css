@@ -1354,6 +1354,7 @@ textarea.preview-editor {
   left: calc(100% + 6px);
   z-index: 20;
   width: min(260px, 70vw);
+  max-height: min(72vh, 520px);
   border: 1px solid color-mix(in srgb, var(--line-soft) 85%, transparent);
   border-radius: 12px;
   background: color-mix(in srgb, var(--panel) 92%, black 8%);
@@ -1362,6 +1363,7 @@ textarea.preview-editor {
     inset 0 0 0 1px color-mix(in srgb, white 3%, transparent);
   padding: 8px;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
 }
 
@@ -1396,6 +1398,10 @@ textarea.preview-editor {
 .markdown-hybrid-insert-menu-list {
   display: grid;
   gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
 }
 
 .markdown-hybrid-insert-menu-item,
@@ -1409,6 +1415,21 @@ textarea.preview-editor {
   padding: 7px 9px;
   font-size: 13px;
   cursor: pointer;
+}
+
+.markdown-hybrid-insert-menu-item-tile {
+  display: grid;
+  gap: 2px;
+}
+
+.markdown-hybrid-insert-menu-item-label {
+  font-weight: 500;
+}
+
+.markdown-hybrid-insert-menu-item-description {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.25;
 }
 
 .markdown-hybrid-insert-menu-item:hover,
@@ -1478,6 +1499,35 @@ textarea.preview-editor {
 
 .markdown-hybrid-block-hr .markdown-hybrid-block-preview > hr {
   margin: 0;
+}
+
+.markdown-hybrid-card-block-preview {
+  display: grid;
+  gap: 0;
+}
+
+.markdown-hybrid-card-block-frame {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 78%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+}
+
+.markdown-hybrid-card-block-empty {
+  min-height: 1rem;
+}
+
+.markdown-hybrid-card-help-subbox {
+  border: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  padding: 8px 10px;
+}
+
+.markdown-hybrid-card-help-subbox .markdown-hybrid-block-preview {
+  padding: 0;
 }
 
 .markdown-hybrid-block-blank.is-structural-separator {

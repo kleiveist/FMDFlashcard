@@ -7,7 +7,7 @@ Typed clozes use the `%...%` syntax to turn inline fragments into input fields (
 
 ```md
 #card
-The capital of France is %Paris%.
+SENTENCE BEFORE %ANSWER1% SENTENCE AFTER
 #endcard
 ```
 

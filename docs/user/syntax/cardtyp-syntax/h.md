@@ -10,28 +10,29 @@ This block is **fully compatible with all flashcard types** because it is treate
 ## Syntax
 
 ```md
-#card 
-1. Help is Help? 
-answer:
+#card
+QUESTION TEXT
+
+Answer: ANSWER TEXT
 
 #help
-Hint title (optional): Key idea
-- Short hint line 1
-- Short hint line 2
+Hint title (optional): KEY IDEA
+- Hint line 1
+- Hint line 2
 
-You may also use paragraphs, lists, or small tables.
+Additional hint paragraph text.
 #helpend
 
 #endcard
 ```
-- A `#help … #` block must be placed **inside a scope** so it can be assigned correctly:
+- A `#help … #helpend` block must be placed **inside a scope** so it can be assigned correctly:
     - **Inside `#card … #endcard`** → the hint is attached to that **flashcard**.
     - **Inside an exam task (`ea`)** (i.e., within the numbered task block in `#exam … #endexam`) → the hint is attached to that **specific exam task**.
-- If `#help … #` is placed **outside** any `#card` block and **outside** an `ea` task, it is **ignored** (or treated as plain Markdown), because no valid target scope can be determined.
-- Recommended placement: put `#help … #` **directly before or after** the interaction content within the same card/task, so the UI loads it reliably for the intended item
+- If `#help … #helpend` is placed **outside** any `#card` block and **outside** an `ea` task, it is **ignored** (or treated as plain Markdown), because no valid target scope can be determined.
+- Recommended placement: put `#help … #helpend` **directly before or after** the interaction content within the same card/task, so the UI loads it reliably for the intended item
 ## Behavior
 
-- **Non-intrusive parsing:** The parser should extract `#help … #` blocks and store their content as `helpText[]` (or equivalent) for the surrounding scope, while excluding these lines from interaction detection (so `-true`, `-a`, `Answer:` inside help must **not** be treated as solutions).
+- **Non-intrusive parsing:** The parser should extract `#help … #helpend` blocks and store their content as `helpText[]` (or equivalent) for the surrounding scope, while excluding these lines from interaction detection (so `-true`, `-a`, `Answer:` inside help must **not** be treated as solutions).
 
 - **Scope rules (recommended):**
     - Inside `#card … #endcard`: the help block attaches to that card.
