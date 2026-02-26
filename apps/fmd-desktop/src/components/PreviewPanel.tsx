@@ -5676,10 +5676,6 @@ export const PreviewPanel = ({
   }, [preview]);
 
   useEffect(() => {
-    setIsHybridEditModeActive(true);
-  }, [selectedFile?.path]);
-
-  useEffect(() => {
     if (documentMode === "write") {
       setIsHybridEditModeActive(true);
     }

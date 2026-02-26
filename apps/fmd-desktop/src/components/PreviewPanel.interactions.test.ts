@@ -231,6 +231,93 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(editor).toBeNull();
   });
 
+  it("keeps the hybrid edit mode toggle state when switching markdown files", () => {
+    const secondFile: VaultFile = {
+      path: "/vault/Second.md",
+      relative_path: "Second.md",
+    };
+
+    const Harness = () => {
+      const [selectedFile, setSelectedFile] = useState<VaultFile>(baseFile);
+      const [previewMarkdown, setPreviewMarkdown] = useState("First note");
+      const [editDraft, setEditDraft] = useState("First note");
+
+      return createElement(
+        "div",
+        null,
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "switch-file",
+            onClick: () => {
+              setSelectedFile(secondFile);
+              setPreviewMarkdown("Second note");
+              setEditDraft("Second note");
+            },
+          },
+          "Switch file",
+        ),
+        createElement(PreviewPanel, {
+          editDraft,
+          editError: "",
+          editCaretIndex: null,
+          isEditing: false,
+          emptyPreview: "",
+          preview: previewMarkdown,
+          previewError: "",
+          previewState: "idle",
+          rawPreview: false,
+          markdownViewEditEnabled: true,
+          markdownHybridEnabled: true,
+          selectedFile,
+          vaultPath: "/vault",
+          sourceRelativePath: selectedFile.relative_path,
+          canEdit: true,
+          onEditChange: setEditDraft,
+          onEditCaretApplied: () => {},
+          onEditExit: async () => {},
+          onEditStart: () => {},
+          onToggleRawPreview: () => {},
+        }),
+      );
+    };
+
+    const { container, cleanup: localCleanup } = render(createElement(Harness));
+    cleanup = localCleanup;
+
+    const editToggleBefore = container.querySelector(
+      'button[aria-label="Edit mode"]',
+    ) as HTMLButtonElement | null;
+    expect(editToggleBefore).toBeTruthy();
+    expect(editToggleBefore?.disabled).toBe(false);
+    expect(editToggleBefore?.getAttribute("aria-pressed")).toBe("true");
+
+    act(() => {
+      editToggleBefore?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const editToggleAfterDisable = container.querySelector(
+      'button[aria-label="Edit mode"]',
+    ) as HTMLButtonElement | null;
+    expect(editToggleAfterDisable?.getAttribute("aria-pressed")).toBe("false");
+
+    const switchFileButton = container.querySelector(
+      'button[data-testid="switch-file"]',
+    ) as HTMLButtonElement | null;
+    expect(switchFileButton).toBeTruthy();
+
+    act(() => {
+      switchFileButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const editToggleAfterSwitch = container.querySelector(
+      'button[aria-label="Edit mode"]',
+    ) as HTMLButtonElement | null;
+    expect(editToggleAfterSwitch).toBeTruthy();
+    expect(editToggleAfterSwitch?.getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("renders inline HTML tags after sanitization", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       "Inline <span class=\"tag\">Span</span><br>Line <sup>sup</sup> <sub>sub</sub> <kbd>Ctrl</kbd>",
