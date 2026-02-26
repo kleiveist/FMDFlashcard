@@ -1417,9 +1417,47 @@ textarea.preview-editor {
   cursor: pointer;
 }
 
+.markdown-hybrid-insert-menu-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .markdown-hybrid-insert-menu-item-tile {
   display: grid;
   gap: 2px;
+}
+
+.markdown-hybrid-insert-menu-item-tile-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.markdown-hybrid-insert-menu-item-tile-header .markdown-hybrid-insert-menu-item-label {
+  line-height: 1.25;
+}
+
+.markdown-hybrid-insert-menu-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: color-mix(in srgb, var(--muted) 86%, var(--text));
+}
+
+.markdown-hybrid-insert-menu-item-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.markdown-hybrid-insert-menu-item-content {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .markdown-hybrid-insert-menu-item-label {
@@ -1436,6 +1474,13 @@ textarea.preview-editor {
 .markdown-hybrid-insert-menu-close:hover {
   border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
   background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+}
+
+.markdown-hybrid-insert-menu-item:hover .markdown-hybrid-insert-menu-item-icon,
+.markdown-hybrid-insert-menu-item:focus-visible .markdown-hybrid-insert-menu-item-icon,
+.markdown-hybrid-insert-menu-close:hover .markdown-hybrid-insert-menu-item-icon,
+.markdown-hybrid-insert-menu-close:focus-visible .markdown-hybrid-insert-menu-item-icon {
+  color: color-mix(in srgb, var(--accent-strong) 72%, var(--text));
 }
 
 .markdown-hybrid-insert-menu-close {

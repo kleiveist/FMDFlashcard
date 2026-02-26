@@ -331,6 +331,19 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector("kbd")).toBeTruthy();
   });
 
+  it("renders details/summary blocks after sanitization", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      "<details><summary>Toggle title</summary>Toggle content</details>",
+    );
+    cleanup = localCleanup;
+
+    const preview = container.querySelector(".preview.markdown");
+    expect(preview?.querySelector("details")).toBeTruthy();
+    expect(preview?.querySelector("summary")).toBeTruthy();
+    expect(preview?.textContent ?? "").toContain("Toggle title");
+    expect(preview?.textContent ?? "").toContain("Toggle content");
+  });
+
   it("renders table blocks even when surrounding blank lines are missing", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       [

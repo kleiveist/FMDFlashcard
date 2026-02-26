@@ -5,16 +5,31 @@ import {
 } from "./insertTemplates";
 
 describe("insertTemplates", () => {
-  it("contains Advanced templates for all required modes", () => {
+  it("contains only the remaining Advanced card template modes and icons", () => {
     const modes = new Set(ADVANCED_INSERT_TEMPLATE_CATALOG.map((template) => template.mode));
-    const requiredModes = ["cd", "cl", "cld", "e", "ea", "m1", "m2", "qa", "tf"] as const;
+    const requiredModes = ["cd", "cl", "cld", "m1", "m2", "qa", "tf"] as const;
 
     requiredModes.forEach((mode) => {
       expect(modes.has(mode)).toBe(true);
     });
+
+    ["e", "ea"].forEach((mode) => {
+      expect(modes.has(mode as (typeof ADVANCED_INSERT_TEMPLATE_CATALOG)[number]["mode"])).toBe(false);
+    });
+
+    ADVANCED_INSERT_TEMPLATE_CATALOG.forEach((template) => {
+      expect(typeof template.icon).toBe("string");
+      expect(template.icon.length).toBeGreaterThan(0);
+    });
+
+    const labels = new Set(ADVANCED_INSERT_TEMPLATE_CATALOG.map((template) => template.label));
+    expect(labels.has("Code Block")).toBe(false);
+    expect(labels.has("Formula Block")).toBe(false);
+    expect(labels.has("Exam Wrapper")).toBe(false);
+    expect(labels.has("Exam Task Blueprint")).toBe(false);
   });
 
-  it("filters nested card container templates inside card context", () => {
+  it("filters all remaining Advanced templates inside card context to prevent nesting", () => {
     const sections = getAdvancedInsertTemplateSections({
       insideCard: true,
       insideExam: false,
@@ -23,25 +38,22 @@ describe("insertTemplates", () => {
       sections.flatMap((section) => section.items.map((item) => item.mode)),
     );
 
-    ["qa", "tf", "m1", "m2", "cl", "cd", "cld", "e"].forEach((mode) => {
+    ["qa", "tf", "m1", "m2", "cl", "cd", "cld"].forEach((mode) => {
       expect(visibleModes.has(mode as (typeof ADVANCED_INSERT_TEMPLATE_CATALOG)[number]["mode"])).toBe(
         false,
       );
     });
-    expect(visibleModes.has("ea")).toBe(true);
-    expect(visibleModes.has("code-block")).toBe(true);
-    expect(visibleModes.has("formula-block")).toBe(true);
+    expect(sections).toHaveLength(0);
   });
 
-  it("prioritizes the Exam group in exam context", () => {
+  it("does not surface empty exam/markdown sections after removing those Advanced templates", () => {
     const sections = getAdvancedInsertTemplateSections({
       insideCard: false,
       insideExam: true,
     });
 
-    expect(sections[0]?.id).toBe("exam");
-    const examModes = sections[0]?.items.map((item) => item.mode) ?? [];
-    expect(examModes).toContain("e");
-    expect(examModes).toContain("ea");
+    const sectionIds = sections.map((section) => section.id);
+    expect(sectionIds).not.toContain("exam");
+    expect(sectionIds).not.toContain("markdown");
   });
 });

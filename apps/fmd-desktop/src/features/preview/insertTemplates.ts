@@ -10,14 +10,10 @@ export type AdvancedInsertTemplateMode =
   | "cd"
   | "cl"
   | "cld"
-  | "e"
-  | "ea"
   | "m1"
   | "m2"
   | "qa"
-  | "tf"
-  | "code-block"
-  | "formula-block";
+  | "tf";
 
 export type AdvancedInsertTemplateGroupId =
   | "flashcard"
@@ -27,6 +23,15 @@ export type AdvancedInsertTemplateGroupId =
   | "cloze"
   | "exam"
   | "markdown";
+
+export type AdvancedInsertTemplateIconId =
+  | "advanced-qa"
+  | "advanced-tf"
+  | "advanced-m1"
+  | "advanced-m2"
+  | "advanced-cl"
+  | "advanced-cd"
+  | "advanced-cld";
 
 export type AdvancedInsertTemplateContext = {
   insideCard: boolean;
@@ -46,6 +51,7 @@ export type AdvancedInsertTemplateDefinition = {
   groupId: AdvancedInsertTemplateGroupId;
   payload: string;
   firstPlaceholder: string;
+  icon: AdvancedInsertTemplateIconId;
   contextRules?: AdvancedInsertTemplateContextRules;
 };
 
@@ -69,6 +75,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     description: "Question + Answer: marker (qa)",
     mode: "qa",
     groupId: "qa",
+    icon: "advanced-qa",
     payload: "#card\nQUESTION TEXT\n\nAnswer: ANSWER TEXT\n#endcard",
     firstPlaceholder: "QUESTION TEXT",
     contextRules: {
@@ -81,6 +88,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     description: "Statement with -true marker (tf)",
     mode: "tf",
     groupId: "true-false",
+    icon: "advanced-tf",
     payload: "#card\nSTATEMENT TEXT\n-true\n#endcard",
     firstPlaceholder: "STATEMENT TEXT",
     contextRules: {
@@ -93,6 +101,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     description: "Single correct option (m1)",
     mode: "m1",
     groupId: "choice",
+    icon: "advanced-m1",
     payload: "#card\nQUESTION TEXT\na) OPTION A\nb) OPTION B\nc) OPTION C\n-a\n#endcard",
     firstPlaceholder: "QUESTION TEXT",
     contextRules: {
@@ -105,6 +114,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     description: "Multiple correct options (m2)",
     mode: "m2",
     groupId: "choice",
+    icon: "advanced-m2",
     payload:
       "#card\nQUESTION TEXT\na) OPTION A\nb) OPTION B\nc) OPTION C\nd) OPTION D\n-a\n-c\n#endcard",
     firstPlaceholder: "QUESTION TEXT",
@@ -118,6 +128,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     description: "Typed blank with %...% (cl)",
     mode: "cl",
     groupId: "cloze",
+    icon: "advanced-cl",
     payload: "#card\nSENTENCE BEFORE %ANSWER1% SENTENCE AFTER\n#endcard",
     firstPlaceholder: "ANSWER1",
     contextRules: {
@@ -130,6 +141,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     description: "Drag tokens with quoted token bank (cd)",
     mode: "cd",
     groupId: "cloze",
+    icon: "advanced-cd",
     payload:
       '#card\nSENTENCE WITH TOKENS tocken "TOKEN1", tocken "TOKEN2", tocken "TOKEN3".\n#endcard',
     firstPlaceholder: "TOKEN1",
@@ -143,56 +155,13 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     description: "Typed blanks + drag tokens (cld)",
     mode: "cld",
     groupId: "cloze",
+    icon: "advanced-cld",
     payload:
       '#card\nSENTENCE BEFORE %ANSWER1% SENTENCE MIDDLE %ANSWER2% SENTENCE AFTER\n\nTOKEN BANK tocken "TOKENA", tocken "TOKENB", tocken "TOKENC"\n#endcard',
     firstPlaceholder: "ANSWER1",
     contextRules: {
       hideInsideCard: true,
     },
-  },
-  {
-    id: "exam-e",
-    label: "Exam Wrapper",
-    description: "Exam block with 3 task placeholders (e)",
-    mode: "e",
-    groupId: "exam",
-    payload:
-      "#exam\nOPTIONAL EXAM INTRO TEXT\n\n1) TASK 1 PROMPT (QA)\nAnswer: OFFICIAL ANSWER TEXT\n---\n\n2) TASK 2 PROMPT (TF)\nSTATEMENT TEXT\n-true\n---\n\n3) TASK 3 PROMPT (M1)\na) OPTION A\nb) OPTION B\nc) OPTION C\n-a\n#endexam",
-    firstPlaceholder: "OPTIONAL EXAM INTRO TEXT",
-    contextRules: {
-      hideInsideCard: true,
-      prioritizeInsideExam: true,
-    },
-  },
-  {
-    id: "exam-ea",
-    label: "Exam Task Blueprint",
-    description: "Single numbered exam task chunk (ea)",
-    mode: "ea",
-    groupId: "exam",
-    payload: "1) TASK PROMPT TEXT\nTASK CONTEXT LINE\nAnswer: OFFICIAL ANSWER TEXT\n---",
-    firstPlaceholder: "TASK PROMPT TEXT",
-    contextRules: {
-      prioritizeInsideExam: true,
-    },
-  },
-  {
-    id: "markdown-code-block",
-    label: "Code Block",
-    description: "Fenced code block",
-    mode: "code-block",
-    groupId: "markdown",
-    payload: "```txt\nCODE HERE\n```",
-    firstPlaceholder: "CODE HERE",
-  },
-  {
-    id: "markdown-formula-block",
-    label: "Formula Block",
-    description: "Fenced math block",
-    mode: "formula-block",
-    groupId: "markdown",
-    payload: "```math\nx = y\n```",
-    firstPlaceholder: "x = y",
   },
 ];
 

@@ -676,7 +676,7 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("renders insert menu without a Page entry and keeps Code/Formula as grid menu items in Advanced", () => {
+  it("renders insert menu without removed entries in Advanced and without a Page entry", () => {
     withImmediateRaf(() => {
       const Harness = () => {
         const [markdown, setMarkdown] = useState("# One");
@@ -703,6 +703,9 @@ describe("MarkdownHybridEditor", () => {
         container.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-insert-menu-item[role='menuitem']"),
       );
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Page")).toBe(false);
+      expect(categoryButtons.some((button) => button.textContent?.trim() === "Text & Headings")).toBe(false);
+      expect(categoryButtons.some((button) => button.textContent?.trim() === "Lists")).toBe(false);
+      expect(categoryButtons.some((button) => button.textContent?.trim() === "Standard Blocks")).toBe(true);
 
       const advancedButton = findButtonByExactText(container, "Advanced");
       expect(advancedButton).toBeTruthy();
@@ -717,13 +720,180 @@ describe("MarkdownHybridEditor", () => {
       const formulaButtons = Array.from(
         container.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-insert-menu-item"),
       ).filter((button) => button.textContent?.includes("Formula Block"));
-      expect(codeButtons).toHaveLength(1);
-      expect(formulaButtons).toHaveLength(1);
-      expect(codeButtons[0]?.parentElement).toBe(list);
-      expect(formulaButtons[0]?.parentElement).toBe(list);
-      expect(codeButtons[0]?.getAttribute("role")).toBe("menuitem");
-      expect(formulaButtons[0]?.getAttribute("role")).toBe("menuitem");
+      const examWrapperButtons = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-insert-menu-item"),
+      ).filter((button) => button.textContent?.includes("Exam Wrapper"));
+      const examBlueprintButtons = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-insert-menu-item"),
+      ).filter((button) => button.textContent?.includes("Exam Task Blueprint"));
+      expect(list?.querySelectorAll(".markdown-hybrid-insert-menu-item")).not.toHaveLength(0);
+      expect(codeButtons).toHaveLength(0);
+      expect(formulaButtons).toHaveLength(0);
+      expect(examWrapperButtons).toHaveLength(0);
+      expect(examBlueprintButtons).toHaveLength(0);
       expect(findMenuItemButtonByLabel(container, "Flashcard Block")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("shows merged Standard Blocks items with icons and without a separate Lists category", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("# One");
+        return (
+          <MarkdownHybridEditor
+            historyKey="insert-menu-standard-blocks"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+
+      expect(findButtonByExactText(container, "Standard Blocks")).toBeTruthy();
+      expect(findButtonByExactText(container, "Text & Headings")).toBeNull();
+      expect(findButtonByExactText(container, "Lists")).toBeNull();
+
+      dispatchClick(findButtonByExactText(container, "Standard Blocks"));
+
+      const expectedLabels = [
+        "Text",
+        "Heading 1",
+        "Heading 2",
+        "Heading 3",
+        "Heading 4",
+        "Bulleted List",
+        "Numbered List",
+        "Numbered List (Exam)",
+        "To-do List",
+        "Toggle List",
+        "Divider",
+        "Quote",
+        "Nested Quote",
+      ];
+
+      const menuButtons = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(
+          ".markdown-hybrid-insert-menu-item[role='menuitem']",
+        ),
+      );
+      expect(menuButtons).toHaveLength(expectedLabels.length);
+
+      const labels = menuButtons.map((button) =>
+        button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ?? "",
+      );
+      expect(labels).toEqual(expectedLabels);
+
+      const iconNodes = container.querySelectorAll(
+        ".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon]",
+      );
+      expect(iconNodes).toHaveLength(expectedLabels.length);
+
+      cleanup();
+    });
+  });
+
+  it("inserts syntactically correct Standard Blocks markdown prefixes", () => {
+    withImmediateRaf(() => {
+      const expectations: Array<{ label: string; markdown: string }> = [
+        { label: "Text", markdown: "Text" },
+        { label: "Heading 1", markdown: "# Heading text" },
+        { label: "Heading 2", markdown: "## Heading text" },
+        { label: "Heading 3", markdown: "### Heading text" },
+        { label: "Heading 4", markdown: "#### Heading text" },
+        { label: "Bulleted List", markdown: "- List item" },
+        { label: "Numbered List", markdown: "1. List item" },
+        { label: "Numbered List (Exam)", markdown: "1) Task text" },
+        { label: "To-do List", markdown: "- [ ] Task text" },
+        {
+          label: "Toggle List",
+          markdown: "<details>\n<summary>Toggle title</summary>\n\nToggle content\n</details>",
+        },
+        { label: "Divider", markdown: "---" },
+        { label: "Quote", markdown: "> Quote text" },
+        { label: "Nested Quote", markdown: ">> Nested quote text" },
+      ];
+
+      for (const entry of expectations) {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("");
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey={`insert-standard-${entry.label}`}
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+        dispatchClick(findButtonByExactText(container, "Standard Blocks"));
+        dispatchClick(findMenuItemButtonByLabel(container, entry.label));
+
+        const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        expect(markdownValue).toBe(entry.markdown);
+
+        cleanup();
+      }
+    });
+  });
+
+  it("renders an icon for the close menu button and restores Code Block in Structure", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-menu-structure-code-block"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+
+      const closeButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
+        (button) => button.textContent?.trim() === "Close Menu (Esc)",
+      );
+      expect(closeButton).toBeTruthy();
+      expect(
+        closeButton?.querySelector(
+          ".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon='close']",
+        ),
+      ).toBeTruthy();
+
+      dispatchClick(findButtonByExactText(container, "Structure"));
+
+      const codeBlockButton = findMenuItemButtonByLabel(container, "Code Block");
+      expect(codeBlockButton).toBeTruthy();
+      expect(
+        codeBlockButton?.querySelector(
+          ".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon='code-block']",
+        ),
+      ).toBeTruthy();
+
+      dispatchClick(codeBlockButton);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe("```txt\nCODE HERE\n```");
 
       cleanup();
     });
@@ -808,6 +978,9 @@ describe("MarkdownHybridEditor", () => {
 
         const templateButton = findMenuItemButtonByLabel(container, template.label);
         expect(templateButton).toBeTruthy();
+        expect(
+          templateButton?.querySelector(".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon]"),
+        ).toBeTruthy();
         dispatchClick(templateButton);
 
         const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";

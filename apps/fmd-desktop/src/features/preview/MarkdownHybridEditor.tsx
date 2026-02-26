@@ -44,6 +44,7 @@ import {
 import {
   getAdvancedInsertTemplateSections,
   type AdvancedInsertTemplateContext,
+  type AdvancedInsertTemplateIconId,
 } from "./insertTemplates";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
@@ -105,8 +106,7 @@ type OverlayLayoutState = {
 };
 
 type InsertMenuCategoryId =
-  | "text-headings"
-  | "lists"
+  | "standard-blocks"
   | "structure"
   | "links"
   | "advanced";
@@ -123,6 +123,7 @@ type InsertMenuState = {
 type InsertMenuCategory = {
   id: InsertMenuCategoryId;
   label: string;
+  icon?: InsertMenuIconId;
 };
 
 type InsertMenuItem = {
@@ -131,7 +132,29 @@ type InsertMenuItem = {
   template: string;
   description?: string;
   firstPlaceholder?: string;
+  icon?: InsertMenuIconId;
 };
+
+type InsertMenuIconId =
+  | "blocks"
+  | "table"
+  | "link"
+  | "sparkles"
+  | "text"
+  | "heading-1"
+  | "heading-2"
+  | "heading-3"
+  | "heading-4"
+  | "list-bulleted"
+  | "list-ordered"
+  | "list-checks"
+  | "toggle-list"
+  | "code-block"
+  | "divider"
+  | "quote"
+  | "nested-quote"
+  | AdvancedInsertTemplateIconId
+  | "close";
 
 type MarkdownHybridEditorProps = {
   historyKey: string;
@@ -145,45 +168,397 @@ type MarkdownHybridEditorProps = {
 };
 
 const INSERT_MENU_CATEGORIES: InsertMenuCategory[] = [
-  { id: "text-headings", label: "Text & Headings" },
-  { id: "lists", label: "Lists" },
-  { id: "structure", label: "Structure" },
-  { id: "links", label: "Links" },
-  { id: "advanced", label: "Advanced" },
+  { id: "standard-blocks", label: "Standard Blocks", icon: "blocks" },
+  { id: "structure", label: "Structure", icon: "table" },
+  { id: "links", label: "Links", icon: "link" },
+  { id: "advanced", label: "Advanced", icon: "sparkles" },
 ];
 
 const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem[]> = {
-  "text-headings": [
-    { id: "text", label: "Text", template: "New text" },
-    { id: "heading-1", label: "Heading 1", template: "# Heading" },
-    { id: "heading-2", label: "Heading 2", template: "## Heading" },
-    { id: "heading-3", label: "Heading 3", template: "### Heading" },
-    { id: "heading-4", label: "Heading 4", template: "#### Heading" },
-  ],
-  lists: [
-    { id: "bullet-list", label: "- Bullet List", template: "- List item" },
-    { id: "ordered-list", label: "1. Numbered List", template: "1. List item" },
+  "standard-blocks": [
+    { id: "text", label: "Text", template: "Text", firstPlaceholder: "Text", icon: "text" },
     {
-      id: "ordered-list-paren",
-      label: "1)  Numbered List",
-      template: "1) List item",
+      id: "heading-1",
+      label: "Heading 1",
+      template: "# Heading text",
+      firstPlaceholder: "Heading text",
+      icon: "heading-1",
     },
-    { id: "todo-list", label: "To-do List", template: "- [ ] Task" },
+    {
+      id: "heading-2",
+      label: "Heading 2",
+      template: "## Heading text",
+      firstPlaceholder: "Heading text",
+      icon: "heading-2",
+    },
+    {
+      id: "heading-3",
+      label: "Heading 3",
+      template: "### Heading text",
+      firstPlaceholder: "Heading text",
+      icon: "heading-3",
+    },
+    {
+      id: "heading-4",
+      label: "Heading 4",
+      template: "#### Heading text",
+      firstPlaceholder: "Heading text",
+      icon: "heading-4",
+    },
+    {
+      id: "bullet-list",
+      label: "Bulleted List",
+      template: "- List item",
+      firstPlaceholder: "List item",
+      icon: "list-bulleted",
+    },
+    {
+      id: "ordered-list",
+      label: "Numbered List",
+      template: "1. List item",
+      firstPlaceholder: "List item",
+      icon: "list-ordered",
+    },
+    {
+      id: "ordered-list-exam",
+      label: "Numbered List (Exam)",
+      template: "1) Task text",
+      firstPlaceholder: "Task text",
+      icon: "list-ordered",
+    },
+    {
+      id: "todo-list",
+      label: "To-do List",
+      template: "- [ ] Task text",
+      firstPlaceholder: "Task text",
+      icon: "list-checks",
+    },
+    {
+      id: "toggle-list",
+      label: "Toggle List",
+      template:
+        "<details>\n<summary>Toggle title</summary>\n\nToggle content\n</details>",
+      firstPlaceholder: "Toggle title",
+      icon: "toggle-list",
+    },
+    { id: "divider", label: "Divider", template: "---", icon: "divider" },
+    {
+      id: "quote",
+      label: "Quote",
+      template: "> Quote text",
+      firstPlaceholder: "Quote text",
+      icon: "quote",
+    },
+    {
+      id: "nested-quote",
+      label: "Nested Quote",
+      template: ">> Nested quote text",
+      firstPlaceholder: "Nested quote text",
+      icon: "nested-quote",
+    },
   ],
   structure: [
-    { id: "blockquote", label: "Quote", template: "> Quote" },
+    {
+      id: "code-block-structure",
+      label: "Code Block",
+      template: "```txt\nCODE HERE\n```",
+      firstPlaceholder: "CODE HERE",
+      icon: "code-block",
+    },
     {
       id: "table",
       label: "Table",
       template: "| Column A | Column B |\n| --- | --- |\n| Value 1 | Value 2 |",
+      icon: "table",
+      firstPlaceholder: "Column A",
     },
-    { id: "divider", label: "Divider", template: "---" },
   ],
   links: [
-    { id: "page-link", label: "Link Page", template: "[[Page]]" },
+    {
+      id: "page-link",
+      label: "Link Page",
+      template: "[[Page]]",
+      firstPlaceholder: "Page",
+      icon: "link",
+    },
   ],
   advanced: [],
 };
+
+const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
+  const svgProps = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (icon) {
+    case "blocks":
+      return (
+        <svg {...svgProps}>
+          <rect x="4" y="5" width="7" height="5" rx="1.3" />
+          <rect x="13" y="5" width="7" height="5" rx="1.3" />
+          <rect x="4" y="14" width="7" height="5" rx="1.3" />
+          <rect x="13" y="14" width="7" height="5" rx="1.3" />
+        </svg>
+      );
+    case "table":
+      return (
+        <svg {...svgProps}>
+          <rect x="4" y="5" width="16" height="14" rx="1.5" />
+          <line x1="4" y1="10" x2="20" y2="10" />
+          <line x1="9.5" y1="5" x2="9.5" y2="19" />
+          <line x1="15" y1="5" x2="15" y2="19" />
+        </svg>
+      );
+    case "link":
+      return (
+        <svg {...svgProps}>
+          <path d="M10 14l4-4" />
+          <path d="M8 16l-1.5 1.5a3 3 0 0 1-4.2-4.2L6 9.6a3 3 0 0 1 4.2 0" />
+          <path d="M16 8l1.5-1.5a3 3 0 1 1 4.2 4.2L18 14.4a3 3 0 0 1-4.2 0" />
+        </svg>
+      );
+    case "sparkles":
+      return (
+        <svg {...svgProps}>
+          <path d="M12 4l1.1 3.2L16 8.3l-2.9 1.1L12 12.6l-1.1-3.2L8 8.3l2.9-1.1L12 4z" />
+          <path d="M18.5 14.5l0.7 1.9 1.8 0.7-1.8 0.7-0.7 1.9-0.7-1.9-1.8-0.7 1.8-0.7 0.7-1.9z" />
+          <path d="M6 13l0.8 2.3L9 16.1l-2.2 0.8L6 19.2l-0.8-2.3L3 16.1l2.2-0.8L6 13z" />
+        </svg>
+      );
+    case "text":
+      return (
+        <svg {...svgProps}>
+          <path d="M5 7h14" />
+          <path d="M12 7v10" />
+          <path d="M8 17h8" />
+        </svg>
+      );
+    case "heading-1":
+    case "heading-2":
+    case "heading-3":
+    case "heading-4": {
+      const headingLevel = icon.slice(icon.length - 1);
+      return (
+        <svg {...svgProps}>
+          <line x1="6" y1="6" x2="6" y2="18" />
+          <line x1="11" y1="6" x2="11" y2="18" />
+          <line x1="6" y1="12" x2="11" y2="12" />
+          <text
+            x="15.6"
+            y="15.2"
+            fill="currentColor"
+            stroke="none"
+            fontSize="8.5"
+            fontWeight="700"
+            textAnchor="middle"
+          >
+            {headingLevel}
+          </text>
+        </svg>
+      );
+    }
+    case "list-bulleted":
+      return (
+        <svg {...svgProps}>
+          <circle cx="6" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="6" cy="12" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="6" cy="16.5" r="1.2" fill="currentColor" stroke="none" />
+          <line x1="10" y1="7.5" x2="19" y2="7.5" />
+          <line x1="10" y1="12" x2="19" y2="12" />
+          <line x1="10" y1="16.5" x2="19" y2="16.5" />
+        </svg>
+      );
+    case "list-ordered":
+      return (
+        <svg {...svgProps}>
+          <text x="5.5" y="10.1" fill="currentColor" stroke="none" fontSize="6.4" fontWeight="700">
+            1.
+          </text>
+          <text x="5.4" y="17.6" fill="currentColor" stroke="none" fontSize="6.4" fontWeight="700">
+            2.
+          </text>
+          <line x1="10" y1="8.3" x2="19" y2="8.3" />
+          <line x1="10" y1="15.8" x2="19" y2="15.8" />
+        </svg>
+      );
+    case "list-checks":
+      return (
+        <svg {...svgProps}>
+          <rect x="4.5" y="5.5" width="4" height="4" rx="0.8" />
+          <rect x="4.5" y="14.5" width="4" height="4" rx="0.8" />
+          <polyline points="5.3,16.6 6.3,17.6 7.8,15.9" />
+          <line x1="11" y1="7.5" x2="19.5" y2="7.5" />
+          <line x1="11" y1="16.5" x2="19.5" y2="16.5" />
+        </svg>
+      );
+    case "toggle-list":
+      return (
+        <svg {...svgProps}>
+          <rect x="4" y="4.5" width="16" height="15" rx="2" />
+          <polyline points="8,9.5 12,13.5 16,9.5" />
+          <line x1="7.5" y1="16.5" x2="16.5" y2="16.5" />
+        </svg>
+      );
+    case "code-block":
+      return (
+        <svg {...svgProps}>
+          <polyline points="8 8 4 12 8 16" />
+          <polyline points="16 8 20 12 16 16" />
+          <line x1="11" y1="6" x2="13" y2="18" />
+        </svg>
+      );
+    case "divider":
+      return (
+        <svg {...svgProps}>
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <circle cx="8" cy="12" r="1" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+          <circle cx="16" cy="12" r="1" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "quote":
+      return (
+        <svg {...svgProps}>
+          <path d="M8.5 8.5c-1.8 0.7-3 2.2-3 4.4v2.6h4.4v-2.6H8.2c0-1 0.5-1.7 1.5-2.2" />
+          <path d="M16.5 8.5c-1.8 0.7-3 2.2-3 4.4v2.6h4.4v-2.6h-1.7c0-1 0.5-1.7 1.5-2.2" />
+        </svg>
+      );
+    case "nested-quote":
+      return (
+        <svg {...svgProps}>
+          <path d="M6 7v10" />
+          <path d="M10 9.5c-1.2 0.5-2 1.5-2 3v1.9h3.2v-1.9H10c0-0.7 0.4-1.2 1.1-1.6" />
+          <path d="M16 9.5c-1.2 0.5-2 1.5-2 3v1.9h3.2v-1.9H16c0-0.7 0.4-1.2 1.1-1.6" />
+        </svg>
+      );
+    case "advanced-qa":
+      return (
+        <svg {...svgProps}>
+          <text x="6.4" y="10.1" fill="currentColor" stroke="none" fontSize="6.2" fontWeight="700">
+            Q
+          </text>
+          <text x="6.2" y="17.4" fill="currentColor" stroke="none" fontSize="6.2" fontWeight="700">
+            A
+          </text>
+          <line x1="10.5" y1="8.2" x2="19" y2="8.2" />
+          <line x1="10.5" y1="15.6" x2="19" y2="15.6" />
+        </svg>
+      );
+    case "advanced-tf":
+      return (
+        <svg {...svgProps}>
+          <circle cx="7" cy="8" r="2.2" />
+          <polyline points="5.9,8.1 6.8,9 8.3,6.9" />
+          <circle cx="7" cy="16" r="2.2" />
+          <line x1="5.6" y1="14.6" x2="8.4" y2="17.4" />
+          <line x1="8.4" y1="14.6" x2="5.6" y2="17.4" />
+          <line x1="11.5" y1="8" x2="19" y2="8" />
+          <line x1="11.5" y1="16" x2="19" y2="16" />
+        </svg>
+      );
+    case "advanced-m1":
+      return (
+        <svg {...svgProps}>
+          <circle cx="6.5" cy="7.5" r="1.8" />
+          <circle cx="6.5" cy="12" r="1.8" />
+          <circle cx="6.5" cy="16.5" r="1.8" />
+          <circle cx="6.5" cy="12" r="0.9" fill="currentColor" stroke="none" />
+          <line x1="10.2" y1="7.5" x2="19" y2="7.5" />
+          <line x1="10.2" y1="12" x2="19" y2="12" />
+          <line x1="10.2" y1="16.5" x2="19" y2="16.5" />
+        </svg>
+      );
+    case "advanced-m2":
+      return (
+        <svg {...svgProps}>
+          <rect x="4.8" y="5.8" width="3.4" height="3.4" rx="0.6" />
+          <rect x="4.8" y="10.3" width="3.4" height="3.4" rx="0.6" />
+          <rect x="4.8" y="14.8" width="3.4" height="3.4" rx="0.6" />
+          <polyline points="5.6,12 6.3,12.8 7.4,11.3" />
+          <polyline points="5.6,16.5 6.3,17.3 7.4,15.8" />
+          <line x1="10.2" y1="7.5" x2="19" y2="7.5" />
+          <line x1="10.2" y1="12" x2="19" y2="12" />
+          <line x1="10.2" y1="16.5" x2="19" y2="16.5" />
+        </svg>
+      );
+    case "advanced-cl":
+      return (
+        <svg {...svgProps}>
+          <line x1="4.5" y1="8" x2="8" y2="8" />
+          <line x1="16" y1="8" x2="19.5" y2="8" />
+          <rect x="8.8" y="6.2" width="6.4" height="3.6" rx="1" strokeDasharray="2 1.5" />
+          <text x="11.9" y="17.2" fill="currentColor" stroke="none" fontSize="6.8" fontWeight="700">
+            %
+          </text>
+        </svg>
+      );
+    case "advanced-cd":
+      return (
+        <svg {...svgProps}>
+          <rect x="4.3" y="6.1" width="6.1" height="3.4" rx="1" />
+          <rect x="13.6" y="6.1" width="6.1" height="3.4" rx="1" />
+          <rect x="9" y="14.4" width="6.1" height="3.4" rx="1" />
+          <path d="M10.4 8.1h2.8" />
+          <polyline points="12.2,7 13.4,8.1 12.2,9.2" />
+        </svg>
+      );
+    case "advanced-cld":
+      return (
+        <svg {...svgProps}>
+          <rect x="5" y="5.6" width="5.6" height="3.4" rx="0.9" strokeDasharray="2 1.3" />
+          <rect x="13.4" y="5.6" width="5.6" height="3.4" rx="0.9" />
+          <text x="7.8" y="17.2" fill="currentColor" stroke="none" fontSize="6.4" fontWeight="700">
+            %
+          </text>
+          <path d="M11 14.6h5.2" />
+          <polyline points="15,13.5 16.2,14.6 15,15.7" />
+        </svg>
+      );
+    case "close":
+      return (
+        <svg {...svgProps}>
+          <line x1="6" y1="6" x2="18" y2="18" />
+          <line x1="18" y1="6" x2="6" y2="18" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
+
+const renderInsertMenuRowContent = ({
+  label,
+  description,
+  icon,
+}: {
+  label: string;
+  description?: string;
+  icon?: InsertMenuIconId;
+}) => (
+  <>
+    {icon ? (
+      <span
+        className="markdown-hybrid-insert-menu-item-icon"
+        aria-hidden="true"
+        data-md-insert-menu-icon={icon}
+      >
+        <InsertMenuIconGraphic icon={icon} />
+      </span>
+    ) : null}
+    <span className="markdown-hybrid-insert-menu-item-content">
+      <span className="markdown-hybrid-insert-menu-item-label">{label}</span>
+      {description ? (
+        <span className="markdown-hybrid-insert-menu-item-description">{description}</span>
+      ) : null}
+    </span>
+  </>
+);
 
 const isUndoShortcut = (event: KeyboardEvent<HTMLElement>) =>
   !event.shiftKey &&
@@ -3602,6 +3977,7 @@ export const MarkdownHybridEditor = ({
         description: item.description,
         template: item.payload,
         firstPlaceholder: item.firstPlaceholder,
+        icon: item.icon,
       })),
     }))
     : [];
@@ -3712,11 +4088,14 @@ export const MarkdownHybridEditor = ({
               <button
                 key={category.id}
                 type="button"
-                className="markdown-hybrid-insert-menu-item"
+                className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
                 onClick={handleSelectInsertMenuCategory(category.id)}
                 role="menuitem"
               >
-                {category.label}
+                {renderInsertMenuRowContent({
+                  label: category.label,
+                  icon: category.icon,
+                })}
               </button>
             ))
             : insertMenuState?.categoryId === "advanced"
@@ -3730,7 +4109,18 @@ export const MarkdownHybridEditor = ({
                   role="menuitem"
                   title={item.description}
                 >
-                  <span className="markdown-hybrid-insert-menu-item-label">{item.label}</span>
+                  <span className="markdown-hybrid-insert-menu-item-tile-header">
+                    {item.icon ? (
+                      <span
+                        className="markdown-hybrid-insert-menu-item-icon"
+                        aria-hidden="true"
+                        data-md-insert-menu-icon={item.icon}
+                      >
+                        <InsertMenuIconGraphic icon={item.icon} />
+                      </span>
+                    ) : null}
+                    <span className="markdown-hybrid-insert-menu-item-label">{item.label}</span>
+                  </span>
                   {item.description ? (
                     <span className="markdown-hybrid-insert-menu-item-description">
                       {item.description}
@@ -3743,20 +4133,27 @@ export const MarkdownHybridEditor = ({
               <button
                 key={item.id}
                 type="button"
-                className="markdown-hybrid-insert-menu-item"
+                className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
                 onClick={handleInsertMenuItemSelect(item)}
                 role="menuitem"
               >
-                {item.label}
+                {renderInsertMenuRowContent({
+                  label: item.label,
+                  description: item.description,
+                  icon: item.icon,
+                })}
               </button>
             ))}
         </div>
         <button
           type="button"
-          className="markdown-hybrid-insert-menu-close"
+          className="markdown-hybrid-insert-menu-close markdown-hybrid-insert-menu-item-row"
           onClick={handleInsertMenuClose}
         >
-          Close Menu (Esc)
+          {renderInsertMenuRowContent({
+            label: "Close Menu (Esc)",
+            icon: "close",
+          })}
         </button>
       </div>
     );

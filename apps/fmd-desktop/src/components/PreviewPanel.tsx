@@ -709,7 +709,9 @@ const markdownSchema = {
   tagNames: [
     ...(defaultSchema.tagNames ?? []),
     "br",
+    "details",
     "kbd",
+    "summary",
     "span",
     "sub",
     "sup",
@@ -723,6 +725,7 @@ const markdownSchema = {
   ],
   attributes: {
     ...defaultSchema.attributes,
+    details: [...(defaultSchema.attributes?.details ?? []), "open"],
     ol: [...(defaultSchema.attributes?.ol ?? []), "data-md-ordered-delimiter"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
     th: [...(defaultSchema.attributes?.th ?? []), "align"],
