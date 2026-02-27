@@ -155,26 +155,6 @@ export const ExamTaskRunner = ({
             </span>
           ) : null}
         </div>
-        {showNavigation ? (
-          <div className="exam-task-nav">
-            <button
-              type="button"
-              className="ghost small"
-              onClick={onBack}
-              disabled={!canGoBack}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="ghost small"
-              onClick={onNext}
-              disabled={!canGoNext}
-            >
-              Next
-            </button>
-          </div>
-        ) : null}
       </header>
 
       {task.warnings.length > 0 ? (
@@ -257,9 +237,33 @@ export const ExamTaskRunner = ({
         </div>
       ) : null}
 
-      {hasHelp ? (
-        <div className="exam-help-actions">
-          <HelpButton helpText={task.helpText} enabled={helpEnabled} />
+      {hasHelp || showNavigation ? (
+        <div className="exam-task-footer-actions">
+          {hasHelp ? (
+            <div className="exam-help-actions">
+              <HelpButton helpText={task.helpText} enabled={helpEnabled} />
+            </div>
+          ) : null}
+          {showNavigation ? (
+            <div className="exam-task-nav">
+              <button
+                type="button"
+                className="ghost small"
+                onClick={onBack}
+                disabled={!canGoBack}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={onNext}
+                disabled={!canGoNext}
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -77,6 +77,7 @@ import {
   outdentSelectedListItems,
   type CommandResult,
 } from "./previewMarkdownListCommands";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { ChevronDownIcon, CodeIcon, EditIcon, MarkdownIcon } from "./icons";
 
 type CoverThumbnailSource = {
@@ -5710,6 +5711,9 @@ export const PreviewPanel = ({
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
   const [isFrontmatterPanelCollapsed, setIsFrontmatterPanelCollapsed] = useState(false);
   const [isHybridEditModeActive, setIsHybridEditModeActive] = useState(true);
+  const forceCollapsedFrontmatter = useMediaQuery("(max-width: 980px)", false);
+  const effectiveFrontmatterPanelCollapsed =
+    forceCollapsedFrontmatter || isFrontmatterPanelCollapsed;
 
   const previewFrontmatter = useMemo(
     () => parseFrontmatterDocument(preview),
@@ -6560,8 +6564,11 @@ export const PreviewPanel = ({
       !hasFrontmatterError,
   );
   const handleToggleFrontmatterPanelCollapsed = useCallback(() => {
+    if (forceCollapsedFrontmatter) {
+      return;
+    }
     setIsFrontmatterPanelCollapsed((current) => !current);
-  }, []);
+  }, [forceCollapsedFrontmatter]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -6755,7 +6762,7 @@ export const PreviewPanel = ({
                       previewState === "idle" &&
                       documentMode !== "write"
                     }
-                    isCollapsed={isFrontmatterPanelCollapsed}
+                    isCollapsed={effectiveFrontmatterPanelCollapsed}
                     onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                     onFrontmatterSave={onFrontmatterSave}
                     onNavigateWikilink={onNavigateWikilink}
@@ -6808,7 +6815,7 @@ export const PreviewPanel = ({
                       vaultPngAssets={vaultPngAssets}
                       vaultPath={vaultPath}
                       canEdit={canEdit && previewState === "idle" && !isEditing}
-                      isCollapsed={isFrontmatterPanelCollapsed}
+                      isCollapsed={effectiveFrontmatterPanelCollapsed}
                       onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                       onFrontmatterSave={onFrontmatterSave}
                       onNavigateWikilink={onNavigateWikilink}
@@ -6861,7 +6868,7 @@ export const PreviewPanel = ({
                         vaultPngAssets={vaultPngAssets}
                         vaultPath={vaultPath}
                         canEdit={canEdit && previewState === "idle"}
-                        isCollapsed={isFrontmatterPanelCollapsed}
+                        isCollapsed={effectiveFrontmatterPanelCollapsed}
                         onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                         onFrontmatterSave={onFrontmatterSave}
                         onNavigateWikilink={onNavigateWikilink}

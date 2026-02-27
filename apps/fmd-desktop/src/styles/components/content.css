@@ -1370,9 +1370,17 @@ body.focus-mode .spaced-repetition-sidebar {
   min-width: 0;
 }
 
+.exam-task-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .exam-help-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .exam-markdown {
@@ -1515,6 +1523,8 @@ body.focus-mode .spaced-repetition-sidebar {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .exam-warning {

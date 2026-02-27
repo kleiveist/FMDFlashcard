@@ -109,11 +109,14 @@ const AppContent = () => {
   const showStudySectionNav = layoutMode === "table";
   const isToolbarCollapsed = layoutMode === "table";
   const isNoteViewport = useMediaQuery("(max-width: 980px)", false);
+  const isExamNoteViewport = useMediaQuery("(max-width: 1199.98px)", false);
   const isDashboardNoteEligible =
     activeTab === "dashboard" &&
     (dashboardView === "markdown" || dashboardView === "exam") &&
     isNoteViewport;
-  const isSectionNoteEligible = isNoteViewport && activeTab !== "dashboard";
+  const isSectionNoteEligible =
+    activeTab !== "dashboard" &&
+    (activeTab === "exam" ? isExamNoteViewport : isNoteViewport);
   const isNoteModalEligible = isDashboardNoteEligible || isSectionNoteEligible;
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
   const closeBinding = useMemo(

@@ -967,14 +967,22 @@
 
 .exam-editor-points {
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
-  align-items: start;
+  align-items: stretch;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .exam-editor-points .exam-editor-panel,
 .points-profile-editor,
 .points-profile-nav {
   min-width: 0;
+  min-height: 0;
+}
+
+.points-profile-editor,
+.points-profile-nav {
+  overflow: hidden;
 }
 
 .points-profile-content-box {
@@ -990,10 +998,15 @@
 
 .points-profile-nav .panel-body,
 .points-profile-editor .panel-body {
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
+}
+
+.points-profile-editor .points-profile-content-box {
+  min-height: 0;
 }
 
 .points-profile-editor .panel-header {

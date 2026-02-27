@@ -29,8 +29,6 @@ import {
   type ExamStageControls,
   UserToolsPanel,
 } from "../../components/UserToolsPanel";
-import { ModalShell } from "../../components/ModalShell";
-import { FileIcon } from "../../components/icons";
 import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
@@ -41,7 +39,6 @@ import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 import { useLayoutMode } from "../../lib/layoutMode";
 import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
-import { useMediaQuery } from "../../lib/useMediaQuery";
 import {
   formatBinding,
   getEffectiveBinding,
@@ -129,8 +126,6 @@ export const ExamSimulationPage = () => {
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const autoViewModeRef = useRef(false);
   const isTableView = useLayoutMode() === "table";
-  const isTablet = useMediaQuery("(min-width: 980px) and (max-width: 1199px)", false);
-  const [isExamFilesOpen, setIsExamFilesOpen] = useState(false);
   const handleOpenExamSettings = useCallback(() => {
     const focusTarget =
       missingExamSettings.find((item) => item.severity !== "warning") ??
@@ -144,14 +139,6 @@ export const ExamSimulationPage = () => {
     });
   }, [missingExamSettings]);
 
-  const handleExamFilesOpen = useCallback(() => {
-    setIsExamFilesOpen(true);
-  }, []);
-
-  const handleExamFilesClose = useCallback(() => {
-    setIsExamFilesOpen(false);
-  }, []);
-
   const examFilePanelProps = {
     files: examFiles,
     listState: examFilesState,
@@ -159,12 +146,6 @@ export const ExamSimulationPage = () => {
     selectedPaths: selectedExamPaths,
     vaultPath: vault.vaultPath,
   };
-
-  useEffect(() => {
-    if (!isTablet && isExamFilesOpen) {
-      setIsExamFilesOpen(false);
-    }
-  }, [isExamFilesOpen, isTablet]);
   const examStageControls = useMemo<ExamStageControls>(
     () => ({
       stage,
@@ -477,17 +458,6 @@ export const ExamSimulationPage = () => {
                   <circle cx="12" cy="12" r="3.5" />
                 </svg>
               </button>
-              {isTablet ? (
-                <button
-                  type="button"
-                  className="focus-toggle exam-files-toggle"
-                  onClick={handleExamFilesOpen}
-                  aria-label="Exam Files"
-                  title="Exam Files"
-                >
-                  <FileIcon />
-                </button>
-              ) : null}
             </div>
             {mixSessionEnabled ? (
               <div className="exam-mix-info">
@@ -649,18 +619,6 @@ export const ExamSimulationPage = () => {
         handleDeleteConfirm={handleDeleteConfirm}
         canConfirmDelete={canConfirmDelete}
       />
-      <ModalShell
-        isOpen={isExamFilesOpen}
-        title="Exam Files"
-        onClose={handleExamFilesClose}
-        className="note-modal-panel"
-        bodyClassName="note-modal-body"
-      >
-        <ExamFilePanel
-          {...examFilePanelProps}
-          onToggleFile={handleToggleExamSelection}
-        />
-      </ModalShell>
     </div>
   );
 };
