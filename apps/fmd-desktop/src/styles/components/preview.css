@@ -1529,6 +1529,153 @@ textarea.preview-editor {
   background: color-mix(in srgb, #ff6a6a 10%, transparent);
 }
 
+.markdown-hybrid-inline-toolbar {
+  position: fixed;
+  z-index: 40;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 95%, black 5%);
+  box-shadow:
+    0 16px 34px color-mix(in srgb, black 34%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 4%, transparent);
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+  max-width: min(96vw, 680px);
+}
+
+.markdown-hybrid-inline-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.markdown-hybrid-inline-toolbar-button {
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.markdown-hybrid-inline-toolbar-button:hover {
+  border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 68%, transparent);
+}
+
+.markdown-hybrid-inline-toolbar-button.is-active {
+  border-color: color-mix(in srgb, var(--accent-border) 72%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 26%, transparent);
+  color: color-mix(in srgb, var(--accent-strong) 84%, var(--text));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 20%, transparent);
+}
+
+.markdown-hybrid-inline-toolbar-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-border) 60%, transparent);
+  outline-offset: 1px;
+}
+
+.markdown-hybrid-inline-toolbar-button-italic {
+  font-style: italic;
+}
+
+.markdown-hybrid-inline-toolbar-button-underline {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-hybrid-inline-toolbar-button-strike {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.4px;
+}
+
+.markdown-hybrid-inline-toolbar-button-code {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.markdown-hybrid-inline-toolbar-link-icon {
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.markdown-hybrid-inline-toolbar-link-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.markdown-hybrid-inline-toolbar-menu {
+  border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel-2) 40%, transparent);
+  padding: 6px 8px;
+}
+
+.markdown-hybrid-inline-toolbar-menu-note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.markdown-hybrid-inline-toolbar-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.markdown-hybrid-inline-toolbar-link-input {
+  flex: 1 1 220px;
+  min-width: 170px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  color: var(--text);
+  font: inherit;
+  padding: 5px 8px;
+  outline: none;
+}
+
+.markdown-hybrid-inline-toolbar-link-input:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-border) 72%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-border) 22%, transparent);
+}
+
+.markdown-hybrid-inline-toolbar-link-button {
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 80%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 9px;
+  cursor: pointer;
+}
+
+.markdown-hybrid-inline-toolbar-link-button:hover {
+  border-color: color-mix(in srgb, var(--line-soft) 95%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+}
+
+.markdown-hybrid-inline-toolbar-link-button.is-danger {
+  color: color-mix(in srgb, #ffacac 70%, var(--text));
+}
+
 .markdown-hybrid-page-link-picker {
   position: absolute;
   z-index: 26;
@@ -2376,6 +2523,51 @@ textarea.preview-editor {
 
 .md-preview a:hover {
   color: var(--md-link-hover);
+}
+
+.md-preview em,
+.markdown-hybrid-block-preview em {
+  font-style: italic;
+  font-weight: inherit;
+}
+
+.md-preview strong,
+.markdown-hybrid-block-preview strong {
+  font-weight: 700;
+}
+
+.md-preview strong em,
+.md-preview em strong,
+.markdown-hybrid-block-preview strong em,
+.markdown-hybrid-block-preview em strong {
+  font-style: italic;
+  font-weight: 700;
+}
+
+.md-preview u,
+.markdown-hybrid-block-preview u {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.12em;
+}
+
+.md-preview mark.md-inline-highlight,
+.markdown-hybrid-block-preview mark.md-inline-highlight {
+  border-radius: 0.3em;
+  padding: 0.02em 0.24em;
+  background: color-mix(in srgb, var(--accent-soft) 64%, transparent);
+  color: color-mix(in srgb, var(--accent-strong) 88%, var(--preview-ink));
+}
+
+.md-preview .md-inline-math,
+.markdown-hybrid-block-preview .md-inline-math {
+  border-radius: 0.26em;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 84%, transparent);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  padding: 0.02em 0.26em;
+  font-family: "STIX Two Math", "Cambria Math", var(--mono);
+  font-style: italic;
+  letter-spacing: 0.01em;
 }
 
 .md-preview code {

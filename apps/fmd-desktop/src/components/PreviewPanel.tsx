@@ -711,6 +711,7 @@ const markdownSchema = {
     "br",
     "details",
     "kbd",
+    "mark",
     "summary",
     "span",
     "sub",
@@ -722,10 +723,12 @@ const markdownSchema = {
     "tr",
     "th",
     "td",
+    "u",
   ],
   attributes: {
     ...defaultSchema.attributes,
     details: [...(defaultSchema.attributes?.details ?? []), "open"],
+    mark: [...(defaultSchema.attributes?.mark ?? []), "className"],
     ol: [...(defaultSchema.attributes?.ol ?? []), "data-md-ordered-delimiter"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
     th: [...(defaultSchema.attributes?.th ?? []), "align"],
@@ -930,6 +933,57 @@ const remarkPreserveOrderedListDelimiters = () =>
     }
     preserveOrderedListDelimiter(tree, source);
   };
+
+const previewInlineCodeSegmentPattern = /(`[^`\n]*`)/g;
+const previewFencedCodeDelimiterPattern = /^\s*(```|~~~)/;
+
+const previewInlineFormattingPatterns: ReadonlyArray<readonly [RegExp, string]> = [
+  [/(?<!\\)\*\*\*([^\n*]+?)(?<!\\)\*\*\*/g, "<strong><em>$1</em></strong>"],
+  [/(?<!\\)__([^_\n]+?)(?<!\\)__/g, "<u>$1</u>"],
+  [/(?<!\\)==([^=\n]+?)(?<!\\)==/g, "<mark class=\"md-inline-highlight\">$1</mark>"],
+  [/(?<!\\)\$([^$\n]+?)(?<!\\)\$/g, "<span class=\"md-inline-math\">$1</span>"],
+  [/(?<!\\)\*(?!\*)([^*\n]+?)(?<!\\)\*(?!\*)/g, "<em>$1</em>"],
+];
+
+const applyPreviewInlineFormattingToSegment = (segment: string) => {
+  let nextSegment = segment;
+  for (const [pattern, replacement] of previewInlineFormattingPatterns) {
+    nextSegment = nextSegment.replace(pattern, replacement);
+  }
+  return nextSegment;
+};
+
+export const normalizeInlineFormattingForPreview = (source: string) => {
+  if (!source) {
+    return source;
+  }
+
+  const lines = source.split("\n");
+  let inFencedCode = false;
+  const transformedLines = lines.map((line) => {
+    if (previewFencedCodeDelimiterPattern.test(line)) {
+      inFencedCode = !inFencedCode;
+      return line;
+    }
+    if (inFencedCode || line.length === 0) {
+      return line;
+    }
+
+    const segments = line.split(previewInlineCodeSegmentPattern);
+    if (segments.length <= 1) {
+      return applyPreviewInlineFormattingToSegment(line);
+    }
+
+    return segments
+      .map((segment) =>
+        segment.startsWith("`") && segment.endsWith("`")
+          ? segment
+          : applyPreviewInlineFormattingToSegment(segment))
+      .join("");
+  });
+
+  return transformedLines.join("\n");
+};
 
 type MarkdownInlineSyntaxKind = "hash-tag" | "cloze" | "quoted-token";
 
@@ -6276,177 +6330,180 @@ export const PreviewPanel = ({
   );
 
   const renderHybridMarkdownPreview = useCallback(
-    (sourceMarkdown: string) => (
-      <ReactMarkdown
-        remarkPlugins={[
-          remarkGfm,
-          remarkPreserveSoftBreaks,
-          remarkPreserveOrderedListDelimiters,
-        ]}
-        rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
-        components={{
-          h1: ({ node: _node, children, ...props }) => (
-            <h1 {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "h1")}
-            </h1>
-          ),
-          h2: ({ node: _node, children, ...props }) => (
-            <h2 {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "h2")}
-            </h2>
-          ),
-          h3: ({ node: _node, children, ...props }) => (
-            <h3 {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "h3")}
-            </h3>
-          ),
-          h4: ({ node: _node, children, ...props }) => (
-            <h4 {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "h4")}
-            </h4>
-          ),
-          h5: ({ node: _node, children, ...props }) => (
-            <h5 {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "h5")}
-            </h5>
-          ),
-          h6: ({ node: _node, children, ...props }) => (
-            <h6 {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "h6")}
-            </h6>
-          ),
-          p: ({ node: _node, children, ...props }) => (
-            <p {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "p")}
-            </p>
-          ),
-          ol: ({ node, ...props }) => {
-            const delimiterFromNode =
-              node &&
-              typeof node === "object" &&
-              "properties" in node &&
-              node.properties &&
-              typeof node.properties === "object"
-                ? (node.properties as Record<string, unknown>)["data-md-ordered-delimiter"]
-                : null;
-            const delimiterFromPosition = resolveOrderedListDelimiter(
-              sourceMarkdown,
-              node &&
+    (sourceMarkdown: string) => {
+      const previewMarkdown = normalizeInlineFormattingForPreview(sourceMarkdown);
+      return (
+        <ReactMarkdown
+          remarkPlugins={[
+            remarkGfm,
+            remarkPreserveSoftBreaks,
+            remarkPreserveOrderedListDelimiters,
+          ]}
+          rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+          components={{
+            h1: ({ node: _node, children, ...props }) => (
+              <h1 {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "h1")}
+              </h1>
+            ),
+            h2: ({ node: _node, children, ...props }) => (
+              <h2 {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "h2")}
+              </h2>
+            ),
+            h3: ({ node: _node, children, ...props }) => (
+              <h3 {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "h3")}
+              </h3>
+            ),
+            h4: ({ node: _node, children, ...props }) => (
+              <h4 {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "h4")}
+              </h4>
+            ),
+            h5: ({ node: _node, children, ...props }) => (
+              <h5 {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "h5")}
+              </h5>
+            ),
+            h6: ({ node: _node, children, ...props }) => (
+              <h6 {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "h6")}
+              </h6>
+            ),
+            p: ({ node: _node, children, ...props }) => (
+              <p {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "p")}
+              </p>
+            ),
+            ol: ({ node, ...props }) => {
+              const delimiterFromNode =
+                node &&
                 typeof node === "object" &&
-                "position" in node &&
-                node.position &&
-                typeof node.position === "object" &&
-                "start" in node.position &&
-                node.position.start &&
-                typeof node.position.start === "object" &&
-                ("offset" in node.position.start || "line" in node.position.start)
-                ? (node.position.start as { offset?: number; line?: number })
-                : undefined,
-            );
-            if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
-              return <ol {...props} />;
-            }
-            const startRaw = props.start;
-            const startValue = typeof startRaw === "number"
-              ? startRaw
-              : Number.parseInt(String(startRaw ?? "1"), 10);
-            const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
-            const style = {
-              ...(props.style ?? {}),
-              "--md-ordered-start": String(previous),
-            } as CSSProperties;
-            return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
-          },
-          li: ({ node: _node, children, ...props }) => (
-            <li {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "li")}
-            </li>
-          ),
-          input: ({ node: _node, ...props }) => {
-            const inputType = typeof props.type === "string" ? props.type.toLowerCase() : "";
-            if (inputType !== "checkbox") {
-              return <input {...props} />;
-            }
-            const className = [props.className, "md-task-list-checkbox"]
-              .filter(Boolean)
-              .join(" ");
-            return (
-              <input
-                {...props}
-                type="checkbox"
-                className={className}
-                data-md-task-checkbox="true"
-                disabled={false}
-                onChange={() => {}}
-              />
-            );
-          },
-          blockquote: ({ node: _node, children, ...props }) => (
-            <blockquote {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "blockquote")}
-            </blockquote>
-          ),
-          pre: ({ node: _node, ...props }) => (
-            <div className="md-code-block">
-              <button
-                type="button"
-                className="md-code-copy-button"
-                aria-label="Copy code block"
-                title="Copy code block"
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-                onMouseUp={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-                onClick={handleCodeCopyClick}
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                  <rect
-                    x="9"
-                    y="9"
-                    width="10"
-                    height="10"
-                    rx="2"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                  />
-                  <path
-                    d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-              <pre {...props} />
-            </div>
-          ),
-          table: ({ node: _node, ...props }) => (
-            <div className="markdown-table">
-              <table {...props} />
-            </div>
-          ),
-          th: ({ node: _node, children, ...props }) => (
-            <th {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "th")}
-            </th>
-          ),
-          td: ({ node: _node, children, ...props }) => (
-            <td {...props}>
-              {renderHighlightedInlineSyntaxChildren(children, "td")}
-            </td>
-          ),
-          img: ({ node: _node, ...props }) => (
-            <img {...props} draggable={false} />
-          ),
-        }}
-      >
-        {sourceMarkdown}
-      </ReactMarkdown>
-    ),
+                "properties" in node &&
+                node.properties &&
+                typeof node.properties === "object"
+                  ? (node.properties as Record<string, unknown>)["data-md-ordered-delimiter"]
+                  : null;
+              const delimiterFromPosition = resolveOrderedListDelimiter(
+                previewMarkdown,
+                node &&
+                  typeof node === "object" &&
+                  "position" in node &&
+                  node.position &&
+                  typeof node.position === "object" &&
+                  "start" in node.position &&
+                  node.position.start &&
+                  typeof node.position.start === "object" &&
+                  ("offset" in node.position.start || "line" in node.position.start)
+                  ? (node.position.start as { offset?: number; line?: number })
+                  : undefined,
+              );
+              if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
+                return <ol {...props} />;
+              }
+              const startRaw = props.start;
+              const startValue = typeof startRaw === "number"
+                ? startRaw
+                : Number.parseInt(String(startRaw ?? "1"), 10);
+              const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
+              const style = {
+                ...(props.style ?? {}),
+                "--md-ordered-start": String(previous),
+              } as CSSProperties;
+              return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
+            },
+            li: ({ node: _node, children, ...props }) => (
+              <li {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "li")}
+              </li>
+            ),
+            input: ({ node: _node, ...props }) => {
+              const inputType = typeof props.type === "string" ? props.type.toLowerCase() : "";
+              if (inputType !== "checkbox") {
+                return <input {...props} />;
+              }
+              const className = [props.className, "md-task-list-checkbox"]
+                .filter(Boolean)
+                .join(" ");
+              return (
+                <input
+                  {...props}
+                  type="checkbox"
+                  className={className}
+                  data-md-task-checkbox="true"
+                  disabled={false}
+                  onChange={() => {}}
+                />
+              );
+            },
+            blockquote: ({ node: _node, children, ...props }) => (
+              <blockquote {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "blockquote")}
+              </blockquote>
+            ),
+            pre: ({ node: _node, ...props }) => (
+              <div className="md-code-block">
+                <button
+                  type="button"
+                  className="md-code-copy-button"
+                  aria-label="Copy code block"
+                  title="Copy code block"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onMouseUp={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={handleCodeCopyClick}
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                    <rect
+                      x="9"
+                      y="9"
+                      width="10"
+                      height="10"
+                      rx="2"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                    />
+                    <path
+                      d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+                <pre {...props} />
+              </div>
+            ),
+            table: ({ node: _node, ...props }) => (
+              <div className="markdown-table">
+                <table {...props} />
+              </div>
+            ),
+            th: ({ node: _node, children, ...props }) => (
+              <th {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "th")}
+              </th>
+            ),
+            td: ({ node: _node, children, ...props }) => (
+              <td {...props}>
+                {renderHighlightedInlineSyntaxChildren(children, "td")}
+              </td>
+            ),
+            img: ({ node: _node, ...props }) => (
+              <img {...props} draggable={false} />
+            ),
+          }}
+        >
+          {previewMarkdown}
+        </ReactMarkdown>
+      );
+    },
     [handleCodeCopyClick],
   );
 
@@ -6463,6 +6520,9 @@ export const PreviewPanel = ({
     : markdownViewEditEnabled
       ? normalizedMarkdownSource
       : applyInteractionSpacing(normalizedMarkdownSource);
+  const renderedPreviewWithInlineFormatting = rawPreview
+    ? renderedPreview
+    : normalizeInlineFormattingForPreview(renderedPreview);
   const hasVisiblePreviewContent = rawPreview
     ? preview.length > 0
     : markdownSource.length > 0;
@@ -6867,7 +6927,7 @@ export const PreviewPanel = ({
                                   ]
                                 : null;
                             const delimiterFromPosition = resolveOrderedListDelimiter(
-                              renderedPreview,
+                              renderedPreviewWithInlineFormatting,
                               node &&
                                 typeof node === "object" &&
                                 "position" in node &&
@@ -6962,7 +7022,7 @@ export const PreviewPanel = ({
                           ),
                         }}
                       >
-                        {renderedPreview}
+                        {renderedPreviewWithInlineFormatting}
                       </ReactMarkdown>
                     </div>
                   </>

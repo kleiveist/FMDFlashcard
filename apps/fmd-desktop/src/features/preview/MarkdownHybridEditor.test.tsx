@@ -1937,4 +1937,486 @@ describe("MarkdownHybridEditor", () => {
       cleanup();
     });
   });
+
+  it("shows and hides the floating inline toolbar based on text selection state", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("Alpha Beta");
+          return (
+            <MarkdownHybridEditor
+              historyKey="inline-toolbar-visibility"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const textarea = activateBlockEditor(container, 0);
+        expect(textarea).toBeTruthy();
+
+        setTextareaSelection(textarea, 0, 5);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeTruthy();
+
+        dispatchKeyDown(textarea, "Escape");
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeNull();
+
+        setTextareaSelection(textarea, 0, 5);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeTruthy();
+
+        act(() => {
+          document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+        });
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeNull();
+
+        setTextareaSelection(textarea, 0, 5);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        setTextareaSelection(textarea, 2, 2);
+        act(() => {
+          window.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "ArrowRight" }));
+          vi.advanceTimersByTime(350);
+        });
+
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeNull();
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("toggles bold formatting from the floating inline toolbar button without duplicate markers", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("Alpha Beta");
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey="inline-toolbar-bold-button"
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const textarea = activateBlockEditor(container, 0);
+        const start = textarea?.value.indexOf("Beta") ?? -1;
+        expect(start).toBeGreaterThanOrEqual(0);
+
+        setTextareaSelection(textarea, start, start + 4);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        const boldButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
+        );
+        dispatchClick(boldButton);
+        expect(readMarkdown()).toBe("Alpha **Beta**");
+
+        dispatchClick(boldButton);
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("keeps the saved selection while the toolbar button is focused and still applies formatting", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("Alpha Beta");
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey="inline-toolbar-bold-focus-preserve"
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const textarea = activateBlockEditor(container, 0);
+        const start = textarea?.value.indexOf("Beta") ?? -1;
+        expect(start).toBeGreaterThanOrEqual(0);
+
+        setTextareaSelection(textarea, start, start + 4);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        const boldButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
+        );
+        expect(boldButton).toBeTruthy();
+
+        setTextareaSelection(textarea, 0, 0);
+        act(() => {
+          boldButton?.focus();
+          document.dispatchEvent(new Event("selectionchange"));
+          vi.advanceTimersByTime(350);
+        });
+
+        dispatchClick(boldButton);
+        expect(readMarkdown()).toBe("Alpha **Beta**");
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("highlights the bold toolbar button when selection is already inside bold markdown markers", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("c) **OPTION** C\nd) **OPTION D**");
+          return (
+            <MarkdownHybridEditor
+              historyKey="inline-toolbar-bold-active"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const textarea = activateBlockEditor(container, 0);
+        const optionStart = textarea?.value.indexOf("OPTION") ?? -1;
+        expect(optionStart).toBeGreaterThanOrEqual(0);
+
+        setTextareaSelection(textarea, optionStart, optionStart + "OPTION".length);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        const boldButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
+        );
+        const italicButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='Italic text']",
+        );
+        expect(boldButton?.classList.contains("is-active")).toBe(true);
+        expect(italicButton?.classList.contains("is-active")).toBe(false);
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("opens the inline more-menu from toolbar without opening the block insert menu", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("Alpha Beta");
+          return (
+            <MarkdownHybridEditor
+              historyKey="inline-toolbar-more-menu"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const textarea = activateBlockEditor(container, 0);
+        expect(textarea).toBeTruthy();
+        setTextareaSelection(textarea, 0, 5);
+
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        const moreButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='More actions']",
+        );
+        dispatchClick(moreButton);
+
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar-menu")).toBeTruthy();
+        expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("removes supported inline markdown wrappers from the selection when pressing the text button", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const initialMarkdown = [
+          "QUESTION TEXT",
+          "a) __OPTION__ A",
+          "b) *OPTION* B",
+          "c) **OPTION** C",
+          "d) **OPTION D**",
+          "e) OPTION A",
+          "f) OPTION B",
+          "g) **OPTION** C",
+          "h) ==OPTION== D",
+          "-a",
+          "-c",
+        ].join("\n");
+        const expectedMarkdown = [
+          "QUESTION TEXT",
+          "a) OPTION A",
+          "b) OPTION B",
+          "c) OPTION C",
+          "d) OPTION D",
+          "e) OPTION A",
+          "f) OPTION B",
+          "g) OPTION C",
+          "h) OPTION D",
+          "-a",
+          "-c",
+        ].join("\n");
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState(initialMarkdown);
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey="inline-toolbar-text-clear-selection"
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const textarea = activateBlockEditor(container, 0);
+        expect(textarea).toBeTruthy();
+        setTextareaSelection(textarea, 0, textarea?.value.length ?? 0);
+
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        const textMenuButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='Text format menu']",
+        );
+        dispatchClick(textMenuButton);
+
+        expect(readMarkdown()).toBe(expectedMarkdown);
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("removes wrappers around the current selection when pressing the text button", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("c) **OPTION** C");
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey="inline-toolbar-text-clear-around-selection"
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const textarea = activateBlockEditor(container, 0);
+        expect(textarea).toBeTruthy();
+        const start = textarea?.value.indexOf("OPTION") ?? -1;
+        expect(start).toBeGreaterThanOrEqual(0);
+        setTextareaSelection(textarea, start, start + "OPTION".length);
+
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+
+        const textMenuButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='Text format menu']",
+        );
+        dispatchClick(textMenuButton);
+
+        expect(readMarkdown()).toBe("c) OPTION C");
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("applies and removes bold formatting via Ctrl+B in an active textarea selection", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("Alpha Beta");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="inline-toolbar-bold-shortcut"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const textarea = activateBlockEditor(container, 0);
+      const start = textarea?.value.indexOf("Beta") ?? -1;
+      expect(start).toBeGreaterThanOrEqual(0);
+
+      setTextareaSelection(textarea, start, start + 4);
+      dispatchKeyDown(textarea, "b", { ctrlKey: true });
+      expect(readMarkdown()).toBe("Alpha **Beta**");
+
+      dispatchKeyDown(textarea, "b", { ctrlKey: true });
+      expect(readMarkdown()).toBe("Alpha Beta");
+
+      cleanup();
+    });
+  });
+
+  it("supports bold+italic combination as triple-star and toggles each layer independently", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("OPTION");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="inline-toolbar-bold-italic-combo"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, 0, "OPTION".length);
+
+      dispatchKeyDown(textarea, "b", { ctrlKey: true });
+      expect(readMarkdown()).toBe("**OPTION**");
+
+      dispatchKeyDown(textarea, "i", { ctrlKey: true });
+      expect(readMarkdown()).toBe("***OPTION***");
+
+      dispatchKeyDown(textarea, "i", { ctrlKey: true });
+      expect(readMarkdown()).toBe("**OPTION**");
+
+      dispatchKeyDown(textarea, "b", { ctrlKey: true });
+      expect(readMarkdown()).toBe("OPTION");
+
+      cleanup();
+    });
+  });
+
+  it("does not show the floating inline toolbar for non-editable preview selection", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const { container, cleanup } = render(
+          createElement(MarkdownHybridEditor, {
+            historyKey: "inline-toolbar-non-editable",
+            markdown: "Alpha Beta",
+            mode: "edit",
+            onChange: () => undefined,
+            renderPreview: (value: string) => <p>{value}</p>,
+          }),
+        );
+        const previewTextNode = container.querySelector(".markdown-hybrid-block-preview")?.firstChild;
+        const selection = window.getSelection();
+        if (previewTextNode && selection) {
+          const range = document.createRange();
+          range.selectNodeContents(previewTextNode);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        act(() => {
+          document.dispatchEvent(new Event("selectionchange"));
+          vi.advanceTimersByTime(350);
+        });
+
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeNull();
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
 });

@@ -27,6 +27,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { normalizeRelativePath } from "../../lib/path";
 import { type VaultFile } from "../../lib/tree";
 import {
@@ -166,6 +167,63 @@ type InsertMenuIconId =
   | "nested-quote"
   | AdvancedInsertTemplateIconId
   | "close";
+
+type InlineFormattingToolbarAction =
+  | "highlight"
+  | "bold"
+  | "italic"
+  | "underline"
+  | "strikethrough"
+  | "inline-code"
+  | "math";
+
+type InlineFormattingToolbarMenu = "more" | null;
+
+type InlineFormattingToolbarAnchor = {
+  centerX: number;
+  top: number;
+  bottom: number;
+};
+
+type InlineFormattingToolbarSelection = {
+  blockIndex: number;
+  start: number;
+  end: number;
+  anchor: InlineFormattingToolbarAnchor;
+  activeState: InlineFormattingToolbarActiveState;
+};
+
+type InlineFormattingToolbarLinkState = {
+  url: string;
+  canRemove: boolean;
+};
+
+type InlineFormattingToolbarRange = {
+  start: number;
+  end: number;
+};
+
+type InlineFormattingToggleResult = {
+  value: string;
+  selection: InlineFormattingToolbarRange;
+  changed: boolean;
+};
+
+type InlineFormattingWrapper = {
+  open: string;
+  close: string;
+};
+
+type InlineFormattingToolbarActiveState = {
+  highlight: boolean;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  link: boolean;
+  strikethrough: boolean;
+  "inline-code": boolean;
+  math: boolean;
+};
 
 type MarkdownHybridEditorProps = {
   historyKey: string;
@@ -553,6 +611,315 @@ const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
   }
 };
 
+type FloatingInlineFormattingToolbarProps = {
+  anchor: InlineFormattingToolbarAnchor;
+  menu: InlineFormattingToolbarMenu;
+  linkState: InlineFormattingToolbarLinkState | null;
+  activeState: InlineFormattingToolbarActiveState;
+  toolbarRef: { current: HTMLDivElement | null };
+  onClose: () => void;
+  onToggleMenu: (menu: Exclude<InlineFormattingToolbarMenu, null>) => void;
+  onAction: (action: InlineFormattingToolbarAction | "link" | "clear-formatting") => void;
+  onLinkUrlChange: (value: string) => void;
+  onLinkSubmit: () => void;
+  onLinkRemove: () => void;
+  onLinkCancel: () => void;
+};
+
+const FloatingInlineFormattingToolbar = ({
+  anchor,
+  menu,
+  linkState,
+  activeState,
+  toolbarRef,
+  onClose,
+  onToggleMenu,
+  onAction,
+  onLinkUrlChange,
+  onLinkSubmit,
+  onLinkRemove,
+  onLinkCancel,
+}: FloatingInlineFormattingToolbarProps) => {
+  const localToolbarRef = useRef<HTMLDivElement | null>(null);
+  const linkInputRef = useRef<HTMLInputElement | null>(null);
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+
+  const setToolbarNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      localToolbarRef.current = node;
+      toolbarRef.current = node;
+    },
+    [toolbarRef],
+  );
+
+  useLayoutEffect(() => {
+    const handle = window.requestAnimationFrame(() => {
+      const toolbarNode = localToolbarRef.current;
+      if (!toolbarNode) {
+        return;
+      }
+      const rect = toolbarNode.getBoundingClientRect();
+      const width = Math.max(1, rect.width || 1);
+      const height = Math.max(1, rect.height || 1);
+      const padding = INLINE_FORMATTING_TOOLBAR_VIEWPORT_PADDING_PX;
+      let top = anchor.top - height - INLINE_FORMATTING_TOOLBAR_GAP_PX;
+      if (top < padding) {
+        top = anchor.bottom + INLINE_FORMATTING_TOOLBAR_GAP_PX;
+      }
+      if (top + height > window.innerHeight - padding) {
+        top = Math.max(padding, window.innerHeight - height - padding);
+      }
+      const maxLeft = Math.max(padding, window.innerWidth - width - padding);
+      const left = Math.max(
+        padding,
+        Math.min(anchor.centerX - width / 2, maxLeft),
+      );
+      setPosition({ left: Math.round(left), top: Math.round(top) });
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [anchor, linkState?.canRemove, linkState?.url, menu]);
+
+  useEffect(() => {
+    if (!linkState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const input = linkInputRef.current;
+      if (!input) {
+        return;
+      }
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+      input.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [linkState]);
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const hasAnyInlineFormattingActive = activeState.highlight ||
+    activeState.bold ||
+    activeState.italic ||
+    activeState.underline ||
+    activeState.link ||
+    activeState.strikethrough ||
+    activeState["inline-code"] ||
+    activeState.math;
+
+  const handleButtonMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  return createPortal(
+    <div
+      ref={setToolbarNode}
+      className="markdown-hybrid-inline-toolbar"
+      role="dialog"
+      aria-label="Inline formatting toolbar"
+      style={{
+        left: position?.left ?? -9999,
+        top: position?.top ?? -9999,
+        visibility: position ? "visible" : "hidden",
+      }}
+      onMouseDown={(event) => {
+        event.stopPropagation();
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        if (linkState) {
+          onLinkCancel();
+          return;
+        }
+        onClose();
+      }}
+    >
+      <div className="markdown-hybrid-inline-toolbar-row" role="toolbar" aria-label="Inline formatting">
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button${hasAnyInlineFormattingActive ? " is-active" : ""}`}
+          aria-label="Text format menu"
+          title="Clear inline formatting"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("clear-formatting")}
+        >
+          T
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button${
+            activeState.highlight ? " is-active" : ""
+          }`}
+          aria-label="Highlight text"
+          title="Highlight (Ctrl/Cmd+H)"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("highlight")}
+        >
+          A
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button${activeState.bold ? " is-active" : ""}`}
+          aria-label="Bold text"
+          title="Bold (Ctrl/Cmd+B)"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("bold")}
+        >
+          B
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button markdown-hybrid-inline-toolbar-button-italic${
+            activeState.italic ? " is-active" : ""
+          }`}
+          aria-label="Italic text"
+          title="Italic (Ctrl/Cmd+I)"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("italic")}
+        >
+          I
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button markdown-hybrid-inline-toolbar-button-underline${
+            activeState.underline ? " is-active" : ""
+          }`}
+          aria-label="Underline text"
+          title="Underline (Ctrl/Cmd+U)"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("underline")}
+        >
+          U
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button${
+            activeState.link || Boolean(linkState) ? " is-active" : ""
+          }`}
+          aria-label="Create or edit link"
+          title="Link (Ctrl/Cmd+K)"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("link")}
+        >
+          <span className="markdown-hybrid-inline-toolbar-link-icon" aria-hidden="true">
+            <InsertMenuIconGraphic icon="link" />
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button markdown-hybrid-inline-toolbar-button-strike${
+            activeState.strikethrough ? " is-active" : ""
+          }`}
+          aria-label="Strikethrough text"
+          title="Strikethrough (Ctrl/Cmd+Shift+X)"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("strikethrough")}
+        >
+          S
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button markdown-hybrid-inline-toolbar-button-code${
+            activeState["inline-code"] ? " is-active" : ""
+          }`}
+          aria-label="Inline code"
+          title="Inline code (Ctrl/Cmd+E)"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("inline-code")}
+        >
+          {"</>"}
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button${activeState.math ? " is-active" : ""}`}
+          aria-label="Inline formula"
+          title="Formula (Ctrl/Cmd+Shift+M)"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onAction("math")}
+        >
+          {"√x"}
+        </button>
+        <button
+          type="button"
+          className={`markdown-hybrid-inline-toolbar-button${menu === "more" ? " is-active" : ""}`}
+          aria-label="More actions"
+          title="More"
+          onMouseDown={handleButtonMouseDown}
+          onClick={() => onToggleMenu("more")}
+        >
+          …
+        </button>
+      </div>
+      {menu === "more" ? (
+        <div className="markdown-hybrid-inline-toolbar-menu" role="menu" aria-label="More inline actions">
+          <div className="markdown-hybrid-inline-toolbar-menu-note">More actions coming soon</div>
+        </div>
+      ) : null}
+      {linkState ? (
+        <div
+          className="markdown-hybrid-inline-toolbar-link"
+          role="group"
+          aria-label="Link editor"
+        >
+          <input
+            ref={linkInputRef}
+            type="url"
+            className="markdown-hybrid-inline-toolbar-link-input"
+            placeholder="https://example.com"
+            value={linkState.url}
+            onChange={(event) => onLinkUrlChange(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.stopPropagation();
+                onLinkSubmit();
+                return;
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                event.stopPropagation();
+                onLinkCancel();
+              }
+            }}
+            aria-label="Link URL"
+          />
+          <button
+            type="button"
+            className="markdown-hybrid-inline-toolbar-link-button"
+            onMouseDown={handleButtonMouseDown}
+            onClick={onLinkSubmit}
+          >
+            Apply
+          </button>
+          {linkState.canRemove ? (
+            <button
+              type="button"
+              className="markdown-hybrid-inline-toolbar-link-button is-danger"
+              onMouseDown={handleButtonMouseDown}
+              onClick={onLinkRemove}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>,
+    document.body,
+  );
+};
+
 const renderInsertMenuRowContent = ({
   label,
   description,
@@ -887,6 +1254,42 @@ const resolveTextareaCaretAnchor = (
   };
 };
 
+const resolveTextareaSelectionToolbarAnchor = (
+  textarea: HTMLTextAreaElement,
+  container: HTMLElement,
+  range: InlineFormattingToolbarRange,
+): InlineFormattingToolbarAnchor | null => {
+  const normalized = normalizeInlineFormattingRange(textarea.value, range);
+  if (normalized.start === normalized.end) {
+    return null;
+  }
+  const startAnchor = resolveTextareaCaretAnchor(textarea, container, normalized.start);
+  const endAnchor = resolveTextareaCaretAnchor(textarea, container, normalized.end);
+  const computed = window.getComputedStyle(textarea);
+  const rawLineHeight = Number.parseFloat(computed.lineHeight);
+  const lineHeight = Number.isFinite(rawLineHeight) && rawLineHeight > 0
+    ? rawLineHeight
+    : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
+  const sameLine = Math.abs(startAnchor.top - endAnchor.top) <= lineHeight * 0.5;
+  const topLocal = Math.min(startAnchor.top, endAnchor.top) - lineHeight;
+  const bottomLocal = Math.max(startAnchor.top, endAnchor.top);
+  const leftOnSelectionStartLine = normalized.start <= normalized.end
+    ? startAnchor.left
+    : endAnchor.left;
+  const centerLocalX = sameLine
+    ? (startAnchor.left + endAnchor.left) / 2
+    : leftOnSelectionStartLine;
+  const containerRect = container.getBoundingClientRect();
+  const viewportLeft = containerRect.left - container.scrollLeft + centerLocalX;
+  const viewportTop = containerRect.top - container.scrollTop + topLocal;
+  const viewportBottom = containerRect.top - container.scrollTop + bottomLocal;
+  return {
+    centerX: Math.round(viewportLeft),
+    top: Math.round(viewportTop),
+    bottom: Math.round(viewportBottom),
+  };
+};
+
 const renderPreviewTextWithAtomicWikilinks = (
   text: string,
   keyPrefix: string,
@@ -1051,6 +1454,398 @@ const isDeleteRangeShortcut = (event: KeyboardEvent<HTMLElement>) =>
   !event.ctrlKey &&
   !event.metaKey &&
   (event.key === "Delete" || event.key === "Backspace");
+
+const INLINE_FORMATTING_TOOLBAR_DELAY_MS = 320;
+const INLINE_FORMATTING_TOOLBAR_VIEWPORT_PADDING_PX = 8;
+const INLINE_FORMATTING_TOOLBAR_GAP_PX = 10;
+
+const INLINE_FORMATTING_WRAPPERS: Record<InlineFormattingToolbarAction, InlineFormattingWrapper> = {
+  highlight: { open: "==", close: "==" },
+  bold: { open: "**", close: "**" },
+  italic: { open: "*", close: "*" },
+  underline: { open: "__", close: "__" },
+  strikethrough: { open: "~~", close: "~~" },
+  "inline-code": { open: "`", close: "`" },
+  math: { open: "$", close: "$" },
+};
+
+const inlineMarkdownLinkPattern = /\[([^\]\n]*)\]\(([^)\n]*)\)/g;
+
+const normalizeInlineFormattingRange = (
+  value: string,
+  range: InlineFormattingToolbarRange,
+): InlineFormattingToolbarRange => {
+  const max = value.length;
+  const start = Math.max(0, Math.min(range.start, max));
+  const end = Math.max(0, Math.min(range.end, max));
+  if (start <= end) {
+    return { start, end };
+  }
+  return { start: end, end: start };
+};
+
+const countRepeatedCharBeforeIndex = (
+  value: string,
+  startIndex: number,
+  char: string,
+) => {
+  let count = 0;
+  let index = startIndex - 1;
+  while (index >= 0 && value[index] === char) {
+    count += 1;
+    index -= 1;
+  }
+  return count;
+};
+
+const countRepeatedCharAfterIndex = (
+  value: string,
+  startIndex: number,
+  char: string,
+) => {
+  let count = 0;
+  let index = startIndex;
+  while (index < value.length && value[index] === char) {
+    count += 1;
+    index += 1;
+  }
+  return count;
+};
+
+const resolveRepeatedMarkerRunsAroundSelection = (
+  value: string,
+  range: InlineFormattingToolbarRange,
+  marker: string,
+) => {
+  const normalized = normalizeInlineFormattingRange(value, range);
+  return {
+    left: countRepeatedCharBeforeIndex(value, normalized.start, marker),
+    right: countRepeatedCharAfterIndex(value, normalized.end, marker),
+  };
+};
+
+const toggleInlineFormattingWrapper = (
+  value: string,
+  range: InlineFormattingToolbarRange,
+  wrapper: InlineFormattingWrapper,
+): InlineFormattingToggleResult => {
+  const normalized = normalizeInlineFormattingRange(value, range);
+  if (normalized.start === normalized.end) {
+    return { value, selection: normalized, changed: false };
+  }
+
+  // Star markers need dedicated handling so bold/italic combinations
+  // are stable: ** + italic => *** and toggles remove only their own layer.
+  if (wrapper.open === "*" && wrapper.close === "*" && wrapper.open.length <= 2) {
+    const starRuns = resolveRepeatedMarkerRunsAroundSelection(value, normalized, "*");
+    if (wrapper.open.length === 1) {
+      const isItalicActive = starRuns.left >= 1 &&
+        starRuns.right >= 1 &&
+        starRuns.left % 2 === 1 &&
+        starRuns.right % 2 === 1;
+      if (isItalicActive) {
+        const nextValue = `${value.slice(0, normalized.start - 1)}${value.slice(normalized.start, normalized.end)}${
+          value.slice(normalized.end + 1)
+        }`;
+        return {
+          value: nextValue,
+          selection: {
+            start: normalized.start - 1,
+            end: normalized.end - 1,
+          },
+          changed: nextValue !== value,
+        };
+      }
+      const nextValue = `${value.slice(0, normalized.start)}*${value.slice(normalized.start, normalized.end)}*${
+        value.slice(normalized.end)
+      }`;
+      return {
+        value: nextValue,
+        selection: {
+          start: normalized.start + 1,
+          end: normalized.end + 1,
+        },
+        changed: nextValue !== value,
+      };
+    }
+    const isBoldActive = starRuns.left >= 2 && starRuns.right >= 2;
+    if (isBoldActive) {
+      const nextValue = `${value.slice(0, normalized.start - 2)}${value.slice(normalized.start, normalized.end)}${
+        value.slice(normalized.end + 2)
+      }`;
+      return {
+        value: nextValue,
+        selection: {
+          start: normalized.start - 2,
+          end: normalized.end - 2,
+        },
+        changed: nextValue !== value,
+      };
+    }
+    const nextValue = `${value.slice(0, normalized.start)}**${value.slice(normalized.start, normalized.end)}**${
+      value.slice(normalized.end)
+    }`;
+    return {
+      value: nextValue,
+      selection: {
+        start: normalized.start + 2,
+        end: normalized.end + 2,
+      },
+      changed: nextValue !== value,
+    };
+  }
+
+  const selected = value.slice(normalized.start, normalized.end);
+  const selectedHasWrapper = selected.length >= wrapper.open.length + wrapper.close.length &&
+    selected.startsWith(wrapper.open) &&
+    selected.endsWith(wrapper.close);
+  if (selectedHasWrapper) {
+    const nextSelection = {
+      start: normalized.start,
+      end: normalized.end - wrapper.open.length - wrapper.close.length,
+    };
+    const nextValue = `${value.slice(0, normalized.start)}${
+      selected.slice(wrapper.open.length, selected.length - wrapper.close.length)
+    }${value.slice(normalized.end)}`;
+    return {
+      value: nextValue,
+      selection: nextSelection,
+      changed: nextValue !== value,
+    };
+  }
+
+  const hasWrapperAroundSelection = normalized.start >= wrapper.open.length &&
+    normalized.end + wrapper.close.length <= value.length &&
+    value.slice(normalized.start - wrapper.open.length, normalized.start) === wrapper.open &&
+    value.slice(normalized.end, normalized.end + wrapper.close.length) === wrapper.close;
+  if (hasWrapperAroundSelection) {
+    const nextValue = `${value.slice(0, normalized.start - wrapper.open.length)}${selected}${
+      value.slice(normalized.end + wrapper.close.length)
+    }`;
+    const nextSelection = {
+      start: normalized.start - wrapper.open.length,
+      end: normalized.end - wrapper.open.length,
+    };
+    return {
+      value: nextValue,
+      selection: nextSelection,
+      changed: nextValue !== value,
+    };
+  }
+
+  const nextValue = `${value.slice(0, normalized.start)}${wrapper.open}${selected}${wrapper.close}${
+    value.slice(normalized.end)
+  }`;
+  return {
+    value: nextValue,
+    selection: {
+      start: normalized.start + wrapper.open.length,
+      end: normalized.end + wrapper.open.length,
+    },
+    changed: nextValue !== value,
+  };
+};
+
+type InlineMarkdownLinkMatch = {
+  start: number;
+  end: number;
+  label: string;
+  url: string;
+};
+
+const findInlineMarkdownLinkAtRange = (
+  value: string,
+  range: InlineFormattingToolbarRange,
+): InlineMarkdownLinkMatch | null => {
+  const normalized = normalizeInlineFormattingRange(value, range);
+  inlineMarkdownLinkPattern.lastIndex = 0;
+  let match = inlineMarkdownLinkPattern.exec(value);
+  while (match) {
+    const start = match.index;
+    const end = start + (match[0]?.length ?? 0);
+    if (start <= normalized.start && end >= normalized.end) {
+      return {
+        start,
+        end,
+        label: match[1] ?? "",
+        url: match[2] ?? "",
+      };
+    }
+    if (start > normalized.end) {
+      break;
+    }
+    match = inlineMarkdownLinkPattern.exec(value);
+  }
+  return null;
+};
+
+const applyInlineMarkdownLink = (
+  value: string,
+  range: InlineFormattingToolbarRange,
+  rawUrl: string,
+): InlineFormattingToggleResult => {
+  const normalized = normalizeInlineFormattingRange(value, range);
+  const url = rawUrl.trim();
+  const existingLink = findInlineMarkdownLinkAtRange(value, normalized);
+
+  if (existingLink) {
+    const replacement = url
+      ? `[${existingLink.label}](${url})`
+      : existingLink.label;
+    const nextValue = `${value.slice(0, existingLink.start)}${replacement}${value.slice(existingLink.end)}`;
+    const labelStart = existingLink.start + (url ? 1 : 0);
+    return {
+      value: nextValue,
+      selection: {
+        start: labelStart,
+        end: labelStart + existingLink.label.length,
+      },
+      changed: nextValue !== value,
+    };
+  }
+
+  if (normalized.start === normalized.end || !url) {
+    return { value, selection: normalized, changed: false };
+  }
+
+  const label = value.slice(normalized.start, normalized.end);
+  const token = `[${label}](${url})`;
+  const nextValue = `${value.slice(0, normalized.start)}${token}${value.slice(normalized.end)}`;
+  return {
+    value: nextValue,
+    selection: {
+      start: normalized.start + 1,
+      end: normalized.start + 1 + label.length,
+    },
+    changed: nextValue !== value,
+  };
+};
+
+const inlineFormattingClearPatterns: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\[([^\]\n]*)\]\(([^)\n]*)\)/g, "$1"],
+  [/(^|[^*])\*\*\*([^*\n]+)\*\*\*(?=[^*]|$)/g, "$1$2"],
+  [/(^|[^*])\*\*([^*\n]+)\*\*(?=[^*]|$)/g, "$1$2"],
+  [/(^|[^*])\*([^*\n]+)\*(?=[^*]|$)/g, "$1$2"],
+  [/(^|[^_])__([^_\n]+)__(?=[^_]|$)/g, "$1$2"],
+  [/(^|[^~])~~([^~\n]+)~~(?=[^~]|$)/g, "$1$2"],
+  [/(^|[^=])==([^=\n]+)==(?=[^=]|$)/g, "$1$2"],
+  [/`([^`\n]+)`/g, "$1"],
+  [/\$([^$\n]+)\$/g, "$1"],
+];
+
+const stripSupportedInlineMarkdownFormatting = (value: string) => {
+  let nextValue = value;
+  let previousValue = "";
+  while (nextValue !== previousValue) {
+    previousValue = nextValue;
+    for (const [pattern, replacement] of inlineFormattingClearPatterns) {
+      nextValue = nextValue.replace(pattern, replacement);
+    }
+  }
+  return nextValue;
+};
+
+const createEmptyInlineFormattingActiveState = (): InlineFormattingToolbarActiveState => ({
+  highlight: false,
+  bold: false,
+  italic: false,
+  underline: false,
+  link: false,
+  strikethrough: false,
+  "inline-code": false,
+  math: false,
+});
+
+const isInlineFormattingWrapperActive = (
+  value: string,
+  range: InlineFormattingToolbarRange,
+  wrapper: InlineFormattingWrapper,
+) => {
+  const normalized = normalizeInlineFormattingRange(value, range);
+  if (normalized.start === normalized.end) {
+    return false;
+  }
+
+  if (wrapper.open === "*" && wrapper.close === "*" && wrapper.open.length <= 2) {
+    const starRuns = resolveRepeatedMarkerRunsAroundSelection(value, normalized, "*");
+    if (wrapper.open.length === 1) {
+      return starRuns.left >= 1 &&
+        starRuns.right >= 1 &&
+        starRuns.left % 2 === 1 &&
+        starRuns.right % 2 === 1;
+    }
+    return starRuns.left >= 2 && starRuns.right >= 2;
+  }
+
+  const selected = value.slice(normalized.start, normalized.end);
+  const selectionContainsWrapper = selected.length >= wrapper.open.length + wrapper.close.length &&
+    selected.startsWith(wrapper.open) &&
+    selected.endsWith(wrapper.close);
+  if (selectionContainsWrapper) {
+    return true;
+  }
+  const hasWrapperAroundSelection = normalized.start >= wrapper.open.length &&
+    normalized.end + wrapper.close.length <= value.length &&
+    value.slice(normalized.start - wrapper.open.length, normalized.start) === wrapper.open &&
+    value.slice(normalized.end, normalized.end + wrapper.close.length) === wrapper.close;
+  return hasWrapperAroundSelection;
+};
+
+const resolveInlineFormattingToolbarActiveState = (
+  value: string,
+  range: InlineFormattingToolbarRange,
+): InlineFormattingToolbarActiveState => {
+  const normalized = normalizeInlineFormattingRange(value, range);
+  if (normalized.start === normalized.end) {
+    return createEmptyInlineFormattingActiveState();
+  }
+  const linkMatch = findInlineMarkdownLinkAtRange(value, normalized);
+  return {
+    highlight: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.highlight),
+    bold: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.bold),
+    italic: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.italic),
+    underline: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.underline),
+    link: Boolean(linkMatch),
+    strikethrough: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.strikethrough),
+    "inline-code": isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS["inline-code"]),
+    math: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.math),
+  };
+};
+
+const resolveInlineFormattingShortcutAction = (
+  event: KeyboardEvent<HTMLElement>,
+): InlineFormattingToolbarAction | "link" | null => {
+  if (!(event.metaKey || event.ctrlKey) || event.altKey) {
+    return null;
+  }
+  const lowerKey = event.key.toLowerCase();
+
+  if (!event.shiftKey && lowerKey === "b") {
+    return "bold";
+  }
+  if (!event.shiftKey && lowerKey === "i") {
+    return "italic";
+  }
+  if (!event.shiftKey && lowerKey === "u") {
+    return "underline";
+  }
+  if (!event.shiftKey && lowerKey === "k") {
+    return "link";
+  }
+  if (!event.shiftKey && lowerKey === "h") {
+    return "highlight";
+  }
+  if (event.shiftKey && (lowerKey === "x" || lowerKey === "s")) {
+    return "strikethrough";
+  }
+  if (!event.shiftKey && (lowerKey === "e" || event.code === "Backquote" || event.key === "`")) {
+    return "inline-code";
+  }
+  if (event.shiftKey && lowerKey === "m") {
+    return "math";
+  }
+  return null;
+};
 
 const clampIndex = (value: number, maxExclusive: number) => {
   if (maxExclusive <= 0) {
@@ -2020,6 +2815,12 @@ export const MarkdownHybridEditor = ({
   const [pendingPageLinkPickerRequest, setPendingPageLinkPickerRequest] =
     useState<PendingPageLinkPickerRequest | null>(null);
   const [pageLinkPickerState, setPageLinkPickerState] = useState<PageLinkPickerState | null>(null);
+  const [inlineFormattingToolbarSelection, setInlineFormattingToolbarSelection] =
+    useState<InlineFormattingToolbarSelection | null>(null);
+  const [inlineFormattingToolbarMenu, setInlineFormattingToolbarMenu] =
+    useState<InlineFormattingToolbarMenu>(null);
+  const [inlineFormattingToolbarLinkState, setInlineFormattingToolbarLinkState] =
+    useState<InlineFormattingToolbarLinkState | null>(null);
   const [editorOverlaySelectionStart, setEditorOverlaySelectionStart] = useState<number | null>(
     null,
   );
@@ -2034,6 +2835,7 @@ export const MarkdownHybridEditor = ({
   const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
   const pageLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const pageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const inlineFormattingToolbarRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const editorSyntaxOverlayContentRef = useRef<HTMLDivElement | null>(null);
   const pendingCaretRef = useRef<"start" | "end" | null>(null);
@@ -2045,6 +2847,13 @@ export const MarkdownHybridEditor = ({
   const selectionAutoScrollFrameRef = useRef<number | null>(null);
   const selectionDragUpdateFrameRef = useRef<number | null>(null);
   const selectionDragPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const inlineFormattingToolbarTimerRef = useRef<number | null>(null);
+  const inlineFormattingToolbarPendingSignatureRef = useRef<string | null>(null);
+  const inlineFormattingToolbarRangeRef = useRef<{
+    blockIndex: number;
+    start: number;
+    end: number;
+  } | null>(null);
   const stableBlockRenderTokensRef = useRef<StableRenderKeyToken[]>([]);
   const stableBlockRenderKeyCounterRef = useRef(0);
   const pendingActivationMarkdownRef = useRef<string | null>(null);
@@ -2332,6 +3141,9 @@ export const MarkdownHybridEditor = ({
     setInsertMenuState(null);
     setSelectionContextMenuState(null);
     setSelectionMarqueeRect(null);
+    setInlineFormattingToolbarSelection(null);
+    setInlineFormattingToolbarMenu(null);
+    setInlineFormattingToolbarLinkState(null);
     setHistory(createMarkdownHistory(markdown));
     setOverlayLayout((current) => ({
       ...current,
@@ -2351,6 +3163,12 @@ export const MarkdownHybridEditor = ({
     suppressNextBlockContextMenuRef.current = false;
     stableBlockRenderTokensRef.current = [];
     pendingActivationMarkdownRef.current = null;
+    inlineFormattingToolbarRangeRef.current = null;
+    inlineFormattingToolbarPendingSignatureRef.current = null;
+    if (inlineFormattingToolbarTimerRef.current !== null) {
+      window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+      inlineFormattingToolbarTimerRef.current = null;
+    }
   }, [historyKey]);
 
   useEffect(
@@ -2368,6 +3186,12 @@ export const MarkdownHybridEditor = ({
         selectionDragUpdateFrameRef.current = null;
       }
       selectionDragPointerRef.current = null;
+      if (inlineFormattingToolbarTimerRef.current !== null) {
+        window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+        inlineFormattingToolbarTimerRef.current = null;
+      }
+      inlineFormattingToolbarPendingSignatureRef.current = null;
+      inlineFormattingToolbarRangeRef.current = null;
     },
     [],
   );
@@ -2943,9 +3767,18 @@ export const MarkdownHybridEditor = ({
       setSelectionMarqueeRect(null);
       setPendingPageLinkPickerRequest(null);
       setPageLinkPickerState(null);
+      setInlineFormattingToolbarSelection(null);
+      setInlineFormattingToolbarMenu(null);
+      setInlineFormattingToolbarLinkState(null);
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
       pendingActivationMarkdownRef.current = null;
+      inlineFormattingToolbarRangeRef.current = null;
+      inlineFormattingToolbarPendingSignatureRef.current = null;
+      if (inlineFormattingToolbarTimerRef.current !== null) {
+        window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+        inlineFormattingToolbarTimerRef.current = null;
+      }
       onChange(nextHistory.present.markdown);
     },
     [onChange],
@@ -3915,6 +4748,9 @@ export const MarkdownHybridEditor = ({
     if (nextFocus instanceof Node && pageLinkPickerRef.current?.contains(nextFocus)) {
       return;
     }
+    if (nextFocus instanceof Node && inlineFormattingToolbarRef.current?.contains(nextFocus)) {
+      return;
+    }
     commitActiveBlock({ deactivate: true });
   }, [commitActiveBlock]);
 
@@ -3962,8 +4798,24 @@ export const MarkdownHybridEditor = ({
   }, [syncEditorSyntaxOverlayScroll]);
 
   const handleTextareaSelect = useCallback((event: SyntheticEvent<HTMLTextAreaElement>) => {
-    setEditorOverlaySelectionStart(event.currentTarget.selectionStart);
-  }, []);
+    const textarea = event.currentTarget;
+    setEditorOverlaySelectionStart(textarea.selectionStart);
+    if (activeBlockIndex === null) {
+      return;
+    }
+    const normalized = normalizeInlineFormattingRange(textarea.value, {
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd,
+    });
+    if (normalized.start === normalized.end) {
+      return;
+    }
+    inlineFormattingToolbarRangeRef.current = {
+      blockIndex: activeBlockIndex,
+      start: normalized.start,
+      end: normalized.end,
+    };
+  }, [activeBlockIndex]);
 
   useLayoutEffect(() => {
     syncActiveTextareaAutoHeight();
@@ -4035,6 +4887,460 @@ export const MarkdownHybridEditor = ({
     [activeBlockIndex, blocks, markdown, onChange],
   );
 
+  const clearInlineFormattingToolbarTimer = useCallback(() => {
+    if (inlineFormattingToolbarTimerRef.current === null) {
+      return;
+    }
+    window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+    inlineFormattingToolbarTimerRef.current = null;
+  }, []);
+
+  const hideInlineFormattingToolbar = useCallback(() => {
+    clearInlineFormattingToolbarTimer();
+    inlineFormattingToolbarPendingSignatureRef.current = null;
+    inlineFormattingToolbarRangeRef.current = null;
+    setInlineFormattingToolbarSelection(null);
+    setInlineFormattingToolbarMenu(null);
+    setInlineFormattingToolbarLinkState(null);
+  }, [clearInlineFormattingToolbarTimer]);
+
+  const resolveActiveInlineFormattingSelection = useCallback(() => {
+    if (disabled || activeBlockIndex === null) {
+      return null;
+    }
+    if (pageLinkPickerState) {
+      return null;
+    }
+    const textarea = textareaRef.current;
+    const container = containerRef.current;
+    if (!textarea || !container) {
+      return null;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    if (start === end) {
+      return null;
+    }
+    const normalizedRange = normalizeInlineFormattingRange(textarea.value, { start, end });
+    const anchor = resolveTextareaSelectionToolbarAnchor(textarea, container, normalizedRange);
+    if (!anchor) {
+      return null;
+    }
+    const activeState = resolveInlineFormattingToolbarActiveState(textarea.value, normalizedRange);
+    return {
+      blockIndex: activeBlockIndex,
+      start: normalizedRange.start,
+      end: normalizedRange.end,
+      anchor,
+      activeState,
+    } as InlineFormattingToolbarSelection;
+  }, [activeBlockIndex, disabled, pageLinkPickerState]);
+
+  const showInlineFormattingToolbarImmediate = useCallback(() => {
+    const nextSelection = resolveActiveInlineFormattingSelection();
+    if (!nextSelection) {
+      hideInlineFormattingToolbar();
+      return;
+    }
+    setInlineFormattingToolbarSelection(nextSelection);
+    inlineFormattingToolbarRangeRef.current = {
+      blockIndex: nextSelection.blockIndex,
+      start: nextSelection.start,
+      end: nextSelection.end,
+    };
+  }, [hideInlineFormattingToolbar, resolveActiveInlineFormattingSelection]);
+
+  const scheduleInlineFormattingToolbarVisibility = useCallback(
+    (options?: { immediate?: boolean }) => {
+      if (options?.immediate) {
+        clearInlineFormattingToolbarTimer();
+        showInlineFormattingToolbarImmediate();
+        return;
+      }
+      const selection = resolveActiveInlineFormattingSelection();
+      if (!selection) {
+        hideInlineFormattingToolbar();
+        return;
+      }
+      const signature = `${selection.blockIndex}:${selection.start}:${selection.end}`;
+      inlineFormattingToolbarPendingSignatureRef.current = signature;
+      clearInlineFormattingToolbarTimer();
+      inlineFormattingToolbarTimerRef.current = window.setTimeout(() => {
+        const latestSelection = resolveActiveInlineFormattingSelection();
+        if (!latestSelection) {
+          hideInlineFormattingToolbar();
+          return;
+        }
+        const latestSignature =
+          `${latestSelection.blockIndex}:${latestSelection.start}:${latestSelection.end}`;
+        if (inlineFormattingToolbarPendingSignatureRef.current !== latestSignature) {
+          return;
+        }
+        setInlineFormattingToolbarSelection(latestSelection);
+        inlineFormattingToolbarRangeRef.current = {
+          blockIndex: latestSelection.blockIndex,
+          start: latestSelection.start,
+          end: latestSelection.end,
+        };
+      }, INLINE_FORMATTING_TOOLBAR_DELAY_MS);
+    },
+    [
+      clearInlineFormattingToolbarTimer,
+      hideInlineFormattingToolbar,
+      resolveActiveInlineFormattingSelection,
+      showInlineFormattingToolbarImmediate,
+    ],
+  );
+
+  const scheduleTextareaSelectionRange = useCallback(
+    (selection: InlineFormattingToolbarRange) => {
+      const handle = window.requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) {
+          return;
+        }
+        const normalized = normalizeInlineFormattingRange(textarea.value, selection);
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch {
+          textarea.focus();
+        }
+        textarea.setSelectionRange(normalized.start, normalized.end);
+        setEditorOverlaySelectionStart(normalized.start);
+        scheduleInlineFormattingToolbarVisibility({ immediate: true });
+      });
+      return () => window.cancelAnimationFrame(handle);
+    },
+    [scheduleInlineFormattingToolbarVisibility],
+  );
+
+  const restoreInlineFormattingToolbarSelection = useCallback(() => {
+    if (activeBlockIndex === null) {
+      return null;
+    }
+    const textarea = textareaRef.current;
+    const savedRange = inlineFormattingToolbarRangeRef.current;
+    if (!textarea || !savedRange || savedRange.blockIndex !== activeBlockIndex) {
+      return null;
+    }
+    const normalized = normalizeInlineFormattingRange(textarea.value, {
+      start: savedRange.start,
+      end: savedRange.end,
+    });
+    if (normalized.start === normalized.end) {
+      return null;
+    }
+    try {
+      textarea.focus({ preventScroll: true });
+    } catch {
+      textarea.focus();
+    }
+    textarea.setSelectionRange(normalized.start, normalized.end);
+    setEditorOverlaySelectionStart(normalized.start);
+    return normalized;
+  }, [activeBlockIndex]);
+
+  const applyInlineFormattingToActiveSelection = useCallback(
+    (result: InlineFormattingToggleResult) => {
+      if (!result.changed) {
+        return false;
+      }
+      const applied = applyActiveBlockDraft(result.value);
+      if (!applied || activeBlockIndex === null) {
+        return false;
+      }
+      inlineFormattingToolbarRangeRef.current = {
+        blockIndex: activeBlockIndex,
+        start: result.selection.start,
+        end: result.selection.end,
+      };
+      scheduleTextareaSelectionRange(result.selection);
+      return true;
+    },
+    [activeBlockIndex, applyActiveBlockDraft, scheduleTextareaSelectionRange],
+  );
+
+  const applyInlineFormattingAction = useCallback(
+    (action: InlineFormattingToolbarAction) => {
+      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+      const textarea = textareaRef.current;
+      if (!normalizedSelection || !textarea) {
+        return false;
+      }
+      const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+      const nextResult = toggleInlineFormattingWrapper(textarea.value, normalizedSelection, wrapper);
+      return applyInlineFormattingToActiveSelection(nextResult);
+    },
+    [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
+  );
+
+  const clearInlineFormattingAtSelection = useCallback(() => {
+    const normalizedSelection = restoreInlineFormattingToolbarSelection();
+    const textarea = textareaRef.current;
+    if (!normalizedSelection || !textarea) {
+      return false;
+    }
+
+    let nextValue = textarea.value;
+    let nextRange = normalizedSelection;
+    let hasChanged = false;
+
+    // First, unwrap styles that are directly around the current selection.
+    const aroundSelectionActions: InlineFormattingToolbarAction[] = [
+      "highlight",
+      "strikethrough",
+      "underline",
+      "bold",
+      "italic",
+      "inline-code",
+      "math",
+    ];
+    for (let iteration = 0; iteration < 4; iteration += 1) {
+      let iterationChanged = false;
+
+      const linkAtRange = findInlineMarkdownLinkAtRange(nextValue, nextRange);
+      if (linkAtRange) {
+        const linkResult = applyInlineMarkdownLink(nextValue, nextRange, "");
+        if (linkResult.changed) {
+          nextValue = linkResult.value;
+          nextRange = normalizeInlineFormattingRange(linkResult.value, linkResult.selection);
+          hasChanged = true;
+          iterationChanged = true;
+        }
+      }
+
+      for (const action of aroundSelectionActions) {
+        const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+        if (!isInlineFormattingWrapperActive(nextValue, nextRange, wrapper)) {
+          continue;
+        }
+        const toggleResult = toggleInlineFormattingWrapper(nextValue, nextRange, wrapper);
+        if (!toggleResult.changed) {
+          continue;
+        }
+        nextValue = toggleResult.value;
+        nextRange = normalizeInlineFormattingRange(toggleResult.value, toggleResult.selection);
+        hasChanged = true;
+        iterationChanged = true;
+      }
+
+      if (!iterationChanged) {
+        break;
+      }
+    }
+
+    // Then, strip supported markdown markers inside the selected text.
+    const selectedValue = nextValue.slice(nextRange.start, nextRange.end);
+    const plainSelectedValue = stripSupportedInlineMarkdownFormatting(selectedValue);
+    if (plainSelectedValue !== selectedValue) {
+      nextValue = `${nextValue.slice(0, nextRange.start)}${plainSelectedValue}${nextValue.slice(nextRange.end)}`;
+      nextRange = {
+        start: nextRange.start,
+        end: nextRange.start + plainSelectedValue.length,
+      };
+      hasChanged = true;
+    }
+
+    if (!hasChanged) {
+      return false;
+    }
+
+    return applyInlineFormattingToActiveSelection({
+      value: nextValue,
+      selection: nextRange,
+      changed: true,
+    });
+  }, [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection]);
+
+  const openInlineFormattingLinkEditor = useCallback(() => {
+    const normalizedSelection = restoreInlineFormattingToolbarSelection();
+    const textarea = textareaRef.current;
+    if (!normalizedSelection || !textarea) {
+      return false;
+    }
+    const linkMatch = findInlineMarkdownLinkAtRange(textarea.value, normalizedSelection);
+    setInsertMenuState(null);
+    setInlineFormattingToolbarMenu(null);
+    setInlineFormattingToolbarLinkState({
+      url: linkMatch?.url ?? "",
+      canRemove: Boolean(linkMatch),
+    });
+    return true;
+  }, [restoreInlineFormattingToolbarSelection]);
+
+  const applyInlineFormattingLinkValue = useCallback(
+    (urlValue?: string) => {
+      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+      const textarea = textareaRef.current;
+      if (!normalizedSelection || !textarea) {
+        return false;
+      }
+      const nextUrl = typeof urlValue === "string"
+        ? urlValue
+        : (inlineFormattingToolbarLinkState?.url ?? "");
+      const nextResult = applyInlineMarkdownLink(
+        textarea.value,
+        normalizedSelection,
+        nextUrl,
+      );
+      if (!nextResult.changed) {
+        return false;
+      }
+      const applied = applyInlineFormattingToActiveSelection(nextResult);
+      if (applied) {
+        setInlineFormattingToolbarLinkState(null);
+      }
+      return applied;
+    },
+    [
+      applyInlineFormattingToActiveSelection,
+      inlineFormattingToolbarLinkState?.url,
+      restoreInlineFormattingToolbarSelection,
+    ],
+  );
+
+  const handleInlineFormattingToolbarAction = useCallback(
+    (action: InlineFormattingToolbarAction | "link" | "clear-formatting") => {
+      setInsertMenuState(null);
+      if (action === "link") {
+        openInlineFormattingLinkEditor();
+        return;
+      }
+      if (action === "clear-formatting") {
+        setInlineFormattingToolbarLinkState(null);
+        setInlineFormattingToolbarMenu(null);
+        clearInlineFormattingAtSelection();
+        return;
+      }
+      setInlineFormattingToolbarMenu(null);
+      applyInlineFormattingAction(action);
+    },
+    [applyInlineFormattingAction, clearInlineFormattingAtSelection, openInlineFormattingLinkEditor],
+  );
+
+  const toggleInlineFormattingToolbarMenu = useCallback(
+    (menu: Exclude<InlineFormattingToolbarMenu, null>) => {
+      setInsertMenuState(null);
+      setInlineFormattingToolbarLinkState(null);
+      setInlineFormattingToolbarMenu((current) => (current === menu ? null : menu));
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (disabled || activeBlockIndex === null) {
+      inlineFormattingToolbarRangeRef.current = null;
+      hideInlineFormattingToolbar();
+    }
+  }, [activeBlockIndex, disabled, hideInlineFormattingToolbar]);
+
+  useEffect(() => {
+    if (!pageLinkPickerState) {
+      return;
+    }
+    hideInlineFormattingToolbar();
+  }, [hideInlineFormattingToolbar, pageLinkPickerState]);
+
+  useEffect(() => {
+    const handleSelectionSignal = () => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        hideInlineFormattingToolbar();
+        return;
+      }
+      const activeElement = document.activeElement;
+      const isToolbarFocused = activeElement instanceof Node &&
+        inlineFormattingToolbarRef.current?.contains(activeElement);
+      if (activeElement === textarea) {
+        scheduleInlineFormattingToolbarVisibility();
+        return;
+      }
+      if (isToolbarFocused) {
+        // Keep the last stable textarea range while interacting with the toolbar.
+        return;
+      }
+      hideInlineFormattingToolbar();
+    };
+
+    document.addEventListener("selectionchange", handleSelectionSignal);
+    window.addEventListener("pointerup", handleSelectionSignal, true);
+    window.addEventListener("keyup", handleSelectionSignal, true);
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionSignal);
+      window.removeEventListener("pointerup", handleSelectionSignal, true);
+      window.removeEventListener("keyup", handleSelectionSignal, true);
+    };
+  }, [hideInlineFormattingToolbar, scheduleInlineFormattingToolbarVisibility]);
+
+  useEffect(() => {
+    if (!inlineFormattingToolbarSelection) {
+      return;
+    }
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (inlineFormattingToolbarRef.current?.contains(target)) {
+        return;
+      }
+      if (textareaRef.current?.contains(target)) {
+        return;
+      }
+      hideInlineFormattingToolbar();
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+    };
+  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
+
+  useEffect(() => {
+    if (!inlineFormattingToolbarSelection) {
+      return;
+    }
+    const handleDocumentFocusIn = (event: globalThis.FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (textareaRef.current?.contains(target)) {
+        return;
+      }
+      if (inlineFormattingToolbarRef.current?.contains(target)) {
+        return;
+      }
+      hideInlineFormattingToolbar();
+    };
+    document.addEventListener("focusin", handleDocumentFocusIn);
+    return () => {
+      document.removeEventListener("focusin", handleDocumentFocusIn);
+    };
+  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
+
+  useEffect(() => {
+    if (!inlineFormattingToolbarSelection) {
+      return;
+    }
+    const handleHide = () => {
+      hideInlineFormattingToolbar();
+    };
+    window.addEventListener("resize", handleHide);
+    window.addEventListener("scroll", handleHide, true);
+    return () => {
+      window.removeEventListener("resize", handleHide);
+      window.removeEventListener("scroll", handleHide, true);
+    };
+  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
+
+  const handleTextareaPointerUp = useCallback(() => {
+    scheduleInlineFormattingToolbarVisibility();
+  }, [scheduleInlineFormattingToolbarVisibility]);
+
+  const handleTextareaKeyUp = useCallback(() => {
+    scheduleInlineFormattingToolbarVisibility();
+  }, [scheduleInlineFormattingToolbarVisibility]);
+
   const handleTextareaKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       const nativeKeyboardEvent = event.nativeEvent as Event & { isComposing?: boolean };
@@ -4088,6 +5394,36 @@ export const MarkdownHybridEditor = ({
           textarea.focus({ preventScroll: true });
         } catch {
           textarea.focus();
+        }
+        return;
+      }
+
+      if (event.key === "Escape" && inlineFormattingToolbarSelection) {
+        event.preventDefault();
+        event.stopPropagation();
+        hideInlineFormattingToolbar();
+        return;
+      }
+
+      const inlineShortcutAction = resolveInlineFormattingShortcutAction(event);
+      if (inlineShortcutAction) {
+        event.preventDefault();
+        event.stopPropagation();
+        const normalizedRange = normalizeInlineFormattingRange(textarea.value, {
+          start: textarea.selectionStart,
+          end: textarea.selectionEnd,
+        });
+        if (normalizedRange.start !== normalizedRange.end) {
+          inlineFormattingToolbarRangeRef.current = {
+            blockIndex: activeBlockIndex,
+            start: normalizedRange.start,
+            end: normalizedRange.end,
+          };
+          if (inlineShortcutAction === "link") {
+            openInlineFormattingLinkEditor();
+          } else {
+            applyInlineFormattingAction(inlineShortcutAction);
+          }
         }
         return;
       }
@@ -4569,12 +5905,16 @@ export const MarkdownHybridEditor = ({
       activeBlockIndex,
       activeDraft,
       applyActiveBlockDraft,
+      applyInlineFormattingAction,
       activeDirty,
       blocks,
       closePageLinkPicker,
       commitActiveBlock,
       handleGlobalRedo,
       handleGlobalUndo,
+      hideInlineFormattingToolbar,
+      inlineFormattingToolbarSelection,
+      openInlineFormattingLinkEditor,
       pageLinkPickerState,
       replaceActiveBlockWithSegments,
       scheduleTextareaCaret,
@@ -5482,6 +6822,42 @@ export const MarkdownHybridEditor = ({
     </div>
   ) : null;
 
+  const inlineFormattingToolbarPopup = inlineFormattingToolbarSelection && !disabled ? (
+    <FloatingInlineFormattingToolbar
+      anchor={inlineFormattingToolbarSelection.anchor}
+      menu={inlineFormattingToolbarMenu}
+      linkState={inlineFormattingToolbarLinkState}
+      activeState={inlineFormattingToolbarSelection.activeState}
+      toolbarRef={inlineFormattingToolbarRef}
+      onClose={hideInlineFormattingToolbar}
+      onToggleMenu={toggleInlineFormattingToolbarMenu}
+      onAction={handleInlineFormattingToolbarAction}
+      onLinkUrlChange={(value) => {
+        setInlineFormattingToolbarLinkState((current) => {
+          if (!current) {
+            return {
+              url: value,
+              canRemove: false,
+            };
+          }
+          return {
+            ...current,
+            url: value,
+          };
+        });
+      }}
+      onLinkSubmit={() => {
+        applyInlineFormattingLinkValue();
+      }}
+      onLinkRemove={() => {
+        applyInlineFormattingLinkValue("");
+      }}
+      onLinkCancel={() => {
+        setInlineFormattingToolbarLinkState(null);
+      }}
+    />
+  ) : null;
+
   const selectionContextMenu = selectionContextMenuState && !disabled && selectedBlockSelection ? (
     <div
       ref={selectionContextMenuRef}
@@ -5583,7 +6959,9 @@ export const MarkdownHybridEditor = ({
                         handleTextareaChange(event.target.value, event.target.selectionStart)}
                       onBlur={handleTextareaBlur}
                       onKeyDown={handleTextareaKeyDown}
+                      onKeyUp={handleTextareaKeyUp}
                       onSelect={handleTextareaSelect}
+                      onMouseUp={handleTextareaPointerUp}
                       onScroll={handleTextareaScroll}
                       aria-label="Markdown block editor"
                     />
@@ -5617,6 +6995,7 @@ export const MarkdownHybridEditor = ({
           })}
         </div>
         {pageLinkPickerPopup}
+        {inlineFormattingToolbarPopup}
         {selectionContextMenu}
       </div>
     );
@@ -5718,7 +7097,9 @@ export const MarkdownHybridEditor = ({
                         handleTextareaChange(event.target.value, event.target.selectionStart)}
                       onBlur={handleTextareaBlur}
                       onKeyDown={handleTextareaKeyDown}
+                      onKeyUp={handleTextareaKeyUp}
                       onSelect={handleTextareaSelect}
+                      onMouseUp={handleTextareaPointerUp}
                       onScroll={handleTextareaScroll}
                       aria-label="Markdown block editor"
                     />
@@ -5851,6 +7232,7 @@ export const MarkdownHybridEditor = ({
         })}
       </div>
       {pageLinkPickerPopup}
+      {inlineFormattingToolbarPopup}
       {selectionContextMenu}
     </div>
   );

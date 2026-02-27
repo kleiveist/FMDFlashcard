@@ -11,6 +11,7 @@ import {
   applyInteractionSpacing,
   buildEditableMarkdownHtml,
   canStartPreviewEdit,
+  normalizeInlineFormattingForPreview,
   normalizeTableSpacingForRender,
   serializeMarkdownFromHtml,
 } from "./PreviewPanel";
@@ -111,6 +112,42 @@ describe("normalizeTableSpacingForRender", () => {
       "",
       "Nachher",
     ].join("\n"));
+  });
+});
+
+describe("normalizeInlineFormattingForPreview", () => {
+  it("normalizes highlight, italic, underline, math and bold+italic inline markers for preview rendering", () => {
+    const source = [
+      "a) ==OPTION== A",
+      "b) *OPTION* B",
+      "c) __OPTION__ C",
+      "d) $OPTION$ D",
+      "e) ***OPTION*** E",
+    ].join("\n");
+
+    const result = normalizeInlineFormattingForPreview(source);
+
+    expect(result).toContain("a) <mark class=\"md-inline-highlight\">OPTION</mark> A");
+    expect(result).toContain("b) <em>OPTION</em> B");
+    expect(result).toContain("c) <u>OPTION</u> C");
+    expect(result).toContain("d) <span class=\"md-inline-math\">OPTION</span> D");
+    expect(result).toContain("e) <strong><em>OPTION</em></strong> E");
+  });
+
+  it("does not rewrite fenced or inline code segments", () => {
+    const source = [
+      "Inline `*NO_CHANGE* __NO_CHANGE__ ==NO_CHANGE==` end",
+      "```",
+      "*NO_CHANGE* __NO_CHANGE__ ==NO_CHANGE== $NO_CHANGE$ ***NO_CHANGE***",
+      "```",
+      "*CHANGE*",
+    ].join("\n");
+
+    const result = normalizeInlineFormattingForPreview(source);
+
+    expect(result).toContain("Inline `*NO_CHANGE* __NO_CHANGE__ ==NO_CHANGE==` end");
+    expect(result).toContain("*NO_CHANGE* __NO_CHANGE__ ==NO_CHANGE== $NO_CHANGE$ ***NO_CHANGE***");
+    expect(result).toContain("<em>CHANGE</em>");
   });
 });
 
