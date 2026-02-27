@@ -17,6 +17,7 @@ import {
   isValidElement,
   type KeyboardEvent,
   type MouseEvent,
+  type ReactElement,
   type ReactNode,
   type SyntheticEvent,
   useCallback,
@@ -973,17 +974,18 @@ const transformPreviewNodeWikilinks = (
     return node;
   }
 
-  const tagName = typeof node.type === "string" ? node.type.toLowerCase() : null;
+  const typedElement = node as ReactElement<Record<string, unknown>>;
+  const elementProps = (typedElement.props ?? {}) as Record<string, unknown>;
+  const tagName = typeof typedElement.type === "string" ? typedElement.type.toLowerCase() : null;
   if (!tagName) {
-    const propsRecord = (node.props ?? {}) as Record<string, unknown>;
-    const originalChildren = propsRecord.children;
-    const originalComponents = propsRecord.components;
+    const originalChildren = elementProps.children;
+    const originalComponents = elementProps.components;
     const looksLikeReactMarkdown = typeof originalChildren === "string" &&
       originalComponents &&
       typeof originalComponents === "object" &&
-      ("remarkPlugins" in propsRecord || "rehypePlugins" in propsRecord);
+      ("remarkPlugins" in elementProps || "rehypePlugins" in elementProps);
     if (!looksLikeReactMarkdown) {
-      return node;
+      return typedElement;
     }
 
     const componentsRecord = originalComponents as Record<string, unknown>;
@@ -1013,23 +1015,23 @@ const transformPreviewNodeWikilinks = (
       };
     }
 
-    return cloneElement(node, {
-      ...(node.props as object),
+    return cloneElement(typedElement, {
+      ...elementProps,
       components: wrappedComponents,
     });
   }
 
   const nextSkip = options.skipTransform || (tagName ? inlineWikilinkSkipTags.has(tagName) : false);
-  const hasChildren = Object.prototype.hasOwnProperty.call(node.props ?? {}, "children");
+  const hasChildren = Object.prototype.hasOwnProperty.call(elementProps, "children");
   if (!hasChildren) {
-    return node;
+    return typedElement;
   }
-  const nextChildren = Children.map(node.props.children as ReactNode, (child, index) =>
+  const nextChildren = Children.map(elementProps.children as ReactNode, (child, index) =>
     transformPreviewNodeWikilinks(child, `${keyPrefix}:${index}`, {
       ...options,
       skipTransform: nextSkip,
     }));
-  return cloneElement(node, undefined, nextChildren);
+  return cloneElement(typedElement, undefined, nextChildren);
 };
 
 const isUndoShortcut = (event: KeyboardEvent<HTMLElement>) =>
@@ -4134,6 +4136,39 @@ export const MarkdownHybridEditor = ({
             : adjacentLinkRange.end;
           scheduleTextareaCaret(nextCaret);
           return;
+        }
+      }
+
+      if (
+        block.kind === "card-block" &&
+        !hasSelection &&
+        event.key.length === 1 &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        /[\p{L}\p{N}]/u.test(event.key)
+      ) {
+        const lines = activeDraft.split("\n");
+        const endCardLineIndex = lines.findIndex((line) => line.trim().toLowerCase() === "#endcard");
+        if (endCardLineIndex >= 0) {
+          const endCardLine = lines[endCardLineIndex] ?? "";
+          const directiveStartInLine = endCardLine.toLowerCase().indexOf("#endcard");
+          if (directiveStartInLine >= 0) {
+            const lineStart = getLineStartOffsetByIndex(lines, endCardLineIndex);
+            const directiveEndOffset = lineStart + directiveStartInLine + "#endcard".length;
+            const lineEndOffset = lineStart + endCardLine.length;
+            const selectionOffset = textarea.selectionStart;
+            if (selectionOffset >= directiveEndOffset && selectionOffset <= lineEndOffset) {
+              event.preventDefault();
+              event.stopPropagation();
+              const cardRaw = lines.slice(0, endCardLineIndex + 1).join("\n");
+              replaceActiveBlockWithSegments([cardRaw, event.key], {
+                activateSegmentIndex: 1,
+                caret: "end",
+              });
+              return;
+            }
+          }
         }
       }
 

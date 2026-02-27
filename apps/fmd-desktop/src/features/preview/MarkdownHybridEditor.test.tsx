@@ -1391,6 +1391,53 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("moves typed letters or digits after #endcard into the next text block", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-endcard-typed-char-exit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "a");
+
+      expect(readMarkdown()).toBe(`${initialMarkdown}\na`);
+      const blockKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(blockKinds).toEqual(["card-block", "paragraph"]);
+
+      textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
+      );
+      expect(textarea).toBeTruthy();
+      expect(textarea?.value).toBe("a");
+      expect(textarea?.selectionStart).toBe(1);
+      expect(textarea?.selectionEnd).toBe(1);
+
+      cleanup();
+    });
+  });
+
   it("normalizes hash heading spacing only when the caret is on that hash line", () => {
     const initialMarkdown = ["##HeadingNoSpace", "Other line"].join("\n");
 
