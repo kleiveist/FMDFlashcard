@@ -1943,6 +1943,90 @@ textarea.preview-editor {
   color: color-mix(in srgb, var(--accent-strong) 90%, var(--preview-ink));
 }
 
+.markdown-hybrid-block-editor-overlay [data-md-inline-syntax^="markdown-"] {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-highlight {
+  background:
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 58%,
+      color-mix(in srgb, var(--accent-soft) 72%, transparent) 58%,
+      color-mix(in srgb, var(--accent-soft) 72%, transparent) 100%
+    );
+  color: color-mix(in srgb, var(--accent-strong) 90%, var(--preview-ink));
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-bold {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-italic {
+  color: var(--text);
+  font-style: italic;
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-underline {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.12em;
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-strikethrough {
+  color: var(--text);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.3px;
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-inline-code {
+  display: inline-block;
+  vertical-align: baseline;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--preview-code-ink);
+  background: var(--preview-code-bg);
+  border: 1px solid var(--preview-code-border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-inline-code.is-active-line {
+  display: inline;
+  vertical-align: baseline;
+  color: color-mix(in srgb, var(--preview-code-ink) 88%, var(--muted));
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-math {
+  display: inline-block;
+  vertical-align: baseline;
+  border-radius: 0.26em;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 84%, transparent);
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  padding: 0.02em 0.26em;
+  font-family: "STIX Two Math", "Cambria Math", var(--mono);
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+.markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-bold-italic {
+  color: color-mix(in srgb, var(--accent-strong) 78%, var(--text));
+  font-weight: 700;
+  font-style: italic;
+}
+
 .markdown-hybrid-inline-page-link {
   display: inline-flex;
   align-items: center;
@@ -2573,6 +2657,7 @@ textarea.preview-editor {
 .md-preview code {
   font-family: var(--mono);
   font-size: 0.85rem;
+  color: var(--preview-code-ink);
   background: var(--preview-code-bg);
   border: 1px solid var(--preview-code-border);
   border-radius: 6px;
@@ -2582,6 +2667,7 @@ textarea.preview-editor {
 .md-preview pre {
   margin: 0 0 0.8rem;
   padding: 12px;
+  color: var(--preview-code-ink);
   background: var(--preview-code-bg);
   border: 1px solid var(--preview-code-border);
   border-radius: 12px;

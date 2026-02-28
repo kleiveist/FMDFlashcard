@@ -294,7 +294,7 @@
   border-radius: 10px;
   border: 1px solid var(--line-soft);
   background: var(--preview-code-bg);
-  color: var(--ink);
+  color: var(--preview-code-ink);
   white-space: pre;
   overflow-x: auto;
 }

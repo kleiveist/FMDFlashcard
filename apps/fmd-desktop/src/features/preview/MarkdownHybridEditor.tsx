@@ -2474,11 +2474,47 @@ const escapeHybridPreviewSpecialLines = (source: string) =>
     })
     .join("\n");
 
-type EditorInlineSyntaxKind = "hash-tag" | "cloze" | "quoted-token";
+type EditorInlineSyntaxKind =
+  | "hash-tag"
+  | "cloze"
+  | "quoted-token"
+  | "markdown-highlight"
+  | "markdown-bold"
+  | "markdown-italic"
+  | "markdown-underline"
+  | "markdown-strikethrough"
+  | "markdown-inline-code"
+  | "markdown-math"
+  | "markdown-bold-italic";
 
-const editorInlineSyntaxPattern = /#[A-Za-z0-9_-]+\b|%[^%\n]+%|"[^"\n]+"/g;
+const editorInlineSyntaxPattern =
+  /\*\*\*[^*\n]+?\*\*\*|(?<!\*)\*\*[^*\n]+?\*\*(?!\*)|(?<!\*)\*[^*\n]+?\*(?!\*)|__[^_\n]+?__|~~[^~\n]+?~~|`[^`\n]+?`|\$[^$\n]+?\$|==[^=\n]+?==|#[A-Za-z0-9_-]+\b|%[^%\n]+%|"[^"\n]+"/g;
 
 const resolveEditorInlineSyntaxKind = (token: string): EditorInlineSyntaxKind | null => {
+  if (/^\*\*\*[^*\n]+?\*\*\*$/.test(token)) {
+    return "markdown-bold-italic";
+  }
+  if (/^\*\*[^*\n]+?\*\*$/.test(token)) {
+    return "markdown-bold";
+  }
+  if (/^\*[^*\n]+?\*$/.test(token)) {
+    return "markdown-italic";
+  }
+  if (/^__[^_\n]+?__$/.test(token)) {
+    return "markdown-underline";
+  }
+  if (/^~~[^~\n]+?~~$/.test(token)) {
+    return "markdown-strikethrough";
+  }
+  if (/^`[^`\n]+?`$/.test(token)) {
+    return "markdown-inline-code";
+  }
+  if (/^\$[^$\n]+?\$$/.test(token)) {
+    return "markdown-math";
+  }
+  if (/^==[^=\n]+?==$/.test(token)) {
+    return "markdown-highlight";
+  }
   if (/^#[A-Za-z0-9_-]+\b/.test(token)) {
     return "hash-tag";
   }
@@ -2491,7 +2527,14 @@ const resolveEditorInlineSyntaxKind = (token: string): EditorInlineSyntaxKind | 
   return null;
 };
 
-const renderEditorInlineSyntaxSegments = (text: string, keyPrefix: string) => {
+const renderEditorInlineSyntaxSegments = (
+  text: string,
+  keyPrefix: string,
+  options?: {
+    shouldRenderKind?: (kind: EditorInlineSyntaxKind) => boolean;
+    getClassName?: (kind: EditorInlineSyntaxKind) => string | null | undefined;
+  },
+) => {
   if (!text) {
     editorInlineSyntaxPattern.lastIndex = 0;
     return null;
@@ -2514,13 +2557,16 @@ const renderEditorInlineSyntaxSegments = (text: string, keyPrefix: string) => {
       parts.push(text.slice(lastIndex, startIndex));
     }
     const kind = resolveEditorInlineSyntaxKind(token);
-    if (!kind) {
+    if (!kind || (options?.shouldRenderKind && !options.shouldRenderKind(kind))) {
       parts.push(token);
     } else {
+      const extraClassName = options?.getClassName?.(kind);
       parts.push(
         <span
           key={`${keyPrefix}-${tokenIndex}`}
-          className={`md-inline-syntax md-inline-syntax-${kind}`}
+          className={`md-inline-syntax md-inline-syntax-${kind}${
+            extraClassName ? ` ${extraClassName}` : ""
+          }`}
           data-md-inline-syntax={kind}
         >
           {token}
@@ -2555,7 +2601,14 @@ const renderEditorInlineSyntaxOverlay = (
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     const line = lines[lineIndex] ?? "";
     const lineNode = activeLineIndex === lineIndex
-      ? line
+      ? renderEditorInlineSyntaxSegments(
+        line,
+        `mdh-editor-inline-line-${lineIndex}`,
+        {
+          shouldRenderKind: (kind) => kind === "markdown-inline-code",
+          getClassName: (kind) => kind === "markdown-inline-code" ? "is-active-line" : null,
+        },
+      )
       : renderEditorInlineSyntaxSegments(line, `mdh-editor-inline-line-${lineIndex}`);
     nodes.push(lineNode);
     if (lineIndex < lines.length - 1) {
@@ -5333,11 +5386,13 @@ export const MarkdownHybridEditor = ({
     };
   }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
 
-  const handleTextareaPointerUp = useCallback(() => {
+  const handleTextareaPointerUp = useCallback((event: MouseEvent<HTMLTextAreaElement>) => {
+    setEditorOverlaySelectionStart(event.currentTarget.selectionStart);
     scheduleInlineFormattingToolbarVisibility();
   }, [scheduleInlineFormattingToolbarVisibility]);
 
-  const handleTextareaKeyUp = useCallback(() => {
+  const handleTextareaKeyUp = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
+    setEditorOverlaySelectionStart(event.currentTarget.selectionStart);
     scheduleInlineFormattingToolbarVisibility();
   }, [scheduleInlineFormattingToolbarVisibility]);
 

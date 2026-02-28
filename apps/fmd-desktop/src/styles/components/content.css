@@ -1411,6 +1411,7 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-markdown code {
   font-family: var(--mono);
   font-size: 0.85rem;
+  color: var(--preview-code-ink);
   background: var(--preview-code-bg);
   border: 1px solid var(--preview-code-border);
   border-radius: 6px;
@@ -1420,6 +1421,7 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-markdown pre {
   margin: 0 0 0.8rem;
   padding: 12px;
+  color: var(--preview-code-ink);
   background: var(--preview-code-bg);
   border: 1px solid var(--preview-code-border);
   border-radius: 12px;

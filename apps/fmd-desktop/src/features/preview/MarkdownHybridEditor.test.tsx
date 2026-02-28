@@ -1746,6 +1746,146 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("renders markdown inline formatting tokens only outside the active editor line", () => {
+    const initialMarkdown = [
+      "QUESTION TEXT",
+      "a) ==OPTION== A",
+      "b) **OPTION** B",
+      "c) *OPTION* C",
+      "d) __OPTION__ D",
+      "e) ~~OPTION~~ A",
+      "f) `OPTION` B",
+      "g) $OPTION$ C",
+      "h) ***OPTION*** D",
+      "-a",
+      "-c",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="editor-markdown-inline-overlay"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const textarea = activateBlockEditor(container, 0);
+    expect(textarea).toBeTruthy();
+
+    const minusALineStart = textarea?.value.indexOf("-a") ?? -1;
+    expect(minusALineStart).toBeGreaterThanOrEqual(0);
+    setTextareaSelection(textarea, minusALineStart, minusALineStart);
+
+    let syntaxNodes = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-block-editor-overlay [data-md-inline-syntax^='markdown-']",
+      ),
+    );
+    expect(
+      syntaxNodes.map((node) => ({
+        kind: node.dataset.mdInlineSyntax,
+        text: node.textContent,
+      })),
+    ).toEqual([
+      { kind: "markdown-highlight", text: "==OPTION==" },
+      { kind: "markdown-bold", text: "**OPTION**" },
+      { kind: "markdown-italic", text: "*OPTION*" },
+      { kind: "markdown-underline", text: "__OPTION__" },
+      { kind: "markdown-strikethrough", text: "~~OPTION~~" },
+      { kind: "markdown-inline-code", text: "`OPTION`" },
+      { kind: "markdown-math", text: "$OPTION$" },
+      { kind: "markdown-bold-italic", text: "***OPTION***" },
+    ]);
+
+    const italicLineStart = textarea?.value.indexOf("c) *OPTION* C") ?? -1;
+    expect(italicLineStart).toBeGreaterThanOrEqual(0);
+    setTextareaSelection(textarea, italicLineStart, italicLineStart);
+
+    syntaxNodes = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-block-editor-overlay [data-md-inline-syntax^='markdown-']",
+      ),
+    );
+    expect(
+      syntaxNodes.map((node) => ({
+        kind: node.dataset.mdInlineSyntax,
+        text: node.textContent,
+      })),
+    ).toEqual([
+      { kind: "markdown-highlight", text: "==OPTION==" },
+      { kind: "markdown-bold", text: "**OPTION**" },
+      { kind: "markdown-underline", text: "__OPTION__" },
+      { kind: "markdown-strikethrough", text: "~~OPTION~~" },
+      { kind: "markdown-inline-code", text: "`OPTION`" },
+      { kind: "markdown-math", text: "$OPTION$" },
+      { kind: "markdown-bold-italic", text: "***OPTION***" },
+    ]);
+
+    const codeLineStart = textarea?.value.indexOf("f) `OPTION` B") ?? -1;
+    expect(codeLineStart).toBeGreaterThanOrEqual(0);
+    setTextareaSelection(textarea, codeLineStart, codeLineStart);
+
+    syntaxNodes = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-block-editor-overlay [data-md-inline-syntax^='markdown-']",
+      ),
+    );
+    expect(
+      syntaxNodes.map((node) => ({
+        kind: node.dataset.mdInlineSyntax,
+        text: node.textContent,
+      })),
+    ).toEqual([
+      { kind: "markdown-highlight", text: "==OPTION==" },
+      { kind: "markdown-bold", text: "**OPTION**" },
+      { kind: "markdown-italic", text: "*OPTION*" },
+      { kind: "markdown-underline", text: "__OPTION__" },
+      { kind: "markdown-strikethrough", text: "~~OPTION~~" },
+      { kind: "markdown-inline-code", text: "`OPTION`" },
+      { kind: "markdown-math", text: "$OPTION$" },
+      { kind: "markdown-bold-italic", text: "***OPTION***" },
+    ]);
+    const activeCodeNode = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-inline-code.is-active-line",
+    );
+    expect(activeCodeNode?.textContent).toBe("`OPTION`");
+
+    const boldLineStart = textarea?.value.indexOf("b) **OPTION** B") ?? -1;
+    expect(boldLineStart).toBeGreaterThanOrEqual(0);
+    act(() => {
+      textarea?.setSelectionRange(boldLineStart, boldLineStart);
+      textarea?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
+    });
+
+    syntaxNodes = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-block-editor-overlay [data-md-inline-syntax^='markdown-']",
+      ),
+    );
+    expect(
+      syntaxNodes.map((node) => ({
+        kind: node.dataset.mdInlineSyntax,
+        text: node.textContent,
+      })),
+    ).toEqual([
+      { kind: "markdown-highlight", text: "==OPTION==" },
+      { kind: "markdown-italic", text: "*OPTION*" },
+      { kind: "markdown-underline", text: "__OPTION__" },
+      { kind: "markdown-strikethrough", text: "~~OPTION~~" },
+      { kind: "markdown-inline-code", text: "`OPTION`" },
+      { kind: "markdown-math", text: "$OPTION$" },
+      { kind: "markdown-bold-italic", text: "***OPTION***" },
+    ]);
+
+    cleanup();
+  });
+
   it("opens a page picker for Link Page inserts without adding a [[Page]] placeholder", () => {
     withImmediateRaf(() => {
       const vaultFiles = [

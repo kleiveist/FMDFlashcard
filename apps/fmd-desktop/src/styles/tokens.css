@@ -77,8 +77,9 @@
   );
   --preview-bg: var(--panel);
   --preview-ink: var(--ink);
-  --preview-code-bg: #ffffff;
-  --preview-code-border: var(--line-soft);
+  --preview-code-bg: #f1f4f6;
+  --preview-code-border: rgba(18, 24, 27, 0.12);
+  --preview-code-ink: #465055;
   --md-surface-bg: var(--preview-bg);
   --md-table-bg: var(--preview-bg);
   --md-table-head-bg: var(--accent-weak-bg);
@@ -149,8 +150,9 @@
   );
   --preview-bg: var(--panel);
   --preview-ink: var(--ink);
-  --preview-code-bg: #000000;
-  --preview-code-border: var(--line-soft);
+  --preview-code-bg: #20292f;
+  --preview-code-border: rgba(237, 242, 244, 0.14);
+  --preview-code-ink: #d0d7db;
   --accent-weak-bg: rgba(var(--accent-rgb), 0.05);
   --accent-hover-bg: rgba(var(--accent-rgb), 0.08);
   --accent-active-bg: rgba(var(--accent-rgb), 0.12);
