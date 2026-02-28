@@ -55,6 +55,17 @@ import {
   type AdvancedInsertTemplateContext,
   type AdvancedInsertTemplateIconId,
 } from "./insertTemplates";
+import {
+  extractMathBlockBody,
+  getMathBlockDefaultSelection,
+  insertMathTemplateIntoRaw,
+  isMathBlockDelimiterLine,
+  MathBlockRenderer,
+  MATH_TOOLBOX_SECTIONS,
+  normalizeMathBlockSource,
+  resolveMathBlockBoundaries,
+  type MathToolboxTemplate,
+} from "./mathBlocks";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
 
@@ -143,6 +154,10 @@ type InsertMenuItem = {
   template: string;
   description?: string;
   firstPlaceholder?: string;
+  initialSelection?: {
+    start: number;
+    end: number;
+  };
   icon?: InsertMenuIconId;
 };
 
@@ -162,11 +177,22 @@ type InsertMenuIconId =
   | "list-checks"
   | "toggle-list"
   | "code-block"
+  | "math-block"
   | "divider"
   | "quote"
   | "nested-quote"
   | AdvancedInsertTemplateIconId
   | "close";
+
+type MathToolboxState = {
+  blockIndex: number;
+  anchorRect: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  };
+};
 
 type InlineFormattingToolbarAction =
   | "highlight"
@@ -337,6 +363,13 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
       icon: "code-block",
     },
     {
+      id: "math-block-structure",
+      label: "Math Block",
+      template: "$$\n\n$$",
+      initialSelection: { start: 3, end: 3 },
+      icon: "math-block",
+    },
+    {
       id: "table",
       label: "Table",
       template: "| Column A | Column B |\n| --- | --- |\n| Value 1 | Value 2 |",
@@ -490,6 +523,14 @@ const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
           <polyline points="8 8 4 12 8 16" />
           <polyline points="16 8 20 12 16 16" />
           <line x1="11" y1="6" x2="13" y2="18" />
+        </svg>
+      );
+    case "math-block":
+      return (
+        <svg {...svgProps}>
+          <path d="M5 8h5l2 8 2.2-6 2.1 6L19 8h2" />
+          <path d="M8 5.5h8" />
+          <path d="M8 18.5h8" />
         </svg>
       );
     case "divider":
@@ -920,6 +961,133 @@ const FloatingInlineFormattingToolbar = ({
   );
 };
 
+const FloatingMathToolbox = ({
+  anchorRect,
+  toolboxRef,
+  onSelect,
+  onClose,
+}: {
+  anchorRect: MathToolboxState["anchorRect"];
+  toolboxRef: { current: HTMLDivElement | null };
+  onSelect: (template: MathToolboxTemplate) => void;
+  onClose: () => void;
+}) => {
+  const localToolboxRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+
+  const setToolboxNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      localToolboxRef.current = node;
+      toolboxRef.current = node;
+    },
+    [toolboxRef],
+  );
+
+  useLayoutEffect(() => {
+    const handle = window.requestAnimationFrame(() => {
+      const toolboxNode = localToolboxRef.current;
+      if (!toolboxNode) {
+        return;
+      }
+      const rect = toolboxNode.getBoundingClientRect();
+      const width = Math.max(1, rect.width || 1);
+      const height = Math.max(1, rect.height || 1);
+      const padding = 10;
+      let left = anchorRect.right - width;
+      if (left < padding) {
+        left = padding;
+      }
+      if (left + width > window.innerWidth - padding) {
+        left = Math.max(padding, window.innerWidth - width - padding);
+      }
+      let top = anchorRect.bottom + 8;
+      if (top + height > window.innerHeight - padding) {
+        top = anchorRect.top - height - 8;
+      }
+      if (top < padding) {
+        top = Math.max(padding, window.innerHeight - height - padding);
+      }
+      setPosition({
+        left: Math.round(left),
+        top: Math.round(top),
+      });
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [anchorRect.bottom, anchorRect.right, anchorRect.top]);
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      ref={setToolboxNode}
+      className="markdown-hybrid-math-toolbox"
+      role="dialog"
+      aria-label="Math toolbox"
+      style={{
+        left: position?.left ?? -9999,
+        top: position?.top ?? -9999,
+        visibility: position ? "visible" : "hidden",
+      }}
+      onMouseDown={(event) => {
+        event.stopPropagation();
+      }}
+      onClick={(event) => {
+        event.stopPropagation();
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }}
+    >
+      <div className="markdown-hybrid-math-toolbox-header">
+        <span className="markdown-hybrid-math-toolbox-title">Math Toolbox</span>
+        <button
+          type="button"
+          className="markdown-hybrid-math-toolbox-close"
+          onMouseDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onClick={onClose}
+          aria-label="Close math toolbox"
+        >
+          <InsertMenuIconGraphic icon="close" />
+        </button>
+      </div>
+      <div className="markdown-hybrid-math-toolbox-sections">
+        {MATH_TOOLBOX_SECTIONS.map((section) => (
+          <section key={section.id} className="markdown-hybrid-math-toolbox-section">
+            <h4 className="markdown-hybrid-math-toolbox-section-title">{section.label}</h4>
+            <div className="markdown-hybrid-math-toolbox-grid">
+              {section.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="markdown-hybrid-math-toolbox-item"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={() => onSelect(item)}
+                >
+                  <span className="markdown-hybrid-math-toolbox-item-label">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
 const renderInsertMenuRowContent = ({
   label,
   description,
@@ -1040,7 +1208,17 @@ const parseInlineWikilink = (raw: string) => {
 };
 
 const canOpenPageLinkPickerInBlockKind = (kind: MarkdownBlock["kind"]) =>
-  kind !== "code-fence" && kind !== "hr" && kind !== "table";
+  kind !== "code-fence" && kind !== "hr" && kind !== "table" && kind !== "math-block";
+
+const getAnchorRectFromElement = (element: HTMLElement) => {
+  const rect = element.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+  };
+};
 
 const detectTypedPageLinkTrigger = (
   value: string,
@@ -2804,12 +2982,22 @@ const normalizeLeadingHeadingSpacing = (
 
 const toEditorDraftForBlock = (
   block: Pick<MarkdownBlock, "kind" | "raw">,
-) => (block.kind === "hr" ? extractHorizontalRuleEditorDraft(block.raw) : block.raw);
+) =>
+  block.kind === "hr"
+    ? extractHorizontalRuleEditorDraft(block.raw)
+    : block.kind === "math-block"
+    ? normalizeMathBlockSource(block.raw)
+    : block.raw;
 
 const toPersistedBlockRawForDraft = (
   block: Pick<MarkdownBlock, "kind">,
   draft: string,
-) => (block.kind === "hr" ? serializeHorizontalRuleEditorDraft(draft) : draft);
+) =>
+  block.kind === "hr"
+    ? serializeHorizontalRuleEditorDraft(draft)
+    : block.kind === "math-block"
+    ? normalizeMathBlockSource(draft)
+    : draft;
 
 const applyEditorMarkdownNormalization = (value: string) =>
   normalizeHorizontalRuleSpacingInMarkdown(value);
@@ -2860,6 +3048,7 @@ export const MarkdownHybridEditor = ({
   const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
   const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null);
   const [insertMenuState, setInsertMenuState] = useState<InsertMenuState | null>(null);
+  const [mathToolboxState, setMathToolboxState] = useState<MathToolboxState | null>(null);
   const [selectionContextMenuState, setSelectionContextMenuState] =
     useState<SelectionContextMenuState | null>(null);
   const [selectionMarqueeRect, setSelectionMarqueeRect] = useState<SelectionMarqueeRect | null>(
@@ -2885,6 +3074,7 @@ export const MarkdownHybridEditor = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentLayerRef = useRef<HTMLDivElement | null>(null);
   const insertMenuRef = useRef<HTMLDivElement | null>(null);
+  const mathToolboxRef = useRef<HTMLDivElement | null>(null);
   const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
   const pageLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const pageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
@@ -3973,6 +4163,40 @@ export const MarkdownHybridEditor = ({
     [activeBlockIndex, blocks, disabled],
   );
 
+  const handleMathToolboxButtonMouseDown = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [],
+  );
+
+  const handleMathToolboxButtonClick = useCallback(
+    (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (disabled) {
+        return;
+      }
+      const block = blocks[blockIndex];
+      if (!block || block.kind !== "math-block") {
+        return;
+      }
+      const nextAnchorRect = getAnchorRectFromElement(event.currentTarget);
+      setMathToolboxState((current) =>
+        current && current.blockIndex === blockIndex
+          ? null
+          : {
+            blockIndex,
+            anchorRect: nextAnchorRect,
+          });
+      if (activeBlockIndex !== blockIndex) {
+        activateBlock(blockIndex, "start");
+      }
+    },
+    [activateBlock, activeBlockIndex, blocks, disabled],
+  );
+
   const focusContainer = useCallback(() => {
     const container = containerRef.current;
     if (!container) {
@@ -4206,7 +4430,13 @@ export const MarkdownHybridEditor = ({
       blockIndex: number,
       insertedRaw: string,
       insertAbove: boolean,
-      options?: { firstPlaceholder?: string },
+      options?: {
+        firstPlaceholder?: string;
+        selection?: {
+          start: number;
+          end: number;
+        };
+      },
     ) => {
       if (disabled) {
         return false;
@@ -4234,6 +4464,8 @@ export const MarkdownHybridEditor = ({
               end: placeholderStart + options.firstPlaceholder.length,
             };
           }
+        } else if (options?.selection && primaryInsertedBlock.kind !== "hr") {
+          activationSelection = options.selection;
         }
         const startSearchIndex = Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
         for (let offset = 0; offset < nextBlocks.length; offset += 1) {
@@ -4424,6 +4656,49 @@ export const MarkdownHybridEditor = ({
   }, [insertMenuState]);
 
   useEffect(() => {
+    if (!mathToolboxState) {
+      return;
+    }
+
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (mathToolboxRef.current?.contains(target)) {
+        return;
+      }
+      if (target.closest("[data-md-math-toolbox-trigger='true']")) {
+        return;
+      }
+      setMathToolboxState(null);
+    };
+
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMathToolboxState(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [mathToolboxState]);
+
+  useEffect(() => {
+    if (!mathToolboxState) {
+      return;
+    }
+    const block = blocks[mathToolboxState.blockIndex];
+    if (!block || block.kind !== "math-block") {
+      setMathToolboxState(null);
+    }
+  }, [blocks, mathToolboxState]);
+
+  useEffect(() => {
     if (!selectionContextMenuState) {
       return;
     }
@@ -4561,6 +4836,7 @@ export const MarkdownHybridEditor = ({
       }
       insertBlockRelativeTo(insertMenuState.blockIndex, item.template, insertMenuState.insertAbove, {
         firstPlaceholder: item.firstPlaceholder,
+        selection: item.initialSelection,
       });
     },
     [blocks.length, insertBlockRelativeTo, insertEmptyParagraphRelativeTo, insertMenuState, requestPageLinkPickerOpen],
@@ -4801,6 +5077,9 @@ export const MarkdownHybridEditor = ({
     if (nextFocus instanceof Node && pageLinkPickerRef.current?.contains(nextFocus)) {
       return;
     }
+    if (nextFocus instanceof Node && mathToolboxRef.current?.contains(nextFocus)) {
+      return;
+    }
     if (nextFocus instanceof Node && inlineFormattingToolbarRef.current?.contains(nextFocus)) {
       return;
     }
@@ -4856,6 +5135,15 @@ export const MarkdownHybridEditor = ({
     if (activeBlockIndex === null) {
       return;
     }
+    const block = blocks[activeBlockIndex];
+    if (block?.kind === "math-block") {
+      inlineFormattingToolbarPendingSignatureRef.current = null;
+      inlineFormattingToolbarRangeRef.current = null;
+      setInlineFormattingToolbarSelection(null);
+      setInlineFormattingToolbarMenu(null);
+      setInlineFormattingToolbarLinkState(null);
+      return;
+    }
     const normalized = normalizeInlineFormattingRange(textarea.value, {
       start: textarea.selectionStart,
       end: textarea.selectionEnd,
@@ -4868,7 +5156,7 @@ export const MarkdownHybridEditor = ({
       start: normalized.start,
       end: normalized.end,
     };
-  }, [activeBlockIndex]);
+  }, [activeBlockIndex, blocks]);
 
   useLayoutEffect(() => {
     syncActiveTextareaAutoHeight();
@@ -4957,8 +5245,20 @@ export const MarkdownHybridEditor = ({
     setInlineFormattingToolbarLinkState(null);
   }, [clearInlineFormattingToolbarTimer]);
 
+  useEffect(() => {
+    if (activeBlockIndex === null) {
+      return;
+    }
+    if (blocks[activeBlockIndex]?.kind === "math-block") {
+      hideInlineFormattingToolbar();
+    }
+  }, [activeBlockIndex, blocks, hideInlineFormattingToolbar]);
+
   const resolveActiveInlineFormattingSelection = useCallback(() => {
     if (disabled || activeBlockIndex === null) {
+      return null;
+    }
+    if (blocks[activeBlockIndex]?.kind === "math-block") {
       return null;
     }
     if (pageLinkPickerState) {
@@ -4987,7 +5287,7 @@ export const MarkdownHybridEditor = ({
       anchor,
       activeState,
     } as InlineFormattingToolbarSelection;
-  }, [activeBlockIndex, disabled, pageLinkPickerState]);
+  }, [activeBlockIndex, blocks, disabled, pageLinkPickerState]);
 
   const showInlineFormattingToolbarImmediate = useCallback(() => {
     const nextSelection = resolveActiveInlineFormattingSelection();
@@ -5065,6 +5365,29 @@ export const MarkdownHybridEditor = ({
       return () => window.cancelAnimationFrame(handle);
     },
     [scheduleInlineFormattingToolbarVisibility],
+  );
+
+  const handleMathToolboxTemplateSelect = useCallback(
+    (template: MathToolboxTemplate) => {
+      if (activeBlockIndex === null) {
+        return;
+      }
+      const block = blocks[activeBlockIndex];
+      if (!block || block.kind !== "math-block") {
+        return;
+      }
+      const textarea = textareaRef.current;
+      const defaultSelection = getMathBlockDefaultSelection(activeDraft);
+      const selectionStart = textarea?.selectionStart ?? defaultSelection.start;
+      const selectionEnd = textarea?.selectionEnd ?? defaultSelection.end;
+      const result = insertMathTemplateIntoRaw(activeDraft, selectionStart, selectionEnd, template);
+      const applied = applyActiveBlockDraft(result.value);
+      if (!applied) {
+        return;
+      }
+      scheduleTextareaSelectionRange(result.selection);
+    },
+    [activeBlockIndex, activeDraft, applyActiveBlockDraft, blocks, scheduleTextareaSelectionRange],
   );
 
   const restoreInlineFormattingToolbarSelection = useCallback(() => {
@@ -5461,7 +5784,7 @@ export const MarkdownHybridEditor = ({
       }
 
       const inlineShortcutAction = resolveInlineFormattingShortcutAction(event);
-      if (inlineShortcutAction) {
+      if (inlineShortcutAction && block.kind !== "math-block") {
         event.preventDefault();
         event.stopPropagation();
         const normalizedRange = normalizeInlineFormattingRange(textarea.value, {
@@ -5561,6 +5884,28 @@ export const MarkdownHybridEditor = ({
             }
           }
         }
+      }
+
+      if (isPlainEnter && !event.shiftKey && block.kind === "math-block") {
+        const selectionStart = textarea.selectionStart;
+        const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
+        const mathBoundaries = resolveMathBlockBoundaries(activeDraft);
+        const isClosingDelimiterLine = mathBoundaries.hasClosingDelimiter &&
+          lineRange.lineIndex === mathBoundaries.closingLineIndex &&
+          isMathBlockDelimiterLine(lineRange.line);
+
+        if (!hasSelection && isClosingDelimiterLine) {
+          event.preventDefault();
+          event.stopPropagation();
+          replaceActiveBlockWithSegments(
+            blocks[activeBlockIndex + 1]?.kind === "hr" ? [activeDraft, "", ""] : [activeDraft, ""],
+            {
+              activateSegmentIndex: 1,
+              caret: "start",
+            },
+          );
+        }
+        return;
       }
 
       if (event.key === "Enter" && event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
@@ -6364,6 +6709,37 @@ export const MarkdownHybridEditor = ({
     ],
   );
 
+  const handleDragHandleClick = useCallback(
+    (index: number) => (event: MouseEvent<HTMLButtonElement>) => {
+      if (disabled || event.button !== 0 || event.shiftKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (activeBlockIndex !== null) {
+        commitActiveBlock({ deactivate: true });
+      }
+      setPendingActivation(null);
+      setInsertMenuState(null);
+      setSelectionContextMenuState(null);
+      setDraggedBlockIndex(null);
+      setDropIndicatorIndex(null);
+      setIsSelectionDragging(false);
+      setSelectionMarqueeRect(null);
+      selectionGestureRef.current = null;
+      suppressNextBlockContextMenuRef.current = false;
+      setSingleBlockSelection(index);
+      focusContainer();
+    },
+    [
+      activeBlockIndex,
+      commitActiveBlock,
+      disabled,
+      focusContainer,
+      setSingleBlockSelection,
+    ],
+  );
+
   const handleDragHandleDragEnd = useCallback(() => {
     setDraggedBlockIndex(null);
     setDropIndicatorIndex(null);
@@ -6735,6 +7111,7 @@ export const MarkdownHybridEditor = ({
             onMouseDown={(event) => {
               event.stopPropagation();
             }}
+            onClick={handleDragHandleClick(blockIndex)}
             onDragStart={handleDragHandleDragStart(blockIndex)}
             onDragEnd={handleDragHandleDragEnd}
             aria-label="Block verschieben"
@@ -6913,6 +7290,17 @@ export const MarkdownHybridEditor = ({
     />
   ) : null;
 
+  const mathToolboxPopup = mathToolboxState && !disabled ? (
+    <FloatingMathToolbox
+      anchorRect={mathToolboxState.anchorRect}
+      toolboxRef={mathToolboxRef}
+      onSelect={handleMathToolboxTemplateSelect}
+      onClose={() => {
+        setMathToolboxState(null);
+      }}
+    />
+  ) : null;
+
   const selectionContextMenu = selectionContextMenuState && !disabled && selectedBlockSelection ? (
     <div
       ref={selectionContextMenuRef}
@@ -7050,6 +7438,7 @@ export const MarkdownHybridEditor = ({
           })}
         </div>
         {pageLinkPickerPopup}
+        {mathToolboxPopup}
         {inlineFormattingToolbarPopup}
         {selectionContextMenu}
       </div>
@@ -7095,6 +7484,9 @@ export const MarkdownHybridEditor = ({
             : draggedBlockIndex === index;
           const hasDropIndicatorTop = dropIndicatorIndex === index;
           const hasDropIndicatorBottom = dropIndicatorIndex === index + 1;
+          const mathBlockBodySource = block.kind === "math-block"
+            ? extractMathBlockBody(isActive ? activeDraft : block.raw)
+            : "";
           let previewBlockSource = block.kind === "help-block"
             ? normalizeHelpBlockPreviewSource(block.raw)
             : block.kind === "hr"
@@ -7131,46 +7523,102 @@ export const MarkdownHybridEditor = ({
             >
               <div className="markdown-hybrid-block-body">
                 {isActive ? (
-                  <div className="markdown-hybrid-block-editor-shell">
-                    <div
-                      className="markdown-hybrid-block-editor-overlay"
-                      aria-hidden="true"
-                    >
-                      <div
-                        ref={editorSyntaxOverlayContentRef}
-                        className="markdown-hybrid-block-editor-overlay-content"
-                      >
-                        {activeEditorSyntaxOverlayContent}
+                  block.kind === "math-block" ? (
+                    <div className="markdown-hybrid-math-block-shell is-editing">
+                      <div className="markdown-hybrid-math-block-toolbar">
+                        <button
+                          type="button"
+                          className="markdown-hybrid-math-toolbox-trigger"
+                          data-md-block-control="true"
+                          data-md-math-toolbox-trigger="true"
+                          aria-label="Open math toolbox"
+                          title="Open math toolbox"
+                          onMouseDown={handleMathToolboxButtonMouseDown}
+                          onClick={handleMathToolboxButtonClick(index)}
+                        >
+                          <InsertMenuIconGraphic icon="math-block" />
+                        </button>
+                      </div>
+                      <div className="markdown-hybrid-math-editor-shell">
+                        <textarea
+                          ref={textareaRef}
+                          className="markdown-hybrid-block-editor markdown-hybrid-math-editor"
+                          value={activeDraft}
+                          rows={Math.max(3, activeDraft.split("\n").length)}
+                          onChange={(event) =>
+                            handleTextareaChange(event.target.value, event.target.selectionStart)}
+                          onBlur={handleTextareaBlur}
+                          onKeyDown={handleTextareaKeyDown}
+                          onKeyUp={handleTextareaKeyUp}
+                          onSelect={handleTextareaSelect}
+                          onMouseUp={handleTextareaPointerUp}
+                          onScroll={handleTextareaScroll}
+                          aria-label="Math block editor"
+                        />
                       </div>
                     </div>
-                    <textarea
-                      ref={textareaRef}
-                      className="markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay"
-                      value={activeDraft}
-                      rows={Math.max(1, activeDraft.split("\n").length)}
-                      onChange={(event) =>
-                        handleTextareaChange(event.target.value, event.target.selectionStart)}
-                      onBlur={handleTextareaBlur}
-                      onKeyDown={handleTextareaKeyDown}
-                      onKeyUp={handleTextareaKeyUp}
-                      onSelect={handleTextareaSelect}
-                      onMouseUp={handleTextareaPointerUp}
-                      onScroll={handleTextareaScroll}
-                      aria-label="Markdown block editor"
-                    />
-                    {headingEditorPlaceholder ? (
+                  ) : (
+                    <div className="markdown-hybrid-block-editor-shell">
                       <div
-                        className={`markdown-hybrid-heading-editor-placeholder markdown-hybrid-heading-editor-placeholder-level-${headingEditorPlaceholder.level}`}
+                        className="markdown-hybrid-block-editor-overlay"
                         aria-hidden="true"
                       >
-                        <span className="markdown-hybrid-heading-editor-placeholder-prefix">
-                          {headingEditorPlaceholder.prefix}
-                        </span>
-                        <span className="markdown-hybrid-heading-editor-placeholder-text">
-                          {headingEditorPlaceholder.label}
-                        </span>
+                        <div
+                          ref={editorSyntaxOverlayContentRef}
+                          className="markdown-hybrid-block-editor-overlay-content"
+                        >
+                          {activeEditorSyntaxOverlayContent}
+                        </div>
                       </div>
-                    ) : null}
+                      <textarea
+                        ref={textareaRef}
+                        className="markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay"
+                        value={activeDraft}
+                        rows={Math.max(1, activeDraft.split("\n").length)}
+                        onChange={(event) =>
+                          handleTextareaChange(event.target.value, event.target.selectionStart)}
+                        onBlur={handleTextareaBlur}
+                        onKeyDown={handleTextareaKeyDown}
+                        onKeyUp={handleTextareaKeyUp}
+                        onSelect={handleTextareaSelect}
+                        onMouseUp={handleTextareaPointerUp}
+                        onScroll={handleTextareaScroll}
+                        aria-label="Markdown block editor"
+                      />
+                      {headingEditorPlaceholder ? (
+                        <div
+                          className={`markdown-hybrid-heading-editor-placeholder markdown-hybrid-heading-editor-placeholder-level-${headingEditorPlaceholder.level}`}
+                          aria-hidden="true"
+                        >
+                          <span className="markdown-hybrid-heading-editor-placeholder-prefix">
+                            {headingEditorPlaceholder.prefix}
+                          </span>
+                          <span className="markdown-hybrid-heading-editor-placeholder-text">
+                            {headingEditorPlaceholder.label}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                ) : block.kind === "math-block" ? (
+                  <div className="markdown-hybrid-math-block-shell">
+                    <div className="markdown-hybrid-math-block-toolbar">
+                      <button
+                        type="button"
+                        className="markdown-hybrid-math-toolbox-trigger"
+                        data-md-block-control="true"
+                        data-md-math-toolbox-trigger="true"
+                        aria-label="Open math toolbox"
+                        title="Open math toolbox"
+                        onMouseDown={handleMathToolboxButtonMouseDown}
+                        onClick={handleMathToolboxButtonClick(index)}
+                      >
+                        <InsertMenuIconGraphic icon="math-block" />
+                      </button>
+                    </div>
+                    <div className="markdown-hybrid-math-preview-shell">
+                      <MathBlockRenderer source={mathBlockBodySource} />
+                    </div>
                   </div>
                 ) : block.kind === "blank" ? (
                   <div className="markdown-hybrid-blank-preview" aria-hidden="true" />
@@ -7287,6 +7735,7 @@ export const MarkdownHybridEditor = ({
         })}
       </div>
       {pageLinkPickerPopup}
+      {mathToolboxPopup}
       {inlineFormattingToolbarPopup}
       {selectionContextMenu}
     </div>

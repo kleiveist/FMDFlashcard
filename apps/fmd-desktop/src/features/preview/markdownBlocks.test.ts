@@ -125,6 +125,56 @@ describe("markdownBlocks", () => {
     expect(blocks[0]?.raw).toBe(["#card", "#endcard"].join("\n"));
   });
 
+  it("treats $$ ... $$ as a single math block", () => {
+    const markdown = [
+      "Intro",
+      "$$",
+      "\\frac{a}{b}",
+      "\\int_{0}^{1} x^2 dx",
+      "$$",
+      "Outro",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "math-block",
+      "paragraph",
+    ]);
+    expect(blocks[1]?.raw).toBe([
+      "$$",
+      "\\frac{a}{b}",
+      "\\int_{0}^{1} x^2 dx",
+      "$$",
+    ].join("\n"));
+  });
+
+  it("keeps math blocks isolated from surrounding list parsing", () => {
+    const markdown = [
+      "1. First",
+      "$$",
+      "\\sum_{i=1}^{n}",
+      "$$",
+      "2. Second",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "ordered-list",
+      "math-block",
+      "ordered-list",
+    ]);
+  });
+
+  it("recognizes single-line $$ ... $$ syntax as a math block", () => {
+    const blocks = parseMarkdownBlocks(
+      String.raw`$$ \text{RECHNUNGSADRESSE.PK} = \text{KUNDEID} + \text{ADRESSEID} $$`,
+    );
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]?.kind).toBe("math-block");
+  });
+
   it("splits lists around an indented help block and keeps help as its own block", () => {
     const markdown = [
       "1. Erste Zeile",

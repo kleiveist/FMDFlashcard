@@ -117,6 +117,13 @@ const findPageLinkPickerOptionByLabel = (container: ParentNode, label: string) =
   return labelNode?.closest<HTMLButtonElement>("button") ?? null;
 };
 
+const findMathToolboxItemByLabel = (container: ParentNode, label: string) => {
+  const labelNode = Array.from(
+    container.querySelectorAll<HTMLElement>(".markdown-hybrid-math-toolbox-item-label"),
+  ).find((node) => node.textContent?.trim() === label);
+  return labelNode?.closest<HTMLButtonElement>("button") ?? null;
+};
+
 const applyTextInput = (
   input: HTMLInputElement | HTMLTextAreaElement | null,
   nextValue: string,
@@ -737,6 +744,38 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("selects a single block on plain drag-handle click", () => {
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState("# One\n# Two");
+      return (
+        <MarkdownHybridEditor
+          historyKey="drag-handle-select-single-block"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const dragHandle = container.querySelector<HTMLElement>(".markdown-hybrid-block-drag-handle");
+    expect(dragHandle).toBeTruthy();
+
+    dispatchClick(dragHandle);
+
+    const selectedBlocks = container.querySelectorAll(".markdown-hybrid-block.is-range-selected");
+    expect(selectedBlocks).toHaveLength(1);
+    expect(
+      container.querySelector(".markdown-hybrid-block[data-md-block-index='0']")?.classList.contains(
+        "is-range-selected",
+      ),
+    ).toBe(true);
+    expect(container.querySelectorAll("textarea.markdown-hybrid-block-editor")).toHaveLength(0);
+
+    cleanup();
+  });
+
   it("opens a block selection context menu on right click and suppresses it after right-drag", () => {
     const Harness = () => {
       const [markdown, setMarkdown] = useState(["# One", "# Two", "# Three"].join("\n"));
@@ -1083,6 +1122,41 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("inserts a Math Block from Structure and places the caret between $$ delimiters", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-menu-structure-math-block"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+      dispatchClick(findButtonByExactText(container, "Structure"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Math Block"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe("$$\n\n$$");
+
+      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-math-editor");
+      expect(textarea).toBeTruthy();
+      expect(textarea?.selectionStart).toBe(3);
+      expect(textarea?.selectionEnd).toBe(3);
+
+      cleanup();
+    });
+  });
+
   it("supports arrow-key focus navigation inside the insert menu", () => {
     withImmediateRaf(() => {
       const Harness = () => {
@@ -1386,6 +1460,171 @@ describe("MarkdownHybridEditor", () => {
       expect(
         container.querySelector(".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor"),
       ).toBeTruthy();
+
+      cleanup();
+    });
+  });
+
+  it("exits a math block on Enter at the closing $$ line and focuses a new empty text block", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["$$", "\\frac{a}{b}", "$$"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="math-enter-exit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
+      const blockKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(blockKinds).toEqual(["math-block", "blank"]);
+
+      textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
+      );
+      expect(textarea).toBeTruthy();
+      expect(textarea?.value).toBe("");
+      expect(textarea?.selectionStart).toBe(0);
+      expect(textarea?.selectionEnd).toBe(0);
+
+      cleanup();
+    });
+  });
+
+  it("inserts math templates into the current math block from the toolbox", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("$$\n\n$$");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="math-toolbox-insert"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, 3, 3);
+
+      dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
+      const fracButton = findMathToolboxItemByLabel(document.body, "\\frac{a}{b}");
+      expect(fracButton).toBeTruthy();
+      dispatchClick(fracButton);
+
+      expect(readMarkdown()).toBe("$$\n\\frac{a}{b}\n$$");
+      const nextTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-math-editor");
+      expect(nextTextarea).toBeTruthy();
+      const selectedText = nextTextarea?.value.slice(
+        nextTextarea.selectionStart ?? 0,
+        nextTextarea.selectionEnd ?? 0,
+      );
+      expect(selectedText).toBe("a");
+
+      cleanup();
+    });
+  });
+
+  it("does not render a separate math preview while the math block is actively being edited", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("$$\n\\frac{a}{b}\n$$");
+        return (
+          <MarkdownHybridEditor
+            historyKey="math-no-separate-active-preview"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      expect(container.querySelector(".markdown-hybrid-math-editor")).toBeTruthy();
+      expect(
+        container.querySelector(
+          ".markdown-hybrid-block[data-md-block-index='0'] .markdown-hybrid-math-preview-shell",
+        ),
+      ).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("converts single-line $$ ... $$ input into the persisted multiline math block form", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown =
+        String.raw`$$ \text{RECHNUNGSADRESSE.PK} = \text{KUNDEID} + \text{ADRESSEID} $$`;
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="math-single-line-normalization"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      expect(
+        container.querySelector(".markdown-hybrid-block[data-md-block-kind='math-block']"),
+      ).toBeTruthy();
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      expect(textarea?.classList.contains("markdown-hybrid-math-editor")).toBe(true);
+
+      act(() => {
+        textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+      });
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe([
+        "$$",
+        String.raw`\text{RECHNUNGSADRESSE.PK} = \text{KUNDEID} + \text{ADRESSEID}`,
+        "$$",
+      ].join("\n"));
 
       cleanup();
     });

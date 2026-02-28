@@ -1859,6 +1859,224 @@ textarea.preview-editor {
   padding: 0;
 }
 
+.markdown-hybrid-math-block-shell {
+  position: relative;
+  display: grid;
+  gap: 10px;
+}
+
+.markdown-hybrid-math-block-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.markdown-hybrid-math-toolbox-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 76%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  color: color-mix(in srgb, var(--muted) 72%, var(--ink));
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.markdown-hybrid-math-toolbox-trigger:hover {
+  border-color: color-mix(in srgb, var(--accent-border) 52%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 26%, var(--panel));
+  color: var(--ink);
+}
+
+.markdown-hybrid-math-toolbox-trigger:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.markdown-hybrid-math-toolbox-trigger svg {
+  width: 16px;
+  height: 16px;
+}
+
+.markdown-hybrid-math-preview-shell,
+.markdown-hybrid-math-editor-shell {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.markdown-hybrid-math-editor {
+  min-height: 6.5rem;
+  padding: 0 12px 10px;
+  overflow: auto;
+  white-space: pre;
+  font-family: "STIX Two Math", "Cambria Math", var(--mono);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.markdown-hybrid-math-preview-shell {
+  padding: 34px 14px 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.markdown-hybrid-math-placeholder {
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+  font-size: 0.92rem;
+}
+
+.markdown-hybrid-math-katex {
+  min-width: max-content;
+}
+
+.markdown-hybrid-math-katex .katex-display {
+  margin: 0;
+}
+
+.markdown-hybrid-math-render-line + .markdown-hybrid-math-render-line {
+  margin-top: 0.8rem;
+}
+
+.markdown-hybrid-math-error {
+  display: grid;
+  gap: 8px;
+}
+
+.markdown-hybrid-math-error-message {
+  color: var(--error-ink);
+  font-size: 0.88rem;
+}
+
+.markdown-hybrid-math-error-raw {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--error-border);
+  border-radius: 10px;
+  background: var(--error-bg);
+  color: inherit;
+  font-family: "STIX Two Math", "Cambria Math", var(--mono);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.markdown-hybrid-math-toolbox {
+  position: fixed;
+  z-index: 80;
+  width: min(420px, calc(100vw - 20px));
+  max-height: min(68vh, 540px);
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 74%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel) 96%, var(--ink) 4%);
+  box-shadow: var(--shadow);
+}
+
+.markdown-hybrid-math-toolbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.markdown-hybrid-math-toolbox-title {
+  font-size: 0.94rem;
+  font-weight: 650;
+}
+
+.markdown-hybrid-math-toolbox-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 76%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.markdown-hybrid-math-toolbox-close:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent-soft) 18%, transparent);
+}
+
+.markdown-hybrid-math-toolbox-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.markdown-hybrid-math-toolbox-sections {
+  display: grid;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.markdown-hybrid-math-toolbox-section {
+  display: grid;
+  gap: 8px;
+}
+
+.markdown-hybrid-math-toolbox-section-title {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.markdown-hybrid-math-toolbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.markdown-hybrid-math-toolbox-item {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease, background 0.16s ease;
+}
+
+.markdown-hybrid-math-toolbox-item:hover {
+  border-color: color-mix(in srgb, var(--accent-border) 54%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 18%, var(--panel));
+  transform: translateY(-1px);
+}
+
+.markdown-hybrid-math-toolbox-item:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.markdown-hybrid-math-toolbox-item-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: "STIX Two Math", "Cambria Math", var(--mono);
+  font-size: 0.86rem;
+}
+
 .markdown-hybrid-block-blank.is-structural-separator {
   display: none;
 }

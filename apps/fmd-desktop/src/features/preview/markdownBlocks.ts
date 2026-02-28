@@ -10,6 +10,7 @@ export type MarkdownBlockKind =
   | "blank"
   | "heading"
   | "paragraph"
+  | "math-block"
   | "card-block"
   | "help-block"
   | "ordered-list"
@@ -39,6 +40,9 @@ const taskListLinePattern = /^(\s*)([-+*])\s+\[[ xX]\](?:\s+|$)/;
 const isBlankLine = (line: string) => /^\s*$/.test(line);
 const isCodeFenceLine = (line: string) => /^\s*`{3,}/.test(line);
 const isClosingCodeFenceLine = (line: string) => /^\s*`{3,}\s*$/.test(line);
+const isMathBlockDelimiterLine = (line: string) => /^\s*\$\$\s*$/.test(line);
+const isSingleLineMathBlockLine = (line: string) =>
+  !isMathBlockDelimiterLine(line) && /^\s*\$\$[\s\S]*\$\$\s*$/.test(line);
 const isHeadingLine = (line: string) => /^\s{0,3}#{1,4}(?:\s+|$)/.test(line);
 const isBlockquoteLine = (line: string) => /^\s*>/.test(line);
 const isHorizontalRuleLine = (line: string) =>
@@ -81,6 +85,9 @@ const isListContinuationLine = (line: string) => {
   if (isCardBlockStartLine(line) || isCardBlockEndLine(line)) {
     return false;
   }
+  if (isMathBlockDelimiterLine(line)) {
+    return false;
+  }
   if (isListStartLine(line)) {
     return true;
   }
@@ -94,6 +101,12 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
     return true;
   }
   if (isCodeFenceLine(line)) {
+    return true;
+  }
+  if (isMathBlockDelimiterLine(line)) {
+    return true;
+  }
+  if (isSingleLineMathBlockLine(line)) {
     return true;
   }
   if (isHelpBlockStartLine(line)) {
@@ -214,6 +227,27 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "code-fence", i, end));
       blockIndex += 1;
       i = end + 1;
+      continue;
+    }
+
+    if (isMathBlockDelimiterLine(line)) {
+      let end = i;
+      for (let j = i + 1; j < lines.length; j += 1) {
+        end = j;
+        if (isMathBlockDelimiterLine(lines[j] ?? "")) {
+          break;
+        }
+      }
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "math-block", i, end));
+      blockIndex += 1;
+      i = end + 1;
+      continue;
+    }
+
+    if (isSingleLineMathBlockLine(line)) {
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "math-block", i, i));
+      blockIndex += 1;
+      i += 1;
       continue;
     }
 
@@ -446,6 +480,7 @@ export const isSingleLineCommitBlock = (block: MarkdownBlock) => {
   return !(
     block.kind === "table" ||
     block.kind === "code-fence" ||
+    block.kind === "math-block" ||
     block.kind === "card-block" ||
     block.kind === "help-block" ||
     block.kind === "ordered-list" ||

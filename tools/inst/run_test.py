@@ -16,6 +16,7 @@ import signal
 import shutil
 import subprocess
 import time
+import json
 from pathlib import Path
 
 from console import (
@@ -45,6 +46,40 @@ def _which_pnpm() -> str:
         if exe:
             return exe
     raise SystemExit("pnpm not found in PATH. Install pnpm (or enable corepack) and retry.")
+
+
+def _dependency_path(node_modules: Path, package_name: str) -> Path:
+    return node_modules.joinpath(*package_name.split("/"))
+
+
+def _missing_direct_dependencies(app_dir: Path) -> list[str]:
+    package_json = app_dir / "package.json"
+    node_modules = app_dir / "node_modules"
+    if not package_json.exists() or not node_modules.exists():
+        return []
+
+    with package_json.open("r", encoding="utf-8") as handle:
+        manifest = json.load(handle)
+
+    direct_dependencies = {
+        **manifest.get("dependencies", {}),
+        **manifest.get("devDependencies", {}),
+    }
+
+    missing: list[str] = []
+    for package_name in sorted(direct_dependencies.keys()):
+        if not _dependency_path(node_modules, package_name).exists():
+            missing.append(package_name)
+
+    return missing
+
+
+def _node_modules_is_stale(app_dir: Path) -> bool:
+    package_json = app_dir / "package.json"
+    modules_meta = app_dir / "node_modules" / ".modules.yaml"
+    if not package_json.exists() or not modules_meta.exists():
+        return False
+    return package_json.stat().st_mtime > modules_meta.stat().st_mtime
 
 
 def _run(
@@ -224,6 +259,28 @@ def run_install(dry_run: bool = False) -> int:
     )
     if dry_run:
         warn("Dry run mode enabled: commands will not run.")
+
+    missing_dependencies = _missing_direct_dependencies(app_dir)
+    stale_node_modules = _node_modules_is_stale(app_dir)
+    if missing_dependencies or stale_node_modules:
+        section("Install JS dependencies")
+        if missing_dependencies:
+            preview = ", ".join(missing_dependencies[:5])
+            if len(missing_dependencies) > 5:
+                preview += ", ..."
+            warn(f"node_modules incomplete -> running pnpm install (missing: {preview})")
+        else:
+            warn("package.json is newer than node_modules metadata -> running pnpm install.")
+        install_rc, install_duration = _run(
+            [pnpm, "install"],
+            cwd=app_dir,
+            env=env,
+            dry_run=dry_run,
+        )
+        kv("Install", _format_duration(install_duration))
+        if install_rc != 0:
+            err("pnpm install failed.")
+            return install_rc
 
     # Call Vitest directly with explicit non-watch flags.
     cmd = _vitest_base_cmd(pnpm, app_dir)

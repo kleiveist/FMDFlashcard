@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import signal
+import json
 from pathlib import Path
 from typing import List, Optional
 
@@ -65,6 +66,40 @@ def ensure_xvfb() -> bool:
                 return True
 
     return False
+
+
+def _dependency_path(node_modules: Path, package_name: str) -> Path:
+    return node_modules.joinpath(*package_name.split("/"))
+
+
+def _missing_direct_dependencies(target_dir: Path) -> List[str]:
+    package_json = target_dir / "package.json"
+    node_modules = target_dir / "node_modules"
+    if not package_json.exists() or not node_modules.exists():
+        return []
+
+    with package_json.open("r", encoding="utf-8") as handle:
+        manifest = json.load(handle)
+
+    direct_dependencies = {
+        **manifest.get("dependencies", {}),
+        **manifest.get("devDependencies", {}),
+    }
+
+    missing: List[str] = []
+    for package_name in sorted(direct_dependencies.keys()):
+        if not _dependency_path(node_modules, package_name).exists():
+            missing.append(package_name)
+
+    return missing
+
+
+def _node_modules_is_stale(target_dir: Path) -> bool:
+    package_json = target_dir / "package.json"
+    modules_meta = target_dir / "node_modules" / ".modules.yaml"
+    if not package_json.exists() or not modules_meta.exists():
+        return False
+    return package_json.stat().st_mtime > modules_meta.stat().st_mtime
 
 
 def run(cmd: List[str], *, cwd: Optional[Path] = None, check: bool = True) -> int:
@@ -212,13 +247,32 @@ def run_install(dry_run: bool = False) -> int:
             return 1
         print(f"{ICONS['ok']} Rust toolchain OK.")
 
-        # If node_modules missing, install deps first.
+        # If node_modules missing or stale/incomplete, install deps first.
         node_modules = target_dir / "node_modules"
         if not node_modules.exists():
             section("Install JS dependencies")
             run(["pnpm", "install"], cwd=target_dir)
         else:
-            print(f"{ICONS['ok']} node_modules present -> skipping pnpm install.")
+            missing_dependencies = _missing_direct_dependencies(target_dir)
+            stale_node_modules = _node_modules_is_stale(target_dir)
+            if missing_dependencies or stale_node_modules:
+                section("Install JS dependencies")
+                if missing_dependencies:
+                    preview = ", ".join(missing_dependencies[:5])
+                    if len(missing_dependencies) > 5:
+                        preview += ", ..."
+                    print(
+                        f"{ICONS['warn']} node_modules incomplete -> running pnpm install "
+                        f"(missing: {preview})"
+                    )
+                else:
+                    print(
+                        f"{ICONS['warn']} package.json is newer than node_modules metadata -> "
+                        "running pnpm install."
+                    )
+                run(["pnpm", "install"], cwd=target_dir)
+            else:
+                print(f"{ICONS['ok']} node_modules present -> skipping pnpm install.")
 
         section("Start Tauri dev")
         print(f"{ICONS['info']} Stop with Ctrl+C, then confirm with j/n.")
