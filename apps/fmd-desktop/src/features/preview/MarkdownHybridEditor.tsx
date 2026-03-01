@@ -66,6 +66,11 @@ import {
   resolveMathBlockBoundaries,
   type MathToolboxTemplate,
 } from "./mathBlocks";
+import {
+  MarkdownHybridTableBlock,
+  type MarkdownHybridTableActivationRequest,
+  type MarkdownHybridTableSessionController,
+} from "./MarkdownHybridTableBlock";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
 
@@ -76,6 +81,11 @@ type PendingActivation = {
     start: number;
     end: number;
   };
+};
+
+type PendingTableActivation = {
+  blockIndex: number;
+  request: MarkdownHybridTableActivationRequest;
 };
 
 type BlockSelectionRange = {
@@ -3035,12 +3045,14 @@ export const MarkdownHybridEditor = ({
   const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
   const [activeDraft, setActiveDraft] = useState("");
   const [activeDirty, setActiveDirty] = useState(false);
+  const [activeTableDirty, setActiveTableDirty] = useState(false);
   const [history, setHistory] = useState<MarkdownHistoryState>(() =>
     createMarkdownHistory(markdown),
   );
   const [pendingActivation, setPendingActivation] = useState<PendingActivation | null>(
     null,
   );
+  const [pendingTableActivation, setPendingTableActivation] = useState<PendingTableActivation | null>(null);
   const [selectedBlockSelection, setSelectedBlockSelection] = useState<BlockSelectionState | null>(
     null,
   );
@@ -3100,6 +3112,7 @@ export const MarkdownHybridEditor = ({
   const stableBlockRenderTokensRef = useRef<StableRenderKeyToken[]>([]);
   const stableBlockRenderKeyCounterRef = useRef(0);
   const pendingActivationMarkdownRef = useRef<string | null>(null);
+  const activeTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
   const blockRenderKeys = useMemo(() => {
     const assigned = assignStableRenderKeys(
       blocks,
@@ -3355,28 +3368,33 @@ export const MarkdownHybridEditor = ({
     [blocks, overlayRows],
   );
 
+  const editorDirty = activeDirty || activeTableDirty;
+
   useEffect(() => {
-    onDirtyChange?.(activeDirty);
-  }, [activeDirty, onDirtyChange]);
+    onDirtyChange?.(editorDirty);
+  }, [editorDirty, onDirtyChange]);
 
   useEffect(() => {
     setHistory((current) => {
       if (current.present.markdown === markdown) {
         return current;
       }
-      if (activeDirty) {
+      if (editorDirty) {
         return current;
       }
       return resetMarkdownHistory(markdown, "external-load");
     });
-  }, [activeDirty, markdown]);
+  }, [editorDirty, markdown]);
 
   useEffect(() => {
     setActiveBlockIndex(null);
     setActiveDraft("");
     setActiveDirty(false);
+    setActiveTableDirty(false);
     setPendingActivation(null);
+    setPendingTableActivation(null);
     pendingActivationMarkdownRef.current = null;
+    activeTableSessionRef.current = null;
     setSelectedBlockSelection(null);
     setIsSelectionDragging(false);
     setDraggedBlockIndex(null);
@@ -4000,7 +4018,9 @@ export const MarkdownHybridEditor = ({
       setActiveBlockIndex(null);
       setActiveDraft("");
       setActiveDirty(false);
+      setActiveTableDirty(false);
       setPendingActivation(null);
+      setPendingTableActivation(null);
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
       setDraggedBlockIndex(null);
@@ -4016,6 +4036,7 @@ export const MarkdownHybridEditor = ({
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
       pendingActivationMarkdownRef.current = null;
+      activeTableSessionRef.current = null;
       inlineFormattingToolbarRangeRef.current = null;
       inlineFormattingToolbarPendingSignatureRef.current = null;
       if (inlineFormattingToolbarTimerRef.current !== null) {
@@ -4025,6 +4046,46 @@ export const MarkdownHybridEditor = ({
       onChange(nextHistory.present.markdown);
     },
     [onChange],
+  );
+
+  const clearPendingTableActivation = useCallback((blockIndex: number) => {
+    setPendingTableActivation((current) =>
+      current?.blockIndex === blockIndex ? null : current
+    );
+  }, []);
+
+  const registerActiveTableSession = useCallback(
+    (controller: MarkdownHybridTableSessionController | null) => {
+      activeTableSessionRef.current = controller;
+      if (!controller) {
+        setActiveTableDirty(false);
+      }
+    },
+    [],
+  );
+
+  const handleTableBlockCommitRaw = useCallback(
+    (blockIndex: number, nextRaw: string) => {
+      const block = blocks[blockIndex];
+      if (!block) {
+        return false;
+      }
+      const nextMarkdown = applyEditorMarkdownNormalization(
+        replaceMarkdownBlock(markdown, block, nextRaw),
+      );
+      if (nextMarkdown === markdown) {
+        return true;
+      }
+      onChange(nextMarkdown);
+      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+      onCommit?.(nextMarkdown, { block: { ...block, raw: nextRaw } });
+      if (activeBlockIndex === blockIndex) {
+        setActiveDraft(nextRaw);
+        setActiveDirty(false);
+      }
+      return true;
+    },
+    [activeBlockIndex, blocks, markdown, onChange, onCommit],
   );
 
   const handleGlobalUndo = useCallback(() => {
@@ -4046,9 +4107,25 @@ export const MarkdownHybridEditor = ({
   const commitActiveBlock = useCallback(
     (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
       if (activeBlockIndex === null) {
-        return markdown;
+        return true;
       }
       const block = blocks[activeBlockIndex];
+      if (block?.kind === "table") {
+        const session = activeTableSessionRef.current;
+        if (session?.blockIndex === activeBlockIndex && !session.flush()) {
+          return false;
+        }
+        if (options?.deactivate ?? true) {
+          setActiveBlockIndex(null);
+          setActiveDraft("");
+        }
+        setActiveDirty(false);
+        setActiveTableDirty(false);
+        if (options?.nextActivation) {
+          setPendingActivation(options.nextActivation);
+        }
+        return true;
+      }
       const activeSelectionStart = textareaRef.current?.selectionStart ?? null;
       if (!block) {
         if (blocks.length === 0 && activeBlockIndex === 0) {
@@ -4087,7 +4164,7 @@ export const MarkdownHybridEditor = ({
           pendingActivationMarkdownRef.current = null;
           setPendingActivation(options.nextActivation);
         }
-        return markdown;
+        return true;
       }
 
       const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(
@@ -4132,7 +4209,7 @@ export const MarkdownHybridEditor = ({
         setPendingActivation(options.nextActivation);
       }
 
-      return nextResolvedMarkdown;
+      return true;
     },
     [activeBlockIndex, activeDraft, blocks, markdown, onChange, onCommit],
   );
@@ -4150,17 +4227,57 @@ export const MarkdownHybridEditor = ({
       if (!nextBlock) {
         return;
       }
+      if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
+        const currentBlock = blocks[activeBlockIndex];
+        if (currentBlock?.kind === "table" && !commitActiveBlock({ deactivate: true })) {
+          return;
+        }
+      }
       if (activeBlockIndex === nextIndex) {
         pendingCaretRef.current = caret;
         setActiveDraft(toEditorDraftForBlock(nextBlock));
         return;
       }
       pendingCaretRef.current = caret;
+      setPendingTableActivation(null);
       setActiveBlockIndex(nextIndex);
       setActiveDraft(toEditorDraftForBlock(nextBlock));
       setActiveDirty(false);
+      setActiveTableDirty(false);
     },
-    [activeBlockIndex, blocks, disabled],
+    [activeBlockIndex, blocks, commitActiveBlock, disabled],
+  );
+
+  const handleTableBlockRequestActivate = useCallback(
+    (index: number, request?: MarkdownHybridTableActivationRequest) => {
+      if (disabled) {
+        return;
+      }
+      const nextIndex = clampIndex(index, blocks.length);
+      const nextBlock = blocks[nextIndex];
+      if (!nextBlock || nextBlock.kind !== "table") {
+        return;
+      }
+      if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
+        const currentBlock = blocks[activeBlockIndex];
+        if (currentBlock?.kind === "table" && !commitActiveBlock({ deactivate: true })) {
+          return;
+        }
+      }
+      setPendingActivation(null);
+      if (request) {
+        setPendingTableActivation({ blockIndex: nextIndex, request });
+      }
+      if (activeBlockIndex === nextIndex) {
+        setActiveTableDirty(false);
+        return;
+      }
+      setActiveBlockIndex(nextIndex);
+      setActiveDraft(nextBlock.raw);
+      setActiveDirty(false);
+      setActiveTableDirty(false);
+    },
+    [activeBlockIndex, blocks, commitActiveBlock, disabled],
   );
 
   const handleMathToolboxButtonMouseDown = useCallback(
@@ -4300,8 +4417,8 @@ export const MarkdownHybridEditor = ({
         ? selectedBlockSelection!.selectedIndices
         : createSelectionIndexRange(nextAnchor, nextIndex);
 
-      if (activeBlockIndex !== null) {
-        commitActiveBlock({ deactivate: true });
+      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+        return false;
       }
       setPendingActivation(null);
       setInsertMenuState(null);
@@ -4346,8 +4463,8 @@ export const MarkdownHybridEditor = ({
         return false;
       }
       const startPoint = getContainerLocalPoint(options.clientX, options.clientY);
-      if (activeBlockIndex !== null) {
-        commitActiveBlock({ deactivate: true });
+      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+        return false;
       }
       const nextAnchor = options.preserveAnchor && selectedBlockSelection
         ? selectedBlockSelection.anchorIndex
@@ -6441,8 +6558,8 @@ export const MarkdownHybridEditor = ({
       if (event.button === 0 && (event.ctrlKey || event.metaKey)) {
         event.preventDefault();
         event.stopPropagation();
-        if (activeBlockIndex !== null) {
-          commitActiveBlock({ deactivate: true });
+        if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+          return;
         }
         setPendingActivation(null);
         setInsertMenuState(null);
@@ -6674,8 +6791,9 @@ export const MarkdownHybridEditor = ({
         event.preventDefault();
         return;
       }
-      if (activeBlockIndex !== null) {
-        commitActiveBlock({ deactivate: true });
+      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+        event.preventDefault();
+        return;
       }
       const draggingSelectionGroup = Boolean(
         selectedBlockSelection &&
@@ -6716,8 +6834,8 @@ export const MarkdownHybridEditor = ({
       }
       event.preventDefault();
       event.stopPropagation();
-      if (activeBlockIndex !== null) {
-        commitActiveBlock({ deactivate: true });
+      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+        return;
       }
       setPendingActivation(null);
       setInsertMenuState(null);
@@ -6817,8 +6935,8 @@ export const MarkdownHybridEditor = ({
       const blockIndex = clampIndex(parsedIndex, blocks.length);
 
       if (!isBlockIndexSelected(selectedBlockSelection, blockIndex)) {
-        if (activeBlockIndex !== null) {
-          commitActiveBlock({ deactivate: true });
+        if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+          return;
         }
         setPendingActivation(null);
         setSingleBlockSelection(blockIndex);
@@ -7522,7 +7640,37 @@ export const MarkdownHybridEditor = ({
               onDrop={handleBlockDrop(index)}
             >
               <div className="markdown-hybrid-block-body">
-                {isActive ? (
+                {block.kind === "table" ? (
+                  <MarkdownHybridTableBlock
+                    blockIndex={index}
+                    raw={block.raw}
+                    active={isActive}
+                    disabled={disabled}
+                    renderPreview={renderPreviewWithPageLinks}
+                    pendingActivation={
+                      pendingTableActivation?.blockIndex === index
+                        ? pendingTableActivation.request
+                        : null
+                    }
+                    onConsumePendingActivation={() => clearPendingTableActivation(index)}
+                    onRequestActivate={(request) => handleTableBlockRequestActivate(index, request)}
+                    onCommitRaw={(nextRaw) => {
+                      handleTableBlockCommitRaw(index, nextRaw);
+                    }}
+                    onDirtyChange={(dirty) => {
+                      if (activeBlockIndex === index) {
+                        setActiveTableDirty(dirty);
+                      }
+                    }}
+                    registerSession={(controller) => {
+                      if (activeBlockIndex === index || controller === null) {
+                        registerActiveTableSession(controller);
+                      }
+                    }}
+                    onGlobalUndo={handleGlobalUndo}
+                    onGlobalRedo={handleGlobalRedo}
+                  />
+                ) : isActive ? (
                   block.kind === "math-block" ? (
                     <div className="markdown-hybrid-math-block-shell is-editing">
                       <div className="markdown-hybrid-math-block-toolbar">

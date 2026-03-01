@@ -35,6 +35,50 @@ const dispatchClick = (element: Element | null) => {
   });
 };
 
+const dispatchMouseDown = (
+  element: Element | null,
+  options: Partial<MouseEventInit> = {},
+) => {
+  act(() => {
+    element?.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        buttons: 1,
+        ...options,
+      }),
+    );
+  });
+};
+
+const dispatchWindowMouseMove = (options: Partial<MouseEventInit> = {}) => {
+  act(() => {
+    window.dispatchEvent(
+      new MouseEvent("mousemove", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        buttons: 1,
+        ...options,
+      }),
+    );
+  });
+};
+
+const dispatchWindowMouseUp = (options: Partial<MouseEventInit> = {}) => {
+  act(() => {
+    window.dispatchEvent(
+      new MouseEvent("mouseup", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        ...options,
+      }),
+    );
+  });
+};
+
 const dispatchKeyDown = (
   element: Element | null,
   key: string,
@@ -2797,5 +2841,290 @@ describe("MarkdownHybridEditor", () => {
         vi.useRealTimers();
       }
     });
+  });
+
+  it("renders tables as interactive blocks and commits cell edits", () => {
+    let latestMarkdown = [
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(latestMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="table-cell-edit"
+          markdown={markdown}
+          mode="edit"
+          onChange={(value) => {
+            latestMarkdown = value;
+            setMarkdown(value);
+          }}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    expect(container.querySelector(".markdown-hybrid-table-shell.markdown-table")).toBeTruthy();
+    expect(container.querySelector(".markdown-hybrid-table-edge-strip-left")).toBeNull();
+    expect(container.querySelector(".markdown-hybrid-table-edge-strip-right")).toBeNull();
+    expect(container.querySelector(".markdown-hybrid-table-edge-strip-bottom")).toBeNull();
+    const firstHeaderCell = container.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+    expect(firstHeaderCell).toBeTruthy();
+
+    dispatchMouseDown(firstHeaderCell);
+
+    const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+    expect(textarea).toBeTruthy();
+    applyTextInput(textarea, "Renamed");
+    act(() => {
+      textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+    });
+
+    expect(latestMarkdown).toContain("| Renamed | B |");
+    cleanup();
+  });
+
+  it("toggles table code view and repairs boundary pipes on return to grid", () => {
+    let latestMarkdown = [
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(latestMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="table-code-toggle"
+          markdown={markdown}
+          mode="edit"
+          onChange={(value) => {
+            latestMarkdown = value;
+            setMarkdown(value);
+          }}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const firstHeaderCell = container.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+    dispatchMouseDown(firstHeaderCell);
+
+    const toggle = container.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle");
+    expect(toggle).toBeTruthy();
+    dispatchClick(toggle);
+
+    const codeEditor = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-code-editor");
+    expect(codeEditor).toBeTruthy();
+    applyTextInput(
+      codeEditor,
+      ["A | B", "--- | ---", "1 | 2"].join("\n"),
+    );
+
+    dispatchClick(container.querySelector(".markdown-hybrid-table-view-toggle"));
+
+    expect(container.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
+    expect(latestMarkdown).toBe(
+      ["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n"),
+    );
+    cleanup();
+  });
+
+  it("deletes selected table rows with the Delete key while preserving header and separator", () => {
+    let latestMarkdown = [
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+      "| 3 | 4 |",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(latestMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="table-row-delete"
+          markdown={markdown}
+          mode="edit"
+          onChange={(value) => {
+            latestMarkdown = value;
+            setMarkdown(value);
+          }}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    dispatchMouseDown(container.querySelector(".markdown-hybrid-table-cell-header"));
+
+    const firstBodyRowButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-row-select[data-md-table-row-index='1']",
+    );
+    expect(firstBodyRowButton).toBeTruthy();
+    dispatchMouseDown(firstBodyRowButton);
+    dispatchKeyDown(container.querySelector(".markdown-hybrid-table-block"), "Delete");
+
+    expect(latestMarkdown).toBe(
+      ["| A | B |", "| --- | --- |", "| 3 | 4 |"].join("\n"),
+    );
+    cleanup();
+  });
+
+  it("reorders columns by dragging the column label and shows a drop indicator", () => {
+    let latestMarkdown = [
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(latestMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="table-column-drag"
+          markdown={markdown}
+          mode="edit"
+          onChange={(value) => {
+            latestMarkdown = value;
+            setMarkdown(value);
+          }}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const createRect = (left: number, top: number, width: number, height: number) => ({
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height,
+      x: left,
+      y: top,
+      toJSON: () => undefined,
+    });
+
+    const { container, cleanup } = render(createElement(Harness));
+    dispatchMouseDown(container.querySelector(".markdown-hybrid-table-cell-header"));
+
+    expect(container.querySelector(".markdown-hybrid-table-column-move")).toBeNull();
+    expect(container.querySelector(".markdown-hybrid-table-row-move")).toBeNull();
+
+    const shell = container.querySelector<HTMLElement>(".markdown-hybrid-table-shell");
+    const columnLanes = Array.from(
+      container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-column-lane"),
+    );
+    const firstColumnButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-column-select[data-md-table-column-index='0']",
+    );
+    expect(shell).toBeTruthy();
+    expect(columnLanes).toHaveLength(2);
+    expect(firstColumnButton).toBeTruthy();
+
+    Object.defineProperty(shell, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(100, 200, 420, 180),
+    });
+    Object.defineProperty(columnLanes[0]!, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(180, 200, 120, 39),
+    });
+    Object.defineProperty(columnLanes[1]!, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(301, 200, 120, 39),
+    });
+
+    dispatchMouseDown(firstColumnButton, { clientX: 220, clientY: 220 });
+    dispatchWindowMouseMove({ clientX: 380, clientY: 220 });
+
+    expect(container.querySelector(".markdown-hybrid-table-column-drop-indicator")).toBeTruthy();
+
+    dispatchWindowMouseUp({ clientX: 380, clientY: 220 });
+
+    expect(latestMarkdown).toBe(
+      ["| B | A |", "| --- | --- |", "| 2 | 1 |"].join("\n"),
+    );
+    cleanup();
+  });
+
+  it("reorders body rows by dragging the row label and shows a drop indicator", () => {
+    let latestMarkdown = [
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+      "| 3 | 4 |",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(latestMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="table-row-drag"
+          markdown={markdown}
+          mode="edit"
+          onChange={(value) => {
+            latestMarkdown = value;
+            setMarkdown(value);
+          }}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const createRect = (left: number, top: number, width: number, height: number) => ({
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height,
+      x: left,
+      y: top,
+      toJSON: () => undefined,
+    });
+
+    const { container, cleanup } = render(createElement(Harness));
+    dispatchMouseDown(container.querySelector(".markdown-hybrid-table-cell-header"));
+
+    const shell = container.querySelector<HTMLElement>(".markdown-hybrid-table-shell");
+    const rowLanes = Array.from(
+      container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-row-lane:not(.markdown-hybrid-table-row-lane-header)"),
+    );
+    const firstRowButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-row-select[data-md-table-row-index='1']",
+    );
+    expect(shell).toBeTruthy();
+    expect(rowLanes).toHaveLength(2);
+    expect(firstRowButton).toBeTruthy();
+
+    Object.defineProperty(shell, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(100, 200, 420, 220),
+    });
+    Object.defineProperty(rowLanes[0]!, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(114, 240, 72, 39),
+    });
+    Object.defineProperty(rowLanes[1]!, "getBoundingClientRect", {
+      configurable: true,
+      value: () => createRect(114, 280, 72, 39),
+    });
+
+    dispatchMouseDown(firstRowButton, { clientX: 130, clientY: 255 });
+    dispatchWindowMouseMove({ clientX: 130, clientY: 315 });
+
+    expect(container.querySelector(".markdown-hybrid-table-row-drop-indicator")).toBeTruthy();
+
+    dispatchWindowMouseUp({ clientX: 130, clientY: 315 });
+
+    expect(latestMarkdown).toBe(
+      ["| A | B |", "| --- | --- |", "| 3 | 4 |", "| 1 | 2 |"].join("\n"),
+    );
+    cleanup();
   });
 });

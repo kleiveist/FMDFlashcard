@@ -66,6 +66,7 @@ import {
   updateFrontmatterProperty,
 } from "../features/preview/frontmatter";
 import { normalizeRelativePath } from "../lib/path";
+import { normalizeMarkdownPipeTables } from "../lib/markdownTables";
 import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
 import { type LoadState } from "../lib/types";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
@@ -2055,107 +2056,8 @@ const serializeTableCell = (
   return escapeMarkdownTableCell(text);
 };
 
-type NormalizeMarkdownTablesOptions = {
-  unescapeEscapedBoundaryPipes?: boolean;
-};
-
-const normalizeMarkdownTableLine = (
-  line: string,
-  options?: NormalizeMarkdownTablesOptions,
-) => {
-  const trimmed = line.trim();
-  if (options?.unescapeEscapedBoundaryPipes && trimmed.startsWith("\\|")) {
-    return trimmed.replace(/\\\|/g, "|");
-  }
-  return trimmed;
-};
-
-const isMarkdownTableRowLine = (
-  line: string,
-  options?: NormalizeMarkdownTablesOptions,
-) => /^\|(?:[^|]*\|)+\s*$/.test(normalizeMarkdownTableLine(line, options));
-
-const isMarkdownTableSeparatorLine = (
-  line: string,
-  options?: NormalizeMarkdownTablesOptions,
-) => /^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|$/.test(
-  normalizeMarkdownTableLine(line, options),
-);
-
-const isMarkdownCodeFenceLine = (line: string) =>
-  /^\s*`{3,}/.test(line);
-
-const isMarkdownCodeFenceClosingLine = (line: string) =>
-  /^\s*`{3,}\s*$/.test(line);
-
-const normalizeMarkdownTables = (
-  markdown: string,
-  options?: NormalizeMarkdownTablesOptions,
-) => {
-  if (!markdown) {
-    return markdown;
-  }
-  const sourceLines = markdown.split("\n");
-  const normalized: string[] = [];
-  let inCodeFence = false;
-
-  for (let i = 0; i < sourceLines.length; i += 1) {
-    const line = sourceLines[i] ?? "";
-    if (!inCodeFence && isMarkdownCodeFenceLine(line)) {
-      const lastLine = normalized[normalized.length - 1] ?? "";
-      if (normalized.length > 0 && lastLine.trim() !== "") {
-        normalized.push("");
-      }
-      normalized.push(line);
-      inCodeFence = true;
-      continue;
-    }
-    if (inCodeFence) {
-      normalized.push(line);
-      if (isMarkdownCodeFenceClosingLine(line)) {
-        inCodeFence = false;
-        const nextLine = sourceLines[i + 1] ?? "";
-        if (nextLine.trim() !== "") {
-          normalized.push("");
-        }
-      }
-      continue;
-    }
-    const nextLine = sourceLines[i + 1] ?? "";
-    const isTableStart = isMarkdownTableRowLine(line, options) &&
-      isMarkdownTableSeparatorLine(nextLine, options);
-
-    if (!isTableStart) {
-      normalized.push(line);
-      continue;
-    }
-
-    const lastLine = normalized[normalized.length - 1] ?? "";
-    if (normalized.length > 0 && lastLine.trim() !== "") {
-      normalized.push("");
-    }
-
-    while (i < sourceLines.length) {
-      const tableLine = sourceLines[i] ?? "";
-      if (!isMarkdownTableRowLine(tableLine, options)) {
-        break;
-      }
-      normalized.push(normalizeMarkdownTableLine(tableLine, options));
-      i += 1;
-    }
-
-    i -= 1;
-    const lineAfterBlock = sourceLines[i + 1] ?? "";
-    if (lineAfterBlock.trim() !== "") {
-      normalized.push("");
-    }
-  }
-
-  return normalized.join("\n");
-};
-
 export const normalizeTableSpacingForRender = (markdown: string) =>
-  normalizeMarkdownTables(markdown);
+  normalizeMarkdownPipeTables(markdown);
 
 export const serializeMarkdownFromHtml = (container: HTMLElement) => {
   const serialized = serializeMarkdownChildren(container, {
@@ -2163,7 +2065,7 @@ export const serializeMarkdownFromHtml = (container: HTMLElement) => {
     escapePipes: true,
     inContentEditable: true,
   });
-  return normalizeMarkdownTables(serialized, {
+  return normalizeMarkdownPipeTables(serialized, {
     unescapeEscapedBoundaryPipes: true,
   });
 };

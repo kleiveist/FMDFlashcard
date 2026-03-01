@@ -6,6 +6,8 @@
  * - Stellt Helfer fuer Block-Replacement und Listen-Normalisierung bereit.
  */
 
+import { parseMarkdownPipeTableAt } from "../../lib/markdownTables";
+
 export type MarkdownBlockKind =
   | "blank"
   | "heading"
@@ -53,12 +55,6 @@ const isHelpBlockStartLine = (line: string) => line.trim().toLowerCase() === "#h
 const isHelpBlockEndLine = (line: string) => line.trim().toLowerCase() === "#helpend";
 const isCardBlockStartLine = (line: string) => line.trim().toLowerCase() === "#card";
 const isCardBlockEndLine = (line: string) => line.trim().toLowerCase() === "#endcard";
-
-const isMarkdownTableRowLine = (line: string) =>
-  /^\|(?:[^|]*\|)+\s*$/.test(line.trim());
-
-const isMarkdownTableSeparatorLine = (line: string) =>
-  /^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|$/.test(line.trim());
 
 const resolveOrderedDelimiter = (raw: string): "." | ")" =>
   raw === "." ? "." : ")";
@@ -127,7 +123,7 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
   if (isListStartLine(line)) {
     return true;
   }
-  if (isMarkdownTableRowLine(line) && isMarkdownTableSeparatorLine(next)) {
+  if (parseMarkdownPipeTableAt([line, next], 0)) {
     return true;
   }
   return false;
@@ -279,14 +275,11 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
       continue;
     }
 
-    if (isMarkdownTableRowLine(line) && isMarkdownTableSeparatorLine(nextLine)) {
-      let end = i + 1;
-      while (end + 1 < lines.length && isMarkdownTableRowLine(lines[end + 1] ?? "")) {
-        end += 1;
-      }
-      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "table", i, end));
+    const parsedTable = parseMarkdownPipeTableAt(lines, i);
+    if (parsedTable) {
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "table", i, parsedTable.endLine));
       blockIndex += 1;
-      i = end + 1;
+      i = parsedTable.endLine + 1;
       continue;
     }
 

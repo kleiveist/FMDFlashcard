@@ -1488,7 +1488,8 @@ textarea.preview-editor {
   font-size: 12px;
 }
 
-.markdown-hybrid-selection-menu {
+.markdown-hybrid-selection-menu,
+.markdown-hybrid-table-context-menu {
   position: fixed;
   z-index: 30;
   min-width: 180px;
@@ -1503,7 +1504,8 @@ textarea.preview-editor {
   gap: 4px;
 }
 
-.markdown-hybrid-selection-menu-item {
+.markdown-hybrid-selection-menu-item,
+.markdown-hybrid-table-context-menu-item {
   width: 100%;
   text-align: left;
   border: 1px solid transparent;
@@ -1515,16 +1517,19 @@ textarea.preview-editor {
   cursor: pointer;
 }
 
-.markdown-hybrid-selection-menu-item:hover {
+.markdown-hybrid-selection-menu-item:hover,
+.markdown-hybrid-table-context-menu-item:hover {
   border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
   background: color-mix(in srgb, var(--panel-2) 72%, transparent);
 }
 
-.markdown-hybrid-selection-menu-item.is-danger {
+.markdown-hybrid-selection-menu-item.is-danger,
+.markdown-hybrid-table-context-menu-item.is-danger {
   color: color-mix(in srgb, #ffb4b4 65%, var(--text));
 }
 
-.markdown-hybrid-selection-menu-item.is-danger:hover {
+.markdown-hybrid-selection-menu-item.is-danger:hover,
+.markdown-hybrid-table-context-menu-item.is-danger:hover {
   border-color: color-mix(in srgb, #ff7a7a 35%, var(--line-soft));
   background: color-mix(in srgb, #ff6a6a 10%, transparent);
 }
@@ -2401,6 +2406,317 @@ textarea.preview-editor {
 
 .markdown-hybrid-block-empty {
   min-height: 1.6rem;
+}
+
+.markdown-hybrid-table-block {
+  position: relative;
+  background: transparent;
+  overflow: visible;
+}
+
+.markdown-hybrid-table-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 24px;
+  margin-bottom: 6px;
+}
+
+.markdown-hybrid-table-block-title {
+  display: none;
+}
+
+.markdown-hybrid-table-view-toggle {
+  border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  color: inherit;
+}
+
+.markdown-hybrid-table-view-toggle {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.markdown-hybrid-table-repair-notice,
+.markdown-hybrid-table-code-error {
+  margin: 0 0 8px;
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 0.82rem;
+}
+
+.markdown-hybrid-table-repair-notice {
+  background: color-mix(in srgb, var(--accent-soft) 32%, var(--panel));
+  color: color-mix(in srgb, var(--accent-strong) 68%, var(--ink));
+}
+
+.markdown-hybrid-table-code-error {
+  background: color-mix(in srgb, #f87171 18%, var(--panel));
+  color: color-mix(in srgb, #b91c1c 72%, var(--ink));
+}
+
+.markdown-hybrid-table-code-shell {
+  padding: 0;
+}
+
+.markdown-hybrid-table-code-editor {
+  width: 100%;
+  min-height: 160px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
+  border-radius: 10px;
+  background: var(--field-bg);
+  color: inherit;
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+  padding: 10px 12px;
+}
+
+.markdown-hybrid-table-scroll {
+  overflow: auto;
+}
+
+.markdown-hybrid-table-shell {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.markdown-hybrid-table-block.is-active .markdown-hybrid-table-shell {
+  border-color: color-mix(in srgb, var(--accent-border) 72%, var(--line-soft));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-soft) 40%, transparent);
+}
+
+.markdown-hybrid-table-grid {
+  display: grid;
+  gap: 1px;
+  align-items: stretch;
+  min-width: max-content;
+  background: var(--line-soft);
+}
+
+.markdown-hybrid-table-corner,
+.markdown-hybrid-table-column-lane,
+.markdown-hybrid-table-row-lane,
+.markdown-hybrid-table-cell {
+  background: var(--md-table-bg);
+}
+
+.markdown-hybrid-table-corner,
+.markdown-hybrid-table-column-lane,
+.markdown-hybrid-table-row-lane,
+.markdown-hybrid-table-cell {
+  min-height: 39px;
+}
+
+.markdown-hybrid-table-corner,
+.markdown-hybrid-table-column-lane,
+.markdown-hybrid-table-row-lane-header,
+.markdown-hybrid-table-cell-header {
+  background: var(--md-table-head-bg);
+}
+
+.markdown-hybrid-table-column-lane,
+.markdown-hybrid-table-row-lane {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.markdown-hybrid-table-column-lane {
+  padding: 0 8px 0 12px;
+}
+
+.markdown-hybrid-table-row-lane {
+  padding: 0 6px;
+}
+
+.markdown-hybrid-table-row-select,
+.markdown-hybrid-table-column-select,
+.markdown-hybrid-table-row-insert,
+.markdown-hybrid-table-column-insert {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+}
+
+.markdown-hybrid-table-column-lane.is-selected,
+.markdown-hybrid-table-row-lane.is-selected,
+.markdown-hybrid-table-row-select-header.is-selected {
+  background: color-mix(in srgb, var(--accent-soft) 18%, var(--md-table-head-bg));
+}
+
+.markdown-hybrid-table-column-select,
+.markdown-hybrid-table-row-select {
+  flex: 1;
+  width: 100%;
+  min-height: 39px;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.markdown-hybrid-table-column-select {
+  font-weight: 600;
+}
+
+.markdown-hybrid-table-column-lane.is-selected .markdown-hybrid-table-column-select,
+.markdown-hybrid-table-row-lane.is-selected .markdown-hybrid-table-row-select,
+.markdown-hybrid-table-row-select-header.is-selected {
+  color: var(--ink);
+}
+
+.markdown-hybrid-table-column-actions,
+.markdown-hybrid-table-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.72;
+}
+
+.markdown-hybrid-table-column-insert,
+.markdown-hybrid-table-row-insert,
+.markdown-hybrid-table-column-select,
+.markdown-hybrid-table-row-select {
+  transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.markdown-hybrid-table-column-insert,
+.markdown-hybrid-table-row-insert {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.markdown-hybrid-table-column-insert,
+.markdown-hybrid-table-row-insert {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.markdown-hybrid-table-column-lane:hover .markdown-hybrid-table-column-insert,
+.markdown-hybrid-table-column-lane.is-selected .markdown-hybrid-table-column-insert,
+.markdown-hybrid-table-row-lane:hover .markdown-hybrid-table-row-insert,
+.markdown-hybrid-table-row-lane.is-selected .markdown-hybrid-table-row-insert {
+  opacity: 0.9;
+  pointer-events: auto;
+}
+
+.markdown-hybrid-table-column-insert:hover,
+.markdown-hybrid-table-row-insert:hover,
+.markdown-hybrid-table-column-lane:hover .markdown-hybrid-table-column-select,
+.markdown-hybrid-table-row-lane:hover .markdown-hybrid-table-row-select {
+  background: color-mix(in srgb, var(--accent-soft) 24%, transparent);
+  color: var(--accent-strong);
+}
+
+.markdown-hybrid-table-column-lane.is-drag-source,
+.markdown-hybrid-table-row-lane.is-drag-source {
+  background: color-mix(in srgb, var(--accent-soft) 28%, var(--md-table-head-bg));
+}
+
+.markdown-hybrid-table-column-lane.is-drag-source .markdown-hybrid-table-column-select,
+.markdown-hybrid-table-row-lane.is-drag-source .markdown-hybrid-table-row-select {
+  color: var(--accent-strong);
+  cursor: grabbing;
+}
+
+.markdown-hybrid-table-cell {
+  min-width: 150px;
+  padding: 8px 12px;
+  cursor: text;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.markdown-hybrid-table-cell-header {
+  font-weight: 600;
+}
+
+.markdown-hybrid-table-cell.is-row-selected,
+.markdown-hybrid-table-cell.is-column-selected {
+  background: color-mix(in srgb, var(--accent-soft) 18%, var(--md-table-bg));
+}
+
+.markdown-hybrid-table-cell-header.is-row-selected,
+.markdown-hybrid-table-cell-header.is-column-selected {
+  background: color-mix(in srgb, var(--accent-soft) 20%, var(--md-table-head-bg));
+}
+
+.markdown-hybrid-table-cell.is-editing {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-border) 84%, transparent);
+}
+
+.markdown-hybrid-table-column-drop-indicator,
+.markdown-hybrid-table-row-drop-indicator {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent-strong) 88%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-border) 35%, transparent);
+}
+
+.markdown-hybrid-table-column-drop-indicator {
+  top: 39px;
+  bottom: 0;
+  width: 3px;
+  transform: translateX(-1px);
+}
+
+.markdown-hybrid-table-row-drop-indicator {
+  left: 72px;
+  right: 0;
+  height: 3px;
+  transform: translateY(-1px);
+}
+
+.markdown-hybrid-table-cell-preview {
+  min-height: 1.4rem;
+}
+
+.markdown-hybrid-table-cell-preview > :first-child,
+.markdown-hybrid-table-cell-preview > :last-child {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.markdown-hybrid-table-cell-preview p,
+.markdown-hybrid-table-cell-preview ul,
+.markdown-hybrid-table-cell-preview ol,
+.markdown-hybrid-table-cell-preview blockquote {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.markdown-hybrid-table-cell-editor {
+  width: 100%;
+  min-height: 1.8rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.45;
+  resize: none;
+  outline: none;
+  padding: 0;
+}
+
+.markdown-hybrid-table-context-menu {
+  z-index: 40;
 }
 
 .preview-markdown-editable {
