@@ -73,6 +73,10 @@ type SplitPipeRowOptions = NormalizeMarkdownPipeTablesOptions & {
   requirePipeDelimiter?: boolean;
 };
 
+type ParseMarkdownPipeTableOptions = SplitPipeRowOptions & {
+  repair?: boolean;
+};
+
 const normalizeLineBreaks = (value: string) => value.replace(/\r\n?/g, "\n");
 
 const normalizeBoundaryEscapes = (
@@ -206,9 +210,7 @@ const buildModel = (parts: {
 const parseMarkdownPipeTableAtInternal = (
   lines: string[],
   startIndex: number,
-  options?: NormalizeMarkdownPipeTablesOptions & {
-    repair?: boolean;
-  },
+  options?: ParseMarkdownPipeTableOptions,
 ): ParsedMarkdownPipeTableAt | null => {
   const header = splitPipeRow(lines[startIndex] ?? "", options);
   if (!header || header.length === 0) {
