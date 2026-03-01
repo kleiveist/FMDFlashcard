@@ -1844,11 +1844,9 @@ export const useExamSimulationViewModel = () => {
     correctionActiveEntry && correctionState
       ? Boolean(correctionState.submissions[correctionActiveEntry.sessionTaskId])
       : false;
-  const correctionCanGoBack =
-    Boolean(correctionState) && correctionState.activeIndex > 0;
+  const correctionCanGoBack = (correctionState?.activeIndex ?? 0) > 0;
   const correctionCanGoNext =
-    Boolean(correctionState) &&
-    correctionState.activeIndex < correctionState.queue.length - 1;
+    (correctionState?.activeIndex ?? 0) < ((correctionState?.queue.length ?? 0) - 1);
   const correctionQueueLength = correctionState?.queue.length ?? 0;
   const selectionPreviewState: LoadState =
     selectedExamCount === 0 ? "idle" : selectedExamParseState;
