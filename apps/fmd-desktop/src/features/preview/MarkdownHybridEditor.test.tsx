@@ -2887,6 +2887,154 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("sizes earlier columns by content length while keeping the last column flexible", () => {
+    withImmediateRaf(() => {
+      const { container, cleanup } = render(
+        createElement(MarkdownHybridEditor, {
+          historyKey: "table-column-widths",
+          markdown: [
+            "| Kurz | Sehr lange Zeile<br>kurz | Letzte Spalte |",
+            "| --- | --- | --- |",
+            "| A | Noch laengerer Text in der mittleren Spalte | Rest |",
+          ].join("\n"),
+          mode: "edit",
+          onChange: () => undefined,
+          renderPreview: (value: string) => <div>{value}</div>,
+        }),
+      );
+
+      const grid = container.querySelector<HTMLElement>(".markdown-hybrid-table-grid");
+      expect(grid).toBeTruthy();
+
+      const template = grid?.style.gridTemplateColumns ?? "";
+      expect(template.startsWith("72px ")).toBe(true);
+
+      const fixedWidths = Array.from(template.matchAll(/(\d+)px/g)).map((match) => Number(match[1]));
+      expect(fixedWidths.length).toBeGreaterThanOrEqual(3);
+      expect(fixedWidths[2]).toBeGreaterThan(fixedWidths[1] ?? 0);
+      expect(fixedWidths[1]).toBeGreaterThanOrEqual(140);
+      expect(template.includes("minmax(")).toBe(true);
+      expect(template.endsWith("1fr)")).toBe(true);
+      cleanup();
+    });
+  });
+
+  it("auto-expands the table cell editor for multiline cell content", () => {
+    withImmediateRaf(() => {
+      const originalScrollHeight = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "scrollHeight");
+      Object.defineProperty(HTMLTextAreaElement.prototype, "scrollHeight", {
+        configurable: true,
+        get() {
+          return 96;
+        },
+      });
+
+      try {
+        const { container, cleanup } = render(
+          createElement(MarkdownHybridEditor, {
+            historyKey: "table-multiline-cell-height",
+            markdown: [
+              "| A | B |",
+              "| --- | --- |",
+              "| Erste Zeile<br>Zweite Zeile<br>Dritte Zeile | 2 |",
+            ].join("\n"),
+            mode: "edit",
+            onChange: () => undefined,
+            renderPreview: (value: string) => <div>{value}</div>,
+          }),
+        );
+
+        const firstBodyCell = container.querySelector<HTMLElement>(
+          ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+        );
+        expect(firstBodyCell).toBeTruthy();
+
+        dispatchMouseDown(firstBodyCell);
+
+        const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea).toBeTruthy();
+        expect(textarea?.value).toBe("Erste Zeile\nZweite Zeile\nDritte Zeile");
+        expect(textarea?.style.height).toBe("96px");
+        cleanup();
+      } finally {
+        if (originalScrollHeight) {
+          Object.defineProperty(HTMLTextAreaElement.prototype, "scrollHeight", originalScrollHeight);
+        } else {
+          // jsdom exposes it on the prototype; delete is safe here if we created the descriptor.
+          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+          delete (HTMLTextAreaElement.prototype as { scrollHeight?: number }).scrollHeight;
+        }
+      }
+    });
+  });
+
+  it("renders paragraph breaks inside table cells from consecutive line breaks", () => {
+    withImmediateRaf(() => {
+      const previewValues: string[] = [];
+      const { cleanup } = render(
+        createElement(MarkdownHybridEditor, {
+          historyKey: "table-cell-paragraph-render",
+          markdown: [
+            "| A | B |",
+            "| --- | --- |",
+            "| Erste Zeile<br><br>Zweite Zeile | 2 |",
+          ].join("\n"),
+          mode: "edit",
+          onChange: () => undefined,
+          renderPreview: (value: string) => {
+            previewValues.push(value);
+            return <div>{value}</div>;
+          },
+        }),
+      );
+
+      expect(previewValues).toContain("Erste Zeile\n\nZweite Zeile");
+      cleanup();
+    });
+  });
+
+  it("keeps the caret position when clicking inside an already active table cell editor", () => {
+    withImmediateRaf(() => {
+      let latestMarkdown = [
+        "| Alpha | Beta |",
+        "| --- | --- |",
+        "| 1 | 2 |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(latestMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="table-cell-caret-click"
+            markdown={markdown}
+            mode="edit"
+            onChange={(value) => {
+              latestMarkdown = value;
+              setMarkdown(value);
+            }}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const firstHeaderCell = container.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+      expect(firstHeaderCell).toBeTruthy();
+
+      dispatchMouseDown(firstHeaderCell);
+
+      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, 2);
+
+      dispatchMouseDown(textarea, { clientX: 12, clientY: 12 });
+
+      expect(textarea?.selectionStart).toBe(2);
+      expect(textarea?.selectionEnd).toBe(2);
+      cleanup();
+    });
+  });
+
   it("toggles table code view and repairs boundary pipes on return to grid", () => {
     let latestMarkdown = [
       "| A | B |",

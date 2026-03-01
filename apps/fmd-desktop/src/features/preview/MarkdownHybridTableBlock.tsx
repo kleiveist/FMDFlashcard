@@ -118,14 +118,67 @@ const isSameCell = (
       left.columnIndex === right.columnIndex,
   );
 
-const getColumnTemplate = (columnCount: number) =>
-  `72px repeat(${columnCount}, minmax(150px, 1fr))`;
+const TABLE_ROW_GUTTER_WIDTH_PX = 72;
+const TABLE_COLUMN_MIN_WIDTH_PX = 140;
+const TABLE_COLUMN_MAX_WIDTH_PX = 420;
+const TABLE_COLUMN_BASE_PADDING_PX = 44;
+const TABLE_COLUMN_CHAR_WIDTH_PX = 7;
+
+const estimateCellContentLength = (value: string) => {
+  const normalized = value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\r\n?/g, "\n")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
+    .replace(/\[\[([^\]]+)\]\]/g, "$1")
+    .replace(/[*_`~>#-]+/g, " ")
+    .replace(/[^\S\n]+/g, " ")
+    .trim();
+  if (!normalized) {
+    return 0;
+  }
+  return normalized
+    .split("\n")
+    .reduce((maxLength, line) => Math.max(maxLength, line.trim().length), 0);
+};
+
+const getColumnPixelWidth = (model: MarkdownPipeTableModel, columnIndex: number) => {
+  const headerLength = estimateCellContentLength(model.header[columnIndex]?.raw ?? "");
+  const bodyLength = model.bodyRows.reduce((maxLength, row) => {
+    return Math.max(maxLength, estimateCellContentLength(row[columnIndex]?.raw ?? ""));
+  }, 0);
+  const measuredLength = Math.max(headerLength, bodyLength, 8);
+  return Math.max(
+    TABLE_COLUMN_MIN_WIDTH_PX,
+    Math.min(
+      TABLE_COLUMN_MAX_WIDTH_PX,
+      Math.round(TABLE_COLUMN_BASE_PADDING_PX + measuredLength * TABLE_COLUMN_CHAR_WIDTH_PX),
+    ),
+  );
+};
+
+const getColumnTemplate = (model: MarkdownPipeTableModel) => {
+  const tracks = Array.from({ length: model.columnCount }, (_, columnIndex) => {
+    const width = getColumnPixelWidth(model, columnIndex);
+    const isLastColumn = columnIndex === model.columnCount - 1;
+    return isLastColumn ? `minmax(${width}px, 1fr)` : `${width}px`;
+  }).join(" ");
+  return `${TABLE_ROW_GUTTER_WIDTH_PX}px ${tracks}`;
+};
 
 const toCellStorageValue = (value: string) =>
   value.replace(/\r\n?/g, "\n").replace(/\n/g, "<br>");
 
 const fromCellStorageValue = (value: string) =>
   value.replace(/<br\s*\/?>/gi, "\n");
+
+const toCellRenderValue = (value: string) =>
+  value
+    .replace(/\r\n?/g, "\n")
+    .replace(/(?:<br\s*\/?>\s*){2,}/gi, "\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\n{3,}/g, "\n\n");
 
 const getCellValue = (
   model: MarkdownPipeTableModel,
@@ -390,6 +443,18 @@ export const MarkdownHybridTableBlock = ({
     });
     return () => window.cancelAnimationFrame(handle);
   }, [active, activeCell, disabled, viewMode]);
+
+  useLayoutEffect(() => {
+    if (!active || viewMode !== "grid" || !activeCell) {
+      return;
+    }
+    const textarea = cellTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [active, activeCell, cellDraft, viewMode]);
 
   useEffect(() => {
     if (!contextMenuState) {
@@ -1015,7 +1080,7 @@ export const MarkdownHybridTableBlock = ({
   );
 
   const columnCount = parsedModel.columnCount;
-  const gridTemplateColumns = getColumnTemplate(columnCount);
+  const gridTemplateColumns = useMemo(() => getColumnTemplate(parsedModel), [parsedModel]);
   const renderCellContent = (location: MarkdownHybridTableCellLocation) => {
     const isEditing = active && isSameCell(activeCell, location) && viewMode === "grid";
     const value = isEditing ? cellDraft : getCellValue(parsedModel, location);
@@ -1030,6 +1095,8 @@ export const MarkdownHybridTableBlock = ({
           onChange={(event) => {
             setCellDraft(event.currentTarget.value);
             setCellDirty(event.currentTarget.value !== fromCellStorageValue(getCellValue(parsedModel, location)));
+            event.currentTarget.style.height = "0px";
+            event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
           }}
           onBlur={() => {
             flushActiveCell();
@@ -1040,7 +1107,7 @@ export const MarkdownHybridTableBlock = ({
     }
     return (
       <div className="markdown-hybrid-table-cell-preview">
-        {renderPreview(value)}
+        {renderPreview(toCellRenderValue(value))}
       </div>
     );
   };
@@ -1322,6 +1389,9 @@ export const MarkdownHybridTableBlock = ({
                     }`}
                     data-md-block-control="true"
                     onMouseDown={(event) => {
+                      if (active && isSameCell(activeCell, location)) {
+                        return;
+                      }
                       event.preventDefault();
                       event.stopPropagation();
                       activateCell(location);
@@ -1466,6 +1536,9 @@ const FragmentRow = ({
           }`}
           data-md-block-control="true"
           onMouseDown={(event) => {
+            if (active && isSameCell(activeCell, location)) {
+              return;
+            }
             event.preventDefault();
             event.stopPropagation();
             onActivateCell(location);

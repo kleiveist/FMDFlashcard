@@ -2561,6 +2561,9 @@ textarea.preview-editor {
   cursor: pointer;
   text-align: left;
   font-size: 0.76rem;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: var(--muted);
 }
 
@@ -2637,7 +2640,7 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-table-cell {
-  min-width: 150px;
+  min-width: 0;
   padding: 8px 12px;
   cursor: text;
   transition: background-color 140ms ease, box-shadow 140ms ease;
@@ -2686,6 +2689,9 @@ textarea.preview-editor {
 
 .markdown-hybrid-table-cell-preview {
   min-height: 1.4rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .markdown-hybrid-table-cell-preview > :first-child,
@@ -2694,12 +2700,18 @@ textarea.preview-editor {
   margin-bottom: 0;
 }
 
+.markdown-hybrid-table-cell-preview > * + * {
+  margin-top: 0.35rem;
+}
+
 .markdown-hybrid-table-cell-preview p,
 .markdown-hybrid-table-cell-preview ul,
 .markdown-hybrid-table-cell-preview ol,
 .markdown-hybrid-table-cell-preview blockquote {
   margin-top: 0;
   margin-bottom: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .markdown-hybrid-table-cell-editor {
@@ -2713,6 +2725,8 @@ textarea.preview-editor {
   resize: none;
   outline: none;
   padding: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .markdown-hybrid-table-context-menu {
