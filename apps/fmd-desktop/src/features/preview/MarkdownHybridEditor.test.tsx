@@ -96,6 +96,23 @@ const dispatchKeyDown = (
   });
 };
 
+const dispatchContextMenu = (
+  element: Element | null,
+  options: Partial<MouseEventInit> = {},
+) => {
+  act(() => {
+    element?.dispatchEvent(
+      new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        buttons: 2,
+        ...options,
+      }),
+    );
+  });
+};
+
 const activateBlockEditor = (container: ParentNode, index = 0) => {
   const block = container.querySelector<HTMLElement>(
     `.markdown-hybrid-block[data-md-block-index='${index}']`,
@@ -2993,6 +3010,153 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("inserts a paragraph break inside a table cell on Enter and persists it", () => {
+    withImmediateRaf(() => {
+      let latestMarkdown = [
+        "| A | B |",
+        "| --- | --- |",
+        "| Erste Zeile | 2 |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(latestMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="table-cell-enter-paragraph"
+            markdown={markdown}
+            mode="edit"
+            onChange={(value) => {
+              latestMarkdown = value;
+              setMarkdown(value);
+            }}
+            renderPreview={(value: string) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const firstBodyCell = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+      );
+      expect(firstBodyCell).toBeTruthy();
+
+      dispatchMouseDown(firstBodyCell);
+
+      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+
+      dispatchKeyDown(textarea, "Enter");
+
+      expect(textarea?.value).toBe("Erste Zeile\n\n");
+
+      act(() => {
+        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+      });
+
+      expect(latestMarkdown).toContain("Erste Zeile<br><br>");
+      cleanup();
+    });
+  });
+
+  it("keeps deleted table cell text removed after the editor loses focus", () => {
+    withImmediateRaf(() => {
+      let latestMarkdown = [
+        "| A | B |",
+        "| --- | --- |",
+        "| Alpha Beta | 2 |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(latestMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="table-cell-delete-blur"
+            markdown={markdown}
+            mode="edit"
+            onChange={(value) => {
+              latestMarkdown = value;
+              setMarkdown(value);
+            }}
+            renderPreview={(value: string) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const firstBodyCell = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+      );
+      expect(firstBodyCell).toBeTruthy();
+
+      dispatchMouseDown(firstBodyCell);
+
+      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea).toBeTruthy();
+
+      applyTextareaInput(textarea, "Alpha");
+
+      act(() => {
+        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+      });
+
+      expect(latestMarkdown).toContain("| Alpha | 2 |");
+      expect(latestMarkdown).not.toContain("Alpha Beta");
+      expect(textarea?.value).toBe("Alpha");
+      cleanup();
+    });
+  });
+
+  it("persists multiline table cell edits when switching to another cell", () => {
+    withImmediateRaf(() => {
+      let latestMarkdown = [
+        "| A | B |",
+        "| --- | --- |",
+        "| Alpha Beta | Ziel |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(latestMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="table-cell-switch-commit"
+            markdown={markdown}
+            mode="edit"
+            onChange={(value) => {
+              latestMarkdown = value;
+              setMarkdown(value);
+            }}
+            renderPreview={(value: string) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const bodyCells = container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+      );
+      const firstBodyCell = bodyCells[0] ?? null;
+      const secondBodyCell = bodyCells[1] ?? null;
+      expect(firstBodyCell).toBeTruthy();
+      expect(secondBodyCell).toBeTruthy();
+
+      dispatchMouseDown(firstBodyCell);
+
+      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea).toBeTruthy();
+
+      applyTextareaInput(textarea, "Alpha\n\nGamma");
+      dispatchMouseDown(secondBodyCell);
+
+      expect(latestMarkdown).toContain("| Alpha<br><br>Gamma | Ziel |");
+      expect(latestMarkdown).not.toContain("Alpha Beta");
+
+      const activeEditors = container.querySelectorAll(".markdown-hybrid-table-cell-editor");
+      expect(activeEditors.length).toBe(1);
+      cleanup();
+    });
+  });
+
   it("keeps the caret position when clicking inside an already active table cell editor", () => {
     withImmediateRaf(() => {
       let latestMarkdown = [
@@ -3118,6 +3282,158 @@ describe("MarkdownHybridEditor", () => {
 
     expect(latestMarkdown).toBe(
       ["| A | B |", "| --- | --- |", "| 3 | 4 |"].join("\n"),
+    );
+    cleanup();
+  });
+
+  it("supports shift-range and ctrl-additive selection from row and column context clicks", () => {
+    let latestMarkdown = [
+      "| A | B | C |",
+      "| --- | --- | --- |",
+      "| 1 | 2 | 3 |",
+      "| 4 | 5 | 6 |",
+      "| 7 | 8 | 9 |",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(latestMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="table-context-multi-select"
+          markdown={markdown}
+          mode="edit"
+          onChange={(value) => {
+            latestMarkdown = value;
+            setMarkdown(value);
+          }}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    dispatchMouseDown(container.querySelector(".markdown-hybrid-table-cell-header"));
+
+    const firstColumnButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-column-select[data-md-table-column-index='0']",
+    );
+    const thirdColumnButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-column-select[data-md-table-column-index='2']",
+    );
+    expect(firstColumnButton).toBeTruthy();
+    expect(thirdColumnButton).toBeTruthy();
+
+    dispatchContextMenu(firstColumnButton, { clientX: 220, clientY: 120 });
+    dispatchContextMenu(thirdColumnButton, { shiftKey: true, clientX: 360, clientY: 120 });
+
+    expect(container.querySelectorAll(".markdown-hybrid-table-column-lane.is-selected")).toHaveLength(3);
+
+    const firstBodyRowButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-row-select[data-md-table-row-index='1']",
+    );
+    const thirdBodyRowButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-row-select[data-md-table-row-index='3']",
+    );
+    expect(firstBodyRowButton).toBeTruthy();
+    expect(thirdBodyRowButton).toBeTruthy();
+
+    dispatchContextMenu(firstBodyRowButton, { clientX: 120, clientY: 220 });
+    dispatchContextMenu(thirdBodyRowButton, { ctrlKey: true, clientX: 120, clientY: 300 });
+
+    expect(container.querySelectorAll(".markdown-hybrid-table-row-lane.is-selected")).toHaveLength(2);
+    expect(container.querySelectorAll(".markdown-hybrid-table-column-lane.is-selected")).toHaveLength(0);
+    cleanup();
+  });
+
+  it("clears all cells in the selected columns from the table context menu", () => {
+    let latestMarkdown = [
+      "| H1 | H2 | H3 |",
+      "| --- | --- | --- |",
+      "| A1 | A2 | A3 |",
+      "| B1 | B2 | B3 |",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(latestMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="table-clear-column-contents"
+          markdown={markdown}
+          mode="edit"
+          onChange={(value) => {
+            latestMarkdown = value;
+            setMarkdown(value);
+          }}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    dispatchMouseDown(container.querySelector(".markdown-hybrid-table-cell-header"));
+
+    const firstColumnButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-column-select[data-md-table-column-index='0']",
+    );
+    const secondColumnButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-column-select[data-md-table-column-index='1']",
+    );
+    expect(firstColumnButton).toBeTruthy();
+    expect(secondColumnButton).toBeTruthy();
+
+    dispatchContextMenu(firstColumnButton, { clientX: 220, clientY: 120 });
+    dispatchContextMenu(secondColumnButton, { ctrlKey: true, clientX: 290, clientY: 120 });
+    dispatchClick(findButtonByExactText(container, "Clear column contents"));
+
+    expect(latestMarkdown).toBe(
+      ["|  |  | H3 |", "| --- | --- | --- |", "|  |  | A3 |", "|  |  | B3 |"].join("\n"),
+    );
+    cleanup();
+  });
+
+  it("clears all cells in the selected rows from the table context menu", () => {
+    let latestMarkdown = [
+      "| H1 | H2 |",
+      "| --- | --- |",
+      "| A1 | A2 |",
+      "| B1 | B2 |",
+      "| C1 | C2 |",
+    ].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(latestMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="table-clear-row-contents"
+          markdown={markdown}
+          mode="edit"
+          onChange={(value) => {
+            latestMarkdown = value;
+            setMarkdown(value);
+          }}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    dispatchMouseDown(container.querySelector(".markdown-hybrid-table-cell-header"));
+
+    const firstBodyRowButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-row-select[data-md-table-row-index='1']",
+    );
+    const thirdBodyRowButton = container.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-table-row-select[data-md-table-row-index='3']",
+    );
+    expect(firstBodyRowButton).toBeTruthy();
+    expect(thirdBodyRowButton).toBeTruthy();
+
+    dispatchContextMenu(firstBodyRowButton, { clientX: 120, clientY: 220 });
+    dispatchContextMenu(thirdBodyRowButton, { ctrlKey: true, clientX: 120, clientY: 300 });
+    dispatchClick(findButtonByExactText(container, "Clear row contents"));
+
+    expect(latestMarkdown).toBe(
+      ["| H1 | H2 |", "| --- | --- |", "|  |  |", "| B1 | B2 |", "|  |  |"].join("\n"),
     );
     cleanup();
   });

@@ -75,6 +75,8 @@ type TablePointerDragState =
     sourceIndex: number;
     startX: number;
     startY: number;
+    shiftKey: boolean;
+    additiveKey: boolean;
     isMove: boolean;
     canMove: boolean;
   }
@@ -83,6 +85,8 @@ type TablePointerDragState =
     sourceIndex: number;
     startX: number;
     startY: number;
+    shiftKey: boolean;
+    additiveKey: boolean;
     isMove: boolean;
     canMove: boolean;
   };
@@ -238,6 +242,47 @@ const remapMovedIndex = (index: number, fromIndex: number, toIndex: number) => {
   return index;
 };
 
+const sortUniqueSelectionIndices = (values: number[]) =>
+  [...new Set(values)].sort((left, right) => left - right);
+
+const getSelectionRange = (fromIndex: number, toIndex: number) => {
+  const start = Math.min(fromIndex, toIndex);
+  const end = Math.max(fromIndex, toIndex);
+  return Array.from({ length: end - start + 1 }, (_, offset) => start + offset);
+};
+
+const resolveSelectionState = (
+  current: IndexedSelectionState | null,
+  index: number,
+  maxCount: number,
+  options?: { shiftKey?: boolean; additiveKey?: boolean },
+): IndexedSelectionState | null => {
+  if (maxCount <= 0) {
+    return null;
+  }
+  const clampedIndex = Math.max(0, Math.min(index, maxCount - 1));
+  if (options?.shiftKey) {
+    const anchorIndex = current?.anchorIndex ?? clampedIndex;
+    return {
+      anchorIndex,
+      selectedIndices: getSelectionRange(anchorIndex, clampedIndex),
+    };
+  }
+  if (options?.additiveKey) {
+    return {
+      anchorIndex: current?.anchorIndex ?? clampedIndex,
+      selectedIndices: sortUniqueSelectionIndices([
+        ...(current?.selectedIndices ?? []),
+        clampedIndex,
+      ]),
+    };
+  }
+  return {
+    anchorIndex: clampedIndex,
+    selectedIndices: [clampedIndex],
+  };
+};
+
 export const MarkdownHybridTableBlock = ({
   blockIndex,
   raw,
@@ -264,12 +309,15 @@ export const MarkdownHybridTableBlock = ({
     }
     return defaultTableModel;
   }, [raw]);
+  const columnCount = parsedModel.columnCount;
+  const visualRowCount = parsedModel.bodyRows.length + 1;
   const tableRootRef = useRef<HTMLDivElement | null>(null);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
   const tableShellRef = useRef<HTMLDivElement | null>(null);
   const cellTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const codeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const tablePointerDragRef = useRef<TablePointerDragState | null>(null);
+  const pendingCellCommitRef = useRef<{ location: MarkdownHybridTableCellLocation; value: string } | null>(null);
   const columnLaneRefs = useRef<Array<HTMLElement | null>>([]);
   const bodyRowLaneRefs = useRef<Array<HTMLElement | null>>([]);
 
@@ -299,7 +347,15 @@ export const MarkdownHybridTableBlock = ({
     if (!activeCell) {
       return;
     }
-    setCellDraft(fromCellStorageValue(getCellValue(parsedModel, activeCell)));
+    const nextDraft = fromCellStorageValue(getCellValue(parsedModel, activeCell));
+    const pendingCommit = pendingCellCommitRef.current;
+    if (pendingCommit && isSameCell(pendingCommit.location, activeCell)) {
+      if (pendingCommit.value !== nextDraft) {
+        return;
+      }
+      pendingCellCommitRef.current = null;
+    }
+    setCellDraft((current) => (current === nextDraft ? current : nextDraft));
   }, [activeCell, cellDirty, parsedModel]);
 
   useEffect(() => {
@@ -329,7 +385,18 @@ export const MarkdownHybridTableBlock = ({
     if (!activeCell || !cellDirty) {
       return true;
     }
-    const nextModel = updateModelCell(parsedModel, activeCell, toCellStorageValue(cellDraft));
+    const nextStoredValue = toCellStorageValue(cellDraft);
+    const currentStoredValue = getCellValue(parsedModel, activeCell);
+    if (nextStoredValue === currentStoredValue) {
+      pendingCellCommitRef.current = null;
+      setCellDirty(false);
+      return true;
+    }
+    pendingCellCommitRef.current = {
+      location: activeCell,
+      value: fromCellStorageValue(nextStoredValue),
+    };
+    const nextModel = updateModelCell(parsedModel, activeCell, nextStoredValue);
     commitModel(nextModel);
     setCellDirty(false);
     return true;
@@ -491,21 +558,71 @@ export const MarkdownHybridTableBlock = ({
     setDropIndicator(null);
   }, []);
 
-  const selectRow = useCallback((rowIndex: number) => {
-    setRowSelection({
-      anchorIndex: rowIndex,
-      selectedIndices: [rowIndex],
-    });
+  const selectRow = useCallback((rowIndex: number, options?: { shiftKey?: boolean; additiveKey?: boolean }) => {
+    setRowSelection((current) => resolveSelectionState(current, rowIndex, visualRowCount, options));
     setColumnSelection(null);
-  }, []);
+  }, [visualRowCount]);
 
-  const selectColumn = useCallback((columnIndex: number) => {
-    setColumnSelection({
-      anchorIndex: columnIndex,
-      selectedIndices: [columnIndex],
-    });
+  const selectColumn = useCallback(
+    (columnIndex: number, options?: { shiftKey?: boolean; additiveKey?: boolean }) => {
+      setColumnSelection((current) => resolveSelectionState(current, columnIndex, columnCount, options));
+      setRowSelection(null);
+    },
+    [columnCount],
+  );
+
+  const handleClearRowSelectionContents = useCallback(() => {
+    if (!rowSelection) {
+      return;
+    }
+    if (!flushActiveCell()) {
+      return;
+    }
+    const selectedRows = new Set(rowSelection.selectedIndices);
+    const nextModel: MarkdownPipeTableModel = {
+      ...parsedModel,
+      header: parsedModel.header.map((cell) => ({
+        raw: selectedRows.has(0) ? "" : cell.raw,
+      })),
+      separator: [...parsedModel.separator],
+      bodyRows: parsedModel.bodyRows.map((row, rowIndex) =>
+        row.map((cell) => ({
+          raw: selectedRows.has(rowIndex + 1) ? "" : cell.raw,
+        }))),
+      columnCount: parsedModel.columnCount,
+    };
+    commitModel(nextModel);
+    setActiveCell(null);
+    setCellDraft("");
+    setCellDirty(false);
+  }, [commitModel, flushActiveCell, parsedModel, rowSelection]);
+
+  const handleClearColumnSelectionContents = useCallback(() => {
+    if (!columnSelection) {
+      return;
+    }
+    if (!flushActiveCell()) {
+      return;
+    }
+    const selectedColumns = new Set(columnSelection.selectedIndices);
+    const nextModel: MarkdownPipeTableModel = {
+      ...parsedModel,
+      header: parsedModel.header.map((cell, columnIndex) => ({
+        raw: selectedColumns.has(columnIndex) ? "" : cell.raw,
+      })),
+      separator: [...parsedModel.separator],
+      bodyRows: parsedModel.bodyRows.map((row) =>
+        row.map((cell, columnIndex) => ({
+          raw: selectedColumns.has(columnIndex) ? "" : cell.raw,
+        }))),
+      columnCount: parsedModel.columnCount,
+    };
+    commitModel(nextModel);
     setRowSelection(null);
-  }, []);
+    setActiveCell(null);
+    setCellDraft("");
+    setCellDirty(false);
+  }, [columnSelection, commitModel, flushActiveCell, parsedModel]);
 
   const activateCell = useCallback(
     (location: MarkdownHybridTableCellLocation) => {
@@ -519,6 +636,12 @@ export const MarkdownHybridTableBlock = ({
         });
         return;
       }
+      if (activeCell && isSameCell(activeCell, location)) {
+        return;
+      }
+      if (!flushActiveCell()) {
+        return;
+      }
       clearSelections();
       setViewMode("grid");
       setActiveCell(location);
@@ -526,7 +649,7 @@ export const MarkdownHybridTableBlock = ({
       setCellDirty(false);
       setCodeError(null);
     },
-    [active, clearSelections, disabled, onRequestActivate, parsedModel],
+    [active, activeCell, clearSelections, disabled, flushActiveCell, onRequestActivate, parsedModel],
   );
 
   const moveCellFocus = useCallback(
@@ -739,6 +862,8 @@ export const MarkdownHybridTableBlock = ({
         sourceIndex: rowIndex,
         startX: event.clientX,
         startY: event.clientY,
+        shiftKey: event.shiftKey,
+        additiveKey: event.ctrlKey || event.metaKey,
         isMove: false,
         canMove: rowIndex > 0,
       };
@@ -771,6 +896,8 @@ export const MarkdownHybridTableBlock = ({
         sourceIndex: columnIndex,
         startX: event.clientX,
         startY: event.clientY,
+        shiftKey: event.shiftKey,
+        additiveKey: event.ctrlKey || event.metaKey,
         isMove: false,
         canMove: true,
       };
@@ -871,9 +998,15 @@ export const MarkdownHybridTableBlock = ({
         setDropIndicator(null);
         setActiveCell(null);
         if (dragState.type === "row") {
-          selectRow(dragState.sourceIndex);
+          selectRow(dragState.sourceIndex, {
+            shiftKey: dragState.shiftKey,
+            additiveKey: dragState.additiveKey,
+          });
         } else {
-          selectColumn(dragState.sourceIndex);
+          selectColumn(dragState.sourceIndex, {
+            shiftKey: dragState.shiftKey,
+            additiveKey: dragState.additiveKey,
+          });
         }
         return;
       }
@@ -985,7 +1118,19 @@ export const MarkdownHybridTableBlock = ({
         }
         return;
       }
-      if (event.key === "Enter" && !event.shiftKey) {
+      if (event.key === "Enter" && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        const textarea = event.currentTarget;
+        const nextSelectionStart = textarea.selectionStart ?? textarea.value.length;
+        const nextSelectionEnd = textarea.selectionEnd ?? nextSelectionStart;
+        textarea.setRangeText("\n\n", nextSelectionStart, nextSelectionEnd, "end");
+        setCellDraft(textarea.value);
+        setCellDirty(textarea.value !== fromCellStorageValue(getCellValue(parsedModel, activeCell)));
+        textarea.style.height = "0px";
+        textarea.style.height = `${textarea.scrollHeight}px`;
+        return;
+      }
+      if (event.key === "Enter" && !event.shiftKey && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         if (activeCell.rowBand === "header") {
           commitCellAndMove({
@@ -1079,7 +1224,6 @@ export const MarkdownHybridTableBlock = ({
     ],
   );
 
-  const columnCount = parsedModel.columnCount;
   const gridTemplateColumns = useMemo(() => getColumnTemplate(parsedModel), [parsedModel]);
   const renderCellContent = (location: MarkdownHybridTableCellLocation) => {
     const isEditing = active && isSameCell(activeCell, location) && viewMode === "grid";
@@ -1202,11 +1346,15 @@ export const MarkdownHybridTableBlock = ({
         type="button"
         className="markdown-hybrid-table-context-menu-item"
         onClick={() => {
-          clearSelections();
+          if (contextMenuState.type === "row") {
+            handleClearRowSelectionContents();
+          } else {
+            handleClearColumnSelectionContents();
+          }
           setContextMenuState(null);
         }}
       >
-        Clear selection
+        {contextMenuState.type === "row" ? "Clear row contents" : "Clear column contents"}
       </button>
     </div>
   ) : null;
@@ -1301,15 +1449,26 @@ export const MarkdownHybridTableBlock = ({
                       onContextMenu={(event) => {
                         event.preventDefault();
                         event.stopPropagation();
+                        const selectionOptions = {
+                          shiftKey: event.shiftKey,
+                          additiveKey: event.ctrlKey || event.metaKey,
+                        };
                         if (!active) {
                           onRequestActivate({
-                            columnSelection: { anchorIndex: columnIndex, selectedIndices: [columnIndex] },
+                            columnSelection: resolveSelectionState(
+                              columnSelection,
+                              columnIndex,
+                              columnCount,
+                              selectionOptions,
+                            ) ?? { anchorIndex: columnIndex, selectedIndices: [columnIndex] },
                             focusTarget: "frame",
                           });
                           return;
                         }
-                        setColumnSelection({ anchorIndex: columnIndex, selectedIndices: [columnIndex] });
-                        setRowSelection(null);
+                        if (!flushActiveCell()) {
+                          return;
+                        }
+                        selectColumn(columnIndex, selectionOptions);
                         setActiveCell(null);
                         setContextMenuState({ type: "column", x: event.clientX, y: event.clientY });
                       }}
@@ -1355,15 +1514,24 @@ export const MarkdownHybridTableBlock = ({
                   onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
+                    const selectionOptions = {
+                      shiftKey: event.shiftKey,
+                      additiveKey: event.ctrlKey || event.metaKey,
+                    };
                     if (!active) {
                       onRequestActivate({
-                        rowSelection: { anchorIndex: 0, selectedIndices: [0] },
+                        rowSelection: resolveSelectionState(rowSelection, 0, visualRowCount, selectionOptions) ?? {
+                          anchorIndex: 0,
+                          selectedIndices: [0],
+                        },
                         focusTarget: "frame",
                       });
                       return;
                     }
-                    setRowSelection({ anchorIndex: 0, selectedIndices: [0] });
-                    setColumnSelection(null);
+                    if (!flushActiveCell()) {
+                      return;
+                    }
+                    selectRow(0, selectionOptions);
                     setActiveCell(null);
                     setContextMenuState({ type: "row", x: event.clientX, y: event.clientY });
                   }}
@@ -1419,15 +1587,26 @@ export const MarkdownHybridTableBlock = ({
                     onContextMenu={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
+                      const selectionOptions = {
+                        shiftKey: event.shiftKey,
+                        additiveKey: event.ctrlKey || event.metaKey,
+                      };
                       if (!active) {
                         onRequestActivate({
-                          rowSelection: { anchorIndex: visualIndex, selectedIndices: [visualIndex] },
+                          rowSelection: resolveSelectionState(
+                            rowSelection,
+                            visualIndex,
+                            visualRowCount,
+                            selectionOptions,
+                          ) ?? { anchorIndex: visualIndex, selectedIndices: [visualIndex] },
                           focusTarget: "frame",
                         });
                         return;
                       }
-                      setRowSelection({ anchorIndex: visualIndex, selectedIndices: [visualIndex] });
-                      setColumnSelection(null);
+                      if (!flushActiveCell()) {
+                        return;
+                      }
+                      selectRow(visualIndex, selectionOptions);
                       setActiveCell(null);
                       setContextMenuState({ type: "row", x: event.clientX, y: event.clientY });
                     }}
