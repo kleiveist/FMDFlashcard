@@ -19,7 +19,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-type ExamStage = "idle" | "running" | "review" | "scoring" | "finished";
+import type { ExamStage } from "../examSimulationTypes";
 
 type ExamToolsPanelProps = {
   stage: ExamStage;
@@ -34,7 +34,9 @@ type ExamToolsPanelProps = {
   onStartExam: () => void;
   onSubmitExam: () => void;
   onStartScoring: () => void;
-  onFinishScoring: () => void;
+  onFinishManualScoring: () => void;
+  onFinalizeExam: () => void;
+  onBackToResults: () => void;
   onResetExam: () => void;
 };
 
@@ -51,13 +53,17 @@ export const ExamToolsPanel = ({
   onStartExam,
   onSubmitExam,
   onStartScoring,
-  onFinishScoring,
+  onFinishManualScoring,
+  onFinalizeExam,
+  onBackToResults,
   onResetExam,
 }: ExamToolsPanelProps) => {
   const showStart = stage === "idle";
   const showSubmit = stage === "running";
   const showReviewAdvance = stage === "review";
-  const showFinishScoring = stage === "scoring";
+  const showFinishScoring = stage === "scoring_manual";
+  const showFinalize = stage === "finish_scoring";
+  const showBackToResults = stage === "correction";
   const showSettingsHints = stage === "idle";
 
   return (
@@ -96,10 +102,29 @@ export const ExamToolsPanel = ({
               <button
                 type="button"
                 className="primary"
-                onClick={onFinishScoring}
+                onClick={onFinishManualScoring}
                 disabled={finishPending}
               >
                 Finish Scoring
+              </button>
+            ) : null}
+            {showFinalize ? (
+              <button
+                type="button"
+                className="primary"
+                onClick={onFinalizeExam}
+                disabled={finishPending}
+              >
+                Finish
+              </button>
+            ) : null}
+            {showBackToResults ? (
+              <button
+                type="button"
+                className="primary"
+                onClick={onBackToResults}
+              >
+                Back to Results
               </button>
             ) : null}
             <button type="button" className="ghost" onClick={onResetExam}>

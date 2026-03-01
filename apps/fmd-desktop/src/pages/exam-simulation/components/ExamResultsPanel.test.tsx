@@ -97,6 +97,55 @@ const buildResultsProps = (taskOverrides: Partial<ExamSessionTask> = {}) => {
 };
 
 describe("ExamResultsPanel", () => {
+  it("renders the correction action without corrected summary values", () => {
+    const onCorrection = vi.fn();
+    const props = {
+      ...buildResultsProps(),
+      correctionAction: {
+        label: "Correction",
+        onClick: onCorrection,
+      },
+    };
+    const { container, cleanup } = render(createElement(ExamResultsPanel, props));
+
+    expect(container.textContent).toContain("Score");
+    expect(container.textContent).toContain("3 / 5");
+    expect(container.textContent).not.toContain("Corrected");
+
+    const correctionButton = container.querySelector<HTMLButtonElement>(
+      "button.ghost.small",
+    );
+    expect(correctionButton?.textContent).toContain("Correction");
+
+    act(() => {
+      correctionButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onCorrection).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it("disables the correction action when requested", () => {
+    const props = {
+      ...buildResultsProps(),
+      correctionAction: {
+        label: "Correction",
+        onClick: vi.fn(),
+        disabled: true,
+        title: "No incorrect cards",
+      },
+    };
+    const { container, cleanup } = render(createElement(ExamResultsPanel, props));
+
+    const correctionButton = container.querySelector<HTMLButtonElement>(
+      "button.ghost.small",
+    );
+    expect(correctionButton?.disabled).toBe(true);
+    expect(correctionButton?.title).toBe("No incorrect cards");
+
+    cleanup();
+  });
+
   it("opens task details in popup and renders card-wrap toggle in modal header", () => {
     const props = buildResultsProps();
     const { container, cleanup } = render(createElement(ExamResultsPanel, props));

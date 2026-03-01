@@ -30,8 +30,10 @@ import {
   UserToolsPanel,
 } from "../../components/UserToolsPanel";
 import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
+import { ExamCorrectionHost } from "./components/ExamCorrectionHost";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
+import { ExamManualScoringPanel } from "./components/ExamManualScoringPanel";
 import { ExamResultsPanel } from "./components/ExamResultsPanel";
 import { ExamStatisticsPanel } from "./components/ExamStatisticsPanel";
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
@@ -84,6 +86,18 @@ export const ExamSimulationPage = () => {
     activeTaskPartStates,
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
+    activeManualTaskEntry,
+    canGoManualScoringBack,
+    canGoManualScoringNext,
+    incorrectTaskResults,
+    correctionActiveEntry,
+    correctionActiveTask,
+    correctionActiveMaxPoints,
+    correctionActivePartStates,
+    correctionActiveSubmitted,
+    correctionCanGoBack,
+    correctionCanGoNext,
+    correctionQueueLength,
     runTasks,
     examTimeLimitMs,
     examTimeRemainingMs,
@@ -104,7 +118,10 @@ export const ExamSimulationPage = () => {
     handleResetExam,
     handleSubmitExam,
     handleStartScoring,
-    handleFinishScoring,
+    handleFinishManualScoring,
+    handleStartCorrection,
+    handleBackToFinishScoring,
+    handleFinalizeExam,
     handleOptionSelect,
     handleTrueFalseSelect,
     handleClozeInputChange,
@@ -117,6 +134,17 @@ export const ExamSimulationPage = () => {
     handleAutoGradeDecision,
     handleTaskBack,
     handleTaskNext,
+    handleManualScoringBack,
+    handleManualScoringNext,
+    handleCorrectionOptionSelect,
+    handleCorrectionTrueFalseSelect,
+    handleCorrectionClozeInputChange,
+    handleCorrectionClozeTokenDrop,
+    handleCorrectionClozeTokenRemove,
+    handleCorrectionTextInputChange,
+    handleCorrectionSubmit,
+    handleCorrectionTaskBack,
+    handleCorrectionTaskNext,
     handleResultTaskCardWrapperToggle,
     getTaskCardWrapDisabledReason,
   } = useExamSimulationViewModel();
@@ -150,16 +178,20 @@ export const ExamSimulationPage = () => {
     () => ({
       stage,
       canStartExam,
-      finishPending: false,
+      phaseDisabled: false,
       onStartExam: handleStartExam,
       onSubmitExam: handleSubmitExam,
       onStartScoring: handleStartScoring,
-      onFinishScoring: handleFinishScoring,
+      onFinishManualScoring: handleFinishManualScoring,
+      onFinalizeExam: handleFinalizeExam,
+      onBackToResults: handleBackToFinishScoring,
       onResetExam: handleResetExam,
     }),
     [
       canStartExam,
-      handleFinishScoring,
+      handleBackToFinishScoring,
+      handleFinalizeExam,
+      handleFinishManualScoring,
       handleResetExam,
       handleStartExam,
       handleStartScoring,
@@ -199,8 +231,9 @@ export const ExamSimulationPage = () => {
     };
   }, [platform, settings.keyboardShortcuts.bindings]);
 
-  const isRunnerStage = stage === "running" || stage === "review" || stage === "scoring";
-  const activePhase = stage === "review" ? "review" : stage === "scoring" ? "scoring" : "exam";
+  const isRunnerStage = stage === "running" || stage === "review";
+  const hasCorrectionCandidates = incorrectTaskResults.length > 0;
+  const activePhase = stage === "review" ? "review" : "exam";
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const isOverviewStage = stage === "idle";
   const showOverviewToggle = isOverviewStage;
@@ -357,13 +390,24 @@ export const ExamSimulationPage = () => {
         return;
       }
 
-      if (!isRunnerStage || !activeTask) {
+      const isManualScoringStage =
+        stage === "scoring_manual" && Boolean(activeManualTaskEntry);
+      const isCorrectionStage = stage === "correction" && Boolean(correctionActiveTask);
+      if (!(isRunnerStage && activeTask) && !isManualScoringStage && !isCorrectionStage) {
         return;
       }
 
       if (canTrigger(studyPrevCommand, studyBindings.prev)) {
         event.preventDefault();
-        if (activeTaskIndex > 0) {
+        if (stage === "scoring_manual") {
+          if (canGoManualScoringBack) {
+            handleManualScoringBack();
+          }
+        } else if (stage === "correction") {
+          if (correctionCanGoBack) {
+            handleCorrectionTaskBack();
+          }
+        } else if (activeTaskIndex > 0) {
           handleTaskBack();
         }
         return;
@@ -371,13 +415,35 @@ export const ExamSimulationPage = () => {
 
       if (canTrigger(studyNextCommand, studyBindings.next)) {
         event.preventDefault();
-        if (activeTaskIndex < runTasks.length - 1) {
+        if (stage === "scoring_manual") {
+          if (canGoManualScoringNext) {
+            handleManualScoringNext();
+          }
+        } else if (stage === "correction") {
+          if (correctionCanGoNext) {
+            handleCorrectionTaskNext();
+          }
+        } else if (activeTaskIndex < runTasks.length - 1) {
           handleTaskNext();
         }
         return;
       }
 
       if (!canTrigger(studySubmitCommand, studyBindings.submit)) {
+        return;
+      }
+      if (stage === "scoring_manual") {
+        if (canGoManualScoringNext) {
+          event.preventDefault();
+          handleManualScoringNext();
+        }
+        return;
+      }
+      if (stage === "correction") {
+        if (correctionCanGoNext) {
+          event.preventDefault();
+          handleCorrectionTaskNext();
+        }
         return;
       }
       if (activeTaskIndex < runTasks.length - 1) {
@@ -391,10 +457,21 @@ export const ExamSimulationPage = () => {
   }, [
     activeTask,
     activeTaskIndex,
+    activeManualTaskEntry,
+    canGoManualScoringBack,
+    canGoManualScoringNext,
+    correctionActiveTask,
+    correctionCanGoBack,
+    correctionCanGoNext,
+    handleManualScoringBack,
+    handleManualScoringNext,
+    handleCorrectionTaskBack,
+    handleCorrectionTaskNext,
     handleTaskBack,
     handleTaskNext,
     isRunnerStage,
     runTasks.length,
+    stage,
     studyBindings,
     viewBinding,
   ]);
@@ -434,160 +511,222 @@ export const ExamSimulationPage = () => {
               isEnabled={examTimerEnabled}
             />
           ) : null}
-          <section className="panel exam-panel">
-            <div className="exam-panel-toolbar">
-              <button
-                type="button"
-                className={`focus-toggle ${isViewMode ? "active" : ""}`}
-                onClick={() => setIsViewMode((prev) => !prev)}
-                aria-pressed={isViewMode}
-                aria-label={viewLabel}
-                title={viewLabel}
-                disabled={viewToggleDisabled}
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+          {stage === "idle" || isRunnerStage ? (
+            <section className="panel exam-panel">
+              <div className="exam-panel-toolbar">
+                <button
+                  type="button"
+                  className={`focus-toggle ${isViewMode ? "active" : ""}`}
+                  onClick={() => setIsViewMode((prev) => !prev)}
+                  aria-pressed={isViewMode}
+                  aria-label={viewLabel}
+                  title={viewLabel}
+                  disabled={viewToggleDisabled}
                 >
-                  <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-                  <circle cx="12" cy="12" r="3.5" />
-                </svg>
-              </button>
-            </div>
-            {mixSessionEnabled ? (
-              <div className="exam-mix-info">
-                <div className="exam-mix-info-header">
-                  <strong>
-                    Mix-Modus aktiv: {mixSessionExamFiles.length} Exams geladen
-                  </strong>
-                  <div className="exam-mix-actions">
-                    <span className="muted" title={mixSeed ?? undefined}>
-                      Seed: {mixSeed ?? "-"}
-                    </span>
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={handleReshuffleMix}
-                      disabled={!canReshuffleMix}
-                    >
-                      Neu mischen
-                    </button>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                    <circle cx="12" cy="12" r="3.5" />
+                  </svg>
+                </button>
+              </div>
+              {mixSessionEnabled ? (
+                <div className="exam-mix-info">
+                  <div className="exam-mix-info-header">
+                    <strong>
+                      Mix-Modus aktiv: {mixSessionExamFiles.length} Exams geladen
+                    </strong>
+                    <div className="exam-mix-actions">
+                      <span className="muted" title={mixSeed ?? undefined}>
+                        Seed: {mixSeed ?? "-"}
+                      </span>
+                      <button
+                        type="button"
+                        className="ghost small"
+                        onClick={handleReshuffleMix}
+                        disabled={!canReshuffleMix}
+                      >
+                        Neu mischen
+                      </button>
+                    </div>
+                  </div>
+                  <div className="exam-mix-stack" role="list" aria-label="Exam mix sources">
+                    {mixSessionExamFiles.map((file) => {
+                      const label = file.relative_path || file.path;
+                      return (
+                        <span
+                          key={file.path}
+                          className="exam-mix-segment"
+                          role="listitem"
+                          title={label}
+                        >
+                          {shortenExamLabel(label)}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="exam-mix-stack" role="list" aria-label="Exam mix sources">
-                  {mixSessionExamFiles.map((file) => {
-                    const label = file.relative_path || file.path;
-                    return (
-                      <span
-                        key={file.path}
-                        className="exam-mix-segment"
-                        role="listitem"
-                        title={label}
-                      >
-                        {shortenExamLabel(label)}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-            {stage === "idle" ? (
-              <div className="exam-overview">
-                <div className="exam-overview-body">
-                  {overviewTab === "ready" ? (
-                    <ExamIdlePanel
-                      selectedCount={selectedExamCount}
-                      previewState={selectedExamParseState}
-                      previewError={selectedExamParseError}
-                      examEmptyState={examEmptyState}
-                      availableTaskCount={previewExamParse.tasks.length}
-                      plannedTaskCount={plannedTaskCount}
-                      plannedMaxPoints={plannedMaxPoints}
-                      hasTaskCountMismatch={hasTaskCountMismatch}
-                      sessionInvalidationMessage={sessionInvalidationMessage}
-                      onStartExam={phaseButton.onClick}
-                      startDisabled={phaseButton.disabled}
-                      missingSettings={missingExamSettings}
-                      onOpenExamSettings={handleOpenExamSettings}
-                    />
-                  ) : (
-                    <ExamStatisticsPanel
-                      runs={examRuns}
-                      gradeScaleId={settings.examGradeScale}
-                      onDeleteRun={handleDeleteExamRun}
-                      deleteError={examRunDeleteError}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : isRunnerStage ? (
-                activeTask ? (
-                  <ExamTaskRunner
-                    task={activeTask}
-                    taskIndex={activeTaskIndex}
-                    taskCount={runTasks.length}
-                    maxPoints={activeTaskMaxPoints}
-                    phase={activePhase}
-                    partStates={activeTaskPartStates}
-                    awardedPoints={activeTaskAwardedPoints}
-                    autoGradeDecision={activeTaskAutoDecision}
-                    onOptionSelect={handleOptionSelect}
-                    onTrueFalseSelect={handleTrueFalseSelect}
-                    onClozeInputChange={handleClozeInputChange}
-                    onClozeTokenDrop={handleClozeTokenDrop}
-                    onClozeTokenRemove={handleClozeTokenRemove}
-                    onClozeTokenDragStart={handleClozeTokenDragStart}
-                    onBlankDragOver={handleClozeBlankDragOver}
-                    onTextInputChange={handleTextInputChange}
-                    onAwardedPointsChange={handleAwardedPointsChange}
-                    onAutoGradeDecision={handleAutoGradeDecision}
-                    onBack={handleTaskBack}
-                    onNext={handleTaskNext}
-                    canGoBack={activeTaskIndex > 0}
-                    canGoNext={activeTaskIndex < runTasks.length - 1}
-                    helpEnabled={settings.examHelpEnabled}
-                  />
-                ) : (
-                  <div className="empty-state">No tasks available for this exam.</div>
-                )
-              ) : stage === "finished" ? (
-                results ? (
-                  <>
-                    <section className="panel exam-panel">
-                      <div className="exam-overview">
-                        <div className="exam-overview-body">
-                          <ExamStatisticsPanel
-                            runs={examRuns}
-                            gradeScaleId={settings.examGradeScale}
-                            onDeleteRun={handleDeleteExamRun}
-                            deleteError={examRunDeleteError}
-                            showTabs={false}
-                          />
-                        </div>
-                      </div>
-                    </section>
-                    <section className="panel exam-panel">
-                      <ExamResultsPanel
-                        results={results}
-                        helpEnabled={settings.examHelpEnabled}
-                        onToggleTaskCardWrapper={handleResultTaskCardWrapperToggle}
-                        taskCardWrapPendingById={resultTaskCardWrapPendingById}
-                        taskCardWrapErrorById={resultTaskCardWrapErrorById}
-                        taskCardWrapNoticeById={resultTaskCardWrapNoticeById}
-                        getTaskCardWrapDisabledReason={getTaskCardWrapDisabledReason}
-                      />
-                    </section>
-                  </>
-                ) : (
-                  <div className="empty-state">No results available yet.</div>
-                )
               ) : null}
-          </section>
+              {stage === "idle" ? (
+                <div className="exam-overview">
+                  <div className="exam-overview-body">
+                    {overviewTab === "ready" ? (
+                      <ExamIdlePanel
+                        selectedCount={selectedExamCount}
+                        previewState={selectedExamParseState}
+                        previewError={selectedExamParseError}
+                        examEmptyState={examEmptyState}
+                        availableTaskCount={previewExamParse.tasks.length}
+                        plannedTaskCount={plannedTaskCount}
+                        plannedMaxPoints={plannedMaxPoints}
+                        hasTaskCountMismatch={hasTaskCountMismatch}
+                        sessionInvalidationMessage={sessionInvalidationMessage}
+                        onStartExam={phaseButton.onClick}
+                        startDisabled={phaseButton.disabled}
+                        missingSettings={missingExamSettings}
+                        onOpenExamSettings={handleOpenExamSettings}
+                      />
+                    ) : (
+                      <ExamStatisticsPanel
+                        runs={examRuns}
+                        gradeScaleId={settings.examGradeScale}
+                        onDeleteRun={handleDeleteExamRun}
+                        deleteError={examRunDeleteError}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : activeTask ? (
+                <ExamTaskRunner
+                  task={activeTask}
+                  taskIndex={activeTaskIndex}
+                  taskCount={runTasks.length}
+                  maxPoints={activeTaskMaxPoints}
+                  phase={activePhase}
+                  partStates={activeTaskPartStates}
+                  awardedPoints={activeTaskAwardedPoints}
+                  autoGradeDecision={activeTaskAutoDecision}
+                  onOptionSelect={handleOptionSelect}
+                  onTrueFalseSelect={handleTrueFalseSelect}
+                  onClozeInputChange={handleClozeInputChange}
+                  onClozeTokenDrop={handleClozeTokenDrop}
+                  onClozeTokenRemove={handleClozeTokenRemove}
+                  onClozeTokenDragStart={handleClozeTokenDragStart}
+                  onBlankDragOver={handleClozeBlankDragOver}
+                  onTextInputChange={handleTextInputChange}
+                  onAwardedPointsChange={handleAwardedPointsChange}
+                  onAutoGradeDecision={handleAutoGradeDecision}
+                  onBack={handleTaskBack}
+                  onNext={handleTaskNext}
+                  canGoBack={activeTaskIndex > 0}
+                  canGoNext={activeTaskIndex < runTasks.length - 1}
+                  helpEnabled={settings.examHelpEnabled}
+                />
+              ) : (
+                <div className="empty-state">No tasks available for this exam.</div>
+              )}
+            </section>
+          ) : null}
+          {stage === "scoring_manual" ? (
+            <ExamManualScoringPanel
+              task={activeManualTaskEntry}
+              helpEnabled={settings.examHelpEnabled}
+              finishDisabled={false}
+              canGoBack={canGoManualScoringBack}
+              canGoNext={canGoManualScoringNext}
+              onAwardedPointsChange={handleAwardedPointsChange}
+              onBack={handleManualScoringBack}
+              onNext={handleManualScoringNext}
+              onFinishScoring={handleFinishManualScoring}
+            />
+          ) : null}
+          {stage === "finish_scoring" ? (
+            results ? (
+              <section className="panel finish-scoring-panel">
+                <ExamResultsPanel
+                  results={results}
+                  helpEnabled={settings.examHelpEnabled}
+                  correctionAction={{
+                    label: "Correction",
+                    onClick: handleStartCorrection,
+                    disabled: !hasCorrectionCandidates,
+                    title: hasCorrectionCandidates ? undefined : "No incorrect cards",
+                  }}
+                  onToggleTaskCardWrapper={handleResultTaskCardWrapperToggle}
+                  taskCardWrapPendingById={resultTaskCardWrapPendingById}
+                  taskCardWrapErrorById={resultTaskCardWrapErrorById}
+                  taskCardWrapNoticeById={resultTaskCardWrapNoticeById}
+                  getTaskCardWrapDisabledReason={getTaskCardWrapDisabledReason}
+                />
+              </section>
+            ) : (
+              <section className="panel finish-scoring-panel">
+                <div className="empty-state">No results available yet.</div>
+              </section>
+            )
+          ) : null}
+          {stage === "correction" ? (
+            <ExamCorrectionHost
+              task={correctionActiveTask}
+              queueIndex={correctionActiveEntry?.queueIndex ?? 0}
+              queueLength={correctionQueueLength || incorrectTaskResults.length}
+              maxPoints={correctionActiveMaxPoints}
+              partStates={correctionActivePartStates}
+              submitted={correctionActiveSubmitted}
+              canGoBack={correctionCanGoBack}
+              canGoNext={correctionCanGoNext}
+              helpEnabled={settings.examHelpEnabled}
+              onOptionSelect={handleCorrectionOptionSelect}
+              onTrueFalseSelect={handleCorrectionTrueFalseSelect}
+              onClozeInputChange={handleCorrectionClozeInputChange}
+              onClozeTokenDrop={handleCorrectionClozeTokenDrop}
+              onClozeTokenRemove={handleCorrectionClozeTokenRemove}
+              onTextInputChange={handleCorrectionTextInputChange}
+              onSubmit={handleCorrectionSubmit}
+              onBack={handleCorrectionTaskBack}
+              onNext={handleCorrectionTaskNext}
+              onBackToResults={handleBackToFinishScoring}
+            />
+          ) : null}
+          {stage === "finished" ? (
+            results ? (
+              <>
+                <section className="panel exam-panel">
+                  <div className="exam-overview">
+                    <div className="exam-overview-body">
+                      <ExamStatisticsPanel
+                        runs={examRuns}
+                        gradeScaleId={settings.examGradeScale}
+                        onDeleteRun={handleDeleteExamRun}
+                        deleteError={examRunDeleteError}
+                        showTabs={false}
+                      />
+                    </div>
+                  </div>
+                </section>
+                <section className="panel exam-panel">
+                  <ExamResultsPanel
+                    results={results}
+                    helpEnabled={settings.examHelpEnabled}
+                    onToggleTaskCardWrapper={handleResultTaskCardWrapperToggle}
+                    taskCardWrapPendingById={resultTaskCardWrapPendingById}
+                    taskCardWrapErrorById={resultTaskCardWrapErrorById}
+                    taskCardWrapNoticeById={resultTaskCardWrapNoticeById}
+                    getTaskCardWrapDisabledReason={getTaskCardWrapDisabledReason}
+                  />
+                </section>
+              </>
+            ) : (
+              <div className="empty-state">No results available yet.</div>
+            )
+          ) : null}
         </div>
         <div className="exam-sidebar">
           <UserToolsPanel

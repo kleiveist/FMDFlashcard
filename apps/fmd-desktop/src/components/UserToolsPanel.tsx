@@ -10,15 +10,18 @@
  */
 
 import { CollapsiblePanelHeader } from "./CollapsiblePanelHeader";
+import type { ExamStage } from "../pages/exam-simulation/examSimulationTypes";
 
 export type ExamStageControls = {
-  stage: "idle" | "running" | "review" | "scoring" | "finished";
+  stage: ExamStage;
   canStartExam: boolean;
-  finishPending?: boolean;
+  phaseDisabled?: boolean;
   onStartExam: () => void;
   onSubmitExam: () => void;
   onStartScoring: () => void;
-  onFinishScoring: () => void;
+  onFinishManualScoring: () => void;
+  onFinalizeExam: () => void;
+  onBackToResults: () => void;
   onResetExam: () => void;
 };
 
@@ -53,21 +56,33 @@ export const resolveExamPhaseButton = (
       };
     case "review":
       return {
-        label: "Exam",
+        label: "Proceed to Scoring",
         onClick: examStageControls.onStartScoring,
         disabled: false,
       };
-    case "scoring":
+    case "scoring_manual":
       return {
-        label: "Grading",
-        onClick: examStageControls.onFinishScoring,
-        disabled: Boolean(examStageControls.finishPending),
+        label: "Finish Scoring",
+        onClick: examStageControls.onFinishManualScoring,
+        disabled: Boolean(examStageControls.phaseDisabled),
+      };
+    case "finish_scoring":
+      return {
+        label: "Finish",
+        onClick: examStageControls.onFinalizeExam,
+        disabled: Boolean(examStageControls.phaseDisabled),
+      };
+    case "correction":
+      return {
+        label: "Back to Results",
+        onClick: examStageControls.onBackToResults,
+        disabled: false,
       };
     case "finished":
     default:
       return {
-        label: "Grading",
-        onClick: examStageControls.onFinishScoring,
+        label: "Results",
+        onClick: examStageControls.onFinalizeExam,
         disabled: true,
       };
   }
@@ -244,6 +259,9 @@ export const UserToolsPanel = ({
   const phaseButton = examStageControls
     ? resolveExamPhaseButton(examStageControls)
     : null;
+  const primaryButton = examStageControls
+    ? resolveExamPrimaryButton(examStageControls)
+    : null;
 
   return (
     <section className="panel sr-user-panel">
@@ -273,20 +291,22 @@ export const UserToolsPanel = ({
               <>
                 <button
                   type="button"
-                  className="primary small"
-                  onClick={phaseButton.onClick}
-                  disabled={phaseButton.disabled}
+                  className={`${primaryButton?.variant ?? "primary"} small`}
+                  onClick={(primaryButton ?? phaseButton).onClick}
+                  disabled={(primaryButton ?? phaseButton).disabled}
                 >
-                  {phaseButton.label}
+                  {(primaryButton ?? phaseButton).label}
                 </button>
-                <button
-                  type="button"
-                  className="ghost small"
-                  onClick={examStageControls?.onResetExam}
-                  aria-label="Reset session"
-                >
-                  Reset
-                </button>
+                {examStageControls?.stage !== "finished" ? (
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={examStageControls?.onResetExam}
+                    aria-label="Reset session"
+                  >
+                    Reset
+                  </button>
+                ) : null}
               </>
             ) : (
               <>
@@ -313,11 +333,11 @@ export const UserToolsPanel = ({
             )}
           </div>
         </div>
-      <UserRegistryControls
-        spacedRepetition={spacedRepetition}
-        handleDeleteOpen={handleDeleteOpen}
-      />
-    </div>
+        <UserRegistryControls
+          spacedRepetition={spacedRepetition}
+          handleDeleteOpen={handleDeleteOpen}
+        />
+      </div>
     </section>
   );
 };

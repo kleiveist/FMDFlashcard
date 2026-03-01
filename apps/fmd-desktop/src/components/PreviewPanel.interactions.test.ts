@@ -29,6 +29,7 @@ vi.mock("@tauri-apps/plugin-opener", () => ({
 }));
 
 const openUrlMock = vi.mocked(openUrl);
+const originalMatchMedia = window.matchMedia;
 
 const baseFile: VaultFile = {
   path: "/vault/Note.md",
@@ -51,6 +52,23 @@ const render = (element: ReactElement) => {
       container.remove();
     },
   };
+};
+
+const mockMatchMedia = (matches: boolean) => {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
 };
 
 const buildHarness = (
@@ -136,6 +154,11 @@ afterEach(() => {
     cleanup();
     cleanup = null;
   }
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: originalMatchMedia,
+  });
   openUrlMock.mockClear();
 });
 
@@ -428,6 +451,139 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(editor).toBeTruthy();
     expect(panelWhileEditing).toBeTruthy();
     expect(panelWhileEditing?.textContent ?? "").toContain("title");
+  });
+
+  it("toggles the properties panel on desktop", () => {
+    mockMatchMedia(false);
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "title: Demo", "---", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const collapseButton = container.querySelector(
+      'button[aria-label="Eigenschaften einklappen"]',
+    ) as HTMLButtonElement | null;
+    expect(collapseButton).toBeTruthy();
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+
+    act(() => {
+      collapseButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+
+    const expandButton = container.querySelector(
+      'button[aria-label="Eigenschaften aufklappen"]',
+    ) as HTMLButtonElement | null;
+    expect(expandButton).toBeTruthy();
+
+    act(() => {
+      expandButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+  });
+
+  it("starts collapsed on mobile and opens/closes via the collapse button", () => {
+    mockMatchMedia(true);
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "title: Demo", "---", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+
+    const expandButton = container.querySelector(
+      'button[aria-label="Eigenschaften aufklappen"]',
+    ) as HTMLButtonElement | null;
+    expect(expandButton).toBeTruthy();
+
+    act(() => {
+      expandButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+
+    const collapseButton = container.querySelector(
+      'button[aria-label="Eigenschaften einklappen"]',
+    ) as HTMLButtonElement | null;
+    expect(collapseButton).toBeTruthy();
+
+    act(() => {
+      collapseButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+  });
+
+  it("toggles the mobile properties panel via the title button", () => {
+    mockMatchMedia(true);
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "title: Demo", "---", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const titleButton = container.querySelector(
+      ".frontmatter-title-button",
+    ) as HTMLButtonElement | null;
+    expect(titleButton).toBeTruthy();
+    expect(titleButton?.getAttribute("aria-expanded")).toBe("false");
+
+    act(() => {
+      titleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(titleButton?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+
+    act(() => {
+      titleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(titleButton?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+  });
+
+  it("keeps the mobile properties toggle interactive after entering markdown edit mode", () => {
+    mockMatchMedia(true);
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["---", "title: Demo", "---", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const titleButton = container.querySelector(
+      ".frontmatter-title-button",
+    ) as HTMLButtonElement | null;
+    expect(titleButton).toBeTruthy();
+
+    act(() => {
+      titleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    expect(container.querySelector(".preview.preview-editor.markdown")).toBeTruthy();
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
+
+    const editModeTitleButton = container.querySelector(
+      ".frontmatter-title-button",
+    ) as HTMLButtonElement | null;
+    expect(editModeTitleButton).toBeTruthy();
+
+    act(() => {
+      editModeTitleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector(".frontmatter-grid")).toBeNull();
+
+    const reopenedTitleButton = container.querySelector(
+      ".frontmatter-title-button",
+    ) as HTMLButtonElement | null;
+    expect(reopenedTitleButton).toBeTruthy();
+
+    act(() => {
+      reopenedTitleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector(".frontmatter-grid")).toBeTruthy();
   });
 
   it("applies edited heading level after leaving the heading line", async () => {

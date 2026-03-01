@@ -21,7 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { type DragEvent } from "react";
+import { type DragEvent, type ReactNode } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
@@ -29,7 +29,7 @@ import { HelpButton, hasHelpContent } from "../../../components/HelpButton";
 
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
 
-type ExamTaskPhase = "exam" | "review" | "scoring";
+type ExamTaskPhase = "exam" | "review" | "scoring" | "correction";
 type ExamTaskWithSource = ExamTask & {
   sourceTitle?: string;
   originalTaskNumber?: number;
@@ -81,6 +81,7 @@ type ExamTaskRunnerProps = {
   helpEnabled?: boolean;
   showNavigation?: boolean;
   scoringReadOnly?: boolean;
+  headerActions?: ReactNode;
 };
 
 const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
@@ -121,9 +122,12 @@ export const ExamTaskRunner = ({
   helpEnabled = false,
   showNavigation = true,
   scoringReadOnly = false,
+  headerActions,
 }: ExamTaskRunnerProps) => {
-  const isScoring = phase === "scoring";
-  const canRevealOfficialSolution = phase === "review" || phase === "scoring";
+  const isCorrection = phase === "correction";
+  const isScoringLike = phase === "scoring" || phase === "correction";
+  const canRevealOfficialSolution =
+    phase === "review" || phase === "scoring" || phase === "correction";
   const isAutoGraded = task.gradingMode === "auto";
   const taskIsCorrect = isAutoGraded ? isTaskCorrect(task, partStates) : false;
   const effectiveAutoDecision = isAutoGraded
@@ -138,8 +142,15 @@ export const ExamTaskRunner = ({
     }
     return effectiveAutoDecision ? maxPoints : 0;
   })();
-  const phaseLabel = phase === "exam" ? "EXAM" : phase === "review" ? "REVIEW" : "SCORING";
-  const inputLocked = phase !== "exam";
+  const phaseLabel =
+    phase === "exam"
+      ? "EXAM"
+      : phase === "review"
+        ? "REVIEW"
+        : phase === "scoring"
+          ? "SCORING"
+          : "CORRECTION";
+  const inputLocked = phase === "review" || phase === "scoring";
   const hasHelp = helpEnabled && hasHelpContent(task.helpText);
 
   return (
@@ -155,6 +166,9 @@ export const ExamTaskRunner = ({
             </span>
           ) : null}
         </div>
+        {headerActions ? (
+          <div className="exam-task-header-actions">{headerActions}</div>
+        ) : null}
       </header>
 
       {task.warnings.length > 0 ? (
@@ -162,6 +176,13 @@ export const ExamTaskRunner = ({
           {task.warnings.map((warning) => (
             <div key={warning.message}>{warning.message}</div>
           ))}
+        </div>
+      ) : null}
+
+      {isCorrection ? (
+        <div className="exam-correction-banner">
+          <strong>Correction Mode</strong>
+          <span className="muted">Update your answers and return to results.</span>
         </div>
       ) : null}
 
@@ -189,7 +210,7 @@ export const ExamTaskRunner = ({
         onSubmit={noopSubmit}
       />
 
-      {isScoring && isAutoGraded ? (
+      {isScoringLike && isAutoGraded ? (
         <>
           <div className="exam-points-row">
             <span className="label">RESULT</span>
@@ -213,7 +234,7 @@ export const ExamTaskRunner = ({
         </>
       ) : null}
 
-      {isScoring && !isAutoGraded ? (
+      {isScoringLike && !isAutoGraded ? (
         <div className="exam-points-row">
           <span className="label">AWARDED</span>
           <div className="exam-points-input">

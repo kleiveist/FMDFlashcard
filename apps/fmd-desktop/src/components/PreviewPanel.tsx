@@ -5611,11 +5611,13 @@ export const PreviewPanel = ({
   const scrollStateRef = useRef({ top: 0, left: 0 });
   const lastCaretIndexRef = useRef<number | null>(null);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
-  const [isFrontmatterPanelCollapsed, setIsFrontmatterPanelCollapsed] = useState(false);
+  const [userFrontmatterCollapsed, setUserFrontmatterCollapsed] = useState<boolean | null>(
+    null,
+  );
   const [isHybridEditModeActive, setIsHybridEditModeActive] = useState(true);
-  const forceCollapsedFrontmatter = useMediaQuery("(max-width: 980px)", false);
+  const isNarrowFrontmatterViewport = useMediaQuery("(max-width: 980px)", false);
   const effectiveFrontmatterPanelCollapsed =
-    forceCollapsedFrontmatter || isFrontmatterPanelCollapsed;
+    userFrontmatterCollapsed ?? isNarrowFrontmatterViewport;
 
   const previewFrontmatter = useMemo(
     () => parseFrontmatterDocument(preview),
@@ -6466,11 +6468,10 @@ export const PreviewPanel = ({
       !hasFrontmatterError,
   );
   const handleToggleFrontmatterPanelCollapsed = useCallback(() => {
-    if (forceCollapsedFrontmatter) {
-      return;
-    }
-    setIsFrontmatterPanelCollapsed((current) => !current);
-  }, [forceCollapsedFrontmatter]);
+    setUserFrontmatterCollapsed(
+      (current) => !(current ?? isNarrowFrontmatterViewport),
+    );
+  }, [isNarrowFrontmatterViewport]);
 
   useEffect(() => {
     if (!isEditing) {

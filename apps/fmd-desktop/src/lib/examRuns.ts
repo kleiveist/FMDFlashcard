@@ -37,6 +37,10 @@ export type ExamRun = {
   percent: number;
   passed: boolean;
   grade: string | null;
+  correctedAchievedPoints?: number | null;
+  correctedPercent?: number | null;
+  correctedPassed?: boolean | null;
+  correctedGrade?: string | null;
   gradeScaleId: ExamGradeScaleId;
   pointsProfileId?: string | null;
   pointsProfileName?: string | null;

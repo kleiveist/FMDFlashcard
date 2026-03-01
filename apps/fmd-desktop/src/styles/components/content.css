@@ -1508,6 +1508,14 @@ body.focus-mode .spaced-repetition-sidebar {
   min-width: 0;
 }
 
+.exam-task-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
 .exam-task-source-badge {
   display: inline-flex;
   margin-top: 6px;
@@ -1539,6 +1547,16 @@ body.focus-mode .spaced-repetition-sidebar {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.exam-correction-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--accent-border);
+  background: color-mix(in srgb, var(--accent-soft) 18%, var(--panel));
 }
 
 .exam-start-blocked {
@@ -1622,6 +1640,44 @@ body.focus-mode .spaced-repetition-sidebar {
   gap: 16px;
 }
 
+.scoring-panel,
+.finish-scoring-panel,
+.correction-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scoring-panel-header,
+.correction-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.scoring-manual-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.scoring-manual-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--panel) 92%, var(--chip-bg));
+}
+
+.correction-pagination {
+  justify-content: flex-end;
+}
+
 .exam-results-task-trigger {
   appearance: none;
   width: 100%;
@@ -1648,9 +1704,16 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-results-summary {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: stretch;
   gap: 16px;
+}
+
+.exam-results-summary-group {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 12px 16px;
   border-radius: 16px;
   border: 1px solid var(--line-soft);
@@ -1666,6 +1729,18 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-results-percent {
   font-size: 1.5rem;
   font-weight: 700;
+}
+
+.exam-results-task-scores {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exam-results-task-score-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .exam-results-task-modal-panel {

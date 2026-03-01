@@ -21,36 +21,20 @@
 
 import { useMemo, useState, type DragEvent } from "react";
 import { ModalShell } from "../../../components/ModalShell";
-import type { CompositePartState, TrueFalseSelection } from "../../../features/flashcards/logic";
+import type { TrueFalseSelection } from "../../../features/flashcards/logic";
 import { ExamTaskRunner } from "./ExamTaskRunner";
 import type { ExamSessionTask } from "../../../lib/examMixedSession";
-
-type ExamTaskBreakdown = {
-  index: number;
-  sessionTaskId: string;
-  sourceTitle: string;
-  originalTaskNumber: number;
-  awardedPoints: number;
-  maxPoints: number;
-  isCorrect: boolean | null;
-  detail: {
-    task: ExamSessionTask;
-    partStates: CompositePartState[];
-    awardedPoints: number | null;
-    autoGradeDecision?: boolean;
-  };
-};
-
-type ExamResults = {
-  breakdown: ExamTaskBreakdown[];
-  totalAwarded: number;
-  totalMax: number;
-  percentage: number;
-};
+import type { ExamResults } from "../examSimulationTypes";
 
 type ExamResultsPanelProps = {
   results: ExamResults;
   helpEnabled?: boolean;
+  correctionAction?: {
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    title?: string;
+  } | null;
   onToggleTaskCardWrapper: (sessionTaskId: string, nextWrapped: boolean) => void;
   taskCardWrapPendingById: Record<string, boolean>;
   taskCardWrapErrorById: Record<string, string>;
@@ -109,6 +93,7 @@ const noopNav = () => {};
 export const ExamResultsPanel = ({
   results,
   helpEnabled = false,
+  correctionAction = null,
   onToggleTaskCardWrapper,
   taskCardWrapPendingById,
   taskCardWrapErrorById,
@@ -145,16 +130,32 @@ export const ExamResultsPanel = ({
         <div>
           <p className="eyebrow">RESULTS</p>
           <h2>Exam results</h2>
-          <p className="muted">Final score and per-task breakdown.</p>
+          <p className="muted">Current score and per-task breakdown.</p>
         </div>
+        {correctionAction ? (
+          <div className="exam-task-header-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={correctionAction.onClick}
+              disabled={correctionAction.disabled}
+              title={correctionAction.title}
+            >
+              {correctionAction.label}
+            </button>
+          </div>
+        ) : null}
       </header>
 
       <div className="exam-results-summary">
-        <div className="exam-results-score">
-          <span className="value">{results.totalAwarded}</span>
-          <span className="muted">/ {results.totalMax} points</span>
+        <div className="exam-results-summary-group">
+          <span className="label">Score</span>
+          <div className="exam-results-score">
+            <span className="value">{results.totalAwarded}</span>
+            <span className="muted">/ {results.totalMax} points</span>
+          </div>
+          <div className="exam-results-percent">{results.percentage}%</div>
         </div>
-        <div className="exam-results-percent">{results.percentage}%</div>
       </div>
 
       <div className="status-list">
@@ -171,9 +172,11 @@ export const ExamResultsPanel = ({
             >
               <div className="status-row">
                 <span>Task {item.index}</span>
-                <span>
-                  {item.awardedPoints} / {item.maxPoints}
-                </span>
+                <div className="exam-results-task-scores">
+                  <span>
+                    {item.awardedPoints} / {item.maxPoints}
+                  </span>
+                </div>
               </div>
               <div className="muted">
                 Quelle: {item.sourceTitle} (#{item.originalTaskNumber})

@@ -40,6 +40,7 @@ import {
   buildExamRunId,
   calculateExamPercent,
   isExamPassed,
+  resolveExamGrade,
   resolveExamStatusDescriptor,
   subscribeExamRunHistoryReset,
   sortExamRunsByDateDesc,
@@ -82,13 +83,12 @@ import {
 } from "../../../features/user-vault/storage";
 import { resolveExamTaskFrontmatterValue } from "../../../features/exam-points/frontmatterTask";
 import { upsertExamResultStatsFrontmatter } from "../../../features/exam-results/frontmatterStats";
-
-type ExamStage =
-  | "idle"
-  | "running"
-  | "review"
-  | "scoring"
-  | "finished";
+import type {
+  ExamCorrectionState,
+  ExamManualTaskEntry,
+  ExamResults,
+  ExamStage,
+} from "../examSimulationTypes";
 
 type ExamSettingsSnapshot = {
   maxTotalPoints: number;
@@ -98,22 +98,6 @@ type ExamSettingsSnapshot = {
   timeLimitEnabled: boolean;
   aiEvaluation: ExamAiEvaluation;
   pointsProfileAssignments: ExamRunPointsProfileAssignment[];
-};
-
-type ExamTaskResult = {
-  index: number;
-  sessionTaskId: string;
-  sourceTitle: string;
-  originalTaskNumber: number;
-  awardedPoints: number;
-  maxPoints: number;
-  isCorrect: boolean | null;
-  detail: {
-    task: ExamSessionTask;
-    partStates: CompositePartState[];
-    awardedPoints: number | null;
-    autoGradeDecision?: boolean;
-  };
 };
 
 type SelectedExamParseEntry = {
@@ -176,6 +160,10 @@ const resolveDurationFromProfileAssignments = (
 const isAutoGradedTask = (task: ExamTask) =>
   task.gradingMode === "auto";
 
+const requiresAwardedQaScoring = (task: ExamSessionTask) =>
+  (task.gradingMode === "manual" || task.gradingMode === "hybrid") &&
+  (task.card.primaryType === "qa" || task.card.detectedTypes?.includes("qa") === true);
+
 const isTaskCorrect = (
   task: ExamTask,
   states: CompositePartState[] | undefined,
@@ -213,6 +201,7 @@ export const useExamSimulationViewModel = () => {
   const [mixSeed, setMixSeed] = useState<string>(() => createMixSeed());
   const [sessionInvalidationMessage, setSessionInvalidationMessage] = useState("");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
+  const [manualScoringIndex, setManualScoringIndex] = useState(0);
   const [activeExamTasks, setActiveExamTasks] = useState<ExamSessionTask[]>([]);
   const [activeExamFiles, setActiveExamFiles] = useState<VaultFile[]>([]);
   const [activeMixSeed, setActiveMixSeed] = useState<string | null>(null);
@@ -228,6 +217,9 @@ export const useExamSimulationViewModel = () => {
   const [autoGradeDecisions, setAutoGradeDecisions] = useState<
     Record<number, boolean>
   >({});
+  const [correctionState, setCorrectionState] = useState<ExamCorrectionState | null>(
+    null,
+  );
   const [resultTaskCardWrapPendingById, setResultTaskCardWrapPendingById] = useState<
     Record<string, boolean>
   >({});
@@ -668,6 +660,54 @@ export const useExamSimulationViewModel = () => {
     activeExamSettings ? activeExamSettings.taskPoints : previewTaskPlan.taskPoints
   ).slice(0, activeTaskCount);
   const runMaxPoints = runTaskPoints.reduce((sum, value) => sum + value, 0);
+  const manualTaskIndices = useMemo(
+    () =>
+      runTasks
+        .map((task, index) => ({ task, index }))
+        .filter(({ task }) => requiresAwardedQaScoring(task))
+        .map(({ index }) => index),
+    [runTasks],
+  );
+  const manualTaskEntries = useMemo<ExamManualTaskEntry[]>(
+    () =>
+      manualTaskIndices.flatMap((taskIndex, manualIndex) => {
+        const task = runTasks[taskIndex];
+        if (!task) {
+          return [];
+        }
+        return [
+          {
+            task,
+            taskIndex,
+            manualIndex,
+            manualCount: manualTaskIndices.length,
+            maxPoints: runTaskPoints[taskIndex] ?? 0,
+            partStates: partStates[taskIndex] ?? [],
+            awardedPoints: awardedPoints[taskIndex] ?? null,
+          },
+        ];
+      }),
+    [awardedPoints, manualTaskIndices, partStates, runTaskPoints, runTasks],
+  );
+  const manualScoringComplete = manualTaskEntries.every(
+    (entry) => entry.awardedPoints !== null,
+  );
+  const activeManualTaskEntry =
+    manualTaskEntries[manualScoringIndex] ?? null;
+  const canGoManualScoringBack = manualScoringIndex > 0;
+  const canGoManualScoringNext = manualScoringIndex < manualTaskEntries.length - 1;
+
+  useEffect(() => {
+    if (manualTaskEntries.length === 0) {
+      if (manualScoringIndex !== 0) {
+        setManualScoringIndex(0);
+      }
+      return;
+    }
+    if (manualScoringIndex > manualTaskEntries.length - 1) {
+      setManualScoringIndex(manualTaskEntries.length - 1);
+    }
+  }, [manualScoringIndex, manualTaskEntries.length]);
 
   const activeTask = runTasks[activeTaskIndex] ?? null;
   const activeTaskMaxPoints = runTaskPoints[activeTaskIndex] ?? 0;
@@ -733,6 +773,7 @@ export const useExamSimulationViewModel = () => {
   const resetExamState = useCallback(() => {
     setStage("idle");
     setActiveTaskIndex(0);
+    setManualScoringIndex(0);
     setActiveExamTasks([]);
     setActiveExamFiles([]);
     setActiveMixSeed(null);
@@ -740,6 +781,7 @@ export const useExamSimulationViewModel = () => {
     setPartStates({});
     setAwardedPoints({});
     setAutoGradeDecisions({});
+    setCorrectionState(null);
     setResultTaskCardWrapPendingById({});
     setResultTaskCardWrapErrorById({});
     setResultTaskCardWrapNoticeById({});
@@ -835,9 +877,11 @@ export const useExamSimulationViewModel = () => {
     setActiveSettings(snapshot);
     setStage("running");
     setActiveTaskIndex(0);
+    setManualScoringIndex(0);
     setPartStates({});
     setAwardedPoints({});
     setAutoGradeDecisions({});
+    setCorrectionState(null);
     setResultTaskCardWrapPendingById({});
     setResultTaskCardWrapErrorById({});
     setResultTaskCardWrapNoticeById({});
@@ -963,11 +1007,35 @@ export const useExamSimulationViewModel = () => {
     if (stage !== "review") {
       return;
     }
-    setStage("scoring");
+    setManualScoringIndex(0);
+    setStage(manualTaskIndices.length > 0 ? "scoring_manual" : "finish_scoring");
+  }, [manualTaskIndices.length, stage]);
+
+  const handleFinishManualScoring = useCallback(() => {
+    if (stage !== "scoring_manual") {
+      return;
+    }
+    setAwardedPoints((prev) => {
+      const next = { ...prev };
+      manualTaskEntries.forEach((entry) => {
+        if (next[entry.taskIndex] === null || next[entry.taskIndex] === undefined) {
+          next[entry.taskIndex] = 0;
+        }
+      });
+      return next;
+    });
+    setStage("finish_scoring");
+  }, [manualTaskEntries, stage]);
+
+  const handleBackToFinishScoring = useCallback(() => {
+    if (stage !== "correction") {
+      return;
+    }
+    setStage("finish_scoring");
   }, [stage]);
 
-  const handleFinishScoring = useCallback(() => {
-    if (stage !== "scoring") {
+  const handleFinalizeExam = useCallback(() => {
+    if (stage !== "finish_scoring") {
       return;
     }
     setStage("finished");
@@ -1098,7 +1166,7 @@ export const useExamSimulationViewModel = () => {
 
   const handleAwardedPointsChange = useCallback(
     (taskIndex: number, value: string, maxPoints: number) => {
-      if (stage !== "scoring") {
+      if (stage !== "scoring_manual") {
         return;
       }
       if (value.trim() === "") {
@@ -1117,7 +1185,7 @@ export const useExamSimulationViewModel = () => {
 
   const handleAutoGradeDecision = useCallback(
     (taskIndex: number, decision: boolean) => {
-      if (stage !== "scoring") {
+      if (stage !== "scoring_manual") {
         return;
       }
       setAutoGradeDecisions((prev) => ({ ...prev, [taskIndex]: decision }));
@@ -1138,95 +1206,322 @@ export const useExamSimulationViewModel = () => {
     );
   }, [runTasks.length]);
 
-  const results = useMemo(() => {
-    if (!activeExamSettings || runTasks.length === 0 || stage !== "finished") {
-      return null;
-    }
+  const handleManualScoringBack = useCallback(() => {
+    setManualScoringIndex((prev) => Math.max(0, prev - 1));
+  }, []);
 
-    const breakdown: ExamTaskResult[] = runTasks.map((task, index) => {
-      const maxPoints = runTaskPoints[index] ?? 0;
-      const taskPartStates = partStates[index] ?? [];
-      if (isAutoGradedTask(task)) {
-        const isCorrect = isTaskCorrect(task, taskPartStates);
-        const overrideDecision = autoGradeDecisions[index];
-        const decidedCorrect = overrideDecision ?? isCorrect;
-        const taskTypePointsSource = resolveTaskTypePointsSourceMap(task);
-        const autoAwarded = (() => {
-          if (typeof overrideDecision === "boolean") {
-            return overrideDecision ? maxPoints : 0;
-          }
-          if (!taskTypePointsSource) {
-            return isCorrect ? maxPoints : 0;
-          }
-          const summed = task.card.parts.reduce((sum, part, partIndex) => {
-            const result = evaluateFlashcardPartResult(part, taskPartStates[partIndex] ?? {});
-            if (result !== "correct") {
-              return sum;
+  const handleManualScoringNext = useCallback(() => {
+    if (manualTaskEntries.length === 0) {
+      return;
+    }
+    setManualScoringIndex((prev) =>
+      Math.min(manualTaskEntries.length - 1, prev + 1),
+    );
+  }, [manualTaskEntries.length]);
+
+  const buildResultsFromAttempt = useCallback(
+    (
+      taskStates: Record<number, CompositePartState[]>,
+      taskAwardedPoints: Record<number, number | null>,
+      taskAutoGradeDecisions: Record<number, boolean>,
+    ): ExamResults | null => {
+      if (!activeExamSettings || runTasks.length === 0) {
+        return null;
+      }
+
+      const breakdown = runTasks.map((task, index) => {
+        const maxPoints = runTaskPoints[index] ?? 0;
+        const currentTaskPartStates = taskStates[index] ?? [];
+        if (isAutoGradedTask(task)) {
+          const isCorrect = isTaskCorrect(task, currentTaskPartStates);
+          const overrideDecision = taskAutoGradeDecisions[index];
+          const decidedCorrect = overrideDecision ?? isCorrect;
+          const taskTypePointsSource = resolveTaskTypePointsSourceMap(task);
+          const autoAwarded = (() => {
+            if (typeof overrideDecision === "boolean") {
+              return overrideDecision ? maxPoints : 0;
             }
-            const type = resolveFlashcardPartAutoCardType(part);
-            if (!type) {
-              return sum;
+            if (!taskTypePointsSource) {
+              return isCorrect ? maxPoints : 0;
             }
-            return sum + Math.max(0, Math.floor(taskTypePointsSource[type] ?? 0));
-          }, 0);
-          return clampNumber(summed, 0, maxPoints);
-        })();
+            const summed = task.card.parts.reduce((sum, part, partIndex) => {
+              const result = evaluateFlashcardPartResult(
+                part,
+                currentTaskPartStates[partIndex] ?? {},
+              );
+              if (result !== "correct") {
+                return sum;
+              }
+              const type = resolveFlashcardPartAutoCardType(part);
+              if (!type) {
+                return sum;
+              }
+              return sum + Math.max(0, Math.floor(taskTypePointsSource[type] ?? 0));
+            }, 0);
+            return clampNumber(summed, 0, maxPoints);
+          })();
+          return {
+            index: index + 1,
+            sessionTaskId: task.sessionTaskId,
+            sourceTitle: task.sourceTitle,
+            originalTaskNumber: task.originalTaskNumber,
+            awardedPoints: autoAwarded,
+            maxPoints,
+            isCorrect: decidedCorrect,
+            detail: {
+              task,
+              partStates: currentTaskPartStates,
+              awardedPoints: autoAwarded,
+              autoGradeDecision: overrideDecision,
+            },
+          };
+        }
+        const awarded = normalizeAwardedPoints(taskAwardedPoints[index] ?? null, maxPoints);
         return {
           index: index + 1,
           sessionTaskId: task.sessionTaskId,
           sourceTitle: task.sourceTitle,
           originalTaskNumber: task.originalTaskNumber,
-          awardedPoints: autoAwarded,
+          awardedPoints: awarded,
           maxPoints,
-          isCorrect: decidedCorrect,
+          isCorrect: null,
           detail: {
             task,
-            partStates: taskPartStates,
-            awardedPoints: autoAwarded,
-            autoGradeDecision: overrideDecision,
+            partStates: currentTaskPartStates,
+            awardedPoints: awarded,
           },
         };
-      }
-      const awarded = normalizeAwardedPoints(awardedPoints[index] ?? null, maxPoints);
+      });
+
+      const totalAwarded = breakdown.reduce(
+        (sum, item) => sum + item.awardedPoints,
+        0,
+      );
+      const totalMax = breakdown.reduce((sum, item) => sum + item.maxPoints, 0);
+      const percentage = totalMax > 0 ? Math.round((totalAwarded / totalMax) * 100) : 0;
+
       return {
-        index: index + 1,
-        sessionTaskId: task.sessionTaskId,
-        sourceTitle: task.sourceTitle,
-        originalTaskNumber: task.originalTaskNumber,
-        awardedPoints: awarded,
-        maxPoints,
-        isCorrect: null,
-        detail: {
-          task,
-          partStates: taskPartStates,
-          awardedPoints: awarded,
-        },
+        breakdown,
+        totalAwarded,
+        totalMax,
+        percentage,
       };
+    },
+    [
+      activeExamSettings,
+      resolveTaskTypePointsSourceMap,
+      runTaskPoints,
+      runTasks,
+    ],
+  );
+
+  const canShowResults =
+    Boolean(activeExamSettings) &&
+    runTasks.length > 0 &&
+    (stage === "scoring_manual" ||
+      stage === "finish_scoring" ||
+      stage === "correction" ||
+      stage === "finished");
+
+  const results = useMemo(
+    () =>
+      canShowResults
+        ? buildResultsFromAttempt(partStates, awardedPoints, autoGradeDecisions)
+        : null,
+    [
+      autoGradeDecisions,
+      awardedPoints,
+      buildResultsFromAttempt,
+      canShowResults,
+      partStates,
+    ],
+  );
+  const incorrectTaskResults = useMemo(
+    () => results?.breakdown.filter((item) => item.isCorrect === false) ?? [],
+    [results],
+  );
+
+  const handleStartCorrection = useCallback(() => {
+    if (stage !== "finish_scoring" || incorrectTaskResults.length === 0) {
+      return;
+    }
+    setCorrectionState({
+      queue: incorrectTaskResults.map((item, queueIndex) => ({
+        sessionTaskId: item.sessionTaskId,
+        queueIndex,
+        sourceTaskIndex: item.index - 1,
+      })),
+      activeIndex: 0,
+      partStates: {},
+      submissions: {},
     });
+    setStage("correction");
+  }, [incorrectTaskResults, stage]);
 
-    const totalAwarded = breakdown.reduce(
-      (sum, item) => sum + item.awardedPoints,
-      0,
+  const updateCorrectionPartState = useCallback(
+    (
+      sessionTaskId: string,
+      partIndex: number,
+      updater: (current: CompositePartState) => CompositePartState,
+    ) => {
+      setCorrectionState((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const nextParts = [...(prev.partStates[sessionTaskId] ?? [])];
+        const current = nextParts[partIndex] ?? {};
+        nextParts[partIndex] = updater(current);
+        return {
+          ...prev,
+          partStates: {
+            ...prev.partStates,
+            [sessionTaskId]: nextParts,
+          },
+        };
+      });
+    },
+    [],
+  );
+
+  const handleCorrectionOptionSelect = useCallback(
+    (sessionTaskId: string, partIndex: number, keys: string[]) => {
+      const uniqueKeys = Array.from(new Set(keys));
+      updateCorrectionPartState(sessionTaskId, partIndex, (current) => ({
+        ...current,
+        selections: uniqueKeys,
+      }));
+    },
+    [updateCorrectionPartState],
+  );
+
+  const handleCorrectionTrueFalseSelect = useCallback(
+    (
+      sessionTaskId: string,
+      partIndex: number,
+      itemId: string,
+      value: TrueFalseSelection,
+    ) => {
+      updateCorrectionPartState(sessionTaskId, partIndex, (current) => ({
+        ...current,
+        trueFalseSelections: {
+          ...(current.trueFalseSelections ?? {}),
+          [itemId]: value,
+        },
+      }));
+    },
+    [updateCorrectionPartState],
+  );
+
+  const handleCorrectionClozeInputChange = useCallback(
+    (sessionTaskId: string, partIndex: number, blankId: string, value: string) => {
+      updateCorrectionPartState(sessionTaskId, partIndex, (current) => ({
+        ...current,
+        clozeResponses: {
+          ...(current.clozeResponses ?? {}),
+          [blankId]: value,
+        },
+      }));
+    },
+    [updateCorrectionPartState],
+  );
+
+  const handleCorrectionClozeTokenDrop = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      sessionTaskId: string,
+      partIndex: number,
+      blankId: string,
+      validTokenIds: Set<string>,
+      dragBlankIds: Set<string>,
+    ) => {
+      event.preventDefault();
+      const payload = getClozeDragPayload(event);
+      if (!payload || payload.partIndex !== partIndex) {
+        return;
+      }
+      if (payload.tokenId === blankId || !validTokenIds.has(payload.tokenId)) {
+        return;
+      }
+
+      updateCorrectionPartState(sessionTaskId, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        const existingBlankId = Object.entries(responses).find(
+          ([key, value]) => value === payload.tokenId && key !== blankId,
+        )?.[0];
+        if (existingBlankId) {
+          delete responses[existingBlankId];
+        }
+        if (dragBlankIds.has(blankId)) {
+          responses[blankId] = payload.tokenId;
+        }
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [updateCorrectionPartState],
+  );
+
+  const handleCorrectionClozeTokenRemove = useCallback(
+    (sessionTaskId: string, partIndex: number, blankId: string) => {
+      updateCorrectionPartState(sessionTaskId, partIndex, (current) => {
+        const responses = { ...(current.clozeResponses ?? {}) };
+        delete responses[blankId];
+        return { ...current, clozeResponses: responses };
+      });
+    },
+    [updateCorrectionPartState],
+  );
+
+  const handleCorrectionTextInputChange = useCallback(
+    (sessionTaskId: string, partIndex: number, value: string) => {
+      updateCorrectionPartState(sessionTaskId, partIndex, (current) => ({
+        ...current,
+        textResponse: value,
+      }));
+    },
+    [updateCorrectionPartState],
+  );
+
+  const handleCorrectionSubmit = useCallback(
+    (sessionTaskId: string, canSubmit: boolean) => {
+      if (!canSubmit) {
+        return;
+      }
+      setCorrectionState((prev) =>
+        prev
+          ? {
+              ...prev,
+              submissions: {
+                ...prev.submissions,
+                [sessionTaskId]: true,
+              },
+            }
+          : prev,
+      );
+    },
+    [],
+  );
+
+  const handleCorrectionTaskBack = useCallback(() => {
+    setCorrectionState((prev) =>
+      prev
+        ? {
+            ...prev,
+            activeIndex: Math.max(0, prev.activeIndex - 1),
+          }
+        : prev,
     );
-    const totalMax = breakdown.reduce((sum, item) => sum + item.maxPoints, 0);
-    const percentage = totalMax > 0 ? Math.round((totalAwarded / totalMax) * 100) : 0;
+  }, []);
 
-    return {
-      breakdown,
-      totalAwarded,
-      totalMax,
-      percentage,
-    };
-  }, [
-    activeExamSettings,
-    autoGradeDecisions,
-    awardedPoints,
-    partStates,
-    resolveTaskTypePointsSourceMap,
-    runTaskPoints,
-    runTasks,
-    stage,
-  ]);
+  const handleCorrectionTaskNext = useCallback(() => {
+    setCorrectionState((prev) =>
+      prev
+        ? {
+            ...prev,
+            activeIndex: Math.min(prev.queue.length - 1, prev.activeIndex + 1),
+          }
+        : prev,
+    );
+  }, []);
 
   useEffect(() => {
     if (stage !== "finished") {
@@ -1253,6 +1548,7 @@ export const useExamSimulationViewModel = () => {
       : 0;
     const percent = calculateExamPercent(results.totalAwarded, results.totalMax);
     const passed = isExamPassed(percent);
+    const grade = resolveExamGrade(settings.examGradeScale, percent);
     const examFilePath =
       activeExamFiles.length === 1
         ? firstExamFile.relative_path || firstExamFile.path
@@ -1284,7 +1580,7 @@ export const useExamSimulationViewModel = () => {
       achievedPoints: results.totalAwarded,
       percent,
       passed,
-      grade: null,
+      grade,
       gradeScaleId: settings.examGradeScale,
       pointsProfileId: singleResolvedProfile?.profileId ?? null,
       pointsProfileName: singleResolvedProfile?.profileName ?? null,
@@ -1525,12 +1821,35 @@ export const useExamSimulationViewModel = () => {
     ],
   );
 
-  const activeTaskPartStates =
-    activeTask ? partStates[activeTaskIndex] ?? [] : [];
-  const activeTaskAwardedPoints =
-    activeTask ? awardedPoints[activeTaskIndex] ?? null : null;
-  const activeTaskAutoDecision =
-    activeTask ? autoGradeDecisions[activeTaskIndex] : undefined;
+  const activeTaskPartStates = activeTask ? partStates[activeTaskIndex] ?? [] : [];
+  const activeTaskAwardedPoints = activeTask
+    ? awardedPoints[activeTaskIndex] ?? null
+    : null;
+  const activeTaskAutoDecision = activeTask
+    ? autoGradeDecisions[activeTaskIndex]
+    : undefined;
+  const correctionActiveEntry =
+    correctionState?.queue[correctionState.activeIndex] ?? null;
+  const correctionActiveTask = correctionActiveEntry
+    ? (runTasks[correctionActiveEntry.sourceTaskIndex] ?? null)
+    : null;
+  const correctionActiveMaxPoints = correctionActiveEntry
+    ? (runTaskPoints[correctionActiveEntry.sourceTaskIndex] ?? 0)
+    : 0;
+  const correctionActivePartStates =
+    correctionActiveEntry && correctionState
+      ? correctionState.partStates[correctionActiveEntry.sessionTaskId] ?? []
+      : [];
+  const correctionActiveSubmitted =
+    correctionActiveEntry && correctionState
+      ? Boolean(correctionState.submissions[correctionActiveEntry.sessionTaskId])
+      : false;
+  const correctionCanGoBack =
+    Boolean(correctionState) && correctionState.activeIndex > 0;
+  const correctionCanGoNext =
+    Boolean(correctionState) &&
+    correctionState.activeIndex < correctionState.queue.length - 1;
+  const correctionQueueLength = correctionState?.queue.length ?? 0;
   const selectionPreviewState: LoadState =
     selectedExamCount === 0 ? "idle" : selectedExamParseState;
   const selectionPreviewError = selectedExamParseError;
@@ -1612,6 +1931,20 @@ export const useExamSimulationViewModel = () => {
     activeTaskPartStates,
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
+    activeManualTaskEntry,
+    manualTaskEntries,
+    manualScoringComplete,
+    canGoManualScoringBack,
+    canGoManualScoringNext,
+    incorrectTaskResults,
+    correctionActiveEntry,
+    correctionActiveTask,
+    correctionActiveMaxPoints,
+    correctionActivePartStates,
+    correctionActiveSubmitted,
+    correctionCanGoBack,
+    correctionCanGoNext,
+    correctionQueueLength,
     activeMixedTasks: activeExamTasks,
     runTasks,
     runTaskPoints,
@@ -1638,7 +1971,10 @@ export const useExamSimulationViewModel = () => {
     handleResetExam,
     handleSubmitExam,
     handleStartScoring,
-    handleFinishScoring,
+    handleFinishManualScoring,
+    handleStartCorrection,
+    handleBackToFinishScoring,
+    handleFinalizeExam,
     handleOptionSelect,
     handleTrueFalseSelect,
     handleClozeInputChange,
@@ -1651,6 +1987,17 @@ export const useExamSimulationViewModel = () => {
     handleAutoGradeDecision,
     handleTaskBack,
     handleTaskNext,
+    handleManualScoringBack,
+    handleManualScoringNext,
+    handleCorrectionOptionSelect,
+    handleCorrectionTrueFalseSelect,
+    handleCorrectionClozeInputChange,
+    handleCorrectionClozeTokenDrop,
+    handleCorrectionClozeTokenRemove,
+    handleCorrectionTextInputChange,
+    handleCorrectionSubmit,
+    handleCorrectionTaskBack,
+    handleCorrectionTaskNext,
     handleResultTaskCardWrapperToggle,
     getTaskCardWrapDisabledReason,
   };

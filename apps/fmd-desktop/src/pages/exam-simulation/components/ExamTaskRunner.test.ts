@@ -252,6 +252,13 @@ describe("ExamTaskRunner", () => {
     expect(scoringMarkup).toContain("Define foreign key.");
     expect(scoringMarkup).toContain("A foreign key is an attribute.");
     expect(scoringMarkup).toContain("flashcard-answer");
+
+    const correctionMarkup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "correction" })),
+    );
+    expect(correctionMarkup).toContain("Define foreign key.");
+    expect(correctionMarkup).toContain("A foreign key is an attribute.");
+    expect(correctionMarkup).toContain("flashcard-answer");
   });
 
   it("renders tables for free-text parts with scroll fallback", () => {
@@ -340,15 +347,15 @@ Statement: The Sun is a star.
         createElement(
           ExamTaskRunner,
           buildProps({ phase: "scoring", task, partStates }),
-      ),
-    );
+        ),
+      );
 
-    expect(scoringMarkup).toContain("RESULT");
-    expect(scoringMarkup).toContain("POINTS");
-    expect(scoringMarkup).toContain("Correct");
-    expect(scoringMarkup).not.toContain("AUTO RESULT");
-    expect(scoringMarkup).not.toContain("CONFIRM");
-    expect(scoringMarkup).not.toContain("AWARDED");
+      expect(scoringMarkup).toContain("RESULT");
+      expect(scoringMarkup).toContain("POINTS");
+      expect(scoringMarkup).toContain("Correct");
+      expect(scoringMarkup).not.toContain("AUTO RESULT");
+      expect(scoringMarkup).not.toContain("CONFIRM");
+      expect(scoringMarkup).not.toContain("AWARDED");
     },
   );
 
@@ -409,6 +416,46 @@ Statement: The Sun is a star.
     expect(scoringMarkup).toContain("AWARDED");
     expect(scoringMarkup).not.toContain("RESULT");
     expect(scoringMarkup).not.toContain("POINTS");
+  });
+
+  it("renders correction banner and header actions in correction mode", () => {
+    const correctionMarkup = renderToStaticMarkup(
+      createElement(
+        ExamTaskRunner,
+        buildProps({
+          phase: "correction",
+          headerActions: createElement("button", { type: "button" }, "Back to Results"),
+        }),
+      ),
+    );
+
+    expect(correctionMarkup).toContain("CORRECTION");
+    expect(correctionMarkup).toContain("Correction Mode");
+    expect(correctionMarkup).toContain("Update your answers and return to results.");
+    expect(correctionMarkup).toContain("Back to Results");
+  });
+
+  it("keeps manual scoring inputs visible in correction mode", () => {
+    const task = buildTaskWithParts(
+      [
+        {
+          kind: "free-text",
+          front: "Explain",
+          back: "Response",
+        },
+      ],
+      "manual",
+    );
+
+    const correctionMarkup = renderToStaticMarkup(
+      createElement(
+        ExamTaskRunner,
+        buildProps({ phase: "correction", task, partStates: [{}] }),
+      ),
+    );
+
+    expect(correctionMarkup).toContain("AWARDED");
+    expect(correctionMarkup).toContain('aria-label="Awarded points"');
   });
 
   it("does not render legacy convert-to-flashcard controls in scoring view", () => {
