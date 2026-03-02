@@ -66,7 +66,10 @@ import {
   updateFrontmatterProperty,
 } from "../features/preview/frontmatter";
 import { normalizeRelativePath } from "../lib/path";
-import { normalizeMarkdownPipeTables } from "../lib/markdownTables";
+import {
+  normalizeMarkdownPipeTables,
+  normalizeMarkdownTableCellPreviewValue,
+} from "../lib/markdownTables";
 import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
 import { type LoadState } from "../lib/types";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
@@ -1092,6 +1095,95 @@ const renderHighlightedInlineSyntaxChildren = (children: ReactNode, keyPrefix: s
   Children.map(children, (child, index) =>
     highlightInlineSyntaxInNode(child, `${keyPrefix}-${index}`),
   );
+
+const isMarkdownTableCellBreakNode = (node: ReactNode) =>
+  isValidElement(node) &&
+  typeof node.type === "string" &&
+  node.type.toLowerCase() === "br";
+
+const renderMarkdownTableCellChildren = (children: ReactNode, keyPrefix: string) => {
+  const nodes = Children.toArray(renderHighlightedInlineSyntaxChildren(children, keyPrefix));
+  const paragraphs: ReactNode[][] = [];
+  let currentParagraph: ReactNode[] = [];
+  let pendingBreakCount = 0;
+  let syntheticKeyIndex = 0;
+
+  const pushParagraph = () => {
+    if (currentParagraph.length === 0) {
+      return;
+    }
+    paragraphs.push(currentParagraph);
+    currentParagraph = [];
+  };
+
+  const appendLineBreak = () => {
+    if (currentParagraph.length === 0) {
+      return;
+    }
+    currentParagraph.push(<br key={`${keyPrefix}-br-${syntheticKeyIndex}`} />);
+    syntheticKeyIndex += 1;
+  };
+
+  const flushPendingBreaks = () => {
+    if (pendingBreakCount <= 0) {
+      return;
+    }
+    if (pendingBreakCount === 1) {
+      appendLineBreak();
+    } else {
+      pushParagraph();
+    }
+    pendingBreakCount = 0;
+  };
+
+  const appendNormalizedText = (value: string) => {
+    const normalizedValue = normalizeMarkdownTableCellPreviewValue(value);
+    const paragraphChunks = normalizedValue.split("\n\n");
+    paragraphChunks.forEach((paragraphChunk, paragraphIndex) => {
+      if (paragraphIndex > 0) {
+        pushParagraph();
+      }
+      const lineChunks = paragraphChunk.split("\n");
+      lineChunks.forEach((lineChunk, lineIndex) => {
+        if (lineIndex > 0) {
+          appendLineBreak();
+        }
+        if (lineChunk) {
+          currentParagraph.push(lineChunk);
+        }
+      });
+    });
+  };
+
+  for (const node of nodes) {
+    if (isMarkdownTableCellBreakNode(node)) {
+      pendingBreakCount += 1;
+      continue;
+    }
+    flushPendingBreaks();
+    if (typeof node === "string") {
+      appendNormalizedText(node);
+      continue;
+    }
+    currentParagraph.push(node);
+  }
+
+  flushPendingBreaks();
+  pushParagraph();
+
+  return (
+    <div className="markdown-table-cell-preview">
+      {paragraphs.map((paragraph, index) => (
+        <div
+          key={`${keyPrefix}-paragraph-${index}`}
+          className="markdown-table-cell-paragraph"
+        >
+          {paragraph}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 type PreviewPanelProps = {
   editDraft: string;
@@ -6395,12 +6487,12 @@ export const PreviewPanel = ({
             ),
             th: ({ node: _node, children, ...props }) => (
               <th {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "th")}
+                {renderMarkdownTableCellChildren(children, "th")}
               </th>
             ),
             td: ({ node: _node, children, ...props }) => (
               <td {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "td")}
+                {renderMarkdownTableCellChildren(children, "td")}
               </td>
             ),
             img: ({ node: _node, ...props }) => (
@@ -6919,12 +7011,12 @@ export const PreviewPanel = ({
                           ),
                           th: ({ node: _node, children, ...props }) => (
                             <th {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-th")}
+                              {renderMarkdownTableCellChildren(children, "view-th")}
                             </th>
                           ),
                           td: ({ node: _node, children, ...props }) => (
                             <td {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-td")}
+                              {renderMarkdownTableCellChildren(children, "view-td")}
                             </td>
                           ),
                           img: ({ node: _node, ...props }) => (

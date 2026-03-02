@@ -354,6 +354,41 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector("kbd")).toBeTruthy();
   });
 
+  it("renders preview-mode table cells with the shared table cell wrapper", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "| A | B |",
+        "| --- | --- |",
+        "| Erste Zeile<br>Zweite Zeile | Wert |",
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const firstBodyCell = container.querySelector(".markdown-table tbody td");
+    expect(firstBodyCell).toBeTruthy();
+    expect(firstBodyCell?.querySelector(".markdown-table-cell-preview")).toBeTruthy();
+    expect(firstBodyCell?.querySelectorAll(".markdown-table-cell-paragraph")).toHaveLength(1);
+    expect(firstBodyCell?.querySelectorAll("br")).toHaveLength(1);
+  });
+
+  it("renders double table cell breaks as separate paragraphs in preview mode", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "| A | B |",
+        "| --- | --- |",
+        "| Erste Zeile<br><br>Zweite Zeile | Wert |",
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const firstBodyCell = container.querySelector(".markdown-table tbody td");
+    expect(firstBodyCell).toBeTruthy();
+    const paragraphs = firstBodyCell?.querySelectorAll(".markdown-table-cell-paragraph");
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs?.[0]?.textContent).toContain("Erste Zeile");
+    expect(paragraphs?.[1]?.textContent).toContain("Zweite Zeile");
+  });
+
   it("renders details/summary blocks after sanitization", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       "<details><summary>Toggle title</summary>Toggle content</details>",

@@ -65,6 +65,7 @@ Hier deine Tabelle **sauber erweitert**, Implementierungsdetails:
 - Interaktive Tabellen laufen im `MarkdownHybridEditor` als eigener Table-Block fuer `block.kind === "table"`.
 - Persistenz bleibt Markdown Pipe-Table; Parse/Repair/Serialize und Strukturmutationen kommen zentral aus `src/lib/markdownTables.ts`.
 - Der Grid-Modus orientiert sich visuell an `.markdown-table`: Tabellenlinien statt Kachel-Buttons, dezente Row/Column-Gutter und ein reduzierter Toggle nur im aktiven Zustand.
+- Der reine Preview-/View-Modus bleibt bei `.markdown-table > table`, nutzt fuer Tabellenzellen aber dieselbe Mehrzeilen-Semantik wie der Grid-Modus.
 - Grid-View deckt Zell-Edit, Row/Column-Selection, Row/Column-Insert, Delete, Reorder und Kontextmenü ab.
 - `Col` und `Row` sind direkte Greifflaechen: Klick selektiert, ein kleiner Pointer-Threshold startet den Reorder.
 - Fuer Row/Column-Selection gibt es bewusst keine Multi-Selection oder Range-Selection mehr.
@@ -72,4 +73,5 @@ Hier deine Tabelle **sauber erweitert**, Implementierungsdetails:
 - Die frueheren linken/rechten/unten `+`-Edge-Strips sind entfernt; Einfuegen passiert ueber die Plus-Buttons in den Gutter-Bereichen oder ueber das Kontextmenue.
 - Code-View sitzt blocklokal hinter `.markdown-hybrid-table-view-toggle` und repariert Pipe-Table-Struktur best effort beim Rueckwechsel.
 - Mehrzeilige Zellinhalte werden im Speicherformat als `<br>` serialisiert.
+- In Tabellenzellen gilt im View-Modus dieselbe Regel wie im Grid: ein einzelnes `<br>` bleibt ein Zeilenumbruch, doppelte `<br><br>` werden als Absatztrennung gerendert.
 - Header und Separator bleiben strukturell erhalten; Body-Zeilen bleiben reorderbar und loeschbar.

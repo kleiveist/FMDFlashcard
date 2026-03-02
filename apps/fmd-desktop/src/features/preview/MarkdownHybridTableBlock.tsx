@@ -16,6 +16,7 @@ import {
   insertTableRow,
   moveTableColumn,
   moveTableRow,
+  normalizeMarkdownTableCellPreviewValue,
   normalizeColumnSelectionAfterMutation,
   normalizeRowSelectionAfterMutation,
   parseMarkdownPipeTable,
@@ -166,7 +167,9 @@ const getColumnTemplate = (model: MarkdownPipeTableModel) => {
   const tracks = Array.from({ length: model.columnCount }, (_, columnIndex) => {
     const width = getColumnPixelWidth(model, columnIndex);
     const isLastColumn = columnIndex === model.columnCount - 1;
-    return isLastColumn ? `minmax(${width}px, 1fr)` : `${width}px`;
+    return isLastColumn
+      ? `minmax(${TABLE_COLUMN_MIN_WIDTH_PX}px, 1fr)`
+      : `minmax(${TABLE_COLUMN_MIN_WIDTH_PX}px, ${width}px)`;
   }).join(" ");
   return `${TABLE_ROW_GUTTER_WIDTH_PX}px ${tracks}`;
 };
@@ -176,13 +179,6 @@ const toCellStorageValue = (value: string) =>
 
 const fromCellStorageValue = (value: string) =>
   value.replace(/<br\s*\/?>/gi, "\n");
-
-const toCellRenderValue = (value: string) =>
-  value
-    .replace(/\r\n?/g, "\n")
-    .replace(/(?:<br\s*\/?>\s*){2,}/gi, "\n\n")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/\n{3,}/g, "\n\n");
 
 const getCellValue = (
   model: MarkdownPipeTableModel,
@@ -1250,8 +1246,8 @@ export const MarkdownHybridTableBlock = ({
       );
     }
     return (
-      <div className="markdown-hybrid-table-cell-preview">
-        {renderPreview(toCellRenderValue(value))}
+      <div className="markdown-table-cell-preview markdown-hybrid-table-cell-preview">
+        {renderPreview(normalizeMarkdownTableCellPreviewValue(value))}
       </div>
     );
   };

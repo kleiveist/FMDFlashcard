@@ -2925,12 +2925,9 @@ describe("MarkdownHybridEditor", () => {
 
       const template = grid?.style.gridTemplateColumns ?? "";
       expect(template.startsWith("72px ")).toBe(true);
-
-      const fixedWidths = Array.from(template.matchAll(/(\d+)px/g)).map((match) => Number(match[1]));
-      expect(fixedWidths.length).toBeGreaterThanOrEqual(3);
-      expect(fixedWidths[2]).toBeGreaterThan(fixedWidths[1] ?? 0);
-      expect(fixedWidths[1]).toBeGreaterThanOrEqual(140);
       expect(template.includes("minmax(")).toBe(true);
+      expect(template).toContain("minmax(140px, 140px)");
+      expect(template).toMatch(/minmax\(140px, (2|3|4)\d{2}px\)/);
       expect(template.endsWith("1fr)")).toBe(true);
       cleanup();
     });

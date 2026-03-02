@@ -2481,7 +2481,7 @@ textarea.preview-editor {
 
 .markdown-hybrid-table-shell {
   position: relative;
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   margin: 0;
   overflow: hidden;
@@ -2496,7 +2496,8 @@ textarea.preview-editor {
   display: grid;
   gap: 1px;
   align-items: stretch;
-  min-width: max-content;
+  width: 100%;
+  min-width: 100%;
   background: var(--line-soft);
 }
 
@@ -2664,6 +2665,11 @@ textarea.preview-editor {
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent-border) 84%, transparent);
 }
 
+.md-preview th,
+.md-preview td {
+  vertical-align: top;
+}
+
 .markdown-hybrid-table-column-drop-indicator,
 .markdown-hybrid-table-row-drop-indicator {
   position: absolute;
@@ -2687,31 +2693,38 @@ textarea.preview-editor {
   transform: translateY(-1px);
 }
 
-.markdown-hybrid-table-cell-preview {
+.markdown-table-cell-preview {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   min-height: 1.4rem;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-.markdown-hybrid-table-cell-preview > :first-child,
-.markdown-hybrid-table-cell-preview > :last-child {
+.markdown-table-cell-preview > :first-child,
+.markdown-table-cell-preview > :last-child {
   margin-top: 0;
   margin-bottom: 0;
 }
 
-.markdown-hybrid-table-cell-preview > * + * {
+.markdown-table-cell-preview > * + * {
   margin-top: 0.35rem;
 }
 
-.markdown-hybrid-table-cell-preview p,
-.markdown-hybrid-table-cell-preview ul,
-.markdown-hybrid-table-cell-preview ol,
-.markdown-hybrid-table-cell-preview blockquote {
+.markdown-table-cell-preview p,
+.markdown-table-cell-preview ul,
+.markdown-table-cell-preview ol,
+.markdown-table-cell-preview blockquote {
   margin-top: 0;
   margin-bottom: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.markdown-table-cell-paragraph {
+  min-height: 1.4rem;
 }
 
 .markdown-hybrid-table-cell-editor {
@@ -3291,10 +3304,11 @@ textarea.preview-editor {
 }
 
 .md-preview table {
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: auto;
 }
 
 .md-preview thead th {

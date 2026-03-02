@@ -238,7 +238,9 @@ Damit wird sie als Spezifikation deutlich stärker:
 - Pipe-Tabellen werden im `MarkdownHybridEditor` als interaktiver Table-Block geladen und bleiben beim Speichern Pipe-Tabellen.
 - Die Tabellenansicht hat einen Grid-Modus und einen Code-Modus; der Umschalter sitzt auf `.markdown-hybrid-table-view-toggle`.
 - Der Grid-Modus sieht bewusst wie eine normale Markdown-Tabelle aus und nicht wie ein Kachelraster; Zeilen- und Spaltensteuerung sitzen in schmalen Gutter-Bereichen.
+- Auch im reinen View-Modus bleiben Tabellen normale `.markdown-table`-Tabellen, rendern mehrzeilige Zellinhalte aber bewusst fast gleich wie der Grid-Modus.
 - Zellbearbeitung passiert direkt im Grid. Zeilenumbrüche in Zellen werden beim Speichern als `<br>` geschrieben.
+- In Tabellenzellen bleibt ein einzelnes `<br>` ein Zeilenumbruch; doppelte `<br><br>` werden im View- und Grid-Modus als Absatztrennung dargestellt.
 - Kopfzeile und Separator bleiben erhalten. Zeilenoperationen gelten fuer Body-Zeilen, Spaltenoperationen fuer die gesamte Tabelle.
 - `Col` und `Row` sind direkte Greifflaechen: Klick selektiert, ein kleiner Pointer-Threshold startet den Reorder.
 - Fuer Row/Column-Selection gibt es bewusst keine Multi-Selection oder Range-Selection mehr.

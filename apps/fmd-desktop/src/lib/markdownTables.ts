@@ -79,6 +79,12 @@ type ParseMarkdownPipeTableOptions = SplitPipeRowOptions & {
 
 const normalizeLineBreaks = (value: string) => value.replace(/\r\n?/g, "\n");
 
+export const normalizeMarkdownTableCellPreviewValue = (value: string) =>
+  normalizeLineBreaks(value)
+    .replace(/(?:<br\s*\/?>\s*){2,}/gi, "\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\n{3,}/g, "\n\n");
+
 const normalizeBoundaryEscapes = (
   line: string,
   options?: NormalizeMarkdownPipeTablesOptions,

@@ -8,6 +8,7 @@ import {
   moveTableColumn,
   moveTableRow,
   normalizeColumnSelectionAfterMutation,
+  normalizeMarkdownTableCellPreviewValue,
   normalizeMarkdownPipeTables,
   normalizeRowSelectionAfterMutation,
   parseMarkdownPipeTable,
@@ -158,5 +159,11 @@ describe("markdownTables", () => {
         3,
       ),
     ).toEqual({ anchorIndex: 2, selectedIndices: [0, 2] });
+  });
+
+  it("normalizes preview values for multiline table cells", () => {
+    expect(
+      normalizeMarkdownTableCellPreviewValue("First<br>Second<br><br>Third\r\n\r\nFourth"),
+    ).toBe("First\nSecond\n\nThird\n\nFourth");
   });
 });
