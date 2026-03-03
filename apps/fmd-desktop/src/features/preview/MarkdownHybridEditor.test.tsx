@@ -187,13 +187,6 @@ const findPageLinkPickerOptionByLabel = (container: ParentNode, label: string) =
   return labelNode?.closest<HTMLButtonElement>("button") ?? null;
 };
 
-const findMathToolboxItemByLabel = (container: ParentNode, label: string) => {
-  const labelNode = Array.from(
-    container.querySelectorAll<HTMLElement>(".markdown-hybrid-math-toolbox-item-label"),
-  ).find((node) => node.textContent?.trim() === label);
-  return labelNode?.closest<HTMLButtonElement>("button") ?? null;
-};
-
 const applyTextInput = (
   input: HTMLInputElement | HTMLTextAreaElement | null,
   nextValue: string,
@@ -1770,7 +1763,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("inserts math templates into the current math block from the toolbox", () => {
+  it("opens the structural math toolbox and live-syncs inserted templates", () => {
     withImmediateRaf(() => {
       const Harness = () => {
         const [markdown, setMarkdown] = useState("$$\n\n$$");
@@ -1794,24 +1787,19 @@ describe("MarkdownHybridEditor", () => {
 
       const textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
-      setTextareaSelection(textarea, 3, 3);
 
       dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
-      const fracButton = findMathToolboxItemByLabel(document.body, "\\frac{a}{b}");
+      const dialog = document.body.querySelector(".markdown-hybrid-structural-math-dialog");
+      expect(dialog).toBeTruthy();
+
+      const fracButton = findButtonByExactText(document.body, "Fraction");
       expect(fracButton).toBeTruthy();
       dispatchClick(fracButton);
 
-      const nextTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-math-editor");
-      expect(nextTextarea).toBeTruthy();
-      expect(readMarkdown()).toBe("$$\n\n$$");
-      const selectedText = nextTextarea?.value.slice(
-        nextTextarea.selectionStart ?? 0,
-        nextTextarea.selectionEnd ?? 0,
-      );
-      expect(selectedText).toBe("a");
-
-      blurTextarea(nextTextarea);
-      expect(readMarkdown()).toBe("$$\n\\frac{a}{b}\n$$");
+      expect(readMarkdown()).toBe("$$\n\\frac{}{}\n$$");
+      expect(
+        document.body.querySelector(".markdown-hybrid-structural-math-row.is-active"),
+      ).toBeTruthy();
 
       cleanup();
     });

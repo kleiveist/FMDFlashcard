@@ -61,20 +61,17 @@ import {
 } from "./insertTemplates";
 import {
   extractMathBlockBody,
-  getMathBlockDefaultSelection,
-  insertMathTemplateIntoRaw,
   isMathBlockDelimiterLine,
   MathBlockRenderer,
-  MATH_TOOLBOX_SECTIONS,
   normalizeMathBlockSource,
   resolveMathBlockBoundaries,
-  type MathToolboxTemplate,
 } from "./mathBlocks";
 import {
   MarkdownHybridTableBlock,
   type MarkdownHybridTableActivationRequest,
   type MarkdownHybridTableSessionController,
 } from "./MarkdownHybridTableBlock";
+import { MathStructureDialog } from "./math-editor/MathStructureDialog";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
 
@@ -208,12 +205,7 @@ type InsertMenuIconId =
 
 type MathToolboxState = {
   blockIndex: number;
-  anchorRect: {
-    left: number;
-    top: number;
-    right: number;
-    bottom: number;
-  };
+  sessionId: string;
 };
 
 type InlineFormattingToolbarAction =
@@ -998,133 +990,6 @@ const FloatingInlineFormattingToolbar = ({
   );
 };
 
-const FloatingMathToolbox = ({
-  anchorRect,
-  toolboxRef,
-  onSelect,
-  onClose,
-}: {
-  anchorRect: MathToolboxState["anchorRect"];
-  toolboxRef: { current: HTMLDivElement | null };
-  onSelect: (template: MathToolboxTemplate) => void;
-  onClose: () => void;
-}) => {
-  const localToolboxRef = useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
-
-  const setToolboxNode = useCallback(
-    (node: HTMLDivElement | null) => {
-      localToolboxRef.current = node;
-      toolboxRef.current = node;
-    },
-    [toolboxRef],
-  );
-
-  useLayoutEffect(() => {
-    const handle = window.requestAnimationFrame(() => {
-      const toolboxNode = localToolboxRef.current;
-      if (!toolboxNode) {
-        return;
-      }
-      const rect = toolboxNode.getBoundingClientRect();
-      const width = Math.max(1, rect.width || 1);
-      const height = Math.max(1, rect.height || 1);
-      const padding = 10;
-      let left = anchorRect.right - width;
-      if (left < padding) {
-        left = padding;
-      }
-      if (left + width > window.innerWidth - padding) {
-        left = Math.max(padding, window.innerWidth - width - padding);
-      }
-      let top = anchorRect.bottom + 8;
-      if (top + height > window.innerHeight - padding) {
-        top = anchorRect.top - height - 8;
-      }
-      if (top < padding) {
-        top = Math.max(padding, window.innerHeight - height - padding);
-      }
-      setPosition({
-        left: Math.round(left),
-        top: Math.round(top),
-      });
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, [anchorRect.bottom, anchorRect.right, anchorRect.top]);
-
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  return createPortal(
-    <div
-      ref={setToolboxNode}
-      className="markdown-hybrid-math-toolbox"
-      role="dialog"
-      aria-label="Math toolbox"
-      style={{
-        left: position?.left ?? -9999,
-        top: position?.top ?? -9999,
-        visibility: position ? "visible" : "hidden",
-      }}
-      onMouseDown={(event) => {
-        event.stopPropagation();
-      }}
-      onClick={(event) => {
-        event.stopPropagation();
-      }}
-      onKeyDown={(event) => {
-        if (event.key !== "Escape") {
-          return;
-        }
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
-      }}
-    >
-      <div className="markdown-hybrid-math-toolbox-header">
-        <span className="markdown-hybrid-math-toolbox-title">Math Toolbox</span>
-        <button
-          type="button"
-          className="markdown-hybrid-math-toolbox-close"
-          onMouseDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-          onClick={onClose}
-          aria-label="Close math toolbox"
-        >
-          <InsertMenuIconGraphic icon="close" />
-        </button>
-      </div>
-      <div className="markdown-hybrid-math-toolbox-sections">
-        {MATH_TOOLBOX_SECTIONS.map((section) => (
-          <section key={section.id} className="markdown-hybrid-math-toolbox-section">
-            <h4 className="markdown-hybrid-math-toolbox-section-title">{section.label}</h4>
-            <div className="markdown-hybrid-math-toolbox-grid">
-              {section.items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="markdown-hybrid-math-toolbox-item"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  onClick={() => onSelect(item)}
-                >
-                  <span className="markdown-hybrid-math-toolbox-item-label">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>,
-    document.body,
-  );
-};
-
 const renderInsertMenuRowContent = ({
   label,
   description,
@@ -1246,16 +1111,6 @@ const parseInlineWikilink = (raw: string) => {
 
 const canOpenPageLinkPickerInBlockKind = (kind: MarkdownBlock["kind"]) =>
   kind !== "code-fence" && kind !== "hr" && kind !== "table" && kind !== "math-block";
-
-const getAnchorRectFromElement = (element: HTMLElement) => {
-  const rect = element.getBoundingClientRect();
-  return {
-    left: rect.left,
-    top: rect.top,
-    right: rect.right,
-    bottom: rect.bottom,
-  };
-};
 
 const detectTypedPageLinkTrigger = (
   value: string,
@@ -4178,6 +4033,7 @@ export const MarkdownHybridEditor = ({
       setDraggedBlockIndex(null);
       setDropIndicatorIndex(null);
       setInsertMenuState(null);
+      setMathToolboxState(null);
       setSelectionContextMenuState(null);
       setSelectionMarqueeRect(null);
       setPendingPageLinkPickerRequest(null);
@@ -4230,6 +4086,34 @@ export const MarkdownHybridEditor = ({
       }
       onChange(nextMarkdown);
       setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+      onCommit?.(nextMarkdown, { block: { ...block, raw: nextRaw } });
+      if (activeBlockIndex === blockIndex) {
+        setActiveDraft(nextRaw);
+        setActiveDirty(false);
+      }
+      return true;
+    },
+    [activeBlockIndex, blocks, markdown, onChange, onCommit],
+  );
+
+  const handleMathBlockLiveSync = useCallback(
+    (blockIndex: number, nextLatex: string, options?: { mergeKey?: string }) => {
+      const block = blocks[blockIndex];
+      if (!block || block.kind !== "math-block") {
+        return false;
+      }
+      const nextRaw = normalizeMathBlockSource(["$$", nextLatex.trim(), "$$"].join("\n"));
+      const nextMarkdown = applyEditorMarkdownNormalization(
+        replaceMarkdownBlock(markdown, block, nextRaw),
+      );
+      if (nextMarkdown === markdown) {
+        return true;
+      }
+      onChange(nextMarkdown);
+      setHistory((current) =>
+        pushMarkdownHistory(current, nextMarkdown, "math-toolbox-live", {
+          mergeKey: options?.mergeKey,
+        }));
       onCommit?.(nextMarkdown, { block: { ...block, raw: nextRaw } });
       if (activeBlockIndex === blockIndex) {
         setActiveDraft(nextRaw);
@@ -4448,13 +4332,12 @@ export const MarkdownHybridEditor = ({
       if (!block || block.kind !== "math-block") {
         return;
       }
-      const nextAnchorRect = getAnchorRectFromElement(event.currentTarget);
       setMathToolboxState((current) =>
         current && current.blockIndex === blockIndex
           ? null
           : {
             blockIndex,
-            anchorRect: nextAnchorRect,
+            sessionId: `math-toolbox-${Date.now()}-${blockIndex}`,
           });
       if (activeBlockIndex !== blockIndex) {
         activateBlock(blockIndex, "start");
@@ -4783,9 +4666,10 @@ export const MarkdownHybridEditor = ({
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
       setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      setInsertMenuState(null);
-      setSelectionContextMenuState(null);
+    setDropIndicatorIndex(null);
+    setInsertMenuState(null);
+    setMathToolboxState(null);
+    setSelectionContextMenuState(null);
       setSelectionMarqueeRect(null);
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
@@ -4920,39 +4804,6 @@ export const MarkdownHybridEditor = ({
       window.removeEventListener("keydown", handleWindowKeyDown);
     };
   }, [insertMenuState]);
-
-  useEffect(() => {
-    if (!mathToolboxState) {
-      return;
-    }
-
-    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      if (mathToolboxRef.current?.contains(target)) {
-        return;
-      }
-      if (target.closest("[data-md-math-toolbox-trigger='true']")) {
-        return;
-      }
-      setMathToolboxState(null);
-    };
-
-    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMathToolboxState(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-    window.addEventListener("keydown", handleWindowKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-      window.removeEventListener("keydown", handleWindowKeyDown);
-    };
-  }, [mathToolboxState]);
 
   useEffect(() => {
     if (!mathToolboxState) {
@@ -5705,29 +5556,6 @@ export const MarkdownHybridEditor = ({
       return () => window.cancelAnimationFrame(handle);
     },
     [scheduleInlineFormattingToolbarVisibility],
-  );
-
-  const handleMathToolboxTemplateSelect = useCallback(
-    (template: MathToolboxTemplate) => {
-      if (activeBlockIndex === null) {
-        return;
-      }
-      const block = blocks[activeBlockIndex];
-      if (!block || block.kind !== "math-block") {
-        return;
-      }
-      const textarea = textareaRef.current;
-      const defaultSelection = getMathBlockDefaultSelection(activeDraft);
-      const selectionStart = textarea?.selectionStart ?? defaultSelection.start;
-      const selectionEnd = textarea?.selectionEnd ?? defaultSelection.end;
-      const result = insertMathTemplateIntoRaw(activeDraft, selectionStart, selectionEnd, template);
-      const applied = applyActiveBlockDraft(result.value);
-      if (!applied) {
-        return;
-      }
-      scheduleTextareaSelectionRange(result.selection);
-    },
-    [activeBlockIndex, activeDraft, applyActiveBlockDraft, blocks, scheduleTextareaSelectionRange],
   );
 
   const restoreInlineFormattingToolbarSelection = useCallback(() => {
@@ -7651,12 +7479,21 @@ export const MarkdownHybridEditor = ({
   ) : null;
 
   const mathToolboxPopup = mathToolboxState && !disabled ? (
-    <FloatingMathToolbox
-      anchorRect={mathToolboxState.anchorRect}
-      toolboxRef={mathToolboxRef}
-      onSelect={handleMathToolboxTemplateSelect}
+    <MathStructureDialog
+      key={mathToolboxState.sessionId}
+      sessionId={mathToolboxState.sessionId}
+      blockIndex={mathToolboxState.blockIndex}
+      initialLatex={extractMathBlockBody(
+        activeBlockIndex === mathToolboxState.blockIndex
+          ? activeDraft
+          : blocks[mathToolboxState.blockIndex]?.raw ?? "$$\n\n$$",
+      )}
+      dialogRef={mathToolboxRef}
       onClose={() => {
         setMathToolboxState(null);
+      }}
+      onLiveSync={(latex, options) => {
+        handleMathBlockLiveSync(mathToolboxState.blockIndex, latex, options);
       }}
     />
   ) : null;
@@ -7929,23 +7766,29 @@ export const MarkdownHybridEditor = ({
                           <InsertMenuIconGraphic icon="math-block" />
                         </button>
                       </div>
-                      <div className="markdown-hybrid-math-editor-shell">
-                        <textarea
-                          ref={textareaRef}
-                          className="markdown-hybrid-block-editor markdown-hybrid-math-editor"
-                          value={activeDraft}
-                          rows={Math.max(3, activeDraft.split("\n").length)}
-                          onChange={(event) =>
-                            handleTextareaChange(event.target.value, event.target.selectionStart)}
-                          onBlur={handleTextareaBlur}
-                          onKeyDown={handleTextareaKeyDown}
-                          onKeyUp={handleTextareaKeyUp}
-                          onSelect={handleTextareaSelect}
-                          onMouseUp={handleTextareaPointerUp}
-                          onScroll={handleTextareaScroll}
-                          aria-label="Math block editor"
-                        />
-                      </div>
+                      {mathToolboxState?.blockIndex === index ? (
+                        <div className="markdown-hybrid-math-preview-shell is-structural-editor-active">
+                          <MathBlockRenderer source={mathBlockBodySource} />
+                        </div>
+                      ) : (
+                        <div className="markdown-hybrid-math-editor-shell">
+                          <textarea
+                            ref={textareaRef}
+                            className="markdown-hybrid-block-editor markdown-hybrid-math-editor"
+                            value={activeDraft}
+                            rows={Math.max(3, activeDraft.split("\n").length)}
+                            onChange={(event) =>
+                              handleTextareaChange(event.target.value, event.target.selectionStart)}
+                            onBlur={handleTextareaBlur}
+                            onKeyDown={handleTextareaKeyDown}
+                            onKeyUp={handleTextareaKeyUp}
+                            onSelect={handleTextareaSelect}
+                            onMouseUp={handleTextareaPointerUp}
+                            onScroll={handleTextareaScroll}
+                            aria-label="Math block editor"
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="markdown-hybrid-block-editor-shell">

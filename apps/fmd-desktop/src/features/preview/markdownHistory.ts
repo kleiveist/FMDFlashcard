@@ -8,6 +8,7 @@
 export type MarkdownHistoryReason =
   | "block-commit"
   | "block-delete"
+  | "math-toolbox-live"
   | "write-save"
   | "cancel"
   | "external-load";
@@ -16,6 +17,7 @@ export type MarkdownHistoryEntry = {
   markdown: string;
   reason: MarkdownHistoryReason;
   timestamp: number;
+  mergeKey?: string;
 };
 
 export type MarkdownHistoryState = {
@@ -29,10 +31,12 @@ const MAX_MARKDOWN_HISTORY = 200;
 const createEntry = (
   markdown: string,
   reason: MarkdownHistoryReason,
+  mergeKey?: string,
 ): MarkdownHistoryEntry => ({
   markdown,
   reason,
   timestamp: Date.now(),
+  mergeKey,
 });
 
 export const createMarkdownHistory = (
@@ -53,9 +57,17 @@ export const pushMarkdownHistory = (
   state: MarkdownHistoryState,
   markdown: string,
   reason: MarkdownHistoryReason = "block-commit",
+  options?: { mergeKey?: string },
 ): MarkdownHistoryState => {
   if (markdown === state.present.markdown) {
     return state;
+  }
+  if (options?.mergeKey && state.present.mergeKey === options.mergeKey) {
+    return {
+      ...state,
+      present: createEntry(markdown, reason, options.mergeKey),
+      future: [],
+    };
   }
   const nextPast = [...state.past, state.present];
   const cappedPast = nextPast.length > MAX_MARKDOWN_HISTORY
@@ -63,7 +75,7 @@ export const pushMarkdownHistory = (
     : nextPast;
   return {
     past: cappedPast,
-    present: createEntry(markdown, reason),
+    present: createEntry(markdown, reason, options?.mergeKey),
     future: [],
   };
 };

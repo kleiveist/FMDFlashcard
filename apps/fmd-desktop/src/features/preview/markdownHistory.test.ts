@@ -42,5 +42,17 @@ describe("markdownHistory", () => {
     expect(history.present.markdown).toBe("B2");
     expect(canRedoMarkdownHistory(history)).toBe(false);
   });
-});
 
+  it("merges math toolbox live-sync commits within one session key", () => {
+    let history = createMarkdownHistory("A");
+    history = pushMarkdownHistory(history, "B", "math-toolbox-live", {
+      mergeKey: "math-session:1",
+    });
+    history = pushMarkdownHistory(history, "C", "math-toolbox-live", {
+      mergeKey: "math-session:1",
+    });
+
+    expect(history.past).toHaveLength(1);
+    expect(history.present.markdown).toBe("C");
+  });
+});

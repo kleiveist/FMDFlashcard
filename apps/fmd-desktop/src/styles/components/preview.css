@@ -1973,6 +1973,322 @@ textarea.preview-editor {
   overflow-x: auto;
 }
 
+.markdown-hybrid-math-preview-shell.is-structural-editor-active {
+  padding-top: 42px;
+  border: 1px dashed color-mix(in srgb, var(--accent-border) 44%, var(--line-soft));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+}
+
+.markdown-hybrid-structural-math-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.markdown-hybrid-structural-math-dialog {
+  width: min(1180px, 100%);
+  max-height: min(88vh, 980px);
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 76%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 20%, transparent), transparent 26%),
+    color-mix(in srgb, var(--panel) 97%, var(--ink) 3%);
+  box-shadow: var(--shadow);
+}
+
+.markdown-hybrid-structural-math-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.markdown-hybrid-structural-math-dialog-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.markdown-hybrid-structural-math-dialog-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.markdown-hybrid-structural-math-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.markdown-hybrid-structural-math-dialog-actions button,
+.markdown-hybrid-structural-math-category,
+.markdown-hybrid-structural-math-template,
+.markdown-hybrid-structural-math-node-toolbar button {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  color: inherit;
+  cursor: pointer;
+}
+
+.markdown-hybrid-structural-math-dialog-actions button,
+.markdown-hybrid-structural-math-category {
+  padding: 8px 10px;
+}
+
+.markdown-hybrid-structural-math-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1.3fr) minmax(260px, 320px);
+  gap: 14px;
+}
+
+.markdown-hybrid-structural-math-palette,
+.markdown-hybrid-structural-math-canvas-shell,
+.markdown-hybrid-structural-math-preview-pane,
+.markdown-hybrid-structural-math-raw-pane {
+  min-height: 0;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+}
+
+.markdown-hybrid-structural-math-pane-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.markdown-hybrid-structural-math-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.markdown-hybrid-structural-math-category.is-active {
+  border-color: color-mix(in srgb, var(--accent-border) 62%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 20%, var(--panel));
+  color: var(--ink);
+}
+
+.markdown-hybrid-structural-math-template-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  align-content: start;
+  overflow: auto;
+}
+
+.markdown-hybrid-structural-math-template {
+  padding: 10px;
+  text-align: left;
+  font-family: "STIX Two Math", "Cambria Math", var(--mono);
+}
+
+.markdown-hybrid-structural-math-canvas {
+  min-height: 220px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 70%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--field-bg) 90%, transparent);
+  overflow: auto;
+  outline: none;
+}
+
+.markdown-hybrid-structural-math-row {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 22px;
+  min-height: 28px;
+  padding: 3px 4px;
+  border-radius: 9px;
+  vertical-align: middle;
+}
+
+.markdown-hybrid-structural-math-row.is-compact {
+  min-height: 22px;
+  padding: 2px 3px;
+}
+
+.markdown-hybrid-structural-math-row.is-active {
+  background: color-mix(in srgb, var(--accent-soft) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 44%, transparent);
+}
+
+.markdown-hybrid-structural-math-placeholder {
+  color: color-mix(in srgb, var(--muted) 82%, transparent);
+}
+
+.markdown-hybrid-structural-math-boundary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+}
+
+.markdown-hybrid-structural-math-boundary.is-caret::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 1px;
+  bottom: 1px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--accent-strong);
+}
+
+.markdown-hybrid-structural-math-node,
+.markdown-hybrid-structural-math-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.markdown-hybrid-structural-math-token {
+  padding: 1px 2px;
+  font-family: "STIX Two Math", "Cambria Math", var(--mono);
+}
+
+.markdown-hybrid-structural-math-node.is-fraction {
+  min-width: 48px;
+  display: inline-grid;
+  justify-items: center;
+}
+
+.markdown-hybrid-structural-math-fraction-line {
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+}
+
+.markdown-hybrid-structural-math-node.is-root,
+.markdown-hybrid-structural-math-node.is-sqrt,
+.markdown-hybrid-structural-math-node.is-function,
+.markdown-hybrid-structural-math-node.is-limit,
+.markdown-hybrid-structural-math-node.is-delimited,
+.markdown-hybrid-structural-math-node.is-script,
+.markdown-hybrid-structural-math-node.is-operator-stack {
+  padding: 2px 3px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-2) 44%, transparent);
+}
+
+.markdown-hybrid-structural-math-node-label,
+.markdown-hybrid-structural-math-delimiter,
+.markdown-hybrid-structural-math-operator-symbol,
+.markdown-hybrid-structural-math-radical {
+  font-weight: 700;
+}
+
+.markdown-hybrid-structural-math-root-index,
+.markdown-hybrid-structural-math-operator-bounds,
+.markdown-hybrid-structural-math-subsup {
+  display: inline-grid;
+  justify-items: center;
+}
+
+.markdown-hybrid-structural-math-node.is-matrix,
+.markdown-hybrid-structural-math-node.is-cases,
+.markdown-hybrid-structural-math-node.is-aligned,
+.markdown-hybrid-structural-math-node.is-vector {
+  min-width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
+}
+
+.markdown-hybrid-structural-math-node-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.markdown-hybrid-structural-math-node-toolbar button {
+  padding: 4px 8px;
+  font-size: 0.74rem;
+}
+
+.markdown-hybrid-structural-math-matrix-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+}
+
+.markdown-hybrid-structural-math-matrix-cell {
+  min-width: 0;
+}
+
+.markdown-hybrid-structural-math-dual-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.markdown-hybrid-structural-math-dual-separator {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.markdown-hybrid-structural-math-preview-card {
+  min-height: 180px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--field-bg) 88%, transparent);
+  overflow: auto;
+}
+
+.markdown-hybrid-structural-math-raw-textarea {
+  min-height: 180px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 70%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--field-bg) 90%, transparent);
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.markdown-hybrid-structural-math-raw-reason,
+.markdown-hybrid-structural-math-raw-status {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+@media (max-width: 980px) {
+  .markdown-hybrid-structural-math-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .markdown-hybrid-math-toolbox {
   position: fixed;
   z-index: 80;
