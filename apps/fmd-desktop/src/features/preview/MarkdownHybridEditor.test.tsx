@@ -99,6 +99,19 @@ const dispatchKeyDown = (
   });
 };
 
+const dispatchCompositionEvent = (
+  element: Element | null,
+  type: "compositionstart" | "compositionend",
+) => {
+  act(() => {
+    const event =
+      typeof CompositionEvent !== "undefined"
+        ? new CompositionEvent(type, { bubbles: true, cancelable: true })
+        : new Event(type, { bubbles: true, cancelable: true });
+    element?.dispatchEvent(event);
+  });
+};
+
 const dispatchContextMenu = (
   element: Element | null,
   options: Partial<MouseEventInit> = {},
@@ -1621,7 +1634,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("exits a card on Enter at #endcard and creates exactly one new empty text block", () => {
+  it("keeps Enter at #endcard local until commit and reparses after blur", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
 
@@ -1650,73 +1663,68 @@ describe("MarkdownHybridEditor", () => {
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "Enter");
 
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe(`${initialMarkdown}\n`);
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      blurTextarea(textarea);
       expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
       expect(blockKinds).toEqual(["card-block", "blank"]);
 
-      textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
-      );
-      expect(textarea).toBeTruthy();
-      expect(textarea?.value).toBe("");
-      expect(textarea?.selectionStart).toBe(0);
-      expect(textarea?.selectionEnd).toBe(0);
-
-      dispatchKeyDown(textarea, "Enter");
-      let blankBlocks = container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blank']");
-      expect(blankBlocks).toHaveLength(2);
-      textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-block[data-md-block-index='2'] .markdown-hybrid-block-editor",
-      );
-      expect(textarea).toBeTruthy();
-
-      dispatchKeyDown(textarea, "Enter");
-      blankBlocks = container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blank']");
-      expect(blankBlocks).toHaveLength(3);
-
       cleanup();
     });
   });
 
-  it("uses the same exit behavior for Shift+Enter at #endcard", () => {
+  it("keeps Shift+Enter at #endcard local until commit and reparses after blur", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
         return (
-          <MarkdownHybridEditor
-            historyKey="card-shift-enter-exit"
-            markdown={markdown}
-            mode="edit"
-            onChange={setMarkdown}
-            renderPreview={(value) => <div>{value}</div>}
-          />
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-shift-enter-exit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
         );
       };
 
       const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      const textarea = activateBlockEditor(container, 0);
+      let textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "Enter", { shiftKey: true });
 
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe(`${initialMarkdown}\n`);
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
       expect(blockKinds).toEqual(["card-block", "blank"]);
-      expect(
-        container.querySelector(".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor"),
-      ).toBeTruthy();
 
       cleanup();
     });
   });
 
-  it("exits a math block on Enter at the closing $$ line and focuses a new empty text block", () => {
+  it("keeps Enter inside a math block local until commit and reparses after blur", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["$$", "\\frac{a}{b}", "$$"].join("\n");
 
@@ -1745,19 +1753,17 @@ describe("MarkdownHybridEditor", () => {
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "Enter");
 
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe(`${initialMarkdown}\n`);
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      blurTextarea(textarea);
       expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
       expect(blockKinds).toEqual(["math-block", "blank"]);
-
-      textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
-      );
-      expect(textarea).toBeTruthy();
-      expect(textarea?.value).toBe("");
-      expect(textarea?.selectionStart).toBe(0);
-      expect(textarea?.selectionEnd).toBe(0);
 
       cleanup();
     });
@@ -1796,10 +1802,16 @@ describe("MarkdownHybridEditor", () => {
       expect(fracButton).toBeTruthy();
       dispatchClick(fracButton);
 
-      expect(readMarkdown()).toBe("$$\n\\frac{}{}\n$$");
+      expect(readMarkdown()).toBe("$$\n\n$$");
       expect(
         document.body.querySelector(".markdown-hybrid-structural-math-row.is-active"),
       ).toBeTruthy();
+
+      dispatchClick(findButtonByExactText(document.body, "Close"));
+      const committedTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(committedTextarea?.value).toBe("$$\n\\frac{}{}\n$$");
+      blurTextarea(committedTextarea);
+      expect(readMarkdown()).toBe("$$\n\\frac{}{}\n$$");
 
       cleanup();
     });
@@ -1906,7 +1918,7 @@ describe("MarkdownHybridEditor", () => {
       let textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
-      dispatchKeyDown(textarea, "a");
+      applyTextareaInput(textarea, ["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
 
       expect(readMarkdown()).toBe(initialMarkdown);
       const blockKinds = Array.from(
@@ -2138,7 +2150,258 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("continues a quote block with Enter and keeps the quote prefix", () => {
+  it("keeps Enter inside a paragraph local until blur commits the draft", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "Alpha Beta";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="paragraph-enter-local-commit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, "Alpha".length);
+      dispatchKeyDown(textarea, "Enter");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("Alpha\n Beta");
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe("Alpha\n Beta");
+
+      cleanup();
+    });
+  });
+
+  it("keeps Enter inside heading and blank blocks local until blur reparses them", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["## Heading", "", "Body"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="heading-blank-enter-local-commit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("## Heading\n");
+      expect(readMarkdown()).toBe(initialMarkdown);
+      blurTextarea(textarea);
+
+      expect(readMarkdown()).toBe(["## Heading", "", "", "Body"].join("\n"));
+      textarea = activateBlockEditor(container, 2);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("\n");
+      expect(readMarkdown()).toBe(["## Heading", "", "", "Body"].join("\n"));
+      blurTextarea(textarea);
+
+      expect(readMarkdown()).toBe(["## Heading", "", "", "", "Body"].join("\n"));
+
+      cleanup();
+    });
+  });
+
+  it("commits the previous draft exactly once when switching to another block", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["# One", "# Two"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="block-switch-commit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "# One updated");
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      textarea = activateBlockEditor(container, 1);
+      expect(readMarkdown()).toBe(["# One updated", "# Two"].join("\n"));
+      expect(textarea?.value).toBe("# Two");
+
+      cleanup();
+    });
+  });
+
+  it("commits via Ctrl+Enter and Cmd+Enter and exits the active block editor", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "Alpha";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="explicit-commit-shortcuts"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Alpha Ctrl");
+      dispatchKeyDown(textarea, "Enter", { ctrlKey: true });
+
+      expect(readMarkdown()).toBe("Alpha Ctrl");
+      expect(container.querySelector(".markdown-hybrid-block-editor")).toBeNull();
+
+      textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Alpha Cmd");
+      dispatchKeyDown(textarea, "Enter", { metaKey: true });
+
+      expect(readMarkdown()).toBe("Alpha Cmd");
+      expect(container.querySelector(".markdown-hybrid-block-editor")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("discards the local draft on Escape and leaves committed markdown untouched", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "Alpha";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="escape-discards-draft"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Alpha draft");
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      dispatchKeyDown(textarea, "Escape");
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(container.querySelector(".markdown-hybrid-block-editor")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("defers blur commits until compositionend finishes", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "Alpha";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="composition-defers-commit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      dispatchCompositionEvent(textarea, "compositionstart");
+      applyTextareaInput(textarea, "Alpha\nBeta");
+      blurTextarea(textarea);
+
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(container.querySelector(".markdown-hybrid-block-editor")).toBeTruthy();
+
+      dispatchCompositionEvent(textarea, "compositionend");
+      expect(readMarkdown()).toBe("Alpha\nBeta");
+      expect(container.querySelector(".markdown-hybrid-block-editor")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("keeps Enter in a quote block local until commit without creating new boxes", () => {
     withImmediateRaf(() => {
       const initialMarkdown = "> Quote text";
 
@@ -2167,22 +2430,27 @@ describe("MarkdownHybridEditor", () => {
       dispatchKeyDown(textarea, "Enter");
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-      expect(textarea?.value).toBe("> Quote text\n> ");
+      expect(textarea?.value).toBe("> Quote text\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(textarea?.selectionStart).toBe("> Quote text\n> ".length);
-      expect(textarea?.selectionEnd).toBe("> Quote text\n> ".length);
+      expect(textarea?.selectionStart).toBe("> Quote text\n".length);
+      expect(textarea?.selectionEnd).toBe("> Quote text\n".length);
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blockquote']"),
       ).toHaveLength(1);
 
       blurTextarea(textarea);
-      expect(readMarkdown()).toBe("> Quote text\n> ");
+      expect(readMarkdown()).toBe("> Quote text\n");
+      expect(
+        Array.from(
+          container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+        ).map((block) => block.getAttribute("data-md-block-kind")),
+      ).toEqual(["blockquote", "blank"]);
 
       cleanup();
     });
   });
 
-  it("exits quote mode only when pressing Enter on an empty quote line", () => {
+  it("keeps Enter on an empty quote line local until commit", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["> Quote text", "> "].join("\n");
 
@@ -2208,27 +2476,28 @@ describe("MarkdownHybridEditor", () => {
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "Enter");
 
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe(["> Quote text", "> ", ""].join("\n"));
+      const markdownValueBeforeCommit =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValueBeforeCommit).toBe(initialMarkdown);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      blurTextarea(textarea);
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
       expect(blockKinds[0]).toBe("blockquote");
       expect(blockKinds[1]).toBe("blank");
-
-      textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
-      );
-      expect(textarea).toBeTruthy();
-      expect(textarea?.value).toBe("");
-
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-      expect(markdownValue.startsWith("> Quote text\n")).toBe(true);
-      expect(markdownValue).not.toContain("\n> \n");
+      const markdownValueAfterCommit =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValueAfterCommit).toBe(["> Quote text", "> ", ""].join("\n"));
 
       cleanup();
     });
   });
 
-  it("continues a nested quote block with Enter and preserves the >> prefix", () => {
+  it("keeps Enter inside nested quote blocks local until commit", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ">> Nested quote text";
 
@@ -2255,11 +2524,18 @@ describe("MarkdownHybridEditor", () => {
       dispatchKeyDown(textarea, "Enter");
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-      expect(textarea?.value).toBe(">> Nested quote text\n>> ");
-      expect(textarea?.selectionStart).toBe(">> Nested quote text\n>> ".length);
+      expect(textarea?.value).toBe(">> Nested quote text\n");
+      expect(textarea?.selectionStart).toBe(">> Nested quote text\n".length);
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blockquote']"),
       ).toHaveLength(1);
+
+      blurTextarea(textarea);
+      expect(
+        Array.from(
+          container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+        ).map((block) => block.getAttribute("data-md-block-kind")),
+      ).toEqual(["blockquote", "blank"]);
 
       cleanup();
     });
@@ -2294,17 +2570,19 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchKeyDown(textarea, "Enter", { shiftKey: true });
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-      expect(textarea?.value).toBe("> Quote\n> ");
+      expect(textarea?.value).toBe("> Quote\n");
       applyTextareaInput(textarea, "> Quote\n> A");
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       dispatchKeyDown(textarea, "Enter", { shiftKey: true });
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("> Quote\n> A\n");
       applyTextareaInput(textarea, "> Quote\n> A\n> B");
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       dispatchKeyDown(textarea, "Enter", { shiftKey: true });
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("> Quote\n> A\n> B\n");
       applyTextareaInput(textarea, "> Quote\n> A\n> B\n> C");
 
       expect(readMarkdown()).toBe(initialMarkdown);
@@ -2558,10 +2836,13 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findPageLinkPickerOptionByLabel(container, "Alpha"));
 
       const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-      expect(readMarkdown()).toContain("[[Alpha]]");
+      expect(readMarkdown()).not.toContain("[[Alpha]]");
       expect(textarea?.value).toBe("[[Alpha]]");
       expect(textarea?.selectionStart).toBe("[[Alpha]]".length);
       expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeNull();
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toContain("[[Alpha]]");
 
       cleanup();
     });
@@ -2609,10 +2890,13 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findPageLinkPickerOptionByLabel(container, "Beta"));
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-      expect(readMarkdown()).toBe("Alpha [[Folder/Beta]]");
+      expect(readMarkdown()).toBe("Alpha ");
       expect(textarea?.value).toBe("Alpha [[Folder/Beta]]");
       expect(textarea?.selectionStart).toBe("Alpha [[Folder/Beta]]".length);
       expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeNull();
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe("Alpha [[Folder/Beta]]");
 
       cleanup();
     });
@@ -2688,14 +2972,14 @@ describe("MarkdownHybridEditor", () => {
       dispatchKeyDown(textarea, "Backspace");
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe("A  B");
-      expect(readMarkdown()).toBe("A  B");
+      expect(readMarkdown()).toBe(initialMarkdown);
 
       applyTextareaInput(textarea, initialMarkdown, beforeIndex);
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       dispatchKeyDown(textarea, "Delete");
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe("A  B");
-      expect(readMarkdown()).toBe("A  B");
+      expect(readMarkdown()).toBe(initialMarkdown);
 
       applyTextareaInput(textarea, initialMarkdown, beforeIndex);
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
@@ -2813,10 +3097,12 @@ describe("MarkdownHybridEditor", () => {
           ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
         );
         dispatchClick(boldButton);
-        expect(readMarkdown()).toBe("Alpha **Beta**");
+        expect(readMarkdown()).toBe("Alpha Beta");
+        expect(textarea?.value).toBe("Alpha **Beta**");
 
         dispatchClick(boldButton);
         expect(readMarkdown()).toBe("Alpha Beta");
+        expect(textarea?.value).toBe("Alpha Beta");
 
         cleanup();
       } finally {
@@ -2870,7 +3156,8 @@ describe("MarkdownHybridEditor", () => {
         });
 
         dispatchClick(boldButton);
-        expect(readMarkdown()).toBe("Alpha **Beta**");
+        expect(readMarkdown()).toBe("Alpha Beta");
+        expect(textarea?.value).toBe("Alpha **Beta**");
 
         cleanup();
       } finally {
@@ -3027,6 +3314,10 @@ describe("MarkdownHybridEditor", () => {
         );
         dispatchClick(textMenuButton);
 
+        expect(readMarkdown()).toBe(initialMarkdown);
+        expect(textarea?.value).toBe(expectedMarkdown);
+
+        blurTextarea(textarea);
         expect(readMarkdown()).toBe(expectedMarkdown);
 
         cleanup();
@@ -3074,6 +3365,10 @@ describe("MarkdownHybridEditor", () => {
         );
         dispatchClick(textMenuButton);
 
+        expect(readMarkdown()).toBe("c) **OPTION** C");
+        expect(textarea?.value).toBe("c) OPTION C");
+
+        blurTextarea(textarea);
         expect(readMarkdown()).toBe("c) OPTION C");
 
         cleanup();
@@ -3109,10 +3404,12 @@ describe("MarkdownHybridEditor", () => {
 
       setTextareaSelection(textarea, start, start + 4);
       dispatchKeyDown(textarea, "b", { ctrlKey: true });
-      expect(readMarkdown()).toBe("Alpha **Beta**");
+      expect(readMarkdown()).toBe("Alpha Beta");
+      expect(textarea?.value).toBe("Alpha **Beta**");
 
       dispatchKeyDown(textarea, "b", { ctrlKey: true });
       expect(readMarkdown()).toBe("Alpha Beta");
+      expect(textarea?.value).toBe("Alpha Beta");
 
       cleanup();
     });
@@ -3143,16 +3440,20 @@ describe("MarkdownHybridEditor", () => {
       setTextareaSelection(textarea, 0, "OPTION".length);
 
       dispatchKeyDown(textarea, "b", { ctrlKey: true });
-      expect(readMarkdown()).toBe("**OPTION**");
+      expect(readMarkdown()).toBe("OPTION");
+      expect(textarea?.value).toBe("**OPTION**");
 
       dispatchKeyDown(textarea, "i", { ctrlKey: true });
-      expect(readMarkdown()).toBe("***OPTION***");
+      expect(readMarkdown()).toBe("OPTION");
+      expect(textarea?.value).toBe("***OPTION***");
 
       dispatchKeyDown(textarea, "i", { ctrlKey: true });
-      expect(readMarkdown()).toBe("**OPTION**");
+      expect(readMarkdown()).toBe("OPTION");
+      expect(textarea?.value).toBe("**OPTION**");
 
       dispatchKeyDown(textarea, "b", { ctrlKey: true });
       expect(readMarkdown()).toBe("OPTION");
+      expect(textarea?.value).toBe("OPTION");
 
       cleanup();
     });

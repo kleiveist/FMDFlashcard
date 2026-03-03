@@ -46,6 +46,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import {
   MarkdownHybridEditor,
+  type MarkdownHybridEditorHandle,
   type MarkdownHybridEditorMode,
 } from "../features/preview/MarkdownHybridEditor";
 import {
@@ -1232,6 +1233,18 @@ type PreviewPanelProps = {
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
 };
+
+type PendingHybridPostCommitAction =
+  | {
+    kind: "toggle-preview-mode";
+    nextRawPreview: boolean;
+  }
+  | {
+    kind: "toggle-edit-mode";
+  }
+  | {
+    kind: "write-save";
+  };
 
 export const canStartPreviewEdit = ({
   rawPreview,
@@ -5695,6 +5708,7 @@ export const PreviewPanel = ({
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const markdownEditorScrollRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
+  const hybridEditorRef = useRef<MarkdownHybridEditorHandle | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
   const applyingMarkdownCaretRef = useRef(false);
@@ -5707,6 +5721,8 @@ export const PreviewPanel = ({
     null,
   );
   const [isHybridEditModeActive, setIsHybridEditModeActive] = useState(true);
+  const [pendingHybridPostCommitAction, setPendingHybridPostCommitAction] =
+    useState<PendingHybridPostCommitAction | null>(null);
   const isNarrowFrontmatterViewport = useMediaQuery("(max-width: 980px)", false);
   const effectiveFrontmatterPanelCollapsed =
     userFrontmatterCollapsed ?? isNarrowFrontmatterViewport;
@@ -6559,6 +6575,93 @@ export const PreviewPanel = ({
       documentMode !== "write" &&
       !hasFrontmatterError,
   );
+
+  const commitHybridEditIfNeeded = useCallback(async () => {
+    if (!showHybridMarkdownEditor) {
+      return true;
+    }
+    const result = await hybridEditorRef.current?.commitActiveEdit();
+    return result ?? true;
+  }, [showHybridMarkdownEditor]);
+
+  const discardHybridEditIfNeeded = useCallback(async () => {
+    if (!showHybridMarkdownEditor) {
+      return true;
+    }
+    const result = await hybridEditorRef.current?.discardActiveEdit();
+    return result ?? true;
+  }, [showHybridMarkdownEditor]);
+
+  const handleTogglePreviewMode = useCallback(
+    async (nextRawPreview: boolean) => {
+      if (rawPreview === nextRawPreview) {
+        return;
+      }
+      if (!rawPreview && !nextRawPreview) {
+        return;
+      }
+      if (!rawPreview) {
+        if (!await commitHybridEditIfNeeded()) {
+          return;
+        }
+        setPendingHybridPostCommitAction({
+          kind: "toggle-preview-mode",
+          nextRawPreview,
+        });
+        return;
+      }
+      onToggleRawPreview();
+    },
+    [commitHybridEditIfNeeded, onToggleRawPreview, rawPreview],
+  );
+
+  const handleHybridEditModeToggle = useCallback(async () => {
+    if (!canToggleEditMode) {
+      return;
+    }
+    if (isEditModeActive) {
+      if (!await commitHybridEditIfNeeded()) {
+        return;
+      }
+      setPendingHybridPostCommitAction({ kind: "toggle-edit-mode" });
+      return;
+    }
+    setIsHybridEditModeActive(true);
+  }, [canToggleEditMode, commitHybridEditIfNeeded, isEditModeActive]);
+
+  const handleHybridWriteCancel = useCallback(async () => {
+    if (!await discardHybridEditIfNeeded()) {
+      return;
+    }
+    onWriteCancel?.();
+  }, [discardHybridEditIfNeeded, onWriteCancel]);
+
+  const handleHybridWriteSave = useCallback(async () => {
+    if (!await commitHybridEditIfNeeded()) {
+      return;
+    }
+    setPendingHybridPostCommitAction({ kind: "write-save" });
+  }, [commitHybridEditIfNeeded]);
+
+  useEffect(() => {
+    if (!pendingHybridPostCommitAction) {
+      return;
+    }
+    const action = pendingHybridPostCommitAction;
+    setPendingHybridPostCommitAction(null);
+    if (action.kind === "toggle-edit-mode") {
+      setIsHybridEditModeActive((current) => !current);
+      return;
+    }
+    if (action.kind === "write-save") {
+      onWriteSave?.();
+      return;
+    }
+    if (rawPreview !== action.nextRawPreview) {
+      onToggleRawPreview();
+    }
+  }, [onToggleRawPreview, onWriteSave, pendingHybridPostCommitAction, rawPreview]);
+
   const handleToggleFrontmatterPanelCollapsed = useCallback(() => {
     setUserFrontmatterCollapsed(
       (current) => !(current ?? isNarrowFrontmatterViewport),
@@ -6624,9 +6727,7 @@ export const PreviewPanel = ({
               type="button"
               className={`ghost small preview-mode-button ${rawPreview ? "active" : ""}`}
               onClick={() => {
-                if (!rawPreview) {
-                  onToggleRawPreview();
-                }
+                void handleTogglePreviewMode(true);
               }}
               aria-pressed={rawPreview}
               disabled={!selectedFile}
@@ -6639,9 +6740,7 @@ export const PreviewPanel = ({
               type="button"
               className={`ghost small preview-mode-button ${!rawPreview ? "active" : ""}`}
               onClick={() => {
-                if (rawPreview) {
-                  onToggleRawPreview();
-                }
+                void handleTogglePreviewMode(false);
               }}
               aria-pressed={!rawPreview}
               disabled={!selectedFile}
@@ -6656,10 +6755,7 @@ export const PreviewPanel = ({
                 isEditModeActive ? "active edit-active" : ""
               }`}
               onClick={() => {
-                if (!canToggleEditMode) {
-                  return;
-                }
-                setIsHybridEditModeActive((current) => !current);
+                void handleHybridEditModeToggle();
               }}
               aria-pressed={isEditModeActive}
               disabled={!canToggleEditMode}
@@ -6679,7 +6775,7 @@ export const PreviewPanel = ({
                 type="button"
                 className="ghost small"
                 onClick={() => {
-                  onWriteCancel?.();
+                  void handleHybridWriteCancel();
                 }}
                 disabled={!selectedFile}
               >
@@ -6689,7 +6785,7 @@ export const PreviewPanel = ({
                 type="button"
                 className="primary small"
                 onClick={() => {
-                  onWriteSave?.();
+                  void handleHybridWriteSave();
                 }}
                 disabled={!selectedFile}
               >
@@ -6768,6 +6864,7 @@ export const PreviewPanel = ({
                   />
                 ) : null}
                 <MarkdownHybridEditor
+                  ref={hybridEditorRef}
                   historyKey={selectedFile?.path ?? "none"}
                   markdown={markdownEditBody}
                   mode={documentMode}

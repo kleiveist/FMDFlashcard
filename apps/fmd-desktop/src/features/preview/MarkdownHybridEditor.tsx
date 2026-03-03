@@ -14,6 +14,7 @@ import {
   type DragEvent,
   type FocusEvent,
   type FormEvent,
+  forwardRef,
   isValidElement,
   type KeyboardEvent,
   type MouseEvent,
@@ -22,6 +23,7 @@ import {
   type SyntheticEvent,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -32,7 +34,6 @@ import { normalizeRelativePath } from "../../lib/path";
 import { type VaultFile } from "../../lib/tree";
 import {
   normalizeCardBlockSource,
-  isSingleLineCommitBlock,
   normalizeHelpBlockSource,
   normalizeHorizontalRuleBlockSource,
   normalizeHorizontalRuleSpacingInMarkdown,
@@ -61,10 +62,8 @@ import {
 } from "./insertTemplates";
 import {
   extractMathBlockBody,
-  isMathBlockDelimiterLine,
   MathBlockRenderer,
   normalizeMathBlockSource,
-  resolveMathBlockBoundaries,
 } from "./mathBlocks";
 import {
   MarkdownHybridTableBlock,
@@ -74,6 +73,10 @@ import {
 import { MathStructureDialog } from "./math-editor/MathStructureDialog";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
+export type MarkdownHybridEditorHandle = {
+  commitActiveEdit: () => Promise<boolean>;
+  discardActiveEdit: () => Promise<boolean>;
+};
 
 type PendingActivation = {
   index: number;
@@ -87,6 +90,32 @@ type PendingActivation = {
 type PendingTableActivation = {
   blockIndex: number;
   request: MarkdownHybridTableActivationRequest;
+};
+
+type ActiveEditSnapshot = {
+  blockIndex: number;
+  blockId: string;
+  kind: MarkdownBlock["kind"];
+  startLine: number;
+  endLine: number;
+  startOffset: number;
+  endOffset: number;
+  raw: string;
+  draft: string;
+  isDetachedEmptyBlock?: boolean;
+};
+
+type DeferredEditAction = {
+  kind: "commit" | "discard";
+  options?: {
+    deactivate?: boolean;
+    nextActivation?: PendingActivation | null;
+  };
+};
+
+type DeferredEditRequest = {
+  kind: DeferredEditAction["kind"];
+  resolve: (value: boolean) => void;
 };
 
 type BlockSelectionRange = {
@@ -2402,130 +2431,13 @@ const assignStableRenderKeys = (
 const orderedListLikeLinePattern = /^\s*\d+(?:\.|\)|\.\))\s+\S/;
 const unorderedListLikeLinePattern = /^\s*[-+*]\s+\S/;
 const indentedContinuationLinePattern = /^(?:\s{2,}\S|\t+\S)/;
-const editorOrderedListLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
-const editorTaskListLinePattern = /^(\s*)([-+*])(\s+\[[ xX]\])(\s+)(.*)$/;
-const editorUnorderedListLinePattern = /^(\s*)([-+*])(\s+)(.*)$/;
-const editorListContinuationLinePattern = /^(\s{2,}|\t+)(.*)$/;
-const editorQuoteLinePattern = /^(\s*)(>+)(\s*)(.*)$/;
 const markdownTaskListLinePattern = /^(\s*[-+*]\s+\[)([ xX])(\])(.*)$/;
-
-type EditorListLineInfo =
-  | {
-    kind: "ordered";
-    indent: string;
-    spacing: string;
-    content: string;
-    prefixLength: number;
-    orderedNumber: number;
-    orderedDelimiter: "." | ")";
-  }
-  | {
-    kind: "task";
-    indent: string;
-    spacing: string;
-    content: string;
-    prefixLength: number;
-    bullet: "-" | "+" | "*";
-  }
-  | {
-    kind: "unordered";
-    indent: string;
-    spacing: string;
-    content: string;
-    prefixLength: number;
-    bullet: "-" | "+" | "*";
-  };
 
 type LineRange = {
   start: number;
   end: number;
   lineIndex: number;
   line: string;
-};
-
-type EditorQuoteLineInfo = {
-  indent: string;
-  markers: string;
-  spacing: string;
-  content: string;
-  prefixLength: number;
-  continuationPrefix: string;
-  isEmpty: boolean;
-};
-
-const parseEditorListLine = (line: string): EditorListLineInfo | null => {
-  const taskMatch = line.match(editorTaskListLinePattern);
-  if (taskMatch) {
-    const indent = taskMatch[1] ?? "";
-    const bullet = ((taskMatch[2] ?? "-") as "-" | "+" | "*");
-    const taskMarker = taskMatch[3] ?? " [ ]";
-    const spacing = taskMatch[4] ?? " ";
-    const content = taskMatch[5] ?? "";
-    return {
-      kind: "task",
-      indent,
-      bullet,
-      spacing,
-      content,
-      prefixLength: indent.length + bullet.length + taskMarker.length + spacing.length,
-    };
-  }
-
-  const orderedMatch = line.match(editorOrderedListLinePattern);
-  if (orderedMatch) {
-    const indent = orderedMatch[1] ?? "";
-    const numberRaw = orderedMatch[2] ?? "1";
-    const delimiterRaw = orderedMatch[3] ?? ".";
-    const spacing = orderedMatch[4] ?? " ";
-    const content = orderedMatch[5] ?? "";
-    return {
-      kind: "ordered",
-      indent,
-      spacing,
-      content,
-      prefixLength: indent.length + numberRaw.length + delimiterRaw.length + spacing.length,
-      orderedNumber: Number.parseInt(numberRaw, 10) || 1,
-      orderedDelimiter: delimiterRaw === "." ? "." : ")",
-    };
-  }
-
-  const unorderedMatch = line.match(editorUnorderedListLinePattern);
-  if (unorderedMatch) {
-    const indent = unorderedMatch[1] ?? "";
-    const bullet = ((unorderedMatch[2] ?? "-") as "-" | "+" | "*");
-    const spacing = unorderedMatch[3] ?? " ";
-    const content = unorderedMatch[4] ?? "";
-    return {
-      kind: "unordered",
-      indent,
-      bullet,
-      spacing,
-      content,
-      prefixLength: indent.length + bullet.length + spacing.length,
-    };
-  }
-
-  return null;
-};
-
-const parseEditorQuoteLine = (line: string): EditorQuoteLineInfo | null => {
-  const quoteMatch = line.match(editorQuoteLinePattern);
-  if (!quoteMatch) {
-    return null;
-  }
-  const indent = quoteMatch[1] ?? "";
-  const markers = quoteMatch[2] ?? ">";
-  const spacing = quoteMatch[3] ?? "";
-  const content = quoteMatch[4] ?? "";
-  return {
-    indent,
-    markers,
-    spacing,
-    content,
-    prefixLength: indent.length + markers.length + spacing.length,
-    continuationPrefix: `${indent}${markers} `,
-    isEmpty: content.trim().length === 0,
-  };
 };
 
 const getLineRangeAtOffset = (value: string, offset: number): LineRange => {
@@ -2550,14 +2462,6 @@ const getLineRangeAtOffset = (value: string, offset: number): LineRange => {
     lineIndex,
     line: value.slice(lineStart, lineEnd),
   };
-};
-
-const getLineStartOffsetByIndex = (lines: string[], targetIndex: number) => {
-  let offset = 0;
-  for (let i = 0; i < targetIndex; i += 1) {
-    offset += (lines[i] ?? "").length + 1;
-  }
-  return offset;
 };
 
 const toggleTaskCheckboxInBlockRaw = (
@@ -2588,16 +2492,6 @@ const toggleTaskCheckboxInBlockRaw = (
   }
 
   return blockRaw;
-};
-
-const buildNextListLinePrefixFromInfo = (listLineInfo: EditorListLineInfo) => {
-  if (listLineInfo.kind === "ordered") {
-    return `${listLineInfo.indent}${listLineInfo.orderedNumber + 1}${listLineInfo.orderedDelimiter}${listLineInfo.spacing}`;
-  }
-  if (listLineInfo.kind === "task") {
-    return `${listLineInfo.indent}${listLineInfo.bullet} [ ]${listLineInfo.spacing}`;
-  }
-  return `${listLineInfo.indent}${listLineInfo.bullet}${listLineInfo.spacing}`;
 };
 
 const isTextLikeBlockKind = (kind: MarkdownBlock["kind"]) =>
@@ -3022,21 +2916,59 @@ const toPersistedBlockRawForDraft = (
     ? normalizeCardBlockSource(draft)
     : draft;
 
-const shouldDeferExternalSyncForBlockKind = (kind: MarkdownBlock["kind"]) =>
-  // Structured multi-line blocks stay local while editing so the outer block tree
-  // does not re-parse and visually jump on every keystroke.
-  kind === "card-block" ||
-  kind === "help-block" ||
-  kind === "ordered-list" ||
-  kind === "unordered-list" ||
-  kind === "blockquote" ||
-  kind === "math-block" ||
-  kind === "code-fence";
-
 const applyEditorMarkdownNormalization = (value: string) =>
   normalizeHorizontalRuleSpacingInMarkdown(value);
 
-export const MarkdownHybridEditor = ({
+const createActiveEditSnapshotFromBlock = (
+  blockIndex: number,
+  block: MarkdownBlock,
+): ActiveEditSnapshot => ({
+  blockIndex,
+  blockId: block.id,
+  kind: block.kind,
+  startLine: block.startLine,
+  endLine: block.endLine,
+  startOffset: block.startOffset,
+  endOffset: block.endOffset,
+  raw: block.raw,
+  draft: toEditorDraftForBlock(block),
+});
+
+const createDetachedEmptyEditSnapshot = (draft: string): ActiveEditSnapshot => ({
+  blockIndex: 0,
+  blockId: "empty:0",
+  kind: "blank",
+  startLine: 0,
+  endLine: 0,
+  startOffset: 0,
+  endOffset: 0,
+  raw: draft,
+  draft,
+  isDetachedEmptyBlock: true,
+});
+
+const mergeDeferredEditAction = (
+  current: DeferredEditAction | null,
+  nextAction: DeferredEditAction,
+): DeferredEditAction => {
+  if (!current) {
+    return nextAction;
+  }
+  if (current.kind === "discard" || nextAction.kind === "discard") {
+    return { kind: "discard" };
+  }
+  const nextActivation = nextAction.options?.nextActivation ?? current.options?.nextActivation ?? null;
+  return {
+    kind: "commit",
+    options: {
+      deactivate: nextAction.options?.deactivate ?? current.options?.deactivate,
+      nextActivation,
+    },
+  };
+};
+
+export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, MarkdownHybridEditorProps>(
+({
   historyKey,
   markdown,
   mode,
@@ -3047,11 +2979,13 @@ export const MarkdownHybridEditor = ({
   onCommit,
   onDirtyChange,
   renderPreview,
-}: MarkdownHybridEditorProps) => {
+}: MarkdownHybridEditorProps, ref) => {
   const blocks = useMemo(() => parseMarkdownBlocks(markdown), [markdown]);
   const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
   const [activeDraft, setActiveDraft] = useState("");
   const [activeDirty, setActiveDirty] = useState(false);
+  const [activeEditSnapshot, setActiveEditSnapshot] = useState<ActiveEditSnapshot | null>(null);
+  const [activeComposing, setActiveComposing] = useState(false);
   const [activeTableDirty, setActiveTableDirty] = useState(false);
   const [history, setHistory] = useState<MarkdownHistoryState>(() =>
     createMarkdownHistory(markdown),
@@ -3116,10 +3050,34 @@ export const MarkdownHybridEditor = ({
     start: number;
     end: number;
   } | null>(null);
+  const activeDraftRef = useRef("");
+  const activeComposingRef = useRef(false);
+  const activeEditSnapshotRef = useRef<ActiveEditSnapshot | null>(null);
+  const deferredEditActionRef = useRef<DeferredEditAction | null>(null);
+  const deferredEditRequestsRef = useRef<DeferredEditRequest[]>([]);
+  const deferredEditFlushFrameRef = useRef<number | null>(null);
   const stableBlockRenderTokensRef = useRef<StableRenderKeyToken[]>([]);
   const stableBlockRenderKeyCounterRef = useRef(0);
   const pendingActivationMarkdownRef = useRef<string | null>(null);
   const activeTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
+
+  useEffect(() => {
+    activeDraftRef.current = activeDraft;
+  }, [activeDraft]);
+
+  useEffect(() => {
+    activeComposingRef.current = activeComposing;
+  }, [activeComposing]);
+
+  useEffect(() => {
+    activeEditSnapshotRef.current = activeEditSnapshot;
+  }, [activeEditSnapshot]);
+
+  const updateActiveDraftState = useCallback((nextDraft: string) => {
+    activeDraftRef.current = nextDraft;
+    setActiveDraft(nextDraft);
+  }, []);
+
   const blockRenderKeys = useMemo(() => {
     const assigned = assignStableRenderKeys(
       blocks,
@@ -3395,13 +3353,23 @@ export const MarkdownHybridEditor = ({
 
   useEffect(() => {
     setActiveBlockIndex(null);
-    setActiveDraft("");
+    updateActiveDraftState("");
     setActiveDirty(false);
+    setActiveEditSnapshot(null);
+    setActiveComposing(false);
     setActiveTableDirty(false);
     setPendingActivation(null);
     setPendingTableActivation(null);
     pendingActivationMarkdownRef.current = null;
     activeTableSessionRef.current = null;
+    deferredEditActionRef.current = null;
+    deferredEditRequestsRef.current.splice(0).forEach((request) => {
+      request.resolve(false);
+    });
+    if (deferredEditFlushFrameRef.current !== null) {
+      window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
+      deferredEditFlushFrameRef.current = null;
+    }
     setSelectedBlockSelection(null);
     setIsSelectionDragging(false);
     setDraggedBlockIndex(null);
@@ -3458,6 +3426,14 @@ export const MarkdownHybridEditor = ({
         window.clearTimeout(inlineFormattingToolbarTimerRef.current);
         inlineFormattingToolbarTimerRef.current = null;
       }
+      if (deferredEditFlushFrameRef.current !== null) {
+        window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
+        deferredEditFlushFrameRef.current = null;
+      }
+      deferredEditActionRef.current = null;
+      deferredEditRequestsRef.current.splice(0).forEach((request) => {
+        request.resolve(false);
+      });
       inlineFormattingToolbarPendingSignatureRef.current = null;
       inlineFormattingToolbarRangeRef.current = null;
     },
@@ -3770,18 +3746,33 @@ export const MarkdownHybridEditor = ({
     if (activeBlockIndex === null) {
       return;
     }
+    if (activeEditSnapshot?.isDetachedEmptyBlock && blocks.length === 0) {
+      return;
+    }
     const nextBlock = blocks[activeBlockIndex];
     if (!nextBlock) {
       setActiveBlockIndex(null);
-      setActiveDraft("");
+      updateActiveDraftState("");
       setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
       return;
     }
     const nextDraft = toEditorDraftForBlock(nextBlock);
     if (!activeDirty && nextDraft !== activeDraft) {
-      setActiveDraft(nextDraft);
+      updateActiveDraftState(nextDraft);
     }
-  }, [activeBlockIndex, activeDirty, activeDraft, blocks]);
+    if (
+      !activeDirty &&
+      (
+        !activeEditSnapshot ||
+        activeEditSnapshot.blockId !== nextBlock.id ||
+        activeEditSnapshot.raw !== nextBlock.raw
+      )
+    ) {
+      setActiveEditSnapshot(createActiveEditSnapshotFromBlock(activeBlockIndex, nextBlock));
+    }
+  }, [activeBlockIndex, activeDirty, activeDraft, activeEditSnapshot, blocks]);
 
   useEffect(() => {
     if (mode !== "write" || disabled) {
@@ -3797,8 +3788,10 @@ export const MarkdownHybridEditor = ({
     if (blocks.length === 0) {
       pendingCaretRef.current = "start";
       setActiveBlockIndex(0);
-      setActiveDraft(markdown);
+      updateActiveDraftState(markdown);
       setActiveDirty(false);
+      setActiveEditSnapshot(createDetachedEmptyEditSnapshot(markdown));
+      setActiveComposing(false);
       return;
     }
     setPendingActivation({ index: 0, caret: "end" });
@@ -3823,8 +3816,10 @@ export const MarkdownHybridEditor = ({
     const targetBlock = blocks[nextIndex];
     if (targetBlock?.kind === "hr") {
       setActiveBlockIndex(null);
-      setActiveDraft("");
+      updateActiveDraftState("");
       setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
       pendingActivationMarkdownRef.current = null;
       setPendingActivation(null);
       const zoneSelector = pendingActivation.caret === "end"
@@ -3857,10 +3852,10 @@ export const MarkdownHybridEditor = ({
     pendingCaretRef.current = pendingActivation.caret;
     pendingTextareaSelectionRef.current = pendingActivation.selection ?? null;
     setActiveBlockIndex(nextIndex);
-    setActiveDraft(
-      blocks[nextIndex] ? toEditorDraftForBlock(blocks[nextIndex]!) : "",
-    );
+    setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, targetBlock));
+    updateActiveDraftState(toEditorDraftForBlock(targetBlock));
     setActiveDirty(false);
+    setActiveComposing(false);
     pendingActivationMarkdownRef.current = null;
     setPendingActivation(null);
   }, [blocks, markdown, pendingActivation]);
@@ -4023,8 +4018,10 @@ export const MarkdownHybridEditor = ({
     (nextHistory: MarkdownHistoryState) => {
       setHistory(nextHistory);
       setActiveBlockIndex(null);
-      setActiveDraft("");
+      updateActiveDraftState("");
       setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
       setActiveTableDirty(false);
       setPendingActivation(null);
       setPendingTableActivation(null);
@@ -4045,6 +4042,14 @@ export const MarkdownHybridEditor = ({
       suppressNextBlockContextMenuRef.current = false;
       pendingActivationMarkdownRef.current = null;
       activeTableSessionRef.current = null;
+      deferredEditActionRef.current = null;
+      deferredEditRequestsRef.current.splice(0).forEach((request) => {
+        request.resolve(false);
+      });
+      if (deferredEditFlushFrameRef.current !== null) {
+        window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
+        deferredEditFlushFrameRef.current = null;
+      }
       inlineFormattingToolbarRangeRef.current = null;
       inlineFormattingToolbarPendingSignatureRef.current = null;
       if (inlineFormattingToolbarTimerRef.current !== null) {
@@ -4088,8 +4093,17 @@ export const MarkdownHybridEditor = ({
       setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
       onCommit?.(nextMarkdown, { block: { ...block, raw: nextRaw } });
       if (activeBlockIndex === blockIndex) {
-        setActiveDraft(nextRaw);
+        updateActiveDraftState(nextRaw);
         setActiveDirty(false);
+        setActiveEditSnapshot((current) =>
+          current && current.blockIndex === blockIndex
+            ? {
+              ...current,
+              raw: nextRaw,
+              draft: nextRaw,
+            }
+            : current,
+        );
       }
       return true;
     },
@@ -4097,31 +4111,30 @@ export const MarkdownHybridEditor = ({
   );
 
   const handleMathBlockLiveSync = useCallback(
-    (blockIndex: number, nextLatex: string, options?: { mergeKey?: string }) => {
-      const block = blocks[blockIndex];
-      if (!block || block.kind !== "math-block") {
+    (blockIndex: number, nextLatex: string, _options?: { mergeKey?: string }) => {
+      const snapshot = activeEditSnapshotRef.current;
+      if (
+        activeBlockIndex !== blockIndex ||
+        !snapshot ||
+        snapshot.blockIndex !== blockIndex ||
+        snapshot.kind !== "math-block"
+      ) {
         return false;
       }
       const nextRaw = normalizeMathBlockSource(["$$", nextLatex.trim(), "$$"].join("\n"));
-      const nextMarkdown = applyEditorMarkdownNormalization(
-        replaceMarkdownBlock(markdown, block, nextRaw),
+      updateActiveDraftState(nextRaw);
+      setActiveDirty(true);
+      setActiveEditSnapshot((current) =>
+        current && current.blockIndex === blockIndex
+          ? {
+            ...current,
+            draft: nextRaw,
+          }
+          : current,
       );
-      if (nextMarkdown === markdown) {
-        return true;
-      }
-      onChange(nextMarkdown);
-      setHistory((current) =>
-        pushMarkdownHistory(current, nextMarkdown, "math-toolbox-live", {
-          mergeKey: options?.mergeKey,
-        }));
-      onCommit?.(nextMarkdown, { block: { ...block, raw: nextRaw } });
-      if (activeBlockIndex === blockIndex) {
-        setActiveDraft(nextRaw);
-        setActiveDirty(false);
-      }
       return true;
     },
-    [activeBlockIndex, blocks, markdown, onChange, onCommit],
+    [activeBlockIndex],
   );
 
   const handleGlobalUndo = useCallback(() => {
@@ -4140,86 +4153,125 @@ export const MarkdownHybridEditor = ({
     return true;
   }, [applyGlobalHistory, history]);
 
-  const commitActiveBlock = useCallback(
+  const resetActiveEditorUi = useCallback(() => {
+    closePageLinkPicker();
+    setPendingPageLinkPickerRequest(null);
+    setInlineFormattingToolbarSelection(null);
+    setInlineFormattingToolbarMenu(null);
+    setInlineFormattingToolbarLinkState(null);
+    setMathToolboxState(null);
+    inlineFormattingToolbarRangeRef.current = null;
+    inlineFormattingToolbarPendingSignatureRef.current = null;
+    if (inlineFormattingToolbarTimerRef.current !== null) {
+      window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+      inlineFormattingToolbarTimerRef.current = null;
+    }
+  }, [closePageLinkPicker]);
+
+  const resolveDeferredEditRequests = useCallback(
+    (performedKind: DeferredEditAction["kind"], result: boolean) => {
+      const requests = deferredEditRequestsRef.current;
+      deferredEditRequestsRef.current = [];
+      requests.forEach((request) => {
+        request.resolve(result && request.kind === performedKind);
+      });
+    },
+    [],
+  );
+
+  const commitActiveBlockNow = useCallback(
     (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
       if (activeBlockIndex === null) {
         return true;
       }
-      const block = blocks[activeBlockIndex];
-      if (block?.kind === "table") {
+
+      const liveBlock = blocks[activeBlockIndex] ?? null;
+      if (liveBlock?.kind === "table") {
         const session = activeTableSessionRef.current;
         if (session?.blockIndex === activeBlockIndex && !session.flush()) {
           return false;
         }
         if (options?.deactivate ?? true) {
+          resetActiveEditorUi();
           setActiveBlockIndex(null);
-          setActiveDraft("");
+          updateActiveDraftState("");
+          setActiveDirty(false);
+          setActiveEditSnapshot(null);
+          setActiveComposing(false);
+          if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
+            setPendingTableActivation(null);
+          }
         }
-        setActiveDirty(false);
         setActiveTableDirty(false);
         if (options?.nextActivation) {
           setPendingActivation(options.nextActivation);
         }
         return true;
       }
-      const activeSelectionStart = textareaRef.current?.selectionStart ?? null;
-      if (!block) {
-        if (blocks.length === 0 && activeBlockIndex === 0) {
-          const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(
-            activeDraft,
-            "blank",
-            activeSelectionStart,
-          );
-          const nextResolvedMarkdown = applyEditorMarkdownNormalization(
-            normalizedHeadingSpacing?.value ?? activeDraft,
-          );
-          if (nextResolvedMarkdown !== markdown) {
-            onChange(nextResolvedMarkdown);
-          }
-          setHistory((current) =>
-            pushMarkdownHistory(current, nextResolvedMarkdown, "block-commit")
-          );
-          onCommit?.(nextResolvedMarkdown, {
-            block: {
-              id: "empty:0",
-              kind: "blank",
-              startLine: 0,
-              endLine: 0,
-              startOffset: 0,
-              endOffset: 0,
-              raw: nextResolvedMarkdown,
-            },
-          });
-        }
-        if (options?.deactivate) {
+
+      const snapshot = activeEditSnapshotRef.current;
+      if (!snapshot) {
+        if (options?.deactivate ?? true) {
+          resetActiveEditorUi();
           setActiveBlockIndex(null);
-          setActiveDraft("");
+          updateActiveDraftState("");
           setActiveDirty(false);
-        }
-        if (options?.nextActivation) {
-          pendingActivationMarkdownRef.current = null;
-          setPendingActivation(options.nextActivation);
+          setActiveEditSnapshot(null);
+          setActiveComposing(false);
+          if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
+            setPendingTableActivation(null);
+          }
         }
         return true;
       }
 
+      const currentDraft = textareaRef.current?.value ?? activeDraftRef.current;
+      const activeSelectionStart = textareaRef.current?.selectionStart ?? null;
       const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(
-        activeDraft,
-        block.kind,
+        currentDraft,
+        snapshot.kind,
         activeSelectionStart,
       );
-      const draftForPersist = normalizedHeadingSpacing?.value ?? activeDraft;
-      let nextBlockRaw = toPersistedBlockRawForDraft(block, draftForPersist);
-      if (block.kind === "ordered-list") {
-        nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
-      } else if (block.kind === "help-block") {
-        nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
-      } else if (block.kind === "hr") {
-        nextBlockRaw = normalizeHorizontalRuleBlockSource(nextBlockRaw);
+      const draftForPersist = normalizedHeadingSpacing?.value ?? currentDraft;
+
+      let nextResolvedMarkdown = markdown;
+      let committedBlock: MarkdownBlock;
+
+      if (snapshot.isDetachedEmptyBlock) {
+        nextResolvedMarkdown = applyEditorMarkdownNormalization(draftForPersist);
+        committedBlock = parseMarkdownBlocks(nextResolvedMarkdown)[0] ?? {
+          id: snapshot.blockId,
+          kind: "blank",
+          startLine: snapshot.startLine,
+          endLine: snapshot.endLine,
+          startOffset: 0,
+          endOffset: nextResolvedMarkdown.length,
+          raw: nextResolvedMarkdown,
+        };
+      } else {
+        let nextBlockRaw = toPersistedBlockRawForDraft({ kind: snapshot.kind }, draftForPersist);
+        if (snapshot.kind === "ordered-list") {
+          nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
+        } else if (snapshot.kind === "help-block") {
+          nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
+        } else if (snapshot.kind === "hr") {
+          nextBlockRaw = normalizeHorizontalRuleBlockSource(nextBlockRaw);
+        }
+        nextResolvedMarkdown = applyEditorMarkdownNormalization(
+          replaceMarkdownBlock(markdown, snapshot, nextBlockRaw),
+        );
+        committedBlock = liveBlock && liveBlock.id === snapshot.blockId
+          ? { ...liveBlock, raw: nextBlockRaw }
+          : {
+            id: snapshot.blockId,
+            kind: snapshot.kind,
+            startLine: snapshot.startLine,
+            endLine: snapshot.endLine,
+            startOffset: snapshot.startOffset,
+            endOffset: snapshot.endOffset,
+            raw: nextBlockRaw,
+          };
       }
-      const nextResolvedMarkdown = applyEditorMarkdownNormalization(
-        replaceMarkdownBlock(markdown, block, nextBlockRaw),
-      );
 
       if (nextResolvedMarkdown !== markdown) {
         pendingActivationMarkdownRef.current = options?.nextActivation ? nextResolvedMarkdown : null;
@@ -4227,16 +4279,33 @@ export const MarkdownHybridEditor = ({
       } else if (options?.nextActivation) {
         pendingActivationMarkdownRef.current = null;
       }
+
       setHistory((current) => pushMarkdownHistory(current, nextResolvedMarkdown, "block-commit"));
-      onCommit?.(nextResolvedMarkdown, { block: { ...block, raw: nextBlockRaw } });
+      onCommit?.(nextResolvedMarkdown, { block: committedBlock });
 
       if (options?.deactivate ?? true) {
+        resetActiveEditorUi();
         setActiveBlockIndex(null);
-        setActiveDraft("");
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
+          setPendingTableActivation(null);
+        }
       } else {
-        setActiveDraft(toEditorDraftForBlock({ kind: block.kind, raw: nextBlockRaw }));
+        setActiveDirty(false);
+        setActiveEditSnapshot((current) =>
+          current
+            ? {
+              ...current,
+              raw: committedBlock.raw,
+              draft: toEditorDraftForBlock(committedBlock),
+            }
+            : current,
+        );
+        updateActiveDraftState(toEditorDraftForBlock(committedBlock));
       }
-      setActiveDirty(false);
 
       if (options?.nextActivation) {
         setPendingActivation(options.nextActivation);
@@ -4244,8 +4313,106 @@ export const MarkdownHybridEditor = ({
 
       return true;
     },
-    [activeBlockIndex, activeDraft, blocks, markdown, onChange, onCommit],
+    [
+      activeBlockIndex,
+      blocks,
+      markdown,
+      onChange,
+      onCommit,
+      pendingTableActivation,
+      resetActiveEditorUi,
+      updateActiveDraftState,
+    ],
   );
+
+  const discardActiveBlockNow = useCallback(() => {
+    resetActiveEditorUi();
+    setActiveBlockIndex(null);
+    updateActiveDraftState("");
+    setActiveDirty(false);
+    setActiveEditSnapshot(null);
+    setActiveComposing(false);
+    setActiveTableDirty(false);
+    setPendingActivation(null);
+    setPendingTableActivation(null);
+    return true;
+  }, [resetActiveEditorUi, updateActiveDraftState]);
+
+  const flushDeferredEditAction = useCallback(() => {
+    const action = deferredEditActionRef.current;
+    deferredEditActionRef.current = null;
+    if (!action) {
+      return true;
+    }
+    const result = action.kind === "discard"
+      ? discardActiveBlockNow()
+      : commitActiveBlockNow(action.options);
+    resolveDeferredEditRequests(action.kind, result);
+    return result;
+  }, [commitActiveBlockNow, discardActiveBlockNow, resolveDeferredEditRequests]);
+
+  const scheduleDeferredEditFlush = useCallback(() => {
+    if (deferredEditFlushFrameRef.current !== null) {
+      return;
+    }
+    deferredEditFlushFrameRef.current = window.requestAnimationFrame(() => {
+      deferredEditFlushFrameRef.current = null;
+      flushDeferredEditAction();
+    });
+  }, [flushDeferredEditAction]);
+
+  const queueDeferredEditAction = useCallback(
+    (action: DeferredEditAction, requestKind: DeferredEditAction["kind"]) =>
+      new Promise<boolean>((resolve) => {
+        deferredEditActionRef.current = mergeDeferredEditAction(
+          deferredEditActionRef.current,
+          action,
+        );
+        deferredEditRequestsRef.current.push({ kind: requestKind, resolve });
+      }),
+    [],
+  );
+
+  const commitActiveBlock = useCallback(
+    (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
+      if (activeComposingRef.current) {
+        void queueDeferredEditAction({ kind: "commit", options }, "commit");
+        return false;
+      }
+      return commitActiveBlockNow(options);
+    },
+    [commitActiveBlockNow, queueDeferredEditAction],
+  );
+
+  const commitActiveBlockAsync = useCallback(
+    (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
+      if (activeComposingRef.current) {
+        return queueDeferredEditAction({ kind: "commit", options }, "commit");
+      }
+      return Promise.resolve(commitActiveBlockNow(options));
+    },
+    [commitActiveBlockNow, queueDeferredEditAction],
+  );
+
+  const discardActiveBlock = useCallback(() => {
+    if (activeComposingRef.current) {
+      void queueDeferredEditAction({ kind: "discard" }, "discard");
+      return false;
+    }
+    return discardActiveBlockNow();
+  }, [discardActiveBlockNow, queueDeferredEditAction]);
+
+  const discardActiveBlockAsync = useCallback(() => {
+    if (activeComposingRef.current) {
+      return queueDeferredEditAction({ kind: "discard" }, "discard");
+    }
+    return Promise.resolve(discardActiveBlockNow());
+  }, [discardActiveBlockNow, queueDeferredEditAction]);
+
+  useImperativeHandle(ref, () => ({
+    commitActiveEdit: () => commitActiveBlockAsync({ deactivate: true }),
+    discardActiveEdit: () => discardActiveBlockAsync(),
+  }), [commitActiveBlockAsync, discardActiveBlockAsync]);
 
   const activateBlock = useCallback(
     (index: number, caret: "start" | "end" = "end") => {
@@ -4261,21 +4428,23 @@ export const MarkdownHybridEditor = ({
         return;
       }
       if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
-        const currentBlock = blocks[activeBlockIndex];
-        if (currentBlock?.kind === "table" && !commitActiveBlock({ deactivate: true })) {
-          return;
-        }
+        commitActiveBlock({
+          deactivate: true,
+          nextActivation: { index: nextIndex, caret },
+        });
+        return;
       }
       if (activeBlockIndex === nextIndex) {
         pendingCaretRef.current = caret;
-        setActiveDraft(toEditorDraftForBlock(nextBlock));
         return;
       }
       pendingCaretRef.current = caret;
       setPendingTableActivation(null);
       setActiveBlockIndex(nextIndex);
-      setActiveDraft(toEditorDraftForBlock(nextBlock));
+      setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, nextBlock));
+      updateActiveDraftState(toEditorDraftForBlock(nextBlock));
       setActiveDirty(false);
+      setActiveComposing(false);
       setActiveTableDirty(false);
     },
     [activeBlockIndex, blocks, commitActiveBlock, disabled],
@@ -4292,10 +4461,14 @@ export const MarkdownHybridEditor = ({
         return;
       }
       if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
-        const currentBlock = blocks[activeBlockIndex];
-        if (currentBlock?.kind === "table" && !commitActiveBlock({ deactivate: true })) {
-          return;
+        if (request) {
+          setPendingTableActivation({ blockIndex: nextIndex, request });
         }
+        commitActiveBlock({
+          deactivate: true,
+          nextActivation: { index: nextIndex, caret: "start" },
+        });
+        return;
       }
       setPendingActivation(null);
       if (request) {
@@ -4306,8 +4479,10 @@ export const MarkdownHybridEditor = ({
         return;
       }
       setActiveBlockIndex(nextIndex);
-      setActiveDraft(nextBlock.raw);
+      setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, nextBlock));
+      updateActiveDraftState(nextBlock.raw);
       setActiveDirty(false);
+      setActiveComposing(false);
       setActiveTableDirty(false);
     },
     [activeBlockIndex, blocks, commitActiveBlock, disabled],
@@ -4550,8 +4725,10 @@ export const MarkdownHybridEditor = ({
     const nextMarkdown = applyEditorMarkdownNormalization(nextMarkdownRaw);
 
     setActiveBlockIndex(null);
-    setActiveDraft("");
+    updateActiveDraftState("");
     setActiveDirty(false);
+    setActiveEditSnapshot(null);
+    setActiveComposing(false);
     setPendingActivation(null);
     setSelectedBlockSelection(null);
     setIsSelectionDragging(false);
@@ -4655,8 +4832,10 @@ export const MarkdownHybridEditor = ({
       }
 
       setActiveBlockIndex(null);
-      setActiveDraft("");
+      updateActiveDraftState("");
       setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
       pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
       setPendingActivation(
         activationIndex >= 0
@@ -4749,8 +4928,10 @@ export const MarkdownHybridEditor = ({
         : moveResult.insertIndex;
 
       setActiveBlockIndex(null);
-      setActiveDraft("");
+      updateActiveDraftState("");
       setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
       pendingActivationMarkdownRef.current = nextMarkdown;
       setPendingActivation({
         index: clampIndex(activationIndex, reorderedBlocks.length),
@@ -4964,8 +5145,10 @@ export const MarkdownHybridEditor = ({
         if (blocks.length === 0) {
           pendingCaretRef.current = "start";
           setActiveBlockIndex(0);
-          setActiveDraft("");
+          updateActiveDraftState("");
           setActiveDirty(false);
+          setActiveEditSnapshot(createDetachedEmptyEditSnapshot(""));
+          setActiveComposing(false);
           setInsertMenuState(null);
           requestPageLinkPickerOpen({ source: "insert-menu" });
           return;
@@ -5125,133 +5308,35 @@ export const MarkdownHybridEditor = ({
 
   const handleTextareaChange = useCallback(
     (value: string, selectionStart?: number | null) => {
-      let nextValue = value;
       if (typeof selectionStart === "number") {
         setEditorOverlaySelectionStart(selectionStart);
       }
-      const activeBlock = activeBlockIndex === null ? null : (blocks[activeBlockIndex] ?? null);
       const typedPageLinkTrigger = pageLinkPickerState
         ? null
-        : detectTypedPageLinkTrigger(nextValue, selectionStart);
-      if (activeBlock?.kind === "help-block") {
-        nextValue = normalizeHelpBlockSource(nextValue);
-      } else if (activeBlock?.kind === "card-block") {
-        nextValue = normalizeCardBlockSource(nextValue);
-      }
-      if (blocks.length === 0 && activeBlockIndex === 0) {
-        setActiveDraft(nextValue);
-        setActiveDirty(true);
-        if (nextValue !== markdown) {
-          onChange(nextValue);
-        }
-        if (typedPageLinkTrigger) {
-          requestPageLinkPickerOpen({
-            source: "typed-trigger",
-            replaceRange: typedPageLinkTrigger,
-          });
-        }
-        return;
-      }
+        : detectTypedPageLinkTrigger(value, selectionStart);
       if (activeBlockIndex === null) {
         return;
       }
-      if (activeBlock?.kind === "blank" && nextValue.length > 0) {
-        const previousBlock = blocks[activeBlockIndex - 1] ?? null;
-        const nextBlock = blocks[activeBlockIndex + 1] ?? null;
-        const needsSeparatorBefore = previousBlock?.kind === "paragraph";
-        const needsSeparatorAfter = nextBlock?.kind === "paragraph";
-        const replacementRaw = `${needsSeparatorBefore ? "\n" : ""}${nextValue}${
-          needsSeparatorAfter ? "\n" : ""
-        }`;
-        const nextMarkdown = applyEditorMarkdownNormalization(
-          replaceMarkdownBlock(markdown, activeBlock, replacementRaw),
-        );
-        const nextBlocks = parseMarkdownBlocks(nextMarkdown);
-        const preferredKind = parseMarkdownBlocks(nextValue)[0]?.kind ?? "paragraph";
-        let activationIndex = -1;
-        const startSearchIndex = Math.max(
-          0,
-          Math.min(activeBlockIndex + (needsSeparatorBefore ? 1 : 0), nextBlocks.length - 1),
-        );
-
-        for (let offset = 0; offset < nextBlocks.length; offset += 1) {
-          const forwardIndex = startSearchIndex + offset;
-          if (
-            forwardIndex < nextBlocks.length &&
-            nextBlocks[forwardIndex]?.raw === nextValue &&
-            nextBlocks[forwardIndex]?.kind === preferredKind
-          ) {
-            activationIndex = forwardIndex;
-            break;
-          }
-          const backwardIndex = startSearchIndex - offset;
-          if (
-            offset > 0 &&
-            backwardIndex >= 0 &&
-            nextBlocks[backwardIndex]?.raw === nextValue &&
-            nextBlocks[backwardIndex]?.kind === preferredKind
-          ) {
-            activationIndex = backwardIndex;
-            break;
-          }
-        }
-
-        if (activationIndex < 0) {
-          activationIndex = clampIndex(
-            activeBlockIndex + (needsSeparatorBefore ? 1 : 0),
-            nextBlocks.length,
-          );
-        }
-
-        setActiveBlockIndex(null);
-        setActiveDraft("");
-        setActiveDirty(false);
-        pendingActivationMarkdownRef.current = nextMarkdown;
-        setPendingActivation({ index: activationIndex, caret: "end" });
-        if (typedPageLinkTrigger) {
-          requestPageLinkPickerOpen({
-            source: "typed-trigger",
-            replaceRange: typedPageLinkTrigger,
-          });
-        }
-        onChange(nextMarkdown);
-        return;
-      }
-      setActiveDraft(nextValue);
+      // Draft-only transaction: never write into committed markdown while the user edits.
+      updateActiveDraftState(value);
       setActiveDirty(true);
-      const block = activeBlock;
-      if (!block) {
-        return;
-      }
-      if (shouldDeferExternalSyncForBlockKind(block.kind)) {
-        if (typedPageLinkTrigger && canOpenPageLinkPickerInBlockKind(block.kind)) {
-          requestPageLinkPickerOpen({
-            source: "typed-trigger",
-            replaceRange: typedPageLinkTrigger,
-          });
-        }
-        return;
-      }
-      const nextBlockRaw = toPersistedBlockRawForDraft(block, nextValue);
-      const nextMarkdown = replaceMarkdownBlock(markdown, block, nextBlockRaw);
-      if (nextMarkdown !== markdown) {
-        onChange(nextMarkdown);
-      }
-      if (typedPageLinkTrigger && canOpenPageLinkPickerInBlockKind(block.kind)) {
+      setActiveEditSnapshot((current) =>
+        current
+          ? {
+            ...current,
+            draft: value,
+          }
+          : current,
+      );
+      const block = activeEditSnapshotRef.current;
+      if (typedPageLinkTrigger && block && canOpenPageLinkPickerInBlockKind(block.kind)) {
         requestPageLinkPickerOpen({
           source: "typed-trigger",
           replaceRange: typedPageLinkTrigger,
         });
       }
     },
-    [
-      activeBlockIndex,
-      blocks,
-      markdown,
-      onChange,
-      pageLinkPickerState,
-      requestPageLinkPickerOpen,
-    ],
+    [activeBlockIndex, pageLinkPickerState, requestPageLinkPickerOpen],
   );
 
   const handleTextareaBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
@@ -5267,6 +5352,17 @@ export const MarkdownHybridEditor = ({
     }
     commitActiveBlock({ deactivate: true });
   }, [commitActiveBlock]);
+
+  const handleTextareaCompositionStart = useCallback(() => {
+    setActiveComposing(true);
+  }, []);
+
+  const handleTextareaCompositionEnd = useCallback(() => {
+    setActiveComposing(false);
+    if (deferredEditActionRef.current) {
+      scheduleDeferredEditFlush();
+    }
+  }, [scheduleDeferredEditFlush]);
 
   const scheduleTextareaCaret = useCallback((nextPosition: number) => {
     const handle = window.requestAnimationFrame(() => {
@@ -5355,68 +5451,22 @@ export const MarkdownHybridEditor = ({
       if (activeBlockIndex === null) {
         return false;
       }
-      const block = blocks[activeBlockIndex];
-      if (!block) {
-        return false;
-      }
-      const resolvedDraft = block.kind === "card-block"
-        ? normalizeCardBlockSource(nextDraft)
-        : nextDraft;
-      setActiveDraft(resolvedDraft);
+      updateActiveDraftState(nextDraft);
       setActiveDirty(true);
-      if (shouldDeferExternalSyncForBlockKind(block.kind)) {
-        if (typeof nextCaretPosition === "number") {
-          scheduleTextareaCaret(nextCaretPosition);
-        }
-        return true;
-      }
-      const nextBlockRaw = toPersistedBlockRawForDraft(block, resolvedDraft);
-      const nextMarkdown = replaceMarkdownBlock(markdown, block, nextBlockRaw);
-      if (nextMarkdown !== markdown) {
-        onChange(nextMarkdown);
-      }
+      setActiveEditSnapshot((current) =>
+        current
+          ? {
+            ...current,
+            draft: nextDraft,
+          }
+          : current,
+      );
       if (typeof nextCaretPosition === "number") {
         scheduleTextareaCaret(nextCaretPosition);
       }
       return true;
     },
-    [activeBlockIndex, blocks, markdown, onChange, scheduleTextareaCaret],
-  );
-
-  const replaceActiveBlockWithSegments = useCallback(
-    (segments: string[], options?: { activateSegmentIndex?: number; caret?: "start" | "end" }) => {
-      if (activeBlockIndex === null) {
-        return false;
-      }
-      const block = blocks[activeBlockIndex];
-      if (!block) {
-        return false;
-      }
-
-      const nextBlockRaw = segments.join("\n");
-      const nextMarkdown = applyEditorMarkdownNormalization(
-        replaceMarkdownBlock(markdown, block, nextBlockRaw),
-      );
-      const nextBlocks = parseMarkdownBlocks(nextMarkdown);
-      const rawTargetIndex = activeBlockIndex + (options?.activateSegmentIndex ?? 0);
-      const targetIndex = nextBlocks.length > 0
-        ? clampIndex(rawTargetIndex, nextBlocks.length)
-        : 0;
-
-      setActiveBlockIndex(null);
-      setActiveDraft("");
-      setActiveDirty(false);
-      pendingActivationMarkdownRef.current = nextBlocks.length > 0 ? nextMarkdown : null;
-      setPendingActivation(
-        nextBlocks.length > 0
-          ? { index: targetIndex, caret: options?.caret ?? "start" }
-          : null,
-      );
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-      return true;
-    },
-    [activeBlockIndex, blocks, markdown, onChange],
+    [activeBlockIndex, scheduleTextareaCaret],
   );
 
   const clearInlineFormattingToolbarTimer = useCallback(() => {
@@ -5931,6 +5981,10 @@ export const MarkdownHybridEditor = ({
         !event.altKey &&
         !event.ctrlKey &&
         !event.metaKey;
+      const isExplicitCommitShortcut = event.key === "Enter" &&
+        !event.shiftKey &&
+        !event.altKey &&
+        (event.ctrlKey || event.metaKey);
 
       if (event.key === "Escape" && pageLinkPickerState) {
         event.preventDefault();
@@ -5948,6 +6002,20 @@ export const MarkdownHybridEditor = ({
         event.preventDefault();
         event.stopPropagation();
         hideInlineFormattingToolbar();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        discardActiveBlock();
+        return;
+      }
+
+      if (isExplicitCommitShortcut) {
+        event.preventDefault();
+        event.stopPropagation();
+        commitActiveBlock({ deactivate: true });
         return;
       }
 
@@ -6021,415 +6089,13 @@ export const MarkdownHybridEditor = ({
         }
       }
 
-      if (
-        block.kind === "card-block" &&
-        !hasSelection &&
-        event.key.length === 1 &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        /[\p{L}\p{N}]/u.test(event.key)
-      ) {
-        const lines = activeDraft.split("\n");
-        const endCardLineIndex = lines.findIndex((line) => line.trim().toLowerCase() === "#endcard");
-        if (endCardLineIndex >= 0) {
-          const endCardLine = lines[endCardLineIndex] ?? "";
-          const directiveStartInLine = endCardLine.toLowerCase().indexOf("#endcard");
-          if (directiveStartInLine >= 0) {
-            const lineStart = getLineStartOffsetByIndex(lines, endCardLineIndex);
-            const directiveEndOffset = lineStart + directiveStartInLine + "#endcard".length;
-            const lineEndOffset = lineStart + endCardLine.length;
-            const selectionOffset = textarea.selectionStart;
-            if (selectionOffset >= directiveEndOffset && selectionOffset <= lineEndOffset) {
-              // Keep typed content inside the active card instead of creating a duplicate
-              // paragraph block below the wrapper while the user edits around #endcard.
-              return;
-            }
-          }
-        }
-      }
-
-      if (isPlainEnter && !event.shiftKey && block.kind === "math-block") {
-        const selectionStart = textarea.selectionStart;
-        const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
-        const mathBoundaries = resolveMathBlockBoundaries(activeDraft);
-        const isClosingDelimiterLine = mathBoundaries.hasClosingDelimiter &&
-          lineRange.lineIndex === mathBoundaries.closingLineIndex &&
-          isMathBlockDelimiterLine(lineRange.line);
-
-        if (!hasSelection && isClosingDelimiterLine) {
-          event.preventDefault();
-          event.stopPropagation();
-          replaceActiveBlockWithSegments(
-            blocks[activeBlockIndex + 1]?.kind === "hr" ? [activeDraft, "", ""] : [activeDraft, ""],
-            {
-              activateSegmentIndex: 1,
-              caret: "start",
-            },
-          );
-        }
-        return;
-      }
-
-      if (event.key === "Enter" && event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
-        const selectionStart = textarea.selectionStart;
-        const selectionEnd = textarea.selectionEnd;
-        const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
-        const listLineInfo = parseEditorListLine(lineRange.line);
-        let continuationPrefix = "  ";
-        if (listLineInfo) {
-          const continuationPadding = Math.max(
-            2,
-            listLineInfo.prefixLength - listLineInfo.indent.length,
-          );
-          continuationPrefix = `${listLineInfo.indent}${" ".repeat(continuationPadding)}`;
-        } else {
-          const continuationMatch = lineRange.line.match(editorListContinuationLinePattern);
-          if (continuationMatch) {
-            continuationPrefix = continuationMatch[1] ?? "  ";
-          }
-        }
-        const nextDraft = `${activeDraft.slice(0, selectionStart)}\n${continuationPrefix}${
-          activeDraft.slice(selectionEnd)
+      if (event.key === "Enter" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        const nextDraft = `${activeDraft.slice(0, textarea.selectionStart)}\n${
+          activeDraft.slice(textarea.selectionEnd)
         }`;
-        const nextCaret = selectionStart + 1 + continuationPrefix.length;
         event.preventDefault();
         event.stopPropagation();
-        applyActiveBlockDraft(nextDraft, nextCaret);
-        return;
-      }
-
-      if (isPlainDeleteKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
-        if (!hasSelection) {
-          const selectionStart = textarea.selectionStart;
-          const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
-          const listLineInfo = parseEditorListLine(lineRange.line);
-          const continuationMatch = lineRange.line.match(editorListContinuationLinePattern);
-          const continuationContent = continuationMatch?.[2] ?? "";
-          const isEmptyListItemLine = Boolean(listLineInfo && listLineInfo.content.trim().length === 0);
-          const isEmptyContinuationLine = Boolean(
-            !listLineInfo &&
-              continuationMatch &&
-              continuationContent.trim().length === 0,
-          );
-
-          if (isEmptyListItemLine || isEmptyContinuationLine) {
-            const lines = activeDraft.split("\n");
-            if (lines.length > 1) {
-              event.preventDefault();
-              event.stopPropagation();
-              const lineIndex = lineRange.lineIndex;
-              const nextLines = [...lines];
-              nextLines.splice(lineIndex, 1);
-              let nextDraft = nextLines.join("\n");
-              if (block.kind === "ordered-list") {
-                nextDraft = normalizeOrderedListBlockSource(nextDraft);
-              }
-              const resolvedLines = nextDraft.length > 0 ? nextDraft.split("\n") : [""];
-              const targetLineIndex = event.key === "Delete"
-                ? Math.min(lineIndex, Math.max(0, resolvedLines.length - 1))
-                : Math.max(0, lineIndex - 1);
-              let nextCaret = getLineStartOffsetByIndex(resolvedLines, targetLineIndex);
-              if (event.key === "Backspace") {
-                nextCaret += (resolvedLines[targetLineIndex] ?? "").length;
-              }
-              applyActiveBlockDraft(nextDraft, nextCaret);
-              return;
-            }
-          }
-        }
-      }
-
-      if (isPlainEnter && !event.shiftKey && (block.kind === "ordered-list" || block.kind === "unordered-list")) {
-        const selectionStart = textarea.selectionStart;
-        const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
-        const listLineInfo = parseEditorListLine(lineRange.line);
-        const lineLocalSelectionStart = selectionStart - lineRange.start;
-
-        if (
-          !hasSelection &&
-          listLineInfo &&
-          lineLocalSelectionStart >= listLineInfo.prefixLength
-        ) {
-          const lines = activeDraft.split("\n");
-          const lineIndex = lineRange.lineIndex;
-          const beforeContent = lineRange.line.slice(listLineInfo.prefixLength, lineLocalSelectionStart);
-          const afterContent = lineRange.line.slice(lineLocalSelectionStart);
-          const isEmptyItem = listLineInfo.content.trim().length === 0;
-
-          event.preventDefault();
-          event.stopPropagation();
-
-          if (isEmptyItem) {
-            const beforeLines = lines.slice(0, lineIndex);
-            const afterLines = lines.slice(lineIndex + 1);
-            const segments: string[] = [];
-            if (beforeLines.length > 0) {
-              segments.push(beforeLines.join("\n"));
-            }
-            const insertBlankSegmentIndex = segments.length;
-            segments.push("");
-            if (afterLines.length === 0 && blocks[activeBlockIndex + 1]?.kind === "hr") {
-              segments.push("");
-            }
-            if (afterLines.length > 0) {
-              segments.push(afterLines.join("\n"));
-            }
-            replaceActiveBlockWithSegments(segments, {
-              activateSegmentIndex: insertBlankSegmentIndex,
-              caret: "start",
-            });
-            return;
-          }
-
-          const currentLinePrefix = lineRange.line.slice(0, listLineInfo.prefixLength);
-          const currentLine = `${currentLinePrefix}${beforeContent}`;
-          let nextLinePrefix = "";
-          if (listLineInfo.kind === "ordered") {
-            nextLinePrefix = `${listLineInfo.indent}${listLineInfo.orderedNumber + 1}${listLineInfo.orderedDelimiter}${listLineInfo.spacing}`;
-          } else if (listLineInfo.kind === "task") {
-            nextLinePrefix = `${listLineInfo.indent}${listLineInfo.bullet} [ ]${listLineInfo.spacing}`;
-          } else {
-            nextLinePrefix = `${listLineInfo.indent}${listLineInfo.bullet}${listLineInfo.spacing}`;
-          }
-          const nextLine = `${nextLinePrefix}${afterContent}`;
-
-          const nextLines = [...lines];
-          nextLines.splice(lineIndex, 1, currentLine, nextLine);
-          let nextDraft = nextLines.join("\n");
-          if (block.kind === "ordered-list") {
-            nextDraft = normalizeOrderedListBlockSource(nextDraft);
-          }
-          const resolvedLines = nextDraft.split("\n");
-          const insertedLine = resolvedLines[lineIndex + 1] ?? nextLine;
-          const insertedLineInfo = parseEditorListLine(insertedLine);
-          const nextCaret = getLineStartOffsetByIndex(resolvedLines, lineIndex + 1) +
-            (insertedLineInfo?.prefixLength ?? nextLinePrefix.length);
-          applyActiveBlockDraft(nextDraft, nextCaret);
-          return;
-        }
-
-        if (!hasSelection) {
-          const continuationMatch = lineRange.line.match(editorListContinuationLinePattern);
-          if (continuationMatch) {
-            const lines = activeDraft.split("\n");
-            const lineIndex = lineRange.lineIndex;
-            let anchorListLineInfo: EditorListLineInfo | null = null;
-            for (let scanIndex = lineIndex - 1; scanIndex >= 0; scanIndex -= 1) {
-              const candidateInfo = parseEditorListLine(lines[scanIndex] ?? "");
-              if (candidateInfo) {
-                anchorListLineInfo = candidateInfo;
-                break;
-              }
-            }
-
-            if (anchorListLineInfo) {
-              const continuationIndent = continuationMatch[1] ?? "";
-              const splitOffset = Math.max(continuationIndent.length, lineLocalSelectionStart);
-              const beforeContent = lineRange.line.slice(continuationIndent.length, splitOffset);
-              const afterContent = lineRange.line.slice(splitOffset);
-              const currentContinuationLine = `${continuationIndent}${beforeContent}`;
-              const nextLinePrefix = buildNextListLinePrefixFromInfo(anchorListLineInfo);
-              const nextListLine = `${nextLinePrefix}${afterContent}`;
-
-              event.preventDefault();
-              event.stopPropagation();
-
-              const nextLines = [...lines];
-              nextLines.splice(lineIndex, 1, currentContinuationLine, nextListLine);
-              let nextDraft = nextLines.join("\n");
-              if (block.kind === "ordered-list") {
-                nextDraft = normalizeOrderedListBlockSource(nextDraft);
-              }
-              const resolvedLines = nextDraft.split("\n");
-              const insertedLine = resolvedLines[lineIndex + 1] ?? nextListLine;
-              const insertedLineInfo = parseEditorListLine(insertedLine);
-              const nextCaret = getLineStartOffsetByIndex(resolvedLines, lineIndex + 1) +
-                (insertedLineInfo?.prefixLength ?? nextLinePrefix.length);
-              applyActiveBlockDraft(nextDraft, nextCaret);
-              return;
-            }
-          }
-        }
-
-        if (!hasSelection) {
-          // If we cannot resolve a list marker safely, stay in a single input target and let the
-          // browser insert a plain newline in the active textarea (no block handoff).
-          return;
-        }
-      }
-
-      if (event.key === "Enter" && event.shiftKey && block.kind === "heading") {
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-
-      if (isPlainEnter && block.kind === "card-block") {
-        const selectionStart = textarea.selectionStart;
-        const selectionEnd = textarea.selectionEnd;
-        const lines = activeDraft.split("\n");
-        const endCardLineIndex = lines.findIndex((line) => line.trim().toLowerCase() === "#endcard");
-        let shouldExitCard = false;
-
-        if (endCardLineIndex >= 0 && !hasSelection) {
-          const endCardLineStart = getLineStartOffsetByIndex(lines, endCardLineIndex);
-          if (selectionStart >= endCardLineStart) {
-            shouldExitCard = true;
-          }
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (shouldExitCard) {
-          const cardRaw = lines.slice(0, endCardLineIndex + 1).join("\n");
-          const trailingRaw = lines.slice(endCardLineIndex + 1).join("\n");
-          const segments: string[] = [cardRaw];
-          const activateSegmentIndex = 1;
-
-          if (trailingRaw.length > 0) {
-            segments.push(trailingRaw);
-          } else {
-            segments.push("");
-            if (blocks[activeBlockIndex + 1]?.kind === "hr") {
-              segments.push("");
-            }
-          }
-
-          replaceActiveBlockWithSegments(segments, {
-            activateSegmentIndex,
-            caret: "start",
-          });
-          return;
-        }
-
-        const nextDraft = `${activeDraft.slice(0, selectionStart)}\n${activeDraft.slice(selectionEnd)}`;
-        const nextCaret = selectionStart + 1;
-        applyActiveBlockDraft(nextDraft, nextCaret);
-        return;
-      }
-
-      if (isPlainEnter && block.kind === "blockquote") {
-        const selectionStart = textarea.selectionStart;
-        const selectionEnd = textarea.selectionEnd;
-        const lineRange = getLineRangeAtOffset(activeDraft, selectionStart);
-        const quoteLineInfo = parseEditorQuoteLine(lineRange.line);
-
-        if (quoteLineInfo) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          if (!event.shiftKey && !hasSelection && quoteLineInfo.isEmpty) {
-            const lines = activeDraft.split("\n");
-            const lineIndex = lineRange.lineIndex;
-            const beforeLines = lines.slice(0, lineIndex);
-            const afterLines = lines.slice(lineIndex + 1);
-            const segments: string[] = [];
-            if (beforeLines.length > 0) {
-              segments.push(beforeLines.join("\n"));
-            }
-            const insertBlankSegmentIndex = segments.length;
-            segments.push("");
-            if (afterLines.length === 0 && blocks[activeBlockIndex + 1]?.kind === "hr") {
-              segments.push("");
-            }
-            if (afterLines.length > 0) {
-              segments.push(afterLines.join("\n"));
-            }
-            replaceActiveBlockWithSegments(segments, {
-              activateSegmentIndex: insertBlankSegmentIndex,
-              caret: "start",
-            });
-            return;
-          }
-
-          const nextDraft = `${activeDraft.slice(0, selectionStart)}\n${quoteLineInfo.continuationPrefix}${
-            activeDraft.slice(selectionEnd)
-          }`;
-          const nextCaret = selectionStart + 1 + quoteLineInfo.continuationPrefix.length;
-          applyActiveBlockDraft(nextDraft, nextCaret);
-          return;
-        }
-      }
-
-      if (isPlainEnter && !event.shiftKey && block.kind === "blank") {
-        event.preventDefault();
-        event.stopPropagation();
-        replaceActiveBlockWithSegments(["", ""], {
-          activateSegmentIndex: 1,
-          caret: "start",
-        });
-        return;
-      }
-
-      if (isPlainEnter && !event.shiftKey && block.kind === "heading") {
-        event.preventDefault();
-        event.stopPropagation();
-        replaceActiveBlockWithSegments(
-          blocks[activeBlockIndex + 1]?.kind === "hr" ? [activeDraft, "", ""] : [activeDraft, ""],
-          {
-          activateSegmentIndex: 1,
-          caret: "start",
-          },
-        );
-        return;
-      }
-
-      if (isPlainEnter && !event.shiftKey && block.kind === "hr") {
-        event.preventDefault();
-        event.stopPropagation();
-        replaceActiveBlockWithSegments([toPersistedBlockRawForDraft(block, activeDraft), ""], {
-          activateSegmentIndex: 1,
-          caret: "start",
-        });
-        return;
-      }
-
-      if (isPlainEnter && !event.shiftKey && block.kind === "paragraph") {
-        event.preventDefault();
-        event.stopPropagation();
-        const selectionStart = textarea.selectionStart;
-        const selectionEnd = textarea.selectionEnd;
-        const before = activeDraft.slice(0, selectionStart);
-        const after = activeDraft.slice(selectionEnd);
-        const segments: string[] = [];
-        let blankSegmentIndex = 0;
-        let activationIndex = 0;
-
-        if (before.length > 0) {
-          segments.push(before);
-        }
-        blankSegmentIndex = segments.length;
-        segments.push("");
-
-        if (after.length > 0) {
-          segments.push(after);
-          activationIndex = segments.length - 1;
-        } else {
-          activationIndex = blankSegmentIndex;
-          if (blocks[activeBlockIndex + 1]?.kind === "hr") {
-            segments.push("");
-          }
-        }
-        replaceActiveBlockWithSegments(segments, {
-          activateSegmentIndex: activationIndex,
-          caret: "start",
-        });
-        return;
-      }
-
-      if (
-        isPlainEnter &&
-        !event.shiftKey &&
-        isSingleLineCommitBlock(block)
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        commitActiveBlock({
-          deactivate: true,
-          nextActivation: { index: activeBlockIndex + 1, caret: "start" },
-        });
+        applyActiveBlockDraft(nextDraft, textarea.selectionStart + 1);
         return;
       }
 
@@ -6473,13 +6139,13 @@ export const MarkdownHybridEditor = ({
       blocks,
       closePageLinkPicker,
       commitActiveBlock,
+      discardActiveBlock,
       handleGlobalRedo,
       handleGlobalUndo,
       hideInlineFormattingToolbar,
       inlineFormattingToolbarSelection,
       openInlineFormattingLinkEditor,
       pageLinkPickerState,
-      replaceActiveBlockWithSegments,
       scheduleTextareaCaret,
     ],
   );
@@ -7571,8 +7237,10 @@ export const MarkdownHybridEditor = ({
               event.preventDefault();
               clearSelectedBlockRange();
               setActiveBlockIndex(0);
-              setActiveDraft("");
+              updateActiveDraftState("");
               setActiveDirty(false);
+              setActiveEditSnapshot(createDetachedEmptyEditSnapshot(""));
+              setActiveComposing(false);
               pendingCaretRef.current = "start";
             }}
           >
@@ -7598,6 +7266,8 @@ export const MarkdownHybridEditor = ({
                       onChange={(event) =>
                         handleTextareaChange(event.target.value, event.target.selectionStart)}
                       onBlur={handleTextareaBlur}
+                      onCompositionStart={handleTextareaCompositionStart}
+                      onCompositionEnd={handleTextareaCompositionEnd}
                       onKeyDown={handleTextareaKeyDown}
                       onKeyUp={handleTextareaKeyUp}
                       onSelect={handleTextareaSelect}
@@ -7780,6 +7450,8 @@ export const MarkdownHybridEditor = ({
                             onChange={(event) =>
                               handleTextareaChange(event.target.value, event.target.selectionStart)}
                             onBlur={handleTextareaBlur}
+                            onCompositionStart={handleTextareaCompositionStart}
+                            onCompositionEnd={handleTextareaCompositionEnd}
                             onKeyDown={handleTextareaKeyDown}
                             onKeyUp={handleTextareaKeyUp}
                             onSelect={handleTextareaSelect}
@@ -7811,6 +7483,8 @@ export const MarkdownHybridEditor = ({
                         onChange={(event) =>
                           handleTextareaChange(event.target.value, event.target.selectionStart)}
                         onBlur={handleTextareaBlur}
+                        onCompositionStart={handleTextareaCompositionStart}
+                        onCompositionEnd={handleTextareaCompositionEnd}
                         onKeyDown={handleTextareaKeyDown}
                         onKeyUp={handleTextareaKeyUp}
                         onSelect={handleTextareaSelect}
@@ -7973,4 +7647,6 @@ export const MarkdownHybridEditor = ({
       {selectionContextMenu}
     </div>
   );
-};
+});
+
+MarkdownHybridEditor.displayName = "MarkdownHybridEditor";

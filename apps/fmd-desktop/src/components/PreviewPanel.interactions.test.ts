@@ -54,6 +54,33 @@ const render = (element: ReactElement) => {
   };
 };
 
+const withImmediateRaf = <T,>(run: () => T) => {
+  const originalRaf = window.requestAnimationFrame;
+  const originalCancelRaf = window.cancelAnimationFrame;
+  window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  }) as typeof window.requestAnimationFrame;
+  window.cancelAnimationFrame = (() => undefined) as typeof window.cancelAnimationFrame;
+  const restore = () => {
+    window.requestAnimationFrame = originalRaf;
+    window.cancelAnimationFrame = originalCancelRaf;
+  };
+  try {
+    const result = run();
+    if (result instanceof Promise) {
+      return result.finally(() => {
+        restore();
+      }) as T;
+    }
+    restore();
+    return result;
+  } catch (error) {
+    restore();
+    throw error;
+  }
+};
+
 const mockMatchMedia = (matches: boolean) => {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
@@ -70,6 +97,44 @@ const mockMatchMedia = (matches: boolean) => {
     })),
   });
 };
+
+const activateHybridBlockEditor = (container: ParentNode, index = 0) => {
+  const block = container.querySelector<HTMLElement>(
+    `.markdown-hybrid-block[data-md-block-index='${index}']`,
+  );
+  act(() => {
+    block?.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        buttons: 1,
+      }),
+    );
+  });
+  return container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+};
+
+const applyTextareaInput = (
+  textarea: HTMLTextAreaElement | null,
+  nextValue: string,
+  caret = nextValue.length,
+) => {
+  act(() => {
+    if (!textarea) {
+      return;
+    }
+    textarea.value = nextValue;
+    textarea.setSelectionRange(caret, caret);
+    textarea.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+  });
+};
+
+const flushAsyncInteraction = () =>
+  act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
 
 const buildHarness = (
   markdown: string,
@@ -254,7 +319,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(editor).toBeNull();
   });
 
-  it("keeps the hybrid edit mode toggle state when switching markdown files", () => {
+  it("keeps the hybrid edit mode toggle state when switching markdown files", async () => {
     const secondFile: VaultFile = {
       path: "/vault/Second.md",
       relative_path: "Second.md",
@@ -316,9 +381,10 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(editToggleBefore?.disabled).toBe(false);
     expect(editToggleBefore?.getAttribute("aria-pressed")).toBe("true");
 
-    act(() => {
+    await act(async () => {
       editToggleBefore?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
+    await flushAsyncInteraction();
 
     const editToggleAfterDisable = container.querySelector(
       'button[aria-label="Edit mode"]',
@@ -339,6 +405,198 @@ describe("PreviewPanel edit-safe interactions", () => {
     ) as HTMLButtonElement | null;
     expect(editToggleAfterSwitch).toBeTruthy();
     expect(editToggleAfterSwitch?.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("commits the active hybrid draft before write-save runs", async () => {
+    await withImmediateRaf(async () => {
+      const saveCalls: string[] = [];
+
+      const Harness = () => {
+        const [editDraft, setEditDraft] = useState("Alpha");
+        return createElement(
+          "div",
+          null,
+          createElement("div", { "data-testid": "draft" }, editDraft),
+          createElement(PreviewPanel, {
+            editDraft,
+            editError: "",
+            editCaretIndex: null,
+            isEditing: false,
+            emptyPreview: "",
+            preview: "Alpha",
+            previewError: "",
+            previewState: "idle",
+            rawPreview: false,
+            markdownViewEditEnabled: true,
+            markdownHybridEnabled: true,
+            documentMode: "write",
+            selectedFile: baseFile,
+            vaultPath: "/vault",
+            sourceRelativePath: baseFile.relative_path,
+            canEdit: true,
+            onEditChange: setEditDraft,
+            onHybridDirtyChange: () => {},
+            onEditCaretApplied: () => {},
+            onEditExit: async () => true,
+            onEditStart: () => {},
+            onToggleRawPreview: () => {},
+            onWriteSave: () => {
+              saveCalls.push(editDraft);
+            },
+          }),
+        );
+      };
+
+      const { container, cleanup: localCleanup } = render(createElement(Harness));
+      cleanup = localCleanup;
+
+      const draftValue = () => container.querySelector("[data-testid='draft']")?.textContent ?? "";
+      const textarea = activateHybridBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Alpha\nBeta");
+      expect(draftValue()).toBe("Alpha");
+
+      const saveButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
+        (button) => button.textContent?.trim() === "Save",
+      );
+      expect(saveButton).toBeTruthy();
+
+      await act(async () => {
+        saveButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      });
+      await flushAsyncInteraction();
+
+      expect(draftValue()).toBe("Alpha\nBeta");
+      expect(saveCalls).toEqual(["Alpha\nBeta"]);
+    });
+  });
+
+  it("commits the active hybrid draft before toggling hybrid edit mode off", async () => {
+    await withImmediateRaf(async () => {
+      const Harness = () => {
+        const [editDraft, setEditDraft] = useState("Alpha");
+        return createElement(
+          "div",
+          null,
+          createElement("div", { "data-testid": "draft" }, editDraft),
+          createElement(PreviewPanel, {
+            editDraft,
+            editError: "",
+            editCaretIndex: null,
+            isEditing: false,
+            emptyPreview: "",
+            preview: "Alpha",
+            previewError: "",
+            previewState: "idle",
+            rawPreview: false,
+            markdownViewEditEnabled: true,
+            markdownHybridEnabled: true,
+            selectedFile: baseFile,
+            vaultPath: "/vault",
+            sourceRelativePath: baseFile.relative_path,
+            canEdit: true,
+            onEditChange: setEditDraft,
+            onHybridDirtyChange: () => {},
+            onEditCaretApplied: () => {},
+            onEditExit: async () => true,
+            onEditStart: () => {},
+            onToggleRawPreview: () => {},
+          }),
+        );
+      };
+
+      const { container, cleanup: localCleanup } = render(createElement(Harness));
+      cleanup = localCleanup;
+
+      const draftValue = () => container.querySelector("[data-testid='draft']")?.textContent ?? "";
+      const textarea = activateHybridBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Alpha\nBeta");
+      expect(draftValue()).toBe("Alpha");
+
+      const editToggle = container.querySelector(
+        'button[aria-label="Edit mode"]',
+      ) as HTMLButtonElement | null;
+      expect(editToggle?.getAttribute("aria-pressed")).toBe("true");
+
+      await act(async () => {
+        editToggle?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      });
+      await flushAsyncInteraction();
+
+      expect(draftValue()).toBe("Alpha\nBeta");
+      expect(editToggle?.getAttribute("aria-pressed")).toBe("false");
+      expect(container.querySelector(".markdown-hybrid-block-editor")).toBeNull();
+    });
+  });
+
+  it("commits the active hybrid draft before switching from markdown view to code view", async () => {
+    await withImmediateRaf(async () => {
+      const Harness = () => {
+        const [editDraft, setEditDraft] = useState("Alpha");
+        const [rawPreview, setRawPreview] = useState(false);
+        const [isEditing, setIsEditing] = useState(false);
+        return createElement(
+          "div",
+          null,
+          createElement("div", { "data-testid": "draft" }, editDraft),
+          createElement(PreviewPanel, {
+            editDraft,
+            editError: "",
+            editCaretIndex: null,
+            isEditing,
+            emptyPreview: "",
+            preview: "Alpha",
+            previewError: "",
+            previewState: "idle",
+            rawPreview,
+            markdownViewEditEnabled: true,
+            markdownHybridEnabled: true,
+            selectedFile: baseFile,
+            vaultPath: "/vault",
+            sourceRelativePath: baseFile.relative_path,
+            canEdit: true,
+            onEditChange: setEditDraft,
+            onHybridDirtyChange: () => {},
+            onEditCaretApplied: () => {},
+            onEditExit: async () => {
+              setIsEditing(false);
+              return true;
+            },
+            onEditStart: () => {
+              setIsEditing(true);
+            },
+            onToggleRawPreview: () => {
+              setRawPreview((current) => !current);
+            },
+          }),
+        );
+      };
+
+      const { container, cleanup: localCleanup } = render(createElement(Harness));
+      cleanup = localCleanup;
+
+      const draftValue = () => container.querySelector("[data-testid='draft']")?.textContent ?? "";
+      const textarea = activateHybridBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Alpha\nBeta");
+      expect(draftValue()).toBe("Alpha");
+
+      const codeViewButton = container.querySelector(
+        'button[aria-label="Code view"]',
+      ) as HTMLButtonElement | null;
+      expect(codeViewButton).toBeTruthy();
+
+      await act(async () => {
+        codeViewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      });
+      await flushAsyncInteraction();
+      await flushAsyncInteraction();
+
+      expect(draftValue()).toBe("Alpha\nBeta");
+      const rawEditor = container.querySelector<HTMLTextAreaElement>("textarea.preview-editor");
+      expect(rawEditor?.value).toBe("Alpha\nBeta");
+    });
   });
 
   it("renders inline HTML tags after sanitization", () => {
