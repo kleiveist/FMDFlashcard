@@ -31,6 +31,7 @@ import { createPortal } from "react-dom";
 import { normalizeRelativePath } from "../../lib/path";
 import { type VaultFile } from "../../lib/tree";
 import {
+  normalizeCardBlockSource,
   isSingleLineCommitBlock,
   normalizeHelpBlockSource,
   normalizeHorizontalRuleBlockSource,
@@ -3007,6 +3008,8 @@ const toPersistedBlockRawForDraft = (
     ? serializeHorizontalRuleEditorDraft(draft)
     : block.kind === "math-block"
     ? normalizeMathBlockSource(draft)
+    : block.kind === "card-block"
+    ? normalizeCardBlockSource(draft)
     : draft;
 
 const applyEditorMarkdownNormalization = (value: string) =>
@@ -5081,6 +5084,8 @@ export const MarkdownHybridEditor = ({
         : detectTypedPageLinkTrigger(nextValue, selectionStart);
       if (activeBlock?.kind === "help-block") {
         nextValue = normalizeHelpBlockSource(nextValue);
+      } else if (activeBlock?.kind === "card-block") {
+        nextValue = normalizeCardBlockSource(nextValue);
       }
       if (blocks.length === 0 && activeBlockIndex === 0) {
         setActiveDraft(nextValue);
@@ -5294,9 +5299,12 @@ export const MarkdownHybridEditor = ({
       if (!block) {
         return false;
       }
-      setActiveDraft(nextDraft);
+      const resolvedDraft = block.kind === "card-block"
+        ? normalizeCardBlockSource(nextDraft)
+        : nextDraft;
+      setActiveDraft(resolvedDraft);
       setActiveDirty(true);
-      const nextBlockRaw = toPersistedBlockRawForDraft(block, nextDraft);
+      const nextBlockRaw = toPersistedBlockRawForDraft(block, resolvedDraft);
       const nextMarkdown = replaceMarkdownBlock(markdown, block, nextBlockRaw);
       if (nextMarkdown !== markdown) {
         onChange(nextMarkdown);
@@ -5990,13 +5998,8 @@ export const MarkdownHybridEditor = ({
             const lineEndOffset = lineStart + endCardLine.length;
             const selectionOffset = textarea.selectionStart;
             if (selectionOffset >= directiveEndOffset && selectionOffset <= lineEndOffset) {
-              event.preventDefault();
-              event.stopPropagation();
-              const cardRaw = lines.slice(0, endCardLineIndex + 1).join("\n");
-              replaceActiveBlockWithSegments([cardRaw, event.key], {
-                activateSegmentIndex: 1,
-                caret: "end",
-              });
+              // Keep typed content inside the active card instead of creating a duplicate
+              // paragraph block below the wrapper while the user edits around #endcard.
               return;
             }
           }

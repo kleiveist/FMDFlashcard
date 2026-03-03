@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  normalizeCardBlockSource,
   normalizeHelpBlockSource,
   normalizeHorizontalRuleBlockSource,
   normalizeHorizontalRuleSpacingInMarkdown,
@@ -123,6 +124,15 @@ describe("markdownBlocks", () => {
     expect(blocks).toHaveLength(1);
     expect(blocks[0]?.kind).toBe("card-block");
     expect(blocks[0]?.raw).toBe(["#card", "#endcard"].join("\n"));
+  });
+
+  it("moves trailing content after #endcard back into the card block body", () => {
+    expect(
+      normalizeCardBlockSource(["#card", "Frage", "#endcard", "Danach"].join("\n")),
+    ).toBe(["#card", "Frage", "Danach", "#endcard"].join("\n"));
+    expect(
+      normalizeCardBlockSource(["#card", "Frage", "#endcardAntwort"].join("\n")),
+    ).toBe(["#card", "Frage", "Antwort", "#endcard"].join("\n"));
   });
 
   it("treats $$ ... $$ as a single math block", () => {

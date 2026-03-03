@@ -37,7 +37,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ExamEditorIcon,
-  FolderIcon,
+  GridEventIcon,
   HelpIcon,
   SettingsIcon,
 } from "./icons";
@@ -116,6 +116,20 @@ export const SidebarNav = ({
   const isDashboard = activeTab === "dashboard";
   const isMarkdownView = isDashboard && vaultView === "markdown";
   const isExamView = isDashboard && vaultView === "exam";
+  const handleOpenEditor = useCallback(() => {
+    setToolbarMode("vault");
+    onVaultViewChange("markdown");
+    if (!isDashboard) {
+      onTabChange("dashboard");
+    }
+  }, [isDashboard, onTabChange, onVaultViewChange]);
+  const handleOpenExamEditor = useCallback(() => {
+    setToolbarMode("vault");
+    onVaultViewChange("exam");
+    if (!isDashboard) {
+      onTabChange("dashboard");
+    }
+  }, [isDashboard, onTabChange, onVaultViewChange]);
   const handleTogglePath = (path: string, isOpen: boolean) => {
     setExpandedPaths((prev) => {
       const next = new Set(prev);
@@ -256,32 +270,20 @@ export const SidebarNav = ({
             className={`nav-icon sidebar-icon-button ${
               isMarkdownView ? "active" : ""
             }`}
-            onClick={() => {
-              setToolbarMode("vault");
-              onVaultViewChange("markdown");
-              if (!isDashboard) {
-                onTabChange("dashboard");
-              }
-            }}
-            aria-label="Vault directory"
+            onClick={handleOpenEditor}
+            aria-label="Editor"
             aria-controls="sidebar-vault-panel"
             aria-expanded={toolbarMode === "vault"}
-            title="Vault directory"
+            title="Editor"
           >
-            <FolderIcon />
+            <GridEventIcon />
           </button>
           <button
             type="button"
             className={`nav-icon sidebar-icon-button ${
               isExamView ? "active" : ""
             }`}
-            onClick={() => {
-              setToolbarMode("vault");
-              onVaultViewChange("exam");
-              if (!isDashboard) {
-                onTabChange("dashboard");
-              }
-            }}
+            onClick={handleOpenExamEditor}
             aria-label="Exam editor"
             title="Exam editor"
           >

@@ -417,6 +417,44 @@ export const normalizeHelpBlockSource = (blockRaw: string) => {
   return normalizedLines.join("\n");
 };
 
+export const normalizeCardBlockSource = (blockRaw: string) => {
+  if (!blockRaw) {
+    return blockRaw;
+  }
+
+  const lines = blockRaw.split("\n");
+  let closingIndex = -1;
+  let closingLineSuffix = "";
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i] ?? "";
+    const match = line.match(/^\s*#endcard(.*)$/i);
+    if (!match) {
+      continue;
+    }
+    closingIndex = i;
+    closingLineSuffix = match[1] ?? "";
+    break;
+  }
+
+  if (closingIndex < 0) {
+    return blockRaw;
+  }
+
+  const trailingLines = lines.slice(closingIndex + 1);
+  if (closingLineSuffix.trim().length === 0 && trailingLines.length === 0) {
+    return blockRaw;
+  }
+
+  const normalizedLines = lines.slice(0, closingIndex);
+  if (closingLineSuffix.trim().length > 0) {
+    normalizedLines.push(closingLineSuffix.trimStart());
+  }
+  normalizedLines.push(...trailingLines);
+  normalizedLines.push("#endcard");
+  return normalizedLines.join("\n");
+};
+
 export const normalizeHorizontalRuleBlockSource = (blockRaw: string) => {
   if (!blockRaw) {
     return blockRaw;

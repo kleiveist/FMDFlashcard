@@ -1691,7 +1691,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("moves typed letters or digits after #endcard into the next text block", () => {
+  it("keeps typed letters or digits after #endcard inside the current card block", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
 
@@ -1720,19 +1720,57 @@ describe("MarkdownHybridEditor", () => {
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "a");
 
-      expect(readMarkdown()).toBe(`${initialMarkdown}\na`);
+      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
-      expect(blockKinds).toEqual(["card-block", "paragraph"]);
+      expect(blockKinds).toEqual(["card-block"]);
 
       textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
+        ".markdown-hybrid-block[data-md-block-index='0'] .markdown-hybrid-block-editor",
       );
       expect(textarea).toBeTruthy();
-      expect(textarea?.value).toBe("a");
-      expect(textarea?.selectionStart).toBe(1);
-      expect(textarea?.selectionEnd).toBe(1);
+      expect(textarea?.value).toBe(["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
+
+      cleanup();
+    });
+  });
+
+  it("does not create a duplicate paragraph block when pasted text lands after #endcard", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-endcard-paste-no-duplicate-block"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, `${initialMarkdown}\nPASTED TEXT`);
+
+      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "PASTED TEXT", "#endcard"].join("\n"));
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+      ).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='paragraph']"),
+      ).toHaveLength(0);
 
       cleanup();
     });
