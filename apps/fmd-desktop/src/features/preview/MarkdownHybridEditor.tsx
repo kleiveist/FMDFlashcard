@@ -3012,25 +3012,19 @@ const toPersistedBlockRawForDraft = (
     ? normalizeCardBlockSource(draft)
     : draft;
 
+const shouldDeferExternalSyncForBlockKind = (kind: MarkdownBlock["kind"]) =>
+  // Structured multi-line blocks stay local while editing so the outer block tree
+  // does not re-parse and visually jump on every keystroke.
+  kind === "card-block" ||
+  kind === "help-block" ||
+  kind === "ordered-list" ||
+  kind === "unordered-list" ||
+  kind === "blockquote" ||
+  kind === "math-block" ||
+  kind === "code-fence";
+
 const applyEditorMarkdownNormalization = (value: string) =>
   normalizeHorizontalRuleSpacingInMarkdown(value);
-
-const resolveSessionMarkdown = (
-  markdown: string,
-  blocks: MarkdownBlock[],
-  activeBlockIndex: number | null,
-  activeDraft: string,
-) => {
-  if (activeBlockIndex === null) {
-    return markdown;
-  }
-  const block = blocks[activeBlockIndex];
-  if (!block) {
-    return markdown;
-  }
-  const nextBlockRaw = toPersistedBlockRawForDraft(block, activeDraft);
-  return replaceMarkdownBlock(markdown, block, nextBlockRaw);
-};
 
 export const MarkdownHybridEditor = ({
   historyKey,
@@ -4184,14 +4178,11 @@ export const MarkdownHybridEditor = ({
       } else if (block.kind === "hr") {
         nextBlockRaw = normalizeHorizontalRuleBlockSource(nextBlockRaw);
       }
-      const currentResolvedMarkdown = applyEditorMarkdownNormalization(
-        resolveSessionMarkdown(markdown, blocks, activeBlockIndex, activeDraft),
-      );
       const nextResolvedMarkdown = applyEditorMarkdownNormalization(
         replaceMarkdownBlock(markdown, block, nextBlockRaw),
       );
 
-      if (nextResolvedMarkdown !== currentResolvedMarkdown) {
+      if (nextResolvedMarkdown !== markdown) {
         pendingActivationMarkdownRef.current = options?.nextActivation ? nextResolvedMarkdown : null;
         onChange(nextResolvedMarkdown);
       } else if (options?.nextActivation) {
@@ -5172,6 +5163,15 @@ export const MarkdownHybridEditor = ({
       if (!block) {
         return;
       }
+      if (shouldDeferExternalSyncForBlockKind(block.kind)) {
+        if (typedPageLinkTrigger && canOpenPageLinkPickerInBlockKind(block.kind)) {
+          requestPageLinkPickerOpen({
+            source: "typed-trigger",
+            replaceRange: typedPageLinkTrigger,
+          });
+        }
+        return;
+      }
       const nextBlockRaw = toPersistedBlockRawForDraft(block, nextValue);
       const nextMarkdown = replaceMarkdownBlock(markdown, block, nextBlockRaw);
       if (nextMarkdown !== markdown) {
@@ -5304,6 +5304,12 @@ export const MarkdownHybridEditor = ({
         : nextDraft;
       setActiveDraft(resolvedDraft);
       setActiveDirty(true);
+      if (shouldDeferExternalSyncForBlockKind(block.kind)) {
+        if (typeof nextCaretPosition === "number") {
+          scheduleTextareaCaret(nextCaretPosition);
+        }
+        return true;
+      }
       const nextBlockRaw = toPersistedBlockRawForDraft(block, resolvedDraft);
       const nextMarkdown = replaceMarkdownBlock(markdown, block, nextBlockRaw);
       if (nextMarkdown !== markdown) {

@@ -126,13 +126,16 @@ describe("markdownBlocks", () => {
     expect(blocks[0]?.raw).toBe(["#card", "#endcard"].join("\n"));
   });
 
-  it("moves trailing content after #endcard back into the card block body", () => {
-    expect(
-      normalizeCardBlockSource(["#card", "Frage", "#endcard", "Danach"].join("\n")),
-    ).toBe(["#card", "Frage", "Danach", "#endcard"].join("\n"));
+  it("only normalizes same-line suffix content on #endcard", () => {
     expect(
       normalizeCardBlockSource(["#card", "Frage", "#endcardAntwort"].join("\n")),
     ).toBe(["#card", "Frage", "Antwort", "#endcard"].join("\n"));
+    expect(
+      normalizeCardBlockSource(["#card", "Frage", "#endcard", "Danach"].join("\n")),
+    ).toBe(["#card", "Frage", "#endcard", "Danach"].join("\n"));
+    expect(
+      normalizeCardBlockSource(["#card", "Frage", "#endcardAntwort", "Danach"].join("\n")),
+    ).toBe(["#card", "Frage", "Antwort", "#endcard", "Danach"].join("\n"));
   });
 
   it("treats $$ ... $$ as a single math block", () => {

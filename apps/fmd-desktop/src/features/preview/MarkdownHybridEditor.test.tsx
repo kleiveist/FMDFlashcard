@@ -156,6 +156,12 @@ const applyTextareaInput = (
   });
 };
 
+const blurTextarea = (textarea: HTMLTextAreaElement | null) => {
+  act(() => {
+    textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+  });
+};
+
 const findButtonByExactText = (container: ParentNode, label: string) =>
   Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
     (button) => button.textContent?.trim() === label,
@@ -1421,11 +1427,97 @@ describe("MarkdownHybridEditor", () => {
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe(["#card", "QUESTION TEXT", "", "#endcard"].join("\n"));
-      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "", "#endcard"].join("\n"));
+      expect(readMarkdown()).toBe(initialMarkdown);
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
       ).toHaveLength(1);
       expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "", "#endcard"].join("\n"));
+
+      cleanup();
+    });
+  });
+
+  it("keeps Shift+Enter at the top of a card block local until commit without duplicating blocks", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#card",
+        "QUESTION TEXT",
+        "a) OPTION A",
+        "b) OPTION B",
+        "c) OPTION C",
+        "d) OPTION D",
+        "-a",
+        "-c",
+        "#endcard",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-shift-enter-top-line-no-duplicate"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      const questionLineEnd = textarea?.value.indexOf("QUESTION TEXT") ?? -1;
+      expect(questionLineEnd).toBeGreaterThanOrEqual(0);
+      setTextareaSelection(textarea, questionLineEnd + "QUESTION TEXT".length);
+
+      dispatchKeyDown(textarea, "Enter", { shiftKey: true });
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      dispatchKeyDown(textarea, "Enter", { shiftKey: true });
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+
+      expect(textarea?.value).toBe([
+        "#card",
+        "QUESTION TEXT",
+        "",
+        "",
+        "a) OPTION A",
+        "b) OPTION B",
+        "c) OPTION C",
+        "d) OPTION D",
+        "-a",
+        "-c",
+        "#endcard",
+      ].join("\n"));
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+      ).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe([
+        "#card",
+        "QUESTION TEXT",
+        "",
+        "",
+        "a) OPTION A",
+        "b) OPTION B",
+        "c) OPTION C",
+        "d) OPTION D",
+        "-a",
+        "-c",
+        "#endcard",
+      ].join("\n"));
 
       cleanup();
     });
@@ -1604,14 +1696,17 @@ describe("MarkdownHybridEditor", () => {
       expect(fracButton).toBeTruthy();
       dispatchClick(fracButton);
 
-      expect(readMarkdown()).toBe("$$\n\\frac{a}{b}\n$$");
       const nextTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-math-editor");
       expect(nextTextarea).toBeTruthy();
+      expect(readMarkdown()).toBe("$$\n\n$$");
       const selectedText = nextTextarea?.value.slice(
         nextTextarea.selectionStart ?? 0,
         nextTextarea.selectionEnd ?? 0,
       );
       expect(selectedText).toBe("a");
+
+      blurTextarea(nextTextarea);
+      expect(readMarkdown()).toBe("$$\n\\frac{a}{b}\n$$");
 
       cleanup();
     });
@@ -1720,7 +1815,7 @@ describe("MarkdownHybridEditor", () => {
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "a");
 
-      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
+      expect(readMarkdown()).toBe(initialMarkdown);
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
@@ -1732,11 +1827,14 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       expect(textarea?.value).toBe(["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
 
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
+
       cleanup();
     });
   });
 
-  it("does not create a duplicate paragraph block when pasted text lands after #endcard", () => {
+  it("keeps pasted lines after #endcard local while editing and commits them as following blocks", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
 
@@ -1764,13 +1862,111 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       applyTextareaInput(textarea, `${initialMarkdown}\nPASTED TEXT`);
 
-      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "PASTED TEXT", "#endcard"].join("\n"));
+      expect(readMarkdown()).toBe(initialMarkdown);
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
       ).toHaveLength(1);
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='paragraph']"),
       ).toHaveLength(0);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe(`${initialMarkdown}\nPASTED TEXT`);
+      expect(
+        Array.from(
+          container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+        ).map((block) => block.getAttribute("data-md-block-kind")),
+      ).toEqual(["card-block", "paragraph"]);
+
+      cleanup();
+    });
+  });
+
+  it("commits a heading added after #endcard as a separate heading block", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-endcard-heading-follow-up"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, `${initialMarkdown}\n## Follow up`);
+
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='heading']"),
+      ).toHaveLength(0);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe(`${initialMarkdown}\n## Follow up`);
+      expect(
+        Array.from(
+          container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+        ).map((block) => block.getAttribute("data-md-block-kind")),
+      ).toEqual(["card-block", "heading"]);
+
+      cleanup();
+    });
+  });
+
+  it("persists removing card wrappers and reparses the result after blur", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["#card", "## Heading", "Body text", "#endcard"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-wrapper-removal-persists"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, ["## Heading", "Body text"].join("\n"));
+
+      expect(readMarkdown()).toBe(initialMarkdown);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+      ).toHaveLength(1);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe(["## Heading", "Body text"].join("\n"));
+      expect(
+        Array.from(
+          container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+        ).map((block) => block.getAttribute("data-md-block-kind")),
+      ).toEqual(["heading", "paragraph"]);
 
       cleanup();
     });
@@ -1879,12 +2075,15 @@ describe("MarkdownHybridEditor", () => {
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe("> Quote text\n> ");
-      expect(readMarkdown()).toBe("> Quote text\n> ");
+      expect(readMarkdown()).toBe(initialMarkdown);
       expect(textarea?.selectionStart).toBe("> Quote text\n> ".length);
       expect(textarea?.selectionEnd).toBe("> Quote text\n> ".length);
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blockquote']"),
       ).toHaveLength(1);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe("> Quote text\n> ");
 
       cleanup();
     });
@@ -2015,11 +2214,14 @@ describe("MarkdownHybridEditor", () => {
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       applyTextareaInput(textarea, "> Quote\n> A\n> B\n> C");
 
-      expect(readMarkdown()).toBe("> Quote\n> A\n> B\n> C");
+      expect(readMarkdown()).toBe(initialMarkdown);
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blockquote']"),
       ).toHaveLength(1);
       expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe("> Quote\n> A\n> B\n> C");
 
       cleanup();
     });

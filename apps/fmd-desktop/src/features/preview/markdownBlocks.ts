@@ -441,17 +441,14 @@ export const normalizeCardBlockSource = (blockRaw: string) => {
     return blockRaw;
   }
 
-  const trailingLines = lines.slice(closingIndex + 1);
-  if (closingLineSuffix.trim().length === 0 && trailingLines.length === 0) {
+  if (closingLineSuffix.trim().length === 0) {
     return blockRaw;
   }
 
   const normalizedLines = lines.slice(0, closingIndex);
-  if (closingLineSuffix.trim().length > 0) {
-    normalizedLines.push(closingLineSuffix.trimStart());
-  }
-  normalizedLines.push(...trailingLines);
+  normalizedLines.push(closingLineSuffix.trimStart());
   normalizedLines.push("#endcard");
+  normalizedLines.push(...lines.slice(closingIndex + 1));
   return normalizedLines.join("\n");
 };
 
