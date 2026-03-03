@@ -123,7 +123,7 @@ const isSameCell = (
       left.columnIndex === right.columnIndex,
   );
 
-const TABLE_ROW_GUTTER_WIDTH_PX = 72;
+const TABLE_ROW_GUTTER_WIDTH_PX = 36;
 const TABLE_COLUMN_MIN_WIDTH_PX = 140;
 const TABLE_COLUMN_MAX_WIDTH_PX = 420;
 const TABLE_COLUMN_BASE_PADDING_PX = 44;
@@ -1469,7 +1469,7 @@ export const MarkdownHybridTableBlock = ({
                         setContextMenuState({ type: "column", x: event.clientX, y: event.clientY });
                       }}
                     >
-                      Col {columnIndex + 1}
+                      c{columnIndex + 1}
                     </button>
                     {active ? (
                       <div className="markdown-hybrid-table-column-actions">
@@ -1532,7 +1532,7 @@ export const MarkdownHybridTableBlock = ({
                     setContextMenuState({ type: "row", x: event.clientX, y: event.clientY });
                   }}
                 >
-                  Head
+                  h
                 </button>
               </div>
               {parsedModel.header.map((_headerCell, columnIndex) => {
@@ -1674,7 +1674,7 @@ const FragmentRow = ({
         onMouseDown={onRowMouseDown}
         onContextMenu={onContextMenu}
       >
-        Row {visualIndex}
+        r{visualIndex}
       </button>
       {active && !disabled ? (
         <div className="markdown-hybrid-table-row-actions">

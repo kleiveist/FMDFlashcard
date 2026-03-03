@@ -2481,7 +2481,7 @@ textarea.preview-editor {
 
 .markdown-hybrid-table-shell {
   position: relative;
-  width: 100%;
+  width: max-content;
   min-width: 100%;
   margin: 0;
   overflow: hidden;
@@ -2496,7 +2496,7 @@ textarea.preview-editor {
   display: grid;
   gap: 1px;
   align-items: stretch;
-  width: 100%;
+  width: max-content;
   min-width: 100%;
   background: var(--line-soft);
 }
@@ -2504,37 +2504,50 @@ textarea.preview-editor {
 .markdown-hybrid-table-corner,
 .markdown-hybrid-table-column-lane,
 .markdown-hybrid-table-row-lane,
-.markdown-hybrid-table-cell {
-  background: var(--md-table-bg);
+.markdown-hybrid-table-row-lane-header {
+  background: color-mix(in srgb, var(--md-table-head-bg) 86%, var(--panel-2));
 }
 
 .markdown-hybrid-table-corner,
 .markdown-hybrid-table-column-lane,
-.markdown-hybrid-table-row-lane,
+.markdown-hybrid-table-row-lane {
+  min-height: 20px;
+}
+
 .markdown-hybrid-table-cell {
   min-height: 39px;
 }
 
-.markdown-hybrid-table-corner,
-.markdown-hybrid-table-column-lane,
-.markdown-hybrid-table-row-lane-header,
+.markdown-hybrid-table-cell {
+  background: var(--md-table-bg);
+}
+
 .markdown-hybrid-table-cell-header {
   background: var(--md-table-head-bg);
+}
+
+.markdown-hybrid-table-column-lane {
+  border-bottom: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
+}
+
+.markdown-hybrid-table-row-lane,
+.markdown-hybrid-table-row-lane-header {
+  border-right: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
 }
 
 .markdown-hybrid-table-column-lane,
 .markdown-hybrid-table-row-lane {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .markdown-hybrid-table-column-lane {
-  padding: 0 8px 0 12px;
+  padding: 0 5px 0 7px;
 }
 
 .markdown-hybrid-table-row-lane {
-  padding: 0 6px;
+  padding: 0 4px;
 }
 
 .markdown-hybrid-table-row-select,
@@ -2548,7 +2561,10 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-table-column-lane.is-selected,
-.markdown-hybrid-table-row-lane.is-selected,
+.markdown-hybrid-table-row-lane.is-selected {
+  background: color-mix(in srgb, var(--accent-soft) 18%, var(--md-table-head-bg));
+}
+
 .markdown-hybrid-table-row-select-header.is-selected {
   background: color-mix(in srgb, var(--accent-soft) 18%, var(--md-table-head-bg));
 }
@@ -2557,19 +2573,18 @@ textarea.preview-editor {
 .markdown-hybrid-table-row-select {
   flex: 1;
   width: 100%;
-  min-height: 39px;
+  min-height: 20px;
   padding: 0;
   cursor: pointer;
   text-align: left;
-  font-size: 0.76rem;
-  line-height: 1.2;
+  font-size: 0.56rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
   white-space: normal;
   overflow-wrap: anywhere;
-  color: var(--muted);
-}
-
-.markdown-hybrid-table-column-select {
-  font-weight: 600;
+  color: color-mix(in srgb, var(--muted) 92%, var(--text));
+  font-weight: 560;
+  text-transform: lowercase;
 }
 
 .markdown-hybrid-table-column-lane.is-selected .markdown-hybrid-table-column-select,
@@ -2595,15 +2610,16 @@ textarea.preview-editor {
 
 .markdown-hybrid-table-column-insert,
 .markdown-hybrid-table-row-insert {
-  width: 20px;
-  min-width: 20px;
-  height: 20px;
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 3px;
   color: var(--muted);
   cursor: pointer;
+  font-size: 0.7rem;
   transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
 }
 
@@ -2651,14 +2667,20 @@ textarea.preview-editor {
   font-weight: 600;
 }
 
-.markdown-hybrid-table-cell.is-row-selected,
-.markdown-hybrid-table-cell.is-column-selected {
+.markdown-hybrid-table-cell.is-row-selected {
   background: color-mix(in srgb, var(--accent-soft) 18%, var(--md-table-bg));
 }
 
-.markdown-hybrid-table-cell-header.is-row-selected,
-.markdown-hybrid-table-cell-header.is-column-selected {
+.markdown-hybrid-table-cell.is-column-selected {
+  background: var(--md-table-bg);
+}
+
+.markdown-hybrid-table-cell-header.is-row-selected {
   background: color-mix(in srgb, var(--accent-soft) 20%, var(--md-table-head-bg));
+}
+
+.markdown-hybrid-table-cell-header.is-column-selected {
+  background: var(--md-table-head-bg);
 }
 
 .markdown-hybrid-table-cell.is-editing {
@@ -2680,14 +2702,14 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-table-column-drop-indicator {
-  top: 39px;
+  top: 20px;
   bottom: 0;
   width: 3px;
   transform: translateX(-1px);
 }
 
 .markdown-hybrid-table-row-drop-indicator {
-  left: 72px;
+  left: 36px;
   right: 0;
   height: 3px;
   transform: translateY(-1px);

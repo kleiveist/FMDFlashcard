@@ -3269,11 +3269,54 @@ describe("MarkdownHybridEditor", () => {
       expect(grid).toBeTruthy();
 
       const template = grid?.style.gridTemplateColumns ?? "";
-      expect(template.startsWith("72px ")).toBe(true);
+      expect(template.startsWith("36px ")).toBe(true);
       expect(template.includes("minmax(")).toBe(true);
       expect(template).toContain("minmax(140px, 140px)");
       expect(template).toMatch(/minmax\(140px, (2|3|4)\d{2}px\)/);
       expect(template.endsWith("1fr)")).toBe(true);
+      cleanup();
+    });
+  });
+
+  it("renders compact table lane labels as h c1 c2 and r1 r2", () => {
+    withImmediateRaf(() => {
+      const { container, cleanup } = render(
+        createElement(MarkdownHybridEditor, {
+          historyKey: "table-compact-lane-labels",
+          markdown: [
+            "| A | B |",
+            "| --- | --- |",
+            "| 1 | 2 |",
+            "| 3 | 4 |",
+          ].join("\n"),
+          mode: "edit",
+          onChange: () => undefined,
+          renderPreview: (value: string) => <div>{value}</div>,
+        }),
+      );
+
+      const headerLane = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-table-row-select-header",
+      );
+      const firstColumnLane = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-table-column-select[data-md-table-column-index='0']",
+      );
+      const secondColumnLane = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-table-column-select[data-md-table-column-index='1']",
+      );
+      const firstRowLane = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-table-row-select[data-md-table-row-index='1']",
+      );
+      const secondRowLane = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-table-row-select[data-md-table-row-index='2']",
+      );
+
+      expect(headerLane?.textContent?.trim()).toBe("h");
+      expect(firstColumnLane?.textContent?.trim()).toBe("c1");
+      expect(secondColumnLane?.textContent?.trim()).toBe("c2");
+      expect(firstRowLane?.textContent?.trim()).toBe("r1");
+      expect(secondRowLane?.textContent?.trim()).toBe("r2");
+
       cleanup();
     });
   });

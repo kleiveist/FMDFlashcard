@@ -214,7 +214,7 @@ export const buildAdvancedInsertTemplateVariant = (
 
   const taskNumber = Math.max(1, options?.taskNumber ?? 1);
   return {
-    payload: template.taskPayload.replaceAll(ADVANCED_TASK_NUMBER_PLACEHOLDER, String(taskNumber)),
+    payload: template.taskPayload.split(ADVANCED_TASK_NUMBER_PLACEHOLDER).join(String(taskNumber)),
     firstPlaceholder: template.taskFirstPlaceholder,
   };
 };
