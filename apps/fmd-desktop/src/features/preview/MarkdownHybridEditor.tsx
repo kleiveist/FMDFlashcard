@@ -5972,10 +5972,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       const hasSelection = textarea.selectionStart !== textarea.selectionEnd;
       const atStart = !hasSelection && textarea.selectionStart === 0;
       const atEnd = !hasSelection && textarea.selectionEnd === textarea.value.length;
-      const isPlainEnter = event.key === "Enter" &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey;
       const isPlainDeleteKey = (event.key === "Backspace" || event.key === "Delete") &&
         !event.shiftKey &&
         !event.altKey &&
