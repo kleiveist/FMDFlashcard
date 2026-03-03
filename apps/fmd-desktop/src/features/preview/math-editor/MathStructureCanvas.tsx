@@ -1,11 +1,18 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { areSlotPathsEqual, getSlotLabel, locateRowByPath } from "./ast";
 import { getAdjacentSlotPath } from "./slotTraversal";
 import { MathStructureNode } from "./MathStructureNode";
-import type { FormulaRowNode, MathEditorCommand, MathStructureSessionState, SlotPath } from "./types";
+import type {
+  FormulaRowNode,
+  MathEditorCommand,
+  MathStructureSessionState,
+  SlotPath,
+} from "./types";
 
 const pathKey = (path: SlotPath) =>
-  path.map((segment) => `${segment.nodeId}:${segment.slotName}:${segment.rowIndex ?? ""}:${segment.colIndex ?? ""}`).join("/");
+  path
+    .map((segment) => `${segment.nodeId}:${segment.slotName}:${segment.rowIndex ?? ""}:${segment.colIndex ?? ""}`)
+    .join("/");
 
 export const MathStructureCanvas = ({
   state,
@@ -28,6 +35,21 @@ export const MathStructureCanvas = ({
     }
   };
 
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) {
+      return;
+    }
+    const activeKey = pathKey(state.cursor.rowPath);
+    const activeRow = Array.from(root.querySelectorAll<HTMLElement>("[data-md-math-row]")).find(
+      (node) => node.getAttribute("data-md-math-row") === activeKey,
+    );
+    activeRow?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }, [state.cursor.rowPath]);
+
   const renderRow = (
     row: FormulaRowNode,
     path: SlotPath,
@@ -43,6 +65,7 @@ export const MathStructureCanvas = ({
           isActive ? " is-active" : ""
         }`}
         data-md-math-row={pathKey(path)}
+        data-md-math-active-slot={isActive ? "true" : undefined}
         aria-label={label}
         onMouseDown={(event) => {
           event.preventDefault();
@@ -101,84 +124,103 @@ export const MathStructureCanvas = ({
 
   return (
     <div className="markdown-hybrid-structural-math-canvas-shell">
-      <div className="markdown-hybrid-structural-math-pane-title">Structure</div>
-      <div
-        ref={rootRef}
-        className="markdown-hybrid-structural-math-canvas"
-        tabIndex={0}
-        role="group"
-        aria-label={`Math structure canvas, active slot ${currentSlotLabel}`}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            return;
+      <div className="markdown-hybrid-structural-math-pane-title-row">
+        <div className="markdown-hybrid-structural-math-pane-title">Structure</div>
+        <div className="markdown-hybrid-structural-math-pane-meta">{currentSlotLabel}</div>
+      </div>
+      <div className="markdown-hybrid-structural-math-canvas-viewport">
+        <div
+          ref={rootRef}
+          className="markdown-hybrid-structural-math-canvas"
+          style={
+            {
+              "--md-math-canvas-scale": `${state.canvasZoom / 100}`,
+            } as CSSProperties
           }
-          if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
-            event.preventDefault();
-            onDispatch({ type: event.shiftKey ? "redo" : "undo" });
-            return;
-          }
-          if (event.key === "Tab") {
-            event.preventDefault();
-            const nextPath = getAdjacentSlotPath(
-              state.ast,
-              state.cursor.rowPath,
-              event.shiftKey ? "previous" : "next",
-            );
-            const nextRow = locateRowByPath(state.ast, nextPath)?.row ?? state.ast;
-            onDispatch({
-              type: "setCursor",
-              cursor: { rowPath: nextPath, offset: Math.min(state.cursor.offset, nextRow.children.length), selection: null },
-            });
-            return;
-          }
-          if (event.key === "ArrowLeft" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowDown") {
-            event.preventDefault();
-            onDispatch({
-              type: "moveCursor",
-              direction:
-                event.key === "ArrowLeft"
-                  ? "left"
-                  : event.key === "ArrowRight"
-                  ? "right"
-                  : event.key === "ArrowUp"
-                  ? "up"
-                  : "down",
-              extend: event.shiftKey,
-            });
-            return;
-          }
-          if (event.key === "Backspace") {
-            event.preventDefault();
-            onDispatch({ type: "deleteBackward" });
-            return;
-          }
-          if (event.key === "Delete") {
-            event.preventDefault();
-            onDispatch({ type: "deleteForward" });
-            return;
-          }
-          if (event.key === "/") {
-            event.preventDefault();
-            onDispatch({ type: "insertTemplate", templateId: "fraction" });
-            return;
-          }
-          if (event.key === "^") {
-            event.preventDefault();
-            onDispatch({ type: "insertTemplate", templateId: "superscript" });
-            return;
-          }
-          if (event.key === "_") {
-            event.preventDefault();
-            onDispatch({ type: "insertTemplate", templateId: "subscript" });
-            return;
-          }
-          if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
-            event.preventDefault();
-            onDispatch({ type: "insertText", text: event.key });
-          }
-        }}
-      >
-        {renderRow(state.ast, [], "Formula")}
+          tabIndex={0}
+          role="group"
+          aria-label={`Math structure canvas, active slot ${currentSlotLabel}`}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              return;
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+              event.preventDefault();
+              onDispatch({ type: event.shiftKey ? "redo" : "undo" });
+              return;
+            }
+            if (event.key === "Tab") {
+              event.preventDefault();
+              const nextPath = getAdjacentSlotPath(
+                state.ast,
+                state.cursor.rowPath,
+                event.shiftKey ? "previous" : "next",
+              );
+              const nextRow = locateRowByPath(state.ast, nextPath)?.row ?? state.ast;
+              onDispatch({
+                type: "setCursor",
+                cursor: {
+                  rowPath: nextPath,
+                  offset: Math.min(state.cursor.offset, nextRow.children.length),
+                  selection: null,
+                },
+              });
+              return;
+            }
+            if (
+              event.key === "ArrowLeft" ||
+              event.key === "ArrowRight" ||
+              event.key === "ArrowUp" ||
+              event.key === "ArrowDown"
+            ) {
+              event.preventDefault();
+              onDispatch({
+                type: "moveCursor",
+                direction:
+                  event.key === "ArrowLeft"
+                    ? "left"
+                    : event.key === "ArrowRight"
+                      ? "right"
+                      : event.key === "ArrowUp"
+                        ? "up"
+                        : "down",
+                extend: event.shiftKey,
+              });
+              return;
+            }
+            if (event.key === "Backspace") {
+              event.preventDefault();
+              onDispatch({ type: "deleteBackward" });
+              return;
+            }
+            if (event.key === "Delete") {
+              event.preventDefault();
+              onDispatch({ type: "deleteForward" });
+              return;
+            }
+            if (event.key === "/") {
+              event.preventDefault();
+              onDispatch({ type: "insertTemplate", templateId: "fraction" });
+              return;
+            }
+            if (event.key === "^") {
+              event.preventDefault();
+              onDispatch({ type: "insertTemplate", templateId: "superscript" });
+              return;
+            }
+            if (event.key === "_") {
+              event.preventDefault();
+              onDispatch({ type: "insertTemplate", templateId: "subscript" });
+              return;
+            }
+            if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
+              event.preventDefault();
+              onDispatch({ type: "insertText", text: event.key });
+            }
+          }}
+        >
+          {renderRow(state.ast, [], "Formula")}
+        </div>
       </div>
     </div>
   );

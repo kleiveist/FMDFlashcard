@@ -51,7 +51,6 @@ const applyStructuredPayload = (
   state: MathStructureSessionState,
   ast: FormulaRowNode,
   cursor: MathCursor,
-  recentTemplateId?: string,
 ): MathStructureSessionState => {
   const normalizedAst = cloneRow(ast);
   const normalizedCursor = normalizeCursor(normalizedAst, cursor);
@@ -68,9 +67,6 @@ const applyStructuredPayload = (
     rawLatexDraft: previewLatex,
     importError: validation.mode === "structured" ? null : validation.reason,
     openedFromRaw: false,
-    recentTemplateIds: recentTemplateId
-      ? [recentTemplateId, ...state.recentTemplateIds.filter((id) => id !== recentTemplateId)].slice(0, 8)
-      : state.recentTemplateIds,
   };
 };
 
@@ -157,7 +153,6 @@ const applyTemplateCommand = (state: MathStructureSessionState, templateId: stri
       pushSnapshot(state),
       nextAst,
       buildCursorForSlot(nextPath, 0),
-      templateId,
     );
   }
   return applyStructuredPayload(
@@ -168,7 +163,6 @@ const applyTemplateCommand = (state: MathStructureSessionState, templateId: stri
       offset: insertionStart + insertion.nodes.length,
       selection: null,
     },
-    templateId,
   );
 };
 
@@ -260,8 +254,7 @@ export const createMathEditorSession = (
       openedFromRaw: false,
       initialLatex: rawLatex,
       rawLatexDraft: imported.rawLatex,
-      recentTemplateIds: [],
-      activeCategoryId: "favorites",
+      canvasZoom: 125,
     };
   }
   return {
@@ -277,8 +270,7 @@ export const createMathEditorSession = (
     openedFromRaw: true,
     initialLatex: rawLatex,
     rawLatexDraft: rawLatex,
-    recentTemplateIds: [],
-    activeCategoryId: "favorites",
+    canvasZoom: 125,
   };
 };
 
@@ -492,10 +484,10 @@ export const applyMathEditorCommand = (
         },
       };
     }
-    case "setActiveCategory":
+    case "setCanvasZoom":
       return {
         ...state,
-        activeCategoryId: command.categoryId,
+        canvasZoom: command.zoom,
       };
     case "revertSession":
       return createMathEditorSession(state.sessionId, state.blockIndex, state.initialLatex);

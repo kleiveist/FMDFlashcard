@@ -1,8 +1,42 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { getSlotLabel } from "./ast";
 import type { FormulaNode, FormulaRowNode, MathEditorCommand, SlotPath } from "./types";
 
 type RenderRow = (row: FormulaRowNode, path: SlotPath, label: string, compact?: boolean) => ReactNode;
+
+const DISPLAY_VALUE_MAP: Record<string, string> = {
+  "\\times": "×",
+  "\\div": "÷",
+  "\\pi": "π",
+  "\\theta": "θ",
+  "\\alpha": "α",
+  "\\infty": "∞",
+  "\\partial": "∂",
+  "\\nabla": "∇",
+  "\\to": "→",
+  "\\in": "∈",
+  "\\subset": "⊂",
+  "\\forall": "∀",
+  "\\exists": "∃",
+  "\\neq": "≠",
+  "\\le": "≤",
+  "\\ge": "≥",
+  "\\{": "{",
+  "\\}": "}",
+};
+
+const getDisplayValue = (value: string) => DISPLAY_VALUE_MAP[value] ?? value;
+
+const getMatrixEnvironmentLabel = (environment: "matrix" | "pmatrix" | "bmatrix") => {
+  switch (environment) {
+    case "pmatrix":
+      return "Paren matrix";
+    case "bmatrix":
+      return "Bracket matrix";
+    case "matrix":
+      return "Matrix";
+  }
+};
 
 export const MathStructureNode = ({
   node,
@@ -22,12 +56,16 @@ export const MathStructureNode = ({
     case "relation":
     case "symbol":
     case "placeholder":
-      return <span className={`markdown-hybrid-structural-math-token is-${node.kind}`}>{node.value}</span>;
+      return (
+        <span className={`markdown-hybrid-structural-math-token is-${node.kind}`}>
+          {getDisplayValue(node.value)}
+        </span>
+      );
     case "text": {
       const slot = { nodeId: node.id, slotName: "body" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-text">
-          <span className="markdown-hybrid-structural-math-node-label">\text</span>
+          <span className="markdown-hybrid-structural-math-node-label">Text</span>
           {renderRow(node.body, [...path, slot], getSlotLabel(slot), true)}
         </span>
       );
@@ -37,9 +75,13 @@ export const MathStructureNode = ({
       const denominatorSlot = { nodeId: node.id, slotName: "denominator" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-fraction">
-          {renderRow(node.numerator, [...path, numeratorSlot], getSlotLabel(numeratorSlot), true)}
+          <span className="markdown-hybrid-structural-math-fraction-slot is-numerator">
+            {renderRow(node.numerator, [...path, numeratorSlot], getSlotLabel(numeratorSlot), true)}
+          </span>
           <span className="markdown-hybrid-structural-math-fraction-line" />
-          {renderRow(node.denominator, [...path, denominatorSlot], getSlotLabel(denominatorSlot), true)}
+          <span className="markdown-hybrid-structural-math-fraction-slot is-denominator">
+            {renderRow(node.denominator, [...path, denominatorSlot], getSlotLabel(denominatorSlot), true)}
+          </span>
         </span>
       );
     }
@@ -48,7 +90,9 @@ export const MathStructureNode = ({
       return (
         <span className="markdown-hybrid-structural-math-node is-sqrt">
           <span className="markdown-hybrid-structural-math-radical">√</span>
-          {renderRow(node.radicand, [...path, slot], getSlotLabel(slot), true)}
+          <span className="markdown-hybrid-structural-math-slot-shell is-radicand">
+            {renderRow(node.radicand, [...path, slot], getSlotLabel(slot), true)}
+          </span>
         </span>
       );
     }
@@ -61,7 +105,9 @@ export const MathStructureNode = ({
             {renderRow(node.index, [...path, indexSlot], getSlotLabel(indexSlot), true)}
           </span>
           <span className="markdown-hybrid-structural-math-radical">√</span>
-          {renderRow(node.radicand, [...path, radicandSlot], getSlotLabel(radicandSlot), true)}
+          <span className="markdown-hybrid-structural-math-slot-shell is-radicand">
+            {renderRow(node.radicand, [...path, radicandSlot], getSlotLabel(radicandSlot), true)}
+          </span>
         </span>
       );
     }
@@ -70,8 +116,12 @@ export const MathStructureNode = ({
       const exponentSlot = { nodeId: node.id, slotName: "exponent" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-script">
-          {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
-          <sup>{renderRow(node.exponent, [...path, exponentSlot], getSlotLabel(exponentSlot), true)}</sup>
+          <span className="markdown-hybrid-structural-math-slot-shell is-base">
+            {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
+          </span>
+          <span className="markdown-hybrid-structural-math-script-stack">
+            <sup>{renderRow(node.exponent, [...path, exponentSlot], getSlotLabel(exponentSlot), true)}</sup>
+          </span>
         </span>
       );
     }
@@ -80,8 +130,12 @@ export const MathStructureNode = ({
       const subscriptSlot = { nodeId: node.id, slotName: "subscript" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-script">
-          {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
-          <sub>{renderRow(node.subscript, [...path, subscriptSlot], getSlotLabel(subscriptSlot), true)}</sub>
+          <span className="markdown-hybrid-structural-math-slot-shell is-base">
+            {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
+          </span>
+          <span className="markdown-hybrid-structural-math-script-stack">
+            <sub>{renderRow(node.subscript, [...path, subscriptSlot], getSlotLabel(subscriptSlot), true)}</sub>
+          </span>
         </span>
       );
     }
@@ -91,8 +145,10 @@ export const MathStructureNode = ({
       const exponentSlot = { nodeId: node.id, slotName: "exponent" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-script">
-          {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
-          <span className="markdown-hybrid-structural-math-subsup">
+          <span className="markdown-hybrid-structural-math-slot-shell is-base">
+            {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
+          </span>
+          <span className="markdown-hybrid-structural-math-script-stack">
             <sup>{renderRow(node.exponent, [...path, exponentSlot], getSlotLabel(exponentSlot), true)}</sup>
             <sub>{renderRow(node.subscript, [...path, subscriptSlot], getSlotLabel(subscriptSlot), true)}</sub>
           </span>
@@ -103,9 +159,9 @@ export const MathStructureNode = ({
       const slot = { nodeId: node.id, slotName: "body" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-delimited">
-          <span className="markdown-hybrid-structural-math-delimiter">{node.leftDelimiter}</span>
+          <span className="markdown-hybrid-structural-math-delimiter">{getDisplayValue(node.leftDelimiter)}</span>
           {renderRow(node.body, [...path, slot], getSlotLabel(slot), true)}
-          <span className="markdown-hybrid-structural-math-delimiter">{node.rightDelimiter}</span>
+          <span className="markdown-hybrid-structural-math-delimiter">{getDisplayValue(node.rightDelimiter)}</span>
         </span>
       );
     }
@@ -135,13 +191,19 @@ export const MathStructureNode = ({
       const differentialSlot = { nodeId: node.id, slotName: "differential" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-operator-stack">
-          <span className="markdown-hybrid-structural-math-operator-symbol">∫</span>
-          <span className="markdown-hybrid-structural-math-operator-bounds">
-            <sup>{renderRow(node.upper, [...path, upperSlot], getSlotLabel(upperSlot), true)}</sup>
-            <sub>{renderRow(node.lower, [...path, lowerSlot], getSlotLabel(lowerSlot), true)}</sub>
+          <span className="markdown-hybrid-structural-math-operator-frame">
+            <span className="markdown-hybrid-structural-math-operator-symbol">∫</span>
+            <span className="markdown-hybrid-structural-math-operator-bounds">
+              <sup>{renderRow(node.upper, [...path, upperSlot], getSlotLabel(upperSlot), true)}</sup>
+              <sub>{renderRow(node.lower, [...path, lowerSlot], getSlotLabel(lowerSlot), true)}</sub>
+            </span>
           </span>
-          {renderRow(node.integrand, [...path, integrandSlot], getSlotLabel(integrandSlot), true)}
-          {renderRow(node.differential, [...path, differentialSlot], getSlotLabel(differentialSlot), true)}
+          <span className="markdown-hybrid-structural-math-operator-body">
+            {renderRow(node.integrand, [...path, integrandSlot], getSlotLabel(integrandSlot), true)}
+            <span className="markdown-hybrid-structural-math-operator-differential">
+              {renderRow(node.differential, [...path, differentialSlot], getSlotLabel(differentialSlot), true)}
+            </span>
+          </span>
         </span>
       );
     }
@@ -152,12 +214,18 @@ export const MathStructureNode = ({
       const bodySlot = { nodeId: node.id, slotName: "body" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-operator-stack">
-          <span className="markdown-hybrid-structural-math-operator-symbol">{node.kind === "sum" ? "∑" : "∏"}</span>
-          <span className="markdown-hybrid-structural-math-operator-bounds">
-            <sup>{renderRow(node.upper, [...path, upperSlot], getSlotLabel(upperSlot), true)}</sup>
-            <sub>{renderRow(node.lower, [...path, lowerSlot], getSlotLabel(lowerSlot), true)}</sub>
+          <span className="markdown-hybrid-structural-math-operator-frame">
+            <span className="markdown-hybrid-structural-math-operator-symbol">
+              {node.kind === "sum" ? "∑" : "∏"}
+            </span>
+            <span className="markdown-hybrid-structural-math-operator-bounds">
+              <sup>{renderRow(node.upper, [...path, upperSlot], getSlotLabel(upperSlot), true)}</sup>
+              <sub>{renderRow(node.lower, [...path, lowerSlot], getSlotLabel(lowerSlot), true)}</sub>
+            </span>
           </span>
-          {renderRow(node.body, [...path, bodySlot], getSlotLabel(bodySlot), true)}
+          <span className="markdown-hybrid-structural-math-operator-body">
+            {renderRow(node.body, [...path, bodySlot], getSlotLabel(bodySlot), true)}
+          </span>
         </span>
       );
     }
@@ -166,8 +234,10 @@ export const MathStructureNode = ({
       const bodySlot = { nodeId: node.id, slotName: "body" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-limit">
-          <span className="markdown-hybrid-structural-math-node-label">lim</span>
-          <sub>{renderRow(node.approach, [...path, approachSlot], getSlotLabel(approachSlot), true)}</sub>
+          <span className="markdown-hybrid-structural-math-limit-head">
+            <span className="markdown-hybrid-structural-math-node-label">lim</span>
+            <sub>{renderRow(node.approach, [...path, approachSlot], getSlotLabel(approachSlot), true)}</sub>
+          </span>
           {renderRow(node.body, [...path, bodySlot], getSlotLabel(bodySlot), true)}
         </span>
       );
@@ -176,20 +246,43 @@ export const MathStructureNode = ({
       return (
         <span className="markdown-hybrid-structural-math-node is-matrix">
           <span className="markdown-hybrid-structural-math-node-toolbar">
-            <span>{node.environment}</span>
-            <button type="button" onClick={() => onDispatch({ type: "insertMatrixRow", nodeId: node.id })}>+ Row</button>
-            <button type="button" onClick={() => onDispatch({ type: "insertMatrixColumn", nodeId: node.id })}>+ Col</button>
+            <span>{getMatrixEnvironmentLabel(node.environment)}</span>
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => onDispatch({ type: "insertMatrixRow", nodeId: node.id })}
+            >
+              + Row
+            </button>
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => onDispatch({ type: "insertMatrixColumn", nodeId: node.id })}
+            >
+              + Col
+            </button>
           </span>
-          <span className="markdown-hybrid-structural-math-matrix-grid">
+          <span
+            className="markdown-hybrid-structural-math-matrix-grid"
+            style={
+              {
+                "--md-math-matrix-cols": String(node.cells[0]?.length ?? 1),
+              } as CSSProperties
+            }
+          >
             {node.cells.map((row, rowIndex) =>
               row.map((cell, colIndex) => {
                 const slot = { nodeId: node.id, slotName: "cell", rowIndex, colIndex } as const;
                 return (
-                  <span key={`${node.id}-${rowIndex}-${colIndex}`} className="markdown-hybrid-structural-math-matrix-cell">
+                  <span
+                    key={`${node.id}-${rowIndex}-${colIndex}`}
+                    className="markdown-hybrid-structural-math-matrix-cell"
+                  >
                     {renderRow(cell, [...path, slot], getSlotLabel(slot), true)}
                   </span>
                 );
-              }))}
+              }),
+            )}
           </span>
         </span>
       );
@@ -210,8 +303,14 @@ export const MathStructureNode = ({
       return (
         <span className="markdown-hybrid-structural-math-node is-cases">
           <span className="markdown-hybrid-structural-math-node-toolbar">
-            <span>cases</span>
-            <button type="button" onClick={() => onDispatch({ type: "insertCasesRow", nodeId: node.id })}>+ Row</button>
+            <span>Cases</span>
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => onDispatch({ type: "insertCasesRow", nodeId: node.id })}
+            >
+              + Row
+            </button>
           </span>
           {node.rows.map((row, rowIndex) => {
             const valueSlot = { nodeId: node.id, slotName: "value", rowIndex } as const;
@@ -230,8 +329,14 @@ export const MathStructureNode = ({
       return (
         <span className="markdown-hybrid-structural-math-node is-aligned">
           <span className="markdown-hybrid-structural-math-node-toolbar">
-            <span>aligned</span>
-            <button type="button" onClick={() => onDispatch({ type: "insertAlignedRow", nodeId: node.id })}>+ Row</button>
+            <span>Aligned</span>
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => onDispatch({ type: "insertAlignedRow", nodeId: node.id })}
+            >
+              + Row
+            </button>
           </span>
           {node.rows.map((row, rowIndex) => {
             const leftSlot = { nodeId: node.id, slotName: "left", rowIndex } as const;

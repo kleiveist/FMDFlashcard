@@ -161,3 +161,30 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+.ui-tooltip-anchor {
+  display: inline-flex;
+}
+
+.ui-tooltip {
+  position: absolute;
+  z-index: 120;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow-soft);
+  color: var(--ink);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.ui-tooltip-top {
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.ui-tooltip-bottom {
+  transform: translate(-50%, 10px);
+}

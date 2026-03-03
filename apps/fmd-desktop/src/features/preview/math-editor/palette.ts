@@ -18,90 +18,115 @@ import {
   createTextNode,
   createVectorNode,
 } from "./ast";
-import type { FormulaNode, FormulaRowNode, MathTemplateCategoryId, MathTemplateDefinition } from "./types";
+import type {
+  FormulaNode,
+  FormulaRowNode,
+  MathTemplateDefinition,
+  MathTemplateGroupId,
+} from "./types";
 
 const cloneSelectedRow = (selectedRow: FormulaRowNode | null) =>
   selectedRow ? createRow(selectedRow.children) : createRow();
 
 const wrapOrEmpty = (selectedRow: FormulaRowNode | null) => cloneSelectedRow(selectedRow);
 
+export const MATH_TEMPLATE_GROUPS: Array<{
+  id: MathTemplateGroupId;
+  label: string;
+}> = [
+  { id: "operators", label: "Operators" },
+  { id: "structures", label: "Structures" },
+  { id: "symbols", label: "Math symbols" },
+  { id: "text-format", label: "Text / Format" },
+];
+
 export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
   {
     id: "symbol-plus",
-    label: "+",
-    category: "basic",
+    group: "operators",
+    iconId: "plus",
+    tooltipLabel: "Plus",
+    order: 10,
     nodeFactory: () => ({ nodes: [createLeaf("operator", "+")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: ["+"],
-    favoriteDefault: true,
   },
   {
     id: "symbol-minus",
-    label: "-",
-    category: "basic",
+    group: "operators",
+    iconId: "minus",
+    tooltipLabel: "Minus",
+    order: 20,
     nodeFactory: () => ({ nodes: [createLeaf("operator", "-")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: ["-"],
-    favoriteDefault: true,
   },
   {
     id: "symbol-times",
-    label: "×",
-    category: "basic",
+    group: "operators",
+    iconId: "times",
+    tooltipLabel: "Multiply (×)",
+    order: 30,
     nodeFactory: () => ({ nodes: [createLeaf("operator", "\\times")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: ["*"],
-    favoriteDefault: true,
   },
   {
     id: "symbol-divide",
-    label: "÷",
-    category: "basic",
+    group: "operators",
+    iconId: "divide",
+    tooltipLabel: "Divide (÷)",
+    order: 40,
     nodeFactory: () => ({ nodes: [createLeaf("operator", "\\div")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "symbol-equals",
-    label: "=",
-    category: "basic",
+    group: "operators",
+    iconId: "equals",
+    tooltipLabel: "Equals",
+    order: 50,
     nodeFactory: () => ({ nodes: [createLeaf("relation", "=")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: ["="],
-    favoriteDefault: true,
   },
   {
     id: "symbol-not-equals",
-    label: "≠",
-    category: "basic",
+    group: "operators",
+    iconId: "not-equals",
+    tooltipLabel: "Not equal (≠)",
+    order: 60,
     nodeFactory: () => ({ nodes: [createLeaf("relation", "\\neq")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "symbol-leq",
-    label: "≤",
-    category: "basic",
+    group: "operators",
+    iconId: "leq",
+    tooltipLabel: "Less than or equal (≤)",
+    order: 70,
     nodeFactory: () => ({ nodes: [createLeaf("relation", "\\le")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "symbol-geq",
-    label: "≥",
-    category: "basic",
+    group: "operators",
+    iconId: "geq",
+    tooltipLabel: "Greater than or equal (≥)",
+    order: 80,
     nodeFactory: () => ({ nodes: [createLeaf("relation", "\\ge")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "delim-parens",
-    label: "( )",
-    category: "structures",
+    group: "operators",
+    iconId: "parentheses",
+    tooltipLabel: "Parentheses (( ))",
+    order: 90,
     nodeFactory: (selectedRow) => {
       const node = createDelimitedNode("(", ")", wrapOrEmpty(selectedRow));
       return {
@@ -111,12 +136,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["body"],
     keyboardTriggers: [],
-    favoriteDefault: true,
   },
   {
     id: "delim-brackets",
-    label: "[ ]",
-    category: "structures",
+    group: "operators",
+    iconId: "brackets",
+    tooltipLabel: "Brackets ([ ])",
+    order: 100,
     nodeFactory: (selectedRow) => {
       const node = createDelimitedNode("[", "]", wrapOrEmpty(selectedRow));
       return {
@@ -126,12 +152,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["body"],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "delim-braces",
-    label: "{ }",
-    category: "structures",
+    group: "operators",
+    iconId: "braces",
+    tooltipLabel: "Braces ({ })",
+    order: 110,
     nodeFactory: (selectedRow) => {
       const node = createDelimitedNode("\\{", "\\}", wrapOrEmpty(selectedRow));
       return {
@@ -141,12 +168,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["body"],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "absolute",
-    label: "| |",
-    category: "structures",
+    group: "operators",
+    iconId: "absolute",
+    tooltipLabel: "Absolute value (| |)",
+    order: 120,
     nodeFactory: (selectedRow) => {
       const node = createAbsoluteNode(wrapOrEmpty(selectedRow));
       return {
@@ -156,17 +184,15 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["body"],
     keyboardTriggers: [],
-    favoriteDefault: true,
   },
   {
     id: "fraction",
-    label: "Fraction",
-    category: "structures",
+    group: "structures",
+    iconId: "fraction",
+    tooltipLabel: "Fraction (Bruch)",
+    order: 10,
     nodeFactory: (selectedRow) => {
-      const node = createFractionNode(
-        wrapOrEmpty(selectedRow),
-        createRow(),
-      );
+      const node = createFractionNode(wrapOrEmpty(selectedRow), createRow());
       return {
         nodes: [node],
         focusSlot: {
@@ -177,12 +203,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["numerator", "denominator"],
     keyboardTriggers: ["/"],
-    favoriteDefault: true,
   },
   {
     id: "sqrt",
-    label: "Root",
-    category: "structures",
+    group: "structures",
+    iconId: "sqrt",
+    tooltipLabel: "Root (Wurzel)",
+    order: 20,
     nodeFactory: (selectedRow) => {
       const node = createSqrtNode(wrapOrEmpty(selectedRow));
       return {
@@ -192,12 +219,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["radicand"],
     keyboardTriggers: ["sqrt"],
-    favoriteDefault: true,
   },
   {
     id: "nth-root",
-    label: "n-th Root",
-    category: "structures",
+    group: "structures",
+    iconId: "nth-root",
+    tooltipLabel: "n-th Root",
+    order: 30,
     nodeFactory: (selectedRow) => {
       const node = createRootNode(createRow(), wrapOrEmpty(selectedRow));
       return {
@@ -207,12 +235,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["index", "radicand"],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "superscript",
-    label: "Power",
-    category: "structures",
+    group: "structures",
+    iconId: "power",
+    tooltipLabel: "Power",
+    order: 40,
     nodeFactory: (selectedRow) => {
       const supNode = createSupNode(wrapOrEmpty(selectedRow), createRow());
       return {
@@ -222,12 +251,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["base", "exponent"],
     keyboardTriggers: ["^"],
-    favoriteDefault: true,
   },
   {
     id: "subscript",
-    label: "Index",
-    category: "structures",
+    group: "structures",
+    iconId: "index",
+    tooltipLabel: "Index",
+    order: 50,
     nodeFactory: (selectedRow) => {
       const subNode = createSubNode(wrapOrEmpty(selectedRow), createRow());
       return {
@@ -237,12 +267,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["base", "subscript"],
     keyboardTriggers: ["_"],
-    favoriteDefault: false,
   },
   {
     id: "integral",
-    label: "Integral",
-    category: "analysis",
+    group: "structures",
+    iconId: "integral",
+    tooltipLabel: "Integral",
+    order: 60,
     nodeFactory: () => {
       const node = createIntegralNode();
       return {
@@ -252,12 +283,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["lower", "upper", "integrand", "differential"],
     keyboardTriggers: ["int"],
-    favoriteDefault: true,
   },
   {
     id: "sum",
-    label: "Sum",
-    category: "analysis",
+    group: "structures",
+    iconId: "sum",
+    tooltipLabel: "Sum",
+    order: 70,
     nodeFactory: () => {
       const node = createSeriesNode("sum");
       return {
@@ -267,12 +299,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["lower", "upper", "body"],
     keyboardTriggers: ["sum"],
-    favoriteDefault: true,
   },
   {
     id: "product",
-    label: "Product",
-    category: "analysis",
+    group: "structures",
+    iconId: "product",
+    tooltipLabel: "Product",
+    order: 80,
     nodeFactory: () => {
       const node = createSeriesNode("product");
       return {
@@ -282,12 +315,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["lower", "upper", "body"],
     keyboardTriggers: ["prod"],
-    favoriteDefault: false,
   },
   {
     id: "limit",
-    label: "Limit",
-    category: "analysis",
+    group: "structures",
+    iconId: "limit",
+    tooltipLabel: "Limit",
+    order: 90,
     nodeFactory: () => {
       const node = createLimitNode();
       return {
@@ -297,72 +331,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["approach", "body"],
     keyboardTriggers: ["lim"],
-    favoriteDefault: false,
-  },
-  {
-    id: "text",
-    label: "Text",
-    category: "functions",
-    nodeFactory: () => {
-      const node = createTextNode("");
-      return {
-        nodes: [node],
-        focusSlot: { nodeId: node.id, slotName: "body" },
-      };
-    },
-    slotOrder: ["body"],
-    keyboardTriggers: [],
-    favoriteDefault: true,
-  },
-  {
-    id: "function-sin",
-    label: "sin",
-    category: "functions",
-    nodeFactory: (selectedRow) => {
-      const node = createFunctionCallNode("sin", wrapOrEmpty(selectedRow));
-      return {
-        nodes: [node],
-        focusSlot: { nodeId: node.id, slotName: "argument" },
-      };
-    },
-    slotOrder: ["argument"],
-    keyboardTriggers: [],
-    favoriteDefault: false,
-  },
-  {
-    id: "function-cos",
-    label: "cos",
-    category: "functions",
-    nodeFactory: (selectedRow) => {
-      const node = createFunctionCallNode("cos", wrapOrEmpty(selectedRow));
-      return {
-        nodes: [node],
-        focusSlot: { nodeId: node.id, slotName: "argument" },
-      };
-    },
-    slotOrder: ["argument"],
-    keyboardTriggers: [],
-    favoriteDefault: false,
-  },
-  {
-    id: "function-log",
-    label: "log",
-    category: "functions",
-    nodeFactory: (selectedRow) => {
-      const node = createFunctionCallNode("log", wrapOrEmpty(selectedRow));
-      return {
-        nodes: [node],
-        focusSlot: { nodeId: node.id, slotName: "argument" },
-      };
-    },
-    slotOrder: ["argument"],
-    keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "matrix-2x2",
-    label: "2x2 Matrix",
-    category: "matrices",
+    group: "structures",
+    iconId: "matrix",
+    tooltipLabel: "2x2 Matrix",
+    order: 100,
     nodeFactory: () => {
       const node = createMatrixNode("matrix", 2, 2);
       return {
@@ -372,12 +347,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["cell"],
     keyboardTriggers: [],
-    favoriteDefault: true,
   },
   {
     id: "pmatrix-2x2",
-    label: "2x2 P-Matrix",
-    category: "matrices",
+    group: "structures",
+    iconId: "pmatrix",
+    tooltipLabel: "2x2 P-Matrix",
+    order: 110,
     nodeFactory: () => {
       const node = createMatrixNode("pmatrix", 2, 2);
       return {
@@ -387,12 +363,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["cell"],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "vector-3",
-    label: "Vector",
-    category: "matrices",
+    group: "structures",
+    iconId: "vector",
+    tooltipLabel: "Vector",
+    order: 120,
     nodeFactory: () => {
       const node = createVectorNode("pmatrix", 3);
       return {
@@ -402,12 +379,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["cell"],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "cases",
-    label: "Cases",
-    category: "matrices",
+    group: "structures",
+    iconId: "cases",
+    tooltipLabel: "Cases",
+    order: 130,
     nodeFactory: () => {
       const node = createCasesNode(2);
       return {
@@ -417,12 +395,13 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["value", "condition"],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
   {
     id: "aligned",
-    label: "Aligned",
-    category: "matrices",
+    group: "structures",
+    iconId: "aligned",
+    tooltipLabel: "Aligned",
+    order: 140,
     nodeFactory: () => {
       const node = createAlignedNode(2);
       return {
@@ -432,67 +411,199 @@ export const MATH_TEMPLATE_DEFINITIONS: MathTemplateDefinition[] = [
     },
     slotOrder: ["left", "right"],
     keyboardTriggers: [],
-    favoriteDefault: false,
   },
-  ...[
-    ["pi", "\\pi"],
-    ["theta", "\\theta"],
-    ["alpha", "\\alpha"],
-    ["infty", "\\infty"],
-    ["partial", "\\partial"],
-    ["nabla", "\\nabla"],
-    ["to", "\\to"],
-    ["in", "\\in"],
-    ["subset", "\\subset"],
-    ["forall", "\\forall"],
-    ["exists", "\\exists"],
-  ].map(([id, value]) => ({
-    id: `symbol-${id}`,
-    label: value,
-    category: "symbols" as MathTemplateCategoryId,
-    nodeFactory: () => ({ nodes: [createLeaf("symbol", value)], focusSlot: null }),
+  {
+    id: "symbol-pi",
+    group: "symbols",
+    iconId: "pi",
+    tooltipLabel: "Pi (π)",
+    order: 10,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\pi")], focusSlot: null }),
     slotOrder: [],
     keyboardTriggers: [],
-    favoriteDefault: false,
-  })),
+  },
+  {
+    id: "symbol-theta",
+    group: "symbols",
+    iconId: "theta",
+    tooltipLabel: "Theta (θ)",
+    order: 20,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\theta")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-alpha",
+    group: "symbols",
+    iconId: "alpha",
+    tooltipLabel: "Alpha (α)",
+    order: 30,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\alpha")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-infty",
+    group: "symbols",
+    iconId: "infty",
+    tooltipLabel: "Infinity (∞)",
+    order: 40,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\infty")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-partial",
+    group: "symbols",
+    iconId: "partial",
+    tooltipLabel: "Partial derivative (∂)",
+    order: 50,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\partial")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-nabla",
+    group: "symbols",
+    iconId: "nabla",
+    tooltipLabel: "Nabla (∇)",
+    order: 60,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\nabla")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-to",
+    group: "symbols",
+    iconId: "arrow",
+    tooltipLabel: "Arrow (→)",
+    order: 70,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\to")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-in",
+    group: "symbols",
+    iconId: "element",
+    tooltipLabel: "Element of (∈)",
+    order: 80,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\in")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-subset",
+    group: "symbols",
+    iconId: "subset",
+    tooltipLabel: "Subset of (⊂)",
+    order: 90,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\subset")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-forall",
+    group: "symbols",
+    iconId: "forall",
+    tooltipLabel: "For all (∀)",
+    order: 100,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\forall")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "symbol-exists",
+    group: "symbols",
+    iconId: "exists",
+    tooltipLabel: "Exists (∃)",
+    order: 110,
+    nodeFactory: () => ({ nodes: [createLeaf("symbol", "\\exists")], focusSlot: null }),
+    slotOrder: [],
+    keyboardTriggers: [],
+  },
+  {
+    id: "text",
+    group: "text-format",
+    iconId: "text",
+    tooltipLabel: "Text",
+    order: 10,
+    nodeFactory: () => {
+      const node = createTextNode("");
+      return {
+        nodes: [node],
+        focusSlot: { nodeId: node.id, slotName: "body" },
+      };
+    },
+    slotOrder: ["body"],
+    keyboardTriggers: [],
+  },
+  {
+    id: "function-sin",
+    group: "text-format",
+    iconId: "sin",
+    tooltipLabel: "sin",
+    order: 20,
+    nodeFactory: (selectedRow) => {
+      const node = createFunctionCallNode("sin", wrapOrEmpty(selectedRow));
+      return {
+        nodes: [node],
+        focusSlot: { nodeId: node.id, slotName: "argument" },
+      };
+    },
+    slotOrder: ["argument"],
+    keyboardTriggers: [],
+  },
+  {
+    id: "function-cos",
+    group: "text-format",
+    iconId: "cos",
+    tooltipLabel: "cos",
+    order: 30,
+    nodeFactory: (selectedRow) => {
+      const node = createFunctionCallNode("cos", wrapOrEmpty(selectedRow));
+      return {
+        nodes: [node],
+        focusSlot: { nodeId: node.id, slotName: "argument" },
+      };
+    },
+    slotOrder: ["argument"],
+    keyboardTriggers: [],
+  },
+  {
+    id: "function-log",
+    group: "text-format",
+    iconId: "log",
+    tooltipLabel: "log",
+    order: 40,
+    nodeFactory: (selectedRow) => {
+      const node = createFunctionCallNode("log", wrapOrEmpty(selectedRow));
+      return {
+        nodes: [node],
+        focusSlot: { nodeId: node.id, slotName: "argument" },
+      };
+    },
+    slotOrder: ["argument"],
+    keyboardTriggers: [],
+  },
 ];
 
 export const MATH_TEMPLATE_MAP = new Map(
   MATH_TEMPLATE_DEFINITIONS.map((template) => [template.id, template]),
 );
 
-export const MATH_TEMPLATE_CATEGORIES: Array<{
-  id: MathTemplateCategoryId;
-  label: string;
-}> = [
-  { id: "favorites", label: "Favorites" },
-  { id: "basic", label: "Basic" },
-  { id: "structures", label: "Structures" },
-  { id: "analysis", label: "Analysis" },
-  { id: "symbols", label: "Symbols" },
-  { id: "matrices", label: "Matrix" },
-  { id: "functions", label: "Functions" },
-];
-
 export const getMathTemplateById = (id: string) => MATH_TEMPLATE_MAP.get(id) ?? null;
 
-export const getTemplateDefinitionsForCategory = (
-  categoryId: MathTemplateCategoryId,
-  recentTemplateIds: string[],
-) => {
-  if (categoryId === "favorites") {
-    const recent = recentTemplateIds
-      .map((id) => MATH_TEMPLATE_MAP.get(id))
-      .filter((template): template is MathTemplateDefinition => Boolean(template));
-    const defaults = MATH_TEMPLATE_DEFINITIONS.filter((template) => template.favoriteDefault);
-    const deduped = new Map<string, MathTemplateDefinition>();
-    for (const template of [...recent, ...defaults]) {
-      deduped.set(template.id, template);
-    }
-    return [...deduped.values()];
-  }
-  return MATH_TEMPLATE_DEFINITIONS.filter((template) => template.category === categoryId);
-};
+export const getTemplateDefinitionsForGroup = (groupId: MathTemplateGroupId) =>
+  MATH_TEMPLATE_DEFINITIONS.filter((template) => template.group === groupId).sort(
+    (left, right) => left.order - right.order,
+  );
+
+export const getMathToolbarGroups = () =>
+  MATH_TEMPLATE_GROUPS.map((group) => ({
+    ...group,
+    items: getTemplateDefinitionsForGroup(group.id),
+  }));
 
 export const resolveTemplateFromTrigger = (buffer: string) => {
   const normalized = buffer.trim().toLowerCase();

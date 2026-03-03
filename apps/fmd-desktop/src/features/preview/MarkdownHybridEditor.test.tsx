@@ -99,6 +99,19 @@ const dispatchKeyDown = (
   });
 };
 
+const dispatchWindowKeyDown = (key: string, options: Partial<KeyboardEventInit> = {}) => {
+  act(() => {
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key,
+        ...options,
+      }),
+    );
+  });
+};
+
 const dispatchCompositionEvent = (
   element: Element | null,
   type: "compositionstart" | "compositionend",
@@ -183,6 +196,9 @@ const findButtonByExactText = (container: ParentNode, label: string) =>
     (button) => button.textContent?.trim() === label,
   ) ?? null;
 
+const findButtonByAriaLabel = (container: ParentNode, label: string) =>
+  container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+
 const findMenuItemButtonByLabel = (container: ParentNode, label: string) => {
   const labelNode = Array.from(
     container.querySelectorAll<HTMLElement>(".markdown-hybrid-insert-menu-item-label"),
@@ -214,6 +230,16 @@ const applyTextInput = (
       input.setSelectionRange(caret, caret);
     }
     input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+  });
+};
+
+const applySelectValue = (select: HTMLSelectElement | null, nextValue: string) => {
+  act(() => {
+    if (!select) {
+      return;
+    }
+    select.value = nextValue;
+    select.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
   });
 };
 
@@ -1769,7 +1795,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("opens the structural math toolbox and live-syncs inserted templates", () => {
+  it("opens the structural math toolbox and writes back the structured result on Apply", () => {
     withImmediateRaf(() => {
       const Harness = () => {
         const [markdown, setMarkdown] = useState("$$\n\n$$");
@@ -1798,7 +1824,7 @@ describe("MarkdownHybridEditor", () => {
       const dialog = document.body.querySelector(".markdown-hybrid-structural-math-dialog");
       expect(dialog).toBeTruthy();
 
-      const fracButton = findButtonByExactText(document.body, "Fraction");
+      const fracButton = findButtonByAriaLabel(document.body, "Fraction (Bruch)");
       expect(fracButton).toBeTruthy();
       dispatchClick(fracButton);
 
@@ -1807,11 +1833,202 @@ describe("MarkdownHybridEditor", () => {
         document.body.querySelector(".markdown-hybrid-structural-math-row.is-active"),
       ).toBeTruthy();
 
-      dispatchClick(findButtonByExactText(document.body, "Close"));
+      dispatchClick(findButtonByExactText(document.body, "Apply"));
       const committedTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(committedTextarea?.value).toBe("$$\n\\frac{}{}\n$$");
       blurTextarea(committedTextarea);
       expect(readMarkdown()).toBe("$$\n\\frac{}{}\n$$");
+
+      cleanup();
+    });
+  });
+
+  it("restores the opening math snapshot on Cancel", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "$$\na+b\n$$";
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="math-toolbox-cancel"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      activateBlockEditor(container, 0);
+      dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
+      dispatchClick(findButtonByAriaLabel(document.body, "Fraction (Bruch)"));
+      dispatchClick(findButtonByExactText(document.body, "Cancel"));
+
+      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe(initialMarkdown);
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      cleanup();
+    });
+  });
+
+  it("restores the opening math snapshot on close icon, backdrop, and Escape", () => {
+    withImmediateRaf(() => {
+      const runCancelCase = (
+        historyKey: string,
+        closeDialog: () => void,
+      ) => {
+        const initialMarkdown = "$$\na+b\n$$";
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState(initialMarkdown);
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey={historyKey}
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const readMarkdown = () =>
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+        activateBlockEditor(container, 0);
+        dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
+        dispatchClick(findButtonByAriaLabel(document.body, "Fraction (Bruch)"));
+        closeDialog();
+
+        const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe(initialMarkdown);
+        blurTextarea(textarea);
+        expect(readMarkdown()).toBe(initialMarkdown);
+
+        cleanup();
+      };
+
+      runCancelCase("math-toolbox-close-icon", () => {
+        dispatchClick(document.body.querySelector(".modal-panel-close"));
+      });
+      runCancelCase("math-toolbox-backdrop", () => {
+        dispatchClick(document.body.querySelector(".modal-backdrop"));
+      });
+      runCancelCase("math-toolbox-escape", () => {
+        dispatchWindowKeyDown("Escape");
+      });
+    });
+  });
+
+  it("starts the canvas at 125% zoom and updates the canvas scale without changing the block content", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "$$\na+b\n$$";
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="math-toolbox-zoom"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      activateBlockEditor(container, 0);
+      dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
+
+      const zoomSelect = document.body.querySelector<HTMLSelectElement>("select[aria-label='Canvas zoom']");
+      expect(zoomSelect?.value).toBe("125");
+
+      const canvas = document.body.querySelector<HTMLElement>(".markdown-hybrid-structural-math-canvas");
+      expect(canvas?.style.getPropertyValue("--md-math-canvas-scale")).toBe("1.25");
+
+      applySelectValue(zoomSelect, "150");
+      expect(canvas?.style.getPropertyValue("--md-math-canvas-scale")).toBe("1.5");
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      cleanup();
+    });
+  });
+
+  it("renders display glyphs instead of raw LaTeX commands in structured mode", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("$$\n\\pi\n$$");
+        return (
+          <MarkdownHybridEditor
+            historyKey="math-toolbox-display-glyphs"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      activateBlockEditor(container, 0);
+      dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
+
+      const canvas = document.body.querySelector<HTMLElement>(".markdown-hybrid-structural-math-canvas");
+      expect(canvas?.textContent).toContain("π");
+      expect(canvas?.textContent).not.toContain("\\pi");
+
+      cleanup();
+    });
+  });
+
+  it("renders fraction slots and matrix cells as structured grid elements", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("$$\n\n$$");
+        return (
+          <MarkdownHybridEditor
+            historyKey="math-toolbox-grid-cells"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      activateBlockEditor(container, 0);
+      dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
+
+      dispatchClick(findButtonByAriaLabel(document.body, "Fraction (Bruch)"));
+      expect(
+        document.body.querySelectorAll(
+          ".markdown-hybrid-structural-math-node.is-fraction .markdown-hybrid-structural-math-fraction-slot",
+        ).length,
+      ).toBe(2);
+
+      dispatchClick(findButtonByAriaLabel(document.body, "2x2 Matrix"));
+      expect(
+        document.body.querySelectorAll(".markdown-hybrid-structural-math-matrix-cell").length,
+      ).toBeGreaterThanOrEqual(4);
 
       cleanup();
     });

@@ -164,7 +164,11 @@ export const createSeriesNode = (
 });
 
 export const createLimitNode = (
-  approach: FormulaRowNode = createRow(createCharacterNodes("x\\to0")),
+  approach: FormulaRowNode = createRow([
+    createLeaf("identifier", "x"),
+    createLeaf("symbol", "\\to"),
+    createLeaf("number", "0"),
+  ]),
   body: FormulaRowNode = createRow(),
 ): FormulaLimitNode => ({
   id: createMathNodeId("limit"),

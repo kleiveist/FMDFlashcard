@@ -24,6 +24,7 @@ type ModalShellProps = {
   canClose?: boolean;
   initialFocusSelector?: string;
   headerActions?: ReactNode;
+  panelRef?: { current: HTMLDivElement | null };
 };
 
 const focusableSelector = [
@@ -45,6 +46,7 @@ export const ModalShell = ({
   canClose = true,
   initialFocusSelector,
   headerActions,
+  panelRef: externalPanelRef,
 }: ModalShellProps) => {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -103,7 +105,7 @@ export const ModalShell = ({
   }, [isOpen]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "Tab") {
+    if (event.key !== "Tab" || event.defaultPrevented) {
       return;
     }
     const panel = panelRef.current;
@@ -150,7 +152,12 @@ export const ModalShell = ({
   const modal = (
     <div className="modal-backdrop" role="presentation" onClick={handleClose}>
       <div
-        ref={panelRef}
+        ref={(node) => {
+          panelRef.current = node;
+          if (externalPanelRef) {
+            externalPanelRef.current = node;
+          }
+        }}
         className={panelClassName}
         role="dialog"
         aria-modal="true"

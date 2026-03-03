@@ -16,21 +16,25 @@ export const MathRawFallbackPane = ({
   return (
     <div className="markdown-hybrid-structural-math-raw-pane">
       <div className="markdown-hybrid-structural-math-pane-title">Raw LaTeX</div>
-      {reason ? (
-        <div className="markdown-hybrid-structural-math-raw-reason">
-          {reason}
+      <div className="markdown-hybrid-structural-math-raw-layout">
+        <div className="markdown-hybrid-structural-math-raw-editor-pane">
+          {reason ? (
+            <div className="markdown-hybrid-structural-math-raw-reason">
+              {reason}
+            </div>
+          ) : null}
+          <textarea
+            className="markdown-hybrid-structural-math-raw-textarea"
+            value={value}
+            onChange={(event) => onChange(event.currentTarget.value)}
+            aria-label="Raw LaTeX editor"
+          />
+          <div className="markdown-hybrid-structural-math-raw-status">
+            {parseState.mode === "structured" ? "Structure available" : parseState.reason}
+          </div>
         </div>
-      ) : null}
-      <textarea
-        className="markdown-hybrid-structural-math-raw-textarea"
-        value={value}
-        onChange={(event) => onChange(event.currentTarget.value)}
-        aria-label="Raw LaTeX editor"
-      />
-      <div className="markdown-hybrid-structural-math-raw-status">
-        {parseState.mode === "structured" ? "Structure available" : parseState.reason}
+        <MathPreviewPane latex={value} />
       </div>
-      <MathPreviewPane latex={value} />
     </div>
   );
 };

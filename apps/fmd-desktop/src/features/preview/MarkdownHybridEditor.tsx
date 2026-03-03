@@ -235,6 +235,7 @@ type InsertMenuIconId =
 type MathToolboxState = {
   blockIndex: number;
   sessionId: string;
+  initialLatexSnapshot: string;
 };
 
 type InlineFormattingToolbarAction =
@@ -4513,12 +4514,15 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           : {
             blockIndex,
             sessionId: `math-toolbox-${Date.now()}-${blockIndex}`,
+            initialLatexSnapshot: extractMathBlockBody(
+              activeBlockIndex === blockIndex ? activeDraft : block.raw,
+            ),
           });
       if (activeBlockIndex !== blockIndex) {
         activateBlock(blockIndex, "start");
       }
     },
-    [activateBlock, activeBlockIndex, blocks, disabled],
+    [activateBlock, activeBlockIndex, activeDraft, blocks, disabled],
   );
 
   const focusContainer = useCallback(() => {
@@ -7145,13 +7149,16 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       key={mathToolboxState.sessionId}
       sessionId={mathToolboxState.sessionId}
       blockIndex={mathToolboxState.blockIndex}
-      initialLatex={extractMathBlockBody(
-        activeBlockIndex === mathToolboxState.blockIndex
-          ? activeDraft
-          : blocks[mathToolboxState.blockIndex]?.raw ?? "$$\n\n$$",
-      )}
+      initialLatex={mathToolboxState.initialLatexSnapshot}
       dialogRef={mathToolboxRef}
-      onClose={() => {
+      onClose={(result) => {
+        if (result === "cancel") {
+          handleMathBlockLiveSync(
+            mathToolboxState.blockIndex,
+            mathToolboxState.initialLatexSnapshot,
+            { mergeKey: `math-session:${mathToolboxState.sessionId}` },
+          );
+        }
         setMathToolboxState(null);
       }}
       onLiveSync={(latex, options) => {

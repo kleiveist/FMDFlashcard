@@ -189,6 +189,8 @@ export type MathCursor = {
 
 export type MathEditorMode = "structured" | "raw-fallback";
 
+export type MathCanvasZoom = 100 | 125 | 150;
+
 export type MathHistorySnapshot = {
   ast: FormulaRowNode;
   cursor: MathCursor;
@@ -213,8 +215,7 @@ export type MathStructureSessionState = {
   openedFromRaw: boolean;
   initialLatex: string;
   rawLatexDraft: string;
-  recentTemplateIds: string[];
-  activeCategoryId: string;
+  canvasZoom: MathCanvasZoom;
 };
 
 export type MathEditorDirection = "left" | "right" | "up" | "down";
@@ -242,7 +243,7 @@ export type MathEditorCommand =
   | { type: "switchToStructured"; ast: FormulaRowNode; latex: string }
   | { type: "undo" }
   | { type: "redo" }
-  | { type: "setActiveCategory"; categoryId: string }
+  | { type: "setCanvasZoom"; zoom: MathCanvasZoom }
   | { type: "revertSession" };
 
 export type MathImportResult =
@@ -257,24 +258,65 @@ export type MathImportResult =
     reason: string;
   };
 
-export type MathTemplateCategoryId =
-  | "favorites"
-  | "basic"
+export type MathTemplateGroupId =
+  | "operators"
   | "structures"
-  | "analysis"
   | "symbols"
-  | "matrices"
-  | "functions";
+  | "text-format";
+
+export type MathTemplateIconId =
+  | "plus"
+  | "minus"
+  | "times"
+  | "divide"
+  | "equals"
+  | "not-equals"
+  | "leq"
+  | "geq"
+  | "parentheses"
+  | "brackets"
+  | "braces"
+  | "absolute"
+  | "fraction"
+  | "sqrt"
+  | "nth-root"
+  | "power"
+  | "index"
+  | "integral"
+  | "sum"
+  | "product"
+  | "limit"
+  | "matrix"
+  | "pmatrix"
+  | "vector"
+  | "cases"
+  | "aligned"
+  | "text"
+  | "sin"
+  | "cos"
+  | "log"
+  | "pi"
+  | "theta"
+  | "alpha"
+  | "infty"
+  | "partial"
+  | "nabla"
+  | "arrow"
+  | "element"
+  | "subset"
+  | "forall"
+  | "exists";
 
 export type MathTemplateDefinition = {
   id: string;
-  label: string;
-  category: MathTemplateCategoryId;
+  group: MathTemplateGroupId;
+  iconId: MathTemplateIconId;
+  tooltipLabel: string;
+  order: number;
   nodeFactory: (selectedRow: FormulaRowNode | null) => {
     nodes: FormulaNode[];
     focusSlot: MathSlotRef | null;
   };
   slotOrder: string[];
   keyboardTriggers: string[];
-  favoriteDefault: boolean;
 };

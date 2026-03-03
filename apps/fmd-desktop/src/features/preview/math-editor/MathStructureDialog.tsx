@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useReducer, useRef } from "react";
-import { createPortal } from "react-dom";
+import { ModalShell } from "../../../components/ModalShell";
 import { getComputeEngineAdapterStatus } from "./computeEngineAdapter";
 import { importMathLatex } from "./importer";
 import { MathPalettePane } from "./MathPalettePane";
 import { MathPreviewPane } from "./MathPreviewPane";
 import { MathRawFallbackPane } from "./MathRawFallbackPane";
-import { mathStructureReducer, createInitialMathStructureSession } from "./reducer";
+import { createInitialMathStructureSession, mathStructureReducer } from "./reducer";
 import { MathStructureCanvas } from "./MathStructureCanvas";
+import type { MathCanvasZoom } from "./types";
+
+const CANVAS_ZOOMS: MathCanvasZoom[] = [100, 125, 150];
 
 export const MathStructureDialog = ({
   sessionId,
@@ -19,7 +22,7 @@ export const MathStructureDialog = ({
   sessionId: string;
   blockIndex: number;
   initialLatex: string;
-  onClose: () => void;
+  onClose: (result: "apply" | "cancel") => void;
   onLiveSync: (latex: string, options: { mergeKey: string }) => void;
   dialogRef?: { current: HTMLDivElement | null };
 }) => {
@@ -27,21 +30,8 @@ export const MathStructureDialog = ({
     mathStructureReducer,
     createInitialMathStructureSession(sessionId, blockIndex, initialLatex),
   );
-  const localDialogRef = useRef<HTMLDivElement | null>(null);
   const lastSyncedRef = useRef<string | null>(null);
   const engineStatus = useMemo(() => getComputeEngineAdapterStatus(), []);
-
-  useEffect(() => {
-    const node = localDialogRef.current;
-    if (!node) {
-      return;
-    }
-    try {
-      node.focus({ preventScroll: true });
-    } catch {
-      node.focus();
-    }
-  }, []);
 
   useEffect(() => {
     const nextLatex = state.mode === "structured" ? state.lastValidLatex : state.rawLatexDraft;
@@ -52,89 +42,121 @@ export const MathStructureDialog = ({
     onLiveSync(nextLatex, { mergeKey: `math-session:${sessionId}` });
   }, [onLiveSync, sessionId, state.lastValidLatex, state.mode, state.rawLatexDraft]);
 
-  if (typeof document === "undefined") {
-    return null;
-  }
+  useEffect(() => {
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      onClose("cancel");
+    };
 
-  return createPortal(
-    <div
-      className="markdown-hybrid-structural-math-dialog-backdrop"
-      onMouseDown={(event) => {
-        event.stopPropagation();
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
+    window.addEventListener("keydown", handleWindowKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown, true);
+    };
+  }, [onClose]);
+
+  return (
+    <ModalShell
+      isOpen
+      title="Structural Math Toolbox"
+      onClose={() => onClose("cancel")}
+      className="markdown-hybrid-structural-math-dialog markdown-hybrid-structural-math-dialog-panel"
+      bodyClassName="markdown-hybrid-structural-math-dialog-body"
+      panelRef={dialogRef}
+      initialFocusSelector={
+        state.mode === "structured"
+          ? ".markdown-hybrid-structural-math-canvas"
+          : ".markdown-hybrid-structural-math-raw-textarea"
+      }
+      headerActions={
+        state.mode === "structured" ? (
+          <label className="markdown-hybrid-structural-math-zoom-control">
+            <span>Zoom</span>
+            <select
+              className="text-input"
+              aria-label="Canvas zoom"
+              value={state.canvasZoom}
+              onChange={(event) =>
+                dispatch({
+                  type: "setCanvasZoom",
+                  zoom: Number(event.currentTarget.value) as MathCanvasZoom,
+                })}
+            >
+              {CANVAS_ZOOMS.map((zoom) => (
+                <option key={zoom} value={zoom}>
+                  {zoom}%
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null
+      }
     >
-      <div
-        ref={(node) => {
-          localDialogRef.current = node;
-          if (dialogRef) {
-            dialogRef.current = node;
-          }
-        }}
-        className="markdown-hybrid-structural-math-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Structural Math Toolbox"
-        tabIndex={-1}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            onClose();
-          }
-        }}
-        onMouseDown={(event) => {
-          event.stopPropagation();
-        }}
-      >
-        <div className="markdown-hybrid-structural-math-dialog-header">
-          <div>
-            <div className="markdown-hybrid-structural-math-dialog-title">Structural Math Toolbox</div>
-            <div className="markdown-hybrid-structural-math-dialog-subtitle">
-              {engineStatus.reason}
-            </div>
-          </div>
-          <div className="markdown-hybrid-structural-math-dialog-actions">
-            <button type="button" onClick={() => dispatch({ type: "revertSession" })}>
-              Revert Session
-            </button>
-            {state.mode === "structured" ? (
-              <button type="button" onClick={() => dispatch({ type: "switchToRaw", reason: "Opened in raw LaTeX mode." })}>
-                Raw Mode
-              </button>
-            ) : null}
-            <button type="button" onClick={onClose}>Close</button>
-          </div>
-        </div>
+      <div className="markdown-hybrid-structural-math-dialog-meta" role="status">
+        {engineStatus.reason}
+      </div>
 
-        {state.mode === "structured" ? (
+      {state.mode === "structured" ? (
+        <>
+          <MathPalettePane
+            onTemplateSelect={(templateId) => dispatch({ type: "insertTemplate", templateId })}
+          />
           <div className="markdown-hybrid-structural-math-layout">
-            <MathPalettePane
-              activeCategoryId={state.activeCategoryId}
-              recentTemplateIds={state.recentTemplateIds}
-              onCategoryChange={(categoryId) => dispatch({ type: "setActiveCategory", categoryId })}
-              onTemplateSelect={(templateId) => dispatch({ type: "insertTemplate", templateId })}
-            />
             <MathStructureCanvas state={state} onDispatch={dispatch} />
             <MathPreviewPane latex={state.previewLatex} />
           </div>
-        ) : (
-          <MathRawFallbackPane
-            value={state.rawLatexDraft}
-            reason={state.importError}
-            onChange={(value) => {
-              const next = importMathLatex(value);
-              if (next.mode === "structured") {
-                dispatch({ type: "switchToStructured", ast: next.ast, latex: next.rawLatex });
-                return;
-              }
-              dispatch({ type: "setRawLatex", value });
-            }}
-          />
-        )}
+        </>
+      ) : (
+        <MathRawFallbackPane
+          value={state.rawLatexDraft}
+          reason={state.importError}
+          onChange={(value) => {
+            const next = importMathLatex(value);
+            if (next.mode === "structured") {
+              dispatch({ type: "switchToStructured", ast: next.ast, latex: next.rawLatex });
+              return;
+            }
+            dispatch({ type: "setRawLatex", value });
+          }}
+        />
+      )}
+
+      <div className="markdown-hybrid-structural-math-dialog-footer">
+        <div className="markdown-hybrid-structural-math-dialog-footer-actions">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={() => dispatch({ type: "revertSession" })}
+          >
+            Reset
+          </button>
+          {state.mode === "structured" ? (
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() =>
+                dispatch({
+                  type: "switchToRaw",
+                  reason: "Opened in raw LaTeX mode.",
+                })}
+            >
+              Raw mode
+            </button>
+          ) : null}
+        </div>
+        <div className="markdown-hybrid-structural-math-dialog-footer-actions">
+          <button type="button" className="ghost small" onClick={() => onClose("cancel")}>
+            Cancel
+          </button>
+          <button type="button" className="primary small" onClick={() => onClose("apply")}>
+            Apply
+          </button>
+        </div>
       </div>
-    </div>,
-    document.body,
+    </ModalShell>
   );
 };

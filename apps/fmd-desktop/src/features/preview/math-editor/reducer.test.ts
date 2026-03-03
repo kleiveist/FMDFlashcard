@@ -24,4 +24,14 @@ describe("math-editor reducer", () => {
     expect(state.mode).toBe("structured");
     expect(state.lastValidLatex).toBe(String.raw`\frac{a}{b}`);
   });
+
+  it("updates the canvas zoom without touching the structured latex state", () => {
+    let state = createInitialMathStructureSession("session-4", 0, String.raw`\pi`);
+    expect(state.canvasZoom).toBe(125);
+
+    state = mathStructureReducer(state, { type: "setCanvasZoom", zoom: 150 });
+
+    expect(state.canvasZoom).toBe(150);
+    expect(state.lastValidLatex).toBe(String.raw`\pi`);
+  });
 });
