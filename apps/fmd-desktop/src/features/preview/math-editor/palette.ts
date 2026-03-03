@@ -11,13 +11,14 @@ import {
   createMatrixNode,
   createRootNode,
   createRow,
+  createSeriesNode,
   createSubNode,
   createSupNode,
   createSqrtNode,
   createTextNode,
   createVectorNode,
 } from "./ast";
-import type { FormulaRowNode, MathTemplateCategoryId, MathTemplateDefinition } from "./types";
+import type { FormulaNode, FormulaRowNode, MathTemplateCategoryId, MathTemplateDefinition } from "./types";
 
 const cloneSelectedRow = (selectedRow: FormulaRowNode | null) =>
   selectedRow ? createRow(selectedRow.children) : createRow();
