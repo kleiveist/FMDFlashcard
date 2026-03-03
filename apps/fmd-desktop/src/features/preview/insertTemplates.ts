@@ -51,9 +51,20 @@ export type AdvancedInsertTemplateDefinition = {
   groupId: AdvancedInsertTemplateGroupId;
   payload: string;
   firstPlaceholder: string;
+  taskPayload: string;
+  taskFirstPlaceholder: string;
   icon: AdvancedInsertTemplateIconId;
   contextRules?: AdvancedInsertTemplateContextRules;
 };
+
+export type AdvancedInsertTemplateVariant = "card" | "task";
+
+export type ResolvedAdvancedInsertTemplate = {
+  payload: string;
+  firstPlaceholder: string;
+};
+
+const ADVANCED_TASK_NUMBER_PLACEHOLDER = "{{TASK_NUMBER}}";
 
 export const ADVANCED_INSERT_TEMPLATE_GROUPS: ReadonlyArray<{
   id: AdvancedInsertTemplateGroupId;
@@ -78,6 +89,9 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     icon: "advanced-qa",
     payload: "#card\nQUESTION TEXT\n\nAnswer: ANSWER TEXT\n#endcard",
     firstPlaceholder: "QUESTION TEXT",
+    taskPayload:
+      "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION\nAnswer: ANSWER TEXT\n\n---",
+    taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
     },
@@ -91,6 +105,9 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     icon: "advanced-tf",
     payload: "#card\nSTATEMENT TEXT\n-true\n#endcard",
     firstPlaceholder: "STATEMENT TEXT",
+    taskPayload:
+      "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION\n-true\n\n---",
+    taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
     },
@@ -104,6 +121,9 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     icon: "advanced-m1",
     payload: "#card\nQUESTION TEXT\na) OPTION A\nb) OPTION B\nc) OPTION C\n-a\n#endcard",
     firstPlaceholder: "QUESTION TEXT",
+    taskPayload:
+      "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION\na) OPTION A\nb) OPTION B\nc) OPTION C\n-a\n\n---",
+    taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
     },
@@ -118,6 +138,9 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     payload:
       "#card\nQUESTION TEXT\na) OPTION A\nb) OPTION B\nc) OPTION C\nd) OPTION D\n-a\n-c\n#endcard",
     firstPlaceholder: "QUESTION TEXT",
+    taskPayload:
+      "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION\na) OPTION A\nb) OPTION B\nc) OPTION C\nd) OPTION D\n-a\n-c\n\n---",
+    taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
     },
@@ -131,6 +154,9 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     icon: "advanced-cl",
     payload: "#card\nSENTENCE BEFORE %ANSWER1% SENTENCE AFTER\n#endcard",
     firstPlaceholder: "ANSWER1",
+    taskPayload:
+      "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION WITH %ANSWER1%\n\n---",
+    taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
     },
@@ -145,6 +171,9 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     payload:
       '#card\nSENTENCE WITH TOKENS tocken "TOKEN1", tocken "TOKEN2", tocken "TOKEN3".\n#endcard',
     firstPlaceholder: "TOKEN1",
+    taskPayload:
+      '{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION with "TOKEN1", "TOKEN2", "TOKEN3".\n\n---',
+    taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
     },
@@ -159,11 +188,36 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     payload:
       '#card\nSENTENCE BEFORE %ANSWER1% SENTENCE MIDDLE %ANSWER2% SENTENCE AFTER\n\nTOKEN BANK tocken "TOKENA", tocken "TOKENB", tocken "TOKENC"\n#endcard',
     firstPlaceholder: "ANSWER1",
+    taskPayload:
+      '{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION WITH %ANSWER1% AND %ANSWER2%\n\nTOKEN BANK "TOKENA", "TOKENB", "TOKENC"\n\n---',
+    taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
     },
   },
 ];
+
+export const getAdvancedInsertTemplateById = (id: string) =>
+  ADVANCED_INSERT_TEMPLATE_CATALOG.find((template) => template.id === id);
+
+export const buildAdvancedInsertTemplateVariant = (
+  template: AdvancedInsertTemplateDefinition,
+  variant: AdvancedInsertTemplateVariant,
+  options?: { taskNumber?: number },
+): ResolvedAdvancedInsertTemplate => {
+  if (variant === "card") {
+    return {
+      payload: template.payload,
+      firstPlaceholder: template.firstPlaceholder,
+    };
+  }
+
+  const taskNumber = Math.max(1, options?.taskNumber ?? 1);
+  return {
+    payload: template.taskPayload.replaceAll(ADVANCED_TASK_NUMBER_PLACEHOLDER, String(taskNumber)),
+    firstPlaceholder: template.taskFirstPlaceholder,
+  };
+};
 
 export type AdvancedInsertTemplateSection = {
   id: AdvancedInsertTemplateGroupId;

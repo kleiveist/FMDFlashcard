@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVANCED_INSERT_TEMPLATE_CATALOG,
+  buildAdvancedInsertTemplateVariant,
   getAdvancedInsertTemplateSections,
 } from "./insertTemplates";
 
@@ -20,6 +21,8 @@ describe("insertTemplates", () => {
     ADVANCED_INSERT_TEMPLATE_CATALOG.forEach((template) => {
       expect(typeof template.icon).toBe("string");
       expect(template.icon.length).toBeGreaterThan(0);
+      expect(template.taskPayload).toContain("{{TASK_NUMBER}})");
+      expect(template.taskFirstPlaceholder).toBe("TASK HEADING");
     });
 
     const labels = new Set(ADVANCED_INSERT_TEMPLATE_CATALOG.map((template) => template.label));
@@ -55,5 +58,20 @@ describe("insertTemplates", () => {
     const sectionIds = sections.map((section) => section.id);
     expect(sectionIds).not.toContain("exam");
     expect(sectionIds).not.toContain("markdown");
+  });
+
+  it("builds card and task variants for advanced templates", () => {
+    ADVANCED_INSERT_TEMPLATE_CATALOG.forEach((template) => {
+      const cardVariant = buildAdvancedInsertTemplateVariant(template, "card");
+      expect(cardVariant.payload).toBe(template.payload);
+      expect(cardVariant.firstPlaceholder).toBe(template.firstPlaceholder);
+
+      const taskVariant = buildAdvancedInsertTemplateVariant(template, "task", {
+        taskNumber: 4,
+      });
+      expect(taskVariant.payload).toContain("4) TASK HEADING");
+      expect(taskVariant.payload).toContain("---");
+      expect(taskVariant.firstPlaceholder).toBe("TASK HEADING");
+    });
   });
 });

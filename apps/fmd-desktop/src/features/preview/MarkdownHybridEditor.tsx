@@ -52,9 +52,12 @@ import {
   type MarkdownHistoryState,
 } from "./markdownHistory";
 import {
+  buildAdvancedInsertTemplateVariant,
   getAdvancedInsertTemplateSections,
+  getAdvancedInsertTemplateById,
   type AdvancedInsertTemplateContext,
   type AdvancedInsertTemplateIconId,
+  type AdvancedInsertTemplateVariant,
 } from "./insertTemplates";
 import {
   extractMathBlockBody,
@@ -149,8 +152,9 @@ type InsertMenuItemId = string;
 type InsertMenuState = {
   blockIndex: number;
   insertAbove: boolean;
-  phase: "categories" | "items";
+  phase: "categories" | "items" | "advanced-variant";
   categoryId?: InsertMenuCategoryId;
+  advancedTemplateId?: string;
 };
 
 type InsertMenuCategory = {
@@ -170,6 +174,13 @@ type InsertMenuItem = {
     end: number;
   };
   icon?: InsertMenuIconId;
+};
+
+type InsertMenuAdvancedVariantOption = {
+  id: AdvancedInsertTemplateVariant;
+  label: string;
+  description: string;
+  icon: InsertMenuIconId;
 };
 
 type InsertMenuIconId =
@@ -398,6 +409,21 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
   ],
   advanced: [],
 };
+
+const INSERT_MENU_ADVANCED_VARIANTS: ReadonlyArray<InsertMenuAdvancedVariantOption> = [
+  {
+    id: "task",
+    label: "Task",
+    description: "Insert as numbered exam task",
+    icon: "list-ordered",
+  },
+  {
+    id: "card",
+    label: "Card",
+    description: "Insert as #card block",
+    icon: "blocks",
+  },
+];
 
 const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
   const svgProps = {
@@ -2321,6 +2347,135 @@ const resolveInsertMenuContextForSlot = (
     insideCard: openCardDepth > 0,
     insideExam: openExamDepth > 0,
   };
+};
+
+const examTaskLinePattern = /^\s*(\d+)\)\s*(.*)$/;
+const codeFenceBoundaryPattern = /^\s*(```|~~~)/;
+
+const buildLineStarts = (markdown: string, lines: string[]) => {
+  const starts: number[] = [];
+  let offset = 0;
+  for (let i = 0; i < lines.length; i += 1) {
+    starts.push(offset);
+    offset += (lines[i] ?? "").length;
+    if (offset < markdown.length || i < lines.length - 1) {
+      offset += 1;
+    }
+  }
+  return starts;
+};
+
+const findLineIndexAtOffset = (lineStarts: number[], markdownLength: number, offset: number) => {
+  const safeOffset = Math.max(0, Math.min(offset, markdownLength));
+  for (let i = lineStarts.length - 1; i >= 0; i -= 1) {
+    if ((lineStarts[i] ?? 0) <= safeOffset) {
+      return i;
+    }
+  }
+  return 0;
+};
+
+const resolveNextExamTaskNumberForSlot = (
+  markdown: string,
+  blocks: MarkdownBlock[],
+  atIndex: number,
+) => {
+  if (markdown.length === 0) {
+    return 1;
+  }
+
+  const lines = markdown.split("\n");
+  const lineStarts = buildLineStarts(markdown, lines);
+  const normalizedAtIndex = Math.max(0, Math.min(atIndex, blocks.length));
+  const insertionOffset = normalizedAtIndex >= blocks.length
+    ? markdown.length
+    : (blocks[normalizedAtIndex]?.startOffset ?? markdown.length);
+  const insertionLineIndex = findLineIndexAtOffset(lineStarts, markdown.length, insertionOffset);
+
+  let containingExamRange: { start: number; end: number } | null = null;
+  let openExamDepth = 0;
+  let currentExamStartLine: number | null = null;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    if (isStandaloneDirectiveLine(line, "#exam")) {
+      if (openExamDepth === 0) {
+        currentExamStartLine = index;
+      }
+      openExamDepth += 1;
+      continue;
+    }
+    if (!isStandaloneDirectiveLine(line, "#endexam")) {
+      continue;
+    }
+    if (openExamDepth === 0) {
+      continue;
+    }
+    const completedStartLine = currentExamStartLine;
+    openExamDepth = Math.max(0, openExamDepth - 1);
+    if (openExamDepth === 0) {
+      if (
+        completedStartLine !== null &&
+        insertionLineIndex >= completedStartLine &&
+        insertionLineIndex <= index
+      ) {
+        containingExamRange = {
+          start: completedStartLine,
+          end: index,
+        };
+      }
+      currentExamStartLine = null;
+    }
+  }
+
+  if (
+    containingExamRange === null &&
+    openExamDepth > 0 &&
+    currentExamStartLine !== null &&
+    insertionLineIndex >= currentExamStartLine
+  ) {
+    containingExamRange = {
+      start: currentExamStartLine,
+      end: lines.length - 1,
+    };
+  }
+
+  const scanStart = containingExamRange ? containingExamRange.start + 1 : 0;
+  const scanEnd = containingExamRange ? Math.max(scanStart - 1, containingExamRange.end - 1) : lines.length - 1;
+
+  let maxTaskNumber = 0;
+  let inFence = false;
+  let fenceToken = "";
+
+  for (let index = scanStart; index <= scanEnd; index += 1) {
+    const line = lines[index] ?? "";
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(codeFenceBoundaryPattern);
+    if (fenceMatch) {
+      const token = fenceMatch[1] ?? "";
+      if (inFence && token === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = token;
+      }
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    const match = line.match(examTaskLinePattern);
+    if (!match) {
+      continue;
+    }
+    const parsedNumber = Number.parseInt(match[1] ?? "", 10);
+    if (Number.isFinite(parsedNumber)) {
+      maxTaskNumber = Math.max(maxTaskNumber, parsedNumber);
+    }
+  }
+
+  return maxTaskNumber + 1;
 };
 
 type StableRenderKeyToken = {
@@ -4888,6 +5043,26 @@ export const MarkdownHybridEditor = ({
           ...current,
           phase: "items",
           categoryId,
+          advancedTemplateId: undefined,
+        };
+      });
+    },
+    [],
+  );
+
+  const handleSelectAdvancedInsertTemplate = useCallback(
+    (templateId: string) => (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setInsertMenuState((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          phase: "advanced-variant",
+          categoryId: "advanced",
+          advancedTemplateId: templateId,
         };
       });
     },
@@ -4901,10 +5076,18 @@ export const MarkdownHybridEditor = ({
       if (!current) {
         return current;
       }
+      if (current.phase === "advanced-variant") {
+        return {
+          ...current,
+          phase: "items",
+          advancedTemplateId: undefined,
+        };
+      }
       return {
         ...current,
         phase: "categories",
         categoryId: undefined,
+        advancedTemplateId: undefined,
       };
     });
   }, []);
@@ -4951,6 +5134,32 @@ export const MarkdownHybridEditor = ({
       });
     },
     [blocks.length, insertBlockRelativeTo, insertEmptyParagraphRelativeTo, insertMenuState, requestPageLinkPickerOpen],
+  );
+
+  const handleAdvancedInsertTemplateVariantSelect = useCallback(
+    (variant: AdvancedInsertTemplateVariant) => (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!insertMenuState?.advancedTemplateId) {
+        return;
+      }
+      const template = getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId);
+      if (!template) {
+        return;
+      }
+      const targetIndex = insertMenuState.insertAbove
+        ? insertMenuState.blockIndex
+        : insertMenuState.blockIndex + 1;
+      const resolved = buildAdvancedInsertTemplateVariant(template, variant, {
+        taskNumber: variant === "task"
+          ? resolveNextExamTaskNumberForSlot(markdown, blocks, targetIndex)
+          : undefined,
+      });
+      insertBlockRelativeTo(insertMenuState.blockIndex, resolved.payload, insertMenuState.insertAbove, {
+        firstPlaceholder: resolved.firstPlaceholder,
+      });
+    },
+    [blocks, insertBlockRelativeTo, insertMenuState, markdown],
   );
 
   const handleHrEnterZoneMouseDown = useCallback(
@@ -7010,18 +7219,18 @@ export const MarkdownHybridEditor = ({
     ? (INSERT_MENU_ITEMS_BY_CATEGORY[activeInsertMenuCategoryId] ?? [])
     : [];
   const activeAdvancedInsertTemplateSections = activeInsertMenuCategoryId === "advanced"
-    ? getAdvancedInsertTemplateSections(activeInsertMenuContext).map((section) => ({
-      ...section,
-      items: section.items.map<InsertMenuItem>((item) => ({
-        id: item.id,
-        label: item.label,
-        description: item.description,
-        template: item.payload,
-        firstPlaceholder: item.firstPlaceholder,
-        icon: item.icon,
-      })),
-    }))
+    ? getAdvancedInsertTemplateSections(activeInsertMenuContext)
     : [];
+  const activeAdvancedInsertTemplate = insertMenuState?.advancedTemplateId
+    ? (getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId) ?? null)
+    : null;
+  const activeAdvancedTaskNumberPreview = insertMenuState?.phase === "advanced-variant" && insertMenuState
+    ? resolveNextExamTaskNumberForSlot(
+      markdown,
+      blocks,
+      insertMenuState.insertAbove ? insertMenuState.blockIndex : insertMenuState.blockIndex + 1,
+    )
+    : null;
 
   const handleInsertMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     const menuElement = insertMenuRef.current;
@@ -7111,9 +7320,13 @@ export const MarkdownHybridEditor = ({
       >
         <div className="markdown-hybrid-insert-menu-header">
           <span className="markdown-hybrid-insert-menu-title">
-            {insertMenuState?.insertAbove ? "Insert Above" : "Insert Below"}
+            {insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate
+              ? activeAdvancedInsertTemplate.label
+              : insertMenuState?.insertAbove
+              ? "Insert Above"
+              : "Insert Below"}
           </span>
-          {insertMenuState?.phase === "items" ? (
+          {insertMenuState?.phase !== "categories" ? (
             <button
               type="button"
               className="markdown-hybrid-insert-menu-nav"
@@ -7139,6 +7352,26 @@ export const MarkdownHybridEditor = ({
                 })}
               </button>
             ))
+            : insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate
+            ? INSERT_MENU_ADVANCED_VARIANTS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
+                onClick={handleAdvancedInsertTemplateVariantSelect(option.id)}
+                role="menuitem"
+              >
+                {renderInsertMenuRowContent({
+                  label: option.label,
+                  description: option.id === "task" && activeAdvancedTaskNumberPreview !== null
+                    ? `Insert as numbered task ${activeAdvancedTaskNumberPreview})`
+                    : option.description,
+                  icon: option.id === "card"
+                    ? activeAdvancedInsertTemplate.icon
+                    : option.icon,
+                })}
+              </button>
+            ))
             : insertMenuState?.categoryId === "advanced"
             ? activeAdvancedInsertTemplateSections.flatMap((section) =>
               section.items.map((item) => (
@@ -7146,7 +7379,7 @@ export const MarkdownHybridEditor = ({
                   key={item.id}
                   type="button"
                   className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-tile"
-                  onClick={handleInsertMenuItemSelect(item)}
+                  onClick={handleSelectAdvancedInsertTemplate(item.id)}
                   role="menuitem"
                   title={item.description}
                 >

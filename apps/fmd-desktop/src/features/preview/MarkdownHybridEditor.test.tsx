@@ -3,7 +3,10 @@ import { act, createElement, useState, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { MarkdownHybridEditor } from "./MarkdownHybridEditor";
-import { ADVANCED_INSERT_TEMPLATE_CATALOG } from "./insertTemplates";
+import {
+  ADVANCED_INSERT_TEMPLATE_CATALOG,
+  buildAdvancedInsertTemplateVariant,
+} from "./insertTemplates";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -1265,7 +1268,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("inserts every Advanced template and selects the first placeholder", () => {
+  it("inserts every Advanced template as a card and selects the first placeholder", () => {
     withImmediateRaf(() => {
       const expectedVisibleLabels = new Set(
         ADVANCED_INSERT_TEMPLATE_CATALOG.map((template) => template.label),
@@ -1308,6 +1311,12 @@ describe("MarkdownHybridEditor", () => {
         ).toBeTruthy();
         dispatchClick(templateButton);
 
+        const markdownBeforeVariant = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        expect(markdownBeforeVariant).toBe("");
+        expect(findMenuItemButtonByLabel(container, "Task")).toBeTruthy();
+        expect(findMenuItemButtonByLabel(container, "Card")).toBeTruthy();
+        dispatchClick(findMenuItemButtonByLabel(container, "Card"));
+
         const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         expect(markdownValue).toBe(template.payload);
 
@@ -1320,6 +1329,102 @@ describe("MarkdownHybridEditor", () => {
 
         cleanup();
       }
+    });
+  });
+
+  it("inserts every Advanced template as a numbered task and selects the task heading", () => {
+    withImmediateRaf(() => {
+      for (const template of ADVANCED_INSERT_TEMPLATE_CATALOG) {
+        const expectedTaskVariant = buildAdvancedInsertTemplateVariant(template, "task", {
+          taskNumber: 1,
+        });
+
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("");
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey={`insert-task-template-${template.id}`}
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+        dispatchClick(findButtonByExactText(container, "Advanced"));
+        dispatchClick(findMenuItemButtonByLabel(container, template.label));
+        dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+
+        const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        expect(markdownValue).toBe(expectedTaskVariant.payload);
+
+        const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea).toBeTruthy();
+        const selectedText = textarea && textarea.selectionStart !== null && textarea.selectionEnd !== null
+          ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
+          : "";
+        expect(selectedText).toBe(expectedTaskVariant.firstPlaceholder);
+
+        cleanup();
+      }
+    });
+  });
+
+  it("increments the next task number when inserting an Advanced task into an existing exam", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#exam",
+        "1) Existing task",
+        "Answer: Existing answer",
+        "---",
+        "#endexam",
+      ].join("\n");
+      const expectedTaskVariant = buildAdvancedInsertTemplateVariant(
+        ADVANCED_INSERT_TEMPLATE_CATALOG.find((template) => template.mode === "m2")!,
+        "task",
+        { taskNumber: 2 },
+      );
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-task-template-existing-exam-numbering"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const hrInsertButton = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-kind='hr'] .markdown-hybrid-block-insert-button",
+      );
+      expect(hrInsertButton).toBeTruthy();
+
+      dispatchClick(hrInsertButton);
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Multiple Choice (n)"));
+      expect(findMenuItemButtonByLabel(container, "Task")?.textContent).toContain("2)");
+      dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toContain(expectedTaskVariant.payload);
+      expect(markdownValue.match(/^2\) TASK HEADING$/m)).toHaveLength(1);
+      expect(markdownValue).toContain("#endexam");
+
+      cleanup();
     });
   });
 
