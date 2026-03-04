@@ -103,16 +103,11 @@ Answer: Real
     const markdown = `#exam
 1) Media task
 #card
-#media
-Answer: Decoy
-#mediaend
+![[images/cover.png]]
 Question one?
 Answer: Real
 ---
-#media
--a
-[[images/example.png]]
-#mediaend
+![[images/example.png]]
 Pick one.
 a) First
 b) Second
@@ -125,8 +120,8 @@ b) Second
     expect(tasks).toHaveLength(1);
     const task = tasks[0];
     expect(task?.prompt).toContain("1) Media task");
-    expect(task?.prompt).not.toContain("Answer: Decoy");
-    expect(task?.prompt).not.toContain("\n-a\n[[images/example.png]]");
+    expect(task?.prompt).not.toContain("![[images/cover.png]]");
+    expect(task?.prompt).not.toContain("![[images/example.png]]");
     expect(task?.officialAnswer).toBe("Real");
     expect(task?.card.parts).toHaveLength(2);
 
@@ -143,6 +138,23 @@ b) Second
     if (secondPart?.kind === "multiple-choice") {
       expect(secondPart.correctKeys).toEqual(["a"]);
     }
+  });
+
+  it("keeps inline image embeds as prompt text and does not extract them as media", () => {
+    const markdown = `#exam
+1) Inline media marker
+Question with inline ![[images/inline.png]] marker
+Answer: Real
+#endexam`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.prompt).toContain("![[images/inline.png]]");
+    expect(task?.media).toBeUndefined();
+    expect(task?.card.parts).toHaveLength(1);
+    expect(task?.card.parts[0]?.media).toBeUndefined();
   });
 
   it("attaches help blocks inside #card to the card only", () => {

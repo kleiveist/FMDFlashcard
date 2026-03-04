@@ -197,12 +197,7 @@ describe("serializeExamBlueprint", () => {
                   type: "png",
                   src: "images/example.png",
                   inlineSvg: "",
-                  alt: "example",
-                  title: "",
-                  caption: "",
-                  width: "",
-                  height: "",
-                  fit: "contain",
+                  label: "example",
                 },
               ],
             },
@@ -218,12 +213,7 @@ describe("serializeExamBlueprint", () => {
                   src: "",
                   inlineSvg:
                     "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
-                  alt: "",
-                  title: "",
-                  caption: "",
-                  width: "",
-                  height: "",
-                  fit: "contain",
+                  label: "",
                 },
               ],
             },
@@ -235,11 +225,13 @@ describe("serializeExamBlueprint", () => {
     const markdown = serializeExamBlueprint(exam);
 
     expect(markdown).toContain(
-      "#media\ntype: png\nsrc: images/example.png\nalt: example\n#mediaend\nQuestion",
+      "![[images/example.png|example]]\nQuestion",
     );
     expect(markdown).toContain(
-      "---\n#media\ntype: svg\nsrc: inline\n\n```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```\n#mediaend\nStatement",
+      "---\n```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```\nStatement",
     );
+    expect(markdown).not.toContain("#media");
+    expect(markdown).not.toContain("#mediaend");
   });
 
   it("omits #card wrapper when disabled", () => {

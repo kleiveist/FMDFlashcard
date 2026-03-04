@@ -2,10 +2,10 @@
  * @file apps/fmd-desktop/src/lib/auxiliaryBlocks.ts
  *
  * Zweck:
- * - Extrahiert Hilfs- und Medien-Bloecke, ohne regulare Syntaxerkennung zu stoeren.
+ * - Extrahiert Help-Bloecke, ohne regulaere Syntaxerkennung zu stoeren.
  */
 
-export type AuxiliaryBlockKind = "help" | "media";
+export type AuxiliaryBlockKind = "help";
 
 export type AuxiliaryBlockInfo = {
   kind: AuxiliaryBlockKind;
@@ -16,19 +16,12 @@ export type AuxiliaryBlockInfo = {
 
 export type AuxiliaryBlockExtraction = {
   helpText: string[];
-  mediaText: string[];
   contentLines: string[];
   blocks: AuxiliaryBlockInfo[];
 };
 
-export type ExtractAuxiliaryBlocksOptions = {
-  kinds?: AuxiliaryBlockKind[];
-};
-
 const helpStartPattern = /^\s*#help\s*$/i;
 const helpEndPattern = /^\s*#helpend\s*$/i;
-const mediaStartPattern = /^\s*#media\s*$/i;
-const mediaEndPattern = /^\s*#mediaend\s*$/i;
 const fencePattern = /^\s*(```|~~~)/;
 const separatorLinePattern = /^\s*---\s*$/;
 
@@ -48,47 +41,30 @@ const trimEmptyLines = (lines: string[]) => {
   return lines.slice(start, end);
 };
 
-const matchesStart = (kind: AuxiliaryBlockKind, line: string) =>
-  kind === "help" ? helpStartPattern.test(line) : mediaStartPattern.test(line);
-
-const matchesEnd = (kind: AuxiliaryBlockKind, line: string) =>
-  kind === "help" ? helpEndPattern.test(line) : mediaEndPattern.test(line);
-
-export const extractAuxiliaryBlocksFromLines = (
-  lines: string[],
-  options?: ExtractAuxiliaryBlocksOptions,
-): AuxiliaryBlockExtraction => {
-  const kinds = options?.kinds ?? ["help", "media"];
-  const enabledKinds = new Set<AuxiliaryBlockKind>(kinds);
+export const extractAuxiliaryBlocksFromLines = (lines: string[]): AuxiliaryBlockExtraction => {
   const helpText: string[] = [];
-  const mediaText: string[] = [];
   const contentLines: string[] = [];
   const blocks: AuxiliaryBlockInfo[] = [];
-  let activeKind: AuxiliaryBlockKind | null = null;
   let activeStartIndex = -1;
   let activeLines: string[] = [];
   let inFence = false;
   let fenceToken = "";
 
   const flushActive = (endIndex: number) => {
-    if (!activeKind) {
+    if (activeStartIndex < 0) {
       return;
     }
     const text = trimEmptyLines(activeLines).join("\n").trim();
     if (text.length > 0) {
-      blocks.push({
-        kind: activeKind,
+      const block = {
+        kind: "help" as const,
         startIndex: activeStartIndex,
-        endIndex: endIndex,
+        endIndex,
         text,
-      });
-      if (activeKind === "help") {
-        helpText.push(text);
-      } else {
-        mediaText.push(text);
-      }
+      };
+      helpText.push(text);
+      blocks.push(block);
     }
-    activeKind = null;
     activeStartIndex = -1;
     activeLines = [];
   };
@@ -97,7 +73,7 @@ export const extractAuxiliaryBlocksFromLines = (
     const trimmed = line.trimStart();
     const fenceMatch = trimmed.match(fencePattern);
 
-    if (activeKind) {
+    if (activeStartIndex >= 0) {
       if (fenceMatch) {
         if (inFence && fenceMatch[1] === fenceToken) {
           inFence = false;
@@ -110,7 +86,7 @@ export const extractAuxiliaryBlocksFromLines = (
         return;
       }
 
-      if (!inFence && matchesEnd(activeKind, line)) {
+      if (!inFence && helpEndPattern.test(line)) {
         flushActive(index);
         return;
       }
@@ -137,28 +113,21 @@ export const extractAuxiliaryBlocksFromLines = (
       return;
     }
 
-    if (!inFence) {
-      const nextKind = Array.from(enabledKinds).find((kind) =>
-        matchesStart(kind, line),
-      );
-      if (nextKind) {
-        activeKind = nextKind;
-        activeStartIndex = index;
-        activeLines = [];
-        return;
-      }
+    if (!inFence && helpStartPattern.test(line)) {
+      activeStartIndex = index;
+      activeLines = [];
+      return;
     }
 
     contentLines.push(line);
   });
 
-  if (activeKind) {
+  if (activeStartIndex >= 0) {
     flushActive(Math.max(lines.length - 1, activeStartIndex));
   }
 
   return {
     helpText,
-    mediaText,
     contentLines,
     blocks,
   };
@@ -170,19 +139,15 @@ export type HelpBlockExtraction = {
 };
 
 export const extractHelpBlocksFromLines = (lines: string[]): HelpBlockExtraction => {
-  const extracted = extractAuxiliaryBlocksFromLines(lines, { kinds: ["help"] });
+  const extracted = extractAuxiliaryBlocksFromLines(lines);
   return {
     helpText: extracted.helpText,
     contentLines: extracted.contentLines,
   };
 };
 
-export const stripAuxiliaryBlocksFromLines = (
-  lines: string[],
-  options?: ExtractAuxiliaryBlocksOptions,
-) => extractAuxiliaryBlocksFromLines(lines, options).contentLines;
+export const stripAuxiliaryBlocksFromLines = (lines: string[]) =>
+  extractAuxiliaryBlocksFromLines(lines).contentLines;
 
-export const extractAuxiliaryBlocksFromText = (
-  value: string,
-  options?: ExtractAuxiliaryBlocksOptions,
-) => extractAuxiliaryBlocksFromLines(normalizeLines(value), options);
+export const extractAuxiliaryBlocksFromText = (value: string) =>
+  extractAuxiliaryBlocksFromLines(normalizeLines(value));

@@ -278,7 +278,12 @@ export const ExamTaskRunner = ({
         <div className="exam-task-footer-actions">
           {hasHelp ? (
             <div className="exam-help-actions">
-              <HelpButton helpText={task.helpText} enabled={helpEnabled} />
+              <HelpButton
+                helpText={task.helpText}
+                enabled={helpEnabled}
+                vaultPath={vaultPath}
+                vaultPngAssets={vaultPngAssets}
+              />
             </div>
           ) : null}
           {showNavigation ? (

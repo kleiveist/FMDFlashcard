@@ -11,7 +11,7 @@ import type {
 import { isCompositeTask } from "../../../features/exam-editor/validation";
 import type { ExamEditorSelection } from "../types";
 import { ModalShell } from "../../../components/ModalShell";
-import { CardContentForm } from "./ContentForms";
+import { CardContentForm, MediaEditor } from "./ContentForms";
 import { HelpEditor } from "./HelpEditor";
 import type { EditorMediaDraft } from "../../../lib/cardMedia";
 import type { VaultPngAsset } from "../../../lib/tree";
@@ -30,7 +30,12 @@ type ContentModeProps = {
   onSelectTask: (taskId: string) => void;
   onTaskUpdate: (
     taskId: string,
-    updates: { title?: string; helpText?: string; useCardWrapper?: boolean },
+    updates: {
+      title?: string;
+      helpText?: string;
+      useCardWrapper?: boolean;
+      mediaItems?: EditorMediaDraft[];
+    },
   ) => void;
   onCardUpdate: (
     taskId: string,
@@ -138,12 +143,11 @@ const ContentEditorPanel = ({
             showPreviewToggle
           />
 
-          {(activeTask.mediaItems ?? []).length > 0 ? (
-            <div className="hint-box">
-              This task contains preserved task-level media from source markdown. Edit it in raw
-              markdown.
-            </div>
-          ) : null}
+          <MediaEditor
+            value={activeTask.mediaItems ?? []}
+            onChange={(value) => onTaskUpdate(activeTask.id, { mediaItems: value })}
+            vaultPngAssets={vaultPngAssets}
+          />
 
           {activeTask.cards.map((card, cardIndex) => {
             const cardValidation = taskValidation?.cardValidations?.[cardIndex];

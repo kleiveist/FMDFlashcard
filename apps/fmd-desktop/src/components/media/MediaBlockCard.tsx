@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import {
+  resolveMediaLabel,
   resolveMediaPngAsset,
   validateSvgMarkup,
   type MediaItem,
@@ -22,23 +23,12 @@ type MediaBlockCardProps = {
   className?: string;
 };
 
-const buildMediaSizeStyle = (item: MediaItem) => {
-  const style: Record<string, string> = {};
-  if (typeof item.width === "number" && Number.isFinite(item.width) && item.width > 0) {
-    style.maxWidth = `${item.width}px`;
-  }
-  if (typeof item.height === "number" && Number.isFinite(item.height) && item.height > 0) {
-    style.maxHeight = `${item.height}px`;
-  }
-  return style;
-};
-
 export const MediaBlockCard = ({
   item,
   vaultPngAssets,
   vaultPath: _vaultPath,
   defaultMode = "preview",
-  allowToggle = true,
+  allowToggle = false,
   className,
 }: MediaBlockCardProps) => {
   const resolvedAsset = useMemo(
@@ -81,20 +71,16 @@ export const MediaBlockCard = ({
       if (!imageSrc) {
         return <div className="flashcard-media-placeholder">Missing image</div>;
       }
-      const imageStyle = buildMediaSizeStyle(item);
       return (
         <figure className="flashcard-media-item image">
           <img
             src={imageSrc}
-            alt={item.alt || item.src}
-            title={item.title}
-            className={`flashcard-media-image fit-${item.fit}`}
-            style={imageStyle}
+            alt={resolveMediaLabel(item) ?? item.src}
+            className="flashcard-media-image"
             draggable={false}
+            loading="lazy"
+            decoding="async"
           />
-          {item.caption?.trim() ? (
-            <figcaption className="flashcard-media-caption">{item.caption}</figcaption>
-          ) : null}
         </figure>
       );
     }
@@ -104,12 +90,8 @@ export const MediaBlockCard = ({
         <figure className="flashcard-media-item svg">
           <div
             className="flashcard-media-svg-surface"
-            style={buildMediaSizeStyle(item)}
             dangerouslySetInnerHTML={{ __html: svgValidation.sanitized }}
           />
-          {item.caption?.trim() ? (
-            <figcaption className="flashcard-media-caption">{item.caption}</figcaption>
-          ) : null}
         </figure>
       );
     }
@@ -122,8 +104,8 @@ export const MediaBlockCard = ({
         >
           SVG invalid
         </span>
-        <pre className="flashcard-code-block language-svg">
-          <code>{item.inlineSvg ?? ""}</code>
+        <pre className="flashcard-code-block media-block-card-source">
+          <code>{item.rawBlock}</code>
         </pre>
       </div>
     );
@@ -131,24 +113,27 @@ export const MediaBlockCard = ({
 
   const classes = ["media-block-card", className].filter(Boolean).join(" ");
   const showSource = mode === "source";
+  const showToolbar = allowToggle || (item.type === "svg" && !svgValidation?.sanitized);
 
   return (
     <div className={classes}>
-      <div className="media-block-card-toolbar">
-        {allowToggle ? (
-          <button type="button" className="ghost small" onClick={toggleMode}>
-            {showSource ? "Preview" : "Source"}
-          </button>
-        ) : null}
-        {item.type === "svg" && !svgValidation?.sanitized ? (
-          <span
-            className="svg-preview-badge"
-            title={svgValidation?.invalidReason ?? "SVG invalid"}
-          >
-            SVG invalid
-          </span>
-        ) : null}
-      </div>
+      {showToolbar ? (
+        <div className="media-block-card-toolbar">
+          {allowToggle ? (
+            <button type="button" className="ghost small" onClick={toggleMode}>
+              {showSource ? "Preview" : "Source"}
+            </button>
+          ) : null}
+          {item.type === "svg" && !svgValidation?.sanitized ? (
+            <span
+              className="svg-preview-badge"
+              title={svgValidation?.invalidReason ?? "SVG invalid"}
+            >
+              SVG invalid
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <div
         className={`media-block-card-surface ${showSource ? "is-source" : "is-preview"}`}
         onClick={allowToggle ? toggleMode : undefined}

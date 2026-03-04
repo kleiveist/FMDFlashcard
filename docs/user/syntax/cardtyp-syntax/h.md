@@ -41,31 +41,28 @@ Additional hint paragraph text.
     
 - **Compatibility guarantee:** `h` can coexist with qa/tf/m1/m2/cl/cd/cld because it is treated as a separate “side channel” and removed before the main detectors run, preventing false positives and preserving stable detection.
 
-## Related media block
+## Related media syntax
 
-Cards may also define a separate auxiliary media channel via `#media ... #mediaend`.
+Card/task media is defined directly in Markdown, without `#media ... #mediaend`.
 
 ````md
 #card
 Question text
 
-#media
-[[images/example.png]]
+![[images/example.png]]
+![[images/example.png|Optional label]]
 
 ```svg
 <svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
 ```
-#mediaend
 
 Answer: Example
 #endcard
 ````
 
-- `#media ... #mediaend` is card-scoped and is extracted before interaction detection, just like `#help`.
-- Canonical syntax uses scalar metadata:
-  - `type: png` with `src: relative/path.png`
-  - `type: svg` with `src: inline`, followed by one fenced code block whose info string is exactly `svg`
-- Optional metadata fields are `alt:`, `title:`, `caption:`, `width:`, `height:`, and `fit:` (`contain` or `cover`).
-- Legacy raw entries such as standalone wikilinks (`[[image.png]]`) and fenced `svg` blocks are still accepted on import and normalized to canonical blocks on save.
-- Runtime views resolve media blocks to rendered image/SVG output by default. Clicking a media block toggles between Preview and Source.
-- Invalid SVG falls back to the raw code block with an `SVG invalid` indicator.
+- PNG media uses Obsidian-style embeds: `![[relative/path.png]]`.
+- Optional PNG label/alt text uses `|`: `![[relative/path.png|Label]]`.
+- PNG embeds are rendered as media blocks only when the embed is on a standalone line.
+- SVG media uses fenced code blocks with exact info string `svg`.
+- Invalid or non-renderable SVG falls back to code view.
+- Legacy `#media ... #mediaend` is no longer parsed as a media feature.

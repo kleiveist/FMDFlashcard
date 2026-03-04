@@ -21,8 +21,18 @@ describe("extractVaultAssetRelativePath", () => {
     );
   });
 
+  it("extracts target from image embeds with optional labels", () => {
+    expect(extractVaultAssetRelativePath("![[images/a.png]]")).toBe("images/a.png");
+    expect(extractVaultAssetRelativePath("![[images/a.png|Label]]")).toBe("images/a.png");
+  });
+
   it("normalizes plain path values", () => {
     expect(extractVaultAssetRelativePath("  images\\\\A.PNG  ")).toBe("images/A.PNG");
   });
-});
 
+  it("rejects absolute paths and traversal escapes", () => {
+    expect(extractVaultAssetRelativePath("/images/a.png")).toBeNull();
+    expect(extractVaultAssetRelativePath("C:\\\\vault\\\\images\\\\a.png")).toBeNull();
+    expect(extractVaultAssetRelativePath("../images/a.png")).toBeNull();
+  });
+});

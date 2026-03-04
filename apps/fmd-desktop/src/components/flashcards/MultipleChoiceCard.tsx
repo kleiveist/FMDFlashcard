@@ -136,7 +136,12 @@ export const MultipleChoiceCard = ({
         vaultPath={vaultPath}
       />
       {card.context?.trim() ? (
-        <MarkdownBlocks text={card.context} allowTableScroll />
+        <MarkdownBlocks
+          text={card.context}
+          allowTableScroll
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+        />
       ) : null}
       <ul className="flashcard-options">
         {displayOptions.map(({ option, label }) => {
@@ -184,6 +189,8 @@ export const MultipleChoiceCard = ({
                   text={option.text}
                   className="flashcard-text"
                   allowTableScroll
+                  vaultPath={vaultPath}
+                  vaultPngAssets={vaultPngAssets}
                 />
               </label>
             </li>
@@ -215,6 +222,8 @@ export const MultipleChoiceCard = ({
             helpText={helpText}
             enabled={helpEnabled}
             className="flashcard-help-button"
+            vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
           />
         </div>
       ) : null}

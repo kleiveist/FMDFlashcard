@@ -30,10 +30,11 @@ const stripWrappingQuotes = (value: string) => {
 
 const extractWikilinkTargetLoose = (value: string) => {
   const trimmed = value.trim();
-  if (!trimmed.startsWith("[[") || !trimmed.endsWith("]]")) {
+  const normalized = trimmed.startsWith("![[") ? trimmed.slice(1) : trimmed;
+  if (!normalized.startsWith("[[") || !normalized.endsWith("]]")) {
     return null;
   }
-  const inner = trimmed.slice(2, -2).trim();
+  const inner = normalized.slice(2, -2).trim();
   if (!inner) {
     return null;
   }

@@ -271,6 +271,8 @@ export const CompositeCard = ({
             helpText={helpText}
             enabled={helpEnabled}
             className="flashcard-help-button"
+            vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
           />
         </div>
       ) : null}

@@ -1460,6 +1460,55 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("inserts Image embed links as standalone isolated blocks from the Insert menu", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["Top paragraph", "", "Bottom paragraph"].join("\n");
+      const vaultPngAssets = [
+        {
+          path: "/vault/images/example.png",
+          relative_path: "images/example.png",
+          file_name: "example.png",
+          extension: "png" as const,
+        },
+      ];
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-image-embed"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={vaultPngAssets}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+      dispatchClick(findButtonByExactText(container, "Links"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Image embed"));
+      dispatchClick(container.querySelector<HTMLButtonElement>(".vault-png-picker-item"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toContain("![[images/example.png]]");
+      expect(/(?:^|\n)!\[\[images\/example\.png\]\](?:\n|$)/.test(markdownValue)).toBe(true);
+
+      const lines = markdownValue.split("\n");
+      const embedIndex = lines.findIndex((line) => line === "![[images/example.png]]");
+      expect(embedIndex).toBeGreaterThan(0);
+      expect(lines[embedIndex - 1]?.trim()).toBe("");
+      expect(lines[embedIndex + 1]?.trim()).toBe("");
+
+      cleanup();
+    });
+  });
+
   it("renders legacy card-like content from the removed Page insert without crashing", () => {
     const legacyPageMarkdown = "#card\nQuestion or title\nAnswer: Answer or content\n#endcard";
     const Harness = () => {
@@ -1531,23 +1580,14 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("renders #media blocks inside #card previews as resolved media", () => {
+  it("renders png embeds and svg fences inside #card previews as resolved media", () => {
     const markdown = [
       "#card",
-      "#media",
-      "type: png",
-      "src: images/example.png",
-      "alt: Example image",
-      "#mediaend",
-      "",
-      "#media",
-      "type: svg",
-      "src: inline",
+      "![[images/example.png|Example image]]",
       "",
       "```svg",
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#000"/></svg>',
       "```",
-      "#mediaend",
       "",
       "Question text",
       "#endcard",
@@ -1578,6 +1618,73 @@ describe("MarkdownHybridEditor", () => {
       "Question text",
     );
     cleanup();
+  });
+
+  it("renders standalone svg fences as media preview and keeps source on focus", () => {
+    withImmediateRaf(() => {
+      const markdown = [
+        "```svg",
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" /></svg>',
+        "```",
+      ].join("\n");
+
+      const Harness = () => {
+        const [value, setValue] = useState(markdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="standalone-svg-fence-preview"
+            markdown={value}
+            mode="edit"
+            onChange={setValue}
+            renderPreview={(previewValue) => <div>{previewValue}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+
+      expect(container.querySelector(".flashcard-media-svg-surface svg")).toBeTruthy();
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea?.value).toBe(markdown);
+
+      cleanup();
+    });
+  });
+
+  it("shows PNG embed preview when inactive and raw source when the block is focused", () => {
+    withImmediateRaf(() => {
+      const markdown = "![[images/example.png]]";
+
+      const Harness = () => {
+        const [value, setValue] = useState(markdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="image-embed-focus-source-toggle"
+            markdown={value}
+            mode="edit"
+            onChange={setValue}
+            vaultPngAssets={[
+              {
+                path: "/vault/images/example.png",
+                relative_path: "images/example.png",
+                file_name: "example.png",
+                extension: "png",
+              },
+            ]}
+            renderPreview={(previewValue) => <div>{previewValue}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      expect(container.querySelector(".flashcard-media-image")).toBeTruthy();
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea?.value).toBe("![[images/example.png]]");
+
+      cleanup();
+    });
   });
 
   it("keeps Enter inside a card body within the card block and does not create outer page blocks", () => {
@@ -3200,6 +3307,25 @@ describe("MarkdownHybridEditor", () => {
 
     expect(onNavigateWikilink).toHaveBeenCalledTimes(1);
     expect(onNavigateWikilink).toHaveBeenCalledWith("[[Docs/Intro]]");
+
+    cleanup();
+  });
+
+  it("does not transform image embeds into inline page links", () => {
+    const { container, cleanup } = render(
+      createElement(MarkdownHybridEditor, {
+        historyKey: "inline-image-embed-literal",
+        markdown: "Text ![[images/example.png]] text",
+        mode: "edit",
+        onChange: () => undefined,
+        renderPreview: (value: string) => <p>{value}</p>,
+      }),
+    );
+
+    expect(container.querySelector(".markdown-hybrid-inline-page-link")).toBeNull();
+    expect(container.querySelector(".markdown-hybrid-block-preview")?.textContent ?? "").toContain(
+      "![[images/example.png]]",
+    );
 
     cleanup();
   });

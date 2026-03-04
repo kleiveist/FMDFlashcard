@@ -254,29 +254,21 @@ Use %token% with "drag".
 
   it("extracts card media per part without affecting type detection", () => {
     const markdown = `#card
-#media
-[[images/qa.png]]
-#mediaend
+![[images/qa.png]]
 Question one?
 Answer: One
 
-#media
-[[images/tf.png]]
-#mediaend
+![[images/tf.png]]
 Statement two
 -true
 
-#media
-[[images/m1.png]]
-#mediaend
+![[images/m1.png]]
 Pick one.
 a) First
 b) Second
 -a
 
-#media
-[[images/m2.png]]
-#mediaend
+![[images/m2.png]]
 Pick two.
 a) Alpha
 b) Beta
@@ -284,9 +276,7 @@ c) Gamma
 -a
 -c
 
-#media
-[[images/cloze.png]]
-#mediaend
+![[images/cloze.png]]
 Use %token% with "drag".
 #endcard`;
 
@@ -305,6 +295,23 @@ Use %token% with "drag".
       expect(part.media).toHaveLength(1);
       expect(part.media?.[0]).toMatchObject({ type: "png" });
     });
+  });
+
+  it("keeps inline embed syntax as plain text and does not extract media", () => {
+    const markdown = `#card
+Question with inline ![[images/inline.png]] marker
+Answer: Real
+#endcard`;
+
+    const cards = parseFlashcards(markdown, { answerMatch: "line-start" });
+    expect(cards).toHaveLength(1);
+
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toContain("![[images/inline.png]]");
+      expect(part.media).toBeUndefined();
+    }
   });
 
   it("parses inline answer parts inside a composite card", () => {

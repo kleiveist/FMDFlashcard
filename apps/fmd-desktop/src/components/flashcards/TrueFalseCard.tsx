@@ -83,7 +83,12 @@ export const TrueFalseCard = ({
         vaultPath={vaultPath}
       />
       {card.context?.trim() ? (
-        <MarkdownBlocks text={card.context} allowTableScroll />
+        <MarkdownBlocks
+          text={card.context}
+          allowTableScroll
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+        />
       ) : null}
       <ul className="truefalse-list">
         {card.items.map((item) => {
@@ -164,6 +169,8 @@ export const TrueFalseCard = ({
             helpText={helpText}
             enabled={helpEnabled}
             className="flashcard-help-button"
+            vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
           />
         </div>
       ) : null}

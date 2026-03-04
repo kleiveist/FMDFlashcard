@@ -125,10 +125,10 @@ type MediaEditorProps = {
   vaultPngAssets?: VaultPngAsset[] | null;
 };
 
-const blankPngDraft = () => createEditorMediaDraft({ type: "png", fit: "contain" });
-const blankSvgDraft = () => createEditorMediaDraft({ type: "svg", fit: "contain" });
+const blankPngDraft = () => createEditorMediaDraft({ type: "png" });
+const blankSvgDraft = () => createEditorMediaDraft({ type: "svg" });
 
-const MediaEditor = ({ value, onChange, vaultPngAssets }: MediaEditorProps) => {
+export const MediaEditor = ({ value, onChange, vaultPngAssets }: MediaEditorProps) => {
   const [activeTab, setActiveTab] = useState<"svg" | "png">("png");
   const [pngQuery, setPngQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -164,12 +164,13 @@ const MediaEditor = ({ value, onChange, vaultPngAssets }: MediaEditorProps) => {
   const handleSelectPng = (relPath: string) => {
     setActiveTab("png");
     setPngDraft((current) => {
-      const fallbackAlt = relPath.split("/").pop()?.replace(/\.png$/i, "") ?? "";
-      const shouldReplaceAlt = !current.alt.trim() || current.alt.trim() === current.src.trim();
+      const fallbackLabel = relPath.split("/").pop()?.replace(/\.png$/i, "") ?? "";
+      const shouldReplaceLabel =
+        !current.label.trim() || current.label.trim() === current.src.trim();
       return {
         ...current,
         src: relPath,
-        alt: shouldReplaceAlt ? fallbackAlt : current.alt,
+        label: shouldReplaceLabel ? fallbackLabel : current.label,
       };
     });
   };
@@ -305,75 +306,15 @@ const MediaEditor = ({ value, onChange, vaultPngAssets }: MediaEditorProps) => {
             />
             <div className="media-editor-fields-grid">
               <label className="field">
-                <span className="label">Alt</span>
+                <span className="label">Label / alt</span>
                 <input
                   className="text-input"
-                  value={pngDraft.alt}
+                  value={pngDraft.label}
                   onChange={(event) =>
-                    updateDraft("png", (draft) => ({ ...draft, alt: event.target.value }))
+                    updateDraft("png", (draft) => ({ ...draft, label: event.target.value }))
                   }
-                  placeholder="Alternative text"
+                  placeholder="Optional label for alt text"
                 />
-              </label>
-              <label className="field">
-                <span className="label">Title</span>
-                <input
-                  className="text-input"
-                  value={pngDraft.title}
-                  onChange={(event) =>
-                    updateDraft("png", (draft) => ({ ...draft, title: event.target.value }))
-                  }
-                  placeholder="Optional title"
-                />
-              </label>
-              <label className="field">
-                <span className="label">Caption</span>
-                <input
-                  className="text-input"
-                  value={pngDraft.caption}
-                  onChange={(event) =>
-                    updateDraft("png", (draft) => ({ ...draft, caption: event.target.value }))
-                  }
-                  placeholder="Optional caption"
-                />
-              </label>
-              <label className="field">
-                <span className="label">Width</span>
-                <input
-                  className="text-input"
-                  value={pngDraft.width}
-                  onChange={(event) =>
-                    updateDraft("png", (draft) => ({ ...draft, width: event.target.value }))
-                  }
-                  placeholder="Optional width"
-                />
-              </label>
-              <label className="field">
-                <span className="label">Height</span>
-                <input
-                  className="text-input"
-                  value={pngDraft.height}
-                  onChange={(event) =>
-                    updateDraft("png", (draft) => ({ ...draft, height: event.target.value }))
-                  }
-                  placeholder="Optional height"
-                />
-              </label>
-              <label className="field">
-                <span className="label">Fit</span>
-                <select
-                  className="text-input"
-                  value={pngDraft.fit}
-                  onChange={(event) =>
-                    updateDraft("png", (draft) => ({
-                      ...draft,
-                      fit: event.target.value === "cover" ? "cover" : "contain",
-                    }))
-                  }
-                >
-                  <option value="contain">contain</option>
-                  <option value="cover">cover</option>
-                </select>
               </label>
             </div>
             <div className="media-editor-actions">
@@ -408,57 +349,6 @@ const MediaEditor = ({ value, onChange, vaultPngAssets }: MediaEditorProps) => {
                 placeholder="<svg viewBox=&quot;0 0 10 10&quot;>...</svg>"
               />
             </label>
-            <div className="media-editor-fields-grid">
-              <label className="field">
-                <span className="label">Caption</span>
-                <input
-                  className="text-input"
-                  value={svgDraft.caption}
-                  onChange={(event) =>
-                    updateDraft("svg", (draft) => ({ ...draft, caption: event.target.value }))
-                  }
-                  placeholder="Optional caption"
-                />
-              </label>
-              <label className="field">
-                <span className="label">Width</span>
-                <input
-                  className="text-input"
-                  value={svgDraft.width}
-                  onChange={(event) =>
-                    updateDraft("svg", (draft) => ({ ...draft, width: event.target.value }))
-                  }
-                  placeholder="Optional width"
-                />
-              </label>
-              <label className="field">
-                <span className="label">Height</span>
-                <input
-                  className="text-input"
-                  value={svgDraft.height}
-                  onChange={(event) =>
-                    updateDraft("svg", (draft) => ({ ...draft, height: event.target.value }))
-                  }
-                  placeholder="Optional height"
-                />
-              </label>
-              <label className="field">
-                <span className="label">Fit</span>
-                <select
-                  className="text-input"
-                  value={svgDraft.fit}
-                  onChange={(event) =>
-                    updateDraft("svg", (draft) => ({
-                      ...draft,
-                      fit: event.target.value === "cover" ? "cover" : "contain",
-                    }))
-                  }
-                >
-                  <option value="contain">contain</option>
-                  <option value="cover">cover</option>
-                </select>
-              </label>
-            </div>
             {svgDraft.inlineSvg.trim() ? (
               <SvgPreviewBlock
                 source={svgDraft.inlineSvg}

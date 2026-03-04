@@ -535,6 +535,8 @@ export const ClozeCard = ({
         className="cloze-text"
         allowTableScroll={false}
         renderPlaceholder={renderBlank}
+        vaultPath={vaultPath}
+        vaultPngAssets={vaultPngAssets}
       />
       {hasDragTokens ? (
         <div className="token-section">
@@ -594,6 +596,8 @@ export const ClozeCard = ({
             helpText={helpText}
             enabled={helpEnabled}
             className="flashcard-help-button"
+            vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
           />
         </div>
       ) : null}
@@ -605,6 +609,8 @@ export const ClozeCard = ({
             className="cloze-solution"
             allowTableScroll={false}
             renderPlaceholder={renderSolutionBlank}
+            vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
           />
         </div>
       ) : null}

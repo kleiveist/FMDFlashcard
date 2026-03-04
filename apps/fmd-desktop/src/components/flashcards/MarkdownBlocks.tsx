@@ -11,7 +11,9 @@
 
 import { Fragment, type ReactNode } from "react";
 import { splitMarkdownBlocks, type MarkdownBlock } from "../../lib/markdownTables";
-import { SvgPreviewBlock } from "./SvgPreviewBlock";
+import { splitMarkdownMediaSegments } from "../../lib/cardMedia";
+import type { VaultPngAsset } from "../../lib/tree";
+import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
 
 export const CLOZE_PLACEHOLDER_PREFIX = "@@@CLOZE:";
 export const CLOZE_PLACEHOLDER_SUFFIX = "@@@";
@@ -143,6 +145,8 @@ type MarkdownBlocksProps = {
   className?: string;
   allowTableScroll?: boolean;
   renderPlaceholder?: (id: string) => ReactNode;
+  vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
 };
 
 export const MarkdownBlocks = ({
@@ -150,18 +154,10 @@ export const MarkdownBlocks = ({
   className,
   allowTableScroll = true,
   renderPlaceholder,
+  vaultPath,
+  vaultPngAssets,
 }: MarkdownBlocksProps) => {
-  const fencedBlocks = splitFenceBlocks(text);
-  const blocks: Array<MarkdownBlock | MarkdownFenceBlock> = [];
-  fencedBlocks.forEach((block) => {
-    if (block.type === "code") {
-      blocks.push(block);
-      return;
-    }
-    splitMarkdownBlocks(block.text).forEach((nested) => {
-      blocks.push(nested);
-    });
-  });
+  const segments = splitMarkdownMediaSegments(text, "flashcard-markdown");
   const containerClass = ["flashcard-markdown", className]
     .filter(Boolean)
     .join(" ");
@@ -172,73 +168,91 @@ export const MarkdownBlocks = ({
 
   return (
     <div className={containerClass}>
-      {blocks.map((block, blockIndex) => {
-        if (block.type === "table") {
+      {segments.map((segment, segmentIndex) => {
+        if (segment.kind === "media") {
           return (
-            <div className={tableClass} key={`table-${blockIndex}`}>
-              <table>
-                <thead>
-                  <tr>
-                    {block.header.map((cell, cellIndex) => (
-                      <th key={`head-${blockIndex}-${cellIndex}`}>
-                        {renderTokens(
-                          cell,
-                          renderPlaceholder,
-                          `table-head-${blockIndex}-${cellIndex}`,
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {block.rows.map((row, rowIndex) => (
-                    <tr key={`row-${blockIndex}-${rowIndex}`}>
-                      {row.map((cell, cellIndex) => (
-                        <td key={`cell-${blockIndex}-${rowIndex}-${cellIndex}`}>
+            <FlashcardMediaGroup
+              key={`media-${segmentIndex}`}
+              media={segment.items}
+              vaultPngAssets={vaultPngAssets}
+              vaultPath={vaultPath}
+            />
+          );
+        }
+
+        const fencedBlocks = splitFenceBlocks(segment.source);
+        const blocks: Array<MarkdownBlock | MarkdownFenceBlock> = [];
+        fencedBlocks.forEach((block) => {
+          if (block.type === "code") {
+            blocks.push(block);
+            return;
+          }
+          splitMarkdownBlocks(block.text).forEach((nested) => {
+            blocks.push(nested);
+          });
+        });
+
+        return blocks.map((block, blockIndex) => {
+          const keyPrefix = `${segmentIndex}-${blockIndex}`;
+          if (block.type === "table") {
+            return (
+              <div className={tableClass} key={`table-${keyPrefix}`}>
+                <table>
+                  <thead>
+                    <tr>
+                      {block.header.map((cell, cellIndex) => (
+                        <th key={`head-${keyPrefix}-${cellIndex}`}>
                           {renderTokens(
                             cell,
                             renderPlaceholder,
-                            `table-cell-${blockIndex}-${rowIndex}-${cellIndex}`,
+                            `table-head-${keyPrefix}-${cellIndex}`,
                           )}
-                        </td>
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        }
-
-        if (block.type === "code") {
-          if (block.language === "svg") {
-            return (
-              <SvgPreviewBlock
-                key={`code-${blockIndex}`}
-                source={block.text}
-              />
+                  </thead>
+                  <tbody>
+                    {block.rows.map((row, rowIndex) => (
+                      <tr key={`row-${keyPrefix}-${rowIndex}`}>
+                        {row.map((cell, cellIndex) => (
+                          <td key={`cell-${keyPrefix}-${rowIndex}-${cellIndex}`}>
+                            {renderTokens(
+                              cell,
+                              renderPlaceholder,
+                              `table-cell-${keyPrefix}-${rowIndex}-${cellIndex}`,
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             );
           }
-          const codeClass = [
-            "flashcard-code-block",
-            block.language ? `language-${block.language}` : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
-          return (
-            <pre className={codeClass} key={`code-${blockIndex}`}>
-              <code>
-                {renderTokens(block.text, renderPlaceholder, `code-${blockIndex}`)}
-              </code>
-            </pre>
-          );
-        }
 
-        return (
-          <div className="flashcard-markdown-text" key={`text-${blockIndex}`}>
-            {renderTokens(block.text, renderPlaceholder, `text-${blockIndex}`)}
-          </div>
-        );
+          if (block.type === "code") {
+            const codeClass = [
+              "flashcard-code-block",
+              block.language ? `language-${block.language}` : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+            return (
+              <pre className={codeClass} key={`code-${keyPrefix}`}>
+                <code>
+                  {renderTokens(block.text, renderPlaceholder, `code-${keyPrefix}`)}
+                </code>
+              </pre>
+            );
+          }
+
+          return (
+            <div className="flashcard-markdown-text" key={`text-${keyPrefix}`}>
+              {renderTokens(block.text, renderPlaceholder, `text-${keyPrefix}`)}
+            </div>
+          );
+        });
       })}
     </div>
   );

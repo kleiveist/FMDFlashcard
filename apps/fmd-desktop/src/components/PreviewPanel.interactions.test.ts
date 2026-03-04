@@ -612,7 +612,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector("kbd")).toBeTruthy();
   });
 
-  it("renders svg fences as preview blocks with a code toggle", () => {
+  it("renders svg fences as media previews", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       [
         "```svg",
@@ -622,18 +622,8 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
     cleanup = localCleanup;
 
-    expect(container.querySelector(".svg-preview-surface svg")).toBeTruthy();
-    const toggleButton = container.querySelector<HTMLButtonElement>(
-      ".svg-preview-toolbar button",
-    );
-    expect(toggleButton?.textContent).toBe("Code");
-
-    act(() => {
-      toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    const codeBlock = container.querySelector(".flashcard-code-block.language-svg");
-    expect(codeBlock?.textContent ?? "").toContain("<svg viewBox=\"0 0 10 10\">");
+    expect(container.querySelector(".flashcard-media-svg-surface svg")).toBeTruthy();
+    expect(container.querySelector(".media-block-card-toolbar .svg-preview-badge")).toBeNull();
   });
 
   it("falls back to code with a visible invalid badge for invalid svg fences", () => {
@@ -642,10 +632,59 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
     cleanup = localCleanup;
 
-    expect(container.querySelector(".svg-preview-surface svg")).toBeNull();
+    expect(container.querySelector(".flashcard-media-svg-surface svg")).toBeNull();
     expect(container.textContent).toContain("SVG invalid");
-    expect(container.querySelector(".flashcard-code-block.language-svg")?.textContent).toContain(
+    expect(container.querySelector(".media-block-card-source")?.textContent).toContain(
       "<div>bad</div>",
+    );
+  });
+
+  it("renders standalone PNG embeds as media blocks in markdown preview", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["Before", "", "![[images/example.png|Example]]", "", "After"].join("\n"),
+      {
+        vaultPngAssets: [
+          {
+            path: "/vault/images/example.png",
+            relative_path: "images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ],
+      },
+    );
+    cleanup = localCleanup;
+
+    const image = container.querySelector<HTMLImageElement>(".flashcard-media-image");
+    expect(image).toBeTruthy();
+    expect(image?.getAttribute("alt")).toBe("Example");
+  });
+
+  it("renders a missing-image placeholder for unresolved PNG embeds", () => {
+    const { container, cleanup: localCleanup } = buildHarness("![[images/missing.png]]");
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".flashcard-media-image")).toBeNull();
+    expect(container.textContent).toContain("Missing image");
+  });
+
+  it("rejects traversal-style PNG embed paths and renders a placeholder", () => {
+    const { container, cleanup: localCleanup } = buildHarness("![[../private/secret.png]]");
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".flashcard-media-image")).toBeNull();
+    expect(container.textContent).toContain("Missing image");
+  });
+
+  it("keeps inline PNG embeds as literal text (no inline media transform)", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      "Text ![[images/example.png]] text",
+    );
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".flashcard-media-image")).toBeNull();
+    expect(container.querySelector(".preview.markdown")?.textContent ?? "").toContain(
+      "![[images/example.png]]",
     );
   });
 

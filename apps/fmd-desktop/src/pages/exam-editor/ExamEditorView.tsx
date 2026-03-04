@@ -407,7 +407,12 @@ export const ExamEditorView = ({
   const handleTaskUpdate = useCallback(
     (
       taskId: string,
-      updates: { title?: string; helpText?: string; useCardWrapper?: boolean },
+      updates: {
+        title?: string;
+        helpText?: string;
+        useCardWrapper?: boolean;
+        mediaItems?: EditorMediaDraft[];
+      },
     ) => {
       updateTasks((tasks) =>
         tasks.map((task) =>

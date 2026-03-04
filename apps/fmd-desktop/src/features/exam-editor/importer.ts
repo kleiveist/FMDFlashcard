@@ -15,8 +15,7 @@ import type {
 } from "../../lib/flashcards";
 import { hasClozeMarker, parseFlashcards } from "../../lib/flashcards";
 import { findTableLineIndices } from "../../lib/markdownTables";
-import { extractAuxiliaryBlocksFromLines } from "../../lib/auxiliaryBlocks";
-import { mediaItemsToDrafts, parseMediaBlocks } from "../../lib/cardMedia";
+import { extractMediaFromLines, mediaItemsToDrafts } from "../../lib/cardMedia";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
   CardBlueprint,
@@ -674,20 +673,8 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         );
         trimmedLines = trimmedLines.slice(dropCount);
       }
-      const extractedMedia = extractAuxiliaryBlocksFromLines(trimmedLines, {
-        kinds: ["media"],
-      });
-      const mediaItems = mediaItemsToDrafts(
-        parseMediaBlocks(
-          extractedMedia.blocks
-            .filter((auxBlock) => auxBlock.kind === "media")
-            .map((auxBlock) => ({
-              text: auxBlock.text,
-              startIndex: auxBlock.startIndex,
-            })),
-          "exam-editor-card-import",
-        ),
-      );
+      const extractedMedia = extractMediaFromLines(trimmedLines, "exam-editor-card-import");
+      const mediaItems = mediaItemsToDrafts(extractedMedia.items);
       trimmedLines = trimEmptyLines(extractedMedia.contentLines);
       if (trimmedLines.length > 0) {
         hasCardContent = true;

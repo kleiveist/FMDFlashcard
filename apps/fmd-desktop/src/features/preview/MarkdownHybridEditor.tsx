@@ -34,13 +34,12 @@ import { FlashcardMediaGroup } from "../../components/flashcards/FlashcardMediaG
 import { VaultPngPicker } from "../../components/media/VaultPngPicker";
 import {
   buildVaultImageCandidates,
-  parseMediaBlocks,
-  serializeMediaItem,
+  serializePngEmbed,
+  splitMarkdownMediaSegments,
   type MediaItem,
 } from "../../lib/cardMedia";
 import { normalizeRelativePath } from "../../lib/path";
 import { type VaultFile, type VaultPngAsset } from "../../lib/tree";
-import { extractAuxiliaryBlocksFromText } from "../../lib/auxiliaryBlocks";
 import {
   normalizeCardBlockSource,
   normalizeHelpBlockSource,
@@ -443,9 +442,9 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
     },
     {
       id: "image-link",
-      label: "Image link",
+      label: "Image embed",
       template: "",
-      description: "Insert a structured #media PNG block",
+      description: "Insert a standalone PNG embed block",
       icon: "page-file",
     },
   ],
@@ -1171,6 +1170,9 @@ const detectTypedPageLinkTrigger = (
   }
   const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
   const before = value.slice(0, safeSelectionStart);
+  if (safeSelectionStart >= 3 && value[safeSelectionStart - 3] === "!") {
+    return null;
+  }
   if (!inlineWikilinkOpenTrigger.test(before)) {
     return null;
   }
@@ -1194,6 +1196,10 @@ const findAdjacentWikilinkRange = (
     const raw = match[0] ?? "";
     const start = match.index;
     const end = start + raw.length;
+    if (start > 0 && value[start - 1] === "!") {
+      match = inlineWikilinkTokenPattern.exec(value);
+      continue;
+    }
     if (direction === "Backspace" && end === caret) {
       return { start, end };
     }
@@ -1437,6 +1443,13 @@ const renderPreviewTextWithAtomicWikilinks = (
     const end = start + rawWikilink.length;
     if (start > lastIndex) {
       parts.push(text.slice(lastIndex, start));
+    }
+    if (start > 0 && text[start - 1] === "!") {
+      parts.push(rawWikilink);
+      lastIndex = end;
+      tokenIndex += 1;
+      match = inlineWikilinkTokenPattern.exec(text);
+      continue;
     }
     const resolved = options.resolveLink(rawWikilink);
     parts.push(
@@ -2762,59 +2775,17 @@ const isCardDirectivePreviewLine = (line: string, directive: "#card" | "#endcard
 const isHelpDirectivePreviewLine = (line: string, directive: "#help" | "#helpend") =>
   line.trim().toLowerCase() === directive;
 
-const normalizeCardPreviewLines = (value: string) => value.replace(/\r\n?/g, "\n").split("\n");
-
 const buildCardBodyPreviewSegments = (
   source: string,
   scope: string,
-): CardBodyPreviewSegment[] => {
-  const lines = normalizeCardPreviewLines(source);
-  const extracted = extractAuxiliaryBlocksFromText(source, { kinds: ["media"] });
-  const mediaBlocks = extracted.blocks.filter((block) => block.kind === "media");
-
-  if (mediaBlocks.length === 0) {
-    return source.length > 0
-      ? [{ kind: "markdown", source: escapeHybridPreviewSpecialLines(source) }]
-      : [];
-  }
-
-  const segments: CardBodyPreviewSegment[] = [];
-  let lineIndex = 0;
-
-  mediaBlocks.forEach((block, index) => {
-    if (block.startIndex > lineIndex) {
-      const markdownSource = lines.slice(lineIndex, block.startIndex).join("\n");
-      if (markdownSource.length > 0) {
-        segments.push({
+): CardBodyPreviewSegment[] =>
+  splitMarkdownMediaSegments(source, scope).map((segment) =>
+    segment.kind === "markdown"
+      ? {
           kind: "markdown",
-          source: escapeHybridPreviewSpecialLines(markdownSource),
-        });
-      }
-    }
-
-    segments.push({
-      kind: "media",
-      items: parseMediaBlocks(
-        [{ text: block.text, startIndex: block.startIndex }],
-        `${scope}-${index}`,
-      ),
-      raw: ["#media", block.text, "#mediaend"].join("\n"),
-    });
-    lineIndex = block.endIndex + 1;
-  });
-
-  if (lineIndex < lines.length) {
-    const markdownSource = lines.slice(lineIndex).join("\n");
-    if (markdownSource.length > 0) {
-      segments.push({
-        kind: "markdown",
-        source: escapeHybridPreviewSpecialLines(markdownSource),
-      });
-    }
-  }
-
-  return segments;
-};
+          source: escapeHybridPreviewSpecialLines(segment.source),
+        }
+      : segment);
 
 const extractCardBlockPreviewParts = (blockRaw: string): CardBlockPreviewParts => {
   const lines = blockRaw.split("\n");
@@ -5270,14 +5241,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (!insertMenuState) {
         return;
       }
-      const alt = relativePath.split("/").pop()?.replace(/\.png$/i, "") ?? "image";
-      const blockSource = serializeMediaItem({
-        id: "insert-menu-media",
-        type: "png",
-        src: relativePath,
-        alt,
-        fit: "contain",
-      });
+      const blockSource = serializePngEmbed(relativePath);
       insertBlockRelativeTo(insertMenuState.blockIndex, blockSource, insertMenuState.insertAbove);
     },
     [insertBlockRelativeTo, insertMenuState],
@@ -7610,16 +7574,13 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           const cardBlockPreviewParts = block.kind === "card-block"
             ? extractCardBlockPreviewParts(block.raw)
             : null;
-          const mediaBlockPreviewItems = block.kind === "media-block"
-            ? parseMediaBlocks(
-              extractAuxiliaryBlocksFromText(block.raw, { kinds: ["media"] }).blocks
-                .filter((auxBlock) => auxBlock.kind === "media")
-                .map((auxBlock) => ({
-                  text: auxBlock.text,
-                  startIndex: auxBlock.startIndex,
-                })),
-              "markdown-hybrid-media-preview",
-            )
+          const imageEmbedPreviewItems = block.kind === "image-embed"
+            ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-image-embed-preview")
+              .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
+            : [];
+          const codeFencePreviewItems = block.kind === "code-fence"
+            ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-code-fence-preview")
+              .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
             : [];
           if (block.kind !== "hr" && block.kind !== "code-fence") {
             previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
@@ -7883,18 +7844,27 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                       )}
                     </div>
                   </div>
-                ) : block.kind === "media-block" ? (
+                ) : block.kind === "image-embed" ? (
                   <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">
-                    {mediaBlockPreviewItems.length > 0 ? (
+                    {imageEmbedPreviewItems.length > 0 ? (
                       <FlashcardMediaGroup
-                        media={mediaBlockPreviewItems}
+                        media={imageEmbedPreviewItems}
                         vaultPngAssets={vaultPngAssets}
+                        vaultPath={vaultPath}
                       />
                     ) : (
                       <pre className="flashcard-code-block media-block-card-source">
                         <code>{block.raw}</code>
                       </pre>
                     )}
+                  </div>
+                ) : block.kind === "code-fence" && codeFencePreviewItems.length > 0 ? (
+                  <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">
+                    <FlashcardMediaGroup
+                      media={codeFencePreviewItems}
+                      vaultPngAssets={vaultPngAssets}
+                      vaultPath={vaultPath}
+                    />
                   </div>
                 ) : (
                   <div

@@ -87,8 +87,10 @@ import { ChevronDownIcon, CodeIcon, EditIcon, MarkdownIcon } from "./icons";
 import { FlashcardMediaGroup } from "./flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "./flashcards/SvgPreviewBlock";
 import { extractSvgCodeBlockSource } from "./markdownSvg";
-import { extractAuxiliaryBlocksFromText } from "../lib/auxiliaryBlocks";
-import { parseMediaBlocks, type MediaItem } from "../lib/cardMedia";
+import {
+  buildMarkdownMediaPreviewSource,
+  type MarkdownMediaPreviewGroup,
+} from "../lib/cardMedia";
 
 type CoverThumbnailSource = {
   src?: string | null;
@@ -121,57 +123,6 @@ const COVER_THUMBNAIL_MAX_SCAN_SIDE = 512;
 const COVER_THUMBNAIL_FALLBACK_WIDTH = 176;
 const COVER_THUMBNAIL_FALLBACK_HEIGHT = 99;
 
-type MarkdownMediaPreviewGroup = {
-  index: number;
-  items: MediaItem[];
-  raw: string;
-};
-
-const normalizePreviewLines = (value: string) => value.replace(/\r\n?/g, "\n").split("\n");
-
-const buildMarkdownMediaPreviewSource = (markdown: string, scope: string) => {
-  const lines = normalizePreviewLines(markdown);
-  const extracted = extractAuxiliaryBlocksFromText(markdown, { kinds: ["media"] });
-  const mediaBlocks = extracted.blocks.filter((block) => block.kind === "media");
-  if (mediaBlocks.length === 0) {
-    return {
-      markdown,
-      groups: [] as MarkdownMediaPreviewGroup[],
-    };
-  }
-
-  const groups = mediaBlocks.map((block, index) => ({
-    index,
-    items: parseMediaBlocks(
-      [{ text: block.text, startIndex: block.startIndex }],
-      `${scope}-${index}`,
-    ),
-    raw: ["#media", block.text, "#mediaend"].join("\n"),
-  }));
-
-  const blocksByStart = new Map(mediaBlocks.map((block, index) => [block.startIndex, { block, index }]));
-  const renderedLines: string[] = [];
-  let lineIndex = 0;
-
-  while (lineIndex < lines.length) {
-    const blockEntry = blocksByStart.get(lineIndex);
-    if (blockEntry) {
-      renderedLines.push(
-        `<div data-fmd-media-block="true" data-media-index="${blockEntry.index}"></div>`,
-      );
-      lineIndex = blockEntry.block.endIndex + 1;
-      continue;
-    }
-    renderedLines.push(lines[lineIndex] ?? "");
-    lineIndex += 1;
-  }
-
-  return {
-    markdown: renderedLines.join("\n"),
-    groups,
-  };
-};
-
 const readMarkdownElementProperty = (node: unknown, key: string) => {
   if (
     !node ||
@@ -182,7 +133,14 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
   ) {
     return undefined;
   }
-  return (node.properties as Record<string, unknown>)[key];
+  const properties = node.properties as Record<string, unknown>;
+  if (key in properties) {
+    return properties[key];
+  }
+  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) =>
+    character.toUpperCase()
+  );
+  return properties[camelKey];
 };
 
 const renderMarkdownMediaGroup = ({
@@ -196,14 +154,18 @@ const renderMarkdownMediaGroup = ({
   vaultPngAssets?: VaultPngAsset[];
   vaultPath?: string | null;
 }) => {
-  if (readMarkdownElementProperty(node, "data-fmd-media-block") !== "true") {
+  const mediaBlockMarker = readMarkdownElementProperty(node, "data-fmd-media-block");
+  if (typeof mediaBlockMarker === "undefined") {
     return null;
   }
+  const mediaIndexRaw = readMarkdownElementProperty(node, "data-media-index");
   const mediaIndex = Number.parseInt(
-    String(readMarkdownElementProperty(node, "data-media-index") ?? "-1"),
+    String(mediaIndexRaw ?? ""),
     10,
   );
-  const mediaGroup = groups[mediaIndex] ?? null;
+  const mediaGroup = Number.isFinite(mediaIndex)
+    ? (groups[mediaIndex] ?? null)
+    : (groups.length === 1 ? groups[0] ?? null : null);
   if (!mediaGroup) {
     return null;
   }

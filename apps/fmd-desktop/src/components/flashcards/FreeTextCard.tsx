@@ -85,6 +85,8 @@ export const FreeTextCard = ({
           text={card.front}
           className="flashcard-text-block"
           allowTableScroll
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
         />
       ) : null}
       <textarea
@@ -145,6 +147,8 @@ export const FreeTextCard = ({
             helpText={helpText}
             enabled={helpEnabled}
             className="flashcard-help-button"
+            vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
           />
         </div>
       ) : null}
@@ -155,6 +159,8 @@ export const FreeTextCard = ({
             text={card.back}
             className="flashcard-answer-text"
             allowTableScroll
+            vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
           />
         </div>
       ) : null}

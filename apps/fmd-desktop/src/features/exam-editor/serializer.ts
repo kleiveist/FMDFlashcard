@@ -7,8 +7,8 @@
 
 import { normalizeCardWrapperPlacement } from "../../lib/exam/autoCards";
 import {
-  editorMediaDraftToItem,
-  serializeMediaItems,
+  serializePngEmbed,
+  serializeSvgFence,
 } from "../../lib/cardMedia";
 import type {
   CardBlueprint,
@@ -82,10 +82,10 @@ const serializeMediaBlocks = (
   if (!mediaItems || mediaItems.length === 0) {
     return [];
   }
-  return mediaItems.flatMap((draft, index) =>
-    serializeMediaItems([
-      editorMediaDraftToItem(draft, { scope: "exam-editor-serialize" }, index),
-    ]),
+  return mediaItems.map((draft) =>
+    draft.type === "png"
+      ? serializePngEmbed(draft.src, draft.label)
+      : serializeSvgFence(draft.inlineSvg),
   );
 };
 

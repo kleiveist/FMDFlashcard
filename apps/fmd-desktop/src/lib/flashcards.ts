@@ -21,7 +21,7 @@ import { findTableLineIndices } from "./markdownTables";
 import {
   extractAuxiliaryBlocksFromLines,
 } from "./auxiliaryBlocks";
-import { parseMediaBlocks, type MediaItem } from "./cardMedia";
+import { extractMediaFromLines, type MediaItem } from "./cardMedia";
 
 export {
   extractHelpBlocksFromLines,
@@ -1229,30 +1229,18 @@ export const parseFlashcards = (
       continue;
     }
 
-    const { helpText, contentLines } = extractAuxiliaryBlocksFromLines(cardLines, {
-      kinds: ["help"],
-    });
+    const { helpText, contentLines } = extractAuxiliaryBlocksFromLines(cardLines);
     const blocks = splitCardLines(contentLines, answerMatch);
     const parts: FlashcardPart[] = [];
     const detectedTypes: FlashcardDetectedType[] = [];
 
     blocks.forEach((block) => {
-      const extractedMedia = extractAuxiliaryBlocksFromLines(block, {
-        kinds: ["media"],
-      });
+      const extractedMedia = extractMediaFromLines(block, "flashcard-part-media");
       const parsed = parseCardLines(extractedMedia.contentLines, answerMatch);
       if (!parsed) {
         return;
       }
-      const media = parseMediaBlocks(
-        extractedMedia.blocks
-          .filter((auxBlock) => auxBlock.kind === "media")
-          .map((auxBlock) => ({
-            text: auxBlock.text,
-            startIndex: auxBlock.startIndex,
-          })),
-        "flashcard-part-media",
-      );
+      const media = extractedMedia.items;
       parts.push(media.length > 0 ? { ...parsed.part, media } : parsed.part);
       parsed.detectedTypes.forEach((detected) => {
         pushUnique(detectedTypes, detected);

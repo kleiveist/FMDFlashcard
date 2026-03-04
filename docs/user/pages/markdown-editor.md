@@ -15,6 +15,21 @@ The Markdown Editor is used to view and edit `.md` files inside the app. It shou
 - **File actions:** Save and open actions (if supported).
 - **Tree context menu:** Right-click actions in the Markdown folder tree (New File/New Folder/Open actions), with correct focus and layering.
 
+## Media syntax in editor
+
+- PNG media uses Obsidian embed links on standalone lines: `![[relative/path.png]]`.
+- Optional alt/label text can be added with `|`: `![[relative/path.png|Label]]`.
+- The Insert menu provides **Links → Image embed** to insert a standalone PNG embed line.
+- SVG media is only supported via fenced code blocks with `svg` as language:
+
+````md
+```svg
+<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
+```
+````
+
+- Legacy `#media ... #mediaend` blocks are no longer part of runtime parsing.
+
 ## Known issues / troubleshooting
 
 ### Markdown tree context menu shows a black backdrop and blocks actions

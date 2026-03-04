@@ -83,6 +83,20 @@ describe("markdownBlocks", () => {
     );
   });
 
+  it("parses standalone png embeds as isolated blocks", () => {
+    const markdown = ["Intro", "", "![[images/example.png]]", "", "Outro"].join("\n");
+    const blocks = parseMarkdownBlocks(markdown);
+
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "blank",
+      "image-embed",
+      "blank",
+      "paragraph",
+    ]);
+    expect(blocks[2]?.raw).toBe("![[images/example.png]]");
+  });
+
   it("treats #card ... #endcard as a single card block and keeps nested help inside it", () => {
     const markdown = [
       "Vorher",

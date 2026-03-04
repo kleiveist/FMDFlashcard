@@ -189,17 +189,13 @@ Answer: A
 #exam
 1) Media
 #card
-#media
-[[images/example.png]]
-#mediaend
+![[images/example.png]]
 Question one
 Answer: One
 ---
-#media
 \`\`\`svg
 <svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
 \`\`\`
-#mediaend
 Statement two
 -true
 #endcard
@@ -238,9 +234,8 @@ Statement two
     expect(secondMediaItems[0]?.inlineSvg).toContain("circle");
 
     const serialized = serializeExamBlueprint(imported.blueprint);
-    expect(serialized.match(/^#media$/gm)?.length ?? 0).toBe(2);
-    expect(serialized).toContain("type: png");
-    expect(serialized).toContain("type: svg");
+    expect(serialized).toContain("![[images/example.png]]");
+    expect(serialized).toContain("```svg");
 
     const roundtrip = importExamMarkdown(serialized);
     expect(roundtrip).not.toBeNull();
@@ -651,5 +646,35 @@ Just context without an answer marker.
     const task = imported.blueprint.tasks[0];
     expect(task?.cards).toHaveLength(1);
     expect(task?.cards[0]?.type).toBe("qa");
+  });
+
+  it("does not treat legacy #media metadata blocks as media", () => {
+    const markdown = `
+#exam
+1) Legacy media task
+#card
+#media
+type: png
+src: images/example.png
+#mediaend
+Question?
+Answer: Real
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    const card = task?.cards[0];
+    expect(card?.mediaItems ?? []).toHaveLength(0);
+    if (card?.type === "qa") {
+      expect(card.prompt).toContain("#media");
+      expect(card.prompt).toContain("src: images/example.png");
+    }
   });
 });

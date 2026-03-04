@@ -234,9 +234,8 @@ describe("ExamResultsPanel", () => {
                   src: "inline",
                   inlineSvg:
                     "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
-                  fit: "contain",
                   rawBlock:
-                    "#media\ntype: svg\nsrc: inline\n\n```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```\n#mediaend",
+                    "```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```",
                 },
               ],
             },

@@ -2,16 +2,22 @@
  * @file apps/fmd-desktop/src/lib/cardMedia.ts
  *
  * Zweck:
- * - Definiert die strukturierte Karten-Medien-Syntax.
- * - Parst legacy und kanonische #media-Bloecke.
- * - Validiert SVG und bereitet PNG-Kandidaten / Aufloesung vor.
+ * - Definiert Medienmodelle fuer PNG-Embeds und svg-Codefences.
+ * - Validiert SVG und bereitet Vault-PNG-Kandidaten / Aufloesung vor.
  */
 
 import { normalizeRelativePath } from "./path";
 import type { VaultPngAsset } from "./tree";
-import { extractVaultAssetRelativePath } from "./vaultAssets";
+import {
+  buildMarkdownMediaPreviewData as buildPreviewData,
+  extractMarkdownMediaTokensFromText,
+  splitMarkdownMediaSource as splitMediaSource,
+  stripMarkdownMediaFromLines,
+  type MarkdownMediaPreviewData as RawMarkdownMediaPreviewData,
+  type MarkdownMediaToken,
+} from "./markdownMedia";
+import { normalizeVaultAssetRelativePath } from "./vaultAssets";
 
-export type MediaFit = "contain" | "cover";
 export type MediaKind = "png" | "svg";
 
 export type MediaItem = {
@@ -19,21 +25,8 @@ export type MediaItem = {
   type: MediaKind;
   src: string;
   inlineSvg?: string;
-  alt?: string;
-  title?: string;
-  caption?: string;
-  width?: number | null;
-  height?: number | null;
-  fit: MediaFit;
+  label?: string;
   rawBlock: string;
-};
-
-export type MediaRenderState = {
-  item: MediaItem;
-  mode: "preview" | "source";
-  resolvedPngAsset?: VaultPngAsset | null;
-  sanitizedSvg?: string | null;
-  invalidReason?: string;
 };
 
 export type EditorMediaDraft = {
@@ -41,17 +34,13 @@ export type EditorMediaDraft = {
   type: MediaKind;
   src: string;
   inlineSvg: string;
-  alt: string;
-  title: string;
-  caption: string;
-  width: string;
-  height: string;
-  fit: MediaFit;
+  label: string;
 };
 
 export type VaultImageCandidate = {
   id: string;
   relPath: string;
+  absolutePath: string;
   displayName: string;
   folder: string;
   sizeBytes?: number | null;
@@ -64,43 +53,34 @@ export type SvgValidationResult = {
   invalidReason?: string;
 };
 
-type MediaScalarFields = {
-  type?: string;
-  src?: string;
-  alt?: string;
-  title?: string;
-  caption?: string;
-  width?: string;
-  height?: string;
-  fit?: string;
+export type MarkdownMediaPreviewGroup = {
+  index: number;
+  items: MediaItem[];
+  raw: string;
 };
 
-type ParseMediaBlockOptions = {
+export type MarkdownMediaPreviewData = {
+  markdown: string;
+  groups: MarkdownMediaPreviewGroup[];
+};
+
+export type MarkdownMediaSourceSegment =
+  | {
+      kind: "markdown";
+      source: string;
+    }
+  | {
+      kind: "media";
+      items: MediaItem[];
+      raw: string;
+    };
+
+type ParseMediaOptions = {
   scope?: string;
   sourceIndex?: number;
 };
 
-const mediaFencePattern = /^\s*(```|~~~)(.*)$/;
-const mediaFieldPattern = /^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/;
-const supportedImageExtensionPattern =
-  /\.(?:png|jpe?g|gif|webp|bmp|svg)(?:[?#].*)?$/i;
 const unsafeSvgTags = new Set(["script", "foreignobject"]);
-
-const normalizeLines = (value: string) => value.replace(/\r\n?/g, "\n").split("\n");
-
-const trimEmptyLines = (lines: string[]) => {
-  let start = 0;
-  let end = lines.length;
-
-  while (start < end && lines[start]?.trim() === "") {
-    start += 1;
-  }
-  while (end > start && lines[end - 1]?.trim() === "") {
-    end -= 1;
-  }
-
-  return lines.slice(start, end);
-};
 
 const basenameWithoutExtension = (value: string) => {
   const parts = value.split("/");
@@ -108,8 +88,33 @@ const basenameWithoutExtension = (value: string) => {
   return fileName.replace(/\.[^.]+$/, "");
 };
 
-const isSupportedImageRelativePath = (value: string) =>
-  supportedImageExtensionPattern.test(value);
+const hashString = (value: string) => {
+  let hash = 5381;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 33) ^ value.charCodeAt(index);
+  }
+  return Math.abs(hash >>> 0).toString(36);
+};
+
+const buildMediaId = (
+  item: Pick<MediaItem, "type" | "src" | "label" | "inlineSvg">,
+  options?: ParseMediaOptions,
+  occurrence = 0,
+) => {
+  const scope = options?.scope ?? "media";
+  const sourceIndex = options?.sourceIndex ?? 0;
+  return `media-${hashString(
+    `${scope}:${sourceIndex}:${occurrence}:${item.type}:${item.src}:${item.label ?? ""}:${item.inlineSvg ?? ""}`,
+  )}`;
+};
+
+export const normalizeMediaRelativePath = (value?: string | null) =>
+  normalizeVaultAssetRelativePath(value);
+
+const trimOptional = (value?: string | null) => {
+  const trimmed = value?.trim() ?? "";
+  return trimmed || undefined;
+};
 
 const isSafeSvgHref = (value: string) => value.trim().startsWith("#");
 
@@ -150,71 +155,10 @@ const sanitizeSvgElement = (element: Element) => {
       element.removeAttribute(attribute.name);
       return;
     }
-    if (name === "href" || name === "xlink:href") {
-      if (!isSafeSvgHref(attribute.value)) {
-        element.removeAttribute(attribute.name);
-      }
+    if ((name === "href" || name === "xlink:href") && !isSafeSvgHref(attribute.value)) {
+      element.removeAttribute(attribute.name);
     }
   });
-};
-
-const hashString = (value: string) => {
-  let hash = 5381;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 33) ^ value.charCodeAt(index);
-  }
-  return Math.abs(hash >>> 0).toString(36);
-};
-
-const buildMediaId = (
-  type: MediaKind,
-  src: string,
-  options?: ParseMediaBlockOptions,
-  occurrence = 0,
-) => {
-  const scope = options?.scope ?? "media";
-  const sourceIndex = options?.sourceIndex ?? 0;
-  return `media-${hashString(`${scope}:${sourceIndex}:${occurrence}:${type}:${src}`)}`;
-};
-
-const parsePositiveInteger = (value?: string) => {
-  if (!value) {
-    return null;
-  }
-  const parsed = Number.parseInt(value.trim(), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-};
-
-const normalizeMediaFit = (value?: string): MediaFit =>
-  value?.trim().toLowerCase() === "cover" ? "cover" : "contain";
-
-const normalizeMediaAlt = (value: string | undefined, fallback: string) => {
-  const trimmed = value?.trim() ?? "";
-  return trimmed || fallback;
-};
-
-const trimOptional = (value?: string) => {
-  const trimmed = value?.trim() ?? "";
-  return trimmed || undefined;
-};
-
-export const normalizeMediaRelativePath = (value?: string | null) => {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) {
-    return null;
-  }
-  if (/^[A-Za-z]:[\\/]/.test(trimmed) || /^[\\/]{1,2}/.test(trimmed)) {
-    return null;
-  }
-  const normalized = normalizeRelativePath(trimmed).replace(/^\/+/, "");
-  if (!normalized) {
-    return null;
-  }
-  const parts = normalized.split("/");
-  if (parts.some((segment) => segment === "..")) {
-    return null;
-  }
-  return normalized;
 };
 
 export const validateSvgMarkup = (value: string): SvgValidationResult => {
@@ -258,63 +202,59 @@ export const validateSvgMarkup = (value: string): SvgValidationResult => {
   }
 };
 
+export const serializePngEmbed = (src: string, label?: string | null) => {
+  const normalizedSrc = normalizeMediaRelativePath(src) ?? src.trim();
+  const normalizedLabel = trimOptional(label);
+  return normalizedLabel ? `![[${normalizedSrc}|${normalizedLabel}]]` : `![[${normalizedSrc}]]`;
+};
+
+export const serializeSvgFence = (inlineSvg: string) =>
+  ["```svg", inlineSvg.trim(), "```"].join("\n");
+
 const buildMediaItem = (
   base: Omit<MediaItem, "id" | "rawBlock">,
-  options?: ParseMediaBlockOptions,
+  options?: ParseMediaOptions,
   occurrence = 0,
 ): MediaItem => {
-  const item: MediaItem = {
+  const rawBlock = base.type === "png"
+    ? serializePngEmbed(base.src, base.label)
+    : serializeSvgFence(base.inlineSvg ?? "");
+  return {
     ...base,
-    id: buildMediaId(base.type, base.src, options, occurrence),
-    rawBlock: "",
+    id: buildMediaId(base, options, occurrence),
+    rawBlock,
   };
-  item.rawBlock = serializeMediaItem(item);
-  return item;
 };
 
-export const serializeMediaItem = (item: Omit<MediaItem, "rawBlock"> | MediaItem) => {
-  const headerLines = [
-    "#media",
-    `type: ${item.type}`,
-    `src: ${item.type === "svg" ? "inline" : item.src}`,
-  ];
-
-  if (trimOptional(item.alt)) {
-    headerLines.push(`alt: ${trimOptional(item.alt)}`);
-  }
-  if (trimOptional(item.title)) {
-    headerLines.push(`title: ${trimOptional(item.title)}`);
-  }
-  if (trimOptional(item.caption)) {
-    headerLines.push(`caption: ${trimOptional(item.caption)}`);
-  }
-  if (typeof item.width === "number" && Number.isFinite(item.width) && item.width > 0) {
-    headerLines.push(`width: ${item.width}`);
-  }
-  if (typeof item.height === "number" && Number.isFinite(item.height) && item.height > 0) {
-    headerLines.push(`height: ${item.height}`);
-  }
-  if ((item.fit ?? "contain") !== "contain") {
-    headerLines.push(`fit: ${item.fit}`);
+export const mediaTokenToItem = (
+  token: MarkdownMediaToken,
+  options?: ParseMediaOptions,
+  occurrence = 0,
+): MediaItem => {
+  if (token.type === "png") {
+    return {
+      id: buildMediaId(token, options, occurrence),
+      type: "png",
+      src: token.src,
+      label: token.label,
+      rawBlock: token.raw,
+    };
   }
 
-  if (item.type === "svg") {
-    const svgSource = item.inlineSvg?.trim() ?? "";
-    return [
-      ...headerLines,
-      "",
-      "```svg",
-      svgSource,
-      "```",
-      "#mediaend",
-    ].join("\n");
-  }
-
-  return [...headerLines, "#mediaend"].join("\n");
+  return {
+    id: buildMediaId(token, options, occurrence),
+    type: "svg",
+    src: "inline",
+    inlineSvg: token.inlineSvg,
+    rawBlock: token.raw,
+  };
 };
 
-export const serializeMediaItems = (items?: MediaItem[] | null) =>
-  (items ?? []).map((item) => serializeMediaItem(item));
+export const mediaTokensToItems = (
+  tokens: MarkdownMediaToken[],
+  options?: ParseMediaOptions,
+) =>
+  tokens.map((token, occurrence) => mediaTokenToItem(token, options, occurrence));
 
 const createMediaDraftId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -330,12 +270,7 @@ export const createEditorMediaDraft = (
   type: partial?.type ?? "png",
   src: partial?.src ?? "",
   inlineSvg: partial?.inlineSvg ?? "",
-  alt: partial?.alt ?? "",
-  title: partial?.title ?? "",
-  caption: partial?.caption ?? "",
-  width: partial?.width ?? "",
-  height: partial?.height ?? "",
-  fit: partial?.fit ?? "contain",
+  label: partial?.label ?? "",
 });
 
 export const cloneEditorMediaDraft = (draft: EditorMediaDraft): EditorMediaDraft =>
@@ -343,44 +278,92 @@ export const cloneEditorMediaDraft = (draft: EditorMediaDraft): EditorMediaDraft
 
 export const editorMediaDraftToItem = (
   draft: EditorMediaDraft,
-  options?: ParseMediaBlockOptions,
+  options?: ParseMediaOptions,
   occurrence = 0,
-): MediaItem =>
-  buildMediaItem(
+): MediaItem => {
+  if (draft.type === "png") {
+    return buildMediaItem(
+      {
+        type: "png",
+        src: normalizeMediaRelativePath(draft.src) ?? draft.src.trim(),
+        label: trimOptional(draft.label),
+      },
+      options,
+      occurrence,
+    );
+  }
+
+  return buildMediaItem(
     {
-      type: draft.type,
-      src:
-        draft.type === "svg"
-          ? "inline"
-          : normalizeMediaRelativePath(draft.src) ?? draft.src.trim(),
-      inlineSvg: draft.type === "svg" ? draft.inlineSvg.trim() : undefined,
-      alt: trimOptional(draft.alt),
-      title: trimOptional(draft.title),
-      caption: trimOptional(draft.caption),
-      width: parsePositiveInteger(draft.width),
-      height: parsePositiveInteger(draft.height),
-      fit: draft.fit,
+      type: "svg",
+      src: "inline",
+      inlineSvg: draft.inlineSvg.trim(),
     },
     options,
     occurrence,
   );
+};
 
 export const mediaItemToDraft = (item: MediaItem): EditorMediaDraft =>
   createEditorMediaDraft({
     id: item.id,
     type: item.type,
-    src: item.type === "svg" ? "" : item.src,
-    inlineSvg: item.inlineSvg ?? "",
-    alt: item.alt ?? "",
-    title: item.title ?? "",
-    caption: item.caption ?? "",
-    width: typeof item.width === "number" ? String(item.width) : "",
-    height: typeof item.height === "number" ? String(item.height) : "",
-    fit: item.fit,
+    src: item.type === "png" ? item.src : "",
+    inlineSvg: item.type === "svg" ? item.inlineSvg ?? "" : "",
+    label: item.label ?? "",
   });
 
 export const mediaItemsToDrafts = (items?: MediaItem[] | null) =>
   (items ?? []).map(mediaItemToDraft);
+
+export const parseCardMediaText = (value?: string | null): MediaItem[] =>
+  mediaTokensToItems(extractMarkdownMediaTokensFromText(value), {
+    scope: "card-media-text",
+  });
+
+export const extractMediaFromLines = (lines: string[], scope = "media") => {
+  const extracted = stripMarkdownMediaFromLines(lines);
+  return {
+    contentLines: extracted.contentLines,
+    items: mediaTokensToItems(extracted.tokens, { scope }),
+  };
+};
+
+export const splitMarkdownMediaSegments = (
+  source: string,
+  scope = "media-source",
+): MarkdownMediaSourceSegment[] =>
+  splitMediaSource(source).map((segment, index) => {
+    if (segment.kind === "markdown") {
+      return segment;
+    }
+    return {
+      kind: "media",
+      items: mediaTokensToItems(segment.tokens, {
+        scope,
+        sourceIndex: index,
+      }),
+      raw: segment.raw,
+    };
+  });
+
+export const buildMarkdownMediaPreviewSource = (
+  markdown: string,
+  scope = "media-preview",
+): MarkdownMediaPreviewData => {
+  const previewData: RawMarkdownMediaPreviewData = buildPreviewData(markdown);
+  return {
+    markdown: previewData.markdown,
+    groups: previewData.groups.map((group, index) => ({
+      index: group.index,
+      raw: group.raw,
+      items: mediaTokensToItems(group.tokens, {
+        scope,
+        sourceIndex: index,
+      }),
+    })),
+  };
+};
 
 export const buildVaultImageCandidates = (assets?: VaultPngAsset[] | null): VaultImageCandidate[] =>
   (assets ?? [])
@@ -402,6 +385,7 @@ export const buildVaultImageCandidates = (assets?: VaultPngAsset[] | null): Vaul
       return {
         id: `vault-image-${hashString(relPath)}`,
         relPath,
+        absolutePath: asset.path,
         displayName: asset.file_name,
         folder,
         sizeBytes: asset.size_bytes ?? null,
@@ -410,10 +394,7 @@ export const buildVaultImageCandidates = (assets?: VaultPngAsset[] | null): Vaul
       };
     });
 
-export const resolveMediaPngAsset = (
-  item: MediaItem,
-  assets?: VaultPngAsset[] | null,
-) => {
+export const resolveMediaPngAsset = (item: MediaItem, assets?: VaultPngAsset[] | null) => {
   if (item.type !== "png") {
     return null;
   }
@@ -429,278 +410,9 @@ export const resolveMediaPngAsset = (
   );
 };
 
-const parseLegacyWikilinkMediaLine = (
-  line: string,
-  options?: ParseMediaBlockOptions,
-  occurrence = 0,
-) => {
-  const relativePath = extractVaultAssetRelativePath(line);
-  const normalized = normalizeMediaRelativePath(relativePath);
-  if (!normalized || !isSupportedImageRelativePath(normalized)) {
-    return null;
+export const resolveMediaLabel = (item: MediaItem) => {
+  if (item.type !== "png") {
+    return undefined;
   }
-  return buildMediaItem(
-    {
-      type: "png",
-      src: normalized,
-      alt: basenameWithoutExtension(normalized),
-      fit: "contain",
-    },
-    options,
-    occurrence,
-  );
-};
-
-const parseLegacyMediaBody = (value: string, options?: ParseMediaBlockOptions): MediaItem[] => {
-  const lines = normalizeLines(value);
-  const items: MediaItem[] = [];
-  let index = 0;
-  let occurrence = 0;
-
-  while (index < lines.length) {
-    const line = lines[index] ?? "";
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      index += 1;
-      continue;
-    }
-
-    const fenceMatch = line.trimStart().match(mediaFencePattern);
-    if (fenceMatch) {
-      const fenceToken = fenceMatch[1] ?? "";
-      const infoString = fenceMatch[2]?.trim() ?? "";
-      const blockLines: string[] = [];
-      index += 1;
-      let foundEnd = false;
-
-      while (index < lines.length) {
-        const current = lines[index] ?? "";
-        const closingMatch = current.trimStart().match(mediaFencePattern);
-        if (closingMatch && closingMatch[1] === fenceToken) {
-          foundEnd = true;
-          index += 1;
-          break;
-        }
-        blockLines.push(current);
-        index += 1;
-      }
-
-      if (foundEnd && infoString === "svg") {
-        items.push(
-          buildMediaItem(
-            {
-              type: "svg",
-              src: "inline",
-              inlineSvg: blockLines.join("\n").trim(),
-              fit: "contain",
-            },
-            options,
-            occurrence,
-          ),
-        );
-        occurrence += 1;
-      }
-      continue;
-    }
-
-    if (/^\[\[.+\]\]$/.test(trimmed)) {
-      const item = parseLegacyWikilinkMediaLine(trimmed, options, occurrence);
-      if (item) {
-        items.push(item);
-        occurrence += 1;
-      }
-    }
-
-    index += 1;
-  }
-
-  return items;
-};
-
-const parseStructuredMediaBody = (
-  value: string,
-  options?: ParseMediaBlockOptions,
-): MediaItem[] | null => {
-  const lines = normalizeLines(value);
-  const firstNonEmpty = lines.find((line) => line.trim() !== "");
-  if (!firstNonEmpty) {
-    return [];
-  }
-  if (!mediaFieldPattern.test(firstNonEmpty.trim())) {
-    return null;
-  }
-
-  const fields: MediaScalarFields = {};
-  let index = 0;
-  while (index < lines.length) {
-    const line = lines[index] ?? "";
-    const trimmed = line.trim();
-    if (!trimmed) {
-      index += 1;
-      break;
-    }
-    const match = trimmed.match(mediaFieldPattern);
-    if (!match) {
-      return null;
-    }
-    fields[(match[1] ?? "").toLowerCase() as keyof MediaScalarFields] = match[2] ?? "";
-    index += 1;
-  }
-
-  const mediaType = (fields.type ?? "").trim().toLowerCase();
-  if (mediaType !== "png" && mediaType !== "svg") {
-    return null;
-  }
-
-  const fit = normalizeMediaFit(fields.fit);
-  const width = parsePositiveInteger(fields.width);
-  const height = parsePositiveInteger(fields.height);
-  const title = trimOptional(fields.title);
-  const caption = trimOptional(fields.caption);
-
-  if (mediaType === "png") {
-    const rawSrc = (fields.src ?? "").trim();
-    if (!rawSrc) {
-      return [];
-    }
-    const normalizedSrc = normalizeMediaRelativePath(rawSrc) ?? rawSrc;
-    return [
-      buildMediaItem(
-        {
-          type: "png",
-          src: normalizedSrc,
-          alt: normalizeMediaAlt(fields.alt, basenameWithoutExtension(normalizedSrc)),
-          title,
-          caption,
-          width,
-          height,
-          fit,
-        },
-        options,
-      ),
-    ];
-  }
-
-  const svgSrc = (fields.src ?? "").trim().toLowerCase();
-  const remainder = trimEmptyLines(lines.slice(index));
-  if (svgSrc !== "inline") {
-    return remainder.length > 0
-      ? [
-          buildMediaItem(
-            {
-              type: "svg",
-              src: "inline",
-              inlineSvg: remainder.join("\n").trim(),
-              alt: trimOptional(fields.alt),
-              title,
-              caption,
-              width,
-              height,
-              fit,
-            },
-            options,
-          ),
-        ]
-      : [];
-  }
-  if (remainder.length < 3) {
-    return [
-      buildMediaItem(
-        {
-          type: "svg",
-          src: "inline",
-          inlineSvg: remainder.join("\n").trim(),
-          alt: trimOptional(fields.alt),
-          title,
-          caption,
-          width,
-          height,
-          fit,
-        },
-        options,
-      ),
-    ];
-  }
-  const openingFence = remainder[0]?.trimStart().match(mediaFencePattern);
-  const closingFence = remainder[remainder.length - 1]?.trimStart().match(mediaFencePattern);
-  if (
-    !openingFence ||
-    !closingFence ||
-    openingFence[1] !== closingFence[1] ||
-    (openingFence[2]?.trim() ?? "") !== "svg"
-  ) {
-    return [
-      buildMediaItem(
-        {
-          type: "svg",
-          src: "inline",
-          inlineSvg: remainder.join("\n").trim(),
-          alt: trimOptional(fields.alt),
-          title,
-          caption,
-          width,
-          height,
-          fit,
-        },
-        options,
-      ),
-    ];
-  }
-  const inlineSvg = remainder.slice(1, -1).join("\n").trim();
-  return [
-    buildMediaItem(
-      {
-        type: "svg",
-        src: "inline",
-        inlineSvg,
-        alt: trimOptional(fields.alt),
-        title,
-        caption,
-        width,
-        height,
-        fit,
-      },
-      options,
-    ),
-  ];
-};
-
-export const parseMediaBlockBody = (
-  value?: string | null,
-  options?: ParseMediaBlockOptions,
-): MediaItem[] => {
-  if (!value || !value.trim()) {
-    return [];
-  }
-  const structured = parseStructuredMediaBody(value, options);
-  if (structured !== null) {
-    return structured;
-  }
-  return parseLegacyMediaBody(value, options);
-};
-
-export const parseCardMediaText = (value?: string | null): MediaItem[] =>
-  parseMediaBlockBody(value, { scope: "legacy-card-media" });
-
-export const parseMediaBlocks = (
-  blocks: Array<{ text: string; startIndex?: number }> | string[],
-  scope = "media-block",
-) => {
-  const items: MediaItem[] = [];
-  let occurrence = 0;
-  blocks.forEach((block, blockIndex) => {
-    const text = typeof block === "string" ? block : block.text;
-    const sourceIndex =
-      typeof block === "string" ? blockIndex : (block.startIndex ?? blockIndex);
-    parseMediaBlockBody(text, { scope, sourceIndex }).forEach((item) => {
-      items.push({
-        ...item,
-        id: buildMediaId(item.type, item.src, { scope, sourceIndex }, occurrence),
-        rawBlock: serializeMediaItem(item),
-      });
-      occurrence += 1;
-    });
-  });
-  return items;
+  return trimOptional(item.label) ?? basenameWithoutExtension(item.src);
 };
