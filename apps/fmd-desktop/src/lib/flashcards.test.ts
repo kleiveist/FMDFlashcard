@@ -303,7 +303,7 @@ Use %token% with "drag".
     ]);
     parts.forEach((part) => {
       expect(part.media).toHaveLength(1);
-      expect(part.media?.[0]).toMatchObject({ kind: "image" });
+      expect(part.media?.[0]).toMatchObject({ type: "png" });
     });
   });
 

@@ -13,6 +13,8 @@ import type { ExamEditorSelection } from "../types";
 import { ModalShell } from "../../../components/ModalShell";
 import { CardContentForm } from "./ContentForms";
 import { HelpEditor } from "./HelpEditor";
+import type { EditorMediaDraft } from "../../../lib/cardMedia";
+import type { VaultPngAsset } from "../../../lib/tree";
 
 const getTaskValidation = (
   validation: ExamValidation,
@@ -37,7 +39,7 @@ type ContentModeProps = {
       prompt?: string;
       answer?: string;
       correct?: "true" | "false" | null;
-      mediaText?: string;
+      mediaItems?: EditorMediaDraft[];
     },
   ) => void;
   onCardHelpChange: (taskId: string, cardId: string, value: string) => void;
@@ -86,6 +88,7 @@ type ContentEditorPanelProps = {
   onOptionSelect: ContentModeProps["onOptionSelect"];
   onOptionAdd: ContentModeProps["onOptionAdd"];
   onOptionRemove: ContentModeProps["onOptionRemove"];
+  vaultPngAssets?: VaultPngAsset[] | null;
 };
 
 const ContentEditorPanel = ({
@@ -99,6 +102,7 @@ const ContentEditorPanel = ({
   onOptionSelect,
   onOptionAdd,
   onOptionRemove,
+  vaultPngAssets,
 }: ContentEditorPanelProps) => (
   <section className="panel exam-editor-panel content-editor">
     <header className="panel-header">
@@ -133,6 +137,13 @@ const ContentEditorPanel = ({
             showPreviewToggle
           />
 
+          {(activeTask.mediaItems ?? []).length > 0 ? (
+            <div className="hint-box">
+              This task contains preserved task-level media from source markdown. Edit it in raw
+              markdown.
+            </div>
+          ) : null}
+
           {activeTask.cards.map((card, cardIndex) => {
             const cardValidation = taskValidation?.cardValidations?.[cardIndex];
             return (
@@ -166,8 +177,9 @@ const ContentEditorPanel = ({
                   onCardHelpChange(activeTask.id, card.id, value)
                 }
                 onMediaChange={(value) =>
-                  onCardUpdate(activeTask.id, card.id, { mediaText: value })
+                  onCardUpdate(activeTask.id, card.id, { mediaItems: value })
                 }
+                vaultPngAssets={vaultPngAssets}
               />
             );
           })}
@@ -194,6 +206,7 @@ export const ContentMode = ({
   onOptionSelect,
   onOptionAdd,
   onOptionRemove,
+  vaultPngAssets,
   popupMode = false,
   popupOpen = false,
   onPopupOpen,
@@ -224,6 +237,7 @@ export const ContentMode = ({
       onOptionSelect={onOptionSelect}
       onOptionAdd={onOptionAdd}
       onOptionRemove={onOptionRemove}
+      vaultPngAssets={vaultPngAssets}
     />
   );
 

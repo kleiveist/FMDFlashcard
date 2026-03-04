@@ -214,11 +214,16 @@ Statement two
 
     const [task] = imported.blueprint.tasks;
     expect(task?.cards).toHaveLength(2);
-    expect(task?.cards[0]?.mediaText).toBe("[[images/example.png]]");
-    expect(task?.cards[1]?.mediaText).toContain("```svg");
+    expect(task?.cards[0]?.mediaItems[0]).toMatchObject({
+      type: "png",
+      src: "images/example.png",
+    });
+    expect(task?.cards[1]?.mediaItems[0]?.inlineSvg).toContain("circle");
 
     const serialized = serializeExamBlueprint(imported.blueprint);
     expect(serialized.match(/^#media$/gm)?.length ?? 0).toBe(2);
+    expect(serialized).toContain("type: png");
+    expect(serialized).toContain("type: svg");
 
     const roundtrip = importExamMarkdown(serialized);
     expect(roundtrip).not.toBeNull();
@@ -226,10 +231,13 @@ Statement two
       return;
     }
 
-    expect(roundtrip.blueprint.tasks[0]?.cards[0]?.mediaText).toBe(
-      "[[images/example.png]]",
+    expect(roundtrip.blueprint.tasks[0]?.cards[0]?.mediaItems[0]).toMatchObject({
+      type: "png",
+      src: "images/example.png",
+    });
+    expect(roundtrip.blueprint.tasks[0]?.cards[1]?.mediaItems[0]?.inlineSvg).toContain(
+      "circle",
     );
-    expect(roundtrip.blueprint.tasks[0]?.cards[1]?.mediaText).toContain("```svg");
   });
 
   it("keeps wrapper toggles idempotent across serialize/import cycles", () => {

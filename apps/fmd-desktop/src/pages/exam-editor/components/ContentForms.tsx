@@ -3,6 +3,14 @@
  */
 
 import { useMemo, useState } from "react";
+import { MediaBlockCard } from "../../../components/media/MediaBlockCard";
+import { VaultPngPicker } from "../../../components/media/VaultPngPicker";
+import { SvgPreviewBlock } from "../../../components/flashcards/SvgPreviewBlock";
+import {
+  createEditorMediaDraft,
+  editorMediaDraftToItem,
+  type EditorMediaDraft,
+} from "../../../lib/cardMedia";
 import type { CardBlueprint, ChoiceOption } from "../../../features/exam-editor/types";
 import type { CardValidation } from "../../../features/exam-editor/validation";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
@@ -10,13 +18,15 @@ import { ClozeCard as ClozeCardPreview } from "../../../components/flashcards/Cl
 import { parseFlashcards, type ClozeCard as ClozeCardType } from "../../../lib/flashcards";
 import { HelpEditor } from "./HelpEditor";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
+import type { VaultPngAsset } from "../../../lib/tree";
 
 type BaseCardFormProps = {
   card: CardBlueprint;
   validation?: CardValidation;
+  vaultPngAssets?: VaultPngAsset[] | null;
   onPromptChange: (value: string) => void;
   onHelpChange: (value: string) => void;
-  onMediaChange: (value: string) => void;
+  onMediaChange: (value: EditorMediaDraft[]) => void;
 };
 
 type QaCardFormProps = BaseCardFormProps & {
@@ -70,7 +80,8 @@ type CardContentFormProps = {
   onOptionAdd: () => void;
   onOptionRemove: (optionId: string) => void;
   onHelpChange: (value: string) => void;
-  onMediaChange: (value: string) => void;
+  onMediaChange: (value: EditorMediaDraft[]) => void;
+  vaultPngAssets?: VaultPngAsset[] | null;
 };
 
 const renderFieldError = (message?: string) =>
@@ -108,11 +119,104 @@ const renderHelpField = (
   />
 );
 
-const renderMediaField = (
-  value: string,
-  onMediaChange: (value: string) => void,
-) => {
-  const summary = value.trim() ? "Configured" : "Optional, collapsed by default";
+type MediaEditorProps = {
+  value: EditorMediaDraft[];
+  onChange: (value: EditorMediaDraft[]) => void;
+  vaultPngAssets?: VaultPngAsset[] | null;
+};
+
+const blankPngDraft = () => createEditorMediaDraft({ type: "png", fit: "contain" });
+const blankSvgDraft = () => createEditorMediaDraft({ type: "svg", fit: "contain" });
+
+const MediaEditor = ({ value, onChange, vaultPngAssets }: MediaEditorProps) => {
+  const [activeTab, setActiveTab] = useState<"svg" | "png">("png");
+  const [pngQuery, setPngQuery] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [pngDraft, setPngDraft] = useState<EditorMediaDraft>(() => blankPngDraft());
+  const [svgDraft, setSvgDraft] = useState<EditorMediaDraft>(() => blankSvgDraft());
+
+  const configuredCount = value.length;
+  const summary =
+    configuredCount > 0
+      ? `${configuredCount} item${configuredCount === 1 ? "" : "s"} configured`
+      : "Optional, collapsed by default";
+
+  const resetComposer = (kind: "png" | "svg") => {
+    setEditingId(null);
+    if (kind === "png") {
+      setPngDraft(blankPngDraft());
+      return;
+    }
+    setSvgDraft(blankSvgDraft());
+  };
+
+  const updateDraft = (
+    kind: "png" | "svg",
+    updater: (draft: EditorMediaDraft) => EditorMediaDraft,
+  ) => {
+    if (kind === "png") {
+      setPngDraft((current) => updater(current));
+      return;
+    }
+    setSvgDraft((current) => updater(current));
+  };
+
+  const handleSelectPng = (relPath: string) => {
+    setActiveTab("png");
+    setPngDraft((current) => {
+      const fallbackAlt = relPath.split("/").pop()?.replace(/\.png$/i, "") ?? "";
+      const shouldReplaceAlt = !current.alt.trim() || current.alt.trim() === current.src.trim();
+      return {
+        ...current,
+        src: relPath,
+        alt: shouldReplaceAlt ? fallbackAlt : current.alt,
+      };
+    });
+  };
+
+  const handleSaveDraft = (kind: "png" | "svg") => {
+    const currentDraft = kind === "png" ? pngDraft : svgDraft;
+    if (kind === "png" && !currentDraft.src.trim()) {
+      return;
+    }
+    if (kind === "svg" && !currentDraft.inlineSvg.trim()) {
+      return;
+    }
+    const nextDraft = createEditorMediaDraft({
+      ...currentDraft,
+      id: editingId && currentDraft.id === editingId ? currentDraft.id : undefined,
+      type: kind,
+      src: kind === "png" ? currentDraft.src : "",
+      inlineSvg: kind === "svg" ? currentDraft.inlineSvg : "",
+    });
+    const nextItems = editingId
+      ? value.map((item) => (item.id === editingId ? nextDraft : item))
+      : [...value, nextDraft];
+    onChange(nextItems);
+    resetComposer(kind);
+  };
+
+  const handleEditItem = (item: EditorMediaDraft) => {
+    setEditingId(item.id);
+    setActiveTab(item.type);
+    if (item.type === "png") {
+      setPngDraft(createEditorMediaDraft(item));
+      return;
+    }
+    setSvgDraft(createEditorMediaDraft(item));
+  };
+
+  const moveItem = (sourceIndex: number, direction: -1 | 1) => {
+    const targetIndex = sourceIndex + direction;
+    if (targetIndex < 0 || targetIndex >= value.length) {
+      return;
+    }
+    const next = value.slice();
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    onChange(next);
+  };
+
   return (
     <details className="media-editor">
       <summary className="media-editor-summary">
@@ -120,13 +224,266 @@ const renderMediaField = (
         <span className="muted small">{summary}</span>
       </summary>
       <div className="media-editor-body">
-        <AutoGrowTextarea
-          className="text-input exam-textarea"
-          rows={4}
-          value={value}
-          onChange={onMediaChange}
-          placeholder={"[[image.png]]\n\n```svg\n<svg>...</svg>\n```"}
-        />
+        {value.length > 0 ? (
+          <div className="media-editor-items">
+            {value.map((item, index) => (
+              <div key={item.id} className="media-editor-item">
+                <div className="media-editor-item-toolbar">
+                  <span className="pill">{item.type.toUpperCase()}</span>
+                  <div className="media-editor-item-actions">
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={() => handleEditItem(item)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={() => moveItem(index, -1)}
+                      disabled={index === 0}
+                    >
+                      Move up
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={() => moveItem(index, 1)}
+                      disabled={index === value.length - 1}
+                    >
+                      Move down
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost small danger"
+                      onClick={() => {
+                        onChange(value.filter((candidate) => candidate.id !== item.id));
+                        if (editingId === item.id) {
+                          resetComposer(item.type);
+                        }
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+                <MediaBlockCard
+                  item={editorMediaDraftToItem(item, { scope: "exam-editor-preview" }, index)}
+                  vaultPngAssets={vaultPngAssets}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="media-editor-tabs" role="tablist" aria-label="Media type">
+          <button
+            type="button"
+            className={`ghost small ${activeTab === "svg" ? "active" : ""}`}
+            onClick={() => setActiveTab("svg")}
+          >
+            SVG
+          </button>
+          <button
+            type="button"
+            className={`ghost small ${activeTab === "png" ? "active" : ""}`}
+            onClick={() => setActiveTab("png")}
+          >
+            PNG
+          </button>
+        </div>
+
+        {activeTab === "png" ? (
+          <div className="media-editor-composer">
+            <VaultPngPicker
+              assets={vaultPngAssets}
+              query={pngQuery}
+              onQueryChange={setPngQuery}
+              onSelect={(candidate) => handleSelectPng(candidate.relPath)}
+              selectedRelPath={pngDraft.src}
+            />
+            <div className="media-editor-fields-grid">
+              <label className="field">
+                <span className="label">Alt</span>
+                <input
+                  className="text-input"
+                  value={pngDraft.alt}
+                  onChange={(event) =>
+                    updateDraft("png", (draft) => ({ ...draft, alt: event.target.value }))
+                  }
+                  placeholder="Alternative text"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Title</span>
+                <input
+                  className="text-input"
+                  value={pngDraft.title}
+                  onChange={(event) =>
+                    updateDraft("png", (draft) => ({ ...draft, title: event.target.value }))
+                  }
+                  placeholder="Optional title"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Caption</span>
+                <input
+                  className="text-input"
+                  value={pngDraft.caption}
+                  onChange={(event) =>
+                    updateDraft("png", (draft) => ({ ...draft, caption: event.target.value }))
+                  }
+                  placeholder="Optional caption"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Width</span>
+                <input
+                  className="text-input"
+                  value={pngDraft.width}
+                  onChange={(event) =>
+                    updateDraft("png", (draft) => ({ ...draft, width: event.target.value }))
+                  }
+                  placeholder="Optional width"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Height</span>
+                <input
+                  className="text-input"
+                  value={pngDraft.height}
+                  onChange={(event) =>
+                    updateDraft("png", (draft) => ({ ...draft, height: event.target.value }))
+                  }
+                  placeholder="Optional height"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Fit</span>
+                <select
+                  className="text-input"
+                  value={pngDraft.fit}
+                  onChange={(event) =>
+                    updateDraft("png", (draft) => ({
+                      ...draft,
+                      fit: event.target.value === "cover" ? "cover" : "contain",
+                    }))
+                  }
+                >
+                  <option value="contain">contain</option>
+                  <option value="cover">cover</option>
+                </select>
+              </label>
+            </div>
+            <div className="media-editor-actions">
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => resetComposer("png")}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                className="primary small"
+                onClick={() => handleSaveDraft("png")}
+                disabled={!pngDraft.src.trim()}
+              >
+                {editingId && pngDraft.id === editingId ? "Update PNG" : "Add PNG"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="media-editor-composer">
+            <label className="field">
+              <span className="label">Inline SVG</span>
+              <AutoGrowTextarea
+                className="text-input exam-textarea"
+                rows={6}
+                value={svgDraft.inlineSvg}
+                onChange={(value) =>
+                  updateDraft("svg", (draft) => ({ ...draft, inlineSvg: value }))
+                }
+                placeholder="<svg viewBox=&quot;0 0 10 10&quot;>...</svg>"
+              />
+            </label>
+            <div className="media-editor-fields-grid">
+              <label className="field">
+                <span className="label">Caption</span>
+                <input
+                  className="text-input"
+                  value={svgDraft.caption}
+                  onChange={(event) =>
+                    updateDraft("svg", (draft) => ({ ...draft, caption: event.target.value }))
+                  }
+                  placeholder="Optional caption"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Width</span>
+                <input
+                  className="text-input"
+                  value={svgDraft.width}
+                  onChange={(event) =>
+                    updateDraft("svg", (draft) => ({ ...draft, width: event.target.value }))
+                  }
+                  placeholder="Optional width"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Height</span>
+                <input
+                  className="text-input"
+                  value={svgDraft.height}
+                  onChange={(event) =>
+                    updateDraft("svg", (draft) => ({ ...draft, height: event.target.value }))
+                  }
+                  placeholder="Optional height"
+                />
+              </label>
+              <label className="field">
+                <span className="label">Fit</span>
+                <select
+                  className="text-input"
+                  value={svgDraft.fit}
+                  onChange={(event) =>
+                    updateDraft("svg", (draft) => ({
+                      ...draft,
+                      fit: event.target.value === "cover" ? "cover" : "contain",
+                    }))
+                  }
+                >
+                  <option value="contain">contain</option>
+                  <option value="cover">cover</option>
+                </select>
+              </label>
+            </div>
+            {svgDraft.inlineSvg.trim() ? (
+              <SvgPreviewBlock
+                source={svgDraft.inlineSvg}
+                className="media-editor-svg-preview"
+              />
+            ) : null}
+            <div className="media-editor-actions">
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => resetComposer("svg")}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                className="primary small"
+                onClick={() => handleSaveDraft("svg")}
+                disabled={!svgDraft.inlineSvg.trim()}
+              >
+                {editingId && svgDraft.id === editingId ? "Update SVG" : "Add SVG"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </details>
   );
@@ -135,6 +492,7 @@ const renderMediaField = (
 const QaCardForm = ({
   card,
   validation,
+  vaultPngAssets,
   onPromptChange,
   onAnswerChange,
   onHelpChange,
@@ -142,7 +500,11 @@ const QaCardForm = ({
 }: QaCardFormProps) => (
   <div className="card-form">
     {renderPromptField(card, validation, onPromptChange)}
-    {renderMediaField(card.mediaText ?? "", onMediaChange)}
+    <MediaEditor
+      value={card.mediaItems ?? []}
+      onChange={onMediaChange}
+      vaultPngAssets={vaultPngAssets}
+    />
     <label className="field">
       <span className="label">Answer</span>
       <AutoGrowTextarea
@@ -161,6 +523,7 @@ const QaCardForm = ({
 const TfCardForm = ({
   card,
   validation,
+  vaultPngAssets,
   onPromptChange,
   onCorrectChange,
   onHelpChange,
@@ -168,7 +531,11 @@ const TfCardForm = ({
 }: TfCardFormProps) => (
   <div className="card-form">
     {renderPromptField(card, validation, onPromptChange)}
-    {renderMediaField(card.mediaText ?? "", onMediaChange)}
+    <MediaEditor
+      value={card.mediaItems ?? []}
+      onChange={onMediaChange}
+      vaultPngAssets={vaultPngAssets}
+    />
     <label className="field">
       <span className="label">Correct answer</span>
       <div className="choice-row">
@@ -246,6 +613,7 @@ const renderChoiceOption = (
 const ChoiceCardForm = ({
   card,
   validation,
+  vaultPngAssets,
   onPromptChange,
   onOptionTextChange,
   onOptionToggle,
@@ -257,7 +625,11 @@ const ChoiceCardForm = ({
 }: ChoiceCardFormProps) => (
   <div className="card-form">
     {renderPromptField(card, validation, onPromptChange)}
-    {renderMediaField(card.mediaText ?? "", onMediaChange)}
+    <MediaEditor
+      value={card.mediaItems ?? []}
+      onChange={onMediaChange}
+      vaultPngAssets={vaultPngAssets}
+    />
     <div className="field">
       <div className="field-header">
         <span className="label">Options</span>
@@ -288,6 +660,7 @@ const ChoiceCardForm = ({
 const ClozeCardForm = ({
   card,
   validation,
+  vaultPngAssets,
   onPromptChange,
   onHelpChange,
   onMediaChange,
@@ -298,7 +671,11 @@ const ClozeCardForm = ({
   return (
     <div className="card-form">
       {renderPromptField(card, validation, onPromptChange)}
-      {renderMediaField(card.mediaText ?? "", onMediaChange)}
+      <MediaEditor
+        value={card.mediaItems ?? []}
+        onChange={onMediaChange}
+        vaultPngAssets={vaultPngAssets}
+      />
       <div className="hint-box">
         {card.type === "cl" ? (
           <p>Use %answer% to create typed blanks.</p>
@@ -365,6 +742,7 @@ export const CardContentForm = ({
   onOptionRemove,
   onHelpChange,
   onMediaChange,
+  vaultPngAssets,
 }: CardContentFormProps) => {
   const title = serializeCardTypeLabel(card.type);
   const isValid = validation ? validation.valid : true;
@@ -378,13 +756,14 @@ export const CardContentForm = ({
         <div className="exam-card-form-tags">
           <span className={`pill ${statusClass}`}>{statusLabel}</span>
           {card.helpText?.trim() ? <span className="pill">Hint</span> : null}
-          {card.mediaText?.trim() ? <span className="pill">Media</span> : null}
+          {(card.mediaItems ?? []).length > 0 ? <span className="pill">Media</span> : null}
         </div>
       </header>
       {card.type === "qa" ? (
         <QaCardForm
           card={card}
           validation={validation}
+          vaultPngAssets={vaultPngAssets}
           onPromptChange={onPromptChange}
           onAnswerChange={onAnswerChange}
           onHelpChange={onHelpChange}
@@ -395,6 +774,7 @@ export const CardContentForm = ({
         <TfCardForm
           card={card}
           validation={validation}
+          vaultPngAssets={vaultPngAssets}
           onPromptChange={onPromptChange}
           onCorrectChange={onCorrectChange}
           onHelpChange={onHelpChange}
@@ -405,6 +785,7 @@ export const CardContentForm = ({
         <ChoiceCardForm
           card={card}
           validation={validation}
+          vaultPngAssets={vaultPngAssets}
           onPromptChange={onPromptChange}
           onOptionTextChange={onOptionTextChange}
           onOptionToggle={onOptionToggle}
@@ -419,6 +800,7 @@ export const CardContentForm = ({
         <ClozeCardForm
           card={card}
           validation={validation}
+          vaultPngAssets={vaultPngAssets}
           onPromptChange={onPromptChange}
           onHelpChange={onHelpChange}
           onMediaChange={onMediaChange}

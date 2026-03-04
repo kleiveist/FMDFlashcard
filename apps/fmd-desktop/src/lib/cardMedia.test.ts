@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { parseCardMediaText, validateSvgMarkup } from "./cardMedia";
+import { parseCardMediaText, parseMediaBlockBody, validateSvgMarkup } from "./cardMedia";
 
 describe("validateSvgMarkup", () => {
   it("sanitizes scripts, event handlers, foreignObject and unsafe href values", () => {
@@ -41,7 +41,7 @@ describe("validateSvgMarkup", () => {
 });
 
 describe("parseCardMediaText", () => {
-  it("parses wikilinks and exact svg fences into media items", () => {
+  it("parses legacy wikilinks and exact svg fences into media items", () => {
     const media = parseCardMediaText([
       "[[images/example.png]]",
       "",
@@ -52,16 +52,14 @@ describe("parseCardMediaText", () => {
 
     expect(media).toHaveLength(2);
     expect(media[0]).toMatchObject({
-      kind: "image",
-      relativePath: "images/example.png",
+      type: "png",
+      src: "images/example.png",
     });
-    expect(media[1]?.kind).toBe("svg");
-    if (media[1]?.kind === "svg") {
-      expect(media[1].sanitized).toContain("<rect");
-    }
+    expect(media[1]?.type).toBe("svg");
+    expect(media[1]?.inlineSvg).toContain("<rect");
   });
 
-  it("keeps unsupported and unclosed entries unresolved", () => {
+  it("drops unsupported or unclosed legacy entries", () => {
     const media = parseCardMediaText([
       "[[images/example.pdf]]",
       "```svg",
@@ -69,14 +67,46 @@ describe("parseCardMediaText", () => {
       "plain text",
     ].join("\n"));
 
-    expect(media).toHaveLength(2);
+    expect(media).toHaveLength(0);
+  });
+});
+
+describe("parseMediaBlockBody", () => {
+  it("parses canonical png media blocks", () => {
+    const media = parseMediaBlockBody([
+      "type: png",
+      "src: images/example.png",
+      "alt: Example",
+      "caption: Figure 1",
+      "fit: cover",
+    ].join("\n"));
+
+    expect(media).toHaveLength(1);
     expect(media[0]).toMatchObject({
-      kind: "unresolved",
-      label: "Unsupported image type",
+      type: "png",
+      src: "images/example.png",
+      alt: "Example",
+      caption: "Figure 1",
+      fit: "cover",
     });
-    expect(media[1]).toMatchObject({
-      kind: "unresolved",
-      label: "Unclosed media code block",
+    expect(media[0]?.rawBlock).toContain("#media");
+  });
+
+  it("parses canonical svg media blocks", () => {
+    const media = parseMediaBlockBody([
+      "type: svg",
+      "src: inline",
+      "",
+      "```svg",
+      "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
+      "```",
+    ].join("\n"));
+
+    expect(media).toHaveLength(1);
+    expect(media[0]).toMatchObject({
+      type: "svg",
+      src: "inline",
     });
+    expect(media[0]?.inlineSvg).toContain("<circle");
   });
 });

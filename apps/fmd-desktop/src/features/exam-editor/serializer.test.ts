@@ -191,14 +191,41 @@ describe("serializeExamBlueprint", () => {
               type: "qa",
               prompt: "Question",
               answer: "Answer",
-              mediaText: "[[images/example.png]]",
+              mediaItems: [
+                {
+                  id: "media-1",
+                  type: "png",
+                  src: "images/example.png",
+                  inlineSvg: "",
+                  alt: "example",
+                  title: "",
+                  caption: "",
+                  width: "",
+                  height: "",
+                  fit: "contain",
+                },
+              ],
             },
             {
               id: "card-2",
               type: "tf",
               prompt: "Statement",
               correct: "true",
-              mediaText: "```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```",
+              mediaItems: [
+                {
+                  id: "media-2",
+                  type: "svg",
+                  src: "",
+                  inlineSvg:
+                    "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
+                  alt: "",
+                  title: "",
+                  caption: "",
+                  width: "",
+                  height: "",
+                  fit: "contain",
+                },
+              ],
             },
           ],
         },
@@ -207,9 +234,11 @@ describe("serializeExamBlueprint", () => {
 
     const markdown = serializeExamBlueprint(exam);
 
-    expect(markdown).toContain("#media\n[[images/example.png]]\n#mediaend\nQuestion");
     expect(markdown).toContain(
-      "---\n#media\n```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```\n#mediaend\nStatement",
+      "#media\ntype: png\nsrc: images/example.png\nalt: example\n#mediaend\nQuestion",
+    );
+    expect(markdown).toContain(
+      "---\n#media\ntype: svg\nsrc: inline\n\n```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```\n#mediaend\nStatement",
     );
   });
 

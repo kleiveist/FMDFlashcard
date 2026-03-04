@@ -25,6 +25,7 @@ import { MarkdownBlocks } from "./MarkdownBlocks";
 import type { FlashcardSelfGrade } from "../../features/flashcards/logic";
 import { HelpButton, hasHelpContent } from "../HelpButton";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
+import type { VaultPngAsset } from "../../lib/tree";
 
 type FreeTextCardProps = {
   card: FreeTextCardType;
@@ -38,6 +39,7 @@ type FreeTextCardProps = {
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   onInputChange: (cardIndex: number, value: string) => void;
   onCheck: (cardIndex: number) => void;
   onSelfGrade: (cardIndex: number, grade: FlashcardSelfGrade) => void;
@@ -55,6 +57,7 @@ export const FreeTextCard = ({
   helpText,
   helpEnabled,
   vaultPath,
+  vaultPngAssets,
   onInputChange,
   onCheck,
   onSelfGrade,
@@ -72,7 +75,11 @@ export const FreeTextCard = ({
 
   return (
     <article className="flashcard-item free-text-card">
-      <FlashcardMediaGroup media={card.media} vaultPath={vaultPath} />
+      <FlashcardMediaGroup
+        media={card.media}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+      />
       {card.front.trim() ? (
         <MarkdownBlocks
           text={card.front}

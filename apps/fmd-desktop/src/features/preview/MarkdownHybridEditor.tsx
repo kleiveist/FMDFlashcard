@@ -30,8 +30,17 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { FlashcardMediaGroup } from "../../components/flashcards/FlashcardMediaGroup";
+import { VaultPngPicker } from "../../components/media/VaultPngPicker";
+import {
+  buildVaultImageCandidates,
+  parseMediaBlocks,
+  serializeMediaItem,
+  type MediaItem,
+} from "../../lib/cardMedia";
 import { normalizeRelativePath } from "../../lib/path";
-import { type VaultFile } from "../../lib/tree";
+import { type VaultFile, type VaultPngAsset } from "../../lib/tree";
+import { extractAuxiliaryBlocksFromText } from "../../lib/auxiliaryBlocks";
 import {
   normalizeCardBlockSource,
   normalizeHelpBlockSource,
@@ -178,9 +187,11 @@ type InsertMenuItemId = string;
 type InsertMenuState = {
   blockIndex: number;
   insertAbove: boolean;
-  phase: "categories" | "items" | "advanced-variant";
+  phase: "categories" | "items" | "advanced-variant" | "image-link-picker";
   categoryId?: InsertMenuCategoryId;
   advancedTemplateId?: string;
+  query?: string;
+  highlightedIndex?: number;
 };
 
 type InsertMenuCategory = {
@@ -301,6 +312,8 @@ type MarkdownHybridEditorProps = {
   mode: MarkdownHybridEditorMode;
   disabled?: boolean;
   vaultFiles?: VaultFile[];
+  vaultPngAssets?: VaultPngAsset[];
+  vaultPath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
   onChange: (value: string) => void;
   onCommit?: (value: string, context: { block: MarkdownBlock }) => void;
@@ -426,6 +439,13 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
       id: "page-link",
       label: "Link Page",
       template: "",
+      icon: "page-file",
+    },
+    {
+      id: "image-link",
+      label: "Image link",
+      template: "",
+      description: "Insert a structured #media PNG block",
       icon: "page-file",
     },
   ],
@@ -2712,11 +2732,28 @@ const renderEditorInlineSyntaxOverlay = (
   return nodes;
 };
 
+type CardBodyPreviewSegment =
+  | {
+      kind: "markdown";
+      source: string;
+    }
+  | {
+      kind: "media";
+      items: MediaItem[];
+      raw: string;
+    };
+
 type CardBlockPreviewParts = {
-  parts: Array<{
-    kind: "body" | "help";
-    source: string;
-  }>;
+  parts: Array<
+    | {
+        kind: "body";
+        segments: CardBodyPreviewSegment[];
+      }
+    | {
+        kind: "help";
+        source: string;
+      }
+  >;
 };
 
 const isCardDirectivePreviewLine = (line: string, directive: "#card" | "#endcard") =>
@@ -2725,6 +2762,60 @@ const isCardDirectivePreviewLine = (line: string, directive: "#card" | "#endcard
 const isHelpDirectivePreviewLine = (line: string, directive: "#help" | "#helpend") =>
   line.trim().toLowerCase() === directive;
 
+const normalizeCardPreviewLines = (value: string) => value.replace(/\r\n?/g, "\n").split("\n");
+
+const buildCardBodyPreviewSegments = (
+  source: string,
+  scope: string,
+): CardBodyPreviewSegment[] => {
+  const lines = normalizeCardPreviewLines(source);
+  const extracted = extractAuxiliaryBlocksFromText(source, { kinds: ["media"] });
+  const mediaBlocks = extracted.blocks.filter((block) => block.kind === "media");
+
+  if (mediaBlocks.length === 0) {
+    return source.length > 0
+      ? [{ kind: "markdown", source: escapeHybridPreviewSpecialLines(source) }]
+      : [];
+  }
+
+  const segments: CardBodyPreviewSegment[] = [];
+  let lineIndex = 0;
+
+  mediaBlocks.forEach((block, index) => {
+    if (block.startIndex > lineIndex) {
+      const markdownSource = lines.slice(lineIndex, block.startIndex).join("\n");
+      if (markdownSource.length > 0) {
+        segments.push({
+          kind: "markdown",
+          source: escapeHybridPreviewSpecialLines(markdownSource),
+        });
+      }
+    }
+
+    segments.push({
+      kind: "media",
+      items: parseMediaBlocks(
+        [{ text: block.text, startIndex: block.startIndex }],
+        `${scope}-${index}`,
+      ),
+      raw: ["#media", block.text, "#mediaend"].join("\n"),
+    });
+    lineIndex = block.endIndex + 1;
+  });
+
+  if (lineIndex < lines.length) {
+    const markdownSource = lines.slice(lineIndex).join("\n");
+    if (markdownSource.length > 0) {
+      segments.push({
+        kind: "markdown",
+        source: escapeHybridPreviewSpecialLines(markdownSource),
+      });
+    }
+  }
+
+  return segments;
+};
+
 const extractCardBlockPreviewParts = (blockRaw: string): CardBlockPreviewParts => {
   const lines = blockRaw.split("\n");
   if (lines.length === 0 || !isCardDirectivePreviewLine(lines[0] ?? "", "#card")) {
@@ -2732,7 +2823,7 @@ const extractCardBlockPreviewParts = (blockRaw: string): CardBlockPreviewParts =
       parts: [
         {
           kind: "body",
-          source: escapeHybridPreviewSpecialLines(blockRaw),
+          segments: buildCardBodyPreviewSegments(blockRaw, "card-block-preview-root"),
         },
       ],
     };
@@ -2758,7 +2849,7 @@ const extractCardBlockPreviewParts = (blockRaw: string): CardBlockPreviewParts =
     }
     parts.push({
       kind: "body",
-      source: escapeHybridPreviewSpecialLines(raw),
+      segments: buildCardBodyPreviewSegments(raw, `card-block-preview-${start}-${endExclusive}`),
     });
   };
 
@@ -2795,7 +2886,7 @@ const extractCardBlockPreviewParts = (blockRaw: string): CardBlockPreviewParts =
       parts: [
         {
           kind: "body",
-          source: escapeHybridPreviewSpecialLines(blockRaw),
+          segments: buildCardBodyPreviewSegments(blockRaw, "card-block-preview-fallback"),
         },
       ],
     };
@@ -2975,6 +3066,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   mode,
   disabled = false,
   vaultFiles,
+  vaultPngAssets,
+  vaultPath,
   onNavigateWikilink,
   onChange,
   onCommit,
@@ -3115,11 +3208,24 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     [activeDraft, editorOverlaySelectionStart],
   );
   const pageLinkCandidates = useMemo(() => buildPageLinkCandidates(vaultFiles), [vaultFiles]);
+  const imageLinkCandidates = useMemo(
+    () => buildVaultImageCandidates(vaultPngAssets),
+    [vaultPngAssets],
+  );
   const pageLinkLookup = useMemo(() => buildPageLinkLookup(pageLinkCandidates), [pageLinkCandidates]);
   const filteredPageLinkCandidates = useMemo(
     () => filterPageLinkCandidates(pageLinkCandidates, pageLinkPickerState?.query ?? ""),
     [pageLinkCandidates, pageLinkPickerState?.query],
   );
+  const filteredImageLinkCandidates = useMemo(() => {
+    const query = insertMenuState?.phase === "image-link-picker"
+      ? (insertMenuState.query ?? "").trim().toLowerCase()
+      : "";
+    if (!query) {
+      return imageLinkCandidates;
+    }
+    return imageLinkCandidates.filter((candidate) => candidate.searchText.includes(query));
+  }, [imageLinkCandidates, insertMenuState]);
   const resolveInlinePageLink = useCallback(
     (rawWikilink: string): ResolvedInlinePageLink => {
       const parsed = parseInlineWikilink(rawWikilink);
@@ -5112,6 +5218,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (!current) {
         return current;
       }
+      if (current.phase === "image-link-picker") {
+        return {
+          ...current,
+          phase: "items",
+          query: "",
+          highlightedIndex: 0,
+        };
+      }
       if (current.phase === "advanced-variant") {
         return {
           ...current,
@@ -5137,6 +5251,90 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const handleSelectionContextMenuClose = useCallback(() => {
     setSelectionContextMenuState(null);
   }, []);
+
+  const handleInsertImageLinkQueryChange = useCallback((value: string) => {
+    setInsertMenuState((current) => {
+      if (!current || current.phase !== "image-link-picker") {
+        return current;
+      }
+      return {
+        ...current,
+        query: value,
+        highlightedIndex: 0,
+      };
+    });
+  }, []);
+
+  const handleInsertImageLinkSelectCandidate = useCallback(
+    (relativePath: string) => {
+      if (!insertMenuState) {
+        return;
+      }
+      const alt = relativePath.split("/").pop()?.replace(/\.png$/i, "") ?? "image";
+      const blockSource = serializeMediaItem({
+        id: "insert-menu-media",
+        type: "png",
+        src: relativePath,
+        alt,
+        fit: "contain",
+      });
+      insertBlockRelativeTo(insertMenuState.blockIndex, blockSource, insertMenuState.insertAbove);
+    },
+    [insertBlockRelativeTo, insertMenuState],
+  );
+
+  const handleInsertImageLinkSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (!insertMenuState || insertMenuState.phase !== "image-link-picker") {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setInsertMenuState((current) =>
+          current
+            ? {
+                ...current,
+                phase: "items",
+                query: "",
+                highlightedIndex: 0,
+              }
+            : current,
+        );
+        return;
+      }
+      if (filteredImageLinkCandidates.length === 0) {
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        setInsertMenuState((current) => {
+          if (!current || current.phase !== "image-link-picker") {
+            return current;
+          }
+          const currentIndex = current.highlightedIndex ?? 0;
+          return {
+            ...current,
+            highlightedIndex:
+              (currentIndex + delta + filteredImageLinkCandidates.length) %
+              filteredImageLinkCandidates.length,
+          };
+        });
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const candidate =
+          filteredImageLinkCandidates[insertMenuState.highlightedIndex ?? 0] ??
+          filteredImageLinkCandidates[0];
+        if (!candidate) {
+          return;
+        }
+        handleInsertImageLinkSelectCandidate(candidate.relPath);
+      }
+    },
+    [filteredImageLinkCandidates, handleInsertImageLinkSelectCandidate, insertMenuState],
+  );
 
   const handleInsertMenuItemSelect = useCallback(
     (item: InsertMenuItem) => (event: MouseEvent<HTMLButtonElement>) => {
@@ -5164,6 +5362,20 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         if (inserted) {
           requestPageLinkPickerOpen({ source: "insert-menu" });
         }
+        return;
+      }
+      if (item.id === "image-link") {
+        setInsertMenuState((current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            phase: "image-link-picker",
+            query: "",
+            highlightedIndex: 0,
+          };
+        });
         return;
       }
       insertBlockRelativeTo(insertMenuState.blockIndex, item.template, insertMenuState.insertAbove, {
@@ -6780,6 +6992,19 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       return;
     }
     const handle = window.requestAnimationFrame(() => {
+      if (insertMenuState.phase === "image-link-picker") {
+        const searchInput = insertMenuRef.current?.querySelector<HTMLInputElement>(
+          "input[type='search']",
+        );
+        if (searchInput) {
+          try {
+            searchInput.focus({ preventScroll: true });
+          } catch {
+            searchInput.focus();
+          }
+        }
+        return;
+      }
       const firstMenuItem = insertMenuRef.current?.querySelector<HTMLButtonElement>(
         "button[role='menuitem']",
       );
@@ -6816,6 +7041,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           <span className="markdown-hybrid-insert-menu-title">
             {insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate
               ? activeAdvancedInsertTemplate.label
+              : insertMenuState?.phase === "image-link-picker"
+              ? "Select PNG"
               : insertMenuState?.insertAbove
               ? "Insert Above"
               : "Insert Below"}
@@ -6831,7 +7058,25 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           ) : null}
         </div>
         <div className="markdown-hybrid-insert-menu-list">
-          {insertMenuState?.phase === "categories"
+          {insertMenuState?.phase === "image-link-picker" ? (
+            <VaultPngPicker
+              assets={vaultPngAssets}
+              query={insertMenuState.query ?? ""}
+              onQueryChange={handleInsertImageLinkQueryChange}
+              onSearchKeyDown={handleInsertImageLinkSearchKeyDown}
+              onSelect={(candidate) => handleInsertImageLinkSelectCandidate(candidate.relPath)}
+              highlightedIndex={insertMenuState.highlightedIndex ?? 0}
+              onHighlightedIndexChange={(nextIndex) =>
+                setInsertMenuState((current) =>
+                  current && current.phase === "image-link-picker"
+                    ? { ...current, highlightedIndex: nextIndex }
+                    : current
+                )
+              }
+              emptyLabel="No PNG files found in the current vault."
+              className="markdown-hybrid-insert-image-picker"
+            />
+          ) : insertMenuState?.phase === "categories"
             ? INSERT_MENU_CATEGORIES.map((category) => (
               <button
                 key={category.id}
@@ -7365,6 +7610,17 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           const cardBlockPreviewParts = block.kind === "card-block"
             ? extractCardBlockPreviewParts(block.raw)
             : null;
+          const mediaBlockPreviewItems = block.kind === "media-block"
+            ? parseMediaBlocks(
+              extractAuxiliaryBlocksFromText(block.raw, { kinds: ["media"] }).blocks
+                .filter((auxBlock) => auxBlock.kind === "media")
+                .map((auxBlock) => ({
+                  text: auxBlock.text,
+                  startIndex: auxBlock.startIndex,
+                })),
+              "markdown-hybrid-media-preview",
+            )
+            : [];
           if (block.kind !== "hr" && block.kind !== "code-fence") {
             previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
           }
@@ -7586,22 +7842,59 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                               {part.source.trim().length > 0 ? renderPreviewWithPageLinks(part.source) : null}
                             </div>
                           </div>
-                        ) : part.source.trim().length > 0 ? (
-                          <div
-                            key={`card-part:${index}:${partIndex}`}
-                            className="markdown-hybrid-block-preview"
-                          >
-                            {renderPreviewWithPageLinks(part.source)}
-                          </div>
                         ) : (
                           <div
                             key={`card-part:${index}:${partIndex}`}
-                            className="markdown-hybrid-card-block-empty"
-                            aria-hidden="true"
-                          />
+                            className="markdown-hybrid-card-body-part"
+                          >
+                            {part.segments.length > 0 ? (
+                              part.segments.map((segment, segmentIndex) =>
+                                segment.kind === "media" ? (
+                                  <div
+                                    key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
+                                    className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview"
+                                  >
+                                    {segment.items.length > 0 ? (
+                                      <FlashcardMediaGroup
+                                        media={segment.items}
+                                        vaultPngAssets={vaultPngAssets}
+                                        vaultPath={vaultPath}
+                                      />
+                                    ) : (
+                                      <pre className="flashcard-code-block media-block-card-source">
+                                        <code>{segment.raw}</code>
+                                      </pre>
+                                    )}
+                                  </div>
+                                ) : segment.source.trim().length > 0 ? (
+                                  <div
+                                    key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
+                                    className="markdown-hybrid-block-preview"
+                                  >
+                                    {renderPreviewWithPageLinks(segment.source)}
+                                  </div>
+                                ) : null
+                              )
+                            ) : (
+                              <div className="markdown-hybrid-card-block-empty" aria-hidden="true" />
+                            )}
+                          </div>
                         )
                       )}
                     </div>
+                  </div>
+                ) : block.kind === "media-block" ? (
+                  <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">
+                    {mediaBlockPreviewItems.length > 0 ? (
+                      <FlashcardMediaGroup
+                        media={mediaBlockPreviewItems}
+                        vaultPngAssets={vaultPngAssets}
+                      />
+                    ) : (
+                      <pre className="flashcard-code-block media-block-card-source">
+                        <code>{block.raw}</code>
+                      </pre>
+                    )}
                   </div>
                 ) : (
                   <div

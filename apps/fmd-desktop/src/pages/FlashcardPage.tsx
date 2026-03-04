@@ -650,6 +650,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                       cardIndex={cardIndex}
                       submitted={submitted}
                       vaultPath={vault.vaultPath}
+                      vaultPngAssets={vault.pngAssets}
                       helpText={card.helpText}
                       helpEnabled={helpEnabled}
                       partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
@@ -676,6 +677,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                       cardIndex={cardIndex}
                       submitted={submitted}
                       vaultPath={vault.vaultPath}
+                      vaultPngAssets={vault.pngAssets}
                       helpText={card.helpText}
                       helpEnabled={helpEnabled}
                       responses={flashcards.flashcardClozeResponses[cardIndex] ?? {}}
@@ -697,6 +699,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                       cardIndex={cardIndex}
                       submitted={submitted}
                       vaultPath={vault.vaultPath}
+                      vaultPngAssets={vault.pngAssets}
                       helpText={card.helpText}
                       helpEnabled={helpEnabled}
                       selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
@@ -714,6 +717,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                       cardIndex={cardIndex}
                       submitted={submitted}
                       vaultPath={vault.vaultPath}
+                      vaultPngAssets={vault.pngAssets}
                       helpText={card.helpText}
                       helpEnabled={helpEnabled}
                       response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
@@ -733,6 +737,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                     cardIndex={cardIndex}
                     submitted={submitted}
                     vaultPath={vault.vaultPath}
+                    vaultPngAssets={vault.pngAssets}
                     helpText={card.helpText}
                     helpEnabled={helpEnabled}
                     selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}

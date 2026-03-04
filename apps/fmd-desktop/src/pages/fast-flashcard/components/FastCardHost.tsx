@@ -28,6 +28,7 @@ import { FreeTextCard } from "../../../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
 import type { ClozeDragPayload } from "../../../features/flashcards/logic";
+import type { VaultPngAsset } from "../../../lib/tree";
 
 type FastCardHostProps = {
   hasScannedCards: boolean;
@@ -37,6 +38,7 @@ type FastCardHostProps = {
   submissionLocked: boolean;
   helpEnabled: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   fastFlashcards: {
     flashcardCompositeStates: Record<number, any[]>;
     flashcardClozeResponses: Record<number, Record<string, string>>;
@@ -125,6 +127,7 @@ export const FastCardHost = ({
   submissionLocked,
   helpEnabled,
   vaultPath,
+  vaultPngAssets,
   fastFlashcards,
   orderedEntries,
   canGoBack,
@@ -165,6 +168,7 @@ export const FastCardHost = ({
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
             vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
             partStates={
@@ -190,6 +194,7 @@ export const FastCardHost = ({
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
             vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
             responses={
@@ -210,6 +215,7 @@ export const FastCardHost = ({
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
             vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
             selections={
@@ -226,6 +232,7 @@ export const FastCardHost = ({
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
             vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
             response={fastFlashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""}
@@ -245,6 +252,7 @@ export const FastCardHost = ({
             submitted={isCurrentSubmitted}
             submissionLocked={submissionLocked}
             vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
             selectedKeys={

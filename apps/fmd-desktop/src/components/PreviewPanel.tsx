@@ -84,8 +84,11 @@ import {
 } from "./previewMarkdownListCommands";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { ChevronDownIcon, CodeIcon, EditIcon, MarkdownIcon } from "./icons";
+import { FlashcardMediaGroup } from "./flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "./flashcards/SvgPreviewBlock";
 import { extractSvgCodeBlockSource } from "./markdownSvg";
+import { extractAuxiliaryBlocksFromText } from "../lib/auxiliaryBlocks";
+import { parseMediaBlocks, type MediaItem } from "../lib/cardMedia";
 
 type CoverThumbnailSource = {
   src?: string | null;
@@ -117,6 +120,55 @@ const COVER_THUMBNAIL_NEAR_FULL_RATIO = 0.95;
 const COVER_THUMBNAIL_MAX_SCAN_SIDE = 512;
 const COVER_THUMBNAIL_FALLBACK_WIDTH = 176;
 const COVER_THUMBNAIL_FALLBACK_HEIGHT = 99;
+
+type MarkdownMediaPreviewGroup = {
+  index: number;
+  items: MediaItem[];
+  raw: string;
+};
+
+const normalizePreviewLines = (value: string) => value.replace(/\r\n?/g, "\n").split("\n");
+
+const buildMarkdownMediaPreviewSource = (markdown: string, scope: string) => {
+  const lines = normalizePreviewLines(markdown);
+  const extracted = extractAuxiliaryBlocksFromText(markdown, { kinds: ["media"] });
+  const mediaBlocks = extracted.blocks.filter((block) => block.kind === "media");
+  if (mediaBlocks.length === 0) {
+    return {
+      markdown,
+      groups: [] as MarkdownMediaPreviewGroup[],
+    };
+  }
+
+  const groups = mediaBlocks.map((block, index) => ({
+    index,
+    items: parseMediaBlocks(
+      [{ text: block.text, startIndex: block.startIndex }],
+      `${scope}-${index}`,
+    ),
+    raw: ["#media", block.text, "#mediaend"].join("\n"),
+  }));
+
+  const blocksByStart = new Map(mediaBlocks.map((block, index) => [block.startIndex, { block, index }]));
+  const renderedLines: string[] = [];
+  let lineIndex = 0;
+
+  while (lineIndex < lines.length) {
+    const blockEntry = blocksByStart.get(lineIndex);
+    if (blockEntry) {
+      renderedLines.push(`<fmd-media-block data-media-index="${blockEntry.index}"></fmd-media-block>`);
+      lineIndex = blockEntry.block.endIndex + 1;
+      continue;
+    }
+    renderedLines.push(lines[lineIndex] ?? "");
+    lineIndex += 1;
+  }
+
+  return {
+    markdown: renderedLines.join("\n"),
+    groups,
+  };
+};
 
 const coverThumbnailCropCache = new Map<string, CoverThumbnailCropScanResult>();
 const coverThumbnailCropPending = new Map<string, Promise<CoverThumbnailCropScanResult>>();
@@ -718,6 +770,7 @@ const markdownSchema = {
     ...(defaultSchema.tagNames ?? []),
     "br",
     "details",
+    "fmd-media-block",
     "kbd",
     "mark",
     "summary",
@@ -736,6 +789,7 @@ const markdownSchema = {
   attributes: {
     ...defaultSchema.attributes,
     details: [...(defaultSchema.attributes?.details ?? []), "open"],
+    "fmd-media-block": ["data-media-index"],
     mark: [...(defaultSchema.attributes?.mark ?? []), "className"],
     ol: [...(defaultSchema.attributes?.ol ?? []), "data-md-ordered-delimiter"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
@@ -6350,6 +6404,10 @@ export const PreviewPanel = ({
   const renderHybridMarkdownPreview = useCallback(
     (sourceMarkdown: string) => {
       const previewMarkdown = normalizeInlineFormattingForPreview(sourceMarkdown);
+      const mediaPreview = buildMarkdownMediaPreviewSource(
+        previewMarkdown,
+        "preview-panel-hybrid",
+      );
       return (
         <ReactMarkdown
           remarkPlugins={[
@@ -6522,13 +6580,42 @@ export const PreviewPanel = ({
             img: ({ node: _node, ...props }) => (
               <img {...props} draggable={false} />
             ),
+            "fmd-media-block": ({ node }) => {
+              const mediaIndexRaw =
+                node &&
+                typeof node === "object" &&
+                "properties" in node &&
+                node.properties &&
+                typeof node.properties === "object"
+                  ? (node.properties as Record<string, unknown>)["data-media-index"]
+                  : undefined;
+              const mediaIndex = Number.parseInt(String(mediaIndexRaw ?? "-1"), 10);
+              const mediaGroup = mediaPreview.groups[mediaIndex] ?? null;
+              if (!mediaGroup) {
+                return null;
+              }
+              if (mediaGroup.items.length === 0) {
+                return (
+                  <pre className="flashcard-code-block media-block-card-source">
+                    <code>{mediaGroup.raw}</code>
+                  </pre>
+                );
+              }
+              return (
+                <FlashcardMediaGroup
+                  media={mediaGroup.items}
+                  vaultPngAssets={vaultPngAssets}
+                  vaultPath={vaultPath}
+                />
+              );
+            },
           }}
         >
-          {previewMarkdown}
+          {mediaPreview.markdown}
         </ReactMarkdown>
       );
     },
-    [handleCodeCopyClick],
+    [handleCodeCopyClick, vaultPath, vaultPngAssets],
   );
 
   const markdownSource = rawPreview
@@ -6547,6 +6634,14 @@ export const PreviewPanel = ({
   const renderedPreviewWithInlineFormatting = rawPreview
     ? renderedPreview
     : normalizeInlineFormattingForPreview(renderedPreview);
+  const renderedPreviewWithMedia = useMemo(
+    () =>
+      buildMarkdownMediaPreviewSource(
+        renderedPreviewWithInlineFormatting,
+        "preview-panel-view",
+      ),
+    [renderedPreviewWithInlineFormatting],
+  );
   const hasVisiblePreviewContent = rawPreview
     ? preview.length > 0
     : markdownSource.length > 0;
@@ -6877,6 +6972,8 @@ export const PreviewPanel = ({
                   markdown={markdownEditBody}
                   mode={documentMode}
                   vaultFiles={vaultFiles}
+                  vaultPngAssets={vaultPngAssets}
+                  vaultPath={vaultPath}
                   onNavigateWikilink={onNavigateWikilink}
                   onChange={handleHybridBodyChange}
                   onDirtyChange={onHybridDirtyChange}
@@ -7138,9 +7235,40 @@ export const PreviewPanel = ({
                           img: ({ node: _node, ...props }) => (
                             <img {...props} draggable={false} />
                           ),
+                          "fmd-media-block": ({ node }) => {
+                            const mediaIndexRaw =
+                              node &&
+                              typeof node === "object" &&
+                              "properties" in node &&
+                              node.properties &&
+                              typeof node.properties === "object"
+                                ? (node.properties as Record<string, unknown>)[
+                                    "data-media-index"
+                                  ]
+                                : undefined;
+                            const mediaIndex = Number.parseInt(String(mediaIndexRaw ?? "-1"), 10);
+                            const mediaGroup = renderedPreviewWithMedia.groups[mediaIndex] ?? null;
+                            if (!mediaGroup) {
+                              return null;
+                            }
+                            if (mediaGroup.items.length === 0) {
+                              return (
+                                <pre className="flashcard-code-block media-block-card-source">
+                                  <code>{mediaGroup.raw}</code>
+                                </pre>
+                              );
+                            }
+                            return (
+                              <FlashcardMediaGroup
+                                media={mediaGroup.items}
+                                vaultPngAssets={vaultPngAssets}
+                                vaultPath={vaultPath}
+                              />
+                            );
+                          },
                         }}
                       >
-                        {renderedPreviewWithInlineFormatting}
+                        {renderedPreviewWithMedia.markdown}
                       </ReactMarkdown>
                     </div>
                   </>

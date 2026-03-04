@@ -53,6 +53,8 @@ import { ExamCanvas } from "./components/ExamCanvas";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { ContentMode } from "./components/ContentMode";
 import { ModalShell } from "../../components/ModalShell";
+import type { EditorMediaDraft } from "../../lib/cardMedia";
+import type { VaultPngAsset } from "../../lib/tree";
 import type {
   ExamEditorControlsState,
   ExamEditorMode,
@@ -70,6 +72,7 @@ type ExamEditorViewProps = {
   sourceMarkdown?: string;
   activeFolderPath?: string | null;
   vaultFiles?: VaultFile[];
+  vaultPngAssets?: VaultPngAsset[];
   vaultPath?: string | null;
   pointsProfiles: UseExamPointsProfilesHandle;
   showMoveButtons?: boolean;
@@ -195,6 +198,7 @@ export const ExamEditorView = ({
   sourceMarkdown,
   activeFolderPath,
   vaultFiles,
+  vaultPngAssets,
   vaultPath,
   pointsProfiles,
   showMoveButtons,
@@ -418,13 +422,13 @@ export const ExamEditorView = ({
     (
       taskId: string,
       cardId: string,
-      updates: {
-        prompt?: string;
-        answer?: string;
-        correct?: "true" | "false" | null;
-        helpText?: string;
-        mediaText?: string;
-      },
+        updates: {
+          prompt?: string;
+          answer?: string;
+          correct?: "true" | "false" | null;
+          helpText?: string;
+          mediaItems?: EditorMediaDraft[];
+        },
     ) => {
       updateTasks((tasks) =>
         tasks.map((task) => {
@@ -456,7 +460,7 @@ export const ExamEditorView = ({
             }
             const nextCard = createCardBlueprint(type);
             nextCard.helpText = card.helpText;
-            nextCard.mediaText = card.mediaText;
+            nextCard.mediaItems = (card.mediaItems ?? []).map((item) => ({ ...item }));
             if ("prompt" in card && "prompt" in nextCard) {
               nextCard.prompt = card.prompt;
             }
@@ -1769,6 +1773,7 @@ export const ExamEditorView = ({
                   onOptionSelect={handleOptionSelect}
                   onOptionAdd={handleOptionAdd}
                   onOptionRemove={handleOptionRemove}
+                  vaultPngAssets={vaultPngAssets}
                   popupMode={contentPopupActive}
                   popupOpen={contentModalOpen}
                   onPopupOpen={() => setContentModalOpen(true)}
@@ -1796,6 +1801,7 @@ export const ExamEditorView = ({
               onOptionSelect={handleOptionSelect}
               onOptionAdd={handleOptionAdd}
               onOptionRemove={handleOptionRemove}
+              vaultPngAssets={vaultPngAssets}
             />
           </>
         )

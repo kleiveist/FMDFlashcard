@@ -21,7 +21,7 @@ import { findTableLineIndices } from "./markdownTables";
 import {
   extractAuxiliaryBlocksFromLines,
 } from "./auxiliaryBlocks";
-import { parseCardMediaText, type CardMediaItem } from "./cardMedia";
+import { parseMediaBlocks, type MediaItem } from "./cardMedia";
 
 export {
   extractHelpBlocksFromLines,
@@ -62,14 +62,14 @@ export type MultipleChoiceCard = {
   context?: string;
   options: FlashcardOption[];
   correctKeys: string[];
-  media?: CardMediaItem[];
+  media?: MediaItem[];
 };
 
 export type FreeTextCard = {
   kind: "free-text";
   front: string;
   back: string;
-  media?: CardMediaItem[];
+  media?: MediaItem[];
 };
 
 export type TrueFalseItem = {
@@ -82,7 +82,7 @@ export type TrueFalseCard = {
   kind: "true-false";
   items: TrueFalseItem[];
   context?: string;
-  media?: CardMediaItem[];
+  media?: MediaItem[];
 };
 
 export type ClozeSegment =
@@ -102,7 +102,7 @@ export type ClozeCard = {
   question: string;
   segments: ClozeSegment[];
   dragTokens: ClozeDragToken[];
-  media?: CardMediaItem[];
+  media?: MediaItem[];
 };
 
 export type FlashcardPart = MultipleChoiceCard | FreeTextCard | TrueFalseCard | ClozeCard;
@@ -1244,8 +1244,15 @@ export const parseFlashcards = (
       if (!parsed) {
         return;
       }
-      const mediaText = extractedMedia.mediaText.join("\n\n").trim();
-      const media = parseCardMediaText(mediaText);
+      const media = parseMediaBlocks(
+        extractedMedia.blocks
+          .filter((auxBlock) => auxBlock.kind === "media")
+          .map((auxBlock) => ({
+            text: auxBlock.text,
+            startIndex: auxBlock.startIndex,
+          })),
+        "flashcard-part-media",
+      );
       parts.push(media.length > 0 ? { ...parsed.part, media } : parsed.part);
       parsed.detectedTypes.forEach((detected) => {
         pushUnique(detectedTypes, detected);

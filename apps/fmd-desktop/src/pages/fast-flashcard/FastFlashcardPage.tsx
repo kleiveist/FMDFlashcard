@@ -369,6 +369,7 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
         submissionLocked={submissionLocked}
         helpEnabled={settings.fastFlashcardHelpEnabled}
         vaultPath={vault.vaultPath}
+        vaultPngAssets={vault.pngAssets}
         fastFlashcards={fastFlashcards}
         orderedEntries={orderedEntries}
         canGoBack={canGoBack}

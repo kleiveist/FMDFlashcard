@@ -1531,6 +1531,55 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("renders #media blocks inside #card previews as resolved media", () => {
+    const markdown = [
+      "#card",
+      "#media",
+      "type: png",
+      "src: images/example.png",
+      "alt: Example image",
+      "#mediaend",
+      "",
+      "#media",
+      "type: svg",
+      "src: inline",
+      "",
+      "```svg",
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#000"/></svg>',
+      "```",
+      "#mediaend",
+      "",
+      "Question text",
+      "#endcard",
+    ].join("\n");
+
+    const { container, cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="card-block-media-preview"
+        markdown={markdown}
+        mode="edit"
+        onChange={() => undefined}
+        vaultPngAssets={[
+          {
+            path: "/vault/images/example.png",
+            relative_path: "images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ]}
+        renderPreview={(previewValue) => <div>{previewValue}</div>}
+      />,
+    );
+
+    const image = container.querySelector<HTMLImageElement>(".flashcard-media-image");
+    expect(image?.getAttribute("alt")).toBe("Example image");
+    expect(container.querySelector(".flashcard-media-svg-surface svg")).toBeTruthy();
+    expect(container.querySelector(".markdown-hybrid-card-block-frame")?.textContent ?? "").toContain(
+      "Question text",
+    );
+    cleanup();
+  });
+
   it("keeps Enter inside a card body within the card block and does not create outer page blocks", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");

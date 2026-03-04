@@ -134,10 +134,11 @@ b) Second
     const secondPart = task?.card.parts[1];
     expect(firstPart?.kind).toBe("free-text");
     expect(secondPart?.kind).toBe("multiple-choice");
-    expect(firstPart?.media?.[0]).toMatchObject({ kind: "unresolved" });
     expect(secondPart?.media).toEqual([
-      { kind: "unresolved", raw: "-a", label: "Unsupported media entry" },
-      { kind: "image", raw: "[[images/example.png]]", relativePath: "images/example.png" },
+      expect.objectContaining({
+        type: "png",
+        src: "images/example.png",
+      }),
     ]);
     if (secondPart?.kind === "multiple-choice") {
       expect(secondPart.correctKeys).toEqual(["a"]);

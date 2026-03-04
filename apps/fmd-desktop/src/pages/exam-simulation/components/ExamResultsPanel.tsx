@@ -25,11 +25,13 @@ import type { TrueFalseSelection } from "../../../features/flashcards/logic";
 import { ExamTaskRunner } from "./ExamTaskRunner";
 import type { ExamSessionTask } from "../../../lib/examMixedSession";
 import type { ExamResults } from "../examSimulationTypes";
+import type { VaultPngAsset } from "../../../lib/tree";
 
 type ExamResultsPanelProps = {
   results: ExamResults;
   helpEnabled?: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   correctionAction?: {
     label: string;
     onClick: () => void;
@@ -95,6 +97,7 @@ export const ExamResultsPanel = ({
   results,
   helpEnabled = false,
   vaultPath,
+  vaultPngAssets,
   correctionAction = null,
   onToggleTaskCardWrapper,
   taskCardWrapPendingById,
@@ -281,6 +284,7 @@ export const ExamResultsPanel = ({
               showNavigation={false}
               scoringReadOnly
               vaultPath={vaultPath}
+              vaultPngAssets={vaultPngAssets}
             />
           </div>
         ) : null}

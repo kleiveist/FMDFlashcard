@@ -1849,6 +1849,11 @@ textarea.preview-editor {
   background: color-mix(in srgb, var(--panel-2) 42%, transparent);
 }
 
+.markdown-hybrid-card-body-part {
+  display: grid;
+  gap: 10px;
+}
+
 .markdown-hybrid-card-block-empty {
   min-height: 1rem;
 }

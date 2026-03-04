@@ -6,6 +6,10 @@
  */
 
 import { normalizeCardWrapperPlacement } from "../../lib/exam/autoCards";
+import {
+  editorMediaDraftToItem,
+  serializeMediaItems,
+} from "../../lib/cardMedia";
 import type {
   CardBlueprint,
   CardType,
@@ -72,15 +76,17 @@ const serializeHelpBlock = (helpText?: string) => {
   return ["#help", ...lines, "#helpend"];
 };
 
-const serializeMediaBlock = (mediaText?: string) => {
-  if (!mediaText || mediaText.trim() === "") {
+const serializeMediaBlocks = (
+  mediaItems?: CardBlueprint["mediaItems"] | ExamTaskBlueprint["mediaItems"],
+) => {
+  if (!mediaItems || mediaItems.length === 0) {
     return [];
   }
-  const lines = cleanLines(mediaText);
-  if (lines.length === 0) {
-    return [];
-  }
-  return ["#media", ...lines, "#mediaend"];
+  return mediaItems.flatMap((draft, index) =>
+    serializeMediaItems([
+      editorMediaDraftToItem(draft, { scope: "exam-editor-serialize" }, index),
+    ]),
+  );
 };
 
 const serializeQaCard = (card: Extract<CardBlueprint, { type: "qa" }>) => {
@@ -147,7 +153,7 @@ const serializeCardBlock = (card: CardBlueprint, stripTaskNumber: boolean) => {
     ? stripLeadingTaskNumberLine(contentLines)
     : contentLines;
   return [
-    ...serializeMediaBlock(card.mediaText),
+    ...serializeMediaBlocks(card.mediaItems),
     ...sanitizedContent,
     ...serializeHelpBlock(card.helpText),
   ];
@@ -162,6 +168,7 @@ const serializeTask = (task: ExamTaskBlueprint, index: number) => {
   const title = task.title.trim();
   lines.push(`${index + 1})${title ? ` ${title}` : ""}`);
   lines.push(...serializeHelpBlock(task.helpText));
+  lines.push(...serializeMediaBlocks(task.mediaItems));
   task.cards.forEach((card, cardIndex) => {
     if (cardIndex > 0) {
       lines.push("---");

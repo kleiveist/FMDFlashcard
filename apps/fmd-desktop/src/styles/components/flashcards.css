@@ -318,6 +318,39 @@
   min-width: 0;
 }
 
+.flashcard-media-entry,
+.media-block-card {
+  min-width: 0;
+}
+
+.media-block-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-block-card-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.media-block-card-surface {
+  border-radius: 14px;
+}
+
+.media-block-card-surface[role="button"] {
+  cursor: pointer;
+}
+
+.media-block-card-source {
+  margin: 0;
+  max-height: 280px;
+  overflow: auto;
+}
+
 .flashcard-media-image {
   display: block;
   max-width: 100%;
@@ -330,6 +363,31 @@
   object-fit: contain;
 }
 
+.flashcard-media-image.fit-cover {
+  width: 100%;
+  object-fit: cover;
+}
+
+.flashcard-media-caption {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.flashcard-media-svg-surface {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  overflow: auto;
+}
+
+.flashcard-media-svg-surface > svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .flashcard-media-placeholder {
   padding: 8px 10px;
   border-radius: 10px;
@@ -337,6 +395,12 @@
   background: var(--panel);
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.flashcard-media-source-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .svg-preview-block {

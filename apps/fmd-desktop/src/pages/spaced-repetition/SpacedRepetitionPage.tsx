@@ -178,6 +178,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
               spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
               helpEnabled={spacedRepetitionHelpEnabled}
               vaultPath={vault.vaultPath}
+              vaultPngAssets={vault.pngAssets}
               spacedRepetitionCompositeStates={
                 spacedRepetition.spacedRepetitionCompositeStates
               }

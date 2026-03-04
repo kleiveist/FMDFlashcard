@@ -5,6 +5,7 @@
  * - Factory-Funktionen fuer Exam-Editor Blueprints.
  */
 
+import { cloneEditorMediaDraft } from "../../lib/cardMedia";
 import type {
   CardBlueprint,
   CardType,
@@ -41,6 +42,7 @@ export const createCardBlueprint = (type: CardType): CardBlueprint => {
       return {
         id: buildId("card"),
         type,
+        mediaItems: [],
         prompt: "",
         answer: "",
       };
@@ -48,6 +50,7 @@ export const createCardBlueprint = (type: CardType): CardBlueprint => {
       return {
         id: buildId("card"),
         type,
+        mediaItems: [],
         prompt: "",
         correct: null,
       };
@@ -56,6 +59,7 @@ export const createCardBlueprint = (type: CardType): CardBlueprint => {
       return {
         id: buildId("card"),
         type,
+        mediaItems: [],
         prompt: "",
         options: [createChoiceOption(), createChoiceOption()],
       };
@@ -65,6 +69,7 @@ export const createCardBlueprint = (type: CardType): CardBlueprint => {
       return {
         id: buildId("card"),
         type,
+        mediaItems: [],
         prompt: "",
       };
     default: {
@@ -72,6 +77,7 @@ export const createCardBlueprint = (type: CardType): CardBlueprint => {
       return {
         id: buildId("card"),
         type: _exhaustive,
+        mediaItems: [],
         prompt: "",
         answer: "",
       };
@@ -86,6 +92,7 @@ export const createTaskBlueprint = (
   id: buildId("task"),
   order,
   title: "",
+  mediaItems: [],
   useCardWrapper: false,
   cards: [createCardBlueprint(cardType)],
 });
@@ -101,7 +108,7 @@ export const cloneCardBlueprint = (card: CardBlueprint): CardBlueprint => {
     id: buildId("card"),
     type: card.type,
     helpText: card.helpText,
-    mediaText: card.mediaText,
+    mediaItems: (card.mediaItems ?? []).map(cloneEditorMediaDraft),
   };
 
   switch (card.type) {
@@ -151,6 +158,7 @@ export const cloneTaskBlueprint = (task: ExamTaskBlueprint): ExamTaskBlueprint =
   order: task.order,
   title: task.title,
   helpText: task.helpText,
+  mediaItems: (task.mediaItems ?? []).map(cloneEditorMediaDraft),
   useCardWrapper: task.useCardWrapper,
   cards: task.cards.map(cloneCardBlueprint),
 });

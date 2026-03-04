@@ -5,6 +5,8 @@
  * - Definiert Exam-Editor Blueprint-Typen.
  */
 
+import type { EditorMediaDraft } from "../../lib/cardMedia";
+
 export type CardType = "qa" | "tf" | "m1" | "m2" | "cl" | "cd" | "cld";
 
 export type ChoiceOption = {
@@ -17,7 +19,7 @@ export type BaseCardBlueprint = {
   id: string;
   type: CardType;
   helpText?: string;
-  mediaText?: string;
+  mediaItems?: EditorMediaDraft[];
 };
 
 export type QaCardBlueprint = BaseCardBlueprint & {
@@ -54,6 +56,7 @@ export type ExamTaskBlueprint = {
   order: number;
   title: string;
   helpText?: string;
+  mediaItems?: EditorMediaDraft[];
   useCardWrapper: boolean;
   cards: CardBlueprint[];
 };

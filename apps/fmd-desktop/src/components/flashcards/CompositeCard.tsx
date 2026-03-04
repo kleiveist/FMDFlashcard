@@ -35,6 +35,7 @@ import {
   type TrueFalseSelection,
 } from "../../features/flashcards/logic";
 import { HelpButton, hasHelpContent } from "../HelpButton";
+import type { VaultPngAsset } from "../../lib/tree";
 
 type CompositeCardProps = {
   card: CompositeFlashcard;
@@ -50,6 +51,7 @@ type CompositeCardProps = {
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   onOptionSelect: (cardIndex: number, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     cardIndex: number,
@@ -101,6 +103,7 @@ export const CompositeCard = ({
   helpText,
   helpEnabled,
   vaultPath,
+  vaultPngAssets,
   onBlankDragOver,
   onClozeInputChange,
   onClozeTokenDragStart,
@@ -159,6 +162,7 @@ export const CompositeCard = ({
                 revealCorrectness={revealCorrectness}
                 showSolution={showSolution}
                 vaultPath={vaultPath}
+                vaultPngAssets={vaultPngAssets}
                 onInputChange={(index, blankId, value) =>
                   onClozeInputChange(index, partIndex, blankId, value)
                 }
@@ -196,6 +200,7 @@ export const CompositeCard = ({
                 revealCorrectness={revealCorrectness}
                 showSolution={showSolution}
                 vaultPath={vaultPath}
+                vaultPngAssets={vaultPngAssets}
                 onSelect={(index, itemId, value) =>
                   onTrueFalseSelect(index, partIndex, itemId, value)
                 }
@@ -218,6 +223,7 @@ export const CompositeCard = ({
                 selfGrade={state.selfGrade}
                 showActions={showResult}
                 vaultPath={vaultPath}
+                vaultPngAssets={vaultPngAssets}
                 onInputChange={(index, value) =>
                   onTextInputChange(index, partIndex, value)
                 }
@@ -238,6 +244,7 @@ export const CompositeCard = ({
               showResult={showResult}
               revealCorrectness={revealCorrectness}
               vaultPath={vaultPath}
+              vaultPngAssets={vaultPngAssets}
               onSelect={(index, keys) => onOptionSelect(index, partIndex, keys)}
               onSubmit={onSubmit}
               showSubmit={false}

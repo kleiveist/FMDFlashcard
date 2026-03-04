@@ -65,9 +65,28 @@ const toFileUrl = (absolutePath: string) => {
   return encoded;
 };
 
+export const normalizeVaultAssetRelativePath = (value: string | null | undefined) => {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+  if (/^[A-Za-z]:[\\/]/.test(trimmed) || /^[\\/]{1,2}/.test(trimmed)) {
+    return null;
+  }
+  const normalized = normalizeRelativePath(trimmed).replace(/^\/+/, "");
+  if (!normalized) {
+    return null;
+  }
+  const segments = normalized.split("/");
+  if (segments.some((segment) => segment === "..")) {
+    return null;
+  }
+  return normalized;
+};
+
 const joinVaultAndRelativePath = (vaultPath: string, relativePath: string) => {
   const normalizedVault = vaultPath.replace(/\\/g, "/").replace(/\/+$/, "");
-  const normalizedRelative = normalizeRelativePath(relativePath).replace(/^\/+/, "");
+  const normalizedRelative = normalizeVaultAssetRelativePath(relativePath) ?? "";
   if (!normalizedVault) {
     return normalizedRelative;
   }
@@ -88,8 +107,7 @@ export const extractVaultAssetRelativePath = (rawValue: string | null | undefine
     return null;
   }
   const [pathPart] = candidate.split(/[?#]/);
-  const normalized = normalizeRelativePath(pathPart ?? "").replace(/^\/+/, "");
-  return normalized || null;
+  return normalizeVaultAssetRelativePath(pathPart ?? "");
 };
 
 export const resolveVaultImageSrc = ({
@@ -102,7 +120,7 @@ export const resolveVaultImageSrc = ({
   absolutePath?: string | null;
 }) => {
   const normalizedAbsolute = absolutePath?.trim() ?? "";
-  const normalizedRelative = relativePath?.trim() ?? "";
+  const normalizedRelative = normalizeVaultAssetRelativePath(relativePath) ?? "";
   const resolvedAbsolute = normalizedAbsolute ||
     (vaultPath && normalizedRelative
       ? joinVaultAndRelativePath(vaultPath, normalizedRelative)

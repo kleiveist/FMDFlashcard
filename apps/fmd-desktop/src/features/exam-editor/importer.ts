@@ -16,6 +16,7 @@ import type {
 import { hasClozeMarker, parseFlashcards } from "../../lib/flashcards";
 import { findTableLineIndices } from "../../lib/markdownTables";
 import { extractAuxiliaryBlocksFromLines } from "../../lib/auxiliaryBlocks";
+import { mediaItemsToDrafts, parseMediaBlocks } from "../../lib/cardMedia";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
   CardBlueprint,
@@ -335,6 +336,7 @@ const buildCardFromFreeText = (
 ): CardBlueprint => ({
   id: createBlueprintId("card"),
   type: "qa",
+  mediaItems: [],
   prompt: part.front,
   answer: part.back,
 });
@@ -343,6 +345,7 @@ const buildCardsFromTrueFalse = (part: TrueFalseCard): CardBlueprint[] =>
   part.items.map((item) => ({
     id: createBlueprintId("card"),
     type: "tf",
+    mediaItems: [],
     prompt: item.question,
     correct: item.correct === "falsch" ? "false" : "true",
   }));
@@ -350,6 +353,7 @@ const buildCardsFromTrueFalse = (part: TrueFalseCard): CardBlueprint[] =>
 const buildCardFromMultipleChoice = (part: MultipleChoiceCard): CardBlueprint => ({
   id: createBlueprintId("card"),
   type: resolveChoiceType(part),
+  mediaItems: [],
   prompt: buildPromptWithContext(part.question, part.context),
   options: buildChoiceOptions(part),
 });
@@ -370,6 +374,7 @@ const buildCardFromCloze = (
   return {
     id: createBlueprintId("card"),
     type: part.subtype,
+    mediaItems: [],
     prompt,
   };
 };
@@ -639,16 +644,17 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     const headingInfo = deriveTaskHeadingInfo(rawLines, task.cardWrapper);
     let hasCardContent = false;
     let cardHelpIndex = 0;
-    const pushCard = (card: CardBlueprint, mediaText?: string) => {
+    const pushCard = (
+      card: CardBlueprint,
+      mediaItems = card.mediaItems,
+    ) => {
       if (cardHelpIndex < cardHelpTexts.length) {
         const helpText = cardHelpTexts[cardHelpIndex] ?? "";
         if (helpText.trim()) {
           card.helpText = helpText;
         }
       }
-      if (mediaText?.trim()) {
-        card.mediaText = mediaText;
-      }
+      card.mediaItems = mediaItems;
       cardHelpIndex += 1;
       cards.push(card);
     };
@@ -671,7 +677,17 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       const extractedMedia = extractAuxiliaryBlocksFromLines(trimmedLines, {
         kinds: ["media"],
       });
-      const mediaText = extractedMedia.mediaText.join("\n\n").trim();
+      const mediaItems = mediaItemsToDrafts(
+        parseMediaBlocks(
+          extractedMedia.blocks
+            .filter((auxBlock) => auxBlock.kind === "media")
+            .map((auxBlock) => ({
+              text: auxBlock.text,
+              startIndex: auxBlock.startIndex,
+            })),
+          "exam-editor-card-import",
+        ),
+      );
       trimmedLines = trimEmptyLines(extractedMedia.contentLines);
       if (trimmedLines.length > 0) {
         hasCardContent = true;
@@ -689,10 +705,11 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         const fallbackCard: CardBlueprint = {
           id: createBlueprintId("card"),
           type: "qa",
+          mediaItems: [],
           prompt: fallback.prompt,
           answer: fallback.officialAnswer ?? "",
         };
-        pushCard(fallbackCard, mediaText);
+        pushCard(fallbackCard, mediaItems);
         return;
       }
       parts.forEach((part) => {
@@ -700,7 +717,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         if (part.kind === "true-false" && part.items.length > 1) {
           warnings.push("Multiple true/false statements were split into separate cards.");
         }
-        partCards.forEach((card) => pushCard(card, mediaText));
+        partCards.forEach((card) => pushCard(card, mediaItems));
       });
     });
 
@@ -719,6 +736,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         pushCard({
           id: createBlueprintId("card"),
           type: "qa",
+          mediaItems: [],
           prompt: fallbackLines.join("\n").trim(),
           answer: task.officialAnswer ?? "",
         });
@@ -726,6 +744,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         pushCard({
           id: createBlueprintId("card"),
           type: "qa",
+          mediaItems: [],
           prompt: "",
           answer: "",
         });
@@ -737,6 +756,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       order: index,
       title: headingInfo.heading,
       helpText: taskHelpBlock ? taskHelpBlock.text : undefined,
+      mediaItems: mediaItemsToDrafts(task.media),
       useCardWrapper: task.cardWrapper,
       cards,
     };

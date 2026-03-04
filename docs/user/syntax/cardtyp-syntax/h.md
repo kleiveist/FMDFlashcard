@@ -62,6 +62,10 @@ Answer: Example
 ````
 
 - `#media ... #mediaend` is card-scoped and is extracted before interaction detection, just like `#help`.
-- Inside `#media`, supported entries are standalone wikilinks such as `[[image.png]]` and fenced code blocks whose info string is exactly `svg`.
-- Runtime views resolve image wikilinks to rendered media and resolve valid `svg` fences to a live SVG preview.
+- Canonical syntax uses scalar metadata:
+  - `type: png` with `src: relative/path.png`
+  - `type: svg` with `src: inline`, followed by one fenced code block whose info string is exactly `svg`
+- Optional metadata fields are `alt:`, `title:`, `caption:`, `width:`, `height:`, and `fit:` (`contain` or `cover`).
+- Legacy raw entries such as standalone wikilinks (`[[image.png]]`) and fenced `svg` blocks are still accepted on import and normalized to canonical blocks on save.
+- Runtime views resolve media blocks to rendered image/SVG output by default. Clicking a media block toggles between Preview and Source.
 - Invalid SVG falls back to the raw code block with an `SVG invalid` indicator.

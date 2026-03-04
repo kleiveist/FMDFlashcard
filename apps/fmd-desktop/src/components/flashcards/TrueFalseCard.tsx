@@ -29,6 +29,7 @@ import {
 } from "../../features/flashcards/logic";
 import { HelpButton, hasHelpContent } from "../HelpButton";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
+import type { VaultPngAsset } from "../../lib/tree";
 
 type TrueFalseCardProps = {
   card: TrueFalseCardType;
@@ -43,6 +44,7 @@ type TrueFalseCardProps = {
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   onSelect: (cardIndex: number, itemId: string, value: TrueFalseSelection) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -60,6 +62,7 @@ export const TrueFalseCard = ({
   helpText,
   helpEnabled,
   vaultPath,
+  vaultPngAssets,
   onSelect,
   onSubmit,
 }: TrueFalseCardProps) => {
@@ -74,7 +77,11 @@ export const TrueFalseCard = ({
   return (
     <article className="flashcard-item truefalse-card">
       <h3 className="flashcard-question">True/False</h3>
-      <FlashcardMediaGroup media={card.media} vaultPath={vaultPath} />
+      <FlashcardMediaGroup
+        media={card.media}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+      />
       {card.context?.trim() ? (
         <MarkdownBlocks text={card.context} allowTableScroll />
       ) : null}

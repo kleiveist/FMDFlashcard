@@ -15,6 +15,7 @@ export type MarkdownBlockKind =
   | "math-block"
   | "card-block"
   | "help-block"
+  | "media-block"
   | "ordered-list"
   | "unordered-list"
   | "table"
@@ -53,6 +54,8 @@ const isHorizontalRuleLineForNormalization = (line: string) =>
   /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
 const isHelpBlockStartLine = (line: string) => line.trim().toLowerCase() === "#help";
 const isHelpBlockEndLine = (line: string) => line.trim().toLowerCase() === "#helpend";
+const isMediaBlockStartLine = (line: string) => line.trim().toLowerCase() === "#media";
+const isMediaBlockEndLine = (line: string) => line.trim().toLowerCase() === "#mediaend";
 const isCardBlockStartLine = (line: string) => line.trim().toLowerCase() === "#card";
 const isCardBlockEndLine = (line: string) => line.trim().toLowerCase() === "#endcard";
 
@@ -76,6 +79,9 @@ const isListContinuationLine = (line: string) => {
     return false;
   }
   if (isHelpBlockStartLine(line) || isHelpBlockEndLine(line)) {
+    return false;
+  }
+  if (isMediaBlockStartLine(line) || isMediaBlockEndLine(line)) {
     return false;
   }
   if (isCardBlockStartLine(line) || isCardBlockEndLine(line)) {
@@ -106,6 +112,9 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
     return true;
   }
   if (isHelpBlockStartLine(line)) {
+    return true;
+  }
+  if (isMediaBlockStartLine(line)) {
     return true;
   }
   if (isCardBlockStartLine(line)) {
@@ -270,6 +279,20 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
         }
       }
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "help-block", i, end));
+      blockIndex += 1;
+      i = end + 1;
+      continue;
+    }
+
+    if (isMediaBlockStartLine(line)) {
+      let end = i;
+      for (let j = i + 1; j < lines.length; j += 1) {
+        end = j;
+        if (isMediaBlockEndLine(lines[j] ?? "")) {
+          break;
+        }
+      }
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "media-block", i, end));
       blockIndex += 1;
       i = end + 1;
       continue;
@@ -511,6 +534,7 @@ export const isSingleLineCommitBlock = (block: MarkdownBlock) => {
     block.kind === "math-block" ||
     block.kind === "card-block" ||
     block.kind === "help-block" ||
+    block.kind === "media-block" ||
     block.kind === "ordered-list" ||
     block.kind === "unordered-list" ||
     block.kind === "blockquote"

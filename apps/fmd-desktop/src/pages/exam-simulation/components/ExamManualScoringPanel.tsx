@@ -1,12 +1,15 @@
 import { type DragEvent } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
+import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
 import type { TrueFalseSelection } from "../../../features/flashcards/logic";
 import type { ExamManualTaskEntry } from "../examSimulationTypes";
+import type { VaultPngAsset } from "../../../lib/tree";
 
 type ExamManualScoringPanelProps = {
   task: ExamManualTaskEntry | null;
   helpEnabled?: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   finishDisabled: boolean;
   canGoBack: boolean;
   canGoNext: boolean;
@@ -68,6 +71,7 @@ export const ExamManualScoringPanel = ({
   task,
   helpEnabled = false,
   vaultPath,
+  vaultPngAssets,
   finishDisabled,
   canGoBack,
   canGoNext,
@@ -111,12 +115,20 @@ export const ExamManualScoringPanel = ({
             </span>
           </div>
         </header>
+        {task.task.media?.length ? (
+          <FlashcardMediaGroup
+            media={task.task.media}
+            vaultPngAssets={vaultPngAssets}
+            vaultPath={vaultPath}
+          />
+        ) : null}
         <CompositeCard
           card={task.task.card}
           cardIndex={task.taskIndex}
           submitted
           submissionLocked
           vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
           partStates={task.partStates}
           showSubmit={false}
           showResult={false}

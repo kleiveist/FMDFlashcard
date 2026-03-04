@@ -23,9 +23,11 @@
 
 import { type DragEvent, type ReactNode } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
+import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
 import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
 import { HelpButton, hasHelpContent } from "../../../components/HelpButton";
+import type { VaultPngAsset } from "../../../lib/tree";
 
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
 
@@ -83,6 +85,7 @@ type ExamTaskRunnerProps = {
   scoringReadOnly?: boolean;
   headerActions?: ReactNode;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
 };
 
 const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
@@ -125,6 +128,7 @@ export const ExamTaskRunner = ({
   scoringReadOnly = false,
   headerActions,
   vaultPath,
+  vaultPngAssets,
 }: ExamTaskRunnerProps) => {
   const isCorrection = phase === "correction";
   const isScoringLike = phase === "scoring" || phase === "correction";
@@ -188,12 +192,21 @@ export const ExamTaskRunner = ({
         </div>
       ) : null}
 
+      {task.media?.length ? (
+        <FlashcardMediaGroup
+          media={task.media}
+          vaultPngAssets={vaultPngAssets}
+          vaultPath={vaultPath}
+        />
+      ) : null}
+
       <CompositeCard
         card={task.card}
         cardIndex={taskIndex}
         submitted={canRevealOfficialSolution}
         submissionLocked={inputLocked}
         vaultPath={vaultPath}
+        vaultPngAssets={vaultPngAssets}
         partStates={partStates}
         showSubmit={false}
         showResult={false}

@@ -27,6 +27,7 @@ import {
 } from "./flashcards";
 import { findTableLineIndices } from "./markdownTables";
 import { extractAuxiliaryBlocksFromLines } from "./auxiliaryBlocks";
+import { parseMediaBlocks, type MediaItem } from "./cardMedia";
 
 export type ExamTaskSourceRange = {
   startLine: number;
@@ -48,6 +49,7 @@ export type ExamTaskBase = {
   prompt: string;
   officialAnswer?: string;
   helpText?: string[];
+  media?: MediaItem[];
   gradingMode: ExamTaskGradingMode;
   sourceRange: ExamTaskSourceRange;
   cardWrapper: boolean;
@@ -318,8 +320,17 @@ const parseTaskChunk = (
   const normalizedLines = normalizeTaskLines(chunkLines);
   const { combinedLines, taskLines, cardLines } = splitExamTaskLines(chunkLines);
   const hasCardWrapper = isTaskFullyWrappedInCard(chunkLines);
-  const { helpText: taskHelpText, contentLines: taskContentLines } =
-    extractAuxiliaryBlocksFromLines(taskLines, { kinds: ["help"] });
+  const taskAuxiliary = extractAuxiliaryBlocksFromLines(taskLines, {
+    kinds: ["help", "media"],
+  });
+  const taskMedia = parseMediaBlocks(
+    taskAuxiliary.blocks
+      .filter((block) => block.kind === "media")
+      .map((block) => ({ text: block.text, startIndex: block.startIndex })),
+    "exam-task-media",
+  );
+  const taskHelpText = taskAuxiliary.helpText;
+  const taskContentLines = taskAuxiliary.contentLines;
   const { contentLines: combinedContentLines } = extractAuxiliaryBlocksFromLines(
     combinedLines.length > 0 ? combinedLines : normalizedLines,
     { kinds: ["help", "media"] },
@@ -373,6 +384,7 @@ const parseTaskChunk = (
     card,
     warnings,
     helpText: taskHelpText.length > 0 ? taskHelpText : undefined,
+    media: taskMedia.length > 0 ? taskMedia : undefined,
     cardWrapper: hasCardWrapper,
     cardLines: cardInputLines,
   };

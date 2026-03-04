@@ -29,12 +29,14 @@ import { MultipleChoiceCard } from "../../../components/flashcards/MultipleChoic
 import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
 import { SrReviewActions } from "./SrReviewActions";
 import type { ClozeDragPayload, FlashcardSelfGrade } from "../../../features/flashcards/logic";
+import type { VaultPngAsset } from "../../../lib/tree";
 
 type SrCardHostProps = {
   filteredFlashcardEntries: { card: any; cardIndex: number }[];
   spacedRepetitionSubmissions: Record<number, boolean>;
   helpEnabled: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   spacedRepetitionCompositeStates?: Record<number, any[]>;
   spacedRepetitionClozeResponses: Record<number, Record<string, string>>;
   spacedRepetitionTrueFalseSelections: Record<number, Record<string, any>>;
@@ -120,6 +122,7 @@ export const SrCardHost = ({
   spacedRepetitionSubmissions,
   helpEnabled,
   vaultPath,
+  vaultPngAssets,
   spacedRepetitionCompositeStates,
   spacedRepetitionClozeResponses,
   spacedRepetitionTrueFalseSelections,
@@ -166,6 +169,7 @@ export const SrCardHost = ({
               cardIndex={cardIndex}
               submitted={submitted}
               vaultPath={vaultPath}
+              vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
               partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
@@ -192,6 +196,7 @@ export const SrCardHost = ({
               cardIndex={cardIndex}
               submitted={submitted}
               vaultPath={vaultPath}
+              vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
               responses={spacedRepetitionClozeResponses[cardIndex] ?? {}}
@@ -213,6 +218,7 @@ export const SrCardHost = ({
               cardIndex={cardIndex}
               submitted={submitted}
               vaultPath={vaultPath}
+              vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
               selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
@@ -230,6 +236,7 @@ export const SrCardHost = ({
               cardIndex={cardIndex}
               submitted={submitted}
               vaultPath={vaultPath}
+              vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
               response={spacedRepetitionTextResponses[cardIndex] ?? ""}
@@ -249,6 +256,7 @@ export const SrCardHost = ({
             cardIndex={cardIndex}
             submitted={submitted}
             vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
             helpText={card.helpText}
             helpEnabled={helpEnabled}
             selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}

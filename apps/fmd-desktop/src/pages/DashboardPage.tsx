@@ -862,6 +862,7 @@ const DashboardPageInner = (
             }
             activeFolderPath={normalizedActiveFolderPath || null}
             vaultFiles={vault.files}
+            vaultPngAssets={vault.pngAssets}
             vaultPath={vault.vaultPath ?? null}
             pointsProfiles={pointsProfiles}
             showMoveButtons={settings.examEditorShowMoveButtons}
@@ -1031,6 +1032,7 @@ const DashboardPageInner = (
           sourceMarkdown={preview.previewState === "idle" ? preview.preview : undefined}
           activeFolderPath={normalizedActiveFolderPath || null}
           vaultFiles={vault.files}
+          vaultPngAssets={vault.pngAssets}
           vaultPath={vault.vaultPath ?? null}
           pointsProfiles={pointsProfiles}
           showMoveButtons={settings.examEditorShowMoveButtons}

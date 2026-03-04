@@ -629,6 +629,7 @@ export const ExamSimulationPage = () => {
                   canGoNext={activeTaskIndex < runTasks.length - 1}
                   helpEnabled={settings.examHelpEnabled}
                   vaultPath={vault.vaultPath}
+                  vaultPngAssets={vault.pngAssets}
                 />
               ) : (
                 <div className="empty-state">No tasks available for this exam.</div>
@@ -640,6 +641,7 @@ export const ExamSimulationPage = () => {
               task={activeManualTaskEntry}
               helpEnabled={settings.examHelpEnabled}
               vaultPath={vault.vaultPath}
+              vaultPngAssets={vault.pngAssets}
               finishDisabled={false}
               canGoBack={canGoManualScoringBack}
               canGoNext={canGoManualScoringNext}
@@ -656,6 +658,7 @@ export const ExamSimulationPage = () => {
                   results={results}
                   helpEnabled={settings.examHelpEnabled}
                   vaultPath={vault.vaultPath}
+                  vaultPngAssets={vault.pngAssets}
                   correctionAction={{
                     label: "Correction",
                     onClick: handleStartCorrection,
@@ -687,6 +690,7 @@ export const ExamSimulationPage = () => {
               canGoNext={correctionCanGoNext}
               helpEnabled={settings.examHelpEnabled}
               vaultPath={vault.vaultPath}
+              vaultPngAssets={vault.pngAssets}
               onOptionSelect={handleCorrectionOptionSelect}
               onTrueFalseSelect={handleCorrectionTrueFalseSelect}
               onClozeInputChange={handleCorrectionClozeInputChange}
@@ -720,6 +724,7 @@ export const ExamSimulationPage = () => {
                     results={results}
                     helpEnabled={settings.examHelpEnabled}
                     vaultPath={vault.vaultPath}
+                    vaultPngAssets={vault.pngAssets}
                     onToggleTaskCardWrapper={handleResultTaskCardWrapperToggle}
                     taskCardWrapPendingById={resultTaskCardWrapPendingById}
                     taskCardWrapErrorById={resultTaskCardWrapErrorById}

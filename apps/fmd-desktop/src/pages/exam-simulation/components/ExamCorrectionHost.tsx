@@ -1,5 +1,6 @@
 import { type DragEvent } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
+import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
 import {
   handleClozeBlankDragOver,
   handleClozeTokenDragStart,
@@ -7,6 +8,7 @@ import {
   type TrueFalseSelection,
 } from "../../../features/flashcards/logic";
 import type { ExamSessionTask } from "../../../lib/examMixedSession";
+import type { VaultPngAsset } from "../../../lib/tree";
 
 type ExamCorrectionHostProps = {
   task: ExamSessionTask | null;
@@ -19,6 +21,7 @@ type ExamCorrectionHostProps = {
   canGoNext: boolean;
   helpEnabled?: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   onOptionSelect: (sessionTaskId: string, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     sessionTaskId: string,
@@ -74,6 +77,7 @@ export const ExamCorrectionHost = ({
   canGoNext,
   helpEnabled = false,
   vaultPath,
+  vaultPngAssets,
   onOptionSelect,
   onTrueFalseSelect,
   onClozeInputChange,
@@ -126,11 +130,19 @@ export const ExamCorrectionHost = ({
       </div>
 
       <div className="flashcard-list">
+        {task.media?.length ? (
+          <FlashcardMediaGroup
+            media={task.media}
+            vaultPngAssets={vaultPngAssets}
+            vaultPath={vaultPath}
+          />
+        ) : null}
         <CompositeCard
           card={task.card}
           cardIndex={queueIndex}
           submitted={submitted}
           vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
           partStates={partStates}
           revealCorrectness={submitted}
           showSolution={submitted}

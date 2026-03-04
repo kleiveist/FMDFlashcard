@@ -50,6 +50,7 @@ import {
 import { findTableLineIndices } from "../../lib/markdownTables";
 import { HelpButton, hasHelpContent } from "../HelpButton";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
+import type { VaultPngAsset } from "../../lib/tree";
 
 type ClozeCardProps = {
   card: ClozeCardType;
@@ -65,6 +66,7 @@ type ClozeCardProps = {
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
   onInputChange: (cardIndex: number, blankId: string, value: string) => void;
   onTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -126,6 +128,7 @@ export const ClozeCard = ({
   helpText,
   helpEnabled,
   vaultPath,
+  vaultPngAssets,
   onBlankDragOver,
   onInputChange,
   onSubmit,
@@ -522,7 +525,11 @@ export const ClozeCard = ({
       {questionText.trim() ? (
         <h3 className="flashcard-question">{questionText}</h3>
       ) : null}
-      <FlashcardMediaGroup media={card.media} vaultPath={vaultPath} />
+      <FlashcardMediaGroup
+        media={card.media}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+      />
       <MarkdownBlocks
         text={markdownText}
         className="cloze-text"
