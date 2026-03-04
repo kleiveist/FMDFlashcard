@@ -156,7 +156,9 @@ const buildMarkdownMediaPreviewSource = (markdown: string, scope: string) => {
   while (lineIndex < lines.length) {
     const blockEntry = blocksByStart.get(lineIndex);
     if (blockEntry) {
-      renderedLines.push(`<fmd-media-block data-media-index="${blockEntry.index}"></fmd-media-block>`);
+      renderedLines.push(
+        `<div data-fmd-media-block="true" data-media-index="${blockEntry.index}"></div>`,
+      );
       lineIndex = blockEntry.block.endIndex + 1;
       continue;
     }
@@ -168,6 +170,57 @@ const buildMarkdownMediaPreviewSource = (markdown: string, scope: string) => {
     markdown: renderedLines.join("\n"),
     groups,
   };
+};
+
+const readMarkdownElementProperty = (node: unknown, key: string) => {
+  if (
+    !node ||
+    typeof node !== "object" ||
+    !("properties" in node) ||
+    !node.properties ||
+    typeof node.properties !== "object"
+  ) {
+    return undefined;
+  }
+  return (node.properties as Record<string, unknown>)[key];
+};
+
+const renderMarkdownMediaGroup = ({
+  node,
+  groups,
+  vaultPngAssets,
+  vaultPath,
+}: {
+  node: unknown;
+  groups: MarkdownMediaPreviewGroup[];
+  vaultPngAssets?: VaultPngAsset[];
+  vaultPath?: string | null;
+}) => {
+  if (readMarkdownElementProperty(node, "data-fmd-media-block") !== "true") {
+    return null;
+  }
+  const mediaIndex = Number.parseInt(
+    String(readMarkdownElementProperty(node, "data-media-index") ?? "-1"),
+    10,
+  );
+  const mediaGroup = groups[mediaIndex] ?? null;
+  if (!mediaGroup) {
+    return null;
+  }
+  if (mediaGroup.items.length === 0) {
+    return (
+      <pre className="flashcard-code-block media-block-card-source">
+        <code>{mediaGroup.raw}</code>
+      </pre>
+    );
+  }
+  return (
+    <FlashcardMediaGroup
+      media={mediaGroup.items}
+      vaultPngAssets={vaultPngAssets}
+      vaultPath={vaultPath}
+    />
+  );
 };
 
 const coverThumbnailCropCache = new Map<string, CoverThumbnailCropScanResult>();
@@ -770,7 +823,6 @@ const markdownSchema = {
     ...(defaultSchema.tagNames ?? []),
     "br",
     "details",
-    "fmd-media-block",
     "kbd",
     "mark",
     "summary",
@@ -789,7 +841,11 @@ const markdownSchema = {
   attributes: {
     ...defaultSchema.attributes,
     details: [...(defaultSchema.attributes?.details ?? []), "open"],
-    "fmd-media-block": ["data-media-index"],
+    div: [
+      ...(defaultSchema.attributes?.div ?? []),
+      "data-fmd-media-block",
+      "data-media-index",
+    ],
     mark: [...(defaultSchema.attributes?.mark ?? []), "className"],
     ol: [...(defaultSchema.attributes?.ol ?? []), "data-md-ordered-delimiter"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
@@ -6572,6 +6628,13 @@ export const PreviewPanel = ({
                 {renderMarkdownTableCellChildren(children, "th")}
               </th>
             ),
+            div: ({ node, ...props }) =>
+              renderMarkdownMediaGroup({
+                node,
+                groups: mediaPreview.groups,
+                vaultPngAssets,
+                vaultPath,
+              }) ?? <div {...props} />,
             td: ({ node: _node, children, ...props }) => (
               <td {...props}>
                 {renderMarkdownTableCellChildren(children, "td")}
@@ -6580,35 +6643,6 @@ export const PreviewPanel = ({
             img: ({ node: _node, ...props }) => (
               <img {...props} draggable={false} />
             ),
-            "fmd-media-block": ({ node }) => {
-              const mediaIndexRaw =
-                node &&
-                typeof node === "object" &&
-                "properties" in node &&
-                node.properties &&
-                typeof node.properties === "object"
-                  ? (node.properties as Record<string, unknown>)["data-media-index"]
-                  : undefined;
-              const mediaIndex = Number.parseInt(String(mediaIndexRaw ?? "-1"), 10);
-              const mediaGroup = mediaPreview.groups[mediaIndex] ?? null;
-              if (!mediaGroup) {
-                return null;
-              }
-              if (mediaGroup.items.length === 0) {
-                return (
-                  <pre className="flashcard-code-block media-block-card-source">
-                    <code>{mediaGroup.raw}</code>
-                  </pre>
-                );
-              }
-              return (
-                <FlashcardMediaGroup
-                  media={mediaGroup.items}
-                  vaultPngAssets={vaultPngAssets}
-                  vaultPath={vaultPath}
-                />
-              );
-            },
           }}
         >
           {mediaPreview.markdown}
@@ -7227,6 +7261,13 @@ export const PreviewPanel = ({
                               {renderMarkdownTableCellChildren(children, "view-th")}
                             </th>
                           ),
+                          div: ({ node, ...props }) =>
+                            renderMarkdownMediaGroup({
+                              node,
+                              groups: renderedPreviewWithMedia.groups,
+                              vaultPngAssets,
+                              vaultPath,
+                            }) ?? <div {...props} />,
                           td: ({ node: _node, children, ...props }) => (
                             <td {...props}>
                               {renderMarkdownTableCellChildren(children, "view-td")}
@@ -7235,37 +7276,6 @@ export const PreviewPanel = ({
                           img: ({ node: _node, ...props }) => (
                             <img {...props} draggable={false} />
                           ),
-                          "fmd-media-block": ({ node }) => {
-                            const mediaIndexRaw =
-                              node &&
-                              typeof node === "object" &&
-                              "properties" in node &&
-                              node.properties &&
-                              typeof node.properties === "object"
-                                ? (node.properties as Record<string, unknown>)[
-                                    "data-media-index"
-                                  ]
-                                : undefined;
-                            const mediaIndex = Number.parseInt(String(mediaIndexRaw ?? "-1"), 10);
-                            const mediaGroup = renderedPreviewWithMedia.groups[mediaIndex] ?? null;
-                            if (!mediaGroup) {
-                              return null;
-                            }
-                            if (mediaGroup.items.length === 0) {
-                              return (
-                                <pre className="flashcard-code-block media-block-card-source">
-                                  <code>{mediaGroup.raw}</code>
-                                </pre>
-                              );
-                            }
-                            return (
-                              <FlashcardMediaGroup
-                                media={mediaGroup.items}
-                                vaultPngAssets={vaultPngAssets}
-                                vaultPath={vaultPath}
-                              />
-                            );
-                          },
                         }}
                       >
                         {renderedPreviewWithMedia.markdown}

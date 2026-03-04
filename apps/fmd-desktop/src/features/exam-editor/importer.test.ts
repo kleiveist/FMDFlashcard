@@ -213,12 +213,29 @@ Statement two
     }
 
     const [task] = imported.blueprint.tasks;
-    expect(task?.cards).toHaveLength(2);
-    expect(task?.cards[0]?.mediaItems[0]).toMatchObject({
+    expect(task).toBeDefined();
+    if (!task) {
+      return;
+    }
+    expect(task.cards).toHaveLength(2);
+    const [firstCard, secondCard] = task.cards;
+    expect(firstCard).toBeDefined();
+    expect(secondCard).toBeDefined();
+    if (!firstCard || !secondCard) {
+      return;
+    }
+    const firstMediaItems = firstCard.mediaItems;
+    const secondMediaItems = secondCard.mediaItems;
+    expect(firstMediaItems).toBeDefined();
+    expect(secondMediaItems).toBeDefined();
+    if (!firstMediaItems || !secondMediaItems) {
+      return;
+    }
+    expect(firstMediaItems[0]).toMatchObject({
       type: "png",
       src: "images/example.png",
     });
-    expect(task?.cards[1]?.mediaItems[0]?.inlineSvg).toContain("circle");
+    expect(secondMediaItems[0]?.inlineSvg).toContain("circle");
 
     const serialized = serializeExamBlueprint(imported.blueprint);
     expect(serialized.match(/^#media$/gm)?.length ?? 0).toBe(2);
@@ -231,13 +248,29 @@ Statement two
       return;
     }
 
-    expect(roundtrip.blueprint.tasks[0]?.cards[0]?.mediaItems[0]).toMatchObject({
+    const [roundtripTask] = roundtrip.blueprint.tasks;
+    expect(roundtripTask).toBeDefined();
+    if (!roundtripTask) {
+      return;
+    }
+    const [roundtripFirstCard, roundtripSecondCard] = roundtripTask.cards;
+    expect(roundtripFirstCard).toBeDefined();
+    expect(roundtripSecondCard).toBeDefined();
+    if (!roundtripFirstCard || !roundtripSecondCard) {
+      return;
+    }
+    const roundtripFirstMediaItems = roundtripFirstCard.mediaItems;
+    const roundtripSecondMediaItems = roundtripSecondCard.mediaItems;
+    expect(roundtripFirstMediaItems).toBeDefined();
+    expect(roundtripSecondMediaItems).toBeDefined();
+    if (!roundtripFirstMediaItems || !roundtripSecondMediaItems) {
+      return;
+    }
+    expect(roundtripFirstMediaItems[0]).toMatchObject({
       type: "png",
       src: "images/example.png",
     });
-    expect(roundtrip.blueprint.tasks[0]?.cards[1]?.mediaItems[0]?.inlineSvg).toContain(
-      "circle",
-    );
+    expect(roundtripSecondMediaItems[0]?.inlineSvg).toContain("circle");
   });
 
   it("keeps wrapper toggles idempotent across serialize/import cycles", () => {

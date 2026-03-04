@@ -58,6 +58,7 @@ type ContentModeProps = {
   onOptionSelect: (taskId: string, cardId: string, optionId: string) => void;
   onOptionAdd: (taskId: string, cardId: string) => void;
   onOptionRemove: (taskId: string, cardId: string, optionId: string) => void;
+  vaultPngAssets?: VaultPngAsset[] | null;
   popupMode?: boolean;
   popupOpen?: boolean;
   onPopupOpen?: () => void;
