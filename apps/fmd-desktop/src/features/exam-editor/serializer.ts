@@ -72,6 +72,17 @@ const serializeHelpBlock = (helpText?: string) => {
   return ["#help", ...lines, "#helpend"];
 };
 
+const serializeMediaBlock = (mediaText?: string) => {
+  if (!mediaText || mediaText.trim() === "") {
+    return [];
+  }
+  const lines = cleanLines(mediaText);
+  if (lines.length === 0) {
+    return [];
+  }
+  return ["#media", ...lines, "#mediaend"];
+};
+
 const serializeQaCard = (card: Extract<CardBlueprint, { type: "qa" }>) => {
   const promptLines = cleanLines(card.prompt);
   const answerLines = cleanLines(card.answer);
@@ -135,7 +146,11 @@ const serializeCardBlock = (card: CardBlueprint, stripTaskNumber: boolean) => {
   const sanitizedContent = stripTaskNumber
     ? stripLeadingTaskNumberLine(contentLines)
     : contentLines;
-  return sanitizedContent;
+  return [
+    ...serializeMediaBlock(card.mediaText),
+    ...sanitizedContent,
+    ...serializeHelpBlock(card.helpText),
+  ];
 };
 
 const serializeTask = (task: ExamTaskBlueprint, index: number) => {
@@ -152,7 +167,6 @@ const serializeTask = (task: ExamTaskBlueprint, index: number) => {
       lines.push("---");
     }
     lines.push(...serializeCardBlock(card, cardIndex === 0));
-    lines.push(...serializeHelpBlock(card.helpText));
   });
   if (wrapTask) {
     lines.push("#endcard");

@@ -24,6 +24,7 @@ import { useId, useMemo } from "react";
 import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
 import { MarkdownBlocks } from "./MarkdownBlocks";
 import { HelpButton, hasHelpContent } from "../HelpButton";
+import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
 
 const OPTION_LABELS = "abcdefghijklmnopqrstuvwxyz";
 
@@ -68,6 +69,7 @@ type MultipleChoiceCardProps = {
   revealCorrectness?: boolean;
   helpText?: string[] | string;
   helpEnabled?: boolean;
+  vaultPath?: string | null;
   onSelect: (cardIndex: number, keys: string[]) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -83,6 +85,7 @@ export const MultipleChoiceCard = ({
   revealCorrectness,
   helpText,
   helpEnabled,
+  vaultPath,
   onSelect,
   onSubmit,
 }: MultipleChoiceCardProps) => {
@@ -124,6 +127,7 @@ export const MultipleChoiceCard = ({
   return (
     <article className="flashcard-item">
       <h3 className="flashcard-question">{card.question}</h3>
+      <FlashcardMediaGroup media={card.media} vaultPath={vaultPath} />
       {card.context?.trim() ? (
         <MarkdownBlocks text={card.context} allowTableScroll />
       ) : null}

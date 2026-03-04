@@ -184,6 +184,54 @@ Answer: A
     expect(serialized).toContain("---");
   });
 
+  it("roundtrips card media blocks for composite tasks", () => {
+    const markdown = `
+#exam
+1) Media
+#card
+#media
+[[images/example.png]]
+#mediaend
+Question one
+Answer: One
+---
+#media
+\`\`\`svg
+<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
+\`\`\`
+#mediaend
+Statement two
+-true
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const [task] = imported.blueprint.tasks;
+    expect(task?.cards).toHaveLength(2);
+    expect(task?.cards[0]?.mediaText).toBe("[[images/example.png]]");
+    expect(task?.cards[1]?.mediaText).toContain("```svg");
+
+    const serialized = serializeExamBlueprint(imported.blueprint);
+    expect(serialized.match(/^#media$/gm)?.length ?? 0).toBe(2);
+
+    const roundtrip = importExamMarkdown(serialized);
+    expect(roundtrip).not.toBeNull();
+    if (!roundtrip) {
+      return;
+    }
+
+    expect(roundtrip.blueprint.tasks[0]?.cards[0]?.mediaText).toBe(
+      "[[images/example.png]]",
+    );
+    expect(roundtrip.blueprint.tasks[0]?.cards[1]?.mediaText).toContain("```svg");
+  });
+
   it("keeps wrapper toggles idempotent across serialize/import cycles", () => {
     const markdown = `
 #exam

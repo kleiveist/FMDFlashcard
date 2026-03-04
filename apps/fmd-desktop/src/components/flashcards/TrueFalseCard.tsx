@@ -28,6 +28,7 @@ import {
   type TrueFalseSelection,
 } from "../../features/flashcards/logic";
 import { HelpButton, hasHelpContent } from "../HelpButton";
+import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
 
 type TrueFalseCardProps = {
   card: TrueFalseCardType;
@@ -41,6 +42,7 @@ type TrueFalseCardProps = {
   showSolution?: boolean;
   helpText?: string[] | string;
   helpEnabled?: boolean;
+  vaultPath?: string | null;
   onSelect: (cardIndex: number, itemId: string, value: TrueFalseSelection) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
@@ -57,6 +59,7 @@ export const TrueFalseCard = ({
   showSolution,
   helpText,
   helpEnabled,
+  vaultPath,
   onSelect,
   onSubmit,
 }: TrueFalseCardProps) => {
@@ -71,6 +74,7 @@ export const TrueFalseCard = ({
   return (
     <article className="flashcard-item truefalse-card">
       <h3 className="flashcard-question">True/False</h3>
+      <FlashcardMediaGroup media={card.media} vaultPath={vaultPath} />
       {card.context?.trim() ? (
         <MarkdownBlocks text={card.context} allowTableScroll />
       ) : null}

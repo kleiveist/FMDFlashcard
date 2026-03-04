@@ -252,6 +252,61 @@ Use %token% with "drag".
     }
   });
 
+  it("extracts card media per part without affecting type detection", () => {
+    const markdown = `#card
+#media
+[[images/qa.png]]
+#mediaend
+Question one?
+Answer: One
+
+#media
+[[images/tf.png]]
+#mediaend
+Statement two
+-true
+
+#media
+[[images/m1.png]]
+#mediaend
+Pick one.
+a) First
+b) Second
+-a
+
+#media
+[[images/m2.png]]
+#mediaend
+Pick two.
+a) Alpha
+b) Beta
+c) Gamma
+-a
+-c
+
+#media
+[[images/cloze.png]]
+#mediaend
+Use %token% with "drag".
+#endcard`;
+
+    const cards = parseFlashcards(markdown, { answerMatch: "line-start" });
+
+    expect(cards).toHaveLength(1);
+    const parts = getCompositeParts(cards[0]);
+    expect(parts.map((part) => part.kind)).toEqual([
+      "free-text",
+      "true-false",
+      "multiple-choice",
+      "multiple-choice",
+      "cloze",
+    ]);
+    parts.forEach((part) => {
+      expect(part.media).toHaveLength(1);
+      expect(part.media?.[0]).toMatchObject({ kind: "image" });
+    });
+  });
+
   it("parses inline answer parts inside a composite card", () => {
     const markdown = `#card
 Inline question? Answer: Inline answer.

@@ -23,6 +23,8 @@
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import { SvgPreviewBlock } from "../../../components/flashcards/SvgPreviewBlock";
+import { extractSvgCodeBlockSource } from "../../../components/markdownSvg";
 
 const markdownSchema = {
   ...defaultSchema,
@@ -58,6 +60,13 @@ export const ExamMarkdown = ({ content, className }: ExamMarkdownProps) => {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[[rehypeSanitize, markdownSchema]]}
         components={{
+          pre: ({ node: _node, children, ...props }) => {
+            const svgSource = extractSvgCodeBlockSource(children);
+            if (svgSource !== null) {
+              return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
+            }
+            return <pre {...props}>{children}</pre>;
+          },
           table: ({ node: _node, ...props }) => (
             <div className="exam-table-wrap">
               <table {...props} />

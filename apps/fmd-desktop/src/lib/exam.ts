@@ -17,7 +17,6 @@
  */
 
 import {
-  extractHelpBlocksFromLines,
   parseFlashcards,
   splitAnswerCard,
   splitCardLines,
@@ -27,6 +26,7 @@ import {
   type FlashcardPart,
 } from "./flashcards";
 import { findTableLineIndices } from "./markdownTables";
+import { extractAuxiliaryBlocksFromLines } from "./auxiliaryBlocks";
 
 export type ExamTaskSourceRange = {
   startLine: number;
@@ -319,9 +319,11 @@ const parseTaskChunk = (
   const { combinedLines, taskLines, cardLines } = splitExamTaskLines(chunkLines);
   const hasCardWrapper = isTaskFullyWrappedInCard(chunkLines);
   const { helpText: taskHelpText, contentLines: taskContentLines } =
-    extractHelpBlocksFromLines(taskLines);
-  const { contentLines: combinedContentLines } =
-    extractHelpBlocksFromLines(combinedLines.length > 0 ? combinedLines : normalizedLines);
+    extractAuxiliaryBlocksFromLines(taskLines, { kinds: ["help"] });
+  const { contentLines: combinedContentLines } = extractAuxiliaryBlocksFromLines(
+    combinedLines.length > 0 ? combinedLines : normalizedLines,
+    { kinds: ["help", "media"] },
+  );
   const cardInputLines =
     cardLines.length > 0 ? cardLines : taskContentLines.length > 0 ? taskContentLines : normalizedLines;
   const answerSplit = splitAnswerBlockLines(combinedContentLines);

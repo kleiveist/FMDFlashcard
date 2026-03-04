@@ -612,6 +612,43 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector("kbd")).toBeTruthy();
   });
 
+  it("renders svg fences as preview blocks with a code toggle", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "```svg",
+        "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
+        "```",
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".svg-preview-surface svg")).toBeTruthy();
+    const toggleButton = container.querySelector<HTMLButtonElement>(
+      ".svg-preview-toolbar button",
+    );
+    expect(toggleButton?.textContent).toBe("Code");
+
+    act(() => {
+      toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const codeBlock = container.querySelector(".flashcard-code-block.language-svg");
+    expect(codeBlock?.textContent ?? "").toContain("<svg viewBox=\"0 0 10 10\">");
+  });
+
+  it("falls back to code with a visible invalid badge for invalid svg fences", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["```svg", "<div>bad</div>", "```"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".svg-preview-surface svg")).toBeNull();
+    expect(container.textContent).toContain("SVG invalid");
+    expect(container.querySelector(".flashcard-code-block.language-svg")?.textContent).toContain(
+      "<div>bad</div>",
+    );
+  });
+
   it("renders preview-mode table cells with the shared table cell wrapper", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       [

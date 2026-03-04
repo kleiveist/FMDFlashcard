@@ -16,6 +16,7 @@ type BaseCardFormProps = {
   validation?: CardValidation;
   onPromptChange: (value: string) => void;
   onHelpChange: (value: string) => void;
+  onMediaChange: (value: string) => void;
 };
 
 type QaCardFormProps = BaseCardFormProps & {
@@ -69,6 +70,7 @@ type CardContentFormProps = {
   onOptionAdd: () => void;
   onOptionRemove: (optionId: string) => void;
   onHelpChange: (value: string) => void;
+  onMediaChange: (value: string) => void;
 };
 
 const renderFieldError = (message?: string) =>
@@ -106,15 +108,41 @@ const renderHelpField = (
   />
 );
 
+const renderMediaField = (
+  value: string,
+  onMediaChange: (value: string) => void,
+) => {
+  const summary = value.trim() ? "Configured" : "Optional, collapsed by default";
+  return (
+    <details className="media-editor">
+      <summary className="media-editor-summary">
+        <span className="label">Media</span>
+        <span className="muted small">{summary}</span>
+      </summary>
+      <div className="media-editor-body">
+        <AutoGrowTextarea
+          className="text-input exam-textarea"
+          rows={4}
+          value={value}
+          onChange={onMediaChange}
+          placeholder={"[[image.png]]\n\n```svg\n<svg>...</svg>\n```"}
+        />
+      </div>
+    </details>
+  );
+};
+
 const QaCardForm = ({
   card,
   validation,
   onPromptChange,
   onAnswerChange,
   onHelpChange,
+  onMediaChange,
 }: QaCardFormProps) => (
   <div className="card-form">
     {renderPromptField(card, validation, onPromptChange)}
+    {renderMediaField(card.mediaText ?? "", onMediaChange)}
     <label className="field">
       <span className="label">Answer</span>
       <AutoGrowTextarea
@@ -136,9 +164,11 @@ const TfCardForm = ({
   onPromptChange,
   onCorrectChange,
   onHelpChange,
+  onMediaChange,
 }: TfCardFormProps) => (
   <div className="card-form">
     {renderPromptField(card, validation, onPromptChange)}
+    {renderMediaField(card.mediaText ?? "", onMediaChange)}
     <label className="field">
       <span className="label">Correct answer</span>
       <div className="choice-row">
@@ -223,9 +253,11 @@ const ChoiceCardForm = ({
   onOptionAdd,
   onOptionRemove,
   onHelpChange,
+  onMediaChange,
 }: ChoiceCardFormProps) => (
   <div className="card-form">
     {renderPromptField(card, validation, onPromptChange)}
+    {renderMediaField(card.mediaText ?? "", onMediaChange)}
     <div className="field">
       <div className="field-header">
         <span className="label">Options</span>
@@ -258,6 +290,7 @@ const ClozeCardForm = ({
   validation,
   onPromptChange,
   onHelpChange,
+  onMediaChange,
 }: ClozeCardFormProps) => {
   const [showPreview, setShowPreview] = useState(false);
   const previewCard = useMemo(() => buildClozePreview(card.prompt), [card.prompt]);
@@ -265,6 +298,7 @@ const ClozeCardForm = ({
   return (
     <div className="card-form">
       {renderPromptField(card, validation, onPromptChange)}
+      {renderMediaField(card.mediaText ?? "", onMediaChange)}
       <div className="hint-box">
         {card.type === "cl" ? (
           <p>Use %answer% to create typed blanks.</p>
@@ -330,6 +364,7 @@ export const CardContentForm = ({
   onOptionAdd,
   onOptionRemove,
   onHelpChange,
+  onMediaChange,
 }: CardContentFormProps) => {
   const title = serializeCardTypeLabel(card.type);
   const isValid = validation ? validation.valid : true;
@@ -343,6 +378,7 @@ export const CardContentForm = ({
         <div className="exam-card-form-tags">
           <span className={`pill ${statusClass}`}>{statusLabel}</span>
           {card.helpText?.trim() ? <span className="pill">Hint</span> : null}
+          {card.mediaText?.trim() ? <span className="pill">Media</span> : null}
         </div>
       </header>
       {card.type === "qa" ? (
@@ -352,6 +388,7 @@ export const CardContentForm = ({
           onPromptChange={onPromptChange}
           onAnswerChange={onAnswerChange}
           onHelpChange={onHelpChange}
+          onMediaChange={onMediaChange}
         />
       ) : null}
       {card.type === "tf" ? (
@@ -361,6 +398,7 @@ export const CardContentForm = ({
           onPromptChange={onPromptChange}
           onCorrectChange={onCorrectChange}
           onHelpChange={onHelpChange}
+          onMediaChange={onMediaChange}
         />
       ) : null}
       {card.type === "m1" || card.type === "m2" ? (
@@ -374,6 +412,7 @@ export const CardContentForm = ({
           onOptionAdd={onOptionAdd}
           onOptionRemove={onOptionRemove}
           onHelpChange={onHelpChange}
+          onMediaChange={onMediaChange}
         />
       ) : null}
       {card.type === "cl" || card.type === "cd" || card.type === "cld" ? (
@@ -382,6 +421,7 @@ export const CardContentForm = ({
           validation={validation}
           onPromptChange={onPromptChange}
           onHelpChange={onHelpChange}
+          onMediaChange={onMediaChange}
         />
       ) : null}
     </section>

@@ -33,7 +33,12 @@ type ContentModeProps = {
   onCardUpdate: (
     taskId: string,
     cardId: string,
-    updates: { prompt?: string; answer?: string; correct?: "true" | "false" | null },
+    updates: {
+      prompt?: string;
+      answer?: string;
+      correct?: "true" | "false" | null;
+      mediaText?: string;
+    },
   ) => void;
   onCardHelpChange: (taskId: string, cardId: string, value: string) => void;
   onOptionTextChange: (
@@ -122,7 +127,7 @@ const ContentEditorPanel = ({
           </header>
 
           <HelpEditor
-            label="Task help / hint"
+            label="Card help / hint"
             value={activeTask.helpText ?? ""}
             onChange={(value) => onTaskUpdate(activeTask.id, { helpText: value })}
             showPreviewToggle
@@ -159,6 +164,9 @@ const ContentEditorPanel = ({
                 }
                 onHelpChange={(value) =>
                   onCardHelpChange(activeTask.id, card.id, value)
+                }
+                onMediaChange={(value) =>
+                  onCardUpdate(activeTask.id, card.id, { mediaText: value })
                 }
               />
             );

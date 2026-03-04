@@ -628,6 +628,7 @@ export const ExamSimulationPage = () => {
                   canGoBack={activeTaskIndex > 0}
                   canGoNext={activeTaskIndex < runTasks.length - 1}
                   helpEnabled={settings.examHelpEnabled}
+                  vaultPath={vault.vaultPath}
                 />
               ) : (
                 <div className="empty-state">No tasks available for this exam.</div>
@@ -638,6 +639,7 @@ export const ExamSimulationPage = () => {
             <ExamManualScoringPanel
               task={activeManualTaskEntry}
               helpEnabled={settings.examHelpEnabled}
+              vaultPath={vault.vaultPath}
               finishDisabled={false}
               canGoBack={canGoManualScoringBack}
               canGoNext={canGoManualScoringNext}
@@ -653,6 +655,7 @@ export const ExamSimulationPage = () => {
                 <ExamResultsPanel
                   results={results}
                   helpEnabled={settings.examHelpEnabled}
+                  vaultPath={vault.vaultPath}
                   correctionAction={{
                     label: "Correction",
                     onClick: handleStartCorrection,
@@ -683,6 +686,7 @@ export const ExamSimulationPage = () => {
               canGoBack={correctionCanGoBack}
               canGoNext={correctionCanGoNext}
               helpEnabled={settings.examHelpEnabled}
+              vaultPath={vault.vaultPath}
               onOptionSelect={handleCorrectionOptionSelect}
               onTrueFalseSelect={handleCorrectionTrueFalseSelect}
               onClozeInputChange={handleCorrectionClozeInputChange}
@@ -715,6 +719,7 @@ export const ExamSimulationPage = () => {
                   <ExamResultsPanel
                     results={results}
                     helpEnabled={settings.examHelpEnabled}
+                    vaultPath={vault.vaultPath}
                     onToggleTaskCardWrapper={handleResultTaskCardWrapperToggle}
                     taskCardWrapPendingById={resultTaskCardWrapPendingById}
                     taskCardWrapErrorById={resultTaskCardWrapErrorById}

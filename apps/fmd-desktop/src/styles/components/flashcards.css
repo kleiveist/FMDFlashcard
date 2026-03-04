@@ -308,6 +308,82 @@
   font-family: inherit;
 }
 
+.flashcard-media-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flashcard-media-item {
+  min-width: 0;
+}
+
+.flashcard-media-image {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  width: auto;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+  object-fit: contain;
+}
+
+.flashcard-media-placeholder {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--line-soft);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.svg-preview-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.svg-preview-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.svg-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--warning-border, var(--line-soft));
+  background: var(--warning-bg, var(--panel));
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.svg-preview-surface {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  overflow: auto;
+}
+
+.svg-preview-surface > svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.md-svg-preview-block {
+  margin: 0;
+}
+
 .flashcard-table {
   width: 100%;
   max-width: 100%;

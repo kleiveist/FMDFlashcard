@@ -15,6 +15,7 @@ import type {
 } from "../../lib/flashcards";
 import { hasClozeMarker, parseFlashcards } from "../../lib/flashcards";
 import { findTableLineIndices } from "../../lib/markdownTables";
+import { extractAuxiliaryBlocksFromLines } from "../../lib/auxiliaryBlocks";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
   CardBlueprint,
@@ -638,12 +639,15 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     const headingInfo = deriveTaskHeadingInfo(rawLines, task.cardWrapper);
     let hasCardContent = false;
     let cardHelpIndex = 0;
-    const pushCard = (card: CardBlueprint) => {
+    const pushCard = (card: CardBlueprint, mediaText?: string) => {
       if (cardHelpIndex < cardHelpTexts.length) {
         const helpText = cardHelpTexts[cardHelpIndex] ?? "";
         if (helpText.trim()) {
           card.helpText = helpText;
         }
+      }
+      if (mediaText?.trim()) {
+        card.mediaText = mediaText;
       }
       cardHelpIndex += 1;
       cards.push(card);
@@ -664,6 +668,11 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         );
         trimmedLines = trimmedLines.slice(dropCount);
       }
+      const extractedMedia = extractAuxiliaryBlocksFromLines(trimmedLines, {
+        kinds: ["media"],
+      });
+      const mediaText = extractedMedia.mediaText.join("\n\n").trim();
+      trimmedLines = trimEmptyLines(extractedMedia.contentLines);
       if (trimmedLines.length > 0) {
         hasCardContent = true;
       }
@@ -683,7 +692,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
           prompt: fallback.prompt,
           answer: fallback.officialAnswer ?? "",
         };
-        pushCard(fallbackCard);
+        pushCard(fallbackCard, mediaText);
         return;
       }
       parts.forEach((part) => {
@@ -691,7 +700,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         if (part.kind === "true-false" && part.items.length > 1) {
           warnings.push("Multiple true/false statements were split into separate cards.");
         }
-        partCards.forEach((card) => pushCard(card));
+        partCards.forEach((card) => pushCard(card, mediaText));
       });
     });
 

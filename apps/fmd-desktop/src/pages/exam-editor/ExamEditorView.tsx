@@ -418,7 +418,13 @@ export const ExamEditorView = ({
     (
       taskId: string,
       cardId: string,
-      updates: { prompt?: string; answer?: string; correct?: "true" | "false" | null; helpText?: string },
+      updates: {
+        prompt?: string;
+        answer?: string;
+        correct?: "true" | "false" | null;
+        helpText?: string;
+        mediaText?: string;
+      },
     ) => {
       updateTasks((tasks) =>
         tasks.map((task) => {
@@ -450,6 +456,7 @@ export const ExamEditorView = ({
             }
             const nextCard = createCardBlueprint(type);
             nextCard.helpText = card.helpText;
+            nextCard.mediaText = card.mediaText;
             if ("prompt" in card && "prompt" in nextCard) {
               nextCard.prompt = card.prompt;
             }

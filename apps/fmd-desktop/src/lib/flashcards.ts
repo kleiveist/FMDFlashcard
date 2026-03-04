@@ -18,6 +18,15 @@
 
 import { answerMarkers, falseTokens, trueTokens } from "./flashcardKeywords";
 import { findTableLineIndices } from "./markdownTables";
+import {
+  extractAuxiliaryBlocksFromLines,
+} from "./auxiliaryBlocks";
+import { parseCardMediaText, type CardMediaItem } from "./cardMedia";
+
+export {
+  extractHelpBlocksFromLines,
+  type HelpBlockExtraction,
+} from "./auxiliaryBlocks";
 
 /**
  * Flashcard syntax:
@@ -53,12 +62,14 @@ export type MultipleChoiceCard = {
   context?: string;
   options: FlashcardOption[];
   correctKeys: string[];
+  media?: CardMediaItem[];
 };
 
 export type FreeTextCard = {
   kind: "free-text";
   front: string;
   back: string;
+  media?: CardMediaItem[];
 };
 
 export type TrueFalseItem = {
@@ -71,6 +82,7 @@ export type TrueFalseCard = {
   kind: "true-false";
   items: TrueFalseItem[];
   context?: string;
+  media?: CardMediaItem[];
 };
 
 export type ClozeSegment =
@@ -90,6 +102,7 @@ export type ClozeCard = {
   question: string;
   segments: ClozeSegment[];
   dragTokens: ClozeDragToken[];
+  media?: CardMediaItem[];
 };
 
 export type FlashcardPart = MultipleChoiceCard | FreeTextCard | TrueFalseCard | ClozeCard;
@@ -148,8 +161,6 @@ const fenceLinePattern = /^\s*(```|~~~)/;
 const separatorLinePattern = /^\s*---\s*$/;
 const cardStartPattern = /^\s*#card\s*$/i;
 const cardEndPattern = /^\s*#endcard\s*$/i;
-const helpStartPattern = /^\s*#help\s*$/;
-const helpEndPattern = /^\s*#helpend\s*$/;
 
 const normalizeKeyword = (value: string) =>
   value
@@ -215,84 +226,6 @@ const buildFenceMap = (lines: string[]) => {
 const isSeparatorLine = (line: string) => separatorLinePattern.test(line);
 const isCardStartLine = (line: string) => cardStartPattern.test(line);
 const isCardEndLine = (line: string) => cardEndPattern.test(line);
-const isHelpStartLine = (line: string) => helpStartPattern.test(line);
-const isHelpEndLine = (line: string) => helpEndPattern.test(line);
-
-export type HelpBlockExtraction = {
-  helpText: string[];
-  contentLines: string[];
-};
-
-export const extractHelpBlocksFromLines = (
-  lines: string[],
-): HelpBlockExtraction => {
-  const helpText: string[] = [];
-  const contentLines: string[] = [];
-  let inHelp = false;
-  let inFence = false;
-  let fenceToken = "";
-  let currentBlock: string[] = [];
-  const fencePattern = /^\s*(```|~~~)/;
-
-  const flushHelp = () => {
-    const trimmed = trimEmptyLines(currentBlock);
-    if (trimmed.length > 0) {
-      helpText.push(trimmed.join("\n"));
-    }
-    currentBlock = [];
-  };
-
-  lines.forEach((line) => {
-    const trimmed = line.trimStart();
-    const fenceMatch = trimmed.match(fencePattern);
-    if (fenceMatch) {
-      if (inFence && fenceMatch[1] === fenceToken) {
-        inFence = false;
-        fenceToken = "";
-      } else if (!inFence) {
-        inFence = true;
-        fenceToken = fenceMatch[1] ?? "";
-      }
-      if (inHelp) {
-        currentBlock.push(line);
-      } else {
-        contentLines.push(line);
-      }
-      return;
-    }
-
-    if (!inHelp) {
-      if (!inFence && isHelpStartLine(line)) {
-        inHelp = true;
-        currentBlock = [];
-        return;
-      }
-      contentLines.push(line);
-      return;
-    }
-
-    if (!inFence && isHelpEndLine(line)) {
-      inHelp = false;
-      flushHelp();
-      return;
-    }
-
-    if (!inFence && isSeparatorLine(line)) {
-      inHelp = false;
-      flushHelp();
-      contentLines.push(line);
-      return;
-    }
-
-    currentBlock.push(line);
-  });
-
-  if (inHelp) {
-    flushHelp();
-  }
-
-  return { helpText, contentLines };
-};
 
 const isAssignmentLine = (line: string) => {
   const match = line.match(assignmentPattern);
@@ -1296,17 +1229,24 @@ export const parseFlashcards = (
       continue;
     }
 
-    const { helpText, contentLines } = extractHelpBlocksFromLines(cardLines);
+    const { helpText, contentLines } = extractAuxiliaryBlocksFromLines(cardLines, {
+      kinds: ["help"],
+    });
     const blocks = splitCardLines(contentLines, answerMatch);
     const parts: FlashcardPart[] = [];
     const detectedTypes: FlashcardDetectedType[] = [];
 
     blocks.forEach((block) => {
-      const parsed = parseCardLines(block, answerMatch);
+      const extractedMedia = extractAuxiliaryBlocksFromLines(block, {
+        kinds: ["media"],
+      });
+      const parsed = parseCardLines(extractedMedia.contentLines, answerMatch);
       if (!parsed) {
         return;
       }
-      parts.push(parsed.part);
+      const mediaText = extractedMedia.mediaText.join("\n\n").trim();
+      const media = parseCardMediaText(mediaText);
+      parts.push(media.length > 0 ? { ...parsed.part, media } : parsed.part);
       parsed.detectedTypes.forEach((detected) => {
         pushUnique(detectedTypes, detected);
       });

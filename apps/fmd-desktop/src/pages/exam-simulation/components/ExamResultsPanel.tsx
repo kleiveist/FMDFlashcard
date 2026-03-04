@@ -29,6 +29,7 @@ import type { ExamResults } from "../examSimulationTypes";
 type ExamResultsPanelProps = {
   results: ExamResults;
   helpEnabled?: boolean;
+  vaultPath?: string | null;
   correctionAction?: {
     label: string;
     onClick: () => void;
@@ -93,6 +94,7 @@ const noopNav = () => {};
 export const ExamResultsPanel = ({
   results,
   helpEnabled = false,
+  vaultPath,
   correctionAction = null,
   onToggleTaskCardWrapper,
   taskCardWrapPendingById,
@@ -278,6 +280,7 @@ export const ExamResultsPanel = ({
               helpEnabled={helpEnabled}
               showNavigation={false}
               scoringReadOnly
+              vaultPath={vaultPath}
             />
           </div>
         ) : null}

@@ -19,6 +19,8 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { HelpIcon } from "./icons";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
+import { SvgPreviewBlock } from "./flashcards/SvgPreviewBlock";
+import { extractSvgCodeBlockSource } from "./markdownSvg";
 
 const markdownSchema = {
   ...defaultSchema,
@@ -96,6 +98,13 @@ export const HelpPanel = ({
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[[rehypeSanitize, markdownSchema]]}
                 components={{
+                  pre: ({ node: _node, children, ...props }) => {
+                    const svgSource = extractSvgCodeBlockSource(children);
+                    if (svgSource !== null) {
+                      return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
+                    }
+                    return <pre {...props}>{children}</pre>;
+                  },
                   table: ({ node: _node, ...props }) => (
                     <div className="exam-table-wrap">
                       <table {...props} />

@@ -18,6 +18,7 @@ type ExamCorrectionHostProps = {
   canGoBack: boolean;
   canGoNext: boolean;
   helpEnabled?: boolean;
+  vaultPath?: string | null;
   onOptionSelect: (sessionTaskId: string, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     sessionTaskId: string,
@@ -72,6 +73,7 @@ export const ExamCorrectionHost = ({
   canGoBack,
   canGoNext,
   helpEnabled = false,
+  vaultPath,
   onOptionSelect,
   onTrueFalseSelect,
   onClozeInputChange,
@@ -128,6 +130,7 @@ export const ExamCorrectionHost = ({
           card={task.card}
           cardIndex={queueIndex}
           submitted={submitted}
+          vaultPath={vaultPath}
           partStates={partStates}
           revealCorrectness={submitted}
           showSolution={submitted}

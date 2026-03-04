@@ -174,6 +174,45 @@ describe("serializeExamBlueprint", () => {
     expect(cardHelpIndex).toBeLessThan(cardEndIndex);
   });
 
+  it("serializes card media blocks before interaction content", () => {
+    const exam: ExamBlueprint = {
+      id: "exam-media",
+      title: "",
+      description: "",
+      tasks: [
+        {
+          id: "task-1",
+          order: 0,
+          title: "Media",
+          useCardWrapper: true,
+          cards: [
+            {
+              id: "card-1",
+              type: "qa",
+              prompt: "Question",
+              answer: "Answer",
+              mediaText: "[[images/example.png]]",
+            },
+            {
+              id: "card-2",
+              type: "tf",
+              prompt: "Statement",
+              correct: "true",
+              mediaText: "```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```",
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = serializeExamBlueprint(exam);
+
+    expect(markdown).toContain("#media\n[[images/example.png]]\n#mediaend\nQuestion");
+    expect(markdown).toContain(
+      "---\n#media\n```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```\n#mediaend\nStatement",
+    );
+  });
+
   it("omits #card wrapper when disabled", () => {
     const exam: ExamBlueprint = {
       id: "exam-nowrap",

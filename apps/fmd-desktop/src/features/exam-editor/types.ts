@@ -17,6 +17,7 @@ export type BaseCardBlueprint = {
   id: string;
   type: CardType;
   helpText?: string;
+  mediaText?: string;
 };
 
 export type QaCardBlueprint = BaseCardBlueprint & {

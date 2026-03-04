@@ -177,6 +177,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
               filteredFlashcardEntries={filteredFlashcardEntries}
               spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
               helpEnabled={spacedRepetitionHelpEnabled}
+              vaultPath={vault.vaultPath}
               spacedRepetitionCompositeStates={
                 spacedRepetition.spacedRepetitionCompositeStates
               }

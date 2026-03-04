@@ -11,6 +11,7 @@
 
 import { Fragment, type ReactNode } from "react";
 import { splitMarkdownBlocks, type MarkdownBlock } from "../../lib/markdownTables";
+import { SvgPreviewBlock } from "./SvgPreviewBlock";
 
 export const CLOZE_PLACEHOLDER_PREFIX = "@@@CLOZE:";
 export const CLOZE_PLACEHOLDER_SUFFIX = "@@@";
@@ -210,6 +211,14 @@ export const MarkdownBlocks = ({
         }
 
         if (block.type === "code") {
+          if (block.language === "svg") {
+            return (
+              <SvgPreviewBlock
+                key={`code-${blockIndex}`}
+                source={block.text}
+              />
+            );
+          }
           const codeClass = [
             "flashcard-code-block",
             block.language ? `language-${block.language}` : "",

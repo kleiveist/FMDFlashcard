@@ -49,6 +49,7 @@ type CompositeCardProps = {
   forceRevealText?: boolean;
   helpText?: string[] | string;
   helpEnabled?: boolean;
+  vaultPath?: string | null;
   onOptionSelect: (cardIndex: number, partIndex: number, keys: string[]) => void;
   onTrueFalseSelect: (
     cardIndex: number,
@@ -99,6 +100,7 @@ export const CompositeCard = ({
   forceRevealText = false,
   helpText,
   helpEnabled,
+  vaultPath,
   onBlankDragOver,
   onClozeInputChange,
   onClozeTokenDragStart,
@@ -156,6 +158,7 @@ export const CompositeCard = ({
                 showResult={showResult}
                 revealCorrectness={revealCorrectness}
                 showSolution={showSolution}
+                vaultPath={vaultPath}
                 onInputChange={(index, blankId, value) =>
                   onClozeInputChange(index, partIndex, blankId, value)
                 }
@@ -192,6 +195,7 @@ export const CompositeCard = ({
                 showResult={showResult}
                 revealCorrectness={revealCorrectness}
                 showSolution={showSolution}
+                vaultPath={vaultPath}
                 onSelect={(index, itemId, value) =>
                   onTrueFalseSelect(index, partIndex, itemId, value)
                 }
@@ -213,6 +217,7 @@ export const CompositeCard = ({
                 revealed={forceRevealText || state.textRevealed || false}
                 selfGrade={state.selfGrade}
                 showActions={showResult}
+                vaultPath={vaultPath}
                 onInputChange={(index, value) =>
                   onTextInputChange(index, partIndex, value)
                 }
@@ -223,19 +228,20 @@ export const CompositeCard = ({
           }
 
           return (
-              <MultipleChoiceCard
-                key={`composite-${cardIndex}-${partIndex}`}
-                card={part}
-                cardIndex={cardIndex}
-                submitted={submitted}
-                submissionLocked={submissionLocked}
-                selectedKeys={state.selections ?? []}
-                showResult={showResult}
-                revealCorrectness={revealCorrectness}
-                onSelect={(index, keys) => onOptionSelect(index, partIndex, keys)}
-                onSubmit={onSubmit}
-                showSubmit={false}
-              />
+            <MultipleChoiceCard
+              key={`composite-${cardIndex}-${partIndex}`}
+              card={part}
+              cardIndex={cardIndex}
+              submitted={submitted}
+              submissionLocked={submissionLocked}
+              selectedKeys={state.selections ?? []}
+              showResult={showResult}
+              revealCorrectness={revealCorrectness}
+              vaultPath={vaultPath}
+              onSelect={(index, keys) => onOptionSelect(index, partIndex, keys)}
+              onSubmit={onSubmit}
+              showSubmit={false}
+            />
           );
         })}
       </div>

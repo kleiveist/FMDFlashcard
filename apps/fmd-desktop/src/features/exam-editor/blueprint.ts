@@ -101,6 +101,7 @@ export const cloneCardBlueprint = (card: CardBlueprint): CardBlueprint => {
     id: buildId("card"),
     type: card.type,
     helpText: card.helpText,
+    mediaText: card.mediaText,
   };
 
   switch (card.type) {

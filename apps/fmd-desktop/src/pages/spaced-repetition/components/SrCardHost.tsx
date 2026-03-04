@@ -34,6 +34,7 @@ type SrCardHostProps = {
   filteredFlashcardEntries: { card: any; cardIndex: number }[];
   spacedRepetitionSubmissions: Record<number, boolean>;
   helpEnabled: boolean;
+  vaultPath?: string | null;
   spacedRepetitionCompositeStates?: Record<number, any[]>;
   spacedRepetitionClozeResponses: Record<number, Record<string, string>>;
   spacedRepetitionTrueFalseSelections: Record<number, Record<string, any>>;
@@ -118,6 +119,7 @@ export const SrCardHost = ({
   filteredFlashcardEntries,
   spacedRepetitionSubmissions,
   helpEnabled,
+  vaultPath,
   spacedRepetitionCompositeStates,
   spacedRepetitionClozeResponses,
   spacedRepetitionTrueFalseSelections,
@@ -163,6 +165,7 @@ export const SrCardHost = ({
               card={card}
               cardIndex={cardIndex}
               submitted={submitted}
+              vaultPath={vaultPath}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
               partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
@@ -188,6 +191,7 @@ export const SrCardHost = ({
               card={card}
               cardIndex={cardIndex}
               submitted={submitted}
+              vaultPath={vaultPath}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
               responses={spacedRepetitionClozeResponses[cardIndex] ?? {}}
@@ -208,6 +212,7 @@ export const SrCardHost = ({
               card={card}
               cardIndex={cardIndex}
               submitted={submitted}
+              vaultPath={vaultPath}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
               selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
@@ -224,6 +229,7 @@ export const SrCardHost = ({
               card={card}
               cardIndex={cardIndex}
               submitted={submitted}
+              vaultPath={vaultPath}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
               response={spacedRepetitionTextResponses[cardIndex] ?? ""}
@@ -242,6 +248,7 @@ export const SrCardHost = ({
             card={card}
             cardIndex={cardIndex}
             submitted={submitted}
+            vaultPath={vaultPath}
             helpText={card.helpText}
             helpEnabled={helpEnabled}
             selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}

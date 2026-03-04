@@ -84,6 +84,8 @@ import {
 } from "./previewMarkdownListCommands";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { ChevronDownIcon, CodeIcon, EditIcon, MarkdownIcon } from "./icons";
+import { SvgPreviewBlock } from "./flashcards/SvgPreviewBlock";
+import { extractSvgCodeBlockSource } from "./markdownSvg";
 
 type CoverThumbnailSource = {
   src?: string | null;
@@ -6458,44 +6460,50 @@ export const PreviewPanel = ({
                 {renderHighlightedInlineSyntaxChildren(children, "blockquote")}
               </blockquote>
             ),
-            pre: ({ node: _node, ...props }) => (
-              <div className="md-code-block">
-                <button
-                  type="button"
-                  className="md-code-copy-button"
-                  aria-label="Copy code block"
-                  title="Copy code block"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  onMouseUp={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  onClick={handleCodeCopyClick}
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                    <rect
-                      x="9"
-                      y="9"
-                      width="10"
-                      height="10"
-                      rx="2"
-                      stroke="currentColor"
-                      strokeWidth="1.7"
-                    />
-                    <path
-                      d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
-                      stroke="currentColor"
-                      strokeWidth="1.7"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-                <pre {...props} />
-              </div>
-            ),
+            pre: ({ node: _node, children, ...props }) => {
+              const svgSource = extractSvgCodeBlockSource(children);
+              if (svgSource !== null) {
+                return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
+              }
+              return (
+                <div className="md-code-block">
+                  <button
+                    type="button"
+                    className="md-code-copy-button"
+                    aria-label="Copy code block"
+                    title="Copy code block"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onMouseUp={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={handleCodeCopyClick}
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                      <rect
+                        x="9"
+                        y="9"
+                        width="10"
+                        height="10"
+                        rx="2"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                      />
+                      <path
+                        d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                  <pre {...props}>{children}</pre>
+                </div>
+              );
+            },
             table: ({ node: _node, ...props }) => (
               <div className="markdown-table">
                 <table {...props} />
@@ -7063,44 +7071,55 @@ export const PreviewPanel = ({
                               {renderHighlightedInlineSyntaxChildren(children, "view-blockquote")}
                             </blockquote>
                           ),
-                          pre: ({ node: _node, ...props }) => (
-                            <div className="md-code-block">
-                              <button
-                                type="button"
-                                className="md-code-copy-button"
-                                aria-label="Copy code block"
-                                title="Copy code block"
-                                onMouseDown={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                }}
-                                onMouseUp={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                }}
-                                onClick={handleCodeCopyClick}
-                              >
-                                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                                  <rect
-                                    x="9"
-                                    y="9"
-                                    width="10"
-                                    height="10"
-                                    rx="2"
-                                    stroke="currentColor"
-                                    strokeWidth="1.7"
-                                  />
-                                  <path
-                                    d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
-                                    stroke="currentColor"
-                                    strokeWidth="1.7"
-                                    strokeLinecap="round"
-                                  />
-                                </svg>
-                              </button>
-                              <pre {...props} />
-                            </div>
-                          ),
+                          pre: ({ node: _node, children, ...props }) => {
+                            const svgSource = extractSvgCodeBlockSource(children);
+                            if (svgSource !== null) {
+                              return (
+                                <SvgPreviewBlock
+                                  source={svgSource}
+                                  className="md-svg-preview-block"
+                                />
+                              );
+                            }
+                            return (
+                              <div className="md-code-block">
+                                <button
+                                  type="button"
+                                  className="md-code-copy-button"
+                                  aria-label="Copy code block"
+                                  title="Copy code block"
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                  }}
+                                  onMouseUp={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                  }}
+                                  onClick={handleCodeCopyClick}
+                                >
+                                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                                    <rect
+                                      x="9"
+                                      y="9"
+                                      width="10"
+                                      height="10"
+                                      rx="2"
+                                      stroke="currentColor"
+                                      strokeWidth="1.7"
+                                    />
+                                    <path
+                                      d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
+                                      stroke="currentColor"
+                                      strokeWidth="1.7"
+                                      strokeLinecap="round"
+                                    />
+                                  </svg>
+                                </button>
+                                <pre {...props}>{children}</pre>
+                              </div>
+                            );
+                          },
                           table: ({ node: _node, ...props }) => (
                             <div className="markdown-table">
                               <table {...props} />

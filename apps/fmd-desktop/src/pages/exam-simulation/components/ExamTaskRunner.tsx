@@ -82,6 +82,7 @@ type ExamTaskRunnerProps = {
   showNavigation?: boolean;
   scoringReadOnly?: boolean;
   headerActions?: ReactNode;
+  vaultPath?: string | null;
 };
 
 const isTaskCorrect = (task: ExamTask, states: CompositePartState[]) =>
@@ -123,6 +124,7 @@ export const ExamTaskRunner = ({
   showNavigation = true,
   scoringReadOnly = false,
   headerActions,
+  vaultPath,
 }: ExamTaskRunnerProps) => {
   const isCorrection = phase === "correction";
   const isScoringLike = phase === "scoring" || phase === "correction";
@@ -191,6 +193,7 @@ export const ExamTaskRunner = ({
         cardIndex={taskIndex}
         submitted={canRevealOfficialSolution}
         submissionLocked={inputLocked}
+        vaultPath={vaultPath}
         partStates={partStates}
         showSubmit={false}
         showResult={false}

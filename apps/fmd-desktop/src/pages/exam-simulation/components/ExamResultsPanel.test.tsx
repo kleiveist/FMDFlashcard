@@ -211,4 +211,54 @@ describe("ExamResultsPanel", () => {
 
     cleanup();
   });
+
+  it("renders task media between the question heading and body in the results modal", () => {
+    const props = {
+      ...buildResultsProps({
+        prompt: "Pick one",
+        card: {
+          kind: "composite",
+          parts: [
+            {
+              kind: "multiple-choice",
+              question: "Pick one",
+              options: [
+                { key: "a", text: "Alpha" },
+                { key: "b", text: "Beta" },
+              ],
+              correctKeys: ["a"],
+              media: [
+                {
+                  kind: "svg",
+                  raw: "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
+                  sanitized:
+                    "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"></circle></svg>",
+                },
+              ],
+            },
+          ],
+          primaryType: "multiple-choice",
+          detectedTypes: ["multiple-choice"],
+          isMixed: false,
+        },
+      }),
+      vaultPath: "/vault",
+    };
+    const { container, cleanup } = render(createElement(ExamResultsPanel, props));
+
+    const taskButton = container.querySelector<HTMLButtonElement>(
+      "button.exam-results-task-trigger",
+    );
+    act(() => {
+      taskButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const card = document.body.querySelector(".flashcard-item");
+    const heading = card?.querySelector(".flashcard-question");
+    const mediaGroup = heading?.nextElementSibling;
+    expect(mediaGroup?.classList.contains("flashcard-media-group")).toBe(true);
+    expect(mediaGroup?.querySelector(".svg-preview-surface svg")).toBeTruthy();
+
+    cleanup();
+  });
 });

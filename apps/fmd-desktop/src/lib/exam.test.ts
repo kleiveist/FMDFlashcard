@@ -99,6 +99,51 @@ Answer: Real
     expect(task?.officialAnswer).toBe("Real");
   });
 
+  it("extracts media blocks before answer and choice detection", () => {
+    const markdown = `#exam
+1) Media task
+#card
+#media
+Answer: Decoy
+#mediaend
+Question one?
+Answer: Real
+---
+#media
+-a
+[[images/example.png]]
+#mediaend
+Pick one.
+a) First
+b) Second
+-a
+#endcard
+#endexam`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.prompt).toContain("1) Media task");
+    expect(task?.prompt).not.toContain("Answer: Decoy");
+    expect(task?.prompt).not.toContain("\n-a\n[[images/example.png]]");
+    expect(task?.officialAnswer).toBe("Real");
+    expect(task?.card.parts).toHaveLength(2);
+
+    const firstPart = task?.card.parts[0];
+    const secondPart = task?.card.parts[1];
+    expect(firstPart?.kind).toBe("free-text");
+    expect(secondPart?.kind).toBe("multiple-choice");
+    expect(firstPart?.media?.[0]).toMatchObject({ kind: "unresolved" });
+    expect(secondPart?.media).toEqual([
+      { kind: "unresolved", raw: "-a", label: "Unsupported media entry" },
+      { kind: "image", raw: "[[images/example.png]]", relativePath: "images/example.png" },
+    ]);
+    if (secondPart?.kind === "multiple-choice") {
+      expect(secondPart.correctKeys).toEqual(["a"]);
+    }
+  });
+
   it("attaches help blocks inside #card to the card only", () => {
     const markdown = `#exam
 1) Task with help in card.

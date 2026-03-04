@@ -40,3 +40,28 @@ Additional hint paragraph text.
 - **UI expectations:** Render help as optional content (e.g., a “Show hint” toggle). Help does not affect correctness, grading, or SRS scheduling.
     
 - **Compatibility guarantee:** `h` can coexist with qa/tf/m1/m2/cl/cd/cld because it is treated as a separate “side channel” and removed before the main detectors run, preventing false positives and preserving stable detection.
+
+## Related media block
+
+Cards may also define a separate auxiliary media channel via `#media ... #mediaend`.
+
+````md
+#card
+Question text
+
+#media
+[[images/example.png]]
+
+```svg
+<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>
+```
+#mediaend
+
+Answer: Example
+#endcard
+````
+
+- `#media ... #mediaend` is card-scoped and is extracted before interaction detection, just like `#help`.
+- Inside `#media`, supported entries are standalone wikilinks such as `[[image.png]]` and fenced code blocks whose info string is exactly `svg`.
+- Runtime views resolve image wikilinks to rendered media and resolve valid `svg` fences to a live SVG preview.
+- Invalid SVG falls back to the raw code block with an `SVG invalid` indicator.

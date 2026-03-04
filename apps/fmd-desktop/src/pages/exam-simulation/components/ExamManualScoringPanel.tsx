@@ -6,6 +6,7 @@ import type { ExamManualTaskEntry } from "../examSimulationTypes";
 type ExamManualScoringPanelProps = {
   task: ExamManualTaskEntry | null;
   helpEnabled?: boolean;
+  vaultPath?: string | null;
   finishDisabled: boolean;
   canGoBack: boolean;
   canGoNext: boolean;
@@ -66,6 +67,7 @@ const noopSubmit = (_taskIndex: number, _canSubmit: boolean) => {};
 export const ExamManualScoringPanel = ({
   task,
   helpEnabled = false,
+  vaultPath,
   finishDisabled,
   canGoBack,
   canGoNext,
@@ -114,6 +116,7 @@ export const ExamManualScoringPanel = ({
           cardIndex={task.taskIndex}
           submitted
           submissionLocked
+          vaultPath={vaultPath}
           partStates={task.partStates}
           showSubmit={false}
           showResult={false}
