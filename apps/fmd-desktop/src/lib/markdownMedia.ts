@@ -49,6 +49,7 @@ export type MarkdownMediaSourceSegment =
 
 const fencePattern = /^\s*(```|~~~)(.*)$/;
 const pngPathPattern = /\.png(?:[?#].*)?$/i;
+const mediaPlaceholderText = (index: number) => `__FMD_MEDIA_${index}__`;
 
 const normalizeLines = (value: string) => value.replace(/\r\n?/g, "\n").split("\n");
 
@@ -266,7 +267,7 @@ export const buildMarkdownMediaPreviewData = (markdown: string): MarkdownMediaPr
     const group = groupsByStartLine.get(lineIndex) ?? null;
     if (group) {
       renderedLines.push(
-        `<div data-fmd-media-block="true" data-media-index="${group.index}"></div>`,
+        `<div data-fmd-media-block="true" data-media-index="${group.index}">${mediaPlaceholderText(group.index)}</div>`,
       );
       lineIndex = (group.tokens[0]?.endIndex ?? lineIndex) + 1;
       continue;

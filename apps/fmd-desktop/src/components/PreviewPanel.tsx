@@ -143,6 +143,26 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
   return properties[camelKey];
 };
 
+const mediaPlaceholderTextPattern = /__FMD_MEDIA_(\d+)__/;
+
+const readMarkdownNodeText = (node: unknown): string => {
+  if (!node || typeof node !== "object") {
+    return "";
+  }
+  if ("type" in node && (node as { type?: unknown }).type === "text") {
+    const value = (node as { value?: unknown }).value;
+    return typeof value === "string" ? value : "";
+  }
+  if (!("children" in node)) {
+    return "";
+  }
+  const children = (node as { children?: unknown }).children;
+  if (!Array.isArray(children)) {
+    return "";
+  }
+  return children.map((child) => readMarkdownNodeText(child)).join("");
+};
+
 const renderMarkdownMediaGroup = ({
   node,
   groups,
@@ -155,14 +175,22 @@ const renderMarkdownMediaGroup = ({
   vaultPath?: string | null;
 }) => {
   const mediaBlockMarker = readMarkdownElementProperty(node, "data-fmd-media-block");
-  if (typeof mediaBlockMarker === "undefined") {
+  const placeholderMatch = readMarkdownNodeText(node).match(mediaPlaceholderTextPattern);
+  const placeholderIndex = placeholderMatch
+    ? Number.parseInt(placeholderMatch[1] ?? "", 10)
+    : Number.NaN;
+  const hasPlaceholderIndex = Number.isFinite(placeholderIndex);
+  if (typeof mediaBlockMarker === "undefined" && !hasPlaceholderIndex) {
     return null;
   }
   const mediaIndexRaw = readMarkdownElementProperty(node, "data-media-index");
-  const mediaIndex = Number.parseInt(
+  let mediaIndex = Number.parseInt(
     String(mediaIndexRaw ?? ""),
     10,
   );
+  if (!Number.isFinite(mediaIndex) && hasPlaceholderIndex) {
+    mediaIndex = placeholderIndex;
+  }
   const mediaGroup = Number.isFinite(mediaIndex)
     ? (groups[mediaIndex] ?? null)
     : (groups.length === 1 ? groups[0] ?? null : null);
