@@ -15,6 +15,7 @@ import { splitMarkdownMediaSegments } from "../../lib/cardMedia";
 import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import type { VaultPngAsset } from "../../lib/tree";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
+import { MarkdownHighlightedPre } from "../MarkdownHighlightedPre";
 
 export const CLOZE_PLACEHOLDER_PREFIX = "@@@CLOZE:";
 export const CLOZE_PLACEHOLDER_SUFFIX = "@@@";
@@ -94,6 +95,15 @@ type MarkdownFenceBlock =
 
 const normalizeLineBreaks = (value: string) => value.replace(/\r\n?/g, "\n");
 
+const parseFenceLanguage = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const [firstToken] = trimmed.split(/\s+/);
+  return firstToken ?? "";
+};
+
 const splitFenceBlocks = (rawText: string): MarkdownFenceBlock[] => {
   const lines = normalizeLineBreaks(rawText).split("\n");
   const blocks: MarkdownFenceBlock[] = [];
@@ -127,7 +137,7 @@ const splitFenceBlocks = (rawText: string): MarkdownFenceBlock[] => {
       } else {
         flushText();
         inFence = true;
-        fenceLanguage = match[2]?.trim() ?? "";
+        fenceLanguage = parseFenceLanguage(match[2] ?? "");
       }
       return;
     }
@@ -241,18 +251,11 @@ export const MarkdownBlocks = ({
           }
 
           if (block.type === "code") {
-            const codeClass = [
-              "flashcard-code-block",
-              block.language ? `language-${block.language}` : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
+            const codeClass = block.language ? `language-${block.language}` : undefined;
             return (
-              <pre className={codeClass} key={`code-${keyPrefix}`}>
-                <code>
-                  {renderTokens(block.text, renderPlaceholder, `code-${keyPrefix}`, { enableMath: false })}
-                </code>
-              </pre>
+              <MarkdownHighlightedPre className="flashcard-code-block" key={`code-${keyPrefix}`}>
+                <code className={codeClass}>{block.text}</code>
+              </MarkdownHighlightedPre>
             );
           }
 

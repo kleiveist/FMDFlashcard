@@ -30,6 +30,13 @@ The Markdown Editor is used to view and edit `.md` files inside the app. It shou
 
 - Legacy `#media ... #mediaend` blocks are no longer part of runtime parsing.
 
+## Code fence highlighting behavior
+
+- Fenced code blocks use language-aware syntax highlighting when a supported language is set (for example `js`, `ts`, `python`, `sql`).
+- Common aliases are normalized (for example `js` -> `javascript`, `ts` -> `typescript`, `sh` -> `bash`).
+- If no language is set, blocks are rendered as plain code by default.
+- If a language is unknown/unsupported, rendering safely falls back to plain code (no crash, no script execution).
+
 ## Known issues / troubleshooting
 
 ### Markdown tree context menu shows a black backdrop and blocks actions

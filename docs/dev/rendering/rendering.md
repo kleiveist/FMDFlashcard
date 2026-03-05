@@ -19,3 +19,6 @@
 - 📝 [Rendering tabelcard de](de/rendering_tabelcard_de.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
+
+## Additional Pages
+- 📝 [Markdown code highlighting](markdown-code-highlighting.md)

@@ -22,6 +22,7 @@
 
 import {
   Children,
+  type ComponentPropsWithoutRef,
   type CSSProperties,
   type DragEvent,
   type FormEvent,
@@ -88,10 +89,13 @@ import { ChevronDownIcon, CodeIcon, EditIcon, MarkdownIcon } from "./icons";
 import { FlashcardMediaGroup } from "./flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "./flashcards/SvgPreviewBlock";
 import { extractSvgCodeBlockSource } from "./markdownSvg";
+import { MarkdownHighlightedPre } from "./MarkdownHighlightedPre";
 import {
   buildMarkdownMediaPreviewSource,
   type MarkdownMediaPreviewGroup,
 } from "../lib/cardMedia";
+import { applyHighlightToCodeElement, scheduleIdleTask } from "../lib/markdownCodeHighlight";
+import { MARKDOWN_CODE_HIGHLIGHT_CONFIG } from "../lib/markdownCodeHighlightConfig";
 
 type CoverThumbnailSource = {
   src?: string | null;
@@ -1371,6 +1375,9 @@ export const canStartPreviewEdit = ({
   markdownViewEditEnabled: boolean;
 }) => rawPreview || markdownViewEditEnabled;
 
+const MARKDOWN_EDITABLE_REHIGHLIGHT_DEBOUNCE_MS = 90;
+const MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS = 160;
+
 const getRangeOffset = (container: HTMLElement, range: Range) => {
   const offsetRange = document.createRange();
   offsetRange.setStart(container, 0);
@@ -1801,23 +1808,67 @@ const findTextNodeAtOffset = (container: HTMLElement, offset: number) => {
   return null;
 };
 
-const setCaretAtPlainOffset = (container: HTMLElement, offset: number) => {
+type PlainSelectionOffsets = {
+  start: number;
+  end: number;
+};
+
+const getSelectionOffsetsWithinContainer = (
+  container: HTMLElement,
+): PlainSelectionOffsets | null => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    return null;
+  }
+  const range = selection.getRangeAt(0);
+  if (!container.contains(range.startContainer) || !container.contains(range.endContainer)) {
+    return null;
+  }
+
+  const startRange = document.createRange();
+  startRange.setStart(container, 0);
+  startRange.setEnd(range.startContainer, range.startOffset);
+  const endRange = document.createRange();
+  endRange.setStart(container, 0);
+  endRange.setEnd(range.endContainer, range.endOffset);
+
+  return {
+    start: startRange.toString().length,
+    end: endRange.toString().length,
+  };
+};
+
+const setSelectionAtPlainOffsets = (
+  container: HTMLElement,
+  startOffset: number,
+  endOffset = startOffset,
+) => {
   const selection = window.getSelection();
   if (!selection) {
     return;
   }
   const length = container.innerText.length;
-  const clampedOffset = Math.max(0, Math.min(offset, length));
-  const resolved = findTextNodeAtOffset(container, clampedOffset);
+  const clampedStart = Math.max(0, Math.min(startOffset, length));
+  const clampedEnd = Math.max(0, Math.min(endOffset, length));
+  const resolvedStart = findTextNodeAtOffset(container, clampedStart);
+  const resolvedEnd = findTextNodeAtOffset(container, clampedEnd);
   const range = document.createRange();
-  if (resolved) {
-    range.setStart(resolved.node, resolved.offset);
+  if (resolvedStart) {
+    range.setStart(resolvedStart.node, resolvedStart.offset);
   } else {
     range.setStart(container, 0);
   }
-  range.collapse(true);
+  if (resolvedEnd) {
+    range.setEnd(resolvedEnd.node, resolvedEnd.offset);
+  } else {
+    range.setEnd(container, 0);
+  }
   selection.removeAllRanges();
   selection.addRange(range);
+};
+
+const setCaretAtPlainOffset = (container: HTMLElement, offset: number) => {
+  setSelectionAtPlainOffsets(container, offset, offset);
 };
 
 const replaceHeadingElementLevel = (heading: HTMLElement, level: number) => {
@@ -2494,6 +2545,25 @@ export const buildEditableMarkdownHtml = (
       wrapper = createdWrapper;
     }
     wrapper.insertBefore(createCodeCopyButton(codeBlock.ownerDocument), wrapper.firstChild);
+
+    const codeElement = codeBlock.querySelector<HTMLElement>("code");
+    if (codeElement) {
+      // Reset highlighted markup to plain text before entering contentEditable mode.
+      const plainCode = codeElement.textContent ?? "";
+      codeElement.textContent = plainCode;
+      const nextCodeClassName = codeElement.className
+        .split(/\s+/)
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .filter((entry) => !entry.startsWith("hljs"))
+        .join(" ");
+      codeElement.className = nextCodeClassName;
+      codeElement.removeAttribute("data-md-code-highlighted");
+      codeElement.removeAttribute("data-md-code-language-label");
+    }
+    codeBlock.classList.remove("md-code-highlighted-pre");
+    codeBlock.removeAttribute("data-md-code-highlighted");
+    codeBlock.removeAttribute("data-md-code-language-label");
 
     codeBlock.setAttribute("data-md-code-block", "true");
     codeBlock.removeAttribute("data-md-code-active");
@@ -5833,6 +5903,11 @@ export const PreviewPanel = ({
   const rawCodeToggleClosePendingRef = useRef(false);
   const scrollStateRef = useRef({ top: 0, left: 0 });
   const lastCaretIndexRef = useRef<number | null>(null);
+  const editableHighlightQueuedCodesRef = useRef<Set<HTMLElement>>(new Set());
+  const editableHighlightQueueAllRef = useRef(false);
+  const editableHighlightDebounceHandleRef = useRef(0);
+  const editableHighlightCancelIdleRef = useRef<(() => void) | null>(null);
+  const editableHighlightRunningRef = useRef(false);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
   const [userFrontmatterCollapsed, setUserFrontmatterCollapsed] = useState<boolean | null>(
     null,
@@ -5886,6 +5961,197 @@ export const PreviewPanel = ({
     element.scrollTop = scrollStateRef.current.top;
     element.scrollLeft = scrollStateRef.current.left;
   }, []);
+
+  const clearEditableHighlightDebounce = useCallback(() => {
+    if (!editableHighlightDebounceHandleRef.current) {
+      return;
+    }
+    window.clearTimeout(editableHighlightDebounceHandleRef.current);
+    editableHighlightDebounceHandleRef.current = 0;
+  }, []);
+
+  const cancelEditableHighlightIdle = useCallback(() => {
+    if (!editableHighlightCancelIdleRef.current) {
+      return;
+    }
+    editableHighlightCancelIdleRef.current();
+    editableHighlightCancelIdleRef.current = null;
+  }, []);
+
+  const resolveEditableCodeElementNearSelection = useCallback(
+    (target: EventTarget | null) => {
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return null;
+      }
+
+      const sourceElement = resolveEventElement(target);
+      const fromTarget = sourceElement
+        ?.closest('pre[data-md-code-block="true"]')
+        ?.querySelector<HTMLElement>("code");
+      if (fromTarget && editor.contains(fromTarget)) {
+        return fromTarget;
+      }
+
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || !selection.anchorNode) {
+        return null;
+      }
+      if (!editor.contains(selection.anchorNode)) {
+        return null;
+      }
+
+      const anchorElement = selection.anchorNode instanceof Element
+        ? selection.anchorNode
+        : selection.anchorNode.parentElement;
+      const fromSelection = anchorElement
+        ?.closest('pre[data-md-code-block="true"]')
+        ?.querySelector<HTMLElement>("code");
+      return fromSelection && editor.contains(fromSelection)
+        ? fromSelection
+        : null;
+    },
+    [],
+  );
+
+  const flushEditableCodeHighlights = useCallback(async () => {
+    if (!MARKDOWN_CODE_HIGHLIGHT_CONFIG.highlightInContentEditable) {
+      return;
+    }
+    if (editableHighlightRunningRef.current) {
+      return;
+    }
+
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      editableHighlightQueueAllRef.current = false;
+      editableHighlightQueuedCodesRef.current.clear();
+      return;
+    }
+
+    editableHighlightRunningRef.current = true;
+    try {
+      const queuedAll = editableHighlightQueueAllRef.current;
+      const queuedCodes = Array.from(editableHighlightQueuedCodesRef.current).filter(
+        (codeElement) => editor.contains(codeElement),
+      );
+      editableHighlightQueueAllRef.current = false;
+      editableHighlightQueuedCodesRef.current.clear();
+
+      const codeElements = queuedAll
+        ? Array.from(
+            editor.querySelectorAll<HTMLElement>('pre[data-md-code-block="true"] > code'),
+          )
+        : queuedCodes;
+
+      for (const codeElement of codeElements) {
+        const preElement = codeElement.closest('pre[data-md-code-block="true"]');
+        const selectionOffsets = getSelectionOffsetsWithinContainer(codeElement);
+        const plainCode = codeElement.textContent ?? "";
+        codeElement.textContent = plainCode;
+
+        try {
+          await applyHighlightToCodeElement({
+            codeElement,
+            preElement,
+            autoDetectWithoutLanguage: MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectWithoutLanguage,
+            autoDetectCandidateLanguages:
+              MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectCandidateLanguages,
+          });
+          if (!MARKDOWN_CODE_HIGHLIGHT_CONFIG.showLanguageLabel) {
+            delete codeElement.dataset.mdCodeLanguageLabel;
+            if (preElement) {
+              delete preElement.dataset.mdCodeLanguageLabel;
+            }
+          }
+        } catch {
+          codeElement.textContent = plainCode;
+        }
+
+        if (selectionOffsets) {
+          setSelectionAtPlainOffsets(codeElement, selectionOffsets.start, selectionOffsets.end);
+        }
+      }
+    } finally {
+      editableHighlightRunningRef.current = false;
+      if (
+        editableHighlightQueueAllRef.current ||
+        editableHighlightQueuedCodesRef.current.size > 0
+      ) {
+        cancelEditableHighlightIdle();
+        editableHighlightCancelIdleRef.current = scheduleIdleTask(
+          () => {
+            editableHighlightCancelIdleRef.current = null;
+            void flushEditableCodeHighlights();
+          },
+          MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS,
+        );
+      }
+    }
+  }, [cancelEditableHighlightIdle]);
+
+  const queueEditableCodeRehighlight = useCallback(
+    (options?: { all?: boolean; codeElement?: HTMLElement | null; immediate?: boolean }) => {
+      if (!MARKDOWN_CODE_HIGHLIGHT_CONFIG.highlightInContentEditable) {
+        return;
+      }
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return;
+      }
+
+      if (options?.all) {
+        editableHighlightQueueAllRef.current = true;
+      }
+
+      if (options?.codeElement && editor.contains(options.codeElement)) {
+        editableHighlightQueuedCodesRef.current.add(options.codeElement);
+      } else if (!options?.all) {
+        const activeCode = resolveEditableCodeElementNearSelection(null);
+        if (activeCode) {
+          editableHighlightQueuedCodesRef.current.add(activeCode);
+        }
+      }
+
+      cancelEditableHighlightIdle();
+      clearEditableHighlightDebounce();
+
+      const scheduleRun = () => {
+        editableHighlightDebounceHandleRef.current = 0;
+        editableHighlightCancelIdleRef.current = scheduleIdleTask(
+          () => {
+            editableHighlightCancelIdleRef.current = null;
+            void flushEditableCodeHighlights();
+          },
+          MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS,
+        );
+      };
+
+      if (options?.immediate) {
+        scheduleRun();
+        return;
+      }
+
+      editableHighlightDebounceHandleRef.current = window.setTimeout(
+        scheduleRun,
+        MARKDOWN_EDITABLE_REHIGHLIGHT_DEBOUNCE_MS,
+      );
+    },
+    [
+      cancelEditableHighlightIdle,
+      clearEditableHighlightDebounce,
+      flushEditableCodeHighlights,
+      resolveEditableCodeElementNearSelection,
+    ],
+  );
+
+  useEffect(
+    () => () => {
+      clearEditableHighlightDebounce();
+      cancelEditableHighlightIdle();
+    },
+    [cancelEditableHighlightIdle, clearEditableHighlightDebounce],
+  );
 
   const syncMarkdownDraftFromEditor = useCallback(() => {
     if (!markdownEditorRef.current) {
@@ -6035,6 +6301,24 @@ export const PreviewPanel = ({
 
   useEffect(() => {
     if (!isEditing || rawPreview) {
+      editableHighlightQueueAllRef.current = false;
+      editableHighlightQueuedCodesRef.current.clear();
+      clearEditableHighlightDebounce();
+      cancelEditableHighlightIdle();
+      return;
+    }
+
+    queueEditableCodeRehighlight({ all: true, immediate: true });
+  }, [
+    cancelEditableHighlightIdle,
+    clearEditableHighlightDebounce,
+    isEditing,
+    queueEditableCodeRehighlight,
+    rawPreview,
+  ]);
+
+  useEffect(() => {
+    if (!isEditing || rawPreview) {
       return;
     }
     const handleSelectionChange = () => {
@@ -6175,6 +6459,67 @@ export const PreviewPanel = ({
       void copyTextToClipboard(code);
     },
     [],
+  );
+
+  const renderMarkdownCodePre = useCallback(
+    ({
+      children,
+      ...preProps
+    }: ComponentPropsWithoutRef<"pre"> & { children?: ReactNode }) => {
+      const svgSource = extractSvgCodeBlockSource(children);
+      if (svgSource !== null) {
+        return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
+      }
+      return (
+        <div className="md-code-block">
+          <button
+            type="button"
+            className="md-code-copy-button"
+            aria-label="Copy code block"
+            title="Copy code block"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onMouseUp={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onClick={handleCodeCopyClick}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+              <rect
+                x="9"
+                y="9"
+                width="10"
+                height="10"
+                rx="2"
+                stroke="currentColor"
+                strokeWidth="1.7"
+              />
+              <path
+                d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+          <MarkdownHighlightedPre
+            {...preProps}
+            highlightSchedule="idle"
+            autoDetectWithoutLanguage={MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectWithoutLanguage}
+            autoDetectCandidateLanguages={
+              MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectCandidateLanguages
+            }
+            showLanguageLabel={MARKDOWN_CODE_HIGHLIGHT_CONFIG.showLanguageLabel}
+          >
+            {children}
+          </MarkdownHighlightedPre>
+        </div>
+      );
+    },
+    [handleCodeCopyClick],
   );
 
   const handleMarkdownEditorMouseDown = useCallback(
@@ -6378,13 +6723,22 @@ export const PreviewPanel = ({
       }
       const result = command(editor);
       if (result.changed) {
+        const activeCodeElement = resolveEditableCodeElementNearSelection(null);
+        if (activeCodeElement) {
+          queueEditableCodeRehighlight({ codeElement: activeCodeElement });
+        }
         normalizeEditableListMarkers(editor);
         syncMarkdownDraftFromEditor();
         syncActiveMarkdownHeading();
       }
       return result;
     },
-    [syncActiveMarkdownHeading, syncMarkdownDraftFromEditor],
+    [
+      queueEditableCodeRehighlight,
+      resolveEditableCodeElementNearSelection,
+      syncActiveMarkdownHeading,
+      syncMarkdownDraftFromEditor,
+    ],
   );
 
   const handleMarkdownEditorBeforeInput = useCallback(
@@ -6447,10 +6801,19 @@ export const PreviewPanel = ({
     [applyMarkdownEditorCommand],
   );
 
-  const handleMarkdownInput = useCallback(() => {
+  const handleMarkdownInput = useCallback((event: FormEvent<HTMLDivElement>) => {
+    const sourceCodeElement = resolveEditableCodeElementNearSelection(event.target);
+    if (sourceCodeElement) {
+      queueEditableCodeRehighlight({ codeElement: sourceCodeElement });
+    }
     syncMarkdownDraftFromEditor();
     syncActiveMarkdownHeading();
-  }, [syncActiveMarkdownHeading, syncMarkdownDraftFromEditor]);
+  }, [
+    queueEditableCodeRehighlight,
+    resolveEditableCodeElementNearSelection,
+    syncActiveMarkdownHeading,
+    syncMarkdownDraftFromEditor,
+  ]);
 
   const handleHybridBodyChange = useCallback(
     (nextBody: string) => {
@@ -6579,50 +6942,8 @@ export const PreviewPanel = ({
                 {renderHighlightedInlineSyntaxChildren(children, "blockquote")}
               </blockquote>
             ),
-            pre: ({ node: _node, children, ...props }) => {
-              const svgSource = extractSvgCodeBlockSource(children);
-              if (svgSource !== null) {
-                return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
-              }
-              return (
-                <div className="md-code-block">
-                  <button
-                    type="button"
-                    className="md-code-copy-button"
-                    aria-label="Copy code block"
-                    title="Copy code block"
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    onMouseUp={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    onClick={handleCodeCopyClick}
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                      <rect
-                        x="9"
-                        y="9"
-                        width="10"
-                        height="10"
-                        rx="2"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                      />
-                      <path
-                        d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </button>
-                  <pre {...props}>{children}</pre>
-                </div>
-              );
-            },
+            pre: ({ node: _node, children, ...props }) =>
+              renderMarkdownCodePre({ children, ...props }),
             table: ({ node: _node, ...props }) => (
               <div className="markdown-table">
                 <table {...props} />
@@ -6654,7 +6975,7 @@ export const PreviewPanel = ({
         </ReactMarkdown>
       );
     },
-    [handleCodeCopyClick, vaultPath, vaultPngAssets],
+    [renderMarkdownCodePre, vaultPath, vaultPngAssets],
   );
 
   const markdownSource = rawPreview
@@ -7207,55 +7528,8 @@ export const PreviewPanel = ({
                               {renderHighlightedInlineSyntaxChildren(children, "view-blockquote")}
                             </blockquote>
                           ),
-                          pre: ({ node: _node, children, ...props }) => {
-                            const svgSource = extractSvgCodeBlockSource(children);
-                            if (svgSource !== null) {
-                              return (
-                                <SvgPreviewBlock
-                                  source={svgSource}
-                                  className="md-svg-preview-block"
-                                />
-                              );
-                            }
-                            return (
-                              <div className="md-code-block">
-                                <button
-                                  type="button"
-                                  className="md-code-copy-button"
-                                  aria-label="Copy code block"
-                                  title="Copy code block"
-                                  onMouseDown={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                  }}
-                                  onMouseUp={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                  }}
-                                  onClick={handleCodeCopyClick}
-                                >
-                                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-                                    <rect
-                                      x="9"
-                                      y="9"
-                                      width="10"
-                                      height="10"
-                                      rx="2"
-                                      stroke="currentColor"
-                                      strokeWidth="1.7"
-                                    />
-                                    <path
-                                      d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"
-                                      stroke="currentColor"
-                                      strokeWidth="1.7"
-                                      strokeLinecap="round"
-                                    />
-                                  </svg>
-                                </button>
-                                <pre {...props}>{children}</pre>
-                              </div>
-                            );
-                          },
+                          pre: ({ node: _node, children, ...props }) =>
+                            renderMarkdownCodePre({ children, ...props }),
                           table: ({ node: _node, ...props }) => (
                             <div className="markdown-table">
                               <table {...props} />

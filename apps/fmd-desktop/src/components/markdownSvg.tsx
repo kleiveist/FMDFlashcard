@@ -25,7 +25,11 @@ export const extractSvgCodeBlockSource = (children: ReactNode): string | null =>
   }
 
   const props = child.props as { className?: string; children?: ReactNode };
-  if (props.className !== "language-svg") {
+  const classNames = (props.className ?? "")
+    .split(/\s+/)
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+  if (!classNames.includes("language-svg")) {
     return null;
   }
 

@@ -1,0 +1,140 @@
+/*
+ * @file apps/fmd-desktop/src/styles/components/code-highlighting.css
+ *
+ * Zweck:
+ * - Einheitliche Darstellung und Tokenfarben fuer Markdown-Codebloecke.
+ */
+
+pre.md-code-highlighted-pre {
+  position: relative;
+  margin: 0 0 0.8rem;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--md-code-hl-border);
+  background: var(--md-code-hl-bg);
+  color: var(--md-code-hl-plain);
+  overflow: auto;
+  max-width: 100%;
+  max-height: min(56vh, 640px);
+  scrollbar-gutter: stable both-edges;
+}
+
+pre.md-code-highlighted-pre[data-md-code-language-label] {
+  padding-top: 1.75rem;
+}
+
+pre.md-code-highlighted-pre[data-md-code-language-label]::before {
+  content: attr(data-md-code-language-label);
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 1;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--md-code-hl-label-ink);
+  background: var(--md-code-hl-label-bg);
+  border: 1px solid var(--md-code-hl-label-border);
+  border-radius: 999px;
+  padding: 3px 7px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.md-code-block > .md-code-highlighted-pre[data-md-code-language-label]::before {
+  right: 42px;
+}
+
+.md-code-highlighted-pre > code {
+  display: block;
+  min-width: max-content;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.md-code-highlighted-pre > code.hljs {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.md-code-highlighted-pre > code:not(.hljs) {
+  color: var(--md-code-hl-plain);
+}
+
+.md-code-highlighted-pre .hljs-comment,
+.md-code-highlighted-pre .hljs-quote,
+.md-code-highlighted-pre .hljs-doctag {
+  color: var(--md-code-token-comment);
+}
+
+.md-code-highlighted-pre .hljs-keyword,
+.md-code-highlighted-pre .hljs-selector-tag,
+.md-code-highlighted-pre .hljs-literal,
+.md-code-highlighted-pre .hljs-section,
+.md-code-highlighted-pre .hljs-link {
+  color: var(--md-code-token-keyword);
+}
+
+.md-code-highlighted-pre .hljs-string,
+.md-code-highlighted-pre .hljs-meta .hljs-string,
+.md-code-highlighted-pre .hljs-regexp {
+  color: var(--md-code-token-string);
+}
+
+.md-code-highlighted-pre .hljs-number,
+.md-code-highlighted-pre .hljs-literal,
+.md-code-highlighted-pre .hljs-symbol,
+.md-code-highlighted-pre .hljs-bullet {
+  color: var(--md-code-token-number);
+}
+
+.md-code-highlighted-pre .hljs-title,
+.md-code-highlighted-pre .hljs-section,
+.md-code-highlighted-pre .hljs-function .hljs-title,
+.md-code-highlighted-pre .hljs-title.class_ {
+  color: var(--md-code-token-title);
+}
+
+.md-code-highlighted-pre .hljs-type,
+.md-code-highlighted-pre .hljs-built_in,
+.md-code-highlighted-pre .hljs-class .hljs-title {
+  color: var(--md-code-token-type);
+}
+
+.md-code-highlighted-pre .hljs-variable,
+.md-code-highlighted-pre .hljs-template-variable,
+.md-code-highlighted-pre .hljs-params {
+  color: var(--md-code-token-variable);
+}
+
+.md-code-highlighted-pre .hljs-attr,
+.md-code-highlighted-pre .hljs-attribute,
+.md-code-highlighted-pre .hljs-name,
+.md-code-highlighted-pre .hljs-tag {
+  color: var(--md-code-token-attr);
+}
+
+.md-code-highlighted-pre .hljs-operator,
+.md-code-highlighted-pre .hljs-punctuation,
+.md-code-highlighted-pre .hljs-meta {
+  color: var(--md-code-token-operator);
+}
+
+.md-code-highlighted-pre .hljs-emphasis {
+  font-style: italic;
+}
+
+.md-code-highlighted-pre .hljs-strong {
+  font-weight: 700;
+}
+
+.flashcard-option pre.flashcard-code-block.md-code-highlighted-pre {
+  max-height: 240px;
+}

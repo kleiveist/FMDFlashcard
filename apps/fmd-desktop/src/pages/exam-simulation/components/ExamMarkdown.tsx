@@ -31,6 +31,7 @@ import type { VaultPngAsset } from "../../../lib/tree";
 import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "../../../components/flashcards/SvgPreviewBlock";
 import { extractSvgCodeBlockSource } from "../../../components/markdownSvg";
+import { MarkdownHighlightedPre } from "../../../components/MarkdownHighlightedPre";
 
 const markdownSchema = {
   ...defaultSchema,
@@ -227,7 +228,7 @@ export const ExamMarkdown = ({
             if (svgSource !== null) {
               return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
             }
-            return <pre {...props}>{children}</pre>;
+            return <MarkdownHighlightedPre {...props}>{children}</MarkdownHighlightedPre>;
           },
           table: ({ node: _node, ...props }) => (
             <div className="exam-table-wrap">

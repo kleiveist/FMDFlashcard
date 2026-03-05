@@ -6,6 +6,7 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { SvgPreviewBlock } from "../../../components/flashcards/SvgPreviewBlock";
 import { extractSvgCodeBlockSource } from "../../../components/markdownSvg";
+import { MarkdownHighlightedPre } from "../../../components/MarkdownHighlightedPre";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 
 type HelpEditorProps = {
@@ -65,7 +66,7 @@ export const HelpEditor = ({
                 if (svgSource !== null) {
                   return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
                 }
-                return <pre {...props}>{children}</pre>;
+                return <MarkdownHighlightedPre {...props}>{children}</MarkdownHighlightedPre>;
               },
             }}
           >

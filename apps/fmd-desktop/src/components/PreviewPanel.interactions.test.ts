@@ -1406,6 +1406,21 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector(".preview.preview-editor.markdown")).toBeNull();
   });
 
+  it("exposes canonical language metadata on markdown preview code blocks", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["```js", "const value = 1;", "```"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const pre = container.querySelector(
+      ".preview.markdown pre.md-code-highlighted-pre",
+    ) as HTMLPreElement | null;
+
+    expect(pre).toBeTruthy();
+    expect(pre?.getAttribute("data-md-code-language")).toBe("javascript");
+    expect(pre?.getAttribute("data-md-code-language-label")).toBe("JavaScript");
+  });
+
   it("keeps frontmatter collapsed when switching to markdown edit mode", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["---", "title: Demo", "---", "Body line"].join("\n"),

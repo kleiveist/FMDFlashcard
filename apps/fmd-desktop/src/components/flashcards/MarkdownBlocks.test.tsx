@@ -57,4 +57,19 @@ describe("MarkdownBlocks math rendering", () => {
     expect(markup).toContain("md-math-fallback-source");
     expect(markup).toContain("md-math-fallback-badge");
   });
+
+  it("parses language info from fenced code metadata", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "```ts title=demo.ts",
+          "const value: number = 1;",
+          "```",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("data-md-code-language=\"typescript\"");
+    expect(markup).toContain("data-md-code-language-label=\"TypeScript\"");
+  });
 });

@@ -387,6 +387,42 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe("```http\nGET /book/1\n200 OK\n```\n");
   });
 
+  it("serializes highlighted editable code blocks from plain textContent", () => {
+    const container = document.createElement("div");
+    const pre = document.createElement("pre");
+    pre.setAttribute("data-md-code-block", "true");
+
+    const openLine = document.createElement("span");
+    openLine.className = "md-code-fence-line md-code-fence-open";
+    const openMarker = document.createElement("span");
+    openMarker.className = "md-code-fence-marker";
+    openMarker.textContent = "```js";
+    openLine.appendChild(openMarker);
+    pre.appendChild(openLine);
+
+    const code = document.createElement("code");
+    code.className = "hljs language-javascript";
+    const keyword = document.createElement("span");
+    keyword.className = "hljs-keyword";
+    keyword.textContent = "const";
+    code.appendChild(keyword);
+    code.appendChild(document.createTextNode(" value = 1;"));
+    pre.appendChild(code);
+
+    const closeLine = document.createElement("span");
+    closeLine.className = "md-code-fence-line md-code-fence-close";
+    const closeMarker = document.createElement("span");
+    closeMarker.className = "md-code-fence-marker";
+    closeMarker.textContent = "```";
+    closeLine.appendChild(closeMarker);
+    pre.appendChild(closeLine);
+    container.appendChild(pre);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("```js\nconst value = 1;\n```\n");
+  });
+
   it("serializes empty code blocks without inserting an inner blank line", () => {
     const container = document.createElement("div");
     const pre = document.createElement("pre");
@@ -623,5 +659,30 @@ describe("buildEditableMarkdownHtml", () => {
     expect(pre).toBeTruthy();
     expect(openMarker?.textContent).toBe("```http");
     expect(closeMarker?.textContent).toBe("```");
+  });
+
+  it("normalizes highlighted code spans back to plain editable code", () => {
+    const container = document.createElement("div");
+    container.innerHTML = [
+      "<div class=\"md-code-block\">",
+      "<pre class=\"md-code-highlighted-pre\" data-md-code-highlighted=\"true\" data-md-code-language-label=\"JavaScript\">",
+      "<code class=\"hljs language-javascript\" data-md-code-highlighted=\"true\">",
+      "<span class=\"hljs-keyword\">const</span> value = 1;",
+      "</code>",
+      "</pre>",
+      "</div>",
+    ].join("");
+
+    const html = buildEditableMarkdownHtml(container, "```js\nconst value = 1;\n```");
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const pre = wrapper.querySelector("pre[data-md-code-block=\"true\"]");
+    const code = wrapper.querySelector("pre > code");
+
+    expect(pre?.classList.contains("md-code-highlighted-pre")).toBe(false);
+    expect(pre?.getAttribute("data-md-code-highlighted")).toBeNull();
+    expect(code?.className.includes("hljs")).toBe(false);
+    expect(code?.textContent).toContain("const value = 1;");
+    expect(code?.querySelector("span")).toBeNull();
   });
 });
