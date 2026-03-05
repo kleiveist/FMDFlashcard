@@ -259,6 +259,19 @@ const withImmediateRaf = <T,>(run: () => T) => {
   }
 };
 
+const createMockRect = (height: number, width = 320): DOMRect =>
+  ({
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: width,
+    bottom: height,
+    width,
+    height,
+    toJSON: () => ({}),
+  }) as DOMRect;
+
 describe("MarkdownHybridEditor", () => {
   it("selects a range with Shift+click without opening a textarea and returns to edit on plain click", () => {
     const initialMarkdown = ["# One", "# Two", "# Three"].join("\n");
@@ -1620,7 +1633,7 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("renders standalone svg fences as media preview and keeps source on focus", () => {
+  it("renders standalone svg fences as media preview and keeps source on focus with synced height", () => {
     withImmediateRaf(() => {
       const markdown = [
         "```svg",
@@ -1644,9 +1657,98 @@ describe("MarkdownHybridEditor", () => {
       const { container, cleanup } = render(createElement(Harness));
 
       expect(container.querySelector(".flashcard-media-svg-surface svg")).toBeTruthy();
+      const previewBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='0'] .markdown-hybrid-block-preview.markdown-hybrid-media-block-preview",
+      );
+      expect(previewBlock).toBeTruthy();
+      Object.defineProperty(previewBlock!, "getBoundingClientRect", {
+        configurable: true,
+        value: () => createMockRect(196),
+      });
 
       const textarea = activateBlockEditor(container, 0);
       expect(textarea?.value).toBe(markdown);
+      expect(textarea?.classList.contains("markdown-hybrid-code-fence-editor")).toBe(true);
+      expect(textarea?.style.height).toBe("196px");
+      expect(
+        container.querySelector(
+          ".markdown-hybrid-block[data-md-block-index='0'][data-md-code-fence-media-preview='true']",
+        ),
+      ).toBeTruthy();
+
+      cleanup();
+    });
+  });
+
+  it("keeps default auto-height behavior for non-svg code fences", () => {
+    withImmediateRaf(() => {
+      const markdown = ["```txt", "line 1", "line 2", "```"].join("\n");
+
+      const Harness = () => {
+        const [value, setValue] = useState(markdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="non-svg-code-fence-height"
+            markdown={value}
+            mode="edit"
+            onChange={setValue}
+            renderPreview={(previewValue) => <div>{previewValue}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea?.value).toBe(markdown);
+      expect(textarea?.classList.contains("markdown-hybrid-code-fence-editor")).toBe(false);
+      expect(
+        container.querySelector(
+          ".markdown-hybrid-block[data-md-block-index='0'][data-md-code-fence-media-preview='true']",
+        ),
+      ).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("keeps synced svg code-fence editor height while long source remains scrollable", () => {
+    withImmediateRaf(() => {
+      const markdown = [
+        "```svg",
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">',
+        "  <path d=\"M1 1 L15 1 L15 15 L1 15 Z\" />",
+        "  <text x=\"2\" y=\"10\">VERY_LONG_UNBROKEN_LINE_FOR_SCROLL_BEHAVIOR_TEST</text>",
+        "</svg>",
+        "```",
+      ].join("\n");
+
+      const Harness = () => {
+        const [value, setValue] = useState(markdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="svg-code-fence-scroll-height"
+            markdown={value}
+            mode="edit"
+            onChange={setValue}
+            renderPreview={(previewValue) => <div>{previewValue}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const previewBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='0'] .markdown-hybrid-block-preview.markdown-hybrid-media-block-preview",
+      );
+      expect(previewBlock).toBeTruthy();
+      Object.defineProperty(previewBlock!, "getBoundingClientRect", {
+        configurable: true,
+        value: () => createMockRect(144),
+      });
+
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea?.classList.contains("markdown-hybrid-code-fence-editor")).toBe(true);
+      expect(textarea?.style.height).toBe("144px");
+      expect(textarea?.value).toContain("VERY_LONG_UNBROKEN_LINE_FOR_SCROLL_BEHAVIOR_TEST");
 
       cleanup();
     });

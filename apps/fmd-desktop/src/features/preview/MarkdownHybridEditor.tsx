@@ -3125,6 +3125,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const stableBlockRenderKeyCounterRef = useRef(0);
   const pendingActivationMarkdownRef = useRef<string | null>(null);
   const activeTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
+  const codeFencePreviewHeightsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     activeDraftRef.current = activeDraft;
@@ -3143,6 +3144,66 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setActiveDraft(nextDraft);
   }, []);
 
+  const resolveCodeFencePreviewItems = useCallback(
+    (raw: string): MediaItem[] =>
+      splitMarkdownMediaSegments(raw, "markdown-hybrid-code-fence-preview")
+        .flatMap((segment) => (segment.kind === "media" ? segment.items : [])),
+    [],
+  );
+
+  const isSvgCodeFencePreviewBlock = useCallback(
+    (block: MarkdownBlock | null | undefined) => {
+      if (!block || block.kind !== "code-fence") {
+        return false;
+      }
+      return resolveCodeFencePreviewItems(block.raw).some((item) => item.type === "svg");
+    },
+    [resolveCodeFencePreviewItems],
+  );
+
+  const resolveStoredSvgCodeFencePreviewHeight = useCallback(
+    (block: MarkdownBlock | null | undefined) => {
+      if (!isSvgCodeFencePreviewBlock(block)) {
+        return null;
+      }
+      const height = codeFencePreviewHeightsRef.current.get(block.id);
+      if (typeof height !== "number" || !Number.isFinite(height) || height <= 0) {
+        return null;
+      }
+      return height;
+    },
+    [isSvgCodeFencePreviewBlock],
+  );
+
+  const cacheSvgCodeFencePreviewHeightForBlock = useCallback(
+    (blockIndex: number, block?: MarkdownBlock | null) => {
+      const targetBlock = block ?? blocks[blockIndex];
+      if (!targetBlock || !isSvgCodeFencePreviewBlock(targetBlock)) {
+        return null;
+      }
+      const contentLayer = contentLayerRef.current;
+      if (!contentLayer) {
+        return null;
+      }
+      const blockElement = contentLayer.querySelector<HTMLElement>(
+        `.markdown-hybrid-block[data-md-block-index="${blockIndex}"]`,
+      );
+      const previewElement = blockElement?.querySelector<HTMLElement>(
+        ".markdown-hybrid-block-preview.markdown-hybrid-media-block-preview",
+      );
+      if (!previewElement) {
+        return null;
+      }
+      const nextHeight = Math.max(
+        1,
+        Math.round(previewElement.getBoundingClientRect().height),
+      );
+      codeFencePreviewHeightsRef.current.set(targetBlock.id, nextHeight);
+      return nextHeight;
+    },
+    [blocks, isSvgCodeFencePreviewBlock],
+  );
+
   const blockRenderKeys = useMemo(() => {
     const assigned = assignStableRenderKeys(
       blocks,
@@ -3157,6 +3218,17 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     () => Array.from(overlayLayout.byIndex.values()),
     [overlayLayout.byIndex],
   );
+
+  useEffect(() => {
+    const knownBlockIds = new Set(blocks.map((block) => block.id));
+    const cachedHeights = codeFencePreviewHeightsRef.current;
+    for (const blockId of Array.from(cachedHeights.keys())) {
+      if (!knownBlockIds.has(blockId)) {
+        cachedHeights.delete(blockId);
+      }
+    }
+  }, [blocks]);
+
   const editorSurfaceStyle = useMemo<CSSProperties>(
     () =>
       ({
@@ -3929,6 +4001,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     }
     pendingCaretRef.current = pendingActivation.caret;
     pendingTextareaSelectionRef.current = pendingActivation.selection ?? null;
+    cacheSvgCodeFencePreviewHeightForBlock(nextIndex, targetBlock);
     setActiveBlockIndex(nextIndex);
     setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, targetBlock));
     updateActiveDraftState(toEditorDraftForBlock(targetBlock));
@@ -3936,7 +4009,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setActiveComposing(false);
     pendingActivationMarkdownRef.current = null;
     setPendingActivation(null);
-  }, [blocks, markdown, pendingActivation]);
+  }, [blocks, cacheSvgCodeFencePreviewHeightForBlock, markdown, pendingActivation, updateActiveDraftState]);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -4505,6 +4578,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (!nextBlock) {
         return;
       }
+      cacheSvgCodeFencePreviewHeightForBlock(nextIndex, nextBlock);
       if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
         commitActiveBlock({
           deactivate: true,
@@ -4525,7 +4599,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setActiveComposing(false);
       setActiveTableDirty(false);
     },
-    [activeBlockIndex, blocks, commitActiveBlock, disabled],
+    [activeBlockIndex, blocks, cacheSvgCodeFencePreviewHeightForBlock, commitActiveBlock, disabled],
   );
 
   const handleTableBlockRequestActivate = useCallback(
@@ -5576,12 +5650,18 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     if (!textarea) {
       return;
     }
+    const activeBlock = activeBlockIndex === null ? null : (blocks[activeBlockIndex] ?? null);
+    const syncedCodeFenceHeight = resolveStoredSvgCodeFencePreviewHeight(activeBlock);
+    if (syncedCodeFenceHeight !== null) {
+      textarea.style.height = `${syncedCodeFenceHeight}px`;
+      return;
+    }
     // Auto-grow to visible wrapped content so activating long paragraph lines
     // does not collapse the editor to the number of hard line breaks only.
     textarea.style.height = "auto";
     const nextHeight = Math.max(textarea.scrollHeight, 28);
     textarea.style.height = `${nextHeight}px`;
-  }, []);
+  }, [activeBlockIndex, blocks, resolveStoredSvgCodeFencePreviewHeight]);
 
   const handleTextareaScroll = useCallback(() => {
     syncEditorSyntaxOverlayScroll();
@@ -7579,9 +7659,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
               .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
             : [];
           const codeFencePreviewItems = block.kind === "code-fence"
-            ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-code-fence-preview")
-              .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
+            ? resolveCodeFencePreviewItems(block.raw)
             : [];
+          const hasSvgCodeFenceMediaPreview = block.kind === "code-fence" &&
+            codeFencePreviewItems.some((item) => item.type === "svg");
+          const syncedSvgCodeFenceHeight = resolveStoredSvgCodeFencePreviewHeight(block);
+          const useSyncedSvgCodeFenceEditorHeight = isActive &&
+            hasSvgCodeFenceMediaPreview &&
+            syncedSvgCodeFenceHeight !== null;
           if (block.kind !== "hr" && block.kind !== "code-fence") {
             previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
           }
@@ -7600,6 +7685,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
               aria-selected={isRangeSelected || undefined}
               data-md-block-selected={isRangeSelected ? "true" : undefined}
               data-md-block-kind={block.kind}
+              data-md-code-fence-media-preview={hasSvgCodeFenceMediaPreview ? "true" : undefined}
               data-md-block-index={index}
               data-md-block-id={String(index)}
               onMouseDownCapture={handleBlockMouseDownCapture(index)}
@@ -7683,21 +7769,44 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                       )}
                     </div>
                   ) : (
-                    <div className="markdown-hybrid-block-editor-shell">
+                    <div
+                      className={`markdown-hybrid-block-editor-shell${
+                        useSyncedSvgCodeFenceEditorHeight
+                          ? " markdown-hybrid-code-fence-editor-shell"
+                          : ""
+                      }`}
+                    >
                       <div
-                        className="markdown-hybrid-block-editor-overlay"
+                        className={`markdown-hybrid-block-editor-overlay${
+                          useSyncedSvgCodeFenceEditorHeight
+                            ? " markdown-hybrid-code-fence-editor-overlay"
+                            : ""
+                        }`}
                         aria-hidden="true"
                       >
                         <div
                           ref={editorSyntaxOverlayContentRef}
-                          className="markdown-hybrid-block-editor-overlay-content"
+                          className={`markdown-hybrid-block-editor-overlay-content${
+                            useSyncedSvgCodeFenceEditorHeight
+                              ? " markdown-hybrid-code-fence-editor-overlay-content"
+                              : ""
+                          }`}
                         >
                           {activeEditorSyntaxOverlayContent}
                         </div>
                       </div>
                       <textarea
                         ref={textareaRef}
-                        className="markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay"
+                        className={`markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay${
+                          useSyncedSvgCodeFenceEditorHeight
+                            ? " markdown-hybrid-code-fence-editor"
+                            : ""
+                        }`}
+                        style={
+                          useSyncedSvgCodeFenceEditorHeight
+                            ? { height: `${syncedSvgCodeFenceHeight}px` }
+                            : undefined
+                        }
                         value={activeDraft}
                         rows={Math.max(1, activeDraft.split("\n").length)}
                         onChange={(event) =>

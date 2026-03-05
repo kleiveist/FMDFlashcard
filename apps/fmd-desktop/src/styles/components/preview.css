@@ -2824,6 +2824,18 @@ textarea.preview-editor {
   will-change: transform;
 }
 
+.markdown-hybrid-code-fence-editor {
+  overflow: auto;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.markdown-hybrid-code-fence-editor-overlay,
+.markdown-hybrid-code-fence-editor-overlay-content {
+  white-space: pre;
+}
+
 .markdown-hybrid-heading-editor-placeholder {
   position: absolute;
   inset: 0;
