@@ -22,6 +22,7 @@
 
 import { useId, useMemo } from "react";
 import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
+import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import { MarkdownBlocks } from "./MarkdownBlocks";
 import { HelpButton, hasHelpContent } from "../HelpButton";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
@@ -129,7 +130,11 @@ export const MultipleChoiceCard = ({
 
   return (
     <article className="flashcard-item">
-      <h3 className="flashcard-question">{card.question}</h3>
+      <h3 className="flashcard-question">
+        {renderMarkdownMathNode(card.question, {
+          keyPrefix: `mc-question-${cardIndex}`,
+        })}
+      </h3>
       <FlashcardMediaGroup
         media={card.media}
         vaultPngAssets={vaultPngAssets}

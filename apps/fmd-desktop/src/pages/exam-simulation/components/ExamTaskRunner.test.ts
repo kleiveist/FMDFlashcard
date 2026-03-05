@@ -465,4 +465,45 @@ Statement: The Sun is a star.
 
     expect(scoringMarkup).not.toContain("Convert to flashcard");
   });
+
+  it("renders math in exam text fields and ignores inline-code math delimiters", () => {
+    const task = buildTaskFromMarkdown(`#card
+Context $c$ and code \`$no$\`.
+
+What is $x+y$?
+a) Result is $z$
+b) Keep code \`$keep$\`
+-a
+#endcard`);
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    const inlineMathOccurrences = (markup.match(/md-math-inline/g) ?? []).length;
+    expect(inlineMathOccurrences).toBe(3);
+    expect(markup).toContain("$keep$");
+  });
+
+  it("shows math fallback source and indicator on KaTeX errors", () => {
+    const task = buildTaskWithParts(
+      [
+        {
+          kind: "multiple-choice",
+          question: "Broken $\\frac{1$",
+          options: [{ key: "a", text: "Answer" }],
+          correctKeys: ["a"],
+        },
+      ],
+      "auto",
+    );
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    expect(markup).toContain("md-math-fallback");
+    expect(markup).toContain("md-math-fallback-source");
+    expect(markup).toContain("md-math-fallback-badge");
+  });
 });

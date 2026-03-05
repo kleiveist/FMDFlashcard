@@ -286,6 +286,22 @@
   max-width: 100%;
 }
 
+.flashcard-markdown .md-math,
+.flashcard-question .md-math,
+.truefalse-question .md-math,
+.truefalse-solution-item .md-math,
+.cloze-solution-token .md-math {
+  max-width: 100%;
+}
+
+.flashcard-markdown .md-math-display-in-flow .katex-display,
+.flashcard-question .md-math-display-in-flow .katex-display,
+.truefalse-question .md-math-display-in-flow .katex-display,
+.truefalse-solution-item .md-math-display-in-flow .katex-display,
+.cloze-solution-token .md-math-display-in-flow .katex-display {
+  margin: 0;
+}
+
 .flashcard-code-block {
   font-family: var(--mono);
   font-size: 0.85rem;

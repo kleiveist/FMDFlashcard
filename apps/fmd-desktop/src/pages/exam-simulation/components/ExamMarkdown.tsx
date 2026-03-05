@@ -20,11 +20,13 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
+import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { buildMarkdownMediaPreviewSource } from "../../../lib/cardMedia";
+import { renderMarkdownMathNode } from "../../../lib/markdownMath";
 import type { VaultPngAsset } from "../../../lib/tree";
 import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "../../../components/flashcards/SvgPreviewBlock";
@@ -102,6 +104,50 @@ const readMarkdownNodeText = (node: unknown): string => {
   return children.map((child) => readMarkdownNodeText(child)).join("");
 };
 
+const shouldSkipExamMathTransform = (tagName: string | null) =>
+  tagName === "code" ||
+  tagName === "pre" ||
+  tagName === "kbd" ||
+  tagName === "samp" ||
+  tagName === "svg" ||
+  tagName === "path" ||
+  tagName === "button" ||
+  tagName === "input" ||
+  tagName === "textarea";
+
+const renderExamMathInNode = (node: ReactNode, keyPrefix = "exam-md-math"): ReactNode => {
+  if (typeof node === "string") {
+    const rendered = renderMarkdownMathNode(node, { keyPrefix });
+    if (rendered.length === 1) {
+      return rendered[0] ?? null;
+    }
+    return rendered;
+  }
+  if (typeof node === "number" || typeof node === "boolean" || node == null) {
+    return node;
+  }
+  if (!isValidElement<{ children?: ReactNode }>(node)) {
+    return node;
+  }
+  const tagName = typeof node.type === "string" ? node.type.toLowerCase() : null;
+  if (shouldSkipExamMathTransform(tagName)) {
+    return node;
+  }
+  const rawChildren = node.props.children;
+  if (rawChildren == null) {
+    return node;
+  }
+  const nextChildren = Children.map(rawChildren, (child, index) =>
+    renderExamMathInNode(child, `${keyPrefix}-${index}`),
+  );
+  return cloneElement(node, undefined, nextChildren);
+};
+
+const renderExamMathChildren = (children: ReactNode, keyPrefix: string) =>
+  Children.map(children, (child, index) =>
+    renderExamMathInNode(child, `${keyPrefix}-${index}`),
+  );
+
 export const ExamMarkdown = ({
   content,
   className,
@@ -117,7 +163,34 @@ export const ExamMarkdown = ({
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
         components={{
-          div: ({ node, ...props }) => {
+          h1: ({ node: _node, children, ...props }) => (
+            <h1 {...props}>{renderExamMathChildren(children, "exam-h1")}</h1>
+          ),
+          h2: ({ node: _node, children, ...props }) => (
+            <h2 {...props}>{renderExamMathChildren(children, "exam-h2")}</h2>
+          ),
+          h3: ({ node: _node, children, ...props }) => (
+            <h3 {...props}>{renderExamMathChildren(children, "exam-h3")}</h3>
+          ),
+          h4: ({ node: _node, children, ...props }) => (
+            <h4 {...props}>{renderExamMathChildren(children, "exam-h4")}</h4>
+          ),
+          h5: ({ node: _node, children, ...props }) => (
+            <h5 {...props}>{renderExamMathChildren(children, "exam-h5")}</h5>
+          ),
+          h6: ({ node: _node, children, ...props }) => (
+            <h6 {...props}>{renderExamMathChildren(children, "exam-h6")}</h6>
+          ),
+          p: ({ node: _node, children, ...props }) => (
+            <p {...props}>{renderExamMathChildren(children, "exam-p")}</p>
+          ),
+          li: ({ node: _node, children, ...props }) => (
+            <li {...props}>{renderExamMathChildren(children, "exam-li")}</li>
+          ),
+          blockquote: ({ node: _node, children, ...props }) => (
+            <blockquote {...props}>{renderExamMathChildren(children, "exam-blockquote")}</blockquote>
+          ),
+          div: ({ node, children, ...props }) => {
             const mediaBlockMarker = readMarkdownElementProperty(node, "data-fmd-media-block");
             const placeholderMatch = readMarkdownNodeText(node).match(mediaPlaceholderTextPattern);
             const placeholderIndex = placeholderMatch
@@ -125,7 +198,7 @@ export const ExamMarkdown = ({
               : Number.NaN;
             const hasPlaceholderIndex = Number.isFinite(placeholderIndex);
             if (typeof mediaBlockMarker === "undefined" && !hasPlaceholderIndex) {
-              return <div {...props} />;
+              return <div {...props}>{renderExamMathChildren(children, "exam-div")}</div>;
             }
             const mediaIndexRaw = readMarkdownElementProperty(node, "data-media-index");
             let mediaIndex = Number.parseInt(
@@ -160,6 +233,12 @@ export const ExamMarkdown = ({
             <div className="exam-table-wrap">
               <table {...props} />
             </div>
+          ),
+          th: ({ node: _node, children, ...props }) => (
+            <th {...props}>{renderExamMathChildren(children, "exam-th")}</th>
+          ),
+          td: ({ node: _node, children, ...props }) => (
+            <td {...props}>{renderExamMathChildren(children, "exam-td")}</td>
           ),
         }}
       >

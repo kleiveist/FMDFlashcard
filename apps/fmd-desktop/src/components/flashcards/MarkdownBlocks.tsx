@@ -12,6 +12,7 @@
 import { Fragment, type ReactNode } from "react";
 import { splitMarkdownBlocks, type MarkdownBlock } from "../../lib/markdownTables";
 import { splitMarkdownMediaSegments } from "../../lib/cardMedia";
+import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import type { VaultPngAsset } from "../../lib/tree";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
 
@@ -62,11 +63,17 @@ const renderTokens = (
   value: string,
   renderPlaceholder: ((id: string) => ReactNode) | undefined,
   keyPrefix: string,
+  options?: { enableMath?: boolean },
 ) =>
   tokenizeText(value).map((token, index) => {
     const key = `${keyPrefix}-${index}`;
     if (token.type === "text") {
-      return token.value;
+      if (options?.enableMath === false) {
+        return token.value;
+      }
+      return renderMarkdownMathNode(token.value, {
+        keyPrefix: `flashcard-math-${key}`,
+      });
     }
     if (token.type === "br") {
       return <br key={key} />;
@@ -206,6 +213,7 @@ export const MarkdownBlocks = ({
                             cell,
                             renderPlaceholder,
                             `table-head-${keyPrefix}-${cellIndex}`,
+                            { enableMath: true },
                           )}
                         </th>
                       ))}
@@ -220,6 +228,7 @@ export const MarkdownBlocks = ({
                               cell,
                               renderPlaceholder,
                               `table-cell-${keyPrefix}-${rowIndex}-${cellIndex}`,
+                              { enableMath: true },
                             )}
                           </td>
                         ))}
@@ -241,7 +250,7 @@ export const MarkdownBlocks = ({
             return (
               <pre className={codeClass} key={`code-${keyPrefix}`}>
                 <code>
-                  {renderTokens(block.text, renderPlaceholder, `code-${keyPrefix}`)}
+                  {renderTokens(block.text, renderPlaceholder, `code-${keyPrefix}`, { enableMath: false })}
                 </code>
               </pre>
             );
@@ -249,7 +258,7 @@ export const MarkdownBlocks = ({
 
           return (
             <div className="flashcard-markdown-text" key={`text-${keyPrefix}`}>
-              {renderTokens(block.text, renderPlaceholder, `text-${keyPrefix}`)}
+              {renderTokens(block.text, renderPlaceholder, `text-${keyPrefix}`, { enableMath: true })}
             </div>
           );
         });

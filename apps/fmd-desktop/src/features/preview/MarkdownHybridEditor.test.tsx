@@ -3746,6 +3746,149 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("opens the inline math menu and applies wrap/convert/remove actions from the floating toolbar", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("Alpha Beta");
+          return (
+            <MarkdownHybridEditor
+              historyKey="inline-toolbar-math-menu"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const getMathMenuItem = (label: string) =>
+          Array.from(
+            document.body.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-inline-toolbar-menu-item"),
+          ).find((button) => button.textContent?.includes(label));
+        const openMathMenu = (textarea: HTMLTextAreaElement, start: number, end: number) => {
+          setTextareaSelection(textarea, start, end);
+          act(() => {
+            window.dispatchEvent(new Event("pointerup"));
+            vi.advanceTimersByTime(350);
+          });
+          const mathButton = document.body.querySelector<HTMLButtonElement>(
+            ".markdown-hybrid-inline-toolbar button[aria-label='Inline formula']",
+          );
+          dispatchClick(mathButton);
+        };
+
+        let textarea = activateBlockEditor(container, 0);
+        expect(textarea).toBeTruthy();
+
+        openMathMenu(textarea as HTMLTextAreaElement, 6, 10);
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar-menu")).toBeTruthy();
+        expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
+        dispatchClick(getMathMenuItem("Mark as Inline Math") ?? null);
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha $Beta$");
+
+        const inlineStart = textarea?.value.indexOf("Beta") ?? -1;
+        expect(inlineStart).toBeGreaterThanOrEqual(0);
+        openMathMenu(textarea as HTMLTextAreaElement, inlineStart, inlineStart + 4);
+        dispatchClick(getMathMenuItem("Convert Inline <-> Display") ?? null);
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha $$Beta$$");
+
+        const displayStart = textarea?.value.indexOf("Beta") ?? -1;
+        expect(displayStart).toBeGreaterThanOrEqual(0);
+        openMathMenu(textarea as HTMLTextAreaElement, displayStart, displayStart + 4);
+        dispatchClick(getMathMenuItem("Remove Math Marking") ?? null);
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha Beta");
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("does not rewrite inline-code selections with math menu actions", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("Text `a+b`");
+          return (
+            <MarkdownHybridEditor
+              historyKey="inline-toolbar-math-code-guard"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const textarea = activateBlockEditor(container, 0);
+        expect(textarea).toBeTruthy();
+
+        setTextareaSelection(textarea, 6, 9);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+        const mathButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='Inline formula']",
+        );
+        dispatchClick(mathButton);
+        const wrapButton = Array.from(
+          document.body.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-inline-toolbar-menu-item"),
+        ).find((button) => button.textContent?.includes("Mark as Inline Math"));
+        dispatchClick(wrapButton ?? null);
+
+        expect(textarea?.value).toBe("Text `a+b`");
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("normalizes multiline inline math on commit but keeps the draft unchanged while typing", () => {
+    withImmediateRaf(() => {
+      let latestMarkdown = "Alpha $x$";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(latestMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="inline-math-commit-normalization"
+            markdown={markdown}
+            mode="edit"
+            onChange={(value) => {
+              latestMarkdown = value;
+              setMarkdown(value);
+            }}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+
+      applyTextareaInput(textarea, "Alpha $x +\n  y$");
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("Alpha $x +\n  y$");
+      expect(latestMarkdown).toBe("Alpha $x$");
+
+      blurTextarea(textarea);
+      expect(latestMarkdown).toBe("Alpha $x + y$");
+      cleanup();
+    });
+  });
+
   it("removes supported inline markdown wrappers from the selection when pressing the text button", () => {
     withImmediateRaf(() => {
       vi.useFakeTimers();

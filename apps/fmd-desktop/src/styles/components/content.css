@@ -1408,6 +1408,14 @@ body.focus-mode .spaced-repetition-sidebar {
   padding-left: 1.4rem;
 }
 
+.exam-markdown .md-math {
+  max-width: 100%;
+}
+
+.exam-markdown .md-math-display-in-flow .katex-display {
+  margin: 0;
+}
+
 .exam-markdown code {
   font-family: var(--mono);
   font-size: 0.85rem;

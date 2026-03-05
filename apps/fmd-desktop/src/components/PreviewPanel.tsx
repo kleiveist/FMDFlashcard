@@ -71,6 +71,7 @@ import {
   normalizeMarkdownPipeTables,
   normalizeMarkdownTableCellPreviewValue,
 } from "../lib/markdownTables";
+import { renderMarkdownMathNode, tokenizeMarkdownMath } from "../lib/markdownMath";
 import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
 import { type LoadState } from "../lib/types";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
@@ -1049,17 +1050,24 @@ const previewInlineFormattingPatterns: ReadonlyArray<readonly [RegExp, string]> 
   [/(?<!\\)\*\*\*([^\n*]+?)(?<!\\)\*\*\*/g, "<strong><em>$1</em></strong>"],
   [/(?<!\\)__([^_\n]+?)(?<!\\)__/g, "<u>$1</u>"],
   [/(?<!\\)==([^=\n]+?)(?<!\\)==/g, "<mark class=\"md-inline-highlight\">$1</mark>"],
-  [/(?<!\\)\$([^$\n]+?)(?<!\\)\$/g, "<span class=\"md-inline-math\">$1</span>"],
   [/(?<!\\)\*(?!\*)([^*\n]+?)(?<!\\)\*(?!\*)/g, "<em>$1</em>"],
 ];
 
-const applyPreviewInlineFormattingToSegment = (segment: string) => {
+const applyPreviewInlineFormattingToPlainText = (segment: string) => {
   let nextSegment = segment;
   for (const [pattern, replacement] of previewInlineFormattingPatterns) {
     nextSegment = nextSegment.replace(pattern, replacement);
   }
   return nextSegment;
 };
+
+const applyPreviewInlineFormattingToSegment = (segment: string) =>
+  tokenizeMarkdownMath(segment)
+    .map((token) =>
+      token.type === "text"
+        ? applyPreviewInlineFormattingToPlainText(token.value)
+        : token.raw)
+    .join("");
 
 export const normalizeInlineFormattingForPreview = (source: string) => {
   if (!source) {
@@ -1170,7 +1178,14 @@ const highlightInlineSyntaxInText = (text: string, keyPrefix: string): ReactNode
 
 const highlightInlineSyntaxInNode = (node: ReactNode, keyPrefix = "md-inline"): ReactNode => {
   if (typeof node === "string") {
-    return highlightInlineSyntaxInText(node, keyPrefix);
+    const rendered = renderMarkdownMathNode(node, {
+      keyPrefix: `${keyPrefix}-math`,
+      renderText: (text, textKeyPrefix) => highlightInlineSyntaxInText(text, textKeyPrefix),
+    });
+    if (rendered.length === 1) {
+      return rendered[0] ?? null;
+    }
+    return rendered;
   }
   if (typeof node === "number" || typeof node === "boolean" || node == null) {
     return node;

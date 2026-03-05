@@ -1624,6 +1624,8 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-inline-toolbar-menu {
+  display: grid;
+  gap: 6px;
   border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
   border-radius: 9px;
   background: color-mix(in srgb, var(--panel-2) 40%, transparent);
@@ -1634,6 +1636,24 @@ textarea.preview-editor {
   font-size: 12px;
   color: var(--muted);
   line-height: 1.35;
+}
+
+.markdown-hybrid-inline-toolbar-menu-item {
+  height: 30px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 80%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.markdown-hybrid-inline-toolbar-menu-item:hover {
+  border-color: color-mix(in srgb, var(--line-soft) 95%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
 }
 
 .markdown-hybrid-inline-toolbar-link {
@@ -3710,15 +3730,78 @@ textarea.preview-editor {
   color: color-mix(in srgb, var(--accent-strong) 88%, var(--preview-ink));
 }
 
-.md-preview .md-inline-math,
-.markdown-hybrid-block-preview .md-inline-math {
-  border-radius: 0.26em;
+.md-math {
+  display: inline-flex;
+  align-items: baseline;
+  vertical-align: baseline;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.md-math-inline {
+  padding: 0 0.04em;
+}
+
+.md-math-inline .md-math-katex {
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1;
+}
+
+.md-math-inline .katex {
+  font-size: 0.96em;
+  line-height: 1;
+}
+
+.md-math-display-in-flow {
+  margin: 0 0.05em;
+}
+
+.md-math-display-in-flow .md-math-katex {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.md-math-display-in-flow .katex-display {
+  display: inline-block;
+  margin: 0;
+}
+
+.md-math-display-in-flow .katex-display > .katex {
+  font-size: 0.96em;
+}
+
+.md-math-fallback {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28em;
   border: 1px solid color-mix(in srgb, var(--line-soft) 84%, transparent);
+  border-radius: 0.34em;
   background: color-mix(in srgb, var(--panel) 82%, transparent);
-  padding: 0.02em 0.26em;
+  padding: 0.05em 0.32em;
+}
+
+.md-math-fallback-source {
   font-family: "STIX Two Math", "Cambria Math", var(--mono);
-  font-style: italic;
-  letter-spacing: 0.01em;
+  font-size: 0.9em;
+  line-height: 1.2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md-math-fallback-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.06em;
+  height: 1.06em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--error-bg) 74%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error-border) 84%, transparent);
+  color: var(--error-ink);
+  font-size: 0.7em;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .md-preview code {

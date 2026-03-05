@@ -140,6 +140,7 @@ const buildHarness = (
   markdown: string,
   options: {
     markdownViewEditEnabled?: boolean;
+    markdownHybridEnabled?: boolean;
     rawPreview?: boolean;
     onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
     onNavigateWikilink?: (wikilink: string) => void;
@@ -153,6 +154,7 @@ const buildHarness = (
   const onEditExit = vi.fn();
   const {
     markdownViewEditEnabled = true,
+    markdownHybridEnabled = false,
     rawPreview = false,
     onFrontmatterSave,
     onNavigateWikilink,
@@ -190,6 +192,7 @@ const buildHarness = (
       previewState: "idle",
       rawPreview,
       markdownViewEditEnabled,
+      markdownHybridEnabled,
       selectedFile: baseFile,
       vaultPath,
       sourceRelativePath: baseFile.relative_path,
@@ -610,6 +613,54 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector("sup")).toBeTruthy();
     expect(container.querySelector("sub")).toBeTruthy();
     expect(container.querySelector("kbd")).toBeTruthy();
+  });
+
+  it("renders inline math via KaTeX in markdown view", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Text $x^2 + y^2$ done");
+    cleanup = localCleanup;
+
+    const inlineMath = container.querySelector(".preview.markdown .md-math-inline");
+    expect(inlineMath).toBeTruthy();
+    expect(inlineMath?.querySelector(".katex")).toBeTruthy();
+  });
+
+  it("renders display math in paragraph flow without splitting the paragraph", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Alpha $$x^2$$ Omega");
+    cleanup = localCleanup;
+
+    const paragraph = container.querySelector(".preview.markdown p");
+    const displayMath = paragraph?.querySelector(".md-math-display-in-flow");
+    expect(paragraph).toBeTruthy();
+    expect(displayMath).toBeTruthy();
+    expect(paragraph?.textContent ?? "").toContain("Alpha");
+    expect(paragraph?.textContent ?? "").toContain("Omega");
+  });
+
+  it("shows source and an indicator when KaTeX rendering fails", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Broken $\\frac{1$ math");
+    cleanup = localCleanup;
+
+    const fallback = container.querySelector(".preview.markdown .md-math-fallback");
+    expect(fallback).toBeTruthy();
+    expect(fallback?.querySelector(".md-math-fallback-source")?.textContent).toContain("$\\frac{1$");
+    expect(fallback?.querySelector(".md-math-fallback-badge")).toBeTruthy();
+  });
+
+  it("uses the same inline math renderer in markdown view and hybrid preview", () => {
+    const markdown = "Parity $x+y$";
+    const markdownView = buildHarness(markdown);
+    const hybridView = buildHarness(markdown, { markdownHybridEnabled: true });
+    cleanup = () => {
+      markdownView.cleanup();
+      hybridView.cleanup();
+    };
+
+    const markdownMath = markdownView.container.querySelector(".preview.markdown .md-math-inline");
+    const hybridMath = hybridView.container.querySelector(".markdown-hybrid-block-preview .md-math-inline");
+    expect(markdownMath).toBeTruthy();
+    expect(hybridMath).toBeTruthy();
+    expect(markdownMath?.querySelector(".katex")).toBeTruthy();
+    expect(hybridMath?.querySelector(".katex")).toBeTruthy();
   });
 
   it("renders svg fences as media previews", () => {

@@ -38,6 +38,12 @@ import {
   splitMarkdownMediaSegments,
   type MediaItem,
 } from "../../lib/cardMedia";
+import {
+  findMathTokenCoveringRange,
+  normalizeMultilineInlineMathOnCommit,
+  rangeIntersectsMarkdownCodeContext,
+  type MathToken,
+} from "../../lib/markdownMath";
 import { normalizeRelativePath } from "../../lib/path";
 import { type VaultFile, type VaultPngAsset } from "../../lib/tree";
 import {
@@ -257,7 +263,12 @@ type InlineFormattingToolbarAction =
   | "inline-code"
   | "math";
 
-type InlineFormattingToolbarMenu = "more" | null;
+type InlineFormattingMathMenuAction =
+  | "wrap-inline"
+  | "convert-inline-display"
+  | "remove-marking";
+
+type InlineFormattingToolbarMenu = "more" | "math" | null;
 
 type InlineFormattingToolbarAnchor = {
   centerX: number;
@@ -739,6 +750,7 @@ type FloatingInlineFormattingToolbarProps = {
   onClose: () => void;
   onToggleMenu: (menu: Exclude<InlineFormattingToolbarMenu, null>) => void;
   onAction: (action: InlineFormattingToolbarAction | "link" | "clear-formatting") => void;
+  onMathMenuAction: (action: InlineFormattingMathMenuAction) => void;
   onLinkUrlChange: (value: string) => void;
   onLinkSubmit: () => void;
   onLinkRemove: () => void;
@@ -754,6 +766,7 @@ const FloatingInlineFormattingToolbar = ({
   onClose,
   onToggleMenu,
   onAction,
+  onMathMenuAction,
   onLinkUrlChange,
   onLinkSubmit,
   onLinkRemove,
@@ -966,7 +979,7 @@ const FloatingInlineFormattingToolbar = ({
           aria-label="Inline formula"
           title="Formula (Ctrl/Cmd+Shift+M)"
           onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("math")}
+          onClick={() => onToggleMenu("math")}
         >
           {"√x"}
         </button>
@@ -984,6 +997,37 @@ const FloatingInlineFormattingToolbar = ({
       {menu === "more" ? (
         <div className="markdown-hybrid-inline-toolbar-menu" role="menu" aria-label="More inline actions">
           <div className="markdown-hybrid-inline-toolbar-menu-note">More actions coming soon</div>
+        </div>
+      ) : null}
+      {menu === "math" ? (
+        <div className="markdown-hybrid-inline-toolbar-menu" role="menu" aria-label="Inline math actions">
+          <button
+            type="button"
+            className="markdown-hybrid-inline-toolbar-menu-item"
+            role="menuitem"
+            onMouseDown={handleButtonMouseDown}
+            onClick={() => onMathMenuAction("wrap-inline")}
+          >
+            Mark as Inline Math
+          </button>
+          <button
+            type="button"
+            className="markdown-hybrid-inline-toolbar-menu-item"
+            role="menuitem"
+            onMouseDown={handleButtonMouseDown}
+            onClick={() => onMathMenuAction("convert-inline-display")}
+          >
+            {"Convert Inline <-> Display"}
+          </button>
+          <button
+            type="button"
+            className="markdown-hybrid-inline-toolbar-menu-item"
+            role="menuitem"
+            onMouseDown={handleButtonMouseDown}
+            onClick={() => onMathMenuAction("remove-marking")}
+          >
+            Remove Math Marking
+          </button>
         </div>
       ) : null}
       {linkState ? (
@@ -4384,12 +4428,15 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         activeSelectionStart,
       );
       const draftForPersist = normalizedHeadingSpacing?.value ?? currentDraft;
+      const normalizedDraftForPersist = snapshot.kind === "math-block"
+        ? draftForPersist
+        : normalizeMultilineInlineMathOnCommit(draftForPersist);
 
       let nextResolvedMarkdown = markdown;
       let committedBlock: MarkdownBlock;
 
       if (snapshot.isDetachedEmptyBlock) {
-        nextResolvedMarkdown = applyEditorMarkdownNormalization(draftForPersist);
+        nextResolvedMarkdown = applyEditorMarkdownNormalization(normalizedDraftForPersist);
         committedBlock = parseMarkdownBlocks(nextResolvedMarkdown)[0] ?? {
           id: snapshot.blockId,
           kind: "blank",
@@ -4400,7 +4447,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           raw: nextResolvedMarkdown,
         };
       } else {
-        let nextBlockRaw = toPersistedBlockRawForDraft({ kind: snapshot.kind }, draftForPersist);
+        let nextBlockRaw = toPersistedBlockRawForDraft({ kind: snapshot.kind }, normalizedDraftForPersist);
         if (snapshot.kind === "ordered-list") {
           nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
         } else if (snapshot.kind === "help-block") {
@@ -5921,9 +5968,97 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (!normalizedSelection || !textarea) {
         return false;
       }
+      if (action === "math" && rangeIntersectsMarkdownCodeContext(textarea.value, normalizedSelection)) {
+        return false;
+      }
       const wrapper = INLINE_FORMATTING_WRAPPERS[action];
       const nextResult = toggleInlineFormattingWrapper(textarea.value, normalizedSelection, wrapper);
       return applyInlineFormattingToActiveSelection(nextResult);
+    },
+    [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
+  );
+
+  const applyInlineMathMenuAction = useCallback(
+    (action: InlineFormattingMathMenuAction) => {
+      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+      const textarea = textareaRef.current;
+      if (!normalizedSelection || !textarea) {
+        return false;
+      }
+      if (rangeIntersectsMarkdownCodeContext(textarea.value, normalizedSelection)) {
+        return false;
+      }
+
+      const value = textarea.value;
+      const activeMathToken = findMathTokenCoveringRange(value, normalizedSelection);
+
+      const applyDelimiterConversion = (
+        token: Extract<MathToken, { type: "inline-math" | "display-math" }>,
+        targetType: "inline-math" | "display-math",
+      ) => {
+        if (token.type === targetType) {
+          return false;
+        }
+        const targetDelimiter = targetType === "inline-math" ? "$" : "$$";
+        const nextValue = `${value.slice(0, token.start)}${targetDelimiter}${token.value}${targetDelimiter}${
+          value.slice(token.end)
+        }`;
+        const delimiterLength = targetDelimiter.length;
+        return applyInlineFormattingToActiveSelection({
+          value: nextValue,
+          selection: {
+            start: token.start + delimiterLength,
+            end: token.start + delimiterLength + token.value.length,
+          },
+          changed: nextValue !== value,
+        });
+      };
+
+      if (action === "wrap-inline") {
+        if (activeMathToken) {
+          if (activeMathToken.type === "display-math") {
+            return applyDelimiterConversion(activeMathToken, "inline-math");
+          }
+          return false;
+        }
+        const selectedText = value.slice(normalizedSelection.start, normalizedSelection.end);
+        const nextValue = `${value.slice(0, normalizedSelection.start)}$${selectedText}$${
+          value.slice(normalizedSelection.end)
+        }`;
+        return applyInlineFormattingToActiveSelection({
+          value: nextValue,
+          selection: {
+            start: normalizedSelection.start + 1,
+            end: normalizedSelection.end + 1,
+          },
+          changed: nextValue !== value,
+        });
+      }
+
+      if (action === "convert-inline-display") {
+        if (!activeMathToken) {
+          return false;
+        }
+        return applyDelimiterConversion(
+          activeMathToken,
+          activeMathToken.type === "inline-math" ? "display-math" : "inline-math",
+        );
+      }
+
+      if (!activeMathToken) {
+        return false;
+      }
+      const nextValue = `${value.slice(0, activeMathToken.start)}${activeMathToken.value}${
+        value.slice(activeMathToken.end)
+      }`;
+      return applyInlineFormattingToActiveSelection({
+        value: nextValue,
+        selection: {
+          start: activeMathToken.start,
+          end: activeMathToken.start + activeMathToken.value.length,
+        },
+        changed: nextValue !== value,
+      });
     },
     [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
   );
@@ -6070,6 +6205,16 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       applyInlineFormattingAction(action);
     },
     [applyInlineFormattingAction, clearInlineFormattingAtSelection, openInlineFormattingLinkEditor],
+  );
+
+  const handleInlineFormattingMathMenuAction = useCallback(
+    (action: InlineFormattingMathMenuAction) => {
+      setInsertMenuState(null);
+      setInlineFormattingToolbarLinkState(null);
+      setInlineFormattingToolbarMenu(null);
+      applyInlineMathMenuAction(action);
+    },
+    [applyInlineMathMenuAction],
   );
 
   const toggleInlineFormattingToolbarMenu = useCallback(
@@ -7407,6 +7552,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       onClose={hideInlineFormattingToolbar}
       onToggleMenu={toggleInlineFormattingToolbarMenu}
       onAction={handleInlineFormattingToolbarAction}
+      onMathMenuAction={handleInlineFormattingMathMenuAction}
       onLinkUrlChange={(value) => {
         setInlineFormattingToolbarLinkState((current) => {
           if (!current) {

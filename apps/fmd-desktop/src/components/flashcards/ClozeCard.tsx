@@ -47,6 +47,7 @@ import {
   CLOZE_PLACEHOLDER_SUFFIX,
   MarkdownBlocks,
 } from "./MarkdownBlocks";
+import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import { findTableLineIndices } from "../../lib/markdownTables";
 import { HelpButton, hasHelpContent } from "../HelpButton";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
@@ -514,7 +515,13 @@ export const ClozeCard = ({
     if (!segment) {
       return null;
     }
-    return <span className="cloze-solution-token">{segment.solution}</span>;
+    return (
+      <span className="cloze-solution-token">
+        {renderMarkdownMathNode(segment.solution, {
+          keyPrefix: `cloze-solution-blank-${cardIndex}-${blankId}`,
+        })}
+      </span>
+    );
   };
 
   return (
@@ -523,7 +530,11 @@ export const ClozeCard = ({
       className={`flashcard-item cloze-card${selectedToken ? " is-selecting" : ""}`}
     >
       {questionText.trim() ? (
-        <h3 className="flashcard-question">{questionText}</h3>
+        <h3 className="flashcard-question">
+          {renderMarkdownMathNode(questionText, {
+            keyPrefix: `cloze-question-${cardIndex}`,
+          })}
+        </h3>
       ) : null}
       <FlashcardMediaGroup
         media={card.media}

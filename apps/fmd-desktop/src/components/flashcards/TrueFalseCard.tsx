@@ -21,6 +21,7 @@
  */
 
 import { type TrueFalseCard as TrueFalseCardType } from "../../lib/flashcards";
+import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import { MarkdownBlocks } from "./MarkdownBlocks";
 import {
   areTrueFalseItemsComplete,
@@ -114,7 +115,11 @@ export const TrueFalseCard = ({
 
           return (
             <li key={item.id} className="truefalse-item">
-              <div className="truefalse-question">{item.question}</div>
+              <div className="truefalse-question">
+                {renderMarkdownMathNode(item.question, {
+                  keyPrefix: `true-false-question-${cardIndex}-${item.id}`,
+                })}
+              </div>
               <div className="truefalse-options">
                 <button
                   type="button"
@@ -180,7 +185,11 @@ export const TrueFalseCard = ({
           <ul className="truefalse-solution-list">
             {card.items.map((item) => (
               <li key={`solution-${item.id}`} className="truefalse-solution-item">
-                <span>{item.question}</span>
+                <span>
+                  {renderMarkdownMathNode(item.question, {
+                    keyPrefix: `true-false-solution-${cardIndex}-${item.id}`,
+                  })}
+                </span>
                 <span className="truefalse-solution-answer">
                   {item.correct === "wahr" ? "True" : "False"}
                 </span>
