@@ -1,19 +1,14 @@
 import { Children, isValidElement, type ReactNode, useEffect, useMemo, useState } from "react";
+import type { HLJSApi, LanguageFn } from "highlight.js";
 import { MARKDOWN_CODE_HIGHLIGHT_CONFIG } from "./markdownCodeHighlightConfig";
 
-type HighlightJsLanguageFactory = (hljs: unknown) => unknown;
+type HighlightJsLanguageFactory = LanguageFn;
 
 type HighlightJsCore = {
-  registerLanguage: (name: string, language: HighlightJsLanguageFactory) => void;
-  getLanguage: (name: string) => unknown;
-  highlight: (
-    code: string,
-    options: { language: string; ignoreIllegals?: boolean },
-  ) => { language?: string; value: string };
-  highlightAuto: (
-    code: string,
-    languageSubset?: string[],
-  ) => { language?: string; value: string };
+  registerLanguage: HLJSApi["registerLanguage"];
+  getLanguage: HLJSApi["getLanguage"];
+  highlight: HLJSApi["highlight"];
+  highlightAuto: HLJSApi["highlightAuto"];
 };
 
 type HighlightCacheValue = {
@@ -38,7 +33,7 @@ export type UseMarkdownCodeHighlightOptions = HighlightMarkdownCodeOptions & {
   schedule?: "idle" | "immediate";
 };
 
-export type ApplyHighlightToCodeElementOptions = HighlightMarkdownCodeOptions & {
+export type ApplyHighlightToCodeElementOptions = Omit<HighlightMarkdownCodeOptions, "code"> & {
   preElement?: HTMLElement | null;
   codeElement: HTMLElement;
 };

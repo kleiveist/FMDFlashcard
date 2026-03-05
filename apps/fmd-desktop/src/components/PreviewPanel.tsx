@@ -6045,7 +6045,8 @@ export const PreviewPanel = ({
         : queuedCodes;
 
       for (const codeElement of codeElements) {
-        const preElement = codeElement.closest('pre[data-md-code-block="true"]');
+        const preElementRaw = codeElement.closest('pre[data-md-code-block="true"]');
+        const preElement = preElementRaw instanceof HTMLElement ? preElementRaw : null;
         const selectionOffsets = getSelectionOffsetsWithinContainer(codeElement);
         const plainCode = codeElement.textContent ?? "";
         codeElement.textContent = plainCode;

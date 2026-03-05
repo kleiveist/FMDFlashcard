@@ -3207,7 +3207,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
 
   const resolveStoredSvgCodeFencePreviewHeight = useCallback(
     (block: MarkdownBlock | null | undefined) => {
-      if (!isSvgCodeFencePreviewBlock(block)) {
+      if (!block || !isSvgCodeFencePreviewBlock(block)) {
         return null;
       }
       const height = codeFencePreviewHeightsRef.current.get(block.id);
