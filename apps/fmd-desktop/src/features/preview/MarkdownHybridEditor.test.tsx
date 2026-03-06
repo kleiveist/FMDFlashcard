@@ -166,18 +166,16 @@ const dispatchClipboardEvent = (
   element: Element | null,
   type: "copy" | "cut" | "paste",
   clipboardData: DataTransfer,
-) => {
-  let clipboardEvent: ClipboardEvent | null = null;
-  act(() => {
-    const event = new Event(type, { bubbles: true, cancelable: true }) as ClipboardEvent;
-    Object.defineProperty(event, "clipboardData", {
-      value: clipboardData,
-      configurable: true,
-    });
-    element?.dispatchEvent(event);
-    clipboardEvent = event;
+): ClipboardEvent => {
+  const event = new Event(type, { bubbles: true, cancelable: true }) as ClipboardEvent;
+  Object.defineProperty(event, "clipboardData", {
+    value: clipboardData,
+    configurable: true,
   });
-  return clipboardEvent;
+  act(() => {
+    element?.dispatchEvent(event);
+  });
+  return event;
 };
 
 const activateBlockEditor = (container: ParentNode, index = 0) => {
@@ -669,7 +667,7 @@ describe("MarkdownHybridEditor", () => {
 
     const clipboardData = createClipboardDataMock();
     const copyEvent = dispatchClipboardEvent(editor, "copy", clipboardData);
-    expect(copyEvent?.defaultPrevented).toBe(true);
+    expect(copyEvent.defaultPrevented).toBe(true);
     expect(clipboardData.getData("text/plain")).toBe(["# One", "# Three"].join("\n"));
 
     const payloadRaw = clipboardData.getData(INTERNAL_BLOCK_CLIPBOARD_MIME);
@@ -722,7 +720,7 @@ describe("MarkdownHybridEditor", () => {
 
       const clipboardData = createClipboardDataMock();
       const cutEvent = dispatchClipboardEvent(editor, "cut", clipboardData);
-      expect(cutEvent?.defaultPrevented).toBe(true);
+      expect(cutEvent.defaultPrevented).toBe(true);
       expect(clipboardData.getData("text/plain")).toBe(initialMarkdown);
       expect(readMarkdown()).toBe("");
 
@@ -772,7 +770,7 @@ describe("MarkdownHybridEditor", () => {
 
       const clipboardData = createClipboardDataMock();
       const cutEvent = dispatchClipboardEvent(editor, "cut", clipboardData);
-      expect(cutEvent?.defaultPrevented).toBe(true);
+      expect(cutEvent.defaultPrevented).toBe(true);
       expect(readMarkdown()).toBe(["# One", "# Three"].join("\n"));
 
       const focusedTextarea = container.querySelector<HTMLTextAreaElement>(
@@ -853,7 +851,7 @@ describe("MarkdownHybridEditor", () => {
         }),
       });
       const pasteEvent = dispatchClipboardEvent(editor, "paste", clipboardData);
-      expect(pasteEvent?.defaultPrevented).toBe(true);
+      expect(pasteEvent.defaultPrevented).toBe(true);
       expect(readMarkdown()).toBe(pastedMarkdown);
 
       const activeTextarea = container.querySelector<HTMLTextAreaElement>(
@@ -905,7 +903,7 @@ describe("MarkdownHybridEditor", () => {
         "text/plain": externalMarkdown,
       });
       const pasteEvent = dispatchClipboardEvent(editor, "paste", clipboardData);
-      expect(pasteEvent?.defaultPrevented).toBe(true);
+      expect(pasteEvent.defaultPrevented).toBe(true);
       expect(readMarkdown()).toBe(externalMarkdown);
 
       cleanup();
@@ -959,7 +957,7 @@ describe("MarkdownHybridEditor", () => {
         [INTERNAL_BLOCK_CLIPBOARD_MIME]: internalPayload,
       });
       const internalPasteEvent = dispatchClipboardEvent(cleanTextarea, "paste", internalClipboardData);
-      expect(internalPasteEvent?.defaultPrevented).toBe(true);
+      expect(internalPasteEvent.defaultPrevented).toBe(true);
 
       const pastedMarkdown = readMarkdown();
       expect(pastedMarkdown.indexOf("# A")).toBeLessThan(pastedMarkdown.indexOf("# Inserted"));
@@ -973,7 +971,7 @@ describe("MarkdownHybridEditor", () => {
       const dirtyTextarea = insertedTextarea;
       applyTextareaInput(dirtyTextarea, "# Inserted dirty");
       const dirtyPasteEvent = dispatchClipboardEvent(dirtyTextarea, "paste", internalClipboardData);
-      expect(dirtyPasteEvent?.defaultPrevented).toBe(false);
+      expect(dirtyPasteEvent.defaultPrevented).toBe(false);
       expect(readMarkdown()).toBe(pastedMarkdown);
 
       cleanup();
