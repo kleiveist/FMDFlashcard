@@ -274,6 +274,21 @@ const resolveTaskHelpBlock = (
   return primary;
 };
 
+const mergeHelpText = (cardHelp?: string, taskHelp?: string) => {
+  const trimmedCardHelp = (cardHelp ?? "").trim();
+  const trimmedTaskHelp = (taskHelp ?? "").trim();
+  if (!trimmedCardHelp && !trimmedTaskHelp) {
+    return undefined;
+  }
+  if (!trimmedCardHelp) {
+    return trimmedTaskHelp;
+  }
+  if (!trimmedTaskHelp) {
+    return trimmedCardHelp;
+  }
+  return `${trimmedCardHelp}\n\n${trimmedTaskHelp}`;
+};
+
 const deriveTaskHeadingInfo = (
   rawLines: string[],
   hasCardWrapper: boolean,
@@ -738,11 +753,18 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       }
     }
 
+    const taskHelpText = (taskHelpBlock?.text ?? "").trim();
+    if (cards.length > 0 && taskHelpText) {
+      const firstCard = cards[0];
+      if (firstCard) {
+        firstCard.helpText = mergeHelpText(firstCard.helpText, taskHelpText);
+      }
+    }
+
     const taskBlueprint: ExamTaskBlueprint = {
       id: createBlueprintId("task"),
       order: index,
       title: headingInfo.heading,
-      helpText: taskHelpBlock ? taskHelpBlock.text : undefined,
       mediaItems: mediaItemsToDrafts(task.media),
       useCardWrapper: task.cardWrapper,
       cards,

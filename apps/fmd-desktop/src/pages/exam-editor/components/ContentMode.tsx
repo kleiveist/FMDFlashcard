@@ -12,7 +12,6 @@ import { isCompositeTask } from "../../../features/exam-editor/validation";
 import type { ExamEditorSelection } from "../types";
 import { ModalShell } from "../../../components/ModalShell";
 import { CardContentForm, MediaEditor } from "./ContentForms";
-import { HelpEditor } from "./HelpEditor";
 import type { EditorMediaDraft } from "../../../lib/cardMedia";
 import type { VaultPngAsset } from "../../../lib/tree";
 
@@ -135,13 +134,6 @@ const ContentEditorPanel = ({
               </div>
             ) : null}
           </header>
-
-          <HelpEditor
-            label="Card help / hint"
-            value={activeTask.helpText ?? ""}
-            onChange={(value) => onTaskUpdate(activeTask.id, { helpText: value })}
-            showPreviewToggle
-          />
 
           <MediaEditor
             value={activeTask.mediaItems ?? []}

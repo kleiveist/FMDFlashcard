@@ -449,8 +449,10 @@ End hint
     }
 
     expect(imported.blueprint.tasks).toHaveLength(2);
-    expect(imported.blueprint.tasks[0]?.helpText).toBe("Start hint");
-    expect(imported.blueprint.tasks[1]?.helpText).toBe("End hint");
+    expect(imported.blueprint.tasks[0]?.helpText).toBeUndefined();
+    expect(imported.blueprint.tasks[1]?.helpText).toBeUndefined();
+    expect(imported.blueprint.tasks[0]?.cards[0]?.helpText).toBe("Start hint");
+    expect(imported.blueprint.tasks[1]?.cards[0]?.helpText).toBe("End hint");
   });
 
   it("keeps card help separate from task help", () => {
@@ -485,9 +487,39 @@ Task help
     if (!task) {
       throw new Error("Expected task after import.");
     }
-    expect(task.helpText).toBe("Task help");
-    expect(task.cards[0]?.helpText).toBe("Card M1 help");
+    expect(task.helpText).toBeUndefined();
+    expect(task.cards[0]?.helpText).toBe("Card M1 help\n\nTask help");
     expect(task.cards[1]?.helpText).toBe("Card TF help");
+  });
+
+  it("maps early wrapper task help into first card help", () => {
+    const markdown = `
+#exam
+#card
+1) Wrapped help
+#help
+Wrapper task hint
+#helpend
+Question?
+Answer: A
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task).toBeDefined();
+    if (!task) {
+      return;
+    }
+    expect(task.useCardWrapper).toBe(true);
+    expect(task.helpText).toBeUndefined();
+    expect(task.cards[0]?.helpText).toBe("Wrapper task hint");
   });
 
   it("ignores task help markers inside fenced code blocks", () => {
