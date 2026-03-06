@@ -8,6 +8,8 @@ import {
   buildAdvancedInsertTemplateVariant,
 } from "./insertTemplates";
 
+const INTERNAL_BLOCK_CLIPBOARD_MIME = "application/x-fmd-markdown-hybrid-blocks+json";
+
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -142,6 +144,42 @@ const dispatchContextMenu = (
   });
 };
 
+const createClipboardDataMock = (initialData: Record<string, string> = {}) => {
+  const store = new Map<string, string>(Object.entries(initialData));
+  const clipboard = {
+    clearData: (format?: string) => {
+      if (format) {
+        store.delete(format);
+        return;
+      }
+      store.clear();
+    },
+    getData: (format: string) => store.get(format) ?? "",
+    setData: (format: string, value: string) => {
+      store.set(format, value);
+    },
+  };
+  return clipboard as unknown as DataTransfer;
+};
+
+const dispatchClipboardEvent = (
+  element: Element | null,
+  type: "copy" | "cut" | "paste",
+  clipboardData: DataTransfer,
+) => {
+  let clipboardEvent: ClipboardEvent | null = null;
+  act(() => {
+    const event = new Event(type, { bubbles: true, cancelable: true }) as ClipboardEvent;
+    Object.defineProperty(event, "clipboardData", {
+      value: clipboardData,
+      configurable: true,
+    });
+    element?.dispatchEvent(event);
+    clipboardEvent = event;
+  });
+  return clipboardEvent;
+};
+
 const activateBlockEditor = (container: ParentNode, index = 0) => {
   const block = container.querySelector<HTMLElement>(
     `.markdown-hybrid-block[data-md-block-index='${index}']`,
@@ -157,6 +195,21 @@ const activateBlockEditor = (container: ParentNode, index = 0) => {
     );
   });
   return container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+};
+
+const ctrlSelectBlock = (block: Element | null) => {
+  act(() => {
+    block?.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        buttons: 1,
+        ctrlKey: true,
+      }),
+    );
+    window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  });
 };
 
 const setTextareaSelection = (
@@ -585,6 +638,346 @@ describe("MarkdownHybridEditor", () => {
 
     expect(readMarkdown()).toBe(initialMarkdown);
     cleanup();
+  });
+
+  it("copies selected blocks as markdown plain text and internal block payload in document order", () => {
+    const initialMarkdown = ["# One", "# Two", "# Three", "# Four"].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <MarkdownHybridEditor
+          historyKey="block-copy-clipboard"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+    const blocks = Array.from(
+      container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+    );
+    expect(editor).toBeTruthy();
+    expect(blocks).toHaveLength(4);
+
+    ctrlSelectBlock(blocks[2]);
+    ctrlSelectBlock(blocks[0]);
+
+    const clipboardData = createClipboardDataMock();
+    const copyEvent = dispatchClipboardEvent(editor, "copy", clipboardData);
+    expect(copyEvent?.defaultPrevented).toBe(true);
+    expect(clipboardData.getData("text/plain")).toBe(["# One", "# Three"].join("\n"));
+
+    const payloadRaw = clipboardData.getData(INTERNAL_BLOCK_CLIPBOARD_MIME);
+    const payload = JSON.parse(payloadRaw) as {
+      version: number;
+      source: string;
+      blocks: Array<{ raw: string }>;
+    };
+    expect(payload.version).toBe(1);
+    expect(payload.source).toBe("fmd-markdown-hybrid-editor");
+    expect(payload.blocks.map((block) => block.raw)).toEqual(["# One", "# Three"]);
+
+    cleanup();
+  });
+
+  it("cuts selected blocks, keeps clipboard data, and focuses an editable empty block when all blocks were removed", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["# One", "# Two", "# Three"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="block-cut-empty-focus"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+      const blocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      expect(editor).toBeTruthy();
+      expect(blocks).toHaveLength(3);
+
+      blocks.forEach((block) => {
+        ctrlSelectBlock(block);
+      });
+
+      const clipboardData = createClipboardDataMock();
+      const cutEvent = dispatchClipboardEvent(editor, "cut", clipboardData);
+      expect(cutEvent?.defaultPrevented).toBe(true);
+      expect(clipboardData.getData("text/plain")).toBe(initialMarkdown);
+      expect(readMarkdown()).toBe("");
+
+      const emptyEditor = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block-empty .markdown-hybrid-block-editor",
+      );
+      expect(emptyEditor).toBeTruthy();
+
+      dispatchKeyDown(emptyEditor, "z", { ctrlKey: true });
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      cleanup();
+    });
+  });
+
+  it("cuts selected blocks and focuses the next remaining block", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["# One", "# Two", "# Three"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="block-cut-next-focus"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+      const blocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      expect(editor).toBeTruthy();
+      expect(blocks).toHaveLength(3);
+      ctrlSelectBlock(blocks[1]);
+
+      const clipboardData = createClipboardDataMock();
+      const cutEvent = dispatchClipboardEvent(editor, "cut", clipboardData);
+      expect(cutEvent?.defaultPrevented).toBe(true);
+      expect(readMarkdown()).toBe(["# One", "# Three"].join("\n"));
+
+      const focusedTextarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block[data-md-block-index='1'] .markdown-hybrid-block-editor",
+      );
+      expect(focusedTextarea?.value).toBe("# Three");
+
+      cleanup();
+    });
+  });
+
+  it("replaces an active block selection with internal clipboard blocks on paste", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["# A", "# B", "# C"].join("\n");
+      const internalBlocks = [
+        {
+          kind: "card-block",
+          raw: [
+            "#card",
+            "Question",
+            "Answer: 42",
+            "-true",
+            "a) option",
+            "-a",
+            "%%cloze%%",
+            "tocken \"drag\"",
+            "#endcard",
+          ].join("\n"),
+        },
+        {
+          kind: "table",
+          raw: [
+            "| A | B |",
+            "| --- | --- |",
+            "| 1 | 2 |",
+          ].join("\n"),
+        },
+      ];
+      const pastedMarkdown = internalBlocks.map((block) => block.raw).join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="block-paste-selection-internal"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+      const blocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      expect(editor).toBeTruthy();
+      expect(blocks).toHaveLength(3);
+      blocks.forEach((block) => {
+        ctrlSelectBlock(block);
+      });
+
+      const clipboardData = createClipboardDataMock({
+        "text/plain": pastedMarkdown,
+        [INTERNAL_BLOCK_CLIPBOARD_MIME]: JSON.stringify({
+          version: 1,
+          source: "fmd-markdown-hybrid-editor",
+          createdAt: new Date().toISOString(),
+          blocks: internalBlocks,
+        }),
+      });
+      const pasteEvent = dispatchClipboardEvent(editor, "paste", clipboardData);
+      expect(pasteEvent?.defaultPrevented).toBe(true);
+      expect(readMarkdown()).toBe(pastedMarkdown);
+
+      const activeTextarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block[data-md-block-index='0'] .markdown-hybrid-block-editor",
+      );
+      expect(activeTextarea?.value).toBe(internalBlocks[0]?.raw);
+      dispatchKeyDown(activeTextarea, "z", { ctrlKey: true });
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      cleanup();
+    });
+  });
+
+  it("replaces an active block selection with plain text markdown when no internal clipboard payload exists", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["# A", "# B", "# C"].join("\n");
+      const externalMarkdown = ["#exam", "1) Aufgabe", "Answer: Text", "#endexam"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="block-paste-selection-external"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+      const blocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      expect(editor).toBeTruthy();
+      blocks.forEach((block) => {
+        ctrlSelectBlock(block);
+      });
+
+      const clipboardData = createClipboardDataMock({
+        "text/plain": externalMarkdown,
+      });
+      const pasteEvent = dispatchClipboardEvent(editor, "paste", clipboardData);
+      expect(pasteEvent?.defaultPrevented).toBe(true);
+      expect(readMarkdown()).toBe(externalMarkdown);
+
+      cleanup();
+    });
+  });
+
+  it("pastes internal clipboard blocks after the active clean block and keeps dirty blocks on normal text paste fallback", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["# A", "# B"].join("\n");
+      const internalBlocks = [
+        { kind: "heading", raw: "# Inserted" },
+        {
+          kind: "paragraph",
+          raw: ["Answer: 42", "-true", "a) one", "-a", "%%hole%%", "tocken \"drag\""].join("\n"),
+        },
+      ];
+      const internalPayload = JSON.stringify({
+        version: 1,
+        source: "fmd-markdown-hybrid-editor",
+        createdAt: new Date().toISOString(),
+        blocks: internalBlocks,
+      });
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="block-paste-active-cursor"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      expect(editor).toBeTruthy();
+      const cleanTextarea = activateBlockEditor(container, 0);
+      expect(cleanTextarea?.value).toBe("# A");
+
+      const internalClipboardData = createClipboardDataMock({
+        "text/plain": internalBlocks.map((block) => block.raw).join("\n"),
+        [INTERNAL_BLOCK_CLIPBOARD_MIME]: internalPayload,
+      });
+      const internalPasteEvent = dispatchClipboardEvent(cleanTextarea, "paste", internalClipboardData);
+      expect(internalPasteEvent?.defaultPrevented).toBe(true);
+
+      const pastedMarkdown = readMarkdown();
+      expect(pastedMarkdown.indexOf("# A")).toBeLessThan(pastedMarkdown.indexOf("# Inserted"));
+      expect(pastedMarkdown.indexOf("# Inserted")).toBeLessThan(pastedMarkdown.indexOf("# B"));
+      expect(pastedMarkdown).toContain("Answer: 42");
+      expect(pastedMarkdown).toContain("tocken \"drag\"");
+
+      const insertedTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(insertedTextarea?.value).toBe("# Inserted");
+
+      const dirtyTextarea = insertedTextarea;
+      applyTextareaInput(dirtyTextarea, "# Inserted dirty");
+      const dirtyPasteEvent = dispatchClipboardEvent(dirtyTextarea, "paste", internalClipboardData);
+      expect(dirtyPasteEvent?.defaultPrevented).toBe(false);
+      expect(readMarkdown()).toBe(pastedMarkdown);
+
+      cleanup();
+    });
   });
 
   it("auto-scrolls during right-drag and selects blocks beyond the initial viewport", () => {

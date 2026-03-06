@@ -8,6 +8,7 @@
 
 import {
   Children,
+  type ClipboardEvent,
   type CSSProperties,
   cloneElement,
   createElement,
@@ -329,6 +330,37 @@ type MarkdownHybridEditorProps = {
   onCommit?: (value: string, context: { block: MarkdownBlock }) => void;
   onDirtyChange?: (dirty: boolean) => void;
   renderPreview: (markdown: string) => ReactNode;
+};
+
+const INTERNAL_BLOCK_CLIPBOARD_MIME = "application/x-fmd-markdown-hybrid-blocks+json";
+const INTERNAL_BLOCK_CLIPBOARD_SOURCE = "fmd-markdown-hybrid-editor";
+const INTERNAL_BLOCK_CLIPBOARD_VERSION = 1;
+const MARKDOWN_BLOCK_KIND_SET = new Set<MarkdownBlock["kind"]>([
+  "blank",
+  "heading",
+  "paragraph",
+  "math-block",
+  "card-block",
+  "help-block",
+  "image-embed",
+  "ordered-list",
+  "unordered-list",
+  "table",
+  "code-fence",
+  "blockquote",
+  "hr",
+]);
+
+type ClipboardBlockEntry = {
+  kind: MarkdownBlock["kind"];
+  raw: string;
+};
+
+type InternalBlockClipboardPayload = {
+  version: number;
+  source: string;
+  createdAt: string;
+  blocks: ClipboardBlockEntry[];
 };
 
 const INSERT_MENU_CATEGORIES: InsertMenuCategory[] = [
@@ -2099,6 +2131,114 @@ const createSelectionIndexRange = (anchorIndex: number, focusIndex: number) => {
 const sortUniqueSelectionIndices = (indices: number[]) =>
   Array.from(new Set(indices)).sort((a, b) => a - b);
 
+const isMarkdownBlockKind = (value: unknown): value is MarkdownBlock["kind"] =>
+  typeof value === "string" && MARKDOWN_BLOCK_KIND_SET.has(value as MarkdownBlock["kind"]);
+
+const serializeInternalBlockClipboardPayload = (
+  blocks: ClipboardBlockEntry[],
+) =>
+  JSON.stringify({
+    version: INTERNAL_BLOCK_CLIPBOARD_VERSION,
+    source: INTERNAL_BLOCK_CLIPBOARD_SOURCE,
+    createdAt: new Date().toISOString(),
+    blocks,
+  } as InternalBlockClipboardPayload);
+
+const parseInternalBlockClipboardPayload = (rawPayload: string): InternalBlockClipboardPayload | null => {
+  if (!rawPayload) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawPayload);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null;
+  }
+  const candidate = parsed as {
+    version?: unknown;
+    source?: unknown;
+    createdAt?: unknown;
+    blocks?: unknown;
+  };
+  if (
+    candidate.version !== INTERNAL_BLOCK_CLIPBOARD_VERSION ||
+    candidate.source !== INTERNAL_BLOCK_CLIPBOARD_SOURCE ||
+    typeof candidate.createdAt !== "string" ||
+    candidate.createdAt.length === 0 ||
+    !Array.isArray(candidate.blocks)
+  ) {
+    return null;
+  }
+  const blocks: ClipboardBlockEntry[] = [];
+  for (const rawBlock of candidate.blocks) {
+    if (!rawBlock || typeof rawBlock !== "object" || Array.isArray(rawBlock)) {
+      return null;
+    }
+    const blockEntry = rawBlock as {
+      kind?: unknown;
+      raw?: unknown;
+    };
+    if (!isMarkdownBlockKind(blockEntry.kind) || typeof blockEntry.raw !== "string") {
+      return null;
+    }
+    blocks.push({
+      kind: blockEntry.kind,
+      raw: blockEntry.raw,
+    });
+  }
+  if (blocks.length === 0) {
+    return null;
+  }
+  return {
+    version: INTERNAL_BLOCK_CLIPBOARD_VERSION,
+    source: INTERNAL_BLOCK_CLIPBOARD_SOURCE,
+    createdAt: candidate.createdAt,
+    blocks,
+  };
+};
+
+const getClipboardTextData = (clipboardData: DataTransfer | null, mimeType: string) => {
+  if (!clipboardData) {
+    return "";
+  }
+  try {
+    return clipboardData.getData(mimeType);
+  } catch {
+    return "";
+  }
+};
+
+const setClipboardTextData = (
+  clipboardData: DataTransfer | null,
+  mimeType: string,
+  value: string,
+) => {
+  if (!clipboardData) {
+    return false;
+  }
+  try {
+    clipboardData.setData(mimeType, value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const resolveSelectedBlocksInDocumentOrder = (
+  blocks: MarkdownBlock[],
+  selection: BlockSelectionState | null,
+) => {
+  if (!selection) {
+    return [] as MarkdownBlock[];
+  }
+  return sortUniqueSelectionIndices(selection.selectedIndices)
+    .map((index) => blocks[index])
+    .filter((block): block is MarkdownBlock => Boolean(block));
+};
+
 const isBlockIndexSelected = (selection: BlockSelectionState | null, index: number) => {
   if (!selection) {
     return false;
@@ -2268,6 +2408,58 @@ const withInsertedRawBlock = (
 
   nextRawBlocks.splice(targetIndex, 0, ...insertionParts);
   return nextRawBlocks.join("\n");
+};
+
+const resolveInsertedBlockActivationIndex = (
+  nextBlocks: MarkdownBlock[],
+  insertedRaw: string,
+  targetIndex: number,
+) => {
+  if (nextBlocks.length === 0) {
+    return -1;
+  }
+
+  if (insertedRaw.trim().length === 0) {
+    const startSearchIndex = Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
+    for (let offset = 0; offset < nextBlocks.length; offset += 1) {
+      const forwardIndex = startSearchIndex + offset;
+      if (forwardIndex < nextBlocks.length && nextBlocks[forwardIndex]?.kind === "blank") {
+        return forwardIndex;
+      }
+      const backwardIndex = startSearchIndex - offset;
+      if (offset > 0 && backwardIndex >= 0 && nextBlocks[backwardIndex]?.kind === "blank") {
+        return backwardIndex;
+      }
+    }
+    return startSearchIndex;
+  }
+
+  const insertedBlocks = parseMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
+  const primaryInsertedBlock = insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
+  if (!primaryInsertedBlock) {
+    return Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
+  }
+  const startSearchIndex = Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
+  for (let offset = 0; offset < nextBlocks.length; offset += 1) {
+    const forwardIndex = startSearchIndex + offset;
+    if (
+      forwardIndex < nextBlocks.length &&
+      nextBlocks[forwardIndex]?.kind === primaryInsertedBlock.kind &&
+      nextBlocks[forwardIndex]?.raw === primaryInsertedBlock.raw
+    ) {
+      return forwardIndex;
+    }
+    const backwardIndex = startSearchIndex - offset;
+    if (
+      offset > 0 &&
+      backwardIndex >= 0 &&
+      nextBlocks[backwardIndex]?.kind === primaryInsertedBlock.kind &&
+      nextBlocks[backwardIndex]?.raw === primaryInsertedBlock.raw
+    ) {
+      return backwardIndex;
+    }
+  }
+  return startSearchIndex;
 };
 
 const isStandaloneDirectiveLine = (line: string, directive: string) =>
@@ -4915,43 +5107,153 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     ],
   );
 
-  const deleteSelectedBlocks = useCallback(() => {
-    if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
-      return false;
-    }
-    const nextMarkdownRaw = deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection);
-    if (nextMarkdownRaw === markdown) {
-      clearSelectedBlockRange();
-      return false;
-    }
-    const nextMarkdown = applyEditorMarkdownNormalization(nextMarkdownRaw);
+  const deleteSelectedBlocks = useCallback(
+    (options?: { source?: "delete" | "cut" }) => {
+      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+        return false;
+      }
+      const normalizedSelectedIndices = sortUniqueSelectionIndices(
+        selectedBlockSelection.selectedIndices.filter((index) =>
+          Number.isInteger(index) && index >= 0 && index < blocks.length
+        ),
+      );
+      if (normalizedSelectedIndices.length === 0) {
+        clearSelectedBlockRange();
+        return false;
+      }
+      const nextMarkdownRaw = deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection);
+      if (nextMarkdownRaw === markdown) {
+        clearSelectedBlockRange();
+        return false;
+      }
+      const nextMarkdown = applyEditorMarkdownNormalization(nextMarkdownRaw);
+      const nextBlocks = parseMarkdownBlocks(nextMarkdown);
+      const firstSelectedIndex = normalizedSelectedIndices[0]!;
+      const shouldFocusNeighborBlock = options?.source === "cut";
 
-    setActiveBlockIndex(null);
-    updateActiveDraftState("");
-    setActiveDirty(false);
-    setActiveEditSnapshot(null);
-    setActiveComposing(false);
-    setPendingActivation(null);
-    setSelectedBlockSelection(null);
-    setIsSelectionDragging(false);
-    setSelectionContextMenuState(null);
-    setSelectionMarqueeRect(null);
-    selectionGestureRef.current = null;
-    suppressNextBlockContextMenuRef.current = false;
-    focusContainer();
-    onChange(nextMarkdown);
-    setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-delete"));
-    return true;
-  }, [
-    activeBlockIndex,
-    blocks,
-    clearSelectedBlockRange,
-    disabled,
-    focusContainer,
-    markdown,
-    onChange,
-    selectedBlockSelection,
-  ]);
+      setActiveBlockIndex(null);
+      updateActiveDraftState("");
+      setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
+      setActiveTableDirty(false);
+      if (shouldFocusNeighborBlock && nextBlocks.length > 0) {
+        pendingActivationMarkdownRef.current = nextMarkdown;
+        setPendingActivation({
+          index: firstSelectedIndex < nextBlocks.length ? firstSelectedIndex : nextBlocks.length - 1,
+          caret: "end",
+        });
+      } else {
+        pendingActivationMarkdownRef.current = null;
+        setPendingActivation(null);
+      }
+      setPendingTableActivation(null);
+      setSelectedBlockSelection(null);
+      setIsSelectionDragging(false);
+      setDraggedBlockIndex(null);
+      setDropIndicatorIndex(null);
+      setInsertMenuState(null);
+      setMathToolboxState(null);
+      setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
+      selectionGestureRef.current = null;
+      suppressNextBlockContextMenuRef.current = false;
+
+      if (shouldFocusNeighborBlock && nextBlocks.length === 0) {
+        setActiveBlockIndex(0);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(createDetachedEmptyEditSnapshot(nextMarkdown));
+        setActiveComposing(false);
+      } else if (!shouldFocusNeighborBlock) {
+        focusContainer();
+      }
+
+      onChange(nextMarkdown);
+      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-delete"));
+      return true;
+    },
+    [
+      activeBlockIndex,
+      blocks,
+      clearSelectedBlockRange,
+      disabled,
+      focusContainer,
+      markdown,
+      onChange,
+      selectedBlockSelection,
+      updateActiveDraftState,
+    ],
+  );
+
+  const replaceSelectedBlocksWithRaw = useCallback(
+    (insertedRaw: string) => {
+      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+        return false;
+      }
+      if (insertedRaw.length === 0) {
+        return false;
+      }
+      const normalizedSelectedIndices = sortUniqueSelectionIndices(
+        selectedBlockSelection.selectedIndices.filter((index) =>
+          Number.isInteger(index) && index >= 0 && index < blocks.length
+        ),
+      );
+      if (normalizedSelectedIndices.length === 0) {
+        return false;
+      }
+      const firstSelectedIndex = normalizedSelectedIndices[0]!;
+      const withoutSelectionMarkdown = applyEditorMarkdownNormalization(
+        deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection),
+      );
+      const blocksWithoutSelection = parseMarkdownBlocks(withoutSelectionMarkdown);
+      const insertionIndex = Math.max(0, Math.min(firstSelectedIndex, blocksWithoutSelection.length));
+      const nextMarkdown = applyEditorMarkdownNormalization(
+        withInsertedRawBlock(blocksWithoutSelection, insertionIndex, insertedRaw),
+      );
+      if (nextMarkdown === markdown) {
+        return false;
+      }
+      const nextBlocks = parseMarkdownBlocks(nextMarkdown);
+      const activationIndex = resolveInsertedBlockActivationIndex(nextBlocks, insertedRaw, insertionIndex);
+
+      setActiveBlockIndex(null);
+      updateActiveDraftState("");
+      setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
+      setActiveTableDirty(false);
+      pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
+      setPendingActivation(
+        activationIndex >= 0
+          ? { index: activationIndex, caret: "end" }
+          : null,
+      );
+      setPendingTableActivation(null);
+      setSelectedBlockSelection(null);
+      setIsSelectionDragging(false);
+      setDraggedBlockIndex(null);
+      setDropIndicatorIndex(null);
+      setInsertMenuState(null);
+      setMathToolboxState(null);
+      setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
+      selectionGestureRef.current = null;
+      suppressNextBlockContextMenuRef.current = false;
+      onChange(nextMarkdown);
+      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+      return true;
+    },
+    [
+      activeBlockIndex,
+      blocks,
+      disabled,
+      markdown,
+      onChange,
+      selectedBlockSelection,
+      updateActiveDraftState,
+    ],
+  );
 
   const insertBlockRelativeTo = useCallback(
     (
@@ -4981,7 +5283,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       const insertedBlocks = parseMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
       const primaryInsertedBlock = insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
       let activationSelection: PendingActivation["selection"] | undefined;
-      let activationIndex = -1;
       if (primaryInsertedBlock) {
         if (options?.firstPlaceholder && primaryInsertedBlock.kind !== "hr") {
           const editorDraft = toEditorDraftForBlock(primaryInsertedBlock);
@@ -4995,43 +5296,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         } else if (options?.selection && primaryInsertedBlock.kind !== "hr") {
           activationSelection = options.selection;
         }
-        const startSearchIndex = Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
-        for (let offset = 0; offset < nextBlocks.length; offset += 1) {
-          const forwardIndex = startSearchIndex + offset;
-          if (
-            forwardIndex < nextBlocks.length &&
-            nextBlocks[forwardIndex]?.kind === primaryInsertedBlock.kind &&
-            nextBlocks[forwardIndex]?.raw === primaryInsertedBlock.raw
-          ) {
-            activationIndex = forwardIndex;
-            break;
-          }
-          const backwardIndex = startSearchIndex - offset;
-          if (
-            offset > 0 &&
-            backwardIndex >= 0 &&
-            nextBlocks[backwardIndex]?.kind === primaryInsertedBlock.kind &&
-            nextBlocks[backwardIndex]?.raw === primaryInsertedBlock.raw
-          ) {
-            activationIndex = backwardIndex;
-            break;
-          }
-        }
-      } else if (insertedRaw.trim().length === 0 && nextBlocks.length > 0) {
-        const startSearchIndex = Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
-        for (let offset = 0; offset < nextBlocks.length; offset += 1) {
-          const forwardIndex = startSearchIndex + offset;
-          if (forwardIndex < nextBlocks.length && nextBlocks[forwardIndex]?.kind === "blank") {
-            activationIndex = forwardIndex;
-            break;
-          }
-          const backwardIndex = startSearchIndex - offset;
-          if (offset > 0 && backwardIndex >= 0 && nextBlocks[backwardIndex]?.kind === "blank") {
-            activationIndex = backwardIndex;
-            break;
-          }
-        }
       }
+      const activationIndex = resolveInsertedBlockActivationIndex(nextBlocks, insertedRaw, targetIndex);
 
       setActiveBlockIndex(null);
       updateActiveDraftState("");
@@ -5047,10 +5313,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
       setDraggedBlockIndex(null);
-    setDropIndicatorIndex(null);
-    setInsertMenuState(null);
-    setMathToolboxState(null);
-    setSelectionContextMenuState(null);
+      setDropIndicatorIndex(null);
+      setInsertMenuState(null);
+      setMathToolboxState(null);
+      setSelectionContextMenuState(null);
       setSelectionMarqueeRect(null);
       selectionGestureRef.current = null;
       suppressNextBlockContextMenuRef.current = false;
@@ -5603,6 +5869,124 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       handleGlobalUndo,
       insertMenuState,
       selectionContextMenuState,
+      selectedBlockSelection,
+    ],
+  );
+
+  const writeSelectedBlocksToClipboard = useCallback(
+    (clipboardData: DataTransfer | null) => {
+      const selectedBlocks = resolveSelectedBlocksInDocumentOrder(blocks, selectedBlockSelection);
+      if (selectedBlocks.length === 0) {
+        return false;
+      }
+      const clipboardBlocks: ClipboardBlockEntry[] = selectedBlocks.map((block) => ({
+        kind: block.kind,
+        raw: block.raw,
+      }));
+      const plainText = serializeMarkdownFromBlocks(clipboardBlocks);
+      if (!setClipboardTextData(clipboardData, "text/plain", plainText)) {
+        return false;
+      }
+      const payload = serializeInternalBlockClipboardPayload(clipboardBlocks);
+      setClipboardTextData(clipboardData, INTERNAL_BLOCK_CLIPBOARD_MIME, payload);
+      return true;
+    },
+    [blocks, selectedBlockSelection],
+  );
+
+  const handleEditorCopy = useCallback(
+    (event: ClipboardEvent<HTMLDivElement>) => {
+      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+        return;
+      }
+      if (!writeSelectedBlocksToClipboard(event.clipboardData)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [
+      activeBlockIndex,
+      disabled,
+      selectedBlockSelection,
+      writeSelectedBlocksToClipboard,
+    ],
+  );
+
+  const handleEditorCut = useCallback(
+    (event: ClipboardEvent<HTMLDivElement>) => {
+      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+        return;
+      }
+      if (!writeSelectedBlocksToClipboard(event.clipboardData)) {
+        return;
+      }
+      if (!deleteSelectedBlocks({ source: "cut" })) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [
+      activeBlockIndex,
+      deleteSelectedBlocks,
+      disabled,
+      selectedBlockSelection,
+      writeSelectedBlocksToClipboard,
+    ],
+  );
+
+  const handleEditorPaste = useCallback(
+    (event: ClipboardEvent<HTMLDivElement>) => {
+      if (disabled) {
+        return;
+      }
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest(".markdown-hybrid-table-block")) {
+        return;
+      }
+      const clipboardData = event.clipboardData;
+      const internalPayload = parseInternalBlockClipboardPayload(
+        getClipboardTextData(clipboardData, INTERNAL_BLOCK_CLIPBOARD_MIME),
+      );
+
+      if (selectedBlockSelection && activeBlockIndex === null) {
+        const plainText = getClipboardTextData(clipboardData, "text/plain");
+        const insertedRaw = internalPayload
+          ? serializeMarkdownFromBlocks(internalPayload.blocks)
+          : plainText;
+        if (insertedRaw.length === 0) {
+          return;
+        }
+        if (replaceSelectedBlocksWithRaw(insertedRaw)) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+
+      if (activeBlockIndex === null || activeDirty || activeTableDirty) {
+        return;
+      }
+      if (!internalPayload) {
+        return;
+      }
+      const insertedRaw = serializeMarkdownFromBlocks(internalPayload.blocks);
+      if (insertedRaw.length === 0) {
+        return;
+      }
+      if (insertBlockRelativeTo(activeBlockIndex, insertedRaw, false)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    [
+      activeBlockIndex,
+      activeDirty,
+      activeTableDirty,
+      disabled,
+      insertBlockRelativeTo,
+      replaceSelectedBlocksWithRaw,
       selectedBlockSelection,
     ],
   );
@@ -7651,6 +8035,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         onMouseDownCapture={handleEditorRootMouseDownCapture}
         onKeyDown={handleContainerKeyDown}
         onContextMenu={handleHybridEditorContextMenu}
+        onCopy={handleEditorCopy}
+        onCut={handleEditorCut}
+        onPaste={handleEditorPaste}
       >
         <div
           ref={contentLayerRef}
@@ -7761,6 +8148,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       onMouseDownCapture={handleEditorRootMouseDownCapture}
       onKeyDown={handleContainerKeyDown}
       onContextMenu={handleHybridEditorContextMenu}
+      onCopy={handleEditorCopy}
+      onCut={handleEditorCut}
+      onPaste={handleEditorPaste}
     >
       <div
         ref={contentLayerRef}
