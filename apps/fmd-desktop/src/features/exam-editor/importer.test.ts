@@ -268,6 +268,111 @@ Statement two
     expect(roundtripSecondMediaItems[0]?.inlineSvg).toContain("circle");
   });
 
+  it("migrates task-level media into the first card media list", () => {
+    const markdown = `
+#exam
+1) Task media migration
+![[images/task.png|Task image]]
+#card
+Question?
+Answer: A
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task).toBeDefined();
+    if (!task) {
+      return;
+    }
+    expect(task.mediaItems).toBeUndefined();
+    const firstCard = task.cards[0];
+    expect(firstCard).toBeDefined();
+    if (!firstCard) {
+      return;
+    }
+    expect(firstCard.mediaItems?.[0]).toMatchObject({
+      type: "png",
+      src: "images/task.png",
+    });
+
+    const serialized = serializeExamBlueprint(imported.blueprint);
+    const occurrences = serialized.match(/!\[\[images\/task\.png(?:\|[^\]]+)?\]\]/g) ?? [];
+    expect(occurrences).toHaveLength(1);
+  });
+
+  it("keeps card media first and appends migrated task media", () => {
+    const markdown = `
+#exam
+1) Media order
+![[images/task.png|Task image]]
+#card
+![[images/card.png|Card image]]
+Question?
+Answer: A
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task).toBeDefined();
+    if (!task) {
+      return;
+    }
+    expect(task.mediaItems).toBeUndefined();
+    const firstCard = task.cards[0];
+    expect(firstCard).toBeDefined();
+    if (!firstCard) {
+      return;
+    }
+    const mediaSources = (firstCard.mediaItems ?? []).map((item) => item.src);
+    expect(mediaSources).toEqual(["images/card.png", "images/task.png"]);
+  });
+
+  it("keeps task media when fallback card creation is used", () => {
+    const markdown = `
+#exam
+1) Fallback media
+![[images/task-fallback.png]]
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task).toBeDefined();
+    if (!task) {
+      return;
+    }
+    expect(task.cards).toHaveLength(1);
+    expect(task.mediaItems).toBeUndefined();
+    const firstCard = task.cards[0];
+    expect(firstCard).toBeDefined();
+    if (!firstCard) {
+      return;
+    }
+    expect(firstCard.mediaItems?.[0]).toMatchObject({
+      type: "png",
+      src: "images/task-fallback.png",
+    });
+  });
+
   it("keeps wrapper toggles idempotent across serialize/import cycles", () => {
     const markdown = `
 #exam

@@ -646,14 +646,20 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     const originalTask = originalParsed.tasks[index];
     const helpSourceLines = originalTask?.rawLines ?? task.rawLines;
     const cards: CardBlueprint[] = [];
+    const taskMediaDrafts = mediaItemsToDrafts(originalTask?.media ?? task.media);
     const rawLines = task.rawLines;
     const helpBlocks = collectHelpBlocks(helpSourceLines);
     const taskHelpBlock = resolveTaskHelpBlock(helpSourceLines, helpBlocks);
     const cardHelpTexts = helpBlocks
       .filter((block) => block !== taskHelpBlock)
       .map((block) => block.text);
+    const originalCardLines = originalTask?.cardLines ?? [];
     const cardSourceLines =
-      task.cardLines.length > 0 ? task.cardLines : rawLines;
+      originalCardLines.length > 0
+        ? originalCardLines
+        : task.cardLines.length > 0
+          ? task.cardLines
+          : rawLines;
     const cardBlocks = splitCardBlocks(stripHelpBlocksFromLines(cardSourceLines));
     const headingInfo = deriveTaskHeadingInfo(rawLines, task.cardWrapper);
     let hasCardContent = false;
@@ -674,12 +680,14 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     };
 
     cardBlocks.forEach((block, blockIndex) => {
-      let trimmedLines = stripLeadingTaskNumberLine(
-        trimEmptyLines(block.contentLines),
-      );
+      const normalizedBlockLines = trimEmptyLines(block.contentLines);
+      const firstBlockLine = normalizedBlockLines.find((line) => line.trim() !== "") ?? "";
+      const blockStartsWithTaskNumber = taskLinePattern.test(firstBlockLine.trim());
+      let trimmedLines = stripLeadingTaskNumberLine(normalizedBlockLines);
       if (
         blockIndex === 0 &&
         headingInfo.removeHeadingFromPrompt &&
+        blockStartsWithTaskNumber &&
         trimmedLines.length > 0
       ) {
         const dropCount = Math.min(
@@ -760,12 +768,17 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         firstCard.helpText = mergeHelpText(firstCard.helpText, taskHelpText);
       }
     }
+    if (cards.length > 0 && taskMediaDrafts.length > 0) {
+      const firstCard = cards[0];
+      if (firstCard) {
+        firstCard.mediaItems = [...(firstCard.mediaItems ?? []), ...taskMediaDrafts];
+      }
+    }
 
     const taskBlueprint: ExamTaskBlueprint = {
       id: createBlueprintId("task"),
       order: index,
       title: headingInfo.heading,
-      mediaItems: mediaItemsToDrafts(task.media),
       useCardWrapper: task.cardWrapper,
       cards,
     };

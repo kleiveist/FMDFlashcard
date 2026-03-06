@@ -83,5 +83,7 @@ describe("ContentMode", () => {
 
     const helpEditorLabels = markup.match(/Card help \/ hint/g) ?? [];
     expect(helpEditorLabels).toHaveLength(2);
+    const mediaEditorSummaries = markup.match(/class="media-editor-summary"/g) ?? [];
+    expect(mediaEditorSummaries).toHaveLength(2);
   });
 });

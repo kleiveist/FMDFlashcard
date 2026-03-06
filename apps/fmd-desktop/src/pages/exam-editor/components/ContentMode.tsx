@@ -11,7 +11,7 @@ import type {
 import { isCompositeTask } from "../../../features/exam-editor/validation";
 import type { ExamEditorSelection } from "../types";
 import { ModalShell } from "../../../components/ModalShell";
-import { CardContentForm, MediaEditor } from "./ContentForms";
+import { CardContentForm } from "./ContentForms";
 import type { EditorMediaDraft } from "../../../lib/cardMedia";
 import type { VaultPngAsset } from "../../../lib/tree";
 
@@ -85,7 +85,6 @@ const resolveActiveTaskId = (
 type ContentEditorPanelProps = {
   activeTask: ExamTaskBlueprint | null;
   taskValidation?: TaskValidation;
-  onTaskUpdate: ContentModeProps["onTaskUpdate"];
   onCardUpdate: ContentModeProps["onCardUpdate"];
   onCardHelpChange: ContentModeProps["onCardHelpChange"];
   onOptionTextChange: ContentModeProps["onOptionTextChange"];
@@ -99,7 +98,6 @@ type ContentEditorPanelProps = {
 const ContentEditorPanel = ({
   activeTask,
   taskValidation,
-  onTaskUpdate,
   onCardUpdate,
   onCardHelpChange,
   onOptionTextChange,
@@ -134,12 +132,6 @@ const ContentEditorPanel = ({
               </div>
             ) : null}
           </header>
-
-          <MediaEditor
-            value={activeTask.mediaItems ?? []}
-            onChange={(value) => onTaskUpdate(activeTask.id, { mediaItems: value })}
-            vaultPngAssets={vaultPngAssets}
-          />
 
           {activeTask.cards.map((card, cardIndex) => {
             const cardValidation = taskValidation?.cardValidations?.[cardIndex];
@@ -195,7 +187,7 @@ export const ContentMode = ({
   validation,
   tasksHeaderSlot,
   onSelectTask,
-  onTaskUpdate,
+  onTaskUpdate: _onTaskUpdate,
   onCardUpdate,
   onCardHelpChange,
   onOptionTextChange,
@@ -226,7 +218,6 @@ export const ContentMode = ({
     <ContentEditorPanel
       activeTask={activeTask}
       taskValidation={taskValidation}
-      onTaskUpdate={onTaskUpdate}
       onCardUpdate={onCardUpdate}
       onCardHelpChange={onCardHelpChange}
       onOptionTextChange={onOptionTextChange}
