@@ -38,6 +38,7 @@ import {
   serializePngEmbed,
   splitMarkdownMediaSegments,
   type MediaItem,
+  type VaultImageCandidate,
 } from "../../lib/cardMedia";
 import {
   findMathTokenCoveringRange,
@@ -1165,6 +1166,13 @@ type PageLinkPickerState = {
   highlightedIndex: number;
 };
 
+type ImageEmbedReplacePickerState = {
+  blockIndex: number;
+  blockId: string;
+  query: string;
+  highlightedIndex: number;
+};
+
 type PageLinkCandidate = {
   id: string;
   target: string;
@@ -1384,6 +1392,27 @@ const filterPageLinkCandidates = (candidates: PageLinkCandidate[], query: string
     return candidates;
   }
   return candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery));
+};
+
+const filterVaultImageCandidates = (candidates: VaultImageCandidate[], query: string) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return candidates;
+  }
+  return candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery));
+};
+
+const extractImageEmbedTokenFromRaw = (blockRaw: string) => {
+  const firstMediaItem = splitMarkdownMediaSegments(blockRaw, "markdown-hybrid-image-embed-replace-token")
+    .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
+    .find((item) => item.type === "png");
+  if (!firstMediaItem || firstMediaItem.type !== "png") {
+    return null;
+  }
+  return {
+    src: firstMediaItem.src,
+    label: firstMediaItem.label,
+  };
 };
 
 const escapeHtmlForMirror = (value: string) =>
@@ -3311,6 +3340,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const [pendingPageLinkPickerRequest, setPendingPageLinkPickerRequest] =
     useState<PendingPageLinkPickerRequest | null>(null);
   const [pageLinkPickerState, setPageLinkPickerState] = useState<PageLinkPickerState | null>(null);
+  const [imageEmbedReplacePickerState, setImageEmbedReplacePickerState] =
+    useState<ImageEmbedReplacePickerState | null>(null);
   const [inlineFormattingToolbarSelection, setInlineFormattingToolbarSelection] =
     useState<InlineFormattingToolbarSelection | null>(null);
   const [inlineFormattingToolbarMenu, setInlineFormattingToolbarMenu] =
@@ -3332,6 +3363,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
   const pageLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const pageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const imageEmbedReplacePickerRef = useRef<HTMLDivElement | null>(null);
   const inlineFormattingToolbarRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const editorSyntaxOverlayContentRef = useRef<HTMLDivElement | null>(null);
@@ -3498,13 +3530,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   );
   const filteredImageLinkCandidates = useMemo(() => {
     const query = insertMenuState?.phase === "image-link-picker"
-      ? (insertMenuState.query ?? "").trim().toLowerCase()
+      ? (insertMenuState.query ?? "")
       : "";
-    if (!query) {
-      return imageLinkCandidates;
-    }
-    return imageLinkCandidates.filter((candidate) => candidate.searchText.includes(query));
+    return filterVaultImageCandidates(imageLinkCandidates, query);
   }, [imageLinkCandidates, insertMenuState]);
+  const filteredImageEmbedReplaceCandidates = useMemo(
+    () => filterVaultImageCandidates(imageLinkCandidates, imageEmbedReplacePickerState?.query ?? ""),
+    [imageEmbedReplacePickerState?.query, imageLinkCandidates],
+  );
   const resolveInlinePageLink = useCallback(
     (rawWikilink: string): ResolvedInlinePageLink => {
       const parsed = parseInlineWikilink(rawWikilink);
@@ -3766,6 +3799,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setInlineFormattingToolbarSelection(null);
     setInlineFormattingToolbarMenu(null);
     setInlineFormattingToolbarLinkState(null);
+    setImageEmbedReplacePickerState(null);
     setHistory(createMarkdownHistory(markdown));
     setOverlayLayout((current) => ({
       ...current,
@@ -4282,6 +4316,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setPageLinkPickerState(null);
   }, []);
 
+  const closeImageEmbedReplacePicker = useCallback(() => {
+    setImageEmbedReplacePickerState(null);
+  }, []);
+
   const requestPageLinkPickerOpen = useCallback((request: PendingPageLinkPickerRequest) => {
     setPendingPageLinkPickerRequest(request);
     setPageLinkPickerState(null);
@@ -4401,6 +4439,115 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     };
   }, [closePageLinkPicker, pageLinkPickerState]);
 
+  useEffect(() => {
+    if (!imageEmbedReplacePickerState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const input = imageEmbedReplacePickerRef.current?.querySelector<HTMLInputElement>(
+        "input[type='search']",
+      );
+      if (!input) {
+        return;
+      }
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+      input.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [imageEmbedReplacePickerState]);
+
+  useEffect(() => {
+    if (!imageEmbedReplacePickerState) {
+      return;
+    }
+    setImageEmbedReplacePickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const block = blocks[current.blockIndex];
+      if (!block || block.id !== current.blockId || block.kind !== "image-embed") {
+        return null;
+      }
+      return current;
+    });
+  }, [blocks, imageEmbedReplacePickerState]);
+
+  useEffect(() => {
+    if (!imageEmbedReplacePickerState) {
+      return;
+    }
+    if (
+      activeBlockIndex !== null ||
+      insertMenuState !== null ||
+      pageLinkPickerState !== null ||
+      mathToolboxState !== null ||
+      selectionContextMenuState !== null ||
+      disabled
+    ) {
+      setImageEmbedReplacePickerState(null);
+    }
+  }, [
+    activeBlockIndex,
+    disabled,
+    imageEmbedReplacePickerState,
+    insertMenuState,
+    mathToolboxState,
+    pageLinkPickerState,
+    selectionContextMenuState,
+  ]);
+
+  useEffect(() => {
+    if (!imageEmbedReplacePickerState) {
+      return;
+    }
+    setImageEmbedReplacePickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextMaxIndex = Math.max(0, filteredImageEmbedReplaceCandidates.length - 1);
+      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+      if (nextIndex === current.highlightedIndex) {
+        return current;
+      }
+      return {
+        ...current,
+        highlightedIndex: nextIndex,
+      };
+    });
+  }, [filteredImageEmbedReplaceCandidates.length, imageEmbedReplacePickerState]);
+
+  useEffect(() => {
+    if (!imageEmbedReplacePickerState) {
+      return;
+    }
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.closest(".markdown-hybrid-image-embed-replace-shell")) {
+        return;
+      }
+      closeImageEmbedReplacePicker();
+    };
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      closeImageEmbedReplacePicker();
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [closeImageEmbedReplacePicker, imageEmbedReplacePickerState]);
+
   const applyGlobalHistory = useCallback(
     (nextHistory: MarkdownHistoryState) => {
       setHistory(nextHistory);
@@ -4422,6 +4569,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setSelectionMarqueeRect(null);
       setPendingPageLinkPickerRequest(null);
       setPageLinkPickerState(null);
+      setImageEmbedReplacePickerState(null);
       setInlineFormattingToolbarSelection(null);
       setInlineFormattingToolbarMenu(null);
       setInlineFormattingToolbarLinkState(null);
@@ -5610,6 +5758,154 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setSelectionContextMenuState(null);
   }, []);
 
+  const handleOpenImageEmbedReplacePicker = useCallback(
+    (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (disabled) {
+        return;
+      }
+      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+        return;
+      }
+      const block = blocks[blockIndex];
+      if (!block || block.kind !== "image-embed") {
+        return;
+      }
+      setInsertMenuState(null);
+      setMathToolboxState(null);
+      setSelectionContextMenuState(null);
+      setPendingPageLinkPickerRequest(null);
+      setPageLinkPickerState(null);
+      setImageEmbedReplacePickerState((current) =>
+        current && current.blockId === block.id
+          ? null
+          : {
+              blockIndex,
+              blockId: block.id,
+              query: "",
+              highlightedIndex: 0,
+            }
+      );
+    },
+    [activeBlockIndex, blocks, commitActiveBlock, disabled],
+  );
+
+  const handleImageEmbedReplaceQueryChange = useCallback((value: string) => {
+    setImageEmbedReplacePickerState((current) =>
+      current
+        ? {
+            ...current,
+            query: value,
+            highlightedIndex: 0,
+          }
+        : current
+    );
+  }, []);
+
+  const handleImageEmbedReplaceSelectCandidate = useCallback(
+    (candidate: VaultImageCandidate) => {
+      if (!imageEmbedReplacePickerState) {
+        return;
+      }
+      const block = blocks[imageEmbedReplacePickerState.blockIndex];
+      if (
+        !block ||
+        block.id !== imageEmbedReplacePickerState.blockId ||
+        block.kind !== "image-embed"
+      ) {
+        closeImageEmbedReplacePicker();
+        return;
+      }
+      const currentImageEmbed = extractImageEmbedTokenFromRaw(block.raw);
+      if (!currentImageEmbed) {
+        closeImageEmbedReplacePicker();
+        return;
+      }
+      const currentPath = normalizeRelativePath(currentImageEmbed.src).toLowerCase();
+      const nextPath = normalizeRelativePath(candidate.relPath).toLowerCase();
+      if (!nextPath || currentPath === nextPath) {
+        closeImageEmbedReplacePicker();
+        return;
+      }
+      const nextBlockRaw = serializePngEmbed(candidate.relPath, currentImageEmbed.label);
+      const nextMarkdown = applyEditorMarkdownNormalization(
+        replaceMarkdownBlock(markdown, block, nextBlockRaw),
+      );
+      closeImageEmbedReplacePicker();
+      if (nextMarkdown === markdown) {
+        return;
+      }
+      onChange(nextMarkdown);
+      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+      onCommit?.(nextMarkdown, { block: { ...block, raw: nextBlockRaw } });
+    },
+    [
+      blocks,
+      closeImageEmbedReplacePicker,
+      imageEmbedReplacePickerState,
+      markdown,
+      onChange,
+      onCommit,
+    ],
+  );
+
+  const handleImageEmbedReplaceSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (!imageEmbedReplacePickerState) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeImageEmbedReplacePicker();
+        return;
+      }
+      if (filteredImageEmbedReplaceCandidates.length === 0) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        setImageEmbedReplacePickerState((current) => {
+          if (!current) {
+            return current;
+          }
+          const currentIndex = current.highlightedIndex ?? 0;
+          return {
+            ...current,
+            highlightedIndex:
+              (currentIndex + delta + filteredImageEmbedReplaceCandidates.length) %
+              filteredImageEmbedReplaceCandidates.length,
+          };
+        });
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const candidate =
+          filteredImageEmbedReplaceCandidates[imageEmbedReplacePickerState.highlightedIndex] ??
+          filteredImageEmbedReplaceCandidates[0];
+        if (!candidate) {
+          return;
+        }
+        handleImageEmbedReplaceSelectCandidate(candidate);
+      }
+    },
+    [
+      closeImageEmbedReplacePicker,
+      filteredImageEmbedReplaceCandidates,
+      handleImageEmbedReplaceSelectCandidate,
+      imageEmbedReplacePickerState,
+    ],
+  );
+
   const handleInsertImageLinkQueryChange = useCallback((value: string) => {
     setInsertMenuState((current) => {
       if (!current || current.phase !== "image-link-picker") {
@@ -5821,6 +6117,12 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (disabled || activeBlockIndex !== null) {
         return;
       }
+      if (event.key === "Escape" && imageEmbedReplacePickerState) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeImageEmbedReplacePicker();
+        return;
+      }
       if (event.key === "Escape" && insertMenuState) {
         event.preventDefault();
         event.stopPropagation();
@@ -5863,10 +6165,12 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     [
       activeBlockIndex,
       clearSelectedBlockRange,
+      closeImageEmbedReplacePicker,
       deleteSelectedBlocks,
       disabled,
       handleGlobalRedo,
       handleGlobalUndo,
+      imageEmbedReplacePickerState,
       insertMenuState,
       selectionContextMenuState,
       selectedBlockSelection,
@@ -8194,6 +8498,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-image-embed-preview")
               .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
             : [];
+          const imageEmbedToken = block.kind === "image-embed"
+            ? extractImageEmbedTokenFromRaw(block.raw)
+            : null;
+          const isImageEmbedReplacePickerOpen = Boolean(
+            imageEmbedReplacePickerState &&
+            imageEmbedReplacePickerState.blockIndex === index &&
+            imageEmbedReplacePickerState.blockId === block.id,
+          );
           const codeFencePreviewItems = block.kind === "code-fence"
             ? resolveCodeFencePreviewItems(block.raw)
             : [];
@@ -8502,6 +8814,59 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                         <code>{block.raw}</code>
                       </pre>
                     )}
+                    <div
+                      className="markdown-hybrid-image-embed-replace-shell"
+                      data-md-block-control="true"
+                      onMouseDown={(event) => {
+                        event.stopPropagation();
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="markdown-hybrid-image-embed-replace-trigger"
+                        data-md-block-control="true"
+                        data-md-image-embed-replace-trigger="true"
+                        aria-label="Bild austauschen"
+                        title="Bild austauschen"
+                        onMouseDown={(event) => {
+                          event.stopPropagation();
+                        }}
+                        onClick={handleOpenImageEmbedReplacePicker(index)}
+                        disabled={disabled}
+                      >
+                        Bild austauschen
+                      </button>
+                      {isImageEmbedReplacePickerOpen ? (
+                        <div
+                          ref={imageEmbedReplacePickerRef}
+                          className="markdown-hybrid-image-embed-picker"
+                          data-md-block-control="true"
+                          role="dialog"
+                          aria-label="Select replacement PNG"
+                          onMouseDown={(event) => {
+                            event.stopPropagation();
+                          }}
+                        >
+                          <VaultPngPicker
+                            assets={vaultPngAssets}
+                            query={imageEmbedReplacePickerState?.query ?? ""}
+                            onQueryChange={handleImageEmbedReplaceQueryChange}
+                            onSearchKeyDown={handleImageEmbedReplaceSearchKeyDown}
+                            onSelect={handleImageEmbedReplaceSelectCandidate}
+                            highlightedIndex={imageEmbedReplacePickerState?.highlightedIndex ?? 0}
+                            onHighlightedIndexChange={(nextIndex) =>
+                              setImageEmbedReplacePickerState((current) =>
+                                current
+                                  ? { ...current, highlightedIndex: nextIndex }
+                                  : current
+                              )
+                            }
+                            selectedRelPath={imageEmbedToken?.src ?? null}
+                            emptyLabel="No PNG files found in the current vault."
+                          />
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ) : block.kind === "code-fence" && codeFencePreviewItems.length > 0 ? (
                   <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">

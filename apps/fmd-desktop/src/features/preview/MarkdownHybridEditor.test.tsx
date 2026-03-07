@@ -267,6 +267,11 @@ const findPageLinkPickerOptionByLabel = (container: ParentNode, label: string) =
   return labelNode?.closest<HTMLButtonElement>("button") ?? null;
 };
 
+const findImageEmbedReplaceTrigger = (container: ParentNode, blockIndex: number) =>
+  container.querySelector<HTMLButtonElement>(
+    `.markdown-hybrid-block[data-md-block-index='${blockIndex}'] .markdown-hybrid-image-embed-replace-trigger`,
+  );
+
 const applyTextInput = (
   input: HTMLInputElement | HTMLTextAreaElement | null,
   nextValue: string,
@@ -2176,6 +2181,241 @@ describe("MarkdownHybridEditor", () => {
       const textarea = activateBlockEditor(container, 0);
       expect(textarea?.value).toBe("![[images/example.png]]");
 
+      cleanup();
+    });
+  });
+
+  it("shows the replace action only for standalone image-embed blocks", () => {
+    const markdown = ["# Heading", "", "![[images/example.png]]", "", "Paragraph"].join("\n");
+
+    const { container, cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="image-embed-replace-action-visibility"
+        markdown={markdown}
+        mode="edit"
+        onChange={() => undefined}
+        vaultPngAssets={[
+          {
+            path: "/vault/images/example.png",
+            relative_path: "images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ]}
+        renderPreview={(previewValue) => <div>{previewValue}</div>}
+      />,
+    );
+
+    const triggers = container.querySelectorAll(".markdown-hybrid-image-embed-replace-trigger");
+    expect(triggers).toHaveLength(1);
+    expect(findImageEmbedReplaceTrigger(container, 2)).toBeTruthy();
+    expect(findImageEmbedReplaceTrigger(container, 0)).toBeNull();
+    expect(findImageEmbedReplaceTrigger(container, 4)).toBeNull();
+
+    cleanup();
+  });
+
+  it("replaces an existing image-embed PNG path in-place, keeps label, and supports undo/redo", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "Top paragraph",
+        "",
+        "![[images/old.png|Old label]]",
+        "",
+        "Bottom paragraph",
+      ].join("\n");
+      const vaultPngAssets = [
+        {
+          path: "/vault/images/new.png",
+          relative_path: "images/new.png",
+          file_name: "new.png",
+          extension: "png" as const,
+        },
+        {
+          path: "/vault/images/old.png",
+          relative_path: "images/old.png",
+          file_name: "old.png",
+          extension: "png" as const,
+        },
+      ];
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="image-embed-replace"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={vaultPngAssets}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+
+      dispatchClick(findImageEmbedReplaceTrigger(container, 2));
+      const picker = container.querySelector<HTMLElement>(".markdown-hybrid-image-embed-picker");
+      expect(picker).toBeTruthy();
+
+      const searchInput = picker?.querySelector<HTMLInputElement>("input[type='search']");
+      expect(searchInput).toBeTruthy();
+      expect(document.activeElement).toBe(searchInput);
+
+      applyTextInput(searchInput, "new");
+      dispatchClick(picker?.querySelector<HTMLButtonElement>(".vault-png-picker-item") ?? null);
+
+      expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeNull();
+      expect(readMarkdown()).toContain("![[images/new.png|Old label]]");
+      expect(readMarkdown()).not.toContain("![[images/old.png|Old label]]");
+      expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='image-embed']")).toHaveLength(1);
+      expect(container.querySelector(".flashcard-media-image")).toBeTruthy();
+
+      dispatchKeyDown(editor, "z", { ctrlKey: true });
+      expect(readMarkdown()).toContain("![[images/old.png|Old label]]");
+
+      dispatchKeyDown(editor, "y", { ctrlKey: true });
+      expect(readMarkdown()).toContain("![[images/new.png|Old label]]");
+
+      cleanup();
+    });
+  });
+
+  it("closes the image replace picker with Escape and outside click without changing markdown", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "![[images/example.png]]";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="image-embed-replace-dismiss"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={[
+                {
+                  path: "/vault/images/example.png",
+                  relative_path: "images/example.png",
+                  file_name: "example.png",
+                  extension: "png",
+                },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchClick(findImageEmbedReplaceTrigger(container, 0));
+      expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeTruthy();
+      dispatchWindowKeyDown("Escape");
+      expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeNull();
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      dispatchClick(findImageEmbedReplaceTrigger(container, 0));
+      expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeTruthy();
+      act(() => {
+        document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+      });
+      expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeNull();
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      cleanup();
+    });
+  });
+
+  it("treats selecting the same image in replace picker as no-op and closes cleanly", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "![[images/example.png|Label]]";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="image-embed-replace-same-image"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={[
+                {
+                  path: "/vault/images/example.png",
+                  relative_path: "images/example.png",
+                  file_name: "example.png",
+                  extension: "png",
+                },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchClick(findImageEmbedReplaceTrigger(container, 0));
+      dispatchClick(container.querySelector<HTMLButtonElement>(".vault-png-picker-item"));
+
+      expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeNull();
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      cleanup();
+    });
+  });
+
+  it("auto-closes the image replace picker when the target block is removed externally", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "![[images/example.png]]";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <button type="button" data-testid="remove-image-embed" onClick={() => setMarkdown("Removed")}>
+              Remove embed
+            </button>
+            <MarkdownHybridEditor
+              historyKey="image-embed-replace-external-remove"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={[
+                {
+                  path: "/vault/images/example.png",
+                  relative_path: "images/example.png",
+                  file_name: "example.png",
+                  extension: "png",
+                },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(findImageEmbedReplaceTrigger(container, 0));
+      expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeTruthy();
+      dispatchClick(container.querySelector("[data-testid='remove-image-embed']"));
+      expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeNull();
       cleanup();
     });
   });
