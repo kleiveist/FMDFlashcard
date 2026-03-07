@@ -3307,6 +3307,22 @@ textarea.preview-editor {
   min-height: 1.4rem;
 }
 
+.markdown-table-cell-media {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.markdown-table-cell-image,
+.markdown-table-cell-media .flashcard-media-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+}
+
 .markdown-hybrid-table-cell-editor {
   width: 100%;
   min-height: 1.8rem;
@@ -3940,7 +3956,8 @@ textarea.preview-editor {
 .markdown-table {
   width: 100%;
   overflow-x: auto;
-  margin: 0 0 0.8rem;
+  margin: 0;
+  margin-block: 0.8rem;
   border-radius: 12px;
   border: 1px solid var(--line-soft);
   background: var(--md-table-bg);

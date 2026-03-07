@@ -468,6 +468,8 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  margin: 0;
+  margin-block: 0.8rem;
   border-radius: 12px;
   border: 1px solid var(--line-soft);
   background: var(--md-table-bg);
@@ -521,6 +523,22 @@
 .flashcard-table tbody tr:last-child th,
 .flashcard-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.flashcard-table-cell-media {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.flashcard-table-cell-image,
+.flashcard-table-cell-media .flashcard-media-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
 }
 
 .flashcard-text-block {

@@ -22,6 +22,7 @@
 
 import {
   Children,
+  Fragment,
   type ComponentPropsWithoutRef,
   type CSSProperties,
   type DragEvent,
@@ -72,6 +73,7 @@ import {
   normalizeMarkdownPipeTables,
   normalizeMarkdownTableCellPreviewValue,
 } from "../lib/markdownTables";
+import { splitMarkdownTableCellSegments } from "../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode, tokenizeMarkdownMath } from "../lib/markdownMath";
 import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
 import { type LoadState } from "../lib/types";
@@ -234,6 +236,57 @@ const readMarkdownNodeText = (node: unknown): string => {
     return "";
   }
   return children.map((child) => readMarkdownNodeText(child)).join("");
+};
+
+const readMarkdownNodeSource = (node: unknown, source: string): string => {
+  const resolveOffsetFromLineColumn = (line?: number, column?: number) => {
+    if (typeof line !== "number" || typeof column !== "number" || line < 1 || column < 1) {
+      return null;
+    }
+    let offset = 0;
+    let currentLine = 1;
+    while (currentLine < line && offset <= source.length) {
+      const nextNewline = source.indexOf("\n", offset);
+      if (nextNewline < 0) {
+        return null;
+      }
+      offset = nextNewline + 1;
+      currentLine += 1;
+    }
+    return Math.min(source.length, offset + column - 1);
+  };
+
+  if (
+    node &&
+    typeof node === "object" &&
+    "position" in node &&
+    node.position &&
+    typeof node.position === "object"
+  ) {
+    const position = node.position as {
+      start?: { offset?: number; line?: number; column?: number };
+      end?: { offset?: number; line?: number; column?: number };
+    };
+    const startOffset = typeof position.start?.offset === "number"
+      ? position.start.offset
+      : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
+    const endOffset = typeof position.end?.offset === "number"
+      ? position.end.offset
+      : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
+    if (
+      typeof startOffset === "number" &&
+      typeof endOffset === "number" &&
+      startOffset >= 0 &&
+      endOffset >= startOffset &&
+      endOffset <= source.length
+    ) {
+      const sliced = source.slice(startOffset, endOffset);
+      if (sliced.length > 0) {
+        return sliced;
+      }
+    }
+  }
+  return readMarkdownNodeText(node);
 };
 
 const renderMarkdownMediaGroup = ({
@@ -1372,6 +1425,79 @@ const renderMarkdownTableCellChildren = (children: ReactNode, keyPrefix: string)
         </div>
       ))}
     </div>
+  );
+};
+
+const renderMarkdownTableCellWithMedia = ({
+  node,
+  children,
+  keyPrefix,
+  markdownSource,
+  vaultPngAssets,
+  vaultPath,
+}: {
+  node: unknown;
+  children: ReactNode;
+  keyPrefix: string;
+  markdownSource: string;
+  vaultPngAssets?: VaultPngAsset[];
+  vaultPath?: string | null;
+}) => {
+  const cellSource = readMarkdownNodeSource(node, markdownSource);
+  const sourceSegments = splitMarkdownTableCellSegments(
+    cellSource,
+    `preview-table-cell-${keyPrefix}`,
+  );
+  const sourceHasMedia = sourceSegments.some((segment) => segment.kind !== "text");
+  const cellText = readMarkdownNodeText(node);
+  const textSegments = sourceHasMedia
+    ? sourceSegments
+    : splitMarkdownTableCellSegments(
+      cellText,
+      `preview-table-cell-fallback-${keyPrefix}`,
+    );
+  const segments = sourceHasMedia
+    ? sourceSegments
+    : textSegments;
+  const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
+  if (!hasMediaSegments) {
+    return renderMarkdownTableCellChildren(children, keyPrefix);
+  }
+
+  const renderedSegments = segments.map((segment, index) => {
+    const segmentKey = `${keyPrefix}-segment-${index}`;
+    if (segment.kind === "text") {
+      return <Fragment key={segmentKey}>{segment.text}</Fragment>;
+    }
+    if (segment.kind === "media") {
+      return (
+        <div className="markdown-table-cell-media" key={segmentKey}>
+          <FlashcardMediaGroup
+            media={segment.items}
+            vaultPngAssets={vaultPngAssets}
+            vaultPath={vaultPath}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="markdown-table-cell-media" key={segmentKey}>
+        <img
+          src={segment.src}
+          alt={segment.alt ?? ""}
+          title={segment.title}
+          className="markdown-table-cell-image"
+          draggable={false}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    );
+  });
+
+  return renderMarkdownTableCellChildren(
+    renderedSegments,
+    `${keyPrefix}-rich`,
   );
 };
 
@@ -7020,7 +7146,14 @@ export const PreviewPanel = ({
             ),
             th: ({ node: _node, children, ...props }) => (
               <th {...props}>
-                {renderMarkdownTableCellChildren(children, "th")}
+                {renderMarkdownTableCellWithMedia({
+                  node: _node,
+                  children,
+                  keyPrefix: "th",
+                  markdownSource: mediaPreview.markdown,
+                  vaultPngAssets,
+                  vaultPath,
+                })}
               </th>
             ),
             div: ({ node, ...props }) =>
@@ -7032,7 +7165,14 @@ export const PreviewPanel = ({
               }) ?? <div {...props} />,
             td: ({ node: _node, children, ...props }) => (
               <td {...props}>
-                {renderMarkdownTableCellChildren(children, "td")}
+                {renderMarkdownTableCellWithMedia({
+                  node: _node,
+                  children,
+                  keyPrefix: "td",
+                  markdownSource: mediaPreview.markdown,
+                  vaultPngAssets,
+                  vaultPath,
+                })}
               </td>
             ),
             img: ({ node: _node, ...props }) => (
@@ -7611,7 +7751,14 @@ export const PreviewPanel = ({
                           ),
                           th: ({ node: _node, children, ...props }) => (
                             <th {...props}>
-                              {renderMarkdownTableCellChildren(children, "view-th")}
+                              {renderMarkdownTableCellWithMedia({
+                                node: _node,
+                                children,
+                                keyPrefix: "view-th",
+                                markdownSource: renderedPreviewWithMedia.markdown,
+                                vaultPngAssets,
+                                vaultPath,
+                              })}
                             </th>
                           ),
                           div: ({ node, ...props }) =>
@@ -7623,7 +7770,14 @@ export const PreviewPanel = ({
                             }) ?? <div {...props} />,
                           td: ({ node: _node, children, ...props }) => (
                             <td {...props}>
-                              {renderMarkdownTableCellChildren(children, "view-td")}
+                              {renderMarkdownTableCellWithMedia({
+                                node: _node,
+                                children,
+                                keyPrefix: "view-td",
+                                markdownSource: renderedPreviewWithMedia.markdown,
+                                vaultPngAssets,
+                                vaultPath,
+                              })}
                             </td>
                           ),
                           img: ({ node: _node, ...props }) => (

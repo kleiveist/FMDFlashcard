@@ -28,6 +28,45 @@ describe("MarkdownBlocks math rendering", () => {
     expect(markup).toContain("md-math-display-in-flow");
   });
 
+  it("renders obsidian PNG embeds in table cells as media blocks", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "| Visual | Description |",
+          "| --- | --- |",
+          "| ![[images/example.png]] | Diagram |",
+        ].join("\n"),
+        vaultPngAssets: [
+          {
+            path: "/vault/images/example.png",
+            relative_path: "images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ],
+      }),
+    );
+
+    expect(markup).toContain("flashcard-table-cell-media");
+    expect(markup).toContain("flashcard-media-image");
+    expect(markup).not.toContain("![[images/example.png]]");
+  });
+
+  it("renders standalone markdown images in table cells", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "| Visual | Description |",
+          "| --- | --- |",
+          "| ![Alt](https://example.com/a.png) | Diagram |",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("flashcard-table-cell-image");
+    expect(markup).toContain("https://example.com/a.png");
+  });
+
   it("does not render math inside inline-code or fenced code", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {

@@ -277,6 +277,37 @@ Answer: Done
     expect(markup).toContain("flashcard-table scrollable");
   });
 
+  it("renders png embeds inside table cells as images in exam task cards", () => {
+    const task = buildTaskFromMarkdown(`#card
+| Visual | Description |
+| --- | --- |
+| ![[images/example.png]] | Diagram |
+Answer: Done
+#endcard`, "manual");
+
+    const markup = renderToStaticMarkup(
+      createElement(
+        ExamTaskRunner,
+        buildProps({
+          phase: "review",
+          task,
+          vaultPngAssets: [
+            {
+              path: "/vault/images/example.png",
+              relative_path: "images/example.png",
+              file_name: "example.png",
+              extension: "png",
+            },
+          ],
+        }),
+      ),
+    );
+
+    expect(markup).toContain("flashcard-media-image");
+    expect(markup).toContain("flashcard-table-cell-media");
+    expect(markup).not.toContain("![[images/example.png]]");
+  });
+
   it("renders cloze tables without scroll wrappers and keeps tokens in cells", () => {
     const task = buildTaskFromMarkdown(`#card
 | Term | Answer |

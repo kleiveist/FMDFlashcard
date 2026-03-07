@@ -235,11 +235,17 @@
 .help-markdown table {
   width: 100%;
   border-collapse: collapse;
+  margin: 0;
+  margin-block: 0.8rem;
   border-radius: 12px;
   border: 1px solid var(--line-soft);
   background: var(--md-table-bg);
   display: block;
   overflow-x: auto;
+}
+
+.help-markdown .exam-table-wrap > table {
+  margin: 0;
 }
 
 .help-markdown table thead th {
@@ -264,6 +270,22 @@
 .help-markdown table tbody tr:last-child th,
 .help-markdown table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.help-markdown .help-table-cell-media {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.help-markdown .help-table-cell-image,
+.help-markdown .help-table-cell-media .flashcard-media-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
 }
 
 .help-detail-header {

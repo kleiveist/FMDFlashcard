@@ -41,4 +41,29 @@ describe("HelpButton", () => {
     expect(markup).toContain("<ul>");
     expect(markup).toContain("<table>");
   });
+
+  it("renders png embeds and markdown images inside help-table cells", () => {
+    const helpContent = `| Visual | Description |
+| --- | --- |
+| ![[images/example.png]] | Embed |
+| ![Alt](https://example.com/a.png) | Markdown image |`;
+    const markup = renderToStaticMarkup(
+      createElement(HelpPanel, {
+        helpBlocks: [helpContent],
+        vaultPngAssets: [
+          {
+            path: "/vault/images/example.png",
+            relative_path: "images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ],
+      }),
+    );
+
+    expect(markup).toContain("help-table-cell-media");
+    expect(markup).toContain("flashcard-media-image");
+    expect(markup).toContain("https://example.com/a.png");
+    expect(markup).not.toContain("![[images/example.png]]");
+  });
 });

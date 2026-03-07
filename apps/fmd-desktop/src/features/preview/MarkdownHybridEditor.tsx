@@ -4526,10 +4526,13 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     }
     const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
       const target = event.target;
-      if (!(target instanceof HTMLElement)) {
+      if (!(target instanceof Node)) {
         return;
       }
-      if (target.closest(".markdown-hybrid-image-embed-replace-shell")) {
+      if (imageEmbedReplacePickerRef.current?.contains(target)) {
+        return;
+      }
+      if (target instanceof Element && target.closest(".markdown-hybrid-image-embed-replace-shell")) {
         return;
       }
       closeImageEmbedReplacePicker();

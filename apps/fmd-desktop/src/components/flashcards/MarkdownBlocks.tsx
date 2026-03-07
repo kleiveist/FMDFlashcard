@@ -12,6 +12,7 @@
 import { Fragment, type ReactNode } from "react";
 import { splitMarkdownBlocks, type MarkdownBlock } from "../../lib/markdownTables";
 import { splitMarkdownMediaSegments } from "../../lib/cardMedia";
+import { splitMarkdownTableCellSegments } from "../../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import type { VaultPngAsset } from "../../lib/tree";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
@@ -182,6 +183,62 @@ export const MarkdownBlocks = ({
     "flashcard-table",
     allowTableScroll ? "scrollable" : "no-scroll",
   ].join(" ");
+  const renderTableCellSegments = (cell: string, keyPrefix: string) => {
+    const segments = splitMarkdownTableCellSegments(
+      cell,
+      `flashcard-table-cell-${keyPrefix}`,
+    );
+    if (segments.length === 0) {
+      return null;
+    }
+    if (segments.length === 1 && segments[0]?.kind === "text") {
+      return renderTokens(
+        segments[0].text.replace(/\n/g, "<br>"),
+        renderPlaceholder,
+        keyPrefix,
+        { enableMath: true },
+      );
+    }
+    return segments.map((segment, segmentIndex) => {
+      const segmentKey = `${keyPrefix}-segment-${segmentIndex}`;
+      if (segment.kind === "text") {
+        return (
+          <Fragment key={segmentKey}>
+            {renderTokens(
+              segment.text.replace(/\n/g, "<br>"),
+              renderPlaceholder,
+              `${segmentKey}-text`,
+              { enableMath: true },
+            )}
+          </Fragment>
+        );
+      }
+      if (segment.kind === "media") {
+        return (
+          <div className="flashcard-table-cell-media" key={segmentKey}>
+            <FlashcardMediaGroup
+              media={segment.items}
+              vaultPngAssets={vaultPngAssets}
+              vaultPath={vaultPath}
+            />
+          </div>
+        );
+      }
+      return (
+        <div className="flashcard-table-cell-media" key={segmentKey}>
+          <img
+            src={segment.src}
+            alt={segment.alt ?? ""}
+            title={segment.title}
+            className="flashcard-table-cell-image"
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+          />
+        </div>
+      );
+    });
+  };
 
   return (
     <div className={containerClass}>
@@ -219,11 +276,9 @@ export const MarkdownBlocks = ({
                     <tr>
                       {block.header.map((cell, cellIndex) => (
                         <th key={`head-${keyPrefix}-${cellIndex}`}>
-                          {renderTokens(
+                          {renderTableCellSegments(
                             cell,
-                            renderPlaceholder,
                             `table-head-${keyPrefix}-${cellIndex}`,
-                            { enableMath: true },
                           )}
                         </th>
                       ))}
@@ -234,11 +289,9 @@ export const MarkdownBlocks = ({
                       <tr key={`row-${keyPrefix}-${rowIndex}`}>
                         {row.map((cell, cellIndex) => (
                           <td key={`cell-${keyPrefix}-${rowIndex}-${cellIndex}`}>
-                            {renderTokens(
+                            {renderTableCellSegments(
                               cell,
-                              renderPlaceholder,
                               `table-cell-${keyPrefix}-${rowIndex}-${cellIndex}`,
-                              { enableMath: true },
                             )}
                           </td>
                         ))}

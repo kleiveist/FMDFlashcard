@@ -20,12 +20,13 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { Children, cloneElement, isValidElement, type ReactNode } from "react";
+import { Children, Fragment, cloneElement, isValidElement, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { buildMarkdownMediaPreviewSource } from "../../../lib/cardMedia";
+import { splitMarkdownTableCellSegments } from "../../../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode } from "../../../lib/markdownMath";
 import type { VaultPngAsset } from "../../../lib/tree";
 import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
@@ -105,6 +106,57 @@ const readMarkdownNodeText = (node: unknown): string => {
   return children.map((child) => readMarkdownNodeText(child)).join("");
 };
 
+const readMarkdownNodeSource = (node: unknown, source: string): string => {
+  const resolveOffsetFromLineColumn = (line?: number, column?: number) => {
+    if (typeof line !== "number" || typeof column !== "number" || line < 1 || column < 1) {
+      return null;
+    }
+    let offset = 0;
+    let currentLine = 1;
+    while (currentLine < line && offset <= source.length) {
+      const nextNewline = source.indexOf("\n", offset);
+      if (nextNewline < 0) {
+        return null;
+      }
+      offset = nextNewline + 1;
+      currentLine += 1;
+    }
+    return Math.min(source.length, offset + column - 1);
+  };
+
+  if (
+    node &&
+    typeof node === "object" &&
+    "position" in node &&
+    node.position &&
+    typeof node.position === "object"
+  ) {
+    const position = node.position as {
+      start?: { offset?: number; line?: number; column?: number };
+      end?: { offset?: number; line?: number; column?: number };
+    };
+    const startOffset = typeof position.start?.offset === "number"
+      ? position.start.offset
+      : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
+    const endOffset = typeof position.end?.offset === "number"
+      ? position.end.offset
+      : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
+    if (
+      typeof startOffset === "number" &&
+      typeof endOffset === "number" &&
+      startOffset >= 0 &&
+      endOffset >= startOffset &&
+      endOffset <= source.length
+    ) {
+      const sliced = source.slice(startOffset, endOffset);
+      if (sliced.length > 0) {
+        return sliced;
+      }
+    }
+  }
+  return readMarkdownNodeText(node);
+};
+
 const shouldSkipExamMathTransform = (tagName: string | null) =>
   tagName === "code" ||
   tagName === "pre" ||
@@ -148,6 +200,96 @@ const renderExamMathChildren = (children: ReactNode, keyPrefix: string) =>
   Children.map(children, (child, index) =>
     renderExamMathInNode(child, `${keyPrefix}-${index}`),
   );
+
+const renderTextWithLineBreaks = (text: string, keyPrefix: string): ReactNode[] => {
+  const lines = text.split("\n");
+  const nodes: ReactNode[] = [];
+  lines.forEach((line, lineIndex) => {
+    nodes.push(
+      <Fragment key={`${keyPrefix}-line-${lineIndex}`}>
+        {line}
+      </Fragment>,
+    );
+    if (lineIndex < lines.length - 1) {
+      nodes.push(<br key={`${keyPrefix}-br-${lineIndex}`} />);
+    }
+  });
+  return nodes;
+};
+
+const renderExamTableCellContent = ({
+  node,
+  children,
+  keyPrefix,
+  markdownSource,
+  vaultPngAssets,
+  vaultPath,
+}: {
+  node: unknown;
+  children: ReactNode;
+  keyPrefix: string;
+  markdownSource: string;
+  vaultPngAssets?: VaultPngAsset[] | null;
+  vaultPath?: string | null;
+}) => {
+  const cellSource = readMarkdownNodeSource(node, markdownSource);
+  const sourceSegments = splitMarkdownTableCellSegments(
+    cellSource,
+    `exam-table-cell-${keyPrefix}`,
+  );
+  const sourceHasMedia = sourceSegments.some((segment) => segment.kind !== "text");
+  const cellText = readMarkdownNodeText(node);
+  const textSegments = sourceHasMedia
+    ? sourceSegments
+    : splitMarkdownTableCellSegments(
+      cellText,
+      `exam-table-cell-fallback-${keyPrefix}`,
+    );
+  const segments = sourceHasMedia
+    ? sourceSegments
+    : textSegments;
+  const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
+  if (!hasMediaSegments) {
+    return renderExamMathChildren(children, keyPrefix);
+  }
+
+  const segmentNodes = segments.map((segment, index) => {
+    const segmentKey = `${keyPrefix}-segment-${index}`;
+    if (segment.kind === "text") {
+      return (
+        <Fragment key={segmentKey}>
+          {renderTextWithLineBreaks(segment.text, `${segmentKey}-text`)}
+        </Fragment>
+      );
+    }
+    if (segment.kind === "media") {
+      return (
+        <div className="exam-table-cell-media" key={segmentKey}>
+          <FlashcardMediaGroup
+            media={segment.items}
+            vaultPngAssets={vaultPngAssets}
+            vaultPath={vaultPath}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="exam-table-cell-media" key={segmentKey}>
+        <img
+          src={segment.src}
+          alt={segment.alt ?? ""}
+          title={segment.title}
+          className="exam-table-cell-image"
+          draggable={false}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    );
+  });
+
+  return renderExamMathChildren(segmentNodes, `${keyPrefix}-rich`);
+};
 
 export const ExamMarkdown = ({
   content,
@@ -236,10 +378,28 @@ export const ExamMarkdown = ({
             </div>
           ),
           th: ({ node: _node, children, ...props }) => (
-            <th {...props}>{renderExamMathChildren(children, "exam-th")}</th>
+            <th {...props}>
+              {renderExamTableCellContent({
+                node: _node,
+                children,
+                keyPrefix: "exam-th",
+                markdownSource: mediaPreview.markdown,
+                vaultPngAssets,
+                vaultPath,
+              })}
+            </th>
           ),
           td: ({ node: _node, children, ...props }) => (
-            <td {...props}>{renderExamMathChildren(children, "exam-td")}</td>
+            <td {...props}>
+              {renderExamTableCellContent({
+                node: _node,
+                children,
+                keyPrefix: "exam-td",
+                markdownSource: mediaPreview.markdown,
+                vaultPngAssets,
+                vaultPath,
+              })}
+            </td>
           ),
         }}
       >

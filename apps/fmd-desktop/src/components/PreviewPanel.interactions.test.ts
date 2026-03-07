@@ -898,6 +898,56 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
   });
 
+  it("renders obsidian PNG embeds inside markdown table cells", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "Before text",
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| ![[images/example.png]] | Diagram |",
+        "After text",
+      ].join("\n"),
+      {
+        vaultPngAssets: [
+          {
+            path: "/vault/images/example.png",
+            relative_path: "images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ],
+      },
+    );
+    cleanup = localCleanup;
+
+    const preview = container.querySelector(".preview.markdown");
+    const mediaImage = preview?.querySelector<HTMLImageElement>(".markdown-table .flashcard-media-image");
+
+    expect(mediaImage).toBeTruthy();
+    expect(preview?.textContent ?? "").not.toContain("![[images/example.png]]");
+    expect(Array.from(preview?.querySelectorAll("p") ?? []).some((paragraph) =>
+      paragraph.textContent?.trim() === "Before text"
+    )).toBe(true);
+    expect(Array.from(preview?.querySelectorAll("p") ?? []).some((paragraph) =>
+      paragraph.textContent?.trim() === "After text"
+    )).toBe(true);
+  });
+
+  it("renders markdown image syntax inside markdown table cells", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| ![Alt](https://example.com/a.png) | Diagram |",
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const tableImage = container.querySelector<HTMLImageElement>(".markdown-table img");
+    expect(tableImage).toBeTruthy();
+    expect(tableImage?.getAttribute("src")).toBe("https://example.com/a.png");
+  });
+
   it("renders 1) markers as ordered list items", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["1) Erste", "2) Zweite"].join("\n"),

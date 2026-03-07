@@ -2265,7 +2265,7 @@ describe("MarkdownHybridEditor", () => {
       const picker = container.querySelector<HTMLElement>(".markdown-hybrid-image-embed-picker");
       expect(picker).toBeTruthy();
 
-      const searchInput = picker?.querySelector<HTMLInputElement>("input[type='search']");
+      const searchInput = picker?.querySelector<HTMLInputElement>("input[type='search']") ?? null;
       expect(searchInput).toBeTruthy();
       expect(document.activeElement).toBe(searchInput);
 

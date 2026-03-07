@@ -12,13 +12,14 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { buildMarkdownMediaPreviewSource } from "../lib/cardMedia";
+import { splitMarkdownTableCellSegments } from "../lib/markdownTableCellMedia";
 import type { VaultPngAsset } from "../lib/tree";
 import { HelpIcon } from "./icons";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
@@ -113,6 +114,145 @@ const readMarkdownNodeText = (node: unknown): string => {
   return children.map((child) => readMarkdownNodeText(child)).join("");
 };
 
+const readMarkdownNodeSource = (node: unknown, source: string): string => {
+  const resolveOffsetFromLineColumn = (line?: number, column?: number) => {
+    if (typeof line !== "number" || typeof column !== "number" || line < 1 || column < 1) {
+      return null;
+    }
+    let offset = 0;
+    let currentLine = 1;
+    while (currentLine < line && offset <= source.length) {
+      const nextNewline = source.indexOf("\n", offset);
+      if (nextNewline < 0) {
+        return null;
+      }
+      offset = nextNewline + 1;
+      currentLine += 1;
+    }
+    return Math.min(source.length, offset + column - 1);
+  };
+
+  if (
+    node &&
+    typeof node === "object" &&
+    "position" in node &&
+    node.position &&
+    typeof node.position === "object"
+  ) {
+    const position = node.position as {
+      start?: { offset?: number; line?: number; column?: number };
+      end?: { offset?: number; line?: number; column?: number };
+    };
+    const startOffset = typeof position.start?.offset === "number"
+      ? position.start.offset
+      : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
+    const endOffset = typeof position.end?.offset === "number"
+      ? position.end.offset
+      : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
+    if (
+      typeof startOffset === "number" &&
+      typeof endOffset === "number" &&
+      startOffset >= 0 &&
+      endOffset >= startOffset &&
+      endOffset <= source.length
+    ) {
+      const sliced = source.slice(startOffset, endOffset);
+      if (sliced.length > 0) {
+        return sliced;
+      }
+    }
+  }
+  return readMarkdownNodeText(node);
+};
+
+const renderTextWithLineBreaks = (text: string, keyPrefix: string): ReactNode[] => {
+  const lines = text.split("\n");
+  const nodes: ReactNode[] = [];
+  lines.forEach((line, lineIndex) => {
+    nodes.push(
+      <Fragment key={`${keyPrefix}-line-${lineIndex}`}>
+        {line}
+      </Fragment>,
+    );
+    if (lineIndex < lines.length - 1) {
+      nodes.push(<br key={`${keyPrefix}-br-${lineIndex}`} />);
+    }
+  });
+  return nodes;
+};
+
+const renderHelpTableCellContent = ({
+  node,
+  children,
+  keyPrefix,
+  markdownSource,
+  vaultPngAssets,
+  vaultPath,
+}: {
+  node: unknown;
+  children: ReactNode;
+  keyPrefix: string;
+  markdownSource: string;
+  vaultPngAssets?: VaultPngAsset[] | null;
+  vaultPath?: string | null;
+}) => {
+  const cellSource = readMarkdownNodeSource(node, markdownSource);
+  const sourceSegments = splitMarkdownTableCellSegments(
+    cellSource,
+    `help-table-cell-${keyPrefix}`,
+  );
+  const sourceHasMedia = sourceSegments.some((segment) => segment.kind !== "text");
+  const cellText = readMarkdownNodeText(node);
+  const textSegments = sourceHasMedia
+    ? sourceSegments
+    : splitMarkdownTableCellSegments(
+      cellText,
+      `help-table-cell-fallback-${keyPrefix}`,
+    );
+  const segments = sourceHasMedia
+    ? sourceSegments
+    : textSegments;
+  const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
+  if (!hasMediaSegments) {
+    return children;
+  }
+
+  return segments.map((segment, index) => {
+    const segmentKey = `${keyPrefix}-segment-${index}`;
+    if (segment.kind === "text") {
+      return (
+        <Fragment key={segmentKey}>
+          {renderTextWithLineBreaks(segment.text, `${segmentKey}-text`)}
+        </Fragment>
+      );
+    }
+    if (segment.kind === "media") {
+      return (
+        <div className="help-table-cell-media" key={segmentKey}>
+          <FlashcardMediaGroup
+            media={segment.items}
+            vaultPngAssets={vaultPngAssets}
+            vaultPath={vaultPath}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="help-table-cell-media" key={segmentKey}>
+        <img
+          src={segment.src}
+          alt={segment.alt ?? ""}
+          title={segment.title}
+          className="help-table-cell-image"
+          draggable={false}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    );
+  });
+};
+
 type HelpPanelProps = {
   helpBlocks: string[];
   title?: string;
@@ -201,6 +341,30 @@ export const HelpPanel = ({
                     <div className="exam-table-wrap">
                       <table {...props} />
                     </div>
+                  ),
+                  th: ({ node, children, ...props }) => (
+                    <th {...props}>
+                      {renderHelpTableCellContent({
+                        node,
+                        children,
+                        keyPrefix: "help-th",
+                        markdownSource: preview.markdown,
+                        vaultPngAssets,
+                        vaultPath,
+                      })}
+                    </th>
+                  ),
+                  td: ({ node, children, ...props }) => (
+                    <td {...props}>
+                      {renderHelpTableCellContent({
+                        node,
+                        children,
+                        keyPrefix: "help-td",
+                        markdownSource: preview.markdown,
+                        vaultPngAssets,
+                        vaultPath,
+                      })}
+                    </td>
                   ),
                 }}
               >
