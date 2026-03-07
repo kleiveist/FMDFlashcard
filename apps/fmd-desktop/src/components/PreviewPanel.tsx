@@ -149,6 +149,74 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
 };
 
 const mediaPlaceholderTextPattern = /__FMD_MEDIA_(\d+)__/;
+const markdownFenceDelimiterPattern = /^\s*(```|~~~)/;
+const standaloneMediaPlaceholderLinePattern =
+  /^\s*<div\b[^>]*\bdata-fmd-media-block=(["'])true\1[^>]*>__FMD_MEDIA_\d+__<\/div>\s*$/;
+const standaloneMarkdownImageLinePattern =
+  /^\s*!\[[^\]\n]*\]\((?:\\.|[^()\n]|(?:\([^()\n]*\)))*\)\s*$/;
+
+const isStandaloneMediaBoundaryLine = (line: string) => {
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return false;
+  }
+  if (standaloneMediaPlaceholderLinePattern.test(trimmed)) {
+    return true;
+  }
+  return standaloneMarkdownImageLinePattern.test(trimmed);
+};
+
+const enforceStandaloneMediaBlockBoundaries = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+
+  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  const normalizedLines: string[] = [];
+  let inFence = false;
+  let activeFenceToken = "";
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex] ?? "";
+    const trimmedLine = line.trim();
+    const fenceMatch = trimmedLine.match(markdownFenceDelimiterPattern);
+
+    if (inFence) {
+      normalizedLines.push(line);
+      if (fenceMatch && (fenceMatch[1] ?? "") === activeFenceToken) {
+        inFence = false;
+        activeFenceToken = "";
+      }
+      continue;
+    }
+
+    if (fenceMatch) {
+      inFence = true;
+      activeFenceToken = fenceMatch[1] ?? "";
+      normalizedLines.push(line);
+      continue;
+    }
+
+    if (!isStandaloneMediaBoundaryLine(line)) {
+      normalizedLines.push(line);
+      continue;
+    }
+
+    const previousLine = normalizedLines[normalizedLines.length - 1];
+    if (typeof previousLine === "string" && previousLine.trim() !== "") {
+      normalizedLines.push("");
+    }
+
+    normalizedLines.push(line);
+
+    const nextSourceLine = lines[lineIndex + 1];
+    if (typeof nextSourceLine === "string" && nextSourceLine.trim() !== "") {
+      normalizedLines.push("");
+    }
+  }
+
+  return normalizedLines.join("\n");
+};
 
 const readMarkdownNodeText = (node: unknown): string => {
   if (!node || typeof node !== "object") {
@@ -6996,11 +7064,16 @@ export const PreviewPanel = ({
     ? renderedPreview
     : normalizeInlineFormattingForPreview(renderedPreview);
   const renderedPreviewWithMedia = useMemo(
-    () =>
-      buildMarkdownMediaPreviewSource(
+    () => {
+      const mediaPreview = buildMarkdownMediaPreviewSource(
         renderedPreviewWithInlineFormatting,
         "preview-panel-view",
-      ),
+      );
+      return {
+        ...mediaPreview,
+        markdown: enforceStandaloneMediaBlockBoundaries(mediaPreview.markdown),
+      };
+    },
     [renderedPreviewWithInlineFormatting],
   );
   const hasVisiblePreviewContent = rawPreview

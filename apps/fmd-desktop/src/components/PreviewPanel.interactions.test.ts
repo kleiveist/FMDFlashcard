@@ -711,6 +711,58 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(image?.getAttribute("alt")).toBe("Example");
   });
 
+  it("treats standalone PNG embeds as block boundaries without blank lines", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["Before", "![[images/example.png|Example]]", "After"].join("\n"),
+      {
+        vaultPngAssets: [
+          {
+            path: "/vault/images/example.png",
+            relative_path: "images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ],
+      },
+    );
+    cleanup = localCleanup;
+
+    const preview = container.querySelector(".preview.markdown");
+    const image = preview?.querySelector<HTMLImageElement>(".flashcard-media-image");
+    const paragraphs = Array.from(preview?.querySelectorAll("p") ?? []);
+
+    expect(image).toBeTruthy();
+    expect(paragraphs.some((paragraph) => paragraph.textContent?.trim() === "Before")).toBe(true);
+    expect(paragraphs.some((paragraph) => paragraph.textContent?.trim() === "After")).toBe(true);
+    expect(
+      paragraphs.some((paragraph) => {
+        const text = paragraph.textContent ?? "";
+        return text.includes("Before") && text.includes("After");
+      }),
+    ).toBe(false);
+  });
+
+  it("treats standalone markdown images as block boundaries without blank lines", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["Before", "![Alt](https://example.com/image.png)", "After"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const preview = container.querySelector(".preview.markdown");
+    const inlineImage = preview?.querySelector<HTMLImageElement>("p img");
+    const paragraphs = Array.from(preview?.querySelectorAll("p") ?? []);
+
+    expect(inlineImage).toBeTruthy();
+    expect(paragraphs.some((paragraph) => paragraph.textContent?.trim() === "Before")).toBe(true);
+    expect(paragraphs.some((paragraph) => paragraph.textContent?.trim() === "After")).toBe(true);
+    expect(
+      paragraphs.some((paragraph) => {
+        const text = paragraph.textContent ?? "";
+        return text.includes("Before") && text.includes("After");
+      }),
+    ).toBe(false);
+  });
+
   it("renders a missing-image placeholder for unresolved PNG embeds", () => {
     const { container, cleanup: localCleanup } = buildHarness("![[images/missing.png]]");
     cleanup = localCleanup;
@@ -737,6 +789,40 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(container.querySelector(".preview.markdown")?.textContent ?? "").toContain(
       "![[images/example.png]]",
     );
+  });
+
+  it("does not split media lines inside fenced code blocks", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "```md",
+        "![[images/example.png]]",
+        "![Alt](https://example.com/image.png)",
+        "```",
+        "After",
+      ].join("\n"),
+      {
+        vaultPngAssets: [
+          {
+            path: "/vault/images/example.png",
+            relative_path: "images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ],
+      },
+    );
+    cleanup = localCleanup;
+
+    const preview = container.querySelector(".preview.markdown");
+    const codeBlock = preview?.querySelector("pre code");
+
+    expect(preview?.querySelector(".flashcard-media-image")).toBeNull();
+    expect(preview?.querySelector(".flashcard-media-group")).toBeNull();
+    expect(codeBlock?.textContent ?? "").toContain("![[images/example.png]]");
+    expect(codeBlock?.textContent ?? "").toContain("![Alt](https://example.com/image.png)");
+    expect(Array.from(preview?.querySelectorAll("p") ?? []).some((paragraph) =>
+      paragraph.textContent?.trim() === "After"
+    )).toBe(true);
   });
 
   it("renders preview-mode table cells with the shared table cell wrapper", () => {
