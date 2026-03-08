@@ -272,6 +272,9 @@ const findImageEmbedReplaceTrigger = (container: ParentNode, blockIndex: number)
     `.markdown-hybrid-block[data-md-block-index='${blockIndex}'] .markdown-hybrid-image-embed-replace-trigger`,
   );
 
+const findTableCellImageReplaceTrigger = (container: ParentNode) =>
+  container.querySelector<HTMLButtonElement>(".markdown-hybrid-table-cell-image-replace-trigger");
+
 const applyTextInput = (
   input: HTMLInputElement | HTMLTextAreaElement | null,
   nextValue: string,
@@ -2285,6 +2288,55 @@ describe("MarkdownHybridEditor", () => {
       dispatchKeyDown(editor, "y", { ctrlKey: true });
       expect(readMarkdown()).toContain("![[images/new.png|Old label]]");
 
+      cleanup();
+    });
+  });
+
+  it("keeps replace available for missing image-embed previews and replaces in-place", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "![[images/missing.png|Missing label]]";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="image-embed-replace-missing"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={[
+                {
+                  path: "/vault/images/new.png",
+                  relative_path: "images/new.png",
+                  file_name: "new.png",
+                  extension: "png",
+                },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      expect(container.querySelector(".flashcard-media-placeholder")).toBeTruthy();
+      dispatchClick(findImageEmbedReplaceTrigger(container, 0));
+      const picker = container.querySelector<HTMLElement>(".markdown-hybrid-image-embed-picker");
+      expect(picker).toBeTruthy();
+
+      const searchInput = picker?.querySelector<HTMLInputElement>("input[type='search']") ?? null;
+      expect(searchInput).toBeTruthy();
+      applyTextInput(searchInput, "new");
+      dispatchClick(picker?.querySelector<HTMLButtonElement>(".vault-png-picker-item") ?? null);
+
+      expect(readMarkdown()).toContain("![[images/new.png|Missing label]]");
+      expect(readMarkdown()).not.toContain("![[images/missing.png|Missing label]]");
+      expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
       cleanup();
     });
   });
@@ -4804,6 +4856,143 @@ describe("MarkdownHybridEditor", () => {
 
     expect(latestMarkdown).toContain("| Renamed | B |");
     cleanup();
+  });
+
+  it("replaces a standalone PNG embed inside a hybrid table cell in-place", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| ![[images/old.png|Cell label]] | Text |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="table-cell-image-replace"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={[
+                {
+                  path: "/vault/images/new.png",
+                  relative_path: "images/new.png",
+                  file_name: "new.png",
+                  extension: "png",
+                },
+                {
+                  path: "/vault/images/old.png",
+                  relative_path: "images/old.png",
+                  file_name: "old.png",
+                  extension: "png",
+                },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchClick(findTableCellImageReplaceTrigger(container));
+      const picker = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-table-cell-image-replace-picker",
+      );
+      expect(picker).toBeTruthy();
+
+      const searchInput = picker?.querySelector<HTMLInputElement>("input[type='search']") ?? null;
+      expect(searchInput).toBeTruthy();
+      expect(document.activeElement).toBe(searchInput);
+      applyTextInput(searchInput, "new");
+      dispatchClick(picker?.querySelector<HTMLButtonElement>(".vault-png-picker-item") ?? null);
+
+      expect(readMarkdown()).toContain("![[images/new.png|Cell label]]");
+      expect(readMarkdown()).not.toContain("![[images/old.png|Cell label]]");
+      expect(readMarkdown()).toContain("| Visual | Description |");
+      expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
+      cleanup();
+    });
+  });
+
+  it("closes the table-cell image replace picker via Escape/outside click without markdown changes", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "| Visual |",
+        "| --- |",
+        "| ![[images/example.png]] |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="table-cell-image-replace-dismiss"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={[
+                {
+                  path: "/vault/images/example.png",
+                  relative_path: "images/example.png",
+                  file_name: "example.png",
+                  extension: "png",
+                },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchClick(findTableCellImageReplaceTrigger(container));
+      expect(container.querySelector(".markdown-hybrid-table-cell-image-replace-picker")).toBeTruthy();
+      dispatchWindowKeyDown("Escape");
+      expect(container.querySelector(".markdown-hybrid-table-cell-image-replace-picker")).toBeNull();
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      dispatchClick(findTableCellImageReplaceTrigger(container));
+      expect(container.querySelector(".markdown-hybrid-table-cell-image-replace-picker")).toBeTruthy();
+      act(() => {
+        document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+      });
+      expect(container.querySelector(".markdown-hybrid-table-cell-image-replace-picker")).toBeNull();
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      cleanup();
+    });
+  });
+
+  it("does not show a table-cell replace action when a cell contains multiple PNG embeds", () => {
+    withImmediateRaf(() => {
+      const { container, cleanup } = render(
+        <MarkdownHybridEditor
+          historyKey="table-cell-image-replace-multi-embed"
+          markdown={[
+            "| Visual |",
+            "| --- |",
+            "| ![[images/one.png]]<br>![[images/two.png]] |",
+          ].join("\n")}
+          mode="edit"
+          onChange={() => undefined}
+          renderPreview={(value) => <div>{value}</div>}
+        />,
+      );
+
+      expect(findTableCellImageReplaceTrigger(container)).toBeNull();
+      cleanup();
+    });
   });
 
   it("sizes earlier columns by content length while keeping the last column flexible", () => {

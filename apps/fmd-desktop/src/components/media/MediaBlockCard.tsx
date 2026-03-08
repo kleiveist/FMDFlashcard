@@ -18,6 +18,7 @@ type MediaBlockCardProps = {
   item: MediaItem;
   vaultPngAssets?: VaultPngAsset[] | null;
   vaultPath?: string | null;
+  sourceRelativePath?: string | null;
   defaultMode?: MediaBlockCardMode;
   allowToggle?: boolean;
   className?: string;
@@ -27,13 +28,17 @@ export const MediaBlockCard = ({
   item,
   vaultPngAssets,
   vaultPath: _vaultPath,
+  sourceRelativePath,
   defaultMode = "preview",
   allowToggle = false,
   className,
 }: MediaBlockCardProps) => {
   const resolvedAsset = useMemo(
-    () => resolveMediaPngAsset(item, vaultPngAssets),
-    [item, vaultPngAssets],
+    () =>
+      resolveMediaPngAsset(item, vaultPngAssets, {
+        sourceRelativePath,
+      }),
+    [item, sourceRelativePath, vaultPngAssets],
   );
   void _vaultPath;
   const imageSrc = useMemo(

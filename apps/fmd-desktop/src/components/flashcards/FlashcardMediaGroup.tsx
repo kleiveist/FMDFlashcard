@@ -10,6 +10,7 @@ type FlashcardMediaGroupProps = {
   media?: MediaItem[] | null;
   vaultPngAssets?: VaultPngAsset[] | null;
   vaultPath?: string | null;
+  sourceRelativePath?: string | null;
   className?: string;
 };
 
@@ -17,6 +18,7 @@ export const FlashcardMediaGroup = ({
   media,
   vaultPngAssets,
   vaultPath,
+  sourceRelativePath,
   className,
 }: FlashcardMediaGroupProps) => {
   if (!media || media.length === 0) {
@@ -33,6 +35,7 @@ export const FlashcardMediaGroup = ({
           item={item}
           vaultPngAssets={vaultPngAssets}
           vaultPath={vaultPath}
+          sourceRelativePath={sourceRelativePath}
           className="flashcard-media-entry"
         />
       ))}

@@ -6,6 +6,7 @@ import type { KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildVaultImageCandidates,
+  filterVaultImageCandidates,
   type VaultImageCandidate,
 } from "../../lib/cardMedia";
 import type { VaultPngAsset } from "../../lib/tree";
@@ -123,13 +124,9 @@ export const VaultPngPicker = ({
   const listRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const candidates = useMemo(() => buildVaultImageCandidates(assets), [assets]);
-  const normalizedQuery = query.trim().toLowerCase();
   const filteredCandidates = useMemo(
-    () =>
-      normalizedQuery
-        ? candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery))
-        : candidates,
-    [candidates, normalizedQuery],
+    () => filterVaultImageCandidates(candidates, query),
+    [candidates, query],
   );
   const classes = ["vault-png-picker", className].filter(Boolean).join(" ");
   const visibleCount = Math.ceil(PICKER_VIEWPORT_HEIGHT / PICKER_ROW_HEIGHT);

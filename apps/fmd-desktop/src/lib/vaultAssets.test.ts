@@ -6,7 +6,10 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { extractVaultAssetRelativePath } from "./vaultAssets";
+import {
+  buildVaultRelativePathCandidates,
+  extractVaultAssetRelativePath,
+} from "./vaultAssets";
 
 describe("extractVaultAssetRelativePath", () => {
   it("extracts target from quoted wikilink", () => {
@@ -34,5 +37,25 @@ describe("extractVaultAssetRelativePath", () => {
     expect(extractVaultAssetRelativePath("/images/a.png")).toBeNull();
     expect(extractVaultAssetRelativePath("C:\\\\vault\\\\images\\\\a.png")).toBeNull();
     expect(extractVaultAssetRelativePath("../images/a.png")).toBeNull();
+  });
+});
+
+describe("buildVaultRelativePathCandidates", () => {
+  it("keeps direct normalized candidates", () => {
+    expect(buildVaultRelativePathCandidates("images\\\\A.PNG")).toEqual([
+      "images/A.PNG",
+    ]);
+  });
+
+  it("resolves dot-segments relative to source paths", () => {
+    expect(
+      buildVaultRelativePathCandidates("../images/example.png", "notes/cards/lesson.md"),
+    ).toEqual(["notes/images/example.png"]);
+  });
+
+  it("prevents root escape attempts", () => {
+    expect(buildVaultRelativePathCandidates("../../images/example.png", "notes/lesson.md")).toEqual(
+      [],
+    );
   });
 });

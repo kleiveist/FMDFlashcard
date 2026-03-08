@@ -35,6 +35,7 @@ import { FlashcardMediaGroup } from "../../components/flashcards/FlashcardMediaG
 import { VaultPngPicker } from "../../components/media/VaultPngPicker";
 import {
   buildVaultImageCandidates,
+  filterVaultImageCandidates,
   serializePngEmbed,
   splitMarkdownMediaSegments,
   type MediaItem,
@@ -326,6 +327,7 @@ type MarkdownHybridEditorProps = {
   vaultFiles?: VaultFile[];
   vaultPngAssets?: VaultPngAsset[];
   vaultPath?: string | null;
+  sourceRelativePath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
   onChange: (value: string) => void;
   onCommit?: (value: string, context: { block: MarkdownBlock }) => void;
@@ -1387,14 +1389,6 @@ const resolvePageLinkCandidate = (
 };
 
 const filterPageLinkCandidates = (candidates: PageLinkCandidate[], query: string) => {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return candidates;
-  }
-  return candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery));
-};
-
-const filterVaultImageCandidates = (candidates: VaultImageCandidate[], query: string) => {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) {
     return candidates;
@@ -3304,6 +3298,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   vaultFiles,
   vaultPngAssets,
   vaultPath,
+  sourceRelativePath,
   onNavigateWikilink,
   onChange,
   onCommit,
@@ -8552,6 +8547,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     raw={block.raw}
                     active={isActive}
                     disabled={disabled}
+                    vaultPngAssets={vaultPngAssets}
                     renderPreview={renderPreviewWithPageLinks}
                     pendingActivation={
                       pendingTableActivation?.blockIndex === index
@@ -8780,6 +8776,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                                         media={segment.items}
                                         vaultPngAssets={vaultPngAssets}
                                         vaultPath={vaultPath}
+                                        sourceRelativePath={sourceRelativePath}
                                       />
                                     ) : (
                                       <pre className="flashcard-code-block media-block-card-source">
@@ -8811,6 +8808,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                         media={imageEmbedPreviewItems}
                         vaultPngAssets={vaultPngAssets}
                         vaultPath={vaultPath}
+                        sourceRelativePath={sourceRelativePath}
                       />
                     ) : (
                       <pre className="flashcard-code-block media-block-card-source">
@@ -8877,6 +8875,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                       media={codeFencePreviewItems}
                       vaultPngAssets={vaultPngAssets}
                       vaultPath={vaultPath}
+                      sourceRelativePath={sourceRelativePath}
                     />
                   </div>
                 ) : (

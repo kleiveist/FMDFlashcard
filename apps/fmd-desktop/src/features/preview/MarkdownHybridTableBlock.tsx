@@ -9,6 +9,14 @@ import {
   useRef,
   useState,
 } from "react";
+import { VaultPngPicker } from "../../components/media/VaultPngPicker";
+import {
+  buildVaultImageCandidates,
+  filterVaultImageCandidates,
+  serializePngEmbed,
+  splitMarkdownMediaSegments,
+  type VaultImageCandidate,
+} from "../../lib/cardMedia";
 import {
   deleteTableColumns,
   deleteTableRows,
@@ -26,6 +34,8 @@ import {
   type MarkdownPipeTableModel,
   type MarkdownPipeTableRowBand,
 } from "../../lib/markdownTables";
+import { normalizeRelativePath } from "../../lib/path";
+import type { VaultPngAsset } from "../../lib/tree";
 
 export type MarkdownHybridTableCellLocation = {
   rowBand: MarkdownPipeTableRowBand;
@@ -51,6 +61,7 @@ type MarkdownHybridTableBlockProps = {
   raw: string;
   active: boolean;
   disabled?: boolean;
+  vaultPngAssets?: VaultPngAsset[] | null;
   renderPreview: (markdown: string) => ReactNode;
   pendingActivation?: MarkdownHybridTableActivationRequest | null;
   onConsumePendingActivation: () => void;
@@ -104,6 +115,14 @@ type TableDropIndicator =
     offset: number;
   };
 
+type TableCellImageReplacePickerState = {
+  location: MarkdownHybridTableCellLocation;
+  src: string;
+  label?: string;
+  query: string;
+  highlightedIndex: number;
+};
+
 const defaultTableModel: MarkdownPipeTableModel = {
   header: [{ raw: "Column A" }, { raw: "Column B" }],
   separator: ["---", "---"],
@@ -122,6 +141,54 @@ const isSameCell = (
       left.rowIndex === right.rowIndex &&
       left.columnIndex === right.columnIndex,
   );
+
+const resolveStandaloneCellPngEmbed = (source: string, scope: string) => {
+  const segments = splitMarkdownMediaSegments(source, scope);
+  if (segments.length === 0) {
+    return null;
+  }
+
+  let mediaSegmentIndex = -1;
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    if (segment.kind === "markdown") {
+      if (segment.source.trim().length > 0) {
+        return null;
+      }
+      continue;
+    }
+    if (mediaSegmentIndex >= 0) {
+      return null;
+    }
+    if (segment.items.length !== 1) {
+      return null;
+    }
+    const item = segment.items[0];
+    if (!item || item.type !== "png") {
+      return null;
+    }
+    mediaSegmentIndex = index;
+  }
+
+  if (mediaSegmentIndex < 0) {
+    return null;
+  }
+  const mediaSegment = segments[mediaSegmentIndex];
+  if (!mediaSegment || mediaSegment.kind !== "media") {
+    return null;
+  }
+  const item = mediaSegment.items[0];
+  if (!item || item.type !== "png") {
+    return null;
+  }
+
+  return {
+    segments,
+    mediaSegmentIndex,
+    src: item.src,
+    label: item.label,
+  };
+};
 
 const TABLE_ROW_GUTTER_WIDTH_PX = 36;
 const TABLE_COLUMN_MIN_WIDTH_PX = 140;
@@ -284,6 +351,7 @@ export const MarkdownHybridTableBlock = ({
   raw,
   active,
   disabled = false,
+  vaultPngAssets,
   renderPreview,
   pendingActivation,
   onConsumePendingActivation,
@@ -312,6 +380,7 @@ export const MarkdownHybridTableBlock = ({
   const tableShellRef = useRef<HTMLDivElement | null>(null);
   const cellTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const codeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const cellImageReplacePickerRef = useRef<HTMLDivElement | null>(null);
   const tablePointerDragRef = useRef<TablePointerDragState | null>(null);
   const pendingCellCommitRef = useRef<{ location: MarkdownHybridTableCellLocation; value: string } | null>(null);
   const columnLaneRefs = useRef<Array<HTMLElement | null>>([]);
@@ -330,7 +399,17 @@ export const MarkdownHybridTableBlock = ({
   const [repairNotice, setRepairNotice] = useState<string | null>(null);
   const [dragSource, setDragSource] = useState<{ type: "row" | "column"; index: number } | null>(null);
   const [dropIndicator, setDropIndicator] = useState<TableDropIndicator | null>(null);
+  const [cellImageReplacePickerState, setCellImageReplacePickerState] =
+    useState<TableCellImageReplacePickerState | null>(null);
   const isDirty = cellDirty || codeDirty;
+  const imageLinkCandidates = useMemo(
+    () => buildVaultImageCandidates(vaultPngAssets),
+    [vaultPngAssets],
+  );
+  const filteredCellImageReplaceCandidates = useMemo(
+    () => filterVaultImageCandidates(imageLinkCandidates, cellImageReplacePickerState?.query ?? ""),
+    [cellImageReplacePickerState?.query, imageLinkCandidates],
+  );
 
   useEffect(() => {
     onDirtyChange(isDirty);
@@ -376,6 +455,10 @@ export const MarkdownHybridTableBlock = ({
     },
     [onCommitRaw, raw],
   );
+
+  const closeCellImageReplacePicker = useCallback(() => {
+    setCellImageReplacePickerState(null);
+  }, []);
 
   const flushActiveCell = useCallback(() => {
     if (!activeCell || !cellDirty) {
@@ -546,12 +629,131 @@ export const MarkdownHybridTableBlock = ({
     };
   }, [contextMenuState]);
 
+  useEffect(() => {
+    if (!cellImageReplacePickerState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const input = cellImageReplacePickerRef.current?.querySelector<HTMLInputElement>(
+        "input[type='search']",
+      );
+      if (!input) {
+        return;
+      }
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+      input.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [cellImageReplacePickerState]);
+
+  useEffect(() => {
+    if (!cellImageReplacePickerState) {
+      return;
+    }
+    setCellImageReplacePickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const cellValue = getCellValue(parsedModel, current.location);
+      const cellSource = normalizeMarkdownTableCellPreviewValue(cellValue);
+      const embed = resolveStandaloneCellPngEmbed(
+        cellSource,
+        `markdown-hybrid-table-cell-replace-sync-${current.location.rowBand}-${current.location.rowIndex}-${current.location.columnIndex}`,
+      );
+      if (!embed) {
+        return null;
+      }
+      const currentSrc = normalizeRelativePath(current.src).toLowerCase();
+      const nextSrc = normalizeRelativePath(embed.src).toLowerCase();
+      if (!nextSrc || (currentSrc && currentSrc !== nextSrc)) {
+        return null;
+      }
+      return {
+        ...current,
+        src: embed.src,
+        label: embed.label,
+      };
+    });
+  }, [cellImageReplacePickerState, parsedModel]);
+
+  useEffect(() => {
+    if (!cellImageReplacePickerState) {
+      return;
+    }
+    if (
+      disabled ||
+      viewMode !== "grid" ||
+      (active && activeCell && isSameCell(activeCell, cellImageReplacePickerState.location))
+    ) {
+      closeCellImageReplacePicker();
+    }
+  }, [active, activeCell, cellImageReplacePickerState, closeCellImageReplacePicker, disabled, viewMode]);
+
+  useEffect(() => {
+    if (!cellImageReplacePickerState) {
+      return;
+    }
+    setCellImageReplacePickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextMaxIndex = Math.max(0, filteredCellImageReplaceCandidates.length - 1);
+      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+      if (nextIndex === current.highlightedIndex) {
+        return current;
+      }
+      return {
+        ...current,
+        highlightedIndex: nextIndex,
+      };
+    });
+  }, [cellImageReplacePickerState, filteredCellImageReplaceCandidates.length]);
+
+  useEffect(() => {
+    if (!cellImageReplacePickerState) {
+      return;
+    }
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (cellImageReplacePickerRef.current?.contains(target)) {
+        return;
+      }
+      if (
+        target instanceof Element &&
+        target.closest(".markdown-hybrid-table-cell-image-replace-shell")
+      ) {
+        return;
+      }
+      closeCellImageReplacePicker();
+    };
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      closeCellImageReplacePicker();
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [cellImageReplacePickerState, closeCellImageReplacePicker]);
+
   const clearSelections = useCallback(() => {
     setRowSelection(null);
     setColumnSelection(null);
     setContextMenuState(null);
     setDragSource(null);
     setDropIndicator(null);
+    setCellImageReplacePickerState(null);
   }, []);
 
   const selectRow = useCallback((rowIndex: number, options?: { shiftKey?: boolean; additiveKey?: boolean }) => {
@@ -711,6 +913,174 @@ export const MarkdownHybridTableBlock = ({
     setCodeDirty(false);
     setViewMode("code");
   }, [active, clearSelections, disabled, flushActiveCell, flushCodeView, onRequestActivate, raw, viewMode]);
+
+  const handleOpenCellImageReplacePicker = useCallback(
+    (location: MarkdownHybridTableCellLocation) => (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (disabled) {
+        return;
+      }
+      if (!flushActiveCell()) {
+        return;
+      }
+      if (!active) {
+        onRequestActivate({ focusTarget: "frame" });
+      }
+      const cellValue = getCellValue(parsedModel, location);
+      const cellSource = normalizeMarkdownTableCellPreviewValue(cellValue);
+      const embed = resolveStandaloneCellPngEmbed(
+        cellSource,
+        `markdown-hybrid-table-cell-replace-open-${location.rowBand}-${location.rowIndex}-${location.columnIndex}`,
+      );
+      if (!embed) {
+        closeCellImageReplacePicker();
+        return;
+      }
+      setContextMenuState(null);
+      setCellImageReplacePickerState((current) =>
+        current && isSameCell(current.location, location)
+          ? null
+          : {
+              location,
+              src: embed.src,
+              label: embed.label,
+              query: "",
+              highlightedIndex: 0,
+            }
+      );
+    },
+    [
+      active,
+      closeCellImageReplacePicker,
+      disabled,
+      flushActiveCell,
+      onRequestActivate,
+      parsedModel,
+    ],
+  );
+
+  const handleCellImageReplaceQueryChange = useCallback((value: string) => {
+    setCellImageReplacePickerState((current) =>
+      current
+        ? {
+            ...current,
+            query: value,
+            highlightedIndex: 0,
+          }
+        : current
+    );
+  }, []);
+
+  const handleCellImageReplaceSelectCandidate = useCallback(
+    (candidate: VaultImageCandidate) => {
+      if (!cellImageReplacePickerState) {
+        return;
+      }
+      if (!flushActiveCell()) {
+        return;
+      }
+      const location = cellImageReplacePickerState.location;
+      const cellValue = getCellValue(parsedModel, location);
+      const cellSource = normalizeMarkdownTableCellPreviewValue(cellValue);
+      const embed = resolveStandaloneCellPngEmbed(
+        cellSource,
+        `markdown-hybrid-table-cell-replace-select-${location.rowBand}-${location.rowIndex}-${location.columnIndex}`,
+      );
+      if (!embed) {
+        closeCellImageReplacePicker();
+        return;
+      }
+      const currentPath = normalizeRelativePath(embed.src).toLowerCase();
+      const nextPath = normalizeRelativePath(candidate.relPath).toLowerCase();
+      if (!nextPath || currentPath === nextPath) {
+        closeCellImageReplacePicker();
+        return;
+      }
+      const nextTokenRaw = serializePngEmbed(candidate.relPath, embed.label);
+      const nextCellSource = embed.segments.map((segment, segmentIndex) => {
+        if (segmentIndex === embed.mediaSegmentIndex) {
+          return nextTokenRaw;
+        }
+        return segment.kind === "media" ? segment.raw : segment.source;
+      }).join("");
+      const nextCellValue = toCellStorageValue(nextCellSource);
+      closeCellImageReplacePicker();
+      if (nextCellValue === cellValue) {
+        return;
+      }
+      const nextModel = updateModelCell(parsedModel, location, nextCellValue);
+      commitModel(nextModel);
+      if (activeCell && isSameCell(activeCell, location)) {
+        setCellDirty(false);
+        setCellDraft(fromCellStorageValue(nextCellValue));
+      }
+    },
+    [
+      activeCell,
+      cellImageReplacePickerState,
+      closeCellImageReplacePicker,
+      commitModel,
+      flushActiveCell,
+      parsedModel,
+    ],
+  );
+
+  const handleCellImageReplaceSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (!cellImageReplacePickerState) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCellImageReplacePicker();
+        return;
+      }
+      if (filteredCellImageReplaceCandidates.length === 0) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        setCellImageReplacePickerState((current) => {
+          if (!current) {
+            return current;
+          }
+          const currentIndex = current.highlightedIndex ?? 0;
+          return {
+            ...current,
+            highlightedIndex:
+              (currentIndex + delta + filteredCellImageReplaceCandidates.length) %
+              filteredCellImageReplaceCandidates.length,
+          };
+        });
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const candidate =
+          filteredCellImageReplaceCandidates[cellImageReplacePickerState.highlightedIndex] ??
+          filteredCellImageReplaceCandidates[0];
+        if (!candidate) {
+          return;
+        }
+        handleCellImageReplaceSelectCandidate(candidate);
+      }
+    },
+    [
+      cellImageReplacePickerState,
+      closeCellImageReplacePicker,
+      filteredCellImageReplaceCandidates,
+      handleCellImageReplaceSelectCandidate,
+    ],
+  );
 
   const handleCodeChange = useCallback((value: string) => {
     setCodeDraft(value);
@@ -1245,9 +1615,72 @@ export const MarkdownHybridTableBlock = ({
         />
       );
     }
+    const previewSource = normalizeMarkdownTableCellPreviewValue(value);
+    const standaloneEmbed = resolveStandaloneCellPngEmbed(
+      previewSource,
+      `markdown-hybrid-table-cell-replace-render-${location.rowBand}-${location.rowIndex}-${location.columnIndex}`,
+    );
+    const isReplacePickerOpen = Boolean(
+      cellImageReplacePickerState &&
+      isSameCell(cellImageReplacePickerState.location, location),
+    );
     return (
       <div className="markdown-table-cell-preview markdown-hybrid-table-cell-preview">
-        {renderPreview(normalizeMarkdownTableCellPreviewValue(value))}
+        {renderPreview(previewSource)}
+        {standaloneEmbed ? (
+          <div
+            className="markdown-hybrid-table-cell-image-replace-shell"
+            data-md-block-control="true"
+            onMouseDown={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <button
+              type="button"
+              className="markdown-hybrid-table-cell-image-replace-trigger"
+              data-md-block-control="true"
+              aria-label="Bild austauschen"
+              title="Bild austauschen"
+              onMouseDown={(event) => {
+                event.stopPropagation();
+              }}
+              onClick={handleOpenCellImageReplacePicker(location)}
+              disabled={disabled}
+            >
+              Bild austauschen
+            </button>
+            {isReplacePickerOpen ? (
+              <div
+                ref={cellImageReplacePickerRef}
+                className="markdown-hybrid-table-cell-image-replace-picker"
+                data-md-block-control="true"
+                role="dialog"
+                aria-label="Select replacement PNG"
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                }}
+              >
+                <VaultPngPicker
+                  assets={vaultPngAssets}
+                  query={cellImageReplacePickerState?.query ?? ""}
+                  onQueryChange={handleCellImageReplaceQueryChange}
+                  onSearchKeyDown={handleCellImageReplaceSearchKeyDown}
+                  onSelect={handleCellImageReplaceSelectCandidate}
+                  highlightedIndex={cellImageReplacePickerState?.highlightedIndex ?? 0}
+                  onHighlightedIndexChange={(nextIndex) =>
+                    setCellImageReplacePickerState((current) =>
+                      current
+                        ? { ...current, highlightedIndex: nextIndex }
+                        : current
+                    )
+                  }
+                  selectedRelPath={standaloneEmbed.src}
+                  emptyLabel="No PNG files found in the current vault."
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     );
   };

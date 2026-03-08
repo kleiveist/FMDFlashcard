@@ -294,11 +294,13 @@ const renderMarkdownMediaGroup = ({
   groups,
   vaultPngAssets,
   vaultPath,
+  sourceRelativePath,
 }: {
   node: unknown;
   groups: MarkdownMediaPreviewGroup[];
   vaultPngAssets?: VaultPngAsset[];
   vaultPath?: string | null;
+  sourceRelativePath?: string | null;
 }) => {
   const mediaBlockMarker = readMarkdownElementProperty(node, "data-fmd-media-block");
   const placeholderMatch = readMarkdownNodeText(node).match(mediaPlaceholderTextPattern);
@@ -335,6 +337,7 @@ const renderMarkdownMediaGroup = ({
       media={mediaGroup.items}
       vaultPngAssets={vaultPngAssets}
       vaultPath={vaultPath}
+      sourceRelativePath={sourceRelativePath}
     />
   );
 };
@@ -1435,6 +1438,7 @@ const renderMarkdownTableCellWithMedia = ({
   markdownSource,
   vaultPngAssets,
   vaultPath,
+  sourceRelativePath,
 }: {
   node: unknown;
   children: ReactNode;
@@ -1442,6 +1446,7 @@ const renderMarkdownTableCellWithMedia = ({
   markdownSource: string;
   vaultPngAssets?: VaultPngAsset[];
   vaultPath?: string | null;
+  sourceRelativePath?: string | null;
 }) => {
   const cellSource = readMarkdownNodeSource(node, markdownSource);
   const sourceSegments = splitMarkdownTableCellSegments(
@@ -1476,6 +1481,7 @@ const renderMarkdownTableCellWithMedia = ({
             media={segment.items}
             vaultPngAssets={vaultPngAssets}
             vaultPath={vaultPath}
+            sourceRelativePath={sourceRelativePath}
           />
         </div>
       );
@@ -7153,6 +7159,7 @@ export const PreviewPanel = ({
                   markdownSource: mediaPreview.markdown,
                   vaultPngAssets,
                   vaultPath,
+                  sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
                 })}
               </th>
             ),
@@ -7162,6 +7169,7 @@ export const PreviewPanel = ({
                 groups: mediaPreview.groups,
                 vaultPngAssets,
                 vaultPath,
+                sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
               }) ?? <div {...props} />,
             td: ({ node: _node, children, ...props }) => (
               <td {...props}>
@@ -7172,6 +7180,7 @@ export const PreviewPanel = ({
                   markdownSource: mediaPreview.markdown,
                   vaultPngAssets,
                   vaultPath,
+                  sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
                 })}
               </td>
             ),
@@ -7184,7 +7193,7 @@ export const PreviewPanel = ({
         </ReactMarkdown>
       );
     },
-    [renderMarkdownCodePre, vaultPath, vaultPngAssets],
+    [renderMarkdownCodePre, selectedFile?.relative_path, sourceRelativePath, vaultPath, vaultPngAssets],
   );
 
   const markdownSource = rawPreview
@@ -7548,6 +7557,7 @@ export const PreviewPanel = ({
                   vaultFiles={vaultFiles}
                   vaultPngAssets={vaultPngAssets}
                   vaultPath={vaultPath}
+                  sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
                   onNavigateWikilink={onNavigateWikilink}
                   onChange={handleHybridBodyChange}
                   onDirtyChange={onHybridDirtyChange}
@@ -7758,6 +7768,7 @@ export const PreviewPanel = ({
                                 markdownSource: renderedPreviewWithMedia.markdown,
                                 vaultPngAssets,
                                 vaultPath,
+                                sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
                               })}
                             </th>
                           ),
@@ -7767,6 +7778,7 @@ export const PreviewPanel = ({
                               groups: renderedPreviewWithMedia.groups,
                               vaultPngAssets,
                               vaultPath,
+                              sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
                             }) ?? <div {...props} />,
                           td: ({ node: _node, children, ...props }) => (
                             <td {...props}>
@@ -7777,6 +7789,7 @@ export const PreviewPanel = ({
                                 markdownSource: renderedPreviewWithMedia.markdown,
                                 vaultPngAssets,
                                 vaultPath,
+                                sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
                               })}
                             </td>
                           ),

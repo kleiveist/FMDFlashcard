@@ -1943,6 +1943,60 @@ textarea.preview-editor {
   padding: 8px;
 }
 
+.markdown-hybrid-table-cell-image-replace-shell {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.markdown-hybrid-table-cell-image-replace-trigger {
+  height: 24px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 78%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--panel-2) 36%, transparent);
+  color: color-mix(in srgb, var(--muted) 78%, var(--text));
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0 8px;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.markdown-hybrid-table-cell-image-replace-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--line-soft) 94%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 64%, transparent);
+  color: var(--text);
+}
+
+.markdown-hybrid-table-cell-image-replace-trigger:focus-visible {
+  outline: 2px solid var(--accent-focus-ring);
+  outline-offset: 2px;
+}
+
+.markdown-hybrid-table-cell-image-replace-trigger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.markdown-hybrid-table-cell-image-replace-picker {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 24;
+  width: min(320px, calc(100vw - 64px));
+  max-width: min(320px, calc(100vw - 64px));
+  border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--panel) 94%, black 6%);
+  box-shadow:
+    0 16px 28px color-mix(in srgb, black 32%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 3%, transparent);
+  padding: 8px;
+}
+
 .markdown-hybrid-math-block-shell {
   position: relative;
   display: grid;

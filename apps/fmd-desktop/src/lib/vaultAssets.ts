@@ -85,6 +85,71 @@ export const normalizeVaultAssetRelativePath = (value: string | null | undefined
   return normalized;
 };
 
+const hasAbsolutePathPrefix = (value: string) =>
+  /^[A-Za-z]:[\\/]/.test(value) || /^[\\/]{1,2}/.test(value);
+
+const splitResolvePathSegments = (value: string) =>
+  normalizeRelativePath(value)
+    .replace(/^\/+/, "")
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+const resolveDotSegmentsWithinVault = (baseSegments: string[], targetSegments: string[]) => {
+  const resolved = [...baseSegments];
+  for (const segment of targetSegments) {
+    if (!segment || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      if (resolved.length === 0) {
+        return null;
+      }
+      resolved.pop();
+      continue;
+    }
+    resolved.push(segment);
+  }
+  return resolved;
+};
+
+export const buildVaultRelativePathCandidates = (
+  target: string | null | undefined,
+  sourceRelativePath?: string | null,
+) => {
+  const rawTarget = target?.trim() ?? "";
+  if (!rawTarget || hasAbsolutePathPrefix(rawTarget)) {
+    return [] as string[];
+  }
+
+  const candidates = new Set<string>();
+  const directNormalized = normalizeVaultAssetRelativePath(rawTarget);
+  if (directNormalized) {
+    candidates.add(directNormalized);
+  }
+
+  const sourceNormalized = normalizeVaultAssetRelativePath(sourceRelativePath ?? "");
+  if (!sourceNormalized) {
+    return Array.from(candidates);
+  }
+
+  const sourceDirSegments = sourceNormalized.split("/");
+  sourceDirSegments.pop();
+  const targetSegments = splitResolvePathSegments(rawTarget);
+  if (targetSegments.length === 0) {
+    return Array.from(candidates);
+  }
+  const resolvedSegments = resolveDotSegmentsWithinVault(sourceDirSegments, targetSegments);
+  if (!resolvedSegments || resolvedSegments.length === 0) {
+    return Array.from(candidates);
+  }
+  const resolvedPath = normalizeVaultAssetRelativePath(resolvedSegments.join("/"));
+  if (resolvedPath) {
+    candidates.add(resolvedPath);
+  }
+  return Array.from(candidates);
+};
+
 const joinVaultAndRelativePath = (vaultPath: string, relativePath: string) => {
   const normalizedVault = vaultPath.replace(/\\/g, "/").replace(/\/+$/, "");
   const normalizedRelative = normalizeVaultAssetRelativePath(relativePath) ?? "";

@@ -16,7 +16,10 @@ import {
   type MarkdownMediaPreviewData as RawMarkdownMediaPreviewData,
   type MarkdownMediaToken,
 } from "./markdownMedia";
-import { normalizeVaultAssetRelativePath } from "./vaultAssets";
+import {
+  buildVaultRelativePathCandidates,
+  normalizeVaultAssetRelativePath,
+} from "./vaultAssets";
 
 export type MediaKind = "png" | "svg";
 
@@ -394,20 +397,98 @@ export const buildVaultImageCandidates = (assets?: VaultPngAsset[] | null): Vaul
       };
     });
 
-export const resolveMediaPngAsset = (item: MediaItem, assets?: VaultPngAsset[] | null) => {
+export const filterVaultImageCandidates = (candidates: VaultImageCandidate[], query: string) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return candidates;
+  }
+  return candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery));
+};
+
+type ResolveMediaPngAssetOptions = {
+  sourceRelativePath?: string | null;
+};
+
+const normalizeAssetRelativePath = (value: string) =>
+  normalizeRelativePath(value).replace(/^\/+/, "");
+
+const isUniqueMatch = <T,>(items: T[]) => (items.length === 1 ? items[0] ?? null : null);
+
+export const resolveMediaPngAsset = (
+  item: MediaItem,
+  assets?: VaultPngAsset[] | null,
+  options?: ResolveMediaPngAssetOptions,
+) => {
   if (item.type !== "png") {
     return null;
   }
-  const normalized = normalizeMediaRelativePath(item.src);
-  if (!normalized) {
+  const assetEntries = (assets ?? [])
+    .map((asset) => ({
+      asset,
+      relPath: normalizeAssetRelativePath(asset.relative_path),
+    }))
+    .filter((entry) => entry.relPath.length > 0);
+  if (assetEntries.length === 0) {
     return null;
   }
-  return (
-    (assets ?? []).find(
-      (asset) =>
-        normalizeRelativePath(asset.relative_path).toLowerCase() === normalized.toLowerCase(),
-    ) ?? null
+
+  const normalizedTarget = normalizeMediaRelativePath(item.src);
+  const lowerTarget = normalizedTarget?.toLowerCase() ?? "";
+
+  if (lowerTarget) {
+    const exact = assetEntries.find(
+      (entry) => entry.relPath.toLowerCase() === lowerTarget,
+    );
+    if (exact) {
+      return exact.asset;
+    }
+  }
+
+  const contextCandidates = buildVaultRelativePathCandidates(
+    item.src,
+    options?.sourceRelativePath,
   );
+  if (contextCandidates.length > 0) {
+    const candidateSet = new Set(contextCandidates.map((candidate) => candidate.toLowerCase()));
+    const contextMatch = isUniqueMatch(
+      assetEntries.filter((entry) => candidateSet.has(entry.relPath.toLowerCase())),
+    );
+    if (contextMatch) {
+      return contextMatch.asset;
+    }
+  }
+
+  const fallbackNormalized = normalizeAssetRelativePath(item.src);
+  const fallbackSegments = fallbackNormalized
+    .split("/")
+    .filter((segment) => segment && segment !== "." && segment !== "..");
+  const fallbackSuffix = fallbackSegments.join("/").toLowerCase();
+  if (!fallbackSuffix) {
+    return null;
+  }
+
+  const suffixMatch = isUniqueMatch(
+    assetEntries.filter((entry) => {
+      const lowerRelPath = entry.relPath.toLowerCase();
+      return lowerRelPath === fallbackSuffix || lowerRelPath.endsWith(`/${fallbackSuffix}`);
+    }),
+  );
+  if (suffixMatch) {
+    return suffixMatch.asset;
+  }
+
+  const fallbackBasename = fallbackSegments[fallbackSegments.length - 1]?.toLowerCase() ?? "";
+  if (!fallbackBasename) {
+    return null;
+  }
+  const basenameMatch = isUniqueMatch(
+    assetEntries.filter((entry) => {
+      const pathParts = entry.relPath.split("/");
+      const basename = pathParts[pathParts.length - 1] ?? "";
+      return basename.toLowerCase() === fallbackBasename;
+    }),
+  );
+  return basenameMatch?.asset ?? null;
 };
 
 export const resolveMediaLabel = (item: MediaItem) => {

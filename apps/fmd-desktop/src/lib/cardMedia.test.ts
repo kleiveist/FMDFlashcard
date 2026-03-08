@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseCardMediaText,
+  resolveMediaPngAsset,
   serializePngEmbed,
   serializeSvgFence,
   validateSvgMarkup,
@@ -104,5 +105,67 @@ describe("serialization", () => {
       '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>',
       "```",
     ].join("\n"));
+  });
+});
+
+describe("resolveMediaPngAsset", () => {
+  const createAsset = (relativePath: string) => {
+    const normalized = relativePath.replace(/\\/g, "/");
+    const name = normalized.split("/").pop() ?? normalized;
+    return {
+      path: `/vault/${normalized}`,
+      relative_path: normalized,
+      file_name: name,
+      extension: "png" as const,
+    };
+  };
+
+  const createPngItem = (src: string) => ({
+    id: "media-item",
+    type: "png" as const,
+    src,
+    rawBlock: `![[${src}]]`,
+  });
+
+  it("resolves exact relative path matches case-insensitively", () => {
+    const asset = createAsset("images/example.png");
+    const item = createPngItem("IMAGES/Example.PNG");
+
+    expect(resolveMediaPngAsset(item, [asset])).toEqual(asset);
+  });
+
+  it("resolves ./ and ../ paths relative to source markdown path", () => {
+    const asset = createAsset("deck/images/example.png");
+    const item = createPngItem("../images/example.png");
+
+    expect(
+      resolveMediaPngAsset(item, [asset], {
+        sourceRelativePath: "deck/cards/note.md",
+      }),
+    ).toEqual(asset);
+  });
+
+  it("falls back to a unique suffix match when exact/context candidates miss", () => {
+    const asset = createAsset("assets/png/example.png");
+    const item = createPngItem("png/example.png");
+
+    expect(resolveMediaPngAsset(item, [asset])).toEqual(asset);
+  });
+
+  it("falls back to a unique basename match when suffix is not unique", () => {
+    const asset = createAsset("vault-a/example.png");
+    const item = createPngItem("example.png");
+
+    expect(resolveMediaPngAsset(item, [asset])).toEqual(asset);
+  });
+
+  it("returns null for ambiguous basename fallbacks", () => {
+    const item = createPngItem("example.png");
+    const assets = [
+      createAsset("vault-a/example.png"),
+      createAsset("vault-b/example.png"),
+    ];
+
+    expect(resolveMediaPngAsset(item, assets)).toBeNull();
   });
 });

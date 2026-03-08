@@ -149,6 +149,7 @@ const buildHarness = (
     vaultFiles?: VaultFile[];
     vaultPngAssets?: VaultPngAsset[];
     vaultPath?: string;
+    sourceRelativePath?: string;
   } = {},
 ) => {
   const onEditExit = vi.fn();
@@ -163,6 +164,7 @@ const buildHarness = (
     vaultFiles,
     vaultPngAssets,
     vaultPath = "/vault",
+    sourceRelativePath = baseFile.relative_path,
   } = options;
 
   const Harness = () => {
@@ -195,7 +197,7 @@ const buildHarness = (
       markdownHybridEnabled,
       selectedFile: baseFile,
       vaultPath,
-      sourceRelativePath: baseFile.relative_path,
+      sourceRelativePath,
       vaultFiles,
       vaultPngAssets,
       canEdit: true,
@@ -931,6 +933,63 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(Array.from(preview?.querySelectorAll("p") ?? []).some((paragraph) =>
       paragraph.textContent?.trim() === "After text"
     )).toBe(true);
+  });
+
+  it("resolves relative ../ PNG embeds inside table cells using sourceRelativePath", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| ![[../images/example.png]] | Diagram |",
+      ].join("\n"),
+      {
+        sourceRelativePath: "notes/cards/lesson.md",
+        vaultPngAssets: [
+          {
+            path: "/vault/notes/images/example.png",
+            relative_path: "notes/images/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ],
+      },
+    );
+    cleanup = localCleanup;
+
+    const mediaImage = container.querySelector<HTMLImageElement>(
+      ".markdown-table .flashcard-media-image",
+    );
+    expect(mediaImage).toBeTruthy();
+  });
+
+  it("keeps ambiguous table-cell PNG embeds in missing-image state", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| ![[example.png]] | Diagram |",
+      ].join("\n"),
+      {
+        vaultPngAssets: [
+          {
+            path: "/vault/a/example.png",
+            relative_path: "a/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+          {
+            path: "/vault/b/example.png",
+            relative_path: "b/example.png",
+            file_name: "example.png",
+            extension: "png",
+          },
+        ],
+      },
+    );
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".markdown-table .flashcard-media-image")).toBeNull();
+    expect(container.querySelector(".markdown-table .flashcard-media-placeholder")).toBeTruthy();
   });
 
   it("renders markdown image syntax inside markdown table cells", () => {
