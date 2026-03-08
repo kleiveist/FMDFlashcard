@@ -1874,6 +1874,19 @@ textarea.preview-editor {
   gap: 10px;
 }
 
+.markdown-hybrid-card-table-segment {
+  display: grid;
+  gap: 0;
+}
+
+.markdown-hybrid-card-table-segment .markdown-hybrid-table-block {
+  margin: 0;
+}
+
+.markdown-hybrid-card-table-segment .markdown-table {
+  margin-block: 0.8rem;
+}
+
 .markdown-hybrid-card-block-empty {
   min-height: 1rem;
 }
@@ -1985,7 +1998,7 @@ textarea.preview-editor {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  z-index: 24;
+  z-index: 72;
   width: min(320px, calc(100vw - 64px));
   max-width: min(320px, calc(100vw - 64px));
   border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
@@ -3088,15 +3101,17 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-table-scroll {
-  overflow: auto;
+  overflow: visible;
 }
 
 .markdown-hybrid-table-shell {
   position: relative;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
-  overflow: hidden;
+  overflow: visible;
+  isolation: isolate;
 }
 
 .markdown-hybrid-table-block.is-active .markdown-hybrid-table-shell {
@@ -3108,8 +3123,9 @@ textarea.preview-editor {
   display: grid;
   gap: 1px;
   align-items: stretch;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   background: var(--line-soft);
 }
 
@@ -3128,6 +3144,7 @@ textarea.preview-editor {
 
 .markdown-hybrid-table-cell {
   min-height: 39px;
+  min-width: 0;
 }
 
 .markdown-hybrid-table-cell {
@@ -3357,6 +3374,21 @@ textarea.preview-editor {
   word-break: break-word;
 }
 
+.markdown-table-cell-preview .markdown-hybrid-inline-page-link {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-table-cell-preview .markdown-hybrid-inline-page-link-label {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .markdown-table-cell-paragraph {
   min-height: 1.4rem;
 }
@@ -3365,6 +3397,17 @@ textarea.preview-editor {
   display: block;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+}
+
+.markdown-table-cell-preview .flashcard-media-group,
+.markdown-table-cell-preview .flashcard-media-item,
+.markdown-table-cell-preview .flashcard-media-entry,
+.markdown-table-cell-preview .media-block-card,
+.markdown-table-cell-preview .media-block-card-surface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .markdown-table-cell-image,
@@ -3372,6 +3415,7 @@ textarea.preview-editor {
   display: block;
   width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
   height: auto;
   max-height: none;
   object-fit: contain;

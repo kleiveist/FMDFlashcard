@@ -276,6 +276,17 @@
   display: block;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+}
+
+.help-markdown .help-table-cell-media .flashcard-media-group,
+.help-markdown .help-table-cell-media .flashcard-media-item,
+.help-markdown .help-table-cell-media .flashcard-media-entry,
+.help-markdown .help-table-cell-media .media-block-card,
+.help-markdown .help-table-cell-media .media-block-card-surface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .help-markdown .help-table-cell-image,
@@ -283,6 +294,7 @@
   display: block;
   width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
   height: auto;
   max-height: none;
   object-fit: contain;

@@ -4858,6 +4858,100 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("routes valid pipe tables inside and outside #card through the same table block renderer", () => {
+    const markdown = [
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+      "",
+      "#card",
+      "| A | B |",
+      "| --- | --- |",
+      "| 3 | 4 |",
+      "#endcard",
+    ].join("\n");
+
+    const { container, cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="card-table-shared-render-path"
+        markdown={markdown}
+        mode="edit"
+        onChange={() => undefined}
+        renderPreview={(value) => <div>{value}</div>}
+      />,
+    );
+
+    expect(container.querySelectorAll(".markdown-hybrid-table-block")).toHaveLength(2);
+    expect(container.querySelector(".markdown-hybrid-card-table-segment .markdown-hybrid-table-block")).toBeTruthy();
+    expect(container.querySelector(".markdown-hybrid-card-block-frame")?.textContent ?? "").toContain("#card");
+    expect(container.querySelector(".markdown-hybrid-card-block-frame")?.textContent ?? "").toContain("#endcard");
+
+    dispatchMouseDown(
+      container.querySelector<HTMLElement>(
+        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-header",
+      ),
+    );
+    expect(
+      container.querySelector(".markdown-hybrid-card-table-segment .markdown-hybrid-table-view-toggle"),
+    ).toBeNull();
+
+    cleanup();
+  });
+
+  it("commits card-internal table cell edits in-place inside the same #card block", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#card",
+        "| A | B |",
+        "| --- | --- |",
+        "| 1 | 2 |",
+        "#endcard",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-table-cell-edit"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchMouseDown(
+        container.querySelector<HTMLElement>(
+          ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-header",
+        ),
+      );
+      const textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-editor",
+      );
+      expect(textarea).toBeTruthy();
+      applyTextInput(textarea, "Renamed card header");
+      act(() => {
+        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+      });
+
+      expect(readMarkdown()).toContain("| Renamed card header | B |");
+      expect(readMarkdown().match(/#card/g)).toHaveLength(1);
+      expect(readMarkdown().match(/#endcard/g)).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+      ).toHaveLength(1);
+      cleanup();
+    });
+  });
+
   it("replaces a standalone PNG embed inside a hybrid table cell in-place", () => {
     withImmediateRaf(() => {
       const initialMarkdown = [
@@ -4918,6 +5012,100 @@ describe("MarkdownHybridEditor", () => {
       expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
       cleanup();
     });
+  });
+
+  it("replaces a standalone PNG embed inside a #card table cell in-place without creating new blocks", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#card",
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| ![[images/old.png|Cell label]] | Text |",
+        "#endcard",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-table-cell-image-replace"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={[
+                {
+                  path: "/vault/images/new.png",
+                  relative_path: "images/new.png",
+                  file_name: "new.png",
+                  extension: "png",
+                },
+                {
+                  path: "/vault/images/old.png",
+                  relative_path: "images/old.png",
+                  file_name: "old.png",
+                  extension: "png",
+                },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const replaceTrigger = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-image-replace-trigger",
+      );
+
+      dispatchClick(replaceTrigger);
+      const picker = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-image-replace-picker",
+      );
+      expect(picker).toBeTruthy();
+
+      const searchInput = picker?.querySelector<HTMLInputElement>("input[type='search']") ?? null;
+      expect(searchInput).toBeTruthy();
+      applyTextInput(searchInput, "new");
+      dispatchClick(picker?.querySelector<HTMLButtonElement>(".vault-png-picker-item") ?? null);
+
+      expect(readMarkdown()).toContain("![[images/new.png|Cell label]]");
+      expect(readMarkdown()).not.toContain("![[images/old.png|Cell label]]");
+      expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+      ).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("keeps invalid pipe-like content inside #card on markdown fallback instead of table mode", () => {
+    const markdown = [
+      "#card",
+      "| A | B |",
+      "| not-a-separator |",
+      "#endcard",
+    ].join("\n");
+
+    const { container, cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="card-table-invalid-fallback"
+        markdown={markdown}
+        mode="edit"
+        onChange={() => undefined}
+        renderPreview={(value) => <div>{value}</div>}
+      />,
+    );
+
+    expect(container.querySelector(".markdown-hybrid-card-table-segment .markdown-hybrid-table-block")).toBeNull();
+    const cardFrameText = container.querySelector(".markdown-hybrid-card-block-frame")?.textContent ?? "";
+    expect(cardFrameText).toContain("| A | B |");
+    expect(cardFrameText).toContain("| not-a-separator |");
+    cleanup();
   });
 
   it("closes the table-cell image replace picker via Escape/outside click without markdown changes", () => {
@@ -4995,7 +5183,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("sizes earlier columns by content length while keeping the last column flexible", () => {
+  it("uses weighted responsive column tracks in the hybrid table grid", () => {
     withImmediateRaf(() => {
       const { container, cleanup } = render(
         createElement(MarkdownHybridEditor, {
@@ -5017,9 +5205,8 @@ describe("MarkdownHybridEditor", () => {
       const template = grid?.style.gridTemplateColumns ?? "";
       expect(template.startsWith("36px ")).toBe(true);
       expect(template.includes("minmax(")).toBe(true);
-      expect(template).toContain("minmax(140px, 140px)");
-      expect(template).toMatch(/minmax\(140px, (2|3|4)\d{2}px\)/);
-      expect(template.endsWith("1fr)")).toBe(true);
+      expect(template).toContain("minmax(0, 1fr)");
+      expect(template).toMatch(/minmax\(0,\s*2(\.\d+)?fr\)/);
       cleanup();
     });
   });
@@ -5141,7 +5328,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("inserts a paragraph break inside a table cell on Enter and persists it", () => {
+  it("inserts a multiline break inside a table cell on Enter and persists it", () => {
     withImmediateRaf(() => {
       let latestMarkdown = [
         "| A | B |",
@@ -5179,13 +5366,13 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchKeyDown(textarea, "Enter");
 
-      expect(textarea?.value).toBe("Erste Zeile\n\n");
+      expect(textarea?.value).toBe("Erste Zeile\n");
 
       act(() => {
         textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
       });
 
-      expect(latestMarkdown).toContain("Erste Zeile<br><br>");
+      expect(latestMarkdown).toContain("Erste Zeile<br>");
       cleanup();
     });
   });

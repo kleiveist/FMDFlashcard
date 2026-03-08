@@ -1493,6 +1493,17 @@ body.focus-mode .spaced-repetition-sidebar {
   display: block;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+}
+
+.exam-markdown .exam-table-cell-media .flashcard-media-group,
+.exam-markdown .exam-table-cell-media .flashcard-media-item,
+.exam-markdown .exam-table-cell-media .flashcard-media-entry,
+.exam-markdown .exam-table-cell-media .media-block-card,
+.exam-markdown .exam-table-cell-media .media-block-card-surface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .exam-markdown .exam-table-cell-image,
@@ -1500,6 +1511,7 @@ body.focus-mode .spaced-repetition-sidebar {
   display: block;
   width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
   height: auto;
   max-height: none;
   object-fit: contain;

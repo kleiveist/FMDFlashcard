@@ -60,6 +60,7 @@ type MarkdownHybridTableBlockProps = {
   blockIndex: number;
   raw: string;
   active: boolean;
+  allowCodeView?: boolean;
   disabled?: boolean;
   vaultPngAssets?: VaultPngAsset[] | null;
   renderPreview: (markdown: string) => ReactNode;
@@ -191,10 +192,9 @@ const resolveStandaloneCellPngEmbed = (source: string, scope: string) => {
 };
 
 const TABLE_ROW_GUTTER_WIDTH_PX = 36;
-const TABLE_COLUMN_MIN_WIDTH_PX = 140;
-const TABLE_COLUMN_MAX_WIDTH_PX = 420;
-const TABLE_COLUMN_BASE_PADDING_PX = 44;
-const TABLE_COLUMN_CHAR_WIDTH_PX = 7;
+const TABLE_COLUMN_WEIGHT_MIN = 1;
+const TABLE_COLUMN_WEIGHT_MAX = 2.4;
+const TABLE_COLUMN_WEIGHT_BASE_CHARS = 12;
 
 const estimateCellContentLength = (value: string) => {
   const normalized = value
@@ -215,28 +215,23 @@ const estimateCellContentLength = (value: string) => {
     .reduce((maxLength, line) => Math.max(maxLength, line.trim().length), 0);
 };
 
-const getColumnPixelWidth = (model: MarkdownPipeTableModel, columnIndex: number) => {
+const getColumnTrackWeight = (model: MarkdownPipeTableModel, columnIndex: number) => {
   const headerLength = estimateCellContentLength(model.header[columnIndex]?.raw ?? "");
   const bodyLength = model.bodyRows.reduce((maxLength, row) => {
     return Math.max(maxLength, estimateCellContentLength(row[columnIndex]?.raw ?? ""));
   }, 0);
   const measuredLength = Math.max(headerLength, bodyLength, 8);
+  const weight = measuredLength / TABLE_COLUMN_WEIGHT_BASE_CHARS;
   return Math.max(
-    TABLE_COLUMN_MIN_WIDTH_PX,
-    Math.min(
-      TABLE_COLUMN_MAX_WIDTH_PX,
-      Math.round(TABLE_COLUMN_BASE_PADDING_PX + measuredLength * TABLE_COLUMN_CHAR_WIDTH_PX),
-    ),
+    TABLE_COLUMN_WEIGHT_MIN,
+    Math.min(TABLE_COLUMN_WEIGHT_MAX, Number.parseFloat(weight.toFixed(2))),
   );
 };
 
 const getColumnTemplate = (model: MarkdownPipeTableModel) => {
   const tracks = Array.from({ length: model.columnCount }, (_, columnIndex) => {
-    const width = getColumnPixelWidth(model, columnIndex);
-    const isLastColumn = columnIndex === model.columnCount - 1;
-    return isLastColumn
-      ? `minmax(${TABLE_COLUMN_MIN_WIDTH_PX}px, 1fr)`
-      : `minmax(${TABLE_COLUMN_MIN_WIDTH_PX}px, ${width}px)`;
+    const weight = getColumnTrackWeight(model, columnIndex);
+    return `minmax(0, ${weight}fr)`;
   }).join(" ");
   return `${TABLE_ROW_GUTTER_WIDTH_PX}px ${tracks}`;
 };
@@ -350,6 +345,7 @@ export const MarkdownHybridTableBlock = ({
   blockIndex,
   raw,
   active,
+  allowCodeView = true,
   disabled = false,
   vaultPngAssets,
   renderPreview,
@@ -441,6 +437,13 @@ export const MarkdownHybridTableBlock = ({
   }, [codeDirty, raw]);
 
   useEffect(() => {
+    if (allowCodeView || viewMode !== "code") {
+      return;
+    }
+    setViewMode("grid");
+  }, [allowCodeView, viewMode]);
+
+  useEffect(() => {
     columnLaneRefs.current = columnLaneRefs.current.slice(0, parsedModel.columnCount);
     bodyRowLaneRefs.current = bodyRowLaneRefs.current.slice(0, parsedModel.bodyRows.length);
   }, [parsedModel.bodyRows.length, parsedModel.columnCount]);
@@ -482,6 +485,9 @@ export const MarkdownHybridTableBlock = ({
   }, [activeCell, cellDirty, cellDraft, commitModel, parsedModel]);
 
   const flushCodeView = useCallback(() => {
+    if (!allowCodeView) {
+      return true;
+    }
     if (viewMode !== "code") {
       return true;
     }
@@ -513,7 +519,7 @@ export const MarkdownHybridTableBlock = ({
     }
     setViewMode("grid");
     return true;
-  }, [codeDraft, onCommitRaw, raw, viewMode]);
+  }, [allowCodeView, codeDraft, onCommitRaw, raw, viewMode]);
 
   const flush = useCallback(() => {
     if (!flushActiveCell()) {
@@ -544,7 +550,7 @@ export const MarkdownHybridTableBlock = ({
     if (!active || !pendingActivation) {
       return;
     }
-    if (pendingActivation.focusTarget === "code") {
+    if (pendingActivation.focusTarget === "code" && allowCodeView) {
       setViewMode("code");
     }
     if (pendingActivation.cell) {
@@ -562,7 +568,7 @@ export const MarkdownHybridTableBlock = ({
       setRowSelection(null);
     }
     onConsumePendingActivation();
-  }, [active, onConsumePendingActivation, parsedModel, pendingActivation]);
+  }, [active, allowCodeView, onConsumePendingActivation, parsedModel, pendingActivation]);
 
   useLayoutEffect(() => {
     if (!active || disabled) {
@@ -892,6 +898,9 @@ export const MarkdownHybridTableBlock = ({
   );
 
   const handleToggleView = useCallback(() => {
+    if (!allowCodeView) {
+      return;
+    }
     if (disabled) {
       return;
     }
@@ -912,7 +921,17 @@ export const MarkdownHybridTableBlock = ({
     setCodeDraft(raw);
     setCodeDirty(false);
     setViewMode("code");
-  }, [active, clearSelections, disabled, flushActiveCell, flushCodeView, onRequestActivate, raw, viewMode]);
+  }, [
+    active,
+    allowCodeView,
+    clearSelections,
+    disabled,
+    flushActiveCell,
+    flushCodeView,
+    onRequestActivate,
+    raw,
+    viewMode,
+  ]);
 
   const handleOpenCellImageReplacePicker = useCallback(
     (location: MarkdownHybridTableCellLocation) => (event: MouseEvent<HTMLButtonElement>) => {
@@ -1484,18 +1503,6 @@ export const MarkdownHybridTableBlock = ({
         }
         return;
       }
-      if (event.key === "Enter" && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
-        event.preventDefault();
-        const textarea = event.currentTarget;
-        const nextSelectionStart = textarea.selectionStart ?? textarea.value.length;
-        const nextSelectionEnd = textarea.selectionEnd ?? nextSelectionStart;
-        textarea.setRangeText("\n\n", nextSelectionStart, nextSelectionEnd, "end");
-        setCellDraft(textarea.value);
-        setCellDirty(textarea.value !== fromCellStorageValue(getCellValue(parsedModel, activeCell)));
-        textarea.style.height = "0px";
-        textarea.style.height = `${textarea.scrollHeight}px`;
-        return;
-      }
       if (event.key === "Enter" && !event.shiftKey && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         if (activeCell.rowBand === "header") {
@@ -1516,6 +1523,19 @@ export const MarkdownHybridTableBlock = ({
           return;
         }
         handleInsertRowAt(parsedModel.bodyRows.length);
+        return;
+      }
+      if (event.key === "Enter" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        const textarea = event.currentTarget;
+        const nextSelectionStart = textarea.selectionStart ?? textarea.value.length;
+        const nextSelectionEnd = textarea.selectionEnd ?? nextSelectionStart;
+        const lineBreak = event.shiftKey ? "\n\n" : "\n";
+        textarea.setRangeText(lineBreak, nextSelectionStart, nextSelectionEnd, "end");
+        setCellDraft(textarea.value);
+        setCellDirty(textarea.value !== fromCellStorageValue(getCellValue(parsedModel, activeCell)));
+        textarea.style.height = "0px";
+        textarea.style.height = `${textarea.scrollHeight}px`;
         return;
       }
       if (event.key === "Escape") {
@@ -1792,14 +1812,14 @@ export const MarkdownHybridTableBlock = ({
     <div
       ref={tableRootRef}
       className={`markdown-hybrid-table-block${active ? " is-active" : ""}${disabled ? " is-disabled" : ""}${
-        viewMode === "code" ? " is-code-view" : " is-grid-view"
+        allowCodeView && viewMode === "code" ? " is-code-view" : " is-grid-view"
       }`}
       data-md-block-control="true"
       tabIndex={active && !disabled ? 0 : -1}
       onMouseDown={handleFrameMouseDown}
       onKeyDown={handleRootKeyDown}
     >
-      {active ? (
+      {active && allowCodeView ? (
         <div className="markdown-hybrid-table-block-header">
           <button
             type="button"
@@ -1818,7 +1838,7 @@ export const MarkdownHybridTableBlock = ({
       {repairNotice ? (
         <div className="markdown-hybrid-table-repair-notice">{repairNotice}</div>
       ) : null}
-      {viewMode === "code" ? (
+      {allowCodeView && viewMode === "code" ? (
         <div className="markdown-hybrid-table-code-shell">
           {codeError ? (
             <div className="markdown-hybrid-table-code-error">{codeError}</div>

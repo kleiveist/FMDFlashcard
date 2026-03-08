@@ -529,6 +529,17 @@
   display: block;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+}
+
+.flashcard-table-cell-media .flashcard-media-group,
+.flashcard-table-cell-media .flashcard-media-item,
+.flashcard-table-cell-media .flashcard-media-entry,
+.flashcard-table-cell-media .media-block-card,
+.flashcard-table-cell-media .media-block-card-surface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .flashcard-table-cell-image,
@@ -536,6 +547,7 @@
   display: block;
   width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
   height: auto;
   max-height: none;
   object-fit: contain;
