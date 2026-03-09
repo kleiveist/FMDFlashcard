@@ -59,6 +59,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
 import { ExamFilePanel } from "./pages/exam-simulation/components/ExamFilePanel";
+import type { ExamCombinationMode } from "./lib/examMixedSession";
 import type { StudySectionKey } from "./lib/studySections";
 
 type WalletGateId = "custom-path" | "profile" | "sync-provider";
@@ -79,6 +80,7 @@ const AppContent = () => {
     preview,
     settings,
     settingsNav,
+    pointsProfiles,
     spacedRepetition,
     userVault,
     vault,
@@ -103,6 +105,8 @@ const AppContent = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [openGateId, setOpenGateId] = useState<WalletGateId | null>(null);
   const [dismissedGateId, setDismissedGateId] = useState<WalletGateId | null>(null);
+  const [noteModalCombinationMode, setNoteModalCombinationMode] =
+    useState<ExamCombinationMode>("fully-mixed");
   const isDashboard = activeTab === "dashboard";
   const platform = getShortcutPlatform();
   const layoutMode = useLayoutMode();
@@ -118,6 +122,57 @@ const AppContent = () => {
     activeTab !== "dashboard" &&
     (activeTab === "exam" ? isExamNoteViewport : isNoteViewport);
   const isNoteModalEligible = isDashboardNoteEligible || isSectionNoteEligible;
+  const setSelectedPointsProfileId = pointsProfiles.setSelectedProfileId;
+  const examRunProfileOptions = useMemo(
+    () =>
+      pointsProfiles.profiles.map((profile) => ({
+        id: profile.id,
+        name: profile.name,
+      })),
+    [pointsProfiles.profiles],
+  );
+  const noteModalSelectedProfileId =
+    pointsProfiles.selectedProfileId ?? pointsProfiles.defaultProfileId ?? null;
+  const noteModalSelectedProfile = useMemo(
+    () =>
+      pointsProfiles.profiles.find((profile) => profile.id === noteModalSelectedProfileId) ??
+      null,
+    [noteModalSelectedProfileId, pointsProfiles.profiles],
+  );
+  const noteModalModeLabel =
+    noteModalCombinationMode === "fully-mixed"
+      ? "Fully mixed"
+      : noteModalCombinationMode === "sequential"
+        ? "Sequential"
+        : noteModalCombinationMode === "sequential-shuffled"
+          ? "Sequential + internal shuffle"
+          : "Nested";
+  const selectedValidExamEntries = useMemo(() => {
+    const validByPath = new Map(
+      examFiles
+        .filter((entry) => entry.status === "valid")
+        .map((entry) => [entry.path, entry] as const),
+    );
+    return selectedExamFilePaths.flatMap((path) => {
+      const entry = validByPath.get(path);
+      return entry ? [entry] : [];
+    });
+  }, [examFiles, selectedExamFilePaths]);
+  const selectedValidTaskCount = selectedValidExamEntries.reduce(
+    (sum, entry) => sum + entry.taskCount,
+    0,
+  );
+  const noteModalSelectionSummary = `${selectedExamFilePaths.length} selected, ${selectedValidExamEntries.length} included, ${selectedValidTaskCount} tasks total`;
+  const noteModalRunSummaryFlowText = `SELECTION ${noteModalSelectionSummary} · MAX POINTS IN RUN ${noteModalSelectedProfile?.maxTotalPoints ?? 0} · MODE ${noteModalModeLabel} · PROFILE ${noteModalSelectedProfile?.name ?? "-"} · DURATION ${noteModalSelectedProfile?.durationMinutes ?? 0} minutes`;
+  const handleNoteModalRunProfileChange = useCallback(
+    (profileId: string) => {
+      if (!profileId) {
+        return;
+      }
+      setSelectedPointsProfileId(profileId);
+    },
+    [setSelectedPointsProfileId],
+  );
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
   const closeBinding = useMemo(
     () =>
@@ -490,7 +545,16 @@ const AppContent = () => {
             listError={examFilesError}
             selectedPaths={selectedExamFilePaths}
             vaultPath={vault.vaultPath}
+            runSummaryFlowText={noteModalRunSummaryFlowText}
+            selectedProfileId={noteModalSelectedProfileId}
+            profileOptions={examRunProfileOptions}
+            onProfileChange={handleNoteModalRunProfileChange}
             onToggleFile={actions.handleToggleExamFileSelection}
+            onSetSelectedPaths={actions.handleSetSelectedExamFiles}
+            onClearSelection={actions.handleClearSelectedExamFiles}
+            onMoveSelectedFile={actions.handleMoveSelectedExamFile}
+            combinationMode={noteModalCombinationMode}
+            onCombinationModeChange={setNoteModalCombinationMode}
           />
         ) : (
           <NoteFilesPanel

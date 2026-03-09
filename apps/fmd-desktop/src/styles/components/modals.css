@@ -116,6 +116,13 @@
   min-height: 0;
 }
 
+@media (max-width: 1199.98px) {
+  .note-modal-panel {
+    width: min(1100px, calc(100vw - 48px));
+    max-width: calc(100vw - 48px);
+  }
+}
+
 .hub-modal-body {
   flex: 1 1 auto;
   min-height: 0;

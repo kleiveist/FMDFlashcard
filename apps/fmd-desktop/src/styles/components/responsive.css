@@ -24,6 +24,9 @@
 
   .exam-layout {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "exam-sidebar"
+      "exam-main";
   }
 
   .exam-files-panel {
@@ -54,6 +57,25 @@
 
   .sr-note-files-panel {
     display: none;
+  }
+
+  .exam-page .sr-user-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .exam-page .sr-user-panel > .panel-body {
+    min-height: 0;
+    justify-content: flex-start;
+  }
+
+  .exam-page .sr-user-panel > .panel-body > .setting-row:first-child {
+    order: -1;
+  }
+
+  .exam-page .sr-user-panel .sr-user-actions {
+    align-items: flex-start;
+    justify-content: flex-start;
   }
 
   .fast-flashcard-main .fast-flashcard-panel {
@@ -90,6 +112,26 @@
   }
 }
 
+@media (min-width: 1200px) {
+  .exam-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "exam-main"
+      "exam-sidebar";
+  }
+
+  .exam-main,
+  .exam-panel,
+  .exam-sidebar {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .exam-sidebar .exam-files-panel {
+    order: -1;
+  }
+}
+
 body.focus-mode .study-section-nav {
   display: none !important;
 }
@@ -118,6 +160,9 @@ body.focus-mode .app-shell[data-active-tab="exam"] .mobile-nav-header {
 
   .exam-layout {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "exam-sidebar"
+      "exam-main";
   }
 
   .fast-flashcard-layout {
@@ -138,8 +183,7 @@ body.focus-mode .app-shell[data-active-tab="exam"] .mobile-nav-header {
 
   .flashcard-note-files-panel,
   .fast-note-files-panel,
-  .sr-note-files-panel,
-  .exam-files-panel {
+  .sr-note-files-panel {
     display: none;
   }
 
@@ -234,12 +278,16 @@ body.focus-mode .app-shell[data-active-tab="exam"] .mobile-nav-header {
     gap: 8px;
   }
 
-  .exam-mix-info-header {
-    align-items: flex-start;
+  .exam-file-toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .exam-mix-actions {
-    width: 100%;
-    justify-content: space-between;
+  .exam-selected-order {
+    gap: 6px;
+  }
+
+  .exam-selected-chip {
+    min-width: 116px;
   }
 }

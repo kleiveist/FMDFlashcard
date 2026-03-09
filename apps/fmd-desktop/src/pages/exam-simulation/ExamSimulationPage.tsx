@@ -67,17 +67,15 @@ export const ExamSimulationPage = () => {
     examRunDeleteError,
     selectedExamPaths,
     selectedExamCount,
+    selectedIncludedExamCount,
     selectedExamParseState,
     selectedExamParseError,
-    sessionInvalidationMessage,
-    previewExamParse,
-    mixSeed,
-    mixSessionEnabled,
-    mixSessionExamFiles,
-    canReshuffleMix,
+    combinationMode,
+    runProfileOptions,
+    selectedRunProfileId,
+    previewDurationMinutes,
     plannedTaskCount,
     plannedMaxPoints,
-    hasTaskCountMismatch,
     stage,
     examRunning,
     activeTaskIndex,
@@ -113,8 +111,12 @@ export const ExamSimulationPage = () => {
     resultTaskCardWrapNoticeById,
     handleDeleteExamRun,
     handleToggleExamSelection,
+    handleSelectVisibleExamFiles,
+    handleClearExamSelection,
+    handleMoveSelectedExamFile,
+    handleCombinationModeChange,
+    handleRunProfileChange,
     handleStartExam,
-    handleReshuffleMix,
     handleResetExam,
     handleSubmitExam,
     handleStartScoring,
@@ -166,6 +168,27 @@ export const ExamSimulationPage = () => {
       highlight: true,
     });
   }, [missingExamSettings]);
+  const selectedRunProfileName =
+    runProfileOptions.find((profile) => profile.id === selectedRunProfileId)?.name ?? null;
+  const runSummaryModeLabel =
+    combinationMode === "fully-mixed"
+      ? "Fully mixed"
+      : combinationMode === "sequential"
+        ? "Sequential"
+        : combinationMode === "sequential-shuffled"
+          ? "Sequential + internal shuffle"
+          : "Nested";
+  const runSelectionSummary = `${selectedExamCount} selected, ${selectedIncludedExamCount} included, ${plannedTaskCount} tasks total`;
+  const hasSelectedExamFiles = selectedExamCount > 0;
+  const runSummarySelectionValue = hasSelectedExamFiles ? runSelectionSummary : "--";
+  const runSummaryMaxPointsValue = hasSelectedExamFiles ? String(plannedMaxPoints) : "--";
+  const runSummaryModeValue = hasSelectedExamFiles ? runSummaryModeLabel : "--";
+  const runSummaryProfileValue =
+    hasSelectedExamFiles ? (selectedRunProfileName ?? "-") : "--";
+  const runSummaryDurationValue = hasSelectedExamFiles
+    ? `${previewDurationMinutes} minutes`
+    : "--";
+  const runSummaryFlowText = `SELECTION ${runSelectionSummary} · MAX POINTS IN RUN ${plannedMaxPoints} · MODE ${runSummaryModeLabel} · PROFILE ${selectedRunProfileName ?? "-"} · DURATION ${previewDurationMinutes} minutes`;
 
   const examFilePanelProps = {
     files: examFiles,
@@ -173,6 +196,13 @@ export const ExamSimulationPage = () => {
     listError: examFilesError,
     selectedPaths: selectedExamPaths,
     vaultPath: vault.vaultPath,
+    runSummaryFlowText,
+    selectedProfileId: selectedRunProfileId,
+    profileOptions: runProfileOptions,
+    onProfileChange: handleRunProfileChange,
+    onSetSelectedPaths: handleSelectVisibleExamFiles,
+    onClearSelection: handleClearExamSelection,
+    onMoveSelectedFile: handleMoveSelectedExamFile,
   };
   const examStageControls = useMemo<ExamStageControls>(
     () => ({
@@ -252,12 +282,6 @@ export const ExamSimulationPage = () => {
   const deleteTargetName = selectedUser?.name ?? "";
   const canConfirmDelete =
     Boolean(deleteTargetName) && deleteConfirmInput.trim() === deleteTargetName;
-  const shortenExamLabel = useCallback((value: string, maxLength = 24) => {
-    if (value.length <= maxLength) {
-      return value;
-    }
-    return `${value.slice(0, Math.max(1, maxLength - 3))}...`;
-  }, []);
   const renderOverviewToggle = () => (
     <div className="exam-overview-toggle">
       <div className="exam-overview-toggle-header">
@@ -285,16 +309,6 @@ export const ExamSimulationPage = () => {
             Statistics
           </button>
         </div>
-        {isTableView ? (
-          <button
-            type="button"
-            className="primary small"
-            onClick={phaseButton.onClick}
-            disabled={phaseButton.disabled}
-          >
-            {phaseButton.label}
-          </button>
-        ) : null}
       </div>
     </div>
   );
@@ -514,6 +528,16 @@ export const ExamSimulationPage = () => {
           {stage === "idle" || isRunnerStage ? (
             <section className="panel exam-panel">
               <div className="exam-panel-toolbar">
+                {stage === "idle" && overviewTab === "ready" ? (
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={phaseButton.onClick}
+                    disabled={phaseButton.disabled}
+                  >
+                    Exam starten
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className={`focus-toggle ${isViewMode ? "active" : ""}`}
@@ -537,43 +561,28 @@ export const ExamSimulationPage = () => {
                   </svg>
                 </button>
               </div>
-              {mixSessionEnabled ? (
-                <div className="exam-mix-info">
-                  <div className="exam-mix-info-header">
-                    <strong>
-                      Mix-Modus aktiv: {mixSessionExamFiles.length} Exams geladen
-                    </strong>
-                    <div className="exam-mix-actions">
-                      <span className="muted" title={mixSeed ?? undefined}>
-                        Seed: {mixSeed ?? "-"}
-                      </span>
-                      <button
-                        type="button"
-                        className="ghost small"
-                        onClick={handleReshuffleMix}
-                        disabled={!canReshuffleMix}
-                      >
-                        Neu mischen
-                      </button>
-                    </div>
-                  </div>
-                  <div className="exam-mix-stack" role="list" aria-label="Exam mix sources">
-                    {mixSessionExamFiles.map((file) => {
-                      const label = file.relative_path || file.path;
-                      return (
-                        <span
-                          key={file.path}
-                          className="exam-mix-segment"
-                          role="listitem"
-                          title={label}
-                        >
-                          {shortenExamLabel(label)}
-                        </span>
-                      );
-                    })}
-                  </div>
+              <div className="exam-mix-info" role="list" aria-label="Run summary">
+                <div className="exam-mix-summary-block" role="listitem">
+                  <p className="exam-mix-summary-label">Selection</p>
+                  <p className="exam-mix-summary-value">{runSummarySelectionValue}</p>
                 </div>
-              ) : null}
+                <div className="exam-mix-summary-block" role="listitem">
+                  <p className="exam-mix-summary-label">Max points in run</p>
+                  <p className="exam-mix-summary-value">{runSummaryMaxPointsValue}</p>
+                </div>
+                <div className="exam-mix-summary-block" role="listitem">
+                  <p className="exam-mix-summary-label">Mode</p>
+                  <p className="exam-mix-summary-value">{runSummaryModeValue}</p>
+                </div>
+                <div className="exam-mix-summary-block" role="listitem">
+                  <p className="exam-mix-summary-label">Profile</p>
+                  <p className="exam-mix-summary-value">{runSummaryProfileValue}</p>
+                </div>
+                <div className="exam-mix-summary-block" role="listitem">
+                  <p className="exam-mix-summary-label">Duration</p>
+                  <p className="exam-mix-summary-value">{runSummaryDurationValue}</p>
+                </div>
+              </div>
               {stage === "idle" ? (
                 <div className="exam-overview">
                   <div className="exam-overview-body">
@@ -583,13 +592,6 @@ export const ExamSimulationPage = () => {
                         previewState={selectedExamParseState}
                         previewError={selectedExamParseError}
                         examEmptyState={examEmptyState}
-                        availableTaskCount={previewExamParse.tasks.length}
-                        plannedTaskCount={plannedTaskCount}
-                        plannedMaxPoints={plannedMaxPoints}
-                        hasTaskCountMismatch={hasTaskCountMismatch}
-                        sessionInvalidationMessage={sessionInvalidationMessage}
-                        onStartExam={phaseButton.onClick}
-                        startDisabled={phaseButton.disabled}
                         missingSettings={missingExamSettings}
                         onOpenExamSettings={handleOpenExamSettings}
                       />
@@ -755,6 +757,8 @@ export const ExamSimulationPage = () => {
           <ExamFilePanel
             {...examFilePanelProps}
             onToggleFile={handleToggleExamSelection}
+            combinationMode={combinationMode}
+            onCombinationModeChange={handleCombinationModeChange}
             className="exam-files-panel"
           />
         </div>

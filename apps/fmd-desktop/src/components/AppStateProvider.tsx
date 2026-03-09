@@ -53,6 +53,7 @@ import { useSpacedRepetition } from "../features/spaced-repetition/useSpacedRepe
 import { useUserVault } from "../features/user-vault/useUserVault";
 import { useVault } from "../features/vault/useVault";
 import { useExamFiles } from "../features/exam/useExamFiles";
+import type { ExamFileEntry } from "../features/exam/types";
 import { useExamPointsProfiles } from "../features/exam-points/useExamPointsProfiles";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 import { VaultManagerModal } from "./VaultManagerModal";
@@ -65,8 +66,9 @@ type AppActions = {
   handleOpenVaultManager: () => void;
   handleClearVault: () => void;
   handleSelectFile: (file: VaultFile) => void;
-  handleToggleExamFileSelection: (file: VaultFile) => void;
+  handleToggleExamFileSelection: (path: string) => void;
   handleSetSelectedExamFiles: (paths: string[]) => void;
+  handleMoveSelectedExamFile: (sourcePath: string, targetPath: string) => void;
   handleClearSelectedExamFiles: () => void;
   handleThemeChange: (nextTheme: ThemeMode) => void;
   handleAccentPick: (value: string) => void;
@@ -82,7 +84,7 @@ type AppState = {
   actions: AppActions;
   flashcards: ReturnType<typeof useFlashcards>;
   fastFlashcards: ReturnType<typeof useFlashcards>;
-  examFiles: VaultFile[];
+  examFiles: ExamFileEntry[];
   examFilesState: LoadState;
   examFilesError: string;
   selectedExamFilePaths: string[];
@@ -298,17 +300,39 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     [normalizeSelectedExamFiles],
   );
   const handleToggleExamFileSelection = useCallback(
-    (file: VaultFile) => {
-      if (!examFilePathSet.has(file.path)) {
+    (path: string) => {
+      if (!examFilePathSet.has(path)) {
         return;
       }
       setSelectedExamFilePaths((previous) =>
-        previous.includes(file.path)
-          ? previous.filter((path) => path !== file.path)
-          : [...previous, file.path],
+        previous.includes(path)
+          ? previous.filter((entry) => entry !== path)
+          : [...previous, path],
       );
     },
     [examFilePathSet],
+  );
+  const handleMoveSelectedExamFile = useCallback(
+    (sourcePath: string, targetPath: string) => {
+      if (!sourcePath || !targetPath || sourcePath === targetPath) {
+        return;
+      }
+      setSelectedExamFilePaths((previous) => {
+        const sourceIndex = previous.indexOf(sourcePath);
+        const targetIndex = previous.indexOf(targetPath);
+        if (sourceIndex < 0 || targetIndex < 0) {
+          return previous;
+        }
+        const next = [...previous];
+        const [moved] = next.splice(sourceIndex, 1);
+        if (!moved) {
+          return previous;
+        }
+        next.splice(Math.max(0, targetIndex), 0, moved);
+        return next;
+      });
+    },
+    [],
   );
   const handleClearSelectedExamFiles = useCallback(() => {
     setSelectedExamFilePaths([]);
@@ -1230,6 +1254,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleSelectFile,
       handleToggleExamFileSelection,
       handleSetSelectedExamFiles,
+      handleMoveSelectedExamFile,
       handleClearSelectedExamFiles,
       handleThemeChange,
       handleAccentPick,

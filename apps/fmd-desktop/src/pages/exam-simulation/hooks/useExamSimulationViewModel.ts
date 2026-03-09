@@ -49,7 +49,6 @@ import {
   type ExamRunStorage,
 } from "../../../lib/examRuns";
 import {
-  AUTO_CARD_TYPES,
   findExamTaskWrapper,
   resolveFlashcardPartAutoCardType,
   unwrapExamTask,
@@ -66,22 +65,22 @@ import {
   resolveTaskTypePointsFromMap,
 } from "../../../lib/exam/pointsScoring";
 import {
-  buildMixedSessionTasks,
-  buildSingleSessionTasks,
+  buildCombinedSessionTasks,
   createMixSeed,
-  type DuplicateTaskNumberWarning,
+  type ExamCombinationMode,
   type ExamSessionSource,
   type ExamSessionTask,
 } from "../../../lib/examMixedSession";
 import { type VaultFile } from "../../../lib/tree";
 import type { LoadState } from "../../../lib/types";
+import type { ExamFileEntry } from "../../../features/exam/types";
+import { resolveExamFileStatusReason } from "../../../features/exam/types";
 import {
   appendExamRunStore,
   deleteExamRunStoreEntry,
   loadExamRunStore,
   saveExamRunStore,
 } from "../../../features/user-vault/storage";
-import { resolveExamTaskFrontmatterValue } from "../../../features/exam-points/frontmatterTask";
 import { upsertExamResultStatsFrontmatter } from "../../../features/exam-results/frontmatterStats";
 import type {
   ExamCorrectionState,
@@ -97,38 +96,34 @@ type ExamSettingsSnapshot = {
   durationMinutes: number;
   timeLimitEnabled: boolean;
   aiEvaluation: ExamAiEvaluation;
+  pointsProfile: ExamPointsProfile | null;
+  combinationMode: ExamCombinationMode;
   pointsProfileAssignments: ExamRunPointsProfileAssignment[];
 };
 
 type SelectedExamParseEntry = {
   tasks: ExamTask[];
   hasExamBlock: boolean;
-  taskProfileName: string | null;
 };
 
 type PreviewSession = {
   tasks: ExamSessionTask[];
   hasExamBlock: boolean;
-  duplicateTaskNumberWarnings: DuplicateTaskNumberWarning[];
-};
-
-type ResolvedExamProfileAssignment = {
-  examPath: string;
-  sourceTitle: string;
-  requestedName: string | null;
-  profile: ExamPointsProfile | null;
-  missing: boolean;
 };
 
 type SessionTaskPointsPlan = {
   taskPoints: number[];
   maxTotalPoints: number;
   profileAssignments: ExamRunPointsProfileAssignment[];
-  missingAssignments: ResolvedExamProfileAssignment[];
 };
 
-const buildSelectionSignature = (paths: string[]) =>
-  paths.slice().sort((left, right) => left.localeCompare(right)).join("|");
+type SelectedExamIgnoredEntry = {
+  path: string;
+  sourceTitle: string;
+  reason: string;
+};
+
+const buildSelectionSignature = (paths: string[]) => paths.join("|");
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -141,20 +136,6 @@ const normalizeAwardedPoints = (value: number | null, maxPoints: number) => {
     return 0;
   }
   return clampNumber(Math.floor(value), 0, maxPoints);
-};
-
-const resolveDurationFromProfileAssignments = (
-  assignments: ResolvedExamProfileAssignment[],
-  fallbackDuration: number,
-) => {
-  const assignedDurations = assignments
-    .map((assignment) => assignment.profile)
-    .filter((profile): profile is ExamPointsProfile => Boolean(profile))
-    .map((profile) => normalizeDurationMinutes(profile.durationMinutes));
-  if (assignedDurations.length > 0) {
-    return Math.max(...assignedDurations);
-  }
-  return normalizeDurationMinutes(fallbackDuration);
 };
 
 const isAutoGradedTask = (task: ExamTask) =>
@@ -195,9 +176,17 @@ export const useExamSimulationViewModel = () => {
   const [selectedExamParses, setSelectedExamParses] = useState<
     Record<string, SelectedExamParseEntry>
   >({});
+  const [selectedExamRuntimeIgnored, setSelectedExamRuntimeIgnored] = useState<
+    SelectedExamIgnoredEntry[]
+  >([]);
   const [selectedExamParseState, setSelectedExamParseState] =
     useState<LoadState>("idle");
   const [selectedExamParseError, setSelectedExamParseError] = useState("");
+  const [combinationMode, setCombinationMode] =
+    useState<ExamCombinationMode>("fully-mixed");
+  const [selectedRunProfileId, setSelectedRunProfileId] = useState<string | null>(
+    null,
+  );
   const [mixSeed, setMixSeed] = useState<string>(() => createMixSeed());
   const [sessionInvalidationMessage, setSessionInvalidationMessage] = useState("");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
@@ -238,7 +227,6 @@ export const useExamSimulationViewModel = () => {
   const examStartTimeRef = useRef<number | null>(null);
   const examRunRecordedRef = useRef(false);
   const selectionSignatureRef = useRef("");
-  const duplicateWarningSignatureRef = useRef("");
 
 
   useEffect(() => {
@@ -322,19 +310,52 @@ export const useExamSimulationViewModel = () => {
     () =>
       selectedExamPaths
         .map((path) => examFilesByPath.get(path))
-        .filter((file): file is VaultFile => Boolean(file)),
+        .filter((file): file is ExamFileEntry => Boolean(file)),
     [examFilesByPath, selectedExamPaths],
   );
+  const selectedExamRunnableFiles = useMemo(
+    () => selectedExamFiles.filter((file) => file.status === "valid"),
+    [selectedExamFiles],
+  );
+  const selectedExamIgnoredByScan = useMemo<SelectedExamIgnoredEntry[]>(
+    () =>
+      selectedExamFiles
+        .filter((file) => file.status !== "valid")
+        .map((file) => ({
+          path: file.path,
+          sourceTitle: file.relative_path || file.path,
+          reason: resolveExamFileStatusReason(file),
+        })),
+    [selectedExamFiles],
+  );
   const selectedExamCount = selectedExamFiles.length;
-  const mixModeEnabled = selectedExamCount >= 2;
+  const selectedRunnableExamCount = selectedExamRunnableFiles.length;
   const selectedExamSelectionSignature = useMemo(
     () => buildSelectionSignature(selectedExamPaths),
     [selectedExamPaths],
   );
 
   useEffect(() => {
-    if (selectedExamCount === 0) {
+    if (
+      selectedRunProfileId &&
+      pointsProfiles.profiles.some((profile) => profile.id === selectedRunProfileId)
+    ) {
+      return;
+    }
+    setSelectedRunProfileId(pointsProfiles.defaultProfileId ?? null);
+  }, [pointsProfiles.defaultProfileId, pointsProfiles.profiles, selectedRunProfileId]);
+
+  const selectedRunProfile = useMemo(
+    () =>
+      pointsProfiles.profiles.find((profile) => profile.id === selectedRunProfileId) ??
+      null,
+    [pointsProfiles.profiles, selectedRunProfileId],
+  );
+
+  useEffect(() => {
+    if (selectedRunnableExamCount === 0) {
       setSelectedExamParses({});
+      setSelectedExamRuntimeIgnored([]);
       setSelectedExamParseState("idle");
       setSelectedExamParseError("");
       return;
@@ -346,14 +367,13 @@ export const useExamSimulationViewModel = () => {
 
     const parseSelectedExamFiles = async () => {
       const results = await Promise.allSettled(
-        selectedExamFiles.map(async (file) => {
+        selectedExamRunnableFiles.map(async (file) => {
           const contents = await invoke<string>("read_text_file", {
             path: file.path,
           });
           return {
             file,
             parsed: parseExamTasks(contents),
-            taskProfileName: resolveExamTaskFrontmatterValue(contents),
           };
         }),
       );
@@ -363,28 +383,47 @@ export const useExamSimulationViewModel = () => {
       }
 
       const nextParses: Record<string, SelectedExamParseEntry> = {};
+      const runtimeIgnored: SelectedExamIgnoredEntry[] = [];
       let failures = 0;
 
       results.forEach((result, index) => {
-        const file = selectedExamFiles[index];
+        const file = selectedExamRunnableFiles[index];
         if (!file) {
           return;
         }
         if (result.status === "fulfilled") {
-          nextParses[file.path] = {
-            ...result.value.parsed,
-            taskProfileName: result.value.taskProfileName,
-          };
+          const parsed = result.value.parsed;
+          if (parsed.hasExamBlock && parsed.tasks.length > 0) {
+            nextParses[file.path] = {
+              tasks: parsed.tasks,
+              hasExamBlock: parsed.hasExamBlock,
+            };
+            return;
+          }
+          runtimeIgnored.push({
+            path: file.path,
+            sourceTitle: file.relative_path || file.path,
+            reason: "Datei enthaelt keinen gueltigen Exam-Block mit Aufgaben mehr.",
+          });
           return;
         }
         failures += 1;
+        runtimeIgnored.push({
+          path: file.path,
+          sourceTitle: file.relative_path || file.path,
+          reason: asErrorMessage(
+            result.reason,
+            "Datei konnte beim Start nicht gelesen werden.",
+          ),
+        });
         console.warn("Failed to parse selected exam file", file.path, result.reason);
       });
 
       setSelectedExamParses(nextParses);
+      setSelectedExamRuntimeIgnored(runtimeIgnored);
       if (failures > 0) {
         setSelectedExamParseError(
-          failures === selectedExamFiles.length
+          failures === selectedExamRunnableFiles.length
             ? "Ausgewaehlte Exam-Dateien konnten nicht geladen werden."
             : `${failures} ausgewaehlte Exam-Datei(en) konnten nicht geladen werden.`,
         );
@@ -397,14 +436,14 @@ export const useExamSimulationViewModel = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedExamCount, selectedExamFiles]);
+  }, [selectedRunnableExamCount, selectedExamRunnableFiles]);
 
   const selectedExamSources = useMemo(
     () =>
-      selectedExamFiles
+      selectedExamRunnableFiles
         .map((file) => {
           const parsed = selectedExamParses[file.path];
-          if (!parsed) {
+          if (!parsed || parsed.tasks.length === 0 || !parsed.hasExamBlock) {
             return null;
           }
           return {
@@ -414,71 +453,56 @@ export const useExamSimulationViewModel = () => {
           } satisfies ExamSessionSource;
         })
         .filter((source): source is ExamSessionSource => Boolean(source)),
-    [selectedExamFiles, selectedExamParses],
+    [selectedExamParses, selectedExamRunnableFiles],
+  );
+
+  const selectedExamIgnoredEntries = useMemo<SelectedExamIgnoredEntry[]>(
+    () => [...selectedExamIgnoredByScan, ...selectedExamRuntimeIgnored],
+    [selectedExamIgnoredByScan, selectedExamRuntimeIgnored],
+  );
+  const selectedIncludedExamCount = selectedExamSources.length;
+
+  const selectedValidTaskCount = useMemo(
+    () =>
+      selectedExamSources.reduce(
+        (sum, source) => sum + source.tasks.length,
+        0,
+      ),
+    [selectedExamSources],
   );
 
   const previewSession = useMemo<PreviewSession>(() => {
-    const hasAllParses = selectedExamSources.length === selectedExamCount;
-    if (selectedExamCount === 0 || selectedExamParseState !== "idle" || !hasAllParses) {
+    if (
+      selectedExamSources.length === 0 ||
+      selectedExamParseState !== "idle" ||
+      selectedRunnableExamCount === 0
+    ) {
       return {
         tasks: [] as ExamSessionTask[],
         hasExamBlock: false,
-        duplicateTaskNumberWarnings: [],
       };
     }
 
-    if (selectedExamCount === 1) {
-      const source = selectedExamSources[0];
-      if (!source) {
-        return {
-          tasks: [] as ExamSessionTask[],
-          hasExamBlock: false,
-          duplicateTaskNumberWarnings: [],
-        };
-      }
-      return {
-        tasks: buildSingleSessionTasks(source, mixSeed),
-        hasExamBlock: selectedExamParses[source.examPath]?.hasExamBlock ?? false,
-        duplicateTaskNumberWarnings: [],
-      };
-    }
-
-    const mixed = buildMixedSessionTasks(selectedExamSources, mixSeed);
-    const hasExamBlock = selectedExamSources.every(
-      (source) => selectedExamParses[source.examPath]?.hasExamBlock ?? false,
+    const combined = buildCombinedSessionTasks(
+      selectedExamSources,
+      mixSeed,
+      combinationMode,
     );
     return {
-      tasks: mixed.tasks,
-      hasExamBlock,
-      duplicateTaskNumberWarnings: mixed.duplicateTaskNumberWarnings,
+      tasks: combined.tasks,
+      hasExamBlock: selectedExamSources.every((source) => {
+        const parsed = selectedExamParses[source.examPath];
+        return Boolean(parsed?.hasExamBlock);
+      }),
     };
   }, [
+    combinationMode,
     mixSeed,
-    selectedExamCount,
     selectedExamParseState,
     selectedExamParses,
     selectedExamSources,
+    selectedRunnableExamCount,
   ]);
-
-  useEffect(() => {
-    const warnings = previewSession.duplicateTaskNumberWarnings;
-    if (warnings.length === 0) {
-      duplicateWarningSignatureRef.current = "";
-      return;
-    }
-    const signature = warnings
-      .map((warning) => `${warning.examPath}:${warning.taskNumber}:${warning.count}`)
-      .join("|");
-    if (duplicateWarningSignatureRef.current === signature) {
-      return;
-    }
-    duplicateWarningSignatureRef.current = signature;
-    warnings.forEach((warning) => {
-      console.warn(
-        `Duplicate task number ${warning.taskNumber}) in ${warning.sourceTitle} (${warning.count} entries).`,
-      );
-    });
-  }, [previewSession.duplicateTaskNumberWarnings]);
 
   const previewExamParse = useMemo(
     () => ({
@@ -488,134 +512,61 @@ export const useExamSimulationViewModel = () => {
     [previewSession.hasExamBlock, previewSession.tasks],
   );
 
-  const selectedExamProfileAssignments = useMemo<ResolvedExamProfileAssignment[]>(
-    () =>
-      selectedExamFiles.map((file) => {
-        const parsed = selectedExamParses[file.path];
-        const requestedNameRaw = parsed?.taskProfileName?.trim() ?? "";
-        if (!requestedNameRaw) {
-          return {
-            examPath: file.path,
-            sourceTitle: file.relative_path || file.path,
-            requestedName: null,
-            profile: null,
-            missing: false,
-          };
-        }
-        const resolved = pointsProfiles.resolveAssignedProfile(requestedNameRaw);
-        return {
-          examPath: file.path,
-          sourceTitle: file.relative_path || file.path,
-          requestedName: resolved.requestedName,
-          profile: resolved.profile,
-          missing: resolved.missing,
-        };
-      }),
-    [pointsProfiles, selectedExamFiles, selectedExamParses],
-  );
-
-  const selectedExamProfileAssignmentMap = useMemo(
-    () =>
-      new Map(
-        selectedExamProfileAssignments.map((assignment) => [
-          assignment.examPath,
-          assignment,
-        ]),
-      ),
-    [selectedExamProfileAssignments],
-  );
-  const taskOrderProfileFallbackByExamPath = useMemo(() => {
-    const fallbackMap = new Map<string, boolean>();
-    selectedExamProfileAssignments.forEach((assignment) => {
-      const profile = assignment.profile;
-      if (!profile || profile.distribution !== "task-order") {
-        fallbackMap.set(assignment.examPath, false);
-        return;
-      }
-      const parsed = selectedExamParses[assignment.examPath];
-      const tasks = parsed?.tasks ?? [];
-      const shouldFallback = tasks.some((task) => {
-        const points = profile.taskPoints[Math.max(0, task.index)];
-        if (!Number.isFinite(points)) {
-          return true;
-        }
-        return Math.floor(points) <= 0;
-      });
-      fallbackMap.set(assignment.examPath, shouldFallback);
-    });
-    return fallbackMap;
-  }, [selectedExamParses, selectedExamProfileAssignments]);
   const defaultProfileDurationMinutes = normalizeDurationMinutes(
     pointsProfiles.defaultProfile?.durationMinutes ?? EXAM_POINTS_DEFAULT_DURATION_MINUTES,
   );
-  const previewDurationMinutes = useMemo(
-    () =>
-      resolveDurationFromProfileAssignments(
-        selectedExamProfileAssignments,
-        defaultProfileDurationMinutes,
-      ),
-    [defaultProfileDurationMinutes, selectedExamProfileAssignments],
+  const previewDurationMinutes = normalizeDurationMinutes(
+    selectedRunProfile?.durationMinutes ?? defaultProfileDurationMinutes,
   );
 
   const resolveTaskTypePointsSourceMap = useCallback(
-    (task: ExamSessionTask) => {
-      const assignment = selectedExamProfileAssignmentMap.get(task.sourceExamPath);
-      const profile = assignment?.profile ?? null;
-      const useDefaultTaskTypeFallback =
-        (assignment && taskOrderProfileFallbackByExamPath.get(task.sourceExamPath)) ?? false;
-      if (!profile || useDefaultTaskTypeFallback) {
-        return settings.examTaskTypeDefaultPoints;
-      }
-      if (profile.distribution !== "task-type") {
+    (profile: ExamPointsProfile | null) => {
+      if (!profile || profile.distribution !== "task-type") {
         return null;
       }
-      return AUTO_CARD_TYPES.reduce(
-        (acc, type) => {
-          acc[type] = Math.max(0, Math.floor(profile.typeRules[type]?.points ?? 0));
-          return acc;
-        },
-        {} as Record<(typeof AUTO_CARD_TYPES)[number], number>,
-      );
+      return profile.typeRules;
     },
-    [
-      selectedExamProfileAssignmentMap,
-      settings.examTaskTypeDefaultPoints,
-      taskOrderProfileFallbackByExamPath,
-    ],
+    [],
   );
 
   const resolveSessionTaskPointsPlan = useCallback(
-    (tasks: ExamSessionTask[]): SessionTaskPointsPlan => {
-      const profileAssignments = selectedExamProfileAssignments.map((assignment) => ({
-        examPath: assignment.examPath,
-        sourceTitle: assignment.sourceTitle,
-        requestedName: assignment.requestedName,
-        profileId: assignment.profile?.id ?? null,
-        profileName: assignment.profile?.name ?? null,
-        profileVersion: assignment.profile?.version ?? null,
-        missing: assignment.missing,
+    (
+      tasks: ExamSessionTask[],
+      profile: ExamPointsProfile | null,
+      sources: ExamSessionSource[],
+    ): SessionTaskPointsPlan => {
+      const profileAssignments = sources.map((source) => ({
+        examPath: source.examPath,
+        sourceTitle: source.sourceTitle,
+        requestedName: profile?.name ?? null,
+        profileId: profile?.id ?? null,
+        profileName: profile?.name ?? null,
+        profileVersion: profile?.version ?? null,
+        missing: !profile,
       }));
-      const missingAssignments = selectedExamProfileAssignments.filter(
-        (assignment) => assignment.missing,
-      );
-      const taskPoints = tasks.map((task) => {
-        const assignment = selectedExamProfileAssignmentMap.get(task.sourceExamPath);
-        const profile = assignment?.profile ?? null;
+      const taskPoints = tasks.map((task, index) => {
+        if (!profile) {
+          return 0;
+        }
         const taskTypes = resolveExamTaskPointTypes(task);
-        const taskTypePointsSource = resolveTaskTypePointsSourceMap(task);
+        const taskTypePointsSource = resolveTaskTypePointsSourceMap(profile);
         if (taskTypePointsSource) {
           return resolveTaskTypePointsFromMap({
             taskTypes,
-            typePoints: taskTypePointsSource,
+            typePoints: {
+              qa: taskTypePointsSource.qa.points,
+              tf: taskTypePointsSource.tf.points,
+              m1: taskTypePointsSource.m1.points,
+              m2: taskTypePointsSource.m2.points,
+              cl: taskTypePointsSource.cl.points,
+              cd: taskTypePointsSource.cd.points,
+              cld: taskTypePointsSource.cld.points,
+            },
           });
-        }
-        if (!profile) {
-          // Defensive fallback: missing profiles should already resolve via taskTypePointsSource.
-          return 0;
         }
         return resolveTaskMaxPointsFromProfile({
           profile,
-          taskIndex: Math.max(0, task.index),
+          taskIndex: Math.max(0, index),
           taskTypes,
         });
       });
@@ -624,19 +575,24 @@ export const useExamSimulationViewModel = () => {
         taskPoints,
         maxTotalPoints,
         profileAssignments,
-        missingAssignments,
       };
     },
-    [
-      resolveTaskTypePointsSourceMap,
-      selectedExamProfileAssignmentMap,
-      selectedExamProfileAssignments,
-    ],
+    [resolveTaskTypePointsSourceMap],
   );
 
   const previewTaskPlan = useMemo(
-    () => resolveSessionTaskPointsPlan(previewExamParse.tasks),
-    [previewExamParse.tasks, resolveSessionTaskPointsPlan],
+    () =>
+      resolveSessionTaskPointsPlan(
+        previewExamParse.tasks,
+        selectedRunProfile,
+        selectedExamSources,
+      ),
+    [
+      previewExamParse.tasks,
+      resolveSessionTaskPointsPlan,
+      selectedRunProfile,
+      selectedExamSources,
+    ],
   );
   const plannedTaskCount = previewTaskPlan.taskPoints.length;
   const plannedMaxPoints = previewTaskPlan.maxTotalPoints;
@@ -692,8 +648,7 @@ export const useExamSimulationViewModel = () => {
   const manualScoringComplete = manualTaskEntries.every(
     (entry) => entry.awardedPoints !== null,
   );
-  const activeManualTaskEntry =
-    manualTaskEntries[manualScoringIndex] ?? null;
+  const activeManualTaskEntry = manualTaskEntries[manualScoringIndex] ?? null;
   const canGoManualScoringBack = manualScoringIndex > 0;
   const canGoManualScoringNext = manualScoringIndex < manualTaskEntries.length - 1;
 
@@ -715,48 +670,29 @@ export const useExamSimulationViewModel = () => {
   const remainingPoints = 0;
   const missingExamSettings = useMemo(() => {
     const missing: MissingExamSetting[] = [];
+    if (!selectedRunProfile) {
+      missing.push({
+        id: "exam.run.profile.missing",
+        label: "Profil fuer Punktebewertung fehlt",
+        description: "Waehle ein Profil in Schritt 3.",
+        severity: "blocker",
+      });
+      return missing;
+    }
+    const blockers = validatePointsProfile(selectedRunProfile);
+    blockers.forEach((item) => {
+      missing.push(item);
+    });
     if (settings.examTimeLimitEnabled && previewDurationMinutes <= 0) {
       missing.push({
         id: "exam.duration",
         label: "Time limit ist aktiv, aber Profil-Dauer fehlt",
-        description: "Setze im Points-Profil eine Dauer groesser als 0 Minuten.",
+        description: "Setze im ausgewaehlten Profil eine Dauer groesser als 0 Minuten.",
         severity: "blocker",
       });
     }
-    selectedExamProfileAssignments.forEach((assignment) => {
-      if (assignment.missing) {
-        missing.push({
-          id: `exam.points.profile.missing.${assignment.examPath}`,
-          label: `Points-Profil fehlt (${assignment.sourceTitle})`,
-          description: assignment.requestedName
-            ? `Task "${assignment.requestedName}" verweist auf kein vorhandenes Profil.`
-            : "Task verweist auf kein vorhandenes Profil.",
-          severity: "blocker",
-        });
-        return;
-      }
-      if (!assignment.profile) {
-        return;
-      }
-      if (taskOrderProfileFallbackByExamPath.get(assignment.examPath)) {
-        return;
-      }
-      const blockers = validatePointsProfile(assignment.profile);
-      blockers.forEach((item) => {
-        missing.push({
-          ...item,
-          id: `${item.id}.${assignment.examPath}`,
-          label: `${item.label} (${assignment.sourceTitle})`,
-        });
-      });
-    });
     return missing;
-  }, [
-    previewDurationMinutes,
-    selectedExamProfileAssignments,
-    taskOrderProfileFallbackByExamPath,
-    settings.examTimeLimitEnabled,
-  ]);
+  }, [previewDurationMinutes, selectedRunProfile, settings.examTimeLimitEnabled]);
   const hasSettingsBlockers = missingExamSettings.some(
     (item) => item.severity !== "warning",
   );
@@ -764,9 +700,11 @@ export const useExamSimulationViewModel = () => {
 
   const canStartExam =
     selectedExamCount > 0 &&
+    selectedRunnableExamCount > 0 &&
     selectedExamParseState === "idle" &&
     !pointsProfiles.loading &&
     previewExamParse.tasks.length > 0 &&
+    selectedRunProfile !== null &&
     isSettingsValid;
   const examRunning = stage !== "idle";
 
@@ -793,12 +731,43 @@ export const useExamSimulationViewModel = () => {
   }, []);
 
   const handleToggleExamSelection = useCallback(
-    (file: VaultFile) => {
-      actions.handleToggleExamFileSelection(file);
+    (path: string) => {
+      actions.handleToggleExamFileSelection(path);
       setSessionInvalidationMessage("");
     },
     [actions],
   );
+
+  const handleSelectVisibleExamFiles = useCallback(
+    (paths: string[]) => {
+      actions.handleSetSelectedExamFiles(paths);
+      setSessionInvalidationMessage("");
+    },
+    [actions],
+  );
+
+  const handleClearExamSelection = useCallback(() => {
+    actions.handleClearSelectedExamFiles();
+    setSessionInvalidationMessage("");
+  }, [actions]);
+
+  const handleMoveSelectedExamFile = useCallback(
+    (sourcePath: string, targetPath: string) => {
+      actions.handleMoveSelectedExamFile(sourcePath, targetPath);
+      setSessionInvalidationMessage("");
+    },
+    [actions],
+  );
+
+  const handleCombinationModeChange = useCallback((nextMode: ExamCombinationMode) => {
+    setCombinationMode(nextMode);
+    setSessionInvalidationMessage("");
+  }, []);
+
+  const handleRunProfileChange = useCallback((profileId: string) => {
+    setSelectedRunProfileId(profileId || null);
+    setSessionInvalidationMessage("");
+  }, []);
 
   useEffect(() => {
     const previousSelection = selectionSignatureRef.current;
@@ -818,8 +787,19 @@ export const useExamSimulationViewModel = () => {
     setSessionInvalidationMessage("");
   }, [resetExamState, selectedExamSelectionSignature, stage]);
 
+  const canReshuffleMix = useMemo(
+    () =>
+      stage === "idle" &&
+      selectedExamParseState === "idle" &&
+      selectedExamSources.length > 0 &&
+      (combinationMode === "fully-mixed" ||
+        combinationMode === "sequential-shuffled" ||
+        combinationMode === "nested"),
+    [combinationMode, selectedExamParseState, selectedExamSources.length, stage],
+  );
+
   const handleReshuffleMix = useCallback(() => {
-    if (selectedExamCount < 2) {
+    if (!canReshuffleMix) {
       return;
     }
     setMixSeed(createMixSeed());
@@ -829,34 +809,29 @@ export const useExamSimulationViewModel = () => {
       return;
     }
     setSessionInvalidationMessage("");
-  }, [resetExamState, selectedExamCount, stage]);
+  }, [canReshuffleMix, resetExamState, stage]);
 
   const handleStartExam = useCallback(() => {
-    if (!canStartExam) {
+    if (!canStartExam || !selectedRunProfile) {
       return;
     }
-    const hasAllParses = selectedExamSources.length === selectedExamCount;
-    if (!hasAllParses || selectedExamCount === 0) {
+    if (selectedExamSources.length === 0) {
       return;
     }
-    const sessionSeed = createMixSeed();
-    let sessionTasks: ExamSessionTask[] = [];
-    if (selectedExamCount >= 2) {
-      sessionTasks = buildMixedSessionTasks(selectedExamSources, sessionSeed).tasks;
-    } else {
-      const primarySource = selectedExamSources[0];
-      if (!primarySource) {
-        return;
-      }
-      sessionTasks = buildSingleSessionTasks(primarySource, sessionSeed);
-    }
+    const sessionSeed = mixSeed || createMixSeed();
+    const sessionTasks = buildCombinedSessionTasks(
+      selectedExamSources,
+      sessionSeed,
+      combinationMode,
+    ).tasks;
     if (sessionTasks.length === 0) {
       return;
     }
-    const sessionTaskPlan = resolveSessionTaskPointsPlan(sessionTasks);
-    if (sessionTaskPlan.missingAssignments.length > 0) {
-      return;
-    }
+    const sessionTaskPlan = resolveSessionTaskPointsPlan(
+      sessionTasks,
+      selectedRunProfile,
+      selectedExamSources,
+    );
     const snapshot: ExamSettingsSnapshot = {
       maxTotalPoints: sessionTaskPlan.maxTotalPoints,
       taskCount: sessionTaskPlan.taskPoints.length,
@@ -864,16 +839,22 @@ export const useExamSimulationViewModel = () => {
       durationMinutes: previewDurationMinutes,
       timeLimitEnabled: settings.examTimeLimitEnabled,
       aiEvaluation: settings.examAiEvaluation,
+      pointsProfile: selectedRunProfile,
+      combinationMode,
       pointsProfileAssignments: sessionTaskPlan.profileAssignments,
     };
-    // TODO: Wire snapshot.aiEvaluation into grading once AI evaluation is implemented.
     examStartTimeRef.current = Date.now();
     examRunRecordedRef.current = false;
     setSessionInvalidationMessage("");
     setMixSeed(sessionSeed);
-    setActiveMixSeed(selectedExamCount >= 2 ? sessionSeed : null);
+    setActiveMixSeed(sessionSeed);
     setActiveExamTasks(sessionTasks);
-    setActiveExamFiles(selectedExamFiles);
+    setActiveExamFiles(
+      selectedExamSources.map((source) => ({
+        path: source.examPath,
+        relative_path: source.sourceTitle,
+      })),
+    );
     setActiveSettings(snapshot);
     setStage("running");
     setActiveTaskIndex(0);
@@ -895,15 +876,16 @@ export const useExamSimulationViewModel = () => {
     }
   }, [
     canStartExam,
-    selectedExamCount,
-    selectedExamFiles,
-    selectedExamSources,
-    settings.examAiEvaluation,
-    settings.examTimeLimitEnabled,
-    previewDurationMinutes,
+    combinationMode,
     examTimeLimitMs,
     examTimerEnabled,
+    mixSeed,
+    previewDurationMinutes,
     resolveSessionTaskPointsPlan,
+    selectedExamSources,
+    selectedRunProfile,
+    settings.examAiEvaluation,
+    settings.examTimeLimitEnabled,
   ]);
 
   const handleResetExam = useCallback(() => {
@@ -1236,7 +1218,9 @@ export const useExamSimulationViewModel = () => {
           const isCorrect = isTaskCorrect(task, currentTaskPartStates);
           const overrideDecision = taskAutoGradeDecisions[index];
           const decidedCorrect = overrideDecision ?? isCorrect;
-          const taskTypePointsSource = resolveTaskTypePointsSourceMap(task);
+          const taskTypePointsSource = resolveTaskTypePointsSourceMap(
+            activeExamSettings.pointsProfile,
+          );
           const autoAwarded = (() => {
             if (typeof overrideDecision === "boolean") {
               return overrideDecision ? maxPoints : 0;
@@ -1256,7 +1240,13 @@ export const useExamSimulationViewModel = () => {
               if (!type) {
                 return sum;
               }
-              return sum + Math.max(0, Math.floor(taskTypePointsSource[type] ?? 0));
+              return (
+                sum +
+                Math.max(
+                  0,
+                  Math.floor(taskTypePointsSource[type]?.points ?? 0),
+                )
+              );
             }, 0);
             return clampNumber(summed, 0, maxPoints);
           })();
@@ -1556,16 +1546,7 @@ export const useExamSimulationViewModel = () => {
             .map((file) => file.relative_path || file.path)
             .join(", ")}`;
     const profileAssignments = activeExamSettings?.pointsProfileAssignments ?? [];
-    const resolvedAssignments = profileAssignments.filter(
-      (assignment) => !assignment.missing && assignment.profileId,
-    );
-    const uniqueProfileKeys = new Set(
-      resolvedAssignments.map((assignment) =>
-        [assignment.profileId, assignment.profileName].join("|"),
-      ),
-    );
-    const singleResolvedProfile =
-      uniqueProfileKeys.size === 1 ? resolvedAssignments[0] ?? null : null;
+    const selectedProfile = activeExamSettings?.pointsProfile ?? null;
 
     const run: ExamRun = {
       id: buildExamRunId(),
@@ -1582,9 +1563,9 @@ export const useExamSimulationViewModel = () => {
       passed,
       grade,
       gradeScaleId: settings.examGradeScale,
-      pointsProfileId: singleResolvedProfile?.profileId ?? null,
-      pointsProfileName: singleResolvedProfile?.profileName ?? null,
-      pointsProfileVersion: singleResolvedProfile?.profileVersion ?? null,
+      pointsProfileId: selectedProfile?.id ?? null,
+      pointsProfileName: selectedProfile?.name ?? null,
+      pointsProfileVersion: selectedProfile?.version ?? null,
       pointsProfileAssignments: profileAssignments,
     };
 
@@ -1780,6 +1761,7 @@ export const useExamSimulationViewModel = () => {
                 sourceExamPath: task.sourceExamPath,
                 sourceTitle: task.sourceTitle,
                 originalTaskNumber: task.originalTaskNumber,
+                sourceTaskIndex: task.sourceTaskIndex,
                 sessionIndex: task.sessionIndex,
               };
             });
@@ -1849,51 +1831,69 @@ export const useExamSimulationViewModel = () => {
     (correctionState?.activeIndex ?? 0) < ((correctionState?.queue.length ?? 0) - 1);
   const correctionQueueLength = correctionState?.queue.length ?? 0;
   const selectionPreviewState: LoadState =
-    selectedExamCount === 0 ? "idle" : selectedExamParseState;
+    selectedExamCount === 0 || selectedRunnableExamCount === 0
+      ? "idle"
+      : selectedExamParseState;
   const selectionPreviewError = selectedExamParseError;
   const examEmptyState = useMemo(() => {
     if (selectedExamCount === 0 || selectionPreviewState !== "idle") {
       return null;
     }
-    if (selectionPreviewError) {
+    if (selectedRunnableExamCount === 0) {
+      return {
+        title: "Keine gueltigen Exam-Dateien ausgewaehlt",
+        message:
+          "Waehle mindestens eine gueltige Exam-Datei mit erkannten Aufgaben aus.",
+      };
+    }
+    if (selectionPreviewError && previewExamParse.tasks.length === 0) {
       return {
         title: "Dateien konnten nicht geladen werden",
         message: selectionPreviewError,
       };
     }
-    if (!previewExamParse.hasExamBlock) {
-      return {
-        title: "No exam block",
-        message: "This file does not include a #exam ... #endexam wrapper.",
-      };
-    }
     if (previewExamParse.tasks.length === 0) {
       return {
-        title: "No tasks found",
+        title: "Keine Aufgaben im kombinierten Lauf",
         message:
-          selectedExamCount >= 2
-            ? "Fuer den aktuellen Mix wurden keine passenden Aufgaben gefunden."
-            : "Add Punktaufgaben inside the exam block to start an exam.",
+          "Fuer die aktuelle Auswahl und den Modus wurden keine Tasks eingebunden.",
       };
     }
     return null;
   }, [
-    previewExamParse.hasExamBlock,
     previewExamParse.tasks.length,
     selectedExamCount,
+    selectedRunnableExamCount,
     selectionPreviewError,
     selectionPreviewState,
   ]);
-  const sessionExamFiles = stage === "idle" ? selectedExamFiles : activeExamFiles;
+  const selectedExamSourceFiles = useMemo(
+    () =>
+      selectedExamSources.map((source) => ({
+        path: source.examPath,
+        relative_path: source.sourceTitle,
+      })),
+    [selectedExamSources],
+  );
+  const sessionExamFiles = stage === "idle" ? selectedExamSourceFiles : activeExamFiles;
   const mixSessionEnabled = sessionExamFiles.length >= 2;
-  const mixSessionSeed =
-    stage === "idle"
-      ? selectedExamCount >= 2
-        ? mixSeed
-        : null
-      : activeMixSeed;
-  const canReshuffleMix =
-    selectedExamCount >= 2 && stage === "idle" && selectedExamParseState === "idle";
+  const mixSessionSeed = stage === "idle" ? mixSeed : activeMixSeed;
+  const combinationModeLabel =
+    combinationMode === "fully-mixed"
+      ? "Komplett gemischt"
+      : combinationMode === "sequential"
+        ? "Hintereinander"
+        : combinationMode === "sequential-shuffled"
+          ? "Hintereinander mit interner Mischung"
+          : "Nested";
+  const isCombinationModeRandomized =
+    combinationMode === "fully-mixed" ||
+    combinationMode === "sequential-shuffled" ||
+    combinationMode === "nested";
+  const runProfileOptions = pointsProfiles.profiles.map((profile) => ({
+    id: profile.id,
+    name: profile.name,
+  }));
 
   return {
     actions,
@@ -1907,13 +1907,24 @@ export const useExamSimulationViewModel = () => {
     examRuns,
     examRunDeleteError,
     selectedExamFiles,
+    selectedExamRunnableFiles,
+    selectedExamIgnoredEntries,
     selectedExamPaths,
     selectedExamCount,
+    selectedRunnableExamCount,
+    selectedIncludedExamCount,
+    selectedValidTaskCount,
     selectedExamParseState: selectionPreviewState,
     selectedExamParseError: selectionPreviewError,
     sessionInvalidationMessage,
     previewExamParse,
-    mixModeEnabled,
+    combinationMode,
+    combinationModeLabel,
+    isCombinationModeRandomized,
+    runProfileOptions,
+    selectedRunProfileId,
+    selectedRunProfile,
+    previewDurationMinutes,
     mixSeed: mixSessionSeed,
     mixSessionEnabled,
     mixSessionExamFiles: sessionExamFiles,
@@ -1964,6 +1975,11 @@ export const useExamSimulationViewModel = () => {
     resultTaskCardWrapNoticeById,
     handleDeleteExamRun,
     handleToggleExamSelection,
+    handleSelectVisibleExamFiles,
+    handleClearExamSelection,
+    handleMoveSelectedExamFile,
+    handleCombinationModeChange,
+    handleRunProfileChange,
     handleStartExam,
     handleReshuffleMix,
     handleResetExam,

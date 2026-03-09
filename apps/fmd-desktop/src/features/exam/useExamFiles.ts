@@ -8,16 +8,55 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { parseExamTasks } from "../../lib/exam";
+import { asErrorMessage } from "../../lib/errors";
 import type { LoadState } from "../../lib/types";
 import type { VaultFile } from "../../lib/tree";
+import { type ExamFileEntry } from "./types";
 
 type UseExamFilesOptions = {
   files: VaultFile[];
   vaultPath: string | null;
 };
 
+type ExamFileClassification = Pick<ExamFileEntry, "status" | "taskCount" | "hasExamBlock" | "error">;
+
+export const classifyExamMarkdown = (contents: string): ExamFileClassification => {
+  const trimmed = contents.trim();
+  if (!trimmed) {
+    return {
+      status: "empty",
+      taskCount: 0,
+      hasExamBlock: false,
+      error: null,
+    };
+  }
+
+  const parsed = parseExamTasks(contents);
+  const taskCount = parsed.tasks.length;
+  const hasExamBlock = parsed.hasExamBlock;
+  const status = hasExamBlock && taskCount > 0 ? "valid" : "no-tasks";
+
+  return {
+    status,
+    taskCount,
+    hasExamBlock,
+    error: null,
+  };
+};
+
+export const buildExamFileErrorEntry = (
+  file: VaultFile,
+  error: unknown,
+): ExamFileEntry => ({
+  ...file,
+  status: "error",
+  taskCount: 0,
+  hasExamBlock: false,
+  error: asErrorMessage(error, "Datei konnte nicht gelesen werden."),
+});
+
 export const useExamFiles = ({ files, vaultPath }: UseExamFilesOptions) => {
-  const [examFiles, setExamFiles] = useState<VaultFile[]>([]);
+  const [examFiles, setExamFiles] = useState<ExamFileEntry[]>([]);
   const [examFilesState, setExamFilesState] = useState<LoadState>("idle");
   const [examFilesError, setExamFilesError] = useState("");
 
@@ -28,9 +67,12 @@ export const useExamFiles = ({ files, vaultPath }: UseExamFilesOptions) => {
       setExamFilesError("");
       return;
     }
-    const markdownFiles = files.filter((file) =>
-      file.relative_path.toLowerCase().endsWith(".md"),
-    );
+
+    const markdownFiles = files
+      .filter((file) => file.relative_path.toLowerCase().endsWith(".md"))
+      .slice()
+      .sort((left, right) => left.relative_path.localeCompare(right.relative_path));
+
     if (markdownFiles.length === 0) {
       setExamFiles([]);
       setExamFilesState("idle");
@@ -48,8 +90,10 @@ export const useExamFiles = ({ files, vaultPath }: UseExamFilesOptions) => {
           const contents = await invoke<string>("read_text_file", {
             path: file.path,
           });
-          const parsed = parseExamTasks(contents);
-          return parsed.hasExamBlock ? file : null;
+          return {
+            ...file,
+            ...classifyExamMarkdown(contents),
+          } satisfies ExamFileEntry;
         }),
       );
 
@@ -57,22 +101,28 @@ export const useExamFiles = ({ files, vaultPath }: UseExamFilesOptions) => {
         return;
       }
 
-      const nextExamFiles: VaultFile[] = [];
+      const nextExamFiles: ExamFileEntry[] = [];
       let failures = 0;
 
-      results.forEach((result) => {
-        if (result.status === "fulfilled") {
-          if (result.value) {
-            nextExamFiles.push(result.value);
-          }
-        } else {
-          failures += 1;
-          console.warn("Failed to scan exam file", result.reason);
+      results.forEach((result, index) => {
+        const file = markdownFiles[index];
+        if (!file) {
+          return;
         }
+        if (result.status === "fulfilled") {
+          nextExamFiles.push(result.value);
+          return;
+        }
+
+        failures += 1;
+        nextExamFiles.push(buildExamFileErrorEntry(file, result.reason));
+        console.warn("Failed to scan exam file", file.path, result.reason);
       });
 
-      if (failures > 0 && nextExamFiles.length === 0) {
-        setExamFilesError("Exam files could not be scanned.");
+      if (failures > 0 && nextExamFiles.length > 0) {
+        setExamFilesError(
+          `${failures} Markdown-Datei(en) konnten nicht vollstaendig gescannt werden.`,
+        );
       }
 
       setExamFiles(nextExamFiles);
