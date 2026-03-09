@@ -1469,10 +1469,11 @@ body.focus-mode .spaced-repetition-sidebar {
 }
 
 .exam-markdown table {
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: auto;
 }
 
 .exam-markdown thead th {
@@ -1487,6 +1488,9 @@ body.focus-mode .spaced-repetition-sidebar {
   border-bottom: 1px solid var(--line-soft);
   border-right: 1px solid var(--line-soft);
   vertical-align: top;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .exam-markdown .exam-table-cell-media {
@@ -1494,6 +1498,15 @@ body.focus-mode .spaced-repetition-sidebar {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  overflow: hidden;
+}
+
+.exam-markdown .md-table-cell-media {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .exam-markdown .exam-table-cell-media .flashcard-media-group,
@@ -1506,8 +1519,20 @@ body.focus-mode .spaced-repetition-sidebar {
   min-width: 0;
 }
 
+.exam-markdown .md-table-cell-media .flashcard-media-group,
+.exam-markdown .md-table-cell-media .flashcard-media-item,
+.exam-markdown .md-table-cell-media .flashcard-media-entry,
+.exam-markdown .md-table-cell-media .media-block-card,
+.exam-markdown .md-table-cell-media .media-block-card-surface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .exam-markdown .exam-table-cell-image,
-.exam-markdown .exam-table-cell-media .flashcard-media-image {
+.exam-markdown .exam-table-cell-media .flashcard-media-image,
+.exam-markdown .md-table-cell-image,
+.exam-markdown .md-table-cell-media .flashcard-media-image {
   display: block;
   width: 100%;
   max-width: 100%;

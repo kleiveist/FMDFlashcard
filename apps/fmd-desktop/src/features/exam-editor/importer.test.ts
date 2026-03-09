@@ -78,7 +78,7 @@ TASK1 HELP / HINT
         expected: false,
       },
       {
-        name: "trailing content after closing marker",
+        name: "trailing content after closing marker is canonically wrapped",
         taskLines: [
           "1) Trailing content",
           "#card",
@@ -87,7 +87,7 @@ TASK1 HELP / HINT
           "#endcard",
           "Still content",
         ],
-        expected: false,
+        expected: true,
       },
       {
         name: "markdown heading is not a closing marker",
@@ -373,6 +373,91 @@ Answer: A
     });
   });
 
+  it("keeps unparseable wrapped blocks with media and table content", () => {
+    const markdown = `
+#exam
+#card
+1) Preserve unparseable
+![[images/diagram.png]]
+Just context without explicit answer marker.
+| A | B |
+| --- | --- |
+| left | right |
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task).toBeDefined();
+    if (!task) {
+      return;
+    }
+    expect(task.useCardWrapper).toBe(true);
+    expect(task.cards).toHaveLength(1);
+    const card = task.cards[0];
+    expect(card).toBeDefined();
+    if (!card) {
+      return;
+    }
+    expect(card.type).toBe("qa");
+    expect(card.prompt).toContain("Just context without explicit answer marker.");
+    expect(card.prompt).toContain("| left | right |");
+    expect(card.answer).toBe("");
+    expect(card.mediaItems?.[0]).toMatchObject({
+      type: "png",
+      src: "images/diagram.png",
+    });
+
+    const serialized = serializeExamBlueprint(imported.blueprint);
+    expect(serialized).toContain("#card\n1) Preserve unparseable");
+    expect(serialized).toContain("![[images/diagram.png]]");
+    expect(serialized).toContain("| left | right |");
+    expect(serialized).not.toContain("![[images/diagram.png]]\n#endcard");
+    expect(serialized).toMatch(/\n#endcard\n---\n#endexam$/);
+  });
+
+  it("keeps media-only wrapped blocks instead of dropping them", () => {
+    const markdown = `
+#exam
+1) Media only fallback
+#card
+![[images/only-media.png]]
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const task = imported.blueprint.tasks[0];
+    expect(task).toBeDefined();
+    if (!task) {
+      return;
+    }
+    expect(task.cards).toHaveLength(1);
+    const card = task.cards[0];
+    expect(card).toBeDefined();
+    if (!card) {
+      return;
+    }
+    expect(card.type).toBe("qa");
+    expect(card.prompt).toBe("");
+    expect(card.answer).toBe("");
+    expect(card.mediaItems?.[0]).toMatchObject({
+      type: "png",
+      src: "images/only-media.png",
+    });
+  });
+
   it("keeps wrapper toggles idempotent across serialize/import cycles", () => {
     const markdown = `
 #exam
@@ -652,7 +737,7 @@ Answer: A
     expect(imported.blueprint.tasks[0]?.helpText).toBeUndefined();
   });
 
-  it("skips context blocks between tasks separated by ---", () => {
+  it("keeps context blocks between tasks separated by --- as fallback QA cards", () => {
     const markdown = `
 #exam
 8) Some task
@@ -671,14 +756,19 @@ Antwort: Next answer
     }
 
     expect(imported.blueprint.tasks).toHaveLength(2);
-    expect(imported.blueprint.tasks[0]?.cards).toHaveLength(1);
+    expect(imported.blueprint.tasks[0]?.cards).toHaveLength(2);
     expect(imported.blueprint.tasks[1]?.cards).toHaveLength(1);
-    const hasHeadingCard = imported.blueprint.tasks.some((task) =>
-      task.cards.some(
-        (card) => card.type === "qa" && card.prompt.includes("Abschnitt 3"),
-      ),
-    );
-    expect(hasHeadingCard).toBe(false);
+    const firstTask = imported.blueprint.tasks[0];
+    expect(firstTask).toBeDefined();
+    if (!firstTask) {
+      return;
+    }
+    const contextCard = firstTask.cards[1];
+    expect(contextCard?.type).toBe("qa");
+    if (contextCard?.type === "qa") {
+      expect(contextCard.prompt).toContain("Abschnitt 3");
+      expect(contextCard.answer).toBe("");
+    }
   });
 
   it("does not create QA cards from headings without separators", () => {
@@ -762,7 +852,7 @@ Answer: A
     }
   });
 
-  it("skips blocks without answer markers", () => {
+  it("keeps blocks without answer markers as fallback QA cards", () => {
     const markdown = `
 #exam
 1) Task
@@ -781,8 +871,13 @@ Just context without an answer marker.
     }
 
     const task = imported.blueprint.tasks[0];
-    expect(task?.cards).toHaveLength(1);
+    expect(task?.cards).toHaveLength(2);
     expect(task?.cards[0]?.type).toBe("qa");
+    expect(task?.cards[1]?.type).toBe("qa");
+    if (task?.cards[1]?.type === "qa") {
+      expect(task.cards[1].prompt).toContain("Just context without an answer marker.");
+      expect(task.cards[1].answer).toBe("");
+    }
   });
 
   it("does not treat legacy #media metadata blocks as media", () => {

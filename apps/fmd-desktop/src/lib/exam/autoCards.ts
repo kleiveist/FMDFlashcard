@@ -31,6 +31,7 @@ type TaskChunkAnalysis = {
   fullyWrappedCanonical: boolean;
   fullyWrappedPermissive: boolean;
   wrapperStartIndices: number[];
+  wrapperEndIndices: number[];
 };
 
 const normalizeLines = (content: string) => content.replace(/\r\n?/g, "\n").split("\n");
@@ -165,6 +166,12 @@ const collectWrapperStartIndices = (lines: string[]) =>
     .filter(({ line }) => isWrapperStart(line))
     .map(({ index }) => index);
 
+const collectWrapperEndIndices = (lines: string[]) =>
+  lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line }) => isWrapperEnd(line))
+    .map(({ index }) => index);
+
 const areLinesEqual = (left: string[], right: string[]) =>
   left.length === right.length &&
   left.every((line, index) => line === right[index]);
@@ -246,11 +253,15 @@ const analyzeTaskChunk = (chunkLines: string[]): TaskChunkAnalysis => {
     fullyWrappedCanonical,
     fullyWrappedPermissive,
     wrapperStartIndices: collectWrapperStartIndices(chunkLines),
+    wrapperEndIndices: collectWrapperEndIndices(chunkLines),
   };
 };
 
 const removeAllWrapperStartMarkers = (chunkLines: string[]) =>
   chunkLines.filter((line) => !isWrapperStart(line));
+
+const removeAllWrapperEndMarkers = (chunkLines: string[]) =>
+  chunkLines.filter((line) => !isWrapperEnd(line));
 
 const dedupeWrapperStartMarkers = (
   chunkLines: string[],
@@ -287,31 +298,21 @@ const ensureCanonicalWrapperOpen = (chunkLines: string[]) => {
 };
 
 const ensureCanonicalWrapperClose = (chunkLines: string[]) => {
-  if (chunkLines.length === 0) {
+  const withoutEnds = removeAllWrapperEndMarkers(chunkLines);
+  if (withoutEnds.length === 0) {
     return ["#endcard"];
   }
-  const lastNonEmpty = findLastNonEmptyInRange(chunkLines, 0, chunkLines.length - 1);
+  const lastNonEmpty = findLastNonEmptyInRange(withoutEnds, 0, withoutEnds.length - 1);
   if (lastNonEmpty === null) {
-    return [...chunkLines, "#endcard"];
+    return [...withoutEnds, "#endcard"];
   }
-  if (isWrapperEnd(chunkLines[lastNonEmpty] ?? "")) {
-    const next = [...chunkLines];
-    next[lastNonEmpty] = "#endcard";
-    return next;
-  }
-  const next = [...chunkLines];
+  const next = [...withoutEnds];
   next.splice(lastNonEmpty + 1, 0, "#endcard");
   return next;
 };
 
 const removeCanonicalWrapperClose = (chunkLines: string[]) => {
-  const lastNonEmpty = findLastNonEmptyInRange(chunkLines, 0, chunkLines.length - 1);
-  if (lastNonEmpty === null || !isWrapperEnd(chunkLines[lastNonEmpty] ?? "")) {
-    return [...chunkLines];
-  }
-  const next = [...chunkLines];
-  next.splice(lastNonEmpty, 1);
-  return next;
+  return removeAllWrapperEndMarkers(chunkLines);
 };
 
 const normalizeTaskChunk = (
@@ -325,19 +326,16 @@ const normalizeTaskChunk = (
   }
 
   if (action === "remove") {
-    const withoutCanonicalOpener = chunkLines.filter(
-      (line, index) =>
-        !(
-          analysis.canonicalOpenerIndex !== null &&
-          index === analysis.canonicalOpenerIndex &&
-          isWrapperStart(line)
-        ),
-    );
-    const deduped = dedupeWrapperStartMarkers(withoutCanonicalOpener, null);
+    const deduped = removeAllWrapperStartMarkers(chunkLines);
     return removeCanonicalWrapperClose(deduped);
   }
 
-  if (analysis.fullyWrappedPermissive) {
+  const openerIndex = analysis.permissiveOpenerIndex;
+  const hasOpenerAndFollowingCloser =
+    typeof openerIndex === "number" &&
+    analysis.wrapperEndIndices.some((index) => index > openerIndex);
+
+  if (analysis.fullyWrappedPermissive || hasOpenerAndFollowingCloser) {
     return ensureCanonicalWrapperClose(ensureCanonicalWrapperOpen(chunkLines));
   }
 

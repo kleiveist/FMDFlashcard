@@ -26,7 +26,12 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { buildMarkdownMediaPreviewSource } from "../../../lib/cardMedia";
-import { splitMarkdownTableCellSegments } from "../../../lib/markdownTableCellMedia";
+import {
+  resolveMarkdownTableCellSegments,
+  SHARED_TABLE_CELL_IMAGE_CLASS,
+  SHARED_TABLE_CELL_MEDIA_CLASS,
+  SHARED_TABLE_WRAP_CLASS,
+} from "../../../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode } from "../../../lib/markdownMath";
 import type { VaultPngAsset } from "../../../lib/tree";
 import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
@@ -233,21 +238,12 @@ const renderExamTableCellContent = ({
   vaultPath?: string | null;
 }) => {
   const cellSource = readMarkdownNodeSource(node, markdownSource);
-  const sourceSegments = splitMarkdownTableCellSegments(
-    cellSource,
-    `exam-table-cell-${keyPrefix}`,
-  );
-  const sourceHasMedia = sourceSegments.some((segment) => segment.kind !== "text");
   const cellText = readMarkdownNodeText(node);
-  const textSegments = sourceHasMedia
-    ? sourceSegments
-    : splitMarkdownTableCellSegments(
-      cellText,
-      `exam-table-cell-fallback-${keyPrefix}`,
-    );
-  const segments = sourceHasMedia
-    ? sourceSegments
-    : textSegments;
+  const segments = resolveMarkdownTableCellSegments({
+    cellSource,
+    cellText,
+    scope: `exam-table-cell-${keyPrefix}`,
+  });
   const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
   if (!hasMediaSegments) {
     return renderExamMathChildren(children, keyPrefix);
@@ -264,7 +260,10 @@ const renderExamTableCellContent = ({
     }
     if (segment.kind === "media") {
       return (
-        <div className="exam-table-cell-media" key={segmentKey}>
+        <div
+          className={`exam-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+          key={segmentKey}
+        >
           <FlashcardMediaGroup
             media={segment.items}
             vaultPngAssets={vaultPngAssets}
@@ -274,12 +273,15 @@ const renderExamTableCellContent = ({
       );
     }
     return (
-      <div className="exam-table-cell-media" key={segmentKey}>
+      <div
+        className={`exam-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+        key={segmentKey}
+      >
         <img
           src={segment.src}
           alt={segment.alt ?? ""}
           title={segment.title}
-          className="exam-table-cell-image"
+          className={`exam-table-cell-image ${SHARED_TABLE_CELL_IMAGE_CLASS}`}
           draggable={false}
           loading="lazy"
           decoding="async"
@@ -373,7 +375,7 @@ export const ExamMarkdown = ({
             return <MarkdownHighlightedPre {...props}>{children}</MarkdownHighlightedPre>;
           },
           table: ({ node: _node, ...props }) => (
-            <div className="exam-table-wrap">
+            <div className={`exam-table-wrap ${SHARED_TABLE_WRAP_CLASS}`}>
               <table {...props} />
             </div>
           ),

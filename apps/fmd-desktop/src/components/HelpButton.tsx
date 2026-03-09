@@ -19,7 +19,12 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { buildMarkdownMediaPreviewSource } from "../lib/cardMedia";
-import { splitMarkdownTableCellSegments } from "../lib/markdownTableCellMedia";
+import {
+  resolveMarkdownTableCellSegments,
+  SHARED_TABLE_CELL_IMAGE_CLASS,
+  SHARED_TABLE_CELL_MEDIA_CLASS,
+  SHARED_TABLE_WRAP_CLASS,
+} from "../lib/markdownTableCellMedia";
 import type { VaultPngAsset } from "../lib/tree";
 import { HelpIcon } from "./icons";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
@@ -197,21 +202,12 @@ const renderHelpTableCellContent = ({
   vaultPath?: string | null;
 }) => {
   const cellSource = readMarkdownNodeSource(node, markdownSource);
-  const sourceSegments = splitMarkdownTableCellSegments(
-    cellSource,
-    `help-table-cell-${keyPrefix}`,
-  );
-  const sourceHasMedia = sourceSegments.some((segment) => segment.kind !== "text");
   const cellText = readMarkdownNodeText(node);
-  const textSegments = sourceHasMedia
-    ? sourceSegments
-    : splitMarkdownTableCellSegments(
-      cellText,
-      `help-table-cell-fallback-${keyPrefix}`,
-    );
-  const segments = sourceHasMedia
-    ? sourceSegments
-    : textSegments;
+  const segments = resolveMarkdownTableCellSegments({
+    cellSource,
+    cellText,
+    scope: `help-table-cell-${keyPrefix}`,
+  });
   const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
   if (!hasMediaSegments) {
     return children;
@@ -228,7 +224,10 @@ const renderHelpTableCellContent = ({
     }
     if (segment.kind === "media") {
       return (
-        <div className="help-table-cell-media" key={segmentKey}>
+        <div
+          className={`help-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+          key={segmentKey}
+        >
           <FlashcardMediaGroup
             media={segment.items}
             vaultPngAssets={vaultPngAssets}
@@ -238,12 +237,15 @@ const renderHelpTableCellContent = ({
       );
     }
     return (
-      <div className="help-table-cell-media" key={segmentKey}>
+      <div
+        className={`help-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+        key={segmentKey}
+      >
         <img
           src={segment.src}
           alt={segment.alt ?? ""}
           title={segment.title}
-          className="help-table-cell-image"
+          className={`help-table-cell-image ${SHARED_TABLE_CELL_IMAGE_CLASS}`}
           draggable={false}
           loading="lazy"
           decoding="async"
@@ -338,7 +340,7 @@ export const HelpPanel = ({
                     return <MarkdownHighlightedPre {...props}>{children}</MarkdownHighlightedPre>;
                   },
                   table: ({ node: _node, ...props }) => (
-                    <div className="exam-table-wrap">
+                    <div className={`exam-table-wrap ${SHARED_TABLE_WRAP_CLASS}`}>
                       <table {...props} />
                     </div>
                   ),

@@ -838,6 +838,8 @@ describe("PreviewPanel edit-safe interactions", () => {
     cleanup = localCleanup;
 
     const firstBodyCell = container.querySelector(".markdown-table tbody td");
+    const tableWrap = container.querySelector(".markdown-table.md-table-wrap");
+    expect(tableWrap).toBeTruthy();
     expect(firstBodyCell).toBeTruthy();
     expect(firstBodyCell?.querySelector(".markdown-table-cell-preview")).toBeTruthy();
     expect(firstBodyCell?.querySelectorAll(".markdown-table-cell-paragraph")).toHaveLength(1);
@@ -924,8 +926,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const preview = container.querySelector(".preview.markdown");
     const mediaImage = preview?.querySelector<HTMLImageElement>(".markdown-table .flashcard-media-image");
+    const sharedMediaWrapper = preview?.querySelector(".markdown-table .md-table-cell-media");
 
     expect(mediaImage).toBeTruthy();
+    expect(sharedMediaWrapper).toBeTruthy();
     expect(preview?.textContent ?? "").not.toContain("![[images/example.png]]");
     expect(Array.from(preview?.querySelectorAll("p") ?? []).some((paragraph) =>
       paragraph.textContent?.trim() === "Before text"
@@ -1005,6 +1009,13 @@ describe("PreviewPanel edit-safe interactions", () => {
     const tableImage = container.querySelector<HTMLImageElement>(".markdown-table img");
     expect(tableImage).toBeTruthy();
     expect(tableImage?.getAttribute("src")).toBe("https://example.com/a.png");
+    expect(
+      Boolean(
+        tableImage?.classList.contains("md-table-cell-image") ||
+          tableImage?.closest(".md-table-cell-media") ||
+          tableImage?.closest(".markdown-table-cell-preview"),
+      ),
+    ).toBe(true);
   });
 
   it("renders 1) markers as ordered list items", () => {

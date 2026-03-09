@@ -699,25 +699,22 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       const extractedMedia = extractMediaFromLines(trimmedLines, "exam-editor-card-import");
       const mediaItems = mediaItemsToDrafts(extractedMedia.items);
       trimmedLines = trimEmptyLines(extractedMedia.contentLines);
-      if (trimmedLines.length > 0) {
+      if (trimmedLines.length > 0 || mediaItems.length > 0) {
         hasCardContent = true;
       }
-      if (trimmedLines.length === 0) {
+      const hasFallbackMaterial = trimmedLines.length > 0 || mediaItems.length > 0;
+      if (!hasFallbackMaterial) {
         return;
       }
-      const parts = parseCardBlock(trimmedLines);
+      const parts = trimmedLines.length > 0 ? parseCardBlock(trimmedLines) : [];
       if (parts.length === 0) {
         const fallback = splitAnswerBlock(trimmedLines.join("\n"));
-        // Only treat unrecognized blocks as QA when an explicit answer marker exists.
-        if (!fallback.hasAnswerMarker) {
-          return;
-        }
         const fallbackCard: CardBlueprint = {
           id: createBlueprintId("card"),
           type: "qa",
           mediaItems: [],
           prompt: fallback.prompt,
-          answer: fallback.officialAnswer ?? "",
+          answer: fallback.hasAnswerMarker ? (fallback.officialAnswer ?? "") : "",
         };
         pushCard(fallbackCard, mediaItems);
         return;

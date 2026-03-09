@@ -30,6 +30,11 @@ export type MarkdownTableCellSegment =
       raw: string;
     };
 
+export const SHARED_TABLE_WRAP_CLASS = "md-table-wrap";
+export const SHARED_TABLE_CELL_CONTENT_CLASS = "md-table-cell-content";
+export const SHARED_TABLE_CELL_MEDIA_CLASS = "md-table-cell-media";
+export const SHARED_TABLE_CELL_IMAGE_CLASS = "md-table-cell-image";
+
 type ParsedMarkdownImage = {
   src: string;
   alt?: string;
@@ -179,4 +184,20 @@ export const splitMarkdownTableCellSegments = (
     segments.push(...splitMarkdownImageLines(segment.source));
   });
   return segments;
+};
+
+export const resolveMarkdownTableCellSegments = ({
+  cellSource,
+  cellText,
+  scope,
+}: {
+  cellSource: string;
+  cellText: string;
+  scope: string;
+}): MarkdownTableCellSegment[] => {
+  const sourceSegments = splitMarkdownTableCellSegments(cellSource, `${scope}-source`);
+  if (sourceSegments.some((segment) => segment.kind !== "text")) {
+    return sourceSegments;
+  }
+  return splitMarkdownTableCellSegments(cellText, `${scope}-fallback`);
 };

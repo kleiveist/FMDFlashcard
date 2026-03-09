@@ -123,6 +123,28 @@ describe("normalizeCardWrapperPlacement", () => {
     const normalized = normalizeCardWrapperPlacement(markdown).content;
     expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(false);
   });
+
+  it("moves early #endcard markers below media to the real task end", () => {
+    const markdown = [
+      "#exam",
+      "#card",
+      "1) Media task",
+      "![[images/example.png]]",
+      "#endcard",
+      "| Left | Right |",
+      "| --- | --- |",
+      '| "token text that should stay in the left cell" | ![[images/right.png]] |',
+      "Answer: A",
+      "#endexam",
+    ].join("\n");
+
+    const normalized = normalizeCardWrapperPlacement(markdown).content;
+    expect((normalized.match(/^#endcard$/gm) ?? []).length).toBe(1);
+    expect(normalized).toContain("#card\n1) Media task");
+    expect(normalized).toMatch(/\nAnswer: A\n#endcard\n#endexam$/);
+    expect(normalized).not.toContain("![[images/example.png]]\n#endcard");
+    expect(parseExamTasks(normalized).tasks[0]?.cardWrapper).toBe(true);
+  });
 });
 
 describe("removeExamTaskWrapper", () => {
@@ -135,6 +157,31 @@ describe("removeExamTaskWrapper", () => {
 
     expect(result.changed).toBe(false);
     expect(result.lines.join("\n")).toBe(baseExamContent);
+  });
+
+  it("removes all internal wrapper remnants in remove mode", () => {
+    const markdown = [
+      "#exam",
+      "#card",
+      "1) Remove remnants",
+      "Question?",
+      "#endcard",
+      "Answer: A",
+      "#endcard",
+      "#endexam",
+    ].join("\n");
+    const task = parseExamTasks(markdown).tasks[0];
+    expect(task).toBeDefined();
+    if (!task) {
+      return;
+    }
+
+    const result = removeExamTaskWrapper(markdown.split("\n"), task.sourceRange);
+    const unwrapped = result.lines.join("\n");
+    expect(unwrapped).not.toMatch(/^#card$/m);
+    expect(unwrapped).not.toMatch(/^#endcard$/m);
+    expect(unwrapped).toContain("1) Remove remnants");
+    expect(unwrapped).toContain("Answer: A");
   });
 });
 

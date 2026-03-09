@@ -334,6 +334,10 @@
   min-width: 0;
 }
 
+figure.flashcard-media-item {
+  margin: 0;
+}
+
 .flashcard-media-entry,
 .media-block-card {
   min-width: 0;
@@ -484,10 +488,11 @@
 }
 
 .flashcard-table table {
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: auto;
 }
 
 .flashcard-table.no-scroll table {
@@ -508,6 +513,9 @@
   border-right: 1px solid var(--line-soft);
   vertical-align: top;
   white-space: normal;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .flashcard-table.no-scroll th,
@@ -530,6 +538,15 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  overflow: hidden;
+}
+
+.md-table-cell-media {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .flashcard-table-cell-media .flashcard-media-group,
@@ -542,8 +559,20 @@
   min-width: 0;
 }
 
+.md-table-cell-media .flashcard-media-group,
+.md-table-cell-media .flashcard-media-item,
+.md-table-cell-media .flashcard-media-entry,
+.md-table-cell-media .media-block-card,
+.md-table-cell-media .media-block-card-surface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .flashcard-table-cell-image,
-.flashcard-table-cell-media .flashcard-media-image {
+.flashcard-table-cell-media .flashcard-media-image,
+.md-table-cell-image,
+.md-table-cell-media .flashcard-media-image {
   display: block;
   width: 100%;
   max-width: 100%;

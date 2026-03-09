@@ -2741,6 +2741,24 @@ textarea.preview-editor {
   white-space: nowrap;
 }
 
+.md-preview th .md-inline-syntax,
+.md-preview td .md-inline-syntax,
+.exam-markdown th .md-inline-syntax,
+.exam-markdown td .md-inline-syntax,
+.flashcard-table th .md-inline-syntax,
+.flashcard-table td .md-inline-syntax,
+.markdown-hybrid-table-cell .md-inline-syntax,
+.markdown-hybrid-table-cell-preview .md-inline-syntax,
+.markdown-table-cell-preview .md-inline-syntax {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  vertical-align: baseline;
+}
+
 .markdown-hybrid-block-preview .md-inline-syntax-hash-tag,
 .markdown-hybrid-block-editor-overlay .md-inline-syntax-hash-tag,
 .md-preview .md-inline-syntax-hash-tag {
@@ -3292,6 +3310,13 @@ textarea.preview-editor {
   transition: background-color 140ms ease, box-shadow 140ms ease;
 }
 
+.markdown-hybrid-table-cell,
+.markdown-hybrid-table-cell .markdown-table-cell-preview {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .markdown-hybrid-table-cell-header {
   font-weight: 600;
 }
@@ -3354,6 +3379,10 @@ textarea.preview-editor {
   word-break: break-word;
 }
 
+.md-table-cell-content {
+  min-width: 0;
+}
+
 .markdown-table-cell-preview > :first-child,
 .markdown-table-cell-preview > :last-child {
   margin-top: 0;
@@ -3398,6 +3427,15 @@ textarea.preview-editor {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  overflow: hidden;
+}
+
+.md-table-cell-media {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .markdown-table-cell-preview .flashcard-media-group,
@@ -3410,8 +3448,20 @@ textarea.preview-editor {
   min-width: 0;
 }
 
+.md-table-cell-media .flashcard-media-group,
+.md-table-cell-media .flashcard-media-item,
+.md-table-cell-media .flashcard-media-entry,
+.md-table-cell-media .media-block-card,
+.md-table-cell-media .media-block-card-surface {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
 .markdown-table-cell-image,
-.markdown-table-cell-media .flashcard-media-image {
+.markdown-table-cell-media .flashcard-media-image,
+.md-table-cell-image,
+.md-table-cell-media .flashcard-media-image {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -3419,6 +3469,12 @@ textarea.preview-editor {
   height: auto;
   max-height: none;
   object-fit: contain;
+}
+
+.markdown-hybrid-table-cell-preview img {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 .markdown-hybrid-table-cell-editor {
@@ -4053,12 +4109,20 @@ textarea.preview-editor {
 
 .markdown-table {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   margin: 0;
   margin-block: 0.8rem;
   border-radius: 12px;
   border: 1px solid var(--line-soft);
   background: var(--md-table-bg);
+}
+
+.md-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .md-preview table {
@@ -4080,6 +4144,10 @@ textarea.preview-editor {
   padding: 8px 12px;
   border-bottom: 1px solid var(--line-soft);
   border-right: 1px solid var(--line-soft);
+  vertical-align: top;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .md-preview tr > :last-child {

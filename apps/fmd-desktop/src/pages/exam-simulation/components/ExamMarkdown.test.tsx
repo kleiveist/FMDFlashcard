@@ -29,6 +29,8 @@ describe("ExamMarkdown", () => {
 
     expect(markup).toContain("flashcard-media-image");
     expect(markup).toContain("exam-table-cell-media");
+    expect(markup).toContain("md-table-cell-media");
+    expect(markup).toContain("md-table-wrap");
     expect(markup).not.toContain("![[images/example.png]]");
   });
 
@@ -44,6 +46,7 @@ describe("ExamMarkdown", () => {
     );
 
     expect(markup).toContain("exam-table-cell-image");
+    expect(markup).toContain("md-table-cell-image");
     expect(markup).toContain("https://example.com/a.png");
   });
 });

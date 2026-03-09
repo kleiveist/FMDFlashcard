@@ -12,7 +12,12 @@
 import { Fragment, type ReactNode } from "react";
 import { splitMarkdownBlocks, type MarkdownBlock } from "../../lib/markdownTables";
 import { splitMarkdownMediaSegments } from "../../lib/cardMedia";
-import { splitMarkdownTableCellSegments } from "../../lib/markdownTableCellMedia";
+import {
+  splitMarkdownTableCellSegments,
+  SHARED_TABLE_CELL_IMAGE_CLASS,
+  SHARED_TABLE_CELL_MEDIA_CLASS,
+  SHARED_TABLE_WRAP_CLASS,
+} from "../../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import type { VaultPngAsset } from "../../lib/tree";
 import { FlashcardMediaGroup } from "./FlashcardMediaGroup";
@@ -182,6 +187,7 @@ export const MarkdownBlocks = ({
   const tableClass = [
     "flashcard-table",
     allowTableScroll ? "scrollable" : "no-scroll",
+    SHARED_TABLE_WRAP_CLASS,
   ].join(" ");
   const renderTableCellSegments = (cell: string, keyPrefix: string) => {
     const segments = splitMarkdownTableCellSegments(
@@ -215,7 +221,10 @@ export const MarkdownBlocks = ({
       }
       if (segment.kind === "media") {
         return (
-          <div className="flashcard-table-cell-media" key={segmentKey}>
+          <div
+            className={`flashcard-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+            key={segmentKey}
+          >
             <FlashcardMediaGroup
               media={segment.items}
               vaultPngAssets={vaultPngAssets}
@@ -225,12 +234,15 @@ export const MarkdownBlocks = ({
         );
       }
       return (
-        <div className="flashcard-table-cell-media" key={segmentKey}>
+        <div
+          className={`flashcard-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+          key={segmentKey}
+        >
           <img
             src={segment.src}
             alt={segment.alt ?? ""}
             title={segment.title}
-            className="flashcard-table-cell-image"
+            className={`flashcard-table-cell-image ${SHARED_TABLE_CELL_IMAGE_CLASS}`}
             loading="lazy"
             decoding="async"
             draggable={false}

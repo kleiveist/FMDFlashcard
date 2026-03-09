@@ -73,7 +73,13 @@ import {
   normalizeMarkdownPipeTables,
   normalizeMarkdownTableCellPreviewValue,
 } from "../lib/markdownTables";
-import { splitMarkdownTableCellSegments } from "../lib/markdownTableCellMedia";
+import {
+  resolveMarkdownTableCellSegments,
+  SHARED_TABLE_CELL_CONTENT_CLASS,
+  SHARED_TABLE_CELL_IMAGE_CLASS,
+  SHARED_TABLE_CELL_MEDIA_CLASS,
+  SHARED_TABLE_WRAP_CLASS,
+} from "../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode, tokenizeMarkdownMath } from "../lib/markdownMath";
 import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
 import { type LoadState } from "../lib/types";
@@ -1342,6 +1348,56 @@ const renderHighlightedInlineSyntaxChildren = (children: ReactNode, keyPrefix: s
     highlightInlineSyntaxInNode(child, `${keyPrefix}-${index}`),
   );
 
+const mergeClassNames = (base: unknown, ...tokens: string[]) => {
+  const existingTokens = typeof base === "string"
+    ? base.split(/\s+/).filter(Boolean)
+    : [];
+  const merged = new Set(existingTokens);
+  tokens.forEach((token) => {
+    const trimmed = token.trim();
+    if (trimmed) {
+      merged.add(trimmed);
+    }
+  });
+  return Array.from(merged).join(" ");
+};
+
+const ensureTableCellImageClassesInNode = (node: ReactNode): ReactNode => {
+  if (
+    typeof node === "string" ||
+    typeof node === "number" ||
+    typeof node === "boolean" ||
+    node == null
+  ) {
+    return node;
+  }
+  if (!isValidElement<{ children?: ReactNode; className?: unknown }>(node)) {
+    return node;
+  }
+
+  const rawChildren = node.props.children;
+  const nextChildren = rawChildren == null
+    ? rawChildren
+    : Children.map(rawChildren, (child) => ensureTableCellImageClassesInNode(child));
+  const tagName = typeof node.type === "string" ? node.type.toLowerCase() : null;
+
+  if (tagName === "img") {
+    return cloneElement(node, {
+      className: mergeClassNames(
+        node.props.className,
+        "markdown-table-cell-image",
+        SHARED_TABLE_CELL_IMAGE_CLASS,
+      ),
+    });
+  }
+
+  if (rawChildren == null) {
+    return node;
+  }
+
+  return cloneElement(node, undefined, nextChildren);
+};
+
 const isMarkdownTableCellBreakNode = (node: ReactNode) =>
   isValidElement(node) &&
   typeof node.type === "string" &&
@@ -1418,7 +1474,7 @@ const renderMarkdownTableCellChildren = (children: ReactNode, keyPrefix: string)
   pushParagraph();
 
   return (
-    <div className="markdown-table-cell-preview">
+    <div className={`markdown-table-cell-preview ${SHARED_TABLE_CELL_CONTENT_CLASS}`}>
       {paragraphs.map((paragraph, index) => (
         <div
           key={`${keyPrefix}-paragraph-${index}`}
@@ -1449,24 +1505,19 @@ const renderMarkdownTableCellWithMedia = ({
   sourceRelativePath?: string | null;
 }) => {
   const cellSource = readMarkdownNodeSource(node, markdownSource);
-  const sourceSegments = splitMarkdownTableCellSegments(
-    cellSource,
-    `preview-table-cell-${keyPrefix}`,
-  );
-  const sourceHasMedia = sourceSegments.some((segment) => segment.kind !== "text");
   const cellText = readMarkdownNodeText(node);
-  const textSegments = sourceHasMedia
-    ? sourceSegments
-    : splitMarkdownTableCellSegments(
-      cellText,
-      `preview-table-cell-fallback-${keyPrefix}`,
-    );
-  const segments = sourceHasMedia
-    ? sourceSegments
-    : textSegments;
+  const segments = resolveMarkdownTableCellSegments({
+    cellSource,
+    cellText,
+    scope: `preview-table-cell-${keyPrefix}`,
+  });
   const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
   if (!hasMediaSegments) {
-    return renderMarkdownTableCellChildren(children, keyPrefix);
+    const normalizedChildren = Children.map(
+      children,
+      (child) => ensureTableCellImageClassesInNode(child),
+    );
+    return renderMarkdownTableCellChildren(normalizedChildren, keyPrefix);
   }
 
   const renderedSegments = segments.map((segment, index) => {
@@ -1476,7 +1527,10 @@ const renderMarkdownTableCellWithMedia = ({
     }
     if (segment.kind === "media") {
       return (
-        <div className="markdown-table-cell-media" key={segmentKey}>
+        <div
+          className={`markdown-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+          key={segmentKey}
+        >
           <FlashcardMediaGroup
             media={segment.items}
             vaultPngAssets={vaultPngAssets}
@@ -1487,12 +1541,15 @@ const renderMarkdownTableCellWithMedia = ({
       );
     }
     return (
-      <div className="markdown-table-cell-media" key={segmentKey}>
+      <div
+        className={`markdown-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+        key={segmentKey}
+      >
         <img
           src={segment.src}
           alt={segment.alt ?? ""}
           title={segment.title}
-          className="markdown-table-cell-image"
+          className={`markdown-table-cell-image ${SHARED_TABLE_CELL_IMAGE_CLASS}`}
           draggable={false}
           loading="lazy"
           decoding="async"
@@ -7146,7 +7203,7 @@ export const PreviewPanel = ({
             pre: ({ node: _node, children, ...props }) =>
               renderMarkdownCodePre({ children, ...props }),
             table: ({ node: _node, ...props }) => (
-              <div className="markdown-table">
+              <div className={`markdown-table ${SHARED_TABLE_WRAP_CLASS}`}>
                 <table {...props} />
               </div>
             ),
@@ -7755,7 +7812,7 @@ export const PreviewPanel = ({
                           pre: ({ node: _node, children, ...props }) =>
                             renderMarkdownCodePre({ children, ...props }),
                           table: ({ node: _node, ...props }) => (
-                            <div className="markdown-table">
+                            <div className={`markdown-table ${SHARED_TABLE_WRAP_CLASS}`}>
                               <table {...props} />
                             </div>
                           ),

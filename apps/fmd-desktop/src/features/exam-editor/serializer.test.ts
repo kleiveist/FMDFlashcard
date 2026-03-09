@@ -234,6 +234,50 @@ describe("serializeExamBlueprint", () => {
     expect(markdown).not.toContain("#mediaend");
   });
 
+  it("keeps #endcard at the true task end for wrapped tasks with media and tables", () => {
+    const exam: ExamBlueprint = {
+      id: "exam-wrapper-end",
+      title: "",
+      description: "",
+      tasks: [
+        {
+          id: "task-1",
+          order: 0,
+          title: "Wrapper end",
+          useCardWrapper: true,
+          cards: [
+            {
+              id: "card-1",
+              type: "qa",
+              prompt: [
+                "| Left | Right |",
+                "| --- | --- |",
+                '| "token" | ![[images/right.png]] |',
+              ].join("\n"),
+              answer: "A",
+              mediaItems: [
+                {
+                  id: "media-1",
+                  type: "png",
+                  src: "images/example.png",
+                  inlineSvg: "",
+                  label: "",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = serializeExamBlueprint(exam);
+    expect(markdown).toContain("#card\n1) Wrapper end");
+    expect(markdown).toContain("![[images/example.png]]");
+    expect(markdown).toContain('| "token" | ![[images/right.png]] |');
+    expect((markdown.match(/^#endcard$/gm) ?? []).length).toBe(1);
+    expect(markdown).toMatch(/\nAnswer: A\n#endcard\n---\n#endexam$/);
+  });
+
   it("omits #card wrapper when disabled", () => {
     const exam: ExamBlueprint = {
       id: "exam-nowrap",

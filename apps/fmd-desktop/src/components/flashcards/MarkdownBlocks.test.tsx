@@ -48,6 +48,8 @@ describe("MarkdownBlocks math rendering", () => {
     );
 
     expect(markup).toContain("flashcard-table-cell-media");
+    expect(markup).toContain("md-table-cell-media");
+    expect(markup).toContain("md-table-wrap");
     expect(markup).toContain("flashcard-media-image");
     expect(markup).not.toContain("![[images/example.png]]");
   });
@@ -64,6 +66,7 @@ describe("MarkdownBlocks math rendering", () => {
     );
 
     expect(markup).toContain("flashcard-table-cell-image");
+    expect(markup).toContain("md-table-cell-image");
     expect(markup).toContain("https://example.com/a.png");
   });
 
