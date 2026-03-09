@@ -406,6 +406,9 @@ Just context without explicit answer marker.
       return;
     }
     expect(card.type).toBe("qa");
+    if (card.type !== "qa") {
+      throw new Error("Expected QA fallback card");
+    }
     expect(card.prompt).toContain("Just context without explicit answer marker.");
     expect(card.prompt).toContain("| left | right |");
     expect(card.answer).toBe("");
@@ -450,6 +453,9 @@ Just context without explicit answer marker.
       return;
     }
     expect(card.type).toBe("qa");
+    if (card.type !== "qa") {
+      throw new Error("Expected QA fallback card");
+    }
     expect(card.prompt).toBe("");
     expect(card.answer).toBe("");
     expect(card.mediaItems?.[0]).toMatchObject({
