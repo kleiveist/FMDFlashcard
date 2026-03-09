@@ -130,9 +130,10 @@ def run_install(dry_run: bool = False) -> int:
         "portable": (win_portable_dir, ("*.zip",)),
     }
     destination_roots = (
-        Path("/mnt/T7-1TB/workspace/Blobbite/Develop/PythonLinux/AppInsall"),
-        Path("/mnt/T7-2TB/workspace/Blobbite/Develop/PythonLinux/AppInsall"),
-        Path("/mnt/daten/workspace/Blobbite/Develop/PythonLinux/AppInsall"),
+        Path("/mnt/T7-1TB/workspace/Blobbite/Develop/P25PythonLinux/PythonLinux/AppInsall"),
+        Path("/mnt/T7-2TB/workspace/Blobbite/Develop/P25PythonLinux/PythonLinux/AppInsall"),
+        Path("/mnt/daten/workspace/Blobbite/Develop/P25PythonLinux/PythonLinux/AppInsall"),
+
     )
 
     section("Run Context")
