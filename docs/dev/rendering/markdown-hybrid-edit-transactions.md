@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](rendering.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Markdown Hybrid Edit Transactions
 
 ## Core rule

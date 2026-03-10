@@ -14,9 +14,6 @@
 - 📝 [User Vault Mode Unterschiede](adr/user-vault-mode.md)
 - 📝 [Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)](adr/wallet-onboarding-gates.md)
 
-## 📁 Assets
-- 🗂️ [Overview](assets/assets.md)
-
 ## 📁 DEV
 - 🗂️ [Overview](dev/dev.md)
 - 📝 [Architecture overview](dev/architecture.md)
@@ -28,11 +25,11 @@
 - 📝 [Testing](dev/testing.md)
 
 ## 📁 USER
-- 🗂️ [Overview](user/user.md)
-- 📝 [Getting started](user/getting-started.md)
-- 📝 [Settings](user/settings.md)
-- 📝 [Spaced repetition](user/spaced-repetition.md)
-- 📝 [Troubleshooting](user/troubleshooting.md)
-- 📝 [User Vault (Statistiken)](user/user-vault.md)
+- 🗂️ [Overview](usr/usr.md)
+- 📝 [Getting started](usr/getting-started.md)
+- 📝 [Settings](usr/settings.md)
+- 📝 [Spaced repetition](usr/spaced-repetition.md)
+- 📝 [Troubleshooting](usr/troubleshooting.md)
+- 📝 [User Vault (Statistiken)](usr/user-vault.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

@@ -36,9 +36,6 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [User Vault Mode Unterschiede](docs/adr/user-vault-mode.md)
 - 📝 [Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)](docs/adr/wallet-onboarding-gates.md)
 
-## 📁 Assets
-- 🗂️ [Overview](docs/assets/assets.md)
-
 ## 📁 DEV
 - 🗂️ [Overview](docs/dev/dev.md)
 - 📝 [Architecture overview](docs/dev/architecture.md)
@@ -50,12 +47,12 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Testing](docs/dev/testing.md)
 
 ## 📁 USER
-- 🗂️ [Overview](docs/user/user.md)
-- 📝 [Getting started](docs/user/getting-started.md)
-- 📝 [Settings](docs/user/settings.md)
-- 📝 [Spaced repetition](docs/user/spaced-repetition.md)
-- 📝 [Troubleshooting](docs/user/troubleshooting.md)
-- 📝 [User Vault (Statistiken)](docs/user/user-vault.md)
+- 🗂️ [Overview](docs/usr/usr.md)
+- 📝 [Getting started](docs/usr/getting-started.md)
+- 📝 [Settings](docs/usr/settings.md)
+- 📝 [Spaced repetition](docs/usr/spaced-repetition.md)
+- 📝 [Troubleshooting](docs/usr/troubleshooting.md)
+- 📝 [User Vault (Statistiken)](docs/usr/user-vault.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
 

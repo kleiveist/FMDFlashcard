@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](user.md)
+[← Back](usr.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Spaced repetition
 

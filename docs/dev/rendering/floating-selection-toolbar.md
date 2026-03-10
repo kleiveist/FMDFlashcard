@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](rendering.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Floating Selection Toolbar (Hybrid Editor)
 
 ## Integration

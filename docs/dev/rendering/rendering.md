@@ -6,6 +6,9 @@
 <!-- AUTO-GENERATED:docs-index START -->
 
 ## 📄 Pages
+- 📝 [Floating Selection Toolbar (Hybrid Editor)](floating-selection-toolbar.md)
+- 📝 [Markdown Code Highlighting](markdown-code-highlighting.md)
+- 📝 [Markdown Hybrid Edit Transactions](markdown-hybrid-edit-transactions.md)
 - 📝 [Rendering examedito](rendering_examedito.md)
 - 📝 [Rendering markdown tabel](rendering_markdown_tabel.md)
 - 📝 [Recommendation: Extend your table by 3 meta columns](rendering_markdown_types.md)
@@ -13,10 +16,6 @@
 
 ## 📁 DE
 - 🗂️ [Overview](de/de.md)
-- 📝 [Rendering examedito de](de/rendering_examedito_de.md)
-- 📝 [Rendering markdown tabel de](de/rendering_markdown_tabel_de.md)
-- 📝 [Rendering markdown types de](de/rendering_markdown_types_de.md)
-- 📝 [Rendering tabelcard de](de/rendering_tabelcard_de.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
 
