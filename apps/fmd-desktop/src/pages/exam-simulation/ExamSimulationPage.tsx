@@ -21,7 +21,14 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   resolveExamPhaseButton,
   type ExamStageControls,
@@ -209,7 +216,7 @@ export const ExamSimulationPage = ({
     .filter(Boolean)
     .join(" ");
   const handleRunSummaryInfoKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (!runSummaryNoteTriggerEnabled || !onRunSummaryNoteAction) {
         return;
       }

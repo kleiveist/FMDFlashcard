@@ -176,7 +176,9 @@ describe("useSrSessionViewModel auto time", () => {
 
     expect(onSelfGrade).toHaveBeenCalledWith(0, "incorrect");
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(latest?.autoTimeEnabled).toBe(true);
+    expect((latest as { autoTimeEnabled: boolean } | null)?.autoTimeEnabled).toBe(
+      true,
+    );
 
     cleanup();
     vi.useRealTimers();

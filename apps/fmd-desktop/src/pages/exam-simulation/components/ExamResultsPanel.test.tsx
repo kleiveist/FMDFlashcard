@@ -59,6 +59,7 @@ const buildSessionTask = (overrides: Partial<ExamSessionTask> = {}): ExamSession
   sourceExamPath: "/vault/exam.md",
   sourceTitle: "exam.md",
   originalTaskNumber: 1,
+  sourceTaskIndex: 0,
   sessionIndex: 1,
   ...overrides,
 });
