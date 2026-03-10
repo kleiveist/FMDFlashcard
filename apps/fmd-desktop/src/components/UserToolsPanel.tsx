@@ -62,7 +62,7 @@ export const resolveExamPhaseButton = (
       };
     case "scoring_manual":
       return {
-        label: "Finish Scoring",
+        label: "Finish",
         onClick: examStageControls.onFinishManualScoring,
         disabled: Boolean(examStageControls.phaseDisabled),
       };

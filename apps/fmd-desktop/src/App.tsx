@@ -483,7 +483,9 @@ const AppContent = () => {
           {!showStudySectionNav ? (
             <button
               type="button"
-              className="ghost small mobile-nav-toggle"
+              className={`ghost small mobile-nav-toggle ${
+                activeTab === "exam" ? "exam-mobile-nav-toggle" : ""
+              }`}
               onClick={() => setIsMobileNavOpen(true)}
               aria-label="Open navigation"
               aria-controls="app-sidebar"

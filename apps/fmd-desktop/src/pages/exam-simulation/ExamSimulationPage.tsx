@@ -22,10 +22,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   resolveExamPhaseButton,
-  resolveExamPrimaryButton,
   type ExamStageControls,
   UserToolsPanel,
 } from "../../components/UserToolsPanel";
@@ -230,7 +228,6 @@ export const ExamSimulationPage = () => {
     ],
   );
   const phaseButton = resolveExamPhaseButton(examStageControls);
-  const primaryButton = resolveExamPrimaryButton(examStageControls);
   const platform = getShortcutPlatform();
   const viewBinding = useMemo(() => {
     if (!viewToggleCommand) {
@@ -490,28 +487,8 @@ export const ExamSimulationPage = () => {
     viewBinding,
   ]);
 
-  const mobileNavActions =
-    typeof document === "undefined"
-      ? null
-      : document.getElementById("mobile-nav-actions");
-  const tableViewControls =
-    (isTableView || isViewMode) && mobileNavActions && !isOverviewStage
-      ? createPortal(
-          <button
-            type="button"
-            className={`${primaryButton.variant} small`}
-            onClick={primaryButton.onClick}
-            disabled={primaryButton.disabled}
-          >
-            {primaryButton.label}
-          </button>,
-          mobileNavActions,
-        )
-      : null;
-
   return (
     <div className="exam-page">
-      {tableViewControls}
       <div className="exam-layout">
         <div className="exam-main">
           {showOverviewToggle ? renderOverviewToggle() : null}
@@ -528,16 +505,17 @@ export const ExamSimulationPage = () => {
           {stage === "idle" || isRunnerStage ? (
             <section className="panel exam-panel">
               <div className="exam-panel-toolbar">
-                {stage === "idle" && overviewTab === "ready" ? (
-                  <button
-                    type="button"
-                    className="primary"
-                    onClick={phaseButton.onClick}
-                    disabled={phaseButton.disabled}
-                  >
-                    Exam starten
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  className="primary small"
+                  onClick={phaseButton.onClick}
+                  disabled={phaseButton.disabled}
+                >
+                  {phaseButton.label}
+                </button>
+                <button type="button" className="ghost small" onClick={handleResetExam}>
+                  Reset
+                </button>
                 <button
                   type="button"
                   className={`focus-toggle ${isViewMode ? "active" : ""}`}
@@ -656,6 +634,19 @@ export const ExamSimulationPage = () => {
           {stage === "finish_scoring" ? (
             results ? (
               <section className="panel finish-scoring-panel">
+                <div className="exam-panel-toolbar">
+                  <button
+                    type="button"
+                    className="primary small"
+                    onClick={phaseButton.onClick}
+                    disabled={phaseButton.disabled}
+                  >
+                    {phaseButton.label}
+                  </button>
+                  <button type="button" className="ghost small" onClick={handleResetExam}>
+                    Reset
+                  </button>
+                </div>
                 <ExamResultsPanel
                   results={results}
                   helpEnabled={settings.examHelpEnabled}
@@ -676,6 +667,19 @@ export const ExamSimulationPage = () => {
               </section>
             ) : (
               <section className="panel finish-scoring-panel">
+                <div className="exam-panel-toolbar">
+                  <button
+                    type="button"
+                    className="primary small"
+                    onClick={phaseButton.onClick}
+                    disabled={phaseButton.disabled}
+                  >
+                    {phaseButton.label}
+                  </button>
+                  <button type="button" className="ghost small" onClick={handleResetExam}>
+                    Reset
+                  </button>
+                </div>
                 <div className="empty-state">No results available yet.</div>
               </section>
             )

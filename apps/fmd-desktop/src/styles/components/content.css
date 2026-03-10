@@ -142,6 +142,10 @@
   align-self: flex-start;
 }
 
+body.focus-mode .app-shell[data-active-tab="exam"] .exam-mobile-nav-toggle {
+  display: none;
+}
+
 .mobile-nav-actions {
   margin-left: auto;
   display: flex;

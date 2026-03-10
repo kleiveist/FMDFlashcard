@@ -96,7 +96,7 @@ export const ExamManualScoringPanel = ({
           onClick={onFinishScoring}
           disabled={finishDisabled}
         >
-          Finish Scoring
+          Finish
         </button>
       </div>
     </header>

@@ -105,7 +105,7 @@ export const ExamToolsPanel = ({
                 onClick={onFinishManualScoring}
                 disabled={finishPending}
               >
-                Finish Scoring
+                Finish
               </button>
             ) : null}
             {showFinalize ? (
