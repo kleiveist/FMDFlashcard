@@ -42,3 +42,12 @@ body {
     transform: translateY(0);
   }
 }
+
+@keyframes fadeInOnly {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
