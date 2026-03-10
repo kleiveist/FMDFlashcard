@@ -31,9 +31,11 @@ export const ExamIdlePanel = ({
   missingSettings,
   onOpenExamSettings,
 }: ExamIdlePanelProps) => {
-  const renderSetupPanel = (content: ReactNode) => (
+  const renderSetupPanel = (content: ReactNode, panelClassName?: string) => (
     <div className="exam-idle exam-idle-steps">
-      <section className="exam-step-panel">{content}</section>
+      <section className={["exam-step-panel", panelClassName].filter(Boolean).join(" ")}>
+        {content}
+      </section>
     </div>
   );
 
@@ -43,9 +45,10 @@ export const ExamIdlePanel = ({
 
   if (selectedCount === 0) {
     return renderSetupPanel(
-      <div className="empty-state">
+      <div className="empty-state exam-idle-empty-state">
         <p>Waehle mindestens eine Exam-Datei im Dateipanel.</p>
-      </div>
+      </div>,
+      "exam-step-panel-fixed-80",
     );
   }
 

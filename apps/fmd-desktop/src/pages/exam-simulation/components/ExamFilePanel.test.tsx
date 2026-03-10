@@ -61,6 +61,24 @@ const runProfileOptions = [
   { id: "profile-2", name: "Practice" },
 ];
 
+const setChipRect = (chip: HTMLButtonElement, left: number, width = 100) => {
+  Object.defineProperty(chip, "getBoundingClientRect", {
+    configurable: true,
+    value: () =>
+      ({
+        x: left,
+        y: 0,
+        left,
+        top: 0,
+        width,
+        height: 40,
+        right: left + width,
+        bottom: 40,
+        toJSON: () => ({}),
+      }) as DOMRect,
+  });
+};
+
 describe("ExamFilePanel", () => {
   it("shows only valid files and selected summary", () => {
     const { container, cleanup } = render(
@@ -112,9 +130,8 @@ describe("ExamFilePanel", () => {
 
     expect(container.querySelector("label.exam-file-run-profile-field")).not.toBeNull();
     expect(container.textContent).toContain("Selection");
-    expect(container.textContent).toContain(
-      "No exam files selected. Pick files below to enable reorder.",
-    );
+    expect(container.textContent).toContain("No file selected");
+    expect(container.textContent).toContain("Pick files below to enable reorder.");
 
     cleanup();
   });
@@ -413,6 +430,177 @@ describe("ExamFilePanel", () => {
     });
 
     expect(onMoveSelectedFile).toHaveBeenCalledWith("/vault/a.md", "/vault/d.md");
+    cleanup();
+  });
+
+  it("supports mouse drag and drop reorder with insertion indicator", () => {
+    const onMoveSelectedFile = vi.fn();
+    const reorderFiles = [
+      {
+        path: "/vault/a.md",
+        relative_path: "folder/A.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/d.md",
+        relative_path: "folder/D.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/e.md",
+        relative_path: "folder/E.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+    ];
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files: reorderFiles,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md", "/vault/d.md", "/vault/e.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile,
+      }),
+    );
+
+    const chips = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button.exam-selected-chip"),
+    );
+    setChipRect(chips[0]!, 100, 100);
+
+    act(() => {
+      chips[2]?.dispatchEvent(new Event("dragstart", { bubbles: true, cancelable: true }));
+    });
+    expect(chips[2]?.className).toContain("is-move-source");
+    expect(chips[2]?.className).toContain("is-dragging");
+
+    act(() => {
+      chips[0]?.dispatchEvent(
+        new MouseEvent("dragover", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 110,
+        }),
+      );
+    });
+    expect(chips[0]?.className).toContain("drop-before");
+
+    act(() => {
+      chips[0]?.dispatchEvent(
+        new MouseEvent("dragover", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 190,
+        }),
+      );
+    });
+    expect(chips[0]?.className).toContain("drop-after");
+
+    act(() => {
+      chips[0]?.dispatchEvent(
+        new MouseEvent("drop", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 190,
+        }),
+      );
+    });
+
+    expect(onMoveSelectedFile).toHaveBeenCalledWith("/vault/e.md", "/vault/d.md");
+    expect(container.querySelector(".exam-selected-chip.drop-before")).toBeNull();
+    expect(container.querySelector(".exam-selected-chip.drop-after")).toBeNull();
+    expect(container.querySelector(".exam-selected-chip.is-dragging")).toBeNull();
+    cleanup();
+  });
+
+  it("keeps drop indicator while pointer remains inside chip", () => {
+    const reorderFiles = [
+      {
+        path: "/vault/a.md",
+        relative_path: "folder/A.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/d.md",
+        relative_path: "folder/D.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+    ];
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files: reorderFiles,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md", "/vault/d.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const chips = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button.exam-selected-chip"),
+    );
+    setChipRect(chips[1]!, 200, 100);
+
+    act(() => {
+      chips[0]?.dispatchEvent(new Event("dragstart", { bubbles: true, cancelable: true }));
+      chips[1]?.dispatchEvent(
+        new MouseEvent("dragover", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 210,
+        }),
+      );
+    });
+    expect(chips[1]?.className).toContain("drop-before");
+
+    const dragLeaveInside = new Event("dragleave", { bubbles: true, cancelable: true });
+    Object.defineProperty(dragLeaveInside, "relatedTarget", {
+      configurable: true,
+      value: chips[1]?.querySelector(".exam-selected-chip-name") ?? null,
+    });
+    act(() => {
+      chips[1]?.dispatchEvent(dragLeaveInside);
+    });
+    expect(chips[1]?.className).toContain("drop-before");
+
+    const dragLeaveOutside = new Event("dragleave", { bubbles: true, cancelable: true });
+    Object.defineProperty(dragLeaveOutside, "relatedTarget", {
+      configurable: true,
+      value: document.body,
+    });
+    act(() => {
+      chips[1]?.dispatchEvent(dragLeaveOutside);
+    });
+    expect(chips[1]?.className).not.toContain("drop-before");
+
     cleanup();
   });
 

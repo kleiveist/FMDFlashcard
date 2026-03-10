@@ -1381,17 +1381,49 @@ body.focus-mode .spaced-repetition-sidebar {
   border-radius: 999px;
   padding: 8px 12px;
   min-width: 132px;
+  min-height: 50px;
   background: var(--accent-weak-bg);
   color: var(--ink);
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  position: relative;
 }
 
 .exam-selected-chip.is-move-source {
   border-color: var(--accent-border);
   background: var(--accent-active-bg);
+}
+
+.exam-selected-chip-placeholder {
+  justify-content: center;
+  border-style: dashed;
+  background: color-mix(in srgb, var(--panel) 84%, var(--block-bg));
+}
+
+.exam-selected-chip.is-dragging {
+  opacity: 0.65;
+}
+
+.exam-selected-chip.drop-before::before,
+.exam-selected-chip.drop-after::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--accent-border);
+  pointer-events: none;
+}
+
+.exam-selected-chip.drop-before::before {
+  left: -5px;
+}
+
+.exam-selected-chip.drop-after::after {
+  right: -5px;
 }
 
 .exam-selected-chip-name {
@@ -1577,6 +1609,25 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-step-panel h3 {
   margin: 0;
   font-size: 0.95rem;
+}
+
+.exam-step-panel-fixed-80 {
+  height: 80px;
+}
+
+.exam-idle-empty-state {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+}
+
+.exam-idle-empty-state p {
+  margin: 0;
 }
 
 .exam-ignored-list {

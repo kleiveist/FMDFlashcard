@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import type { ExamCombinationMode } from "../../../lib/examMixedSession";
@@ -57,6 +58,11 @@ type ExamListRow =
       entries: ExamFileEntry[];
     };
 
+type ChipDropHint = {
+  path: string;
+  position: "before" | "after";
+};
+
 const FILE_ROW_HEIGHT = 84;
 const FILE_LIST_OVERSCAN = 5;
 const FILE_LIST_VISIBLE_ROWS = 8;
@@ -84,6 +90,8 @@ export const ExamFilePanel = ({
   const [search, setSearch] = useState("");
   const [scrollTop, setScrollTop] = useState(0);
   const [moveSourcePath, setMoveSourcePath] = useState<string | null>(null);
+  const [dragSourcePath, setDragSourcePath] = useState<string | null>(null);
+  const [dropHint, setDropHint] = useState<ChipDropHint | null>(null);
   const [toolbarHeight, setToolbarHeight] = useState(FILE_VIEWPORT_TOOLBAR_HEIGHT);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const selectedOrderRef = useRef<HTMLDivElement | null>(null);
@@ -140,11 +148,15 @@ export const ExamFilePanel = ({
         return;
       }
       setMoveSourcePath(null);
+      setDragSourcePath(null);
+      setDropHint(null);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setMoveSourcePath(null);
+        setDragSourcePath(null);
+        setDropHint(null);
       }
     };
 
@@ -252,10 +264,120 @@ export const ExamFilePanel = ({
       handleSelectedReorderTap(path);
       return;
     }
-    if (event.key === "Escape" && moveSourcePath) {
+    if (event.key === "Escape" && (moveSourcePath || dragSourcePath || dropHint)) {
       event.preventDefault();
       setMoveSourcePath(null);
+      setDragSourcePath(null);
+      setDropHint(null);
     }
+  };
+
+  const resolveChipDropPosition = (
+    event: Pick<ReactDragEvent<HTMLButtonElement>, "currentTarget" | "clientX">,
+  ): "before" | "after" => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const midpoint = rect.left + rect.width / 2;
+    return event.clientX > midpoint ? "after" : "before";
+  };
+
+  const resolveDropTargetPath = (
+    sourcePath: string,
+    targetPath: string,
+    position: "before" | "after",
+  ): string | null => {
+    const sourceIndex = selectedPaths.indexOf(sourcePath);
+    const targetIndex = selectedPaths.indexOf(targetPath);
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return null;
+    }
+    const desiredIndex =
+      targetIndex +
+      (position === "after" ? 1 : 0) -
+      (sourceIndex < targetIndex ? 1 : 0);
+    if (desiredIndex === sourceIndex) {
+      return null;
+    }
+    if (desiredIndex < 0 || desiredIndex >= selectedPaths.length) {
+      return null;
+    }
+    return selectedPaths[desiredIndex] ?? null;
+  };
+
+  const handleSelectedChipDragStart = (
+    event: ReactDragEvent<HTMLButtonElement>,
+    path: string,
+  ) => {
+    setDragSourcePath(path);
+    setMoveSourcePath(path);
+    setDropHint(null);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      try {
+        event.dataTransfer.setData("text/plain", path);
+      } catch {
+        // ignore dataTransfer limitations in certain runtimes
+      }
+    }
+  };
+
+  const handleSelectedChipDragOver = (
+    event: ReactDragEvent<HTMLButtonElement>,
+    path: string,
+  ) => {
+    const sourcePath = dragSourcePath ?? moveSourcePath;
+    if (!sourcePath) {
+      return;
+    }
+    if (sourcePath === path) {
+      if (dropHint) {
+        setDropHint(null);
+      }
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+    const position = resolveChipDropPosition(event);
+    setDropHint((current) =>
+      current?.path === path && current.position === position ? current : { path, position },
+    );
+  };
+
+  const handleSelectedChipDragLeave = (
+    event: ReactDragEvent<HTMLButtonElement>,
+    path: string,
+  ) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setDropHint((current) => (current?.path === path ? null : current));
+  };
+
+  const handleSelectedChipDrop = (
+    event: ReactDragEvent<HTMLButtonElement>,
+    path: string,
+  ) => {
+    const sourcePath = dragSourcePath ?? moveSourcePath;
+    if (!sourcePath) {
+      return;
+    }
+    event.preventDefault();
+    const position = resolveChipDropPosition(event);
+    const targetPath = resolveDropTargetPath(sourcePath, path, position);
+    if (targetPath) {
+      onMoveSelectedFile(sourcePath, targetPath);
+    }
+    setDropHint(null);
+    setDragSourcePath(null);
+    setMoveSourcePath(null);
+  };
+
+  const handleSelectedChipDragEnd = () => {
+    setDropHint(null);
+    setDragSourcePath(null);
+    setMoveSourcePath(null);
   };
 
   return (
@@ -340,8 +462,8 @@ export const ExamFilePanel = ({
                 </div>
               ) : null}
               <p className="muted exam-selected-order-hint">
-                Reorder via two taps (touch): tap source first, then target. Click outside
-                this row or press Escape to cancel.
+                Reorder with drag (mouse) or two taps (touch): pick source first, then
+                target. Click outside this row or press Escape to cancel.
               </p>
               <div
                 ref={selectedOrderRef}
@@ -353,13 +475,26 @@ export const ExamFilePanel = ({
                   selectedEntries.map((entry) => {
                     const { fileName } = splitExamFilePathParts(entry.relative_path);
                     const isMoveSource = moveSourcePath === entry.path;
+                    const isDragging = dragSourcePath === entry.path;
+                    const dropPosition =
+                      dropHint?.path === entry.path ? dropHint.position : null;
                     return (
                       <button
                         key={entry.path}
                         type="button"
-                        className={`exam-selected-chip ${isMoveSource ? "is-move-source" : ""}`}
+                        className={`exam-selected-chip ${
+                          isMoveSource ? "is-move-source" : ""
+                        } ${isDragging ? "is-dragging" : ""} ${
+                          dropPosition ? `drop-${dropPosition}` : ""
+                        }`.trim()}
                         onClick={() => handleSelectedReorderTap(entry.path)}
                         onKeyDown={(event) => handleSelectedChipKeyDown(event, entry.path)}
+                        draggable
+                        onDragStart={(event) => handleSelectedChipDragStart(event, entry.path)}
+                        onDragOver={(event) => handleSelectedChipDragOver(event, entry.path)}
+                        onDragLeave={(event) => handleSelectedChipDragLeave(event, entry.path)}
+                        onDrop={(event) => handleSelectedChipDrop(event, entry.path)}
+                        onDragEnd={handleSelectedChipDragEnd}
                         role="listitem"
                         title={entry.relative_path}
                         aria-pressed={isMoveSource}
@@ -370,9 +505,16 @@ export const ExamFilePanel = ({
                     );
                   })
                 ) : (
-                  <span className="muted exam-selected-order-empty">
-                    No exam files selected. Pick files below to enable reorder.
-                  </span>
+                  <div
+                    className="exam-selected-chip exam-selected-chip-placeholder"
+                    role="listitem"
+                    aria-live="polite"
+                  >
+                    <span className="exam-selected-chip-name">No file selected</span>
+                    <span className="exam-selected-chip-meta">
+                      Pick files below to enable reorder.
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
