@@ -21,7 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   resolveExamPhaseButton,
   type ExamStageControls,
@@ -52,7 +52,17 @@ const studyNextCommand = getShortcutById("studyNext");
 const studySubmitCommand = getShortcutById("studySubmit");
 const STANDARD_RUN_PROFILE_LABEL = "Standard (no profile)";
 
-export const ExamSimulationPage = () => {
+type ExamSimulationPageProps = {
+  runSummaryNoteActionEnabled?: boolean;
+  onRunSummaryNoteAction?: () => void;
+  isRunSummaryNoteActionActive?: boolean;
+};
+
+export const ExamSimulationPage = ({
+  runSummaryNoteActionEnabled = false,
+  onRunSummaryNoteAction,
+  isRunSummaryNoteActionActive = false,
+}: ExamSimulationPageProps) => {
   const {
     settings,
     vault,
@@ -189,6 +199,27 @@ export const ExamSimulationPage = () => {
   const runSummaryFlowText = `SELECTION ${runSelectionSummary} · MAX POINTS IN RUN ${plannedMaxPoints} · MODE ${runSummaryModeLabel} · PROFILE ${
     selectedRunProfileName ?? STANDARD_RUN_PROFILE_LABEL
   } · DURATION ${previewDurationMinutes} minutes`;
+  const runSummaryNoteTriggerEnabled =
+    runSummaryNoteActionEnabled && Boolean(onRunSummaryNoteAction);
+  const runSummaryInfoClassName = [
+    "exam-mix-info",
+    runSummaryNoteTriggerEnabled ? "is-note-trigger" : "",
+    isRunSummaryNoteActionActive ? "active" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const handleRunSummaryInfoKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (!runSummaryNoteTriggerEnabled || !onRunSummaryNoteAction) {
+        return;
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onRunSummaryNoteAction();
+      }
+    },
+    [onRunSummaryNoteAction, runSummaryNoteTriggerEnabled],
+  );
 
   const examFilePanelProps = {
     files: examFiles,
@@ -203,6 +234,7 @@ export const ExamSimulationPage = () => {
     onSetSelectedPaths: handleSelectVisibleExamFiles,
     onClearSelection: handleClearExamSelection,
     onMoveSelectedFile: handleMoveSelectedExamFile,
+    listScrollMode: "external" as const,
   };
   const examStageControls = useMemo<ExamStageControls>(
     () => ({
@@ -265,7 +297,7 @@ export const ExamSimulationPage = () => {
   const activePhase = stage === "review" ? "review" : "exam";
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const viewToggleDisabled = isTableView && !examRunning;
-  const timelineVisible = examTimerEnabled && examShowTimeline;
+  const timelineVisible = examShowTimeline;
   const renderOverviewToggle = () => (
     <div className="exam-overview-toggle">
       <div className="exam-overview-toggle-header">
@@ -526,7 +558,17 @@ export const ExamSimulationPage = () => {
                   </svg>
                 </button>
               </div>
-              <div className="exam-mix-info" role="list" aria-label="Run summary">
+              <div
+                className={runSummaryInfoClassName}
+                role="list"
+                aria-label="Run summary"
+                onClick={runSummaryNoteTriggerEnabled ? onRunSummaryNoteAction : undefined}
+                onKeyDown={runSummaryNoteTriggerEnabled ? handleRunSummaryInfoKeyDown : undefined}
+                tabIndex={runSummaryNoteTriggerEnabled ? 0 : undefined}
+                aria-haspopup={runSummaryNoteTriggerEnabled ? "dialog" : undefined}
+                aria-expanded={runSummaryNoteTriggerEnabled ? isRunSummaryNoteActionActive : undefined}
+                title={runSummaryNoteTriggerEnabled ? "Note" : undefined}
+              >
                 <div className="exam-mix-summary-block" role="listitem">
                   <p className="exam-mix-summary-label">Selection</p>
                   <p className="exam-mix-summary-value">{runSummarySelectionValue}</p>

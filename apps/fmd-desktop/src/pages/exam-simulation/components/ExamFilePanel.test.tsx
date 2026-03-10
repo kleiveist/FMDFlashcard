@@ -112,6 +112,37 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
+  it("renders compact header summary and suppresses the flow text", () => {
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md"],
+        vaultPath: "/vault",
+        runSummaryFlowText: "SELECTION sample summary text",
+        compactSummary: {
+          maxPoints: 42,
+          minDurationMinutes: 18,
+        },
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    expect(container.textContent).toContain("1 selected");
+    expect(container.textContent).toContain("42 max points");
+    expect(container.textContent).toContain("18 min duration");
+    expect(container.textContent).not.toContain("SELECTION sample summary text");
+
+    cleanup();
+  });
+
   it("shows only valid files and selected summary", () => {
     const { container, cleanup } = render(
       createElement(ExamFilePanel, {

@@ -925,8 +925,9 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-mix-flow-text {
   margin: 0;
-  white-space: nowrap;
-  overflow-x: auto;
+  white-space: normal;
+  overflow-x: visible;
+  overflow-wrap: anywhere;
   font-size: 0.74rem;
   font-weight: 400;
   color: var(--ink);
@@ -940,6 +941,19 @@ body.focus-mode .spaced-repetition-sidebar {
   border-radius: 14px;
   border: 1px solid var(--accent-border);
   background: color-mix(in srgb, var(--accent-active-bg) 58%, transparent);
+}
+
+.exam-mix-info.is-note-trigger {
+  cursor: pointer;
+}
+
+.exam-mix-info.is-note-trigger:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
+.exam-mix-info.is-note-trigger.active {
+  border-color: var(--accent-weak-border);
 }
 
 .exam-mix-summary-block {
@@ -1288,8 +1302,25 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-file-panel-status {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.exam-file-panel-kpis {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.exam-file-panel-kpi {
+  white-space: nowrap;
+  font-size: 0.72rem;
+  line-height: 1.1;
+  padding: 4px 8px;
 }
 
 .exam-file-selected-chip {
@@ -1445,6 +1476,10 @@ body.focus-mode .spaced-repetition-sidebar {
   background: var(--panel);
 }
 
+.exam-file-list-viewport.external-scroll {
+  overflow-y: visible;
+}
+
 .exam-file-viewport-toolbar {
   position: sticky;
   top: 0;
@@ -1460,6 +1495,11 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-file-list-virtual {
   position: relative;
+}
+
+.exam-file-list-standard {
+  display: flex;
+  flex-direction: column;
 }
 
 .exam-file-group-row,
@@ -1488,6 +1528,15 @@ body.focus-mode .spaced-repetition-sidebar {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.exam-file-group-row.is-static,
+.exam-file-row.is-static {
+  position: static;
+  left: auto;
+  right: auto;
+  width: auto;
+  height: auto;
 }
 
 .exam-file-row-button {

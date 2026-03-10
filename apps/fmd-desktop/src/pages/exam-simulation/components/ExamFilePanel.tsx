@@ -27,6 +27,11 @@ type ProfileOption = {
   name: string;
 };
 
+type ExamFilePanelCompactSummary = {
+  maxPoints: number;
+  minDurationMinutes: number;
+};
+
 type ExamFilePanelProps = {
   files: ExamFileEntry[];
   listState: LoadState;
@@ -34,6 +39,7 @@ type ExamFilePanelProps = {
   selectedPaths: string[];
   vaultPath: string | null;
   runSummaryFlowText?: string;
+  compactSummary?: ExamFilePanelCompactSummary;
   selectedProfileId: string | null;
   profileOptions: ProfileOption[];
   onProfileChange: (profileId: string) => void;
@@ -41,6 +47,8 @@ type ExamFilePanelProps = {
   onSetSelectedPaths: (paths: string[]) => void;
   onClearSelection: () => void;
   onMoveSelectedFile: (sourcePath: string, targetPath: string) => void;
+  showClearSelectionButton?: boolean;
+  listScrollMode?: "internal" | "external";
   combinationMode?: ExamCombinationMode;
   onCombinationModeChange?: (mode: ExamCombinationMode) => void;
   className?: string;
@@ -76,6 +84,7 @@ export const ExamFilePanel = ({
   selectedPaths,
   vaultPath,
   runSummaryFlowText,
+  compactSummary,
   selectedProfileId,
   profileOptions,
   onProfileChange,
@@ -83,6 +92,8 @@ export const ExamFilePanel = ({
   onSetSelectedPaths,
   onClearSelection,
   onMoveSelectedFile,
+  showClearSelectionButton = true,
+  listScrollMode = "internal",
   combinationMode,
   onCombinationModeChange,
   className,
@@ -226,6 +237,7 @@ export const ExamFilePanel = ({
   }, [filteredEntries]);
 
   const totalHeight = rows.length * FILE_ROW_HEIGHT;
+  const useInternalListScroll = listScrollMode === "internal";
   const viewportHeight = Math.max(
     FILE_ROW_HEIGHT,
     Math.min(rows.length, FILE_LIST_VISIBLE_ROWS) * FILE_ROW_HEIGHT,
@@ -380,6 +392,39 @@ export const ExamFilePanel = ({
     setMoveSourcePath(null);
   };
 
+  const renderFileRowEntries = (entries: ExamFileEntry[]) =>
+    entries.map((entry) => {
+      const isSelected = selectedSet.has(entry.path);
+      const { fileName, folderPath } = splitExamFilePathParts(entry.relative_path);
+      return (
+        <div key={entry.path} className={`exam-file-row-item ${isSelected ? "selected" : ""}`}>
+          <button
+            type="button"
+            className="exam-file-row-button"
+            onClick={() => onToggleFile(entry.path)}
+            aria-pressed={isSelected}
+          >
+            <span className="exam-file-row-check" aria-hidden="true">
+              <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} />
+            </span>
+            <span className="exam-file-row-main">
+              <span className="exam-file-row-title">{fileName}</span>
+              <span className="exam-file-row-path">{folderPath || "(root)"}</span>
+              <span className="exam-file-row-meta">
+                <span className="exam-file-row-tasks">{entry.taskCount} Tasks</span>
+                <span className={`exam-file-row-status status-${entry.status}`}>
+                  {EXAM_FILE_STATUS_LABELS[entry.status]}
+                </span>
+              </span>
+              {entry.status !== "valid" ? (
+                <span className="exam-file-row-reason">{resolveExamFileStatusReason(entry)}</span>
+              ) : null}
+            </span>
+          </button>
+        </div>
+      );
+    });
+
   return (
     <section className={["panel list-panel", className].filter(Boolean).join(" ")}>
       <div className="panel-header">
@@ -387,7 +432,21 @@ export const ExamFilePanel = ({
           <h2>Exam files</h2>
         </div>
         <div className="exam-file-panel-status">
-          <span className="chip exam-file-selected-chip">{selectedCount} selected</span>
+          {compactSummary ? (
+            <div className="exam-file-panel-kpis">
+              <span className="chip exam-file-selected-chip exam-file-panel-kpi">
+                {selectedCount} selected
+              </span>
+              <span className="chip exam-file-panel-kpi">
+                {compactSummary.maxPoints} max points
+              </span>
+              <span className="chip exam-file-panel-kpi">
+                {compactSummary.minDurationMinutes} min duration
+              </span>
+            </div>
+          ) : (
+            <span className="chip exam-file-selected-chip">{selectedCount} selected</span>
+          )}
           {listState === "loading" ? <span className="chip">Scanning...</span> : null}
         </div>
       </div>
@@ -413,7 +472,7 @@ export const ExamFilePanel = ({
                 ))}
               </select>
             </label>
-            {runSummaryFlowText ? (
+            {runSummaryFlowText && !compactSummary ? (
               <p className="exam-mix-flow-text">{runSummaryFlowText}</p>
             ) : null}
 
@@ -520,9 +579,19 @@ export const ExamFilePanel = ({
             </div>
 
             <div
-              className="exam-file-list-viewport"
-              style={{ height: `${viewportHeight + toolbarHeight}px` }}
-              onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+              className={`exam-file-list-viewport ${
+                useInternalListScroll ? "" : "external-scroll"
+              }`.trim()}
+              style={
+                useInternalListScroll
+                  ? { height: `${viewportHeight + toolbarHeight}px` }
+                  : undefined
+              }
+              onScroll={
+                useInternalListScroll
+                  ? (event) => setScrollTop(event.currentTarget.scrollTop)
+                  : undefined
+              }
             >
               <div className="exam-file-toolbar exam-file-viewport-toolbar" ref={toolbarRef}>
                 <label className="field exam-file-search-field">
@@ -536,20 +605,40 @@ export const ExamFilePanel = ({
                   />
                 </label>
                 <div className="exam-file-toolbar-actions">
-                  <button
-                    type="button"
-                    className="ghost small"
-                    onClick={onClearSelection}
-                    disabled={selectedCount === 0}
-                  >
-                    Clear selection
-                  </button>
+                  {showClearSelectionButton ? (
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={onClearSelection}
+                      disabled={selectedCount === 0}
+                    >
+                      Clear selection
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
               {filteredEntries.length === 0 ? (
                 <div className="empty-state exam-file-list-empty">
                   No files match the current filter.
+                </div>
+              ) : !useInternalListScroll ? (
+                <div className="exam-file-list-standard">
+                  {rows.map((row) => {
+                    if (row.kind === "group") {
+                      return (
+                        <div key={row.key} className="exam-file-group-row is-static">
+                          {row.label}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={row.key} className="exam-file-row is-static">
+                        {renderFileRowEntries(row.entries)}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div
@@ -577,53 +666,7 @@ export const ExamFilePanel = ({
                         className="exam-file-row"
                         style={{ transform: `translateY(${top}px)` }}
                       >
-                        {row.entries.map((entry) => {
-                          const isSelected = selectedSet.has(entry.path);
-                          const { fileName, folderPath } = splitExamFilePathParts(
-                            entry.relative_path,
-                          );
-                          return (
-                            <div
-                              key={entry.path}
-                              className={`exam-file-row-item ${isSelected ? "selected" : ""}`}
-                            >
-                              <button
-                                type="button"
-                                className="exam-file-row-button"
-                                onClick={() => onToggleFile(entry.path)}
-                                aria-pressed={isSelected}
-                              >
-                                <span className="exam-file-row-check" aria-hidden="true">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    readOnly
-                                    tabIndex={-1}
-                                  />
-                                </span>
-                                <span className="exam-file-row-main">
-                                  <span className="exam-file-row-title">{fileName}</span>
-                                  <span className="exam-file-row-path">
-                                    {folderPath || "(root)"}
-                                  </span>
-                                  <span className="exam-file-row-meta">
-                                    <span className="exam-file-row-tasks">
-                                      {entry.taskCount} Tasks
-                                    </span>
-                                    <span className={`exam-file-row-status status-${entry.status}`}>
-                                      {EXAM_FILE_STATUS_LABELS[entry.status]}
-                                    </span>
-                                  </span>
-                                  {entry.status !== "valid" ? (
-                                    <span className="exam-file-row-reason">
-                                      {resolveExamFileStatusReason(entry)}
-                                    </span>
-                                  ) : null}
-                                </span>
-                              </button>
-                            </div>
-                          );
-                        })}
+                        {renderFileRowEntries(row.entries)}
                       </div>
                     );
                   })}

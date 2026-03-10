@@ -109,6 +109,9 @@ const AppContent = () => {
   const [dismissedGateId, setDismissedGateId] = useState<WalletGateId | null>(null);
   const [noteModalCombinationMode, setNoteModalCombinationMode] =
     useState<ExamCombinationMode>("fully-mixed");
+  const [noteModalSelectedProfileId, setNoteModalSelectedProfileId] =
+    useState<string | null>(null);
+  const noteModalProfileSelectionInitializedRef = useRef(false);
   const isDashboard = activeTab === "dashboard";
   const platform = getShortcutPlatform();
   const layoutMode = useLayoutMode();
@@ -124,6 +127,9 @@ const AppContent = () => {
     activeTab !== "dashboard" &&
     (activeTab === "exam" ? isExamNoteViewport : isNoteViewport);
   const isNoteModalEligible = isDashboardNoteEligible || isSectionNoteEligible;
+  const isExamRunSummaryNoteTriggerEnabled = activeTab === "exam" && isExamNoteViewport;
+  const showStudySectionNoteAction =
+    isNoteModalEligible && !isExamRunSummaryNoteTriggerEnabled;
   const setSelectedPointsProfileId = pointsProfiles.setSelectedProfileId;
   const examRunProfileOptions = useMemo(
     () =>
@@ -133,45 +139,30 @@ const AppContent = () => {
       })),
     [pointsProfiles.profiles],
   );
-  const noteModalSelectedProfileId =
-    pointsProfiles.selectedProfileId ?? pointsProfiles.defaultProfileId ?? null;
   const noteModalSelectedProfile = useMemo(
     () =>
       pointsProfiles.profiles.find((profile) => profile.id === noteModalSelectedProfileId) ??
       null,
     [noteModalSelectedProfileId, pointsProfiles.profiles],
   );
-  const noteModalModeLabel =
-    noteModalCombinationMode === "fully-mixed"
-      ? "Fully mixed"
-      : noteModalCombinationMode === "sequential"
-        ? "Sequential"
-        : noteModalCombinationMode === "sequential-shuffled"
-          ? "Sequential + internal shuffle"
-          : "Nested";
-  const selectedValidExamEntries = useMemo(() => {
-    const validByPath = new Map(
-      examFiles
-        .filter((entry) => entry.status === "valid")
-        .map((entry) => [entry.path, entry] as const),
-    );
-    return selectedExamFilePaths.flatMap((path) => {
-      const entry = validByPath.get(path);
-      return entry ? [entry] : [];
-    });
-  }, [examFiles, selectedExamFilePaths]);
-  const selectedValidTaskCount = selectedValidExamEntries.reduce(
-    (sum, entry) => sum + entry.taskCount,
-    0,
-  );
-  const noteModalSelectionSummary = `${selectedExamFilePaths.length} selected, ${selectedValidExamEntries.length} included, ${selectedValidTaskCount} tasks total`;
-  const noteModalRunSummaryFlowText = `SELECTION ${noteModalSelectionSummary} · MAX POINTS IN RUN ${noteModalSelectedProfile?.maxTotalPoints ?? 0} · MODE ${noteModalModeLabel} · PROFILE ${noteModalSelectedProfile?.name ?? "-"} · DURATION ${noteModalSelectedProfile?.durationMinutes ?? 0} minutes`;
+  const noteModalSummarySelectedCount = selectedExamFilePaths.length;
+  const noteModalSummaryMaxPoints =
+    noteModalSummarySelectedCount > 0
+      ? (noteModalSelectedProfile?.maxTotalPoints ?? 0)
+      : 0;
+  const noteModalSummaryMinDurationMinutes =
+    noteModalSummarySelectedCount > 0
+      ? (noteModalSelectedProfile?.durationMinutes ?? 0)
+      : 0;
   const handleNoteModalRunProfileChange = useCallback(
     (profileId: string) => {
-      if (!profileId) {
+      const nextProfileId = profileId.trim() || null;
+      noteModalProfileSelectionInitializedRef.current = true;
+      setNoteModalSelectedProfileId(nextProfileId);
+      if (!nextProfileId) {
         return;
       }
-      setSelectedPointsProfileId(profileId);
+      setSelectedPointsProfileId(nextProfileId);
     },
     [setSelectedPointsProfileId],
   );
@@ -348,6 +339,31 @@ const AppContent = () => {
   }, [closeBinding, closeCommand]);
 
   useEffect(() => {
+    if (!noteModalProfileSelectionInitializedRef.current) {
+      if (pointsProfiles.loading) {
+        return;
+      }
+      noteModalProfileSelectionInitializedRef.current = true;
+      setNoteModalSelectedProfileId(
+        pointsProfiles.selectedProfileId ?? pointsProfiles.defaultProfileId ?? null,
+      );
+      return;
+    }
+    if (
+      noteModalSelectedProfileId &&
+      !pointsProfiles.profiles.some((profile) => profile.id === noteModalSelectedProfileId)
+    ) {
+      setNoteModalSelectedProfileId(pointsProfiles.defaultProfileId ?? null);
+    }
+  }, [
+    noteModalSelectedProfileId,
+    pointsProfiles.defaultProfileId,
+    pointsProfiles.loading,
+    pointsProfiles.profiles,
+    pointsProfiles.selectedProfileId,
+  ]);
+
+  useEffect(() => {
     if (!isNoteModalOpen) {
       return;
     }
@@ -473,7 +489,7 @@ const AppContent = () => {
           onSectionSelect={handleStudySectionSelect}
           isMobileNavOpen={isMobileNavOpen}
           onMobileNavOpen={() => setIsMobileNavOpen(true)}
-          showNoteAction={isNoteModalEligible}
+          showNoteAction={showStudySectionNoteAction}
           onNoteAction={handleNoteModalOpen}
           noteActionRef={noteButtonRef}
           isNoteActionActive={isNoteModalOpen}
@@ -537,7 +553,13 @@ const AppContent = () => {
             onOpenGate={handleGateOpen}
           />
         ) : activeTab === "exam" ? (
-          <ExamSimulationPage />
+          <ExamSimulationPage
+            runSummaryNoteActionEnabled={isExamRunSummaryNoteTriggerEnabled}
+            onRunSummaryNoteAction={handleNoteModalOpen}
+            isRunSummaryNoteActionActive={
+              isNoteModalOpen && noteDialogSection === "exam"
+            }
+          />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage onSectionSelect={handleStudySectionSelect} />
         ) : activeTab === "spaced-repetition" ? (
@@ -558,7 +580,10 @@ const AppContent = () => {
             listError={examFilesError}
             selectedPaths={selectedExamFilePaths}
             vaultPath={vault.vaultPath}
-            runSummaryFlowText={noteModalRunSummaryFlowText}
+            compactSummary={{
+              maxPoints: noteModalSummaryMaxPoints,
+              minDurationMinutes: noteModalSummaryMinDurationMinutes,
+            }}
             selectedProfileId={noteModalSelectedProfileId}
             profileOptions={examRunProfileOptions}
             onProfileChange={handleNoteModalRunProfileChange}
@@ -566,6 +591,8 @@ const AppContent = () => {
             onSetSelectedPaths={actions.handleSetSelectedExamFiles}
             onClearSelection={actions.handleClearSelectedExamFiles}
             onMoveSelectedFile={actions.handleMoveSelectedExamFile}
+            showClearSelectionButton={false}
+            listScrollMode="external"
             combinationMode={noteModalCombinationMode}
             onCombinationModeChange={setNoteModalCombinationMode}
           />
