@@ -80,6 +80,38 @@ const setChipRect = (chip: HTMLButtonElement, left: number, width = 100) => {
 };
 
 describe("ExamFilePanel", () => {
+  it("renders selectable Standard (no profile) option", () => {
+    const onProfileChange = vi.fn();
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md"],
+        vaultPath: "/vault",
+        selectedProfileId: null,
+        profileOptions: runProfileOptions,
+        onProfileChange,
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const profileSelect = container.querySelector<HTMLSelectElement>(
+      ".exam-file-run-profile-field select",
+    );
+    expect(profileSelect).toBeTruthy();
+    expect(profileSelect?.value).toBe("");
+    const options = Array.from(profileSelect?.options ?? []).map(
+      (option) => option.textContent,
+    );
+    expect(options).toContain("Standard (no profile)");
+
+    cleanup();
+  });
+
   it("shows only valid files and selected summary", () => {
     const { container, cleanup } = render(
       createElement(ExamFilePanel, {

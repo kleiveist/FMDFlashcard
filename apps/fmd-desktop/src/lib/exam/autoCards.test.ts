@@ -12,6 +12,7 @@ import {
   isExamTaskWrapped,
   normalizeCardWrapperPlacement,
   removeExamTaskWrapper,
+  resolveFlashcardAutoCardTypeInstances,
   unwrapExamTask,
   wrapExamTask,
 } from "./autoCards";
@@ -266,5 +267,69 @@ describe("markdown tables", () => {
 
     const tableBlock = ["| A | B |", "| - | - |", "| 1 | 2 |"].join("\n");
     expect(wrapped).toContain(tableBlock);
+  });
+});
+
+describe("resolveFlashcardAutoCardTypeInstances", () => {
+  it("returns repeated instances for mixed composite parts", () => {
+    const types = resolveFlashcardAutoCardTypeInstances({
+      kind: "composite",
+      parts: [
+        {
+          kind: "free-text",
+          front: "Q1",
+          back: "A1",
+        },
+        {
+          kind: "free-text",
+          front: "Q2",
+          back: "A2",
+        },
+        {
+          kind: "true-false",
+          items: [{ id: "s1", question: "A", correct: "wahr" }],
+        },
+      ],
+    });
+    expect(types).toEqual(["qa", "qa", "tf"]);
+  });
+
+  it("maps cloze subtype variants correctly", () => {
+    const clTyped = resolveFlashcardAutoCardTypeInstances({
+      kind: "cloze",
+      subtype: "cl",
+      question: "Typed",
+      segments: [
+        { type: "text", value: "A " },
+        { type: "blank", id: "blank-1", kind: "input", solution: "x" },
+      ],
+      dragTokens: [],
+    });
+    const clDrag = resolveFlashcardAutoCardTypeInstances({
+      kind: "cloze",
+      subtype: "cd",
+      question: "Drag",
+      segments: [
+        { type: "text", value: "A " },
+        { type: "blank", id: "blank-1", kind: "drag", solution: "x" },
+      ],
+      dragTokens: [{ id: "x", value: "x" }],
+    });
+    const clMixed = resolveFlashcardAutoCardTypeInstances({
+      kind: "cloze",
+      subtype: "cld",
+      question: "Mixed",
+      segments: [
+        { type: "text", value: "A " },
+        { type: "blank", id: "blank-1", kind: "input", solution: "x" },
+        { type: "text", value: " " },
+        { type: "blank", id: "blank-2", kind: "drag", solution: "y" },
+      ],
+      dragTokens: [{ id: "x", value: "x" }],
+    });
+
+    expect(clTyped).toEqual(["cl"]);
+    expect(clDrag).toEqual(["cd"]);
+    expect(clMixed).toEqual(["cld"]);
   });
 });

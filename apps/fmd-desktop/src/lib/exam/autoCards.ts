@@ -7,7 +7,7 @@
  */
 
 import { parseExamTasks, type ExamTask, type ExamTaskSourceRange } from "../exam";
-import type { FlashcardPart } from "../flashcards";
+import type { Flashcard, FlashcardPart } from "../flashcards";
 
 export type ExamCardWrapperAction = "add" | "remove" | "keep";
 
@@ -405,10 +405,19 @@ export const resolveFlashcardPartAutoCardType = (
   }
 };
 
+export const resolveFlashcardAutoCardTypeInstances = (card: Flashcard): AutoCardType[] => {
+  if (card.kind === "composite") {
+    return card.parts
+      .map((part) => resolveFlashcardPartAutoCardType(part))
+      .filter((type): type is AutoCardType => Boolean(type));
+  }
+  return [resolveFlashcardPartAutoCardType(card)].filter(
+    (type): type is AutoCardType => Boolean(type),
+  );
+};
+
 export const resolveExamTaskAutoCardTypeInstances = (task: ExamTask): AutoCardType[] =>
-  task.card.parts
-    .map((part) => resolveFlashcardPartAutoCardType(part))
-    .filter((type): type is AutoCardType => Boolean(type));
+  resolveFlashcardAutoCardTypeInstances(task.card);
 
 export const resolveExamTaskAutoCardTypes = (task: ExamTask): AutoCardType[] => {
   const detected = new Set<AutoCardType>();

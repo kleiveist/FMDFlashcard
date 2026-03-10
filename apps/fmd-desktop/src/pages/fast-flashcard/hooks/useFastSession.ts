@@ -47,6 +47,7 @@ import {
   processSessionResults,
   type SessionResultResolver,
 } from "./sessionResults";
+import { resolveFastFlashcardDurationSeconds } from "./duration";
 
 export const fastFlashcardStatusLabel = "Not scanned yet";
 
@@ -150,6 +151,7 @@ export const useFastSession = () => {
   const [isTimeModeEnabled, setIsTimeModeEnabled] = useState(false);
   const selectedDuration = settings.fastFlashcardDuration;
   const setSelectedDuration = settings.setFastFlashcardDuration;
+  const autoTimeEnabled = settings.fastFlashcardAutoTimeEnabled;
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [sessionStats, setSessionStats] = useState<FastFlashcardSessionStats>({
     correct: 0,
@@ -187,6 +189,12 @@ export const useFastSession = () => {
   const submissionLocked = !timeModeActive;
   const isTimerRunning =
     timeModeActive && currentCardIndex !== undefined && !isCurrentSubmitted;
+  const activeDuration = resolveFastFlashcardDurationSeconds({
+    card: currentEntry?.card ?? null,
+    manualDuration: selectedDuration,
+    autoTimeEnabled,
+    examTaskTypeDefaultTimeSeconds: settings.examTaskTypeDefaultTimeSeconds,
+  });
 
   const currentResult = useMemo(() => {
     if (!currentEntry || !isCurrentSubmitted) {
@@ -232,10 +240,12 @@ export const useFastSession = () => {
     [correctPercent],
   );
 
-  const remainingSeconds = Math.max(0, timeRemaining ?? selectedDuration);
+  const remainingSeconds = Math.max(0, timeRemaining ?? activeDuration);
   const timeProgress = timeModeActive
     ? isTimerRunning
-      ? Math.max(0, Math.min(1, remainingSeconds / selectedDuration))
+      ? activeDuration > 0
+        ? Math.max(0, Math.min(1, remainingSeconds / activeDuration))
+        : 0
       : 1
     : 0;
 
@@ -529,13 +539,19 @@ export const useFastSession = () => {
       return;
     }
 
-    setTimeRemaining(selectedDuration);
+    if (activeDuration <= 0) {
+      setTimeRemaining(0);
+      handleTimeout();
+      return;
+    }
+
+    setTimeRemaining(activeDuration);
     if (timerRef.current !== null) {
       window.clearInterval(timerRef.current);
     }
     timerRef.current = window.setInterval(() => {
       setTimeRemaining((prev) => {
-        const next = prev === null ? selectedDuration : prev - 1;
+        const next = prev === null ? activeDuration : prev - 1;
         if (next <= 0) {
           if (timerRef.current !== null) {
             window.clearInterval(timerRef.current);
@@ -555,10 +571,10 @@ export const useFastSession = () => {
       }
     };
   }, [
+    activeDuration,
     currentCardIndex,
     handleTimeout,
     isCurrentSubmitted,
-    selectedDuration,
     timeModeActive,
   ]);
 
@@ -752,7 +768,9 @@ export const useFastSession = () => {
       correct * FAST_FLASHCARD_SCORE_BY_RESULT.correct +
       incorrect * FAST_FLASHCARD_SCORE_BY_RESULT.incorrect +
       timeout * FAST_FLASHCARD_SCORE_BY_RESULT.timeout;
-    const multiplier = getFastFlashcardMultiplier(selectedDuration);
+    const multiplier = autoTimeEnabled
+      ? 1
+      : getFastFlashcardMultiplier(selectedDuration);
     const score = Math.round(baseScore * multiplier);
 
     setSessionElapsedMs(durationMs);
@@ -771,7 +789,12 @@ export const useFastSession = () => {
         durationMs,
       },
     ]);
-  }, [flashcardSubmissions, recordSessionResults, selectedDuration]);
+  }, [
+    autoTimeEnabled,
+    flashcardSubmissions,
+    recordSessionResults,
+    selectedDuration,
+  ]);
 
   const handleTimeToggle = useCallback(() => {
     setIsTimeModeEnabled((prev) => {
@@ -813,7 +836,9 @@ export const useFastSession = () => {
     sessionStats.correct * FAST_FLASHCARD_SCORE_BY_RESULT.correct +
     sessionStats.incorrect * FAST_FLASHCARD_SCORE_BY_RESULT.incorrect +
     sessionStats.timeout * FAST_FLASHCARD_SCORE_BY_RESULT.timeout;
-  const sessionMultiplier = getFastFlashcardMultiplier(selectedDuration);
+  const sessionMultiplier = autoTimeEnabled
+    ? 1
+    : getFastFlashcardMultiplier(selectedDuration);
   const sessionScore = Math.round(sessionBaseScore * sessionMultiplier);
   const sessionMinutes = sessionElapsedMs / 60000;
   const sessionPace =
@@ -876,6 +901,8 @@ export const useFastSession = () => {
     timeStatusLabel,
     timeProgressStyle,
     selectedDuration,
+    activeDuration,
+    autoTimeEnabled,
     setSelectedDuration,
     sessionStats,
     sessionCompleted,

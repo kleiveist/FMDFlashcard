@@ -405,7 +405,7 @@ export const ExamFilePanel = ({
                 value={selectedProfileId ?? ""}
                 onChange={(event) => onProfileChange(event.target.value)}
               >
-                <option value="">Select profile</option>
+                <option value="">Standard (no profile)</option>
                 {profileOptions.map((profile) => (
                   <option key={profile.id} value={profile.id}>
                     {profile.name}

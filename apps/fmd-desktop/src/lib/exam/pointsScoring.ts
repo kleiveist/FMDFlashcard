@@ -46,6 +46,18 @@ export const resolveTaskTypePointsFromMap = ({
 }: {
   taskTypes: AutoCardType[];
   typePoints: Record<AutoCardType, number>;
+}) =>
+  resolveAutoCardTypeValueSum({
+    taskTypes,
+    typeValues: typePoints,
+  });
+
+export const resolveAutoCardTypeValueSum = ({
+  taskTypes,
+  typeValues,
+}: {
+  taskTypes: AutoCardType[];
+  typeValues: Record<AutoCardType, number>;
 }) => {
   if (taskTypes.length === 0) {
     return 0;
@@ -55,7 +67,7 @@ export const resolveTaskTypePointsFromMap = ({
     if (!allowedTypes.has(type)) {
       return sum;
     }
-    return sum + clampNonNegative(typePoints[type] ?? 0);
+    return sum + clampNonNegative(typeValues[type] ?? 0);
   }, 0);
 };
 

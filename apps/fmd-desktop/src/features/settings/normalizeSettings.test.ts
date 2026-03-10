@@ -6,7 +6,11 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { normalizeSettings, type AppSettings } from "./useAppSettings";
+import {
+  DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+  normalizeSettings,
+  type AppSettings,
+} from "./useAppSettings";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -65,5 +69,37 @@ describe("normalizeSettings", () => {
       status: "missing",
       lastError: "Path does not exist.",
     });
+  });
+
+  it("applies defaults for auto-time flags and per-type exam seconds", () => {
+    const { settings } = normalizeSettings({} as AppSettings);
+
+    expect(settings.fastFlashcardAutoTimeEnabled).toBe(false);
+    expect(settings.spacedRepetitionAutoTimeEnabled).toBe(false);
+    expect(settings.examTaskTypeDefaultTimeSeconds).toEqual(
+      DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+    );
+  });
+
+  it("restores stored auto-time settings and normalizes seconds map", () => {
+    const stored = {
+      fast_flashcard_auto_time_enabled: true,
+      spaced_repetition_auto_time_enabled: true,
+      exam_task_type_default_time_seconds: {
+        qa: 10,
+        tf: -2,
+        m1: 7,
+      },
+    } as AppSettings;
+    const { settings } = normalizeSettings(stored);
+
+    expect(settings.fastFlashcardAutoTimeEnabled).toBe(true);
+    expect(settings.spacedRepetitionAutoTimeEnabled).toBe(true);
+    expect(settings.examTaskTypeDefaultTimeSeconds.qa).toBe(10);
+    expect(settings.examTaskTypeDefaultTimeSeconds.tf).toBe(0);
+    expect(settings.examTaskTypeDefaultTimeSeconds.m1).toBe(7);
+    expect(settings.examTaskTypeDefaultTimeSeconds.m2).toBe(
+      DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.m2,
+    );
   });
 });

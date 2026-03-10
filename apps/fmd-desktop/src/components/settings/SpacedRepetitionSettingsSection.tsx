@@ -45,6 +45,8 @@ type SpacedRepetitionSettingsSectionProps = {
   setHelpEnabled: (value: boolean) => void;
   flashcardMode: FlashcardMode;
   setFlashcardMode: (value: FlashcardMode) => void;
+  autoTimeEnabled: boolean;
+  setAutoTimeEnabled: (value: boolean) => void;
 };
 
 export const SpacedRepetitionSettingsSection = ({
@@ -62,6 +64,8 @@ export const SpacedRepetitionSettingsSection = ({
   setHelpEnabled,
   flashcardMode,
   setFlashcardMode,
+  autoTimeEnabled,
+  setAutoTimeEnabled,
 }: SpacedRepetitionSettingsSectionProps) => (
   <section className="panel spaced-repetition-panel">
     <div className="panel-header">
@@ -157,6 +161,20 @@ export const SpacedRepetitionSettingsSection = ({
               {box} Boxes
             </button>
           ))}
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">AUTO TIME</span>
+        <div className="setting-inline">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={autoTimeEnabled}
+              onChange={(event) => setAutoTimeEnabled(event.target.checked)}
+            />
+            <span className="slider" />
+          </label>
+          <span className="muted">{autoTimeEnabled ? "Enabled" : "Disabled"}</span>
         </div>
       </div>
       <div className="setting-row">

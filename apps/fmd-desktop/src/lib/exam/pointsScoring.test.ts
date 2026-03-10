@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseExamTasks } from "../exam";
 import { buildExamPointsProfile, createDefaultTypeRules } from "./pointsProfiles";
 import {
+  resolveAutoCardTypeValueSum,
   resolveExamTaskPointTypes,
   resolveTaskMaxPointsFromProfile,
   resolveTaskTypePointsFromMap,
@@ -169,5 +170,21 @@ describe("pointsScoring", () => {
       },
     });
     expect(points).toBe(0);
+  });
+
+  it("clamps negative mapped values to 0 when summing type values", () => {
+    const total = resolveAutoCardTypeValueSum({
+      taskTypes: ["qa", "tf", "qa"],
+      typeValues: {
+        qa: -4,
+        tf: 2,
+        m1: 3,
+        m2: 5,
+        cl: 4,
+        cd: 5,
+        cld: 8,
+      },
+    });
+    expect(total).toBe(2);
   });
 });

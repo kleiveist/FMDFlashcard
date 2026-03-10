@@ -38,9 +38,11 @@ type FastToolsPanelProps = {
     fastFlashcardOrder: FlashcardOrder;
     fastFlashcardMode: FlashcardMode;
     fastFlashcardScope: FlashcardScope;
+    fastFlashcardAutoTimeEnabled: boolean;
     setFastFlashcardOrder: (value: FlashcardOrder) => void;
     setFastFlashcardMode: (value: FlashcardMode) => void;
     setFastFlashcardScope: (value: FlashcardScope) => void;
+    setFastFlashcardAutoTimeEnabled: (value: boolean) => void;
   };
   selectedDuration: number;
   setSelectedDuration: (value: number) => void;
@@ -97,21 +99,39 @@ export const FastToolsPanel = ({
         <div className="toolbar-section">
           <span className="label">Duration</span>
           <div className="pill-grid">
-            {FAST_FLASHCARD_DURATIONS.map((duration) => (
-              <button
-                key={duration}
-                type="button"
-                className={`pill pill-button ${
-                  selectedDuration === duration ? "active" : ""
-                }`}
-                aria-pressed={selectedDuration === duration}
-                disabled={isTimeModeEnabled}
-                title={isTimeModeEnabled ? "Stop timer to change duration" : undefined}
-                onClick={() => setSelectedDuration(duration)}
-              >
-                {duration}s
-              </button>
-            ))}
+            <button
+              type="button"
+              className={`pill pill-button ${
+                settings.fastFlashcardAutoTimeEnabled ? "active" : ""
+              }`}
+              aria-pressed={settings.fastFlashcardAutoTimeEnabled}
+              disabled={isTimeModeEnabled}
+              title={isTimeModeEnabled ? "Stop timer to change mode" : undefined}
+              onClick={() =>
+                settings.setFastFlashcardAutoTimeEnabled(
+                  !settings.fastFlashcardAutoTimeEnabled,
+                )
+              }
+            >
+              Auto Time
+            </button>
+            {!settings.fastFlashcardAutoTimeEnabled
+              ? FAST_FLASHCARD_DURATIONS.map((duration) => (
+                  <button
+                    key={duration}
+                    type="button"
+                    className={`pill pill-button ${
+                      selectedDuration === duration ? "active" : ""
+                    }`}
+                    aria-pressed={selectedDuration === duration}
+                    disabled={isTimeModeEnabled}
+                    title={isTimeModeEnabled ? "Stop timer to change duration" : undefined}
+                    onClick={() => setSelectedDuration(duration)}
+                  >
+                    {duration}s
+                  </button>
+                ))
+              : null}
           </div>
         </div>
         <FastFlashcardToolsSettings

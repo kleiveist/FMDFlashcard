@@ -25,6 +25,7 @@
 import { useMemo } from "react";
 import {
   DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS,
+  DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
   type ExamAiEvaluation,
 } from "../../features/settings/useAppSettings";
 import type { AutoCardType, AutoCardTypeMap } from "../../lib/exam/autoCards";
@@ -279,7 +280,9 @@ type AutoCardsSettingsPanelProps = {
 
 type ExamTaskTypeDefaultsPanelProps = {
   pointsByType: Record<AutoCardType, number>;
+  timeSecondsByType: Record<AutoCardType, number>;
   onPointChange: (type: AutoCardType, value: string) => void;
+  onTimeSecondsChange: (type: AutoCardType, value: string) => void;
   onResetPreset: () => void;
 };
 
@@ -359,7 +362,9 @@ export const AutoCardsSettingsPanel = ({
 
 export const ExamTaskTypeDefaultsPanel = ({
   pointsByType,
+  timeSecondsByType,
   onPointChange,
+  onTimeSecondsChange,
   onResetPreset,
 }: ExamTaskTypeDefaultsPanelProps) => (
   <section className="panel exam-task-type-defaults-panel" id="exam-settings-task-type-defaults">
@@ -385,8 +390,13 @@ export const ExamTaskTypeDefaultsPanel = ({
         {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cld}
       </div>
       <div className="muted">
-        Ein zugewiesenes Points-Profil hat Vorrang. Diese Werte gelten nur ohne
-        Profilzuordnung.
+        Time preset (sec): QA {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.qa}, TF{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.tf}, M1{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.m1}, M2{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.m2}, CL{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cl}, CD{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cd}, CLD{" "}
+        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cld}
       </div>
       {AUTO_CARD_TYPE_OPTIONS.map((option) => (
         <div key={option.type} className="setting-row">
@@ -400,6 +410,14 @@ export const ExamTaskTypeDefaultsPanel = ({
               onChange={(event) => onPointChange(option.type, event.target.value)}
             />
             <span className="muted">points</span>
+            <input
+              type="number"
+              min={0}
+              className="text-input exam-compact-input"
+              value={timeSecondsByType[option.type]}
+              onChange={(event) => onTimeSecondsChange(option.type, event.target.value)}
+            />
+            <span className="muted">sec</span>
           </div>
         </div>
       ))}

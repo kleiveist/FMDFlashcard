@@ -105,6 +105,7 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
     timeStatusLabel,
     timeProgressStyle,
     selectedDuration,
+    activeDuration,
     setSelectedDuration,
     sessionStats,
     sessionCompleted,
@@ -136,10 +137,10 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
     ? formatBinding(viewBinding, platform)
     : null;
   const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
-  const maxTimeMs = selectedDuration * 1000;
+  const maxTimeMs = activeDuration * 1000;
   const elapsedMs =
     timeRemaining !== null
-      ? Math.max(0, (selectedDuration - timeRemaining) * 1000)
+      ? Math.max(0, (activeDuration - timeRemaining) * 1000)
       : sessionElapsedMs;
   const studyBindings = useMemo(() => {
     const bindings = settings.keyboardShortcuts.bindings;
@@ -287,7 +288,7 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
       timeModeActive={timeModeActive}
       timeStatusLabel={timeStatusLabel}
       timeProgressStyle={timeProgressStyle}
-      selectedDuration={selectedDuration}
+      selectedDuration={activeDuration}
       statsChartClass={statsChartClass}
       statsChartStyle={statsChartStyle}
       statsCorrect={statsCorrect}

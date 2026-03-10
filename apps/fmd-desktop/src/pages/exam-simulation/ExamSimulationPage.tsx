@@ -50,6 +50,7 @@ const viewToggleCommand = getShortcutById("toggleViewMode");
 const studyPrevCommand = getShortcutById("studyPrevious");
 const studyNextCommand = getShortcutById("studyNext");
 const studySubmitCommand = getShortcutById("studySubmit");
+const STANDARD_RUN_PROFILE_LABEL = "Standard (no profile)";
 
 export const ExamSimulationPage = () => {
   const {
@@ -163,7 +164,10 @@ export const ExamSimulationPage = () => {
     });
   }, [missingExamSettings]);
   const selectedRunProfileName =
-    runProfileOptions.find((profile) => profile.id === selectedRunProfileId)?.name ?? null;
+    selectedRunProfileId === null
+      ? STANDARD_RUN_PROFILE_LABEL
+      : (runProfileOptions.find((profile) => profile.id === selectedRunProfileId)?.name ??
+        null);
   const runSummaryModeLabel =
     combinationMode === "fully-mixed"
       ? "Fully mixed"
@@ -178,11 +182,13 @@ export const ExamSimulationPage = () => {
   const runSummaryMaxPointsValue = hasSelectedExamFiles ? String(plannedMaxPoints) : "--";
   const runSummaryModeValue = hasSelectedExamFiles ? runSummaryModeLabel : "--";
   const runSummaryProfileValue =
-    hasSelectedExamFiles ? (selectedRunProfileName ?? "-") : "--";
+    hasSelectedExamFiles ? (selectedRunProfileName ?? STANDARD_RUN_PROFILE_LABEL) : "--";
   const runSummaryDurationValue = hasSelectedExamFiles
     ? `${previewDurationMinutes} minutes`
     : "--";
-  const runSummaryFlowText = `SELECTION ${runSelectionSummary} · MAX POINTS IN RUN ${plannedMaxPoints} · MODE ${runSummaryModeLabel} · PROFILE ${selectedRunProfileName ?? "-"} · DURATION ${previewDurationMinutes} minutes`;
+  const runSummaryFlowText = `SELECTION ${runSelectionSummary} · MAX POINTS IN RUN ${plannedMaxPoints} · MODE ${runSummaryModeLabel} · PROFILE ${
+    selectedRunProfileName ?? STANDARD_RUN_PROFILE_LABEL
+  } · DURATION ${previewDurationMinutes} minutes`;
 
   const examFilePanelProps = {
     files: examFiles,

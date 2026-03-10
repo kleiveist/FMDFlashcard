@@ -146,6 +146,7 @@ export type AppSettings = {
   fast_flashcard_mode?: string | null;
   fast_flashcard_scope?: string | null;
   fast_flashcard_duration?: number | null;
+  fast_flashcard_auto_time_enabled?: boolean | null;
   fast_flashcard_help_enabled?: boolean | null;
   exam_show_timeline?: boolean | null;
   exam_help_enabled?: boolean | null;
@@ -154,6 +155,7 @@ export type AppSettings = {
   spaced_repetition_page_size?: number | null;
   spaced_repetition_repetition_strength?: string | null;
   spaced_repetition_stats_view?: string | null;
+  spaced_repetition_auto_time_enabled?: boolean | null;
   spaced_repetition_help_enabled?: boolean | null;
   right_toolbar_collapsed?: boolean | null;
   exam_max_total_points?: number | null;
@@ -164,6 +166,7 @@ export type AppSettings = {
   exam_auto_cards_enabled?: boolean | null;
   exam_auto_cards_types?: Partial<AutoCardTypeMap> | null;
   exam_task_type_default_points?: Partial<Record<AutoCardType, number>> | null;
+  exam_task_type_default_time_seconds?: Partial<Record<AutoCardType, number>> | null;
   exam_auto_cards_return_on_correct?: boolean | null;
   exam_grade_scale?: string | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
@@ -209,6 +212,7 @@ type PersistUpdates = {
   fastFlashcardMode?: FlashcardMode;
   fastFlashcardScope?: FlashcardScope;
   fastFlashcardDuration?: number;
+  fastFlashcardAutoTimeEnabled?: boolean;
   fastFlashcardHelpEnabled?: boolean;
   examShowTimeline?: boolean;
   examHelpEnabled?: boolean;
@@ -217,6 +221,7 @@ type PersistUpdates = {
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
   spacedRepetitionRepetitionStrength?: SpacedRepetitionRepetitionStrength;
   spacedRepetitionStatsView?: SpacedRepetitionStatsView;
+  spacedRepetitionAutoTimeEnabled?: boolean;
   spacedRepetitionHelpEnabled?: boolean;
   rightToolbarCollapsed?: boolean;
   examMaxTotalPoints?: number;
@@ -226,6 +231,7 @@ type PersistUpdates = {
   examTimeLimitEnabled?: boolean;
   examAutoCardsTypes?: Partial<AutoCardTypeMap>;
   examTaskTypeDefaultPoints?: Partial<Record<AutoCardType, number>>;
+  examTaskTypeDefaultTimeSeconds?: Partial<Record<AutoCardType, number>>;
   examAutoCardsReturnOnCorrect?: boolean;
   examGradeScale?: ExamGradeScale;
   examAiEvaluation?: ExamAiEvaluation;
@@ -271,6 +277,7 @@ export type SettingsSnapshot = {
   fastFlashcardMode: FlashcardMode;
   fastFlashcardScope: FlashcardScope;
   fastFlashcardDuration: number;
+  fastFlashcardAutoTimeEnabled: boolean;
   fastFlashcardHelpEnabled: boolean;
   examShowTimeline: boolean;
   examHelpEnabled: boolean;
@@ -279,6 +286,7 @@ export type SettingsSnapshot = {
   spacedRepetitionPageSize: SpacedRepetitionPageSize;
   spacedRepetitionRepetitionStrength: SpacedRepetitionRepetitionStrength;
   spacedRepetitionStatsView: SpacedRepetitionStatsView;
+  spacedRepetitionAutoTimeEnabled: boolean;
   spacedRepetitionHelpEnabled: boolean;
   rightToolbarCollapsed: boolean;
   examMaxTotalPoints: number;
@@ -288,6 +296,7 @@ export type SettingsSnapshot = {
   examTimeLimitEnabled: boolean;
   examAutoCardsTypes: AutoCardTypeMap;
   examTaskTypeDefaultPoints: Record<AutoCardType, number>;
+  examTaskTypeDefaultTimeSeconds: Record<AutoCardType, number>;
   examAutoCardsReturnOnCorrect: boolean;
   examGradeScale: ExamGradeScale;
   examAiEvaluation: ExamAiEvaluation;
@@ -326,7 +335,8 @@ const DEFAULT_FLASHCARD_HELP_ENABLED = true;
 const DEFAULT_FAST_FLASHCARD_ORDER: FlashcardOrder = DEFAULT_FLASHCARD_ORDER;
 const DEFAULT_FAST_FLASHCARD_MODE: FlashcardMode = DEFAULT_FLASHCARD_MODE;
 const DEFAULT_FAST_FLASHCARD_SCOPE: FlashcardScope = DEFAULT_FLASHCARD_SCOPE;
-const DEFAULT_FAST_FLASHCARD_DURATION = 6;
+const DEFAULT_FAST_FLASHCARD_DURATION = 12;
+const DEFAULT_FAST_FLASHCARD_AUTO_TIME_ENABLED = false;
 const DEFAULT_FAST_FLASHCARD_HELP_ENABLED = true;
 const DEFAULT_EXAM_SHOW_TIMELINE = true;
 const DEFAULT_EXAM_HELP_ENABLED = true;
@@ -335,6 +345,7 @@ const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
   "medium";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
+const DEFAULT_SPACED_REPETITION_AUTO_TIME_ENABLED = false;
 const DEFAULT_SPACED_REPETITION_HELP_ENABLED = true;
 const DEFAULT_RIGHT_TOOLBAR_COLLAPSED = false;
 const MAX_RECENT_VAULTS = 10;
@@ -345,6 +356,18 @@ const DEFAULT_EXAM_TASK_COUNT = 5;
 const DEFAULT_EXAM_DURATION_MINUTES = 30;
 const DEFAULT_EXAM_TIME_LIMIT_ENABLED = true;
 export const DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS: Record<AutoCardType, number> = {
+  qa: 6,
+  tf: 2,
+  m1: 3,
+  m2: 5,
+  cl: 4,
+  cd: 5,
+  cld: 8,
+};
+export const DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS: Record<
+  AutoCardType,
+  number
+> = {
   qa: 6,
   tf: 2,
   m1: 3,
@@ -576,6 +599,39 @@ const mergeExamTaskTypeDefaultPoints = (
   return next;
 };
 
+const normalizeExamTaskTypeDefaultTimeSeconds = (
+  value: unknown,
+): Record<AutoCardType, number> => {
+  const next = { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS };
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return next;
+  }
+  const candidate = value as Partial<Record<AutoCardType, unknown>>;
+  AUTO_CARD_TYPES.forEach((type) => {
+    next[type] = clampExamTaskTypeDefaultPoints(
+      candidate[type],
+      DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS[type],
+    );
+  });
+  return next;
+};
+
+const mergeExamTaskTypeDefaultTimeSeconds = (
+  current: Record<AutoCardType, number>,
+  updates?: Partial<Record<AutoCardType, number>>,
+): Record<AutoCardType, number> => {
+  if (!updates) {
+    return current;
+  }
+  const next = { ...current };
+  AUTO_CARD_TYPES.forEach((type) => {
+    if (typeof updates[type] === "number" && Number.isFinite(updates[type])) {
+      next[type] = clampExamTaskTypeDefaultPoints(updates[type], current[type]);
+    }
+  });
+  return next;
+};
+
 const buildDefaultExamTaskPoints = (taskCount: number, maxTotalPoints: number) => {
   if (taskCount <= 0) {
     return [];
@@ -782,6 +838,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   fast_flashcard_mode: settings.fastFlashcardMode,
   fast_flashcard_scope: settings.fastFlashcardScope,
   fast_flashcard_duration: settings.fastFlashcardDuration,
+  fast_flashcard_auto_time_enabled: settings.fastFlashcardAutoTimeEnabled,
   fast_flashcard_help_enabled: settings.fastFlashcardHelpEnabled,
   exam_show_timeline: settings.examShowTimeline,
   exam_help_enabled: settings.examHelpEnabled,
@@ -791,6 +848,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   spaced_repetition_repetition_strength:
     settings.spacedRepetitionRepetitionStrength,
   spaced_repetition_stats_view: settings.spacedRepetitionStatsView,
+  spaced_repetition_auto_time_enabled: settings.spacedRepetitionAutoTimeEnabled,
   spaced_repetition_help_enabled: settings.spacedRepetitionHelpEnabled,
   right_toolbar_collapsed: settings.rightToolbarCollapsed,
   exam_max_total_points: settings.examMaxTotalPoints,
@@ -800,6 +858,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   exam_time_limit_enabled: settings.examTimeLimitEnabled,
   exam_auto_cards_types: settings.examAutoCardsTypes,
   exam_task_type_default_points: settings.examTaskTypeDefaultPoints,
+  exam_task_type_default_time_seconds: settings.examTaskTypeDefaultTimeSeconds,
   exam_auto_cards_return_on_correct: settings.examAutoCardsReturnOnCorrect,
   exam_grade_scale: settings.examGradeScale,
   exam_ai_evaluation: settings.examAiEvaluation,
@@ -970,6 +1029,10 @@ export const normalizeSettings = (
     )
       ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
       : DEFAULT_FAST_FLASHCARD_DURATION;
+  const storedFastFlashcardAutoTimeEnabled =
+    typeof stored.fast_flashcard_auto_time_enabled === "boolean"
+      ? stored.fast_flashcard_auto_time_enabled
+      : DEFAULT_FAST_FLASHCARD_AUTO_TIME_ENABLED;
   const storedFastFlashcardHelpEnabled =
     typeof stored.fast_flashcard_help_enabled === "boolean"
       ? stored.fast_flashcard_help_enabled
@@ -1037,6 +1100,10 @@ export const normalizeSettings = (
     stored.spaced_repetition_stats_view === "completed"
       ? stored.spaced_repetition_stats_view
       : DEFAULT_SPACED_REPETITION_STATS_VIEW;
+  const storedSpacedRepetitionAutoTimeEnabled =
+    typeof stored.spaced_repetition_auto_time_enabled === "boolean"
+      ? stored.spaced_repetition_auto_time_enabled
+      : DEFAULT_SPACED_REPETITION_AUTO_TIME_ENABLED;
   const storedSpacedRepetitionHelpEnabled =
     typeof stored.spaced_repetition_help_enabled === "boolean"
       ? stored.spaced_repetition_help_enabled
@@ -1077,6 +1144,10 @@ export const normalizeSettings = (
   const storedExamTaskTypeDefaultPoints = normalizeExamTaskTypeDefaultPoints(
     stored.exam_task_type_default_points,
   );
+  const storedExamTaskTypeDefaultTimeSeconds =
+    normalizeExamTaskTypeDefaultTimeSeconds(
+      stored.exam_task_type_default_time_seconds,
+    );
   const storedExamAutoCardsReturnOnCorrect =
     typeof stored.exam_auto_cards_return_on_correct === "boolean"
       ? stored.exam_auto_cards_return_on_correct
@@ -1139,6 +1210,7 @@ export const normalizeSettings = (
       fastFlashcardMode: storedFastFlashcardMode,
       fastFlashcardScope: storedFastFlashcardScope,
       fastFlashcardDuration: storedFastFlashcardDuration,
+      fastFlashcardAutoTimeEnabled: storedFastFlashcardAutoTimeEnabled,
       fastFlashcardHelpEnabled: storedFastFlashcardHelpEnabled,
       examShowTimeline: storedExamShowTimeline,
       examHelpEnabled: storedExamHelpEnabled,
@@ -1147,6 +1219,7 @@ export const normalizeSettings = (
       spacedRepetitionPageSize: storedSpacedRepetitionPageSize,
       spacedRepetitionRepetitionStrength: storedSpacedRepetitionRepetitionStrength,
       spacedRepetitionStatsView: storedSpacedRepetitionStatsView,
+      spacedRepetitionAutoTimeEnabled: storedSpacedRepetitionAutoTimeEnabled,
       spacedRepetitionHelpEnabled: storedSpacedRepetitionHelpEnabled,
       rightToolbarCollapsed: storedRightToolbarCollapsed,
       examMaxTotalPoints: storedExamMaxTotalPoints,
@@ -1156,6 +1229,7 @@ export const normalizeSettings = (
       examTimeLimitEnabled: storedExamTimeLimitEnabled,
       examAutoCardsTypes: storedExamAutoCardsTypes,
       examTaskTypeDefaultPoints: storedExamTaskTypeDefaultPoints,
+      examTaskTypeDefaultTimeSeconds: storedExamTaskTypeDefaultTimeSeconds,
       examAutoCardsReturnOnCorrect: storedExamAutoCardsReturnOnCorrect,
       examGradeScale: storedExamGradeScale,
       examAiEvaluation: storedExamAiEvaluation,
@@ -1255,6 +1329,8 @@ export const useAppSettings = () => {
   const [fastFlashcardDuration, setFastFlashcardDuration] = useState(
     DEFAULT_FAST_FLASHCARD_DURATION,
   );
+  const [fastFlashcardAutoTimeEnabled, setFastFlashcardAutoTimeEnabledState] =
+    useState(DEFAULT_FAST_FLASHCARD_AUTO_TIME_ENABLED);
   const [fastFlashcardHelpEnabled, setFastFlashcardHelpEnabledState] = useState(
     DEFAULT_FAST_FLASHCARD_HELP_ENABLED,
   );
@@ -1278,6 +1354,10 @@ export const useAppSettings = () => {
   );
   const [spacedRepetitionStatsView, setSpacedRepetitionStatsView] =
     useState<SpacedRepetitionStatsView>(DEFAULT_SPACED_REPETITION_STATS_VIEW);
+  const [
+    spacedRepetitionAutoTimeEnabled,
+    setSpacedRepetitionAutoTimeEnabledState,
+  ] = useState(DEFAULT_SPACED_REPETITION_AUTO_TIME_ENABLED);
   const [spacedRepetitionHelpEnabled, setSpacedRepetitionHelpEnabledState] =
     useState(DEFAULT_SPACED_REPETITION_HELP_ENABLED);
   const [rightToolbarCollapsed, setRightToolbarCollapsed] = useState(
@@ -1306,6 +1386,10 @@ export const useAppSettings = () => {
   const [examTaskTypeDefaultPoints, setExamTaskTypeDefaultPointsState] = useState<
     Record<AutoCardType, number>
   >(() => ({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS }));
+  const [examTaskTypeDefaultTimeSeconds, setExamTaskTypeDefaultTimeSecondsState] =
+    useState<Record<AutoCardType, number>>(() => ({
+      ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+    }));
   const [examAutoCardsReturnOnCorrect, setExamAutoCardsReturnOnCorrectState] =
     useState(DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT);
   const [examGradeScale, setExamGradeScaleState] = useState<ExamGradeScale>(
@@ -1388,8 +1472,24 @@ export const useAppSettings = () => {
     [],
   );
 
+  const setExamTaskTypeDefaultTimeSeconds = useCallback(
+    (type: AutoCardType, value: number) => {
+      setExamTaskTypeDefaultTimeSecondsState((prev) => ({
+        ...prev,
+        [type]: clampExamTaskTypeDefaultPoints(value, prev[type]),
+      }));
+    },
+    [],
+  );
+
   const resetExamTaskTypeDefaultPoints = useCallback(() => {
     setExamTaskTypeDefaultPointsState({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS });
+  }, []);
+
+  const resetExamTaskTypeDefaultTimeSeconds = useCallback(() => {
+    setExamTaskTypeDefaultTimeSecondsState({
+      ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+    });
   }, []);
 
   const setExamAutoCardsReturnOnCorrect = useCallback((value: boolean) => {
@@ -1482,6 +1582,10 @@ export const useAppSettings = () => {
     setFastFlashcardHelpEnabledState(Boolean(value));
   }, []);
 
+  const setFastFlashcardAutoTimeEnabled = useCallback((value: boolean) => {
+    setFastFlashcardAutoTimeEnabledState(Boolean(value));
+  }, []);
+
   const setExamHelpEnabled = useCallback((value: boolean) => {
     setExamHelpEnabledState(Boolean(value));
   }, []);
@@ -1554,6 +1658,10 @@ export const useAppSettings = () => {
     setSpacedRepetitionHelpEnabledState(Boolean(value));
   }, []);
 
+  const setSpacedRepetitionAutoTimeEnabled = useCallback((value: boolean) => {
+    setSpacedRepetitionAutoTimeEnabledState(Boolean(value));
+  }, []);
+
   const buildSettingsSnapshot = useCallback(
     (): SettingsSnapshot => ({
       activeNotePath,
@@ -1592,6 +1700,7 @@ export const useAppSettings = () => {
       fastFlashcardMode,
       fastFlashcardScope,
       fastFlashcardDuration,
+      fastFlashcardAutoTimeEnabled,
       fastFlashcardHelpEnabled,
       examShowTimeline,
       examHelpEnabled,
@@ -1600,6 +1709,7 @@ export const useAppSettings = () => {
       spacedRepetitionPageSize,
       spacedRepetitionRepetitionStrength,
       spacedRepetitionStatsView,
+      spacedRepetitionAutoTimeEnabled,
       spacedRepetitionHelpEnabled,
       rightToolbarCollapsed,
       examMaxTotalPoints,
@@ -1609,6 +1719,7 @@ export const useAppSettings = () => {
       examTimeLimitEnabled,
       examAutoCardsTypes,
       examTaskTypeDefaultPoints,
+      examTaskTypeDefaultTimeSeconds,
       examAutoCardsReturnOnCorrect,
       examGradeScale,
       examAiEvaluation,
@@ -1649,6 +1760,7 @@ export const useAppSettings = () => {
       fastFlashcardOrder,
       fastFlashcardScope,
       fastFlashcardDuration,
+      fastFlashcardAutoTimeEnabled,
       fastFlashcardHelpEnabled,
       examShowTimeline,
       flashcardPageSize,
@@ -1666,6 +1778,7 @@ export const useAppSettings = () => {
       spacedRepetitionPageSize,
       spacedRepetitionRepetitionStrength,
       spacedRepetitionStatsView,
+      spacedRepetitionAutoTimeEnabled,
       statsResetMode,
       theme,
       userVaultCustomPath,
@@ -1727,6 +1840,7 @@ export const useAppSettings = () => {
           fastFlashcardMode: settings.fastFlashcardMode,
           fastFlashcardScope: settings.fastFlashcardScope,
           fastFlashcardDuration: settings.fastFlashcardDuration,
+          fastFlashcardAutoTimeEnabled: settings.fastFlashcardAutoTimeEnabled,
           fastFlashcardHelpEnabled: settings.fastFlashcardHelpEnabled,
           examShowTimeline: settings.examShowTimeline,
           examHelpEnabled: settings.examHelpEnabled,
@@ -1736,6 +1850,7 @@ export const useAppSettings = () => {
           spacedRepetitionRepetitionStrength:
             settings.spacedRepetitionRepetitionStrength,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
+          spacedRepetitionAutoTimeEnabled: settings.spacedRepetitionAutoTimeEnabled,
           spacedRepetitionHelpEnabled: settings.spacedRepetitionHelpEnabled,
           rightToolbarCollapsed: settings.rightToolbarCollapsed,
           examMaxTotalPoints: settings.examMaxTotalPoints,
@@ -1745,6 +1860,7 @@ export const useAppSettings = () => {
           examTimeLimitEnabled: settings.examTimeLimitEnabled,
           examAutoCardsTypes: settings.examAutoCardsTypes,
           examTaskTypeDefaultPoints: settings.examTaskTypeDefaultPoints,
+          examTaskTypeDefaultTimeSeconds: settings.examTaskTypeDefaultTimeSeconds,
           examAutoCardsReturnOnCorrect: settings.examAutoCardsReturnOnCorrect,
           examGradeScale: settings.examGradeScale,
           examAiEvaluation: settings.examAiEvaluation,
@@ -1812,6 +1928,8 @@ export const useAppSettings = () => {
         fastFlashcardScope: updates.fastFlashcardScope ?? fastFlashcardScope,
         fastFlashcardDuration:
           updates.fastFlashcardDuration ?? fastFlashcardDuration,
+        fastFlashcardAutoTimeEnabled:
+          updates.fastFlashcardAutoTimeEnabled ?? fastFlashcardAutoTimeEnabled,
         fastFlashcardHelpEnabled:
           updates.fastFlashcardHelpEnabled ?? fastFlashcardHelpEnabled,
         examShowTimeline:
@@ -1833,6 +1951,9 @@ export const useAppSettings = () => {
           spacedRepetitionRepetitionStrength,
         spacedRepetitionStatsView:
           updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
+        spacedRepetitionAutoTimeEnabled:
+          updates.spacedRepetitionAutoTimeEnabled ??
+          spacedRepetitionAutoTimeEnabled,
         spacedRepetitionHelpEnabled:
           updates.spacedRepetitionHelpEnabled ?? spacedRepetitionHelpEnabled,
         rightToolbarCollapsed:
@@ -1857,6 +1978,10 @@ export const useAppSettings = () => {
         examTaskTypeDefaultPoints: mergeExamTaskTypeDefaultPoints(
           examTaskTypeDefaultPoints,
           updates.examTaskTypeDefaultPoints,
+        ),
+        examTaskTypeDefaultTimeSeconds: mergeExamTaskTypeDefaultTimeSeconds(
+          examTaskTypeDefaultTimeSeconds,
+          updates.examTaskTypeDefaultTimeSeconds,
         ),
         examAutoCardsReturnOnCorrect:
           updates.examAutoCardsReturnOnCorrect ?? examAutoCardsReturnOnCorrect,
@@ -1904,6 +2029,7 @@ export const useAppSettings = () => {
       examTimeLimitEnabled,
       examAutoCardsTypes,
       examTaskTypeDefaultPoints,
+      examTaskTypeDefaultTimeSeconds,
       examAutoCardsReturnOnCorrect,
       keyboardShortcuts,
       flashcardMode,
@@ -1912,6 +2038,7 @@ export const useAppSettings = () => {
       fastFlashcardOrder,
       fastFlashcardScope,
       fastFlashcardDuration,
+      fastFlashcardAutoTimeEnabled,
       fastFlashcardHelpEnabled,
       flashcardPageSize,
       flashcardScope,
@@ -1931,6 +2058,7 @@ export const useAppSettings = () => {
       spacedRepetitionPageSize,
       spacedRepetitionRepetitionStrength,
       spacedRepetitionStatsView,
+      spacedRepetitionAutoTimeEnabled,
       statsResetMode,
       theme,
       userVaultCustomPath,
@@ -1994,6 +2122,7 @@ export const useAppSettings = () => {
     setFastFlashcardMode(normalized.fastFlashcardMode);
     setFastFlashcardScope(normalized.fastFlashcardScope);
     setFastFlashcardDuration(normalized.fastFlashcardDuration);
+    setFastFlashcardAutoTimeEnabledState(normalized.fastFlashcardAutoTimeEnabled);
     setFastFlashcardHelpEnabledState(normalized.fastFlashcardHelpEnabled);
     setExamShowTimelineState(normalized.examShowTimeline);
     setExamHelpEnabledState(normalized.examHelpEnabled);
@@ -2008,6 +2137,9 @@ export const useAppSettings = () => {
       normalized.spacedRepetitionRepetitionStrength,
     );
     setSpacedRepetitionStatsView(normalized.spacedRepetitionStatsView);
+    setSpacedRepetitionAutoTimeEnabledState(
+      normalized.spacedRepetitionAutoTimeEnabled,
+    );
     setSpacedRepetitionHelpEnabledState(normalized.spacedRepetitionHelpEnabled);
     setRightToolbarCollapsed(normalized.rightToolbarCollapsed);
     setExamMaxTotalPointsState(normalized.examMaxTotalPoints);
@@ -2017,6 +2149,9 @@ export const useAppSettings = () => {
     setExamTimeLimitEnabledState(normalized.examTimeLimitEnabled);
     setExamAutoCardsTypesState(normalized.examAutoCardsTypes);
     setExamTaskTypeDefaultPointsState(normalized.examTaskTypeDefaultPoints);
+    setExamTaskTypeDefaultTimeSecondsState(
+      normalized.examTaskTypeDefaultTimeSeconds,
+    );
     setExamAutoCardsReturnOnCorrectState(normalized.examAutoCardsReturnOnCorrect);
     setExamGradeScaleState(normalized.examGradeScale);
     setExamAiEvaluationState(normalized.examAiEvaluation);
@@ -2192,6 +2327,7 @@ export const useAppSettings = () => {
     examTimeLimitEnabled,
     examAutoCardsTypes,
     examTaskTypeDefaultPoints,
+    examTaskTypeDefaultTimeSeconds,
     examAutoCardsReturnOnCorrect,
     examGradeScale,
     flashcardMode,
@@ -2200,6 +2336,7 @@ export const useAppSettings = () => {
     fastFlashcardOrder,
     fastFlashcardScope,
     fastFlashcardDuration,
+    fastFlashcardAutoTimeEnabled,
     fastFlashcardHelpEnabled,
     examShowTimeline,
     examHelpEnabled,
@@ -2236,7 +2373,9 @@ export const useAppSettings = () => {
     setExamTimeLimitEnabled,
     setExamAutoCardsTypeEnabled,
     setExamTaskTypeDefaultPoint,
+    setExamTaskTypeDefaultTimeSeconds,
     resetExamTaskTypeDefaultPoints,
+    resetExamTaskTypeDefaultTimeSeconds,
     setExamAutoCardsReturnOnCorrect,
     setExamGradeScale,
     setFlashcardMode,
@@ -2248,6 +2387,7 @@ export const useAppSettings = () => {
     setFastFlashcardOrder,
     setFastFlashcardScope,
     setFastFlashcardDuration,
+    setFastFlashcardAutoTimeEnabled,
     setFastFlashcardHelpEnabled,
     setExamShowTimeline,
     setExamHelpEnabled,
@@ -2271,6 +2411,7 @@ export const useAppSettings = () => {
     setSpacedRepetitionOrder,
     setSpacedRepetitionPageSize,
     setSpacedRepetitionRepetitionStrength,
+    setSpacedRepetitionAutoTimeEnabled,
     setSpacedRepetitionHelpEnabled,
     setSpacedRepetitionStatsView,
     setStatsResetMode,
@@ -2282,6 +2423,7 @@ export const useAppSettings = () => {
     spacedRepetitionOrder,
     spacedRepetitionPageSize,
     spacedRepetitionRepetitionStrength,
+    spacedRepetitionAutoTimeEnabled,
     spacedRepetitionHelpEnabled,
     spacedRepetitionStatsView,
     statsResetMode,

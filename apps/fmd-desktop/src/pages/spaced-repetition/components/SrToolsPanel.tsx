@@ -36,6 +36,8 @@ type SrToolsPanelProps = {
   setSpacedRepetitionPageSize: (value: SpacedRepetitionPageSize) => void;
   flashcardFilterMode: FlashcardMode;
   setFlashcardFilterMode: (value: FlashcardMode) => void;
+  autoTimeEnabled: boolean;
+  setAutoTimeEnabled: (value: boolean) => void;
   statusLabel?: string;
   isCollapsible?: boolean;
   isCollapsed?: boolean;
@@ -50,6 +52,8 @@ export const SrToolsPanel = ({
   setSpacedRepetitionPageSize,
   flashcardFilterMode,
   setFlashcardFilterMode,
+  autoTimeEnabled,
+  setAutoTimeEnabled,
   statusLabel,
   isCollapsible = false,
   isCollapsed = false,
@@ -97,6 +101,19 @@ export const SrToolsPanel = ({
           <option value="true-false">True/False</option>
           <option value="mix">Mix</option>
         </select>
+      </div>
+      <div className="setting-row">
+        <span className="label">Auto Time</span>
+        <div className="setting-inline">
+          <button
+            type="button"
+            className={`pill pill-button ${autoTimeEnabled ? "active" : ""}`}
+            aria-pressed={autoTimeEnabled}
+            onClick={() => setAutoTimeEnabled(!autoTimeEnabled)}
+          >
+            Auto Time
+          </button>
+        </div>
       </div>
       <div className="setting-row">
         <span className="label">Boxes</span>

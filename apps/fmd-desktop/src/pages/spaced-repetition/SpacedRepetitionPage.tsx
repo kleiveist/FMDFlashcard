@@ -20,7 +20,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { SrCardHost } from "./components/SrCardHost";
 import { SrHeader } from "./components/SrHeader";
 import { SrStatsAndChart } from "./components/SrStatsAndChart";
@@ -84,11 +84,27 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     handleCompositeTextCheck,
     handleCompositeSelfGrade,
     spacedRepetitionHelpEnabled,
+    autoTimeEnabled,
+    setAutoTimeEnabled,
+    autoTimeStatusLabel,
+    autoTimeProgressPercent,
+    autoTimeIsRunning,
+    autoTimeIsTimeUp,
   } = useSrSessionViewModel();
   const isTableView = useTableView();
   const [isDiagramOpen, setIsDiagramOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const isFlashcardsPanelEmpty = filteredFlashcardEntries.length === 0;
+  const autoTimeBarStyle = useMemo(
+    () =>
+      ({
+        "--exam-time-progress": `${Math.max(
+          0,
+          Math.min(100, autoTimeProgressPercent),
+        )}%`,
+      }) as CSSProperties,
+    [autoTimeProgressPercent],
+  );
 
   const noteFilesPanel = (
     <NoteFilesPanel
@@ -148,6 +164,26 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
             controlsId="sr-diagram-body"
           />
         )}
+        {autoTimeEnabled ? (
+          <div
+            className={[
+              "exam-time-bar",
+              autoTimeIsRunning ? "is-running" : "is-idle",
+              autoTimeIsTimeUp ? "is-time-up" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <div className="exam-time-bar-header">
+              <span className="label">{autoTimeStatusLabel}</span>
+            </div>
+            <div
+              className="exam-time-bar-track"
+              aria-hidden="true"
+              style={autoTimeBarStyle}
+            />
+          </div>
+        ) : null}
 
         <section
           className={`panel sr-flashcards-panel ${
@@ -230,6 +266,8 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
             setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
             flashcardFilterMode={flashcardFilterMode}
             setFlashcardFilterMode={setFlashcardFilterMode}
+            autoTimeEnabled={autoTimeEnabled}
+            setAutoTimeEnabled={setAutoTimeEnabled}
             statusLabel={spacedRepetition.spacedRepetitionStatusLabel}
             isCollapsible={isTableView}
             isCollapsed={isTableView && !isToolsOpen}

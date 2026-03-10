@@ -385,6 +385,15 @@ export const SettingsPage = () => {
     [settings.setExamTaskTypeDefaultPoint],
   );
 
+  const handleExamTaskTypeDefaultTimeSecondsChange = useCallback(
+    (type: keyof typeof settings.examTaskTypeDefaultTimeSeconds, value: string) => {
+      const parsed = Number.parseInt(value, 10);
+      const normalized = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+      settings.setExamTaskTypeDefaultTimeSeconds(type, normalized);
+    },
+    [settings.setExamTaskTypeDefaultTimeSeconds],
+  );
+
   const activeItem =
     SETTINGS_NAV_ITEMS.find((item) => item.id === activeSettingsPage) ??
     SETTINGS_NAV_ITEMS[0];
@@ -526,8 +535,13 @@ export const SettingsPage = () => {
             ) : activeSubPageId === "task-type-defaults" ? (
               <ExamTaskTypeDefaultsPanel
                 pointsByType={settings.examTaskTypeDefaultPoints}
+                timeSecondsByType={settings.examTaskTypeDefaultTimeSeconds}
                 onPointChange={handleExamTaskTypeDefaultPointChange}
-                onResetPreset={settings.resetExamTaskTypeDefaultPoints}
+                onTimeSecondsChange={handleExamTaskTypeDefaultTimeSecondsChange}
+                onResetPreset={() => {
+                  settings.resetExamTaskTypeDefaultPoints();
+                  settings.resetExamTaskTypeDefaultTimeSeconds();
+                }}
               />
             ) : (
               <ExamTogglesPanel
@@ -603,23 +617,49 @@ export const SettingsPage = () => {
                     </select>
                   </div>
                   <div className="setting-row">
-                    <span className="label">DURATION</span>
-                    <div className="pill-grid">
-                      {FAST_FLASHCARD_DURATIONS.map((duration) => (
-                        <button
-                          key={duration}
-                          type="button"
-                          className={`pill pill-button ${
-                            settings.fastFlashcardDuration === duration ? "active" : ""
-                          }`}
-                          aria-pressed={settings.fastFlashcardDuration === duration}
-                          onClick={() => settings.setFastFlashcardDuration(duration)}
-                        >
-                          {duration}s
-                        </button>
-                      ))}
+                    <span className="label">AUTO TIME</span>
+                    <div className="setting-inline">
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={settings.fastFlashcardAutoTimeEnabled}
+                          onChange={(event) =>
+                            settings.setFastFlashcardAutoTimeEnabled(
+                              event.target.checked,
+                            )
+                          }
+                        />
+                        <span className="slider" />
+                      </label>
+                      <span className="muted">
+                        {settings.fastFlashcardAutoTimeEnabled
+                          ? "Enabled"
+                          : "Disabled"}
+                      </span>
                     </div>
                   </div>
+                  {!settings.fastFlashcardAutoTimeEnabled ? (
+                    <div className="setting-row">
+                      <span className="label">DURATION</span>
+                      <div className="pill-grid">
+                        {FAST_FLASHCARD_DURATIONS.map((duration) => (
+                          <button
+                            key={duration}
+                            type="button"
+                            className={`pill pill-button ${
+                              settings.fastFlashcardDuration === duration
+                                ? "active"
+                                : ""
+                            }`}
+                            aria-pressed={settings.fastFlashcardDuration === duration}
+                            onClick={() => settings.setFastFlashcardDuration(duration)}
+                          >
+                            {duration}s
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="setting-row">
                     <span className="label">DEFAULT SCOPE</span>
                     <div className="pill-grid">
@@ -697,6 +737,8 @@ export const SettingsPage = () => {
                 setHelpEnabled={settings.setSpacedRepetitionHelpEnabled}
                 flashcardMode={settings.flashcardMode}
                 setFlashcardMode={settings.setFlashcardMode}
+                autoTimeEnabled={settings.spacedRepetitionAutoTimeEnabled}
+                setAutoTimeEnabled={settings.setSpacedRepetitionAutoTimeEnabled}
               />
             ) : (
               <FlashcardsSettingsSection

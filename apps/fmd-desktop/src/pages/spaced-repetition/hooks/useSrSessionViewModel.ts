@@ -25,6 +25,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type DragEvent,
@@ -45,6 +46,8 @@ import {
   isFlashcardPartComplete,
 } from "../../../features/flashcards/logic";
 import { matchesFlashcardMode } from "../../../features/flashcards/useFlashcards";
+import { resolveFlashcardAutoCardTypeInstances } from "../../../lib/exam/autoCards";
+import { resolveAutoCardTypeValueSum } from "../../../lib/exam/pointsScoring";
 import {
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
@@ -65,6 +68,9 @@ export const useSrSessionViewModel = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
+  const [autoTimeRemainingSeconds, setAutoTimeRemainingSeconds] =
+    useState<number | null>(null);
+  const autoTimeTimerRef = useRef<number | null>(null);
   const flashcardFilterMode = settings.flashcardMode;
   const setFlashcardFilterMode = settings.setFlashcardMode;
   const statsView = spacedRepetition.spacedRepetitionStatsView;
@@ -240,6 +246,139 @@ export const useSrSessionViewModel = () => {
     },
     [activeBoxFilter, spacedRepetition],
   );
+
+  const autoTimeEnabled = settings.spacedRepetitionAutoTimeEnabled;
+  const activeTimedEntry = useMemo(() => {
+    if (!autoTimeEnabled) {
+      return null;
+    }
+    const unsubmittedVisibleEntries = pagedFlashcardEntries.filter(
+      (entry) => !spacedRepetition.spacedRepetitionSubmissions[entry.cardIndex],
+    );
+    if (unsubmittedVisibleEntries.length === 0) {
+      return null;
+    }
+    if (activeCardIndex !== null) {
+      const activeEntry = unsubmittedVisibleEntries.find(
+        (entry) => entry.cardIndex === activeCardIndex,
+      );
+      if (activeEntry) {
+        return activeEntry;
+      }
+    }
+    return unsubmittedVisibleEntries[0] ?? null;
+  }, [
+    activeCardIndex,
+    autoTimeEnabled,
+    pagedFlashcardEntries,
+    spacedRepetition.spacedRepetitionSubmissions,
+  ]);
+  const activeTimedDurationSeconds = useMemo(() => {
+    if (!activeTimedEntry) {
+      return 0;
+    }
+    return resolveAutoCardTypeValueSum({
+      taskTypes: resolveFlashcardAutoCardTypeInstances(activeTimedEntry.card),
+      typeValues: settings.examTaskTypeDefaultTimeSeconds,
+    });
+  }, [activeTimedEntry, settings.examTaskTypeDefaultTimeSeconds]);
+  const handleAutoTimeTimeout = useCallback(
+    (cardIndex: number) => {
+      if (spacedRepetition.spacedRepetitionSubmissions[cardIndex]) {
+        return;
+      }
+      const timedCard = spacedRepetition.spacedRepetitionFlashcards[cardIndex];
+      if (!timedCard) {
+        return;
+      }
+      if (timedCard.kind === "free-text") {
+        spacedRepetition.handleSpacedRepetitionSelfGrade(cardIndex, "incorrect");
+        return;
+      }
+      spacedRepetition.handleSpacedRepetitionSubmit(cardIndex, true);
+    },
+    [
+      spacedRepetition,
+      spacedRepetition.spacedRepetitionFlashcards,
+      spacedRepetition.spacedRepetitionSubmissions,
+    ],
+  );
+
+  useEffect(() => {
+    if (!autoTimeEnabled || !activeTimedEntry) {
+      if (autoTimeTimerRef.current !== null) {
+        window.clearInterval(autoTimeTimerRef.current);
+        autoTimeTimerRef.current = null;
+      }
+      setAutoTimeRemainingSeconds(null);
+      return;
+    }
+
+    if (activeTimedDurationSeconds <= 0) {
+      setAutoTimeRemainingSeconds(0);
+      handleAutoTimeTimeout(activeTimedEntry.cardIndex);
+      return;
+    }
+
+    setAutoTimeRemainingSeconds(activeTimedDurationSeconds);
+    if (autoTimeTimerRef.current !== null) {
+      window.clearInterval(autoTimeTimerRef.current);
+    }
+    autoTimeTimerRef.current = window.setInterval(() => {
+      setAutoTimeRemainingSeconds((prev) => {
+        const next = prev === null ? activeTimedDurationSeconds : prev - 1;
+        if (next <= 0) {
+          if (autoTimeTimerRef.current !== null) {
+            window.clearInterval(autoTimeTimerRef.current);
+            autoTimeTimerRef.current = null;
+          }
+          handleAutoTimeTimeout(activeTimedEntry.cardIndex);
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+
+    return () => {
+      if (autoTimeTimerRef.current !== null) {
+        window.clearInterval(autoTimeTimerRef.current);
+        autoTimeTimerRef.current = null;
+      }
+    };
+  }, [
+    activeTimedDurationSeconds,
+    activeTimedEntry,
+    autoTimeEnabled,
+    handleAutoTimeTimeout,
+  ]);
+
+  const autoTimeCurrentSeconds =
+    activeTimedEntry === null
+      ? null
+      : Math.max(0, autoTimeRemainingSeconds ?? activeTimedDurationSeconds);
+  const autoTimeProgressPercent = !activeTimedEntry
+    ? 100
+    : activeTimedDurationSeconds > 0 && autoTimeCurrentSeconds !== null
+      ? Math.round(
+          Math.max(
+            0,
+            Math.min(1, autoTimeCurrentSeconds / activeTimedDurationSeconds),
+          ) * 100,
+        )
+      : 0;
+  const autoTimeIsRunning =
+    autoTimeEnabled &&
+    activeTimedEntry !== null &&
+    (autoTimeCurrentSeconds ?? 0) > 0;
+  const autoTimeIsTimeUp =
+    autoTimeEnabled &&
+    activeTimedEntry !== null &&
+    (autoTimeCurrentSeconds ?? 0) <= 0;
+  const autoTimeStatusLabel = !autoTimeEnabled
+    ? "Auto Time disabled"
+    : activeTimedEntry === null
+      ? "No active timed card"
+      : `Remaining: ${autoTimeCurrentSeconds ?? 0}s`;
 
   const kpiItems = [
     { label: "Correct", value: spacedRepetition.spacedRepetitionCorrectCount },
@@ -723,5 +862,11 @@ export const useSrSessionViewModel = () => {
     deleteTargetName,
     canConfirmDelete,
     spacedRepetitionHelpEnabled,
+    autoTimeEnabled,
+    setAutoTimeEnabled: settings.setSpacedRepetitionAutoTimeEnabled,
+    autoTimeStatusLabel,
+    autoTimeProgressPercent,
+    autoTimeIsRunning,
+    autoTimeIsTimeUp,
   };
 };
