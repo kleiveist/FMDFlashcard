@@ -36,6 +36,7 @@ import {
   UserVaultProfileModal,
   UserVaultSyncProviderModal,
 } from "./components/UserVaultGateModals";
+import { UserListSection } from "./components/settings/ProfileSetupSections";
 import { LayoutModeProvider, useLayoutMode } from "./lib/layoutMode";
 import { useMediaQuery } from "./lib/useMediaQuery";
 import {
@@ -103,6 +104,7 @@ const AppContent = () => {
   const prevDashboardViewRef = useRef<DashboardView>(dashboardView);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isUserRegistryModalOpen, setIsUserRegistryModalOpen] = useState(false);
   const [openGateId, setOpenGateId] = useState<WalletGateId | null>(null);
   const [dismissedGateId, setDismissedGateId] = useState<WalletGateId | null>(null);
   const [noteModalCombinationMode, setNoteModalCombinationMode] =
@@ -420,6 +422,14 @@ const AppContent = () => {
     setIsSettingsOpen(false);
   }, []);
 
+  const handleOpenUserManager = useCallback(() => {
+    setIsUserRegistryModalOpen(true);
+  }, []);
+
+  const handleCloseUserManager = useCallback(() => {
+    setIsUserRegistryModalOpen(false);
+  }, []);
+
   useEffect(() => {
     return subscribeSettingsFocus((request) => {
       settingsNav.setActiveSettingsPage(request.pageId);
@@ -476,6 +486,7 @@ const AppContent = () => {
         onVaultViewChange={requestDashboardViewChange}
         onOpenHelp={handleOpenHelp}
         onOpenSettings={handleOpenSettings}
+        onOpenUserManager={handleOpenUserManager}
         onMobileNavClose={() => setIsMobileNavOpen(false)}
       />
       <main className="content">
@@ -582,6 +593,27 @@ const AppContent = () => {
         bodyClassName="settings-modal-body"
       >
         <SettingsPage />
+      </ModalShell>
+      <ModalShell
+        isOpen={isUserRegistryModalOpen}
+        title="Manage User"
+        onClose={handleCloseUserManager}
+        bodyClassName="hub-modal-scroll"
+      >
+        <section className="panel sr-user-panel">
+          <div className="panel-header">
+            <div>
+              <h2>User Tools</h2>
+            </div>
+          </div>
+          <div className="panel-body">
+            <UserListSection
+              userVault={userVault}
+              spacedRepetition={spacedRepetition}
+              showActiveUser
+            />
+          </div>
+        </section>
       </ModalShell>
       <UserVaultCustomPathModal
         isOpen={openGateId === "custom-path"}

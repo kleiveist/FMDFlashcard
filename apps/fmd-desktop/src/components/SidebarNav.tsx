@@ -23,6 +23,7 @@
 
 import {
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -55,7 +56,22 @@ type SidebarNavProps = {
   onVaultViewChange: (view: DashboardView) => void;
   onOpenHelp: () => void;
   onOpenSettings: () => void;
+  onOpenUserManager: () => void;
   onMobileNavClose: () => void;
+};
+
+const buildUserInitials = (value: string) => {
+  const parts = value
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) {
+    return "NA";
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
 };
 
 export const SidebarNav = ({
@@ -65,9 +81,10 @@ export const SidebarNav = ({
   onVaultViewChange,
   onOpenHelp,
   onOpenSettings,
+  onOpenUserManager,
   onMobileNavClose,
 }: SidebarNavProps) => {
-  const { actions, preview, settings, vault } = useAppState();
+  const { actions, preview, settings, spacedRepetition, vault } = useAppState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>(() =>
     activeTab === "dashboard" ? "vault" : "cards",
   );
@@ -75,15 +92,26 @@ export const SidebarNav = ({
     () => new Set(),
   );
   const [isVaultMenuOpen, setIsVaultMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [vaultMenuMaxHeight, setVaultMenuMaxHeight] = useState<number | null>(null);
   const vaultLayoutRef = useRef<HTMLDivElement | null>(null);
   const vaultStatusRef = useRef<HTMLDivElement | null>(null);
   const vaultMenuRef = useRef<HTMLDivElement | null>(null);
   const vaultButtonRef = useRef<HTMLButtonElement | null>(null);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const userButtonRef = useRef<HTMLButtonElement | null>(null);
   const vaultRootName = useMemo(
     () => vaultBaseName(vault.vaultPath),
     [vault.vaultPath],
   );
+  const activeUserName = spacedRepetition.spacedRepetitionActiveUser?.trim() ?? "";
+  const activeUserId = spacedRepetition.spacedRepetitionActiveUserId;
+  const activeUserLabel = activeUserName || "No active user";
+  const activeUserInitials = useMemo(
+    () => buildUserInitials(activeUserLabel),
+    [activeUserLabel],
+  );
+  const userProfiles = spacedRepetition.spacedRepetitionUsers;
   const refreshLabel = useMemo(() => {
     if (!vault.vaultPath || !vault.lastRefreshAt) {
       return "Rescan vault";
@@ -222,6 +250,29 @@ export const SidebarNav = ({
   }, [isVaultMenuOpen]);
 
   useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+      if (userMenuRef.current?.contains(target)) {
+        return;
+      }
+      if (userButtonRef.current?.contains(target)) {
+        return;
+      }
+      setIsUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+    };
+  }, [isUserMenuOpen]);
+
+  useEffect(() => {
     if (!isVaultMenuOpen) {
       return;
     }
@@ -232,6 +283,95 @@ export const SidebarNav = ({
       onClose: () => setIsVaultMenuOpen(false),
     });
   }, [isVaultMenuOpen]);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+    return registerCloseLayer({
+      id: "active-user-menu",
+      priority: 210,
+      isActive: () => isUserMenuOpen,
+      onClose: () => {
+        setIsUserMenuOpen(false);
+        userButtonRef.current?.focus();
+      },
+    });
+  }, [isUserMenuOpen]);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+    const firstButton = userMenuRef.current?.querySelector<HTMLButtonElement>(
+      '[data-user-menu-item="true"]:not(:disabled)',
+    );
+    firstButton?.focus();
+  }, [isUserMenuOpen]);
+
+  const handleUserMenuKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (!isUserMenuOpen) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsUserMenuOpen(false);
+        userButtonRef.current?.focus();
+        return;
+      }
+      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+        return;
+      }
+      const items = Array.from(
+        userMenuRef.current?.querySelectorAll<HTMLButtonElement>(
+          '[data-user-menu-item="true"]:not(:disabled)',
+        ) ?? [],
+      );
+      if (items.length === 0) {
+        return;
+      }
+      const activeElement = document.activeElement as HTMLElement | null;
+      const currentIndex = items.findIndex((item) => item === activeElement);
+      let nextIndex = 0;
+      if (event.key === "Home") {
+        nextIndex = 0;
+      } else if (event.key === "End") {
+        nextIndex = items.length - 1;
+      } else if (event.key === "ArrowDown") {
+        nextIndex = currentIndex >= 0 ? (currentIndex + 1) % items.length : 0;
+      } else {
+        nextIndex =
+          currentIndex >= 0
+            ? (currentIndex - 1 + items.length) % items.length
+            : items.length - 1;
+      }
+      event.preventDefault();
+      items[nextIndex]?.focus();
+    },
+    [isUserMenuOpen],
+  );
+
+  const handleUserMenuToggle = useCallback(() => {
+    setIsUserMenuOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsVaultMenuOpen(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSetActiveUser = useCallback(
+    (userId: string) => {
+      setIsUserMenuOpen(false);
+      if (userId === activeUserId) {
+        return;
+      }
+      spacedRepetition.setActiveUser(userId);
+    },
+    [activeUserId, spacedRepetition],
+  );
 
   return (
     <aside
@@ -248,6 +388,88 @@ export const SidebarNav = ({
         >
           Close
         </button>
+        <div className="sidebar-active-user">
+          <span className="label">ACTIVE USER</span>
+          <button
+            ref={userButtonRef}
+            type="button"
+            className="sidebar-active-user-trigger"
+            onClick={handleUserMenuToggle}
+            aria-label="Select active user"
+            aria-haspopup="menu"
+            aria-expanded={isUserMenuOpen}
+            aria-controls="sidebar-active-user-menu"
+          >
+            <span className="sidebar-active-user-main">
+              <span className="sidebar-active-user-avatar" aria-hidden="true">
+                {activeUserInitials}
+              </span>
+              <span className="value sidebar-active-user-name">{activeUserLabel}</span>
+            </span>
+            <span
+              className={`sidebar-active-user-caret${isUserMenuOpen ? " is-open" : ""}`}
+              aria-hidden="true"
+            >
+              <ChevronDownIcon />
+            </span>
+          </button>
+          {isUserMenuOpen ? (
+            <div
+              ref={userMenuRef}
+              id="sidebar-active-user-menu"
+              className="sidebar-active-user-menu"
+              role="menu"
+              aria-label="User profiles"
+              onKeyDown={handleUserMenuKeyDown}
+            >
+              <div className="sidebar-active-user-menu-scroll" role="presentation">
+                {userProfiles.length === 0 ? (
+                  <div className="sidebar-active-user-menu-empty muted">
+                    No users created yet.
+                  </div>
+                ) : (
+                  userProfiles.map((user) => {
+                    const isActive = user.id === activeUserId;
+                    return (
+                      <button
+                        key={user.id}
+                        type="button"
+                        className={`sidebar-active-user-menu-item${isActive ? " is-active" : ""}`}
+                        role="menuitemradio"
+                        aria-checked={isActive}
+                        data-user-menu-item="true"
+                        onClick={() => handleSetActiveUser(user.id)}
+                        title={user.name}
+                      >
+                        <span className="sidebar-active-user-menu-name">{user.name}</span>
+                        {isActive ? (
+                          <span className="sidebar-active-user-menu-check" aria-hidden="true">
+                            <CheckIcon />
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <div className="sidebar-active-user-menu-footer" role="presentation">
+                <div className="sidebar-active-user-menu-divider" role="separator" />
+                <button
+                  type="button"
+                  className="sidebar-active-user-menu-item sidebar-active-user-menu-manage"
+                  role="menuitem"
+                  data-user-menu-item="true"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenUserManager();
+                  }}
+                >
+                  Manage User
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
         <div className="sidebar-icon-row">
           <button
             type="button"
@@ -434,6 +656,7 @@ export const SidebarNav = ({
                 className="vault-status-action"
                 onClick={() => {
                   setIsVaultMenuOpen(false);
+                  setIsUserMenuOpen(false);
                   onOpenHelp();
                 }}
                 aria-label="Help"
@@ -446,6 +669,7 @@ export const SidebarNav = ({
                 className="vault-status-action"
                 onClick={() => {
                   setIsVaultMenuOpen(false);
+                  setIsUserMenuOpen(false);
                   onOpenSettings();
                 }}
                 aria-label="Settings"
@@ -459,7 +683,10 @@ export const SidebarNav = ({
             ref={vaultButtonRef}
             type="button"
             className="vault-status-main"
-            onClick={() => setIsVaultMenuOpen((prev) => !prev)}
+            onClick={() => {
+              setIsUserMenuOpen(false);
+              setIsVaultMenuOpen((prev) => !prev);
+            }}
             title={vault.vaultPath ?? "Select vault"}
             aria-label="Select vault"
             aria-haspopup="menu"
