@@ -11,7 +11,6 @@
  *
  * Verbunden mit:
  * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrCardHost.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrDeleteModal.tsx: UI-Komponente.
  * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrHeader.tsx: UI-Komponente.
  *
  * Exportiert:
@@ -23,11 +22,9 @@
 
 import { useState } from "react";
 import { SrCardHost } from "./components/SrCardHost";
-import { SrDeleteModal } from "./components/SrDeleteModal";
 import { SrHeader } from "./components/SrHeader";
 import { SrStatsAndChart } from "./components/SrStatsAndChart";
 import { SrToolsPanel } from "./components/SrToolsPanel";
-import { UserToolsPanel } from "../../components/UserToolsPanel";
 import { NoteFilesPanel } from "../../components/NoteFilesPanel";
 import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
 import { useTableView } from "../../lib/useTableView";
@@ -86,20 +83,11 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     handleCompositeTextInputChange,
     handleCompositeTextCheck,
     handleCompositeSelfGrade,
-    handleDeleteOpen,
-    handleDeleteCancel,
-    handleDeleteConfirm,
-    isDeleteDialogOpen,
-    deleteConfirmInput,
-    setDeleteConfirmInput,
-    deleteTargetName,
-    canConfirmDelete,
     spacedRepetitionHelpEnabled,
   } = useSrSessionViewModel();
   const isTableView = useTableView();
   const [isDiagramOpen, setIsDiagramOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
-  const [isUserToolsOpen, setIsUserToolsOpen] = useState(false);
   const isFlashcardsPanelEmpty = filteredFlashcardEntries.length === 0;
 
   const noteFilesPanel = (
@@ -235,19 +223,6 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
       {isFocusMode ? null : (
         <aside className="spaced-repetition-sidebar">
           {noteFilesPanel}
-          <UserToolsPanel
-            spacedRepetition={spacedRepetition}
-            handleDeleteOpen={handleDeleteOpen}
-            onStart={spacedRepetition.handleSpacedRepetitionActiveUserLoadCards}
-            startDisabled={
-              !spacedRepetition.spacedRepetitionActiveUser ||
-              flashcards.isFlashcardScanning
-            }
-            isCollapsible={isTableView}
-            isCollapsed={isTableView && !isUserToolsOpen}
-            onToggleCollapse={() => setIsUserToolsOpen((prev) => !prev)}
-            controlsId="sr-user-tools-body"
-          />
           <SrToolsPanel
             spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
             setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
@@ -263,16 +238,6 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           />
         </aside>
       )}
-
-      <SrDeleteModal
-        isDeleteDialogOpen={isDeleteDialogOpen}
-        deleteTargetName={deleteTargetName}
-        deleteConfirmInput={deleteConfirmInput}
-        setDeleteConfirmInput={setDeleteConfirmInput}
-        handleDeleteCancel={handleDeleteCancel}
-        handleDeleteConfirm={handleDeleteConfirm}
-        canConfirmDelete={canConfirmDelete}
-      />
     </div>
   );
 };

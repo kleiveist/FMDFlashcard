@@ -25,9 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   resolveExamPhaseButton,
   type ExamStageControls,
-  UserToolsPanel,
 } from "../../components/UserToolsPanel";
-import { SrDeleteModal } from "../spaced-repetition/components/SrDeleteModal";
 import { ExamCorrectionHost } from "./components/ExamCorrectionHost";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
@@ -56,7 +54,6 @@ const studySubmitCommand = getShortcutById("studySubmit");
 export const ExamSimulationPage = () => {
   const {
     settings,
-    spacedRepetition,
     vault,
     examFiles,
     examFilesState,
@@ -151,8 +148,6 @@ export const ExamSimulationPage = () => {
   const [isViewMode, setIsViewMode] = useState(false);
   const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
   const [overviewStatsTab, setOverviewStatsTab] = useState<StatsTab>("last");
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const autoViewModeRef = useRef(false);
   const isTableView = useLayoutMode() === "table";
   const handleOpenExamSettings = useCallback(() => {
@@ -265,19 +260,6 @@ export const ExamSimulationPage = () => {
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const viewToggleDisabled = isTableView && !examRunning;
   const timelineVisible = examTimerEnabled && examShowTimeline;
-  const selectedUser = useMemo(
-    () =>
-      spacedRepetition.spacedRepetitionUsers.find(
-        (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
-      ),
-    [
-      spacedRepetition.spacedRepetitionSelectedUserId,
-      spacedRepetition.spacedRepetitionUsers,
-    ],
-  );
-  const deleteTargetName = selectedUser?.name ?? "";
-  const canConfirmDelete =
-    Boolean(deleteTargetName) && deleteConfirmInput.trim() === deleteTargetName;
   const renderOverviewToggle = () => (
     <div className="exam-overview-toggle">
       <div className="exam-overview-toggle-header">
@@ -341,27 +323,6 @@ export const ExamSimulationPage = () => {
     </div>
   );
 
-  const handleDeleteOpen = useCallback(() => {
-    if (!selectedUser) {
-      return;
-    }
-    setIsDeleteDialogOpen(true);
-  }, [selectedUser]);
-
-  const handleDeleteCancel = useCallback(() => {
-    setIsDeleteDialogOpen(false);
-    setDeleteConfirmInput("");
-  }, []);
-
-  const handleDeleteConfirm = useCallback(() => {
-    if (!canConfirmDelete) {
-      return;
-    }
-    spacedRepetition.handleSpacedRepetitionDeleteUser();
-    setIsDeleteDialogOpen(false);
-    setDeleteConfirmInput("");
-  }, [canConfirmDelete, spacedRepetition]);
-
   useEffect(() => {
     document.body.classList.toggle("focus-mode", isViewMode);
     return () => {
@@ -386,16 +347,6 @@ export const ExamSimulationPage = () => {
       setIsViewMode(true);
     }
   }, [examRunning, isTableView, isViewMode]);
-
-  useEffect(() => {
-    if (!isDeleteDialogOpen) {
-      return;
-    }
-    if (!selectedUser) {
-      setIsDeleteDialogOpen(false);
-      setDeleteConfirmInput("");
-    }
-  }, [isDeleteDialogOpen, selectedUser]);
 
   useEffect(() => {
     if (stage !== "idle" && overviewTab !== "ready") {
@@ -778,19 +729,6 @@ export const ExamSimulationPage = () => {
           ) : null}
         </div>
         <div className="exam-sidebar">
-          <UserToolsPanel
-            spacedRepetition={spacedRepetition}
-            handleDeleteOpen={handleDeleteOpen}
-            onStart={handleStartExam}
-            startDisabled={
-              !spacedRepetition.spacedRepetitionActiveUser ||
-              !canStartExam ||
-              examRunning
-            }
-            showReset={examRunning}
-            onReset={handleResetExam}
-            examStageControls={examStageControls}
-          />
           <ExamFilePanel
             {...examFilePanelProps}
             onToggleFile={handleToggleExamSelection}
@@ -800,15 +738,6 @@ export const ExamSimulationPage = () => {
           />
         </div>
       </div>
-      <SrDeleteModal
-        isDeleteDialogOpen={isDeleteDialogOpen}
-        deleteTargetName={deleteTargetName}
-        deleteConfirmInput={deleteConfirmInput}
-        setDeleteConfirmInput={setDeleteConfirmInput}
-        handleDeleteCancel={handleDeleteCancel}
-        handleDeleteConfirm={handleDeleteConfirm}
-        canConfirmDelete={canConfirmDelete}
-      />
     </div>
   );
 };
