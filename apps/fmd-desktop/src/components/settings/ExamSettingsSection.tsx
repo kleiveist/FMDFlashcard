@@ -24,8 +24,8 @@
 
 import { useMemo } from "react";
 import {
-  DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS,
-  DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+  EXAM_TASK_TYPE_LEGACY_PRESET_POINTS,
+  EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS,
   type ExamAiEvaluation,
 } from "../../features/settings/useAppSettings";
 import type { AutoCardType, AutoCardTypeMap } from "../../lib/exam/autoCards";
@@ -381,22 +381,22 @@ export const ExamTaskTypeDefaultsPanel = ({
     </div>
     <div className="panel-body">
       <div className="muted">
-        Preset: QA {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.qa}, TF{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.tf}, M1{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.m1}, M2{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.m2}, CL{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cl}, CD{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cd}, CLD{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cld}
+        Preset: QA {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.qa}, TF{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.tf}, M1{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.m1}, M2{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.m2}, CL{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cl}, CD{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cd}, CLD{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cld}
       </div>
       <div className="muted">
-        Time preset (sec): QA {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.qa}, TF{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.tf}, M1{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.m1}, M2{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.m2}, CL{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cl}, CD{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cd}, CLD{" "}
-        {DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cld}
+        Time preset (sec): QA {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.qa}, TF{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.tf}, M1{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.m1}, M2{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.m2}, CL{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cl}, CD{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cd}, CLD{" "}
+        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cld}
       </div>
       {AUTO_CARD_TYPE_OPTIONS.map((option) => (
         <div key={option.type} className="setting-row">

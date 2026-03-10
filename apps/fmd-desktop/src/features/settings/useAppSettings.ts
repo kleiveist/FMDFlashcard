@@ -103,7 +103,15 @@ export type NormalizedSettingsResult = {
   settings: SettingsSnapshot;
   needsShowHiddenFoldersMigration: boolean;
   needsKeyboardShortcutsMigration: boolean;
+  needsExamTaskTypeDefaultsMigration: boolean;
 };
+
+type ExamTaskTypeDefaultsByUserEntry = {
+  points: Record<AutoCardType, number>;
+  timeSeconds: Record<AutoCardType, number>;
+};
+
+type ExamTaskTypeDefaultsByUserId = Record<string, ExamTaskTypeDefaultsByUserEntry>;
 
 export type AppSettings = {
   active_note_path?: string | null;
@@ -167,6 +175,16 @@ export type AppSettings = {
   exam_auto_cards_types?: Partial<AutoCardTypeMap> | null;
   exam_task_type_default_points?: Partial<Record<AutoCardType, number>> | null;
   exam_task_type_default_time_seconds?: Partial<Record<AutoCardType, number>> | null;
+  exam_task_type_defaults_by_user_id?:
+    | Record<
+        string,
+        | {
+            points?: Partial<Record<AutoCardType, number>> | null;
+            timeSeconds?: Partial<Record<AutoCardType, number>> | null;
+          }
+        | null
+      >
+    | null;
   exam_auto_cards_return_on_correct?: boolean | null;
   exam_grade_scale?: string | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
@@ -232,6 +250,7 @@ type PersistUpdates = {
   examAutoCardsTypes?: Partial<AutoCardTypeMap>;
   examTaskTypeDefaultPoints?: Partial<Record<AutoCardType, number>>;
   examTaskTypeDefaultTimeSeconds?: Partial<Record<AutoCardType, number>>;
+  examTaskTypeDefaultsByUserId?: ExamTaskTypeDefaultsByUserId;
   examAutoCardsReturnOnCorrect?: boolean;
   examGradeScale?: ExamGradeScale;
   examAiEvaluation?: ExamAiEvaluation;
@@ -297,6 +316,7 @@ export type SettingsSnapshot = {
   examAutoCardsTypes: AutoCardTypeMap;
   examTaskTypeDefaultPoints: Record<AutoCardType, number>;
   examTaskTypeDefaultTimeSeconds: Record<AutoCardType, number>;
+  examTaskTypeDefaultsByUserId: ExamTaskTypeDefaultsByUserId;
   examAutoCardsReturnOnCorrect: boolean;
   examGradeScale: ExamGradeScale;
   examAiEvaluation: ExamAiEvaluation;
@@ -376,6 +396,34 @@ export const DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS: Record<
   cd: 5,
   cld: 8,
 };
+export const EXAM_TASK_TYPE_LEGACY_PRESET_POINTS: Record<AutoCardType, number> = {
+  qa: 10,
+  tf: 1,
+  m1: 3,
+  m2: 5,
+  cl: 6,
+  cd: 5,
+  cld: 8,
+};
+export const EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS: Record<
+  AutoCardType,
+  number
+> = {
+  qa: 480,
+  tf: 45,
+  m1: 90,
+  m2: 120,
+  cl: 240,
+  cd: 160,
+  cld: 480,
+};
+
+const hasExactExamTaskTypeDefaults = (
+  candidate: Record<AutoCardType, number>,
+  legacy: Record<AutoCardType, number>,
+) =>
+  AUTO_CARD_TYPES.every((type) => candidate[type] === legacy[type]);
+
 const buildDefaultAutoCardTypes = (value: boolean): AutoCardTypeMap =>
   AUTO_CARD_TYPES.reduce(
     (acc, type) => {
@@ -632,6 +680,46 @@ const mergeExamTaskTypeDefaultTimeSeconds = (
   return next;
 };
 
+const normalizeExamTaskTypeDefaultsByUserId = (
+  value: unknown,
+): ExamTaskTypeDefaultsByUserId => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const next: ExamTaskTypeDefaultsByUserId = {};
+  Object.entries(value as Record<string, unknown>).forEach(([rawUserId, rawDefaults]) => {
+    const userId = rawUserId.trim();
+    if (!userId) {
+      return;
+    }
+    if (!rawDefaults || typeof rawDefaults !== "object" || Array.isArray(rawDefaults)) {
+      return;
+    }
+    const candidate = rawDefaults as {
+      points?: unknown;
+      timeSeconds?: unknown;
+    };
+    const hasPoints = Boolean(
+      candidate.points &&
+        typeof candidate.points === "object" &&
+        !Array.isArray(candidate.points),
+    );
+    const hasTimeSeconds = Boolean(
+      candidate.timeSeconds &&
+        typeof candidate.timeSeconds === "object" &&
+        !Array.isArray(candidate.timeSeconds),
+    );
+    if (!hasPoints && !hasTimeSeconds) {
+      return;
+    }
+    next[userId] = {
+      points: normalizeExamTaskTypeDefaultPoints(candidate.points),
+      timeSeconds: normalizeExamTaskTypeDefaultTimeSeconds(candidate.timeSeconds),
+    };
+  });
+  return next;
+};
+
 const buildDefaultExamTaskPoints = (taskCount: number, maxTotalPoints: number) => {
   if (taskCount <= 0) {
     return [];
@@ -859,6 +947,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   exam_auto_cards_types: settings.examAutoCardsTypes,
   exam_task_type_default_points: settings.examTaskTypeDefaultPoints,
   exam_task_type_default_time_seconds: settings.examTaskTypeDefaultTimeSeconds,
+  exam_task_type_defaults_by_user_id: settings.examTaskTypeDefaultsByUserId,
   exam_auto_cards_return_on_correct: settings.examAutoCardsReturnOnCorrect,
   exam_grade_scale: settings.examGradeScale,
   exam_ai_evaluation: settings.examAiEvaluation,
@@ -1148,6 +1237,26 @@ export const normalizeSettings = (
     normalizeExamTaskTypeDefaultTimeSeconds(
       stored.exam_task_type_default_time_seconds,
     );
+  const storedExamTaskTypeDefaultsByUserId =
+    normalizeExamTaskTypeDefaultsByUserId(
+      stored.exam_task_type_defaults_by_user_id,
+    );
+  const needsExamTaskTypeDefaultsMigration =
+    hasExactExamTaskTypeDefaults(
+      storedExamTaskTypeDefaultPoints,
+      EXAM_TASK_TYPE_LEGACY_PRESET_POINTS,
+    ) &&
+    hasExactExamTaskTypeDefaults(
+      storedExamTaskTypeDefaultTimeSeconds,
+      EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS,
+    );
+  const normalizedExamTaskTypeDefaultPoints = needsExamTaskTypeDefaultsMigration
+    ? { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS }
+    : storedExamTaskTypeDefaultPoints;
+  const normalizedExamTaskTypeDefaultTimeSeconds =
+    needsExamTaskTypeDefaultsMigration
+      ? { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS }
+      : storedExamTaskTypeDefaultTimeSeconds;
   const storedExamAutoCardsReturnOnCorrect =
     typeof stored.exam_auto_cards_return_on_correct === "boolean"
       ? stored.exam_auto_cards_return_on_correct
@@ -1228,8 +1337,9 @@ export const normalizeSettings = (
       examDurationMinutes: storedExamDurationMinutes,
       examTimeLimitEnabled: storedExamTimeLimitEnabled,
       examAutoCardsTypes: storedExamAutoCardsTypes,
-      examTaskTypeDefaultPoints: storedExamTaskTypeDefaultPoints,
-      examTaskTypeDefaultTimeSeconds: storedExamTaskTypeDefaultTimeSeconds,
+      examTaskTypeDefaultPoints: normalizedExamTaskTypeDefaultPoints,
+      examTaskTypeDefaultTimeSeconds: normalizedExamTaskTypeDefaultTimeSeconds,
+      examTaskTypeDefaultsByUserId: storedExamTaskTypeDefaultsByUserId,
       examAutoCardsReturnOnCorrect: storedExamAutoCardsReturnOnCorrect,
       examGradeScale: storedExamGradeScale,
       examAiEvaluation: storedExamAiEvaluation,
@@ -1239,6 +1349,7 @@ export const normalizeSettings = (
     },
     needsShowHiddenFoldersMigration,
     needsKeyboardShortcutsMigration,
+    needsExamTaskTypeDefaultsMigration,
   };
 };
 
@@ -1277,6 +1388,9 @@ export const useAppSettings = () => {
     null,
   );
   const [userVaultProfileRevision, setUserVaultProfileRevision] = useState(0);
+  const [userVaultProfileActiveUserId, setUserVaultProfileActiveUserId] = useState<
+    string | null
+  >(null);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [recentVaults, setRecentVaults] = useState<RecentVaultEntry[]>([]);
@@ -1383,13 +1497,26 @@ export const useAppSettings = () => {
   const [examAutoCardsTypes, setExamAutoCardsTypesState] = useState<
     AutoCardTypeMap
   >(() => ({ ...DEFAULT_EXAM_AUTO_CARDS_TYPES }));
-  const [examTaskTypeDefaultPoints, setExamTaskTypeDefaultPointsState] = useState<
-    Record<AutoCardType, number>
-  >(() => ({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS }));
-  const [examTaskTypeDefaultTimeSeconds, setExamTaskTypeDefaultTimeSecondsState] =
-    useState<Record<AutoCardType, number>>(() => ({
-      ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
-    }));
+  const [examTaskTypeDefaultPointsFallback, setExamTaskTypeDefaultPointsFallbackState] =
+    useState<
+      Record<AutoCardType, number>
+    >(() => ({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS }));
+  const [
+    examTaskTypeDefaultTimeSecondsFallback,
+    setExamTaskTypeDefaultTimeSecondsFallbackState,
+  ] = useState<Record<AutoCardType, number>>(() => ({
+    ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+  }));
+  const [examTaskTypeDefaultsByUserId, setExamTaskTypeDefaultsByUserIdState] = useState<
+    ExamTaskTypeDefaultsByUserId
+  >({});
+  const activeUserTaskTypeDefaults = userVaultProfileActiveUserId
+    ? (examTaskTypeDefaultsByUserId[userVaultProfileActiveUserId] ?? null)
+    : null;
+  const examTaskTypeDefaultPoints: Record<AutoCardType, number> =
+    activeUserTaskTypeDefaults?.points ?? examTaskTypeDefaultPointsFallback;
+  const examTaskTypeDefaultTimeSeconds: Record<AutoCardType, number> =
+    activeUserTaskTypeDefaults?.timeSeconds ?? examTaskTypeDefaultTimeSecondsFallback;
   const [examAutoCardsReturnOnCorrect, setExamAutoCardsReturnOnCorrectState] =
     useState(DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT);
   const [examGradeScale, setExamGradeScaleState] = useState<ExamGradeScale>(
@@ -1410,6 +1537,7 @@ export const useAppSettings = () => {
   const autoSaveTimer = useRef<number | null>(null);
   const needsShowHiddenFoldersMigration = useRef(false);
   const needsKeyboardShortcutsMigration = useRef(false);
+  const needsExamTaskTypeDefaultsMigration = useRef(false);
   const lastProfileSyncRef = useRef<{ path: string; revision: number } | null>(
     null,
   );
@@ -1464,33 +1592,119 @@ export const useAppSettings = () => {
 
   const setExamTaskTypeDefaultPoint = useCallback(
     (type: AutoCardType, value: number) => {
-      setExamTaskTypeDefaultPointsState((prev) => ({
+      if (userVaultProfileActiveUserId) {
+        setExamTaskTypeDefaultsByUserIdState((prev) => {
+          const current = prev[userVaultProfileActiveUserId] ?? {
+            points: { ...examTaskTypeDefaultPointsFallback },
+            timeSeconds: { ...examTaskTypeDefaultTimeSecondsFallback },
+          };
+          return {
+            ...prev,
+            [userVaultProfileActiveUserId]: {
+              points: {
+                ...current.points,
+                [type]: clampExamTaskTypeDefaultPoints(value, current.points[type]),
+              },
+              timeSeconds: { ...current.timeSeconds },
+            },
+          };
+        });
+        return;
+      }
+      setExamTaskTypeDefaultPointsFallbackState((prev) => ({
         ...prev,
         [type]: clampExamTaskTypeDefaultPoints(value, prev[type]),
       }));
     },
-    [],
+    [
+      examTaskTypeDefaultPointsFallback,
+      examTaskTypeDefaultTimeSecondsFallback,
+      userVaultProfileActiveUserId,
+    ],
   );
 
   const setExamTaskTypeDefaultTimeSeconds = useCallback(
     (type: AutoCardType, value: number) => {
-      setExamTaskTypeDefaultTimeSecondsState((prev) => ({
+      if (userVaultProfileActiveUserId) {
+        setExamTaskTypeDefaultsByUserIdState((prev) => {
+          const current = prev[userVaultProfileActiveUserId] ?? {
+            points: { ...examTaskTypeDefaultPointsFallback },
+            timeSeconds: { ...examTaskTypeDefaultTimeSecondsFallback },
+          };
+          return {
+            ...prev,
+            [userVaultProfileActiveUserId]: {
+              points: { ...current.points },
+              timeSeconds: {
+                ...current.timeSeconds,
+                [type]: clampExamTaskTypeDefaultPoints(value, current.timeSeconds[type]),
+              },
+            },
+          };
+        });
+        return;
+      }
+      setExamTaskTypeDefaultTimeSecondsFallbackState((prev) => ({
         ...prev,
         [type]: clampExamTaskTypeDefaultPoints(value, prev[type]),
       }));
     },
-    [],
+    [
+      examTaskTypeDefaultPointsFallback,
+      examTaskTypeDefaultTimeSecondsFallback,
+      userVaultProfileActiveUserId,
+    ],
   );
 
   const resetExamTaskTypeDefaultPoints = useCallback(() => {
-    setExamTaskTypeDefaultPointsState({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS });
-  }, []);
+    if (userVaultProfileActiveUserId) {
+      setExamTaskTypeDefaultsByUserIdState((prev) => {
+        const current = prev[userVaultProfileActiveUserId] ?? {
+          points: { ...examTaskTypeDefaultPointsFallback },
+          timeSeconds: { ...examTaskTypeDefaultTimeSecondsFallback },
+        };
+        return {
+          ...prev,
+          [userVaultProfileActiveUserId]: {
+            points: { ...EXAM_TASK_TYPE_LEGACY_PRESET_POINTS },
+            timeSeconds: { ...current.timeSeconds },
+          },
+        };
+      });
+      return;
+    }
+    setExamTaskTypeDefaultPointsFallbackState({ ...EXAM_TASK_TYPE_LEGACY_PRESET_POINTS });
+  }, [
+    examTaskTypeDefaultPointsFallback,
+    examTaskTypeDefaultTimeSecondsFallback,
+    userVaultProfileActiveUserId,
+  ]);
 
   const resetExamTaskTypeDefaultTimeSeconds = useCallback(() => {
-    setExamTaskTypeDefaultTimeSecondsState({
-      ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+    if (userVaultProfileActiveUserId) {
+      setExamTaskTypeDefaultsByUserIdState((prev) => {
+        const current = prev[userVaultProfileActiveUserId] ?? {
+          points: { ...examTaskTypeDefaultPointsFallback },
+          timeSeconds: { ...examTaskTypeDefaultTimeSecondsFallback },
+        };
+        return {
+          ...prev,
+          [userVaultProfileActiveUserId]: {
+            points: { ...current.points },
+            timeSeconds: { ...EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS },
+          },
+        };
+      });
+      return;
+    }
+    setExamTaskTypeDefaultTimeSecondsFallbackState({
+      ...EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS,
     });
-  }, []);
+  }, [
+    examTaskTypeDefaultPointsFallback,
+    examTaskTypeDefaultTimeSecondsFallback,
+    userVaultProfileActiveUserId,
+  ]);
 
   const setExamAutoCardsReturnOnCorrect = useCallback((value: boolean) => {
     setExamAutoCardsReturnOnCorrectState(Boolean(value));
@@ -1567,9 +1781,14 @@ export const useAppSettings = () => {
   }, []);
 
   const setUserVaultProfileContext = useCallback(
-    (path: string | null, revision: number) => {
+    (
+      path: string | null,
+      revision: number,
+      activeUserId: string | null = null,
+    ) => {
       setUserVaultProfilePath(path);
       setUserVaultProfileRevision(revision);
+      setUserVaultProfileActiveUserId(activeUserId?.trim() || null);
     },
     [],
   );
@@ -1718,8 +1937,9 @@ export const useAppSettings = () => {
       examDurationMinutes,
       examTimeLimitEnabled,
       examAutoCardsTypes,
-      examTaskTypeDefaultPoints,
-      examTaskTypeDefaultTimeSeconds,
+      examTaskTypeDefaultPoints: examTaskTypeDefaultPointsFallback,
+      examTaskTypeDefaultTimeSeconds: examTaskTypeDefaultTimeSecondsFallback,
+      examTaskTypeDefaultsByUserId,
       examAutoCardsReturnOnCorrect,
       examGradeScale,
       examAiEvaluation,
@@ -1747,7 +1967,9 @@ export const useAppSettings = () => {
       examDurationMinutes,
       examTimeLimitEnabled,
       examAutoCardsTypes,
-      examTaskTypeDefaultPoints,
+      examTaskTypeDefaultPointsFallback,
+      examTaskTypeDefaultTimeSecondsFallback,
+      examTaskTypeDefaultsByUserId,
       examAutoCardsReturnOnCorrect,
       examGradeScale,
       examHelpEnabled,
@@ -1976,13 +2198,15 @@ export const useAppSettings = () => {
           updates.examAutoCardsTypes,
         ),
         examTaskTypeDefaultPoints: mergeExamTaskTypeDefaultPoints(
-          examTaskTypeDefaultPoints,
+          examTaskTypeDefaultPointsFallback,
           updates.examTaskTypeDefaultPoints,
         ),
         examTaskTypeDefaultTimeSeconds: mergeExamTaskTypeDefaultTimeSeconds(
-          examTaskTypeDefaultTimeSeconds,
+          examTaskTypeDefaultTimeSecondsFallback,
           updates.examTaskTypeDefaultTimeSeconds,
         ),
+        examTaskTypeDefaultsByUserId:
+          updates.examTaskTypeDefaultsByUserId ?? examTaskTypeDefaultsByUserId,
         examAutoCardsReturnOnCorrect:
           updates.examAutoCardsReturnOnCorrect ?? examAutoCardsReturnOnCorrect,
         examGradeScale:
@@ -2028,8 +2252,9 @@ export const useAppSettings = () => {
       examDurationMinutes,
       examTimeLimitEnabled,
       examAutoCardsTypes,
-      examTaskTypeDefaultPoints,
-      examTaskTypeDefaultTimeSeconds,
+      examTaskTypeDefaultPointsFallback,
+      examTaskTypeDefaultTimeSecondsFallback,
+      examTaskTypeDefaultsByUserId,
       examAutoCardsReturnOnCorrect,
       keyboardShortcuts,
       flashcardMode,
@@ -2077,6 +2302,7 @@ export const useAppSettings = () => {
       settings: normalized,
       needsShowHiddenFoldersMigration: shouldMigrateShowHiddenFolders,
       needsKeyboardShortcutsMigration: shouldMigrateShortcuts,
+      needsExamTaskTypeDefaultsMigration: shouldMigrateExamTaskTypeDefaults,
     } = normalizeSettings(settings);
 
     if (shouldMigrateShowHiddenFolders) {
@@ -2084,6 +2310,9 @@ export const useAppSettings = () => {
     }
     if (shouldMigrateShortcuts) {
       needsKeyboardShortcutsMigration.current = true;
+    }
+    if (shouldMigrateExamTaskTypeDefaults) {
+      needsExamTaskTypeDefaultsMigration.current = true;
     }
 
     setTheme(normalized.theme);
@@ -2148,10 +2377,11 @@ export const useAppSettings = () => {
     setExamDurationMinutesState(normalized.examDurationMinutes);
     setExamTimeLimitEnabledState(normalized.examTimeLimitEnabled);
     setExamAutoCardsTypesState(normalized.examAutoCardsTypes);
-    setExamTaskTypeDefaultPointsState(normalized.examTaskTypeDefaultPoints);
-    setExamTaskTypeDefaultTimeSecondsState(
+    setExamTaskTypeDefaultPointsFallbackState(normalized.examTaskTypeDefaultPoints);
+    setExamTaskTypeDefaultTimeSecondsFallbackState(
       normalized.examTaskTypeDefaultTimeSeconds,
     );
+    setExamTaskTypeDefaultsByUserIdState(normalized.examTaskTypeDefaultsByUserId);
     setExamAutoCardsReturnOnCorrectState(normalized.examAutoCardsReturnOnCorrect);
     setExamGradeScaleState(normalized.examGradeScale);
     setExamAiEvaluationState(normalized.examAiEvaluation);
@@ -2278,6 +2508,22 @@ export const useAppSettings = () => {
     needsKeyboardShortcutsMigration.current = false;
     void persistSettings({ keyboardShortcuts });
   }, [keyboardShortcuts, persistSettings, settingsLoaded]);
+
+  useEffect(() => {
+    if (!settingsLoaded || !needsExamTaskTypeDefaultsMigration.current) {
+      return;
+    }
+    needsExamTaskTypeDefaultsMigration.current = false;
+    void persistSettings({
+      examTaskTypeDefaultPoints: examTaskTypeDefaultPointsFallback,
+      examTaskTypeDefaultTimeSeconds: examTaskTypeDefaultTimeSecondsFallback,
+    });
+  }, [
+    examTaskTypeDefaultPointsFallback,
+    examTaskTypeDefaultTimeSecondsFallback,
+    persistSettings,
+    settingsLoaded,
+  ]);
 
   useEffect(() => {
     if (!settingsLoaded) {

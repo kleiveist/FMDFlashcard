@@ -7,6 +7,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS,
   DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
   normalizeSettings,
   type AppSettings,
@@ -101,5 +102,154 @@ describe("normalizeSettings", () => {
     expect(settings.examTaskTypeDefaultTimeSeconds.m2).toBe(
       DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.m2,
     );
+  });
+
+  it("migrates legacy exam task-type defaults to current defaults", () => {
+    const stored = {
+      exam_task_type_default_points: {
+        qa: 10,
+        tf: 1,
+        m1: 3,
+        m2: 5,
+        cl: 6,
+        cd: 5,
+        cld: 8,
+      },
+      exam_task_type_default_time_seconds: {
+        qa: 480,
+        tf: 45,
+        m1: 90,
+        m2: 120,
+        cl: 240,
+        cd: 160,
+        cld: 480,
+      },
+    } as AppSettings;
+
+    const normalized = normalizeSettings(stored);
+
+    expect(normalized.settings.examTaskTypeDefaultPoints).toEqual(
+      DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS,
+    );
+    expect(normalized.settings.examTaskTypeDefaultTimeSeconds).toEqual(
+      DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+    );
+    expect(normalized.needsExamTaskTypeDefaultsMigration).toBe(true);
+  });
+
+  it("keeps non-legacy exam task-type defaults unchanged", () => {
+    const stored = {
+      exam_task_type_default_points: {
+        qa: 10,
+        tf: 1,
+        m1: 3,
+        m2: 5,
+        cl: 6,
+        cd: 5,
+        cld: 7,
+      },
+      exam_task_type_default_time_seconds: {
+        qa: 480,
+        tf: 45,
+        m1: 90,
+        m2: 120,
+        cl: 240,
+        cd: 160,
+        cld: 480,
+      },
+    } as AppSettings;
+
+    const normalized = normalizeSettings(stored);
+
+    expect(normalized.settings.examTaskTypeDefaultPoints).toMatchObject({
+      qa: 10,
+      tf: 1,
+      m1: 3,
+      m2: 5,
+      cl: 6,
+      cd: 5,
+      cld: 7,
+    });
+    expect(normalized.settings.examTaskTypeDefaultTimeSeconds).toMatchObject({
+      qa: 480,
+      tf: 45,
+      m1: 90,
+      m2: 120,
+      cl: 240,
+      cd: 160,
+      cld: 480,
+    });
+    expect(normalized.needsExamTaskTypeDefaultsMigration).toBe(false);
+  });
+
+  it("normalizes per-user task-type defaults map", () => {
+    const stored = {
+      exam_task_type_defaults_by_user_id: {
+        "user-a": {
+          points: { qa: 11, tf: -1 },
+          timeSeconds: { qa: 500, tf: -2 },
+        },
+      },
+    } as AppSettings;
+
+    const normalized = normalizeSettings(stored);
+
+    expect(normalized.settings.examTaskTypeDefaultsByUserId["user-a"]).toEqual({
+      points: {
+        qa: 11,
+        tf: 0,
+        m1: DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.m1,
+        m2: DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.m2,
+        cl: DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cl,
+        cd: DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cd,
+        cld: DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS.cld,
+      },
+      timeSeconds: {
+        qa: 500,
+        tf: 0,
+        m1: DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.m1,
+        m2: DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.m2,
+        cl: DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cl,
+        cd: DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cd,
+        cld: DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS.cld,
+      },
+    });
+  });
+
+  it("drops invalid per-user task-type default entries", () => {
+    const stored = {
+      exam_task_type_defaults_by_user_id: {
+        "": {
+          points: { qa: 9 },
+          timeSeconds: { qa: 90 },
+        },
+        "user-b": null,
+        "user-c": {
+          points: null,
+          timeSeconds: null,
+        },
+      },
+    } as AppSettings;
+
+    const normalized = normalizeSettings(stored);
+
+    expect(normalized.settings.examTaskTypeDefaultsByUserId).toEqual({});
+  });
+
+  it("keeps backward compatibility when per-user defaults field is missing", () => {
+    const stored = {
+      exam_task_type_default_points: {
+        qa: 7,
+      },
+      exam_task_type_default_time_seconds: {
+        qa: 70,
+      },
+    } as AppSettings;
+
+    const normalized = normalizeSettings(stored);
+
+    expect(normalized.settings.examTaskTypeDefaultPoints.qa).toBe(7);
+    expect(normalized.settings.examTaskTypeDefaultTimeSeconds.qa).toBe(70);
+    expect(normalized.settings.examTaskTypeDefaultsByUserId).toEqual({});
   });
 });

@@ -236,9 +236,6 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     },
     [userVault.bootstrapProfileContext],
   );
-  useEffect(() => {
-    setUserVaultProfileContext(userVault.activeProfilePath, userVault.revision);
-  }, [setUserVaultProfileContext, userVault.activeProfilePath, userVault.revision]);
   const preview = usePreview();
   const flashcards = useFlashcards({
     files: vault.files,
@@ -376,6 +373,18 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
     },
   });
+  useEffect(() => {
+    setUserVaultProfileContext(
+      userVault.activeProfilePath,
+      userVault.revision,
+      spacedRepetition.spacedRepetitionActiveUserId,
+    );
+  }, [
+    setUserVaultProfileContext,
+    spacedRepetition.spacedRepetitionActiveUserId,
+    userVault.activeProfilePath,
+    userVault.revision,
+  ]);
   const hasRestoredVault = useRef(false);
   const lastRecentVaultRef = useRef<string | null>(null);
   const isRestoringActiveNote = useRef(false);
