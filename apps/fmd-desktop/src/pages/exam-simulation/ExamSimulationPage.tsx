@@ -33,7 +33,7 @@ import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
 import { ExamManualScoringPanel } from "./components/ExamManualScoringPanel";
 import { ExamResultsPanel } from "./components/ExamResultsPanel";
-import { ExamStatisticsPanel } from "./components/ExamStatisticsPanel";
+import { ExamStatisticsPanel, type StatsTab } from "./components/ExamStatisticsPanel";
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
 import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
@@ -150,6 +150,7 @@ export const ExamSimulationPage = () => {
   } = useExamSimulationViewModel();
   const [isViewMode, setIsViewMode] = useState(false);
   const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
+  const [overviewStatsTab, setOverviewStatsTab] = useState<StatsTab>("last");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const autoViewModeRef = useRef(false);
@@ -262,8 +263,6 @@ export const ExamSimulationPage = () => {
   const hasCorrectionCandidates = incorrectTaskResults.length > 0;
   const activePhase = stage === "review" ? "review" : "exam";
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
-  const isOverviewStage = stage === "idle";
-  const showOverviewToggle = isOverviewStage;
   const viewToggleDisabled = isTableView && !examRunning;
   const timelineVisible = examTimerEnabled && examShowTimeline;
   const selectedUser = useMemo(
@@ -296,15 +295,47 @@ export const ExamSimulationPage = () => {
           >
             READY
           </button>
-          <button
-            type="button"
-            className={`pill pill-button ${overviewTab === "statistics" ? "active" : ""}`}
-            onClick={() => setOverviewTab("statistics")}
-            role="tab"
-            aria-selected={overviewTab === "statistics"}
-          >
-            Statistics
-          </button>
+          {overviewTab === "statistics" ? (
+            <>
+              <button
+                type="button"
+                className={`pill pill-button ${overviewStatsTab === "last" ? "active" : ""}`}
+                onClick={() => {
+                  setOverviewTab("statistics");
+                  setOverviewStatsTab("last");
+                }}
+                role="tab"
+                aria-selected={overviewStatsTab === "last"}
+              >
+                Last Session
+              </button>
+              <button
+                type="button"
+                className={`pill pill-button ${overviewStatsTab === "history" ? "active" : ""}`}
+                onClick={() => {
+                  setOverviewTab("statistics");
+                  setOverviewStatsTab("history");
+                }}
+                role="tab"
+                aria-selected={overviewStatsTab === "history"}
+              >
+                History
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="pill pill-button"
+              onClick={() => {
+                setOverviewTab("statistics");
+                setOverviewStatsTab("last");
+              }}
+              role="tab"
+              aria-selected={false}
+            >
+              Statistics
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -491,7 +522,6 @@ export const ExamSimulationPage = () => {
     <div className="exam-page">
       <div className="exam-layout">
         <div className="exam-main">
-          {showOverviewToggle ? renderOverviewToggle() : null}
           {timelineVisible ? (
             <ExamTimeBar
               className={isViewMode ? "exam-time-bar--view" : undefined}
@@ -564,6 +594,7 @@ export const ExamSimulationPage = () => {
               {stage === "idle" ? (
                 <div className="exam-overview">
                   <div className="exam-overview-body">
+                    {renderOverviewToggle()}
                     {overviewTab === "ready" ? (
                       <ExamIdlePanel
                         selectedCount={selectedExamCount}
@@ -579,6 +610,8 @@ export const ExamSimulationPage = () => {
                         gradeScaleId={settings.examGradeScale}
                         onDeleteRun={handleDeleteExamRun}
                         deleteError={examRunDeleteError}
+                        showTabs={false}
+                        activeTab={overviewStatsTab}
                       />
                     )}
                   </div>

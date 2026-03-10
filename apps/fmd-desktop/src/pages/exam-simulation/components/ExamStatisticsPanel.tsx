@@ -26,9 +26,11 @@ type ExamStatisticsPanelProps = {
   onDeleteRun: (runId: string) => void;
   deleteError?: string;
   showTabs?: boolean;
+  activeTab?: StatsTab;
+  onActiveTabChange?: (tab: StatsTab) => void;
 };
 
-type StatsTab = "last" | "history";
+export type StatsTab = "last" | "history";
 
 export const ExamStatisticsPanel = ({
   runs,
@@ -36,11 +38,21 @@ export const ExamStatisticsPanel = ({
   onDeleteRun,
   deleteError,
   showTabs = true,
+  activeTab,
+  onActiveTabChange,
 }: ExamStatisticsPanelProps) => {
-  const [activeTab, setActiveTab] = useState<StatsTab>("last");
+  const [internalActiveTab, setInternalActiveTab] = useState<StatsTab>("last");
   const [userFilter, setUserFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<ExamRunStatusFilter>("all");
   const [query, setQuery] = useState("");
+  const resolvedTab = activeTab ?? internalActiveTab;
+
+  const handleTabChange = (tab: StatsTab) => {
+    if (activeTab === undefined) {
+      setInternalActiveTab(tab);
+    }
+    onActiveTabChange?.(tab);
+  };
 
   const sortedRuns = useMemo(() => sortExamRunsByDateDesc(runs), [runs]);
   const lastRun = sortedRuns[0] ?? null;
@@ -299,25 +311,25 @@ export const ExamStatisticsPanel = ({
         >
           <button
             type="button"
-            className={`pill pill-button ${activeTab === "last" ? "active" : ""}`}
-            onClick={() => setActiveTab("last")}
+            className={`pill pill-button ${resolvedTab === "last" ? "active" : ""}`}
+            onClick={() => handleTabChange("last")}
             role="tab"
-            aria-selected={activeTab === "last"}
+            aria-selected={resolvedTab === "last"}
           >
-            Last session
+            Last Session
           </button>
           <button
             type="button"
-            className={`pill pill-button ${activeTab === "history" ? "active" : ""}`}
-            onClick={() => setActiveTab("history")}
+            className={`pill pill-button ${resolvedTab === "history" ? "active" : ""}`}
+            onClick={() => handleTabChange("history")}
             role="tab"
-            aria-selected={activeTab === "history"}
+            aria-selected={resolvedTab === "history"}
           >
             History
           </button>
         </div>
       ) : null}
-      {(showTabs ? activeTab === "last" : true) ? renderLastSession() : renderHistory()}
+      {resolvedTab === "last" ? renderLastSession() : renderHistory()}
     </div>
   );
 };

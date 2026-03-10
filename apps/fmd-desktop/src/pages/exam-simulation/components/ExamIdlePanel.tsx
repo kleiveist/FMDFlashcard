@@ -33,9 +33,6 @@ export const ExamIdlePanel = ({
 }: ExamIdlePanelProps) => {
   const renderSetupPanel = (content: ReactNode) => (
     <div className="exam-idle exam-idle-steps">
-      <div className="exam-idle-header">
-        <p className="eyebrow">SETUP</p>
-      </div>
       <section className="exam-step-panel">{content}</section>
     </div>
   );
@@ -75,10 +72,6 @@ export const ExamIdlePanel = ({
 
   return (
     <div className="exam-idle exam-idle-steps">
-      <div className="exam-idle-header">
-        <p className="eyebrow">SETUP</p>
-      </div>
-
       {hasBlockingMissing ? (
         <section className="exam-step-panel">
           <h3>Exam start blocked</h3>
