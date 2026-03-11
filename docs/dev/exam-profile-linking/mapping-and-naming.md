@@ -3,39 +3,48 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Mapping and Naming Rules
 
-## Source attribute
+## Canonical Terms
 
-- Source field in markdown frontmatter: `Task`
-- Example:
+| Term | Definition |
+| --- | --- |
+| `Task` | Frontmatter attribute in exam markdown that references a points profile by name. |
+| Task profile | Points profile resolved from frontmatter `Task`. |
+| Manual run profile | Profile explicitly selected by user in Exam Files panel. |
+| `Standard (no profile)` | Technical state `selectedRunProfileId = null`. |
+| Included exam source | Selected valid file with readable content, `#exam` block, and at least one task. |
+| Same exams | All included sources resolve to the same non-null task profile id. |
+| Different exams | Included sources do not resolve to one shared non-null task profile id. |
 
-```yaml
----
-Section: IUF
-Rank: SE1
-Projekt: IDBS01
-Task: Exam
----
-```
+## Task Resolution Rules
 
-## Resolution rules
+| `Task` state in file | Resolution behavior | Resulting task profile state |
+| --- | --- | --- |
+| Missing or empty | Treated as no assignment. | Unresolved (`null`) |
+| Name matches existing profile | Name lookup via trim + case-insensitive comparison. | Resolved profile id/name |
+| Name does not match any profile | Treated as missing assignment for run selection logic. | Unresolved (`null`), `taskMissing = true` |
 
-- `Task` is resolved against existing points profile names.
-- Matching is case-insensitive and trimmed.
-- Unknown `Task` names are treated as unresolved and fall back to standard behavior.
-- No `Task` attribute is treated as no assigned task profile.
+## Auto vs. Manual Precedence
 
-## Terminology used in Exam Simulation
+| Situation | Effective run profile used for calculation |
+| --- | --- |
+| `selectedRunProfileId = null` | Standard task-type defaults from settings. |
+| `selectedRunProfileId != null` | Selected manual profile is used for all run calculations. |
 
-- `Standard` means `selectedRunProfileId = null`.
-- `Task profile` means the profile resolved from frontmatter `Task`.
-- `Same exams` means all included exam sources resolve to the same `Task` profile id.
-- `Different exams` means included sources resolve to different ids or unresolved task profile values.
+## Auto-Set Trigger Rules
 
-## Precedence
+Auto profile targeting is re-evaluated only when the run-profile state signature changes:
 
-- Manual run profile selection overrides frontmatter mapping for calculation.
-- Automatic matrix profile set runs only on relevant state changes:
-- Selection changes
-- Combination mode changes
-- Frontmatter task-resolution changes
-- Manual dropdown changes alone do not immediately trigger a new auto-set.
+- Selection count or included source set changes.
+- Combination mode changes.
+- Per-source `Task` resolution changes.
+
+Not a trigger by itself:
+
+- Pure manual dropdown change without any selection/mode/task-resolution change.
+
+## Initialization Rule
+
+On initial profile-load state:
+
+- If no run profile is selected and a default points profile exists, default profile id is set.
+- Later matrix evaluation may switch to `Standard` or another profile when auto-state becomes ready.

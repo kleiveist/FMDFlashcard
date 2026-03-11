@@ -3,37 +3,56 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Selection Matrix
 
-## Auto-set target profile
+## A) Auto Profile Selection Matrix
 
-Automatic target is recalculated on selection/mode/task-resolution changes.
+Auto target is evaluated when parsing is ready and based on included exam sources.
 
-| Case | Mode | Auto target |
+| Selection constellation | Mode | Auto target |
 | --- | --- | --- |
-| Single included exam with valid resolved `Task` profile | All modes | Resolved `Task` profile |
-| Single included exam without valid resolved `Task` profile | All modes | `Standard` |
-| Multiple included exams, all with same resolved `Task` profile | `Nested` | Shared resolved `Task` profile |
-| Multiple included exams, any other constellation | `Fully mixed`, `Sequential`, `Sequential + internal shuffle`, or mixed/missing task profiles | `Standard` |
+| No selected files or parse not ready | Any | No matrix update applied yet. |
+| Single included source, resolved `Task` profile exists | Any | Resolved task profile id |
+| Single included source, no resolved `Task` profile | Any | `Standard (no profile)` |
+| Multiple included sources, all same resolved non-null task profile | `Nested` | Shared resolved task profile id |
+| Multiple included sources, mixed/unknown/missing task profile resolution | `Nested` | `Standard (no profile)` |
+| Multiple included sources | `Fully mixed`, `Sequential`, `Sequential + internal shuffle` | `Standard (no profile)` |
 
-## Manual selection behavior
+## B) Manual Selection Behavior Matrix
 
-- Manual run profile selection remains possible at all times.
-- Manual selection is not blocked.
-- A new auto-set happens only when a relevant state change occurs.
+| User action / state | Immediate result | Reversion behavior |
+| --- | --- | --- |
+| User selects a manual run profile | Manual profile becomes effective for points/time calculation. | No immediate reset from manual action alone. |
+| User keeps same selection/mode/task-resolution state | Manual choice remains active. | No auto re-target without state-signature change. |
+| Relevant state-signature changes (selection/mode/task-resolution) | Matrix is evaluated again. | Manual selection may be replaced by auto target from section A. |
 
-## Points and duration formulas
+## C) Points, Task Count, and Duration Formulas
 
-### Standard mode (`selectedRunProfileId = null`)
+### Standard run profile (`selectedRunProfileId = null`)
 
-- Points per task come from task-type defaults in settings.
-- Duration comes from summed task-type default times.
+| Metric | Formula |
+| --- | --- |
+| Task points | Sum per task from `settings.examTaskTypeDefaultPoints` using detected task types. |
+| Task count (`plannedTaskCount`) | `previewTaskPlan.taskPoints.length` (derived from mixed session tasks). |
+| Duration | Sum of per-task values from `settings.examTaskTypeDefaultTimeSeconds`, then `ceil(totalSeconds / 60)`. |
 
-### Manual selected profile (`selectedRunProfileId != null`)
+### Manual run profile (`selectedRunProfileId != null`)
 
-- Manual profile is used for all selected sources.
-- For task-order profiles, task index resets per source file (`sourceTaskIndex`).
-- If source task index exceeds profile `taskCount`, points fall back to standard task-type points.
+| Profile distribution | Points behavior | Fallback |
+| --- | --- | --- |
+| `task-type` | Per-task points from profile type rules for detected task types. | No extra fallback branch needed. |
+| `task-order` | Uses `sourceTaskIndex` (index reset per source file) to read profile task points. | If `sourceTaskIndex >= profile.taskCount`, fallback to standard task-type default points for that task. |
 
 ### Duration with manual profile
 
-- `Nested`: use profile duration once.
-- `Fully mixed`, `Sequential`, `Sequential + internal shuffle`: add profile duration per included source.
+| Mode | Duration rule |
+| --- | --- |
+| `Nested` | Use profile duration once. |
+| `Fully mixed` | Add profile duration per included source (`duration * sources.length`). |
+| `Sequential` | Add profile duration per included source (`duration * sources.length`). |
+| `Sequential + internal shuffle` | Add profile duration per included source (`duration * sources.length`). |
+
+## D) Unknown Task Name Behavior
+
+| Condition | Effective behavior |
+| --- | --- |
+| `Task` contains unknown profile name | Treated as unresolved for matrix purposes (`Standard` target in non-single-resolved cases). |
+| Unknown task profile while manual profile selected | Manual profile still drives calculation until next relevant auto-signature change. |

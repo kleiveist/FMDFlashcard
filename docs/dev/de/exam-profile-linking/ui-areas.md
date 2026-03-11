@@ -3,26 +3,29 @@
 <!-- AUTO-GENERATED:backlink END -->
 # UI-Bereichszuordnung
 
-## Markdown-Dokumenteigenschaften
+## Tabelle betroffener Bereiche
 
-- Der Eigenschaftenblock in Markdown ist die Quelle fuer die `Task`-Zuordnung.
-- Diese Zuordnung verknuepft Exam-Dateien mit Points-Profilen ueber den Profilnamen.
+| Profilbereich | Funktionale Verantwortung | UI-Bereich | Referenz-Selektor / Komponente |
+| --- | --- | --- | --- |
+| Individuelles Task-Profil-Mapping | Markdown-Frontmatter speichert `Task`-Verknuepfung zum Points-Profilnamen. | Markdown-Dokumenteigenschaften in Editor/Preview. | `div.preview.preview-editor.markdown.md-preview.markdown-hybrid-surface[data-input-scope="editor"]` |
+| Individuelle Profilerstellung | Profilname, Task-Anzahl, Punkte, Dauer erstellen/bearbeiten. | Points-Profile-Editor-Popup. | `div.modal-panel.hub-modal-panel.task-profile-editor-modal-panel` |
+| Individuelle Profilerstellung | Dieselben Profildaten im Exam-Editor-Points-Bereich. | Exam Editor -> Points-Panels. | `section.panel.exam-editor-panel.points-profile-editor`, `aside.panel.exam-editor-panel.points-profile-nav` |
+| Nur Standard-Defaults | Default-Punkte/-Zeit pro Task-Typ definieren (`qa`, `tf`, `m1`, `m2`, `cl`, `cd`, `cld`). | Settings -> Exam Settings -> Task Type Points. | `div.modal-panel.hub-modal-panel.settings-modal-panel`, `section#exam-settings-task-type-defaults.exam-task-type-defaults-panel` |
+| Laufzeitverknuepfung (Popup) | Ausgewaehlte Exam-Dateien, Modus, Run-Profil mit Punkte-/Zeit-/Stat-Summary verbinden. | Exam-Files-Popup. | `div.modal-panel.hub-modal-panel.note-modal-panel` |
+| Laufzeitverknuepfung (Hauptflaeche) | Ausgewaehlte Exam-Dateien, Modus, Run-Profil mit Punkte-/Zeit-/Stat-Summary verbinden. | Exam-Panel + Exam-Files-Panel. | `section.panel.exam-panel`, `section.panel.list-panel.exam-files-panel` |
 
-## Points-Profil-Erstellung
+## Laufzeit-Datenflaechen
 
-- Der Points Profile Editor Popup verwaltet Profilname, Task-Anzahl, Punkte und Dauer.
-- Der Exam Editor Bereich fuer Points nutzt denselben Profil-Domainbereich.
+| Flaeche | Werte, die synchron bleiben muessen |
+| --- | --- |
+| Haupt-Exam-Summary (`.exam-mix-info`) | Selection-Summary, Max-Punkte, Modus, Profil-Label, Dauer. |
+| Exam-Files-Sidebar-Panel | Ausgewaehlte Dateien, Modus, Run-Profil-Selector, Reorder-Status. |
+| Exam-Files-Popup-Panel | Derselbe State/Dieselben Handler wie Sidebar + kompakte Summary-KPIs. |
 
-## Standard-Defaults
+## KPI-Vertrag fuer kompakte Summary
 
-- Settings → Exam Settings → Task Type Points definiert Standard-Punkte/-Zeit je Task-Typ.
-- Diese Defaults gelten im Standard-Modus und als Overflow-Fallback fuer Task-Order-Profile.
+In der kompakten Popup-Summary stammen die Werte aus ViewModel-Ableitungen:
 
-## Exam-Laufzeitbereiche
-
-- Exam Panel und Exam Files Sidebar sind die Hauptflaechen zur Laufzeit.
-- Das Exam Files Popup muss denselben State und dieselben Handler wie die Sidebar nutzen.
-- Run Summary (`.exam-mix-info`) und Popup-KPI-Chips muessen aus denselben berechneten Werten kommen:
-- geplante Maximalpunkte
-- berechnete Vorschau-Dauer
-- Selection-/Task-Kontext der einbezogenen Dateien
+- `maxPoints` <- `plannedMaxPoints`
+- `taskCount` <- `plannedTaskCount`
+- `minDurationMinutes` <- `previewDurationMinutes`

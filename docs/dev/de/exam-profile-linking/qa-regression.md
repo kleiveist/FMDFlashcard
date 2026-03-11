@@ -3,28 +3,44 @@
 <!-- AUTO-GENERATED:backlink END -->
 # QA- und Regression-Checkliste
 
-## Matrix-Kernchecks
+## A) Auto-Matrix-Szenarien
 
-- Single-File mit gueltigem `Task`-Profil waehlt dieses Profil automatisch.
-- Single-File ohne gueltiges `Task`-Profil waehlt automatisch `Standard`.
-- Multi-File + `Nested` + gleiches aufgeloestes `Task`-Profil waehlt dieses Profil automatisch.
-- Multi-File in anderen Modi waehlt automatisch `Standard`.
+| ID | Szenario | Erwartetes Ergebnis |
+| --- | --- | --- |
+| A1 | Eine einbezogene Exam mit gueltig aufgeloestem `Task`. | Auto-Ziel = aufgeloestes Task-Profil. |
+| A2 | Eine einbezogene Exam ohne `Task` oder mit unbekanntem `Task`. | Auto-Ziel = `Standard (no profile)`. |
+| A3 | Mehrere einbezogene Exams, `Nested`, alle loesen auf dasselbe non-null Task-Profil auf. | Auto-Ziel = gemeinsames Task-Profil. |
+| A4 | Mehrere einbezogene Exams, `Nested`, gemischte/unbekannte/fehlende Aufloesung. | Auto-Ziel = `Standard (no profile)`. |
+| A5 | Mehrere einbezogene Exams in `Fully mixed` / `Sequential` / `Sequential + internal shuffle`. | Auto-Ziel = `Standard (no profile)`. |
 
-## Manuelle Override-Checks
+## B) Szenarien fuer manuelles Verhalten
 
-- Manuelle Profilauswahl ist nach Auto-Set moeglich.
-- Manuelle Auswahl bleibt stabil, solange keine relevante Zustandsaenderung erfolgt.
-- Bei der naechsten relevanten Zustandsaenderung greift die Matrix wieder.
+| ID | Szenario | Erwartetes Ergebnis |
+| --- | --- | --- |
+| B1 | User waehlt ein manuelles Run-Profil. | Manuelles Profil wird sofort fuer Berechnungen angewendet. |
+| B2 | Keine relevante Statussignatur-Aenderung nach manueller Auswahl. | Manuelles Profil bleibt aktiv. |
+| B3 | Relevante Statussignatur-Aenderung nach manueller Auswahl (Selection/Mode/Task-Aufloesung). | Matrix wird neu ausgewertet und kann manuelles Profil ersetzen. |
 
-## Berechnungs-Konsistenz
+## C) Szenarien fuer Punkte-/Zeitformeln
 
-- Sidebar und Popup zeigen identischen Profil-/Mode-State.
-- Sidebar- und Popup-KPI-Werte bleiben bei Mode-Wechsel synchron.
-- Task-Order-Punkte werden pro Source zurueckgesetzt und nutzen Overflow-Fallback auf Standard.
-- Dauerregel ist `einmalig` in `Nested` und `pro Source` in Non-Nested-Modi.
+| ID | Szenario | Erwartetes Ergebnis |
+| --- | --- | --- |
+| C1 | Standard-Profil aktiv (`null`). | Punkte/Zeit aus Standard-Task-Type-Defaults. |
+| C2 | Manuelles `task-order`-Profil mit Tasks jenseits `taskCount`. | Overflow-Tasks fallen auf Standard-Task-Type-Punkte zurueck. |
+| C3 | Manuelles Profil in `Nested`. | Dauer wird einmalig gezaehlt. |
+| C4 | Manuelles Profil in Non-Nested-Modi. | Dauer wird mit Anzahl einbezogener Quellen multipliziert. |
 
-## Popup-Rendering
+## D) UI-Konsistenz-Szenarien
 
-- Exam Files Popup oeffnet mit voller Inhaltsbreite und korrektem Scroll-Verhalten.
-- Popup kollabiert nicht mehr zu einem schmalen Balken.
-- Popup bleibt in responsiven Breakpoints funktional, auch wenn die Sidebar ausgeblendet ist.
+| ID | Szenario | Erwartetes Ergebnis |
+| --- | --- | --- |
+| D1 | Moduswechsel in der Sidebar bei geoeffnetem Popup. | Sidebar und Popup bleiben synchron fuer Profil/Modus/KPIs. |
+| D2 | Dateien toggeln und Reihenfolge aendern. | Summary-Werte aktualisieren sich konsistent in beiden Flaechen. |
+| D3 | KPI-Werte in kompakter Popup-Summary. | `maxPoints`, `taskCount`, `minDurationMinutes` entsprechen den ViewModel-Werten. |
+
+## E) Doku-Integritaetschecks
+
+- EN- und DE-Dateien haben dieselbe Kapitelstruktur.
+- EN- und DE-Matrix-Tabellen haben dieselbe Zeilen-Semantik.
+- Tabellenrendering ohne kaputte Spalten oder fehlerhafte Headerumbrueche.
+- Fuer diese Doku-Aufgabe sind nur `docs/...`-Dateien geaendert.

@@ -3,26 +3,29 @@
 <!-- AUTO-GENERATED:backlink END -->
 # UI Area Mapping
 
-## Markdown document properties
+## Affected Area Table
 
-- The markdown property block is the source for `Task` assignment.
-- This assignment links exam files to points profiles by name.
+| Profile scope | Functional responsibility | UI area | Reference selector / component |
+| --- | --- | --- | --- |
+| Individual task profile mapping | Markdown frontmatter stores `Task` linkage to points profile name. | Markdown document properties in editor/preview. | `div.preview.preview-editor.markdown.md-preview.markdown-hybrid-surface[data-input-scope="editor"]` |
+| Individual profile authoring | Create/edit profile name, task count, points, duration. | Points Profile Editor popup. | `div.modal-panel.hub-modal-panel.task-profile-editor-modal-panel` |
+| Individual profile authoring | Same profile data in exam editor points section. | Exam Editor -> Points panels. | `section.panel.exam-editor-panel.points-profile-editor`, `aside.panel.exam-editor-panel.points-profile-nav` |
+| Standard defaults only | Define default points/time per task type (`qa`, `tf`, `m1`, `m2`, `cl`, `cd`, `cld`). | Settings -> Exam Settings -> Task Type Points. | `div.modal-panel.hub-modal-panel.settings-modal-panel`, `section#exam-settings-task-type-defaults.exam-task-type-defaults-panel` |
+| Runtime linkage (popup) | Bind selected exam files, mode, run profile to points/time/stat summary. | Exam Files popup. | `div.modal-panel.hub-modal-panel.note-modal-panel` |
+| Runtime linkage (main) | Bind selected exam files, mode, run profile to points/time/stat summary. | Exam panel + Exam Files panel. | `section.panel.exam-panel`, `section.panel.list-panel.exam-files-panel` |
 
-## Points profile authoring
+## Runtime Data Surfaces
 
-- Points Profile Editor popup manages profile name, task count, points, and duration.
-- Exam Editor points area provides the same profile editing domain.
+| Surface | Values expected to stay synchronized |
+| --- | --- |
+| Main exam summary (`.exam-mix-info`) | Selection summary, max points, mode, profile label, duration. |
+| Exam Files sidebar panel | Selected files, mode, run profile selector, reorder state. |
+| Exam Files popup panel | Same state/handlers as sidebar + compact summary KPIs. |
 
-## Standard defaults
+## Compact Summary KPI Contract
 
-- Settings → Exam Settings → Task Type Points defines standard points/time defaults per task type.
-- These defaults are used when standard mode is active or when task-order profile overflow fallback applies.
+In popup compact summary, values come from view-model derivations:
 
-## Exam runtime areas
-
-- Exam panel and Exam Files sidebar are the main runtime control surfaces.
-- Exam Files popup must mirror the same state and handlers as sidebar.
-- Run summary (`.exam-mix-info`) and popup KPI chips must use the same computed values:
-- planned max points
-- preview duration
-- included selection/task count context
+- `maxPoints` <- `plannedMaxPoints`
+- `taskCount` <- `plannedTaskCount`
+- `minDurationMinutes` <- `previewDurationMinutes`
