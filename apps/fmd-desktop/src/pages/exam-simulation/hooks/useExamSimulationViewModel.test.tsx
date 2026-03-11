@@ -73,16 +73,29 @@ const basePointsMap = {
   cld: 1,
 };
 
-const createProfile = (id: string, name: string): ExamPointsProfile => {
+const createProfile = (
+  id: string,
+  name: string,
+  options?: {
+    durationMinutes?: number;
+    taskCount?: number;
+    taskPoints?: number[];
+  },
+): ExamPointsProfile => {
   const now = new Date().toISOString();
+  const taskCount = options?.taskCount ?? 5;
+  const taskPoints = options?.taskPoints ?? [4, 4, 4, 4, 4];
   return {
     id,
     name,
     distribution: "task-order",
-    durationMinutes: 45,
+    durationMinutes: options?.durationMinutes ?? 45,
     maxTotalPoints: 20,
-    taskCount: 5,
-    taskPoints: [4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    taskCount,
+    taskPoints: [
+      ...taskPoints,
+      ...Array.from({ length: Math.max(0, 20 - taskPoints.length) }, () => 0),
+    ],
     typeRules: {
       qa: { points: 1, mode: "all-or-nothing", penalty: 0 },
       tf: { points: 1, mode: "all-or-nothing", penalty: 0 },
@@ -96,6 +109,31 @@ const createProfile = (id: string, name: string): ExamPointsProfile => {
     updatedAt: now,
     version: 1,
   };
+};
+
+const createExamMarkdown = ({
+  taskProfileName,
+  taskCount = 3,
+}: {
+  taskProfileName?: string;
+  taskCount?: number;
+}) => {
+  const lines: string[] = [];
+  if (typeof taskProfileName === "string") {
+    lines.push("---");
+    lines.push(`Task: '${taskProfileName}'`);
+    lines.push("---");
+  }
+  lines.push("#exam");
+  for (let index = 1; index <= taskCount; index += 1) {
+    lines.push(`${index}) Question ${index}`);
+    lines.push("Answer: A");
+    if (index < taskCount) {
+      lines.push("---");
+    }
+  }
+  lines.push("#endexam");
+  return lines.join("\n");
 };
 
 const examFiles: ExamFileEntry[] = [
@@ -125,9 +163,26 @@ const examFiles: ExamFileEntry[] = [
   },
 ];
 
-const createMockAppState = (selectedPaths: string[]) => {
-  const profileOne = createProfile("profile-1", "Profile 1");
-  const profileTwo = createProfile("profile-2", "Profile 2");
+const createMockAppState = ({
+  selectedPaths,
+  profileOne = createProfile("profile-1", "Profile 1"),
+  profileTwo = createProfile("profile-2", "Profile 2"),
+}: {
+  selectedPaths: string[];
+  profileOne?: ExamPointsProfile;
+  profileTwo?: ExamPointsProfile;
+}) => {
+  const profiles = [profileOne, profileTwo];
+  const resolveProfileByName = (name: string | null | undefined) => {
+    if (!name || !name.trim()) {
+      return null;
+    }
+    const normalized = name.trim().toLocaleLowerCase();
+    return (
+      profiles.find((profile) => profile.name.trim().toLocaleLowerCase() === normalized) ??
+      null
+    );
+  };
   return {
     actions: {
       handleToggleExamFileSelection: vi.fn(),
@@ -155,7 +210,24 @@ const createMockAppState = (selectedPaths: string[]) => {
       loading: false,
       defaultProfileId: profileOne.id,
       defaultProfile: profileOne,
-      profiles: [profileOne, profileTwo],
+      profiles,
+      resolveProfileByName,
+      resolveAssignedProfile: (name: string | null | undefined) => {
+        const trimmed = typeof name === "string" ? name.trim() : "";
+        if (!trimmed) {
+          return {
+            requestedName: null,
+            profile: profileOne,
+            missing: false,
+          };
+        }
+        const profile = resolveProfileByName(trimmed);
+        return {
+          requestedName: trimmed,
+          profile,
+          missing: !profile,
+        };
+      },
     },
     spacedRepetition: {
       spacedRepetitionActiveUserId: "user-1",
@@ -176,7 +248,7 @@ const createMockAppState = (selectedPaths: string[]) => {
   } as unknown as ReturnType<typeof useAppState>;
 };
 
-describe("useExamSimulationViewModel run profile auto reset", () => {
+describe("useExamSimulationViewModel task profile matrix", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     __resetRunProfileLargeSelectionAutoResetForTests();
@@ -185,14 +257,30 @@ describe("useExamSimulationViewModel run profile auto reset", () => {
         return { runs: [] };
       }
       if (command === "read_text_file") {
-        return "#exam\n1) Sample\n#endexam";
+        return createExamMarkdown({});
       }
       return undefined;
     });
   });
 
-  it("resets to standard once when selection grows beyond two and keeps later manual override", async () => {
-    const state = createMockAppState(["/vault/a.md", "/vault/b.md"]);
+  it("auto-sets by matrix on state changes and does not reset on pure manual selection", async () => {
+    const readByPath: Record<string, string> = {
+      "/vault/a.md": createExamMarkdown({ taskProfileName: "Profile 2" }),
+      "/vault/b.md": createExamMarkdown({ taskProfileName: "Profile 2" }),
+    };
+    mockInvoke.mockImplementation(async (command: string, args?: { path?: string }) => {
+      if (command === "load_exam_run_data") {
+        return { runs: [] };
+      }
+      if (command === "read_text_file") {
+        return readByPath[args?.path ?? ""] ?? createExamMarkdown({});
+      }
+      return undefined;
+    });
+
+    const state = createMockAppState({
+      selectedPaths: ["/vault/a.md", "/vault/b.md"],
+    });
     mockUseAppState.mockImplementation(() => state);
 
     let latest: HookState = null;
@@ -202,32 +290,54 @@ describe("useExamSimulationViewModel run profile auto reset", () => {
 
     await flush();
     await flush();
-    expect(latest?.selectedRunProfileId).toBe("profile-1");
-
-    state.selectedExamFilePaths = ["/vault/a.md", "/vault/b.md", "/vault/c.md"];
-    rerender();
-    await flush();
     expect(latest?.selectedRunProfileId).toBeNull();
 
     act(() => {
-      latest?.handleRunProfileChange("profile-2");
+      latest?.handleRunProfileChange("profile-1");
+    });
+    await flush();
+    expect(latest?.selectedRunProfileId).toBe("profile-1");
+
+    rerender();
+    await flush();
+    expect(latest?.selectedRunProfileId).toBe("profile-1");
+
+    act(() => {
+      latest?.handleCombinationModeChange("nested");
     });
     await flush();
     expect(latest?.selectedRunProfileId).toBe("profile-2");
 
-    state.selectedExamFilePaths = ["/vault/a.md", "/vault/b.md"];
+    act(() => {
+      latest?.handleRunProfileChange("profile-1");
+    });
+    await flush();
+    expect(latest?.selectedRunProfileId).toBe("profile-1");
+
     rerender();
     await flush();
-    state.selectedExamFilePaths = ["/vault/a.md", "/vault/b.md", "/vault/c.md"];
-    rerender();
-    await flush();
-    expect(latest?.selectedRunProfileId).toBe("profile-2");
+    expect(latest?.selectedRunProfileId).toBe("profile-1");
 
     cleanup();
   });
 
-  it("keeps standard on initial mount when more than two files are already selected", async () => {
-    const state = createMockAppState(["/vault/a.md", "/vault/b.md", "/vault/c.md"]);
+  it("treats unknown Task frontmatter as standard fallback in single selection", async () => {
+    const readByPath: Record<string, string> = {
+      "/vault/a.md": createExamMarkdown({ taskProfileName: "Unknown Profile" }),
+    };
+    mockInvoke.mockImplementation(async (command: string, args?: { path?: string }) => {
+      if (command === "load_exam_run_data") {
+        return { runs: [] };
+      }
+      if (command === "read_text_file") {
+        return readByPath[args?.path ?? ""] ?? createExamMarkdown({});
+      }
+      return undefined;
+    });
+
+    const state = createMockAppState({
+      selectedPaths: ["/vault/a.md"],
+    });
     mockUseAppState.mockImplementation(() => state);
 
     let latest: HookState = null;
@@ -238,6 +348,70 @@ describe("useExamSimulationViewModel run profile auto reset", () => {
     await flush();
     await flush();
     expect(latest?.selectedRunProfileId).toBeNull();
+
+    cleanup();
+  });
+
+  it("uses source-reset task-order scoring with overflow fallback and mode-based duration", async () => {
+    const profileOne = createProfile("profile-1", "Profile 1", {
+      durationMinutes: 30,
+      taskCount: 5,
+      taskPoints: [2, 2, 2, 2, 2],
+    });
+    const profileTwo = createProfile("profile-2", "Profile 2", {
+      durationMinutes: 7,
+      taskCount: 2,
+      taskPoints: [10, 20],
+    });
+    const readByPath: Record<string, string> = {
+      "/vault/a.md": createExamMarkdown({ taskProfileName: "Profile 2", taskCount: 3 }),
+      "/vault/b.md": createExamMarkdown({ taskProfileName: "Profile 2", taskCount: 3 }),
+    };
+    mockInvoke.mockImplementation(async (command: string, args?: { path?: string }) => {
+      if (command === "load_exam_run_data") {
+        return { runs: [] };
+      }
+      if (command === "read_text_file") {
+        return readByPath[args?.path ?? ""] ?? createExamMarkdown({});
+      }
+      return undefined;
+    });
+
+    const state = createMockAppState({
+      selectedPaths: ["/vault/a.md", "/vault/b.md"],
+      profileOne,
+      profileTwo,
+    });
+    mockUseAppState.mockImplementation(() => state);
+
+    let latest: HookState = null;
+    const { cleanup } = renderHook((value) => {
+      latest = value;
+    });
+
+    await flush();
+    await flush();
+    expect(latest?.selectedRunProfileId).toBeNull();
+
+    act(() => {
+      latest?.handleRunProfileChange("profile-2");
+    });
+    await flush();
+
+    expect(latest?.selectedRunProfileId).toBe("profile-2");
+    expect(latest?.plannedTaskCount).toBe(6);
+    expect(latest?.plannedMaxPoints).toBe(62);
+    expect(latest?.previewDurationMinutes).toBe(14);
+
+    act(() => {
+      latest?.handleCombinationModeChange("nested");
+    });
+    await flush();
+
+    expect(latest?.selectedRunProfileId).toBe("profile-2");
+    expect(latest?.plannedTaskCount).toBe(3);
+    expect(latest?.plannedMaxPoints).toBe(31);
+    expect(latest?.previewDurationMinutes).toBe(7);
 
     cleanup();
   });

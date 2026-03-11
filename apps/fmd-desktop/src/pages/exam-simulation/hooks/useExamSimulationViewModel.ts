@@ -34,6 +34,7 @@ import {
 } from "../../../features/flashcards/logic";
 import { type ExamAiEvaluation } from "../../../features/settings/useAppSettings";
 import { validatePointsProfile } from "../../../features/exam-points/validatePointsProfile";
+import { resolveExamTaskFrontmatterValue } from "../../../features/exam-points/frontmatterTask";
 import type { MissingExamSetting } from "../../../features/settings/validateExamSettings";
 import { asErrorMessage } from "../../../lib/errors";
 import {
@@ -105,6 +106,14 @@ type ExamSettingsSnapshot = {
 type SelectedExamParseEntry = {
   tasks: ExamTask[];
   hasExamBlock: boolean;
+  taskRequestedName: string | null;
+};
+
+type SelectedExamSource = ExamSessionSource & {
+  taskRequestedName: string | null;
+  taskResolvedProfileId: string | null;
+  taskResolvedProfileName: string | null;
+  taskMissing: boolean;
 };
 
 type PreviewSession = {
@@ -127,11 +136,7 @@ type SelectedExamIgnoredEntry = {
 
 const buildSelectionSignature = (paths: string[]) => paths.join("|");
 const STANDARD_RUN_PROFILE_NAME = "Standard (no profile)";
-let hasRunProfileLargeSelectionAutoReset = false;
-
-export const __resetRunProfileLargeSelectionAutoResetForTests = () => {
-  hasRunProfileLargeSelectionAutoReset = false;
-};
+export const __resetRunProfileLargeSelectionAutoResetForTests = () => undefined;
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -236,6 +241,7 @@ export const useExamSimulationViewModel = () => {
   const examRunRecordedRef = useRef(false);
   const selectionSignatureRef = useRef("");
   const runProfileSelectionInitializedRef = useRef(false);
+  const runProfileAutoStateSignatureRef = useRef("");
 
   useEffect(() => {
     let cancelled = false;
@@ -349,10 +355,6 @@ export const useExamSimulationViewModel = () => {
         return;
       }
       runProfileSelectionInitializedRef.current = true;
-      if (!hasRunProfileLargeSelectionAutoReset && selectedExamCount > 2) {
-        hasRunProfileLargeSelectionAutoReset = true;
-        return;
-      }
       if (selectedRunProfileId === null && pointsProfiles.defaultProfileId) {
         setSelectedRunProfileId(pointsProfiles.defaultProfileId);
       }
@@ -368,23 +370,8 @@ export const useExamSimulationViewModel = () => {
     pointsProfiles.defaultProfileId,
     pointsProfiles.loading,
     pointsProfiles.profiles,
-    selectedExamCount,
     selectedRunProfileId,
   ]);
-
-  useEffect(() => {
-    if (!runProfileSelectionInitializedRef.current) {
-      return;
-    }
-    if (hasRunProfileLargeSelectionAutoReset || selectedExamCount <= 2) {
-      return;
-    }
-    hasRunProfileLargeSelectionAutoReset = true;
-    if (selectedRunProfileId !== null) {
-      setSelectedRunProfileId(null);
-      setSessionInvalidationMessage("");
-    }
-  }, [selectedExamCount, selectedRunProfileId]);
 
   const selectedRunProfile = useMemo(
     () =>
@@ -412,9 +399,11 @@ export const useExamSimulationViewModel = () => {
           const contents = await invoke<string>("read_text_file", {
             path: file.path,
           });
+          const taskRequestedName = resolveExamTaskFrontmatterValue(contents);
           return {
             file,
             parsed: parseExamTasks(contents),
+            taskRequestedName,
           };
         }),
       );
@@ -438,6 +427,7 @@ export const useExamSimulationViewModel = () => {
             nextParses[file.path] = {
               tasks: parsed.tasks,
               hasExamBlock: parsed.hasExamBlock,
+              taskRequestedName: result.value.taskRequestedName,
             };
             return;
           }
@@ -479,7 +469,7 @@ export const useExamSimulationViewModel = () => {
     };
   }, [selectedRunnableExamCount, selectedExamRunnableFiles]);
 
-  const selectedExamSources = useMemo(
+  const selectedExamSources = useMemo<SelectedExamSource[]>(
     () =>
       selectedExamRunnableFiles
         .map((file) => {
@@ -487,14 +477,26 @@ export const useExamSimulationViewModel = () => {
           if (!parsed || parsed.tasks.length === 0 || !parsed.hasExamBlock) {
             return null;
           }
+          const taskRequestedName = parsed.taskRequestedName?.trim() || null;
+          const assigned = pointsProfiles.resolveAssignedProfile(taskRequestedName);
+          const resolvedTaskProfile = taskRequestedName ? assigned.profile : null;
+          const taskMissing = Boolean(taskRequestedName && !resolvedTaskProfile);
           return {
             examPath: file.path,
             sourceTitle: file.relative_path || file.path,
             tasks: parsed.tasks,
-          } satisfies ExamSessionSource;
+            taskRequestedName,
+            taskResolvedProfileId: resolvedTaskProfile?.id ?? null,
+            taskResolvedProfileName: resolvedTaskProfile?.name ?? null,
+            taskMissing,
+          } satisfies SelectedExamSource;
         })
-        .filter((source): source is ExamSessionSource => Boolean(source)),
-    [selectedExamParses, selectedExamRunnableFiles],
+        .filter((source): source is SelectedExamSource => Boolean(source)),
+    [
+      pointsProfiles.resolveAssignedProfile,
+      selectedExamParses,
+      selectedExamRunnableFiles,
+    ],
   );
 
   const selectedExamIgnoredEntries = useMemo<SelectedExamIgnoredEntry[]>(
@@ -502,6 +504,60 @@ export const useExamSimulationViewModel = () => {
     [selectedExamIgnoredByScan, selectedExamRuntimeIgnored],
   );
   const selectedIncludedExamCount = selectedExamSources.length;
+
+  const runProfileAutoState = useMemo(() => {
+    if (selectedExamCount === 0 || selectedExamParseState !== "idle") {
+      return {
+        ready: false,
+        signature: "",
+        targetProfileId: null as string | null,
+      };
+    }
+
+    let targetProfileId: string | null = null;
+    if (selectedExamSources.length === 1) {
+      targetProfileId = selectedExamSources[0]?.taskResolvedProfileId ?? null;
+    } else if (selectedExamSources.length > 1 && combinationMode === "nested") {
+      const firstProfileId = selectedExamSources[0]?.taskResolvedProfileId ?? null;
+      const hasSharedProfile =
+        Boolean(firstProfileId) &&
+        selectedExamSources.every(
+          (source) => source.taskResolvedProfileId === firstProfileId,
+        );
+      targetProfileId = hasSharedProfile ? firstProfileId : null;
+    }
+
+    const sourceSignature = selectedExamSources
+      .map(
+        (source) =>
+          `${source.examPath}:${source.taskRequestedName ?? ""}:${source.taskResolvedProfileId ?? ""}:${source.taskMissing ? "missing" : "ok"}`,
+      )
+      .join("|");
+
+    return {
+      ready: true,
+      signature: `${selectedExamCount}:${selectedExamSources.length}:${combinationMode}:${sourceSignature}`,
+      targetProfileId,
+    };
+  }, [combinationMode, selectedExamCount, selectedExamParseState, selectedExamSources]);
+
+  useEffect(() => {
+    if (!runProfileSelectionInitializedRef.current) {
+      return;
+    }
+    if (!runProfileAutoState.ready) {
+      runProfileAutoStateSignatureRef.current = "";
+      return;
+    }
+    if (runProfileAutoState.signature === runProfileAutoStateSignatureRef.current) {
+      return;
+    }
+    runProfileAutoStateSignatureRef.current = runProfileAutoState.signature;
+    if (selectedRunProfileId !== runProfileAutoState.targetProfileId) {
+      setSelectedRunProfileId(runProfileAutoState.targetProfileId);
+      setSessionInvalidationMessage("");
+    }
+  }, [runProfileAutoState, selectedRunProfileId]);
 
   const selectedValidTaskCount = useMemo(
     () =>
@@ -571,29 +627,26 @@ export const useExamSimulationViewModel = () => {
     (
       tasks: ExamSessionTask[],
       profile: ExamPointsProfile | null,
-      sources: ExamSessionSource[],
+      sources: SelectedExamSource[],
+      mode: ExamCombinationMode,
     ): SessionTaskPointsPlan => {
-      const standardMode = profile === null;
       const profileAssignments = sources.map((source) => ({
         examPath: source.examPath,
         sourceTitle: source.sourceTitle,
-        requestedName: standardMode
-          ? STANDARD_RUN_PROFILE_NAME
-          : (profile?.name ?? null),
+        requestedName: source.taskRequestedName,
         profileId: profile?.id ?? null,
-        profileName: standardMode
-          ? STANDARD_RUN_PROFILE_NAME
-          : (profile?.name ?? null),
+        profileName: profile?.name ?? STANDARD_RUN_PROFILE_NAME,
         profileVersion: profile?.version ?? null,
-        missing: false,
+        missing: source.taskMissing,
       }));
-      const taskPoints = tasks.map((task, index) => {
+      const taskPoints = tasks.map((task) => {
         if (!profile) {
           return resolveTaskTypePointsFromMap({
             taskTypes: resolveExamTaskPointTypes(task),
             typePoints: settings.examTaskTypeDefaultPoints,
           });
         }
+
         const taskTypes = resolveExamTaskPointTypes(task);
         const taskTypePointsSource = resolveTaskTypePointsSourceMap(profile);
         if (taskTypePointsSource) {
@@ -610,24 +663,43 @@ export const useExamSimulationViewModel = () => {
             },
           });
         }
+
+        const sourceTaskIndex = Math.max(0, task.sourceTaskIndex ?? 0);
+        const canUseProfileTaskOrder = sourceTaskIndex < Math.max(0, profile.taskCount);
+        if (!canUseProfileTaskOrder) {
+          return resolveTaskTypePointsFromMap({
+            taskTypes,
+            typePoints: settings.examTaskTypeDefaultPoints,
+          });
+        }
+
         return resolveTaskMaxPointsFromProfile({
           profile,
-          taskIndex: Math.max(0, index),
+          taskIndex: sourceTaskIndex,
           taskTypes,
         });
       });
-      const totalDurationSeconds = tasks.reduce((sum, task) => {
-        if (profile) {
-          return sum;
+      const totalDurationSeconds = (() => {
+        if (!profile) {
+          return tasks.reduce(
+            (sum, task) =>
+              sum +
+              resolveAutoCardTypeValueSum({
+                taskTypes: resolveExamTaskPointTypes(task),
+                typeValues: settings.examTaskTypeDefaultTimeSeconds,
+              }),
+            0,
+          );
         }
-        return (
-          sum +
-          resolveAutoCardTypeValueSum({
-            taskTypes: resolveExamTaskPointTypes(task),
-            typeValues: settings.examTaskTypeDefaultTimeSeconds,
-          })
+
+        const profileDurationMinutes = normalizeDurationMinutes(
+          profile.durationMinutes ?? defaultProfileDurationMinutes,
         );
-      }, 0);
+        if (mode === "nested") {
+          return profileDurationMinutes * 60;
+        }
+        return profileDurationMinutes * Math.max(0, sources.length) * 60;
+      })();
       const maxTotalPoints = taskPoints.reduce((sum, value) => sum + value, 0);
       return {
         taskPoints,
@@ -637,6 +709,7 @@ export const useExamSimulationViewModel = () => {
       };
     },
     [
+      defaultProfileDurationMinutes,
       resolveTaskTypePointsSourceMap,
       settings.examTaskTypeDefaultPoints,
       settings.examTaskTypeDefaultTimeSeconds,
@@ -649,8 +722,10 @@ export const useExamSimulationViewModel = () => {
         previewExamParse.tasks,
         selectedRunProfile,
         selectedExamSources,
+        combinationMode,
       ),
     [
+      combinationMode,
       previewExamParse.tasks,
       resolveSessionTaskPointsPlan,
       selectedRunProfile,
@@ -660,9 +735,7 @@ export const useExamSimulationViewModel = () => {
   const plannedTaskCount = previewTaskPlan.taskPoints.length;
   const plannedMaxPoints = previewTaskPlan.maxTotalPoints;
   const previewDurationMinutes = normalizeDurationMinutes(
-    selectedRunProfile
-      ? (selectedRunProfile.durationMinutes ?? defaultProfileDurationMinutes)
-      : Math.ceil(previewTaskPlan.totalDurationSeconds / 60),
+    Math.ceil(previewTaskPlan.totalDurationSeconds / 60),
   );
   const hasTaskCountMismatch = false;
 
@@ -892,15 +965,14 @@ export const useExamSimulationViewModel = () => {
       sessionTasks,
       selectedRunProfile,
       selectedExamSources,
+      combinationMode,
     );
     const snapshot: ExamSettingsSnapshot = {
       maxTotalPoints: sessionTaskPlan.maxTotalPoints,
       taskCount: sessionTaskPlan.taskPoints.length,
       taskPoints: sessionTaskPlan.taskPoints,
       durationMinutes: normalizeDurationMinutes(
-        selectedRunProfile
-          ? (selectedRunProfile.durationMinutes ?? defaultProfileDurationMinutes)
-          : Math.ceil(sessionTaskPlan.totalDurationSeconds / 60),
+        Math.ceil(sessionTaskPlan.totalDurationSeconds / 60),
       ),
       timeLimitEnabled: settings.examTimeLimitEnabled,
       aiEvaluation: settings.examAiEvaluation,
@@ -945,7 +1017,6 @@ export const useExamSimulationViewModel = () => {
   }, [
     canStartExam,
     combinationMode,
-    defaultProfileDurationMinutes,
     mixSeed,
     resolveSessionTaskPointsPlan,
     selectedExamSources,

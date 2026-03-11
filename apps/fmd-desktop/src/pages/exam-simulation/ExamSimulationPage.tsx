@@ -802,6 +802,8 @@ export const ExamSimulationPage = ({
         isOpen={isExamFilesNoteOpen}
         onClose={onCloseExamFilesNote}
         title="Exam Files"
+        panelClassName="note-modal-panel-exam"
+        bodyClassName="note-modal-body-exam"
       >
         <ExamFilePanel
           {...examFilePanelProps}

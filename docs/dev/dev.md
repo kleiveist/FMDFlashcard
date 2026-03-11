@@ -34,4 +34,11 @@
 - 📝 [Profile System (Developer Documentation)](sync/profile-system.md)
 - 📝 [User Vault (Dev Notes)](sync/user-vault.md)
 
+## 📁 Exam Profile Linking
+- 🗂️ [Overview](exam-profile-linking/index.md)
+- 📝 [Mapping and Naming Rules](exam-profile-linking/mapping-and-naming.md)
+- 📝 [Selection Matrix](exam-profile-linking/selection-matrix.md)
+- 📝 [UI Area Mapping](exam-profile-linking/ui-areas.md)
+- 📝 [QA and Regression Checklist](exam-profile-linking/qa-regression.md)
+
 <!-- AUTO-GENERATED:docs-index END -->

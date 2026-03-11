@@ -6,6 +6,7 @@ import { ExamSimulationPage } from "./ExamSimulationPage";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 
 const capturedExamFilePanelProps: Array<Record<string, unknown>> = [];
+const capturedNoteModalProps: Array<Record<string, unknown>> = [];
 
 vi.mock("./hooks/useExamSimulationViewModel", () => ({
   useExamSimulationViewModel: vi.fn(),
@@ -19,6 +20,16 @@ vi.mock("./components/ExamFilePanel", () => ({
   ExamFilePanel: (props: Record<string, unknown>) => {
     capturedExamFilePanelProps.push(props);
     return null;
+  },
+}));
+
+vi.mock("../../components/NoteModal", () => ({
+  NoteModal: (props: Record<string, unknown>) => {
+    capturedNoteModalProps.push(props);
+    if (!props.isOpen) {
+      return null;
+    }
+    return props.children ?? null;
   },
 }));
 
@@ -211,6 +222,7 @@ describe("ExamSimulationPage popup sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedExamFilePanelProps.length = 0;
+    capturedNoteModalProps.length = 0;
   });
 
   it("passes shared mode/profile handlers to sidebar and popup and uses compact summary in popup", () => {
@@ -250,6 +262,11 @@ describe("ExamSimulationPage popup sync", () => {
     expect(sidebarProps?.onCombinationModeChange).toBe(
       popupProps?.onCombinationModeChange,
     );
+    const examNoteModalProps = capturedNoteModalProps.find(
+      (entry) => entry.title === "Exam Files",
+    );
+    expect(examNoteModalProps?.panelClassName).toBe("note-modal-panel-exam");
+    expect(examNoteModalProps?.bodyClassName).toBe("note-modal-body-exam");
 
     cleanup();
   });
