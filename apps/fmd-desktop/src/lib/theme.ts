@@ -19,11 +19,17 @@
 import { buildAccentTokens } from "./color";
 
 export type ThemeMode = "light" | "dark";
+export type DesignMode = "smart" | "modern";
 
 export const applyTheme = (theme: ThemeMode) => {
   const root = document.documentElement;
   root.dataset.theme = theme;
   root.style.colorScheme = theme;
+};
+
+export const applyDesignMode = (mode: DesignMode) => {
+  const root = document.documentElement;
+  root.dataset.designMode = mode;
 };
 
 export const applyAccentColor = (value: string) => {

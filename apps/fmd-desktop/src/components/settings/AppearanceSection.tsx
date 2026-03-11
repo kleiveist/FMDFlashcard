@@ -20,7 +20,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { type ThemeMode } from "../../lib/theme";
+import { type DesignMode, type ThemeMode } from "../../lib/theme";
 import { ACCENT_PALETTE } from "./accentPalette";
 
 type AppearanceSectionProps = {
@@ -30,7 +30,9 @@ type AppearanceSectionProps = {
   onAccentInputChange: (value: string) => void;
   onAccentPick: (value: string) => void;
   onCopyAccent: () => void;
+  onDesignModeChange: (nextMode: DesignMode) => void;
   onThemeToggle: (nextTheme: ThemeMode) => void;
+  designMode: DesignMode;
   theme: ThemeMode;
 };
 
@@ -41,7 +43,9 @@ export const AppearanceSection = ({
   onAccentInputChange,
   onAccentPick,
   onCopyAccent,
+  onDesignModeChange,
   onThemeToggle,
+  designMode,
   theme,
 }: AppearanceSectionProps) => (
   <section className="panel appearance-panel">
@@ -49,7 +53,8 @@ export const AppearanceSection = ({
       <div>
         <h2>Appearance</h2>
         <p className="muted">
-          Theme und Akzentfarbe praegen die Oberflaeche und bleiben gespeichert.
+          Theme, Designmodus und Akzentfarbe praegen die Oberflaeche und bleiben
+          gespeichert.
         </p>
       </div>
     </div>
@@ -74,6 +79,34 @@ export const AppearanceSection = ({
           </div>
           <span className="helper-text">
             Wechselt Hintergrund, Kontrast und Panels.
+          </span>
+        </div>
+        <div className="setting-row">
+          <span className="label">Designmodus</span>
+          <div
+            className="design-mode-toggle"
+            role="radiogroup"
+            aria-label="Designmodus auswaehlen"
+          >
+            <button
+              type="button"
+              className={`design-mode-option ${designMode === "smart" ? "active" : ""}`}
+              onClick={() => onDesignModeChange("smart")}
+              aria-pressed={designMode === "smart"}
+            >
+              Smart Design
+            </button>
+            <button
+              type="button"
+              className={`design-mode-option ${designMode === "modern" ? "active" : ""}`}
+              onClick={() => onDesignModeChange("modern")}
+              aria-pressed={designMode === "modern"}
+            >
+              Modern Design
+            </button>
+          </div>
+          <span className="helper-text">
+            Steuert Form, Dichte, Navigation und Flaechenstil app-weit.
           </span>
         </div>
         <div className="setting-row">

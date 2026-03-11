@@ -24,8 +24,9 @@ button {
 
 .primary,
 .ghost {
-  padding: 12px 18px;
-  border-radius: 14px;
+  min-height: var(--ui-control-height);
+  padding: 0 var(--ui-space-lg);
+  border-radius: var(--ui-radius-control);
   font-weight: 600;
   cursor: pointer;
   transition: 0.2s ease;
@@ -34,7 +35,7 @@ button {
 .primary {
   background: var(--accent);
   color: var(--accent-contrast);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--ui-shadow-panel);
 }
 
 .primary:hover {
@@ -50,13 +51,20 @@ button {
 
 .ghost {
   background: transparent;
-  border: 1px dashed var(--line);
+  border: 1px solid var(--ui-border-subtle);
   color: var(--ink);
 }
 
 .ghost:hover {
-  border-color: var(--accent-strong);
+  border-color: var(--ui-border-hover);
+  background: var(--ui-nav-button-hover-bg);
   color: var(--accent-strong);
+}
+
+.primary:focus-visible,
+.ghost:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
 }
 
 .ghost:disabled {
@@ -70,11 +78,13 @@ button {
 }
 
 .ghost.small {
-  padding: 8px 12px;
+  min-height: var(--ui-control-height-compact);
+  padding: 0 var(--ui-space-md);
   font-size: 0.85rem;
 }
 
 .primary.small {
-  padding: 8px 12px;
+  min-height: var(--ui-control-height-compact);
+  padding: 0 var(--ui-space-md);
   font-size: 0.85rem;
 }

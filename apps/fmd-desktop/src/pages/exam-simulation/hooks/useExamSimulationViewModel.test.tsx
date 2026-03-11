@@ -305,7 +305,7 @@ describe("useExamSimulationViewModel task profile matrix", () => {
     mockUseAppState.mockImplementation(() => state);
 
     let latest: HookState = null;
-    const latestValue = () => latest;
+    const latestValue = (): HookState => latest;
     const { rerender, cleanup } = renderHook((value) => {
       latest = value;
     });
@@ -363,7 +363,7 @@ describe("useExamSimulationViewModel task profile matrix", () => {
     mockUseAppState.mockImplementation(() => state);
 
     let latest: HookState = null;
-    const latestValue = () => latest;
+    const latestValue = (): HookState => latest;
     const { cleanup } = renderHook((value) => {
       latest = value;
     });
@@ -408,7 +408,7 @@ describe("useExamSimulationViewModel task profile matrix", () => {
     mockUseAppState.mockImplementation(() => state);
 
     let latest: HookState = null;
-    const latestValue = () => latest;
+    const latestValue = (): HookState => latest;
     const { cleanup } = renderHook((value) => {
       latest = value;
     });

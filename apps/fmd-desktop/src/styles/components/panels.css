@@ -19,13 +19,13 @@
 
 .panel {
   background: var(--panel);
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: var(--shadow-soft);
-  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-panel);
+  padding: var(--ui-panel-padding);
+  box-shadow: var(--ui-shadow-panel);
+  border: 1px solid var(--ui-border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--ui-space-lg);
   animation: riseIn 0.6s ease both;
 }
 
@@ -40,33 +40,34 @@
 .flashcard-controls {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--ui-space-lg);
 }
 
 .toolbar-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--ui-toolbar-gap);
 }
 
 .toggle-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--ui-toolbar-gap);
 }
 
 .timer-start-button {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
-  border-radius: 999px;
+  min-height: var(--ui-control-height);
+  padding: 0 var(--ui-space-lg);
+  border-radius: var(--ui-radius-chip);
   border: 1px solid transparent;
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 600;
   transition: 0.2s ease;
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--ui-shadow-panel);
 }
 
 .timer-start-button:not(.active):hover {
@@ -111,24 +112,29 @@
 }
 
 .pill-button {
-  border: 1px solid transparent;
+  min-height: var(--ui-control-height-compact);
+  padding: 0 var(--ui-space-md);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-control);
+  background: transparent;
   cursor: pointer;
   transition: 0.2s ease;
 }
 
 .pill-button:hover {
-  border-color: var(--accent-border);
+  border-color: var(--ui-border-hover);
+  background: var(--ui-nav-button-hover-bg);
 }
 
 .pill-button.active {
   background: var(--accent);
   color: var(--accent-contrast);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--ui-shadow-panel);
 }
 
 .pill-button:focus-visible {
-  outline: 2px solid var(--accent-focus-ring);
-  outline-offset: 2px;
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
 }
 
 .pill-button:disabled {

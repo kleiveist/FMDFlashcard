@@ -482,7 +482,9 @@ export const SettingsPage = () => {
               onAccentInputChange={actions.handleAccentInputChange}
               onAccentPick={actions.handleAccentPick}
               onCopyAccent={actions.handleCopyAccent}
+              onDesignModeChange={actions.handleDesignModeChange}
               onThemeToggle={actions.handleThemeChange}
+              designMode={settings.designMode}
               theme={settings.theme}
             />
           </div>

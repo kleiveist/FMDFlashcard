@@ -25,7 +25,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color";
-import { applyAccentColor, applyTheme, type ThemeMode } from "../../lib/theme";
+import {
+  applyAccentColor,
+  applyDesignMode,
+  applyTheme,
+  type DesignMode,
+  type ThemeMode,
+} from "../../lib/theme";
 import { normalizeVaultPath } from "../../lib/path";
 import {
   DEFAULT_KEYBOARD_SHORTCUTS,
@@ -123,6 +129,7 @@ export type AppSettings = {
   user_vault_selected_auto_path?: string | null;
   user_vault_selected_custom_path?: string | null;
   theme?: string | null;
+  design_mode?: string | null;
   accent_color?: string | null;
   markdownEditor?: MarkdownEditorSettings | null;
   editor_exact_colors?: boolean | null;
@@ -203,6 +210,7 @@ type PersistUpdates = {
   userVaultSelectedAutoPath?: string | null;
   userVaultSelectedCustomPath?: string | null;
   theme?: ThemeMode;
+  designMode?: DesignMode;
   accentColor?: string;
   markdownEditorAccentEnabled?: boolean;
   markdownEditorAccentLightHex?: string;
@@ -269,6 +277,7 @@ export type SettingsSnapshot = {
   userVaultSelectedAutoPath: string | null;
   userVaultSelectedCustomPath: string | null;
   theme: ThemeMode;
+  designMode: DesignMode;
   accentColor: string;
   markdownEditorAccentEnabled: boolean;
   markdownEditorAccentLightHex: string;
@@ -326,6 +335,7 @@ export type SettingsSnapshot = {
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
+export const DEFAULT_DESIGN_MODE: DesignMode = "smart";
 export const DEFAULT_LANGUAGE: AppLanguage = "de";
 const DEFAULT_EDITOR_BLUEPRINT_GRID = false;
 const DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY: EditorGridIntensity = "medium";
@@ -895,6 +905,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   vault_path: settings.vaultPath,
   recent_vaults: settings.recentVaults,
   theme: settings.theme,
+  design_mode: settings.designMode,
   accent_color: settings.accentColor,
   markdownEditor: {
     accentColor: {
@@ -961,6 +972,8 @@ export const normalizeSettings = (
 ): NormalizedSettingsResult => {
   const stored = settings ?? {};
   const storedTheme = stored.theme === "dark" ? "dark" : DEFAULT_THEME;
+  const storedDesignMode =
+    stored.design_mode === "modern" ? "modern" : DEFAULT_DESIGN_MODE;
   const storedAccentRaw = stored.accent_color ?? DEFAULT_ACCENT;
   const storedAccent = normalizeHex(storedAccentRaw);
   const resolvedAccent = isValidHex(storedAccent) ? storedAccent : DEFAULT_ACCENT;
@@ -1292,6 +1305,7 @@ export const normalizeSettings = (
       userVaultSelectedAutoPath: storedUserVaultSelectedAutoPath,
       userVaultSelectedCustomPath: storedUserVaultSelectedCustomPath,
       theme: storedTheme,
+      designMode: storedDesignMode,
       accentColor: resolvedAccent,
       markdownEditorAccentEnabled: storedMarkdownAccentEnabled,
       markdownEditorAccentLightHex: storedMarkdownAccentLightHex,
@@ -1355,6 +1369,7 @@ export const normalizeSettings = (
 
 export const useAppSettings = () => {
   const [theme, setTheme] = useState<ThemeMode>(DEFAULT_THEME);
+  const [designMode, setDesignMode] = useState<DesignMode>(DEFAULT_DESIGN_MODE);
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
   const [accentError, setAccentError] = useState("");
@@ -1892,6 +1907,7 @@ export const useAppSettings = () => {
       userVaultSelectedAutoPath,
       userVaultSelectedCustomPath,
       theme,
+      designMode,
       accentColor,
       markdownEditorAccentEnabled,
       markdownEditorAccentLightHex,
@@ -2003,6 +2019,7 @@ export const useAppSettings = () => {
       spacedRepetitionAutoTimeEnabled,
       statsResetMode,
       theme,
+      designMode,
       userVaultCustomPath,
       userVaultLastPath,
       userVaultSelectedAutoPath,
@@ -2031,6 +2048,7 @@ export const useAppSettings = () => {
           userVaultSelectedAutoPath: settings.userVaultSelectedAutoPath,
           userVaultSelectedCustomPath: settings.userVaultSelectedCustomPath,
           theme: settings.theme,
+          designMode: settings.designMode,
           accentColor: settings.accentColor,
           editorMarkdownExactColorsEnabled: settings.markdownEditorAccentEnabled,
           markdownEditor: {
@@ -2116,6 +2134,7 @@ export const useAppSettings = () => {
         userVaultSelectedCustomPath:
           updates.userVaultSelectedCustomPath ?? userVaultSelectedCustomPath,
         theme: updates.theme ?? theme,
+        designMode: updates.designMode ?? designMode,
         accentColor: updates.accentColor ?? accentColor,
         markdownEditorAccentEnabled:
           updates.markdownEditorAccentEnabled ?? markdownEditorAccentEnabled,
@@ -2286,6 +2305,7 @@ export const useAppSettings = () => {
       spacedRepetitionAutoTimeEnabled,
       statsResetMode,
       theme,
+      designMode,
       userVaultCustomPath,
       userVaultLastPath,
       userVaultSelectedAutoPath,
@@ -2316,6 +2336,7 @@ export const useAppSettings = () => {
     }
 
     setTheme(normalized.theme);
+    setDesignMode(normalized.designMode);
     setAccentColor(normalized.accentColor);
     setAccentDraft(normalized.accentColor);
     setAccentError("");
@@ -2480,6 +2501,10 @@ export const useAppSettings = () => {
   }, [theme]);
 
   useEffect(() => {
+    applyDesignMode(designMode);
+  }, [designMode]);
+
+  useEffect(() => {
     applyAccentColor(accentColor);
   }, [accentColor]);
 
@@ -2553,6 +2578,7 @@ export const useAppSettings = () => {
     activeNotePath,
     accentDraft,
     accentError,
+    designMode,
     markdownEditorAccentEnabled,
     markdownEditorAccentLightHex,
     markdownEditorAccentDarkHex,
@@ -2662,6 +2688,7 @@ export const useAppSettings = () => {
     setSpacedRepetitionStatsView,
     setStatsResetMode,
     setTheme,
+    setDesignMode,
     settingsLoaded,
     solutionRevealEnabled,
     flashcardHelpEnabled,

@@ -64,6 +64,27 @@
   font-size: 0.9rem;
 }
 
+:root[data-design-mode="modern"] .file-list {
+  gap: var(--ui-space-xs);
+}
+
+:root[data-design-mode="modern"] .file-item {
+  min-height: var(--ui-list-row-height);
+  padding: 0 var(--ui-space-md);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-nav-button-bg);
+}
+
+:root[data-design-mode="modern"] .file-item:hover {
+  border-color: var(--ui-border-hover);
+  background: var(--ui-nav-button-hover-bg);
+}
+
+:root[data-design-mode="modern"] .file-item.active {
+  border-color: var(--ui-nav-button-active-border);
+  background: var(--ui-nav-button-active-bg);
+}
+
 .preview-panel {
   display: flex;
   flex-direction: column;
@@ -101,6 +122,11 @@
   gap: 8px;
 }
 
+:root[data-design-mode="modern"] .frontmatter-panel {
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-control);
+}
+
 .preview .frontmatter-panel,
 .preview-surface > .frontmatter-panel {
   margin-bottom: 10px;
@@ -135,8 +161,8 @@
 }
 
 .frontmatter-title-button:focus-visible {
-  outline: 2px solid var(--accent-focus-ring);
-  outline-offset: 2px;
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
   border-radius: 6px;
 }
 
@@ -992,10 +1018,10 @@
 
 .preview {
   margin: 0;
-  padding: 16px;
+  padding: var(--ui-space-lg);
   background-color: var(--md-question-bg, var(--md-surface-bg));
   color: var(--preview-ink);
-  border-radius: 16px;
+  border-radius: var(--ui-radius-panel);
   flex: 1;
   min-height: 0;
   min-width: 0;
@@ -1003,14 +1029,14 @@
 }
 
 .preview-toggle-button svg {
-  width: 18px;
-  height: 18px;
+  width: var(--ui-control-icon-size);
+  height: var(--ui-control-icon-size);
 }
 
 .preview-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ui-toolbar-gap);
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -1018,14 +1044,15 @@
 .preview-mode-toggle {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: var(--ui-space-xs);
   min-width: min(100%, 276px);
 }
 
 .preview-mode-button {
   min-width: 0;
-  min-height: 30px;
-  padding: 6px 10px;
+  min-height: var(--ui-control-height-compact);
+  padding: 0 var(--ui-space-md);
+  border-radius: var(--ui-radius-control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1033,8 +1060,8 @@
 }
 
 .preview-mode-button svg {
-  width: 16px;
-  height: 16px;
+  width: var(--ui-control-icon-size);
+  height: var(--ui-control-icon-size);
   display: block;
 }
 
@@ -1068,8 +1095,8 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
-  padding: 16px;
-  border-radius: 16px;
+  padding: var(--ui-space-lg);
+  border-radius: var(--ui-radius-panel);
   border: 1px solid var(--md-question-border, var(--md-editor-border));
   background-color: var(--md-question-bg, var(--md-editor-bg));
   color: var(--preview-ink);
@@ -1079,6 +1106,14 @@
   caret-color: var(--md-editor-caret);
   box-sizing: border-box;
   overflow: auto;
+}
+
+:root[data-design-mode="modern"] .preview {
+  padding: var(--ui-space-lg);
+}
+
+:root[data-design-mode="modern"] .preview-editor {
+  padding: var(--ui-space-lg);
 }
 
 .preview.markdown.md-preview,
@@ -1103,14 +1138,14 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-surface {
-  gap: 10px;
+  gap: var(--ui-space-md);
 }
 
 .markdown-hybrid-editor {
   --mdh-left-gutter-width: 56px;
   --mdh-right-gutter-width: 34px;
   position: relative;
-  gap: 6px;
+  gap: var(--ui-space-xs);
   min-height: 100%;
   outline: none;
 }
@@ -1119,10 +1154,19 @@ textarea.preview-editor {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--ui-space-xs);
   min-height: 100%;
   padding-left: var(--mdh-left-gutter-width);
   padding-right: var(--mdh-right-gutter-width);
+}
+
+:root[data-design-mode="modern"] .markdown-hybrid-surface {
+  gap: var(--ui-space-sm);
+}
+
+:root[data-design-mode="modern"] .markdown-hybrid-editor {
+  --mdh-left-gutter-width: 48px;
+  --mdh-right-gutter-width: 28px;
 }
 
 .markdown-hybrid-controls-overlay {

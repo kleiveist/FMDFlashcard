@@ -31,26 +31,26 @@
 .modal-panel {
   width: min(420px, 100%);
   background: var(--panel);
-  border-radius: 18px;
-  border: 1px solid var(--line-soft);
-  padding: 20px;
-  box-shadow: var(--shadow);
+  border-radius: var(--ui-radius-panel);
+  border: 1px solid var(--ui-border-subtle);
+  padding: var(--ui-panel-padding);
+  box-shadow: var(--ui-shadow-dialog);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--ui-space-md);
 }
 
 .modal-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--ui-space-md);
 }
 
 .modal-panel-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ui-toolbar-gap);
   min-width: 0;
 }
 
@@ -62,7 +62,7 @@
 .modal-panel-close {
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--ui-radius-control);
   border: 1px solid transparent;
   background: transparent;
   display: grid;
@@ -73,14 +73,14 @@
 }
 
 .modal-panel-close:hover {
-  border-color: var(--accent-weak-border);
-  background: var(--accent-weak-bg);
+  border-color: var(--ui-border-hover);
+  background: var(--ui-nav-button-hover-bg);
   color: var(--accent-strong);
 }
 
 .modal-panel-close:focus-visible {
-  outline: 2px solid var(--accent-focus-ring);
-  outline-offset: 2px;
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
 }
 
 .modal-panel-close svg {
@@ -134,7 +134,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--ui-space-lg);
 }
 
 .settings-modal-body {
@@ -148,7 +148,7 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--ui-space-md);
 }
 
 .note-modal-body-exam {
@@ -161,7 +161,7 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--ui-space-lg);
   padding-right: 4px;
 }
 
@@ -174,7 +174,7 @@
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--ui-toolbar-gap);
   flex-wrap: wrap;
 }
 
@@ -187,10 +187,10 @@
   z-index: 120;
   max-width: min(280px, calc(100vw - 24px));
   padding: 8px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
+  border-radius: var(--ui-radius-menu);
+  border: 1px solid var(--ui-border-subtle);
   background: var(--panel);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--ui-shadow-flyout);
   color: var(--ink);
   font-size: 0.78rem;
   line-height: 1.35;

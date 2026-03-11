@@ -36,7 +36,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { isValidHex, normalizeHex } from "../lib/color";
 import { asErrorMessage } from "../lib/errors";
 import { isHiddenPath, normalizeRelativePath, normalizeVaultPath } from "../lib/path";
-import { type ThemeMode } from "../lib/theme";
+import { type DesignMode, type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
 import type { LoadState } from "../lib/types";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
@@ -71,6 +71,7 @@ type AppActions = {
   handleMoveSelectedExamFile: (sourcePath: string, targetPath: string) => void;
   handleClearSelectedExamFiles: () => void;
   handleThemeChange: (nextTheme: ThemeMode) => void;
+  handleDesignModeChange: (nextMode: DesignMode) => void;
   handleAccentPick: (value: string) => void;
   handleAccentInputChange: (value: string) => void;
   handleCopyAccent: () => Promise<void>;
@@ -179,6 +180,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     maxFilesPerScan,
     setMaxFilesPerScan,
     setTheme,
+    setDesignMode,
     settingsLoaded,
     vaultPath: storedVaultPath,
     recentVaults,
@@ -1090,6 +1092,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     [setTheme],
   );
 
+  const handleDesignModeChange = useCallback(
+    (nextMode: DesignMode) => {
+      setDesignMode(nextMode);
+    },
+    [setDesignMode],
+  );
+
   const handleAccentPick = useCallback(
     (value: string) => {
       const normalized = normalizeHex(value);
@@ -1266,6 +1275,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleMoveSelectedExamFile,
       handleClearSelectedExamFiles,
       handleThemeChange,
+      handleDesignModeChange,
       handleAccentPick,
       handleAccentInputChange,
       handleCopyAccent,

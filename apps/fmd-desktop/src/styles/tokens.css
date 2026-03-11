@@ -68,6 +68,54 @@
   --accent-contrast-strong: #ffffff;
   --shadow: 0 20px 40px rgba(19, 26, 28, 0.1);
   --shadow-soft: 0 12px 24px rgba(19, 26, 28, 0.08);
+  --ui-radius-panel: 20px;
+  --ui-radius-control: 12px;
+  --ui-radius-menu: 12px;
+  --ui-radius-chip: 999px;
+  --ui-space-2xs: 4px;
+  --ui-space-xs: 6px;
+  --ui-space-sm: 8px;
+  --ui-space-md: 12px;
+  --ui-space-lg: 16px;
+  --ui-space-xl: 20px;
+  --ui-space-2xl: 24px;
+  --ui-space-3xl: 28px;
+  --ui-layout-gap: 24px;
+  --ui-panel-padding: 20px;
+  --ui-toolbar-gap: 12px;
+  --ui-control-height: 40px;
+  --ui-control-height-compact: 34px;
+  --ui-control-icon-size: 18px;
+  --ui-nav-button-size: 44px;
+  --ui-nav-item-height: 42px;
+  --ui-nav-item-padding-x: 16px;
+  --ui-tree-row-height: 30px;
+  --ui-tree-font-size: 0.8rem;
+  --ui-path-font-size: 0.85rem;
+  --ui-list-row-height: 40px;
+  --ui-border-subtle: var(--line-soft);
+  --ui-border-strong: var(--line);
+  --ui-border-hover: var(--accent-border);
+  --ui-shadow-panel: var(--shadow-soft);
+  --ui-shadow-flyout: var(--shadow);
+  --ui-shadow-dialog: var(--shadow);
+  --ui-focus-outline: 2px solid var(--accent-focus-ring);
+  --ui-focus-offset: 2px;
+  --ui-sidebar-shell-bg: var(--left-bg-tint);
+  --ui-sidebar-shell-border: var(--line-soft);
+  --ui-sidebar-shell-padding: 24px;
+  --ui-sidebar-shell-gap: 24px;
+  --ui-sidebar-shell-shadow: var(--ui-shadow-panel);
+  --ui-nav-button-bg: var(--accent-weak-bg);
+  --ui-nav-button-border: var(--accent-weak-border);
+  --ui-nav-button-hover-bg: var(--accent-hover-bg);
+  --ui-nav-button-active-bg: var(--accent-active-bg);
+  --ui-nav-button-active-border: var(--accent-weak-border);
+  --ui-tree-row-bg: var(--accent-weak-bg);
+  --ui-tree-row-hover-bg: var(--accent-hover-bg);
+  --ui-tree-row-active-bg: var(--accent-active-bg);
+  --ui-tree-row-active-border: var(--accent-border);
+  --ui-tree-row-selected-border: var(--accent-strong);
   --mono: "JetBrains Mono", "Fira Code", "IBM Plex Mono", monospace;
   --bg-gradient: radial-gradient(
     circle at top left,
@@ -202,6 +250,106 @@
   --error-bg: rgba(204, 92, 63, 0.2);
   --error-border: rgba(204, 92, 63, 0.45);
   --error-ink: #f6c1b2;
+}
+
+:root[data-design-mode="smart"] {
+  --ui-radius-panel: 20px;
+  --ui-radius-control: 12px;
+  --ui-radius-menu: 12px;
+  --ui-panel-padding: 20px;
+  --ui-layout-gap: 24px;
+  --ui-toolbar-gap: 12px;
+  --ui-control-height: 40px;
+  --ui-control-height-compact: 34px;
+  --ui-control-icon-size: 18px;
+  --ui-nav-button-size: 44px;
+  --ui-nav-item-height: 42px;
+  --ui-tree-row-height: 30px;
+  --ui-tree-font-size: 0.8rem;
+  --ui-path-font-size: 0.85rem;
+  --ui-shadow-panel: var(--shadow-soft);
+  --ui-shadow-flyout: var(--shadow);
+  --ui-shadow-dialog: var(--shadow);
+  --ui-border-subtle: var(--line-soft);
+  --ui-border-hover: var(--accent-border);
+  --ui-sidebar-shell-bg: var(--left-bg-tint);
+  --ui-sidebar-shell-padding: 24px;
+  --ui-sidebar-shell-gap: 24px;
+  --ui-sidebar-shell-shadow: var(--ui-shadow-panel);
+  --ui-nav-button-bg: var(--accent-weak-bg);
+  --ui-nav-button-border: var(--accent-weak-border);
+  --ui-nav-button-hover-bg: var(--accent-hover-bg);
+  --ui-nav-button-active-bg: var(--accent-active-bg);
+  --ui-nav-button-active-border: var(--accent-weak-border);
+  --ui-tree-row-bg: var(--accent-weak-bg);
+  --ui-tree-row-hover-bg: var(--accent-hover-bg);
+  --ui-tree-row-active-bg: var(--accent-active-bg);
+  --ui-tree-row-active-border: var(--accent-border);
+  --ui-tree-row-selected-border: var(--accent-strong);
+}
+
+:root[data-design-mode="modern"] {
+  --ui-radius-panel: 24px;
+  --ui-radius-control: 14px;
+  --ui-radius-menu: 14px;
+  --ui-panel-padding: 16px;
+  --ui-layout-gap: 28px;
+  --ui-toolbar-gap: 8px;
+  --ui-control-height: 34px;
+  --ui-control-height-compact: 30px;
+  --ui-control-icon-size: 16px;
+  --ui-nav-button-size: 34px;
+  --ui-nav-item-height: 33px;
+  --ui-nav-item-padding-x: 12px;
+  --ui-tree-row-height: 24px;
+  --ui-tree-font-size: 0.76rem;
+  --ui-path-font-size: 0.74rem;
+  --ui-shadow-panel: 0 8px 18px rgba(19, 26, 28, 0.06);
+  --ui-shadow-flyout: 0 10px 24px rgba(19, 26, 28, 0.08);
+  --ui-shadow-dialog: 0 14px 28px rgba(19, 26, 28, 0.12);
+  --ui-border-subtle: color-mix(in srgb, var(--line-soft) 78%, transparent);
+  --ui-border-hover: color-mix(in srgb, var(--accent-border) 72%, transparent);
+  --ui-sidebar-shell-bg: color-mix(in srgb, var(--left-bg-base) 97%, transparent);
+  --ui-sidebar-shell-padding: 18px;
+  --ui-sidebar-shell-gap: 16px;
+  --ui-sidebar-shell-shadow: 0 4px 12px rgba(19, 26, 28, 0.05);
+  --ui-nav-button-bg: transparent;
+  --ui-nav-button-border: transparent;
+  --ui-nav-button-hover-bg: color-mix(
+    in srgb,
+    var(--accent-hover-bg) 72%,
+    transparent
+  );
+  --ui-nav-button-active-bg: color-mix(
+    in srgb,
+    var(--accent-active-bg) 72%,
+    transparent
+  );
+  --ui-nav-button-active-border: transparent;
+  --ui-tree-row-bg: transparent;
+  --ui-tree-row-hover-bg: color-mix(
+    in srgb,
+    var(--accent-hover-bg) 68%,
+    transparent
+  );
+  --ui-tree-row-active-bg: color-mix(
+    in srgb,
+    var(--accent-active-bg) 72%,
+    transparent
+  );
+  --ui-tree-row-active-border: transparent;
+  --ui-tree-row-selected-border: color-mix(
+    in srgb,
+    var(--accent-border) 74%,
+    transparent
+  );
+}
+
+:root[data-theme="dark"][data-design-mode="modern"] {
+  --ui-shadow-panel: 0 8px 20px rgba(0, 0, 0, 0.24);
+  --ui-shadow-flyout: 0 12px 28px rgba(0, 0, 0, 0.3);
+  --ui-shadow-dialog: 0 16px 34px rgba(0, 0, 0, 0.38);
+  --ui-sidebar-shell-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
 }
 
 @supports (color: color-mix(in srgb, white 50%, black)) {

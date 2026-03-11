@@ -31,11 +31,21 @@ describe("normalizeSettings", () => {
     const stored = {
       editor_blueprint_grid_intensity: "loud",
       editor_markdown_preview_default_mode: "invalid",
+      design_mode: "future",
     } as AppSettings;
     const { settings } = normalizeSettings(stored);
 
     expect(settings.editorBlueprintGridIntensity).toBe("medium");
     expect(settings.markdownPreviewDefaultMode).toBe("markdown");
+    expect(settings.designMode).toBe("smart");
+  });
+
+  it("restores stored design mode when valid", () => {
+    const { settings } = normalizeSettings({
+      design_mode: "modern",
+    } as AppSettings);
+
+    expect(settings.designMode).toBe("modern");
   });
 
   it("supports new and legacy cursor accessory settings keys", () => {
