@@ -22,18 +22,39 @@ vi.mock("@tauri-apps/api/core", () => ({
 const mockUseAppState = vi.mocked(useAppState);
 const mockInvoke = vi.mocked(invoke);
 
-type HookState = ReturnType<typeof useExamSimulationViewModel> | null;
+type InvokeArgs = Parameters<typeof invoke>[1];
+
+type ExamSimulationViewModelSnapshot = {
+  selectedRunProfileId: string | null;
+  plannedTaskCount: number;
+  plannedMaxPoints: number;
+  previewDurationMinutes: number;
+  handleRunProfileChange: (profileId: string | null) => void;
+  handleCombinationModeChange: (
+    mode: "fully-mixed" | "sequential" | "sequential-shuffled" | "nested",
+  ) => void;
+};
+
+type HookState = ExamSimulationViewModelSnapshot | null;
+
+const resolveInvokePath = (args?: InvokeArgs) => {
+  if (!args || typeof args !== "object" || Array.isArray(args)) {
+    return "";
+  }
+  const candidate = (args as { path?: unknown }).path;
+  return typeof candidate === "string" ? candidate : "";
+};
 
 const Probe = ({
   onValue,
 }: {
-  onValue: (value: ReturnType<typeof useExamSimulationViewModel>) => void;
+  onValue: (value: ExamSimulationViewModelSnapshot) => void;
 }) => {
-  onValue(useExamSimulationViewModel());
+  onValue(useExamSimulationViewModel() as ExamSimulationViewModelSnapshot);
   return null;
 };
 
-const renderHook = (onValue: (value: ReturnType<typeof useExamSimulationViewModel>) => void) => {
+const renderHook = (onValue: (value: ExamSimulationViewModelSnapshot) => void) => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -268,12 +289,12 @@ describe("useExamSimulationViewModel task profile matrix", () => {
       "/vault/a.md": createExamMarkdown({ taskProfileName: "Profile 2" }),
       "/vault/b.md": createExamMarkdown({ taskProfileName: "Profile 2" }),
     };
-    mockInvoke.mockImplementation(async (command: string, args?: { path?: string }) => {
+    mockInvoke.mockImplementation(async (command: string, args?: InvokeArgs) => {
       if (command === "load_exam_run_data") {
         return { runs: [] };
       }
       if (command === "read_text_file") {
-        return readByPath[args?.path ?? ""] ?? createExamMarkdown({});
+        return readByPath[resolveInvokePath(args)] ?? createExamMarkdown({});
       }
       return undefined;
     });
@@ -284,39 +305,40 @@ describe("useExamSimulationViewModel task profile matrix", () => {
     mockUseAppState.mockImplementation(() => state);
 
     let latest: HookState = null;
+    const latestValue = () => latest;
     const { rerender, cleanup } = renderHook((value) => {
       latest = value;
     });
 
     await flush();
     await flush();
-    expect(latest?.selectedRunProfileId).toBeNull();
+    expect(latestValue()?.selectedRunProfileId).toBeNull();
 
     act(() => {
-      latest?.handleRunProfileChange("profile-1");
+      latestValue()?.handleRunProfileChange("profile-1");
     });
     await flush();
-    expect(latest?.selectedRunProfileId).toBe("profile-1");
+    expect(latestValue()?.selectedRunProfileId).toBe("profile-1");
 
     rerender();
     await flush();
-    expect(latest?.selectedRunProfileId).toBe("profile-1");
+    expect(latestValue()?.selectedRunProfileId).toBe("profile-1");
 
     act(() => {
-      latest?.handleCombinationModeChange("nested");
+      latestValue()?.handleCombinationModeChange("nested");
     });
     await flush();
-    expect(latest?.selectedRunProfileId).toBe("profile-2");
+    expect(latestValue()?.selectedRunProfileId).toBe("profile-2");
 
     act(() => {
-      latest?.handleRunProfileChange("profile-1");
+      latestValue()?.handleRunProfileChange("profile-1");
     });
     await flush();
-    expect(latest?.selectedRunProfileId).toBe("profile-1");
+    expect(latestValue()?.selectedRunProfileId).toBe("profile-1");
 
     rerender();
     await flush();
-    expect(latest?.selectedRunProfileId).toBe("profile-1");
+    expect(latestValue()?.selectedRunProfileId).toBe("profile-1");
 
     cleanup();
   });
@@ -325,12 +347,12 @@ describe("useExamSimulationViewModel task profile matrix", () => {
     const readByPath: Record<string, string> = {
       "/vault/a.md": createExamMarkdown({ taskProfileName: "Unknown Profile" }),
     };
-    mockInvoke.mockImplementation(async (command: string, args?: { path?: string }) => {
+    mockInvoke.mockImplementation(async (command: string, args?: InvokeArgs) => {
       if (command === "load_exam_run_data") {
         return { runs: [] };
       }
       if (command === "read_text_file") {
-        return readByPath[args?.path ?? ""] ?? createExamMarkdown({});
+        return readByPath[resolveInvokePath(args)] ?? createExamMarkdown({});
       }
       return undefined;
     });
@@ -341,13 +363,14 @@ describe("useExamSimulationViewModel task profile matrix", () => {
     mockUseAppState.mockImplementation(() => state);
 
     let latest: HookState = null;
+    const latestValue = () => latest;
     const { cleanup } = renderHook((value) => {
       latest = value;
     });
 
     await flush();
     await flush();
-    expect(latest?.selectedRunProfileId).toBeNull();
+    expect(latestValue()?.selectedRunProfileId).toBeNull();
 
     cleanup();
   });
@@ -367,12 +390,12 @@ describe("useExamSimulationViewModel task profile matrix", () => {
       "/vault/a.md": createExamMarkdown({ taskProfileName: "Profile 2", taskCount: 3 }),
       "/vault/b.md": createExamMarkdown({ taskProfileName: "Profile 2", taskCount: 3 }),
     };
-    mockInvoke.mockImplementation(async (command: string, args?: { path?: string }) => {
+    mockInvoke.mockImplementation(async (command: string, args?: InvokeArgs) => {
       if (command === "load_exam_run_data") {
         return { runs: [] };
       }
       if (command === "read_text_file") {
-        return readByPath[args?.path ?? ""] ?? createExamMarkdown({});
+        return readByPath[resolveInvokePath(args)] ?? createExamMarkdown({});
       }
       return undefined;
     });
@@ -385,33 +408,34 @@ describe("useExamSimulationViewModel task profile matrix", () => {
     mockUseAppState.mockImplementation(() => state);
 
     let latest: HookState = null;
+    const latestValue = () => latest;
     const { cleanup } = renderHook((value) => {
       latest = value;
     });
 
     await flush();
     await flush();
-    expect(latest?.selectedRunProfileId).toBeNull();
+    expect(latestValue()?.selectedRunProfileId).toBeNull();
 
     act(() => {
-      latest?.handleRunProfileChange("profile-2");
+      latestValue()?.handleRunProfileChange("profile-2");
     });
     await flush();
 
-    expect(latest?.selectedRunProfileId).toBe("profile-2");
-    expect(latest?.plannedTaskCount).toBe(6);
-    expect(latest?.plannedMaxPoints).toBe(62);
-    expect(latest?.previewDurationMinutes).toBe(14);
+    expect(latestValue()?.selectedRunProfileId).toBe("profile-2");
+    expect(latestValue()?.plannedTaskCount).toBe(6);
+    expect(latestValue()?.plannedMaxPoints).toBe(62);
+    expect(latestValue()?.previewDurationMinutes).toBe(14);
 
     act(() => {
-      latest?.handleCombinationModeChange("nested");
+      latestValue()?.handleCombinationModeChange("nested");
     });
     await flush();
 
-    expect(latest?.selectedRunProfileId).toBe("profile-2");
-    expect(latest?.plannedTaskCount).toBe(3);
-    expect(latest?.plannedMaxPoints).toBe(31);
-    expect(latest?.previewDurationMinutes).toBe(7);
+    expect(latestValue()?.selectedRunProfileId).toBe("profile-2");
+    expect(latestValue()?.plannedTaskCount).toBe(3);
+    expect(latestValue()?.plannedMaxPoints).toBe(31);
+    expect(latestValue()?.previewDurationMinutes).toBe(7);
 
     cleanup();
   });
