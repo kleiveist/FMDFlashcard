@@ -123,6 +123,7 @@ describe("ExamFilePanel", () => {
         runSummaryFlowText: "SELECTION sample summary text",
         compactSummary: {
           maxPoints: 42,
+          taskCount: 12,
           minDurationMinutes: 18,
         },
         selectedProfileId: "profile-1",
@@ -137,6 +138,7 @@ describe("ExamFilePanel", () => {
 
     expect(container.textContent).toContain("1 selected");
     expect(container.textContent).toContain("42 max points");
+    expect(container.textContent).toContain("12 tasks");
     expect(container.textContent).toContain("18 min duration");
     expect(container.textContent).not.toContain("SELECTION sample summary text");
 

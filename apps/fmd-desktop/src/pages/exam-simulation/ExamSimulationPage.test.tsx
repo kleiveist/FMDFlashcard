@@ -256,6 +256,7 @@ describe("ExamSimulationPage popup sync", () => {
     expect(popupProps?.combinationMode).toBe("fully-mixed");
     expect(popupProps?.compactSummary).toEqual({
       maxPoints: 72,
+      taskCount: 15,
       minDurationMinutes: 24,
     });
     expect(sidebarProps?.onProfileChange).toBe(popupProps?.onProfileChange);

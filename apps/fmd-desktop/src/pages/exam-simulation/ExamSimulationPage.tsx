@@ -812,6 +812,7 @@ export const ExamSimulationPage = ({
           onCombinationModeChange={handleCombinationModeChange}
           compactSummary={{
             maxPoints: plannedMaxPoints,
+            taskCount: plannedTaskCount,
             minDurationMinutes: previewDurationMinutes,
           }}
         />

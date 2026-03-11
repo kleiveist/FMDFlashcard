@@ -29,6 +29,7 @@ type ProfileOption = {
 
 type ExamFilePanelCompactSummary = {
   maxPoints: number;
+  taskCount: number;
   minDurationMinutes: number;
 };
 
@@ -436,6 +437,9 @@ export const ExamFilePanel = ({
             <div className="exam-file-panel-kpis">
               <span className="chip exam-file-selected-chip exam-file-panel-kpi">
                 {selectedCount} selected
+              </span>
+              <span className="chip exam-file-panel-kpi">
+                {compactSummary.taskCount} tasks
               </span>
               <span className="chip exam-file-panel-kpi">
                 {compactSummary.maxPoints} max points
