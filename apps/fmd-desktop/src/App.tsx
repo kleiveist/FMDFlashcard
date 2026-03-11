@@ -22,7 +22,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 import { AppStateProvider, useAppState } from "./components/AppStateProvider";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
@@ -60,15 +59,6 @@ import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
-import { ExamFilePanel } from "./pages/exam-simulation/components/ExamFilePanel";
-import { parseExamTasks } from "./lib/exam";
-import type { ExamCombinationMode } from "./lib/examMixedSession";
-import {
-  resolveAutoCardTypeValueSum,
-  resolveExamTaskPointTypes,
-  resolveTaskMaxPointsFromProfile,
-  resolveTaskTypePointsFromMap,
-} from "./lib/exam/pointsScoring";
 import type { StudySectionKey } from "./lib/studySections";
 
 type WalletGateId = "custom-path" | "profile" | "sync-provider";
@@ -79,17 +69,12 @@ const AppContent = () => {
     flashcardNoteFiles,
     flashcardNoteFilesError,
     flashcardNoteFilesState,
-    examFiles,
-    examFilesError,
-    examFilesState,
-    selectedExamFilePaths,
     flashcards,
     fastFlashcards,
     help,
     preview,
     settings,
     settingsNav,
-    pointsProfiles,
     spacedRepetition,
     userVault,
     vault,
@@ -115,14 +100,6 @@ const AppContent = () => {
   const [isUserRegistryModalOpen, setIsUserRegistryModalOpen] = useState(false);
   const [openGateId, setOpenGateId] = useState<WalletGateId | null>(null);
   const [dismissedGateId, setDismissedGateId] = useState<WalletGateId | null>(null);
-  const [noteModalCombinationMode, setNoteModalCombinationMode] =
-    useState<ExamCombinationMode>("fully-mixed");
-  const [noteModalSelectedProfileId, setNoteModalSelectedProfileId] =
-    useState<string | null>(null);
-  const [noteModalSummaryMaxPoints, setNoteModalSummaryMaxPoints] = useState(0);
-  const [noteModalSummaryMinDurationMinutes, setNoteModalSummaryMinDurationMinutes] =
-    useState(0);
-  const noteModalProfileSelectionInitializedRef = useRef(false);
   const isDashboard = activeTab === "dashboard";
   const platform = getShortcutPlatform();
   const layoutMode = useLayoutMode();
@@ -141,179 +118,11 @@ const AppContent = () => {
   const isExamRunSummaryNoteTriggerEnabled = activeTab === "exam" && isExamNoteViewport;
   const showStudySectionNoteAction =
     isNoteModalEligible && !isExamRunSummaryNoteTriggerEnabled;
-  const setSelectedPointsProfileId = pointsProfiles.setSelectedProfileId;
-  const examRunProfileOptions = useMemo(
-    () =>
-      pointsProfiles.profiles.map((profile) => ({
-        id: profile.id,
-        name: profile.name,
-      })),
-    [pointsProfiles.profiles],
-  );
-  const noteModalSelectedProfile = useMemo(
-    () =>
-      pointsProfiles.profiles.find((profile) => profile.id === noteModalSelectedProfileId) ??
-      null,
-    [noteModalSelectedProfileId, pointsProfiles.profiles],
-  );
-  const noteModalSummarySelectedCount = selectedExamFilePaths.length;
-  const isExamNoteFiles = noteDialogSection === "exam";
   const noteFilesDialogOpen = Boolean(
-    isNoteModalOpen && noteDialogSection && noteDialogSection !== "dashboard",
-  );
-  useEffect(() => {
-    let cancelled = false;
-
-    const normalizeMinutes = (value: number) =>
-      Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-
-    const resolveNoteModalSummary = async () => {
-      if (!isExamNoteFiles || !noteFilesDialogOpen || noteModalSummarySelectedCount === 0) {
-        if (!cancelled) {
-          setNoteModalSummaryMaxPoints(0);
-          setNoteModalSummaryMinDurationMinutes(0);
-        }
-        return;
-      }
-
-      const examFilesByPath = new Map(examFiles.map((file) => [file.path, file]));
-      const selectedExamEntries = selectedExamFilePaths
-        .map((path) => examFilesByPath.get(path))
-        .filter((entry): entry is (typeof examFiles)[number] => Boolean(entry));
-      const selectedRunnableEntries = selectedExamEntries.filter(
-        (entry) => entry.status === "valid",
-      );
-
-      if (selectedRunnableEntries.length === 0) {
-        if (!cancelled) {
-          setNoteModalSummaryMaxPoints(0);
-          setNoteModalSummaryMinDurationMinutes(
-            noteModalSelectedProfile
-              ? normalizeMinutes(
-                  noteModalSelectedProfile.durationMinutes ?? settings.examDurationMinutes,
-                )
-              : 0,
-          );
-        }
-        return;
-      }
-
-      try {
-        const parseResults = await Promise.allSettled(
-          selectedRunnableEntries.map(async (entry) => {
-            const contents = await invoke<string>("read_text_file", {
-              path: entry.path,
-            });
-            return parseExamTasks(contents);
-          }),
-        );
-
-        const tasks = parseResults.flatMap((result) => {
-          if (result.status !== "fulfilled") {
-            return [];
-          }
-          return result.value.hasExamBlock ? result.value.tasks : [];
-        });
-
-        const maxPoints = tasks.reduce((sum, task, taskIndex) => {
-          const taskTypes = resolveExamTaskPointTypes(task);
-          if (!noteModalSelectedProfile) {
-            return (
-              sum +
-              resolveTaskTypePointsFromMap({
-                taskTypes,
-                typePoints: settings.examTaskTypeDefaultPoints,
-              })
-            );
-          }
-          if (noteModalSelectedProfile.distribution === "task-type") {
-            return (
-              sum +
-              resolveTaskTypePointsFromMap({
-                taskTypes,
-                typePoints: {
-                  qa: noteModalSelectedProfile.typeRules.qa.points,
-                  tf: noteModalSelectedProfile.typeRules.tf.points,
-                  m1: noteModalSelectedProfile.typeRules.m1.points,
-                  m2: noteModalSelectedProfile.typeRules.m2.points,
-                  cl: noteModalSelectedProfile.typeRules.cl.points,
-                  cd: noteModalSelectedProfile.typeRules.cd.points,
-                  cld: noteModalSelectedProfile.typeRules.cld.points,
-                },
-              })
-            );
-          }
-          return (
-            sum +
-            resolveTaskMaxPointsFromProfile({
-              profile: noteModalSelectedProfile,
-              taskIndex,
-              taskTypes,
-            })
-          );
-        }, 0);
-
-        const minDurationMinutes = noteModalSelectedProfile
-          ? normalizeMinutes(
-              noteModalSelectedProfile.durationMinutes ?? settings.examDurationMinutes,
-            )
-          : Math.ceil(
-              tasks.reduce(
-                (sum, task) =>
-                  sum +
-                  resolveAutoCardTypeValueSum({
-                    taskTypes: resolveExamTaskPointTypes(task),
-                    typeValues: settings.examTaskTypeDefaultTimeSeconds,
-                  }),
-                0,
-              ) / 60,
-            );
-
-        if (!cancelled) {
-          setNoteModalSummaryMaxPoints(maxPoints);
-          setNoteModalSummaryMinDurationMinutes(minDurationMinutes);
-        }
-      } catch {
-        if (!cancelled) {
-          setNoteModalSummaryMaxPoints(0);
-          setNoteModalSummaryMinDurationMinutes(
-            noteModalSelectedProfile
-              ? normalizeMinutes(
-                  noteModalSelectedProfile.durationMinutes ?? settings.examDurationMinutes,
-                )
-              : 0,
-          );
-        }
-      }
-    };
-
-    void resolveNoteModalSummary();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    examFiles,
-    isExamNoteFiles,
-    noteFilesDialogOpen,
-    noteModalSelectedProfile,
-    noteModalSummarySelectedCount,
-    selectedExamFilePaths,
-    settings.examDurationMinutes,
-    settings.examTaskTypeDefaultPoints,
-    settings.examTaskTypeDefaultTimeSeconds,
-  ]);
-  const handleNoteModalRunProfileChange = useCallback(
-    (profileId: string) => {
-      const nextProfileId = profileId.trim() || null;
-      noteModalProfileSelectionInitializedRef.current = true;
-      setNoteModalSelectedProfileId(nextProfileId);
-      if (!nextProfileId) {
-        return;
-      }
-      setSelectedPointsProfileId(nextProfileId);
-    },
-    [setSelectedPointsProfileId],
+    isNoteModalOpen &&
+      noteDialogSection &&
+      noteDialogSection !== "dashboard" &&
+      noteDialogSection !== "exam",
   );
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
   const closeBinding = useMemo(
@@ -488,31 +297,6 @@ const AppContent = () => {
   }, [closeBinding, closeCommand]);
 
   useEffect(() => {
-    if (!noteModalProfileSelectionInitializedRef.current) {
-      if (pointsProfiles.loading) {
-        return;
-      }
-      noteModalProfileSelectionInitializedRef.current = true;
-      setNoteModalSelectedProfileId(
-        pointsProfiles.selectedProfileId ?? pointsProfiles.defaultProfileId ?? null,
-      );
-      return;
-    }
-    if (
-      noteModalSelectedProfileId &&
-      !pointsProfiles.profiles.some((profile) => profile.id === noteModalSelectedProfileId)
-    ) {
-      setNoteModalSelectedProfileId(pointsProfiles.defaultProfileId ?? null);
-    }
-  }, [
-    noteModalSelectedProfileId,
-    pointsProfiles.defaultProfileId,
-    pointsProfiles.loading,
-    pointsProfiles.profiles,
-    pointsProfiles.selectedProfileId,
-  ]);
-
-  useEffect(() => {
     if (!isNoteModalOpen) {
       return;
     }
@@ -545,7 +329,7 @@ const AppContent = () => {
     noteWasOpenRef.current = isNoteModalOpen;
   }, [isNoteModalOpen]);
 
-  const noteModalTitle = isExamNoteFiles ? "Exam Files" : "Note";
+  const noteModalTitle = "Note";
 
   useEffect(() => {
     if (!nextGate) {
@@ -704,6 +488,8 @@ const AppContent = () => {
             isRunSummaryNoteActionActive={
               isNoteModalOpen && noteDialogSection === "exam"
             }
+            isExamFilesNoteOpen={isNoteModalOpen && noteDialogSection === "exam"}
+            onCloseExamFilesNote={handleNoteModalClose}
           />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage onSectionSelect={handleStudySectionSelect} />
@@ -718,39 +504,14 @@ const AppContent = () => {
         onClose={handleNoteModalClose}
         title={noteModalTitle}
       >
-        {isExamNoteFiles ? (
-          <ExamFilePanel
-            files={examFiles}
-            listState={examFilesState}
-            listError={examFilesError}
-            selectedPaths={selectedExamFilePaths}
-            vaultPath={vault.vaultPath}
-            compactSummary={{
-              maxPoints: noteModalSummaryMaxPoints,
-              minDurationMinutes: noteModalSummaryMinDurationMinutes,
-            }}
-            selectedProfileId={noteModalSelectedProfileId}
-            profileOptions={examRunProfileOptions}
-            onProfileChange={handleNoteModalRunProfileChange}
-            onToggleFile={actions.handleToggleExamFileSelection}
-            onSetSelectedPaths={actions.handleSetSelectedExamFiles}
-            onClearSelection={actions.handleClearSelectedExamFiles}
-            onMoveSelectedFile={actions.handleMoveSelectedExamFile}
-            showClearSelectionButton={false}
-            listScrollMode="external"
-            combinationMode={noteModalCombinationMode}
-            onCombinationModeChange={setNoteModalCombinationMode}
-          />
-        ) : (
-          <NoteFilesPanel
-            files={flashcardNoteFiles}
-            listState={flashcardNoteFilesState}
-            listError={flashcardNoteFilesError}
-            selectedFile={preview.selectedFile}
-            vaultPath={vault.vaultPath}
-            onSelectFile={actions.handleSelectFile}
-          />
-        )}
+        <NoteFilesPanel
+          files={flashcardNoteFiles}
+          listState={flashcardNoteFilesState}
+          listError={flashcardNoteFilesError}
+          selectedFile={preview.selectedFile}
+          vaultPath={vault.vaultPath}
+          onSelectFile={actions.handleSelectFile}
+        />
       </NoteModal>
       <ModalShell isOpen={isHelpOpen} title="Help" onClose={handleCloseHelp}>
         <div className="hub-modal-scroll">

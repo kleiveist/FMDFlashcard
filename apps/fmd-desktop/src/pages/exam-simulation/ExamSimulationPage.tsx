@@ -33,6 +33,7 @@ import {
   resolveExamPhaseButton,
   type ExamStageControls,
 } from "../../components/UserToolsPanel";
+import { NoteModal } from "../../components/NoteModal";
 import { ExamCorrectionHost } from "./components/ExamCorrectionHost";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
@@ -63,12 +64,16 @@ type ExamSimulationPageProps = {
   runSummaryNoteActionEnabled?: boolean;
   onRunSummaryNoteAction?: () => void;
   isRunSummaryNoteActionActive?: boolean;
+  isExamFilesNoteOpen?: boolean;
+  onCloseExamFilesNote?: () => void;
 };
 
 export const ExamSimulationPage = ({
   runSummaryNoteActionEnabled = false,
   onRunSummaryNoteAction,
   isRunSummaryNoteActionActive = false,
+  isExamFilesNoteOpen = false,
+  onCloseExamFilesNote = () => undefined,
 }: ExamSimulationPageProps) => {
   const {
     settings,
@@ -793,6 +798,22 @@ export const ExamSimulationPage = ({
           />
         </div>
       </div>
+      <NoteModal
+        isOpen={isExamFilesNoteOpen}
+        onClose={onCloseExamFilesNote}
+        title="Exam Files"
+      >
+        <ExamFilePanel
+          {...examFilePanelProps}
+          onToggleFile={handleToggleExamSelection}
+          combinationMode={combinationMode}
+          onCombinationModeChange={handleCombinationModeChange}
+          compactSummary={{
+            maxPoints: plannedMaxPoints,
+            minDurationMinutes: previewDurationMinutes,
+          }}
+        />
+      </NoteModal>
     </div>
   );
 };

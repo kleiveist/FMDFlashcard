@@ -127,6 +127,11 @@ type SelectedExamIgnoredEntry = {
 
 const buildSelectionSignature = (paths: string[]) => paths.join("|");
 const STANDARD_RUN_PROFILE_NAME = "Standard (no profile)";
+let hasRunProfileLargeSelectionAutoReset = false;
+
+export const __resetRunProfileLargeSelectionAutoResetForTests = () => {
+  hasRunProfileLargeSelectionAutoReset = false;
+};
 
 const clampNumber = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -231,7 +236,6 @@ export const useExamSimulationViewModel = () => {
   const examRunRecordedRef = useRef(false);
   const selectionSignatureRef = useRef("");
   const runProfileSelectionInitializedRef = useRef(false);
-
 
   useEffect(() => {
     let cancelled = false;
@@ -345,6 +349,10 @@ export const useExamSimulationViewModel = () => {
         return;
       }
       runProfileSelectionInitializedRef.current = true;
+      if (!hasRunProfileLargeSelectionAutoReset && selectedExamCount > 2) {
+        hasRunProfileLargeSelectionAutoReset = true;
+        return;
+      }
       if (selectedRunProfileId === null && pointsProfiles.defaultProfileId) {
         setSelectedRunProfileId(pointsProfiles.defaultProfileId);
       }
@@ -360,8 +368,23 @@ export const useExamSimulationViewModel = () => {
     pointsProfiles.defaultProfileId,
     pointsProfiles.loading,
     pointsProfiles.profiles,
+    selectedExamCount,
     selectedRunProfileId,
   ]);
+
+  useEffect(() => {
+    if (!runProfileSelectionInitializedRef.current) {
+      return;
+    }
+    if (hasRunProfileLargeSelectionAutoReset || selectedExamCount <= 2) {
+      return;
+    }
+    hasRunProfileLargeSelectionAutoReset = true;
+    if (selectedRunProfileId !== null) {
+      setSelectedRunProfileId(null);
+      setSessionInvalidationMessage("");
+    }
+  }, [selectedExamCount, selectedRunProfileId]);
 
   const selectedRunProfile = useMemo(
     () =>
