@@ -5,39 +5,47 @@
  * - Verifiziert die Quellen-Badge-Steuerung im Correction-Host.
  */
 
-import { createElement } from "react";
+import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import type { ExamSessionTask } from "../../../lib/examMixedSession";
 import { ExamCorrectionHost } from "./ExamCorrectionHost";
 
-const buildProps = (showSourceBadge = true) => ({
-  task: {
-    id: "task-1",
-    index: 0,
-    rawLines: ["Question"],
-    prompt: "Question",
-    gradingMode: "auto",
-    sourceRange: { startLine: 0, endLine: 0 },
-    cardWrapper: false,
-    cardLines: ["Question"],
-    warnings: [],
-    sourceTitle: "exam.md",
-    sessionTaskId: "session-task-1",
-    sourceExamPath: "/vault/exam.md",
-    sourceTaskIndex: 0,
-    sessionIndex: 0,
-    originalTaskNumber: 1,
-    card: {
-      kind: "composite",
-      parts: [
-        {
-          kind: "free-text",
-          front: "Question",
-          back: "Answer",
-        },
-      ],
-    },
+type ExamCorrectionHostProps = ComponentProps<typeof ExamCorrectionHost>;
+
+const buildTask = (): ExamSessionTask => ({
+  id: "task-1",
+  index: 0,
+  rawLines: ["Question"],
+  prompt: "Question",
+  gradingMode: "auto",
+  sourceRange: { startLine: 0, endLine: 0 },
+  cardWrapper: false,
+  cardLines: ["Question"],
+  warnings: [],
+  sourceTitle: "exam.md",
+  sessionTaskId: "session-task-1",
+  sourceExamPath: "/vault/exam.md",
+  sourceTaskIndex: 0,
+  sessionIndex: 0,
+  originalTaskNumber: 1,
+  card: {
+    kind: "composite",
+    parts: [
+      {
+        kind: "free-text",
+        front: "Question",
+        back: "Answer",
+      },
+    ],
+    primaryType: "qa",
+    detectedTypes: ["qa"],
+    isMixed: false,
   },
+});
+
+const buildProps = (showSourceBadge = true): ExamCorrectionHostProps => ({
+  task: buildTask(),
   queueIndex: 0,
   queueLength: 1,
   maxPoints: 5,
