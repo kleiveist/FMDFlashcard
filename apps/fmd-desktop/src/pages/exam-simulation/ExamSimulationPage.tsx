@@ -171,6 +171,7 @@ export const ExamSimulationPage = ({
   const [isViewMode, setIsViewMode] = useState(false);
   const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
   const [overviewStatsTab, setOverviewStatsTab] = useState<StatsTab>("last");
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const autoViewModeRef = useRef(false);
   const isTableView = useLayoutMode() === "table";
   const handleOpenExamSettings = useCallback(() => {
@@ -198,9 +199,11 @@ export const ExamSimulationPage = ({
         : combinationMode === "sequential-shuffled"
           ? "Sequential + internal shuffle"
           : "Nested";
-  const runSelectionSummary = `${selectedExamCount} selected, ${selectedIncludedExamCount} included, ${plannedTaskCount} tasks total`;
+  const runSelectionSummary = `${selectedExamCount} selected, ${selectedIncludedExamCount} included`;
+  const runTasksTotalSummary = `${plannedTaskCount} tasks total`;
   const hasSelectedExamFiles = selectedExamCount > 0;
   const runSummarySelectionValue = hasSelectedExamFiles ? runSelectionSummary : "--";
+  const runSummaryTasksTotalValue = hasSelectedExamFiles ? runTasksTotalSummary : "--";
   const runSummaryMaxPointsValue = hasSelectedExamFiles ? String(plannedMaxPoints) : "--";
   const runSummaryModeValue = hasSelectedExamFiles ? runSummaryModeLabel : "--";
   const runSummaryProfileValue =
@@ -208,15 +211,17 @@ export const ExamSimulationPage = ({
   const runSummaryDurationValue = hasSelectedExamFiles
     ? `${previewDurationMinutes} minutes`
     : "--";
-  const runSummaryFlowText = `SELECTION ${runSelectionSummary} · MAX POINTS IN RUN ${plannedMaxPoints} · MODE ${runSummaryModeLabel} · PROFILE ${
+  const runSummaryFlowText = `SELECTION ${runSelectionSummary}, ${runTasksTotalSummary} · MAX POINTS IN RUN ${plannedMaxPoints} · MODE ${runSummaryModeLabel} · PROFILE ${
     selectedRunProfileName ?? STANDARD_RUN_PROFILE_LABEL
   } · DURATION ${previewDurationMinutes} minutes`;
   const runSummaryNoteTriggerEnabled =
-    runSummaryNoteActionEnabled && Boolean(onRunSummaryNoteAction);
+    stage === "idle" &&
+    runSummaryNoteActionEnabled &&
+    Boolean(onRunSummaryNoteAction);
   const runSummaryInfoClassName = [
     "exam-mix-info",
     runSummaryNoteTriggerEnabled ? "is-note-trigger" : "",
-    isRunSummaryNoteActionActive ? "active" : "",
+    runSummaryNoteTriggerEnabled && isRunSummaryNoteActionActive ? "active" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -232,6 +237,12 @@ export const ExamSimulationPage = ({
     },
     [onRunSummaryNoteAction, runSummaryNoteTriggerEnabled],
   );
+  useEffect(() => {
+    if (stage === "idle" || !isExamFilesNoteOpen) {
+      return;
+    }
+    onCloseExamFilesNote();
+  }, [isExamFilesNoteOpen, onCloseExamFilesNote, stage]);
 
   const examFilePanelProps = {
     files: examFiles,
@@ -248,6 +259,31 @@ export const ExamSimulationPage = ({
     onMoveSelectedFile: handleMoveSelectedExamFile,
     listScrollMode: "external" as const,
   };
+  const examFilesModalHeaderActions = (
+    <div className="exam-files-modal-header-kpis" aria-label="Exam files summary">
+      <span className="chip exam-file-selected-chip exam-file-panel-kpi">
+        {selectedExamCount} selected
+      </span>
+      <span className="chip exam-file-panel-kpi">{plannedTaskCount} tasks</span>
+      <span className="chip exam-file-panel-kpi">{plannedMaxPoints} max points</span>
+      <span className="chip exam-file-panel-kpi">{previewDurationMinutes} min duration</span>
+      {examFilesState === "loading" ? <span className="chip">Scanning...</span> : null}
+    </div>
+  );
+  const requestResetExam = useCallback(() => {
+    setIsResetConfirmOpen(true);
+  }, []);
+  const cancelResetExam = useCallback(() => {
+    setIsResetConfirmOpen(false);
+  }, []);
+  const confirmResetExam = useCallback(() => {
+    handleResetExam();
+    setIsResetConfirmOpen(false);
+  }, [handleResetExam]);
+  const handleBackToExamMenuReset = useCallback(() => {
+    setIsResetConfirmOpen(false);
+    handleResetExam();
+  }, [handleResetExam]);
   const examStageControls = useMemo<ExamStageControls>(
     () => ({
       stage,
@@ -259,17 +295,17 @@ export const ExamSimulationPage = ({
       onFinishManualScoring: handleFinishManualScoring,
       onFinalizeExam: handleFinalizeExam,
       onBackToResults: handleBackToFinishScoring,
-      onResetExam: handleResetExam,
+      onResetExam: requestResetExam,
     }),
     [
       canStartExam,
       handleBackToFinishScoring,
       handleFinalizeExam,
       handleFinishManualScoring,
-      handleResetExam,
       handleStartExam,
       handleStartScoring,
       handleSubmitExam,
+      requestResetExam,
       stage,
     ],
   );
@@ -544,7 +580,7 @@ export const ExamSimulationPage = ({
                 >
                   {phaseButton.label}
                 </button>
-                <button type="button" className="ghost small" onClick={handleResetExam}>
+                <button type="button" className="ghost small" onClick={requestResetExam}>
                   Reset
                 </button>
                 <button
@@ -584,6 +620,10 @@ export const ExamSimulationPage = ({
                 <div className="exam-mix-summary-block" role="listitem">
                   <p className="exam-mix-summary-label">Selection</p>
                   <p className="exam-mix-summary-value">{runSummarySelectionValue}</p>
+                </div>
+                <div className="exam-mix-summary-block" role="listitem">
+                  <p className="exam-mix-summary-label">Tasks total</p>
+                  <p className="exam-mix-summary-value">{runSummaryTasksTotalValue}</p>
                 </div>
                 <div className="exam-mix-summary-block" role="listitem">
                   <p className="exam-mix-summary-label">Max points in run</p>
@@ -673,6 +713,7 @@ export const ExamSimulationPage = ({
               onBack={handleManualScoringBack}
               onNext={handleManualScoringNext}
               onFinishScoring={handleFinishManualScoring}
+              onReset={requestResetExam}
             />
           ) : null}
           {stage === "finish_scoring" ? (
@@ -687,8 +728,17 @@ export const ExamSimulationPage = ({
                   >
                     {phaseButton.label}
                   </button>
-                  <button type="button" className="ghost small" onClick={handleResetExam}>
+                  <button type="button" className="ghost small" onClick={requestResetExam}>
                     Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="primary small finish-scoring-correction-button"
+                    onClick={handleStartCorrection}
+                    disabled={!hasCorrectionCandidates}
+                    title={hasCorrectionCandidates ? undefined : "No incorrect cards"}
+                  >
+                    Correction
                   </button>
                 </div>
                 <ExamResultsPanel
@@ -696,12 +746,6 @@ export const ExamSimulationPage = ({
                   helpEnabled={settings.examHelpEnabled}
                   vaultPath={vault.vaultPath}
                   vaultPngAssets={vault.pngAssets}
-                  correctionAction={{
-                    label: "Correction",
-                    onClick: handleStartCorrection,
-                    disabled: !hasCorrectionCandidates,
-                    title: hasCorrectionCandidates ? undefined : "No incorrect cards",
-                  }}
                   onToggleTaskCardWrapper={handleResultTaskCardWrapperToggle}
                   taskCardWrapPendingById={resultTaskCardWrapPendingById}
                   taskCardWrapErrorById={resultTaskCardWrapErrorById}
@@ -720,7 +764,7 @@ export const ExamSimulationPage = ({
                   >
                     {phaseButton.label}
                   </button>
-                  <button type="button" className="ghost small" onClick={handleResetExam}>
+                  <button type="button" className="ghost small" onClick={requestResetExam}>
                     Reset
                   </button>
                 </div>
@@ -757,6 +801,15 @@ export const ExamSimulationPage = ({
             results ? (
               <>
                 <section className="panel exam-panel">
+                  <div className="exam-panel-toolbar">
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleBackToExamMenuReset}
+                    >
+                      Back to Exam Menu
+                    </button>
+                  </div>
                   <div className="exam-overview">
                     <div className="exam-overview-body">
                       <ExamStatisticsPanel
@@ -770,6 +823,15 @@ export const ExamSimulationPage = ({
                   </div>
                 </section>
                 <section className="panel exam-panel">
+                  <div className="exam-panel-toolbar">
+                    <button
+                      type="button"
+                      className="ghost small"
+                      onClick={handleBackToExamMenuReset}
+                    >
+                      Back to Exam Menu
+                    </button>
+                  </div>
                   <ExamResultsPanel
                     results={results}
                     helpEnabled={settings.examHelpEnabled}
@@ -804,18 +866,39 @@ export const ExamSimulationPage = ({
         title="Exam Files"
         panelClassName="note-modal-panel-exam"
         bodyClassName="note-modal-body-exam"
+        headerActions={examFilesModalHeaderActions}
       >
         <ExamFilePanel
           {...examFilePanelProps}
           onToggleFile={handleToggleExamSelection}
           combinationMode={combinationMode}
           onCombinationModeChange={handleCombinationModeChange}
+          hidePanelStatus
           compactSummary={{
             maxPoints: plannedMaxPoints,
             taskCount: plannedTaskCount,
             minDurationMinutes: previewDurationMinutes,
           }}
         />
+      </NoteModal>
+      <NoteModal
+        isOpen={isResetConfirmOpen}
+        onClose={cancelResetExam}
+        title="Abort current exam?"
+      >
+        <div className="modal-body">
+          <p className="muted">
+            Do you really want to abort this exam? Your current progress will be lost.
+          </p>
+        </div>
+        <div className="modal-actions">
+          <button type="button" className="ghost small" onClick={cancelResetExam}>
+            Cancel
+          </button>
+          <button type="button" className="primary small" onClick={confirmResetExam}>
+            Abort exam
+          </button>
+        </div>
       </NoteModal>
     </div>
   );

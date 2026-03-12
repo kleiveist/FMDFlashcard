@@ -7,6 +7,7 @@ import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 
 const capturedExamFilePanelProps: Array<Record<string, unknown>> = [];
 const capturedNoteModalProps: Array<Record<string, unknown>> = [];
+const capturedExamResultsPanelProps: Array<Record<string, unknown>> = [];
 
 vi.mock("./hooks/useExamSimulationViewModel", () => ({
   useExamSimulationViewModel: vi.fn(),
@@ -29,7 +30,17 @@ vi.mock("../../components/NoteModal", () => ({
     if (!props.isOpen) {
       return null;
     }
-    return props.children ?? null;
+    return createElement(
+      "div",
+      { "data-testid": "note-modal-mock" },
+      createElement("h2", { "data-testid": "note-modal-title" }, props.title as never),
+      createElement(
+        "div",
+        { "data-testid": "note-modal-header-actions" },
+        props.headerActions as never,
+      ),
+      props.children as never,
+    );
   },
 }));
 
@@ -42,7 +53,10 @@ vi.mock("./components/ExamManualScoringPanel", () => ({
 }));
 
 vi.mock("./components/ExamResultsPanel", () => ({
-  ExamResultsPanel: () => null,
+  ExamResultsPanel: (props: Record<string, unknown>) => {
+    capturedExamResultsPanelProps.push(props);
+    return null;
+  },
 }));
 
 vi.mock("./components/ExamStatisticsPanel", () => ({
@@ -223,13 +237,14 @@ describe("ExamSimulationPage popup sync", () => {
     vi.clearAllMocks();
     capturedExamFilePanelProps.length = 0;
     capturedNoteModalProps.length = 0;
+    capturedExamResultsPanelProps.length = 0;
   });
 
-  it("passes shared mode/profile handlers to sidebar and popup and uses compact summary in popup", () => {
+  it("passes shared mode/profile handlers to sidebar and popup, renders popup header KPIs, and splits run summary tasks", () => {
     const viewModel = createViewModel();
     mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
 
-    const { cleanup } = render(
+    const { container, cleanup } = render(
       createElement(ExamSimulationPage, {
         runSummaryNoteActionEnabled: true,
         onRunSummaryNoteAction: vi.fn(),
@@ -254,6 +269,8 @@ describe("ExamSimulationPage popup sync", () => {
     expect(popupProps?.selectedProfileId).toBe("profile-1");
     expect(sidebarProps?.combinationMode).toBe("fully-mixed");
     expect(popupProps?.combinationMode).toBe("fully-mixed");
+    expect(sidebarProps?.hidePanelStatus).toBeUndefined();
+    expect(popupProps?.hidePanelStatus).toBe(true);
     expect(popupProps?.compactSummary).toEqual({
       maxPoints: 72,
       taskCount: 15,
@@ -268,6 +285,258 @@ describe("ExamSimulationPage popup sync", () => {
     );
     expect(examNoteModalProps?.panelClassName).toBe("note-modal-panel-exam");
     expect(examNoteModalProps?.bodyClassName).toBe("note-modal-body-exam");
+    expect(container.textContent).toContain("3 selected");
+    expect(container.textContent).toContain("15 tasks");
+    expect(container.textContent).toContain("72 max points");
+    expect(container.textContent).toContain("24 min duration");
+    expect(container.textContent).toContain("Selection");
+    expect(container.textContent).toContain("3 selected, 3 included");
+    expect(container.textContent).not.toContain("3 selected, 3 included, 15 tasks total");
+    expect(container.textContent).toContain("Tasks total");
+    expect(container.textContent).toContain("15 tasks total");
+
+    cleanup();
+  });
+
+  it("keeps run summary trigger interactive in idle stage", () => {
+    const noteActionSpy = vi.fn();
+    const viewModel = createViewModel();
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(
+      createElement(ExamSimulationPage, {
+        runSummaryNoteActionEnabled: true,
+        onRunSummaryNoteAction: noteActionSpy,
+      }),
+    );
+
+    const runSummary = container.querySelector<HTMLDivElement>(".exam-mix-info");
+    expect(runSummary).toBeTruthy();
+    expect(runSummary?.classList.contains("is-note-trigger")).toBe(true);
+    expect(runSummary?.getAttribute("tabindex")).toBe("0");
+    expect(runSummary?.getAttribute("aria-haspopup")).toBe("dialog");
+
+    act(() => {
+      runSummary?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      runSummary?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    });
+
+    expect(noteActionSpy).toHaveBeenCalledTimes(2);
+    cleanup();
+  });
+
+  it("disables run summary trigger outside idle stage and does not open exam files popup", () => {
+    const noteActionSpy = vi.fn();
+    const viewModel = {
+      ...createViewModel(),
+      stage: "running",
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(
+      createElement(ExamSimulationPage, {
+        runSummaryNoteActionEnabled: true,
+        onRunSummaryNoteAction: noteActionSpy,
+      }),
+    );
+
+    const runSummary = container.querySelector<HTMLDivElement>(".exam-mix-info");
+    expect(runSummary).toBeTruthy();
+    expect(runSummary?.classList.contains("is-note-trigger")).toBe(false);
+    expect(runSummary?.getAttribute("tabindex")).toBeNull();
+    expect(runSummary?.getAttribute("aria-haspopup")).toBeNull();
+    expect(runSummary?.getAttribute("title")).toBeNull();
+
+    act(() => {
+      runSummary?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      runSummary?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    });
+
+    expect(noteActionSpy).toHaveBeenCalledTimes(0);
+    cleanup();
+  });
+
+  it("auto-closes exam files popup when stage is not idle", () => {
+    const closeSpy = vi.fn();
+    const viewModel = {
+      ...createViewModel(),
+      stage: "running",
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { cleanup } = render(
+      createElement(ExamSimulationPage, {
+        isExamFilesNoteOpen: true,
+        onCloseExamFilesNote: closeSpy,
+      }),
+    );
+
+    expect(closeSpy).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it("opens reset confirmation on reset click, confirms via 'Abort exam', and can be canceled", () => {
+    const resetSpy = vi.fn();
+    const viewModel = {
+      ...createViewModel(),
+      handleResetExam: resetSpy,
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+    const resetButton = Array.from(container.querySelectorAll(".exam-panel-toolbar button")).find(
+      (button) => button.textContent?.trim() === "Reset",
+    );
+    expect(resetButton).toBeTruthy();
+
+    act(() => {
+      resetButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(resetSpy).toHaveBeenCalledTimes(0);
+    expect(container.textContent).toContain("Abort current exam?");
+    expect(container.textContent).toContain(
+      "Do you really want to abort this exam? Your current progress will be lost.",
+    );
+
+    const abortButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Abort exam",
+    );
+    expect(abortButton).toBeTruthy();
+
+    act(() => {
+      abortButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+    expect(container.textContent).not.toContain("Abort current exam?");
+
+    act(() => {
+      resetButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain("Abort current exam?");
+
+    const cancelButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Cancel",
+    );
+    expect(cancelButton).toBeTruthy();
+
+    act(() => {
+      cancelButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+    expect(container.textContent).not.toContain("Abort current exam?");
+
+    cleanup();
+  });
+
+  it("renders two 'Back to Exam Menu' buttons in finished layout and both reset immediately without confirmation", () => {
+    const resetSpy = vi.fn();
+    const viewModel = {
+      ...createViewModel(),
+      stage: "finished",
+      results: { runId: "run-1" } as never,
+      handleResetExam: resetSpy,
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+    const resetButtons = Array.from(container.querySelectorAll("button")).filter(
+      (button) => button.textContent?.trim() === "Back to Exam Menu",
+    );
+    expect(resetButtons).toHaveLength(2);
+    expect(container.querySelector('[data-testid="note-modal-mock"]')).toBeNull();
+    expect(
+      capturedExamFilePanelProps.some((entry) => typeof entry.compactSummary !== "undefined"),
+    ).toBe(false);
+
+    act(() => {
+      resetButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+    expect(container.textContent).not.toContain("Abort current exam?");
+    expect(container.textContent).not.toContain("Abort exam");
+
+    act(() => {
+      resetButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(resetSpy).toHaveBeenCalledTimes(2);
+    expect(container.textContent).not.toContain("Abort current exam?");
+    expect(container.textContent).not.toContain("Abort exam");
+
+    cleanup();
+  });
+
+  it("renders Correction in finish-scoring toolbar, triggers correction, and does not pass correctionAction to results panel", () => {
+    const startCorrectionSpy = vi.fn();
+    const viewModel = {
+      ...createViewModel(),
+      stage: "finish_scoring",
+      results: { runId: "run-1" } as never,
+      incorrectTaskResults: [{ id: "incorrect-1" }] as never,
+      handleStartCorrection: startCorrectionSpy,
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+    const correctionButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Correction",
+    );
+    expect(correctionButton).toBeTruthy();
+    expect(correctionButton?.classList.contains("primary")).toBe(true);
+    expect(correctionButton?.classList.contains("small")).toBe(true);
+    expect(correctionButton?.classList.contains("finish-scoring-correction-button")).toBe(true);
+    expect(correctionButton?.disabled).toBe(false);
+
+    const toolbarButtons = Array.from(container.querySelectorAll(".exam-panel-toolbar button")).map(
+      (button) => button.textContent?.trim() ?? "",
+    );
+    expect(toolbarButtons).toEqual(["Start", "Reset", "Correction"]);
+
+    act(() => {
+      correctionButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(startCorrectionSpy).toHaveBeenCalledTimes(1);
+
+    const finishScoringResultsProps =
+      capturedExamResultsPanelProps[capturedExamResultsPanelProps.length - 1];
+    expect(finishScoringResultsProps).toBeTruthy();
+    expect(finishScoringResultsProps?.correctionAction).toBeUndefined();
+
+    cleanup();
+  });
+
+  it("disables Correction in finish-scoring toolbar when no incorrect cards exist", () => {
+    const startCorrectionSpy = vi.fn();
+    const viewModel = {
+      ...createViewModel(),
+      stage: "finish_scoring",
+      results: { runId: "run-1" } as never,
+      incorrectTaskResults: [],
+      handleStartCorrection: startCorrectionSpy,
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+    const correctionButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Correction",
+    );
+    expect(correctionButton).toBeTruthy();
+    expect(correctionButton?.classList.contains("finish-scoring-correction-button")).toBe(true);
+    expect(correctionButton?.disabled).toBe(true);
+    expect(correctionButton?.getAttribute("title")).toBe("No incorrect cards");
+
+    const finishScoringResultsProps =
+      capturedExamResultsPanelProps[capturedExamResultsPanelProps.length - 1];
+    expect(finishScoringResultsProps?.correctionAction).toBeUndefined();
+    expect(startCorrectionSpy).toHaveBeenCalledTimes(0);
 
     cleanup();
   });
