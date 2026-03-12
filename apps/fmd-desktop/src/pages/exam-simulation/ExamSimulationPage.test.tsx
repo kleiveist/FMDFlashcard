@@ -379,10 +379,29 @@ describe("ExamSimulationPage popup sync", () => {
     cleanup();
   });
 
+  it("does not render reset button in idle exam toolbar", () => {
+    const viewModel = {
+      ...createViewModel(),
+      stage: "idle",
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+    const toolbarButtons = Array.from(container.querySelectorAll(".exam-panel-toolbar button")).map(
+      (button) => button.textContent?.trim() ?? "",
+    );
+    expect(toolbarButtons).toContain("Start");
+    expect(toolbarButtons).not.toContain("Reset");
+
+    cleanup();
+  });
+
   it("opens reset confirmation on reset click, confirms via 'Abort exam', and can be canceled", () => {
     const resetSpy = vi.fn();
     const viewModel = {
       ...createViewModel(),
+      stage: "running",
       handleResetExam: resetSpy,
     };
     mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);

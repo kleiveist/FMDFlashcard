@@ -580,9 +580,11 @@ export const ExamSimulationPage = ({
                 >
                   {phaseButton.label}
                 </button>
-                <button type="button" className="ghost small" onClick={requestResetExam}>
-                  Reset
-                </button>
+                {stage !== "idle" ? (
+                  <button type="button" className="ghost small" onClick={requestResetExam}>
+                    Reset
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className={`focus-toggle ${isViewMode ? "active" : ""}`}
