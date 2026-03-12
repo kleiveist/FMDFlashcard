@@ -16,6 +16,7 @@ type NoteModalProps = {
   title?: string;
   panelClassName?: string;
   bodyClassName?: string;
+  headerActions?: ReactNode;
 };
 
 export const NoteModal = ({
@@ -25,6 +26,7 @@ export const NoteModal = ({
   title = "Note",
   panelClassName,
   bodyClassName,
+  headerActions,
 }: NoteModalProps) => {
   useEffect(() => {
     if (!isOpen) {
@@ -49,6 +51,7 @@ export const NoteModal = ({
       onClose={onClose}
       className={["note-modal-panel", panelClassName].filter(Boolean).join(" ")}
       bodyClassName={["note-modal-body", bodyClassName].filter(Boolean).join(" ")}
+      headerActions={headerActions}
     >
       {children}
     </ModalShell>

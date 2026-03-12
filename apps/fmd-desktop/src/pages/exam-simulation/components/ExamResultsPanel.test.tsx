@@ -114,7 +114,7 @@ describe("ExamResultsPanel", () => {
     expect(container.textContent).not.toContain("Corrected");
 
     const correctionButton = container.querySelector<HTMLButtonElement>(
-      "button.ghost.small",
+      "button.primary.small",
     );
     expect(correctionButton?.textContent).toContain("Correction");
 
@@ -139,7 +139,7 @@ describe("ExamResultsPanel", () => {
     const { container, cleanup } = render(createElement(ExamResultsPanel, props));
 
     const correctionButton = container.querySelector<HTMLButtonElement>(
-      "button.ghost.small",
+      "button.primary.small",
     );
     expect(correctionButton?.disabled).toBe(true);
     expect(correctionButton?.title).toBe("No incorrect cards");

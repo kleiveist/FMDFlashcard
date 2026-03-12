@@ -84,4 +84,21 @@ describe("NoteModal", () => {
     expect(document.querySelector(".modal-backdrop")).toBeNull();
     cleanup();
   });
+
+  it("renders header actions in modal header", () => {
+    const { cleanup } = render(
+      createElement(
+        NoteModal,
+        {
+          isOpen: true,
+          onClose: () => undefined,
+          headerActions: createElement("span", { className: "chip" }, "7 tasks"),
+        },
+        createElement("div", null, "Note Files"),
+      ),
+    );
+
+    expect(document.querySelector(".modal-panel-header .chip")?.textContent).toBe("7 tasks");
+    cleanup();
+  });
 });

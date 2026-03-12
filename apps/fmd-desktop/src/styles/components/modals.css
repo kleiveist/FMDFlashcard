@@ -54,6 +54,15 @@
   min-width: 0;
 }
 
+.exam-files-modal-header-kpis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: min(100%, 760px);
+}
+
 .modal-panel-title {
   margin: 0;
   font-size: 1.05rem;

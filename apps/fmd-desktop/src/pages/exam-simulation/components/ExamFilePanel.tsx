@@ -53,6 +53,7 @@ type ExamFilePanelProps = {
   combinationMode?: ExamCombinationMode;
   onCombinationModeChange?: (mode: ExamCombinationMode) => void;
   className?: string;
+  hidePanelStatus?: boolean;
 };
 
 type ExamListRow =
@@ -98,6 +99,7 @@ export const ExamFilePanel = ({
   combinationMode,
   onCombinationModeChange,
   className,
+  hidePanelStatus = false,
 }: ExamFilePanelProps) => {
   const [search, setSearch] = useState("");
   const [scrollTop, setScrollTop] = useState(0);
@@ -432,27 +434,29 @@ export const ExamFilePanel = ({
         <div>
           <h2>Exam files</h2>
         </div>
-        <div className="exam-file-panel-status">
-          {compactSummary ? (
-            <div className="exam-file-panel-kpis">
-              <span className="chip exam-file-selected-chip exam-file-panel-kpi">
-                {selectedCount} selected
-              </span>
-              <span className="chip exam-file-panel-kpi">
-                {compactSummary.taskCount} tasks
-              </span>
-              <span className="chip exam-file-panel-kpi">
-                {compactSummary.maxPoints} max points
-              </span>
-              <span className="chip exam-file-panel-kpi">
-                {compactSummary.minDurationMinutes} min duration
-              </span>
-            </div>
-          ) : (
-            <span className="chip exam-file-selected-chip">{selectedCount} selected</span>
-          )}
-          {listState === "loading" ? <span className="chip">Scanning...</span> : null}
-        </div>
+        {!hidePanelStatus ? (
+          <div className="exam-file-panel-status">
+            {compactSummary ? (
+              <div className="exam-file-panel-kpis">
+                <span className="chip exam-file-selected-chip exam-file-panel-kpi">
+                  {selectedCount} selected
+                </span>
+                <span className="chip exam-file-panel-kpi">
+                  {compactSummary.taskCount} tasks
+                </span>
+                <span className="chip exam-file-panel-kpi">
+                  {compactSummary.maxPoints} max points
+                </span>
+                <span className="chip exam-file-panel-kpi">
+                  {compactSummary.minDurationMinutes} min duration
+                </span>
+              </div>
+            ) : (
+              <span className="chip exam-file-selected-chip">{selectedCount} selected</span>
+            )}
+            {listState === "loading" ? <span className="chip">Scanning...</span> : null}
+          </div>
+        ) : null}
       </div>
       <div className="panel-body exam-file-panel-body">
         {!vaultPath ? (

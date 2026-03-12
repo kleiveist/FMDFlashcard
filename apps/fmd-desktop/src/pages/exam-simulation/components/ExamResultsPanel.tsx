@@ -141,7 +141,7 @@ export const ExamResultsPanel = ({
           <div className="exam-task-header-actions">
             <button
               type="button"
-              className="ghost small"
+              className="primary small"
               onClick={correctionAction.onClick}
               disabled={correctionAction.disabled}
               title={correctionAction.title}

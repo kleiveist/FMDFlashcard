@@ -17,6 +17,7 @@ type ExamManualScoringPanelProps = {
   onBack: () => void;
   onNext: () => void;
   onFinishScoring: () => void;
+  onReset: () => void;
 };
 
 const noopOptionSelect = (
@@ -79,25 +80,28 @@ export const ExamManualScoringPanel = ({
   onBack,
   onNext,
   onFinishScoring,
+  onReset,
 }: ExamManualScoringPanelProps) => (
   <section className="panel scoring-panel">
     <header className="scoring-panel-header">
-      <div>
-        <p className="eyebrow">SCORING</p>
+      <div className="scoring-panel-header-main">
+        <div className="scoring-panel-header-actions">
+          <button
+            type="button"
+            className="primary small"
+            onClick={onFinishScoring}
+            disabled={finishDisabled}
+          >
+            Go to Correction
+          </button>
+          <button type="button" className="ghost small" onClick={onReset}>
+            Reset
+          </button>
+        </div>
         <h2>Manual scoring</h2>
         <p className="muted">
           Only QA tasks or mixed tasks containing QA are listed here.
         </p>
-      </div>
-      <div className="exam-task-header-actions">
-        <button
-          type="button"
-          className="primary small"
-          onClick={onFinishScoring}
-          disabled={finishDisabled}
-        >
-          Finish
-        </button>
       </div>
     </header>
 

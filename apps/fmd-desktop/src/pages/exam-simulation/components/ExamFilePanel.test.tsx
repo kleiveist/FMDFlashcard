@@ -145,6 +145,49 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
+  it("hides panel status when hidePanelStatus is enabled without changing default behavior", () => {
+    const hidden = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md"],
+        vaultPath: "/vault",
+        hidePanelStatus: true,
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    expect(hidden.container.querySelector(".exam-file-panel-status")).toBeNull();
+    hidden.cleanup();
+
+    const visible = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    expect(visible.container.querySelector(".exam-file-panel-status")).not.toBeNull();
+    visible.cleanup();
+  });
+
   it("shows only valid files and selected summary", () => {
     const { container, cleanup } = render(
       createElement(ExamFilePanel, {

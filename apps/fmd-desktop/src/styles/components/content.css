@@ -930,6 +930,10 @@ body.focus-mode .spaced-repetition-sidebar {
   margin-left: auto;
 }
 
+.finish-scoring-correction-button {
+  margin-left: auto;
+}
+
 .exam-mix-flow-text {
   margin: 0;
   white-space: normal;
@@ -942,7 +946,7 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-mix-info {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--ui-toolbar-gap);
   padding: var(--ui-space-md) var(--ui-space-lg);
   border-radius: var(--ui-radius-control);
@@ -965,7 +969,7 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-mix-summary-block {
   min-width: 0;
-  padding: var(--ui-space-sm) var(--ui-space-md);
+  padding: var(--ui-space-xs) var(--ui-space-sm);
   border: 1px solid var(--ui-border-hover);
   border-radius: var(--ui-radius-control);
   background: color-mix(in srgb, var(--panel) 90%, transparent);
@@ -2069,13 +2073,34 @@ body.focus-mode .spaced-repetition-sidebar {
   gap: 16px;
 }
 
-.scoring-panel-header,
 .correction-panel-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+.scoring-panel-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.scoring-panel-header-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.scoring-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-toolbar-gap);
+  flex-wrap: wrap;
+  margin-bottom: 6px;
 }
 
 .scoring-manual-list {
