@@ -231,6 +231,23 @@ const autoScoringCases: Array<
 ];
 
 describe("ExamTaskRunner", () => {
+  it("toggles the source badge via showSourceBadge", () => {
+    const task = {
+      ...buildTask(),
+      sourceTitle: "exam.md",
+    };
+
+    const withSourceMarkup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ task })),
+    );
+    expect(withSourceMarkup).toContain("Quelle: exam.md");
+
+    const withoutSourceMarkup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ task, showSourceBadge: false })),
+    );
+    expect(withoutSourceMarkup).not.toContain("Quelle: exam.md");
+  });
+
   it("hides free-text solutions during exam and reveals them after submit", () => {
     const examMarkup = renderToStaticMarkup(
       createElement(ExamTaskRunner, buildProps({ phase: "exam" })),

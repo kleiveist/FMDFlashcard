@@ -105,4 +105,55 @@ describe("ExamManualScoringPanel", () => {
     expect(onReset).toHaveBeenCalledTimes(1);
     cleanup();
   });
+
+  it("hides task source badge when showSourceBadge is false", () => {
+    const task = {
+      taskIndex: 0,
+      manualIndex: 0,
+      manualCount: 1,
+      maxPoints: 5,
+      partStates: [{}],
+      awardedPoints: 0,
+      task: {
+        id: "task-1",
+        index: 0,
+        rawLines: ["Question"],
+        prompt: "Question",
+        gradingMode: "manual",
+        sourceRange: { startLine: 0, endLine: 0 },
+        cardWrapper: false,
+        cardLines: ["Question"],
+        warnings: [],
+        sourceTitle: "exam.md",
+        card: {
+          kind: "composite",
+          parts: [
+            {
+              kind: "free-text",
+              front: "Question",
+              back: "Answer",
+            },
+          ],
+        },
+      },
+    } as never;
+
+    const { container, cleanup } = render(
+      createElement(ExamManualScoringPanel, {
+        task,
+        showSourceBadge: false,
+        finishDisabled: false,
+        canGoBack: false,
+        canGoNext: false,
+        onAwardedPointsChange: vi.fn(),
+        onBack: vi.fn(),
+        onNext: vi.fn(),
+        onFinishScoring: vi.fn(),
+        onReset: vi.fn(),
+      }),
+    );
+
+    expect(container.textContent).not.toContain("Quelle: exam.md");
+    cleanup();
+  });
 });

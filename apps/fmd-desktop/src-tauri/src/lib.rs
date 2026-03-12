@@ -142,6 +142,7 @@ struct AppSettings {
     exam_auto_cards_return_on_correct: Option<bool>,
     exam_grade_scale: Option<String>,
     exam_help_enabled: Option<bool>,
+    exam_show_task_sources: Option<bool>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 }
 
@@ -285,6 +286,7 @@ impl AppSettings {
             && self.exam_auto_cards_return_on_correct.is_none()
             && self.exam_grade_scale.is_none()
             && self.exam_help_enabled.is_none()
+            && self.exam_show_task_sources.is_none()
             && self.keyboard_shortcuts.is_none()
     }
 }
@@ -552,6 +554,7 @@ fn save_app_settings(
     exam_auto_cards_return_on_correct: Option<bool>,
     exam_grade_scale: Option<String>,
     exam_help_enabled: Option<bool>,
+    exam_show_task_sources: Option<bool>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
@@ -616,6 +619,7 @@ fn save_app_settings(
         exam_auto_cards_return_on_correct,
         exam_grade_scale,
         exam_help_enabled,
+        exam_show_task_sources,
         keyboard_shortcuts,
     };
     write_settings(&path, &settings)

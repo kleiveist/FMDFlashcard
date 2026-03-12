@@ -926,22 +926,37 @@ body.focus-mode .spaced-repetition-sidebar {
   min-width: 0;
 }
 
-.exam-panel-toolbar .focus-toggle {
+.exam-panel-toolbar .exam-toolbar-icon-button,
+.exam-panel-toolbar .exam-view-toggle {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.exam-panel-toolbar .exam-toolbar-icon-button svg {
+  width: var(--ui-control-icon-size);
+  height: var(--ui-control-icon-size);
+}
+
+.exam-panel-toolbar .exam-view-toggle svg {
+  width: var(--ui-control-icon-size);
+  height: var(--ui-control-icon-size);
+}
+
+.exam-panel-toolbar .exam-view-toggle {
   margin-left: auto;
+}
+
+:root[data-design-mode="modern"] .exam-panel-toolbar .exam-toolbar-icon-button,
+:root[data-design-mode="modern"] .exam-panel-toolbar .exam-view-toggle {
+  width: 30px;
+  height: 30px;
 }
 
 .finish-scoring-correction-button {
   margin-left: auto;
-}
-
-.exam-mix-flow-text {
-  margin: 0;
-  white-space: normal;
-  overflow-x: visible;
-  overflow-wrap: anywhere;
-  font-size: 0.74rem;
-  font-weight: 400;
-  color: var(--ink);
 }
 
 .exam-mix-info {
@@ -1313,8 +1328,9 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-file-panel-status {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   margin-left: auto;
   min-width: 0;
 }
@@ -1323,7 +1339,7 @@ body.focus-mode .spaced-repetition-sidebar {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   min-width: 0;
 }
 

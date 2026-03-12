@@ -552,10 +552,12 @@ export const SettingsPage = () => {
                 timeLimitEnabled={settings.examTimeLimitEnabled}
                 showTimeline={settings.examShowTimeline}
                 helpEnabled={settings.examHelpEnabled}
+                showTaskSources={settings.examShowTaskSources}
                 aiEvaluation={settings.examAiEvaluation}
                 onTimeLimitToggle={handleExamTimeLimitToggle}
                 setShowTimeline={settings.setExamShowTimeline}
                 setHelpEnabled={settings.setExamHelpEnabled}
+                setShowTaskSources={settings.setExamShowTaskSources}
               />
             )}
           </div>

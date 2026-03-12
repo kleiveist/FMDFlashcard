@@ -406,7 +406,7 @@ export const ClozeCard = ({
     if (segment.kind === "input") {
       const value = responses[segment.id] ?? "";
       const isBlankCorrect = reveal
-        ? isInputAnswerMatch(value, segment.solution)
+        ? isInputAnswerMatch(value, segment.solution, segment.acceptedSolutions)
         : false;
       const blankClasses = [
         "cloze-blank",

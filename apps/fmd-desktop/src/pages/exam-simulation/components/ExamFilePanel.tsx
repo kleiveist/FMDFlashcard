@@ -39,7 +39,6 @@ type ExamFilePanelProps = {
   listError: string;
   selectedPaths: string[];
   vaultPath: string | null;
-  runSummaryFlowText?: string;
   compactSummary?: ExamFilePanelCompactSummary;
   selectedProfileId: string | null;
   profileOptions: ProfileOption[];
@@ -85,7 +84,6 @@ export const ExamFilePanel = ({
   listError,
   selectedPaths,
   vaultPath,
-  runSummaryFlowText,
   compactSummary,
   selectedProfileId,
   profileOptions,
@@ -436,24 +434,24 @@ export const ExamFilePanel = ({
         </div>
         {!hidePanelStatus ? (
           <div className="exam-file-panel-status">
-            {compactSummary ? (
-              <div className="exam-file-panel-kpis">
-                <span className="chip exam-file-selected-chip exam-file-panel-kpi">
-                  {selectedCount} selected
-                </span>
-                <span className="chip exam-file-panel-kpi">
-                  {compactSummary.taskCount} tasks
-                </span>
-                <span className="chip exam-file-panel-kpi">
-                  {compactSummary.maxPoints} max points
-                </span>
-                <span className="chip exam-file-panel-kpi">
-                  {compactSummary.minDurationMinutes} min duration
-                </span>
-              </div>
-            ) : (
-              <span className="chip exam-file-selected-chip">{selectedCount} selected</span>
-            )}
+            <div className="exam-file-panel-kpis">
+              <span className="chip exam-file-selected-chip exam-file-panel-kpi">
+                {selectedCount} selected
+              </span>
+              {compactSummary ? (
+                <>
+                  <span className="chip exam-file-panel-kpi">
+                    {compactSummary.taskCount} tasks
+                  </span>
+                  <span className="chip exam-file-panel-kpi">
+                    {compactSummary.maxPoints} max points
+                  </span>
+                  <span className="chip exam-file-panel-kpi">
+                    {compactSummary.minDurationMinutes} min duration
+                  </span>
+                </>
+              ) : null}
+            </div>
             {listState === "loading" ? <span className="chip">Scanning...</span> : null}
           </div>
         ) : null}
@@ -480,9 +478,6 @@ export const ExamFilePanel = ({
                 ))}
               </select>
             </label>
-            {runSummaryFlowText && !compactSummary ? (
-              <p className="exam-mix-flow-text">{runSummaryFlowText}</p>
-            ) : null}
 
             <div className="exam-selected-summary">
               <div className="exam-selected-summary-head">

@@ -130,7 +130,7 @@ const isClozeBlankCorrect = (
 ) => {
   const value = responses[blank.id] ?? "";
   if (blank.kind === "input") {
-    return isInputAnswerMatch(value, blank.solution);
+    return isInputAnswerMatch(value, blank.solution, blank.acceptedSolutions);
   }
   return isDragAnswerMatch(tokenById.get(value) ?? "", blank.solution);
 };

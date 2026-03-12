@@ -80,6 +80,7 @@ type ExamTaskRunnerProps = {
   onNext: () => void;
   canGoBack: boolean;
   canGoNext: boolean;
+  showSourceBadge?: boolean;
   helpEnabled?: boolean;
   showNavigation?: boolean;
   scoringReadOnly?: boolean;
@@ -123,6 +124,7 @@ export const ExamTaskRunner = ({
   onNext,
   canGoBack,
   canGoNext,
+  showSourceBadge = true,
   helpEnabled = false,
   showNavigation = true,
   scoringReadOnly = false,
@@ -166,7 +168,7 @@ export const ExamTaskRunner = ({
           <p className="eyebrow">{phaseLabel}</p>
           <h2>{formatTaskTitle(taskIndex + 1, taskCount)}</h2>
           <p className="muted">Max points: {maxPoints}</p>
-          {task.sourceTitle ? (
+          {showSourceBadge && task.sourceTitle ? (
             <span className="exam-task-source-badge">
               Quelle: {task.sourceTitle}
             </span>

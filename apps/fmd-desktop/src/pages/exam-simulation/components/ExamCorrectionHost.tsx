@@ -17,6 +17,7 @@ type ExamCorrectionHostProps = {
   maxPoints: number;
   partStates: CompositePartState[];
   submitted: boolean;
+  showSourceBadge?: boolean;
   canGoBack: boolean;
   canGoNext: boolean;
   helpEnabled?: boolean;
@@ -73,6 +74,7 @@ export const ExamCorrectionHost = ({
   maxPoints,
   partStates,
   submitted,
+  showSourceBadge = true,
   canGoBack,
   canGoNext,
   helpEnabled = false,
@@ -109,7 +111,9 @@ export const ExamCorrectionHost = ({
             Practice only. This does not change your exam score.
           </p>
           <p className="muted">Max points: {maxPoints}</p>
-          <span className="exam-task-source-badge">Quelle: {task.sourceTitle}</span>
+          {showSourceBadge ? (
+            <span className="exam-task-source-badge">Quelle: {task.sourceTitle}</span>
+          ) : null}
         </div>
         <div className="exam-task-header-actions">
           <button

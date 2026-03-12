@@ -58,6 +58,43 @@ describe("evaluateFlashcardResult", () => {
 
     expect(result).toBe("incorrect");
   });
+
+  it("accepts alternative solutions for cloze input blanks", () => {
+    const clozeCard: Flashcard = {
+      kind: "cloze",
+      subtype: "cl",
+      question: "Normalform",
+      segments: [
+        { type: "text", value: "Die " },
+        {
+          type: "blank",
+          id: "blank-0",
+          kind: "input",
+          solution: "1NF",
+          acceptedSolutions: ["1 Normalform", "erste Normalform"],
+        },
+      ],
+      dragTokens: [],
+    };
+
+    const alternativeResult = evaluateFlashcardResult(
+      clozeCard,
+      0,
+      {},
+      {},
+      { 0: { "blank-0": "erste normalform" } },
+    );
+    expect(alternativeResult).toBe("correct");
+
+    const incorrectResult = evaluateFlashcardResult(
+      clozeCard,
+      0,
+      {},
+      {},
+      { 0: { "blank-0": "3NF" } },
+    );
+    expect(incorrectResult).toBe("incorrect");
+  });
 });
 
 describe("calculateFlashcardStats", () => {

@@ -49,10 +49,12 @@ type ExamTogglesPanelProps = {
   timeLimitEnabled: boolean;
   showTimeline: boolean;
   helpEnabled: boolean;
+  showTaskSources: boolean;
   aiEvaluation: ExamAiEvaluation;
   onTimeLimitToggle: (value: boolean) => void;
   setShowTimeline: (value: boolean) => void;
   setHelpEnabled: (value: boolean) => void;
+  setShowTaskSources: (value: boolean) => void;
 };
 
 const clampInput = (value: string) => {
@@ -187,10 +189,12 @@ export const ExamTogglesPanel = ({
   timeLimitEnabled,
   showTimeline,
   helpEnabled,
+  showTaskSources,
   aiEvaluation,
   onTimeLimitToggle,
   setShowTimeline,
   setHelpEnabled,
+  setShowTaskSources,
 }: ExamTogglesPanelProps) => (
   <section className="panel exam-settings-toggles-panel" id="exam-settings-section">
     <div className="panel-header">
@@ -239,6 +243,20 @@ export const ExamTogglesPanel = ({
             <span className="slider" />
           </label>
           <span className="muted">{helpEnabled ? "Enabled" : "Disabled"}</span>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">TASK SOURCES</span>
+        <div className="setting-inline">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={showTaskSources}
+              onChange={(event) => setShowTaskSources(event.target.checked)}
+            />
+            <span className="slider" />
+          </label>
+          <span className="muted">{showTaskSources ? "Shown" : "Hidden"}</span>
         </div>
       </div>
 

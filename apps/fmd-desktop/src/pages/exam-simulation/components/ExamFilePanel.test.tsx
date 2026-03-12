@@ -112,7 +112,7 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
-  it("renders compact header summary and suppresses the flow text", () => {
+  it("renders compact header KPI chips", () => {
     const { container, cleanup } = render(
       createElement(ExamFilePanel, {
         files,
@@ -120,7 +120,6 @@ describe("ExamFilePanel", () => {
         listError: "",
         selectedPaths: ["/vault/a.md"],
         vaultPath: "/vault",
-        runSummaryFlowText: "SELECTION sample summary text",
         compactSummary: {
           maxPoints: 42,
           taskCount: 12,
@@ -136,11 +135,12 @@ describe("ExamFilePanel", () => {
       }),
     );
 
+    const panelHeader = container.querySelector(".panel-header");
+    expect(panelHeader?.querySelectorAll(".exam-file-panel-kpi")).toHaveLength(4);
     expect(container.textContent).toContain("1 selected");
     expect(container.textContent).toContain("42 max points");
     expect(container.textContent).toContain("12 tasks");
     expect(container.textContent).toContain("18 min duration");
-    expect(container.textContent).not.toContain("SELECTION sample summary text");
 
     cleanup();
   });

@@ -7,6 +7,7 @@ import type { VaultPngAsset } from "../../../lib/tree";
 
 type ExamManualScoringPanelProps = {
   task: ExamManualTaskEntry | null;
+  showSourceBadge?: boolean;
   helpEnabled?: boolean;
   vaultPath?: string | null;
   vaultPngAssets?: VaultPngAsset[] | null;
@@ -70,6 +71,7 @@ const noopSubmit = (_taskIndex: number, _canSubmit: boolean) => {};
 
 export const ExamManualScoringPanel = ({
   task,
+  showSourceBadge = true,
   helpEnabled = false,
   vaultPath,
   vaultPngAssets,
@@ -114,9 +116,11 @@ export const ExamManualScoringPanel = ({
             </p>
             <h3>Manual review</h3>
             <p className="muted">Max points: {task.maxPoints}</p>
-            <span className="exam-task-source-badge">
-              Quelle: {task.task.sourceTitle}
-            </span>
+            {showSourceBadge ? (
+              <span className="exam-task-source-badge">
+                Quelle: {task.task.sourceTitle}
+              </span>
+            ) : null}
           </div>
         </header>
         {task.task.media?.length ? (

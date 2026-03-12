@@ -110,6 +110,11 @@ const render = (element: ReactElement) => {
   });
   return {
     container,
+    rerender: (next: ReactElement) => {
+      act(() => {
+        root.render(next);
+      });
+    },
     cleanup: () => {
       act(() => {
         root.unmount();
@@ -125,7 +130,15 @@ const createViewModel = () => {
     settings: {
       keyboardShortcuts: { bindings: {} },
       examHelpEnabled: true,
+      examShowTimeline: true,
+      examShowTaskSources: true,
+      examTimeLimitEnabled: true,
+      examAiEvaluation: { enabled: false, provider: null },
       examGradeScale: "standard-1-6",
+      setExamTimeLimitEnabled: noop,
+      setExamShowTimeline: noop,
+      setExamHelpEnabled: noop,
+      setExamShowTaskSources: noop,
     },
     vault: {
       vaultPath: "/vault",
@@ -240,7 +253,7 @@ describe("ExamSimulationPage popup sync", () => {
     capturedExamResultsPanelProps.length = 0;
   });
 
-  it("passes shared mode/profile handlers to sidebar and popup, renders popup header KPIs, and splits run summary tasks", () => {
+  it("passes shared mode/profile handlers to sidebar and popup, renders panel header KPIs, and splits run summary tasks", () => {
     const viewModel = createViewModel();
     mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
 
@@ -256,10 +269,10 @@ describe("ExamSimulationPage popup sync", () => {
 
     const sidebarProps = [...capturedExamFilePanelProps]
       .reverse()
-      .find((entry) => typeof entry.compactSummary === "undefined");
+      .find((entry) => entry.className === "exam-files-panel");
     const popupProps = [...capturedExamFilePanelProps]
       .reverse()
-      .find((entry) => typeof entry.compactSummary !== "undefined");
+      .find((entry) => typeof entry.className === "undefined");
 
     expect(sidebarProps).toBeTruthy();
     expect(popupProps).toBeTruthy();
@@ -270,7 +283,12 @@ describe("ExamSimulationPage popup sync", () => {
     expect(sidebarProps?.combinationMode).toBe("fully-mixed");
     expect(popupProps?.combinationMode).toBe("fully-mixed");
     expect(sidebarProps?.hidePanelStatus).toBeUndefined();
-    expect(popupProps?.hidePanelStatus).toBe(true);
+    expect(popupProps?.hidePanelStatus).toBeUndefined();
+    expect(sidebarProps?.compactSummary).toEqual({
+      maxPoints: 72,
+      taskCount: 15,
+      minDurationMinutes: 24,
+    });
     expect(popupProps?.compactSummary).toEqual({
       maxPoints: 72,
       taskCount: 15,
@@ -285,6 +303,7 @@ describe("ExamSimulationPage popup sync", () => {
     );
     expect(examNoteModalProps?.panelClassName).toBe("note-modal-panel-exam");
     expect(examNoteModalProps?.bodyClassName).toBe("note-modal-body-exam");
+    expect(examNoteModalProps?.headerActions).toBeUndefined();
     expect(container.textContent).toContain("3 selected");
     expect(container.textContent).toContain("15 tasks");
     expect(container.textContent).toContain("72 max points");
@@ -376,6 +395,70 @@ describe("ExamSimulationPage popup sync", () => {
     );
 
     expect(closeSpy).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it("does not render sidebar exam files outside idle stage", () => {
+    const viewModel = {
+      ...createViewModel(),
+      stage: "running",
+      examRunning: true,
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { cleanup } = render(createElement(ExamSimulationPage));
+
+    expect(capturedExamFilePanelProps).toHaveLength(0);
+    cleanup();
+  });
+
+  it("opens exam toggles popup from the toolbar settings button", () => {
+    const viewModel = createViewModel();
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+    const settingsButton = container.querySelector<HTMLButtonElement>(
+      '.exam-panel-toolbar button[aria-label="Settings"]',
+    );
+    expect(settingsButton).toBeTruthy();
+
+    act(() => {
+      settingsButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("Exam Toggles");
+    expect(container.textContent).toContain("TIME LIMIT");
+    expect(container.textContent).toContain("TASK SOURCES");
+    cleanup();
+  });
+
+  it("exits focus mode when stage switches to finished", () => {
+    let viewModel = {
+      ...createViewModel(),
+      stage: "running",
+      examRunning: true,
+    };
+    mockUseExamSimulationViewModel.mockImplementation(() => viewModel as never);
+
+    const { container, rerender, cleanup } = render(createElement(ExamSimulationPage));
+
+    const focusToggle = container.querySelector<HTMLButtonElement>(".focus-toggle");
+    expect(focusToggle).toBeTruthy();
+
+    act(() => {
+      focusToggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(document.body.classList.contains("focus-mode")).toBe(true);
+
+    viewModel = {
+      ...viewModel,
+      stage: "finished",
+      examRunning: true,
+    };
+    rerender(createElement(ExamSimulationPage));
+
+    expect(document.body.classList.contains("focus-mode")).toBe(false);
     cleanup();
   });
 

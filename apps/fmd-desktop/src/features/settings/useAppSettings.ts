@@ -165,6 +165,7 @@ export type AppSettings = {
   fast_flashcard_help_enabled?: boolean | null;
   exam_show_timeline?: boolean | null;
   exam_help_enabled?: boolean | null;
+  exam_show_task_sources?: boolean | null;
   spaced_repetition_boxes?: number | null;
   spaced_repetition_order?: string | null;
   spaced_repetition_page_size?: number | null;
@@ -242,6 +243,7 @@ type PersistUpdates = {
   fastFlashcardHelpEnabled?: boolean;
   examShowTimeline?: boolean;
   examHelpEnabled?: boolean;
+  examShowTaskSources?: boolean;
   spacedRepetitionBoxes?: SpacedRepetitionBoxes;
   spacedRepetitionOrder?: SpacedRepetitionOrder;
   spacedRepetitionPageSize?: SpacedRepetitionPageSize;
@@ -309,6 +311,7 @@ export type SettingsSnapshot = {
   fastFlashcardHelpEnabled: boolean;
   examShowTimeline: boolean;
   examHelpEnabled: boolean;
+  examShowTaskSources: boolean;
   spacedRepetitionBoxes: SpacedRepetitionBoxes;
   spacedRepetitionOrder: SpacedRepetitionOrder;
   spacedRepetitionPageSize: SpacedRepetitionPageSize;
@@ -370,6 +373,7 @@ const DEFAULT_FAST_FLASHCARD_AUTO_TIME_ENABLED = false;
 const DEFAULT_FAST_FLASHCARD_HELP_ENABLED = true;
 const DEFAULT_EXAM_SHOW_TIMELINE = true;
 const DEFAULT_EXAM_HELP_ENABLED = true;
+const DEFAULT_EXAM_SHOW_TASK_SOURCES = true;
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
 const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
@@ -941,6 +945,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   fast_flashcard_help_enabled: settings.fastFlashcardHelpEnabled,
   exam_show_timeline: settings.examShowTimeline,
   exam_help_enabled: settings.examHelpEnabled,
+  exam_show_task_sources: settings.examShowTaskSources,
   spaced_repetition_boxes: settings.spacedRepetitionBoxes,
   spaced_repetition_order: settings.spacedRepetitionOrder,
   spaced_repetition_page_size: settings.spacedRepetitionPageSize,
@@ -1147,6 +1152,10 @@ export const normalizeSettings = (
     typeof stored.exam_help_enabled === "boolean"
       ? stored.exam_help_enabled
       : DEFAULT_EXAM_HELP_ENABLED;
+  const storedExamShowTaskSources =
+    typeof stored.exam_show_task_sources === "boolean"
+      ? stored.exam_show_task_sources
+      : DEFAULT_EXAM_SHOW_TASK_SOURCES;
   const storedFlashcardPageSizeRaw = stored.flashcard_page_size;
   const migratedFlashcardPageSize =
     storedFlashcardPageSizeRaw === 10 ? 5 : storedFlashcardPageSizeRaw;
@@ -1337,6 +1346,7 @@ export const normalizeSettings = (
       fastFlashcardHelpEnabled: storedFastFlashcardHelpEnabled,
       examShowTimeline: storedExamShowTimeline,
       examHelpEnabled: storedExamHelpEnabled,
+      examShowTaskSources: storedExamShowTaskSources,
       spacedRepetitionBoxes: storedSpacedRepetitionBoxes,
       spacedRepetitionOrder: storedSpacedRepetitionOrder,
       spacedRepetitionPageSize: storedSpacedRepetitionPageSize,
@@ -1468,6 +1478,9 @@ export const useAppSettings = () => {
   );
   const [examHelpEnabled, setExamHelpEnabledState] = useState(
     DEFAULT_EXAM_HELP_ENABLED,
+  );
+  const [examShowTaskSources, setExamShowTaskSourcesState] = useState(
+    DEFAULT_EXAM_SHOW_TASK_SOURCES,
   );
   const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
     useState<SpacedRepetitionBoxes>(DEFAULT_SPACED_REPETITION_BOXES);
@@ -1824,6 +1837,10 @@ export const useAppSettings = () => {
     setExamHelpEnabledState(Boolean(value));
   }, []);
 
+  const setExamShowTaskSources = useCallback((value: boolean) => {
+    setExamShowTaskSourcesState(Boolean(value));
+  }, []);
+
   const setExamEditorShowMoveButtons = useCallback((value: boolean) => {
     setExamEditorShowMoveButtonsState(Boolean(value));
   }, []);
@@ -1939,6 +1956,7 @@ export const useAppSettings = () => {
       fastFlashcardHelpEnabled,
       examShowTimeline,
       examHelpEnabled,
+      examShowTaskSources,
       spacedRepetitionBoxes,
       spacedRepetitionOrder,
       spacedRepetitionPageSize,
@@ -1989,6 +2007,7 @@ export const useAppSettings = () => {
       examAutoCardsReturnOnCorrect,
       examGradeScale,
       examHelpEnabled,
+      examShowTaskSources,
       inputDebugEnabled,
       inputDebugRedactContent,
       keyboardShortcuts,
@@ -2084,6 +2103,7 @@ export const useAppSettings = () => {
           fastFlashcardHelpEnabled: settings.fastFlashcardHelpEnabled,
           examShowTimeline: settings.examShowTimeline,
           examHelpEnabled: settings.examHelpEnabled,
+          examShowTaskSources: settings.examShowTaskSources,
           spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
@@ -2175,6 +2195,8 @@ export const useAppSettings = () => {
           updates.fastFlashcardHelpEnabled ?? fastFlashcardHelpEnabled,
         examShowTimeline:
           updates.examShowTimeline ?? examShowTimeline,
+        examShowTaskSources:
+          updates.examShowTaskSources ?? examShowTaskSources,
         flashcardPageSize: updates.flashcardPageSize ?? flashcardPageSize,
         solutionRevealEnabled:
           updates.solutionRevealEnabled ?? solutionRevealEnabled,
@@ -2295,7 +2317,9 @@ export const useAppSettings = () => {
       showEmptyFolders,
       settingsLoaded,
       solutionRevealEnabled,
+      examShowTimeline,
       examHelpEnabled,
+      examShowTaskSources,
       spacedRepetitionBoxes,
       spacedRepetitionHelpEnabled,
       spacedRepetitionOrder,
@@ -2376,6 +2400,7 @@ export const useAppSettings = () => {
     setFastFlashcardHelpEnabledState(normalized.fastFlashcardHelpEnabled);
     setExamShowTimelineState(normalized.examShowTimeline);
     setExamHelpEnabledState(normalized.examHelpEnabled);
+    setExamShowTaskSourcesState(normalized.examShowTaskSources);
     setFlashcardPageSize(normalized.flashcardPageSize);
     setSolutionRevealEnabled(normalized.solutionRevealEnabled);
     setStatsResetMode(normalized.statsResetMode);
@@ -2612,6 +2637,7 @@ export const useAppSettings = () => {
     fastFlashcardHelpEnabled,
     examShowTimeline,
     examHelpEnabled,
+    examShowTaskSources,
     flashcardPageSize,
     flashcardScope,
     keyboardShortcuts,
@@ -2663,6 +2689,7 @@ export const useAppSettings = () => {
     setFastFlashcardHelpEnabled,
     setExamShowTimeline,
     setExamHelpEnabled,
+    setExamShowTaskSources,
     setKeyboardShortcuts,
     setKeyboardShortcutBinding,
     resetKeyboardShortcuts,

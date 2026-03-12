@@ -87,9 +87,18 @@ describe("normalizeSettings", () => {
 
     expect(settings.fastFlashcardAutoTimeEnabled).toBe(false);
     expect(settings.spacedRepetitionAutoTimeEnabled).toBe(false);
+    expect(settings.examShowTaskSources).toBe(true);
     expect(settings.examTaskTypeDefaultTimeSeconds).toEqual(
       DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
     );
+  });
+
+  it("restores stored task source visibility toggle", () => {
+    const { settings } = normalizeSettings({
+      exam_show_task_sources: false,
+    } as AppSettings);
+
+    expect(settings.examShowTaskSources).toBe(false);
   });
 
   it("restores stored auto-time settings and normalizes seconds map", () => {

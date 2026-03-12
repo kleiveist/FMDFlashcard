@@ -87,7 +87,14 @@ export type TrueFalseCard = {
 
 export type ClozeSegment =
   | { type: "text"; value: string }
-  | { type: "blank"; id: string; kind: "input" | "drag"; solution: string };
+  | {
+      type: "blank";
+      id: string;
+      kind: "input";
+      solution: string;
+      acceptedSolutions?: string[];
+    }
+  | { type: "blank"; id: string; kind: "drag"; solution: string };
 
 export type ClozeDragToken = {
   id: string;
@@ -140,8 +147,22 @@ export type ParseFlashcardsOptions = {
 
 export const normalizeInputAnswer = (value: string) => value.trim().toLowerCase();
 
-export const isInputAnswerMatch = (input: string, solution: string) =>
-  normalizeInputAnswer(input) === normalizeInputAnswer(solution);
+export const isInputAnswerMatch = (
+  input: string,
+  solution: string,
+  acceptedSolutions?: string[],
+) => {
+  const normalizedInput = normalizeInputAnswer(input);
+  if (normalizedInput === normalizeInputAnswer(solution)) {
+    return true;
+  }
+  if (!acceptedSolutions || acceptedSolutions.length === 0) {
+    return false;
+  }
+  return acceptedSolutions.some(
+    (candidate) => normalizedInput === normalizeInputAnswer(candidate),
+  );
+};
 
 export const normalizeDragAnswer = (value: string) => value.trim();
 
@@ -461,19 +482,37 @@ const parseClozeSegments = (lines: string[]) => {
           appendText(segments, segmentText.slice(nextInput));
           break;
         }
-        const rawSolution = segmentText.slice(nextInput + 1, end);
-        const solution = rawSolution.trim();
-        if (!solution) {
+        const rawPrimarySolution = segmentText.slice(nextInput + 1, end);
+        const primarySolution = rawPrimarySolution.trim();
+        if (!primarySolution) {
           return null;
+        }
+        let cursorAfterInput = end + 1;
+        const acceptedSolutions: string[] = [];
+        while (cursorAfterInput < segmentText.length && segmentText[cursorAfterInput] === "%") {
+          const chainedEnd = segmentText.indexOf("%", cursorAfterInput + 1);
+          if (chainedEnd === -1) {
+            break;
+          }
+          const rawChainedSolution = segmentText.slice(cursorAfterInput + 1, chainedEnd);
+          const chainedSolution = rawChainedSolution.trim();
+          if (!chainedSolution) {
+            return null;
+          }
+          acceptedSolutions.push(chainedSolution);
+          cursorAfterInput = chainedEnd + 1;
         }
         segments.push({
           type: "blank",
           id: `blank-${blankIndex}`,
           kind: "input",
-          solution,
+          solution: primarySolution,
+          ...(acceptedSolutions.length > 0
+            ? { acceptedSolutions }
+            : {}),
         });
         blankIndex += 1;
-        cursor = end + 1;
+        cursor = cursorAfterInput;
         continue;
       }
 

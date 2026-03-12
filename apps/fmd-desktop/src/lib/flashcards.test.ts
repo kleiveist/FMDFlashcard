@@ -1118,6 +1118,34 @@ Short cloze.
     }
   });
 
+  it("parses chained input blanks as one blank with accepted alternatives", () => {
+    const markdown = `#card
+Normalformen.
+Die %1NF%%1 Normalform%%erste Normalform% fordert %atomare% Werte.
+#endcard`;
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("cloze");
+    if (part.kind === "cloze") {
+      expect(part.segments).toEqual([
+        { type: "text", value: "Die " },
+        {
+          type: "blank",
+          id: "blank-0",
+          kind: "input",
+          solution: "1NF",
+          acceptedSolutions: ["1 Normalform", "erste Normalform"],
+        },
+        { type: "text", value: " fordert " },
+        { type: "blank", id: "blank-1", kind: "input", solution: "atomare" },
+        { type: "text", value: " Werte." },
+      ]);
+    }
+  });
+
   it("parses quoted drag tokens", () => {
     const markdown = `#card
 Drag token example.
@@ -1487,6 +1515,15 @@ Answer: Real answer
   it("matches input blanks case-insensitively with trim", () => {
     expect(isInputAnswerMatch(" Atomic Values ", "atomic values")).toBe(true);
     expect(isInputAnswerMatch("Atomic", "atom")).toBe(false);
+    expect(
+      isInputAnswerMatch("erste normalform", "1NF", [
+        "1 Normalform",
+        "erste Normalform",
+      ]),
+    ).toBe(true);
+    expect(
+      isInputAnswerMatch("3NF", "1NF", ["1 Normalform", "erste Normalform"]),
+    ).toBe(false);
   });
 
   it("matches drag tokens by trimmed exact value", () => {

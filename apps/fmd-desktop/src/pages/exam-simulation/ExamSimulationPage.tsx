@@ -34,6 +34,7 @@ import {
   type ExamStageControls,
 } from "../../components/UserToolsPanel";
 import { NoteModal } from "../../components/NoteModal";
+import { SettingsIcon } from "../../components/icons";
 import { ExamCorrectionHost } from "./components/ExamCorrectionHost";
 import { ExamFilePanel } from "./components/ExamFilePanel";
 import { ExamIdlePanel } from "./components/ExamIdlePanel";
@@ -43,6 +44,7 @@ import { ExamStatisticsPanel, type StatsTab } from "./components/ExamStatisticsP
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
 import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
+import { ExamTogglesPanel } from "../../components/settings/ExamSettingsSection";
 import { useLayoutMode } from "../../lib/layoutMode";
 import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
 import {
@@ -172,8 +174,15 @@ export const ExamSimulationPage = ({
   const [overviewTab, setOverviewTab] = useState<"ready" | "statistics">("ready");
   const [overviewStatsTab, setOverviewStatsTab] = useState<StatsTab>("last");
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isExamTogglesOpen, setIsExamTogglesOpen] = useState(false);
   const autoViewModeRef = useRef(false);
   const isTableView = useLayoutMode() === "table";
+  const openExamToggles = useCallback(() => {
+    setIsExamTogglesOpen(true);
+  }, []);
+  const closeExamToggles = useCallback(() => {
+    setIsExamTogglesOpen(false);
+  }, []);
   const handleOpenExamSettings = useCallback(() => {
     const focusTarget =
       missingExamSettings.find((item) => item.severity !== "warning") ??
@@ -211,9 +220,6 @@ export const ExamSimulationPage = ({
   const runSummaryDurationValue = hasSelectedExamFiles
     ? `${previewDurationMinutes} minutes`
     : "--";
-  const runSummaryFlowText = `SELECTION ${runSelectionSummary}, ${runTasksTotalSummary} · MAX POINTS IN RUN ${plannedMaxPoints} · MODE ${runSummaryModeLabel} · PROFILE ${
-    selectedRunProfileName ?? STANDARD_RUN_PROFILE_LABEL
-  } · DURATION ${previewDurationMinutes} minutes`;
   const runSummaryNoteTriggerEnabled =
     stage === "idle" &&
     runSummaryNoteActionEnabled &&
@@ -250,7 +256,11 @@ export const ExamSimulationPage = ({
     listError: examFilesError,
     selectedPaths: selectedExamPaths,
     vaultPath: vault.vaultPath,
-    runSummaryFlowText,
+    compactSummary: {
+      maxPoints: plannedMaxPoints,
+      taskCount: plannedTaskCount,
+      minDurationMinutes: previewDurationMinutes,
+    },
     selectedProfileId: selectedRunProfileId,
     profileOptions: runProfileOptions,
     onProfileChange: handleRunProfileChange,
@@ -259,17 +269,6 @@ export const ExamSimulationPage = ({
     onMoveSelectedFile: handleMoveSelectedExamFile,
     listScrollMode: "external" as const,
   };
-  const examFilesModalHeaderActions = (
-    <div className="exam-files-modal-header-kpis" aria-label="Exam files summary">
-      <span className="chip exam-file-selected-chip exam-file-panel-kpi">
-        {selectedExamCount} selected
-      </span>
-      <span className="chip exam-file-panel-kpi">{plannedTaskCount} tasks</span>
-      <span className="chip exam-file-panel-kpi">{plannedMaxPoints} max points</span>
-      <span className="chip exam-file-panel-kpi">{previewDurationMinutes} min duration</span>
-      {examFilesState === "loading" ? <span className="chip">Scanning...</span> : null}
-    </div>
-  );
   const requestResetExam = useCallback(() => {
     setIsResetConfirmOpen(true);
   }, []);
@@ -421,6 +420,13 @@ export const ExamSimulationPage = ({
       autoViewModeRef.current = false;
       return;
     }
+    if (stage === "finished") {
+      autoViewModeRef.current = false;
+      if (isViewMode) {
+        setIsViewMode(false);
+      }
+      return;
+    }
     if (!examRunning) {
       autoViewModeRef.current = false;
       if (isViewMode) {
@@ -432,13 +438,21 @@ export const ExamSimulationPage = ({
       autoViewModeRef.current = true;
       setIsViewMode(true);
     }
-  }, [examRunning, isTableView, isViewMode]);
+  }, [examRunning, isTableView, isViewMode, stage]);
 
   useEffect(() => {
     if (stage !== "idle" && overviewTab !== "ready") {
       setOverviewTab("ready");
     }
   }, [overviewTab, stage]);
+
+  useEffect(() => {
+    if (stage !== "finished" || !isViewMode) {
+      return;
+    }
+    autoViewModeRef.current = false;
+    setIsViewMode(false);
+  }, [isViewMode, stage]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -587,7 +601,16 @@ export const ExamSimulationPage = ({
                 ) : null}
                 <button
                   type="button"
-                  className={`focus-toggle ${isViewMode ? "active" : ""}`}
+                  className="ghost small exam-toolbar-icon-button"
+                  onClick={openExamToggles}
+                  aria-label="Settings"
+                  title="Settings"
+                >
+                  <SettingsIcon />
+                </button>
+                <button
+                  type="button"
+                  className={`focus-toggle exam-view-toggle ${isViewMode ? "active" : ""}`}
                   onClick={() => setIsViewMode((prev) => !prev)}
                   aria-pressed={isViewMode}
                   aria-label={viewLabel}
@@ -693,6 +716,7 @@ export const ExamSimulationPage = ({
                   onNext={handleTaskNext}
                   canGoBack={activeTaskIndex > 0}
                   canGoNext={activeTaskIndex < runTasks.length - 1}
+                  showSourceBadge={settings.examShowTaskSources}
                   helpEnabled={settings.examHelpEnabled}
                   vaultPath={vault.vaultPath}
                   vaultPngAssets={vault.pngAssets}
@@ -705,6 +729,7 @@ export const ExamSimulationPage = ({
           {stage === "scoring_manual" ? (
             <ExamManualScoringPanel
               task={activeManualTaskEntry}
+              showSourceBadge={settings.examShowTaskSources}
               helpEnabled={settings.examHelpEnabled}
               vaultPath={vault.vaultPath}
               vaultPngAssets={vault.pngAssets}
@@ -782,6 +807,7 @@ export const ExamSimulationPage = ({
               maxPoints={correctionActiveMaxPoints}
               partStates={correctionActivePartStates}
               submitted={correctionActiveSubmitted}
+              showSourceBadge={settings.examShowTaskSources}
               canGoBack={correctionCanGoBack}
               canGoNext={correctionCanGoNext}
               helpEnabled={settings.examHelpEnabled}
@@ -852,15 +878,17 @@ export const ExamSimulationPage = ({
             )
           ) : null}
         </div>
-        <div className="exam-sidebar">
-          <ExamFilePanel
-            {...examFilePanelProps}
-            onToggleFile={handleToggleExamSelection}
-            combinationMode={combinationMode}
-            onCombinationModeChange={handleCombinationModeChange}
-            className="exam-files-panel"
-          />
-        </div>
+        {stage === "idle" ? (
+          <div className="exam-sidebar">
+            <ExamFilePanel
+              {...examFilePanelProps}
+              onToggleFile={handleToggleExamSelection}
+              combinationMode={combinationMode}
+              onCombinationModeChange={handleCombinationModeChange}
+              className="exam-files-panel"
+            />
+          </div>
+        ) : null}
       </div>
       <NoteModal
         isOpen={isExamFilesNoteOpen}
@@ -868,19 +896,29 @@ export const ExamSimulationPage = ({
         title="Exam Files"
         panelClassName="note-modal-panel-exam"
         bodyClassName="note-modal-body-exam"
-        headerActions={examFilesModalHeaderActions}
       >
         <ExamFilePanel
           {...examFilePanelProps}
           onToggleFile={handleToggleExamSelection}
           combinationMode={combinationMode}
           onCombinationModeChange={handleCombinationModeChange}
-          hidePanelStatus
-          compactSummary={{
-            maxPoints: plannedMaxPoints,
-            taskCount: plannedTaskCount,
-            minDurationMinutes: previewDurationMinutes,
-          }}
+        />
+      </NoteModal>
+      <NoteModal
+        isOpen={isExamTogglesOpen}
+        onClose={closeExamToggles}
+        title="Exam Toggles"
+      >
+        <ExamTogglesPanel
+          timeLimitEnabled={settings.examTimeLimitEnabled}
+          showTimeline={settings.examShowTimeline}
+          helpEnabled={settings.examHelpEnabled}
+          showTaskSources={settings.examShowTaskSources}
+          aiEvaluation={settings.examAiEvaluation}
+          onTimeLimitToggle={settings.setExamTimeLimitEnabled}
+          setShowTimeline={settings.setExamShowTimeline}
+          setHelpEnabled={settings.setExamHelpEnabled}
+          setShowTaskSources={settings.setExamShowTaskSources}
         />
       </NoteModal>
       <NoteModal
