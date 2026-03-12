@@ -93,8 +93,8 @@ describe("NoteModal", () => {
           isOpen: true,
           onClose: () => undefined,
           headerActions: createElement("span", { className: "chip" }, "7 tasks"),
+          children: createElement("div", null, "Note Files"),
         },
-        createElement("div", null, "Note Files"),
       ),
     );
 
