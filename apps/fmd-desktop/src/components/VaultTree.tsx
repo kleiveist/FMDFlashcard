@@ -35,7 +35,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
-import { openPath } from "@tauri-apps/plugin-opener";
+import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { FileIcon, FolderIcon, RefreshIcon } from "./icons";
 import { InlineRenameLabel } from "./InlineRenameLabel";
 import { VaultCreateModal } from "./VaultCreateModal";
@@ -664,7 +664,10 @@ export const VaultTree = ({
   );
 
   const reportOpenError = useCallback((message: string, details: Record<string, unknown>) => {
-    setOpenError(message);
+    const errorText =
+      "error" in details ? asErrorMessage(details.error, "").trim() : "";
+    const fullMessage = errorText ? `${message} ${errorText}` : message;
+    setOpenError(fullMessage);
     console.error(message, details);
   }, []);
 
@@ -718,6 +721,19 @@ export const VaultTree = ({
             info,
           });
           return;
+        }
+        if (resolved.kind === "file" && resolved.fileAbsPath) {
+          try {
+            await revealItemInDir(resolved.fileAbsPath);
+            return;
+          } catch (revealError) {
+            console.warn("Could not reveal item in system explorer. Falling back to folder open.", {
+              relativePath,
+              folderAbsPath,
+              fileAbsPath: resolved.fileAbsPath,
+              revealError,
+            });
+          }
         }
         await openPath(folderAbsPath);
       } catch (error) {
