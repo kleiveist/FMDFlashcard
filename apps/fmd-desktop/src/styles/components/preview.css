@@ -1955,11 +1955,27 @@ textarea.preview-editor {
   padding: 0;
 }
 
-.markdown-hybrid-image-embed-replace-shell {
+.markdown-hybrid-image-embed-preview-shell {
   position: relative;
+}
+
+.markdown-hybrid-image-embed-replace-shell {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
   display: flex;
   justify-content: flex-end;
-  margin-top: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
+.markdown-hybrid-image-embed-preview-shell:hover .markdown-hybrid-image-embed-replace-shell,
+.markdown-hybrid-image-embed-preview-shell:focus-within .markdown-hybrid-image-embed-replace-shell,
+.markdown-hybrid-image-embed-replace-shell.is-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .markdown-hybrid-image-embed-replace-trigger {
@@ -2010,10 +2026,22 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-table-cell-image-replace-shell {
-  position: relative;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
   display: flex;
   justify-content: flex-end;
-  margin-top: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
+.markdown-hybrid-table-cell-preview:hover .markdown-hybrid-table-cell-image-replace-shell,
+.markdown-hybrid-table-cell-preview:focus-within .markdown-hybrid-table-cell-image-replace-shell,
+.markdown-hybrid-table-cell-image-replace-shell.is-open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .markdown-hybrid-table-cell-image-replace-trigger {
@@ -3424,6 +3452,7 @@ textarea.preview-editor {
 
 .markdown-table-cell-preview {
   display: block;
+  position: relative;
   width: 100%;
   max-width: 100%;
   min-height: 1.4rem;

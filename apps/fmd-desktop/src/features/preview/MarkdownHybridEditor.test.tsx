@@ -2263,10 +2263,14 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+      const replaceShell = container.querySelector<HTMLElement>(".markdown-hybrid-image-embed-replace-shell");
+      expect(replaceShell).toBeTruthy();
+      expect(replaceShell?.classList.contains("is-open")).toBe(false);
 
       dispatchClick(findImageEmbedReplaceTrigger(container, 2));
       const picker = container.querySelector<HTMLElement>(".markdown-hybrid-image-embed-picker");
       expect(picker).toBeTruthy();
+      expect(replaceShell?.classList.contains("is-open")).toBe(true);
 
       const searchInput = picker?.querySelector<HTMLInputElement>("input[type='search']") ?? null;
       expect(searchInput).toBeTruthy();
@@ -2276,6 +2280,7 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(picker?.querySelector<HTMLButtonElement>(".vault-png-picker-item") ?? null);
 
       expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeNull();
+      expect(replaceShell?.classList.contains("is-open")).toBe(false);
       expect(readMarkdown()).toContain("![[images/new.png|Old label]]");
       expect(readMarkdown()).not.toContain("![[images/old.png|Old label]]");
       expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
@@ -4060,6 +4065,63 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("opens the image picker on ![[ typing and inserts the selected image embed", () => {
+    withImmediateRaf(() => {
+      const vaultPngAssets = [
+        {
+          path: "/vault/images/new.png",
+          relative_path: "images/new.png",
+          file_name: "new.png",
+          extension: "png" as const,
+        },
+      ];
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("Alpha ");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="image-link-picker-trigger"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={vaultPngAssets}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Alpha ![[");
+
+      const picker = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-insert-menu .vault-png-picker",
+      );
+      expect(picker).toBeTruthy();
+
+      const searchInput = picker?.querySelector<HTMLInputElement>("input[type='search']") ?? null;
+      expect(searchInput).toBeTruthy();
+      dispatchClick(picker?.querySelector<HTMLButtonElement>(".vault-png-picker-item") ?? null);
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(readMarkdown()).toBe("Alpha ");
+      expect(textarea?.value).toBe("Alpha ![[images/new.png]]");
+      expect(textarea?.selectionStart).toBe("Alpha ![[images/new.png]]".length);
+      expect(container.querySelector(".markdown-hybrid-insert-menu .vault-png-picker")).toBeNull();
+
+      blurTextarea(textarea);
+      expect(readMarkdown()).toBe("Alpha ![[images/new.png]]");
+
+      cleanup();
+    });
+  });
+
   it("renders wikilinks as clickable inline page links with missing-page state in preview mode", () => {
     const onNavigateWikilink = vi.fn();
     const vaultFiles = [{ path: "/vault/Docs/Intro.md", relative_path: "Docs/Intro.md" }];
@@ -4948,6 +5010,191 @@ describe("MarkdownHybridEditor", () => {
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
       ).toHaveLength(1);
+      cleanup();
+    });
+  });
+
+  it("opens the page picker on [[ typing inside a table cell and inserts the selected page link", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| Alpha | Text |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="table-cell-page-link-picker-trigger"
+              markdown={markdown}
+              mode="edit"
+              vaultFiles={[
+                { path: "/vault/Alpha.md", relative_path: "Alpha.md" },
+                { path: "/vault/Folder/Beta.md", relative_path: "Folder/Beta.md" },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchMouseDown(
+        container.querySelector<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+      );
+      let textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea).toBeTruthy();
+
+      applyTextareaInput(textarea, "Alpha [[");
+      expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeTruthy();
+      dispatchClick(findPageLinkPickerOptionByLabel(container, "Beta"));
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea?.value).toBe("Alpha [[Folder/Beta]]");
+      expect(textarea?.selectionStart).toBe("Alpha [[Folder/Beta]]".length);
+      expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeNull();
+
+      act(() => {
+        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+      });
+      expect(readMarkdown()).toContain("[[Folder/Beta]]");
+
+      cleanup();
+    });
+  });
+
+  it("opens the image picker on ![[ typing inside a table cell and inserts the selected image embed", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| Alpha | Text |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="table-cell-image-link-picker-trigger"
+              markdown={markdown}
+              mode="edit"
+              vaultPngAssets={[
+                {
+                  path: "/vault/images/new.png",
+                  relative_path: "images/new.png",
+                  file_name: "new.png",
+                  extension: "png",
+                },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchMouseDown(
+        container.querySelector<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+      );
+      let textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea).toBeTruthy();
+
+      applyTextareaInput(textarea, "Alpha ![[");
+      const picker = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-table-block .markdown-hybrid-insert-menu .vault-png-picker",
+      );
+      expect(picker).toBeTruthy();
+      dispatchClick(picker?.querySelector<HTMLButtonElement>(".vault-png-picker-item") ?? null);
+
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea?.value).toBe("Alpha ![[images/new.png]]");
+      expect(textarea?.selectionStart).toBe("Alpha ![[images/new.png]]".length);
+      expect(container.querySelector(".markdown-hybrid-table-block .markdown-hybrid-insert-menu .vault-png-picker"))
+        .toBeNull();
+
+      act(() => {
+        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+      });
+      expect(readMarkdown()).toContain("![[images/new.png]]");
+
+      cleanup();
+    });
+  });
+
+  it("supports [[ typing autocomplete inside #card table segments without creating new blocks", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#card",
+        "| Visual | Description |",
+        "| --- | --- |",
+        "| Alpha | Text |",
+        "#endcard",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="card-table-cell-page-link-picker-trigger"
+              markdown={markdown}
+              mode="edit"
+              vaultFiles={[
+                { path: "/vault/Alpha.md", relative_path: "Alpha.md" },
+                { path: "/vault/Folder/Beta.md", relative_path: "Folder/Beta.md" },
+              ]}
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      dispatchMouseDown(
+        container.querySelector<HTMLElement>(
+          ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+        ),
+      );
+      let textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-editor",
+      );
+      expect(textarea).toBeTruthy();
+
+      applyTextareaInput(textarea, "Alpha [[");
+      expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeTruthy();
+      dispatchClick(findPageLinkPickerOptionByLabel(container, "Beta"));
+
+      textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-editor",
+      );
+      expect(textarea?.value).toBe("Alpha [[Folder/Beta]]");
+      expect(textarea?.selectionStart).toBe("Alpha [[Folder/Beta]]".length);
+
+      act(() => {
+        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+      });
+      expect(readMarkdown()).toContain("[[Folder/Beta]]");
+      expect(readMarkdown().match(/#card/g)).toHaveLength(1);
+      expect(readMarkdown().match(/#endcard/g)).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+      ).toHaveLength(1);
+
       cleanup();
     });
   });

@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -35,7 +36,7 @@ import {
   type MarkdownPipeTableRowBand,
 } from "../../lib/markdownTables";
 import { normalizeRelativePath } from "../../lib/path";
-import type { VaultPngAsset } from "../../lib/tree";
+import type { VaultFile, VaultPngAsset } from "../../lib/tree";
 
 export type MarkdownHybridTableCellLocation = {
   rowBand: MarkdownPipeTableRowBand;
@@ -62,6 +63,7 @@ type MarkdownHybridTableBlockProps = {
   active: boolean;
   allowCodeView?: boolean;
   disabled?: boolean;
+  vaultFiles?: VaultFile[] | null;
   vaultPngAssets?: VaultPngAsset[] | null;
   renderPreview: (markdown: string) => ReactNode;
   pendingActivation?: MarkdownHybridTableActivationRequest | null;
@@ -120,6 +122,38 @@ type TableCellImageReplacePickerState = {
   location: MarkdownHybridTableCellLocation;
   src: string;
   label?: string;
+  query: string;
+  highlightedIndex: number;
+};
+
+type TableCellPageLinkCandidate = {
+  id: string;
+  target: string;
+  wikilink: string;
+  label: string;
+  sublabel?: string;
+  searchText: string;
+};
+
+type TableCellPickerReplaceRange = {
+  start: number;
+  end: number;
+};
+
+type TableCellPageLinkPickerState = {
+  location: MarkdownHybridTableCellLocation;
+  replaceRange: TableCellPickerReplaceRange;
+  anchorLeft: number;
+  anchorTop: number;
+  query: string;
+  highlightedIndex: number;
+};
+
+type TableCellImageLinkPickerState = {
+  location: MarkdownHybridTableCellLocation;
+  replaceRange: TableCellPickerReplaceRange;
+  anchorLeft: number;
+  anchorTop: number;
   query: string;
   highlightedIndex: number;
 };
@@ -190,6 +224,197 @@ const resolveStandaloneCellPngEmbed = (source: string, scope: string) => {
     label: item.label,
   };
 };
+
+const inlineWikilinkOpenTrigger = /\[\[$/;
+const inlineImageEmbedOpenTrigger = /!\[\[$/;
+
+const stripMarkdownExtension = (value: string) => value.replace(/\.md$/i, "");
+
+const getPathBasename = (value: string) => {
+  const normalized = value.replace(/\\/g, "/");
+  const segments = normalized.split("/").filter(Boolean);
+  return segments[segments.length - 1] ?? normalized;
+};
+
+const resolveWikilinkLabelFromTarget = (target: string) => stripMarkdownExtension(getPathBasename(target.trim()));
+
+const buildPageLinkCandidates = (vaultFiles?: VaultFile[] | null): TableCellPageLinkCandidate[] => {
+  if (!vaultFiles || vaultFiles.length === 0) {
+    return [];
+  }
+  const seenTargets = new Set<string>();
+  const candidates: TableCellPageLinkCandidate[] = [];
+
+  for (const file of vaultFiles) {
+    const relative = normalizeRelativePath(file.relative_path ?? "");
+    if (!/\.md$/i.test(relative)) {
+      continue;
+    }
+    const normalizedRelative = relative.replace(/^\/+/, "");
+    const target = stripMarkdownExtension(normalizedRelative);
+    if (!target) {
+      continue;
+    }
+    const targetKey = target.toLowerCase();
+    if (seenTargets.has(targetKey)) {
+      continue;
+    }
+    seenTargets.add(targetKey);
+    const label = resolveWikilinkLabelFromTarget(target);
+    candidates.push({
+      id: `${targetKey}:${normalizedRelative.toLowerCase()}`,
+      target,
+      wikilink: `[[${target}]]`,
+      label,
+      sublabel: normalizedRelative === `${label}.md` ? undefined : normalizedRelative,
+      searchText: `${label} ${target} ${normalizedRelative}`.toLowerCase(),
+    });
+  }
+
+  candidates.sort((left, right) => {
+    const labelCompare = left.label.localeCompare(right.label, undefined, { sensitivity: "base" });
+    if (labelCompare !== 0) {
+      return labelCompare;
+    }
+    return left.target.localeCompare(right.target, undefined, { sensitivity: "base" });
+  });
+
+  return candidates;
+};
+
+const filterPageLinkCandidates = (candidates: TableCellPageLinkCandidate[], query: string) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return candidates;
+  }
+  return candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery));
+};
+
+const detectTypedPageLinkTrigger = (
+  value: string,
+  selectionStart: number | null | undefined,
+): TableCellPickerReplaceRange | null => {
+  if (typeof selectionStart !== "number") {
+    return null;
+  }
+  const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
+  const before = value.slice(0, safeSelectionStart);
+  if (safeSelectionStart >= 3 && value[safeSelectionStart - 3] === "!") {
+    return null;
+  }
+  if (!inlineWikilinkOpenTrigger.test(before)) {
+    return null;
+  }
+  return {
+    start: safeSelectionStart - 2,
+    end: safeSelectionStart,
+  };
+};
+
+const detectTypedImageEmbedTrigger = (
+  value: string,
+  selectionStart: number | null | undefined,
+): TableCellPickerReplaceRange | null => {
+  if (typeof selectionStart !== "number") {
+    return null;
+  }
+  const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
+  const before = value.slice(0, safeSelectionStart);
+  if (!inlineImageEmbedOpenTrigger.test(before)) {
+    return null;
+  }
+  return {
+    start: safeSelectionStart - 3,
+    end: safeSelectionStart,
+  };
+};
+
+const escapeHtmlForMirror = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+const resolveTextareaCaretAnchor = (
+  textarea: HTMLTextAreaElement,
+  container: HTMLElement,
+  caret: number,
+) => {
+  const safeCaret = Math.max(0, Math.min(caret, textarea.value.length));
+  const computed = window.getComputedStyle(textarea);
+  const mirror = document.createElement("div");
+  const mirrorStyle = mirror.style;
+  mirrorStyle.position = "absolute";
+  mirrorStyle.visibility = "hidden";
+  mirrorStyle.pointerEvents = "none";
+  mirrorStyle.zIndex = "-1";
+  mirrorStyle.top = "0";
+  mirrorStyle.left = "-99999px";
+  mirrorStyle.whiteSpace = "pre-wrap";
+  mirrorStyle.wordBreak = "break-word";
+  mirrorStyle.overflowWrap = "break-word";
+  mirrorStyle.boxSizing = "border-box";
+  mirrorStyle.width = `${textarea.clientWidth}px`;
+  mirrorStyle.padding = computed.padding;
+  mirrorStyle.border = computed.border;
+  mirrorStyle.font = computed.font;
+  mirrorStyle.fontFamily = computed.fontFamily;
+  mirrorStyle.fontSize = computed.fontSize;
+  mirrorStyle.fontWeight = computed.fontWeight;
+  mirrorStyle.fontStyle = computed.fontStyle;
+  mirrorStyle.fontVariant = computed.fontVariant;
+  (mirrorStyle as CSSStyleDeclaration & { fontStretch?: string }).fontStretch =
+    (computed as CSSStyleDeclaration & { fontStretch?: string }).fontStretch ?? "normal";
+  mirrorStyle.lineHeight = computed.lineHeight;
+  mirrorStyle.letterSpacing = computed.letterSpacing;
+  mirrorStyle.textTransform = computed.textTransform;
+  mirrorStyle.textIndent = computed.textIndent;
+  (mirrorStyle as CSSStyleDeclaration & { tabSize?: string }).tabSize =
+    (computed as CSSStyleDeclaration & { tabSize?: string }).tabSize ?? "8";
+
+  const beforeText = escapeHtmlForMirror(textarea.value.slice(0, safeCaret))
+    .replace(/\n$/g, "\n ");
+  mirror.innerHTML = `${beforeText}<span data-md-caret-anchor=\"true\">&#8203;</span>`;
+  document.body.appendChild(mirror);
+
+  const marker = mirror.querySelector<HTMLElement>("[data-md-caret-anchor='true']");
+  const mirrorRect = mirror.getBoundingClientRect();
+  const markerRect = marker?.getBoundingClientRect() ?? mirrorRect;
+  const textareaRect = textarea.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  const resolvedLineHeight = Number.parseFloat(computed.lineHeight);
+  const lineHeight = Number.isFinite(resolvedLineHeight) && resolvedLineHeight > 0
+    ? resolvedLineHeight
+    : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
+
+  const anchorLeft = textareaRect.left - containerRect.left + container.scrollLeft +
+    (markerRect.left - mirrorRect.left) - textarea.scrollLeft;
+  const anchorTop = textareaRect.top - containerRect.top + container.scrollTop +
+    (markerRect.top - mirrorRect.top) - textarea.scrollTop + lineHeight;
+
+  mirror.remove();
+  return {
+    left: Math.max(0, Math.round(anchorLeft)),
+    top: Math.max(0, Math.round(anchorTop)),
+  };
+};
+
+const TablePagePickerFileIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M8 4.8h6.8l3.2 3.2V19a1.5 1.5 0 0 1-1.5 1.5h-8.5A1.5 1.5 0 0 1 6.5 19V6.3A1.5 1.5 0 0 1 8 4.8z" />
+    <path d="M14.8 4.8V8h3.2" />
+    <line x1="9.3" y1="12.2" x2="15.8" y2="12.2" />
+    <line x1="9.3" y1="15.4" x2="14" y2="15.4" />
+  </svg>
+);
 
 const TABLE_ROW_GUTTER_WIDTH_PX = 36;
 const TABLE_COLUMN_WEIGHT_MIN = 1;
@@ -347,6 +572,7 @@ export const MarkdownHybridTableBlock = ({
   active,
   allowCodeView = true,
   disabled = false,
+  vaultFiles,
   vaultPngAssets,
   renderPreview,
   pendingActivation,
@@ -377,6 +603,9 @@ export const MarkdownHybridTableBlock = ({
   const cellTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const codeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const cellImageReplacePickerRef = useRef<HTMLDivElement | null>(null);
+  const cellPageLinkPickerRef = useRef<HTMLDivElement | null>(null);
+  const cellPageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const cellTypedImageLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const tablePointerDragRef = useRef<TablePointerDragState | null>(null);
   const pendingCellCommitRef = useRef<{ location: MarkdownHybridTableCellLocation; value: string } | null>(null);
   const columnLaneRefs = useRef<Array<HTMLElement | null>>([]);
@@ -397,10 +626,24 @@ export const MarkdownHybridTableBlock = ({
   const [dropIndicator, setDropIndicator] = useState<TableDropIndicator | null>(null);
   const [cellImageReplacePickerState, setCellImageReplacePickerState] =
     useState<TableCellImageReplacePickerState | null>(null);
+  const [cellPageLinkPickerState, setCellPageLinkPickerState] = useState<TableCellPageLinkPickerState | null>(null);
+  const [cellImageLinkPickerState, setCellImageLinkPickerState] = useState<TableCellImageLinkPickerState | null>(null);
   const isDirty = cellDirty || codeDirty;
+  const pageLinkCandidates = useMemo(
+    () => buildPageLinkCandidates(vaultFiles),
+    [vaultFiles],
+  );
+  const filteredCellPageLinkCandidates = useMemo(
+    () => filterPageLinkCandidates(pageLinkCandidates, cellPageLinkPickerState?.query ?? ""),
+    [cellPageLinkPickerState?.query, pageLinkCandidates],
+  );
   const imageLinkCandidates = useMemo(
     () => buildVaultImageCandidates(vaultPngAssets),
     [vaultPngAssets],
+  );
+  const filteredCellImageLinkCandidates = useMemo(
+    () => filterVaultImageCandidates(imageLinkCandidates, cellImageLinkPickerState?.query ?? ""),
+    [cellImageLinkPickerState?.query, imageLinkCandidates],
   );
   const filteredCellImageReplaceCandidates = useMemo(
     () => filterVaultImageCandidates(imageLinkCandidates, cellImageReplacePickerState?.query ?? ""),
@@ -461,6 +704,14 @@ export const MarkdownHybridTableBlock = ({
 
   const closeCellImageReplacePicker = useCallback(() => {
     setCellImageReplacePickerState(null);
+  }, []);
+
+  const closeCellPageLinkPicker = useCallback(() => {
+    setCellPageLinkPickerState(null);
+  }, []);
+
+  const closeCellImageLinkPicker = useCallback(() => {
+    setCellImageLinkPickerState(null);
   }, []);
 
   const flushActiveCell = useCallback(() => {
@@ -753,6 +1004,190 @@ export const MarkdownHybridTableBlock = ({
     };
   }, [cellImageReplacePickerState, closeCellImageReplacePicker]);
 
+  useEffect(() => {
+    if (!cellPageLinkPickerState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const input = cellPageLinkPickerSearchInputRef.current;
+      if (!input) {
+        return;
+      }
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+      input.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [cellPageLinkPickerState]);
+
+  useEffect(() => {
+    if (!cellImageLinkPickerState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const input = cellTypedImageLinkPickerRef.current?.querySelector<HTMLInputElement>(
+        "input[type='search']",
+      );
+      if (!input) {
+        return;
+      }
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+      input.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [cellImageLinkPickerState]);
+
+  useEffect(() => {
+    if (!cellPageLinkPickerState) {
+      return;
+    }
+    setCellPageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      if (!activeCell || !isSameCell(activeCell, current.location)) {
+        return null;
+      }
+      return current;
+    });
+  }, [activeCell, cellPageLinkPickerState]);
+
+  useEffect(() => {
+    if (!cellImageLinkPickerState) {
+      return;
+    }
+    setCellImageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      if (!activeCell || !isSameCell(activeCell, current.location)) {
+        return null;
+      }
+      return current;
+    });
+  }, [activeCell, cellImageLinkPickerState]);
+
+  useEffect(() => {
+    if (!cellPageLinkPickerState) {
+      return;
+    }
+    if (disabled || viewMode !== "grid" || !active || !activeCell) {
+      setCellPageLinkPickerState(null);
+    }
+  }, [active, activeCell, cellPageLinkPickerState, disabled, viewMode]);
+
+  useEffect(() => {
+    if (!cellImageLinkPickerState) {
+      return;
+    }
+    if (disabled || viewMode !== "grid" || !active || !activeCell) {
+      setCellImageLinkPickerState(null);
+    }
+  }, [active, activeCell, cellImageLinkPickerState, disabled, viewMode]);
+
+  useEffect(() => {
+    if (!cellPageLinkPickerState) {
+      return;
+    }
+    setCellPageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextMaxIndex = Math.max(0, filteredCellPageLinkCandidates.length - 1);
+      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+      if (nextIndex === current.highlightedIndex) {
+        return current;
+      }
+      return {
+        ...current,
+        highlightedIndex: nextIndex,
+      };
+    });
+  }, [cellPageLinkPickerState, filteredCellPageLinkCandidates.length]);
+
+  useEffect(() => {
+    if (!cellImageLinkPickerState) {
+      return;
+    }
+    setCellImageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextMaxIndex = Math.max(0, filteredCellImageLinkCandidates.length - 1);
+      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+      if (nextIndex === current.highlightedIndex) {
+        return current;
+      }
+      return {
+        ...current,
+        highlightedIndex: nextIndex,
+      };
+    });
+  }, [cellImageLinkPickerState, filteredCellImageLinkCandidates.length]);
+
+  useEffect(() => {
+    if (!cellPageLinkPickerState) {
+      return;
+    }
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (cellPageLinkPickerRef.current?.contains(target)) {
+        return;
+      }
+      closeCellPageLinkPicker();
+    };
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      closeCellPageLinkPicker();
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [cellPageLinkPickerState, closeCellPageLinkPicker]);
+
+  useEffect(() => {
+    if (!cellImageLinkPickerState) {
+      return;
+    }
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (cellTypedImageLinkPickerRef.current?.contains(target)) {
+        return;
+      }
+      closeCellImageLinkPicker();
+    };
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      closeCellImageLinkPicker();
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [cellImageLinkPickerState, closeCellImageLinkPicker]);
+
   const clearSelections = useCallback(() => {
     setRowSelection(null);
     setColumnSelection(null);
@@ -760,6 +1195,8 @@ export const MarkdownHybridTableBlock = ({
     setDragSource(null);
     setDropIndicator(null);
     setCellImageReplacePickerState(null);
+    setCellPageLinkPickerState(null);
+    setCellImageLinkPickerState(null);
   }, []);
 
   const selectRow = useCallback((rowIndex: number, options?: { shiftKey?: boolean; additiveKey?: boolean }) => {
@@ -956,6 +1393,8 @@ export const MarkdownHybridTableBlock = ({
         closeCellImageReplacePicker();
         return;
       }
+      setCellPageLinkPickerState(null);
+      setCellImageLinkPickerState(null);
       setContextMenuState(null);
       setCellImageReplacePickerState((current) =>
         current && isSameCell(current.location, location)
@@ -1098,6 +1537,202 @@ export const MarkdownHybridTableBlock = ({
       closeCellImageReplacePicker,
       filteredCellImageReplaceCandidates,
       handleCellImageReplaceSelectCandidate,
+    ],
+  );
+
+  const handleCellPageLinkPickerQueryChange = useCallback((value: string) => {
+    setCellPageLinkPickerState((current) =>
+      current
+        ? {
+            ...current,
+            query: value,
+            highlightedIndex: 0,
+          }
+        : current
+    );
+  }, []);
+
+  const handleCellPageLinkPickerSelectCandidate = useCallback(
+    (candidate: TableCellPageLinkCandidate) => {
+      if (!cellPageLinkPickerState || !activeCell || !isSameCell(activeCell, cellPageLinkPickerState.location)) {
+        closeCellPageLinkPicker();
+        return;
+      }
+      const replaceStart = Math.max(0, Math.min(cellPageLinkPickerState.replaceRange.start, cellDraft.length));
+      const replaceEnd = Math.max(replaceStart, Math.min(cellPageLinkPickerState.replaceRange.end, cellDraft.length));
+      const nextToken = candidate.wikilink;
+      const nextDraft = `${cellDraft.slice(0, replaceStart)}${nextToken}${cellDraft.slice(replaceEnd)}`;
+      const nextCaret = replaceStart + nextToken.length;
+      closeCellPageLinkPicker();
+      setCellDraft(nextDraft);
+      setCellDirty(nextDraft !== fromCellStorageValue(getCellValue(parsedModel, activeCell)));
+      window.requestAnimationFrame(() => {
+        const textarea = cellTextareaRef.current;
+        if (!textarea) {
+          return;
+        }
+        const safe = Math.max(0, Math.min(nextCaret, textarea.value.length));
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch {
+          textarea.focus();
+        }
+        textarea.setSelectionRange(safe, safe);
+      });
+    },
+    [activeCell, cellDraft, cellPageLinkPickerState, closeCellPageLinkPicker, parsedModel],
+  );
+
+  const handleCellPageLinkPickerSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (!cellPageLinkPickerState) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCellPageLinkPicker();
+        return;
+      }
+      if (filteredCellPageLinkCandidates.length === 0) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        setCellPageLinkPickerState((current) => {
+          if (!current) {
+            return current;
+          }
+          const nextIndex = (current.highlightedIndex + delta + filteredCellPageLinkCandidates.length) %
+            filteredCellPageLinkCandidates.length;
+          return {
+            ...current,
+            highlightedIndex: nextIndex,
+          };
+        });
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const candidate =
+          filteredCellPageLinkCandidates[cellPageLinkPickerState.highlightedIndex] ??
+          filteredCellPageLinkCandidates[0];
+        if (!candidate) {
+          return;
+        }
+        handleCellPageLinkPickerSelectCandidate(candidate);
+      }
+    },
+    [
+      cellPageLinkPickerState,
+      closeCellPageLinkPicker,
+      filteredCellPageLinkCandidates,
+      handleCellPageLinkPickerSelectCandidate,
+    ],
+  );
+
+  const handleCellImageLinkPickerQueryChange = useCallback((value: string) => {
+    setCellImageLinkPickerState((current) =>
+      current
+        ? {
+            ...current,
+            query: value,
+            highlightedIndex: 0,
+          }
+        : current
+    );
+  }, []);
+
+  const handleCellImageLinkPickerSelectCandidate = useCallback(
+    (candidate: VaultImageCandidate) => {
+      if (!cellImageLinkPickerState || !activeCell || !isSameCell(activeCell, cellImageLinkPickerState.location)) {
+        closeCellImageLinkPicker();
+        return;
+      }
+      const replaceStart = Math.max(0, Math.min(cellImageLinkPickerState.replaceRange.start, cellDraft.length));
+      const replaceEnd = Math.max(replaceStart, Math.min(cellImageLinkPickerState.replaceRange.end, cellDraft.length));
+      const nextToken = serializePngEmbed(candidate.relPath);
+      const nextDraft = `${cellDraft.slice(0, replaceStart)}${nextToken}${cellDraft.slice(replaceEnd)}`;
+      const nextCaret = replaceStart + nextToken.length;
+      closeCellImageLinkPicker();
+      setCellDraft(nextDraft);
+      setCellDirty(nextDraft !== fromCellStorageValue(getCellValue(parsedModel, activeCell)));
+      window.requestAnimationFrame(() => {
+        const textarea = cellTextareaRef.current;
+        if (!textarea) {
+          return;
+        }
+        const safe = Math.max(0, Math.min(nextCaret, textarea.value.length));
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch {
+          textarea.focus();
+        }
+        textarea.setSelectionRange(safe, safe);
+      });
+    },
+    [activeCell, cellDraft, cellImageLinkPickerState, closeCellImageLinkPicker, parsedModel],
+  );
+
+  const handleCellImageLinkPickerSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (!cellImageLinkPickerState) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCellImageLinkPicker();
+        return;
+      }
+      if (filteredCellImageLinkCandidates.length === 0) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        setCellImageLinkPickerState((current) => {
+          if (!current) {
+            return current;
+          }
+          const nextIndex = (current.highlightedIndex + delta + filteredCellImageLinkCandidates.length) %
+            filteredCellImageLinkCandidates.length;
+          return {
+            ...current,
+            highlightedIndex: nextIndex,
+          };
+        });
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const candidate =
+          filteredCellImageLinkCandidates[cellImageLinkPickerState.highlightedIndex] ??
+          filteredCellImageLinkCandidates[0];
+        if (!candidate) {
+          return;
+        }
+        handleCellImageLinkPickerSelectCandidate(candidate);
+      }
+    },
+    [
+      cellImageLinkPickerState,
+      closeCellImageLinkPicker,
+      filteredCellImageLinkCandidates,
+      handleCellImageLinkPickerSelectCandidate,
     ],
   );
 
@@ -1469,6 +2104,18 @@ export const MarkdownHybridTableBlock = ({
       if (!activeCell) {
         return;
       }
+      if (event.key === "Escape" && cellPageLinkPickerState) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCellPageLinkPicker();
+        return;
+      }
+      if (event.key === "Escape" && cellImageLinkPickerState) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCellImageLinkPicker();
+        return;
+      }
       if (event.key === "Tab") {
         event.preventDefault();
         const direction = event.shiftKey ? -1 : 1;
@@ -1550,12 +2197,34 @@ export const MarkdownHybridTableBlock = ({
         }
       }
     },
-    [activeCell, commitCellAndMove, getCellValue, handleInsertRowAt, parsedModel],
+    [
+      activeCell,
+      cellImageLinkPickerState,
+      cellPageLinkPickerState,
+      closeCellImageLinkPicker,
+      closeCellPageLinkPicker,
+      commitCellAndMove,
+      getCellValue,
+      handleInsertRowAt,
+      parsedModel,
+    ],
   );
 
   const handleRootKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (disabled || !active || event.defaultPrevented) {
+        return;
+      }
+      if (event.key === "Escape" && cellPageLinkPickerState) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCellPageLinkPicker();
+        return;
+      }
+      if (event.key === "Escape" && cellImageLinkPickerState) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeCellImageLinkPicker();
         return;
       }
       if (event.key === "Escape") {
@@ -1598,7 +2267,11 @@ export const MarkdownHybridTableBlock = ({
     },
     [
       active,
+      cellImageLinkPickerState,
+      cellPageLinkPickerState,
       clearSelections,
+      closeCellImageLinkPicker,
+      closeCellPageLinkPicker,
       columnSelection,
       disabled,
       handleDeleteColumnSelection,
@@ -1623,10 +2296,49 @@ export const MarkdownHybridTableBlock = ({
           value={value}
           rows={Math.max(1, value.split("\n").length)}
           onChange={(event) => {
-            setCellDraft(event.currentTarget.value);
-            setCellDirty(event.currentTarget.value !== fromCellStorageValue(getCellValue(parsedModel, location)));
+            const nextValue = event.currentTarget.value;
+            const nextSelectionStart = event.currentTarget.selectionStart ?? nextValue.length;
+            const typedPageLinkTrigger = cellPageLinkPickerState || cellImageLinkPickerState
+              ? null
+              : detectTypedPageLinkTrigger(nextValue, nextSelectionStart);
+            const typedImageLinkTrigger = cellPageLinkPickerState || cellImageLinkPickerState
+              ? null
+              : detectTypedImageEmbedTrigger(nextValue, nextSelectionStart);
+
+            setCellDraft(nextValue);
+            setCellDirty(nextValue !== fromCellStorageValue(getCellValue(parsedModel, location)));
             event.currentTarget.style.height = "0px";
             event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
+
+            const tableRoot = tableRootRef.current;
+            if (!tableRoot || !activeCell || !isSameCell(activeCell, location)) {
+              return;
+            }
+            if (typedPageLinkTrigger) {
+              const anchor = resolveTextareaCaretAnchor(event.currentTarget, tableRoot, typedPageLinkTrigger.end);
+              setCellImageLinkPickerState(null);
+              setCellPageLinkPickerState({
+                location,
+                replaceRange: typedPageLinkTrigger,
+                anchorLeft: anchor.left,
+                anchorTop: anchor.top,
+                query: "",
+                highlightedIndex: 0,
+              });
+              return;
+            }
+            if (typedImageLinkTrigger) {
+              const anchor = resolveTextareaCaretAnchor(event.currentTarget, tableRoot, typedImageLinkTrigger.end);
+              setCellPageLinkPickerState(null);
+              setCellImageLinkPickerState({
+                location,
+                replaceRange: typedImageLinkTrigger,
+                anchorLeft: anchor.left,
+                anchorTop: anchor.top,
+                query: "",
+                highlightedIndex: 0,
+              });
+            }
           }}
           onBlur={() => {
             flushActiveCell();
@@ -1649,7 +2361,7 @@ export const MarkdownHybridTableBlock = ({
         {renderPreview(previewSource)}
         {standaloneEmbed ? (
           <div
-            className="markdown-hybrid-table-cell-image-replace-shell"
+            className={`markdown-hybrid-table-cell-image-replace-shell${isReplacePickerOpen ? " is-open" : ""}`}
             data-md-block-control="true"
             onMouseDown={(event) => {
               event.stopPropagation();
@@ -1704,6 +2416,148 @@ export const MarkdownHybridTableBlock = ({
       </div>
     );
   };
+
+  const cellPageLinkPickerPopup = cellPageLinkPickerState ? (
+    <div
+      ref={cellPageLinkPickerRef}
+      className="markdown-hybrid-page-link-picker"
+      data-md-block-control="true"
+      role="dialog"
+      aria-label="Select page link"
+      style={
+        {
+          left: cellPageLinkPickerState.anchorLeft,
+          top: cellPageLinkPickerState.anchorTop,
+        } as CSSProperties
+      }
+      onMouseDown={(event) => {
+        event.stopPropagation();
+      }}
+    >
+      <div className="markdown-hybrid-page-link-picker-search-shell">
+        <span className="markdown-hybrid-page-link-picker-search-icon" aria-hidden="true">
+          <TablePagePickerFileIcon />
+        </span>
+        <input
+          ref={cellPageLinkPickerSearchInputRef}
+          type="text"
+          className="markdown-hybrid-page-link-picker-search"
+          value={cellPageLinkPickerState.query}
+          onChange={(event) => handleCellPageLinkPickerQueryChange(event.currentTarget.value)}
+          onKeyDown={handleCellPageLinkPickerSearchKeyDown}
+          placeholder="Search pages..."
+          aria-label="Search pages"
+          aria-autocomplete="list"
+          aria-controls="markdown-hybrid-table-cell-page-link-picker-listbox"
+          aria-expanded="true"
+          aria-activedescendant={
+            filteredCellPageLinkCandidates[cellPageLinkPickerState.highlightedIndex]
+              ? `markdown-hybrid-table-cell-page-link-picker-option-${cellPageLinkPickerState.highlightedIndex}`
+              : undefined
+          }
+        />
+      </div>
+      <div
+        id="markdown-hybrid-table-cell-page-link-picker-listbox"
+        className="markdown-hybrid-page-link-picker-list"
+        role="listbox"
+        aria-label="Vault pages"
+      >
+        {filteredCellPageLinkCandidates.length === 0 ? (
+          <div className="markdown-hybrid-page-link-picker-empty" aria-live="polite">
+            No pages found
+          </div>
+        ) : filteredCellPageLinkCandidates.map((candidate, index) => {
+          const isActive = index === cellPageLinkPickerState.highlightedIndex;
+          return (
+            <button
+              key={candidate.id}
+              id={`markdown-hybrid-table-cell-page-link-picker-option-${index}`}
+              type="button"
+              role="option"
+              aria-selected={isActive}
+              className={`markdown-hybrid-page-link-picker-option${isActive ? " is-active" : ""}`}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onMouseEnter={() => {
+                setCellPageLinkPickerState((current) => {
+                  if (!current) {
+                    return current;
+                  }
+                  if (current.highlightedIndex === index) {
+                    return current;
+                  }
+                  return {
+                    ...current,
+                    highlightedIndex: index,
+                  };
+                });
+              }}
+              onClick={() => handleCellPageLinkPickerSelectCandidate(candidate)}
+              title={candidate.target}
+            >
+              <span className="markdown-hybrid-page-link-picker-option-icon" aria-hidden="true">
+                <TablePagePickerFileIcon />
+              </span>
+              <span className="markdown-hybrid-page-link-picker-option-text">
+                <span className="markdown-hybrid-page-link-picker-option-label">{candidate.label}</span>
+                {candidate.sublabel ? (
+                  <span className="markdown-hybrid-page-link-picker-option-meta">{candidate.sublabel}</span>
+                ) : null}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
+  const cellImageLinkPickerPopup = cellImageLinkPickerState ? (
+    <div
+      ref={cellTypedImageLinkPickerRef}
+      className="markdown-hybrid-insert-menu markdown-hybrid-insert-menu-overlay"
+      data-md-block-control="true"
+      role="menu"
+      aria-label="Insert block"
+      style={
+        {
+          left: cellImageLinkPickerState.anchorLeft,
+          top: cellImageLinkPickerState.anchorTop,
+        } as CSSProperties
+      }
+      onMouseDown={(event) => {
+        event.stopPropagation();
+      }}
+    >
+      <div className="markdown-hybrid-insert-menu-header">
+        <span className="markdown-hybrid-insert-menu-title">Select PNG</span>
+      </div>
+      <div className="markdown-hybrid-insert-menu-list">
+        <VaultPngPicker
+          assets={vaultPngAssets}
+          query={cellImageLinkPickerState.query}
+          onQueryChange={handleCellImageLinkPickerQueryChange}
+          onSearchKeyDown={handleCellImageLinkPickerSearchKeyDown}
+          onSelect={handleCellImageLinkPickerSelectCandidate}
+          highlightedIndex={cellImageLinkPickerState.highlightedIndex}
+          onHighlightedIndexChange={(nextIndex) =>
+            setCellImageLinkPickerState((current) =>
+              current
+                ? {
+                    ...current,
+                    highlightedIndex: nextIndex,
+                  }
+                : current
+            )}
+          selectedRelPath={null}
+          emptyLabel="No PNG files found in the current vault."
+          className="markdown-hybrid-insert-image-picker"
+        />
+      </div>
+    </div>
+  ) : null;
 
   const contextMenu = contextMenuState ? (
     <div
@@ -2074,6 +2928,8 @@ export const MarkdownHybridTableBlock = ({
           </div>
         </div>
       )}
+      {cellPageLinkPickerPopup}
+      {cellImageLinkPickerPopup}
       {contextMenu}
     </div>
   );

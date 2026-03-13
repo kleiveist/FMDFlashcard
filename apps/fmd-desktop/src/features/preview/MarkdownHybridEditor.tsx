@@ -1164,6 +1164,19 @@ type PageLinkPickerReplaceRange = {
   end: number;
 };
 
+type PendingTypedImageLinkPickerRequest = {
+  replaceRange?: PageLinkPickerReplaceRange;
+};
+
+type TypedImageLinkPickerState = {
+  blockIndex: number;
+  replaceRange: PageLinkPickerReplaceRange;
+  anchorLeft: number;
+  anchorTop: number;
+  query: string;
+  highlightedIndex: number;
+};
+
 type PendingPageLinkPickerRequest = {
   source: PageLinkPickerSource;
   replaceRange?: PageLinkPickerReplaceRange;
@@ -1208,6 +1221,7 @@ type AdjacentWikilinkRange = {
 
 const inlineWikilinkTokenPattern = /\[\[[^\]\n]+?\]\]/g;
 const inlineWikilinkOpenTrigger = /\[\[$/;
+const inlineImageEmbedOpenTrigger = /!\[\[$/;
 const inlineWikilinkSkipTags = new Set(["a", "code", "pre", "kbd", "samp"]);
 const reactMarkdownWikilinkWrappedTagNames = [
   "p",
@@ -1275,6 +1289,24 @@ const detectTypedPageLinkTrigger = (
   }
   return {
     start: safeSelectionStart - 2,
+    end: safeSelectionStart,
+  };
+};
+
+const detectTypedImageEmbedTrigger = (
+  value: string,
+  selectionStart: number | null | undefined,
+): PageLinkPickerReplaceRange | null => {
+  if (typeof selectionStart !== "number") {
+    return null;
+  }
+  const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
+  const before = value.slice(0, safeSelectionStart);
+  if (!inlineImageEmbedOpenTrigger.test(before)) {
+    return null;
+  }
+  return {
+    start: safeSelectionStart - 3,
     end: safeSelectionStart,
   };
 };
@@ -3559,6 +3591,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const [selectionMarqueeRect, setSelectionMarqueeRect] = useState<SelectionMarqueeRect | null>(
     null,
   );
+  const [pendingTypedImageLinkPickerRequest, setPendingTypedImageLinkPickerRequest] =
+    useState<PendingTypedImageLinkPickerRequest | null>(null);
+  const [typedImageLinkPickerState, setTypedImageLinkPickerState] = useState<TypedImageLinkPickerState | null>(null);
   const [pendingPageLinkPickerRequest, setPendingPageLinkPickerRequest] =
     useState<PendingPageLinkPickerRequest | null>(null);
   const [pageLinkPickerState, setPageLinkPickerState] = useState<PageLinkPickerState | null>(null);
@@ -3585,6 +3620,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
   const pageLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const pageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const typedImageLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const imageEmbedReplacePickerRef = useRef<HTMLDivElement | null>(null);
   const inlineFormattingToolbarRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -3757,6 +3793,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       : "";
     return filterVaultImageCandidates(imageLinkCandidates, query);
   }, [imageLinkCandidates, insertMenuState]);
+  const filteredTypedImageLinkCandidates = useMemo(
+    () => filterVaultImageCandidates(imageLinkCandidates, typedImageLinkPickerState?.query ?? ""),
+    [imageLinkCandidates, typedImageLinkPickerState?.query],
+  );
   const filteredImageEmbedReplaceCandidates = useMemo(
     () => filterVaultImageCandidates(imageLinkCandidates, imageEmbedReplacePickerState?.query ?? ""),
     [imageEmbedReplacePickerState?.query, imageLinkCandidates],
@@ -4543,13 +4583,27 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setPageLinkPickerState(null);
   }, []);
 
+  const closeTypedImageLinkPicker = useCallback(() => {
+    setPendingTypedImageLinkPickerRequest(null);
+    setTypedImageLinkPickerState(null);
+  }, []);
+
   const closeImageEmbedReplacePicker = useCallback(() => {
     setImageEmbedReplacePickerState(null);
   }, []);
 
   const requestPageLinkPickerOpen = useCallback((request: PendingPageLinkPickerRequest) => {
+    setPendingTypedImageLinkPickerRequest(null);
+    setTypedImageLinkPickerState(null);
     setPendingPageLinkPickerRequest(request);
     setPageLinkPickerState(null);
+  }, []);
+
+  const requestTypedImageLinkPickerOpen = useCallback((request: PendingTypedImageLinkPickerRequest) => {
+    setPendingPageLinkPickerRequest(null);
+    setPageLinkPickerState(null);
+    setPendingTypedImageLinkPickerRequest(request);
+    setTypedImageLinkPickerState(null);
   }, []);
 
   useLayoutEffect(() => {
@@ -4584,6 +4638,37 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setPendingPageLinkPickerRequest(null);
   }, [activeBlockIndex, pendingPageLinkPickerRequest, activeDraft]);
 
+  useLayoutEffect(() => {
+    if (!pendingTypedImageLinkPickerRequest) {
+      return;
+    }
+    if (activeBlockIndex === null) {
+      return;
+    }
+    const textarea = textareaRef.current;
+    const container = containerRef.current;
+    if (!textarea || !container) {
+      return;
+    }
+    const replaceRange = pendingTypedImageLinkPickerRequest.replaceRange ?? {
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd,
+    };
+    const anchor = resolveTextareaCaretAnchor(textarea, container, replaceRange.end);
+    setTypedImageLinkPickerState({
+      blockIndex: activeBlockIndex,
+      replaceRange: {
+        start: Math.max(0, Math.min(replaceRange.start, textarea.value.length)),
+        end: Math.max(0, Math.min(replaceRange.end, textarea.value.length)),
+      },
+      anchorLeft: anchor.left,
+      anchorTop: anchor.top,
+      query: "",
+      highlightedIndex: 0,
+    });
+    setPendingTypedImageLinkPickerRequest(null);
+  }, [activeBlockIndex, pendingTypedImageLinkPickerRequest, activeDraft]);
+
   useEffect(() => {
     if (!pageLinkPickerState) {
       return;
@@ -4604,6 +4689,27 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   }, [pageLinkPickerState]);
 
   useEffect(() => {
+    if (!typedImageLinkPickerState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const input = typedImageLinkPickerRef.current?.querySelector<HTMLInputElement>(
+        "input[type='search']",
+      );
+      if (!input) {
+        return;
+      }
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+      input.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [typedImageLinkPickerState]);
+
+  useEffect(() => {
     if (!pageLinkPickerState) {
       return;
     }
@@ -4617,6 +4723,43 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       return current;
     });
   }, [activeBlockIndex, pageLinkPickerState]);
+
+  useEffect(() => {
+    if (!typedImageLinkPickerState) {
+      return;
+    }
+    setTypedImageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      if (activeBlockIndex === null || current.blockIndex !== activeBlockIndex) {
+        return null;
+      }
+      return current;
+    });
+  }, [activeBlockIndex, typedImageLinkPickerState]);
+
+  useEffect(() => {
+    if (!typedImageLinkPickerState) {
+      return;
+    }
+    if (
+      insertMenuState !== null ||
+      pageLinkPickerState !== null ||
+      mathToolboxState !== null ||
+      selectionContextMenuState !== null ||
+      disabled
+    ) {
+      setTypedImageLinkPickerState(null);
+    }
+  }, [
+    disabled,
+    insertMenuState,
+    mathToolboxState,
+    pageLinkPickerState,
+    selectionContextMenuState,
+    typedImageLinkPickerState,
+  ]);
 
   useEffect(() => {
     if (!pageLinkPickerState) {
@@ -4637,6 +4780,26 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       };
     });
   }, [filteredPageLinkCandidates.length, pageLinkPickerState]);
+
+  useEffect(() => {
+    if (!typedImageLinkPickerState) {
+      return;
+    }
+    setTypedImageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextMaxIndex = Math.max(0, filteredTypedImageLinkCandidates.length - 1);
+      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+      if (nextIndex === current.highlightedIndex) {
+        return current;
+      }
+      return {
+        ...current,
+        highlightedIndex: nextIndex,
+      };
+    });
+  }, [filteredTypedImageLinkCandidates.length, typedImageLinkPickerState]);
 
   useEffect(() => {
     if (!pageLinkPickerState) {
@@ -4665,6 +4828,34 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       window.removeEventListener("keydown", handleWindowKeyDown);
     };
   }, [closePageLinkPicker, pageLinkPickerState]);
+
+  useEffect(() => {
+    if (!typedImageLinkPickerState) {
+      return;
+    }
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (typedImageLinkPickerRef.current?.contains(target)) {
+        return;
+      }
+      closeTypedImageLinkPicker();
+    };
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      closeTypedImageLinkPicker();
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [closeTypedImageLinkPicker, typedImageLinkPickerState]);
 
   useEffect(() => {
     if (!imageEmbedReplacePickerState) {
@@ -4712,6 +4903,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       activeCardTableState !== null ||
       insertMenuState !== null ||
       pageLinkPickerState !== null ||
+      typedImageLinkPickerState !== null ||
       mathToolboxState !== null ||
       selectionContextMenuState !== null ||
       disabled
@@ -4726,6 +4918,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     insertMenuState,
     mathToolboxState,
     pageLinkPickerState,
+    typedImageLinkPickerState,
     selectionContextMenuState,
   ]);
 
@@ -4860,6 +5053,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setMathToolboxState(null);
       setSelectionContextMenuState(null);
       setSelectionMarqueeRect(null);
+      setPendingTypedImageLinkPickerRequest(null);
+      setTypedImageLinkPickerState(null);
       setPendingPageLinkPickerRequest(null);
       setPageLinkPickerState(null);
       setImageEmbedReplacePickerState(null);
@@ -5052,6 +5247,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
 
   const resetActiveEditorUi = useCallback(() => {
     closePageLinkPicker();
+    closeTypedImageLinkPicker();
     setPendingPageLinkPickerRequest(null);
     setInlineFormattingToolbarSelection(null);
     setInlineFormattingToolbarMenu(null);
@@ -5063,7 +5259,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       window.clearTimeout(inlineFormattingToolbarTimerRef.current);
       inlineFormattingToolbarTimerRef.current = null;
     }
-  }, [closePageLinkPicker]);
+  }, [closePageLinkPicker, closeTypedImageLinkPicker]);
 
   const resolveDeferredEditRequests = useCallback(
     (performedKind: DeferredEditAction["kind"], result: boolean) => {
@@ -6205,6 +6401,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setInsertMenuState(null);
       setMathToolboxState(null);
       setSelectionContextMenuState(null);
+      setPendingTypedImageLinkPickerRequest(null);
+      setTypedImageLinkPickerState(null);
       setPendingPageLinkPickerRequest(null);
       setPageLinkPickerState(null);
       setImageEmbedReplacePickerState((current) =>
@@ -6747,9 +6945,12 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (typeof selectionStart === "number") {
         setEditorOverlaySelectionStart(selectionStart);
       }
-      const typedPageLinkTrigger = pageLinkPickerState
+      const typedPageLinkTrigger = pageLinkPickerState || typedImageLinkPickerState
         ? null
         : detectTypedPageLinkTrigger(value, selectionStart);
+      const typedImageLinkTrigger = pageLinkPickerState || typedImageLinkPickerState
+        ? null
+        : detectTypedImageEmbedTrigger(value, selectionStart);
       if (activeBlockIndex === null) {
         return;
       }
@@ -6770,14 +6971,29 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           source: "typed-trigger",
           replaceRange: typedPageLinkTrigger,
         });
+        return;
+      }
+      if (typedImageLinkTrigger && block && canOpenPageLinkPickerInBlockKind(block.kind)) {
+        requestTypedImageLinkPickerOpen({
+          replaceRange: typedImageLinkTrigger,
+        });
       }
     },
-    [activeBlockIndex, pageLinkPickerState, requestPageLinkPickerOpen],
+    [
+      activeBlockIndex,
+      pageLinkPickerState,
+      requestPageLinkPickerOpen,
+      requestTypedImageLinkPickerOpen,
+      typedImageLinkPickerState,
+    ],
   );
 
   const handleTextareaBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
     const nextFocus = event.relatedTarget;
     if (nextFocus instanceof Node && pageLinkPickerRef.current?.contains(nextFocus)) {
+      return;
+    }
+    if (nextFocus instanceof Node && typedImageLinkPickerRef.current?.contains(nextFocus)) {
       return;
     }
     if (nextFocus instanceof Node && mathToolboxRef.current?.contains(nextFocus)) {
@@ -6947,6 +7163,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     if (pageLinkPickerState) {
       return null;
     }
+    if (typedImageLinkPickerState) {
+      return null;
+    }
     const textarea = textareaRef.current;
     const container = containerRef.current;
     if (!textarea || !container) {
@@ -6970,7 +7189,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       anchor,
       activeState,
     } as InlineFormattingToolbarSelection;
-  }, [activeBlockIndex, blocks, disabled, pageLinkPickerState]);
+  }, [activeBlockIndex, blocks, disabled, pageLinkPickerState, typedImageLinkPickerState]);
 
   const showInlineFormattingToolbarImmediate = useCallback(() => {
     const nextSelection = resolveActiveInlineFormattingSelection();
@@ -7376,6 +7595,13 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   }, [hideInlineFormattingToolbar, pageLinkPickerState]);
 
   useEffect(() => {
+    if (!typedImageLinkPickerState) {
+      return;
+    }
+    hideInlineFormattingToolbar();
+  }, [hideInlineFormattingToolbar, typedImageLinkPickerState]);
+
+  useEffect(() => {
     const handleSelectionSignal = () => {
       const textarea = textareaRef.current;
       if (!textarea) {
@@ -7534,6 +7760,18 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         return;
       }
 
+      if (event.key === "Escape" && typedImageLinkPickerState) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeTypedImageLinkPicker();
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch {
+          textarea.focus();
+        }
+        return;
+      }
+
       if (event.key === "Escape" && inlineFormattingToolbarSelection) {
         event.preventDefault();
         event.stopPropagation();
@@ -7682,7 +7920,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       inlineFormattingToolbarSelection,
       openInlineFormattingLinkEditor,
       pageLinkPickerState,
+      closeTypedImageLinkPicker,
       scheduleTextareaCaret,
+      typedImageLinkPickerState,
     ],
   );
 
@@ -7775,6 +8015,111 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       filteredPageLinkCandidates,
       handlePageLinkPickerSelectCandidate,
       pageLinkPickerState,
+    ],
+  );
+
+  const handleTypedImageLinkPickerQueryChange = useCallback((value: string) => {
+    setTypedImageLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        query: value,
+        highlightedIndex: 0,
+      };
+    });
+  }, []);
+
+  const handleTypedImageLinkPickerSelectCandidate = useCallback(
+    (candidate: VaultImageCandidate) => {
+      if (
+        !typedImageLinkPickerState ||
+        activeBlockIndex === null ||
+        typedImageLinkPickerState.blockIndex !== activeBlockIndex
+      ) {
+        closeTypedImageLinkPicker();
+        return;
+      }
+      const replaceStart = Math.max(0, Math.min(typedImageLinkPickerState.replaceRange.start, activeDraft.length));
+      const replaceEnd = Math.max(
+        replaceStart,
+        Math.min(typedImageLinkPickerState.replaceRange.end, activeDraft.length),
+      );
+      const nextToken = serializePngEmbed(candidate.relPath);
+      const nextDraft = `${activeDraft.slice(0, replaceStart)}${nextToken}${activeDraft.slice(replaceEnd)}`;
+      const nextCaret = replaceStart + nextToken.length;
+      closeTypedImageLinkPicker();
+      applyActiveBlockDraft(nextDraft, nextCaret);
+    },
+    [
+      activeBlockIndex,
+      activeDraft,
+      applyActiveBlockDraft,
+      closeTypedImageLinkPicker,
+      typedImageLinkPickerState,
+    ],
+  );
+
+  const handleTypedImageLinkPickerSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (!typedImageLinkPickerState) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeTypedImageLinkPicker();
+        const textarea = textareaRef.current;
+        if (textarea) {
+          try {
+            textarea.focus({ preventScroll: true });
+          } catch {
+            textarea.focus();
+          }
+        }
+        return;
+      }
+      if (filteredTypedImageLinkCandidates.length === 0) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        setTypedImageLinkPickerState((current) => {
+          if (!current) {
+            return current;
+          }
+          const delta = event.key === "ArrowDown" ? 1 : -1;
+          const nextIndex = (current.highlightedIndex + delta + filteredTypedImageLinkCandidates.length) %
+            filteredTypedImageLinkCandidates.length;
+          return {
+            ...current,
+            highlightedIndex: nextIndex,
+          };
+        });
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        const candidate = filteredTypedImageLinkCandidates[typedImageLinkPickerState.highlightedIndex] ??
+          filteredTypedImageLinkCandidates[0];
+        if (!candidate) {
+          return;
+        }
+        handleTypedImageLinkPickerSelectCandidate(candidate);
+      }
+    },
+    [
+      closeTypedImageLinkPicker,
+      filteredTypedImageLinkCandidates,
+      handleTypedImageLinkPickerSelectCandidate,
+      typedImageLinkPickerState,
     ],
   );
 
@@ -8677,6 +9022,49 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     </div>
   ) : null;
 
+  const typedImageLinkPickerPopup = typedImageLinkPickerState && !disabled ? (
+    <div
+      ref={typedImageLinkPickerRef}
+      className="markdown-hybrid-insert-menu markdown-hybrid-insert-menu-overlay"
+      data-md-block-control="true"
+      role="menu"
+      aria-label="Insert block"
+      style={{
+        left: typedImageLinkPickerState.anchorLeft,
+        top: typedImageLinkPickerState.anchorTop,
+      }}
+      onMouseDown={(event) => {
+        event.stopPropagation();
+      }}
+    >
+      <div className="markdown-hybrid-insert-menu-header">
+        <span className="markdown-hybrid-insert-menu-title">Select PNG</span>
+      </div>
+      <div className="markdown-hybrid-insert-menu-list">
+        <VaultPngPicker
+          assets={vaultPngAssets}
+          query={typedImageLinkPickerState.query}
+          onQueryChange={handleTypedImageLinkPickerQueryChange}
+          onSearchKeyDown={handleTypedImageLinkPickerSearchKeyDown}
+          onSelect={handleTypedImageLinkPickerSelectCandidate}
+          highlightedIndex={typedImageLinkPickerState.highlightedIndex}
+          onHighlightedIndexChange={(nextIndex) =>
+            setTypedImageLinkPickerState((current) =>
+              current
+                ? {
+                    ...current,
+                    highlightedIndex: nextIndex,
+                  }
+                : current
+            )}
+          selectedRelPath={null}
+          emptyLabel="No PNG files found in the current vault."
+          className="markdown-hybrid-insert-image-picker"
+        />
+      </div>
+    </div>
+  ) : null;
+
   const inlineFormattingToolbarPopup = inlineFormattingToolbarSelection && !disabled ? (
     <FloatingInlineFormattingToolbar
       anchor={inlineFormattingToolbarSelection.anchor}
@@ -8881,6 +9269,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           })}
         </div>
         {pageLinkPickerPopup}
+        {typedImageLinkPickerPopup}
         {mathToolboxPopup}
         {inlineFormattingToolbarPopup}
         {selectionContextMenu}
@@ -9004,6 +9393,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     raw={block.raw}
                     active={isActive}
                     disabled={disabled}
+                    vaultFiles={vaultFiles}
                     vaultPngAssets={vaultPngAssets}
                     renderPreview={renderPreviewWithPageLinks}
                     pendingActivation={
@@ -9253,6 +9643,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                                       active={isCardTableSegmentActive(partIndex, segmentIndex)}
                                       allowCodeView={false}
                                       disabled={disabled}
+                                      vaultFiles={vaultFiles}
                                       vaultPngAssets={vaultPngAssets}
                                       renderPreview={renderPreviewWithPageLinks}
                                       pendingActivation={
@@ -9320,7 +9711,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     </div>
                   </div>
                 ) : block.kind === "image-embed" ? (
-                  <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">
+                  <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview markdown-hybrid-image-embed-preview-shell">
                     {imageEmbedPreviewItems.length > 0 ? (
                       <FlashcardMediaGroup
                         media={imageEmbedPreviewItems}
@@ -9334,7 +9725,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                       </pre>
                     )}
                     <div
-                      className="markdown-hybrid-image-embed-replace-shell"
+                      className={`markdown-hybrid-image-embed-replace-shell${isImageEmbedReplacePickerOpen ? " is-open" : ""}`}
                       data-md-block-control="true"
                       onMouseDown={(event) => {
                         event.stopPropagation();
@@ -9438,6 +9829,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         })}
       </div>
       {pageLinkPickerPopup}
+      {typedImageLinkPickerPopup}
       {mathToolboxPopup}
       {inlineFormattingToolbarPopup}
       {selectionContextMenu}
