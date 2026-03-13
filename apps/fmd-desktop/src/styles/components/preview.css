@@ -46,6 +46,10 @@
   transition: 0.2s ease;
 }
 
+.note-panel .file-item {
+  padding: 8px 10px;
+}
+
 .file-item:hover {
   border-color: var(--accent-border);
 }
@@ -73,6 +77,11 @@
   padding: 0 var(--ui-space-md);
   border-radius: var(--ui-radius-control);
   background: var(--ui-nav-button-bg);
+}
+
+:root[data-design-mode="modern"] .note-panel .file-item {
+  min-height: 32px;
+  padding: 0 var(--ui-space-sm);
 }
 
 :root[data-design-mode="modern"] .file-item:hover {

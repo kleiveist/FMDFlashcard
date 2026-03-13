@@ -436,6 +436,21 @@ h2 {
   gap: var(--ui-space-sm);
 }
 
+:root[data-design-mode="modern"] .tree-children {
+  position: relative;
+}
+
+:root[data-design-mode="modern"] .tree-children::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--ui-space-sm) + (var(--ui-control-icon-size) / 2));
+  width: 1px;
+  background: var(--ui-border-subtle);
+  pointer-events: none;
+}
+
 .tree-icon {
   width: var(--ui-control-icon-size);
   height: var(--ui-control-icon-size);
