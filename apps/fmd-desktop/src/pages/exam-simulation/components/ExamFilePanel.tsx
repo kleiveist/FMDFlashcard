@@ -427,13 +427,53 @@ export const ExamFilePanel = ({
     });
 
   return (
-    <section className={["panel list-panel", className].filter(Boolean).join(" ")}>
+    <section className={["panel list-panel exam-file-panel", className].filter(Boolean).join(" ")}>
       <div className="panel-header">
         <div>
           <h2>Exam files</h2>
         </div>
         {!hidePanelStatus ? (
           <div className="exam-file-panel-status">
+            {combinationMode && onCombinationModeChange ? (
+              <div className="exam-file-panel-mode-grid">
+                <button
+                  type="button"
+                  className={`pill pill-button exam-selected-mode-nested ${
+                    combinationMode === "nested" ? "active" : ""
+                  }`}
+                  onClick={() => onCombinationModeChange("nested")}
+                >
+                  Nested
+                </button>
+                <button
+                  type="button"
+                  className={`pill pill-button ${
+                    combinationMode === "sequential-shuffled" ? "active" : ""
+                  }`}
+                  onClick={() => onCombinationModeChange("sequential-shuffled")}
+                >
+                  Sequential + internal shuffle
+                </button>
+                <button
+                  type="button"
+                  className={`pill pill-button ${
+                    combinationMode === "sequential" ? "active" : ""
+                  }`}
+                  onClick={() => onCombinationModeChange("sequential")}
+                >
+                  Sequential
+                </button>
+                <button
+                  type="button"
+                  className={`pill pill-button ${
+                    combinationMode === "fully-mixed" ? "active" : ""
+                  }`}
+                  onClick={() => onCombinationModeChange("fully-mixed")}
+                >
+                  Fully mixed
+                </button>
+              </div>
+            ) : null}
             <div className="exam-file-panel-kpis">
               <span className="chip exam-file-selected-chip exam-file-panel-kpi">
                 {selectedCount} selected
@@ -483,46 +523,6 @@ export const ExamFilePanel = ({
               <div className="exam-selected-summary-head">
                 <strong>Selection</strong>
               </div>
-              {combinationMode && onCombinationModeChange ? (
-                <div className="pill-grid exam-selected-mode-grid">
-                  <button
-                    type="button"
-                    className={`pill pill-button exam-selected-mode-nested ${
-                      combinationMode === "nested" ? "active" : ""
-                    }`}
-                    onClick={() => onCombinationModeChange("nested")}
-                  >
-                    Nested
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill pill-button ${
-                      combinationMode === "sequential-shuffled" ? "active" : ""
-                    }`}
-                    onClick={() => onCombinationModeChange("sequential-shuffled")}
-                  >
-                    Sequential + internal shuffle
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill pill-button ${
-                      combinationMode === "sequential" ? "active" : ""
-                    }`}
-                    onClick={() => onCombinationModeChange("sequential")}
-                  >
-                    Sequential
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill pill-button ${
-                      combinationMode === "fully-mixed" ? "active" : ""
-                    }`}
-                    onClick={() => onCombinationModeChange("fully-mixed")}
-                  >
-                    Fully mixed
-                  </button>
-                </div>
-              ) : null}
               <p className="muted exam-selected-order-hint">
                 Reorder with drag (mouse) or two taps (touch): pick source first, then
                 target. Click outside this row or press Escape to cancel.

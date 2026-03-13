@@ -145,6 +145,48 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
+  it("renders combination mode buttons in header status and not in selection summary", () => {
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md"],
+        vaultPath: "/vault",
+        compactSummary: {
+          maxPoints: 42,
+          taskCount: 12,
+          minDurationMinutes: 18,
+        },
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+        combinationMode: "fully-mixed",
+        onCombinationModeChange: vi.fn(),
+      }),
+    );
+
+    const panelStatus = container.querySelector(".exam-file-panel-status");
+    expect(panelStatus).not.toBeNull();
+    expect(panelStatus?.textContent).toContain("Nested");
+    expect(panelStatus?.textContent).toContain("Sequential + internal shuffle");
+    expect(panelStatus?.textContent).toContain("Sequential");
+    expect(panelStatus?.textContent).toContain("Fully mixed");
+
+    const selectionSummary = container.querySelector(".exam-selected-summary");
+    expect(selectionSummary).not.toBeNull();
+    expect(selectionSummary?.textContent).not.toContain("Nested");
+    expect(selectionSummary?.textContent).not.toContain("Sequential + internal shuffle");
+    expect(selectionSummary?.textContent).not.toContain("Sequential");
+    expect(selectionSummary?.textContent).not.toContain("Fully mixed");
+
+    cleanup();
+  });
+
   it("hides panel status when hidePanelStatus is enabled without changing default behavior", () => {
     const hidden = render(
       createElement(ExamFilePanel, {
@@ -154,6 +196,11 @@ describe("ExamFilePanel", () => {
         selectedPaths: ["/vault/a.md"],
         vaultPath: "/vault",
         hidePanelStatus: true,
+        compactSummary: {
+          maxPoints: 42,
+          taskCount: 12,
+          minDurationMinutes: 18,
+        },
         selectedProfileId: "profile-1",
         profileOptions: runProfileOptions,
         onProfileChange: vi.fn(),
@@ -161,10 +208,14 @@ describe("ExamFilePanel", () => {
         onSetSelectedPaths: vi.fn(),
         onClearSelection: vi.fn(),
         onMoveSelectedFile: vi.fn(),
+        combinationMode: "fully-mixed",
+        onCombinationModeChange: vi.fn(),
       }),
     );
 
     expect(hidden.container.querySelector(".exam-file-panel-status")).toBeNull();
+    expect(hidden.container.textContent).not.toContain("Nested");
+    expect(hidden.container.textContent).not.toContain("42 max points");
     hidden.cleanup();
 
     const visible = render(
@@ -712,7 +763,7 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
-  it("renders and triggers nested combination mode option", () => {
+  it("triggers all combination mode options from header status", () => {
     const onCombinationModeChange = vi.fn();
     const { container, cleanup } = render(
       createElement(ExamFilePanel, {
@@ -733,14 +784,28 @@ describe("ExamFilePanel", () => {
       }),
     );
 
-    const nestedButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
-      (button) => button.textContent?.includes("Nested"),
-    );
+    const status = container.querySelector(".exam-file-panel-status");
+    const findButton = (label: string) =>
+      Array.from(status?.querySelectorAll<HTMLButtonElement>("button") ?? []).find(
+        (button) => button.textContent?.trim() === label,
+      );
+
+    const nestedButton = findButton("Nested");
+    const sequentialShuffledButton = findButton("Sequential + internal shuffle");
+    const sequentialButton = findButton("Sequential");
+    const fullyMixedButton = findButton("Fully mixed");
+
     act(() => {
       nestedButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      sequentialShuffledButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      sequentialButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      fullyMixedButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(onCombinationModeChange).toHaveBeenCalledWith("nested");
+    expect(onCombinationModeChange).toHaveBeenNthCalledWith(1, "nested");
+    expect(onCombinationModeChange).toHaveBeenNthCalledWith(2, "sequential-shuffled");
+    expect(onCombinationModeChange).toHaveBeenNthCalledWith(3, "sequential");
+    expect(onCombinationModeChange).toHaveBeenNthCalledWith(4, "fully-mixed");
     cleanup();
   });
 });

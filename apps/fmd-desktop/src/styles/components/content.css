@@ -1347,21 +1347,41 @@ body.focus-mode .spaced-repetition-sidebar {
   color: var(--error-ink);
 }
 
+.exam-file-panel .panel-header {
+  justify-content: flex-start;
+}
+
 .exam-file-panel-status {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex: 1 1 auto;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: 0;
+  min-width: 0;
+}
+
+.exam-file-panel-mode-grid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.exam-file-panel-mode-grid .pill-button {
+  white-space: nowrap;
+}
+
+.exam-file-panel-kpis {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
   flex-wrap: wrap;
   margin-left: auto;
-  min-width: 0;
-}
-
-.exam-file-panel-kpis {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
   min-width: 0;
 }
 
@@ -1429,14 +1449,6 @@ body.focus-mode .spaced-repetition-sidebar {
   justify-content: space-between;
   gap: var(--ui-toolbar-gap);
   flex-wrap: wrap;
-}
-
-.exam-selected-mode-grid {
-  margin: 2px 0 0;
-}
-
-.exam-selected-mode-nested {
-  margin-right: 10px;
 }
 
 .exam-selected-order-hint {
@@ -2313,4 +2325,16 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-option-static:hover {
   border-color: var(--line-soft);
   background: var(--panel);
+}
+
+@media (max-width: 1199px) {
+  .exam-file-panel .panel-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .exam-file-panel .exam-file-panel-status {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
