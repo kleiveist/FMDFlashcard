@@ -89,22 +89,45 @@ py -3 .\tools\control.py --start
 
 ---
 
-## 7) Build (release bundles / native packaging)
+## 7) Build variants (Windows artifacts)
+
+### 7.1 Installer bundles (NSIS/MSI)
 
 ```powershell
 Set-Location (Join-Path $HOME "Projects\FMDFlashcard")
-py -3 .\tools\control.py --build
+py -3 .\tools\control.py --build-win
 ```
 
-## 8) Linux AppImage installer note
+Optional:
 
-`--install-appimage` is Linux-only and intended for local Linux desktop integration.
-If you also develop on Linux, use:
+```powershell
+$env:WIN_BUNDLES = "nsis,msi"
+py -3 .\tools\control.py --build-win
+```
+
+### 7.2 Portable ZIP (Windows host)
+
+```powershell
+py -3 .\tools\control.py --build-win -p
+```
+
+Typical output:
+- `apps/fmd-desktop/src-tauri/target/release/bundle/portable/<exe>-portable.zip`
+
+### 7.3 Linux-hosted Windows cross-compile (cargo-xwin)
+
+Run this on a Linux host (not in Windows PowerShell):
 
 ```bash
-python3 tools/control.py --build-lin
-python3 tools/control.py --install-appimage
+python3 tools/control.py --build --winlinux
 ```
+
+Typical output:
+- `apps/fmd-desktop/src-tauri/target/<target>/release/bundle/portable`
+
+Inno note:
+- The current repository does not include a dedicated Inno portable build flow.
+- Portable artifacts are produced by ZIP-based portable workflows.
 
 ---
 

@@ -68,8 +68,64 @@ Hinweise:
 ```bash
 python3 tools/control.py --build-lin
 python3 tools/control.py --build-win
+python3 tools/control.py --build-win -p
+python3 tools/control.py --build --winlinux
 python3 tools/control.py --build-mac
 ```
+
+## Windows-Build-Varianten
+
+### `--build-win` (Installer-Bundles)
+
+```bash
+python3 tools/control.py --build-win
+```
+
+Typische Outputs:
+- `.../bundle/nsis`
+- `.../bundle/msi`
+
+Nuetzliche Env-Toggles:
+- `WIN_BUNDLES=nsis,msi`
+- `ALLOW_CROSS=1` (nicht empfohlen, kann fehlschlagen)
+
+### `--build-win -p` (Portable ZIP)
+
+```bash
+python3 tools/control.py --build-win -p
+```
+
+Typischer Output:
+- `apps/fmd-desktop/src-tauri/target/release/bundle/portable/<exe>-portable.zip`
+
+Nuetzliche Env-Toggles:
+- `CLEAN_PORTABLE=0`
+- `ALLOW_CROSS=1`
+
+### `--build --winlinux` (Windows-Cross-Compile auf Linux)
+
+```bash
+python3 tools/control.py --build --winlinux
+```
+
+Linux-only Flow:
+- Runner: standardmaessig `cargo-xwin`
+- Target: standardmaessig `x86_64-pc-windows-msvc`
+- Ergebnis: portable `.exe` und optional `.zip`
+
+Typischer Output:
+- `apps/fmd-desktop/src-tauri/target/<target>/release/bundle/portable`
+
+Nuetzliche Env-Toggles:
+- `WIN_LINUX_TARGET`
+- `WIN_LINUX_RUNNER`
+- `WIN_LINUX_BUNDLES`
+- `WIN_LINUX_ZIP=0`
+- `CLEAN_PORTABLE=0`
+
+Hinweis zu Inno/Portable:
+- Im aktuellen Repo gibt es keinen separaten Inno-Portable-Builder.
+- Portable-Ausgaben laufen ueber die vorhandenen ZIP-basierten Flows.
 
 ## Empfohlener Linux-Packaging-Flow
 

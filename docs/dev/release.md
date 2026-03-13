@@ -50,6 +50,27 @@ python3 tools/control.py --build-lin
 python3 tools/control.py --install-appimage
 ```
 
+## Windows packaging matrix
+
+- `python3 tools/control.py --build-win`
+  - Installer bundles (`nsis` / `msi`, depending on `WIN_BUNDLES`)
+  - Typical outputs: `.../target/release/bundle/nsis` and `.../target/release/bundle/msi`
+- `python3 tools/control.py --build-win -p`
+  - Portable ZIP flow on a Windows build host
+  - Typical output: `.../target/release/bundle/portable/<exe>-portable.zip`
+- `python3 tools/control.py --build --winlinux`
+  - Linux-only Windows cross-compile flow (`cargo-xwin`)
+  - Typical output: `.../target/<target>/release/bundle/portable`
+
+Common env toggles:
+- `WIN_BUNDLES` (installer bundle selection for `--build-win`)
+- `CLEAN_PORTABLE` (portable cleanup behavior)
+- `WIN_LINUX_TARGET`, `WIN_LINUX_RUNNER`, `WIN_LINUX_BUNDLES`, `WIN_LINUX_ZIP` (cross-compile flow)
+
+Inno note:
+- The current repository does not include a dedicated Inno portable build flow.
+- Portable artifacts are produced by the existing ZIP-based portable workflows.
+
 ## Recommended: CI-driven releases
 
 - Tag-based releases

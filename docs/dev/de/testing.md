@@ -5,6 +5,20 @@
 
 ## Tests ausfuehren
 
+Bevorzugter Befehl:
+
+```bash
+python3 tools/control.py --test
+```
+
+Optionaler Dry-Run:
+
+```bash
+python3 tools/control.py --test --dry-run
+```
+
+Direkter Workspace-Befehl (falls noetig):
+
 ```bash
 pnpm -C apps/fmd-desktop test
 ```
@@ -15,19 +29,6 @@ Bei kleinen Aenderungen bevorzugt gezielte Tests fuer kurze Feedback-Zyklen.
 
 - Tests fuer geaenderte Logik aktualisieren oder ergaenzen
 - Lint und Typechecks muessen vor Review durchlaufen
-
-## AppImage-Installer Smoke-Test (Linux)
-
-```bash
-python3 tools/control.py --build-lin
-python3 tools/control.py --install-appimage --dry-run
-python3 tools/control.py --install-appimage
-```
-
-Kurzchecks:
-- `~/Applications/FMDFlashcard.AppImage` existiert und ist ausfuehrbar
-- `~/.local/share/applications/fmdflashcard.desktop` existiert
-- Launcher ist im App-Menue sichtbar
 
 ## Table-rendering Checkliste
 

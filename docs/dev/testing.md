@@ -5,12 +5,21 @@
 
 ## Running tests
 
-If the project uses a monorepo layout, tests are typically run from the app workspace.
-
-Examples (adjust to your workspace names):
+Preferred command:
 
 ```bash
-# From repo root
+python3 tools/control.py --test
+```
+
+Optional dry-run:
+
+```bash
+python3 tools/control.py --test --dry-run
+```
+
+Direct workspace command (if needed):
+
+```bash
 pnpm -C apps/fmd-desktop test
 ```
 
@@ -35,19 +44,6 @@ Test Files  7 passed (7)
 
 - Add or update tests when changing evaluation logic (e.g., composite cards, result summaries).
 - Ensure lint and typechecks pass before requesting review.
-
-## AppImage installer smoke test (Linux)
-
-```bash
-python3 tools/control.py --build-lin
-python3 tools/control.py --install-appimage --dry-run
-python3 tools/control.py --install-appimage
-```
-
-Quick checks:
-- `~/Applications/FMDFlashcard.AppImage` exists and is executable
-- `~/.local/share/applications/fmdflashcard.desktop` exists
-- launcher appears in the desktop application menu
 
 ## Table rendering checklist
 

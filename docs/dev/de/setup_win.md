@@ -46,17 +46,41 @@ py -3 .\tools\control.py --tauri
 py -3 .\tools\control.py --start
 ```
 
-## 7) Build
+## 7) Build-Varianten (Windows-Artefakte)
+
+### 7.1 Installer-Bundles (NSIS/MSI)
 
 ```powershell
 py -3 .\tools\control.py --build-win
 ```
 
-## Hinweis zu `--install-appimage`
+Optional:
 
-`--install-appimage` ist Linux-only. Fuer Linux-Entwicklung:
+```powershell
+$env:WIN_BUNDLES = "nsis,msi"
+py -3 .\tools\control.py --build-win
+```
+
+### 7.2 Portable ZIP (Windows-Host)
+
+```powershell
+py -3 .\tools\control.py --build-win -p
+```
+
+Typischer Output:
+- `apps/fmd-desktop/src-tauri/target/release/bundle/portable/<exe>-portable.zip`
+
+### 7.3 Windows-Cross-Compile auf Linux (cargo-xwin)
+
+Diesen Befehl auf einem Linux-Host ausfuehren (nicht in Windows PowerShell):
 
 ```bash
-python3 tools/control.py --build-lin
-python3 tools/control.py --install-appimage
+python3 tools/control.py --build --winlinux
 ```
+
+Typischer Output:
+- `apps/fmd-desktop/src-tauri/target/<target>/release/bundle/portable`
+
+Hinweis zu Inno/Portable:
+- Im aktuellen Repo gibt es keinen separaten Inno-Portable-Build-Flow.
+- Portable-Artefakte werden ueber ZIP-basierte Portable-Workflows erzeugt.

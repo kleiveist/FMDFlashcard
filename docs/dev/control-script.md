@@ -83,8 +83,9 @@ python3 tools/control.py --build --dry-run
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ℹ Available targets:
 ℹ   --build-lin  Linux release (NO_STRIP, CLEAN_BUNDLE).
-ℹ   --build-win  Windows bundles (WIN_BUNDLES=nsis,msi, ALLOW_CROSS).
+ℹ   --build-win  Windows build (default bundles via WIN_BUNDLES). Use -p for portable.
 ℹ   --build-mac  macOS bundles (MAC_BUNDLES=app,dmg, ALLOW_CROSS).
+ℹ   --build --winlinux  Windows cross-compile on Linux (cargo-xwin, portable exe).
 ```
 
 Notes:
@@ -132,7 +133,7 @@ NO_STRIP=false python3 tools/control.py --build-lin
 CLEAN_BUNDLE=0 python3 tools/control.py --build-lin
 ```
 
-### Build (Windows) — `--build-win`
+### Build (Windows installers) — `--build-win`
 
 ```bash
 python3 tools/control.py --build-win
@@ -157,6 +158,50 @@ Example:
 ```bash
 WIN_BUNDLES=nsis,msi python3 tools/control.py --build-win
 ```
+
+### Build (Windows portable ZIP) — `--build-win -p`
+
+```bash
+python3 tools/control.py --build-win -p
+```
+
+Produces a portable ZIP (no installer bundling), typically under:
+- `apps/fmd-desktop/src-tauri/target/release/bundle/portable`
+
+Useful environment toggles:
+- `CLEAN_PORTABLE=0` (skip cleanup of old portable output)
+- `ALLOW_CROSS=1` (allow non-Windows host execution; may fail)
+
+### Build (Windows cross-compile on Linux) — `--build --winlinux`
+
+```bash
+python3 tools/control.py --build --winlinux
+```
+
+Linux-only flow:
+- uses `cargo-xwin` as runner
+- builds Windows target (default: `x86_64-pc-windows-msvc`)
+- creates portable output (`.exe`, optional `.zip`)
+
+Typical output location:
+- `apps/fmd-desktop/src-tauri/target/<target>/release/bundle/portable`
+
+Useful environment toggles:
+- `WIN_LINUX_TARGET` (default: `x86_64-pc-windows-msvc`)
+- `WIN_LINUX_RUNNER` (default: `cargo-xwin`)
+- `WIN_LINUX_BUNDLES` (if set, uses `--bundles` instead of `--no-bundle`)
+- `WIN_LINUX_ZIP=0` (skip portable ZIP creation)
+- `CLEAN_PORTABLE=0` (skip cleanup of old portable output)
+
+Example:
+
+```bash
+WIN_LINUX_ZIP=0 python3 tools/control.py --build --winlinux
+```
+
+Inno note:
+- The current repository does not implement a dedicated Inno portable builder.
+- Portable delivery is currently handled by the existing ZIP-based portable flows.
 
 ### Build (macOS) — `--build-mac`
 
@@ -192,7 +237,9 @@ MAC_BUNDLES=app,dmg python3 tools/control.py --build-mac
 
 For packaging, run the OS-appropriate build command:
 - Linux: `--build-lin`
-- Windows: `--build-win`
+- Windows installers: `--build-win`
+- Windows portable (local): `--build-win -p`
+- Windows portable (Linux cross-compile): `--build --winlinux`
 - macOS: `--build-mac`
 
 For Linux local desktop integration after a build:
@@ -202,7 +249,7 @@ For Linux local desktop integration after a build:
 ## When to use
 
 - Use `--start` for day-to-day development and local testing.
-- Use `--build-lin` / `--build-win` / `--build-mac` when you need release bundles or installers for distribution.
+- Use `--build-lin`, `--build-win`, `--build-win -p`, `--build --winlinux`, and `--build-mac` based on your packaging target.
 
 ## Extending the control script
 
