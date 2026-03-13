@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { parseExamTasks } from "./exam";
 import {
   buildCombinedSessionTasks,
+  buildCombinedSessionTasksFromRows,
   buildMixedSessionTasks,
   buildSingleSessionTasks,
   type ExamSessionSource,
@@ -212,5 +213,48 @@ describe("buildSingleSessionTasks", () => {
       "/vault/exam-a.md",
     ]);
     expect(single.map((task) => task.originalTaskNumber)).toEqual([1, 2, 3]);
+  });
+});
+
+describe("buildCombinedSessionTasksFromRows", () => {
+  it("treats nested rows as sequential nested groups", () => {
+    const examA = buildSource("/vault/exam-a.md", "Exam A", [1, 2, 3]);
+    const examB = buildSource("/vault/exam-b.md", "Exam B", [1, 2, 3]);
+    const examC = buildSource("/vault/exam-c.md", "Exam C", [1, 2, 3]);
+
+    const nested = buildCombinedSessionTasksFromRows(
+      [[examA], [examB, examC]],
+      "seed-fixed",
+      "nested",
+    );
+
+    expect(nested.tasks).toHaveLength(6);
+    expect(nested.tasks.slice(0, 3).every((task) => task.sourceExamPath === "/vault/exam-a.md")).toBe(
+      true,
+    );
+    expect(nested.tasks.slice(3).every((task) => task.sourceExamPath !== "/vault/exam-a.md")).toBe(
+      true,
+    );
+  });
+
+  it("flattens rows deterministically for non-nested modes", () => {
+    const examA = buildSource("/vault/exam-a.md", "Exam A", [1, 2]);
+    const examB = buildSource("/vault/exam-b.md", "Exam B", [1, 2]);
+    const examC = buildSource("/vault/exam-c.md", "Exam C", [1, 2]);
+
+    const sequential = buildCombinedSessionTasksFromRows(
+      [[examA, examB], [examC]],
+      "seed-fixed",
+      "sequential",
+    );
+
+    expect(sequential.tasks.map((task) => task.sourceExamPath)).toEqual([
+      "/vault/exam-a.md",
+      "/vault/exam-a.md",
+      "/vault/exam-b.md",
+      "/vault/exam-b.md",
+      "/vault/exam-c.md",
+      "/vault/exam-c.md",
+    ]);
   });
 });

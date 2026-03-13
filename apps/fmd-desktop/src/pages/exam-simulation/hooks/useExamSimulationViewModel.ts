@@ -67,12 +67,17 @@ import {
   resolveTaskTypePointsFromMap,
 } from "../../../lib/exam/pointsScoring";
 import {
-  buildCombinedSessionTasks,
+  buildCombinedSessionTasksFromRows,
   createMixSeed,
   type ExamCombinationMode,
   type ExamSessionSource,
   type ExamSessionTask,
 } from "../../../lib/examMixedSession";
+import {
+  flattenExamSelectionRows,
+  normalizeExamSelectionRows,
+  type ExamSelectionRows,
+} from "../../../lib/examSelectionRows";
 import { type VaultFile } from "../../../lib/tree";
 import type { LoadState } from "../../../lib/types";
 import type { ExamFileEntry } from "../../../features/exam/types";
@@ -116,6 +121,8 @@ type SelectedExamSource = ExamSessionSource & {
   taskMissing: boolean;
 };
 
+type SelectedExamSourceRows = SelectedExamSource[][];
+
 type PreviewSession = {
   tasks: ExamSessionTask[];
   hasExamBlock: boolean;
@@ -134,7 +141,8 @@ type SelectedExamIgnoredEntry = {
   reason: string;
 };
 
-const buildSelectionSignature = (paths: string[]) => paths.join("|");
+const buildSelectionSignature = (rows: ExamSelectionRows) =>
+  rows.map((row) => row.join(",")).join("|");
 const STANDARD_RUN_PROFILE_NAME = "Standard (no profile)";
 export const __resetRunProfileLargeSelectionAutoResetForTests = () => undefined;
 
@@ -179,7 +187,7 @@ export const useExamSimulationViewModel = () => {
     examFiles,
     examFilesState,
     examFilesError,
-    selectedExamFilePaths,
+    selectedExamFileRows,
   } = useAppState();
   const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
   const [examRunsLoaded, setExamRunsLoaded] = useState(false);
@@ -318,7 +326,14 @@ export const useExamSimulationViewModel = () => {
     () => new Map(examFiles.map((file) => [file.path, file])),
     [examFiles],
   );
-  const selectedExamPaths = selectedExamFilePaths;
+  const selectedExamPathRows = useMemo(
+    () => normalizeExamSelectionRows(selectedExamFileRows),
+    [selectedExamFileRows],
+  );
+  const selectedExamPaths = useMemo(
+    () => flattenExamSelectionRows(selectedExamPathRows),
+    [selectedExamPathRows],
+  );
 
   const selectedExamFiles = useMemo(
     () =>
@@ -345,8 +360,8 @@ export const useExamSimulationViewModel = () => {
   const selectedExamCount = selectedExamFiles.length;
   const selectedRunnableExamCount = selectedExamRunnableFiles.length;
   const selectedExamSelectionSignature = useMemo(
-    () => buildSelectionSignature(selectedExamPaths),
-    [selectedExamPaths],
+    () => buildSelectionSignature(selectedExamPathRows),
+    [selectedExamPathRows],
   );
 
   useEffect(() => {
@@ -498,6 +513,21 @@ export const useExamSimulationViewModel = () => {
       selectedExamRunnableFiles,
     ],
   );
+  const selectedExamSourceByPath = useMemo(
+    () => new Map(selectedExamSources.map((source) => [source.examPath, source])),
+    [selectedExamSources],
+  );
+  const selectedExamSourceRows = useMemo<SelectedExamSourceRows>(
+    () =>
+      selectedExamPathRows
+        .map((row) =>
+          row
+            .map((path) => selectedExamSourceByPath.get(path))
+            .filter((source): source is SelectedExamSource => Boolean(source)),
+        )
+        .filter((row) => row.length > 0),
+    [selectedExamPathRows, selectedExamSourceByPath],
+  );
 
   const selectedExamIgnoredEntries = useMemo<SelectedExamIgnoredEntry[]>(
     () => [...selectedExamIgnoredByScan, ...selectedExamRuntimeIgnored],
@@ -580,8 +610,8 @@ export const useExamSimulationViewModel = () => {
       };
     }
 
-    const combined = buildCombinedSessionTasks(
-      selectedExamSources,
+    const combined = buildCombinedSessionTasksFromRows(
+      selectedExamSourceRows,
       mixSeed,
       combinationMode,
     );
@@ -597,7 +627,7 @@ export const useExamSimulationViewModel = () => {
     mixSeed,
     selectedExamParseState,
     selectedExamParses,
-    selectedExamSources,
+    selectedExamSourceRows,
     selectedRunnableExamCount,
   ]);
 
@@ -629,6 +659,7 @@ export const useExamSimulationViewModel = () => {
       profile: ExamPointsProfile | null,
       sources: SelectedExamSource[],
       mode: ExamCombinationMode,
+      nestedGroupCount: number,
     ): SessionTaskPointsPlan => {
       const profileAssignments = sources.map((source) => ({
         examPath: source.examPath,
@@ -696,7 +727,7 @@ export const useExamSimulationViewModel = () => {
           profile.durationMinutes ?? defaultProfileDurationMinutes,
         );
         if (mode === "nested") {
-          return profileDurationMinutes * 60;
+          return profileDurationMinutes * Math.max(1, nestedGroupCount) * 60;
         }
         return profileDurationMinutes * Math.max(0, sources.length) * 60;
       })();
@@ -723,12 +754,14 @@ export const useExamSimulationViewModel = () => {
         selectedRunProfile,
         selectedExamSources,
         combinationMode,
+        selectedExamSourceRows.length,
       ),
     [
       combinationMode,
       previewExamParse.tasks,
       resolveSessionTaskPointsPlan,
       selectedRunProfile,
+      selectedExamSourceRows.length,
       selectedExamSources,
     ],
   );
@@ -879,11 +912,26 @@ export const useExamSimulationViewModel = () => {
     },
     [actions],
   );
+  const handleSetSelectedExamRows = useCallback(
+    (rows: ExamSelectionRows) => {
+      actions.handleSetSelectedExamFileRows(rows);
+      setSessionInvalidationMessage("");
+    },
+    [actions],
+  );
 
   const handleClearExamSelection = useCallback(() => {
     actions.handleClearSelectedExamFiles();
     setSessionInvalidationMessage("");
   }, [actions]);
+
+  const handlePlaceSelectedExamFile = useCallback(
+    (sourcePath: string, target: { rowIndex: number; slotIndex: number }) => {
+      actions.handlePlaceSelectedExamFile(sourcePath, target);
+      setSessionInvalidationMessage("");
+    },
+    [actions],
+  );
 
   const handleMoveSelectedExamFile = useCallback(
     (sourcePath: string, targetPath: string) => {
@@ -949,12 +997,12 @@ export const useExamSimulationViewModel = () => {
     if (!canStartExam) {
       return;
     }
-    if (selectedExamSources.length === 0) {
+    if (selectedExamSources.length === 0 || selectedExamSourceRows.length === 0) {
       return;
     }
     const sessionSeed = mixSeed || createMixSeed();
-    const sessionTasks = buildCombinedSessionTasks(
-      selectedExamSources,
+    const sessionTasks = buildCombinedSessionTasksFromRows(
+      selectedExamSourceRows,
       sessionSeed,
       combinationMode,
     ).tasks;
@@ -966,6 +1014,7 @@ export const useExamSimulationViewModel = () => {
       selectedRunProfile,
       selectedExamSources,
       combinationMode,
+      selectedExamSourceRows.length,
     );
     const snapshot: ExamSettingsSnapshot = {
       maxTotalPoints: sessionTaskPlan.maxTotalPoints,
@@ -1019,6 +1068,7 @@ export const useExamSimulationViewModel = () => {
     combinationMode,
     mixSeed,
     resolveSessionTaskPointsPlan,
+    selectedExamSourceRows,
     selectedExamSources,
     selectedRunProfile,
     settings.examAiEvaluation,
@@ -2070,6 +2120,7 @@ export const useExamSimulationViewModel = () => {
     selectedExamFiles,
     selectedExamRunnableFiles,
     selectedExamIgnoredEntries,
+    selectedExamPathRows,
     selectedExamPaths,
     selectedExamCount,
     selectedRunnableExamCount,
@@ -2137,7 +2188,9 @@ export const useExamSimulationViewModel = () => {
     handleDeleteExamRun,
     handleToggleExamSelection,
     handleSelectVisibleExamFiles,
+    handleSetSelectedExamRows,
     handleClearExamSelection,
+    handlePlaceSelectedExamFile,
     handleMoveSelectedExamFile,
     handleCombinationModeChange,
     handleRunProfileChange,

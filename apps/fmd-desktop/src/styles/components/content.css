@@ -1463,9 +1463,68 @@ body.focus-mode .spaced-repetition-sidebar {
 
 .exam-selected-order {
   display: flex;
-  gap: var(--ui-toolbar-gap);
-  overflow-x: auto;
+  flex-direction: column;
+  gap: 10px;
+  overflow-x: visible;
   padding-bottom: 2px;
+}
+
+.exam-selected-order-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exam-selected-order-row-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-control);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+}
+
+.exam-selected-order-row-meta {
+  font-size: 0.7rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.exam-selected-order-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--ui-space-xs);
+  flex-wrap: wrap;
+}
+
+.exam-selected-slot {
+  width: 18px;
+  min-width: 18px;
+  min-height: calc(var(--ui-list-row-height) + 10px);
+  padding: 0;
+  border: 1px dashed var(--ui-border-hover);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 70%, var(--block-bg));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.exam-selected-slot span {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.exam-selected-slot.is-active {
+  border-style: solid;
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent-active-bg) 72%, transparent);
 }
 
 .exam-selected-chip {

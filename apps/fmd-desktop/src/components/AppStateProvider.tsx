@@ -55,6 +55,17 @@ import { useVault } from "../features/vault/useVault";
 import { useExamFiles } from "../features/exam/useExamFiles";
 import type { ExamFileEntry } from "../features/exam/types";
 import { useExamPointsProfiles } from "../features/exam-points/useExamPointsProfiles";
+import {
+  areExamSelectionRowsEqual,
+  buildExamSelectionRowsFromPaths,
+  flattenExamSelectionRows,
+  moveExamSelectionPathBeforeTarget,
+  normalizeExamSelectionRows,
+  placeExamSelectionPath,
+  toggleExamSelectionPath,
+  type ExamSelectionPlacementTarget,
+  type ExamSelectionRows,
+} from "../lib/examSelectionRows";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 import { VaultManagerModal } from "./VaultManagerModal";
 import { DEFAULT_HELP_TOPIC_ID } from "../pages/help/helpContent";
@@ -68,6 +79,11 @@ type AppActions = {
   handleSelectFile: (file: VaultFile) => void;
   handleToggleExamFileSelection: (path: string) => void;
   handleSetSelectedExamFiles: (paths: string[]) => void;
+  handleSetSelectedExamFileRows: (rows: ExamSelectionRows) => void;
+  handlePlaceSelectedExamFile: (
+    sourcePath: string,
+    target: ExamSelectionPlacementTarget,
+  ) => void;
   handleMoveSelectedExamFile: (sourcePath: string, targetPath: string) => void;
   handleClearSelectedExamFiles: () => void;
   handleThemeChange: (nextTheme: ThemeMode) => void;
@@ -88,6 +104,7 @@ type AppState = {
   examFiles: ExamFileEntry[];
   examFilesState: LoadState;
   examFilesError: string;
+  selectedExamFileRows: ExamSelectionRows;
   selectedExamFilePaths: string[];
   flashcardNoteFiles: ReturnType<typeof useFlashcards>["flashcardFiles"];
   flashcardNoteFilesState: LoadState;
@@ -167,7 +184,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [isVaultManagerOpen, setIsVaultManagerOpen] = useState(false);
   const [activeSettingsPage, setActiveSettingsPage] =
     useState<SettingsPageId>("appearance");
-  const [selectedExamFilePaths, setSelectedExamFilePaths] = useState<string[]>([]);
+  const [selectedExamFileRows, setSelectedExamFileRows] = useState<ExamSelectionRows>(
+    [],
+  );
   const {
     activeNotePath,
     accentColor,
@@ -287,26 +306,53 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     () => new Set(examFiles.map((file) => file.path)),
     [examFiles],
   );
+  const selectedExamFilePaths = useMemo(
+    () => flattenExamSelectionRows(selectedExamFileRows),
+    [selectedExamFileRows],
+  );
+  const normalizeSelectedExamFileRows = useCallback(
+    (rows: ExamSelectionRows) =>
+      normalizeExamSelectionRows(rows, {
+        validPaths: examFilePathSet,
+      }),
+    [examFilePathSet],
+  );
   const normalizeSelectedExamFiles = useCallback(
     (paths: string[]) =>
-      Array.from(new Set(paths)).filter((path) => examFilePathSet.has(path)),
+      buildExamSelectionRowsFromPaths(paths, {
+        validPaths: examFilePathSet,
+      }),
     [examFilePathSet],
   );
   const handleSetSelectedExamFiles = useCallback(
     (paths: string[]) => {
-      setSelectedExamFilePaths(normalizeSelectedExamFiles(paths));
+      setSelectedExamFileRows(normalizeSelectedExamFiles(paths));
     },
     [normalizeSelectedExamFiles],
+  );
+  const handleSetSelectedExamFileRows = useCallback(
+    (rows: ExamSelectionRows) => {
+      setSelectedExamFileRows(normalizeSelectedExamFileRows(rows));
+    },
+    [normalizeSelectedExamFileRows],
   );
   const handleToggleExamFileSelection = useCallback(
     (path: string) => {
       if (!examFilePathSet.has(path)) {
         return;
       }
-      setSelectedExamFilePaths((previous) =>
-        previous.includes(path)
-          ? previous.filter((entry) => entry !== path)
-          : [...previous, path],
+      setSelectedExamFileRows((previous) =>
+        toggleExamSelectionPath(previous, path, { validPaths: examFilePathSet }),
+      );
+    },
+    [examFilePathSet],
+  );
+  const handlePlaceSelectedExamFile = useCallback(
+    (sourcePath: string, target: ExamSelectionPlacementTarget) => {
+      setSelectedExamFileRows((previous) =>
+        placeExamSelectionPath(previous, sourcePath, target, {
+          validPaths: examFilePathSet,
+        }),
       );
     },
     [examFilePathSet],
@@ -316,33 +362,24 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       if (!sourcePath || !targetPath || sourcePath === targetPath) {
         return;
       }
-      setSelectedExamFilePaths((previous) => {
-        const sourceIndex = previous.indexOf(sourcePath);
-        const targetIndex = previous.indexOf(targetPath);
-        if (sourceIndex < 0 || targetIndex < 0) {
-          return previous;
-        }
-        const next = [...previous];
-        const [moved] = next.splice(sourceIndex, 1);
-        if (!moved) {
-          return previous;
-        }
-        next.splice(Math.max(0, targetIndex), 0, moved);
-        return next;
-      });
+      setSelectedExamFileRows((previous) =>
+        moveExamSelectionPathBeforeTarget(previous, sourcePath, targetPath, {
+          validPaths: examFilePathSet,
+        }),
+      );
     },
-    [],
+    [examFilePathSet],
   );
   const handleClearSelectedExamFiles = useCallback(() => {
-    setSelectedExamFilePaths([]);
+    setSelectedExamFileRows([]);
   }, []);
 
   useEffect(() => {
-    setSelectedExamFilePaths((previous) => {
-      const next = previous.filter((path) => examFilePathSet.has(path));
-      return next.length === previous.length ? previous : next;
+    setSelectedExamFileRows((previous) => {
+      const next = normalizeSelectedExamFileRows(previous);
+      return areExamSelectionRowsEqual(next, previous) ? previous : next;
     });
-  }, [examFilePathSet]);
+  }, [normalizeSelectedExamFileRows]);
   const {
     noteFiles: flashcardNoteFiles,
     noteFilesState: flashcardNoteFilesState,
@@ -1220,7 +1257,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     resetFastFlashcards();
     setActiveFolderPath(null);
     setLargeVaultWarningCount(null);
-    setSelectedExamFilePaths([]);
+    setSelectedExamFileRows([]);
     setFiles([]);
     setPngAssets([]);
     setListError("");
@@ -1236,7 +1273,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setActiveFolderPath,
     setFiles,
     setLargeVaultWarningCount,
-    setSelectedExamFilePaths,
+    setSelectedExamFileRows,
     setListError,
     setListState,
     setPngAssets,
@@ -1272,6 +1309,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleSelectFile,
       handleToggleExamFileSelection,
       handleSetSelectedExamFiles,
+      handleSetSelectedExamFileRows,
+      handlePlaceSelectedExamFile,
       handleMoveSelectedExamFile,
       handleClearSelectedExamFiles,
       handleThemeChange,
@@ -1289,6 +1328,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     examFiles,
     examFilesState,
     examFilesError,
+    selectedExamFileRows,
     selectedExamFilePaths,
     flashcardNoteFiles,
     flashcardNoteFilesState,

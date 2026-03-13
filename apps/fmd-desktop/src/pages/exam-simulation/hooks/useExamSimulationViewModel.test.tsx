@@ -7,6 +7,11 @@ import { useAppState } from "../../../components/AppStateProvider";
 import type { ExamFileEntry } from "../../../features/exam/types";
 import type { ExamPointsProfile } from "../../../lib/exam/pointsProfiles";
 import {
+  buildExamSelectionRowsFromPaths,
+  flattenExamSelectionRows,
+  type ExamSelectionRows,
+} from "../../../lib/examSelectionRows";
+import {
   __resetRunProfileLargeSelectionAutoResetForTests,
   useExamSimulationViewModel,
 } from "./useExamSimulationViewModel";
@@ -186,13 +191,17 @@ const examFiles: ExamFileEntry[] = [
 
 const createMockAppState = ({
   selectedPaths,
+  selectedRows,
   profileOne = createProfile("profile-1", "Profile 1"),
   profileTwo = createProfile("profile-2", "Profile 2"),
 }: {
   selectedPaths: string[];
+  selectedRows?: ExamSelectionRows;
   profileOne?: ExamPointsProfile;
   profileTwo?: ExamPointsProfile;
 }) => {
+  const normalizedRows = selectedRows ?? buildExamSelectionRowsFromPaths(selectedPaths);
+  const normalizedPaths = flattenExamSelectionRows(normalizedRows);
   const profiles = [profileOne, profileTwo];
   const resolveProfileByName = (name: string | null | undefined) => {
     if (!name || !name.trim()) {
@@ -208,6 +217,8 @@ const createMockAppState = ({
     actions: {
       handleToggleExamFileSelection: vi.fn(),
       handleSetSelectedExamFiles: vi.fn(),
+      handleSetSelectedExamFileRows: vi.fn(),
+      handlePlaceSelectedExamFile: vi.fn(),
       handleClearSelectedExamFiles: vi.fn(),
       handleMoveSelectedExamFile: vi.fn(),
       handleRescanVault: vi.fn().mockResolvedValue(true),
@@ -265,7 +276,8 @@ const createMockAppState = ({
     examFiles,
     examFilesState: "idle",
     examFilesError: "",
-    selectedExamFilePaths: selectedPaths,
+    selectedExamFileRows: normalizedRows,
+    selectedExamFilePaths: normalizedPaths,
   } as unknown as ReturnType<typeof useAppState>;
 };
 
@@ -436,6 +448,61 @@ describe("useExamSimulationViewModel task profile matrix", () => {
     expect(latestValue()?.plannedTaskCount).toBe(3);
     expect(latestValue()?.plannedMaxPoints).toBe(31);
     expect(latestValue()?.previewDurationMinutes).toBe(7);
+
+    cleanup();
+  });
+
+  it("multiplies nested profile duration by non-empty row count", async () => {
+    const profileOne = createProfile("profile-1", "Profile 1", {
+      durationMinutes: 30,
+      taskCount: 5,
+      taskPoints: [2, 2, 2, 2, 2],
+    });
+    const profileTwo = createProfile("profile-2", "Profile 2", {
+      durationMinutes: 7,
+      taskCount: 3,
+      taskPoints: [10, 20, 30],
+    });
+    const readByPath: Record<string, string> = {
+      "/vault/a.md": createExamMarkdown({ taskProfileName: "Profile 2", taskCount: 3 }),
+      "/vault/b.md": createExamMarkdown({ taskProfileName: "Profile 2", taskCount: 3 }),
+      "/vault/c.md": createExamMarkdown({ taskProfileName: "Profile 2", taskCount: 3 }),
+    };
+    mockInvoke.mockImplementation(async (command: string, args?: InvokeArgs) => {
+      if (command === "load_exam_run_data") {
+        return { runs: [] };
+      }
+      if (command === "read_text_file") {
+        return readByPath[resolveInvokePath(args)] ?? createExamMarkdown({});
+      }
+      return undefined;
+    });
+
+    const state = createMockAppState({
+      selectedPaths: ["/vault/a.md", "/vault/b.md", "/vault/c.md"],
+      selectedRows: [["/vault/a.md"], ["/vault/b.md", "/vault/c.md"]],
+      profileOne,
+      profileTwo,
+    });
+    mockUseAppState.mockImplementation(() => state);
+
+    let latest: HookState = null;
+    const latestValue = (): HookState => latest;
+    const { cleanup } = renderHook((value) => {
+      latest = value;
+    });
+
+    await flush();
+    await flush();
+    expect(latestValue()?.selectedRunProfileId).toBeNull();
+
+    act(() => {
+      latestValue()?.handleRunProfileChange("profile-2");
+      latestValue()?.handleCombinationModeChange("nested");
+    });
+    await flush();
+
+    expect(latestValue()?.previewDurationMinutes).toBe(14);
 
     cleanup();
   });

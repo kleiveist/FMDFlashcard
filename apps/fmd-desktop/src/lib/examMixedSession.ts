@@ -14,6 +14,8 @@ export type ExamSessionSource = {
   tasks: ExamTask[];
 };
 
+export type ExamSessionSourceRows = ExamSessionSource[][];
+
 export type ExamSessionTask = ExamTask & {
   sessionTaskId: string;
   sourceExamPath: string;
@@ -200,6 +202,37 @@ export const buildCombinedSessionTasks = (
     }
     return buildSequentialCandidates(sources, seed, false);
   })();
+
+  return {
+    tasks: orderedCandidates.map((candidate, index) =>
+      toSessionTask(candidate, index + 1, seed),
+    ),
+    duplicateTaskNumberWarnings: [],
+  };
+};
+
+export const buildCombinedSessionTasksFromRows = (
+  sourceRows: ExamSessionSourceRows,
+  seed: string | number,
+  mode: ExamCombinationMode,
+): BuildCombinedSessionResult => {
+  const rows = sourceRows
+    .map((row) => row.filter((source) => Boolean(source)))
+    .filter((row) => row.length > 0);
+  if (rows.length === 0) {
+    return {
+      tasks: [],
+      duplicateTaskNumberWarnings: [],
+    };
+  }
+
+  if (mode !== "nested") {
+    return buildCombinedSessionTasks(rows.flat(), seed, mode);
+  }
+
+  const orderedCandidates = rows.flatMap((row, rowIndex) =>
+    buildNestedCandidates(row, seedKey(seed, `nested-row:${rowIndex}`)),
+  );
 
   return {
     tasks: orderedCandidates.map((candidate, index) =>

@@ -6,6 +6,8 @@
  */
 
 import {
+  Fragment,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -15,6 +17,16 @@ import {
 } from "react";
 import type { ExamCombinationMode } from "../../../lib/examMixedSession";
 import type { LoadState } from "../../../lib/types";
+import {
+  areExamSelectionRowsEqual,
+  buildExamSelectionRowsFromPaths,
+  flattenExamSelectionRows,
+  locateExamSelectionPath,
+  normalizeExamSelectionRows,
+  placeExamSelectionPath,
+  type ExamSelectionPlacementTarget,
+  type ExamSelectionRows,
+} from "../../../lib/examSelectionRows";
 import {
   EXAM_FILE_STATUS_LABELS,
   resolveExamFileStatusReason,
@@ -37,16 +49,22 @@ type ExamFilePanelProps = {
   files: ExamFileEntry[];
   listState: LoadState;
   listError: string;
-  selectedPaths: string[];
+  selectedPathRows?: ExamSelectionRows;
+  selectedPaths?: string[];
   vaultPath: string | null;
   compactSummary?: ExamFilePanelCompactSummary;
   selectedProfileId: string | null;
   profileOptions: ProfileOption[];
   onProfileChange: (profileId: string) => void;
   onToggleFile: (path: string) => void;
-  onSetSelectedPaths: (paths: string[]) => void;
+  onSetSelectedPathRows?: (rows: ExamSelectionRows) => void;
+  onSetSelectedPaths?: (paths: string[]) => void;
   onClearSelection: () => void;
-  onMoveSelectedFile: (sourcePath: string, targetPath: string) => void;
+  onPlaceSelectedFile?: (
+    sourcePath: string,
+    target: ExamSelectionPlacementTarget,
+  ) => void;
+  onMoveSelectedFile?: (sourcePath: string, targetPath: string) => void;
   showClearSelectionButton?: boolean;
   listScrollMode?: "internal" | "external";
   combinationMode?: ExamCombinationMode;
@@ -72,6 +90,8 @@ type ChipDropHint = {
   position: "before" | "after";
 };
 
+type SlotDropHint = ExamSelectionPlacementTarget;
+
 const FILE_ROW_HEIGHT = 84;
 const FILE_LIST_OVERSCAN = 5;
 const FILE_LIST_VISIBLE_ROWS = 8;
@@ -82,6 +102,7 @@ export const ExamFilePanel = ({
   files,
   listState,
   listError,
+  selectedPathRows,
   selectedPaths,
   vaultPath,
   compactSummary,
@@ -89,8 +110,10 @@ export const ExamFilePanel = ({
   profileOptions,
   onProfileChange,
   onToggleFile,
+  onSetSelectedPathRows,
   onSetSelectedPaths,
   onClearSelection,
+  onPlaceSelectedFile,
   onMoveSelectedFile,
   showClearSelectionButton = true,
   listScrollMode = "internal",
@@ -104,6 +127,7 @@ export const ExamFilePanel = ({
   const [moveSourcePath, setMoveSourcePath] = useState<string | null>(null);
   const [dragSourcePath, setDragSourcePath] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<ChipDropHint | null>(null);
+  const [slotDropHint, setSlotDropHint] = useState<SlotDropHint | null>(null);
   const [toolbarHeight, setToolbarHeight] = useState(FILE_VIEWPORT_TOOLBAR_HEIGHT);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const selectedOrderRef = useRef<HTMLDivElement | null>(null);
@@ -111,21 +135,84 @@ export const ExamFilePanel = ({
     () => files.filter((entry) => entry.status === "valid"),
     [files],
   );
-  const selectedSet = useMemo(() => new Set(selectedPaths), [selectedPaths]);
-  const selectedEntries = useMemo(
+  const validPathSet = useMemo(
+    () => new Set(validFiles.map((entry) => entry.path)),
+    [validFiles],
+  );
+  const selectedRows = useMemo(
     () =>
-      selectedPaths
-        .map((path) => validFiles.find((file) => file.path === path))
-        .filter((entry): entry is ExamFileEntry => Boolean(entry)),
-    [selectedPaths, validFiles],
+      selectedPathRows
+        ? selectedPathRows
+        : buildExamSelectionRowsFromPaths(selectedPaths ?? []),
+    [selectedPathRows, selectedPaths],
+  );
+  const normalizedSelectedRows = useMemo(
+    () =>
+      normalizeExamSelectionRows(selectedRows, {
+        validPaths: validPathSet,
+      }),
+    [selectedRows, validPathSet],
+  );
+  const selectedPathsFlat = useMemo(
+    () => flattenExamSelectionRows(normalizedSelectedRows),
+    [normalizedSelectedRows],
+  );
+  const selectedSet = useMemo(() => new Set(selectedPathsFlat), [selectedPathsFlat]);
+  const validFilesByPath = useMemo(
+    () => new Map(validFiles.map((entry) => [entry.path, entry])),
+    [validFiles],
+  );
+  const selectedRowEntries = useMemo(
+    () =>
+      normalizedSelectedRows
+        .map((row) =>
+          row
+            .map((path) => validFilesByPath.get(path))
+            .filter((entry): entry is ExamFileEntry => Boolean(entry)),
+        )
+        .filter((row) => row.length > 0),
+    [normalizedSelectedRows, validFilesByPath],
+  );
+  const selectedEntries = useMemo(
+    () => selectedRowEntries.flatMap((row) => row),
+    [selectedRowEntries],
+  );
+  const applySelectedRows = useCallback(
+    (rows: ExamSelectionRows) => {
+      if (onSetSelectedPathRows) {
+        onSetSelectedPathRows(rows);
+      }
+      if (onSetSelectedPaths) {
+        onSetSelectedPaths(flattenExamSelectionRows(rows));
+      }
+    },
+    [onSetSelectedPathRows, onSetSelectedPaths],
+  );
+  const placeSelectedPath = useCallback(
+    (sourcePath: string, target: ExamSelectionPlacementTarget) => {
+      if (onPlaceSelectedFile) {
+        onPlaceSelectedFile(sourcePath, target);
+        return;
+      }
+      const nextRows = placeExamSelectionPath(normalizedSelectedRows, sourcePath, target, {
+        validPaths: validPathSet,
+      });
+      applySelectedRows(nextRows);
+    },
+    [
+      applySelectedRows,
+      normalizedSelectedRows,
+      onPlaceSelectedFile,
+      validPathSet,
+    ],
   );
 
   useEffect(() => {
-    if (selectedEntries.length === selectedPaths.length) {
+    if (areExamSelectionRowsEqual(selectedRows, normalizedSelectedRows)) {
       return;
     }
-    onSetSelectedPaths(selectedEntries.map((entry) => entry.path));
-  }, [onSetSelectedPaths, selectedEntries, selectedPaths.length]);
+    applySelectedRows(normalizedSelectedRows);
+  }, [applySelectedRows, normalizedSelectedRows, selectedRows]);
 
   useEffect(() => {
     const toolbarElement = toolbarRef.current;
@@ -162,6 +249,7 @@ export const ExamFilePanel = ({
       setMoveSourcePath(null);
       setDragSourcePath(null);
       setDropHint(null);
+      setSlotDropHint(null);
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -169,6 +257,7 @@ export const ExamFilePanel = ({
         setMoveSourcePath(null);
         setDragSourcePath(null);
         setDropHint(null);
+        setSlotDropHint(null);
       }
     };
 
@@ -264,8 +353,16 @@ export const ExamFilePanel = ({
       setMoveSourcePath(null);
       return;
     }
-    onMoveSelectedFile(moveSourcePath, path);
+    if (onMoveSelectedFile) {
+      onMoveSelectedFile(moveSourcePath, path);
+    } else {
+      const targetPosition = locateExamSelectionPath(normalizedSelectedRows, path);
+      if (targetPosition) {
+        placeSelectedPath(moveSourcePath, targetPosition);
+      }
+    }
     setMoveSourcePath(null);
+    setSlotDropHint(null);
   };
 
   const handleSelectedChipKeyDown = (
@@ -277,11 +374,15 @@ export const ExamFilePanel = ({
       handleSelectedReorderTap(path);
       return;
     }
-    if (event.key === "Escape" && (moveSourcePath || dragSourcePath || dropHint)) {
+    if (
+      event.key === "Escape" &&
+      (moveSourcePath || dragSourcePath || dropHint || slotDropHint)
+    ) {
       event.preventDefault();
       setMoveSourcePath(null);
       setDragSourcePath(null);
       setDropHint(null);
+      setSlotDropHint(null);
     }
   };
 
@@ -298,8 +399,8 @@ export const ExamFilePanel = ({
     targetPath: string,
     position: "before" | "after",
   ): string | null => {
-    const sourceIndex = selectedPaths.indexOf(sourcePath);
-    const targetIndex = selectedPaths.indexOf(targetPath);
+    const sourceIndex = selectedPathsFlat.indexOf(sourcePath);
+    const targetIndex = selectedPathsFlat.indexOf(targetPath);
     if (sourceIndex < 0 || targetIndex < 0) {
       return null;
     }
@@ -310,10 +411,10 @@ export const ExamFilePanel = ({
     if (desiredIndex === sourceIndex) {
       return null;
     }
-    if (desiredIndex < 0 || desiredIndex >= selectedPaths.length) {
+    if (desiredIndex < 0 || desiredIndex >= selectedPathsFlat.length) {
       return null;
     }
-    return selectedPaths[desiredIndex] ?? null;
+    return selectedPathsFlat[desiredIndex] ?? null;
   };
 
   const handleSelectedChipDragStart = (
@@ -323,6 +424,7 @@ export const ExamFilePanel = ({
     setDragSourcePath(path);
     setMoveSourcePath(path);
     setDropHint(null);
+    setSlotDropHint(null);
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = "move";
       try {
@@ -355,6 +457,19 @@ export const ExamFilePanel = ({
     setDropHint((current) =>
       current?.path === path && current.position === position ? current : { path, position },
     );
+    if (!onPlaceSelectedFile && onMoveSelectedFile) {
+      setSlotDropHint(null);
+      return;
+    }
+    const targetPosition = locateExamSelectionPath(normalizedSelectedRows, path);
+    if (!targetPosition) {
+      setSlotDropHint(null);
+      return;
+    }
+    setSlotDropHint({
+      rowIndex: targetPosition.rowIndex,
+      slotIndex: targetPosition.slotIndex + (position === "after" ? 1 : 0),
+    });
   };
 
   const handleSelectedChipDragLeave = (
@@ -377,20 +492,73 @@ export const ExamFilePanel = ({
       return;
     }
     event.preventDefault();
-    const position = resolveChipDropPosition(event);
-    const targetPath = resolveDropTargetPath(sourcePath, path, position);
-    if (targetPath) {
-      onMoveSelectedFile(sourcePath, targetPath);
+    const hint = slotDropHint;
+    if (hint && (onPlaceSelectedFile || !onMoveSelectedFile)) {
+      placeSelectedPath(sourcePath, hint);
+    } else {
+      const position = resolveChipDropPosition(event);
+      const targetPath = resolveDropTargetPath(sourcePath, path, position);
+      if (targetPath && onMoveSelectedFile) {
+        onMoveSelectedFile(sourcePath, targetPath);
+      }
     }
     setDropHint(null);
+    setSlotDropHint(null);
     setDragSourcePath(null);
     setMoveSourcePath(null);
   };
 
   const handleSelectedChipDragEnd = () => {
     setDropHint(null);
+    setSlotDropHint(null);
     setDragSourcePath(null);
     setMoveSourcePath(null);
+  };
+
+  const handleSlotPlaceTap = (target: ExamSelectionPlacementTarget) => {
+    if (!moveSourcePath) {
+      return;
+    }
+    placeSelectedPath(moveSourcePath, target);
+    setMoveSourcePath(null);
+    setDragSourcePath(null);
+    setDropHint(null);
+    setSlotDropHint(null);
+  };
+
+  const handleSlotDragOver = (
+    event: ReactDragEvent<HTMLButtonElement>,
+    target: ExamSelectionPlacementTarget,
+  ) => {
+    const sourcePath = dragSourcePath ?? moveSourcePath;
+    if (!sourcePath) {
+      return;
+    }
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+    setSlotDropHint((current) =>
+      current?.rowIndex === target.rowIndex && current.slotIndex === target.slotIndex
+        ? current
+        : target,
+    );
+  };
+
+  const handleSlotDrop = (
+    event: ReactDragEvent<HTMLButtonElement>,
+    target: ExamSelectionPlacementTarget,
+  ) => {
+    const sourcePath = dragSourcePath ?? moveSourcePath;
+    if (!sourcePath) {
+      return;
+    }
+    event.preventDefault();
+    placeSelectedPath(sourcePath, target);
+    setMoveSourcePath(null);
+    setDragSourcePath(null);
+    setDropHint(null);
+    setSlotDropHint(null);
   };
 
   const renderFileRowEntries = (entries: ExamFileEntry[]) =>
@@ -425,6 +593,38 @@ export const ExamFilePanel = ({
         </div>
       );
     });
+
+  const renderPlacementSlot = (
+    target: ExamSelectionPlacementTarget,
+    label: string,
+    key: string,
+  ) => {
+    const isActive =
+      slotDropHint?.rowIndex === target.rowIndex &&
+      slotDropHint.slotIndex === target.slotIndex;
+    return (
+      <button
+        key={key}
+        type="button"
+        className={`exam-selected-slot ${isActive ? "is-active" : ""}`}
+        onClick={() => handleSlotPlaceTap(target)}
+        onDragOver={(event) => handleSlotDragOver(event, target)}
+        onDrop={(event) => handleSlotDrop(event, target)}
+        onDragLeave={() =>
+          setSlotDropHint((current) =>
+            current?.rowIndex === target.rowIndex &&
+            current.slotIndex === target.slotIndex
+              ? null
+              : current,
+          )
+        }
+        aria-label={label}
+        title={label}
+      >
+        <span aria-hidden="true" />
+      </button>
+    );
+  };
 
   return (
     <section className={["panel list-panel exam-file-panel", className].filter(Boolean).join(" ")}>
@@ -533,39 +733,64 @@ export const ExamFilePanel = ({
                 role="list"
                 aria-label="Selected exam files"
               >
-                {selectedEntries.length > 0 ? (
-                  selectedEntries.map((entry) => {
-                    const { fileName } = splitExamFilePathParts(entry.relative_path);
-                    const isMoveSource = moveSourcePath === entry.path;
-                    const isDragging = dragSourcePath === entry.path;
-                    const dropPosition =
-                      dropHint?.path === entry.path ? dropHint.position : null;
-                    return (
-                      <button
-                        key={entry.path}
-                        type="button"
-                        className={`exam-selected-chip ${
-                          isMoveSource ? "is-move-source" : ""
-                        } ${isDragging ? "is-dragging" : ""} ${
-                          dropPosition ? `drop-${dropPosition}` : ""
-                        }`.trim()}
-                        onClick={() => handleSelectedReorderTap(entry.path)}
-                        onKeyDown={(event) => handleSelectedChipKeyDown(event, entry.path)}
-                        draggable
-                        onDragStart={(event) => handleSelectedChipDragStart(event, entry.path)}
-                        onDragOver={(event) => handleSelectedChipDragOver(event, entry.path)}
-                        onDragLeave={(event) => handleSelectedChipDragLeave(event, entry.path)}
-                        onDrop={(event) => handleSelectedChipDrop(event, entry.path)}
-                        onDragEnd={handleSelectedChipDragEnd}
-                        role="listitem"
-                        title={entry.relative_path}
-                        aria-pressed={isMoveSource}
-                      >
-                        <span className="exam-selected-chip-name">{fileName}</span>
-                        <span className="exam-selected-chip-meta">{entry.taskCount} Tasks</span>
-                      </button>
-                    );
-                  })
+                {selectedRowEntries.length > 0 ? (
+                  <div className="exam-selected-order-rows">
+                    {selectedRowEntries.map((rowEntries, rowIndex) => (
+                      <div key={`selected-row-${rowIndex}`} className="exam-selected-order-row-group">
+                        <div className="exam-selected-order-row-meta">Step {rowIndex + 1}</div>
+                        <div className="exam-selected-order-row" role="list">
+                          {renderPlacementSlot(
+                            { rowIndex, slotIndex: 0 },
+                            `Insert at start of step ${rowIndex + 1}`,
+                            `slot-${rowIndex}-0`,
+                          )}
+                          {rowEntries.map((entry, columnIndex) => {
+                            const { fileName } = splitExamFilePathParts(entry.relative_path);
+                            const isMoveSource = moveSourcePath === entry.path;
+                            const isDragging = dragSourcePath === entry.path;
+                            const dropPosition =
+                              dropHint?.path === entry.path ? dropHint.position : null;
+                            return (
+                              <Fragment key={entry.path}>
+                                <button
+                                  type="button"
+                                  className={`exam-selected-chip ${
+                                    isMoveSource ? "is-move-source" : ""
+                                  } ${isDragging ? "is-dragging" : ""} ${
+                                    dropPosition ? `drop-${dropPosition}` : ""
+                                  }`.trim()}
+                                  onClick={() => handleSelectedReorderTap(entry.path)}
+                                  onKeyDown={(event) => handleSelectedChipKeyDown(event, entry.path)}
+                                  draggable
+                                  onDragStart={(event) => handleSelectedChipDragStart(event, entry.path)}
+                                  onDragOver={(event) => handleSelectedChipDragOver(event, entry.path)}
+                                  onDragLeave={(event) => handleSelectedChipDragLeave(event, entry.path)}
+                                  onDrop={(event) => handleSelectedChipDrop(event, entry.path)}
+                                  onDragEnd={handleSelectedChipDragEnd}
+                                  role="listitem"
+                                  title={entry.relative_path}
+                                  aria-pressed={isMoveSource}
+                                >
+                                  <span className="exam-selected-chip-name">{fileName}</span>
+                                  <span className="exam-selected-chip-meta">{entry.taskCount} Tasks</span>
+                                </button>
+                                {renderPlacementSlot(
+                                  { rowIndex, slotIndex: columnIndex + 1 },
+                                  `Insert in step ${rowIndex + 1} at position ${columnIndex + 2}`,
+                                  `slot-${rowIndex}-${columnIndex + 1}`,
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                        </div>
+                        {renderPlacementSlot(
+                          { rowIndex: rowIndex + 1, slotIndex: 0 },
+                          `Create new step after step ${rowIndex + 1}`,
+                          `row-slot-${rowIndex + 1}`,
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div
                     className="exam-selected-chip exam-selected-chip-placeholder"

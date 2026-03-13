@@ -808,4 +808,129 @@ describe("ExamFilePanel", () => {
     expect(onCombinationModeChange).toHaveBeenNthCalledWith(4, "fully-mixed");
     cleanup();
   });
+
+  it("renders selected order in rows when more than three paths are selected", () => {
+    const extendedFiles = [
+      {
+        path: "/vault/a.md",
+        relative_path: "folder/A.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/b.md",
+        relative_path: "folder/B.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/c.md",
+        relative_path: "folder/C.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/d.md",
+        relative_path: "folder/D.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+    ];
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files: extendedFiles,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md", "/vault/d.md", "/vault/b.md", "/vault/c.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const rowGroups = container.querySelectorAll(".exam-selected-order-row-group");
+    expect(rowGroups.length).toBeGreaterThanOrEqual(2);
+    expect(container.textContent).toContain("Step 1");
+    expect(container.textContent).toContain("Step 2");
+
+    cleanup();
+  });
+
+  it("supports click placement via explicit row slot", () => {
+    const onPlaceSelectedFile = vi.fn();
+    const validRowsFiles = [
+      {
+        path: "/vault/a.md",
+        relative_path: "folder/A.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/b.md",
+        relative_path: "folder/B.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/c.md",
+        relative_path: "folder/C.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+    ];
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files: validRowsFiles,
+        listState: "idle",
+        listError: "",
+        selectedPathRows: [["/vault/a.md", "/vault/b.md"], ["/vault/c.md"]],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPathRows: vi.fn(),
+        onClearSelection: vi.fn(),
+        onPlaceSelectedFile,
+      }),
+    );
+
+    const sourceChip = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".exam-selected-chip"),
+    ).find((button) => button.getAttribute("title")?.endsWith("b.md"));
+    const targetSlot = container.querySelector<HTMLButtonElement>(
+      'button.exam-selected-slot[aria-label="Insert at start of step 2"]',
+    );
+
+    act(() => {
+      sourceChip?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      targetSlot?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onPlaceSelectedFile).toHaveBeenCalledWith("/vault/b.md", {
+      rowIndex: 1,
+      slotIndex: 0,
+    });
+
+    cleanup();
+  });
 });
