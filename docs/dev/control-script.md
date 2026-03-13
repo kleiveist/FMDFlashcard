@@ -28,6 +28,23 @@ python3 tools/control.py --doctor
 python3 tools/control.py --install
 ```
 
+### Install latest local Linux AppImage
+
+```bash
+python3 tools/control.py --install-appimage
+```
+
+What it does:
+- selects the most suitable AppImage from `apps/fmd-desktop/src-tauri/target/release/bundle/appimage`
+- installs it as `~/Applications/FMDFlashcard.AppImage` (stable filename)
+- writes/updates `~/.local/share/applications/fmdflashcard.desktop`
+- installs a stable local icon in `~/.local/share/icons/`
+
+Notes:
+- Linux-only command.
+- Supports `--dry-run`.
+- Intended for local developer/power-user desktop integration (no package manager logic).
+
 ### Prepare / run Tauri tooling
 
 ```bash
@@ -178,6 +195,10 @@ For packaging, run the OS-appropriate build command:
 - Windows: `--build-win`
 - macOS: `--build-mac`
 
+For Linux local desktop integration after a build:
+1. `python3 tools/control.py --build-lin`
+2. `python3 tools/control.py --install-appimage`
+
 ## When to use
 
 - Use `--start` for day-to-day development and local testing.
@@ -189,5 +210,5 @@ If you add new flags, keep them:
 
 - Deterministic (same inputs -> same result)
 - Safe by default (no destructive behavior without explicit confirmation)
-- Documented here and in `docs/dev/setup.md` if it affects onboarding
+- Documented here and in `docs/dev/setup_lin.md` / `docs/dev/release.md` if it affects onboarding or packaging
 - Consistent with the “runner” pattern under `tools/inst/` (thin control script, logic in dedicated runners)

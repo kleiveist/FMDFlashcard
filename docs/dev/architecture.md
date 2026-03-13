@@ -8,7 +8,7 @@ This document is a high-level guide to how the project is structured. It is inte
 ## High-level components
 
 - **Desktop application:** a cross-platform desktop UI (commonly built with React/TypeScript and packaged via Tauri).
-- **Tooling:** helper scripts to standardize installation, checks, and local development (`tools/control.py`).
+- **Tooling:** helper scripts to standardize installation, checks, local development, builds, and local AppImage installation (`tools/control.py`, `tools/inst/linux/installappimage.py`).
 - **Features:** application modules for flashcards, fast review, spaced repetition, settings, and help.
 
 ## Design goals
@@ -19,6 +19,7 @@ This document is a high-level guide to how the project is structured. It is inte
 
 ## Where to look next
 
-- Setup: `setup.md`
+- Setup: `setup_lin.md` / `setup_win.md`
+- Build + local AppImage install: `control-script.md`
 - Testing: `testing.md`
 - User-facing behavior: `../user/`

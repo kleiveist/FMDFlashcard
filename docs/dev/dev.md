@@ -16,6 +16,9 @@
 - 📝 [Windows developer setup (PowerShell, run from source)](setup_win.md)
 - 📝 [Testing](testing.md)
 
+## 🌐 Language variants
+- 🇩🇪 [Developer docs (German index)](de/dev.md)
+
 ## 📁 Assets
 - 🗂️ [Overview](assets/assets.md)
 

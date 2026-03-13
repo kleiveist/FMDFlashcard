@@ -1,8 +1,10 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../dev.md)
+[<- Back](../dev.md)
 <!-- AUTO-GENERATED:backlink END -->
 # DEV (DE)
 
-## Bereiche
+Diese Datei bleibt als Einstieg erhalten.
 
-- [Exam Task-Profil Verknuepfung](exam-profile-linking/index.md)
+Bitte nutze den vollstaendigen deutschen Index:
+
+- [Developer-Doku (DE)](dev.md)

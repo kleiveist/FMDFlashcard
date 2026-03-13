@@ -193,6 +193,22 @@ def _load_run_runner() -> Callable[..., int] | None:
     return cast(Callable[..., int], fn)
 
 
+def _load_appimage_install_runner() -> Callable[..., int] | None:
+    """Load tools/inst/linux/installappimage.py (local AppImage installer)."""
+    mod_name = "installappimage"
+    try:
+        mod = importlib.import_module(mod_name)
+    except Exception as e:
+        print(f"Could not load AppImage install module: {mod_name} ({e})")
+        return None
+
+    fn = getattr(mod, "run_install", None)
+    if not callable(fn):
+        print(f"AppImage install module '{mod_name}' has no run_install(...) function.")
+        return None
+    return cast(Callable[..., int], fn)
+
+
 def _load_build_lin_runner() -> Callable[..., int] | None:
     """Load tools/inst/build/build_lin.py (runner for pnpm tauri build)."""
     mod_name = "build_lin"
@@ -361,6 +377,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Runs the Tauri desktop app (pnpm tauri dev).",
     )
     parser.add_argument(
+        "--install-appimage",
+        "--appimage",
+        dest="install_appimage",
+        action="store_true",
+        help="Installs the latest local Linux AppImage into ~/Applications with desktop entry.",
+    )
+    parser.add_argument(
         "--build",
         action="store_true",
         help="Build helper output (prints build targets).",
@@ -468,6 +491,44 @@ def main(argv: list[str] | None = None) -> int:
                     exit_code = max(exit_code, run_runner(args.dry_run))
             except Exception:
                 exit_code = max(exit_code, run_runner(args.dry_run))
+
+    if args.install_appimage:
+        handled = True
+        if platform.system().lower() != "linux":
+            print("--install-appimage is Linux-only.")
+            exit_code = max(exit_code, 1)
+        else:
+            run_appimage_install = _load_appimage_install_runner()
+            if not run_appimage_install:
+                print(
+                    "No AppImage install routine found. "
+                    "Expected: tools/inst/linux/installappimage.py"
+                )
+                exit_code = max(exit_code, 1)
+            else:
+                try:
+                    sig = inspect.signature(run_appimage_install)
+                    params = tuple(sig.parameters.keys())
+                    if len(params) == 0:
+                        exit_code = max(exit_code, run_appimage_install())
+                    elif "project_root" in params:
+                        exit_code = max(
+                            exit_code,
+                            run_appimage_install(
+                                dry_run=args.dry_run,
+                                project_root=str(_repo_root_from_tools_control()),
+                            ),
+                        )
+                    else:
+                        exit_code = max(exit_code, run_appimage_install(args.dry_run))
+                except Exception:
+                    exit_code = max(
+                        exit_code,
+                        run_appimage_install(
+                            dry_run=args.dry_run,
+                            project_root=str(_repo_root_from_tools_control()),
+                        ),
+                    )
 
     if args.build and args.winlinux:
         handled = True

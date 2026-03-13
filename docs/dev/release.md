@@ -30,6 +30,26 @@ Notes:
 - Requires Node + pnpm dependencies and Tauri build prerequisites for the OS.
 - Outputs are produced by Tauri under the desktop app's release bundle directory (typically `apps/fmd-desktop/src-tauri/target/release/bundle`).
 
+## Linux: install latest built AppImage locally
+
+After building Linux bundles, install the latest local AppImage with a stable filename:
+
+```bash
+python3 tools/control.py --install-appimage
+```
+
+This command installs to:
+- `~/Applications/FMDFlashcard.AppImage`
+- `~/.local/share/applications/fmdflashcard.desktop`
+- `~/.local/share/icons/fmdflashcard.*`
+
+Typical flow:
+
+```bash
+python3 tools/control.py --build-lin
+python3 tools/control.py --install-appimage
+```
+
 ## Recommended: CI-driven releases
 
 - Tag-based releases

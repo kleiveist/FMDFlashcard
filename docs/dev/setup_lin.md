@@ -75,6 +75,19 @@ cd ~/Projects/FMDFlashcard
 # build desktop app bundles (runs: pnpm tauri build)
 python3 tools/control.py --build
 ```
+
+## 8) Install latest local AppImage (Linux desktop integration)
+
+```bash
+cd ~/Projects/FMDFlashcard
+python3 tools/control.py --build-lin
+python3 tools/control.py --install-appimage
+```
+
+This installs a stable local launcher target:
+- `~/Applications/FMDFlashcard.AppImage`
+- `~/.local/share/applications/fmdflashcard.desktop`
+
 ## If something fails
 
 - Re-run `--doctor` and review the printed checks.

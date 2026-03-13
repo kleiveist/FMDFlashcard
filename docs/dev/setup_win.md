@@ -96,6 +96,16 @@ Set-Location (Join-Path $HOME "Projects\FMDFlashcard")
 py -3 .\tools\control.py --build
 ```
 
+## 8) Linux AppImage installer note
+
+`--install-appimage` is Linux-only and intended for local Linux desktop integration.
+If you also develop on Linux, use:
+
+```bash
+python3 tools/control.py --build-lin
+python3 tools/control.py --install-appimage
+```
+
 ---
 
 ## If something fails
@@ -129,4 +139,3 @@ where.exe python
     pnpm -v
     ```
 - If you are behind a **proxy / SSL inspection** device and `winget` fails with certificate errors, prefer the `--source winget` flag and ensure system time/date is correct.
-

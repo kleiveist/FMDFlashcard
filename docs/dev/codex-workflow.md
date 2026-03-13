@@ -33,12 +33,19 @@ A repeatable workflow for turning ideas/bugs into tested changes using Codex, wi
 - Acceptance criteria met  
 - No regression in core paths (manual smoke + automated tests where available)  
 - If parser/rendering changed: add/update a reproducible `.md` test file in `docs/dev/test/`  
-- Docs updated when behavior/syntax changes
+- Docs updated when behavior/syntax changes (including `docs/dev/de/` mirrors for changed developer docs)
 
 ## Where things go
 - **Process docs:** `docs/dev/` (this file)
 - **User syntax/source of truth:** `docs/user/` and `docs/user/examples/`
 - **Repro test markdown (“golden files”):** `docs/dev/test/`
 - **Issue tracking notes (if used):** `docs/issus/`
+
+## Packaging-related tasks
+- When adding or changing build/install commands, update:
+  - `tools/control.py`
+  - `docs/dev/control-script.md`
+  - related setup/release pages
+  - German counterparts in `docs/dev/de/`
 
 ![Workflow diagram](docs/assets/codex-workflow.svg)

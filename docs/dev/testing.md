@@ -36,6 +36,19 @@ Test Files  7 passed (7)
 - Add or update tests when changing evaluation logic (e.g., composite cards, result summaries).
 - Ensure lint and typechecks pass before requesting review.
 
+## AppImage installer smoke test (Linux)
+
+```bash
+python3 tools/control.py --build-lin
+python3 tools/control.py --install-appimage --dry-run
+python3 tools/control.py --install-appimage
+```
+
+Quick checks:
+- `~/Applications/FMDFlashcard.AppImage` exists and is executable
+- `~/.local/share/applications/fmdflashcard.desktop` exists
+- launcher appears in the desktop application menu
+
 ## Table rendering checklist
 
 - Flashcard tables render as real tables; non-token tables can scroll horizontally.
