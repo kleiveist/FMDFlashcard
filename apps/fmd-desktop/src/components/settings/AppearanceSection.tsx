@@ -104,6 +104,14 @@ export const AppearanceSection = ({
             >
               Modern Design
             </button>
+            <button
+              type="button"
+              className={`design-mode-option ${designMode === "edge" ? "active" : ""}`}
+              onClick={() => onDesignModeChange("edge")}
+              aria-pressed={designMode === "edge"}
+            >
+              Edge Design
+            </button>
           </div>
           <span className="helper-text">
             Steuert Form, Dichte, Navigation und Flaechenstil app-weit.

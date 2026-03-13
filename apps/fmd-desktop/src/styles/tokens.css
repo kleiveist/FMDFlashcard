@@ -90,6 +90,7 @@
   --ui-nav-item-height: 42px;
   --ui-nav-item-padding-x: 16px;
   --ui-tree-row-height: 30px;
+  --ui-tree-indent-step: 12px;
   --ui-tree-font-size: 0.8rem;
   --ui-path-font-size: 0.85rem;
   --ui-list-row-height: 40px;
@@ -265,6 +266,7 @@
   --ui-nav-button-size: 44px;
   --ui-nav-item-height: 42px;
   --ui-tree-row-height: 30px;
+  --ui-tree-indent-step: 12px;
   --ui-tree-font-size: 0.8rem;
   --ui-path-font-size: 0.85rem;
   --ui-shadow-panel: var(--shadow-soft);
@@ -302,6 +304,7 @@
   --ui-nav-item-height: 33px;
   --ui-nav-item-padding-x: 12px;
   --ui-tree-row-height: 24px;
+  --ui-tree-indent-step: 12px;
   --ui-tree-font-size: 0.76rem;
   --ui-path-font-size: 0.74rem;
   --ui-shadow-panel: 0 8px 18px rgba(19, 26, 28, 0.06);
@@ -345,11 +348,80 @@
   );
 }
 
+:root[data-design-mode="edge"] {
+  --ui-radius-panel: 0;
+  --ui-radius-control: 0;
+  --ui-radius-menu: 0;
+  --ui-radius-chip: 0;
+  --ui-space-2xs: 2px;
+  --ui-space-xs: 4px;
+  --ui-space-sm: 6px;
+  --ui-space-md: 8px;
+  --ui-space-lg: 10px;
+  --ui-space-xl: 12px;
+  --ui-space-2xl: 14px;
+  --ui-space-3xl: 16px;
+  --ui-panel-padding: 12px;
+  --ui-layout-gap: 12px;
+  --ui-toolbar-gap: 6px;
+  --ui-control-height: 32px;
+  --ui-control-height-compact: 28px;
+  --ui-control-icon-size: 14px;
+  --ui-nav-button-size: 28px;
+  --ui-nav-item-height: 28px;
+  --ui-nav-item-padding-x: 8px;
+  --ui-tree-row-height: 28px;
+  --ui-tree-indent-step: 10px;
+  --ui-tree-font-size: 0.74rem;
+  --ui-path-font-size: 0.72rem;
+  --ui-list-row-height: 28px;
+  --ui-shadow-panel: none;
+  --ui-shadow-flyout: none;
+  --ui-shadow-dialog: none;
+  --ui-border-subtle: var(--line);
+  --ui-border-hover: var(--accent-border);
+  --ui-focus-offset: 2px;
+  --ui-sidebar-shell-bg: var(--left-bg-base);
+  --ui-sidebar-shell-padding: 10px;
+  --ui-sidebar-shell-gap: 10px;
+  --ui-sidebar-shell-shadow: none;
+  --ui-nav-button-bg: transparent;
+  --ui-nav-button-border: var(--ui-border-subtle);
+  --ui-nav-button-hover-bg: var(--accent-weak-bg);
+  --ui-nav-button-active-bg: var(--accent-active-bg);
+  --ui-nav-button-active-border: var(--accent-border);
+  --ui-tree-row-bg: transparent;
+  --ui-tree-row-hover-bg: var(--accent-weak-bg);
+  --ui-tree-row-active-bg: var(--accent-active-bg);
+  --ui-tree-row-active-border: var(--accent-border);
+  --ui-tree-row-selected-border: var(--accent-strong);
+  --glow: none;
+}
+
 :root[data-theme="dark"][data-design-mode="modern"] {
   --ui-shadow-panel: 0 8px 20px rgba(0, 0, 0, 0.24);
   --ui-shadow-flyout: 0 12px 28px rgba(0, 0, 0, 0.3);
   --ui-shadow-dialog: 0 16px 34px rgba(0, 0, 0, 0.38);
   --ui-sidebar-shell-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme="dark"][data-design-mode="edge"] {
+  --ui-border-subtle: color-mix(in srgb, var(--line) 82%, transparent);
+  --ui-border-hover: color-mix(in srgb, var(--accent-border) 90%, var(--line));
+  --ui-nav-button-bg: transparent;
+  --ui-nav-button-border: var(--ui-border-subtle);
+  --ui-nav-button-hover-bg: color-mix(
+    in srgb,
+    var(--accent-weak-bg) 76%,
+    transparent
+  );
+  --ui-nav-button-active-bg: color-mix(
+    in srgb,
+    var(--accent-active-bg) 80%,
+    transparent
+  );
+  --ui-tree-row-hover-bg: var(--ui-nav-button-hover-bg);
+  --ui-tree-row-active-bg: var(--ui-nav-button-active-bg);
 }
 
 @supports (color: color-mix(in srgb, white 50%, black)) {

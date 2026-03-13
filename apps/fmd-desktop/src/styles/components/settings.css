@@ -934,6 +934,7 @@
 .design-mode-toggle {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--ui-space-xs);
   padding: var(--ui-space-2xs);
   border-radius: var(--ui-radius-menu);

@@ -48,6 +48,14 @@ describe("normalizeSettings", () => {
     expect(settings.designMode).toBe("modern");
   });
 
+  it("restores edge design mode when valid", () => {
+    const { settings } = normalizeSettings({
+      design_mode: "edge",
+    } as AppSettings);
+
+    expect(settings.designMode).toBe("edge");
+  });
+
   it("supports new and legacy cursor accessory settings keys", () => {
     const fromNewKey = normalizeSettings({
       ui_cursor_accessory_enabled: false,

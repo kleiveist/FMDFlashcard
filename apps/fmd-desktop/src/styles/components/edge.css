@@ -1,0 +1,270 @@
+/*
+ * @file apps/fmd-desktop/src/styles/components/edge.css
+ *
+ * Zweck:
+ * - Bietet app-weite Edge-Design Overrides fuer den dritten Designmodus.
+ *
+ * Verantwortlichkeiten:
+ * - Erzwingt kantige Geometrie und kompakte Dichte.
+ * - Schafft konsistente Zustands- und Baumdarstellung.
+ */
+
+:root[data-design-mode="edge"] {
+  --field-glow: transparent;
+  --block-glow: transparent;
+}
+
+:root[data-design-mode="edge"] :is(
+    .panel,
+    .modal-panel,
+    .sidebar,
+    .settings-nav,
+    .settings-nav-item,
+    .settings-panel-icon,
+    .study-section-nav,
+    .study-section-tab,
+    .study-section-note-toggle,
+    .study-section-menu-toggle,
+    .vault-details,
+    .vault-status,
+    .vault-status-action,
+    .vault-status-refresh,
+    .vault-status-menu,
+    .vault-status-menu-item,
+    .sidebar-active-user-trigger,
+    .sidebar-active-user-avatar,
+    .sidebar-active-user-menu,
+    .sidebar-active-user-menu-item,
+    .tree-dir,
+    .tree-item,
+    .tree-file,
+    .context-menu,
+    .context-menu-item,
+    .primary,
+    .ghost,
+    .pill,
+    .pill-button,
+    .nav-icon,
+    .nav-item,
+    .text-input,
+    .hex-input,
+    .inline-rename-input,
+    .design-mode-toggle,
+    .design-mode-option,
+    .switch,
+    .slider,
+    .color-wheel,
+    .accent-swatch,
+    .preview,
+    .preview-editor,
+    .preview-mode-button,
+    .frontmatter-panel,
+    .frontmatter-row,
+    .flashcard-item,
+    .truefalse-item,
+    .flashcard-option,
+    .truefalse-option,
+    .flashcard-key,
+    .exam-card-form,
+    .choice-pill,
+    .markdown-hybrid-block,
+    .markdown-hybrid-inline-toolbar,
+    .markdown-hybrid-inline-toolbar-button,
+    .markdown-hybrid-inline-toolbar-menu,
+    .markdown-hybrid-inline-toolbar-link-input,
+    .markdown-hybrid-inline-toolbar-link-button,
+    .empty-state,
+    .error,
+    .chip
+  ) {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root[data-design-mode="edge"] :is(
+    .panel-header,
+    .panel-actions,
+    .preview-actions,
+    .toolbar-section,
+    .actions,
+    .sidebar-icon-row,
+    .vault-status-actions,
+    .vault-status-menu-row,
+    .vault-status-menu-actions,
+    .sidebar-active-user-main
+  ) {
+  gap: var(--ui-space-sm);
+}
+
+:root[data-design-mode="edge"] :is(
+    .context-menu-item,
+    .vault-status-menu-item,
+    .sidebar-active-user-menu-item,
+    .nav-item,
+    .tree-item,
+    .file-item,
+    .pill-button,
+    .design-mode-option,
+    .focus-toggle
+  ) {
+  min-height: 28px;
+}
+
+:root[data-design-mode="edge"] .file-list {
+  gap: var(--ui-space-2xs);
+}
+
+:root[data-design-mode="edge"] section.panel.list-panel.note-panel {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root[data-design-mode="edge"] section.panel.list-panel.note-panel :is(li, .file-item) {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:root[data-design-mode="edge"] section.panel.list-panel.note-panel :is(
+    li:hover,
+    li:focus-visible,
+    .file-item:hover,
+    .file-item.active
+  ) {
+  border: none;
+}
+
+:root[data-design-mode="edge"] .file-item {
+  min-height: var(--ui-list-row-height);
+  padding: 0 var(--ui-space-sm);
+  background: transparent;
+  border-color: var(--ui-border-subtle);
+}
+
+:root[data-design-mode="edge"] .file-item:hover {
+  border-color: var(--ui-border-hover);
+  background: var(--ui-nav-button-hover-bg);
+}
+
+:root[data-design-mode="edge"] .file-item.active {
+  border-color: var(--ui-tree-row-selected-border);
+  background: var(--ui-tree-row-active-bg);
+}
+
+:root[data-design-mode="edge"] .tree-item {
+  font-weight: 500;
+}
+
+:root[data-design-mode="edge"] .tree-item.active,
+:root[data-design-mode="edge"] .tree-item.active-folder {
+  font-weight: 700;
+}
+
+:root[data-design-mode="edge"] .tree-item.drop-target {
+  box-shadow: none;
+}
+
+:root[data-design-mode="edge"] .tree-file {
+  width: 100%;
+}
+
+:root[data-design-mode="edge"] .tree-children {
+  border-left: 1px solid var(--ui-border-subtle);
+  margin-left: calc(var(--ui-space-sm) + (var(--ui-control-icon-size) / 2));
+  padding-left: var(--ui-space-xs);
+  gap: var(--ui-space-xs);
+}
+
+:root[data-design-mode="edge"] .tree-dir summary::after {
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+}
+
+:root[data-design-mode="edge"] .tree-item.active-folder {
+  box-shadow: inset 2px 0 0 var(--ui-tree-row-selected-border);
+}
+
+:root[data-design-mode="edge"] .switch {
+  width: 42px;
+  height: 22px;
+}
+
+:root[data-design-mode="edge"] .slider {
+  border: 1px solid var(--ui-border-subtle);
+  background: transparent;
+}
+
+:root[data-design-mode="edge"] .slider::before {
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  top: 2px;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--ink);
+}
+
+:root[data-design-mode="edge"] .switch input:checked + .slider {
+  border-color: var(--accent-border);
+  background: var(--accent-weak-bg);
+}
+
+:root[data-design-mode="edge"] .switch input:checked + .slider::before {
+  transform: translateX(18px);
+  background: var(--accent);
+}
+
+:root[data-design-mode="edge"] :is(
+    .status-checkbox input,
+    .option-choice input,
+    .md-preview li.task-list-item > input[type="checkbox"],
+    .markdown-hybrid-block-preview li.task-list-item > input[type="checkbox"]
+  ) {
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+:root[data-design-mode="edge"] .preview {
+  padding: var(--ui-space-md);
+}
+
+:root[data-design-mode="edge"] .preview-editor {
+  padding: var(--ui-space-md);
+}
+
+:root[data-design-mode="edge"] .markdown-hybrid-surface {
+  gap: var(--ui-space-sm);
+}
+
+:root[data-design-mode="edge"] .markdown-hybrid-editor {
+  --mdh-left-gutter-width: 44px;
+  --mdh-right-gutter-width: 24px;
+}
+
+:root[data-design-mode="edge"] :is(
+    .exam-editor-page,
+    .exam-editor-header,
+    .exam-editor-toolbar,
+    .exam-editor-action-buttons,
+    .exam-editor-save-row
+  ) {
+  gap: var(--ui-space-sm);
+}
+
+:root[data-design-mode="edge"] .exam-editor-palette-toggle {
+  width: var(--ui-control-height-compact);
+  height: var(--ui-control-height-compact);
+}
+
+:root[data-design-mode="edge"] :is(.path, .save-path, .vault-summary, .file-name) {
+  font-size: var(--ui-path-font-size);
+  line-height: 1.25;
+}
+
+:root[data-design-mode="edge"] :is(.label, .chip, .helper-text) {
+  letter-spacing: 0.08em;
+}

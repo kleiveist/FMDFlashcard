@@ -343,7 +343,10 @@ h2 {
   gap: var(--ui-space-xs);
   min-height: var(--ui-tree-row-height);
   padding: 0 var(--ui-space-sm);
-  padding-left: calc(var(--ui-space-sm) + var(--tree-indent, 0px));
+  padding-left: calc(
+    var(--ui-space-sm) +
+      (var(--tree-depth, 0) * var(--ui-tree-indent-step, 12px))
+  );
   border-radius: var(--ui-radius-control);
   background: var(--ui-tree-row-bg);
   border: 1px solid transparent;
@@ -396,7 +399,9 @@ h2 {
 }
 
 .vault-tree-scroll.vault-tree-scroll-wide .tree-item {
-  min-width: calc(100% + var(--tree-overflow, 0px));
+  min-width: calc(
+    100% + (var(--tree-overflow-depth, 0) * var(--ui-tree-indent-step, 12px))
+  );
 }
 
 .tree-dir summary {
@@ -410,10 +415,10 @@ h2 {
 }
 
 .tree-dir summary::after {
-  content: ">";
+  content: "▸";
   margin-left: auto;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   transition: transform 0.2s ease;
 }
 
@@ -460,7 +465,9 @@ h2 {
 }
 
 .vault-tree-scroll.vault-tree-scroll-wide .tree-file {
-  min-width: calc(100% + var(--tree-overflow, 0px) - 8px);
+  min-width: calc(
+    100% + (var(--tree-overflow-depth, 0) * var(--ui-tree-indent-step, 12px)) - 8px
+  );
 }
 
 .tree-name {

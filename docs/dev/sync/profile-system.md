@@ -104,7 +104,7 @@ Persisted `settings` keys (write path):
 | `active_note_path`, `vault_path` | `string | null` | `null` if not set. |
 | `recent_vaults` | `RecentVaultEntry[]` | `[]` (normalized). |
 | `theme` | `"light" | "dark"` | `"light"` (`apps/fmd-desktop/src/features/settings/useAppSettings.ts:738`). |
-| `design_mode` | `"smart" | "modern"` | `"smart"` (fallback for missing/invalid). |
+| `design_mode` | `"smart" | "modern" | "edge"` | `"smart"` (fallback for missing/invalid). |
 | `accent_color` | `string` (hex) | `DEFAULT_ACCENT` when invalid (`apps/fmd-desktop/src/features/settings/useAppSettings.ts:739`). |
 | `markdownEditor` | `object` | Falls back to normalized hex values. |
 | `editor_markdown_exact_colors_enabled` | `boolean` | `false` (`apps/fmd-desktop/src/features/settings/useAppSettings.ts:757`). |

@@ -53,7 +53,6 @@ import { type LoadState } from "../lib/types";
 import { isEditableTarget } from "../lib/shortcuts/bindings";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 
-const INDENT_STEP = 12;
 const OVERFLOW_DEPTH = 4;
 const DEFAULT_FILE_NAME = "New Note.md";
 const DEFAULT_FOLDER_NAME = "New Folder";
@@ -100,8 +99,8 @@ export const shouldHandleVaultRenameShortcut = (
 
 const getIndentVars = (depth: number): CSSProperties =>
   ({
-    "--tree-indent": `${depth * INDENT_STEP}px`,
-    "--tree-overflow": `${Math.max(0, depth - OVERFLOW_DEPTH) * INDENT_STEP}px`,
+    "--tree-depth": String(depth),
+    "--tree-overflow-depth": String(Math.max(0, depth - OVERFLOW_DEPTH)),
   } as CSSProperties);
 
 const getMaxDepth = (nodes: TreeNode[], depth: number): number => {
@@ -1741,7 +1740,7 @@ export const VaultTree = ({
                 onCancel={handleRenameCancel}
               />
             </summary>
-            <div className="tree-children">
+            <div className="tree-children" style={indentStyle}>
               {renderTreeNodes(node.children ?? [], depth + 1)}
             </div>
           </details>
@@ -1910,7 +1909,7 @@ export const VaultTree = ({
                   </span>
                   <span className="tree-name">{vaultRootName}</span>
                 </summary>
-                <div className="tree-children">
+                <div className="tree-children" style={getIndentVars(0)}>
                   {renderTreeNodes(treeNodes, 1)}
                 </div>
               </details>
