@@ -598,6 +598,7 @@ export const ExamFilePanel = ({
     target: ExamSelectionPlacementTarget,
     label: string,
     key: string,
+    variant: "inline" | "row-break" = "inline",
   ) => {
     const isActive =
       slotDropHint?.rowIndex === target.rowIndex &&
@@ -606,7 +607,9 @@ export const ExamFilePanel = ({
       <button
         key={key}
         type="button"
-        className={`exam-selected-slot ${isActive ? "is-active" : ""}`}
+        className={`exam-selected-slot ${variant === "row-break" ? "is-row-break" : ""} ${
+          isActive ? "is-active" : ""
+        }`.trim()}
         onClick={() => handleSlotPlaceTap(target)}
         onDragOver={(event) => handleSlotDragOver(event, target)}
         onDrop={(event) => handleSlotDrop(event, target)}
@@ -735,61 +738,69 @@ export const ExamFilePanel = ({
               >
                 {selectedRowEntries.length > 0 ? (
                   <div className="exam-selected-order-rows">
-                    {selectedRowEntries.map((rowEntries, rowIndex) => (
-                      <div key={`selected-row-${rowIndex}`} className="exam-selected-order-row-group">
-                        <div className="exam-selected-order-row-meta">Step {rowIndex + 1}</div>
-                        <div className="exam-selected-order-row" role="list">
-                          {renderPlacementSlot(
-                            { rowIndex, slotIndex: 0 },
-                            `Insert at start of step ${rowIndex + 1}`,
-                            `slot-${rowIndex}-0`,
-                          )}
-                          {rowEntries.map((entry, columnIndex) => {
-                            const { fileName } = splitExamFilePathParts(entry.relative_path);
-                            const isMoveSource = moveSourcePath === entry.path;
-                            const isDragging = dragSourcePath === entry.path;
-                            const dropPosition =
-                              dropHint?.path === entry.path ? dropHint.position : null;
-                            return (
-                              <Fragment key={entry.path}>
-                                <button
-                                  type="button"
-                                  className={`exam-selected-chip ${
-                                    isMoveSource ? "is-move-source" : ""
-                                  } ${isDragging ? "is-dragging" : ""} ${
-                                    dropPosition ? `drop-${dropPosition}` : ""
-                                  }`.trim()}
-                                  onClick={() => handleSelectedReorderTap(entry.path)}
-                                  onKeyDown={(event) => handleSelectedChipKeyDown(event, entry.path)}
-                                  draggable
-                                  onDragStart={(event) => handleSelectedChipDragStart(event, entry.path)}
-                                  onDragOver={(event) => handleSelectedChipDragOver(event, entry.path)}
-                                  onDragLeave={(event) => handleSelectedChipDragLeave(event, entry.path)}
-                                  onDrop={(event) => handleSelectedChipDrop(event, entry.path)}
-                                  onDragEnd={handleSelectedChipDragEnd}
-                                  role="listitem"
-                                  title={entry.relative_path}
-                                  aria-pressed={isMoveSource}
-                                >
-                                  <span className="exam-selected-chip-name">{fileName}</span>
-                                  <span className="exam-selected-chip-meta">{entry.taskCount} Tasks</span>
-                                </button>
-                                {renderPlacementSlot(
-                                  { rowIndex, slotIndex: columnIndex + 1 },
-                                  `Insert in step ${rowIndex + 1} at position ${columnIndex + 2}`,
-                                  `slot-${rowIndex}-${columnIndex + 1}`,
-                                )}
-                              </Fragment>
-                            );
-                          })}
-                        </div>
-                        {renderPlacementSlot(
-                          { rowIndex: rowIndex + 1, slotIndex: 0 },
-                          `Create new step after step ${rowIndex + 1}`,
-                          `row-slot-${rowIndex + 1}`,
-                        )}
-                      </div>
-                    ))}
+                    {selectedRowEntries.map((rowEntries, rowIndex) => {
+                      const canCreateNextRow =
+                        rowIndex < 2 && selectedRowEntries.length === rowIndex + 1;
+                      return (
+                        <Fragment key={`selected-row-${rowIndex}`}>
+                          <div className="exam-selected-order-row" role="list">
+                            {renderPlacementSlot(
+                              { rowIndex, slotIndex: 0 },
+                              `Insert at start of row ${rowIndex + 1}`,
+                              `slot-${rowIndex}-0`,
+                            )}
+                            {rowEntries.map((entry, columnIndex) => {
+                              const { fileName } = splitExamFilePathParts(entry.relative_path);
+                              const isMoveSource = moveSourcePath === entry.path;
+                              const isDragging = dragSourcePath === entry.path;
+                              const dropPosition =
+                                dropHint?.path === entry.path ? dropHint.position : null;
+                              return (
+                                <Fragment key={entry.path}>
+                                  <button
+                                    type="button"
+                                    className={`exam-selected-chip ${
+                                      isMoveSource ? "is-move-source" : ""
+                                    } ${isDragging ? "is-dragging" : ""} ${
+                                      dropPosition ? `drop-${dropPosition}` : ""
+                                    }`.trim()}
+                                    onClick={() => handleSelectedReorderTap(entry.path)}
+                                    onKeyDown={(event) => handleSelectedChipKeyDown(event, entry.path)}
+                                    draggable
+                                    onDragStart={(event) => handleSelectedChipDragStart(event, entry.path)}
+                                    onDragOver={(event) => handleSelectedChipDragOver(event, entry.path)}
+                                    onDragLeave={(event) => handleSelectedChipDragLeave(event, entry.path)}
+                                    onDrop={(event) => handleSelectedChipDrop(event, entry.path)}
+                                    onDragEnd={handleSelectedChipDragEnd}
+                                    role="listitem"
+                                    title={entry.relative_path}
+                                    aria-pressed={isMoveSource}
+                                  >
+                                    <span className="exam-selected-chip-name">{fileName}</span>
+                                    <span className="exam-selected-chip-meta">{entry.taskCount} Tasks</span>
+                                  </button>
+                                  {renderPlacementSlot(
+                                    { rowIndex, slotIndex: columnIndex + 1 },
+                                    `Insert in row ${rowIndex + 1} at position ${columnIndex + 2}`,
+                                    `slot-${rowIndex}-${columnIndex + 1}`,
+                                  )}
+                                </Fragment>
+                              );
+                            })}
+                          </div>
+                          {canCreateNextRow ? (
+                            <div className="exam-selected-row-break">
+                              {renderPlacementSlot(
+                                { rowIndex: rowIndex + 1, slotIndex: 0 },
+                                `Create row ${rowIndex + 2}`,
+                                `row-slot-${rowIndex + 1}`,
+                                "row-break",
+                              )}
+                            </div>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div

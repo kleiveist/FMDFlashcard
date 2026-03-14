@@ -809,7 +809,7 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
-  it("renders selected order in rows when more than three paths are selected", () => {
+  it("renders selected order in compact rows without step labels", () => {
     const extendedFiles = [
       {
         path: "/vault/a.md",
@@ -861,10 +861,10 @@ describe("ExamFilePanel", () => {
       }),
     );
 
-    const rowGroups = container.querySelectorAll(".exam-selected-order-row-group");
-    expect(rowGroups.length).toBeGreaterThanOrEqual(2);
-    expect(container.textContent).toContain("Step 1");
-    expect(container.textContent).toContain("Step 2");
+    const compactRows = container.querySelectorAll(".exam-selected-order-row");
+    expect(compactRows.length).toBe(1);
+    expect(compactRows[0]?.querySelectorAll(".exam-selected-chip").length ?? 0).toBe(4);
+    expect(container.textContent).not.toContain("Step 1");
 
     cleanup();
   });
@@ -918,7 +918,7 @@ describe("ExamFilePanel", () => {
       container.querySelectorAll<HTMLButtonElement>(".exam-selected-chip"),
     ).find((button) => button.getAttribute("title")?.endsWith("b.md"));
     const targetSlot = container.querySelector<HTMLButtonElement>(
-      'button.exam-selected-slot[aria-label="Insert at start of step 2"]',
+      'button.exam-selected-slot[aria-label="Insert at start of row 2"]',
     );
 
     act(() => {
@@ -930,6 +930,58 @@ describe("ExamFilePanel", () => {
       rowIndex: 1,
       slotIndex: 0,
     });
+
+    cleanup();
+  });
+
+  it("does not render row-4 creation slot when three rows already exist", () => {
+    const validRowsFiles = [
+      {
+        path: "/vault/a.md",
+        relative_path: "folder/A.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/b.md",
+        relative_path: "folder/B.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/c.md",
+        relative_path: "folder/C.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+    ];
+
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files: validRowsFiles,
+        listState: "idle",
+        listError: "",
+        selectedPathRows: [["/vault/a.md"], ["/vault/b.md"], ["/vault/c.md"]],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPathRows: vi.fn(),
+        onClearSelection: vi.fn(),
+        onPlaceSelectedFile: vi.fn(),
+      }),
+    );
+
+    expect(
+      container.querySelector('button.exam-selected-slot[aria-label="Create row 4"]'),
+    ).toBeNull();
 
     cleanup();
   });

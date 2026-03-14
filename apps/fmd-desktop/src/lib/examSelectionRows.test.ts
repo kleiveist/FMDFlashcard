@@ -14,37 +14,39 @@ import {
 } from "./examSelectionRows";
 
 describe("examSelectionRows", () => {
-  it("packs flat paths into rows of max 3", () => {
+  it("keeps flat paths in one row", () => {
     const rows = buildExamSelectionRowsFromPaths(["a", "b", "c", "d", "e"]);
-    expect(rows).toEqual([["a", "b", "c"], ["d", "e"]]);
+    expect(rows).toEqual([["a", "b", "c", "d", "e"]]);
   });
 
-  it("normalizes rows by removing duplicates and invalid paths", () => {
+  it("normalizes rows by removing duplicates, invalid paths, and extra rows", () => {
     const rows = normalizeExamSelectionRows(
       [
         ["a", "b", "a"],
-        ["x", "c", "d", "e"],
+        ["x", "c"],
+        ["d"],
+        ["e", "f"],
       ],
-      { validPaths: new Set(["a", "b", "c", "d", "e"]) },
+      { validPaths: new Set(["a", "b", "c", "d", "e", "f"]) },
     );
-    expect(rows).toEqual([["a", "b"], ["c", "d", "e"]]);
+    expect(rows).toEqual([["a", "b"], ["c"], ["d", "e", "f"]]);
   });
 
-  it("toggles path add/remove while honoring max row capacity", () => {
+  it("toggles path add/remove while keeping add-on-last-row behavior", () => {
     const added = toggleExamSelectionPath([["a", "b", "c"]], "d");
-    expect(added).toEqual([["a", "b", "c"], ["d"]]);
+    expect(added).toEqual([["a", "b", "c", "d"]]);
 
     const removed = toggleExamSelectionPath(added, "b");
-    expect(removed).toEqual([["a", "c"], ["d"]]);
+    expect(removed).toEqual([["a", "c", "d"]]);
   });
 
-  it("places a path into a row/slot and spills overflow to following rows", () => {
+  it("places a path into a row/slot without row-capacity chunking", () => {
     const rows = [
       ["a", "b", "c"],
       ["d", "e"],
     ];
     const placed = placeExamSelectionPath(rows, "e", { rowIndex: 0, slotIndex: 1 });
-    expect(placed).toEqual([["a", "e", "b"], ["c", "d"]]);
+    expect(placed).toEqual([["a", "e", "b", "c"], ["d"]]);
   });
 
   it("creates new row when placed after all existing rows", () => {
@@ -75,6 +77,15 @@ describe("examSelectionRows", () => {
       slotIndex: 3,
     });
     expect(movedToEnd).toEqual([["a", "c", "b"]]);
+  });
+
+  it("blocks placement that targets row index beyond max rows", () => {
+    const rows = [["a"], ["b"], ["c"]];
+    const unchanged = placeExamSelectionPath(rows, "a", {
+      rowIndex: 3,
+      slotIndex: 0,
+    });
+    expect(unchanged).toEqual([["a"], ["b"], ["c"]]);
   });
 
   it("keeps deterministic flatten order top-to-bottom and left-to-right", () => {

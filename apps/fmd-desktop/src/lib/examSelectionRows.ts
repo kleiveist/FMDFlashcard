@@ -12,7 +12,7 @@ export type ExamSelectionPlacementTarget = {
   slotIndex: number;
 };
 
-export const EXAM_SELECTION_ROW_CAPACITY = 3;
+export const EXAM_SELECTION_MAX_ROWS = 3;
 
 const toUniquePaths = (paths: string[]) => {
   const seen = new Set<string>();
@@ -33,28 +33,26 @@ export const flattenExamSelectionRows = (rows: ExamSelectionRows) =>
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-const normalizeRowCapacity = (
-  row: string[],
-  maxPerRow: number,
-): ExamSelectionRows => {
-  if (row.length <= maxPerRow) {
-    return [row];
+const mergeOverflowRowsIntoLast = (rows: ExamSelectionRows, maxRows: number) => {
+  if (rows.length <= maxRows) {
+    return rows;
   }
-  const chunks: ExamSelectionRows = [];
-  for (let index = 0; index < row.length; index += maxPerRow) {
-    chunks.push(row.slice(index, index + maxPerRow));
+  const stabilized = rows.slice(0, maxRows).map((row) => [...row]);
+  const lastIndex = maxRows - 1;
+  for (let rowIndex = maxRows; rowIndex < rows.length; rowIndex += 1) {
+    stabilized[lastIndex]?.push(...(rows[rowIndex] ?? []));
   }
-  return chunks;
+  return stabilized;
 };
 
 export const normalizeExamSelectionRows = (
   rows: ExamSelectionRows,
   options?: {
-    maxPerRow?: number;
+    maxRows?: number;
     validPaths?: Set<string>;
   },
 ): ExamSelectionRows => {
-  const maxPerRow = Math.max(1, options?.maxPerRow ?? EXAM_SELECTION_ROW_CAPACITY);
+  const maxRows = Math.max(1, options?.maxRows ?? EXAM_SELECTION_MAX_ROWS);
   const seen = new Set<string>();
   const next: ExamSelectionRows = [];
 
@@ -75,39 +73,34 @@ export const normalizeExamSelectionRows = (
     if (normalizedRow.length === 0) {
       return;
     }
-    normalizeRowCapacity(normalizedRow, maxPerRow).forEach((chunk) => {
-      if (chunk.length > 0) {
-        next.push(chunk);
-      }
-    });
+    next.push(normalizedRow);
   });
 
-  return next;
+  return mergeOverflowRowsIntoLast(next, maxRows);
 };
 
 export const buildExamSelectionRowsFromPaths = (
   paths: string[],
   options?: {
-    maxPerRow?: number;
+    maxRows?: number;
     validPaths?: Set<string>;
   },
 ): ExamSelectionRows => {
-  const maxPerRow = Math.max(1, options?.maxPerRow ?? EXAM_SELECTION_ROW_CAPACITY);
+  const maxRows = Math.max(1, options?.maxRows ?? EXAM_SELECTION_MAX_ROWS);
   const normalized = toUniquePaths(paths).filter(
     (path) => !options?.validPaths || options.validPaths.has(path),
   );
-  const next: ExamSelectionRows = [];
-  for (let index = 0; index < normalized.length; index += maxPerRow) {
-    next.push(normalized.slice(index, index + maxPerRow));
+  if (normalized.length === 0) {
+    return [];
   }
-  return next;
+  return mergeOverflowRowsIntoLast([normalized], maxRows);
 };
 
 export const toggleExamSelectionPath = (
   rows: ExamSelectionRows,
   path: string,
   options?: {
-    maxPerRow?: number;
+    maxRows?: number;
     validPaths?: Set<string>;
   },
 ): ExamSelectionRows => {
@@ -127,12 +120,11 @@ export const toggleExamSelectionPath = (
       .filter((row) => row.length > 0);
     return next;
   }
-  const maxPerRow = Math.max(1, options?.maxPerRow ?? EXAM_SELECTION_ROW_CAPACITY);
   if (normalized.length === 0) {
     return [[path]];
   }
   const lastRow = normalized[normalized.length - 1];
-  if (lastRow && lastRow.length < maxPerRow) {
+  if (lastRow) {
     return [
       ...normalized.slice(0, -1),
       [...lastRow, path],
@@ -156,31 +148,12 @@ export const locateExamSelectionPath = (
 
 const cloneRows = (rows: ExamSelectionRows) => rows.map((row) => [...row]);
 
-const spillRowOverflow = (
-  rows: ExamSelectionRows,
-  startRowIndex: number,
-  maxPerRow: number,
-) => {
-  for (let rowIndex = Math.max(0, startRowIndex); rowIndex < rows.length; rowIndex += 1) {
-    while ((rows[rowIndex]?.length ?? 0) > maxPerRow) {
-      const overflow = rows[rowIndex]?.pop();
-      if (!overflow) {
-        break;
-      }
-      if (!rows[rowIndex + 1]) {
-        rows[rowIndex + 1] = [];
-      }
-      rows[rowIndex + 1]?.unshift(overflow);
-    }
-  }
-};
-
 export const placeExamSelectionPath = (
   rows: ExamSelectionRows,
   sourcePath: string,
   target: ExamSelectionPlacementTarget,
   options?: {
-    maxPerRow?: number;
+    maxRows?: number;
     validPaths?: Set<string>;
   },
 ): ExamSelectionRows => {
@@ -190,8 +163,14 @@ export const placeExamSelectionPath = (
   if (options?.validPaths && !options.validPaths.has(sourcePath)) {
     return normalizeExamSelectionRows(rows, options);
   }
-  const maxPerRow = Math.max(1, options?.maxPerRow ?? EXAM_SELECTION_ROW_CAPACITY);
+  const maxRows = Math.max(1, options?.maxRows ?? EXAM_SELECTION_MAX_ROWS);
   const normalized = cloneRows(normalizeExamSelectionRows(rows, options));
+  const targetRowIndexRaw = Number.isFinite(target.rowIndex)
+    ? Math.floor(target.rowIndex)
+    : 0;
+  if (targetRowIndexRaw >= maxRows) {
+    return normalized;
+  }
   let removedRowIndex = -1;
   let removedSlotIndex = -1;
   let removedRowDeleted = false;
@@ -211,7 +190,7 @@ export const placeExamSelectionPath = (
     break;
   }
 
-  let rowIndex = Number.isFinite(target.rowIndex) ? Math.floor(target.rowIndex) : 0;
+  let rowIndex = targetRowIndexRaw;
   if (removedRowDeleted && removedRowIndex >= 0 && removedRowIndex < rowIndex) {
     rowIndex -= 1;
   }
@@ -231,7 +210,6 @@ export const placeExamSelectionPath = (
   }
   row.splice(slotIndex, 0, sourcePath);
   normalized[rowIndex] = row;
-  spillRowOverflow(normalized, rowIndex, maxPerRow);
 
   return normalizeExamSelectionRows(normalized, options);
 };
@@ -241,7 +219,7 @@ export const moveExamSelectionPathBeforeTarget = (
   sourcePath: string,
   targetPath: string,
   options?: {
-    maxPerRow?: number;
+    maxRows?: number;
     validPaths?: Set<string>;
   },
 ): ExamSelectionRows => {
