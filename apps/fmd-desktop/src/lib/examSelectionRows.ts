@@ -200,14 +200,16 @@ export const placeExamSelectionPath = (
   }
 
   const row = normalized[rowIndex] ?? [];
-  let slotIndex = clamp(
-    Number.isFinite(target.slotIndex) ? Math.floor(target.slotIndex) : 0,
-    0,
-    row.length,
-  );
-  if (!removedRowDeleted && removedRowIndex === rowIndex && removedSlotIndex < slotIndex) {
-    slotIndex -= 1;
+  let slotIndexRaw = Number.isFinite(target.slotIndex) ? Math.floor(target.slotIndex) : 0;
+  if (
+    !removedRowDeleted &&
+    removedRowIndex === rowIndex &&
+    removedSlotIndex >= 0 &&
+    removedSlotIndex < slotIndexRaw
+  ) {
+    slotIndexRaw -= 1;
   }
+  const slotIndex = clamp(slotIndexRaw, 0, row.length);
   row.splice(slotIndex, 0, sourcePath);
   normalized[rowIndex] = row;
 

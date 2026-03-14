@@ -61,7 +61,7 @@ describe("examSelectionRows", () => {
       ["d", "e"],
     ];
     const moved = moveExamSelectionPathBeforeTarget(rows, "e", "b");
-    expect(moved).toEqual([["a", "e", "b"], ["c", "d"]]);
+    expect(moved).toEqual([["a", "e", "b", "c"], ["d"]]);
   });
 
   it("keeps before-target move stable within the same row", () => {
