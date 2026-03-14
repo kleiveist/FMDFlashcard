@@ -374,6 +374,15 @@ export const ExamFilePanel = ({
       handleSelectedReorderTap(path);
       return;
     }
+    if ((event.key === "Delete" || event.key === "Backspace") && moveSourcePath === path) {
+      event.preventDefault();
+      onToggleFile(path);
+      setMoveSourcePath(null);
+      setDragSourcePath(null);
+      setDropHint(null);
+      setSlotDropHint(null);
+      return;
+    }
     if (
       event.key === "Escape" &&
       (moveSourcePath || dragSourcePath || dropHint || slotDropHint)

@@ -592,6 +592,57 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
+  it("removes active selected chip with Delete key", () => {
+    const onToggleFile = vi.fn();
+    const reorderFiles = [
+      {
+        path: "/vault/a.md",
+        relative_path: "folder/A.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/d.md",
+        relative_path: "folder/D.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+    ];
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files: reorderFiles,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md", "/vault/d.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile,
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const chips = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button.exam-selected-chip"),
+    );
+    act(() => {
+      chips[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      chips[0]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+    });
+
+    expect(onToggleFile).toHaveBeenCalledWith("/vault/a.md");
+    expect(container.querySelector(".exam-selected-chip.is-move-source")).toBeNull();
+
+    cleanup();
+  });
+
   it("supports mouse drag and drop reorder with insertion indicator", () => {
     const onMoveSelectedFile = vi.fn();
     const reorderFiles = [
