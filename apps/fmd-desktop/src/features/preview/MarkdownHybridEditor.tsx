@@ -2765,7 +2765,9 @@ const normalizeLeadingHeadingSpacing = (
       line: value.split("\n")[0] ?? "",
     };
   const line = lineRange.line;
-  const match = line.match(/^(\s{0,3})(#+)(\S.*)$/);
+  // Pure hash marker runs (e.g. ###, ####) are valid and must not be split
+  // by backtracking the final # into heading content during normalization.
+  const match = line.match(/^(\s{0,3})(#+)([^\s#].*)$/);
   if (!match) {
     return null;
   }

@@ -3630,6 +3630,43 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("keeps pure hash marker lines unchanged when committing from the editor", () => {
+    for (const marker of ["#", "##", "###", "####"]) {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(marker);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey={`heading-pure-marker-${marker.length}`}
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+
+      act(() => {
+        textarea?.setSelectionRange(marker.length, marker.length);
+        textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+      });
+
+      expect(readMarkdown()).toBe(marker);
+      if (marker.length >= 3) {
+        expect(readMarkdown().includes(`${"#".repeat(marker.length - 1)} #`)).toBe(false);
+      }
+      cleanup();
+    }
+  });
+
   it("escapes hash-only heading content in hybrid preview for supported heading levels", () => {
     const previewValues: string[] = [];
     const { cleanup } = render(
