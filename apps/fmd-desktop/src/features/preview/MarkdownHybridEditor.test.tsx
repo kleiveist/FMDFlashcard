@@ -236,6 +236,17 @@ const applyTextareaInput = (
   });
 };
 
+const applyInputValue = (input: HTMLInputElement | null, nextValue: string) => {
+  act(() => {
+    if (!input) {
+      return;
+    }
+    input.value = nextValue;
+    input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+  });
+};
+
 const blurTextarea = (textarea: HTMLTextAreaElement | null) => {
   act(() => {
     textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
@@ -1879,6 +1890,115 @@ describe("MarkdownHybridEditor", () => {
       expect(markdownValue).toContain("#endexam");
       expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
       expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("allows overriding the advanced sequence number down to 1 for task inserts", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#exam",
+        "1) Existing task",
+        "Answer: Existing answer",
+        "---",
+        "#endexam",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-task-template-manual-sequence-override"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const hrInsertButton = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-kind='hr'] .markdown-hybrid-block-insert-button",
+      );
+      expect(hrInsertButton).toBeTruthy();
+
+      dispatchClick(hrInsertButton);
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
+
+      const sequenceInput = container.querySelector<HTMLInputElement>("input[aria-label='Task number']");
+      const decreaseButton = findButtonByAriaLabel(container, "Decrease task number");
+      expect(sequenceInput).toBeTruthy();
+      expect(decreaseButton).toBeTruthy();
+      expect(sequenceInput?.value).toBe("2");
+
+      dispatchClick(decreaseButton);
+      expect(sequenceInput?.value).toBe("1");
+
+      // Sequence numbers are allowed to duplicate and cannot go below 1.
+      dispatchClick(decreaseButton);
+      expect(sequenceInput?.value).toBe("1");
+      expect(findMenuItemButtonByLabel(container, "Task")?.textContent).toContain("1)");
+      expect(findMenuItemButtonByLabel(container, "Card")?.textContent).toContain("1)");
+
+      dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toContain("1) TASK HEADING");
+      expect(markdownValue.match(/^1\) /gm)).toHaveLength(2);
+      expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
+      expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("uses the manually selected advanced sequence number for card inserts", () => {
+    withImmediateRaf(() => {
+      const template = ADVANCED_INSERT_TEMPLATE_CATALOG.find((entry) => entry.mode === "cl");
+      expect(template).toBeTruthy();
+      const expectedCardVariant = buildAdvancedInsertTemplateVariant(template!, "card", {
+        sequenceNumber: 4,
+      });
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-card-template-manual-sequence-override"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, template?.label ?? ""));
+
+      const sequenceInput = container.querySelector<HTMLInputElement>("input[aria-label='Task number']");
+      expect(sequenceInput).toBeTruthy();
+      expect(sequenceInput?.value).toBe("1");
+      applyInputValue(sequenceInput, "4");
+      expect(sequenceInput?.value).toBe("4");
+      expect(findMenuItemButtonByLabel(container, "Task")?.textContent).toContain("4)");
+      expect(findMenuItemButtonByLabel(container, "Card")?.textContent).toContain("4)");
+
+      dispatchClick(findMenuItemButtonByLabel(container, "Card"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(expectedCardVariant.payload);
 
       cleanup();
     });
@@ -4969,8 +5089,128 @@ describe("MarkdownHybridEditor", () => {
         );
         dispatchClick(moreButton);
 
-        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar-menu")).toBeTruthy();
+        const moreMenu = document.body.querySelector(".markdown-hybrid-inline-toolbar-menu-more");
+        expect(moreMenu).toBeTruthy();
+        expect(
+          moreMenu?.querySelectorAll(".markdown-hybrid-inline-toolbar-menu-item-cdcl"),
+        ).toHaveLength(2);
+        expect(moreMenu?.querySelector(".markdown-hybrid-inline-toolbar-menu-note")).toBeNull();
         expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("applies CD and CL wrapping from the inline more-menu with toggle behavior", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("Alpha Beta");
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey="inline-toolbar-more-cd-cl-actions"
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        let textarea = activateBlockEditor(container, 0);
+        expect(textarea).toBeTruthy();
+
+        const openMoreMenuForSelection = (start: number, end: number) => {
+          setTextareaSelection(textarea, start, end);
+          act(() => {
+            window.dispatchEvent(new Event("pointerup"));
+            vi.advanceTimersByTime(350);
+          });
+          const moreButton = document.body.querySelector<HTMLButtonElement>(
+            ".markdown-hybrid-inline-toolbar button[aria-label='More actions']",
+          );
+          expect(moreButton).toBeTruthy();
+          dispatchClick(moreButton);
+          expect(document.body.querySelector(".markdown-hybrid-inline-toolbar-menu-more")).toBeTruthy();
+          expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
+        };
+
+        const openOnCurrentBeta = () => {
+          const betaStart = textarea?.value.indexOf("Beta") ?? -1;
+          expect(betaStart).toBeGreaterThanOrEqual(0);
+          openMoreMenuForSelection(betaStart, betaStart + 4);
+        };
+
+        openOnCurrentBeta();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CD token']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha \"Beta\"");
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        openOnCurrentBeta();
+        expect(document.body.querySelector("button[aria-label='Wrap as CD token']")?.classList.contains("is-active"))
+          .toBe(true);
+        expect(document.body.querySelector("button[aria-label='Wrap as CL cloze']")?.classList.contains("is-active"))
+          .toBe(false);
+        dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='Bold text']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha **Beta**");
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        openOnCurrentBeta();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CL cloze']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha %Beta%");
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        openOnCurrentBeta();
+        expect(document.body.querySelector("button[aria-label='Wrap as CD token']")?.classList.contains("is-active"))
+          .toBe(false);
+        expect(document.body.querySelector("button[aria-label='Wrap as CL cloze']")?.classList.contains("is-active"))
+          .toBe(true);
+        dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='Bold text']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha **Beta**");
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        openOnCurrentBeta();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CL cloze']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha %Beta%");
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        openOnCurrentBeta();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CD token']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha \"Beta\"");
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        openOnCurrentBeta();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CD token']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha Beta");
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        openOnCurrentBeta();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CL cloze']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha %Beta%");
+        expect(readMarkdown()).toBe("Alpha Beta");
+
+        openOnCurrentBeta();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CL cloze']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        expect(textarea?.value).toBe("Alpha Beta");
+        expect(readMarkdown()).toBe("Alpha Beta");
 
         cleanup();
       } finally {
@@ -5248,6 +5488,58 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("removes CD/CL wrappers around the current selection when pressing the text button", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        for (const initialMarkdown of ["Alpha \"Beta\"", "Alpha %Beta%"]) {
+          const Harness = () => {
+            const [markdown, setMarkdown] = useState(initialMarkdown);
+            return (
+              <div>
+                <div data-testid="markdown-value">{markdown}</div>
+                <MarkdownHybridEditor
+                  historyKey={`inline-toolbar-text-clear-cdcl-${initialMarkdown.includes("%") ? "cl" : "cd"}`}
+                  markdown={markdown}
+                  mode="edit"
+                  onChange={setMarkdown}
+                  renderPreview={(value) => <div>{value}</div>}
+                />
+              </div>
+            );
+          };
+
+          const { container, cleanup } = render(createElement(Harness));
+          const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+          const textarea = activateBlockEditor(container, 0);
+          expect(textarea).toBeTruthy();
+          const start = textarea?.value.indexOf("Beta") ?? -1;
+          expect(start).toBeGreaterThanOrEqual(0);
+          setTextareaSelection(textarea, start, start + "Beta".length);
+
+          act(() => {
+            window.dispatchEvent(new Event("pointerup"));
+            vi.advanceTimersByTime(350);
+          });
+
+          const textMenuButton = document.body.querySelector<HTMLButtonElement>(
+            ".markdown-hybrid-inline-toolbar button[aria-label='Text format menu']",
+          );
+          dispatchClick(textMenuButton);
+
+          expect(readMarkdown()).toBe(initialMarkdown);
+          expect(textarea?.value).toBe("Alpha Beta");
+
+          blurTextarea(textarea);
+          expect(readMarkdown()).toBe("Alpha Beta");
+          cleanup();
+        }
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it("applies and removes bold formatting via Ctrl+B in an active textarea selection", () => {
     withImmediateRaf(() => {
       const Harness = () => {
@@ -5475,6 +5767,82 @@ describe("MarkdownHybridEditor", () => {
         });
         expect(latestMarkdown).toContain("| **one** | **two** |");
 
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("applies exclusive CD/CL replacement logic in table-cell inline toolbar", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        let latestMarkdown = [
+          "| A | B |",
+          "| --- | --- |",
+          "| **one** | two |",
+        ].join("\n");
+
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState(latestMarkdown);
+          return (
+            <MarkdownHybridEditor
+              historyKey="table-inline-toolbar-cdcl-exclusive"
+              markdown={markdown}
+              mode="edit"
+              onChange={(value) => {
+                latestMarkdown = value;
+                setMarkdown(value);
+              }}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        const bodyCells = Array.from(
+          container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+        );
+        expect(bodyCells.length).toBeGreaterThanOrEqual(1);
+
+        dispatchMouseDown(bodyCells[0] ?? null);
+        let textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea).toBeTruthy();
+        const openMoreMenuForSelection = () => {
+          const start = textarea?.value.indexOf("one") ?? -1;
+          expect(start).toBeGreaterThanOrEqual(0);
+          setTextareaSelection(textarea, start, start + 3);
+          act(() => {
+            window.dispatchEvent(new Event("pointerup"));
+            vi.advanceTimersByTime(350);
+          });
+          dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='More actions']"));
+          expect(document.body.querySelector(".markdown-hybrid-inline-toolbar-menu-more")).toBeTruthy();
+        };
+
+        openMoreMenuForSelection();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CD token']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea?.value).toBe("\"one\"");
+
+        dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='Bold text']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea?.value).toBe("**one**");
+
+        openMoreMenuForSelection();
+        dispatchClick(document.body.querySelector("button[aria-label='Wrap as CL cloze']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea?.value).toBe("%one%");
+
+        dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='Text format menu']"));
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea?.value).toBe("one");
+
+        act(() => {
+          textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        });
+        expect(latestMarkdown).toContain("| one | two |");
         cleanup();
       } finally {
         vi.useRealTimers();

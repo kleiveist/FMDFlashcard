@@ -53,10 +53,10 @@ import {
   INLINE_FORMATTING_WRAPPERS,
   applyInlineMarkdownLink,
   findInlineMarkdownLinkAtRange,
-  isInlineFormattingWrapperActive,
   normalizeInlineFormattingRange,
   resolveInlineFormattingShortcutAction,
   resolveInlineFormattingToolbarActiveState,
+  stripInlineFormattingAroundRange,
   stripSupportedInlineMarkdownFormatting,
   toggleInlineFormattingWrapper,
   type InlineFormattingMathMenuAction,
@@ -1055,11 +1055,43 @@ export const MarkdownHybridTableBlock = ({
       if (!normalizedSelection || !textarea) {
         return false;
       }
-      if (action === "math" && rangeIntersectsMarkdownCodeContext(textarea.value, normalizedSelection)) {
+      const value = textarea.value;
+      const isClozeExclusiveAction = action === "cd" || action === "cl";
+
+      if (isClozeExclusiveAction) {
+        const activeState = resolveInlineFormattingToolbarActiveState(value, normalizedSelection);
+        const linkActive = Boolean(findInlineMarkdownLinkAtRange(value, normalizedSelection));
+        const targetActive = action === "cd" ? activeState.cd : activeState.cl;
+        const hasOtherFormatting = activeState.highlight ||
+          activeState.bold ||
+          activeState.italic ||
+          activeState.underline ||
+          activeState.strikethrough ||
+          activeState["inline-code"] ||
+          activeState.math ||
+          (action === "cd" ? activeState.cl : activeState.cd) ||
+          linkActive;
+        const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+        if (targetActive && !hasOtherFormatting) {
+          const toggled = toggleInlineFormattingWrapper(value, normalizedSelection, wrapper);
+          return applyInlineFormattingToActiveSelection(toggled);
+        }
+        const replaced = stripInlineFormattingAroundRange(value, normalizedSelection, {
+          actions: ["highlight", "strikethrough", "underline", "bold", "italic", "inline-code", "math", "cd", "cl"],
+          removeLink: true,
+        });
+        const wrapped = toggleInlineFormattingWrapper(replaced.value, replaced.selection, wrapper);
+        return applyInlineFormattingToActiveSelection(wrapped);
+      }
+
+      const withoutCdCl = stripInlineFormattingAroundRange(value, normalizedSelection, {
+        actions: ["cd", "cl"],
+      });
+      if (action === "math" && rangeIntersectsMarkdownCodeContext(withoutCdCl.value, withoutCdCl.selection)) {
         return false;
       }
       const wrapper = INLINE_FORMATTING_WRAPPERS[action];
-      const nextResult = toggleInlineFormattingWrapper(textarea.value, normalizedSelection, wrapper);
+      const nextResult = toggleInlineFormattingWrapper(withoutCdCl.value, withoutCdCl.selection, wrapper);
       return applyInlineFormattingToActiveSelection(nextResult);
     },
     [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
@@ -1160,44 +1192,14 @@ export const MarkdownHybridTableBlock = ({
     let nextValue = textarea.value;
     let nextRange = normalizedSelection;
     let hasChanged = false;
-    const aroundSelectionActions: InlineFormattingToolbarAction[] = [
-      "highlight",
-      "strikethrough",
-      "underline",
-      "bold",
-      "italic",
-      "inline-code",
-      "math",
-    ];
-    for (let iteration = 0; iteration < 4; iteration += 1) {
-      let iterationChanged = false;
-      const linkAtRange = findInlineMarkdownLinkAtRange(nextValue, nextRange);
-      if (linkAtRange) {
-        const linkResult = applyInlineMarkdownLink(nextValue, nextRange, "");
-        if (linkResult.changed) {
-          nextValue = linkResult.value;
-          nextRange = normalizeInlineFormattingRange(linkResult.value, linkResult.selection);
-          hasChanged = true;
-          iterationChanged = true;
-        }
-      }
-      for (const action of aroundSelectionActions) {
-        const wrapper = INLINE_FORMATTING_WRAPPERS[action];
-        if (!isInlineFormattingWrapperActive(nextValue, nextRange, wrapper)) {
-          continue;
-        }
-        const toggleResult = toggleInlineFormattingWrapper(nextValue, nextRange, wrapper);
-        if (!toggleResult.changed) {
-          continue;
-        }
-        nextValue = toggleResult.value;
-        nextRange = normalizeInlineFormattingRange(toggleResult.value, toggleResult.selection);
-        hasChanged = true;
-        iterationChanged = true;
-      }
-      if (!iterationChanged) {
-        break;
-      }
+    const strippedAroundSelection = stripInlineFormattingAroundRange(nextValue, nextRange, {
+      actions: ["highlight", "strikethrough", "underline", "bold", "italic", "inline-code", "math", "cd", "cl"],
+      removeLink: true,
+    });
+    if (strippedAroundSelection.changed) {
+      nextValue = strippedAroundSelection.value;
+      nextRange = strippedAroundSelection.selection;
+      hasChanged = true;
     }
 
     const selectedValue = nextValue.slice(nextRange.start, nextRange.end);
@@ -1247,9 +1249,12 @@ export const MarkdownHybridTableBlock = ({
       const nextUrl = typeof urlValue === "string"
         ? urlValue
         : (inlineFormattingToolbarLinkState?.url ?? "");
+      const strippedCloze = stripInlineFormattingAroundRange(textarea.value, normalizedSelection, {
+        actions: ["cd", "cl"],
+      });
       const nextResult = applyInlineMarkdownLink(
-        textarea.value,
-        normalizedSelection,
+        strippedCloze.value,
+        strippedCloze.selection,
         nextUrl,
       );
       if (!nextResult.changed) {

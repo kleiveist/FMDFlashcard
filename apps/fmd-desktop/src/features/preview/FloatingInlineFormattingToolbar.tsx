@@ -141,7 +141,9 @@ export const FloatingInlineFormattingToolbar = ({
     activeState.link ||
     activeState.strikethrough ||
     activeState["inline-code"] ||
-    activeState.math;
+    activeState.math ||
+    activeState.cd ||
+    activeState.cl;
 
   const handleButtonMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -295,8 +297,43 @@ export const FloatingInlineFormattingToolbar = ({
         </button>
       </div>
       {menu === "more" ? (
-        <div className="markdown-hybrid-inline-toolbar-menu" role="menu" aria-label="More inline actions">
-          <div className="markdown-hybrid-inline-toolbar-menu-note">More actions coming soon</div>
+        <div
+          className="markdown-hybrid-inline-toolbar-menu markdown-hybrid-inline-toolbar-menu-more"
+          role="menu"
+          aria-label="More inline actions"
+        >
+          <button
+            type="button"
+            className={`markdown-hybrid-inline-toolbar-menu-item markdown-hybrid-inline-toolbar-menu-item-cdcl${
+              activeState.cd ? " is-active" : ""
+            }`}
+            role="menuitem"
+            aria-label="Wrap as CD token"
+            title='CD ("")'
+            onMouseDown={handleButtonMouseDown}
+            onClick={() => onAction("cd")}
+          >
+            <span className="markdown-hybrid-inline-toolbar-menu-item-icon" aria-hidden="true">
+              "
+            </span>
+            <span className="markdown-hybrid-inline-toolbar-menu-item-label">CD ("")</span>
+          </button>
+          <button
+            type="button"
+            className={`markdown-hybrid-inline-toolbar-menu-item markdown-hybrid-inline-toolbar-menu-item-cdcl${
+              activeState.cl ? " is-active" : ""
+            }`}
+            role="menuitem"
+            aria-label="Wrap as CL cloze"
+            title="CL (%%)"
+            onMouseDown={handleButtonMouseDown}
+            onClick={() => onAction("cl")}
+          >
+            <span className="markdown-hybrid-inline-toolbar-menu-item-icon" aria-hidden="true">
+              %
+            </span>
+            <span className="markdown-hybrid-inline-toolbar-menu-item-label">CL (%%)</span>
+          </button>
         </div>
       ) : null}
       {menu === "math" ? (

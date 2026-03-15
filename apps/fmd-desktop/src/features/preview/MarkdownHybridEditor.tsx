@@ -96,10 +96,10 @@ import {
   INLINE_FORMATTING_WRAPPERS,
   applyInlineMarkdownLink,
   findInlineMarkdownLinkAtRange,
-  isInlineFormattingWrapperActive,
   normalizeInlineFormattingRange,
   resolveInlineFormattingShortcutAction,
   resolveInlineFormattingToolbarActiveState,
+  stripInlineFormattingAroundRange,
   stripSupportedInlineMarkdownFormatting,
   toggleInlineFormattingWrapper,
   type InlineFormattingMathMenuAction,
@@ -230,6 +230,7 @@ type InsertMenuState = {
   phase: "categories" | "items" | "advanced-variant" | "image-link-picker";
   categoryId?: InsertMenuCategoryId;
   advancedTemplateId?: string;
+  advancedSequenceNumber?: number;
   query?: string;
   highlightedIndex?: number;
 };
@@ -5645,6 +5646,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           phase: "items",
           categoryId,
           advancedTemplateId: undefined,
+          advancedSequenceNumber: undefined,
         };
       });
     },
@@ -5655,6 +5657,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     (templateId: string) => (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
+      const nextSequenceNumber = resolveNextGlobalSequenceNumber(markdown);
       setInsertMenuState((current) => {
         if (!current) {
           return current;
@@ -5664,10 +5667,11 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           phase: "advanced-variant",
           categoryId: "advanced",
           advancedTemplateId: templateId,
+          advancedSequenceNumber: nextSequenceNumber,
         };
       });
     },
-    [],
+    [markdown],
   );
 
   const handleInsertMenuBack = useCallback((event: MouseEvent<HTMLButtonElement>) => {
@@ -5690,6 +5694,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           ...current,
           phase: "items",
           advancedTemplateId: undefined,
+          advancedSequenceNumber: undefined,
         };
       }
       return {
@@ -5697,6 +5702,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         phase: "categories",
         categoryId: undefined,
         advancedTemplateId: undefined,
+        advancedSequenceNumber: undefined,
       };
     });
   }, []);
@@ -5999,7 +6005,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (!template) {
         return;
       }
-      const sequenceNumber = resolveNextGlobalSequenceNumber(markdown);
+      const sequenceNumber = typeof insertMenuState.advancedSequenceNumber === "number" &&
+          Number.isFinite(insertMenuState.advancedSequenceNumber)
+        ? Math.max(1, Math.floor(insertMenuState.advancedSequenceNumber))
+        : resolveNextGlobalSequenceNumber(markdown);
       const shouldWrapWithExam = variant === "task" && !hasBalancedExamWrapper(markdown);
       const resolved = buildAdvancedInsertTemplateVariant(template, variant, {
         sequenceNumber,
@@ -6011,6 +6020,59 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     },
     [insertBlockRelativeTo, insertMenuState, markdown],
   );
+
+  const decrementAdvancedSequenceNumber = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setInsertMenuState((current) => {
+      if (!current || current.phase !== "advanced-variant") {
+        return current;
+      }
+      const currentValue = typeof current.advancedSequenceNumber === "number" &&
+          Number.isFinite(current.advancedSequenceNumber)
+        ? Math.max(1, Math.floor(current.advancedSequenceNumber))
+        : 1;
+      return {
+        ...current,
+        advancedSequenceNumber: Math.max(1, currentValue - 1),
+      };
+    });
+  }, []);
+
+  const incrementAdvancedSequenceNumber = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setInsertMenuState((current) => {
+      if (!current || current.phase !== "advanced-variant") {
+        return current;
+      }
+      const currentValue = typeof current.advancedSequenceNumber === "number" &&
+          Number.isFinite(current.advancedSequenceNumber)
+        ? Math.max(1, Math.floor(current.advancedSequenceNumber))
+        : 1;
+      return {
+        ...current,
+        advancedSequenceNumber: currentValue + 1,
+      };
+    });
+  }, []);
+
+  const handleAdvancedSequenceNumberInputChange = useCallback((event: FormEvent<HTMLInputElement>) => {
+    const rawValue = event.currentTarget.value.trim();
+    const parsedValue = Number.parseInt(rawValue, 10);
+    if (!Number.isFinite(parsedValue)) {
+      return;
+    }
+    setInsertMenuState((current) => {
+      if (!current || current.phase !== "advanced-variant") {
+        return current;
+      }
+      return {
+        ...current,
+        advancedSequenceNumber: Math.max(1, parsedValue),
+      };
+    });
+  }, []);
 
   const handleHrEnterZoneMouseDown = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -6647,11 +6709,43 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (!normalizedSelection || !textarea) {
         return false;
       }
-      if (action === "math" && rangeIntersectsMarkdownCodeContext(textarea.value, normalizedSelection)) {
+      const value = textarea.value;
+      const isClozeExclusiveAction = action === "cd" || action === "cl";
+
+      if (isClozeExclusiveAction) {
+        const activeState = resolveInlineFormattingToolbarActiveState(value, normalizedSelection);
+        const linkActive = Boolean(findInlineMarkdownLinkAtRange(value, normalizedSelection));
+        const targetActive = action === "cd" ? activeState.cd : activeState.cl;
+        const hasOtherFormatting = activeState.highlight ||
+          activeState.bold ||
+          activeState.italic ||
+          activeState.underline ||
+          activeState.strikethrough ||
+          activeState["inline-code"] ||
+          activeState.math ||
+          (action === "cd" ? activeState.cl : activeState.cd) ||
+          linkActive;
+        const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+        if (targetActive && !hasOtherFormatting) {
+          const toggled = toggleInlineFormattingWrapper(value, normalizedSelection, wrapper);
+          return applyInlineFormattingToActiveSelection(toggled);
+        }
+        const replaced = stripInlineFormattingAroundRange(value, normalizedSelection, {
+          actions: ["highlight", "strikethrough", "underline", "bold", "italic", "inline-code", "math", "cd", "cl"],
+          removeLink: true,
+        });
+        const wrapped = toggleInlineFormattingWrapper(replaced.value, replaced.selection, wrapper);
+        return applyInlineFormattingToActiveSelection(wrapped);
+      }
+
+      const withoutCdCl = stripInlineFormattingAroundRange(value, normalizedSelection, {
+        actions: ["cd", "cl"],
+      });
+      if (action === "math" && rangeIntersectsMarkdownCodeContext(withoutCdCl.value, withoutCdCl.selection)) {
         return false;
       }
       const wrapper = INLINE_FORMATTING_WRAPPERS[action];
-      const nextResult = toggleInlineFormattingWrapper(textarea.value, normalizedSelection, wrapper);
+      const nextResult = toggleInlineFormattingWrapper(withoutCdCl.value, withoutCdCl.selection, wrapper);
       return applyInlineFormattingToActiveSelection(nextResult);
     },
     [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
@@ -6753,48 +6847,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     let nextRange = normalizedSelection;
     let hasChanged = false;
 
-    // First, unwrap styles that are directly around the current selection.
-    const aroundSelectionActions: InlineFormattingToolbarAction[] = [
-      "highlight",
-      "strikethrough",
-      "underline",
-      "bold",
-      "italic",
-      "inline-code",
-      "math",
-    ];
-    for (let iteration = 0; iteration < 4; iteration += 1) {
-      let iterationChanged = false;
-
-      const linkAtRange = findInlineMarkdownLinkAtRange(nextValue, nextRange);
-      if (linkAtRange) {
-        const linkResult = applyInlineMarkdownLink(nextValue, nextRange, "");
-        if (linkResult.changed) {
-          nextValue = linkResult.value;
-          nextRange = normalizeInlineFormattingRange(linkResult.value, linkResult.selection);
-          hasChanged = true;
-          iterationChanged = true;
-        }
-      }
-
-      for (const action of aroundSelectionActions) {
-        const wrapper = INLINE_FORMATTING_WRAPPERS[action];
-        if (!isInlineFormattingWrapperActive(nextValue, nextRange, wrapper)) {
-          continue;
-        }
-        const toggleResult = toggleInlineFormattingWrapper(nextValue, nextRange, wrapper);
-        if (!toggleResult.changed) {
-          continue;
-        }
-        nextValue = toggleResult.value;
-        nextRange = normalizeInlineFormattingRange(toggleResult.value, toggleResult.selection);
-        hasChanged = true;
-        iterationChanged = true;
-      }
-
-      if (!iterationChanged) {
-        break;
-      }
+    const strippedAroundSelection = stripInlineFormattingAroundRange(nextValue, nextRange, {
+      actions: ["highlight", "strikethrough", "underline", "bold", "italic", "inline-code", "math", "cd", "cl"],
+      removeLink: true,
+    });
+    if (strippedAroundSelection.changed) {
+      nextValue = strippedAroundSelection.value;
+      nextRange = strippedAroundSelection.selection;
+      hasChanged = true;
     }
 
     // Then, strip supported markdown markers inside the selected text.
@@ -6846,9 +6906,12 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       const nextUrl = typeof urlValue === "string"
         ? urlValue
         : (inlineFormattingToolbarLinkState?.url ?? "");
+      const strippedCloze = stripInlineFormattingAroundRange(textarea.value, normalizedSelection, {
+        actions: ["cd", "cl"],
+      });
       const nextResult = applyInlineMarkdownLink(
-        textarea.value,
-        normalizedSelection,
+        strippedCloze.value,
+        strippedCloze.selection,
         nextUrl,
       );
       if (!nextResult.changed) {
@@ -7925,7 +7988,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     ? (getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId) ?? null)
     : null;
   const activeAdvancedSequenceNumberPreview = insertMenuState?.phase === "advanced-variant" && insertMenuState
-    ? resolveNextGlobalSequenceNumber(markdown)
+    ? typeof insertMenuState.advancedSequenceNumber === "number" &&
+        Number.isFinite(insertMenuState.advancedSequenceNumber)
+      ? Math.max(1, Math.floor(insertMenuState.advancedSequenceNumber))
+      : resolveNextGlobalSequenceNumber(markdown)
     : null;
 
   const handleInsertMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
@@ -8082,27 +8148,65 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
               </button>
             ))
             : insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate
-            ? INSERT_MENU_ADVANCED_VARIANTS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
-                onClick={handleAdvancedInsertTemplateVariantSelect(option.id)}
-                role="menuitem"
-              >
-                {renderInsertMenuRowContent({
-                  label: option.label,
-                  description: activeAdvancedSequenceNumberPreview !== null
-                    ? option.id === "task"
-                      ? `Insert as numbered task ${activeAdvancedSequenceNumberPreview})`
-                      : `Insert as #card block ${activeAdvancedSequenceNumberPreview})`
-                    : option.description,
-                  icon: option.id === "card"
-                    ? activeAdvancedInsertTemplate.icon
-                    : option.icon,
-                })}
-              </button>
-            ))
+            ? (
+              <>
+                <div
+                  className="markdown-hybrid-insert-menu-advanced-sequence-control"
+                  role="group"
+                  aria-label="Advanced sequence number controls"
+                >
+                  <button
+                    type="button"
+                    className="markdown-hybrid-insert-menu-advanced-sequence-button"
+                    aria-label="Decrease task number"
+                    onClick={decrementAdvancedSequenceNumber}
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    className="markdown-hybrid-insert-menu-advanced-sequence-input"
+                    aria-label="Task number"
+                    min={1}
+                    step={1}
+                    value={activeAdvancedSequenceNumberPreview ?? 1}
+                    onChange={handleAdvancedSequenceNumberInputChange}
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="markdown-hybrid-insert-menu-advanced-sequence-button"
+                    aria-label="Increase task number"
+                    onClick={incrementAdvancedSequenceNumber}
+                  >
+                    +
+                  </button>
+                </div>
+                {INSERT_MENU_ADVANCED_VARIANTS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
+                    onClick={handleAdvancedInsertTemplateVariantSelect(option.id)}
+                    role="menuitem"
+                  >
+                    {renderInsertMenuRowContent({
+                      label: option.label,
+                      description: activeAdvancedSequenceNumberPreview !== null
+                        ? option.id === "task"
+                          ? `Insert as numbered task ${activeAdvancedSequenceNumberPreview})`
+                          : `Insert as #card block ${activeAdvancedSequenceNumberPreview})`
+                        : option.description,
+                      icon: option.id === "card"
+                        ? activeAdvancedInsertTemplate.icon
+                        : option.icon,
+                    })}
+                  </button>
+                ))}
+              </>
+            )
             : insertMenuState?.categoryId === "advanced"
             ? activeAdvancedInsertTemplateSections.flatMap((section) =>
               section.items.map((item) => (

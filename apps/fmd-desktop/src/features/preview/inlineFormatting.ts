@@ -7,7 +7,9 @@ export type InlineFormattingToolbarAction =
   | "underline"
   | "strikethrough"
   | "inline-code"
-  | "math";
+  | "math"
+  | "cd"
+  | "cl";
 
 export type InlineFormattingMathMenuAction =
   | "wrap-inline"
@@ -39,6 +41,8 @@ export type InlineFormattingToolbarActiveState = {
   strikethrough: boolean;
   "inline-code": boolean;
   math: boolean;
+  cd: boolean;
+  cl: boolean;
 };
 
 export const INLINE_FORMATTING_WRAPPERS: Record<InlineFormattingToolbarAction, InlineFormattingWrapper> = {
@@ -49,6 +53,8 @@ export const INLINE_FORMATTING_WRAPPERS: Record<InlineFormattingToolbarAction, I
   strikethrough: { open: "~~", close: "~~" },
   "inline-code": { open: "`", close: "`" },
   math: { open: "$", close: "$" },
+  cd: { open: "\"", close: "\"" },
+  cl: { open: "%", close: "%" },
 };
 
 const inlineMarkdownLinkPattern = /\[([^\]\n]*)\]\(([^)\n]*)\)/g;
@@ -313,6 +319,8 @@ const inlineFormattingClearPatterns: ReadonlyArray<readonly [RegExp, string]> = 
   [/(^|[^=])==([^=\n]+)==(?=[^=]|$)/g, "$1$2"],
   [/`([^`\n]+)`/g, "$1"],
   [/\$([^$\n]+)\$/g, "$1"],
+  [/"([^"\n]+)"/g, "$1"],
+  [/%([^%\n]+)%/g, "$1"],
 ];
 
 export const stripSupportedInlineMarkdownFormatting = (value: string) => {
@@ -336,6 +344,8 @@ const createEmptyInlineFormattingActiveState = (): InlineFormattingToolbarActive
   strikethrough: false,
   "inline-code": false,
   math: false,
+  cd: false,
+  cl: false,
 });
 
 export const isInlineFormattingWrapperActive = (
@@ -391,6 +401,61 @@ export const resolveInlineFormattingToolbarActiveState = (
     strikethrough: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.strikethrough),
     "inline-code": isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS["inline-code"]),
     math: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.math),
+    cd: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.cd),
+    cl: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.cl),
+  };
+};
+
+export const stripInlineFormattingAroundRange = (
+  value: string,
+  range: InlineFormattingToolbarRange,
+  options?: {
+    actions?: ReadonlyArray<InlineFormattingToolbarAction>;
+    removeLink?: boolean;
+  },
+): InlineFormattingToggleResult => {
+  let nextValue = value;
+  let nextRange = normalizeInlineFormattingRange(value, range);
+  let hasChanged = false;
+  const actions = options?.actions ?? (Object.keys(INLINE_FORMATTING_WRAPPERS) as InlineFormattingToolbarAction[]);
+
+  for (let iteration = 0; iteration < 4; iteration += 1) {
+    let iterationChanged = false;
+    if (options?.removeLink) {
+      const linkAtRange = findInlineMarkdownLinkAtRange(nextValue, nextRange);
+      if (linkAtRange) {
+        const linkResult = applyInlineMarkdownLink(nextValue, nextRange, "");
+        if (linkResult.changed) {
+          nextValue = linkResult.value;
+          nextRange = normalizeInlineFormattingRange(linkResult.value, linkResult.selection);
+          hasChanged = true;
+          iterationChanged = true;
+        }
+      }
+    }
+    for (const action of actions) {
+      const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+      if (!wrapper || !isInlineFormattingWrapperActive(nextValue, nextRange, wrapper)) {
+        continue;
+      }
+      const toggleResult = toggleInlineFormattingWrapper(nextValue, nextRange, wrapper);
+      if (!toggleResult.changed) {
+        continue;
+      }
+      nextValue = toggleResult.value;
+      nextRange = normalizeInlineFormattingRange(toggleResult.value, toggleResult.selection);
+      hasChanged = true;
+      iterationChanged = true;
+    }
+    if (!iterationChanged) {
+      break;
+    }
+  }
+
+  return {
+    value: nextValue,
+    selection: nextRange,
+    changed: hasChanged,
   };
 };
 
