@@ -65,6 +65,12 @@ const stripMarkdownExtension = (value: string) =>
 export { shouldApplyPreviewDefaultMode, type DashboardView };
 
 type MarkdownDocumentMode = "edit" | "write";
+type ExamLeaveGuardTarget = "main-editor" | "profile-modal";
+type PendingExamLeaveAction =
+  | "file-select"
+  | "vault-view-change"
+  | "dashboard-leave"
+  | "profile-modal-close";
 
 type DashboardPageProps = {
   initialVaultView?: DashboardView;
@@ -82,6 +88,7 @@ type DashboardPageProps = {
 
 export type DashboardPageHandle = {
   requestVaultViewChange: (nextView: DashboardView) => void;
+  requestLeaveDashboard: () => Promise<boolean>;
 };
 
 const DashboardPageInner = (
@@ -113,9 +120,16 @@ const DashboardPageInner = (
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
   );
+  const examControlsRef = useRef<ExamEditorControlsState | null>(null);
   const [isTaskProfileEditorModalOpen, setIsTaskProfileEditorModalOpen] = useState(false);
   const [taskProfileEditorControls, setTaskProfileEditorControls] =
     useState<ExamEditorControlsState | null>(null);
+  const taskProfileEditorControlsRef = useRef<ExamEditorControlsState | null>(null);
+  const [pendingExamLeaveAction, setPendingExamLeaveAction] =
+    useState<PendingExamLeaveAction | null>(null);
+  const [pendingExamLeaveTarget, setPendingExamLeaveTarget] =
+    useState<ExamLeaveGuardTarget | null>(null);
+  const [isExamLeaveSavePending, setIsExamLeaveSavePending] = useState(false);
   const isDesktopViewport = useMediaQuery("(min-width: 1201px)", false);
   const [examPanelsCollapsed, setExamPanelsCollapsed] = useState(() => {
     if (typeof window === "undefined") {
@@ -125,6 +139,8 @@ const DashboardPageInner = (
   });
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const didApplyPreviewDefaultModeRef = useRef(false);
+  const pendingExamLeaveProceedRef = useRef<(() => void | Promise<void>) | null>(null);
+  const pendingExamLeaveResolveRef = useRef<((allowed: boolean) => void) | null>(null);
   const [noteCollapsed, setNoteCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -237,6 +253,20 @@ const DashboardPageInner = (
         themeMode: settings.theme,
       }) as CSSProperties,
     [markdownEditorAccentHex, settings.theme],
+  );
+  const handleExamControlsReady = useCallback(
+    (controls: ExamEditorControlsState | null) => {
+      examControlsRef.current = controls;
+      setExamControls(controls);
+    },
+    [],
+  );
+  const handleTaskProfileEditorControlsReady = useCallback(
+    (controls: ExamEditorControlsState | null) => {
+      taskProfileEditorControlsRef.current = controls;
+      setTaskProfileEditorControls(controls);
+    },
+    [],
   );
 
   const resolveVaultRelativePath = useCallback(
@@ -551,6 +581,98 @@ const DashboardPageInner = (
     vaultView,
   ]);
 
+  const resolveDirtyExamContext = useCallback((): {
+    target: ExamLeaveGuardTarget;
+    controls: ExamEditorControlsState;
+  } | null => {
+    const modalControls = taskProfileEditorControlsRef.current;
+    if (
+      isTaskProfileEditorModalOpen &&
+      modalControls?.hasUnsavedChanges
+    ) {
+      return { target: "profile-modal", controls: modalControls };
+    }
+    const mainControls = examControlsRef.current;
+    if (vaultView === "exam" && mainControls?.hasUnsavedChanges) {
+      return { target: "main-editor", controls: mainControls };
+    }
+    return null;
+  }, [isTaskProfileEditorModalOpen, vaultView]);
+
+  const completePendingExamLeave = useCallback((allowed: boolean) => {
+    const resolve = pendingExamLeaveResolveRef.current;
+    pendingExamLeaveProceedRef.current = null;
+    pendingExamLeaveResolveRef.current = null;
+    setPendingExamLeaveAction(null);
+    setPendingExamLeaveTarget(null);
+    setIsExamLeaveSavePending(false);
+    resolve?.(allowed);
+  }, []);
+
+  const runPendingExamLeaveAction = useCallback(async () => {
+    const action = pendingExamLeaveProceedRef.current;
+    if (!action) {
+      completePendingExamLeave(true);
+      return true;
+    }
+    try {
+      await action();
+      completePendingExamLeave(true);
+      return true;
+    } catch (error) {
+      console.error("Failed to execute pending dashboard leave action", error);
+      completePendingExamLeave(false);
+      return false;
+    }
+  }, [completePendingExamLeave]);
+
+  const requestExamLeaveGuard = useCallback(
+    async (
+      action: PendingExamLeaveAction,
+      proceed: () => void | Promise<void>,
+    ) => {
+      if (pendingExamLeaveAction) {
+        return false;
+      }
+      const dirtyContext = resolveDirtyExamContext();
+      if (!dirtyContext) {
+        await proceed();
+        return true;
+      }
+      return new Promise<boolean>((resolve) => {
+        pendingExamLeaveProceedRef.current = proceed;
+        pendingExamLeaveResolveRef.current = resolve;
+        setPendingExamLeaveAction(action);
+        setPendingExamLeaveTarget(dirtyContext.target);
+        setIsExamLeaveSavePending(false);
+      });
+    },
+    [pendingExamLeaveAction, resolveDirtyExamContext],
+  );
+
+  const runDashboardNavigationGuard = useCallback(
+    async (
+      action: PendingExamLeaveAction,
+      proceed: () => void | Promise<void>,
+    ) => {
+      const markdownReady = await persistMarkdownBeforeNavigation();
+      if (!markdownReady) {
+        return false;
+      }
+      return requestExamLeaveGuard(action, proceed);
+    },
+    [persistMarkdownBeforeNavigation, requestExamLeaveGuard],
+  );
+
+  useEffect(
+    () => () => {
+      pendingExamLeaveResolveRef.current?.(false);
+      pendingExamLeaveProceedRef.current = null;
+      pendingExamLeaveResolveRef.current = null;
+    },
+    [],
+  );
+
   const handleNoteFileCreated = useCallback(
     (
       file: { path: string },
@@ -567,15 +689,13 @@ const DashboardPageInner = (
   const handleSelectMarkdownFile = useCallback(
     (file: Parameters<typeof actions.handleSelectFile>[0]) => {
       void (async () => {
-        const saved = await persistMarkdownBeforeNavigation();
-        if (!saved) {
-          return;
-        }
-        setDocumentMode("edit");
-        actions.handleSelectFile(file);
+        await runDashboardNavigationGuard("file-select", async () => {
+          setDocumentMode("edit");
+          actions.handleSelectFile(file);
+        });
       })();
     },
-    [actions, persistMarkdownBeforeNavigation],
+    [actions, runDashboardNavigationGuard],
   );
 
   const handleFrontmatterSave = useCallback(
@@ -645,16 +765,14 @@ const DashboardPageInner = (
   const handleVaultViewChange = useCallback(
     async (nextView: DashboardView) => {
       if (nextView === vaultView) {
-        return;
+        return true;
       }
-      const saved = await persistMarkdownBeforeNavigation();
-      if (!saved) {
-        return;
-      }
-      setVaultView(nextView);
-      onVaultViewChange?.(nextView);
+      return runDashboardNavigationGuard("vault-view-change", async () => {
+        setVaultView(nextView);
+        onVaultViewChange?.(nextView);
+      });
     },
-    [onVaultViewChange, persistMarkdownBeforeNavigation, vaultView],
+    [onVaultViewChange, runDashboardNavigationGuard, vaultView],
   );
 
   useImperativeHandle(
@@ -663,8 +781,10 @@ const DashboardPageInner = (
       requestVaultViewChange: (nextView: DashboardView) => {
         void handleVaultViewChange(nextView);
       },
+      requestLeaveDashboard: () =>
+        runDashboardNavigationGuard("dashboard-leave", async () => {}),
     }),
-    [handleVaultViewChange],
+    [handleVaultViewChange, runDashboardNavigationGuard],
   );
 
   const handleToggleRawPreview = useCallback(async () => {
@@ -701,10 +821,17 @@ const DashboardPageInner = (
       vault.setFiles,
     ],
   );
-  const handleCloseTaskProfileEditorModal = useCallback(() => {
+  const closeTaskProfileEditorModal = useCallback(() => {
     setIsTaskProfileEditorModalOpen(false);
+    taskProfileEditorControlsRef.current = null;
     setTaskProfileEditorControls(null);
   }, []);
+
+  const handleCloseTaskProfileEditorModal = useCallback(() => {
+    void requestExamLeaveGuard("profile-modal-close", async () => {
+      closeTaskProfileEditorModal();
+    });
+  }, [closeTaskProfileEditorModal, requestExamLeaveGuard]);
 
   const handleOpenTaskProfileEditor = useCallback(
     async ({ taskValue }: { taskValue: string | null; propertyKey: string }) => {
@@ -772,6 +899,46 @@ const DashboardPageInner = (
   const handleTogglePanelsCollapsed = isExamDesktop
     ? handleToggleExamPanelsCollapsed
     : handleToggleNoteCollapsed;
+  const pendingExamLeaveControls =
+    pendingExamLeaveTarget === "profile-modal"
+      ? taskProfileEditorControls
+      : pendingExamLeaveTarget === "main-editor"
+        ? examControls
+        : null;
+  const canSavePendingExamChanges = Boolean(
+    pendingExamLeaveControls?.canSave &&
+      !pendingExamLeaveControls.isSaving &&
+      !isExamLeaveSavePending,
+  );
+
+  const handlePendingExamLeaveCancel = useCallback(() => {
+    completePendingExamLeave(false);
+  }, [completePendingExamLeave]);
+
+  const handlePendingExamLeaveDiscard = useCallback(() => {
+    void runPendingExamLeaveAction();
+  }, [runPendingExamLeaveAction]);
+
+  const handlePendingExamLeaveSave = useCallback(() => {
+    const controls = pendingExamLeaveControls;
+    if (
+      !controls ||
+      !controls.canSave ||
+      controls.isSaving ||
+      isExamLeaveSavePending
+    ) {
+      return;
+    }
+    void (async () => {
+      setIsExamLeaveSavePending(true);
+      const saved = await controls.onSaveAndWait();
+      setIsExamLeaveSavePending(false);
+      if (!saved) {
+        return;
+      }
+      await runPendingExamLeaveAction();
+    })();
+  }, [isExamLeaveSavePending, pendingExamLeaveControls, runPendingExamLeaveAction]);
 
   return (
     <div className="dashboard-page">
@@ -867,7 +1034,7 @@ const DashboardPageInner = (
             pointsProfiles={pointsProfiles}
             showMoveButtons={settings.examEditorShowMoveButtons}
             variant="study"
-            onControlsReady={setExamControls}
+            onControlsReady={handleExamControlsReady}
             onSave={handleExamSave}
           />
         )}
@@ -1020,6 +1187,48 @@ const DashboardPageInner = (
         </NoteModal>
       ) : null}
       <ModalShell
+        isOpen={pendingExamLeaveAction !== null}
+        title="Unsaved changes"
+        onClose={handlePendingExamLeaveCancel}
+      >
+        <div className="hub-modal-scroll">
+          <p className="muted">
+            You have unsaved changes in the Exam Editor. What should happen before
+            leaving?
+          </p>
+          {!pendingExamLeaveControls?.canSave ? (
+            <div className="error">
+              Save is unavailable right now (for example because of validation
+              errors).
+            </div>
+          ) : null}
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="primary"
+              onClick={handlePendingExamLeaveSave}
+              disabled={!canSavePendingExamChanges}
+            >
+              {isExamLeaveSavePending ? "Saving..." : "Save"}
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={handlePendingExamLeaveDiscard}
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={handlePendingExamLeaveCancel}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </ModalShell>
+      <ModalShell
         isOpen={isTaskProfileEditorModalOpen}
         title="Points Profile Editor"
         onClose={handleCloseTaskProfileEditorModal}
@@ -1037,7 +1246,7 @@ const DashboardPageInner = (
           pointsProfiles={pointsProfiles}
           showMoveButtons={settings.examEditorShowMoveButtons}
           variant="study"
-          onControlsReady={setTaskProfileEditorControls}
+          onControlsReady={handleTaskProfileEditorControlsReady}
           onSave={handleExamSave}
         />
       </ModalShell>

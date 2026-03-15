@@ -249,6 +249,16 @@ def run_install(dry_run: bool = False) -> int:
         "false",
         "no",
     }
+    isolate_on_failure = env.get("FMD_TEST_ISOLATE_ON_FAILURE", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+    }
+    isolate_only = env.get("FMD_TEST_ISOLATE_ONLY", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
     section("Test suite")
     info(f"Repo root: {repo_root}")
@@ -282,6 +292,27 @@ def run_install(dry_run: bool = False) -> int:
             err("pnpm install failed.")
             return install_rc
 
+    if isolate_only:
+        warn("Isolation-only mode enabled. Skipping full-suite run.")
+        isolated_rc, isolated_duration, failed_file = _run_tests_per_file(
+            pnpm=pnpm,
+            app_dir=app_dir,
+            repo_root=repo_root,
+            env=env,
+            dry_run=dry_run,
+        )
+        kv("Isolation", _format_duration(isolated_duration))
+        if isolated_rc == 0:
+            ok("pnpm test succeeded in isolated mode.")
+        elif isolated_rc == USER_ABORT_EXIT_CODE:
+            warn("Isolation run aborted by user.")
+        else:
+            if failed_file:
+                err(f"Failing file in isolation: {failed_file}")
+            err("pnpm test failed during isolation.")
+        kv("Duration", _format_duration(isolated_duration))
+        return isolated_rc
+
     # Call Vitest directly with explicit non-watch flags.
     cmd = _vitest_base_cmd(pnpm, app_dir)
     rc, duration = _run(
@@ -292,12 +323,25 @@ def run_install(dry_run: bool = False) -> int:
         timeout_seconds=timeout_seconds,
     )
 
-    if (
+    should_isolate_after_timeout = (
         rc == TIMEOUT_EXIT_CODE
         and isolate_on_timeout
         and not dry_run
-    ):
-        warn("Full-suite run timed out. Retrying per-file isolation.")
+    )
+    should_isolate_after_failure = (
+        rc not in {0, USER_ABORT_EXIT_CODE, TIMEOUT_EXIT_CODE}
+        and isolate_on_failure
+        and not dry_run
+    )
+
+    if should_isolate_after_timeout or should_isolate_after_failure:
+        if should_isolate_after_timeout:
+            warn("Full-suite run timed out. Retrying per-file isolation.")
+        else:
+            warn(
+                "Full-suite run failed. Retrying per-file isolation to pinpoint "
+                "worker crashes or failing files."
+            )
         isolated_rc, isolated_duration, failed_file = _run_tests_per_file(
             pnpm=pnpm,
             app_dir=app_dir,
@@ -309,7 +353,10 @@ def run_install(dry_run: bool = False) -> int:
         total_duration = duration + isolated_duration
 
         if isolated_rc == 0:
-            warn("All files passed individually. Full-suite shutdown is hanging.")
+            warn(
+                "All files passed individually. Full-suite run appears unstable "
+                "(likely worker/pool issue)."
+            )
             ok("pnpm test succeeded in isolated mode.")
             kv("Duration", _format_duration(total_duration))
             return 0

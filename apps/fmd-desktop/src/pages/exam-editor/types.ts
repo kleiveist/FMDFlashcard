@@ -15,6 +15,7 @@ export type ExamEditorControlsState = {
   mode: ExamEditorMode;
   canSave: boolean;
   isSaving: boolean;
+  hasUnsavedChanges: boolean;
   savePath: string | null;
   saveState: "idle" | "saving" | "saved";
   validationSummary: {
@@ -25,5 +26,6 @@ export type ExamEditorControlsState = {
   onNewExam: () => void;
   onSaveAs: () => void;
   onSave: () => void;
+  onSaveAndWait: () => Promise<boolean>;
   onQuickAddCard: (type: CardType) => void;
 };

@@ -39,6 +39,7 @@ import {
 import { UserListSection } from "./components/settings/ProfileSetupSections";
 import { LayoutModeProvider, useLayoutMode } from "./lib/layoutMode";
 import { useMediaQuery } from "./lib/useMediaQuery";
+import type { VaultFile } from "./lib/tree";
 import {
   getEffectiveBinding,
   getShortcutPlatform,
@@ -206,33 +207,53 @@ const AppContent = () => {
     [activeTab],
   );
   const handleTabChange = useCallback(
-    (tab: StudySectionKey) => {
+    async (tab: StudySectionKey) => {
+      if (
+        activeTab === "dashboard" &&
+        tab !== "dashboard" &&
+        dashboardRef.current
+      ) {
+        const canLeaveDashboard =
+          await dashboardRef.current.requestLeaveDashboard();
+        if (!canLeaveDashboard) {
+          return false;
+        }
+      }
       setActiveTab(tab);
       setIsMobileNavOpen(false);
+      return true;
     },
-    [setActiveTab, setIsMobileNavOpen],
+    [activeTab, setActiveTab, setIsMobileNavOpen],
   );
   const handleStudySectionSelect = useCallback(
     (tab: StudySectionKey) => {
-      if (tab === "dashboard") {
-        const nextView: DashboardView =
-          dashboardView === "markdown" ? "exam" : "markdown";
-        requestDashboardViewChange(nextView);
-        handleTabChange("dashboard");
-        return;
-      }
-      handleTabChange(tab);
-      if (tab === "flashcard" && !flashcards.isFlashcardScanning) {
-        void flashcards.handleFlashcardScan();
-      } else if (tab === "fast-flashcard" && !fastFlashcards.isFlashcardScanning) {
-        void fastFlashcards.handleFlashcardScan();
-      } else if (
-        tab === "spaced-repetition" &&
-        !flashcards.isFlashcardScanning &&
-        spacedRepetition.spacedRepetitionActiveUser
-      ) {
-        void spacedRepetition.handleSpacedRepetitionActiveUserLoadCards();
-      }
+      void (async () => {
+        if (tab === "dashboard") {
+          const nextView: DashboardView =
+            dashboardView === "markdown" ? "exam" : "markdown";
+          requestDashboardViewChange(nextView);
+          await handleTabChange("dashboard");
+          return;
+        }
+        const changed = await handleTabChange(tab);
+        if (!changed) {
+          return;
+        }
+        if (tab === "flashcard" && !flashcards.isFlashcardScanning) {
+          void flashcards.handleFlashcardScan();
+        } else if (
+          tab === "fast-flashcard" &&
+          !fastFlashcards.isFlashcardScanning
+        ) {
+          void fastFlashcards.handleFlashcardScan();
+        } else if (
+          tab === "spaced-repetition" &&
+          !flashcards.isFlashcardScanning &&
+          spacedRepetition.spacedRepetitionActiveUser
+        ) {
+          void spacedRepetition.handleSpacedRepetitionActiveUserLoadCards();
+        }
+      })();
     },
     [
       dashboardView,
@@ -242,6 +263,31 @@ const AppContent = () => {
       requestDashboardViewChange,
       spacedRepetition,
     ],
+  );
+  const handleSidebarTabChange = useCallback(
+    (tab: StudySectionKey) => {
+      if (tab === "dashboard") {
+        void handleTabChange(tab);
+        return;
+      }
+      void handleStudySectionSelect(tab);
+    },
+    [handleStudySectionSelect, handleTabChange],
+  );
+  const handleSidebarVaultFileSelect = useCallback(
+    (file: VaultFile) => {
+      void (async () => {
+        if (activeTab === "dashboard" && dashboardRef.current) {
+          const canLeaveDashboard =
+            await dashboardRef.current.requestLeaveDashboard();
+          if (!canLeaveDashboard) {
+            return;
+          }
+        }
+        actions.handleSelectFile(file);
+      })();
+    },
+    [actions, activeTab],
   );
 
   const handleGateClose = useCallback(() => {
@@ -426,7 +472,8 @@ const AppContent = () => {
       ) : null}
       <SidebarNav
         activeTab={activeTab}
-        onTabChange={handleTabChange}
+        onTabChange={handleSidebarTabChange}
+        onSelectVaultFile={handleSidebarVaultFileSelect}
         vaultView={dashboardView}
         onVaultViewChange={requestDashboardViewChange}
         onOpenHelp={handleOpenHelp}

@@ -46,12 +46,14 @@ import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
 import type { DashboardView } from "../pages/DashboardPage";
 import { CARD_SECTION_KEYS, CARD_SECTIONS, type StudySectionKey } from "../lib/studySections";
+import type { VaultFile } from "../lib/tree";
 
 type ToolbarMode = "cards" | "vault";
 
 type SidebarNavProps = {
   activeTab: StudySectionKey;
   onTabChange: (tab: StudySectionKey) => void;
+  onSelectVaultFile?: (file: VaultFile) => void;
   vaultView: DashboardView;
   onVaultViewChange: (view: DashboardView) => void;
   onOpenHelp: () => void;
@@ -77,6 +79,7 @@ const buildUserInitials = (value: string) => {
 export const SidebarNav = ({
   activeTab,
   onTabChange,
+  onSelectVaultFile,
   vaultView,
   onVaultViewChange,
   onOpenHelp,
@@ -144,6 +147,16 @@ export const SidebarNav = ({
   const isDashboard = activeTab === "dashboard";
   const isMarkdownView = isDashboard && vaultView === "markdown";
   const isExamView = isDashboard && vaultView === "exam";
+  const handleVaultFileSelect = useCallback(
+    (file: VaultFile) => {
+      if (onSelectVaultFile) {
+        onSelectVaultFile(file);
+        return;
+      }
+      actions.handleSelectFile(file);
+    },
+    [actions, onSelectVaultFile],
+  );
   const handleOpenEditor = useCallback(() => {
     setToolbarMode("vault");
     onVaultViewChange("markdown");
@@ -551,7 +564,7 @@ export const SidebarNav = ({
                 refreshLabel={refreshLabel}
                 onActiveFolderChange={vault.setActiveFolderPath}
                 onTogglePath={handleTogglePath}
-                onSelectFile={actions.handleSelectFile}
+                onSelectFile={handleVaultFileSelect}
                 onRescanVault={actions.handleRescanVault}
                 onClearSelection={preview.resetPreview}
                 selectedFile={preview.selectedFile}

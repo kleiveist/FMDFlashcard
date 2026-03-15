@@ -2,7 +2,7 @@
  * @file apps/fmd-desktop/src/pages/exam-editor/ExamEditorView.tsx
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
@@ -206,7 +206,8 @@ export const ExamEditorView = ({
   onControlsReady,
   onSave,
 }: ExamEditorViewProps) => {
-  const [exam, setExam] = useState<ExamBlueprint>(() => createExamBlueprint());
+  const [initialExam] = useState<ExamBlueprint>(() => createExamBlueprint());
+  const [exam, setExam] = useState<ExamBlueprint>(() => initialExam);
   const [selection, setSelection] = useState<ExamEditorSelection>({ type: "exam" });
   const [mode, setMode] = useState<ExamEditorMode>("structure");
   const [savePath, setSavePath] = useState<string | null>(null);
@@ -214,6 +215,13 @@ export const ExamEditorView = ({
   const [saveError, setSaveError] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState<string | null>(null);
   const [sourceDocumentMarkdown, setSourceDocumentMarkdown] = useState("");
+  const [dirtyBaselineMarkdown, setDirtyBaselineMarkdown] = useState<string>(() =>
+    resolveMarkdownWithTaskProfile({
+      sourceMarkdown: "",
+      bodyMarkdown: serializeExamBlueprint(initialExam),
+      profileName: null,
+    }),
+  );
   const [assignedTaskProfileName, setAssignedTaskProfileName] = useState<string | null>(
     null,
   );
@@ -280,6 +288,7 @@ export const ExamEditorView = ({
       }),
     [effectiveProfileName, examBodyMarkdown, sourceDocumentMarkdown],
   );
+  const hasUnsavedChanges = markdown !== dirtyBaselineMarkdown;
   const validationSummary = useMemo(() => {
     if (validation.valid) {
       return null;
@@ -1011,6 +1020,7 @@ export const ExamEditorView = ({
       setSaveState("saved");
       setLastSavedContent(initialMarkdown);
       setSourceDocumentMarkdown(initialMarkdown);
+      setDirtyBaselineMarkdown(initialMarkdown);
       onSave?.({ path: targetPath, markdown: initialMarkdown });
     } catch (error) {
       setSaveError(asErrorMessage(error, "Failed to create new exam file."));
@@ -1030,7 +1040,7 @@ export const ExamEditorView = ({
       const currentValidation = validateExamBlueprint(exam);
       if (!currentValidation.valid) {
         setSaveState("idle");
-        return;
+        return false;
       }
       setSaveState("saving");
       setSaveError("");
@@ -1055,7 +1065,7 @@ export const ExamEditorView = ({
           });
           if (!chosenPath) {
             setSaveState("idle");
-            return;
+            return false;
           }
           targetPath = resolvePath(chosenPath);
           nextSavePath = targetPath;
@@ -1072,10 +1082,13 @@ export const ExamEditorView = ({
         setSaveState("saved");
         setLastSavedContent(markdown);
         setSourceDocumentMarkdown(markdown);
+        setDirtyBaselineMarkdown(markdown);
         onSave?.({ path: targetPath, markdown });
+        return true;
       } catch (error) {
         setSaveError(asErrorMessage(error, "Failed to save exam."));
         setSaveState("idle");
+        return false;
       }
     },
     [exam, exam.title, markdown, onSave, savePath, vaultPath],
@@ -1086,13 +1099,19 @@ export const ExamEditorView = ({
       mode,
       canSave,
       isSaving,
+      hasUnsavedChanges,
       savePath,
       saveState,
       validationSummary,
       onModeChange: setMode,
       onNewExam: handleNewExam,
-      onSaveAs: () => handleSave(true),
-      onSave: () => handleSave(false),
+      onSaveAs: () => {
+        void handleSave(true);
+      },
+      onSave: () => {
+        void handleSave(false);
+      },
+      onSaveAndWait: () => handleSave(false),
       onQuickAddCard: handleAddTask,
     }),
     [
@@ -1100,6 +1119,7 @@ export const ExamEditorView = ({
       handleNewExam,
       handleSave,
       handleAddTask,
+      hasUnsavedChanges,
       isSaving,
       mode,
       savePath,
@@ -1153,14 +1173,14 @@ export const ExamEditorView = ({
     [exam.tasks, handleReorderCard, handleReorderTask, orderedTasks, selection],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!onControlsReady) {
       return;
     }
     onControlsReady(controls);
   }, [controls, onControlsReady]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     return () => {
       onControlsReady?.(null);
     };
@@ -1298,49 +1318,91 @@ export const ExamEditorView = ({
     if (!sourcePath) {
       setSourceDocumentMarkdown("");
       setAssignedTaskProfileName(null);
+      setDirtyBaselineMarkdown(
+        resolveMarkdownWithTaskProfile({
+          sourceMarkdown: "",
+          bodyMarkdown: serializeExamBlueprint(exam),
+          profileName: null,
+        }),
+      );
       return;
     }
     if (!sourceMarkdown.trim()) {
       const blankExam = createExamBlueprint();
+      const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
       setExam(blankExam);
       setSelection({ type: "exam" });
       setSavePath(sourcePath);
       setLastSavedContent(sourceMarkdown);
       setSourceDocumentMarkdown(sourceMarkdown);
-      setAssignedTaskProfileName(resolveExamTaskFrontmatterValue(sourceMarkdown));
+      setAssignedTaskProfileName(assignedProfile);
+      setDirtyBaselineMarkdown(
+        resolveMarkdownWithTaskProfile({
+          sourceMarkdown,
+          bodyMarkdown: serializeExamBlueprint(blankExam),
+          profileName: assignedProfile?.trim() || null,
+        }),
+      );
       return;
     }
     if (!isExamMarkdown(sourceMarkdown)) {
+      const nonExamBlueprint = createExamBlueprint();
+      const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
       setImportMessage(
         "Selected file has no #exam block. Create a new exam or switch back to Markdown.",
       );
-      setExam(createExamBlueprint());
+      setExam(nonExamBlueprint);
       setSelection({ type: "exam" });
       setSavePath(null);
       setLastSavedContent(null);
       setSourceDocumentMarkdown(sourceMarkdown);
-      setAssignedTaskProfileName(resolveExamTaskFrontmatterValue(sourceMarkdown));
+      setAssignedTaskProfileName(assignedProfile);
+      setDirtyBaselineMarkdown(
+        resolveMarkdownWithTaskProfile({
+          sourceMarkdown,
+          bodyMarkdown: serializeExamBlueprint(nonExamBlueprint),
+          profileName: assignedProfile?.trim() || null,
+        }),
+      );
       return;
     }
     const imported = importExamMarkdown(sourceMarkdown);
     if (!imported) {
+      const fallbackBlueprint = createExamBlueprint();
+      const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
       setImportMessage("Unable to import exam data from this file.");
-      setExam(createExamBlueprint());
+      setExam(fallbackBlueprint);
       setSelection({ type: "exam" });
       setSavePath(null);
       setLastSavedContent(null);
       setSourceDocumentMarkdown(sourceMarkdown);
-      setAssignedTaskProfileName(resolveExamTaskFrontmatterValue(sourceMarkdown));
+      setAssignedTaskProfileName(assignedProfile);
+      setDirtyBaselineMarkdown(
+        resolveMarkdownWithTaskProfile({
+          sourceMarkdown,
+          bodyMarkdown: serializeExamBlueprint(fallbackBlueprint),
+          profileName: assignedProfile?.trim() || null,
+        }),
+      );
       return;
     }
+    const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
     setExam(imported.blueprint);
     setSelection({ type: "exam" });
     setImportWarnings(imported.warnings);
     setSavePath(sourcePath);
     setLastSavedContent(sourceMarkdown);
     setSourceDocumentMarkdown(sourceMarkdown);
-    setAssignedTaskProfileName(resolveExamTaskFrontmatterValue(sourceMarkdown));
+    setAssignedTaskProfileName(assignedProfile);
+    setDirtyBaselineMarkdown(
+      resolveMarkdownWithTaskProfile({
+        sourceMarkdown,
+        bodyMarkdown: serializeExamBlueprint(imported.blueprint),
+        profileName: assignedProfile?.trim() || null,
+      }),
+    );
   }, [
+    exam,
     lastSavedContent,
     savePath,
     sourceMarkdown,
