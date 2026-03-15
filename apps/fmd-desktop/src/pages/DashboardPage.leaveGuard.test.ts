@@ -110,29 +110,33 @@ vi.mock("./exam-editor/ExamEditorView", async () => {
     }: {
       onControlsReady?: (controls: ExamEditorControlsState | null) => void;
     }) => {
-      const controls =
-        examEditorMock.queue.shift() ??
-        ({
-          mode: "structure",
-          canSave: true,
-          isSaving: false,
-          hasUnsavedChanges: false,
-          savePath: null,
-          saveState: "idle",
-          validationSummary: null,
-          onModeChange: vi.fn(),
-          onNewExam: vi.fn(),
-          onSaveAs: vi.fn(),
-          onSave: vi.fn(),
-          onSaveAndWait: vi.fn(async () => true),
-          onQuickAddCard: vi.fn(),
-        } satisfies ExamEditorControlsState);
+      const controlsRef = ReactModule.useRef<ExamEditorControlsState | null>(null);
+      if (!controlsRef.current) {
+        controlsRef.current =
+          examEditorMock.queue.shift() ??
+          ({
+            mode: "structure",
+            canSave: true,
+            isSaving: false,
+            hasUnsavedChanges: false,
+            savePath: null,
+            saveState: "idle",
+            validationSummary: null,
+            onModeChange: vi.fn(),
+            onNewExam: vi.fn(),
+            onSaveAs: vi.fn(),
+            onSave: vi.fn(),
+            onSaveAndWait: vi.fn(async () => true),
+            onQuickAddCard: vi.fn(),
+          } satisfies ExamEditorControlsState);
+      }
+      const controls = controlsRef.current;
       ReactModule.useEffect(() => {
         onControlsReady?.(controls);
         return () => {
           onControlsReady?.(null);
         };
-      }, [controls, onControlsReady]);
+      }, [onControlsReady]);
       return React.createElement("div", { "data-testid": "mock-exam-editor-view" });
     },
   };
