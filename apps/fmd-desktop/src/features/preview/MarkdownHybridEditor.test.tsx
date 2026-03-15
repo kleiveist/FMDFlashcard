@@ -1956,6 +1956,11 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByExactText(container, "Advanced"));
       dispatchClick(findMenuItemButtonByLabel(container, "Multiple Choice (1)"));
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+      const taskTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(taskTextarea).toBeTruthy();
+      blurTextarea(taskTextarea);
+      const markdownAfterTaskBlur = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownAfterTaskBlur.match(/^1\) TASK HEADING$/m)).toHaveLength(1);
 
       const hrInsertButton = container.querySelector<HTMLButtonElement>(
         ".markdown-hybrid-overlay-row[data-md-block-kind='hr'] .markdown-hybrid-block-insert-button",
@@ -2056,6 +2061,13 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
       expect(findMenuItemButtonByLabel(container, "Task")?.textContent).toContain("4)");
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+      const taskTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(taskTextarea).toBeTruthy();
+      blurTextarea(taskTextarea);
+      const markdownAfterTaskBlur = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownAfterTaskBlur).toContain(expectedTaskVariant.payload);
+      expect(markdownAfterTaskBlur.match(/^4\) TASK HEADING$/m)).toHaveLength(1);
+      expect(markdownAfterTaskBlur.match(/^1\) TASK HEADING$/m)).toHaveLength(1);
 
       const cardInsertButtons = container.querySelectorAll<HTMLButtonElement>(
         ".markdown-hybrid-overlay-row[data-md-block-kind='card-block'] .markdown-hybrid-block-insert-button",
@@ -2073,6 +2085,70 @@ describe("MarkdownHybridEditor", () => {
       expect(markdownValue).toContain(expectedCardVariant.payload);
       expect(markdownValue.match(/^4\) TASK HEADING$/m)).toHaveLength(1);
       expect(markdownValue.match(/^5\) CARD HEADING$/m)).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("keeps ordered-list normalization for non-exam dot-delimited lists on blur", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["9. Outside exam A", "5. Outside exam B"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="ordered-list-non-exam-normalization"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      blurTextarea(textarea);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(["1. Outside exam A", "2. Outside exam B"].join("\n"));
+
+      cleanup();
+    });
+  });
+
+  it("keeps task-style n) numbering outside exam on blur", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["4) TASK HEADING", "TASK DESCRIPTION", "-true"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="ordered-list-task-style-outside-exam-no-renumber"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      blurTextarea(textarea);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(initialMarkdown);
 
       cleanup();
     });

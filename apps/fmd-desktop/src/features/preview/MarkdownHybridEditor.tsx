@@ -2640,6 +2640,74 @@ const withExamWrapper = (markdown: string) => {
   return `#exam\n${trimmedBody}\n#endexam`;
 };
 
+const orderedListCommitLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
+
+const isExamTaskOrderedListLine = (markdown: string, lineIndex: number) => {
+  if (!markdown) {
+    return false;
+  }
+  const lines = markdown.split("\n");
+  if (lines.length === 0) {
+    return false;
+  }
+  const targetLineIndex = Math.max(0, Math.min(lineIndex, lines.length - 1));
+  let inFence = false;
+  let fenceToken = "";
+  let openExamDepth = 0;
+  let openCardDepth = 0;
+
+  for (let index = 0; index <= targetLineIndex; index += 1) {
+    const line = lines[index] ?? "";
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(codeFenceBoundaryPattern);
+    if (fenceMatch) {
+      const token = fenceMatch[1] ?? "";
+      if (inFence && token === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = token;
+      }
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#card")) {
+      openCardDepth += 1;
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#endcard")) {
+      openCardDepth = Math.max(0, openCardDepth - 1);
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#exam")) {
+      openExamDepth += 1;
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#endexam")) {
+      openExamDepth = Math.max(0, openExamDepth - 1);
+      continue;
+    }
+  }
+
+  return openExamDepth > 0 && openCardDepth === 0;
+};
+
+const shouldNormalizeOrderedListOnCommit = (markdown: string, lineIndex: number, blockRaw: string) => {
+  if (isExamTaskOrderedListLine(markdown, lineIndex)) {
+    return false;
+  }
+  const firstOrderedLineMatch = blockRaw
+    .split("\n")
+    .map((line) => line.match(orderedListCommitLinePattern))
+    .find((match) => Boolean(match));
+  const delimiter = firstOrderedLineMatch?.[3] ?? ".";
+  // Task-style headings use `n) ...` and must keep their explicit number.
+  return delimiter === ".";
+};
+
 const resolveNextGlobalSequenceNumber = (markdown: string) => {
   if (markdown.length === 0) {
     return 1;
@@ -5360,7 +5428,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       } else {
         let nextBlockRaw = toPersistedBlockRawForDraft({ kind: snapshot.kind }, normalizedDraftForPersist);
         if (snapshot.kind === "ordered-list") {
-          nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
+          if (shouldNormalizeOrderedListOnCommit(markdown, snapshot.startLine, nextBlockRaw)) {
+            nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
+          }
         } else if (snapshot.kind === "help-block") {
           nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
         } else if (snapshot.kind === "hr") {
