@@ -393,7 +393,7 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
     {
       id: "ordered-list",
       label: "Numbered List",
-      template: "1) List item",
+      template: "1. List item",
       firstPlaceholder: "List item",
       icon: "list-ordered",
     },
@@ -593,10 +593,10 @@ const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
       return (
         <svg {...svgProps}>
           <text x="5.5" y="10.1" fill="currentColor" stroke="none" fontSize="6.4" fontWeight="700">
-            1)
+            1.
           </text>
           <text x="5.4" y="17.6" fill="currentColor" stroke="none" fontSize="6.4" fontWeight="700">
-            2)
+            2.
           </text>
           <line x1="10" y1="8.3" x2="19" y2="8.3" />
           <line x1="10" y1="15.8" x2="19" y2="15.8" />
@@ -1876,6 +1876,8 @@ const withExamWrapper = (markdown: string) => {
   return `#exam\n${trimmedBody}\n#endexam`;
 };
 
+const orderedListCommitLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
+
 const isExamTaskOrderedListLine = (markdown: string, lineIndex: number) => {
   if (!markdown) {
     return false;
@@ -1933,8 +1935,13 @@ const shouldNormalizeOrderedListOnCommit = (markdown: string, lineIndex: number,
   if (isExamTaskOrderedListLine(markdown, lineIndex)) {
     return false;
   }
-  // Ordered markers are globally `n)` now. Keep a tiny fallback for legacy dot markers.
-  return blockRaw.split("\n").some((line) => /^\s*\d+\.\s+\S/.test(line));
+  const firstOrderedLineMatch = blockRaw
+    .split("\n")
+    .map((line) => line.match(orderedListCommitLinePattern))
+    .find((match) => Boolean(match));
+  const delimiter = firstOrderedLineMatch?.[3] ?? ".";
+  // Task-style headings use `n) ...` and must keep their explicit number.
+  return delimiter === ".";
 };
 
 const resolveNextGlobalSequenceNumber = (markdown: string) => {
@@ -2067,7 +2074,7 @@ const assignStableRenderKeys = (
   return { keys, tokens: nextTokens };
 };
 
-const orderedListLikeLinePattern = /^\s*\d+\)\s+\S/;
+const orderedListLikeLinePattern = /^\s*\d+(?:\.|\)|\.\))\s+\S/;
 const unorderedListLikeLinePattern = /^\s*[-+*]\s+\S/;
 const indentedContinuationLinePattern = /^(?:\s{2,}\S|\t+\S)/;
 const markdownTaskListLinePattern = /^(\s*[-+*]\s+\[)([ xX])(\])(.*)$/;

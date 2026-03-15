@@ -25,7 +25,6 @@ import {
   SHARED_TABLE_CELL_MEDIA_CLASS,
   SHARED_TABLE_WRAP_CLASS,
 } from "../lib/markdownTableCellMedia";
-import { escapeDotOrderedListMarkers } from "../lib/markdownOrderedListMarkers";
 import type { VaultPngAsset } from "../lib/tree";
 import { HelpIcon } from "./icons";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
@@ -292,9 +291,8 @@ export const HelpPanel = ({
             ) : null}
             <div className="help-markdown exam-markdown">
               {(() => {
-                const normalizedBlock = escapeDotOrderedListMarkers(block);
                 const preview = buildMarkdownMediaPreviewSource(
-                  normalizedBlock,
+                  block,
                   `help-panel-${index}`,
                 );
                 return (

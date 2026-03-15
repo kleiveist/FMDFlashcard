@@ -1095,7 +1095,7 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("marks ordered-list rows via right-drag even when hovering nested list content", () => {
-    const initialMarkdown = ["Alpha", "1) One", "2) Two", "Omega"].join("\n");
+    const initialMarkdown = ["Alpha", "1. One", "2. Two", "Omega"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -1106,7 +1106,7 @@ describe("MarkdownHybridEditor", () => {
           mode="edit"
           onChange={setMarkdown}
           renderPreview={(value) => {
-            if (value.startsWith("1)")) {
+            if (value.startsWith("1.")) {
               return (
                 <ol>
                   <li>
@@ -1555,7 +1555,7 @@ describe("MarkdownHybridEditor", () => {
         { label: "Heading 3", markdown: "### Heading text" },
         { label: "Heading 4", markdown: "#### Heading text" },
         { label: "Bulleted List", markdown: "- List item" },
-        { label: "Numbered List", markdown: "1) List item" },
+        { label: "Numbered List", markdown: "1. List item" },
         { label: "Numbered List (Exam)", markdown: "1) Task text" },
         { label: "To-do List", markdown: "- [ ] Task text" },
         {
@@ -2210,7 +2210,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("keeps non-task dot-delimited lines unchanged on blur", () => {
+  it("keeps ordered-list normalization for non-exam dot-delimited lists on blur", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["9. Outside exam A", "5. Outside exam B"].join("\n");
 
@@ -2220,7 +2220,7 @@ describe("MarkdownHybridEditor", () => {
           <div>
             <div data-testid="markdown-value">{markdown}</div>
             <MarkdownHybridEditor
-              historyKey="dot-lines-non-task-unchanged"
+              historyKey="ordered-list-non-exam-normalization"
               markdown={markdown}
               mode="edit"
               onChange={setMarkdown}
@@ -2236,7 +2236,7 @@ describe("MarkdownHybridEditor", () => {
       blurTextarea(textarea);
 
       const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-      expect(markdownValue).toBe(initialMarkdown);
+      expect(markdownValue).toBe(["1. Outside exam A", "2. Outside exam B"].join("\n"));
 
       cleanup();
     });

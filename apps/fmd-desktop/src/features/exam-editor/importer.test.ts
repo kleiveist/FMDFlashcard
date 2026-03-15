@@ -743,7 +743,7 @@ Answer: A
     expect(imported.blueprint.tasks[0]?.helpText).toBeUndefined();
   });
 
-  it("keeps context blocks between tasks separated by --- as fallback QA cards", () => {
+  it("ignores orphan context between tasks separated by ---", () => {
     const markdown = `
 #exam
 8) Some task
@@ -762,18 +762,17 @@ Antwort: Next answer
     }
 
     expect(imported.blueprint.tasks).toHaveLength(2);
-    expect(imported.blueprint.tasks[0]?.cards).toHaveLength(2);
+    expect(imported.blueprint.tasks[0]?.cards).toHaveLength(1);
     expect(imported.blueprint.tasks[1]?.cards).toHaveLength(1);
     const firstTask = imported.blueprint.tasks[0];
     expect(firstTask).toBeDefined();
     if (!firstTask) {
       return;
     }
-    const contextCard = firstTask.cards[1];
-    expect(contextCard?.type).toBe("qa");
-    if (contextCard?.type === "qa") {
-      expect(contextCard.prompt).toContain("Abschnitt 3");
-      expect(contextCard.answer).toBe("");
+    const firstCard = firstTask.cards[0];
+    expect(firstCard?.type).toBe("qa");
+    if (firstCard?.type === "qa") {
+      expect(firstCard.prompt).not.toContain("Abschnitt 3");
     }
   });
 
@@ -817,24 +816,72 @@ Answer: B
     expect(imported.blueprint.tasks).toHaveLength(0);
   });
 
-  it("treats dot-numbered lines inside a valid task as plain text in a single fallback QA card", () => {
+  it("keeps dot-numbered lines as plain text while preserving card-type parsing", () => {
     const markdown = `
 #exam
 1) Main task
 #card
-## 7. Beispiel: Lisa Wagner
-| Tabelle | Neue Eintraege |
+1. Begriffsabgrenzung
+Ordne die Begriffe "Datenbank" und "DBMS" zu.
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(1);
+    const task = imported.blueprint.tasks[0];
+    expect(task?.cards).toHaveLength(1);
+    expect(task?.cards[0]?.type).toBe("cd");
+    if (task?.cards[0]?.type === "cd") {
+      expect(task.cards[0].prompt).toContain("Begriffsabgrenzung");
+      expect(task.cards[0].prompt).not.toContain("1. Begriffsabgrenzung");
+    }
+  });
+
+  it("removes dot-numbered markers from headings in imported exam card content", () => {
+    const markdown = `
+#exam
+1) Main task
+#card
+## 3. Relationales Modell
+Beschreibung
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const card = imported.blueprint.tasks[0]?.cards[0];
+    if (card?.type === "qa" || card?.type === "cd" || card?.type === "cld") {
+      expect(card.prompt).toContain("## Relationales Modell");
+      expect(card.prompt).not.toContain("## 3. Relationales Modell");
+    }
+  });
+
+  it("splits dot-numbered task blocks on --- instead of collapsing into one QA card", () => {
+    const markdown = `
+#exam
+1) Main task
+#card
+1. Begriffsabgrenzung
+Tabellenstruktur (Beispiel DBMS)
+| Begriff | Beschreibung |
 | --- | --- |
-| Kunden | aktiv |
-
-5. Beziehungen zwischen Tabellen
-### Beziehungstypen
-| Beziehungstyp | Beschreibung | Umsetzung in Tabellen |
-| --- | --- | --- |
-
-a) Sollte nicht als M1 erkannt werden
+| "Datenbank" | Speichert strukturierte Daten |
+| "DBMS" | Verwalten Zugriffe |
+---
+a) Sollte als M1 erkannt werden
+b) Ablenkoption
 -a
-Answer: Gesamtloesung
 #endcard
 #endexam
     `.trim();
@@ -850,21 +897,16 @@ Answer: Gesamtloesung
     if (!task) {
       throw new Error("Expected task after import.");
     }
-    expect(task.cards).toHaveLength(1);
-    expect(task.cards[0]?.type).toBe("qa");
-    expect(imported.warnings).toContain(
-      "Dot-numbered subtask markers were treated as plain text.",
-    );
-    const card = task.cards[0];
-    if (card?.type === "qa") {
-      expect(card.prompt).toContain("## 7. Beispiel: Lisa Wagner");
-      expect(card.prompt).toContain("5. Beziehungen zwischen Tabellen");
-      expect(card.prompt).toContain("a) Sollte nicht als M1 erkannt werden");
-      expect(card.answer).toBe("Gesamtloesung");
+    expect(task.cards).toHaveLength(2);
+    expect(task.cards[1]?.type).toBe("m1");
+    const firstCard = task.cards[0];
+    if (firstCard?.type === "qa" || firstCard?.type === "cd" || firstCard?.type === "cld") {
+      expect(firstCard.prompt).toContain("Begriffsabgrenzung");
+      expect(firstCard.prompt).not.toContain("1. Begriffsabgrenzung");
     }
   });
 
-  it("keeps a dot-numbered task as one fallback QA card even with --- separators", () => {
+  it("keeps dot-numbered block content intact across --- splits", () => {
     const markdown = `
 #exam
 1) Main task
@@ -873,8 +915,7 @@ Einleitung
 ---
 2. Unterpunkt
 ---
-a) Wird nicht als M1 erkannt
--a
+Abschlussfrage?
 Answer: Gesamtantwort
 #endcard
 #endexam
@@ -888,16 +929,50 @@ Answer: Gesamtantwort
 
     expect(imported.blueprint.tasks).toHaveLength(1);
     const task = imported.blueprint.tasks[0];
+    expect(task?.cards).toHaveLength(3);
+    const secondCard = task?.cards[1];
+    if (secondCard?.type === "qa") {
+      expect(secondCard.prompt).toContain("Unterpunkt");
+      expect(secondCard.prompt).not.toContain("2. Unterpunkt");
+    }
+    const thirdCard = task?.cards[2];
+    if (thirdCard?.type === "qa") {
+      expect(thirdCard.answer).toBe("Gesamtantwort");
+    }
+  });
+
+  it("does not import orphan dot-numbered sections as extra cards after task separators", () => {
+    const markdown = `
+#exam
+1) Begriffsabgrenzung
+Tabellenstruktur (Beispiel DBMS)
+| Begriff | Beschreibung |
+| --- | --- |
+| "Datenbank" | Speichert strukturierte Daten |
+| "DBMS" | Verwalten Zugriffe |
+---
+## 3. Relationales Modell: Aufbau und Struktur
+Text, der nicht als neue Aufgabe importiert werden darf.
+---
+## 4. Relationen und Schluessel
+Mehr Kontext ohne 2)-Header.
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(1);
+    const task = imported.blueprint.tasks[0];
     expect(task?.cards).toHaveLength(1);
-    expect(task?.cards[0]?.type).toBe("qa");
-    expect(imported.warnings).toContain(
-      "Dot-numbered subtask markers were treated as plain text.",
-    );
-    if (task?.cards[0]?.type === "qa") {
-      expect(task.cards[0].prompt).toContain("Einleitung");
-      expect(task.cards[0].prompt).toContain("2. Unterpunkt");
-      expect(task.cards[0].prompt).toContain("a) Wird nicht als M1 erkannt");
-      expect(task.cards[0].answer).toBe("Gesamtantwort");
+    const card = task?.cards[0];
+    if (card?.type === "qa" || card?.type === "cd" || card?.type === "cld") {
+      expect(card.prompt).toContain("Begriffsabgrenzung");
+      expect(card.prompt).not.toContain("Relationales Modell");
+      expect(card.prompt).not.toContain("Relationen und Schluessel");
     }
   });
 
@@ -921,9 +996,6 @@ a) Alpha
 
     const card = imported.blueprint.tasks[0]?.cards[0];
     expect(card?.type).toBe("m1");
-    expect(imported.warnings).not.toContain(
-      "Dot-numbered subtask markers were treated as plain text.",
-    );
   });
 
   it("does not split on --- inside fenced code blocks", () => {
@@ -984,7 +1056,7 @@ Answer: A
     }
   });
 
-  it("keeps blocks without answer markers as fallback QA cards", () => {
+  it("ignores orphan blocks without answer markers after task separators", () => {
     const markdown = `
 #exam
 1) Task
@@ -1003,12 +1075,10 @@ Just context without an answer marker.
     }
 
     const task = imported.blueprint.tasks[0];
-    expect(task?.cards).toHaveLength(2);
+    expect(task?.cards).toHaveLength(1);
     expect(task?.cards[0]?.type).toBe("qa");
-    expect(task?.cards[1]?.type).toBe("qa");
-    if (task?.cards[1]?.type === "qa") {
-      expect(task.cards[1].prompt).toContain("Just context without an answer marker.");
-      expect(task.cards[1].answer).toBe("");
+    if (task?.cards[0]?.type === "qa") {
+      expect(task.cards[0].prompt).not.toContain("Just context without an answer marker.");
     }
   });
 

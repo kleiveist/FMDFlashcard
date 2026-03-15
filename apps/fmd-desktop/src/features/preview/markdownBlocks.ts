@@ -33,11 +33,11 @@ export type MarkdownBlock = {
   endOffset: number;
   raw: string;
   meta?: {
-    orderedDelimiter?: ")";
+    orderedDelimiter?: "." | ")";
   };
 };
 
-const orderedListLinePattern = /^(\s*)(\d+)(\))(\s+)(.*)$/;
+const orderedListLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
 const unorderedListLinePattern = /^(\s*)([-+*])(?:\s+|$)/;
 const taskListLinePattern = /^(\s*)([-+*])\s+\[[ xX]\](?:\s+|$)/;
 
@@ -59,7 +59,8 @@ const isStandaloneImageEmbedLine = (line: string) => parseStandalonePngEmbedLine
 const isCardBlockStartLine = (line: string) => line.trim().toLowerCase() === "#card";
 const isCardBlockEndLine = (line: string) => line.trim().toLowerCase() === "#endcard";
 
-const resolveOrderedDelimiter = (): ")" => ")";
+const resolveOrderedDelimiter = (raw: string): "." | ")" =>
+  raw === "." ? "." : ")";
 
 const matchOrderedListLine = (line: string) => line.match(orderedListLinePattern);
 
@@ -329,9 +330,9 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
 
     if (isOrderedListLine(line) || isUnorderedListLine(line)) {
       const orderedMatch = matchOrderedListLine(line);
-      let orderedDelimiter: ")" | undefined;
+      let orderedDelimiter: "." | ")" | undefined;
       if (orderedMatch) {
-        orderedDelimiter = resolveOrderedDelimiter();
+        orderedDelimiter = resolveOrderedDelimiter(orderedMatch[3] ?? ".");
       }
       const kind: MarkdownBlockKind = orderedMatch ? "ordered-list" : "unordered-list";
       let end = i;
@@ -369,13 +370,14 @@ export const replaceMarkdownBlock = (
 const normalizeOrderedListLine = (
   line: string,
   counters: Map<number, number>,
-  delimiters: Map<number, ")">,
+  delimiters: Map<number, "." | ")">,
 ) => {
   const match = line.match(orderedListLinePattern);
   if (!match) {
     return line;
   }
   const indent = match[1] ?? "";
+  const rawDelimiter = match[3] ?? ".";
   const spacing = match[4] ?? " ";
   const content = match[5] ?? "";
   const indentWidth = getIndentWidth(indent);
@@ -391,9 +393,9 @@ const normalizeOrderedListLine = (
   counters.set(indentWidth, nextNumber);
 
   if (!delimiters.has(indentWidth)) {
-    delimiters.set(indentWidth, resolveOrderedDelimiter());
+    delimiters.set(indentWidth, resolveOrderedDelimiter(rawDelimiter));
   }
-  const delimiter = delimiters.get(indentWidth) ?? ")";
+  const delimiter = delimiters.get(indentWidth) ?? ".";
   return `${indent}${nextNumber}${delimiter}${spacing}${content}`;
 };
 
@@ -403,7 +405,7 @@ export const normalizeOrderedListBlockSource = (blockRaw: string) => {
   }
   const lines = blockRaw.split("\n");
   const counters = new Map<number, number>();
-  const delimiters = new Map<number, ")">();
+  const delimiters = new Map<number, "." | ")">();
 
   return lines
     .map((line) => normalizeOrderedListLine(line, counters, delimiters))

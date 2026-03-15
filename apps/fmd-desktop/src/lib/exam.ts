@@ -28,6 +28,7 @@ import {
 import { findTableLineIndices } from "./markdownTables";
 import { extractAuxiliaryBlocksFromLines } from "./auxiliaryBlocks";
 import { extractMediaFromLines, type MediaItem } from "./cardMedia";
+import { normalizeExamDotNumberedLines } from "./examDotMarkers";
 
 export type ExamTaskSourceRange = {
   startLine: number;
@@ -317,8 +318,13 @@ const parseTaskChunk = (
   sourceRange: ExamTaskSourceRange,
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
-  const normalizedLines = normalizeTaskLines(chunkLines);
-  const { combinedLines, taskLines, cardLines } = splitExamTaskLines(chunkLines);
+  const normalizedLines = normalizeExamDotNumberedLines(
+    normalizeTaskLines(chunkLines),
+  );
+  const splitLines = splitExamTaskLines(chunkLines);
+  const combinedLines = normalizeExamDotNumberedLines(splitLines.combinedLines);
+  const taskLines = normalizeExamDotNumberedLines(splitLines.taskLines);
+  const cardLines = normalizeExamDotNumberedLines(splitLines.cardLines);
   const hasCardWrapper = isTaskFullyWrappedInCard(chunkLines);
   const taskAuxiliary = extractAuxiliaryBlocksFromLines(taskLines);
   const taskMediaExtraction = extractMediaFromLines(taskAuxiliary.contentLines, "exam-task-media");
@@ -392,6 +398,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
   const tableLineIndices = findTableLineIndices(lines);
   const tasks: ExamTask[] = [];
   let inExam = false;
+  let inCardWrapper = false;
   let currentTaskStart: number | null = null;
   let currentTaskNumber: number | null = null;
   let sawExamStart = false;
@@ -475,6 +482,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     if (!inExam) {
       if (isExamStartLine(line)) {
         inExam = true;
+        inCardWrapper = false;
         sawExamStart = true;
         currentTaskStart = null;
         currentTaskNumber = null;
@@ -485,9 +493,25 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
     if (isExamEndLine(line)) {
       flushTask(index - 1);
       inExam = false;
+      inCardWrapper = false;
       sawExamEnd = true;
       currentTaskStart = null;
       currentTaskNumber = null;
+      return;
+    }
+
+    if (isCardStartLine(line)) {
+      inCardWrapper = true;
+      return;
+    }
+
+    if (isCardEndLine(line)) {
+      inCardWrapper = false;
+      return;
+    }
+
+    if (isTaskSeparatorLine(line) && !inCardWrapper) {
+      flushTask(index - 1);
       return;
     }
 

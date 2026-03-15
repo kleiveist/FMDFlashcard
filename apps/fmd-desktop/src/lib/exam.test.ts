@@ -192,7 +192,7 @@ Answer: Real
     expect(tasks[0]?.prompt).toContain("| --- | --- |");
   });
 
-  it("does not split tasks on separator lines", () => {
+  it("treats separator lines outside wrappers as task boundaries", () => {
     const markdown = `#exam
 1) First task
 | Key | Value |
@@ -201,6 +201,7 @@ Answer: Real
 --- not a separator
 Still first task
 ---
+Orphan context that must be ignored
 2) Second task
 #endexam`;
 
@@ -209,9 +210,49 @@ Still first task
     expect(tasks).toHaveLength(2);
     expect(tasks[0]?.prompt).toContain("| Row | --- |");
     expect(tasks[0]?.prompt).toContain("--- not a separator");
-    expect(tasks[0]?.prompt).not.toContain("\n---\n");
     expect(tasks[0]?.prompt).toContain("Still first task");
+    expect(tasks[0]?.prompt).not.toContain("Orphan context");
     expect(tasks[1]?.prompt).toContain("2) Second task");
+  });
+
+  it("does not split tasks on separator lines inside #card wrappers", () => {
+    const markdown = `#exam
+1) Wrapped task
+#card
+Question A?
+Answer: A
+---
+Question B?
+Answer: B
+#endcard
+2) Next task
+Answer: C
+#endexam`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(2);
+    expect(tasks[0]?.card.parts).toHaveLength(2);
+    expect(tasks[1]?.prompt).toContain("2) Next task");
+  });
+
+  it("ignores orphan content after separators without a following task header", () => {
+    const markdown = `#exam
+1) First task
+Question?
+Answer: A
+---
+## 3. Orphan heading
+Orphan body
+---
+#endexam`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.prompt).toContain("1) First task");
+    expect(tasks[0]?.prompt).not.toContain("Orphan heading");
+    expect(tasks[0]?.prompt).not.toContain("Orphan body");
   });
 
   it("ignores non-numeric ) sequences as task starts", () => {
@@ -228,6 +269,49 @@ Text with x) marker
     expect(tasks[0]?.prompt).toContain("a) Option A");
     expect(tasks[0]?.prompt).toContain("x) marker");
     expect(tasks[1]?.prompt).toContain("2) Task two");
+  });
+
+  it("removes leading dot-number markers from exam task content and headings", () => {
+    const markdown = `#exam
+1) Task one
+#card
+## 3. Relationales Modell
+3. Aufbau und Struktur
+Answer: Loesung
+#endcard
+#endexam`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.prompt).toContain("## Relationales Modell");
+    expect(task?.prompt).not.toContain("## 3. Relationales Modell");
+    expect(task?.prompt).toContain("Aufbau und Struktur");
+    expect(task?.prompt).not.toContain("3. Aufbau und Struktur");
+    expect(task?.officialAnswer).toBe("Loesung");
+  });
+
+  it("keeps dot-numbered markers inside fenced code blocks unchanged", () => {
+    const markdown = `#exam
+1) Task one
+#card
+\`\`\`md
+## 3. Titel bleibt
+3. Marker bleibt
+\`\`\`
+3. Marker ausserhalb
+#endcard
+#endexam`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.prompt).toContain("## 3. Titel bleibt");
+    expect(task?.prompt).toContain("3. Marker bleibt");
+    expect(task?.prompt).toContain("Marker ausserhalb");
+    expect(task?.prompt).not.toContain("\n3. Marker ausserhalb");
   });
 
   it("ignores numeric task headers inside code blocks and tables", () => {

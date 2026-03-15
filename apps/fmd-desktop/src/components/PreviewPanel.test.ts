@@ -513,7 +513,7 @@ describe("serializeMarkdownFromHtml", () => {
     const result = serializeMarkdownFromHtml(container);
 
     expect(result).toBe([
-      "1) Bestimmen Sie die Aussage",
+      "1. Bestimmen Sie die Aussage",
       "",
       "| Modell | Fokus |",
       "| --- | --- |",
@@ -603,8 +603,7 @@ describe("buildEditableMarkdownHtml", () => {
     ).map((marker) => marker.textContent);
 
     expect(markers).toContain("- ");
-    expect(markers).toContain("3) ");
-    expect(markers).not.toContain("3. ");
+    expect(markers).toContain("3. ");
     expect(markers).toContain("- [x] ");
   });
 

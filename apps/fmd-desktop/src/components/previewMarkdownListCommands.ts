@@ -187,8 +187,9 @@ const normalizeMarkerText = (list: HTMLElement, item: HTMLElement, index: number
     : null;
   const raw = (marker?.textContent ?? "").trim();
   if (list.tagName === "OL") {
-    const match = raw.match(/^(\d+)(\))$/);
-    const delimiter = match?.[2] ?? ")";
+    const match = raw.match(/^(\d+)([.)])$/);
+    const parentDelimiter = list.getAttribute("data-md-ordered-delimiter") === ")" ? ")" : ".";
+    const delimiter = match?.[2] === ")" || match?.[2] === "." ? match[2] : parentDelimiter;
     return `${index + 1}${delimiter} `;
   }
 

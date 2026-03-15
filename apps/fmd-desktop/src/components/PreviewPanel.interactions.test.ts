@@ -1032,20 +1032,6 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(orderedItems[1]?.textContent ?? "").toContain("Zweite");
   });
 
-  it("does not render dot-delimited numeric lines as ordered lists", () => {
-    const { container, cleanup: localCleanup } = buildHarness(
-      ["1. Erste", "2. Zweite"].join("\n"),
-    );
-    cleanup = localCleanup;
-
-    const orderedList = container.querySelector(".preview.markdown ol");
-    const previewText = container.querySelector(".preview.markdown")?.textContent ?? "";
-
-    expect(orderedList).toBeNull();
-    expect(previewText).toContain("1. Erste");
-    expect(previewText).toContain("2. Zweite");
-  });
-
   it("shows a properties panel and hides frontmatter text in markdown view", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       [
@@ -1553,7 +1539,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       [
         "- Bullet",
         "",
-        "1) Numbered",
+        "1. Numbered",
         "2) Numbered alt",
         "",
         "- [ ] Open",

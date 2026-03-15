@@ -7,7 +7,6 @@ import ReactMarkdown from "react-markdown";
 import { SvgPreviewBlock } from "../../../components/flashcards/SvgPreviewBlock";
 import { extractSvgCodeBlockSource } from "../../../components/markdownSvg";
 import { MarkdownHighlightedPre } from "../../../components/MarkdownHighlightedPre";
-import { escapeDotOrderedListMarkers } from "../../../lib/markdownOrderedListMarkers";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 
 type HelpEditorProps = {
@@ -25,7 +24,6 @@ export const HelpEditor = ({
 }: HelpEditorProps) => {
   const [showPreview, setShowPreview] = useState(false);
   const hasContent = value.trim().length > 0;
-  const previewValue = escapeDotOrderedListMarkers(value);
 
   return (
     <div className="help-editor">
@@ -72,7 +70,7 @@ export const HelpEditor = ({
               },
             }}
           >
-            {previewValue}
+            {value}
           </ReactMarkdown>
         </div>
       ) : null}
