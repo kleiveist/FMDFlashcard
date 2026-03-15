@@ -3,6 +3,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type SyntheticEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -18,6 +19,11 @@ import {
   splitMarkdownMediaSegments,
   type VaultImageCandidate,
 } from "../../lib/cardMedia";
+import {
+  findMathTokenCoveringRange,
+  rangeIntersectsMarkdownCodeContext,
+  type MathToken,
+} from "../../lib/markdownMath";
 import {
   deleteTableColumns,
   deleteTableRows,
@@ -37,6 +43,28 @@ import {
 } from "../../lib/markdownTables";
 import { normalizeRelativePath } from "../../lib/path";
 import type { VaultFile, VaultPngAsset } from "../../lib/tree";
+import {
+  FloatingInlineFormattingToolbar,
+  type InlineFormattingToolbarAnchor,
+  type InlineFormattingToolbarLinkState,
+  type InlineFormattingToolbarMenu,
+} from "./FloatingInlineFormattingToolbar";
+import {
+  INLINE_FORMATTING_WRAPPERS,
+  applyInlineMarkdownLink,
+  findInlineMarkdownLinkAtRange,
+  isInlineFormattingWrapperActive,
+  normalizeInlineFormattingRange,
+  resolveInlineFormattingShortcutAction,
+  resolveInlineFormattingToolbarActiveState,
+  stripSupportedInlineMarkdownFormatting,
+  toggleInlineFormattingWrapper,
+  type InlineFormattingMathMenuAction,
+  type InlineFormattingToggleResult,
+  type InlineFormattingToolbarAction,
+  type InlineFormattingToolbarActiveState,
+  type InlineFormattingToolbarRange,
+} from "./inlineFormatting";
 
 export type MarkdownHybridTableCellLocation = {
   rowBand: MarkdownPipeTableRowBand;
@@ -156,6 +184,13 @@ type TableCellImageLinkPickerState = {
   anchorTop: number;
   query: string;
   highlightedIndex: number;
+};
+
+type TableInlineFormattingToolbarSelection = {
+  start: number;
+  end: number;
+  anchor: InlineFormattingToolbarAnchor;
+  activeState: InlineFormattingToolbarActiveState;
 };
 
 const defaultTableModel: MarkdownPipeTableModel = {
@@ -399,6 +434,44 @@ const resolveTextareaCaretAnchor = (
   };
 };
 
+const INLINE_FORMATTING_TOOLBAR_DELAY_MS = 320;
+
+const resolveTextareaSelectionToolbarAnchor = (
+  textarea: HTMLTextAreaElement,
+  container: HTMLElement,
+  range: InlineFormattingToolbarRange,
+): InlineFormattingToolbarAnchor | null => {
+  const normalized = normalizeInlineFormattingRange(textarea.value, range);
+  if (normalized.start === normalized.end) {
+    return null;
+  }
+  const startAnchor = resolveTextareaCaretAnchor(textarea, container, normalized.start);
+  const endAnchor = resolveTextareaCaretAnchor(textarea, container, normalized.end);
+  const computed = window.getComputedStyle(textarea);
+  const rawLineHeight = Number.parseFloat(computed.lineHeight);
+  const lineHeight = Number.isFinite(rawLineHeight) && rawLineHeight > 0
+    ? rawLineHeight
+    : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
+  const sameLine = Math.abs(startAnchor.top - endAnchor.top) <= lineHeight * 0.5;
+  const topLocal = Math.min(startAnchor.top, endAnchor.top) - lineHeight;
+  const bottomLocal = Math.max(startAnchor.top, endAnchor.top);
+  const leftOnSelectionStartLine = normalized.start <= normalized.end
+    ? startAnchor.left
+    : endAnchor.left;
+  const centerLocalX = sameLine
+    ? (startAnchor.left + endAnchor.left) / 2
+    : leftOnSelectionStartLine;
+  const containerRect = container.getBoundingClientRect();
+  const viewportLeft = containerRect.left - container.scrollLeft + centerLocalX;
+  const viewportTop = containerRect.top - container.scrollTop + topLocal;
+  const viewportBottom = containerRect.top - container.scrollTop + bottomLocal;
+  return {
+    centerX: Math.round(viewportLeft),
+    top: Math.round(viewportTop),
+    bottom: Math.round(viewportBottom),
+  };
+};
+
 const TablePagePickerFileIcon = () => (
   <svg
     viewBox="0 0 24 24"
@@ -606,6 +679,10 @@ export const MarkdownHybridTableBlock = ({
   const cellPageLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const cellPageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const cellTypedImageLinkPickerRef = useRef<HTMLDivElement | null>(null);
+  const inlineFormattingToolbarRef = useRef<HTMLDivElement | null>(null);
+  const inlineFormattingToolbarTimerRef = useRef<number | null>(null);
+  const inlineFormattingToolbarPendingSignatureRef = useRef<string | null>(null);
+  const inlineFormattingToolbarRangeRef = useRef<InlineFormattingToolbarRange | null>(null);
   const tablePointerDragRef = useRef<TablePointerDragState | null>(null);
   const pendingCellCommitRef = useRef<{ location: MarkdownHybridTableCellLocation; value: string } | null>(null);
   const columnLaneRefs = useRef<Array<HTMLElement | null>>([]);
@@ -628,6 +705,12 @@ export const MarkdownHybridTableBlock = ({
     useState<TableCellImageReplacePickerState | null>(null);
   const [cellPageLinkPickerState, setCellPageLinkPickerState] = useState<TableCellPageLinkPickerState | null>(null);
   const [cellImageLinkPickerState, setCellImageLinkPickerState] = useState<TableCellImageLinkPickerState | null>(null);
+  const [inlineFormattingToolbarSelection, setInlineFormattingToolbarSelection] =
+    useState<TableInlineFormattingToolbarSelection | null>(null);
+  const [inlineFormattingToolbarMenu, setInlineFormattingToolbarMenu] =
+    useState<InlineFormattingToolbarMenu>(null);
+  const [inlineFormattingToolbarLinkState, setInlineFormattingToolbarLinkState] =
+    useState<InlineFormattingToolbarLinkState | null>(null);
   const isDirty = cellDirty || codeDirty;
   const pageLinkCandidates = useMemo(
     () => buildPageLinkCandidates(vaultFiles),
@@ -781,6 +864,557 @@ export const MarkdownHybridTableBlock = ({
     }
     return true;
   }, [flushActiveCell, flushCodeView]);
+
+  const syncActiveCellTextareaHeight = useCallback(() => {
+    const textarea = cellTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, []);
+
+  const clearInlineFormattingToolbarTimer = useCallback(() => {
+    if (inlineFormattingToolbarTimerRef.current === null) {
+      return;
+    }
+    window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+    inlineFormattingToolbarTimerRef.current = null;
+  }, []);
+
+  const hideInlineFormattingToolbar = useCallback(() => {
+    clearInlineFormattingToolbarTimer();
+    inlineFormattingToolbarPendingSignatureRef.current = null;
+    inlineFormattingToolbarRangeRef.current = null;
+    setInlineFormattingToolbarSelection(null);
+    setInlineFormattingToolbarMenu(null);
+    setInlineFormattingToolbarLinkState(null);
+  }, [clearInlineFormattingToolbarTimer]);
+
+  const resolveActiveInlineFormattingSelection = useCallback(() => {
+    if (disabled || !active || !activeCell || viewMode !== "grid") {
+      return null;
+    }
+    if (cellPageLinkPickerState || cellImageLinkPickerState || cellImageReplacePickerState) {
+      return null;
+    }
+    const textarea = cellTextareaRef.current;
+    const container = tableRootRef.current;
+    if (!textarea || !container) {
+      return null;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    if (start === end) {
+      return null;
+    }
+    const normalizedRange = normalizeInlineFormattingRange(textarea.value, { start, end });
+    const anchor = resolveTextareaSelectionToolbarAnchor(textarea, container, normalizedRange);
+    if (!anchor) {
+      return null;
+    }
+    const activeState = resolveInlineFormattingToolbarActiveState(textarea.value, normalizedRange);
+    return {
+      start: normalizedRange.start,
+      end: normalizedRange.end,
+      anchor,
+      activeState,
+    } as TableInlineFormattingToolbarSelection;
+  }, [
+    active,
+    activeCell,
+    cellImageLinkPickerState,
+    cellImageReplacePickerState,
+    cellPageLinkPickerState,
+    disabled,
+    viewMode,
+  ]);
+
+  const showInlineFormattingToolbarImmediate = useCallback(() => {
+    const nextSelection = resolveActiveInlineFormattingSelection();
+    if (!nextSelection) {
+      hideInlineFormattingToolbar();
+      return;
+    }
+    setInlineFormattingToolbarSelection(nextSelection);
+    inlineFormattingToolbarRangeRef.current = {
+      start: nextSelection.start,
+      end: nextSelection.end,
+    };
+  }, [hideInlineFormattingToolbar, resolveActiveInlineFormattingSelection]);
+
+  const scheduleInlineFormattingToolbarVisibility = useCallback(
+    (options?: { immediate?: boolean }) => {
+      if (options?.immediate) {
+        clearInlineFormattingToolbarTimer();
+        showInlineFormattingToolbarImmediate();
+        return;
+      }
+      const selection = resolveActiveInlineFormattingSelection();
+      if (!selection) {
+        hideInlineFormattingToolbar();
+        return;
+      }
+      const signature = `${selection.start}:${selection.end}`;
+      inlineFormattingToolbarPendingSignatureRef.current = signature;
+      clearInlineFormattingToolbarTimer();
+      inlineFormattingToolbarTimerRef.current = window.setTimeout(() => {
+        const latestSelection = resolveActiveInlineFormattingSelection();
+        if (!latestSelection) {
+          hideInlineFormattingToolbar();
+          return;
+        }
+        const latestSignature = `${latestSelection.start}:${latestSelection.end}`;
+        if (inlineFormattingToolbarPendingSignatureRef.current !== latestSignature) {
+          return;
+        }
+        setInlineFormattingToolbarSelection(latestSelection);
+        inlineFormattingToolbarRangeRef.current = {
+          start: latestSelection.start,
+          end: latestSelection.end,
+        };
+      }, INLINE_FORMATTING_TOOLBAR_DELAY_MS);
+    },
+    [
+      clearInlineFormattingToolbarTimer,
+      hideInlineFormattingToolbar,
+      resolveActiveInlineFormattingSelection,
+      showInlineFormattingToolbarImmediate,
+    ],
+  );
+
+  const scheduleCellTextareaSelectionRange = useCallback(
+    (selection: InlineFormattingToolbarRange) => {
+      const handle = window.requestAnimationFrame(() => {
+        const textarea = cellTextareaRef.current;
+        if (!textarea) {
+          return;
+        }
+        const normalized = normalizeInlineFormattingRange(textarea.value, selection);
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch {
+          textarea.focus();
+        }
+        textarea.setSelectionRange(normalized.start, normalized.end);
+        syncActiveCellTextareaHeight();
+        scheduleInlineFormattingToolbarVisibility({ immediate: true });
+      });
+      return () => window.cancelAnimationFrame(handle);
+    },
+    [scheduleInlineFormattingToolbarVisibility, syncActiveCellTextareaHeight],
+  );
+
+  const restoreInlineFormattingToolbarSelection = useCallback(() => {
+    if (!active || !activeCell || viewMode !== "grid") {
+      return null;
+    }
+    const textarea = cellTextareaRef.current;
+    const savedRange = inlineFormattingToolbarRangeRef.current;
+    if (!textarea || !savedRange) {
+      return null;
+    }
+    const normalized = normalizeInlineFormattingRange(textarea.value, {
+      start: savedRange.start,
+      end: savedRange.end,
+    });
+    if (normalized.start === normalized.end) {
+      return null;
+    }
+    try {
+      textarea.focus({ preventScroll: true });
+    } catch {
+      textarea.focus();
+    }
+    textarea.setSelectionRange(normalized.start, normalized.end);
+    return normalized;
+  }, [active, activeCell, viewMode]);
+
+  const applyInlineFormattingToActiveSelection = useCallback(
+    (result: InlineFormattingToggleResult) => {
+      if (!result.changed || !activeCell) {
+        return false;
+      }
+      const originalValue = fromCellStorageValue(getCellValue(parsedModel, activeCell));
+      setCellDraft(result.value);
+      setCellDirty(result.value !== originalValue);
+      inlineFormattingToolbarRangeRef.current = {
+        start: result.selection.start,
+        end: result.selection.end,
+      };
+      scheduleCellTextareaSelectionRange(result.selection);
+      return true;
+    },
+    [activeCell, parsedModel, scheduleCellTextareaSelectionRange],
+  );
+
+  const applyInlineFormattingAction = useCallback(
+    (action: InlineFormattingToolbarAction) => {
+      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+      const textarea = cellTextareaRef.current;
+      if (!normalizedSelection || !textarea) {
+        return false;
+      }
+      if (action === "math" && rangeIntersectsMarkdownCodeContext(textarea.value, normalizedSelection)) {
+        return false;
+      }
+      const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+      const nextResult = toggleInlineFormattingWrapper(textarea.value, normalizedSelection, wrapper);
+      return applyInlineFormattingToActiveSelection(nextResult);
+    },
+    [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
+  );
+
+  const applyInlineMathMenuAction = useCallback(
+    (action: InlineFormattingMathMenuAction) => {
+      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+      const textarea = cellTextareaRef.current;
+      if (!normalizedSelection || !textarea) {
+        return false;
+      }
+      if (rangeIntersectsMarkdownCodeContext(textarea.value, normalizedSelection)) {
+        return false;
+      }
+
+      const value = textarea.value;
+      const activeMathToken = findMathTokenCoveringRange(value, normalizedSelection);
+
+      const applyDelimiterConversion = (
+        token: Extract<MathToken, { type: "inline-math" | "display-math" }>,
+        targetType: "inline-math" | "display-math",
+      ) => {
+        if (token.type === targetType) {
+          return false;
+        }
+        const targetDelimiter = targetType === "inline-math" ? "$" : "$$";
+        const nextValue = `${value.slice(0, token.start)}${targetDelimiter}${token.value}${targetDelimiter}${
+          value.slice(token.end)
+        }`;
+        const delimiterLength = targetDelimiter.length;
+        return applyInlineFormattingToActiveSelection({
+          value: nextValue,
+          selection: {
+            start: token.start + delimiterLength,
+            end: token.start + delimiterLength + token.value.length,
+          },
+          changed: nextValue !== value,
+        });
+      };
+
+      if (action === "wrap-inline") {
+        if (activeMathToken) {
+          if (activeMathToken.type === "display-math") {
+            return applyDelimiterConversion(activeMathToken, "inline-math");
+          }
+          return false;
+        }
+        const selectedText = value.slice(normalizedSelection.start, normalizedSelection.end);
+        const nextValue = `${value.slice(0, normalizedSelection.start)}$${selectedText}$${
+          value.slice(normalizedSelection.end)
+        }`;
+        return applyInlineFormattingToActiveSelection({
+          value: nextValue,
+          selection: {
+            start: normalizedSelection.start + 1,
+            end: normalizedSelection.end + 1,
+          },
+          changed: nextValue !== value,
+        });
+      }
+
+      if (action === "convert-inline-display") {
+        if (!activeMathToken) {
+          return false;
+        }
+        return applyDelimiterConversion(
+          activeMathToken,
+          activeMathToken.type === "inline-math" ? "display-math" : "inline-math",
+        );
+      }
+
+      if (!activeMathToken) {
+        return false;
+      }
+      const nextValue = `${value.slice(0, activeMathToken.start)}${activeMathToken.value}${
+        value.slice(activeMathToken.end)
+      }`;
+      return applyInlineFormattingToActiveSelection({
+        value: nextValue,
+        selection: {
+          start: activeMathToken.start,
+          end: activeMathToken.start + activeMathToken.value.length,
+        },
+        changed: nextValue !== value,
+      });
+    },
+    [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
+  );
+
+  const clearInlineFormattingAtSelection = useCallback(() => {
+    const normalizedSelection = restoreInlineFormattingToolbarSelection();
+    const textarea = cellTextareaRef.current;
+    if (!normalizedSelection || !textarea) {
+      return false;
+    }
+
+    let nextValue = textarea.value;
+    let nextRange = normalizedSelection;
+    let hasChanged = false;
+    const aroundSelectionActions: InlineFormattingToolbarAction[] = [
+      "highlight",
+      "strikethrough",
+      "underline",
+      "bold",
+      "italic",
+      "inline-code",
+      "math",
+    ];
+    for (let iteration = 0; iteration < 4; iteration += 1) {
+      let iterationChanged = false;
+      const linkAtRange = findInlineMarkdownLinkAtRange(nextValue, nextRange);
+      if (linkAtRange) {
+        const linkResult = applyInlineMarkdownLink(nextValue, nextRange, "");
+        if (linkResult.changed) {
+          nextValue = linkResult.value;
+          nextRange = normalizeInlineFormattingRange(linkResult.value, linkResult.selection);
+          hasChanged = true;
+          iterationChanged = true;
+        }
+      }
+      for (const action of aroundSelectionActions) {
+        const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+        if (!isInlineFormattingWrapperActive(nextValue, nextRange, wrapper)) {
+          continue;
+        }
+        const toggleResult = toggleInlineFormattingWrapper(nextValue, nextRange, wrapper);
+        if (!toggleResult.changed) {
+          continue;
+        }
+        nextValue = toggleResult.value;
+        nextRange = normalizeInlineFormattingRange(toggleResult.value, toggleResult.selection);
+        hasChanged = true;
+        iterationChanged = true;
+      }
+      if (!iterationChanged) {
+        break;
+      }
+    }
+
+    const selectedValue = nextValue.slice(nextRange.start, nextRange.end);
+    const plainSelectedValue = stripSupportedInlineMarkdownFormatting(selectedValue);
+    if (plainSelectedValue !== selectedValue) {
+      nextValue = `${nextValue.slice(0, nextRange.start)}${plainSelectedValue}${nextValue.slice(nextRange.end)}`;
+      nextRange = {
+        start: nextRange.start,
+        end: nextRange.start + plainSelectedValue.length,
+      };
+      hasChanged = true;
+    }
+
+    if (!hasChanged) {
+      return false;
+    }
+
+    return applyInlineFormattingToActiveSelection({
+      value: nextValue,
+      selection: nextRange,
+      changed: true,
+    });
+  }, [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection]);
+
+  const openInlineFormattingLinkEditor = useCallback(() => {
+    const normalizedSelection = restoreInlineFormattingToolbarSelection();
+    const textarea = cellTextareaRef.current;
+    if (!normalizedSelection || !textarea) {
+      return false;
+    }
+    const linkMatch = findInlineMarkdownLinkAtRange(textarea.value, normalizedSelection);
+    setInlineFormattingToolbarMenu(null);
+    setInlineFormattingToolbarLinkState({
+      url: linkMatch?.url ?? "",
+      canRemove: Boolean(linkMatch),
+    });
+    return true;
+  }, [restoreInlineFormattingToolbarSelection]);
+
+  const applyInlineFormattingLinkValue = useCallback(
+    (urlValue?: string) => {
+      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+      const textarea = cellTextareaRef.current;
+      if (!normalizedSelection || !textarea) {
+        return false;
+      }
+      const nextUrl = typeof urlValue === "string"
+        ? urlValue
+        : (inlineFormattingToolbarLinkState?.url ?? "");
+      const nextResult = applyInlineMarkdownLink(
+        textarea.value,
+        normalizedSelection,
+        nextUrl,
+      );
+      if (!nextResult.changed) {
+        return false;
+      }
+      const applied = applyInlineFormattingToActiveSelection(nextResult);
+      if (applied) {
+        setInlineFormattingToolbarLinkState(null);
+      }
+      return applied;
+    },
+    [
+      applyInlineFormattingToActiveSelection,
+      inlineFormattingToolbarLinkState?.url,
+      restoreInlineFormattingToolbarSelection,
+    ],
+  );
+
+  const handleInlineFormattingToolbarAction = useCallback(
+    (action: InlineFormattingToolbarAction | "link" | "clear-formatting") => {
+      if (action === "link") {
+        openInlineFormattingLinkEditor();
+        return;
+      }
+      if (action === "clear-formatting") {
+        setInlineFormattingToolbarLinkState(null);
+        setInlineFormattingToolbarMenu(null);
+        clearInlineFormattingAtSelection();
+        return;
+      }
+      setInlineFormattingToolbarMenu(null);
+      applyInlineFormattingAction(action);
+    },
+    [applyInlineFormattingAction, clearInlineFormattingAtSelection, openInlineFormattingLinkEditor],
+  );
+
+  const handleInlineFormattingMathMenuAction = useCallback(
+    (action: InlineFormattingMathMenuAction) => {
+      setInlineFormattingToolbarLinkState(null);
+      setInlineFormattingToolbarMenu(null);
+      applyInlineMathMenuAction(action);
+    },
+    [applyInlineMathMenuAction],
+  );
+
+  const toggleInlineFormattingToolbarMenu = useCallback(
+    (menu: Exclude<InlineFormattingToolbarMenu, null>) => {
+      setInlineFormattingToolbarLinkState(null);
+      setInlineFormattingToolbarMenu((current) => (current === menu ? null : menu));
+    },
+    [],
+  );
+
+  useEffect(() => () => {
+    clearInlineFormattingToolbarTimer();
+  }, [clearInlineFormattingToolbarTimer]);
+
+  useEffect(() => {
+    if (!active || disabled || viewMode !== "grid" || !activeCell) {
+      hideInlineFormattingToolbar();
+      return;
+    }
+    if (cellPageLinkPickerState || cellImageLinkPickerState || cellImageReplacePickerState) {
+      hideInlineFormattingToolbar();
+    }
+  }, [
+    active,
+    activeCell,
+    cellImageLinkPickerState,
+    cellImageReplacePickerState,
+    cellPageLinkPickerState,
+    disabled,
+    hideInlineFormattingToolbar,
+    viewMode,
+  ]);
+
+  useEffect(() => {
+    const handleSelectionSignal = () => {
+      const textarea = cellTextareaRef.current;
+      if (!textarea) {
+        hideInlineFormattingToolbar();
+        return;
+      }
+      const activeElement = document.activeElement;
+      const isToolbarFocused = activeElement instanceof Node &&
+        inlineFormattingToolbarRef.current?.contains(activeElement);
+      if (activeElement === textarea) {
+        scheduleInlineFormattingToolbarVisibility();
+        return;
+      }
+      if (isToolbarFocused) {
+        return;
+      }
+      hideInlineFormattingToolbar();
+    };
+    document.addEventListener("selectionchange", handleSelectionSignal);
+    window.addEventListener("pointerup", handleSelectionSignal, true);
+    window.addEventListener("keyup", handleSelectionSignal, true);
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionSignal);
+      window.removeEventListener("pointerup", handleSelectionSignal, true);
+      window.removeEventListener("keyup", handleSelectionSignal, true);
+    };
+  }, [hideInlineFormattingToolbar, scheduleInlineFormattingToolbarVisibility]);
+
+  useEffect(() => {
+    if (!inlineFormattingToolbarSelection) {
+      return;
+    }
+    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (inlineFormattingToolbarRef.current?.contains(target)) {
+        return;
+      }
+      if (cellTextareaRef.current?.contains(target)) {
+        return;
+      }
+      hideInlineFormattingToolbar();
+    };
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+    };
+  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
+
+  useEffect(() => {
+    if (!inlineFormattingToolbarSelection) {
+      return;
+    }
+    const handleDocumentFocusIn = (event: globalThis.FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (cellTextareaRef.current?.contains(target)) {
+        return;
+      }
+      if (inlineFormattingToolbarRef.current?.contains(target)) {
+        return;
+      }
+      hideInlineFormattingToolbar();
+    };
+    document.addEventListener("focusin", handleDocumentFocusIn);
+    return () => {
+      document.removeEventListener("focusin", handleDocumentFocusIn);
+    };
+  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
+
+  useEffect(() => {
+    if (!inlineFormattingToolbarSelection) {
+      return;
+    }
+    const handleHide = () => {
+      hideInlineFormattingToolbar();
+    };
+    window.addEventListener("resize", handleHide);
+    window.addEventListener("scroll", handleHide, true);
+    return () => {
+      window.removeEventListener("resize", handleHide);
+      window.removeEventListener("scroll", handleHide, true);
+    };
+  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
 
   useEffect(() => {
     if (!active) {
@@ -1189,6 +1823,7 @@ export const MarkdownHybridTableBlock = ({
   }, [cellImageLinkPickerState, closeCellImageLinkPicker]);
 
   const clearSelections = useCallback(() => {
+    hideInlineFormattingToolbar();
     setRowSelection(null);
     setColumnSelection(null);
     setContextMenuState(null);
@@ -1197,7 +1832,7 @@ export const MarkdownHybridTableBlock = ({
     setCellImageReplacePickerState(null);
     setCellPageLinkPickerState(null);
     setCellImageLinkPickerState(null);
-  }, []);
+  }, [hideInlineFormattingToolbar]);
 
   const selectRow = useCallback((rowIndex: number, options?: { shiftKey?: boolean; additiveKey?: boolean }) => {
     setRowSelection((current) => resolveSelectionState(current, rowIndex, visualRowCount, options));
@@ -2116,6 +2751,34 @@ export const MarkdownHybridTableBlock = ({
         closeCellImageLinkPicker();
         return;
       }
+      if (event.key === "Escape" && inlineFormattingToolbarSelection) {
+        event.preventDefault();
+        event.stopPropagation();
+        hideInlineFormattingToolbar();
+        return;
+      }
+      const inlineShortcutAction = resolveInlineFormattingShortcutAction(event);
+      if (inlineShortcutAction) {
+        event.preventDefault();
+        event.stopPropagation();
+        const textarea = event.currentTarget;
+        const normalizedRange = normalizeInlineFormattingRange(textarea.value, {
+          start: textarea.selectionStart,
+          end: textarea.selectionEnd,
+        });
+        if (normalizedRange.start !== normalizedRange.end) {
+          inlineFormattingToolbarRangeRef.current = {
+            start: normalizedRange.start,
+            end: normalizedRange.end,
+          };
+          if (inlineShortcutAction === "link") {
+            openInlineFormattingLinkEditor();
+          } else {
+            applyInlineFormattingAction(inlineShortcutAction);
+          }
+        }
+        return;
+      }
       if (event.key === "Tab") {
         event.preventDefault();
         const direction = event.shiftKey ? -1 : 1;
@@ -2187,6 +2850,7 @@ export const MarkdownHybridTableBlock = ({
       }
       if (event.key === "Escape") {
         event.preventDefault();
+        hideInlineFormattingToolbar();
         setCellDirty(false);
         setCellDraft(fromCellStorageValue(getCellValue(parsedModel, activeCell)));
         setActiveCell(null);
@@ -2199,6 +2863,7 @@ export const MarkdownHybridTableBlock = ({
     },
     [
       activeCell,
+      applyInlineFormattingAction,
       cellImageLinkPickerState,
       cellPageLinkPickerState,
       closeCellImageLinkPicker,
@@ -2206,6 +2871,9 @@ export const MarkdownHybridTableBlock = ({
       commitCellAndMove,
       getCellValue,
       handleInsertRowAt,
+      hideInlineFormattingToolbar,
+      inlineFormattingToolbarSelection,
+      openInlineFormattingLinkEditor,
       parsedModel,
     ],
   );
@@ -2228,6 +2896,7 @@ export const MarkdownHybridTableBlock = ({
         return;
       }
       if (event.key === "Escape") {
+        hideInlineFormattingToolbar();
         clearSelections();
         setActiveCell(null);
         setContextMenuState(null);
@@ -2276,6 +2945,7 @@ export const MarkdownHybridTableBlock = ({
       disabled,
       handleDeleteColumnSelection,
       handleDeleteRowSelection,
+      hideInlineFormattingToolbar,
       isDirty,
       onGlobalRedo,
       onGlobalUndo,
@@ -2316,6 +2986,7 @@ export const MarkdownHybridTableBlock = ({
             }
             if (typedPageLinkTrigger) {
               const anchor = resolveTextareaCaretAnchor(event.currentTarget, tableRoot, typedPageLinkTrigger.end);
+              hideInlineFormattingToolbar();
               setCellImageLinkPickerState(null);
               setCellPageLinkPickerState({
                 location,
@@ -2329,6 +3000,7 @@ export const MarkdownHybridTableBlock = ({
             }
             if (typedImageLinkTrigger) {
               const anchor = resolveTextareaCaretAnchor(event.currentTarget, tableRoot, typedImageLinkTrigger.end);
+              hideInlineFormattingToolbar();
               setCellPageLinkPickerState(null);
               setCellImageLinkPickerState({
                 location,
@@ -2340,8 +3012,33 @@ export const MarkdownHybridTableBlock = ({
               });
             }
           }}
-          onBlur={() => {
+          onBlur={(event) => {
+            const nextFocus = event.relatedTarget;
+            if (nextFocus instanceof Node && inlineFormattingToolbarRef.current?.contains(nextFocus)) {
+              return;
+            }
+            hideInlineFormattingToolbar();
             flushActiveCell();
+          }}
+          onSelect={(event: SyntheticEvent<HTMLTextAreaElement>) => {
+            const textarea = event.currentTarget;
+            const normalized = normalizeInlineFormattingRange(textarea.value, {
+              start: textarea.selectionStart,
+              end: textarea.selectionEnd,
+            });
+            if (normalized.start === normalized.end) {
+              return;
+            }
+            inlineFormattingToolbarRangeRef.current = {
+              start: normalized.start,
+              end: normalized.end,
+            };
+          }}
+          onMouseUp={() => {
+            scheduleInlineFormattingToolbarVisibility();
+          }}
+          onKeyUp={() => {
+            scheduleInlineFormattingToolbarVisibility();
           }}
           onKeyDown={handleCellKeyDown}
         />
@@ -2557,6 +3254,40 @@ export const MarkdownHybridTableBlock = ({
         />
       </div>
     </div>
+  ) : null;
+
+  const inlineFormattingToolbarPopup = inlineFormattingToolbarSelection ? (
+    <FloatingInlineFormattingToolbar
+      anchor={inlineFormattingToolbarSelection.anchor}
+      menu={inlineFormattingToolbarMenu}
+      linkState={inlineFormattingToolbarLinkState}
+      activeState={inlineFormattingToolbarSelection.activeState}
+      toolbarRef={inlineFormattingToolbarRef}
+      onClose={hideInlineFormattingToolbar}
+      onToggleMenu={toggleInlineFormattingToolbarMenu}
+      onAction={handleInlineFormattingToolbarAction}
+      onMathMenuAction={handleInlineFormattingMathMenuAction}
+      onLinkUrlChange={(value) => {
+        setInlineFormattingToolbarLinkState((current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            url: value,
+          };
+        });
+      }}
+      onLinkSubmit={() => {
+        applyInlineFormattingLinkValue();
+      }}
+      onLinkRemove={() => {
+        applyInlineFormattingLinkValue("");
+      }}
+      onLinkCancel={() => {
+        setInlineFormattingToolbarLinkState(null);
+      }}
+    />
   ) : null;
 
   const contextMenu = contextMenuState ? (
@@ -2930,6 +3661,7 @@ export const MarkdownHybridTableBlock = ({
       )}
       {cellPageLinkPickerPopup}
       {cellImageLinkPickerPopup}
+      {inlineFormattingToolbarPopup}
       {contextMenu}
     </div>
   );

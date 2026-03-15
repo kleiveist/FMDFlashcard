@@ -30,7 +30,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { FlashcardMediaGroup } from "../../components/flashcards/FlashcardMediaGroup";
 import { VaultPngPicker } from "../../components/media/VaultPngPicker";
 import {
@@ -87,6 +86,28 @@ import {
   type MarkdownHybridTableActivationRequest,
   type MarkdownHybridTableSessionController,
 } from "./MarkdownHybridTableBlock";
+import {
+  FloatingInlineFormattingToolbar,
+  type InlineFormattingToolbarAnchor,
+  type InlineFormattingToolbarLinkState,
+  type InlineFormattingToolbarMenu,
+} from "./FloatingInlineFormattingToolbar";
+import {
+  INLINE_FORMATTING_WRAPPERS,
+  applyInlineMarkdownLink,
+  findInlineMarkdownLinkAtRange,
+  isInlineFormattingWrapperActive,
+  normalizeInlineFormattingRange,
+  resolveInlineFormattingShortcutAction,
+  resolveInlineFormattingToolbarActiveState,
+  stripSupportedInlineMarkdownFormatting,
+  toggleInlineFormattingWrapper,
+  type InlineFormattingMathMenuAction,
+  type InlineFormattingToggleResult,
+  type InlineFormattingToolbarAction,
+  type InlineFormattingToolbarActiveState,
+  type InlineFormattingToolbarRange,
+} from "./inlineFormatting";
 import { MathStructureDialog } from "./math-editor/MathStructureDialog";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
@@ -268,66 +289,12 @@ type MathToolboxState = {
   initialLatexSnapshot: string;
 };
 
-type InlineFormattingToolbarAction =
-  | "highlight"
-  | "bold"
-  | "italic"
-  | "underline"
-  | "strikethrough"
-  | "inline-code"
-  | "math";
-
-type InlineFormattingMathMenuAction =
-  | "wrap-inline"
-  | "convert-inline-display"
-  | "remove-marking";
-
-type InlineFormattingToolbarMenu = "more" | "math" | null;
-
-type InlineFormattingToolbarAnchor = {
-  centerX: number;
-  top: number;
-  bottom: number;
-};
-
 type InlineFormattingToolbarSelection = {
   blockIndex: number;
   start: number;
   end: number;
   anchor: InlineFormattingToolbarAnchor;
   activeState: InlineFormattingToolbarActiveState;
-};
-
-type InlineFormattingToolbarLinkState = {
-  url: string;
-  canRemove: boolean;
-};
-
-type InlineFormattingToolbarRange = {
-  start: number;
-  end: number;
-};
-
-type InlineFormattingToggleResult = {
-  value: string;
-  selection: InlineFormattingToolbarRange;
-  changed: boolean;
-};
-
-type InlineFormattingWrapper = {
-  open: string;
-  close: string;
-};
-
-type InlineFormattingToolbarActiveState = {
-  highlight: boolean;
-  bold: boolean;
-  italic: boolean;
-  underline: boolean;
-  link: boolean;
-  strikethrough: boolean;
-  "inline-code": boolean;
-  math: boolean;
 };
 
 type MarkdownHybridEditorProps = {
@@ -785,348 +752,6 @@ const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
     default:
       return null;
   }
-};
-
-type FloatingInlineFormattingToolbarProps = {
-  anchor: InlineFormattingToolbarAnchor;
-  menu: InlineFormattingToolbarMenu;
-  linkState: InlineFormattingToolbarLinkState | null;
-  activeState: InlineFormattingToolbarActiveState;
-  toolbarRef: { current: HTMLDivElement | null };
-  onClose: () => void;
-  onToggleMenu: (menu: Exclude<InlineFormattingToolbarMenu, null>) => void;
-  onAction: (action: InlineFormattingToolbarAction | "link" | "clear-formatting") => void;
-  onMathMenuAction: (action: InlineFormattingMathMenuAction) => void;
-  onLinkUrlChange: (value: string) => void;
-  onLinkSubmit: () => void;
-  onLinkRemove: () => void;
-  onLinkCancel: () => void;
-};
-
-const FloatingInlineFormattingToolbar = ({
-  anchor,
-  menu,
-  linkState,
-  activeState,
-  toolbarRef,
-  onClose,
-  onToggleMenu,
-  onAction,
-  onMathMenuAction,
-  onLinkUrlChange,
-  onLinkSubmit,
-  onLinkRemove,
-  onLinkCancel,
-}: FloatingInlineFormattingToolbarProps) => {
-  const localToolbarRef = useRef<HTMLDivElement | null>(null);
-  const linkInputRef = useRef<HTMLInputElement | null>(null);
-  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
-
-  const setToolbarNode = useCallback(
-    (node: HTMLDivElement | null) => {
-      localToolbarRef.current = node;
-      toolbarRef.current = node;
-    },
-    [toolbarRef],
-  );
-
-  useLayoutEffect(() => {
-    const handle = window.requestAnimationFrame(() => {
-      const toolbarNode = localToolbarRef.current;
-      if (!toolbarNode) {
-        return;
-      }
-      const rect = toolbarNode.getBoundingClientRect();
-      const width = Math.max(1, rect.width || 1);
-      const height = Math.max(1, rect.height || 1);
-      const padding = INLINE_FORMATTING_TOOLBAR_VIEWPORT_PADDING_PX;
-      let top = anchor.top - height - INLINE_FORMATTING_TOOLBAR_GAP_PX;
-      if (top < padding) {
-        top = anchor.bottom + INLINE_FORMATTING_TOOLBAR_GAP_PX;
-      }
-      if (top + height > window.innerHeight - padding) {
-        top = Math.max(padding, window.innerHeight - height - padding);
-      }
-      const maxLeft = Math.max(padding, window.innerWidth - width - padding);
-      const left = Math.max(
-        padding,
-        Math.min(anchor.centerX - width / 2, maxLeft),
-      );
-      setPosition({ left: Math.round(left), top: Math.round(top) });
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, [anchor, linkState?.canRemove, linkState?.url, menu]);
-
-  useEffect(() => {
-    if (!linkState) {
-      return;
-    }
-    const handle = window.requestAnimationFrame(() => {
-      const input = linkInputRef.current;
-      if (!input) {
-        return;
-      }
-      try {
-        input.focus({ preventScroll: true });
-      } catch {
-        input.focus();
-      }
-      input.select();
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, [linkState]);
-
-  if (typeof document === "undefined") {
-    return null;
-  }
-
-  const hasAnyInlineFormattingActive = activeState.highlight ||
-    activeState.bold ||
-    activeState.italic ||
-    activeState.underline ||
-    activeState.link ||
-    activeState.strikethrough ||
-    activeState["inline-code"] ||
-    activeState.math;
-
-  const handleButtonMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
-  return createPortal(
-    <div
-      ref={setToolbarNode}
-      className="markdown-hybrid-inline-toolbar"
-      role="dialog"
-      aria-label="Inline formatting toolbar"
-      style={{
-        left: position?.left ?? -9999,
-        top: position?.top ?? -9999,
-        visibility: position ? "visible" : "hidden",
-      }}
-      onMouseDown={(event) => {
-        event.stopPropagation();
-      }}
-      onClick={(event) => {
-        event.stopPropagation();
-      }}
-      onKeyDown={(event) => {
-        if (event.key !== "Escape") {
-          return;
-        }
-        event.preventDefault();
-        event.stopPropagation();
-        if (linkState) {
-          onLinkCancel();
-          return;
-        }
-        onClose();
-      }}
-    >
-      <div className="markdown-hybrid-inline-toolbar-row" role="toolbar" aria-label="Inline formatting">
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button${hasAnyInlineFormattingActive ? " is-active" : ""}`}
-          aria-label="Text format menu"
-          title="Clear inline formatting"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("clear-formatting")}
-        >
-          T
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button${
-            activeState.highlight ? " is-active" : ""
-          }`}
-          aria-label="Highlight text"
-          title="Highlight (Ctrl/Cmd+H)"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("highlight")}
-        >
-          A
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button${activeState.bold ? " is-active" : ""}`}
-          aria-label="Bold text"
-          title="Bold (Ctrl/Cmd+B)"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("bold")}
-        >
-          B
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button markdown-hybrid-inline-toolbar-button-italic${
-            activeState.italic ? " is-active" : ""
-          }`}
-          aria-label="Italic text"
-          title="Italic (Ctrl/Cmd+I)"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("italic")}
-        >
-          I
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button markdown-hybrid-inline-toolbar-button-underline${
-            activeState.underline ? " is-active" : ""
-          }`}
-          aria-label="Underline text"
-          title="Underline (Ctrl/Cmd+U)"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("underline")}
-        >
-          U
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button${
-            activeState.link || Boolean(linkState) ? " is-active" : ""
-          }`}
-          aria-label="Create or edit link"
-          title="Link (Ctrl/Cmd+K)"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("link")}
-        >
-          <span className="markdown-hybrid-inline-toolbar-link-icon" aria-hidden="true">
-            <InsertMenuIconGraphic icon="link" />
-          </span>
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button markdown-hybrid-inline-toolbar-button-strike${
-            activeState.strikethrough ? " is-active" : ""
-          }`}
-          aria-label="Strikethrough text"
-          title="Strikethrough (Ctrl/Cmd+Shift+X)"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("strikethrough")}
-        >
-          S
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button markdown-hybrid-inline-toolbar-button-code${
-            activeState["inline-code"] ? " is-active" : ""
-          }`}
-          aria-label="Inline code"
-          title="Inline code (Ctrl/Cmd+E)"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onAction("inline-code")}
-        >
-          {"</>"}
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button${activeState.math ? " is-active" : ""}`}
-          aria-label="Inline formula"
-          title="Formula (Ctrl/Cmd+Shift+M)"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onToggleMenu("math")}
-        >
-          {"√x"}
-        </button>
-        <button
-          type="button"
-          className={`markdown-hybrid-inline-toolbar-button${menu === "more" ? " is-active" : ""}`}
-          aria-label="More actions"
-          title="More"
-          onMouseDown={handleButtonMouseDown}
-          onClick={() => onToggleMenu("more")}
-        >
-          …
-        </button>
-      </div>
-      {menu === "more" ? (
-        <div className="markdown-hybrid-inline-toolbar-menu" role="menu" aria-label="More inline actions">
-          <div className="markdown-hybrid-inline-toolbar-menu-note">More actions coming soon</div>
-        </div>
-      ) : null}
-      {menu === "math" ? (
-        <div className="markdown-hybrid-inline-toolbar-menu" role="menu" aria-label="Inline math actions">
-          <button
-            type="button"
-            className="markdown-hybrid-inline-toolbar-menu-item"
-            role="menuitem"
-            onMouseDown={handleButtonMouseDown}
-            onClick={() => onMathMenuAction("wrap-inline")}
-          >
-            Mark as Inline Math
-          </button>
-          <button
-            type="button"
-            className="markdown-hybrid-inline-toolbar-menu-item"
-            role="menuitem"
-            onMouseDown={handleButtonMouseDown}
-            onClick={() => onMathMenuAction("convert-inline-display")}
-          >
-            {"Convert Inline <-> Display"}
-          </button>
-          <button
-            type="button"
-            className="markdown-hybrid-inline-toolbar-menu-item"
-            role="menuitem"
-            onMouseDown={handleButtonMouseDown}
-            onClick={() => onMathMenuAction("remove-marking")}
-          >
-            Remove Math Marking
-          </button>
-        </div>
-      ) : null}
-      {linkState ? (
-        <div
-          className="markdown-hybrid-inline-toolbar-link"
-          role="group"
-          aria-label="Link editor"
-        >
-          <input
-            ref={linkInputRef}
-            type="url"
-            className="markdown-hybrid-inline-toolbar-link-input"
-            placeholder="https://example.com"
-            value={linkState.url}
-            onChange={(event) => onLinkUrlChange(event.currentTarget.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                event.stopPropagation();
-                onLinkSubmit();
-                return;
-              }
-              if (event.key === "Escape") {
-                event.preventDefault();
-                event.stopPropagation();
-                onLinkCancel();
-              }
-            }}
-            aria-label="Link URL"
-          />
-          <button
-            type="button"
-            className="markdown-hybrid-inline-toolbar-link-button"
-            onMouseDown={handleButtonMouseDown}
-            onClick={onLinkSubmit}
-          >
-            Apply
-          </button>
-          {linkState.canRemove ? (
-            <button
-              type="button"
-              className="markdown-hybrid-inline-toolbar-link-button is-danger"
-              onMouseDown={handleButtonMouseDown}
-              onClick={onLinkRemove}
-            >
-              Remove
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>,
-    document.body,
-  );
 };
 
 const renderInsertMenuRowContent = ({
@@ -1731,396 +1356,6 @@ const isDeleteRangeShortcut = (event: KeyboardEvent<HTMLElement>) =>
   (event.key === "Delete" || event.key === "Backspace");
 
 const INLINE_FORMATTING_TOOLBAR_DELAY_MS = 320;
-const INLINE_FORMATTING_TOOLBAR_VIEWPORT_PADDING_PX = 8;
-const INLINE_FORMATTING_TOOLBAR_GAP_PX = 10;
-
-const INLINE_FORMATTING_WRAPPERS: Record<InlineFormattingToolbarAction, InlineFormattingWrapper> = {
-  highlight: { open: "==", close: "==" },
-  bold: { open: "**", close: "**" },
-  italic: { open: "*", close: "*" },
-  underline: { open: "__", close: "__" },
-  strikethrough: { open: "~~", close: "~~" },
-  "inline-code": { open: "`", close: "`" },
-  math: { open: "$", close: "$" },
-};
-
-const inlineMarkdownLinkPattern = /\[([^\]\n]*)\]\(([^)\n]*)\)/g;
-
-const normalizeInlineFormattingRange = (
-  value: string,
-  range: InlineFormattingToolbarRange,
-): InlineFormattingToolbarRange => {
-  const max = value.length;
-  const start = Math.max(0, Math.min(range.start, max));
-  const end = Math.max(0, Math.min(range.end, max));
-  if (start <= end) {
-    return { start, end };
-  }
-  return { start: end, end: start };
-};
-
-const countRepeatedCharBeforeIndex = (
-  value: string,
-  startIndex: number,
-  char: string,
-) => {
-  let count = 0;
-  let index = startIndex - 1;
-  while (index >= 0 && value[index] === char) {
-    count += 1;
-    index -= 1;
-  }
-  return count;
-};
-
-const countRepeatedCharAfterIndex = (
-  value: string,
-  startIndex: number,
-  char: string,
-) => {
-  let count = 0;
-  let index = startIndex;
-  while (index < value.length && value[index] === char) {
-    count += 1;
-    index += 1;
-  }
-  return count;
-};
-
-const resolveRepeatedMarkerRunsAroundSelection = (
-  value: string,
-  range: InlineFormattingToolbarRange,
-  marker: string,
-) => {
-  const normalized = normalizeInlineFormattingRange(value, range);
-  return {
-    left: countRepeatedCharBeforeIndex(value, normalized.start, marker),
-    right: countRepeatedCharAfterIndex(value, normalized.end, marker),
-  };
-};
-
-const toggleInlineFormattingWrapper = (
-  value: string,
-  range: InlineFormattingToolbarRange,
-  wrapper: InlineFormattingWrapper,
-): InlineFormattingToggleResult => {
-  const normalized = normalizeInlineFormattingRange(value, range);
-  if (normalized.start === normalized.end) {
-    return { value, selection: normalized, changed: false };
-  }
-
-  // Star markers need dedicated handling so bold/italic combinations
-  // are stable: ** + italic => *** and toggles remove only their own layer.
-  if (wrapper.open === "*" && wrapper.close === "*" && wrapper.open.length <= 2) {
-    const starRuns = resolveRepeatedMarkerRunsAroundSelection(value, normalized, "*");
-    if (wrapper.open.length === 1) {
-      const isItalicActive = starRuns.left >= 1 &&
-        starRuns.right >= 1 &&
-        starRuns.left % 2 === 1 &&
-        starRuns.right % 2 === 1;
-      if (isItalicActive) {
-        const nextValue = `${value.slice(0, normalized.start - 1)}${value.slice(normalized.start, normalized.end)}${
-          value.slice(normalized.end + 1)
-        }`;
-        return {
-          value: nextValue,
-          selection: {
-            start: normalized.start - 1,
-            end: normalized.end - 1,
-          },
-          changed: nextValue !== value,
-        };
-      }
-      const nextValue = `${value.slice(0, normalized.start)}*${value.slice(normalized.start, normalized.end)}*${
-        value.slice(normalized.end)
-      }`;
-      return {
-        value: nextValue,
-        selection: {
-          start: normalized.start + 1,
-          end: normalized.end + 1,
-        },
-        changed: nextValue !== value,
-      };
-    }
-    const isBoldActive = starRuns.left >= 2 && starRuns.right >= 2;
-    if (isBoldActive) {
-      const nextValue = `${value.slice(0, normalized.start - 2)}${value.slice(normalized.start, normalized.end)}${
-        value.slice(normalized.end + 2)
-      }`;
-      return {
-        value: nextValue,
-        selection: {
-          start: normalized.start - 2,
-          end: normalized.end - 2,
-        },
-        changed: nextValue !== value,
-      };
-    }
-    const nextValue = `${value.slice(0, normalized.start)}**${value.slice(normalized.start, normalized.end)}**${
-      value.slice(normalized.end)
-    }`;
-    return {
-      value: nextValue,
-      selection: {
-        start: normalized.start + 2,
-        end: normalized.end + 2,
-      },
-      changed: nextValue !== value,
-    };
-  }
-
-  const selected = value.slice(normalized.start, normalized.end);
-  const selectedHasWrapper = selected.length >= wrapper.open.length + wrapper.close.length &&
-    selected.startsWith(wrapper.open) &&
-    selected.endsWith(wrapper.close);
-  if (selectedHasWrapper) {
-    const nextSelection = {
-      start: normalized.start,
-      end: normalized.end - wrapper.open.length - wrapper.close.length,
-    };
-    const nextValue = `${value.slice(0, normalized.start)}${
-      selected.slice(wrapper.open.length, selected.length - wrapper.close.length)
-    }${value.slice(normalized.end)}`;
-    return {
-      value: nextValue,
-      selection: nextSelection,
-      changed: nextValue !== value,
-    };
-  }
-
-  const hasWrapperAroundSelection = normalized.start >= wrapper.open.length &&
-    normalized.end + wrapper.close.length <= value.length &&
-    value.slice(normalized.start - wrapper.open.length, normalized.start) === wrapper.open &&
-    value.slice(normalized.end, normalized.end + wrapper.close.length) === wrapper.close;
-  if (hasWrapperAroundSelection) {
-    const nextValue = `${value.slice(0, normalized.start - wrapper.open.length)}${selected}${
-      value.slice(normalized.end + wrapper.close.length)
-    }`;
-    const nextSelection = {
-      start: normalized.start - wrapper.open.length,
-      end: normalized.end - wrapper.open.length,
-    };
-    return {
-      value: nextValue,
-      selection: nextSelection,
-      changed: nextValue !== value,
-    };
-  }
-
-  const nextValue = `${value.slice(0, normalized.start)}${wrapper.open}${selected}${wrapper.close}${
-    value.slice(normalized.end)
-  }`;
-  return {
-    value: nextValue,
-    selection: {
-      start: normalized.start + wrapper.open.length,
-      end: normalized.end + wrapper.open.length,
-    },
-    changed: nextValue !== value,
-  };
-};
-
-type InlineMarkdownLinkMatch = {
-  start: number;
-  end: number;
-  label: string;
-  url: string;
-};
-
-const findInlineMarkdownLinkAtRange = (
-  value: string,
-  range: InlineFormattingToolbarRange,
-): InlineMarkdownLinkMatch | null => {
-  const normalized = normalizeInlineFormattingRange(value, range);
-  inlineMarkdownLinkPattern.lastIndex = 0;
-  let match = inlineMarkdownLinkPattern.exec(value);
-  while (match) {
-    const start = match.index;
-    const end = start + (match[0]?.length ?? 0);
-    if (start <= normalized.start && end >= normalized.end) {
-      return {
-        start,
-        end,
-        label: match[1] ?? "",
-        url: match[2] ?? "",
-      };
-    }
-    if (start > normalized.end) {
-      break;
-    }
-    match = inlineMarkdownLinkPattern.exec(value);
-  }
-  return null;
-};
-
-const applyInlineMarkdownLink = (
-  value: string,
-  range: InlineFormattingToolbarRange,
-  rawUrl: string,
-): InlineFormattingToggleResult => {
-  const normalized = normalizeInlineFormattingRange(value, range);
-  const url = rawUrl.trim();
-  const existingLink = findInlineMarkdownLinkAtRange(value, normalized);
-
-  if (existingLink) {
-    const replacement = url
-      ? `[${existingLink.label}](${url})`
-      : existingLink.label;
-    const nextValue = `${value.slice(0, existingLink.start)}${replacement}${value.slice(existingLink.end)}`;
-    const labelStart = existingLink.start + (url ? 1 : 0);
-    return {
-      value: nextValue,
-      selection: {
-        start: labelStart,
-        end: labelStart + existingLink.label.length,
-      },
-      changed: nextValue !== value,
-    };
-  }
-
-  if (normalized.start === normalized.end || !url) {
-    return { value, selection: normalized, changed: false };
-  }
-
-  const label = value.slice(normalized.start, normalized.end);
-  const token = `[${label}](${url})`;
-  const nextValue = `${value.slice(0, normalized.start)}${token}${value.slice(normalized.end)}`;
-  return {
-    value: nextValue,
-    selection: {
-      start: normalized.start + 1,
-      end: normalized.start + 1 + label.length,
-    },
-    changed: nextValue !== value,
-  };
-};
-
-const inlineFormattingClearPatterns: ReadonlyArray<readonly [RegExp, string]> = [
-  [/\[([^\]\n]*)\]\(([^)\n]*)\)/g, "$1"],
-  [/(^|[^*])\*\*\*([^*\n]+)\*\*\*(?=[^*]|$)/g, "$1$2"],
-  [/(^|[^*])\*\*([^*\n]+)\*\*(?=[^*]|$)/g, "$1$2"],
-  [/(^|[^*])\*([^*\n]+)\*(?=[^*]|$)/g, "$1$2"],
-  [/(^|[^_])__([^_\n]+)__(?=[^_]|$)/g, "$1$2"],
-  [/(^|[^~])~~([^~\n]+)~~(?=[^~]|$)/g, "$1$2"],
-  [/(^|[^=])==([^=\n]+)==(?=[^=]|$)/g, "$1$2"],
-  [/`([^`\n]+)`/g, "$1"],
-  [/\$([^$\n]+)\$/g, "$1"],
-];
-
-const stripSupportedInlineMarkdownFormatting = (value: string) => {
-  let nextValue = value;
-  let previousValue = "";
-  while (nextValue !== previousValue) {
-    previousValue = nextValue;
-    for (const [pattern, replacement] of inlineFormattingClearPatterns) {
-      nextValue = nextValue.replace(pattern, replacement);
-    }
-  }
-  return nextValue;
-};
-
-const createEmptyInlineFormattingActiveState = (): InlineFormattingToolbarActiveState => ({
-  highlight: false,
-  bold: false,
-  italic: false,
-  underline: false,
-  link: false,
-  strikethrough: false,
-  "inline-code": false,
-  math: false,
-});
-
-const isInlineFormattingWrapperActive = (
-  value: string,
-  range: InlineFormattingToolbarRange,
-  wrapper: InlineFormattingWrapper,
-) => {
-  const normalized = normalizeInlineFormattingRange(value, range);
-  if (normalized.start === normalized.end) {
-    return false;
-  }
-
-  if (wrapper.open === "*" && wrapper.close === "*" && wrapper.open.length <= 2) {
-    const starRuns = resolveRepeatedMarkerRunsAroundSelection(value, normalized, "*");
-    if (wrapper.open.length === 1) {
-      return starRuns.left >= 1 &&
-        starRuns.right >= 1 &&
-        starRuns.left % 2 === 1 &&
-        starRuns.right % 2 === 1;
-    }
-    return starRuns.left >= 2 && starRuns.right >= 2;
-  }
-
-  const selected = value.slice(normalized.start, normalized.end);
-  const selectionContainsWrapper = selected.length >= wrapper.open.length + wrapper.close.length &&
-    selected.startsWith(wrapper.open) &&
-    selected.endsWith(wrapper.close);
-  if (selectionContainsWrapper) {
-    return true;
-  }
-  const hasWrapperAroundSelection = normalized.start >= wrapper.open.length &&
-    normalized.end + wrapper.close.length <= value.length &&
-    value.slice(normalized.start - wrapper.open.length, normalized.start) === wrapper.open &&
-    value.slice(normalized.end, normalized.end + wrapper.close.length) === wrapper.close;
-  return hasWrapperAroundSelection;
-};
-
-const resolveInlineFormattingToolbarActiveState = (
-  value: string,
-  range: InlineFormattingToolbarRange,
-): InlineFormattingToolbarActiveState => {
-  const normalized = normalizeInlineFormattingRange(value, range);
-  if (normalized.start === normalized.end) {
-    return createEmptyInlineFormattingActiveState();
-  }
-  const linkMatch = findInlineMarkdownLinkAtRange(value, normalized);
-  return {
-    highlight: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.highlight),
-    bold: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.bold),
-    italic: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.italic),
-    underline: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.underline),
-    link: Boolean(linkMatch),
-    strikethrough: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.strikethrough),
-    "inline-code": isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS["inline-code"]),
-    math: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.math),
-  };
-};
-
-const resolveInlineFormattingShortcutAction = (
-  event: KeyboardEvent<HTMLElement>,
-): InlineFormattingToolbarAction | "link" | null => {
-  if (!(event.metaKey || event.ctrlKey) || event.altKey) {
-    return null;
-  }
-  const lowerKey = event.key.toLowerCase();
-
-  if (!event.shiftKey && lowerKey === "b") {
-    return "bold";
-  }
-  if (!event.shiftKey && lowerKey === "i") {
-    return "italic";
-  }
-  if (!event.shiftKey && lowerKey === "u") {
-    return "underline";
-  }
-  if (!event.shiftKey && lowerKey === "k") {
-    return "link";
-  }
-  if (!event.shiftKey && lowerKey === "h") {
-    return "highlight";
-  }
-  if (event.shiftKey && (lowerKey === "x" || lowerKey === "s")) {
-    return "strikethrough";
-  }
-  if (!event.shiftKey && (lowerKey === "e" || event.code === "Backquote" || event.key === "`")) {
-    return "inline-code";
-  }
-  if (event.shiftKey && lowerKey === "m") {
-    return "math";
-  }
-  return null;
-};
 
 const clampIndex = (value: number, maxExclusive: number) => {
   if (maxExclusive <= 0) {
@@ -2958,6 +2193,9 @@ const isUnderscoreRuleLikeLine = (line: string) =>
 const isUnsupportedHeadingLine = (line: string) =>
   /^\s{0,3}#{5,6}(?:\s+|$)/.test(line);
 
+const isSupportedHeadingHashOnlyContentLine = (line: string) =>
+  /^\s{0,3}#{2,4}\s+#+\s*$/.test(line);
+
 const encodeHashesAsEntities = (hashes: string) => hashes.split("#").join("&#35;");
 
 const escapeHybridPreviewSpecialLines = (source: string) =>
@@ -2971,6 +2209,13 @@ const escapeHybridPreviewSpecialLines = (source: string) =>
         return line.replace(
           /^(\s{0,3})(#{5,6})/,
           (_match, indent: string, hashes: string) => `${indent}${encodeHashesAsEntities(hashes)}`,
+        );
+      }
+      if (isSupportedHeadingHashOnlyContentLine(line)) {
+        return line.replace(
+          /^(\s{0,3}#{2,4}\s+)(#+)(\s*)$/,
+          (_match, prefix: string, hashes: string, trailingWhitespace: string) =>
+            `${prefix}${encodeHashesAsEntities(hashes)}${trailingWhitespace}`,
         );
       }
       return line;
@@ -3520,21 +2765,21 @@ const normalizeLeadingHeadingSpacing = (
       line: value.split("\n")[0] ?? "",
     };
   const line = lineRange.line;
-  const match = line.match(/^(\s{0,3})(#{1,4})(\S.*)$/);
+  const match = line.match(/^(\s{0,3})(#+)(\S.*)$/);
   if (!match) {
     return null;
   }
   const indent = match[1] ?? "";
   const hashes = match[2] ?? "";
   const remainder = match[3] ?? "";
+  if (hashes.length < 2 || hashes.length > 6) {
+    return null;
+  }
   if (remainder.length === 0) {
     return null;
   }
-  // Single-hash prefixes are used for product directives/tags and must never
-  // be auto-normalized (user explicitly requested no auto-space for "#...").
-  if (hashes.length === 1) {
-    return null;
-  }
+  // Single-hash prefixes (e.g. #card, #tag) are not headings here and must
+  // never be auto-normalized.
   if (/^\d/.test(remainder)) {
     return null;
   }

@@ -3595,6 +3595,175 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("keeps multi-hash heading markers intact when normalizing spacing", () => {
+    const initialMarkdown = "###Titel";
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <div>
+          <div data-testid="markdown-value">{markdown}</div>
+          <MarkdownHybridEditor
+            historyKey="hash-marker-integrity"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        </div>
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const readMarkdown = () =>
+      container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+    const textarea = activateBlockEditor(container, 0);
+    expect(textarea).toBeTruthy();
+
+    act(() => {
+      textarea?.setSelectionRange(3, 3);
+      textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+    });
+
+    expect(readMarkdown()).toBe("### Titel");
+    expect(readMarkdown().includes("## #")).toBe(false);
+    cleanup();
+  });
+
+  it("escapes hash-only heading content in hybrid preview for supported heading levels", () => {
+    const previewValues: string[] = [];
+    const { cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="preview-heading-hash-only-content"
+        markdown={["## #", "### #", "#### #"].join("\n")}
+        mode="edit"
+        onChange={() => undefined}
+        renderPreview={(value) => {
+          previewValues.push(value);
+          return <div>{value}</div>;
+        }}
+      />,
+    );
+
+    expect(previewValues).toContain("## &#35;");
+    expect(previewValues).toContain("### &#35;");
+    expect(previewValues).toContain("#### &#35;");
+    cleanup();
+  });
+
+  it("does not escape non-hash-only heading content in hybrid preview", () => {
+    const previewValues: string[] = [];
+    const { cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="preview-heading-hash-content-guard"
+        markdown="## # Titel"
+        mode="edit"
+        onChange={() => undefined}
+        renderPreview={(value) => {
+          previewValues.push(value);
+          return <div>{value}</div>;
+        }}
+      />,
+    );
+
+    expect(previewValues).toContain("## # Titel");
+    expect(previewValues).not.toContain("## &#35; Titel");
+    cleanup();
+  });
+
+  it("keeps ## # unchanged in persisted markdown when committing from editor", () => {
+    const initialMarkdown = "## #";
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <div>
+          <div data-testid="markdown-value">{markdown}</div>
+          <MarkdownHybridEditor
+            historyKey="heading-hash-only-preview-only"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        </div>
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const readMarkdown = () =>
+      container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+    const textarea = activateBlockEditor(container, 0);
+    expect(textarea).toBeTruthy();
+
+    act(() => {
+      textarea?.setSelectionRange(4, 4);
+      textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+    });
+
+    expect(readMarkdown()).toBe("## #");
+    cleanup();
+  });
+
+  it("preserves existing unsupported heading marker escaping for level 5 and 6", () => {
+    const previewValues: string[] = [];
+    const { cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="preview-unsupported-heading-escape-guard"
+        markdown={["##### Heading", "###### Heading"].join("\n")}
+        mode="edit"
+        onChange={() => undefined}
+        renderPreview={(value) => {
+          previewValues.push(value);
+          return <div>{value}</div>;
+        }}
+      />,
+    );
+
+    expect(
+      previewValues.some((value) => value.includes("&#35;&#35;&#35;&#35;&#35; Heading")),
+    ).toBe(true);
+    expect(
+      previewValues.some((value) => value.includes("&#35;&#35;&#35;&#35;&#35;&#35; Heading")),
+    ).toBe(true);
+    cleanup();
+  });
+
+  it("does not split overlong hash marker runs when normalizing spacing", () => {
+    const initialMarkdown = "#######Titel";
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <div>
+          <div data-testid="markdown-value">{markdown}</div>
+          <MarkdownHybridEditor
+            historyKey="hash-marker-overlong-no-split"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        </div>
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const readMarkdown = () =>
+      container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+    const textarea = activateBlockEditor(container, 0);
+    expect(textarea).toBeTruthy();
+
+    act(() => {
+      textarea?.setSelectionRange(7, 7);
+      textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+    });
+
+    expect(readMarkdown()).toBe("#######Titel");
+    expect(readMarkdown().includes("###### #")).toBe(false);
+    cleanup();
+  });
+
   it("keeps Enter inside a paragraph local until blur commits the draft", () => {
     withImmediateRaf(() => {
       const initialMarkdown = "Alpha Beta";
@@ -5200,6 +5369,126 @@ describe("MarkdownHybridEditor", () => {
 
     expect(latestMarkdown).toContain("| Renamed | B |");
     cleanup();
+  });
+
+  it("shows inline toolbar in table cells and applies bold via toolbar and Ctrl+B", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        let latestMarkdown = [
+          "| A | B |",
+          "| --- | --- |",
+          "| one | two |",
+        ].join("\n");
+
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState(latestMarkdown);
+          return (
+            <MarkdownHybridEditor
+              historyKey="table-inline-toolbar-bold"
+              markdown={markdown}
+              mode="edit"
+              onChange={(value) => {
+                latestMarkdown = value;
+                setMarkdown(value);
+              }}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        let bodyCells = Array.from(
+          container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+        );
+        expect(bodyCells.length).toBeGreaterThanOrEqual(2);
+
+        dispatchMouseDown(bodyCells[0] ?? null);
+        let textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea).toBeTruthy();
+        setTextareaSelection(textarea, 0, 3);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeTruthy();
+        const boldButton = document.body.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
+        );
+        dispatchClick(boldButton);
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea?.value).toBe("**one**");
+        act(() => {
+          textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        });
+        expect(latestMarkdown).toContain("| **one** | two |");
+
+        bodyCells = Array.from(
+          container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+        );
+        dispatchMouseDown(bodyCells[1] ?? null);
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea).toBeTruthy();
+        setTextareaSelection(textarea, 0, 3);
+        dispatchKeyDown(textarea, "b", { ctrlKey: true });
+        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(textarea?.value).toBe("**two**");
+        act(() => {
+          textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        });
+        expect(latestMarkdown).toContain("| **one** | **two** |");
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  it("does not show table inline toolbar for empty selection or in table code view", () => {
+    withImmediateRaf(() => {
+      vi.useFakeTimers();
+      try {
+        const { container, cleanup } = render(
+          createElement(MarkdownHybridEditor, {
+            historyKey: "table-inline-toolbar-visibility-guards",
+            markdown: ["| A | B |", "| --- | --- |", "| one | two |"].join("\n"),
+            mode: "edit",
+            onChange: () => undefined,
+            renderPreview: (value: string) => <div>{value}</div>,
+          }),
+        );
+
+        const firstBodyCell = container.querySelector<HTMLElement>(
+          ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+        );
+        dispatchMouseDown(firstBodyCell);
+        const cellEditor = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        expect(cellEditor).toBeTruthy();
+
+        setTextareaSelection(cellEditor, 0, 0);
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeNull();
+
+        const toggle = container.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle");
+        dispatchClick(toggle);
+        const codeEditor = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-code-editor");
+        expect(codeEditor).toBeTruthy();
+        setTextareaSelection(codeEditor, 0, Math.min(5, codeEditor?.value.length ?? 0));
+        act(() => {
+          window.dispatchEvent(new Event("pointerup"));
+          vi.advanceTimersByTime(350);
+        });
+        expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeNull();
+
+        cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it("routes valid pipe tables inside and outside #card through the same table block renderer", () => {
