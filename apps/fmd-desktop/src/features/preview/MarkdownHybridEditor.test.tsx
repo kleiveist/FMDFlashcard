@@ -1761,8 +1761,12 @@ describe("MarkdownHybridEditor", () => {
         expect(findMenuItemButtonByLabel(container, "Card")).toBeTruthy();
         dispatchClick(findMenuItemButtonByLabel(container, "Card"));
 
+        const expectedCardVariant = buildAdvancedInsertTemplateVariant(template, "card", {
+          sequenceNumber: 1,
+        });
         const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-        expect(markdownValue).toBe(template.payload);
+        expect(markdownValue).toBe(expectedCardVariant.payload);
+        expect(markdownValue).toContain("1) CARD HEADING");
 
         const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
         expect(textarea).toBeTruthy();
@@ -1780,7 +1784,7 @@ describe("MarkdownHybridEditor", () => {
     withImmediateRaf(() => {
       for (const template of ADVANCED_INSERT_TEMPLATE_CATALOG) {
         const expectedTaskVariant = buildAdvancedInsertTemplateVariant(template, "task", {
-          taskNumber: 1,
+          sequenceNumber: 1,
         });
 
         const Harness = () => {
@@ -1806,7 +1810,13 @@ describe("MarkdownHybridEditor", () => {
         dispatchClick(findMenuItemButtonByLabel(container, "Task"));
 
         const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-        expect(markdownValue).toBe(expectedTaskVariant.payload);
+        expect(markdownValue).toContain("#exam");
+        expect(markdownValue).toContain(expectedTaskVariant.payload);
+        expect(markdownValue).toContain("#endexam");
+        expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
+        expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
+        expect(markdownValue.startsWith("#exam\n")).toBe(true);
+        expect(markdownValue).not.toContain("----------------------------\n#exam");
 
         const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
         expect(textarea).toBeTruthy();
@@ -1832,7 +1842,7 @@ describe("MarkdownHybridEditor", () => {
       const expectedTaskVariant = buildAdvancedInsertTemplateVariant(
         ADVANCED_INSERT_TEMPLATE_CATALOG.find((template) => template.mode === "m2")!,
         "task",
-        { taskNumber: 2 },
+        { sequenceNumber: 2 },
       );
 
       const Harness = () => {
@@ -1867,6 +1877,202 @@ describe("MarkdownHybridEditor", () => {
       expect(markdownValue).toContain(expectedTaskVariant.payload);
       expect(markdownValue.match(/^2\) TASK HEADING$/m)).toHaveLength(1);
       expect(markdownValue).toContain("#endexam");
+      expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
+      expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("wraps first inserted task in existing markdown and keeps insertion order between surrounding content", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "Intro paragraph",
+        "",
+        "Footer paragraph",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-task-template-first-wrap-existing-content"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const paragraphInsertButton = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-kind='paragraph'] .markdown-hybrid-block-insert-button",
+      );
+      expect(paragraphInsertButton).toBeTruthy();
+
+      dispatchClick(paragraphInsertButton);
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue.startsWith("#exam\n")).toBe(true);
+      const introIndex = markdownValue.indexOf("Intro paragraph");
+      const taskHeadingIndex = markdownValue.indexOf("1) TASK HEADING");
+      const footerIndex = markdownValue.indexOf("Footer paragraph");
+      expect(introIndex).toBeGreaterThanOrEqual(0);
+      expect(taskHeadingIndex).toBeGreaterThan(introIndex);
+      expect(footerIndex).toBeGreaterThan(taskHeadingIndex);
+      expect(markdownValue.endsWith("\n#endexam")).toBe(true);
+
+      cleanup();
+    });
+  });
+
+  it("shares sequence numbering between inserted tasks and cards", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-template-shared-sequence-task-card"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Multiple Choice (1)"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+
+      const hrInsertButton = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-kind='hr'] .markdown-hybrid-block-insert-button",
+      );
+      expect(hrInsertButton).toBeTruthy();
+      dispatchClick(hrInsertButton);
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Multiple Choice (1)"));
+      expect(findMenuItemButtonByLabel(container, "Card")?.textContent).toContain("2)");
+      dispatchClick(findMenuItemButtonByLabel(container, "Card"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue.match(/^1\) TASK HEADING$/m)).toHaveLength(1);
+      expect(markdownValue.match(/^2\) CARD HEADING$/m)).toHaveLength(1);
+      expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
+      expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
+
+      cleanup();
+    });
+  });
+
+  it("uses one global sequence across exam tasks and cards inside/outside exam blocks", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#exam",
+        "#card",
+        "1) CARD HEADING",
+        "QUESTION TEXT",
+        "a) OPTION A",
+        "b) OPTION B",
+        "c) OPTION C",
+        "d) OPTION D",
+        "-a",
+        "-c",
+        "#endcard",
+        "",
+        "#card",
+        "2) CARD HEADING",
+        "QUESTION TEXT",
+        "a) OPTION A",
+        "b) OPTION B",
+        "c) OPTION C",
+        "-a",
+        "#endcard",
+        "",
+        "1) TASK HEADING",
+        "TASK DESCRIPTION WITH %ANSWER1% AND %ANSWER2%",
+        "",
+        "TOKEN BANK \"TOKENA\", \"TOKENB\", \"TOKENC\"",
+        "",
+        "---",
+        "",
+        "#endexam",
+        "",
+        "#card",
+        "3) CARD HEADING",
+        "QUESTION TEXT",
+        "a) OPTION A",
+        "b) OPTION B",
+        "c) OPTION C",
+        "-a",
+        "#endcard",
+      ].join("\n");
+      const expectedTaskVariant = buildAdvancedInsertTemplateVariant(
+        ADVANCED_INSERT_TEMPLATE_CATALOG.find((template) => template.mode === "qa")!,
+        "task",
+        { sequenceNumber: 4 },
+      );
+      const expectedCardVariant = buildAdvancedInsertTemplateVariant(
+        ADVANCED_INSERT_TEMPLATE_CATALOG.find((template) => template.mode === "m1")!,
+        "card",
+        { sequenceNumber: 5 },
+      );
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-template-global-sequence-across-exam-and-cards"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const hrInsertButton = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-kind='hr'] .markdown-hybrid-block-insert-button",
+      );
+      expect(hrInsertButton).toBeTruthy();
+      dispatchClick(hrInsertButton);
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
+      expect(findMenuItemButtonByLabel(container, "Task")?.textContent).toContain("4)");
+      dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+
+      const cardInsertButtons = container.querySelectorAll<HTMLButtonElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-kind='card-block'] .markdown-hybrid-block-insert-button",
+      );
+      const lastCardInsertButton = cardInsertButtons[cardInsertButtons.length - 1];
+      expect(lastCardInsertButton).toBeTruthy();
+      dispatchClick(lastCardInsertButton ?? null);
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Multiple Choice (1)"));
+      expect(findMenuItemButtonByLabel(container, "Card")?.textContent).toContain("5)");
+      dispatchClick(findMenuItemButtonByLabel(container, "Card"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toContain(expectedTaskVariant.payload);
+      expect(markdownValue).toContain(expectedCardVariant.payload);
+      expect(markdownValue.match(/^4\) TASK HEADING$/m)).toHaveLength(1);
+      expect(markdownValue.match(/^5\) CARD HEADING$/m)).toHaveLength(1);
 
       cleanup();
     });

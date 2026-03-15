@@ -203,18 +203,24 @@ export const getAdvancedInsertTemplateById = (id: string) =>
 export const buildAdvancedInsertTemplateVariant = (
   template: AdvancedInsertTemplateDefinition,
   variant: AdvancedInsertTemplateVariant,
-  options?: { taskNumber?: number },
+  options?: { sequenceNumber?: number },
 ): ResolvedAdvancedInsertTemplate => {
+  const sequenceNumber = Math.max(1, options?.sequenceNumber ?? 1);
+
   if (variant === "card") {
+    const cardLines = template.payload.split("\n");
+    const cardStartIndex = cardLines.findIndex((line) => line.trim().toLowerCase() === "#card");
+    if (cardStartIndex >= 0) {
+      cardLines.splice(cardStartIndex + 1, 0, `${sequenceNumber}) CARD HEADING`);
+    }
     return {
-      payload: template.payload,
+      payload: cardLines.join("\n"),
       firstPlaceholder: template.firstPlaceholder,
     };
   }
 
-  const taskNumber = Math.max(1, options?.taskNumber ?? 1);
   return {
-    payload: template.taskPayload.split(ADVANCED_TASK_NUMBER_PLACEHOLDER).join(String(taskNumber)),
+    payload: template.taskPayload.split(ADVANCED_TASK_NUMBER_PLACEHOLDER).join(String(sequenceNumber)),
     firstPlaceholder: template.taskFirstPlaceholder,
   };
 };

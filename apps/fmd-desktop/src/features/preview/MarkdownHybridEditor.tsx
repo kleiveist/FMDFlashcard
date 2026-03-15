@@ -2569,105 +2569,17 @@ const resolveInsertMenuContextForSlot = (
   };
 };
 
-const examTaskLinePattern = /^\s*(\d+)\)\s*(.*)$/;
+const sequenceNumberLinePattern = /^\s*(\d+)\)\s*(.*)$/;
 const codeFenceBoundaryPattern = /^\s*(```|~~~)/;
 
-const buildLineStarts = (markdown: string, lines: string[]) => {
-  const starts: number[] = [];
-  let offset = 0;
-  for (let i = 0; i < lines.length; i += 1) {
-    starts.push(offset);
-    offset += (lines[i] ?? "").length;
-    if (offset < markdown.length || i < lines.length - 1) {
-      offset += 1;
-    }
-  }
-  return starts;
-};
-
-const findLineIndexAtOffset = (lineStarts: number[], markdownLength: number, offset: number) => {
-  const safeOffset = Math.max(0, Math.min(offset, markdownLength));
-  for (let i = lineStarts.length - 1; i >= 0; i -= 1) {
-    if ((lineStarts[i] ?? 0) <= safeOffset) {
-      return i;
-    }
-  }
-  return 0;
-};
-
-const resolveNextExamTaskNumberForSlot = (
-  markdown: string,
-  blocks: MarkdownBlock[],
-  atIndex: number,
-) => {
-  if (markdown.length === 0) {
-    return 1;
-  }
-
-  const lines = markdown.split("\n");
-  const lineStarts = buildLineStarts(markdown, lines);
-  const normalizedAtIndex = Math.max(0, Math.min(atIndex, blocks.length));
-  const insertionOffset = normalizedAtIndex >= blocks.length
-    ? markdown.length
-    : (blocks[normalizedAtIndex]?.startOffset ?? markdown.length);
-  const insertionLineIndex = findLineIndexAtOffset(lineStarts, markdown.length, insertionOffset);
-
-  let containingExamRange: { start: number; end: number } | null = null;
+const collectBalancedExamRanges = (lines: string[]) => {
+  const ranges: Array<{ start: number; end: number }> = [];
   let openExamDepth = 0;
   let currentExamStartLine: number | null = null;
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] ?? "";
-    if (isStandaloneDirectiveLine(line, "#exam")) {
-      if (openExamDepth === 0) {
-        currentExamStartLine = index;
-      }
-      openExamDepth += 1;
-      continue;
-    }
-    if (!isStandaloneDirectiveLine(line, "#endexam")) {
-      continue;
-    }
-    if (openExamDepth === 0) {
-      continue;
-    }
-    const completedStartLine = currentExamStartLine;
-    openExamDepth = Math.max(0, openExamDepth - 1);
-    if (openExamDepth === 0) {
-      if (
-        completedStartLine !== null &&
-        insertionLineIndex >= completedStartLine &&
-        insertionLineIndex <= index
-      ) {
-        containingExamRange = {
-          start: completedStartLine,
-          end: index,
-        };
-      }
-      currentExamStartLine = null;
-    }
-  }
-
-  if (
-    containingExamRange === null &&
-    openExamDepth > 0 &&
-    currentExamStartLine !== null &&
-    insertionLineIndex >= currentExamStartLine
-  ) {
-    containingExamRange = {
-      start: currentExamStartLine,
-      end: lines.length - 1,
-    };
-  }
-
-  const scanStart = containingExamRange ? containingExamRange.start + 1 : 0;
-  const scanEnd = containingExamRange ? Math.max(scanStart - 1, containingExamRange.end - 1) : lines.length - 1;
-
-  let maxTaskNumber = 0;
   let inFence = false;
   let fenceToken = "";
 
-  for (let index = scanStart; index <= scanEnd; index += 1) {
+  for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? "";
     const trimmed = line.trimStart();
     const fenceMatch = trimmed.match(codeFenceBoundaryPattern);
@@ -2685,17 +2597,111 @@ const resolveNextExamTaskNumberForSlot = (
     if (inFence) {
       continue;
     }
-    const match = line.match(examTaskLinePattern);
+    if (isStandaloneDirectiveLine(line, "#exam")) {
+      if (openExamDepth === 0) {
+        currentExamStartLine = index;
+      }
+      openExamDepth += 1;
+      continue;
+    }
+    if (!isStandaloneDirectiveLine(line, "#endexam")) {
+      continue;
+    }
+    if (openExamDepth === 0) {
+      continue;
+    }
+    openExamDepth = Math.max(0, openExamDepth - 1);
+    if (openExamDepth === 0 && currentExamStartLine !== null) {
+      ranges.push({
+        start: currentExamStartLine,
+        end: index,
+      });
+      currentExamStartLine = null;
+    }
+  }
+
+  return ranges;
+};
+
+const hasBalancedExamWrapper = (markdown: string) => {
+  if (!markdown) {
+    return false;
+  }
+  const lines = markdown.split("\n");
+  return collectBalancedExamRanges(lines).length > 0;
+};
+
+const withExamWrapper = (markdown: string) => {
+  const withoutLeadingBlankLines = markdown.replace(/^\n+/, "");
+  const trimmedBody = withoutLeadingBlankLines.replace(/\n+$/, "");
+  if (!trimmedBody) {
+    return "#exam\n#endexam";
+  }
+  return `#exam\n${trimmedBody}\n#endexam`;
+};
+
+const resolveNextGlobalSequenceNumber = (markdown: string) => {
+  if (markdown.length === 0) {
+    return 1;
+  }
+
+  const lines = markdown.split("\n");
+  let maxSequenceNumber = 0;
+  let inFence = false;
+  let fenceToken = "";
+  let openExamDepth = 0;
+  let openCardDepth = 0;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(codeFenceBoundaryPattern);
+    if (fenceMatch) {
+      const token = fenceMatch[1] ?? "";
+      if (inFence && token === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = token;
+      }
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#card")) {
+      openCardDepth += 1;
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#endcard")) {
+      openCardDepth = Math.max(0, openCardDepth - 1);
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#exam")) {
+      openExamDepth += 1;
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#endexam")) {
+      openExamDepth = Math.max(0, openExamDepth - 1);
+      continue;
+    }
+    const match = line.match(sequenceNumberLinePattern);
     if (!match) {
+      continue;
+    }
+    const insideCard = openCardDepth > 0;
+    const insideTaskScope = openExamDepth > 0 && openCardDepth === 0;
+    if (!insideCard && !insideTaskScope) {
       continue;
     }
     const parsedNumber = Number.parseInt(match[1] ?? "", 10);
     if (Number.isFinite(parsedNumber)) {
-      maxTaskNumber = Math.max(maxTaskNumber, parsedNumber);
+      maxSequenceNumber = Math.max(maxSequenceNumber, parsedNumber);
     }
   }
 
-  return maxTaskNumber + 1;
+  return maxSequenceNumber + 1;
 };
 
 type StableRenderKeyToken = {
@@ -6040,15 +6046,19 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           start: number;
           end: number;
         };
+        transformNextMarkdown?: (value: string) => string;
       },
     ) => {
       if (disabled) {
         return false;
       }
       const targetIndex = insertAbove ? blockIndex : blockIndex + 1;
-      const nextMarkdown = applyEditorMarkdownNormalization(
+      const insertedMarkdown = applyEditorMarkdownNormalization(
         withInsertedRawBlock(blocks, targetIndex, insertedRaw),
       );
+      const nextMarkdown = options?.transformNextMarkdown
+        ? applyEditorMarkdownNormalization(options.transformNextMarkdown(insertedMarkdown))
+        : insertedMarkdown;
       if (nextMarkdown === markdown) {
         return false;
       }
@@ -6672,19 +6682,17 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (!template) {
         return;
       }
-      const targetIndex = insertMenuState.insertAbove
-        ? insertMenuState.blockIndex
-        : insertMenuState.blockIndex + 1;
+      const sequenceNumber = resolveNextGlobalSequenceNumber(markdown);
+      const shouldWrapWithExam = variant === "task" && !hasBalancedExamWrapper(markdown);
       const resolved = buildAdvancedInsertTemplateVariant(template, variant, {
-        taskNumber: variant === "task"
-          ? resolveNextExamTaskNumberForSlot(markdown, blocks, targetIndex)
-          : undefined,
+        sequenceNumber,
       });
       insertBlockRelativeTo(insertMenuState.blockIndex, resolved.payload, insertMenuState.insertAbove, {
         firstPlaceholder: resolved.firstPlaceholder,
+        transformNextMarkdown: shouldWrapWithExam ? withExamWrapper : undefined,
       });
     },
-    [blocks, insertBlockRelativeTo, insertMenuState, markdown],
+    [insertBlockRelativeTo, insertMenuState, markdown],
   );
 
   const handleHrEnterZoneMouseDown = useCallback(
@@ -8599,12 +8607,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const activeAdvancedInsertTemplate = insertMenuState?.advancedTemplateId
     ? (getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId) ?? null)
     : null;
-  const activeAdvancedTaskNumberPreview = insertMenuState?.phase === "advanced-variant" && insertMenuState
-    ? resolveNextExamTaskNumberForSlot(
-      markdown,
-      blocks,
-      insertMenuState.insertAbove ? insertMenuState.blockIndex : insertMenuState.blockIndex + 1,
-    )
+  const activeAdvancedSequenceNumberPreview = insertMenuState?.phase === "advanced-variant" && insertMenuState
+    ? resolveNextGlobalSequenceNumber(markdown)
     : null;
 
   const handleInsertMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
@@ -8771,8 +8775,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
               >
                 {renderInsertMenuRowContent({
                   label: option.label,
-                  description: option.id === "task" && activeAdvancedTaskNumberPreview !== null
-                    ? `Insert as numbered task ${activeAdvancedTaskNumberPreview})`
+                  description: activeAdvancedSequenceNumberPreview !== null
+                    ? option.id === "task"
+                      ? `Insert as numbered task ${activeAdvancedSequenceNumberPreview})`
+                      : `Insert as #card block ${activeAdvancedSequenceNumberPreview})`
                     : option.description,
                   icon: option.id === "card"
                     ? activeAdvancedInsertTemplate.icon

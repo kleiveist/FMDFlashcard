@@ -62,12 +62,15 @@ describe("insertTemplates", () => {
 
   it("builds card and task variants for advanced templates", () => {
     ADVANCED_INSERT_TEMPLATE_CATALOG.forEach((template) => {
-      const cardVariant = buildAdvancedInsertTemplateVariant(template, "card");
-      expect(cardVariant.payload).toBe(template.payload);
+      const cardVariant = buildAdvancedInsertTemplateVariant(template, "card", {
+        sequenceNumber: 4,
+      });
+      expect(cardVariant.payload).toContain("#card\n4) CARD HEADING");
+      expect(cardVariant.payload).toContain("#endcard");
       expect(cardVariant.firstPlaceholder).toBe(template.firstPlaceholder);
 
       const taskVariant = buildAdvancedInsertTemplateVariant(template, "task", {
-        taskNumber: 4,
+        sequenceNumber: 4,
       });
       expect(taskVariant.payload).toContain("4) TASK HEADING");
       expect(taskVariant.payload).toContain("---");
