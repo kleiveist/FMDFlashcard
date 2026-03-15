@@ -81,6 +81,7 @@ import {
   SHARED_TABLE_WRAP_CLASS,
 } from "../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode, tokenizeMarkdownMath } from "../lib/markdownMath";
+import { escapeDotOrderedListMarkers } from "../lib/markdownOrderedListMarkers";
 import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
 import { type LoadState } from "../lib/types";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
@@ -1100,7 +1101,7 @@ const remarkPreserveSoftBreaks = () => (tree: MarkdownAstNode) => {
 };
 
 const resolveOrderedListDelimiterFromLine = (line: string) => {
-  const markerMatch = line.match(/^\s*\d+([.)])(?:\s|$)/);
+  const markerMatch = line.match(/^\s*\d+(\))(?:\s|$)/);
   return markerMatch?.[1] ?? null;
 };
 
@@ -2481,7 +2482,7 @@ const serializeMarkdownList = (
     if (!isOrdered) {
       return "- ";
     }
-    const delimiter = element.getAttribute("data-md-ordered-delimiter") === ")" ? ")" : ".";
+    const delimiter = ")";
     return `${index + itemIndex}${delimiter} `;
   };
 
@@ -2497,11 +2498,10 @@ const serializeMarkdownList = (
       const state = taskState.toLowerCase() === "x" ? "x" : " ";
       return `${taskBullet} [${state}] `;
     }
-    const orderedMatch = trimmed.match(/^(\d+)([.)])$/);
+    const orderedMatch = trimmed.match(/^(\d+)(\))$/);
     if (orderedMatch) {
       const number = orderedMatch[1] ?? "1";
-      const delimiter = orderedMatch[2] ?? ".";
-      return `${number}${delimiter} `;
+      return `${number}) `;
     }
     if (/^[-+*]$/.test(trimmed)) {
       return `${trimmed} `;
@@ -2629,11 +2629,10 @@ export const buildEditableMarkdownHtml = (
         markers.push(`${bullet} [${state}] `);
         continue;
       }
-      const orderedMatch = line.match(/^\s*(\d+)([.)])(?:\s|$)/);
+      const orderedMatch = line.match(/^\s*(\d+)(\))(?:\s|$)/);
       if (orderedMatch) {
         const number = orderedMatch[1] ?? "1";
-        const delimiter = orderedMatch[2] ?? ".";
-        markers.push(`${number}${delimiter} `);
+        markers.push(`${number}) `);
         continue;
       }
       const unorderedMatch = line.match(/^\s*([-+*])(?:\s|$)/);
@@ -2692,7 +2691,7 @@ export const buildEditableMarkdownHtml = (
   const resolveOrderedMarker = (listItem: HTMLElement) => {
     const parent = listItem.parentElement;
     if (!parent || parent.tagName.toLowerCase() !== "ol") {
-      return "1. ";
+      return "1) ";
     }
     const start = Number.parseInt(parent.getAttribute("start") ?? "1", 10);
     const base = Number.isNaN(start) ? 1 : start;
@@ -2701,7 +2700,7 @@ export const buildEditableMarkdownHtml = (
     );
     const itemIndex = siblings.indexOf(listItem);
     const resolvedIndex = itemIndex < 0 ? base : base + itemIndex;
-    return `${resolvedIndex}. `;
+    return `${resolvedIndex}) `;
   };
 
   const resolveTaskMarker = (listItem: HTMLElement) => {
@@ -2931,7 +2930,7 @@ const isExamTaskStartLine = (line: string) => {
     trimmed = trimmed.slice(1);
   }
 
-  const numberMatch = trimmed.match(/^(\d+)/);
+  const numberMatch = trimmed.match(/^(\d+)\)(.*)$/);
   if (!numberMatch) {
     return false;
   }
@@ -2946,10 +2945,7 @@ const isExamTaskStartLine = (line: string) => {
     return false;
   }
 
-  let remainder = trimmed.slice(numberRaw.length);
-  if (remainder.startsWith(")")) {
-    remainder = remainder.slice(1);
-  }
+  let remainder = numberMatch[2] ?? "";
   if (remainder.startsWith("**")) {
     remainder = remainder.slice(2);
   }
@@ -7085,7 +7081,9 @@ export const PreviewPanel = ({
 
   const renderHybridMarkdownPreview = useCallback(
     (sourceMarkdown: string) => {
-      const previewMarkdown = normalizeInlineFormattingForPreview(sourceMarkdown);
+      const previewMarkdown = normalizeInlineFormattingForPreview(
+        escapeDotOrderedListMarkers(sourceMarkdown),
+      );
       const mediaPreview = buildMarkdownMediaPreviewSource(
         previewMarkdown,
         "preview-panel-hybrid",
@@ -7266,9 +7264,12 @@ export const PreviewPanel = ({
     : markdownViewEditEnabled
       ? normalizedMarkdownSource
       : applyInteractionSpacing(normalizedMarkdownSource);
-  const renderedPreviewWithInlineFormatting = rawPreview
+  const renderedPreviewWithoutDotOrderedMarkers = rawPreview
     ? renderedPreview
-    : normalizeInlineFormattingForPreview(renderedPreview);
+    : escapeDotOrderedListMarkers(renderedPreview);
+  const renderedPreviewWithInlineFormatting = rawPreview
+    ? renderedPreviewWithoutDotOrderedMarkers
+    : normalizeInlineFormattingForPreview(renderedPreviewWithoutDotOrderedMarkers);
   const renderedPreviewWithMedia = useMemo(
     () => {
       const mediaPreview = buildMarkdownMediaPreviewSource(

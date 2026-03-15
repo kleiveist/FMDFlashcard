@@ -244,7 +244,7 @@ export const ContentMode = ({
           ) : null}
         </header>
         <div className="panel-body">
-          <ol className="content-task-list">
+          <ul className="content-task-list">
             {orderedTasks.map((task, index) => {
               const taskValidationEntry = getTaskValidation(validation, task.id);
               const isActive = task.id === activeTaskId;
@@ -257,14 +257,14 @@ export const ContentMode = ({
                     onClick={() => handleTaskSelect(task.id)}
                   >
                     <span className={`status-dot ${isValid ? "valid" : "invalid"}`} />
-                    <span className="task-label">Task {index + 1}</span>
+                    <span className="task-label">{index + 1})</span>
                     <span className="task-title">{task.title.trim() || "Untitled"}</span>
                     <span className="card-count">{task.cards.length} card(s)</span>
                   </button>
                 </li>
               );
             })}
-          </ol>
+          </ul>
         </div>
       </aside>
 

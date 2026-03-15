@@ -527,10 +527,10 @@ export const ExamCanvas = ({
     <div className="exam-canvas-section">
       {orderedTasks.length === 0 ? (
         <div className="exam-canvas-empty">
-          <p>Drop a card type here to create Task 1.</p>
+          <p>Drop a card type here to create task 1).</p>
         </div>
       ) : (
-        <ol className="exam-task-list">
+        <ul className="exam-task-list">
           {orderedTasks.map((task, index) => {
             const isTaskSelected =
               selection.type === "task" && selection.taskId === task.id;
@@ -574,7 +574,7 @@ export const ExamCanvas = ({
                       onSelectTask(task.id);
                     }}
                   >
-                    <span className="task-number">Task {index + 1}</span>
+                    <span className="task-number">{index + 1})</span>
                     <span className="task-title-text">
                       {task.title.trim() || "Untitled task"}
                     </span>
@@ -673,7 +673,7 @@ export const ExamCanvas = ({
                             className="exam-card-title"
                             onClick={() => onSelectCard(task.id, card.id)}
                           >
-                            <span className="card-index">Card {cardIndex + 1}</span>
+                            <span className="card-index">{cardIndex + 1})</span>
                             <span className="card-type">
                               {serializeCardTypeLabel(card.type)}
                             </span>
@@ -718,7 +718,7 @@ export const ExamCanvas = ({
               </li>
             );
           })}
-        </ol>
+        </ul>
       )}
     </div>
   );

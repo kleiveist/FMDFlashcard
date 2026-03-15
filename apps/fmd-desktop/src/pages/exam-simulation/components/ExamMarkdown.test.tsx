@@ -49,4 +49,16 @@ describe("ExamMarkdown", () => {
     expect(markup).toContain("md-table-cell-image");
     expect(markup).toContain("https://example.com/a.png");
   });
+
+  it("keeps dot-delimited numeric lines as plain text", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamMarkdown, {
+        content: ["1. Alpha", "2. Beta"].join("\n"),
+      }),
+    );
+
+    expect(markup).not.toContain("<ol>");
+    expect(markup).toContain("1. Alpha");
+    expect(markup).toContain("2. Beta");
+  });
 });

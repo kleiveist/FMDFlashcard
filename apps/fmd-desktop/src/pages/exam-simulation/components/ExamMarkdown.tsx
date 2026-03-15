@@ -33,6 +33,7 @@ import {
   SHARED_TABLE_WRAP_CLASS,
 } from "../../../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode } from "../../../lib/markdownMath";
+import { escapeDotOrderedListMarkers } from "../../../lib/markdownOrderedListMarkers";
 import type { VaultPngAsset } from "../../../lib/tree";
 import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "../../../components/flashcards/SvgPreviewBlock";
@@ -300,7 +301,8 @@ export const ExamMarkdown = ({
   vaultPngAssets,
 }: ExamMarkdownProps) => {
   const classes = ["exam-markdown", className].filter(Boolean).join(" ");
-  const mediaPreview = buildMarkdownMediaPreviewSource(content, "exam-markdown");
+  const previewContent = escapeDotOrderedListMarkers(content);
+  const mediaPreview = buildMarkdownMediaPreviewSource(previewContent, "exam-markdown");
 
   return (
     <div className={classes}>

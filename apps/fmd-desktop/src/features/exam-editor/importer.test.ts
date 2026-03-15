@@ -800,6 +800,132 @@ Answer: B
     expect(imported.blueprint.tasks[1]?.cards).toHaveLength(1);
   });
 
+  it("does not create tasks from dot-numbered headings inside exam blocks", () => {
+    const markdown = `
+#exam
+1. First heading
+2. Second heading
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(0);
+  });
+
+  it("treats dot-numbered lines inside a valid task as plain text in a single fallback QA card", () => {
+    const markdown = `
+#exam
+1) Main task
+#card
+## 7. Beispiel: Lisa Wagner
+| Tabelle | Neue Eintraege |
+| --- | --- |
+| Kunden | aktiv |
+
+5. Beziehungen zwischen Tabellen
+### Beziehungstypen
+| Beziehungstyp | Beschreibung | Umsetzung in Tabellen |
+| --- | --- | --- |
+
+a) Sollte nicht als M1 erkannt werden
+-a
+Answer: Gesamtloesung
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(1);
+    const task = imported.blueprint.tasks[0];
+    if (!task) {
+      throw new Error("Expected task after import.");
+    }
+    expect(task.cards).toHaveLength(1);
+    expect(task.cards[0]?.type).toBe("qa");
+    expect(imported.warnings).toContain(
+      "Dot-numbered subtask markers were treated as plain text.",
+    );
+    const card = task.cards[0];
+    if (card?.type === "qa") {
+      expect(card.prompt).toContain("## 7. Beispiel: Lisa Wagner");
+      expect(card.prompt).toContain("5. Beziehungen zwischen Tabellen");
+      expect(card.prompt).toContain("a) Sollte nicht als M1 erkannt werden");
+      expect(card.answer).toBe("Gesamtloesung");
+    }
+  });
+
+  it("keeps a dot-numbered task as one fallback QA card even with --- separators", () => {
+    const markdown = `
+#exam
+1) Main task
+#card
+Einleitung
+---
+2. Unterpunkt
+---
+a) Wird nicht als M1 erkannt
+-a
+Answer: Gesamtantwort
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(1);
+    const task = imported.blueprint.tasks[0];
+    expect(task?.cards).toHaveLength(1);
+    expect(task?.cards[0]?.type).toBe("qa");
+    expect(imported.warnings).toContain(
+      "Dot-numbered subtask markers were treated as plain text.",
+    );
+    if (task?.cards[0]?.type === "qa") {
+      expect(task.cards[0].prompt).toContain("Einleitung");
+      expect(task.cards[0].prompt).toContain("2. Unterpunkt");
+      expect(task.cards[0].prompt).toContain("a) Wird nicht als M1 erkannt");
+      expect(task.cards[0].answer).toBe("Gesamtantwort");
+    }
+  });
+
+  it("does not treat decimal values as dot-numbered markers", () => {
+    const markdown = `
+#exam
+1) Decimal task
+#card
+Wert 1.5 bleibt normaler Text.
+a) Alpha
+-a
+#endcard
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const card = imported.blueprint.tasks[0]?.cards[0];
+    expect(card?.type).toBe("m1");
+    expect(imported.warnings).not.toContain(
+      "Dot-numbered subtask markers were treated as plain text.",
+    );
+  });
+
   it("does not split on --- inside fenced code blocks", () => {
     const markdown = `
 #exam

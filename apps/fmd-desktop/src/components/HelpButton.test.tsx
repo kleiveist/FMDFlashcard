@@ -42,6 +42,17 @@ describe("HelpButton", () => {
     expect(markup).toContain("<table>");
   });
 
+  it("keeps dot-delimited numeric lines as plain text in help markdown", () => {
+    const helpContent = ["1. Alpha", "2. Beta"].join("\n");
+    const markup = renderToStaticMarkup(
+      createElement(HelpPanel, { helpBlocks: [helpContent] }),
+    );
+
+    expect(markup).not.toContain("<ol>");
+    expect(markup).toContain("1. Alpha");
+    expect(markup).toContain("2. Beta");
+  });
+
   it("renders png embeds and markdown images inside help-table cells", () => {
     const helpContent = `| Visual | Description |
 | --- | --- |

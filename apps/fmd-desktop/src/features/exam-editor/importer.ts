@@ -87,6 +87,7 @@ const cardEndPattern = /^\s*#endcard\s*$/i;
 const examStartPattern = /^\s*#exam\s*$/i;
 const examEndPattern = /^\s*#endexam\s*$/i;
 const taskLinePattern = /^\s*(\d+)\)\s*(.*)$/;
+const dotNumberedLinePattern = /^\s*(?:#{1,6}\s+)?\d+\.\s+\S/;
 
 const isHelpStartLine = (line: string) => helpStartPattern.test(line);
 const isHelpEndLine = (line: string) => helpEndPattern.test(line);
@@ -103,6 +104,34 @@ const isExamMetaMarkerLine = (line: string) =>
 
 const sanitizeExamMetaLines = (lines: string[]) =>
   lines.filter((line) => !isExamMetaMarkerLine(line));
+
+const hasDotNumberedLineOutsideFences = (lines: string[]) => {
+  let inFence = false;
+  let fenceToken = "";
+
+  for (const line of lines) {
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    if (dotNumberedLinePattern.test(line)) {
+      return true;
+    }
+  }
+
+  return false;
+};
 
 type TaskHeadingInfo = {
   heading: string;
@@ -660,7 +689,10 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         : task.cardLines.length > 0
           ? task.cardLines
           : rawLines;
-    const cardBlocks = splitCardBlocks(stripHelpBlocksFromLines(cardSourceLines));
+    const cardSourceWithoutHelp = stripHelpBlocksFromLines(cardSourceLines);
+    const taskContainsDotNumberedLines =
+      hasDotNumberedLineOutsideFences(cardSourceWithoutHelp);
+    const cardBlocks = splitCardBlocks(cardSourceWithoutHelp);
     const headingInfo = deriveTaskHeadingInfo(rawLines, task.cardWrapper);
     let hasCardContent = false;
     let cardHelpIndex = 0;
@@ -679,15 +711,16 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       cards.push(card);
     };
 
-    cardBlocks.forEach((block, blockIndex) => {
-      const normalizedBlockLines = trimEmptyLines(block.contentLines);
-      const firstBlockLine = normalizedBlockLines.find((line) => line.trim() !== "") ?? "";
-      const blockStartsWithTaskNumber = taskLinePattern.test(firstBlockLine.trim());
-      let trimmedLines = stripLeadingTaskNumberLine(normalizedBlockLines);
+    if (taskContainsDotNumberedLines) {
+      warnings.push("Dot-numbered subtask markers were treated as plain text.");
+      const normalizedTaskLines = trimEmptyLines(cardSourceWithoutHelp);
+      const firstTaskLine =
+        normalizedTaskLines.find((line) => line.trim() !== "") ?? "";
+      const taskStartsWithTaskNumber = taskLinePattern.test(firstTaskLine.trim());
+      let trimmedLines = stripLeadingTaskNumberLine(normalizedTaskLines);
       if (
-        blockIndex === 0 &&
         headingInfo.removeHeadingFromPrompt &&
-        blockStartsWithTaskNumber &&
+        taskStartsWithTaskNumber &&
         trimmedLines.length > 0
       ) {
         const dropCount = Math.min(
@@ -696,37 +729,84 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         );
         trimmedLines = trimmedLines.slice(dropCount);
       }
-      const extractedMedia = extractMediaFromLines(trimmedLines, "exam-editor-card-import");
+      const extractedMedia = extractMediaFromLines(
+        trimmedLines,
+        "exam-editor-card-import",
+      );
       const mediaItems = mediaItemsToDrafts(extractedMedia.items);
       trimmedLines = trimEmptyLines(extractedMedia.contentLines);
       if (trimmedLines.length > 0 || mediaItems.length > 0) {
         hasCardContent = true;
       }
-      const hasFallbackMaterial = trimmedLines.length > 0 || mediaItems.length > 0;
-      if (!hasFallbackMaterial) {
-        return;
-      }
-      const parts = trimmedLines.length > 0 ? parseCardBlock(trimmedLines) : [];
-      if (parts.length === 0) {
+      if (trimmedLines.length > 0 || mediaItems.length > 0) {
         const fallback = splitAnswerBlock(trimmedLines.join("\n"));
-        const fallbackCard: CardBlueprint = {
-          id: createBlueprintId("card"),
-          type: "qa",
-          mediaItems: [],
-          prompt: fallback.prompt,
-          answer: fallback.hasAnswerMarker ? (fallback.officialAnswer ?? "") : "",
-        };
-        pushCard(fallbackCard, mediaItems);
-        return;
+        pushCard(
+          {
+            id: createBlueprintId("card"),
+            type: "qa",
+            mediaItems: [],
+            prompt: fallback.prompt,
+            answer: fallback.hasAnswerMarker ? (fallback.officialAnswer ?? "") : "",
+          },
+          mediaItems,
+        );
       }
-      parts.forEach((part) => {
-        const partCards = buildCardsFromPart(part);
-        if (part.kind === "true-false" && part.items.length > 1) {
-          warnings.push("Multiple true/false statements were split into separate cards.");
+    } else {
+      cardBlocks.forEach((block, blockIndex) => {
+        const normalizedBlockLines = trimEmptyLines(block.contentLines);
+        const firstBlockLine =
+          normalizedBlockLines.find((line) => line.trim() !== "") ?? "";
+        const blockStartsWithTaskNumber = taskLinePattern.test(
+          firstBlockLine.trim(),
+        );
+        let trimmedLines = stripLeadingTaskNumberLine(normalizedBlockLines);
+        if (
+          blockIndex === 0 &&
+          headingInfo.removeHeadingFromPrompt &&
+          blockStartsWithTaskNumber &&
+          trimmedLines.length > 0
+        ) {
+          const dropCount = Math.min(
+            headingInfo.headingLineCount || 1,
+            trimmedLines.length,
+          );
+          trimmedLines = trimmedLines.slice(dropCount);
         }
-        partCards.forEach((card) => pushCard(card, mediaItems));
+        const extractedMedia = extractMediaFromLines(
+          trimmedLines,
+          "exam-editor-card-import",
+        );
+        const mediaItems = mediaItemsToDrafts(extractedMedia.items);
+        trimmedLines = trimEmptyLines(extractedMedia.contentLines);
+        if (trimmedLines.length > 0 || mediaItems.length > 0) {
+          hasCardContent = true;
+        }
+        const hasFallbackMaterial = trimmedLines.length > 0 || mediaItems.length > 0;
+        if (!hasFallbackMaterial) {
+          return;
+        }
+        const parts = trimmedLines.length > 0 ? parseCardBlock(trimmedLines) : [];
+        if (parts.length === 0) {
+          const fallback = splitAnswerBlock(trimmedLines.join("\n"));
+          const fallbackCard: CardBlueprint = {
+            id: createBlueprintId("card"),
+            type: "qa",
+            mediaItems: [],
+            prompt: fallback.prompt,
+            answer: fallback.hasAnswerMarker ? (fallback.officialAnswer ?? "") : "",
+          };
+          pushCard(fallbackCard, mediaItems);
+          return;
+        }
+        parts.forEach((part) => {
+          const partCards = buildCardsFromPart(part);
+          if (part.kind === "true-false" && part.items.length > 1) {
+            warnings.push("Multiple true/false statements were split into separate cards.");
+          }
+          partCards.forEach((card) => pushCard(card, mediaItems));
+        });
       });
-    });
+    }
 
     if (cards.length === 0) {
       if (task.officialAnswer !== undefined) {

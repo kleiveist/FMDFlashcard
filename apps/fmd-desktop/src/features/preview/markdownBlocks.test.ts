@@ -44,11 +44,20 @@ describe("markdownBlocks", () => {
   });
 
   it("groups ordered list continuation lines into one block", () => {
-    const markdown = ["1. Alpha", "   continuation", "2. Beta"].join("\n");
+    const markdown = ["1) Alpha", "   continuation", "2) Beta"].join("\n");
     const blocks = parseMarkdownBlocks(markdown);
     expect(blocks).toHaveLength(1);
     expect(blocks[0]?.kind).toBe("ordered-list");
     expect(blocks[0]?.raw).toContain("continuation");
+  });
+
+  it("treats dot-delimited numeric lines as plain paragraphs", () => {
+    const markdown = ["1. Alpha", "2. Beta"].join("\n");
+    const blocks = parseMarkdownBlocks(markdown);
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]?.kind).toBe("paragraph");
+    expect(blocks[0]?.raw).toBe(markdown);
   });
 
   it("treats #help ... #helpend as a single special block", () => {
@@ -178,11 +187,11 @@ describe("markdownBlocks", () => {
 
   it("keeps math blocks isolated from surrounding list parsing", () => {
     const markdown = [
-      "1. First",
+      "1) First",
       "$$",
       "\\sum_{i=1}^{n}",
       "$$",
-      "2. Second",
+      "2) Second",
     ].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
@@ -204,12 +213,12 @@ describe("markdownBlocks", () => {
 
   it("splits lists around an indented help block and keeps help as its own block", () => {
     const markdown = [
-      "1. Erste Zeile",
+      "1) Erste Zeile",
       "   Fortsetzung",
       "   #help",
       "   1. bleibt im help-block roh",
       "   #helpend   ",
-      "2. Zweite Zeile",
+      "2) Zweite Zeile",
     ].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
@@ -218,7 +227,7 @@ describe("markdownBlocks", () => {
       "help-block",
       "ordered-list",
     ]);
-    expect(blocks[0]?.raw).toBe(["1. Erste Zeile", "   Fortsetzung"].join("\n"));
+    expect(blocks[0]?.raw).toBe(["1) Erste Zeile", "   Fortsetzung"].join("\n"));
     expect(blocks[1]?.raw).toBe(
       [
         "   #help",
@@ -226,7 +235,7 @@ describe("markdownBlocks", () => {
         "   #helpend   ",
       ].join("\n"),
     );
-    expect(blocks[2]?.raw).toBe("2. Zweite Zeile");
+    expect(blocks[2]?.raw).toBe("2) Zweite Zeile");
   });
 
   it("treats blank + hr + blank as a single hr block without separate blank rows", () => {
@@ -248,25 +257,25 @@ describe("markdownBlocks", () => {
 
 describe("normalizeOrderedListBlockSource", () => {
   it("renumbers ordered lists while preserving the first delimiter style", () => {
-    const input = ["9) Erste", "1) Zweite", "12.) Dritte"].join("\n");
+    const input = ["9) Erste", "1) Zweite", "12) Dritte"].join("\n");
     const normalized = normalizeOrderedListBlockSource(input);
     expect(normalized).toBe(["1) Erste", "2) Zweite", "3) Dritte"].join("\n"));
   });
 
   it("renumbers nested ordered list items per indentation level", () => {
     const input = [
-      "7. Root",
-      "   9. Child A",
-      "   4. Child B",
-      "8. Root 2",
+      "7) Root",
+      "   9) Child A",
+      "   4) Child B",
+      "8) Root 2",
     ].join("\n");
     const normalized = normalizeOrderedListBlockSource(input);
     expect(normalized).toBe(
       [
-        "1. Root",
-        "   1. Child A",
-        "   2. Child B",
-        "2. Root 2",
+        "1) Root",
+        "   1) Child A",
+        "   2) Child B",
+        "2) Root 2",
       ].join("\n"),
     );
   });
