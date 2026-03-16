@@ -15,11 +15,22 @@ export type ChoiceOption = {
   isCorrect: boolean;
 };
 
+export type ExamTaskSourceMeta = {
+  sourceTaskIndex: number;
+  sourceRange: {
+    startLine: number;
+    endLine: number;
+  };
+  sourceChunk: string;
+  sourceFingerprint: string;
+};
+
 export type BaseCardBlueprint = {
   id: string;
   type: CardType;
   helpText?: string;
   mediaItems?: EditorMediaDraft[];
+  rawBody?: string;
 };
 
 export type QaCardBlueprint = BaseCardBlueprint & {
@@ -59,6 +70,7 @@ export type ExamTaskBlueprint = {
   mediaItems?: EditorMediaDraft[];
   useCardWrapper: boolean;
   cards: CardBlueprint[];
+  sourceMeta?: ExamTaskSourceMeta;
 };
 
 export type ExamPassiveSegment = {

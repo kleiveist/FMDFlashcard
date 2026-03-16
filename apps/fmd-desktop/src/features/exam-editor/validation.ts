@@ -6,6 +6,7 @@
  */
 
 import { stripInlineCodeFromLine } from "../../lib/flashcards";
+import { parseChoiceRawBody } from "./choiceRawBody";
 import type { CardBlueprint, ExamBlueprint, ExamTaskBlueprint } from "./types";
 
 export type CardValidation = {
@@ -174,6 +175,12 @@ const validateChoiceCard = (
     }
   } else if (correctOptions.length < 2) {
     validation.fieldErrors.correct = "Select at least two correct options.";
+  }
+  if (card.rawBody?.trim()) {
+    const parsedRawBody = parseChoiceRawBody(card.rawBody);
+    if (!parsedRawBody.parsed) {
+      validation.fieldErrors.syntax = parsedRawBody.error ?? "Choice source is invalid.";
+    }
   }
   validation.errors = collectErrors(validation);
   validation.valid = validation.errors.length === 0;

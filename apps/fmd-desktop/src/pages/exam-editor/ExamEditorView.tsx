@@ -28,6 +28,7 @@ import type {
 import {
   serializeCardTypeLabel,
   serializeExamBlueprint,
+  serializeExamBlueprintStable,
 } from "../../features/exam-editor/serializer";
 import { isCompositeTask, validateExamBlueprint } from "../../features/exam-editor/validation";
 import { importExamMarkdown, isExamMarkdown } from "../../features/exam-editor/importer";
@@ -61,6 +62,11 @@ import type {
   ExamEditorMode,
   ExamEditorSelection,
 } from "./types";
+import {
+  mergeChoiceOptions,
+  parseChoiceRawBody,
+  serializeChoiceRawBody,
+} from "../../features/exam-editor/choiceRawBody";
 
 const normalizeTaskOrder = (tasks: ExamTaskBlueprint[]) =>
   tasks.map((task, index) => ({ ...task, order: index }));
@@ -277,8 +283,12 @@ export const ExamEditorView = ({
   const canSave = validation.valid;
   const isSaving = saveState === "saving";
   const examBodyMarkdown = useMemo(
-    () => serializeExamBlueprint(exam, { passiveSegments }),
-    [exam, passiveSegments],
+    () =>
+      serializeExamBlueprintStable(exam, {
+        passiveSegments,
+        sourceMarkdown: sourceDocumentMarkdown,
+      }),
+    [exam, passiveSegments, sourceDocumentMarkdown],
   );
   const effectiveProfileName = useMemo(() => {
     const trimmed = assignedTaskProfileName?.trim() ?? "";
@@ -483,6 +493,11 @@ export const ExamEditorView = ({
             if ("prompt" in card && "prompt" in nextCard) {
               nextCard.prompt = card.prompt;
             }
+            if ((nextCard.type === "m1" || nextCard.type === "m2")) {
+              nextCard.rawBody = serializeChoiceRawBody(nextCard);
+            } else {
+              nextCard.rawBody = undefined;
+            }
             return nextCard;
           });
           return { ...task, cards };
@@ -649,11 +664,16 @@ export const ExamEditorView = ({
             if (card.id !== cardId || (card.type !== "m1" && card.type !== "m2")) {
               return card;
             }
-            return {
+            const nextOptions = card.options.map((option) =>
+              option.id === optionId ? { ...option, text: value } : option,
+            );
+            const nextCard = {
               ...card,
-              options: card.options.map((option) =>
-                option.id === optionId ? { ...option, text: value } : option,
-              ),
+              options: nextOptions,
+            };
+            return {
+              ...nextCard,
+              rawBody: serializeChoiceRawBody(nextCard),
             };
           });
           return { ...task, cards };
@@ -674,11 +694,16 @@ export const ExamEditorView = ({
             if (card.id !== cardId || (card.type !== "m1" && card.type !== "m2")) {
               return card;
             }
-            return {
+            const nextOptions = card.options.map((option) =>
+              option.id === optionId ? { ...option, isCorrect: value } : option,
+            );
+            const nextCard = {
               ...card,
-              options: card.options.map((option) =>
-                option.id === optionId ? { ...option, isCorrect: value } : option,
-              ),
+              options: nextOptions,
+            };
+            return {
+              ...nextCard,
+              rawBody: serializeChoiceRawBody(nextCard),
             };
           });
           return { ...task, cards };
@@ -699,12 +724,17 @@ export const ExamEditorView = ({
             if (card.id !== cardId || (card.type !== "m1" && card.type !== "m2")) {
               return card;
             }
-            return {
+            const nextOptions = card.options.map((option) => ({
+              ...option,
+              isCorrect: option.id === optionId,
+            }));
+            const nextCard = {
               ...card,
-              options: card.options.map((option) => ({
-                ...option,
-                isCorrect: option.id === optionId,
-              })),
+              options: nextOptions,
+            };
+            return {
+              ...nextCard,
+              rawBody: serializeChoiceRawBody(nextCard),
             };
           });
           return { ...task, cards };
@@ -725,9 +755,13 @@ export const ExamEditorView = ({
             if (card.id !== cardId || (card.type !== "m1" && card.type !== "m2")) {
               return card;
             }
-            return {
+            const nextCard = {
               ...card,
               options: [...card.options, createChoiceOption()],
+            };
+            return {
+              ...nextCard,
+              rawBody: serializeChoiceRawBody(nextCard),
             };
           });
           return { ...task, cards };
@@ -748,9 +782,49 @@ export const ExamEditorView = ({
             if (card.id !== cardId || (card.type !== "m1" && card.type !== "m2")) {
               return card;
             }
+            const nextOptions = card.options.filter((option) => option.id !== optionId);
+            const nextCard = {
+              ...card,
+              options: nextOptions,
+            };
+            return {
+              ...nextCard,
+              rawBody: serializeChoiceRawBody(nextCard),
+            };
+          });
+          return { ...task, cards };
+        }),
+      );
+    },
+    [updateTasks],
+  );
+
+  const handleChoiceRawBodyChange = useCallback(
+    (taskId: string, cardId: string, value: string) => {
+      updateTasks((tasks) =>
+        tasks.map((task) => {
+          if (task.id !== taskId) {
+            return task;
+          }
+          const cards = task.cards.map((card) => {
+            if (card.id !== cardId || (card.type !== "m1" && card.type !== "m2")) {
+              return card;
+            }
+            const parsed = parseChoiceRawBody(value);
+            if (!parsed.parsed) {
+              return {
+                ...card,
+                rawBody: value,
+              };
+            }
+            const nextType = parsed.parsed.recommendedType;
+            const nextOptions = mergeChoiceOptions(card.options, parsed.parsed.options);
             return {
               ...card,
-              options: card.options.filter((option) => option.id !== optionId),
+              type: nextType,
+              prompt: parsed.parsed.prompt,
+              options: nextOptions,
+              rawBody: value,
             };
           });
           return { ...task, cards };
@@ -1412,8 +1486,9 @@ export const ExamEditorView = ({
     setDirtyBaselineMarkdown(
       resolveMarkdownWithTaskProfile({
         sourceMarkdown,
-        bodyMarkdown: serializeExamBlueprint(imported.blueprint, {
+        bodyMarkdown: serializeExamBlueprintStable(imported.blueprint, {
           passiveSegments: imported.passiveSegments,
+          sourceMarkdown,
         }),
         profileName: assignedProfile?.trim() || null,
       }),
@@ -1857,7 +1932,11 @@ export const ExamEditorView = ({
                   onOptionSelect={handleOptionSelect}
                   onOptionAdd={handleOptionAdd}
                   onOptionRemove={handleOptionRemove}
+                  onChoiceRawBodyChange={handleChoiceRawBodyChange}
+                  vaultFiles={vaultFiles}
                   vaultPngAssets={vaultPngAssets}
+                  vaultPath={vaultPath}
+                  sourceRelativePath={sourceRelativePath}
                   popupMode={contentPopupActive}
                   popupOpen={contentModalOpen}
                   onPopupOpen={() => setContentModalOpen(true)}
@@ -1885,7 +1964,11 @@ export const ExamEditorView = ({
               onOptionSelect={handleOptionSelect}
               onOptionAdd={handleOptionAdd}
               onOptionRemove={handleOptionRemove}
+              onChoiceRawBodyChange={handleChoiceRawBodyChange}
+              vaultFiles={vaultFiles}
               vaultPngAssets={vaultPngAssets}
+              vaultPath={vaultPath}
+              sourceRelativePath={sourceRelativePath}
             />
           </>
         )

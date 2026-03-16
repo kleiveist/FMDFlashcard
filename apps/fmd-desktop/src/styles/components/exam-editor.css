@@ -884,6 +884,30 @@
   margin: 0;
 }
 
+.structured-insert-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.exam-structured-field-shell {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  padding: 8px;
+  min-height: 180px;
+}
+
+.exam-structured-field-shell .markdown-hybrid-editor {
+  min-height: 160px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.exam-structured-field-shell .markdown-hybrid-content-layer {
+  min-height: 144px;
+}
+
 .vault-png-picker {
   display: flex;
   flex-direction: column;

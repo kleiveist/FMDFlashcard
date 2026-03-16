@@ -184,7 +184,7 @@ Answer: A
     expect(serialized).toContain("---");
   });
 
-  it("roundtrips card media blocks for composite tasks", () => {
+  it("roundtrips inline media blocks for composite tasks without media-item extraction", () => {
     const markdown = `
 #exam
 1) Media
@@ -220,18 +220,16 @@ Statement two
     if (!firstCard || !secondCard) {
       return;
     }
-    const firstMediaItems = firstCard.mediaItems;
-    const secondMediaItems = secondCard.mediaItems;
-    expect(firstMediaItems).toBeDefined();
-    expect(secondMediaItems).toBeDefined();
-    if (!firstMediaItems || !secondMediaItems) {
-      return;
+    expect((firstCard.mediaItems ?? []).length).toBe(0);
+    expect((secondCard.mediaItems ?? []).length).toBe(0);
+    if (firstCard.type === "qa") {
+      expect(firstCard.prompt).toContain("![[images/example.png]]");
+      expect(firstCard.prompt).toContain("Question one");
     }
-    expect(firstMediaItems[0]).toMatchObject({
-      type: "png",
-      src: "images/example.png",
-    });
-    expect(secondMediaItems[0]?.inlineSvg).toContain("circle");
+    if (secondCard.type === "tf") {
+      expect(secondCard.prompt).toContain("```svg");
+      expect(secondCard.prompt).toContain("circle");
+    }
 
     const serialized = serializeExamBlueprint(imported.blueprint);
     expect(serialized).toContain("![[images/example.png]]");
@@ -254,21 +252,18 @@ Statement two
     if (!roundtripFirstCard || !roundtripSecondCard) {
       return;
     }
-    const roundtripFirstMediaItems = roundtripFirstCard.mediaItems;
-    const roundtripSecondMediaItems = roundtripSecondCard.mediaItems;
-    expect(roundtripFirstMediaItems).toBeDefined();
-    expect(roundtripSecondMediaItems).toBeDefined();
-    if (!roundtripFirstMediaItems || !roundtripSecondMediaItems) {
-      return;
+    expect((roundtripFirstCard.mediaItems ?? []).length).toBe(0);
+    expect((roundtripSecondCard.mediaItems ?? []).length).toBe(0);
+    if (roundtripFirstCard.type === "qa") {
+      expect(roundtripFirstCard.prompt).toContain("![[images/example.png]]");
     }
-    expect(roundtripFirstMediaItems[0]).toMatchObject({
-      type: "png",
-      src: "images/example.png",
-    });
-    expect(roundtripSecondMediaItems[0]?.inlineSvg).toContain("circle");
+    if (roundtripSecondCard.type === "tf") {
+      expect(roundtripSecondCard.prompt).toContain("```svg");
+      expect(roundtripSecondCard.prompt).toContain("circle");
+    }
   });
 
-  it("migrates task-level media into the first card media list", () => {
+  it("migrates task-level media into the first card prompt body", () => {
     const markdown = `
 #exam
 1) Task media migration
@@ -297,17 +292,18 @@ Answer: A
     if (!firstCard) {
       return;
     }
-    expect(firstCard.mediaItems?.[0]).toMatchObject({
-      type: "png",
-      src: "images/task.png",
-    });
+    expect((firstCard.mediaItems ?? []).length).toBe(0);
+    if (firstCard.type === "qa") {
+      expect(firstCard.prompt).toContain("![[images/task.png|Task image]]");
+      expect(firstCard.prompt).toContain("Question?");
+    }
 
     const serialized = serializeExamBlueprint(imported.blueprint);
     const occurrences = serialized.match(/!\[\[images\/task\.png(?:\|[^\]]+)?\]\]/g) ?? [];
     expect(occurrences).toHaveLength(1);
   });
 
-  it("keeps card media first and appends migrated task media", () => {
+  it("keeps migrated task media and card media inline in first card prompt", () => {
     const markdown = `
 #exam
 1) Media order
@@ -337,8 +333,14 @@ Answer: A
     if (!firstCard) {
       return;
     }
-    const mediaSources = (firstCard.mediaItems ?? []).map((item) => item.src);
-    expect(mediaSources).toEqual(["images/card.png", "images/task.png"]);
+    expect((firstCard.mediaItems ?? []).length).toBe(0);
+    if (firstCard.type === "qa") {
+      expect(firstCard.prompt).toContain("![[images/task.png|Task image]]");
+      expect(firstCard.prompt).toContain("![[images/card.png|Card image]]");
+      expect(firstCard.prompt.indexOf("![[images/task.png|Task image]]")).toBeLessThan(
+        firstCard.prompt.indexOf("![[images/card.png|Card image]]"),
+      );
+    }
   });
 
   it("keeps task media when fallback card creation is used", () => {
@@ -367,10 +369,10 @@ Answer: A
     if (!firstCard) {
       return;
     }
-    expect(firstCard.mediaItems?.[0]).toMatchObject({
-      type: "png",
-      src: "images/task-fallback.png",
-    });
+    expect((firstCard.mediaItems ?? []).length).toBe(0);
+    if (firstCard.type === "qa") {
+      expect(firstCard.prompt).toContain("![[images/task-fallback.png]]");
+    }
   });
 
   it("keeps unparseable wrapped blocks with media and table content", () => {
@@ -411,11 +413,9 @@ Just context without explicit answer marker.
     }
     expect(card.prompt).toContain("Just context without explicit answer marker.");
     expect(card.prompt).toContain("| left | right |");
+    expect(card.prompt).toContain("![[images/diagram.png]]");
     expect(card.answer).toBe("");
-    expect(card.mediaItems?.[0]).toMatchObject({
-      type: "png",
-      src: "images/diagram.png",
-    });
+    expect((card.mediaItems ?? []).length).toBe(0);
 
     const serialized = serializeExamBlueprint(imported.blueprint);
     expect(serialized).toContain("#card\n1) Preserve unparseable");
@@ -456,12 +456,9 @@ Just context without explicit answer marker.
     if (card.type !== "qa") {
       throw new Error("Expected QA fallback card");
     }
-    expect(card.prompt).toBe("");
+    expect(card.prompt).toContain("![[images/only-media.png]]");
     expect(card.answer).toBe("");
-    expect(card.mediaItems?.[0]).toMatchObject({
-      type: "png",
-      src: "images/only-media.png",
-    });
+    expect((card.mediaItems ?? []).length).toBe(0);
   });
 
   it("keeps wrapper toggles idempotent across serialize/import cycles", () => {
@@ -1160,6 +1157,46 @@ Answer: B
     expect(serialized).toMatch(
       /Answer: A\n---\nOrphan zwischen Aufgaben\.\n2\) Zweite Aufgabe/,
     );
+  });
+
+  it("captures task provenance metadata and preserves M1 raw body source", () => {
+    const markdown = `
+#exam
+1) Choice task
+Pick one option.
+a) Alpha
+b) Beta
+-a
+---
+2) QA task
+Question?
+Answer: A
+---
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const firstTask = imported.blueprint.tasks[0];
+    expect(firstTask).toBeDefined();
+    if (!firstTask) {
+      return;
+    }
+    expect(firstTask.sourceMeta).toBeDefined();
+    expect(firstTask.sourceMeta?.sourceTaskIndex).toBe(0);
+    expect(firstTask.sourceMeta?.sourceChunk).toContain("1) Choice task");
+    expect(firstTask.sourceMeta?.sourceFingerprint).toMatch(/^task-/);
+
+    const firstCard = firstTask.cards[0];
+    expect(firstCard?.type).toBe("m1");
+    if (firstCard?.type === "m1") {
+      expect(firstCard.rawBody).toContain("a) Alpha");
+      expect(firstCard.rawBody).toContain("-a");
+    }
   });
 
   it("does not treat legacy #media metadata blocks as media", () => {

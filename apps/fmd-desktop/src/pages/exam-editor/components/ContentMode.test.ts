@@ -78,6 +78,7 @@ describe("ContentMode", () => {
         onOptionSelect: noop,
         onOptionAdd: noop,
         onOptionRemove: noop,
+        onChoiceRawBodyChange: noop,
       }),
     );
 

@@ -5,11 +5,13 @@
  * - Serialisiert Exam-Blueprints zu Exam-Markdown.
  */
 
+import { parseExamTasks } from "../../lib/exam";
 import { normalizeCardWrapperPlacement } from "../../lib/exam/autoCards";
 import {
   serializePngEmbed,
   serializeSvgFence,
 } from "../../lib/cardMedia";
+import { buildTaskFingerprint } from "./stability";
 import type {
   CardBlueprint,
   CardType,
@@ -107,6 +109,9 @@ const serializeTfCard = (card: Extract<CardBlueprint, { type: "tf" }>) => {
 const serializeChoiceCard = (
   card: Extract<CardBlueprint, { type: "m1" | "m2" }>,
 ) => {
+  if (card.rawBody?.trim()) {
+    return cleanLines(card.rawBody);
+  }
   const promptLines = cleanLines(card.prompt);
   const optionLines = card.options.map((option, index) => {
     const key = formatOptionKey(index);
@@ -195,6 +200,10 @@ const serializeExamMeta = (exam: ExamBlueprint) => {
 
 export type SerializeExamBlueprintOptions = {
   passiveSegments?: ExamPassiveSegment[];
+};
+
+export type SerializeExamBlueprintStableOptions = SerializeExamBlueprintOptions & {
+  sourceMarkdown?: string | null;
 };
 
 const normalizePassiveSegmentText = (value: string) =>
@@ -292,6 +301,133 @@ export const serializeExamBlueprint = (
 
   lines.push("#endexam");
   return normalizeCardWrapperPlacement(lines.join("\n")).content;
+};
+
+const extractSourceExamMeta = (sourceMarkdown: string, firstTaskStartLine: number | null) => {
+  const lines = normalizeLines(sourceMarkdown);
+  const examStartIndex = lines.findIndex((line) => /^\s*#exam\s*$/i.test(line));
+  if (examStartIndex < 0) {
+    return { title: "", description: "" };
+  }
+  const endIndex = firstTaskStartLine ?? lines.length;
+  const metaLines = trimEmptyLines(
+    lines
+      .slice(examStartIndex + 1, endIndex)
+      .filter((line) => !/^\s*#(?:exam|endexam|card|endcard|help|helpend)\s*$/i.test(line)),
+  );
+  if (metaLines.length === 0) {
+    return { title: "", description: "" };
+  }
+  const headingMatch = metaLines[0]?.match(/^\s*#{1,6}\s+(.*)$/);
+  if (!headingMatch) {
+    return { title: "", description: metaLines.join("\n").trim() };
+  }
+  return {
+    title: (headingMatch[1] ?? "").trim(),
+    description: metaLines.slice(1).join("\n").trim(),
+  };
+};
+
+const buildSerializedMetaSection = (exam: ExamBlueprint) => {
+  const metaLines = serializeExamMeta(exam);
+  return metaLines.length > 0 ? [...metaLines, ""] : [];
+};
+
+export const serializeExamBlueprintStable = (
+  exam: ExamBlueprint,
+  options?: SerializeExamBlueprintStableOptions,
+) => {
+  const regular = serializeExamBlueprint(exam, options);
+  const sourceMarkdown = options?.sourceMarkdown ?? "";
+  if (!sourceMarkdown.trim()) {
+    return regular;
+  }
+
+  const parsedSource = parseExamTasks(sourceMarkdown);
+  if (!parsedSource.hasExamBlock) {
+    return regular;
+  }
+
+  const orderedTasks = exam.tasks.slice().sort((left, right) => left.order - right.order);
+  if (parsedSource.tasks.length !== orderedTasks.length) {
+    return regular;
+  }
+  if (
+    orderedTasks.some(
+      (task, index) => !task.sourceMeta || task.sourceMeta.sourceTaskIndex !== index,
+    )
+  ) {
+    return regular;
+  }
+
+  const firstTaskStartLine = parsedSource.tasks[0]?.sourceRange.startLine ?? null;
+  const sourceMeta = extractSourceExamMeta(sourceMarkdown, firstTaskStartLine);
+  const examMetaUnchanged =
+    sourceMeta.title === exam.title.trim() &&
+    sourceMeta.description === exam.description.trim();
+
+  const changedTaskIndices = orderedTasks
+    .map((task, index) => ({
+      index,
+      changed:
+        !task.sourceMeta ||
+        buildTaskFingerprint(task) !== task.sourceMeta.sourceFingerprint,
+    }))
+    .filter((entry) => entry.changed)
+    .map((entry) => entry.index);
+
+  if (changedTaskIndices.length === 0 && examMetaUnchanged) {
+    return sourceMarkdown;
+  }
+
+  const sourceLines = normalizeLines(sourceMarkdown);
+  const descendingChanged = changedTaskIndices.sort((left, right) => right - left);
+
+  for (const taskIndex of descendingChanged) {
+    const sourceTask = parsedSource.tasks[taskIndex];
+    const targetTask = orderedTasks[taskIndex];
+    if (!sourceTask || !targetTask) {
+      return regular;
+    }
+    const replaceStart = sourceTask.sourceRange.startLine;
+    const replaceEnd = sourceTask.sourceRange.endLine;
+    if (
+      !Number.isFinite(replaceStart) ||
+      !Number.isFinite(replaceEnd) ||
+      replaceStart < 0 ||
+      replaceEnd < replaceStart ||
+      replaceEnd >= sourceLines.length
+    ) {
+      return regular;
+    }
+    const replacementLines = serializeTask(targetTask, taskIndex);
+    sourceLines.splice(replaceStart, replaceEnd - replaceStart + 1, ...replacementLines);
+  }
+
+  if (!examMetaUnchanged) {
+    const examStartLine = sourceLines.findIndex((line) => /^\s*#exam\s*$/i.test(line));
+    if (examStartLine < 0) {
+      return regular;
+    }
+    const firstTaskLineInSource = parsedSource.tasks[0]?.sourceRange.startLine;
+    const examEndLine = sourceLines.findIndex(
+      (line, index) => index > examStartLine && /^\s*#endexam\s*$/i.test(line),
+    );
+    const metaEndExclusive =
+      typeof firstTaskLineInSource === "number"
+        ? Math.max(examStartLine + 1, firstTaskLineInSource)
+        : examEndLine >= 0
+          ? examEndLine
+          : sourceLines.length;
+    const replacementMetaLines = buildSerializedMetaSection(exam);
+    sourceLines.splice(
+      examStartLine + 1,
+      Math.max(0, metaEndExclusive - (examStartLine + 1)),
+      ...replacementMetaLines,
+    );
+  }
+
+  return sourceLines.join("\n");
 };
 
 export const serializeCardTypeLabel = (cardType: CardType) => {

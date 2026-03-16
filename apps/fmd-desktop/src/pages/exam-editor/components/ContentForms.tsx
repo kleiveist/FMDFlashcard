@@ -2,31 +2,26 @@
  * @file apps/fmd-desktop/src/pages/exam-editor/components/ContentForms.tsx
  */
 
-import { useMemo, useState } from "react";
-import { MediaBlockCard } from "../../../components/media/MediaBlockCard";
-import { VaultPngPicker } from "../../../components/media/VaultPngPicker";
-import { SvgPreviewBlock } from "../../../components/flashcards/SvgPreviewBlock";
-import {
-  createEditorMediaDraft,
-  editorMediaDraftToItem,
-  type EditorMediaDraft,
-} from "../../../lib/cardMedia";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { MarkdownHybridEditor, type MarkdownHybridEditorHandle } from "../../../features/preview/MarkdownHybridEditor";
 import type { CardBlueprint, ChoiceOption } from "../../../features/exam-editor/types";
 import type { CardValidation } from "../../../features/exam-editor/validation";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
 import { ClozeCard as ClozeCardPreview } from "../../../components/flashcards/ClozeCard";
 import { parseFlashcards, type ClozeCard as ClozeCardType } from "../../../lib/flashcards";
-import { HelpEditor } from "./HelpEditor";
-import { AutoGrowTextarea } from "./AutoGrowTextarea";
-import type { VaultPngAsset } from "../../../lib/tree";
+import { ExamMarkdown } from "../../exam-simulation/components/ExamMarkdown";
+import { serializeChoiceRawBody } from "../../../features/exam-editor/choiceRawBody";
+import type { VaultFile, VaultPngAsset } from "../../../lib/tree";
 
 type BaseCardFormProps = {
   card: CardBlueprint;
   validation?: CardValidation;
+  vaultFiles?: VaultFile[] | null;
   vaultPngAssets?: VaultPngAsset[] | null;
+  vaultPath?: string | null;
+  sourceRelativePath?: string | null;
   onPromptChange: (value: string) => void;
   onHelpChange: (value: string) => void;
-  onMediaChange: (value: EditorMediaDraft[]) => void;
 };
 
 type QaCardFormProps = BaseCardFormProps & {
@@ -41,6 +36,7 @@ type TfCardFormProps = BaseCardFormProps & {
 
 type ChoiceCardFormProps = BaseCardFormProps & {
   card: Extract<CardBlueprint, { type: "m1" | "m2" }>;
+  onChoiceRawBodyChange: (value: string) => void;
   onOptionTextChange: (optionId: string, value: string) => void;
   onOptionToggle: (optionId: string, value: boolean) => void;
   onOptionSelect: (optionId: string) => void;
@@ -73,386 +69,196 @@ type CardContentFormProps = {
   validation?: CardValidation;
   onPromptChange: (value: string) => void;
   onAnswerChange: (value: string) => void;
-  onCorrectChange: (value: "true" | "false") => void;
+  onCorrectChange: (value: "true" | "false" | null) => void;
   onOptionTextChange: (optionId: string, value: string) => void;
   onOptionToggle: (optionId: string, value: boolean) => void;
   onOptionSelect: (optionId: string) => void;
   onOptionAdd: () => void;
   onOptionRemove: (optionId: string) => void;
+  onChoiceRawBodyChange: (value: string) => void;
   onHelpChange: (value: string) => void;
-  onMediaChange: (value: EditorMediaDraft[]) => void;
+  vaultFiles?: VaultFile[] | null;
   vaultPngAssets?: VaultPngAsset[] | null;
+  vaultPath?: string | null;
+  sourceRelativePath?: string | null;
 };
 
 const renderFieldError = (message?: string) =>
   message ? <span className="field-error">{message}</span> : null;
 
-const renderPromptField = (
-  card: CardBlueprint,
-  validation: CardValidation | undefined,
-  onPromptChange: (value: string) => void,
-) => (
-  <label className="field">
-    <span className="label">Task description</span>
-    <AutoGrowTextarea
-      className="text-input exam-textarea"
-      rows={4}
-      value={"prompt" in card ? card.prompt : ""}
-      onChange={onPromptChange}
-      placeholder="Write the task description..."
-    />
-    {renderFieldError(validation?.fieldErrors.prompt)}
-    {renderFieldError(validation?.fieldErrors.syntax)}
-  </label>
-);
-
-const renderHelpField = (
-  label: string,
-  value: string,
-  onHelpChange: (value: string) => void,
-) => (
-  <HelpEditor
-    label={label}
-    value={value}
-    onChange={onHelpChange}
-    showPreviewToggle
-  />
-);
-
-type MediaEditorProps = {
-  value: EditorMediaDraft[];
-  onChange: (value: EditorMediaDraft[]) => void;
-  vaultPngAssets?: VaultPngAsset[] | null;
+type StructuredInsertPanelProps = {
+  onInsertTable: () => void;
+  onInsertCodeBlock: () => void;
+  onInsertMathBlock: () => void;
+  onInsertPng: () => void;
 };
 
-const blankPngDraft = () => createEditorMediaDraft({ type: "png" });
-const blankSvgDraft = () => createEditorMediaDraft({ type: "svg" });
+const StructuredInsertPanel = ({
+  onInsertTable,
+  onInsertCodeBlock,
+  onInsertMathBlock,
+  onInsertPng,
+}: StructuredInsertPanelProps) => (
+  <details className="media-editor">
+    <summary className="media-editor-summary">
+      <span className="label">Structured Insert</span>
+      <span className="muted small">Table, Code, Math, PNG</span>
+    </summary>
+    <div className="media-editor-body">
+      <div className="structured-insert-grid">
+        <button type="button" className="ghost small" onClick={onInsertTable}>
+          Table
+        </button>
+        <button type="button" className="ghost small" onClick={onInsertCodeBlock}>
+          Code block
+        </button>
+        <button type="button" className="ghost small" onClick={onInsertMathBlock}>
+          Math block
+        </button>
+        <button type="button" className="ghost small" onClick={onInsertPng}>
+          PNG image
+        </button>
+      </div>
+    </div>
+  </details>
+);
 
-export const MediaEditor = ({ value, onChange, vaultPngAssets }: MediaEditorProps) => {
-  const [activeTab, setActiveTab] = useState<"svg" | "png">("png");
-  const [pngQuery, setPngQuery] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [pngDraft, setPngDraft] = useState<EditorMediaDraft>(() => blankPngDraft());
-  const [svgDraft, setSvgDraft] = useState<EditorMediaDraft>(() => blankSvgDraft());
+type StructuredMarkdownFieldProps = {
+  fieldId: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  historyKey: string;
+  error?: string;
+  vaultFiles?: VaultFile[] | null;
+  vaultPngAssets?: VaultPngAsset[] | null;
+  vaultPath?: string | null;
+  sourceRelativePath?: string | null;
+  onActivateField: (fieldId: string) => void;
+  onRegisterHandle: (fieldId: string, handle: MarkdownHybridEditorHandle | null) => void;
+};
 
-  const configuredCount = value.length;
-  const summary =
-    configuredCount > 0
-      ? `${configuredCount} item${configuredCount === 1 ? "" : "s"} configured`
-      : "Optional, collapsed by default";
-
-  const resetComposer = (kind: "png" | "svg") => {
-    setEditingId(null);
-    if (kind === "png") {
-      setPngDraft(blankPngDraft());
-      return;
-    }
-    setSvgDraft(blankSvgDraft());
-  };
-
-  const updateDraft = (
-    kind: "png" | "svg",
-    updater: (draft: EditorMediaDraft) => EditorMediaDraft,
-  ) => {
-    if (kind === "png") {
-      setPngDraft((current) => updater(current));
-      return;
-    }
-    setSvgDraft((current) => updater(current));
-  };
-
-  const handleSelectPng = (relPath: string) => {
-    setActiveTab("png");
-    setPngDraft((current) => {
-      const fallbackLabel = relPath.split("/").pop()?.replace(/\.png$/i, "") ?? "";
-      const shouldReplaceLabel =
-        !current.label.trim() || current.label.trim() === current.src.trim();
-      return {
-        ...current,
-        src: relPath,
-        label: shouldReplaceLabel ? fallbackLabel : current.label,
-      };
-    });
-  };
-
-  const handleSaveDraft = (kind: "png" | "svg") => {
-    const currentDraft = kind === "png" ? pngDraft : svgDraft;
-    if (kind === "png" && !currentDraft.src.trim()) {
-      return;
-    }
-    if (kind === "svg" && !currentDraft.inlineSvg.trim()) {
-      return;
-    }
-    const nextDraft = createEditorMediaDraft({
-      ...currentDraft,
-      id: editingId && currentDraft.id === editingId ? currentDraft.id : undefined,
-      type: kind,
-      src: kind === "png" ? currentDraft.src : "",
-      inlineSvg: kind === "svg" ? currentDraft.inlineSvg : "",
-    });
-    const nextItems = editingId
-      ? value.map((item) => (item.id === editingId ? nextDraft : item))
-      : [...value, nextDraft];
-    onChange(nextItems);
-    resetComposer(kind);
-  };
-
-  const handleEditItem = (item: EditorMediaDraft) => {
-    setEditingId(item.id);
-    setActiveTab(item.type);
-    if (item.type === "png") {
-      setPngDraft(createEditorMediaDraft(item));
-      return;
-    }
-    setSvgDraft(createEditorMediaDraft(item));
-  };
-
-  const moveItem = (sourceIndex: number, direction: -1 | 1) => {
-    const targetIndex = sourceIndex + direction;
-    if (targetIndex < 0 || targetIndex >= value.length) {
-      return;
-    }
-    const next = value.slice();
-    const [moved] = next.splice(sourceIndex, 1);
-    next.splice(targetIndex, 0, moved);
-    onChange(next);
-  };
+const StructuredMarkdownField = ({
+  fieldId,
+  label,
+  value,
+  onChange,
+  historyKey,
+  error,
+  vaultFiles,
+  vaultPngAssets,
+  vaultPath,
+  sourceRelativePath,
+  onActivateField,
+  onRegisterHandle,
+}: StructuredMarkdownFieldProps) => {
+  const renderPreview = useCallback(
+    (source: string) => (
+      <ExamMarkdown
+        content={source}
+        vaultPath={vaultPath}
+        vaultPngAssets={vaultPngAssets}
+      />
+    ),
+    [vaultPath, vaultPngAssets],
+  );
 
   return (
-    <details className="media-editor">
-      <summary className="media-editor-summary">
-        <span className="label">Media</span>
-        <span className="muted small">{summary}</span>
-      </summary>
-      <div className="media-editor-body">
-        {value.length > 0 ? (
-          <div className="media-editor-items">
-            {value.map((item, index) => (
-              <div key={item.id} className="media-editor-item">
-                <div className="media-editor-item-toolbar">
-                  <span className="pill">{item.type.toUpperCase()}</span>
-                  <div className="media-editor-item-actions">
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={() => handleEditItem(item)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={() => moveItem(index, -1)}
-                      disabled={index === 0}
-                    >
-                      Move up
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={() => moveItem(index, 1)}
-                      disabled={index === value.length - 1}
-                    >
-                      Move down
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost small danger"
-                      onClick={() => {
-                        onChange(value.filter((candidate) => candidate.id !== item.id));
-                        if (editingId === item.id) {
-                          resetComposer(item.type);
-                        }
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-                <MediaBlockCard
-                  item={editorMediaDraftToItem(item, { scope: "exam-editor-preview" }, index)}
-                  vaultPngAssets={vaultPngAssets}
-                />
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="media-editor-tabs" role="tablist" aria-label="Media type">
-          <button
-            type="button"
-            className={`ghost small ${activeTab === "svg" ? "active" : ""}`}
-            onClick={() => setActiveTab("svg")}
-          >
-            SVG
-          </button>
-          <button
-            type="button"
-            className={`ghost small ${activeTab === "png" ? "active" : ""}`}
-            onClick={() => setActiveTab("png")}
-          >
-            PNG
-          </button>
-        </div>
-
-        {activeTab === "png" ? (
-          <div className="media-editor-composer">
-            <VaultPngPicker
-              assets={vaultPngAssets}
-              query={pngQuery}
-              onQueryChange={setPngQuery}
-              onSelect={(candidate) => handleSelectPng(candidate.relPath)}
-              selectedRelPath={pngDraft.src}
-            />
-            <div className="media-editor-fields-grid">
-              <label className="field">
-                <span className="label">Label / alt</span>
-                <input
-                  className="text-input"
-                  value={pngDraft.label}
-                  onChange={(event) =>
-                    updateDraft("png", (draft) => ({ ...draft, label: event.target.value }))
-                  }
-                  placeholder="Optional label for alt text"
-                />
-              </label>
-            </div>
-            <div className="media-editor-actions">
-              <button
-                type="button"
-                className="ghost small"
-                onClick={() => resetComposer("png")}
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                className="primary small"
-                onClick={() => handleSaveDraft("png")}
-                disabled={!pngDraft.src.trim()}
-              >
-                {editingId && pngDraft.id === editingId ? "Update PNG" : "Add PNG"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="media-editor-composer">
-            <label className="field">
-              <span className="label">Inline SVG</span>
-              <AutoGrowTextarea
-                className="text-input exam-textarea"
-                rows={6}
-                value={svgDraft.inlineSvg}
-                onChange={(value) =>
-                  updateDraft("svg", (draft) => ({ ...draft, inlineSvg: value }))
-                }
-                placeholder="<svg viewBox=&quot;0 0 10 10&quot;>...</svg>"
-              />
-            </label>
-            {svgDraft.inlineSvg.trim() ? (
-              <SvgPreviewBlock
-                source={svgDraft.inlineSvg}
-                className="media-editor-svg-preview"
-              />
-            ) : null}
-            <div className="media-editor-actions">
-              <button
-                type="button"
-                className="ghost small"
-                onClick={() => resetComposer("svg")}
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                className="primary small"
-                onClick={() => handleSaveDraft("svg")}
-                disabled={!svgDraft.inlineSvg.trim()}
-              >
-                {editingId && svgDraft.id === editingId ? "Update SVG" : "Add SVG"}
-              </button>
-            </div>
-          </div>
-        )}
+    <label className="field">
+      <span className="label">{label}</span>
+      <div
+        className="exam-structured-field-shell"
+        onMouseDownCapture={() => onActivateField(fieldId)}
+        onFocusCapture={() => onActivateField(fieldId)}
+      >
+        <MarkdownHybridEditor
+          ref={(handle) => onRegisterHandle(fieldId, handle)}
+          historyKey={historyKey}
+          markdown={value}
+          mode="edit"
+          vaultFiles={vaultFiles ?? undefined}
+          vaultPngAssets={vaultPngAssets ?? undefined}
+          vaultPath={vaultPath}
+          sourceRelativePath={sourceRelativePath}
+          onChange={onChange}
+          renderPreview={renderPreview}
+        />
       </div>
-    </details>
+      {renderFieldError(error)}
+    </label>
   );
 };
 
-const QaCardForm = ({
-  card,
-  validation,
-  vaultPngAssets,
-  onPromptChange,
-  onAnswerChange,
-  onHelpChange,
-  onMediaChange,
-}: QaCardFormProps) => (
-  <div className="card-form">
-    {renderPromptField(card, validation, onPromptChange)}
-    <MediaEditor
-      value={card.mediaItems ?? []}
-      onChange={onMediaChange}
-      vaultPngAssets={vaultPngAssets}
-    />
-    <label className="field">
-      <span className="label">Answer</span>
-      <AutoGrowTextarea
-        className="text-input exam-textarea"
-        rows={3}
-        value={card.answer}
-        onChange={onAnswerChange}
-        placeholder="Answer text (line-start Answer: in exam mode)"
-      />
-      {renderFieldError(validation?.fieldErrors.answer)}
-    </label>
-    {renderHelpField("Card help / hint", card.helpText ?? "", onHelpChange)}
-  </div>
-);
+const useStructuredInsertRouter = (fieldOrder: readonly string[]) => {
+  const handlesRef = useRef<Record<string, MarkdownHybridEditorHandle | null>>({});
+  const [activeFieldId, setActiveFieldId] = useState<string>(fieldOrder[0] ?? "");
 
-const TfCardForm = ({
-  card,
-  validation,
-  vaultPngAssets,
-  onPromptChange,
-  onCorrectChange,
-  onHelpChange,
-  onMediaChange,
-}: TfCardFormProps) => (
-  <div className="card-form">
-    {renderPromptField(card, validation, onPromptChange)}
-    <MediaEditor
-      value={card.mediaItems ?? []}
-      onChange={onMediaChange}
-      vaultPngAssets={vaultPngAssets}
-    />
-    <label className="field">
-      <span className="label">Correct answer</span>
-      <div className="choice-row">
-        <label className="choice-pill">
-          <input
-            type="radio"
-            name={`tf-${card.id}`}
-            checked={card.correct === "true"}
-            onChange={() => onCorrectChange("true")}
-          />
-          True
-        </label>
-        <label className="choice-pill">
-          <input
-            type="radio"
-            name={`tf-${card.id}`}
-            checked={card.correct === "false"}
-            onChange={() => onCorrectChange("false")}
-          />
-          False
-        </label>
-      </div>
-      {renderFieldError(validation?.fieldErrors.correct)}
-    </label>
-    {renderHelpField("Card help / hint", card.helpText ?? "", onHelpChange)}
-  </div>
-);
+  const onRegisterHandle = useCallback(
+    (fieldId: string, handle: MarkdownHybridEditorHandle | null) => {
+      handlesRef.current[fieldId] = handle;
+    },
+    [],
+  );
+
+  const onActivateField = useCallback((fieldId: string) => {
+    setActiveFieldId(fieldId);
+  }, []);
+
+  const resolveTargetHandle = useCallback(() => {
+    const activeHandle = handlesRef.current[activeFieldId];
+    if (activeHandle) {
+      return activeHandle;
+    }
+    for (const fieldId of fieldOrder) {
+      const handle = handlesRef.current[fieldId];
+      if (handle) {
+        return handle;
+      }
+    }
+    return null;
+  }, [activeFieldId, fieldOrder]);
+
+  const insertTable = useCallback(() => {
+    const handle = resolveTargetHandle();
+    if (!handle) {
+      return;
+    }
+    void handle.insertStructureTemplate("table");
+  }, [resolveTargetHandle]);
+
+  const insertCodeBlock = useCallback(() => {
+    const handle = resolveTargetHandle();
+    if (!handle) {
+      return;
+    }
+    void handle.insertStructureTemplate("code-block");
+  }, [resolveTargetHandle]);
+
+  const insertMathBlock = useCallback(() => {
+    const handle = resolveTargetHandle();
+    if (!handle) {
+      return;
+    }
+    void handle.insertStructureTemplate("math-block");
+  }, [resolveTargetHandle]);
+
+  const insertPng = useCallback(() => {
+    const handle = resolveTargetHandle();
+    if (!handle) {
+      return;
+    }
+    void handle.openImageInsertPicker();
+  }, [resolveTargetHandle]);
+
+  return {
+    onRegisterHandle,
+    onActivateField,
+    insertTable,
+    insertCodeBlock,
+    insertMathBlock,
+    insertPng,
+  };
+};
 
 const renderChoiceOption = (
   option: ChoiceOption,
@@ -500,71 +306,283 @@ const renderChoiceOption = (
   );
 };
 
+const QA_FIELD_ORDER = ["prompt", "answer", "help"] as const;
+const TF_FIELD_ORDER = ["prompt", "help"] as const;
+const CHOICE_FIELD_ORDER = ["raw", "help"] as const;
+const CLOZE_FIELD_ORDER = ["prompt", "help"] as const;
+
+const QaCardForm = ({
+  card,
+  validation,
+  vaultFiles,
+  vaultPngAssets,
+  vaultPath,
+  sourceRelativePath,
+  onPromptChange,
+  onAnswerChange,
+  onHelpChange,
+}: QaCardFormProps) => {
+  const router = useStructuredInsertRouter(QA_FIELD_ORDER);
+  const promptError = [validation?.fieldErrors.prompt, validation?.fieldErrors.syntax]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div className="card-form">
+      <StructuredInsertPanel
+        onInsertTable={router.insertTable}
+        onInsertCodeBlock={router.insertCodeBlock}
+        onInsertMathBlock={router.insertMathBlock}
+        onInsertPng={router.insertPng}
+      />
+      <StructuredMarkdownField
+        fieldId="prompt"
+        label="Task description"
+        value={card.prompt}
+        onChange={onPromptChange}
+        historyKey={`exam-card-${card.id}-prompt`}
+        error={promptError || undefined}
+        vaultFiles={vaultFiles}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
+      />
+      <StructuredMarkdownField
+        fieldId="answer"
+        label="Answer"
+        value={card.answer}
+        onChange={onAnswerChange}
+        historyKey={`exam-card-${card.id}-answer`}
+        error={validation?.fieldErrors.answer}
+        vaultFiles={vaultFiles}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
+      />
+      <StructuredMarkdownField
+        fieldId="help"
+        label="Card help / hint"
+        value={card.helpText ?? ""}
+        onChange={onHelpChange}
+        historyKey={`exam-card-${card.id}-help`}
+        vaultFiles={vaultFiles}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
+      />
+    </div>
+  );
+};
+
+const TfCardForm = ({
+  card,
+  validation,
+  vaultFiles,
+  vaultPngAssets,
+  vaultPath,
+  sourceRelativePath,
+  onPromptChange,
+  onCorrectChange,
+  onHelpChange,
+}: TfCardFormProps) => {
+  const router = useStructuredInsertRouter(TF_FIELD_ORDER);
+  const promptError = [validation?.fieldErrors.prompt, validation?.fieldErrors.syntax]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <div className="card-form">
+      <StructuredInsertPanel
+        onInsertTable={router.insertTable}
+        onInsertCodeBlock={router.insertCodeBlock}
+        onInsertMathBlock={router.insertMathBlock}
+        onInsertPng={router.insertPng}
+      />
+      <StructuredMarkdownField
+        fieldId="prompt"
+        label="Task description"
+        value={card.prompt}
+        onChange={onPromptChange}
+        historyKey={`exam-card-${card.id}-prompt`}
+        error={promptError || undefined}
+        vaultFiles={vaultFiles}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
+      />
+      <label className="field">
+        <span className="label">Correct answer</span>
+        <div className="choice-row">
+          <label className="choice-pill">
+            <input
+              type="radio"
+              name={`tf-${card.id}`}
+              checked={card.correct === "true"}
+              onChange={() => onCorrectChange("true")}
+            />
+            True
+          </label>
+          <label className="choice-pill">
+            <input
+              type="radio"
+              name={`tf-${card.id}`}
+              checked={card.correct === "false"}
+              onChange={() => onCorrectChange("false")}
+            />
+            False
+          </label>
+        </div>
+        {renderFieldError(validation?.fieldErrors.correct)}
+      </label>
+      <StructuredMarkdownField
+        fieldId="help"
+        label="Card help / hint"
+        value={card.helpText ?? ""}
+        onChange={onHelpChange}
+        historyKey={`exam-card-${card.id}-help`}
+        vaultFiles={vaultFiles}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
+      />
+    </div>
+  );
+};
+
 const ChoiceCardForm = ({
   card,
   validation,
+  vaultFiles,
   vaultPngAssets,
-  onPromptChange,
+  vaultPath,
+  sourceRelativePath,
+  onChoiceRawBodyChange,
   onOptionTextChange,
   onOptionToggle,
   onOptionSelect,
   onOptionAdd,
   onOptionRemove,
   onHelpChange,
-  onMediaChange,
-}: ChoiceCardFormProps) => (
-  <div className="card-form">
-    {renderPromptField(card, validation, onPromptChange)}
-    <MediaEditor
-      value={card.mediaItems ?? []}
-      onChange={onMediaChange}
-      vaultPngAssets={vaultPngAssets}
-    />
-    <div className="field">
-      <div className="field-header">
-        <span className="label">Options</span>
-        <button type="button" className="ghost small" onClick={onOptionAdd}>
-          Add option
-        </button>
+}: ChoiceCardFormProps) => {
+  const router = useStructuredInsertRouter(CHOICE_FIELD_ORDER);
+  const rawError = [validation?.fieldErrors.prompt, validation?.fieldErrors.syntax]
+    .filter(Boolean)
+    .join(" ");
+  const choiceSource = useMemo(
+    () => (card.rawBody?.trim() ? card.rawBody : serializeChoiceRawBody(card)),
+    [card],
+  );
+
+  return (
+    <div className="card-form">
+      <StructuredInsertPanel
+        onInsertTable={router.insertTable}
+        onInsertCodeBlock={router.insertCodeBlock}
+        onInsertMathBlock={router.insertMathBlock}
+        onInsertPng={router.insertPng}
+      />
+      <StructuredMarkdownField
+        fieldId="raw"
+        label="Question + options source"
+        value={choiceSource}
+        onChange={onChoiceRawBodyChange}
+        historyKey={`exam-card-${card.id}-raw`}
+        error={rawError || undefined}
+        vaultFiles={vaultFiles}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
+      />
+      <div className="field">
+        <div className="field-header">
+          <span className="label">Options</span>
+          <button type="button" className="ghost small" onClick={onOptionAdd}>
+            Add option
+          </button>
+        </div>
+        <div className="option-list">
+          {card.options.map((option) =>
+            renderChoiceOption(
+              option,
+              card,
+              validation,
+              onOptionTextChange,
+              onOptionToggle,
+              onOptionSelect,
+              onOptionRemove,
+            ),
+          )}
+        </div>
+        {renderFieldError(validation?.fieldErrors.options)}
+        {renderFieldError(validation?.fieldErrors.correct)}
       </div>
-      <div className="option-list">
-        {card.options.map((option) =>
-          renderChoiceOption(
-            option,
-            card,
-            validation,
-            onOptionTextChange,
-            onOptionToggle,
-            onOptionSelect,
-            onOptionRemove,
-          ),
-        )}
-      </div>
-      {renderFieldError(validation?.fieldErrors.options)}
-      {renderFieldError(validation?.fieldErrors.correct)}
+      <StructuredMarkdownField
+        fieldId="help"
+        label="Card help / hint"
+        value={card.helpText ?? ""}
+        onChange={onHelpChange}
+        historyKey={`exam-card-${card.id}-help`}
+        vaultFiles={vaultFiles}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
+      />
     </div>
-    {renderHelpField("Card help / hint", card.helpText ?? "", onHelpChange)}
-  </div>
-);
+  );
+};
 
 const ClozeCardForm = ({
   card,
   validation,
+  vaultFiles,
   vaultPngAssets,
+  vaultPath,
+  sourceRelativePath,
   onPromptChange,
   onHelpChange,
-  onMediaChange,
 }: ClozeCardFormProps) => {
+  const router = useStructuredInsertRouter(CLOZE_FIELD_ORDER);
   const [showPreview, setShowPreview] = useState(false);
   const previewCard = useMemo(() => buildClozePreview(card.prompt), [card.prompt]);
+  const promptError = [validation?.fieldErrors.prompt, validation?.fieldErrors.syntax]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className="card-form">
-      {renderPromptField(card, validation, onPromptChange)}
-      <MediaEditor
-        value={card.mediaItems ?? []}
-        onChange={onMediaChange}
+      <StructuredInsertPanel
+        onInsertTable={router.insertTable}
+        onInsertCodeBlock={router.insertCodeBlock}
+        onInsertMathBlock={router.insertMathBlock}
+        onInsertPng={router.insertPng}
+      />
+      <StructuredMarkdownField
+        fieldId="prompt"
+        label="Task description"
+        value={card.prompt}
+        onChange={onPromptChange}
+        historyKey={`exam-card-${card.id}-prompt`}
+        error={promptError || undefined}
+        vaultFiles={vaultFiles}
         vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
       />
       <div className="hint-box">
         {card.type === "cl" ? (
@@ -614,7 +632,19 @@ const ClozeCardForm = ({
           )
         ) : null}
       </div>
-      {renderHelpField("Card help / hint", card.helpText ?? "", onHelpChange)}
+      <StructuredMarkdownField
+        fieldId="help"
+        label="Card help / hint"
+        value={card.helpText ?? ""}
+        onChange={onHelpChange}
+        historyKey={`exam-card-${card.id}-help`}
+        vaultFiles={vaultFiles}
+        vaultPngAssets={vaultPngAssets}
+        vaultPath={vaultPath}
+        sourceRelativePath={sourceRelativePath}
+        onActivateField={router.onActivateField}
+        onRegisterHandle={router.onRegisterHandle}
+      />
     </div>
   );
 };
@@ -630,9 +660,12 @@ export const CardContentForm = ({
   onOptionSelect,
   onOptionAdd,
   onOptionRemove,
+  onChoiceRawBodyChange,
   onHelpChange,
-  onMediaChange,
+  vaultFiles,
   vaultPngAssets,
+  vaultPath,
+  sourceRelativePath,
 }: CardContentFormProps) => {
   const title = serializeCardTypeLabel(card.type);
   const isValid = validation ? validation.valid : true;
@@ -646,54 +679,63 @@ export const CardContentForm = ({
         <div className="exam-card-form-tags">
           <span className={`pill ${statusClass}`}>{statusLabel}</span>
           {card.helpText?.trim() ? <span className="pill">Hint</span> : null}
-          {(card.mediaItems ?? []).length > 0 ? <span className="pill">Media</span> : null}
+          <span className="pill">Structured</span>
         </div>
       </header>
       {card.type === "qa" ? (
         <QaCardForm
           card={card}
           validation={validation}
+          vaultFiles={vaultFiles}
           vaultPngAssets={vaultPngAssets}
+          vaultPath={vaultPath}
+          sourceRelativePath={sourceRelativePath}
           onPromptChange={onPromptChange}
           onAnswerChange={onAnswerChange}
           onHelpChange={onHelpChange}
-          onMediaChange={onMediaChange}
         />
       ) : null}
       {card.type === "tf" ? (
         <TfCardForm
           card={card}
           validation={validation}
+          vaultFiles={vaultFiles}
           vaultPngAssets={vaultPngAssets}
+          vaultPath={vaultPath}
+          sourceRelativePath={sourceRelativePath}
           onPromptChange={onPromptChange}
           onCorrectChange={onCorrectChange}
           onHelpChange={onHelpChange}
-          onMediaChange={onMediaChange}
         />
       ) : null}
       {card.type === "m1" || card.type === "m2" ? (
         <ChoiceCardForm
           card={card}
           validation={validation}
+          vaultFiles={vaultFiles}
           vaultPngAssets={vaultPngAssets}
+          vaultPath={vaultPath}
+          sourceRelativePath={sourceRelativePath}
           onPromptChange={onPromptChange}
+          onChoiceRawBodyChange={onChoiceRawBodyChange}
           onOptionTextChange={onOptionTextChange}
           onOptionToggle={onOptionToggle}
           onOptionSelect={onOptionSelect}
           onOptionAdd={onOptionAdd}
           onOptionRemove={onOptionRemove}
           onHelpChange={onHelpChange}
-          onMediaChange={onMediaChange}
         />
       ) : null}
       {card.type === "cl" || card.type === "cd" || card.type === "cld" ? (
         <ClozeCardForm
           card={card}
           validation={validation}
+          vaultFiles={vaultFiles}
           vaultPngAssets={vaultPngAssets}
+          vaultPath={vaultPath}
+          sourceRelativePath={sourceRelativePath}
           onPromptChange={onPromptChange}
           onHelpChange={onHelpChange}
-          onMediaChange={onMediaChange}
         />
       ) : null}
     </section>

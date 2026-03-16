@@ -3,7 +3,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { serializeExamBlueprint } from "./serializer";
+import { importExamMarkdown } from "./importer";
+import {
+  serializeExamBlueprint,
+  serializeExamBlueprintStable,
+} from "./serializer";
 import type { ExamBlueprint } from "./types";
 
 const buildExam = (): ExamBlueprint => ({
@@ -463,5 +467,176 @@ describe("serializeExamBlueprint", () => {
     expect(markdown).toMatch(
       /Answer: Answer\n---\nTrailing Basis\.\n---\nOverflow eins\.\n---\nOverflow drei\.\n#endexam$/,
     );
+  });
+
+  it("serializes M1/M2 cards from rawBody when present", () => {
+    const exam: ExamBlueprint = {
+      id: "exam-choice-raw",
+      title: "",
+      description: "",
+      tasks: [
+        {
+          id: "task-1",
+          order: 0,
+          title: "Raw choice",
+          useCardWrapper: false,
+          cards: [
+            {
+              id: "card-1",
+              type: "m1",
+              prompt: "Ignored prompt",
+              options: [
+                { id: "opt-a", text: "Alpha", isCorrect: true },
+                { id: "opt-b", text: "Beta", isCorrect: false },
+              ],
+              rawBody: "Custom stem\nc) Alpha\nd) Beta\n-d",
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = serializeExamBlueprint(exam);
+    expect(markdown).toContain("Custom stem");
+    expect(markdown).toContain("c) Alpha");
+    expect(markdown).toContain("d) Beta");
+    expect(markdown).toContain("-d");
+    expect(markdown).not.toContain("a) Alpha");
+  });
+});
+
+describe("serializeExamBlueprintStable", () => {
+  it("returns byte-identical source on no-op save", () => {
+    const source = [
+      "#exam",
+      "1) First",
+      "Question A",
+      "Answer: A",
+      "---",
+      "2) Second",
+      "Question B",
+      "Answer: B",
+      "---",
+      "#endexam",
+    ].join("\n");
+    const imported = importExamMarkdown(source);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const markdown = serializeExamBlueprintStable(imported.blueprint, {
+      sourceMarkdown: source,
+      passiveSegments: imported.passiveSegments,
+    });
+    expect(markdown).toBe(source);
+  });
+
+  it("rewrites only changed task chunks and leaves unchanged chunks untouched", () => {
+    const source = [
+      "#exam",
+      "1) First",
+      "Question A",
+      "Answer: A",
+      "---",
+      "2) Second",
+      "#help",
+      "Hint B",
+      "#helpend",
+      "Question B",
+      "Answer: B",
+      "---",
+      "#endexam",
+    ].join("\n");
+    const secondTaskChunk = [
+      "2) Second",
+      "#help",
+      "Hint B",
+      "#helpend",
+      "Question B",
+      "Answer: B",
+      "---",
+    ].join("\n");
+    const imported = importExamMarkdown(source);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const exam: ExamBlueprint = {
+      ...imported.blueprint,
+      tasks: imported.blueprint.tasks.map((task, index) =>
+        index === 0
+          ? {
+              ...task,
+              cards: task.cards.map((card) =>
+                card.type === "qa"
+                  ? { ...card, prompt: "Question A updated" }
+                  : card
+              ),
+            }
+          : task
+      ),
+    };
+
+    const markdown = serializeExamBlueprintStable(exam, {
+      sourceMarkdown: source,
+      passiveSegments: imported.passiveSegments,
+    });
+
+    expect(markdown).not.toBe(source);
+    expect(markdown).toContain("Question A updated");
+    expect(markdown).toContain(secondTaskChunk);
+  });
+
+  it("updates exam meta without reserializing unchanged task chunks", () => {
+    const source = [
+      "#exam",
+      "# Original title",
+      "Original description.",
+      "",
+      "1) First",
+      "Question A",
+      "Answer: A",
+      "---",
+      "2) Second",
+      "Question B",
+      "Answer: B",
+      "---",
+      "#endexam",
+    ].join("\n");
+    const firstTaskChunk = [
+      "1) First",
+      "Question A",
+      "Answer: A",
+      "---",
+    ].join("\n");
+    const secondTaskChunk = [
+      "2) Second",
+      "Question B",
+      "Answer: B",
+      "---",
+    ].join("\n");
+    const imported = importExamMarkdown(source);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    const exam: ExamBlueprint = {
+      ...imported.blueprint,
+      title: "Updated title",
+      description: "Updated description.",
+    };
+
+    const markdown = serializeExamBlueprintStable(exam, {
+      sourceMarkdown: source,
+      passiveSegments: imported.passiveSegments,
+    });
+
+    expect(markdown).toContain("# Updated title");
+    expect(markdown).toContain("Updated description.");
+    expect(markdown).toContain(firstTaskChunk);
+    expect(markdown).toContain(secondTaskChunk);
   });
 });

@@ -13,7 +13,7 @@ import type { ExamEditorSelection } from "../types";
 import { ModalShell } from "../../../components/ModalShell";
 import { CardContentForm } from "./ContentForms";
 import type { EditorMediaDraft } from "../../../lib/cardMedia";
-import type { VaultPngAsset } from "../../../lib/tree";
+import type { VaultFile, VaultPngAsset } from "../../../lib/tree";
 
 const getTaskValidation = (
   validation: ExamValidation,
@@ -62,7 +62,11 @@ type ContentModeProps = {
   onOptionSelect: (taskId: string, cardId: string, optionId: string) => void;
   onOptionAdd: (taskId: string, cardId: string) => void;
   onOptionRemove: (taskId: string, cardId: string, optionId: string) => void;
+  onChoiceRawBodyChange: (taskId: string, cardId: string, value: string) => void;
+  vaultFiles?: VaultFile[] | null;
   vaultPngAssets?: VaultPngAsset[] | null;
+  vaultPath?: string | null;
+  sourceRelativePath?: string | null;
   popupMode?: boolean;
   popupOpen?: boolean;
   onPopupOpen?: () => void;
@@ -92,7 +96,11 @@ type ContentEditorPanelProps = {
   onOptionSelect: ContentModeProps["onOptionSelect"];
   onOptionAdd: ContentModeProps["onOptionAdd"];
   onOptionRemove: ContentModeProps["onOptionRemove"];
+  onChoiceRawBodyChange: ContentModeProps["onChoiceRawBodyChange"];
+  vaultFiles?: VaultFile[] | null;
   vaultPngAssets?: VaultPngAsset[] | null;
+  vaultPath?: string | null;
+  sourceRelativePath?: string | null;
 };
 
 const ContentEditorPanel = ({
@@ -105,7 +113,11 @@ const ContentEditorPanel = ({
   onOptionSelect,
   onOptionAdd,
   onOptionRemove,
+  onChoiceRawBodyChange,
+  vaultFiles,
   vaultPngAssets,
+  vaultPath,
+  sourceRelativePath,
 }: ContentEditorPanelProps) => (
   <section className="panel exam-editor-panel content-editor">
     <header className="panel-header">
@@ -162,13 +174,16 @@ const ContentEditorPanel = ({
                 onOptionRemove={(optionId) =>
                   onOptionRemove(activeTask.id, card.id, optionId)
                 }
+                onChoiceRawBodyChange={(value) =>
+                  onChoiceRawBodyChange(activeTask.id, card.id, value)
+                }
                 onHelpChange={(value) =>
                   onCardHelpChange(activeTask.id, card.id, value)
                 }
-                onMediaChange={(value) =>
-                  onCardUpdate(activeTask.id, card.id, { mediaItems: value })
-                }
+                vaultFiles={vaultFiles}
                 vaultPngAssets={vaultPngAssets}
+                vaultPath={vaultPath}
+                sourceRelativePath={sourceRelativePath}
               />
             );
           })}
@@ -195,7 +210,11 @@ export const ContentMode = ({
   onOptionSelect,
   onOptionAdd,
   onOptionRemove,
+  onChoiceRawBodyChange,
+  vaultFiles,
   vaultPngAssets,
+  vaultPath,
+  sourceRelativePath,
   popupMode = false,
   popupOpen = false,
   onPopupOpen,
@@ -225,7 +244,11 @@ export const ContentMode = ({
       onOptionSelect={onOptionSelect}
       onOptionAdd={onOptionAdd}
       onOptionRemove={onOptionRemove}
+      onChoiceRawBodyChange={onChoiceRawBodyChange}
+      vaultFiles={vaultFiles}
       vaultPngAssets={vaultPngAssets}
+      vaultPath={vaultPath}
+      sourceRelativePath={sourceRelativePath}
     />
   );
 

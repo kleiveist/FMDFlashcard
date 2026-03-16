@@ -64,6 +64,37 @@ describe("validateCard", () => {
     expect(result.fieldErrors.correct).toBe("Select at least two correct options.");
   });
 
+  it("flags invalid M1/M2 raw body syntax", () => {
+    const result = validateCard({
+      id: "m1-raw-invalid",
+      type: "m1",
+      prompt: "Pick one",
+      options: [
+        { id: "opt-a", text: "Alpha", isCorrect: true },
+        { id: "opt-b", text: "Beta", isCorrect: false },
+      ],
+      rawBody: "this is not valid multiple-choice syntax",
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.fieldErrors.syntax).toBeDefined();
+  });
+
+  it("accepts valid M1/M2 raw body syntax", () => {
+    const result = validateCard({
+      id: "m2-raw-valid",
+      type: "m2",
+      prompt: "Pick two",
+      options: [
+        { id: "opt-a", text: "Alpha", isCorrect: true },
+        { id: "opt-b", text: "Beta", isCorrect: true },
+      ],
+      rawBody: ["Pick two", "a) Alpha", "b) Beta", "-a", "-b"].join("\n"),
+    });
+
+    expect(result.fieldErrors.syntax).toBeUndefined();
+  });
+
   it("flags cloze prompts without blanks", () => {
     const result = validateCard({
       id: "cl-1",

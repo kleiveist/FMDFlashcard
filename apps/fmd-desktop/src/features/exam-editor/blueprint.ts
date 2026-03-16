@@ -118,6 +118,7 @@ export const cloneCardBlueprint = (card: CardBlueprint): CardBlueprint => {
         type: "qa",
         prompt: card.prompt,
         answer: card.answer,
+        rawBody: card.rawBody,
       };
     case "tf":
       return {
@@ -125,6 +126,7 @@ export const cloneCardBlueprint = (card: CardBlueprint): CardBlueprint => {
         type: "tf",
         prompt: card.prompt,
         correct: card.correct,
+        rawBody: card.rawBody,
       };
     case "m1":
     case "m2":
@@ -133,6 +135,7 @@ export const cloneCardBlueprint = (card: CardBlueprint): CardBlueprint => {
         type: card.type,
         prompt: card.prompt,
         options: card.options.map(cloneChoiceOption),
+        rawBody: card.rawBody,
       };
     case "cl":
     case "cd":
@@ -141,6 +144,7 @@ export const cloneCardBlueprint = (card: CardBlueprint): CardBlueprint => {
         ...base,
         type: card.type,
         prompt: card.prompt,
+        rawBody: card.rawBody,
       };
     default: {
       const _exhaustive: never = card;
@@ -161,6 +165,17 @@ export const cloneTaskBlueprint = (task: ExamTaskBlueprint): ExamTaskBlueprint =
   mediaItems: (task.mediaItems ?? []).map(cloneEditorMediaDraft),
   useCardWrapper: task.useCardWrapper,
   cards: task.cards.map(cloneCardBlueprint),
+  sourceMeta: task.sourceMeta
+    ? {
+        sourceTaskIndex: task.sourceMeta.sourceTaskIndex,
+        sourceRange: {
+          startLine: task.sourceMeta.sourceRange.startLine,
+          endLine: task.sourceMeta.sourceRange.endLine,
+        },
+        sourceChunk: task.sourceMeta.sourceChunk,
+        sourceFingerprint: task.sourceMeta.sourceFingerprint,
+      }
+    : undefined,
 });
 
 const reorderByIndex = <T>(items: T[], sourceIndex: number, targetIndex: number) => {

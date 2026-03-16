@@ -16,8 +16,14 @@ import type {
 } from "../../lib/flashcards";
 import { hasClozeMarker, parseFlashcards } from "../../lib/flashcards";
 import { findTableLineIndices } from "../../lib/markdownTables";
-import { extractMediaFromLines, mediaItemsToDrafts } from "../../lib/cardMedia";
+import {
+  mediaItemsToDrafts,
+  serializePngEmbed,
+  serializeSvgFence,
+} from "../../lib/cardMedia";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
+import { serializeChoiceRawBody } from "./choiceRawBody";
+import { buildTaskFingerprint } from "./stability";
 import type {
   CardBlueprint,
   ExamBlueprint,
@@ -367,13 +373,18 @@ const buildCardsFromTrueFalse = (part: TrueFalseCard): CardBlueprint[] =>
     correct: item.correct === "falsch" ? "false" : "true",
   }));
 
-const buildCardFromMultipleChoice = (part: MultipleChoiceCard): CardBlueprint => ({
-  id: createBlueprintId("card"),
-  type: resolveChoiceType(part),
-  mediaItems: [],
-  prompt: buildPromptWithContext(part.question, part.context),
-  options: buildChoiceOptions(part),
-});
+const buildCardFromMultipleChoice = (part: MultipleChoiceCard): CardBlueprint => {
+  const prompt = buildPromptWithContext(part.question, part.context);
+  const options = buildChoiceOptions(part);
+  return {
+    id: createBlueprintId("card"),
+    type: resolveChoiceType(part),
+    mediaItems: [],
+    prompt,
+    options,
+    rawBody: serializeChoiceRawBody({ prompt, options }),
+  };
+};
 
 const buildCardFromCloze = (
   part: Extract<FlashcardPart, { kind: "cloze" }>,
@@ -412,6 +423,42 @@ const buildCardsFromPart = (part: FlashcardPart): CardBlueprint[] => {
       return [];
     }
   }
+};
+
+const serializePartMediaLines = (part: FlashcardPart) =>
+  (part.media ?? []).map((item) =>
+    item.type === "png"
+      ? serializePngEmbed(item.src, item.label)
+      : serializeSvgFence(item.inlineSvg),
+  );
+
+const prependStructuredLinesToCard = (card: CardBlueprint, lines: string[]) => {
+  if (lines.length === 0 || !("prompt" in card)) {
+    return card;
+  }
+  const prefix = lines.filter((line) => line.trim().length > 0);
+  if (prefix.length === 0) {
+    return card;
+  }
+  const nextPrompt = [...prefix, card.prompt.trim()]
+    .filter((entry) => entry.trim().length > 0)
+    .join("\n")
+    .trim();
+  if (card.type === "m1" || card.type === "m2") {
+    const nextRawBody = [...prefix, card.rawBody?.trim() ?? ""]
+      .filter((entry) => entry.trim().length > 0)
+      .join("\n")
+      .trim();
+    return {
+      ...card,
+      prompt: nextPrompt,
+      rawBody: nextRawBody,
+    };
+  }
+  return {
+    ...card,
+    prompt: nextPrompt,
+  };
 };
 
 type CardBlock = {
@@ -769,6 +816,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
   }
 
   const warnings: string[] = [];
+  const originalSourceLines = normalizeLines(markdown);
   const firstTaskLine = parsed.tasks
     .map((task) => task.sourceRange.startLine)
     .sort((a, b) => a - b)[0];
@@ -827,17 +875,13 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     const headingInfo = deriveTaskHeadingInfo(rawLines, task.cardWrapper);
     let hasCardContent = false;
     let cardHelpIndex = 0;
-    const pushCard = (
-      card: CardBlueprint,
-      mediaItems = card.mediaItems,
-    ) => {
+    const pushCard = (card: CardBlueprint) => {
       if (cardHelpIndex < cardHelpTexts.length) {
         const helpText = cardHelpTexts[cardHelpIndex] ?? "";
         if (helpText.trim()) {
           card.helpText = helpText;
         }
       }
-      card.mediaItems = mediaItems;
       cardHelpIndex += 1;
       cards.push(card);
     };
@@ -865,19 +909,14 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
           trimmedLines = candidateLines;
         }
       }
-      const extractedMedia = extractMediaFromLines(
-        trimmedLines,
-        "exam-editor-card-import",
-      );
-      const mediaItems = mediaItemsToDrafts(extractedMedia.items);
-      trimmedLines = trimEmptyLines(extractedMedia.contentLines);
-      if (trimmedLines.length > 0 || mediaItems.length > 0) {
+      if (trimmedLines.length > 0) {
         hasCardContent = true;
       }
-      const hasFallbackMaterial = trimmedLines.length > 0 || mediaItems.length > 0;
+      const hasFallbackMaterial = trimmedLines.length > 0;
       if (!hasFallbackMaterial) {
         return;
       }
+      const blockRawSource = trimEmptyLines(trimmedLines).join("\n").trim();
       const parts = trimmedLines.length > 0 ? parseCardBlock(trimmedLines) : [];
       if (parts.length === 0) {
         const fallback = splitAnswerBlock(trimmedLines.join("\n"));
@@ -888,15 +927,25 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
           prompt: fallback.prompt,
           answer: fallback.hasAnswerMarker ? (fallback.officialAnswer ?? "") : "",
         };
-        pushCard(fallbackCard, mediaItems);
+        pushCard(fallbackCard);
         return;
       }
       parts.forEach((part) => {
-        const partCards = buildCardsFromPart(part);
+        const partMediaLines = serializePartMediaLines(part);
+        const partCards = buildCardsFromPart(part).map((card) =>
+          prependStructuredLinesToCard(card, partMediaLines)
+        );
         if (part.kind === "true-false" && part.items.length > 1) {
           warnings.push("Multiple true/false statements were split into separate cards.");
         }
-        partCards.forEach((card) => pushCard(card, mediaItems));
+        if (part.kind === "multiple-choice" && parts.length === 1 && blockRawSource) {
+          partCards.forEach((card) => {
+            if (card.type === "m1" || card.type === "m2") {
+              card.rawBody = blockRawSource;
+            }
+          });
+        }
+        partCards.forEach((card) => pushCard(card));
       });
     });
 
@@ -940,9 +989,37 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     if (cards.length > 0 && taskMediaDrafts.length > 0) {
       const firstCard = cards[0];
       if (firstCard) {
-        firstCard.mediaItems = [...(firstCard.mediaItems ?? []), ...taskMediaDrafts];
+        const taskMediaLines = taskMediaDrafts.map((draft) =>
+          draft.type === "png"
+            ? serializePngEmbed(draft.src, draft.label)
+            : serializeSvgFence(draft.inlineSvg),
+        );
+        if ("prompt" in firstCard) {
+          const currentPrompt = firstCard.prompt.trim();
+          firstCard.prompt = [...taskMediaLines, currentPrompt]
+            .filter((entry) => entry.trim().length > 0)
+            .join("\n")
+            .trim();
+        }
+        if ((firstCard.type === "m1" || firstCard.type === "m2")) {
+          const currentRawBody = firstCard.rawBody?.trim() ?? "";
+          firstCard.rawBody = [...taskMediaLines, currentRawBody]
+            .filter((entry) => entry.trim().length > 0)
+            .join("\n")
+            .trim();
+        }
       }
     }
+
+    const sourceTask = originalTask ?? task;
+    const sourceStartLine = sourceTask.sourceRange.startLine;
+    const sourceEndLine = sourceTask.sourceRange.endLine;
+    const sourceChunk =
+      sourceStartLine >= 0 &&
+      sourceEndLine >= sourceStartLine &&
+      sourceEndLine < originalSourceLines.length
+        ? originalSourceLines.slice(sourceStartLine, sourceEndLine + 1).join("\n")
+        : "";
 
     const taskBlueprint: ExamTaskBlueprint = {
       id: createBlueprintId("task"),
@@ -950,7 +1027,19 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       title: headingInfo.heading,
       useCardWrapper: task.cardWrapper,
       cards,
+      sourceMeta: {
+        sourceTaskIndex: index,
+        sourceRange: {
+          startLine: sourceTask.sourceRange.startLine,
+          endLine: sourceTask.sourceRange.endLine,
+        },
+        sourceChunk,
+        sourceFingerprint: "task-pending",
+      },
     };
+    if (taskBlueprint.sourceMeta) {
+      taskBlueprint.sourceMeta.sourceFingerprint = buildTaskFingerprint(taskBlueprint);
+    }
 
     return taskBlueprint;
   });
