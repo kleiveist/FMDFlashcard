@@ -237,7 +237,10 @@ const deriveExamTitleFromFilePath = (path: string | null | undefined) => {
   return title || null;
 };
 
-const resolveVaultRelativePath = (absolutePath: string, vaultPath: string | null) => {
+const resolveVaultRelativePath = (
+  absolutePath: string,
+  vaultPath: string | null | undefined,
+) => {
   if (!vaultPath) {
     return null;
   }

@@ -429,7 +429,7 @@ const serializePartMediaLines = (part: FlashcardPart) =>
   (part.media ?? []).map((item) =>
     item.type === "png"
       ? serializePngEmbed(item.src, item.label)
-      : serializeSvgFence(item.inlineSvg),
+      : serializeSvgFence(item.inlineSvg ?? ""),
   );
 
 const prependStructuredLinesToCard = (card: CardBlueprint, lines: string[]) => {
