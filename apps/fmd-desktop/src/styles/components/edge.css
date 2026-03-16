@@ -14,6 +14,13 @@
   --block-glow: transparent;
 }
 
+/*
+ * 🧱 Edge mode enforces zero-radius geometry across panels, controls, and interactive surfaces.
+ * 🚫 Controls and text fields keep transparent borders in the resting state to avoid hard outlines.
+ * 🎨 Hover and active states communicate interaction through background and color, not border lines.
+ * ✨ Vault status receives explicit hover emphasis so the whole field is visibly highlighted.
+ * ♿ Focus-visible keeps a strong outline to preserve keyboard accessibility in a borderless UI.
+ */
 :root[data-design-mode="edge"] :is(
     .panel,
     .modal-panel,
@@ -80,6 +87,63 @@
     .chip
   ) {
   border-radius: 0;
+  box-shadow: none;
+}
+
+:root[data-design-mode="edge"] :is(
+    .primary,
+    .ghost,
+    .design-mode-option,
+    .preview-mode-button,
+    .nav-icon,
+    .nav-item,
+    .sidebar-active-user-trigger,
+    .vault-status,
+    .vault-status-action,
+    .vault-status-refresh,
+    .vault-status-menu-item,
+    .text-input,
+    .hex-input,
+    .inline-rename-input,
+    .preview-editor
+  ) {
+  border-color: transparent;
+}
+
+:root[data-design-mode="edge"] :is(
+    .ghost:hover,
+    .ghost.small.active,
+    .design-mode-option.active,
+    .preview-mode-button.active,
+    .nav-icon:hover,
+    .nav-icon.active,
+    .nav-item.active,
+    .sidebar-active-user-trigger:hover,
+    .vault-status:hover,
+    .vault-status-action:hover,
+    .vault-status-refresh:hover:not(:disabled)
+  ) {
+  border-color: transparent;
+}
+
+:root[data-design-mode="edge"] .vault-status:hover {
+  background: var(--ui-nav-button-hover-bg);
+  color: var(--accent-strong);
+}
+
+:root[data-design-mode="edge"] .preview-mode-button.edit-active {
+  box-shadow: none;
+}
+
+:root[data-design-mode="edge"] :is(
+    .text-input,
+    .hex-input,
+    .inline-rename-input,
+    .preview-editor
+  ):focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: 1px;
+  border-color: transparent;
   box-shadow: none;
 }
 

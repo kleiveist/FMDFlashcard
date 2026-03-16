@@ -385,11 +385,12 @@
   --ui-sidebar-shell-padding: 10px;
   --ui-sidebar-shell-gap: 10px;
   --ui-sidebar-shell-shadow: none;
+  --field-border: transparent;
   --ui-nav-button-bg: transparent;
-  --ui-nav-button-border: var(--ui-border-subtle);
+  --ui-nav-button-border: transparent;
   --ui-nav-button-hover-bg: var(--accent-weak-bg);
   --ui-nav-button-active-bg: var(--accent-active-bg);
-  --ui-nav-button-active-border: var(--accent-border);
+  --ui-nav-button-active-border: transparent;
   --ui-tree-row-bg: transparent;
   --ui-tree-row-hover-bg: var(--accent-weak-bg);
   --ui-tree-row-active-bg: var(--accent-active-bg);
@@ -408,8 +409,9 @@
 :root[data-theme="dark"][data-design-mode="edge"] {
   --ui-border-subtle: color-mix(in srgb, var(--line) 82%, transparent);
   --ui-border-hover: color-mix(in srgb, var(--accent-border) 90%, var(--line));
+  --field-border: transparent;
   --ui-nav-button-bg: transparent;
-  --ui-nav-button-border: var(--ui-border-subtle);
+  --ui-nav-button-border: transparent;
   --ui-nav-button-hover-bg: color-mix(
     in srgb,
     var(--accent-weak-bg) 76%,
@@ -420,6 +422,7 @@
     var(--accent-active-bg) 80%,
     transparent
   );
+  --ui-nav-button-active-border: transparent;
   --ui-tree-row-hover-bg: var(--ui-nav-button-hover-bg);
   --ui-tree-row-active-bg: var(--ui-nav-button-active-bg);
 }
