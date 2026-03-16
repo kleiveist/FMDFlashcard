@@ -61,6 +61,11 @@ export type ExamTaskBlueprint = {
   cards: CardBlueprint[];
 };
 
+export type ExamPassiveSegment = {
+  slotIndex: number;
+  text: string;
+};
+
 export type ExamBlueprint = {
   id: string;
   title: string;

@@ -976,6 +976,36 @@ Mehr Kontext ohne 2)-Header.
     }
   });
 
+  it("ignores unnumbered orphan continuation blocks without card syntax", () => {
+    const markdown = `
+#exam
+1) Ausgangsaufgabe
+Frage?
+Answer: A
+---
+Unnummerierter Kontext ohne Kartenmarker.
+Noch eine Zeile ohne Antwortmarker.
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(1);
+    const task = imported.blueprint.tasks[0];
+    expect(task?.cards).toHaveLength(1);
+    const card = task?.cards[0];
+    if (card?.type === "qa" || card?.type === "cd" || card?.type === "cld") {
+      expect(card.prompt).toContain("Frage?");
+      expect(card.prompt).not.toContain(
+        "Unnummerierter Kontext ohne Kartenmarker.",
+      );
+    }
+  });
+
   it("does not treat decimal values as dot-numbered markers", () => {
     const markdown = `
 #exam
@@ -1080,6 +1110,56 @@ Just context without an answer marker.
     if (task?.cards[0]?.type === "qa") {
       expect(task.cards[0].prompt).not.toContain("Just context without an answer marker.");
     }
+    expect(imported.passiveSegments).toEqual([
+      expect.objectContaining({
+        slotIndex: 0,
+        text: "Just context without an answer marker.",
+      }),
+    ]);
+
+    const serialized = serializeExamBlueprint(imported.blueprint, {
+      passiveSegments: imported.passiveSegments,
+    });
+    expect(serialized).toContain("Just context without an answer marker.");
+    expect(serialized).toMatch(
+      /Answer: A\n---\nJust context without an answer marker\.\n#endexam$/,
+    );
+  });
+
+  it("preserves orphan slot text between tasks via passive segments", () => {
+    const markdown = `
+#exam
+1) Erste Aufgabe
+Answer: A
+---
+Orphan zwischen Aufgaben.
+---
+2) Zweite Aufgabe
+Answer: B
+#endexam
+    `.trim();
+
+    const imported = importExamMarkdown(markdown);
+    expect(imported).not.toBeNull();
+    if (!imported) {
+      return;
+    }
+
+    expect(imported.blueprint.tasks).toHaveLength(2);
+    expect(imported.passiveSegments).toEqual([
+      expect.objectContaining({
+        slotIndex: 0,
+        text: "Orphan zwischen Aufgaben.",
+      }),
+    ]);
+
+    const serialized = serializeExamBlueprint(imported.blueprint, {
+      passiveSegments: imported.passiveSegments,
+    });
+    expect(serialized).toContain("Orphan zwischen Aufgaben.");
+    expect(serialized).toMatch(
+      /Answer: A\n---\nOrphan zwischen Aufgaben\.\n2\) Zweite Aufgabe/,
+    );
   });
 
   it("does not treat legacy #media metadata blocks as media", () => {

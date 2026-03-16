@@ -22,6 +22,7 @@ import {
 import type {
   CardType,
   ExamBlueprint,
+  ExamPassiveSegment,
   ExamTaskBlueprint,
 } from "../../features/exam-editor/types";
 import {
@@ -215,10 +216,11 @@ export const ExamEditorView = ({
   const [saveError, setSaveError] = useState("");
   const [lastSavedContent, setLastSavedContent] = useState<string | null>(null);
   const [sourceDocumentMarkdown, setSourceDocumentMarkdown] = useState("");
+  const [passiveSegments, setPassiveSegments] = useState<ExamPassiveSegment[]>([]);
   const [dirtyBaselineMarkdown, setDirtyBaselineMarkdown] = useState<string>(() =>
     resolveMarkdownWithTaskProfile({
       sourceMarkdown: "",
-      bodyMarkdown: serializeExamBlueprint(initialExam),
+      bodyMarkdown: serializeExamBlueprint(initialExam, { passiveSegments: [] }),
       profileName: null,
     }),
   );
@@ -274,7 +276,10 @@ export const ExamEditorView = ({
   const validation = useMemo(() => validateExamBlueprint(exam), [exam]);
   const canSave = validation.valid;
   const isSaving = saveState === "saving";
-  const examBodyMarkdown = useMemo(() => serializeExamBlueprint(exam), [exam]);
+  const examBodyMarkdown = useMemo(
+    () => serializeExamBlueprint(exam, { passiveSegments }),
+    [exam, passiveSegments],
+  );
   const effectiveProfileName = useMemo(() => {
     const trimmed = assignedTaskProfileName?.trim() ?? "";
     return trimmed || null;
@@ -1001,7 +1006,7 @@ export const ExamEditorView = ({
 
     const targetPath = joinPath(vaultPath, targetRelativeDir, nextFilename);
     const nextExam = createExamBlueprint();
-    const bodyMarkdown = serializeExamBlueprint(nextExam);
+    const bodyMarkdown = serializeExamBlueprint(nextExam, { passiveSegments: [] });
     const initialMarkdown = resolveMarkdownWithTaskProfile({
       sourceMarkdown: "",
       bodyMarkdown,
@@ -1020,6 +1025,7 @@ export const ExamEditorView = ({
       setSaveState("saved");
       setLastSavedContent(initialMarkdown);
       setSourceDocumentMarkdown(initialMarkdown);
+      setPassiveSegments([]);
       setDirtyBaselineMarkdown(initialMarkdown);
       onSave?.({ path: targetPath, markdown: initialMarkdown });
     } catch (error) {
@@ -1317,11 +1323,12 @@ export const ExamEditorView = ({
 
     if (!sourcePath) {
       setSourceDocumentMarkdown("");
+      setPassiveSegments([]);
       setAssignedTaskProfileName(null);
       setDirtyBaselineMarkdown(
         resolveMarkdownWithTaskProfile({
           sourceMarkdown: "",
-          bodyMarkdown: serializeExamBlueprint(exam),
+          bodyMarkdown: serializeExamBlueprint(exam, { passiveSegments: [] }),
           profileName: null,
         }),
       );
@@ -1335,11 +1342,12 @@ export const ExamEditorView = ({
       setSavePath(sourcePath);
       setLastSavedContent(sourceMarkdown);
       setSourceDocumentMarkdown(sourceMarkdown);
+      setPassiveSegments([]);
       setAssignedTaskProfileName(assignedProfile);
       setDirtyBaselineMarkdown(
         resolveMarkdownWithTaskProfile({
           sourceMarkdown,
-          bodyMarkdown: serializeExamBlueprint(blankExam),
+          bodyMarkdown: serializeExamBlueprint(blankExam, { passiveSegments: [] }),
           profileName: assignedProfile?.trim() || null,
         }),
       );
@@ -1356,11 +1364,14 @@ export const ExamEditorView = ({
       setSavePath(null);
       setLastSavedContent(null);
       setSourceDocumentMarkdown(sourceMarkdown);
+      setPassiveSegments([]);
       setAssignedTaskProfileName(assignedProfile);
       setDirtyBaselineMarkdown(
         resolveMarkdownWithTaskProfile({
           sourceMarkdown,
-          bodyMarkdown: serializeExamBlueprint(nonExamBlueprint),
+          bodyMarkdown: serializeExamBlueprint(nonExamBlueprint, {
+            passiveSegments: [],
+          }),
           profileName: assignedProfile?.trim() || null,
         }),
       );
@@ -1376,11 +1387,14 @@ export const ExamEditorView = ({
       setSavePath(null);
       setLastSavedContent(null);
       setSourceDocumentMarkdown(sourceMarkdown);
+      setPassiveSegments([]);
       setAssignedTaskProfileName(assignedProfile);
       setDirtyBaselineMarkdown(
         resolveMarkdownWithTaskProfile({
           sourceMarkdown,
-          bodyMarkdown: serializeExamBlueprint(fallbackBlueprint),
+          bodyMarkdown: serializeExamBlueprint(fallbackBlueprint, {
+            passiveSegments: [],
+          }),
           profileName: assignedProfile?.trim() || null,
         }),
       );
@@ -1388,6 +1402,7 @@ export const ExamEditorView = ({
     }
     const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
     setExam(imported.blueprint);
+    setPassiveSegments(imported.passiveSegments);
     setSelection({ type: "exam" });
     setImportWarnings(imported.warnings);
     setSavePath(sourcePath);
@@ -1397,7 +1412,9 @@ export const ExamEditorView = ({
     setDirtyBaselineMarkdown(
       resolveMarkdownWithTaskProfile({
         sourceMarkdown,
-        bodyMarkdown: serializeExamBlueprint(imported.blueprint),
+        bodyMarkdown: serializeExamBlueprint(imported.blueprint, {
+          passiveSegments: imported.passiveSegments,
+        }),
         profileName: assignedProfile?.trim() || null,
       }),
     );

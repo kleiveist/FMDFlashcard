@@ -21,6 +21,7 @@ import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import type {
   CardBlueprint,
   ExamBlueprint,
+  ExamPassiveSegment,
   ExamTaskBlueprint,
   ChoiceOption,
 } from "./types";
@@ -28,6 +29,7 @@ import type {
 export type ExamImportResult = {
   blueprint: ExamBlueprint;
   warnings: string[];
+  passiveSegments: ExamPassiveSegment[];
 };
 
 const normalizeLines = (markdown: string) =>
@@ -589,6 +591,145 @@ const parseCardBlock = (lines: string[]): FlashcardPart[] => {
   return parsed[0].parts;
 };
 
+const clozeInputPattern = /%[^%\n]+%/;
+const clozeAssignmentPattern = /=>/;
+
+const hasExplicitClozeSyntax = (lines: string[]) =>
+  lines.some(
+    (line) => clozeInputPattern.test(line) || clozeAssignmentPattern.test(line),
+  );
+
+const hasExplicitParsedCardSyntax = (parts: FlashcardPart[], lines: string[]) =>
+  parts.some((part) => {
+    if (part.kind === "multiple-choice" || part.kind === "true-false") {
+      return true;
+    }
+    if (part.kind === "cloze") {
+      return part.subtype !== "cd" || hasExplicitClozeSyntax(lines);
+    }
+    return false;
+  });
+
+const hasExplicitCardSyntax = (lines: string[]) => {
+  const trimmed = trimEmptyLines(lines);
+  if (trimmed.length === 0) {
+    return false;
+  }
+  const parts = parseCardBlock(trimmed);
+  if (hasExplicitParsedCardSyntax(parts, trimmed)) {
+    return true;
+  }
+  return splitAnswerBlock(trimmed.join("\n")).hasAnswerMarker;
+};
+
+const hasHelpBlocks = (lines: string[]) => collectHelpBlocks(lines).length > 0;
+
+const shouldImportContinuationBlock = (lines: string[]) => {
+  const trimmed = trimEmptyLines(lines);
+  if (trimmed.length === 0) {
+    return false;
+  }
+  return hasExplicitCardSyntax(trimmed) || hasHelpBlocks(trimmed);
+};
+
+const serializeBlocksWithSeparators = (blocks: string[][]) =>
+  blocks.map((block) => trimEmptyLines(block).join("\n")).join("\n---\n");
+
+const findLastNonEmptyLineIndex = (lines: string[]) => {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if ((lines[index] ?? "").trim() !== "") {
+      return index;
+    }
+  }
+  return -1;
+};
+
+const appendBlocksWithSeparators = (baseLines: string[], blocks: string[][]) => {
+  const next = [...baseLines];
+  blocks.forEach((block) => {
+    const trimmedBlock = trimEmptyLines(block);
+    if (trimmedBlock.length === 0) {
+      return;
+    }
+    const lastContentIndex = findLastNonEmptyLineIndex(next);
+    if (lastContentIndex !== -1 && !isSeparatorLine(next[lastContentIndex] ?? "")) {
+      next.push("---");
+    }
+    next.push(...trimmedBlock);
+  });
+  return next;
+};
+
+const findExamEndLineAfter = (lines: string[], startIndex: number) => {
+  const tableLineIndices = findTableLineIndices(lines);
+  let inFence = false;
+  let fenceToken = "";
+
+  for (let index = Math.max(0, startIndex); index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(fencePattern);
+    if (fenceMatch) {
+      if (inFence && fenceMatch[1] === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = fenceMatch[1] ?? "";
+      }
+      continue;
+    }
+    if (inFence || tableLineIndices.has(index)) {
+      continue;
+    }
+    if (examEndPattern.test(line)) {
+      return index;
+    }
+  }
+
+  return lines.length;
+};
+
+type TaskFollowupSegments = {
+  continuationBlocks: string[][];
+  passiveText: string;
+};
+
+const collectTaskFollowupSegments = (
+  lines: string[],
+  taskEndLine: number,
+  nextTaskStartLine?: number,
+): TaskFollowupSegments => {
+  const startIndex = Math.max(0, taskEndLine + 1);
+  const endExclusive =
+    typeof nextTaskStartLine === "number"
+      ? Math.max(startIndex, nextTaskStartLine)
+      : findExamEndLineAfter(lines, startIndex);
+  if (startIndex >= endExclusive) {
+    return { continuationBlocks: [], passiveText: "" };
+  }
+  const continuationBlocks: string[][] = [];
+  const passiveBlocks: string[][] = [];
+
+  splitCardBlocks(lines.slice(startIndex, endExclusive))
+    .map((block) => trimEmptyLines(block.contentLines))
+    .forEach((block) => {
+      if (block.length === 0) {
+        return;
+      }
+      if (shouldImportContinuationBlock(block)) {
+        continuationBlocks.push(block);
+        return;
+      }
+      passiveBlocks.push(block);
+    });
+
+  return {
+    continuationBlocks,
+    passiveText: serializeBlocksWithSeparators(passiveBlocks),
+  };
+};
+
 const extractExamMeta = (markdown: string, taskStartLine: number | null) => {
   const lines = normalizeLines(markdown);
   const examStartIndex = lines.findIndex((line) => examStartPattern.test(line));
@@ -642,10 +783,24 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     description: meta.description,
     tasks: [],
   };
+  const normalizedLines = normalizeLines(normalizedMarkdown);
+  const followupSegmentsByTask = parsed.tasks.map((task, index) =>
+    collectTaskFollowupSegments(
+      normalizedLines,
+      task.sourceRange.endLine,
+      parsed.tasks[index + 1]?.sourceRange.startLine,
+    ),
+  );
 
   blueprint.tasks = parsed.tasks.map((task, index) => {
     const originalTask = originalParsed.tasks[index];
-    const helpSourceLines = originalTask?.rawLines ?? task.rawLines;
+    const continuationBlocks =
+      followupSegmentsByTask[index]?.continuationBlocks ?? [];
+    const baseHelpSourceLines = originalTask?.rawLines ?? task.rawLines;
+    const helpSourceLines = appendBlocksWithSeparators(
+      baseHelpSourceLines,
+      continuationBlocks,
+    );
     const cards: CardBlueprint[] = [];
     const taskMediaDrafts = mediaItemsToDrafts(originalTask?.media ?? task.media);
     const rawLines = task.rawLines;
@@ -655,12 +810,16 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       .filter((block) => block !== taskHelpBlock)
       .map((block) => block.text);
     const originalCardLines = originalTask?.cardLines ?? [];
-    const cardSourceLines =
+    const baseCardSourceLines =
       originalCardLines.length > 0
         ? originalCardLines
         : task.cardLines.length > 0
           ? task.cardLines
           : rawLines;
+    const cardSourceLines = appendBlocksWithSeparators(
+      baseCardSourceLines,
+      continuationBlocks,
+    );
     const cardSourceWithoutHelp = normalizeExamDotNumberedLines(
       stripHelpBlocksFromLines(cardSourceLines),
     );
@@ -701,7 +860,10 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
           headingInfo.headingLineCount || 1,
           trimmedLines.length,
         );
-        trimmedLines = trimmedLines.slice(dropCount);
+        const candidateLines = trimmedLines.slice(dropCount);
+        if (dropCount > 0 && hasExplicitCardSyntax(candidateLines)) {
+          trimmedLines = candidateLines;
+        }
       }
       const extractedMedia = extractMediaFromLines(
         trimmedLines,
@@ -793,5 +955,12 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
     return taskBlueprint;
   });
 
-  return { blueprint, warnings };
+  const passiveSegments: ExamPassiveSegment[] = followupSegmentsByTask
+    .map((segments, slotIndex) => ({
+      slotIndex,
+      text: segments.passiveText,
+    }))
+    .filter((segment) => segment.text.trim() !== "");
+
+  return { blueprint, warnings, passiveSegments };
 };

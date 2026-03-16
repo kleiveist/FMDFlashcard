@@ -15,6 +15,7 @@ import type {
   CardType,
   ChoiceOption,
   ExamBlueprint,
+  ExamPassiveSegment,
   ExamTaskBlueprint,
 } from "./types";
 
@@ -192,35 +193,103 @@ const serializeExamMeta = (exam: ExamBlueprint) => {
   return lines;
 };
 
-export const serializeExamBlueprint = (exam: ExamBlueprint) => {
+export type SerializeExamBlueprintOptions = {
+  passiveSegments?: ExamPassiveSegment[];
+};
+
+const normalizePassiveSegmentText = (value: string) =>
+  trimEmptyLines(normalizeLines(value)).join("\n");
+
+const resolvePassiveSegmentsBySlot = (
+  passiveSegments?: ExamPassiveSegment[],
+) => {
+  const bySlot = new Map<number, string[]>();
+  (passiveSegments ?? []).forEach((segment) => {
+    const rawSlotIndex = Number.isFinite(segment.slotIndex)
+      ? segment.slotIndex
+      : 0;
+    const slotIndex = Math.max(0, Math.floor(rawSlotIndex));
+    const normalizedText = normalizePassiveSegmentText(segment.text ?? "");
+    if (!normalizedText.trim()) {
+      return;
+    }
+    const existing = bySlot.get(slotIndex) ?? [];
+    existing.push(normalizedText);
+    bySlot.set(slotIndex, existing);
+  });
+  return bySlot;
+};
+
+const joinSegmentTexts = (texts: string[]) => texts.join("\n---\n");
+
+const mergeOverflowPassiveSegmentsIntoTrailingSlot = (
+  passiveBySlot: Map<number, string[]>,
+  trailingSlotIndex: number,
+) => {
+  const overflowEntries = Array.from(passiveBySlot.entries())
+    .filter((entry) => entry[0] > trailingSlotIndex)
+    .sort((left, right) => left[0] - right[0]);
+  if (overflowEntries.length === 0) {
+    return;
+  }
+  const trailingTexts = passiveBySlot.get(trailingSlotIndex) ?? [];
+  overflowEntries.forEach((entry) => {
+    trailingTexts.push(...entry[1]);
+    passiveBySlot.delete(entry[0]);
+  });
+  passiveBySlot.set(trailingSlotIndex, trailingTexts);
+};
+
+export const serializeExamBlueprint = (
+  exam: ExamBlueprint,
+  options?: SerializeExamBlueprintOptions,
+) => {
   const lines: string[] = ["#exam"];
+  const passiveBySlot = resolvePassiveSegmentsBySlot(options?.passiveSegments);
+  const orderedTasks = exam.tasks.slice().sort((a, b) => a.order - b.order);
+  if (orderedTasks.length > 0) {
+    mergeOverflowPassiveSegmentsIntoTrailingSlot(
+      passiveBySlot,
+      orderedTasks.length - 1,
+    );
+  }
   const metaLines = serializeExamMeta(exam);
   if (metaLines.length > 0) {
     lines.push(...metaLines, "");
   }
-  exam.tasks
-    .slice()
-    .sort((a, b) => a.order - b.order)
-    .forEach((task, index) => {
-      const taskLines = serializeTask(task, index);
-      const trimmed = taskLines.slice();
-      while (trimmed.length > 0 && trimmed[trimmed.length - 1]?.trim() === "") {
-        trimmed.pop();
-      }
-      while (trimmed.length > 0 && trimmed[trimmed.length - 1] === "---") {
-        trimmed.pop();
-      }
-      while (trimmed.length > 0 && trimmed[trimmed.length - 1]?.trim() === "") {
-        trimmed.pop();
-      }
-      const lastLine = trimmed[trimmed.length - 1] ?? "";
-      const endsWithHelp = /^\s*#helpend\s*$/i.test(lastLine);
-      if (endsWithHelp) {
-        lines.push(...trimmed, "", "---");
-      } else {
-        lines.push(...trimmed, "---");
-      }
-    });
+  orderedTasks.forEach((task, index) => {
+    const taskLines = serializeTask(task, index);
+    const trimmed = taskLines.slice();
+    while (trimmed.length > 0 && trimmed[trimmed.length - 1]?.trim() === "") {
+      trimmed.pop();
+    }
+    while (trimmed.length > 0 && trimmed[trimmed.length - 1] === "---") {
+      trimmed.pop();
+    }
+    while (trimmed.length > 0 && trimmed[trimmed.length - 1]?.trim() === "") {
+      trimmed.pop();
+    }
+    const lastLine = trimmed[trimmed.length - 1] ?? "";
+    const endsWithHelp = /^\s*#helpend\s*$/i.test(lastLine);
+    if (endsWithHelp) {
+      lines.push(...trimmed, "", "---");
+    } else {
+      lines.push(...trimmed, "---");
+    }
+    const slotTexts = passiveBySlot.get(index) ?? [];
+    if (slotTexts.length > 0) {
+      lines.push(...normalizeLines(joinSegmentTexts(slotTexts)));
+      passiveBySlot.delete(index);
+    }
+  });
+
+  const overflowTexts = Array.from(passiveBySlot.entries())
+    .sort((left, right) => left[0] - right[0])
+    .flatMap((entry) => entry[1]);
+  if (overflowTexts.length > 0) {
+    lines.push(...normalizeLines(joinSegmentTexts(overflowTexts)));
+  }
+
   lines.push("#endexam");
   return normalizeCardWrapperPlacement(lines.join("\n")).content;
 };

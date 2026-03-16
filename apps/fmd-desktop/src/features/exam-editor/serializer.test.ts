@@ -379,4 +379,89 @@ describe("serializeExamBlueprint", () => {
     expect(markdown).toContain("Already numbered");
     expect(markdown).not.toContain("\n2) Already numbered");
   });
+
+  it("inserts passive segments in their task slots", () => {
+    const exam: ExamBlueprint = {
+      id: "exam-passive-slots",
+      title: "",
+      description: "",
+      tasks: [
+        {
+          id: "task-1",
+          order: 0,
+          title: "First",
+          useCardWrapper: false,
+          cards: [
+            {
+              id: "card-1",
+              type: "qa",
+              prompt: "Prompt A",
+              answer: "Answer A",
+            },
+          ],
+        },
+        {
+          id: "task-2",
+          order: 1,
+          title: "Second",
+          useCardWrapper: false,
+          cards: [
+            {
+              id: "card-2",
+              type: "qa",
+              prompt: "Prompt B",
+              answer: "Answer B",
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = serializeExamBlueprint(exam, {
+      passiveSegments: [
+        { slotIndex: 0, text: "Zwischen Text." },
+        { slotIndex: 1, text: "Trailing Text." },
+      ],
+    });
+
+    expect(markdown).toMatch(
+      /Answer: Answer A\n---\nZwischen Text\.\n2\) Second\nPrompt B\nAnswer: Answer B\n---\nTrailing Text\.\n#endexam$/,
+    );
+  });
+
+  it("merges overflow passive segments into the trailing slot", () => {
+    const exam: ExamBlueprint = {
+      id: "exam-passive-overflow",
+      title: "",
+      description: "",
+      tasks: [
+        {
+          id: "task-1",
+          order: 0,
+          title: "Only",
+          useCardWrapper: false,
+          cards: [
+            {
+              id: "card-1",
+              type: "qa",
+              prompt: "Prompt",
+              answer: "Answer",
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = serializeExamBlueprint(exam, {
+      passiveSegments: [
+        { slotIndex: 0, text: "Trailing Basis." },
+        { slotIndex: 3, text: "Overflow drei." },
+        { slotIndex: 1, text: "Overflow eins." },
+      ],
+    });
+
+    expect(markdown).toMatch(
+      /Answer: Answer\n---\nTrailing Basis\.\n---\nOverflow eins\.\n---\nOverflow drei\.\n#endexam$/,
+    );
+  });
 });
