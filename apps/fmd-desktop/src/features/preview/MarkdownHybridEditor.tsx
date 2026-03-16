@@ -4841,76 +4841,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     return Promise.resolve(discardActiveBlockNow());
   }, [discardActiveBlockNow, queueDeferredEditAction]);
 
-  const resolveImperativeInsertAnchorIndex = useCallback(() => {
-    if (typeof activeBlockIndex === "number") {
-      return activeBlockIndex;
-    }
-    if (blocks.length === 0) {
-      return 0;
-    }
-    return blocks.length - 1;
-  }, [activeBlockIndex, blocks.length]);
-
-  const insertStructureTemplateInternal = useCallback(
-    (template: "table" | "code-block" | "math-block") => {
-      const templateConfig =
-        template === "table"
-          ? {
-              raw: "| Column A | Column B |\n| --- | --- |\n| Value 1 | Value 2 |",
-              firstPlaceholder: "Column A",
-              selection: undefined,
-            }
-          : template === "code-block"
-            ? {
-                raw: "```txt\nCODE HERE\n```",
-                firstPlaceholder: "CODE HERE",
-                selection: undefined,
-              }
-            : {
-                raw: "$$\n\n$$",
-                firstPlaceholder: undefined,
-                selection: { start: 3, end: 3 },
-              };
-      const anchorIndex = resolveImperativeInsertAnchorIndex();
-      return insertBlockRelativeTo(anchorIndex, templateConfig.raw, false, {
-        firstPlaceholder: templateConfig.firstPlaceholder,
-        selection: templateConfig.selection,
-      });
-    },
-    [insertBlockRelativeTo, resolveImperativeInsertAnchorIndex],
-  );
-
-  const openImageInsertPickerInternal = useCallback(() => {
-    if (disabled) {
-      return false;
-    }
-    const anchorIndex = resolveImperativeInsertAnchorIndex();
-    setSelectionContextMenuState(null);
-    setMathToolboxState(null);
-    setInsertMenuState({
-      blockIndex: anchorIndex,
-      insertAbove: false,
-      phase: "image-link-picker",
-      categoryId: "links",
-      query: "",
-      highlightedIndex: 0,
-    });
-    return true;
-  }, [disabled, resolveImperativeInsertAnchorIndex]);
-
-  useImperativeHandle(ref, () => ({
-    commitActiveEdit: () => commitActiveBlockAsync({ deactivate: true }),
-    discardActiveEdit: () => discardActiveBlockAsync(),
-    insertStructureTemplate: (template) =>
-      Promise.resolve(insertStructureTemplateInternal(template)),
-    openImageInsertPicker: () => Promise.resolve(openImageInsertPickerInternal()),
-  }), [
-    commitActiveBlockAsync,
-    discardActiveBlockAsync,
-    insertStructureTemplateInternal,
-    openImageInsertPickerInternal,
-  ]);
-
   const handleCardTableSegmentRequestActivate = useCallback(
     (target: CardTableSegmentTarget, request?: MarkdownHybridTableActivationRequest) => {
       if (disabled) {
@@ -5523,6 +5453,76 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     },
     [getEmptyParagraphInsertRawForSlot, insertBlockRelativeTo],
   );
+
+  const resolveImperativeInsertAnchorIndex = useCallback(() => {
+    if (typeof activeBlockIndex === "number") {
+      return activeBlockIndex;
+    }
+    if (blocks.length === 0) {
+      return 0;
+    }
+    return blocks.length - 1;
+  }, [activeBlockIndex, blocks.length]);
+
+  const insertStructureTemplateInternal = useCallback(
+    (template: "table" | "code-block" | "math-block") => {
+      const templateConfig =
+        template === "table"
+          ? {
+              raw: "| Column A | Column B |\n| --- | --- |\n| Value 1 | Value 2 |",
+              firstPlaceholder: "Column A",
+              selection: undefined,
+            }
+          : template === "code-block"
+            ? {
+                raw: "```txt\nCODE HERE\n```",
+                firstPlaceholder: "CODE HERE",
+                selection: undefined,
+              }
+            : {
+                raw: "$$\n\n$$",
+                firstPlaceholder: undefined,
+                selection: { start: 3, end: 3 },
+              };
+      const anchorIndex = resolveImperativeInsertAnchorIndex();
+      return insertBlockRelativeTo(anchorIndex, templateConfig.raw, false, {
+        firstPlaceholder: templateConfig.firstPlaceholder,
+        selection: templateConfig.selection,
+      });
+    },
+    [insertBlockRelativeTo, resolveImperativeInsertAnchorIndex],
+  );
+
+  const openImageInsertPickerInternal = useCallback(() => {
+    if (disabled) {
+      return false;
+    }
+    const anchorIndex = resolveImperativeInsertAnchorIndex();
+    setSelectionContextMenuState(null);
+    setMathToolboxState(null);
+    setInsertMenuState({
+      blockIndex: anchorIndex,
+      insertAbove: false,
+      phase: "image-link-picker",
+      categoryId: "links",
+      query: "",
+      highlightedIndex: 0,
+    });
+    return true;
+  }, [disabled, resolveImperativeInsertAnchorIndex]);
+
+  useImperativeHandle(ref, () => ({
+    commitActiveEdit: () => commitActiveBlockAsync({ deactivate: true }),
+    discardActiveEdit: () => discardActiveBlockAsync(),
+    insertStructureTemplate: (template) =>
+      Promise.resolve(insertStructureTemplateInternal(template)),
+    openImageInsertPicker: () => Promise.resolve(openImageInsertPickerInternal()),
+  }), [
+    commitActiveBlockAsync,
+    discardActiveBlockAsync,
+    insertStructureTemplateInternal,
+    openImageInsertPickerInternal,
+  ]);
 
   const reorderBlockByDrop = useCallback(
     (fromIndex: number, toSlotIndex: number) => {

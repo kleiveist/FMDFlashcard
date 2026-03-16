@@ -5,9 +5,10 @@
  * - Tests fuer Edge-CSS-Overrides (borderless controls + Fokusverhalten).
  */
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import edgeCss from "./edge.css?raw";
+const edgeCss = readFileSync(new URL("./edge.css", import.meta.url), "utf8");
 
 /*
  * 🧪 Validates the borderless baseline for edge controls and text fields.
