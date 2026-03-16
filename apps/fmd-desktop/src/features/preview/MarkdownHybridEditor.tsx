@@ -84,6 +84,7 @@ import {
 import {
   MarkdownHybridTableBlock,
   type MarkdownHybridTableActivationRequest,
+  type MarkdownHybridTableCodeViewPolicy,
   type MarkdownHybridTableSessionController,
 } from "./MarkdownHybridTableBlock";
 import {
@@ -304,6 +305,7 @@ type MarkdownHybridEditorProps = {
   historyKey: string;
   markdown: string;
   mode: MarkdownHybridEditorMode;
+  tableCodeViewPolicy?: MarkdownHybridTableCodeViewPolicy;
   disabled?: boolean;
   vaultFiles?: VaultFile[];
   vaultPngAssets?: VaultPngAsset[];
@@ -2875,6 +2877,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   historyKey,
   markdown,
   mode,
+  tableCodeViewPolicy = "default",
   disabled = false,
   vaultFiles,
   vaultPngAssets,
@@ -8886,6 +8889,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     blockIndex={index}
                     raw={block.raw}
                     active={isActive}
+                    codeViewPolicy={tableCodeViewPolicy}
                     disabled={disabled}
                     vaultFiles={vaultFiles}
                     vaultPngAssets={vaultPngAssets}
@@ -9136,6 +9140,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                                       raw={segment.raw}
                                       active={isCardTableSegmentActive(partIndex, segmentIndex)}
                                       allowCodeView={false}
+                                      codeViewPolicy={tableCodeViewPolicy}
                                       disabled={disabled}
                                       vaultFiles={vaultFiles}
                                       vaultPngAssets={vaultPngAssets}

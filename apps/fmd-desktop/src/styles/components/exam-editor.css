@@ -971,6 +971,14 @@
   min-height: 144px;
 }
 
+.exam-structured-field-shell .markdown-hybrid-block-editor,
+.exam-structured-field-shell .markdown-hybrid-block-editor-syntax-overlay,
+.exam-structured-field-shell .markdown-hybrid-math-editor,
+.exam-structured-field-shell .markdown-hybrid-table-cell-editor,
+.exam-structured-field-shell .markdown-hybrid-table-code-editor {
+  caret-color: var(--md-editor-caret);
+}
+
 .vault-png-picker {
   display: flex;
   flex-direction: column;

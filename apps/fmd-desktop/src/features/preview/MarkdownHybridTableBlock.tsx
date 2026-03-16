@@ -85,11 +85,14 @@ export type MarkdownHybridTableSessionController = {
   isDirty: boolean;
 };
 
+export type MarkdownHybridTableCodeViewPolicy = "default" | "button-only";
+
 type MarkdownHybridTableBlockProps = {
   blockIndex: number;
   raw: string;
   active: boolean;
   allowCodeView?: boolean;
+  codeViewPolicy?: MarkdownHybridTableCodeViewPolicy;
   disabled?: boolean;
   vaultFiles?: VaultFile[] | null;
   vaultPngAssets?: VaultPngAsset[] | null;
@@ -644,6 +647,7 @@ export const MarkdownHybridTableBlock = ({
   raw,
   active,
   allowCodeView = true,
+  codeViewPolicy = "default",
   disabled = false,
   vaultFiles,
   vaultPngAssets,
@@ -768,6 +772,13 @@ export const MarkdownHybridTableBlock = ({
     }
     setViewMode("grid");
   }, [allowCodeView, viewMode]);
+
+  useEffect(() => {
+    if (active || codeViewPolicy !== "button-only" || viewMode !== "code") {
+      return;
+    }
+    setViewMode("grid");
+  }, [active, codeViewPolicy, viewMode]);
 
   useEffect(() => {
     columnLaneRefs.current = columnLaneRefs.current.slice(0, parsedModel.columnCount);
@@ -1440,7 +1451,11 @@ export const MarkdownHybridTableBlock = ({
     if (!active || !pendingActivation) {
       return;
     }
-    if (pendingActivation.focusTarget === "code" && allowCodeView) {
+    if (
+      pendingActivation.focusTarget === "code" &&
+      allowCodeView &&
+      codeViewPolicy !== "button-only"
+    ) {
       setViewMode("code");
     }
     if (pendingActivation.cell) {
@@ -1458,7 +1473,7 @@ export const MarkdownHybridTableBlock = ({
       setRowSelection(null);
     }
     onConsumePendingActivation();
-  }, [active, allowCodeView, onConsumePendingActivation, parsedModel, pendingActivation]);
+  }, [active, allowCodeView, codeViewPolicy, onConsumePendingActivation, parsedModel, pendingActivation]);
 
   useLayoutEffect(() => {
     if (!active || disabled) {

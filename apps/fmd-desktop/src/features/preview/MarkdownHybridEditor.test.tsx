@@ -6787,6 +6787,64 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("keeps tables in grid mode until Code View is clicked when table code policy is button-only", () => {
+    withImmediateRaf(() => {
+      const markdown = [
+        "| A | B |",
+        "| --- | --- |",
+        "| 1 | 2 |",
+        "",
+        "| C | D |",
+        "| --- | --- |",
+        "| 3 | 4 |",
+      ].join("\n");
+
+      const { container, cleanup } = render(
+        <MarkdownHybridEditor
+          historyKey="table-code-policy-button-only"
+          markdown={markdown}
+          mode="edit"
+          tableCodeViewPolicy="button-only"
+          onChange={() => undefined}
+          renderPreview={(value) => <div>{value}</div>}
+        />,
+      );
+
+      const tableBlocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-block"),
+      );
+      expect(tableBlocks).toHaveLength(2);
+      const firstTable = tableBlocks[0];
+      const secondTable = tableBlocks[1];
+      expect(firstTable).toBeTruthy();
+      expect(secondTable).toBeTruthy();
+
+      const firstHeaderCell = firstTable?.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+      const secondHeaderCell = secondTable?.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+      expect(firstHeaderCell).toBeTruthy();
+      expect(secondHeaderCell).toBeTruthy();
+
+      dispatchMouseDown(firstHeaderCell);
+      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
+
+      const firstToggle = firstTable?.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle");
+      expect(firstToggle).toBeTruthy();
+      dispatchClick(firstToggle);
+      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeTruthy();
+
+      dispatchMouseDown(secondHeaderCell);
+      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
+
+      dispatchMouseDown(firstHeaderCell);
+      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
+
+      dispatchClick(firstTable?.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle") ?? null);
+      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeTruthy();
+
+      cleanup();
+    });
+  });
+
   it("deletes selected table rows with the Delete key while preserving header and separator", () => {
     let latestMarkdown = [
       "| A | B |",

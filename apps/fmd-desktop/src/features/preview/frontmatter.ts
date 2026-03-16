@@ -767,12 +767,49 @@ export const parseFrontmatterDocument = (
   };
 };
 
+const extractLeadingFrontmatterBlock = (markdown: string) => {
+  const match = markdown.match(FRONTMATTER_PATTERN);
+  if (!match) {
+    return null;
+  }
+  const rawBlock = match[0] ?? "";
+  return {
+    rawBlock,
+    normalizedYaml: normalizeNewlines(match[1] ?? ""),
+    consumedLength: rawBlock.length,
+  };
+};
+
+const collapseLeadingIdenticalFrontmatterBlocks = (markdown: string) => {
+  const first = extractLeadingFrontmatterBlock(markdown);
+  if (!first) {
+    return markdown;
+  }
+
+  let cursor = first.consumedLength;
+  while (cursor < markdown.length) {
+    const next = extractLeadingFrontmatterBlock(markdown.slice(cursor));
+    if (!next || next.normalizedYaml !== first.normalizedYaml) {
+      break;
+    }
+    cursor += next.consumedLength;
+  }
+
+  if (cursor === first.consumedLength) {
+    return markdown;
+  }
+  return `${first.rawBlock}${markdown.slice(cursor)}`;
+};
+
 export const composeMarkdownWithBody = (markdown: string, body: string) => {
   const parsed = parseFrontmatterDocumentInternal(markdown);
   if (!parsed.hasFrontmatter) {
     return body;
   }
-  return `${parsed.frontmatterPrefix}${body}`;
+  if (!extractLeadingFrontmatterBlock(body)) {
+    return `${parsed.frontmatterPrefix}${body}`;
+  }
+  return collapseLeadingIdenticalFrontmatterBlocks(body);
 };
 
 export const normalizeWikilinkValue = (value: string) => {

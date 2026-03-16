@@ -164,7 +164,7 @@ const StructuredMarkdownField = ({
   );
 
   return (
-    <label className="field">
+    <div className="field" role="group" aria-label={label}>
       <span className="label">{label}</span>
       <div
         className="exam-structured-field-shell"
@@ -176,6 +176,7 @@ const StructuredMarkdownField = ({
           historyKey={historyKey}
           markdown={value}
           mode="edit"
+          tableCodeViewPolicy="button-only"
           vaultFiles={vaultFiles ?? undefined}
           vaultPngAssets={vaultPngAssets ?? undefined}
           vaultPath={vaultPath}
@@ -185,7 +186,7 @@ const StructuredMarkdownField = ({
         />
       </div>
       {renderFieldError(error)}
-    </label>
+    </div>
   );
 };
 

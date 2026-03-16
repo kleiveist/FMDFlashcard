@@ -146,6 +146,58 @@ describe("composeMarkdownWithBody", () => {
 
     expect(next).toBe(["---", "title: Demo", "---", "New body"].join("\n"));
   });
+
+  it("returns body unchanged when source has no frontmatter", () => {
+    const next = composeMarkdownWithBody("Plain source", "Body only");
+
+    expect(next).toBe("Body only");
+  });
+
+  it("does not prepend frontmatter when body already starts with frontmatter", () => {
+    const source = ["---", "title: Demo", "---", "Old body"].join("\n");
+    const body = ["---", "title: Demo", "---", "New body"].join("\n");
+
+    const next = composeMarkdownWithBody(source, body);
+
+    expect(next).toBe(body);
+  });
+
+  it("collapses consecutive identical leading frontmatter blocks to one", () => {
+    const source = ["---", "title: Demo", "---", "Old body"].join("\n");
+    const body = [
+      "---",
+      "title: Demo",
+      "---",
+      "---",
+      "title: Demo",
+      "---",
+      "#exam",
+      "#endexam",
+    ].join("\n");
+
+    const next = composeMarkdownWithBody(source, body);
+
+    expect(next).toBe(
+      ["---", "title: Demo", "---", "#exam", "#endexam"].join("\n"),
+    );
+  });
+
+  it("keeps non-identical leading frontmatter blocks unchanged", () => {
+    const source = ["---", "title: Demo", "---", "Old body"].join("\n");
+    const body = [
+      "---",
+      "title: Other",
+      "---",
+      "---",
+      "title: Demo",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const next = composeMarkdownWithBody(source, body);
+
+    expect(next).toBe(body);
+  });
 });
 
 describe("updateFrontmatterProperty", () => {
