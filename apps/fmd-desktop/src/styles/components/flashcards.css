@@ -373,6 +373,7 @@ figure.flashcard-media-item {
 
 .flashcard-media-image {
   display: block;
+  margin-inline: auto;
   max-width: 100%;
   max-height: 360px;
   width: auto;

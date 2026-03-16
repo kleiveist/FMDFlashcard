@@ -85,7 +85,11 @@ type ExamEditorViewProps = {
   showMoveButtons?: boolean;
   variant?: "exam" | "study";
   onControlsReady?: (controls: ExamEditorControlsState | null) => void;
-  onSave?: (payload: { path: string; markdown: string }) => void;
+  onSave?: (payload: {
+    path: string;
+    markdown: string;
+    renamedFromPath?: string;
+  }) => void;
 };
 
 type DraftPointsTypeRule = {
@@ -172,6 +176,109 @@ const getParentRelativePath = (value: string) => {
     return "";
   }
   return normalized.slice(0, lastSlash);
+};
+
+const DEFAULT_EXAM_TITLE = "New Exam";
+const NAME_FORBIDDEN_PATTERN = /[\\/]/;
+
+const stripMarkdownExtension = (value: string) => value.replace(/\.md$/i, "");
+
+const ensureMarkdownExtension = (value: string) =>
+  /\.md$/i.test(value) ? value : `${value}.md`;
+
+const getPathFileName = (value: string) => {
+  const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (!normalized) {
+    return "";
+  }
+  const lastSlash = normalized.lastIndexOf("/");
+  if (lastSlash === -1) {
+    return normalized;
+  }
+  return normalized.slice(lastSlash + 1);
+};
+
+const getPathDirectory = (value: string) => {
+  const trimmed = value.replace(/\/+$/, "");
+  if (!trimmed) {
+    return "";
+  }
+  const lastSlash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  if (lastSlash === -1) {
+    return "";
+  }
+  if (lastSlash === 0) {
+    return trimmed.slice(0, 1);
+  }
+  if (lastSlash === 2 && /^[A-Za-z]:/.test(trimmed)) {
+    return trimmed.slice(0, 3);
+  }
+  return trimmed.slice(0, lastSlash);
+};
+
+const buildPathWithFileName = (directory: string, fileName: string) => {
+  if (!directory) {
+    return fileName;
+  }
+  const separator = directory.includes("\\") && !directory.includes("/") ? "\\" : "/";
+  const normalizedDirectory = directory.replace(/[\\/]+$/, "");
+  if (!normalizedDirectory) {
+    return `${separator}${fileName}`;
+  }
+  return `${normalizedDirectory}${separator}${fileName}`;
+};
+
+const deriveExamTitleFromFilePath = (path: string | null | undefined) => {
+  const fileName = getPathFileName(path ?? "");
+  if (!fileName) {
+    return null;
+  }
+  const title = stripMarkdownExtension(fileName).trim();
+  return title || null;
+};
+
+const resolveVaultRelativePath = (absolutePath: string, vaultPath: string | null) => {
+  if (!vaultPath) {
+    return null;
+  }
+  const normalizedVault = normalizeVaultPath(vaultPath);
+  const normalizedAbsolute = normalizeVaultPath(absolutePath);
+  if (!normalizedVault || !normalizedAbsolute) {
+    return null;
+  }
+  if (normalizedAbsolute === normalizedVault) {
+    return "";
+  }
+  if (!normalizedAbsolute.startsWith(`${normalizedVault}/`)) {
+    return null;
+  }
+  const relative = normalizedAbsolute.slice(normalizedVault.length + 1);
+  return normalizeRelativePath(relative);
+};
+
+type ExamFilenameResolution =
+  | { ok: true; fileName: string; title: string }
+  | { ok: false; error: string };
+
+const resolveExamFilenameFromTitle = (value: string): ExamFilenameResolution => {
+  const trimmed = value.trim();
+  const requested = trimmed || DEFAULT_EXAM_TITLE;
+  if (
+    NAME_FORBIDDEN_PATTERN.test(requested) ||
+    requested === "." ||
+    requested === ".."
+  ) {
+    return { ok: false, error: "Title cannot include / or \\ characters." };
+  }
+  if (/\.[^./\\]+$/.test(requested) && !/\.md$/i.test(requested)) {
+    return { ok: false, error: "Only .md files are supported." };
+  }
+  const fileName = ensureMarkdownExtension(requested);
+  const title = stripMarkdownExtension(fileName).trim();
+  if (!title) {
+    return { ok: false, error: "Title is required." };
+  }
+  return { ok: true, fileName, title };
 };
 
 const isEditableTarget = (target: EventTarget | null) => {
@@ -272,9 +379,9 @@ export const ExamEditorView = ({
   });
   const lastVaultPathRef = useRef<string | null>(vaultPath ?? null);
   const isStudyView = variant === "study";
-  const isPaletteOverlayMode = useMediaQuery("(max-width: 1200px)", false);
-  const isContentPopupMode = useMediaQuery("(max-width: 1200px)", false);
-  const isDesktopViewport = useMediaQuery("(min-width: 1201px)", false);
+  const isPaletteOverlayMode = useMediaQuery("(max-width: 1199px)", false);
+  const isContentPopupMode = useMediaQuery("(max-width: 1199px)", false);
+  const isDesktopViewport = useMediaQuery("(min-width: 1200px)", false);
   const paletteOverlayActive = isStudyView && isPaletteOverlayMode;
   const contentPopupActive = isStudyView && isContentPopupMode;
   const propertiesPopupActive = isStudyView && isContentPopupMode;
@@ -1079,7 +1186,10 @@ export const ExamEditorView = ({
     }
 
     const targetPath = joinPath(vaultPath, targetRelativeDir, nextFilename);
-    const nextExam = createExamBlueprint();
+    const nextExam = {
+      ...createExamBlueprint(),
+      title: stripMarkdownExtension(nextFilename),
+    };
     const bodyMarkdown = serializeExamBlueprint(nextExam, { passiveSegments: [] });
     const initialMarkdown = resolveMarkdownWithTaskProfile({
       sourceMarkdown: "",
@@ -1125,45 +1235,203 @@ export const ExamEditorView = ({
       setSaveState("saving");
       setSaveError("");
       try {
+        const fileNameResolution = resolveExamFilenameFromTitle(exam.title);
+        if (!fileNameResolution.ok) {
+          setSaveError(fileNameResolution.error);
+          setSaveState("idle");
+          return false;
+        }
+
         const resolvePath = (path: string) =>
           vaultPath && !isAbsolutePath(path) ? joinPath(vaultPath, path) : path;
-        let targetPath = savePath;
-        let nextSavePath = savePath;
-        if (!targetPath || forceDialog) {
-          const suggestedName = exam.title.trim()
-            ? `${exam.title.trim()}.md`
-            : "New Exam.md";
-          const defaultPath =
-            savePath && isPathInsideVault(savePath, vaultPath ?? null)
-              ? savePath
-              : vaultPath
-                ? joinPath(vaultPath, suggestedName)
-                : suggestedName;
+        const resolveDefaultPath = (basePath: string | null) => {
+          const baseDirectory = getPathDirectory(basePath ?? "");
+          if (baseDirectory) {
+            return buildPathWithFileName(
+              baseDirectory,
+              fileNameResolution.fileName,
+            );
+          }
+          if (vaultPath) {
+            return joinPath(vaultPath, fileNameResolution.fileName);
+          }
+          return fileNameResolution.fileName;
+        };
+        const openSaveDialog = async (defaultPath: string) => {
           const chosenPath = await save({
             defaultPath,
             filters: [{ name: "Markdown", extensions: ["md"] }],
           });
           if (!chosenPath) {
+            return null;
+          }
+          return resolvePath(chosenPath);
+        };
+
+        const normalizedCurrentSavePath = savePath ? resolvePath(savePath) : null;
+        let targetPath = normalizedCurrentSavePath;
+        let renamedFromPath: string | undefined;
+        if (!targetPath || forceDialog) {
+          const chosenPath = await openSaveDialog(
+            resolveDefaultPath(targetPath),
+          );
+          if (!chosenPath) {
             setSaveState("idle");
             return false;
           }
-          targetPath = resolvePath(chosenPath);
-          nextSavePath = targetPath;
+          targetPath = chosenPath;
         } else {
-          targetPath = resolvePath(targetPath);
-          nextSavePath = targetPath;
+          const desiredPath = buildPathWithFileName(
+            getPathDirectory(targetPath),
+            fileNameResolution.fileName,
+          );
+          const needsRename =
+            normalizeVaultPath(desiredPath) !== normalizeVaultPath(targetPath);
+          if (needsRename) {
+            const fromRelativePath = resolveVaultRelativePath(targetPath, vaultPath);
+            const toRelativePath = resolveVaultRelativePath(desiredPath, vaultPath);
+            const normalizedSourceRelative = fromRelativePath
+              ? normalizeRelativePath(fromRelativePath).toLowerCase()
+              : "";
+            const normalizedTargetRelative = toRelativePath
+              ? normalizeRelativePath(toRelativePath).toLowerCase()
+              : "";
+            const hasKnownConflict = Boolean(
+              normalizedTargetRelative &&
+                vaultFiles?.some((file) => {
+                  const existingRelative = normalizeRelativePath(file.relative_path).toLowerCase();
+                  return (
+                    existingRelative === normalizedTargetRelative &&
+                    existingRelative !== normalizedSourceRelative
+                  );
+                }),
+            );
+
+            if (
+              hasKnownConflict ||
+              !vaultPath ||
+              !fromRelativePath ||
+              !toRelativePath
+            ) {
+              const chosenPath = await openSaveDialog(
+                resolveDefaultPath(desiredPath),
+              );
+              if (!chosenPath) {
+                setSaveState("idle");
+                return false;
+              }
+              targetPath = chosenPath;
+            } else {
+              try {
+                const moved = await invoke<VaultFile>("move_markdown_file", {
+                  vaultPath,
+                  fromRelativePath,
+                  toRelativePath,
+                });
+                renamedFromPath = targetPath;
+                targetPath = moved.path;
+              } catch (error) {
+                const renameError = asErrorMessage(
+                  error,
+                  "Failed to rename exam file.",
+                );
+                if (/already exists/i.test(renameError)) {
+                  const chosenPath = await openSaveDialog(
+                    resolveDefaultPath(desiredPath),
+                  );
+                  if (!chosenPath) {
+                    setSaveState("idle");
+                    return false;
+                  }
+                  targetPath = chosenPath;
+                } else {
+                  throw error;
+                }
+              }
+            }
+          }
         }
+
+        if (
+          !forceDialog &&
+          normalizedCurrentSavePath &&
+          !renamedFromPath &&
+          normalizeVaultPath(targetPath) !== normalizeVaultPath(normalizedCurrentSavePath)
+        ) {
+          const fromRelativePath = resolveVaultRelativePath(
+            normalizedCurrentSavePath,
+            vaultPath,
+          );
+          const toRelativePath = resolveVaultRelativePath(targetPath, vaultPath);
+          const normalizedSourceRelative = fromRelativePath
+            ? normalizeRelativePath(fromRelativePath).toLowerCase()
+            : "";
+          const normalizedTargetRelative = toRelativePath
+            ? normalizeRelativePath(toRelativePath).toLowerCase()
+            : "";
+          const hasKnownConflict = Boolean(
+            normalizedTargetRelative &&
+              vaultFiles?.some((file) => {
+                const existingRelative = normalizeRelativePath(file.relative_path).toLowerCase();
+                return (
+                  existingRelative === normalizedTargetRelative &&
+                  existingRelative !== normalizedSourceRelative
+                );
+              }),
+          );
+          if (
+            !hasKnownConflict &&
+            vaultPath &&
+            fromRelativePath &&
+            toRelativePath
+          ) {
+            try {
+              const moved = await invoke<VaultFile>("move_markdown_file", {
+                vaultPath,
+                fromRelativePath,
+                toRelativePath,
+              });
+              renamedFromPath = normalizedCurrentSavePath;
+              targetPath = moved.path;
+            } catch (error) {
+              const renameError = asErrorMessage(
+                error,
+                "Failed to rename exam file.",
+              );
+              if (!/already exists/i.test(renameError)) {
+                throw error;
+              }
+            }
+          }
+        }
+
+        const finalTitle =
+          deriveExamTitleFromFilePath(targetPath) ?? fileNameResolution.title;
+        const nextExam =
+          exam.title === finalTitle ? exam : { ...exam, title: finalTitle };
+        const bodyMarkdown = serializeExamBlueprintStable(nextExam, {
+          passiveSegments,
+          sourceMarkdown: sourceDocumentMarkdown,
+        });
+        const markdownToSave = resolveMarkdownWithTaskProfile({
+          sourceMarkdown: sourceDocumentMarkdown,
+          bodyMarkdown,
+          profileName: effectiveProfileName,
+        });
 
         await invoke("write_text_file", {
           path: targetPath,
-          contents: markdown,
+          contents: markdownToSave,
         });
-        setSavePath(nextSavePath ?? targetPath);
+        if (exam.title !== finalTitle) {
+          setExam((prev) => ({ ...prev, title: finalTitle }));
+        }
+        setSavePath(targetPath);
         setSaveState("saved");
-        setLastSavedContent(markdown);
-        setSourceDocumentMarkdown(markdown);
-        setDirtyBaselineMarkdown(markdown);
-        onSave?.({ path: targetPath, markdown });
+        setLastSavedContent(markdownToSave);
+        setSourceDocumentMarkdown(markdownToSave);
+        setDirtyBaselineMarkdown(markdownToSave);
+        onSave?.({ path: targetPath, markdown: markdownToSave, renamedFromPath });
         return true;
       } catch (error) {
         setSaveError(asErrorMessage(error, "Failed to save exam."));
@@ -1171,7 +1439,16 @@ export const ExamEditorView = ({
         return false;
       }
     },
-    [exam, exam.title, markdown, onSave, savePath, vaultPath],
+    [
+      effectiveProfileName,
+      exam,
+      onSave,
+      passiveSegments,
+      savePath,
+      sourceDocumentMarkdown,
+      vaultFiles,
+      vaultPath,
+    ],
   );
 
   const controls = useMemo<ExamEditorControlsState>(
@@ -1394,6 +1671,7 @@ export const ExamEditorView = ({
     setPointsError("");
     setSaveState("idle");
     setSaveError("");
+    const sourcePathTitle = deriveExamTitleFromFilePath(sourcePath);
 
     if (!sourcePath) {
       setSourceDocumentMarkdown("");
@@ -1409,7 +1687,10 @@ export const ExamEditorView = ({
       return;
     }
     if (!sourceMarkdown.trim()) {
-      const blankExam = createExamBlueprint();
+      const blankExam = {
+        ...createExamBlueprint(),
+        title: sourcePathTitle ?? "",
+      };
       const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
       setExam(blankExam);
       setSelection({ type: "exam" });
@@ -1428,7 +1709,10 @@ export const ExamEditorView = ({
       return;
     }
     if (!isExamMarkdown(sourceMarkdown)) {
-      const nonExamBlueprint = createExamBlueprint();
+      const nonExamBlueprint = {
+        ...createExamBlueprint(),
+        title: sourcePathTitle ?? "",
+      };
       const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
       setImportMessage(
         "Selected file has no #exam block. Create a new exam or switch back to Markdown.",
@@ -1453,7 +1737,10 @@ export const ExamEditorView = ({
     }
     const imported = importExamMarkdown(sourceMarkdown);
     if (!imported) {
-      const fallbackBlueprint = createExamBlueprint();
+      const fallbackBlueprint = {
+        ...createExamBlueprint(),
+        title: sourcePathTitle ?? "",
+      };
       const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
       setImportMessage("Unable to import exam data from this file.");
       setExam(fallbackBlueprint);
@@ -1475,7 +1762,10 @@ export const ExamEditorView = ({
       return;
     }
     const assignedProfile = resolveExamTaskFrontmatterValue(sourceMarkdown);
-    setExam(imported.blueprint);
+    setExam({
+      ...imported.blueprint,
+      title: sourcePathTitle ?? imported.blueprint.title,
+    });
     setPassiveSegments(imported.passiveSegments);
     setSelection({ type: "exam" });
     setImportWarnings(imported.warnings);
@@ -1829,8 +2119,31 @@ export const ExamEditorView = ({
     </button>
   ) : null;
 
-  const structureSplitLayout = isStudyView && isDesktopViewport;
+  const structureSplitLayout = isDesktopViewport;
   const showPropertiesInline = !structureSplitLayout;
+  const handleExamTitlePanelActivate = useCallback(() => {
+    setSelection((prev) => (prev.type === "exam" ? prev : { type: "exam" }));
+  }, []);
+  const examTitlePanel = (
+    <div
+      onMouseDownCapture={handleExamTitlePanelActivate}
+      onFocusCapture={handleExamTitlePanelActivate}
+    >
+      <PropertiesPanel
+        exam={exam}
+        className="exam-title-panel"
+        selection={{ type: "exam" }}
+        onExamUpdate={handleExamUpdate}
+        onTaskUpdate={handleTaskUpdate}
+        onCardTypeChange={handleCardTypeChange}
+      />
+    </div>
+  );
+  const structureSideContent = structureSplitLayout
+    ? selection.type === "exam"
+      ? <CardPalette onQuickAdd={handleAddTask} />
+      : propertiesPanel
+    : undefined;
   const inlineSelection: ExamEditorSelection =
     propertiesPopupActive && (selection.type === "task" || selection.type === "card")
       ? { type: "exam" }
@@ -1844,7 +2157,7 @@ export const ExamEditorView = ({
       onCardTypeChange={handleCardTypeChange}
     />
   ) : null;
-  const topContent = showPropertiesInline
+  const mobileTopContent = showPropertiesInline
     ? inlinePropertiesPanel || alerts
       ? (
           <>
@@ -1854,11 +2167,25 @@ export const ExamEditorView = ({
         )
       : null
     : alerts;
+  const desktopTopContent = (
+    <>
+      {examTitlePanel}
+      {alerts}
+    </>
+  );
 
   return (
     <div className={`exam-editor-page${isStudyView ? " study-view" : ""}`}>
       {mode === "structure" ? (
-        isStudyView ? (
+        structureSplitLayout ? (
+          <div className={`exam-editor-structure${isStudyView ? " study-structure" : ""}`}>
+            <ExamCanvas
+              {...canvasProps}
+              topContent={desktopTopContent}
+              sideContent={structureSideContent}
+            />
+          </div>
+        ) : isStudyView ? (
           <div className="exam-editor-structure study-structure">
             {paletteOverlayActive ? null : (
               <CardPalette onQuickAdd={handleAddTask} />
@@ -1866,8 +2193,7 @@ export const ExamEditorView = ({
             <ExamCanvas
               {...canvasProps}
               headerActions={paletteToggleButton}
-              topContent={topContent}
-              sideContent={structureSplitLayout ? propertiesPanel : undefined}
+              topContent={mobileTopContent}
             />
             {paletteOverlayActive && paletteModalOpen ? (
               <ModalShell

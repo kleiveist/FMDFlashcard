@@ -44,6 +44,16 @@
   flex: 0 0 auto;
 }
 
+.dashboard-page > .exam-editor-controls-panel-top {
+  width: 100%;
+  min-width: 0;
+}
+
+.workspace .note-column .note-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .note-column .note-collapse-strip {
   position: absolute;
   top: 12px;
@@ -128,7 +138,35 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.exam-editor-action-buttons .primary {
+  width: auto;
+}
+
+.exam-editor-controls-panel .pill-grid {
   margin-left: auto;
+}
+
+.exam-editor-controls-panel-top .exam-editor-toolbar-main {
+  width: 100%;
+  min-width: 0;
+}
+
+.exam-editor-controls-panel-top .pill-grid {
+  margin-left: auto;
+}
+
+.exam-editor-controls-panel-top .exam-editor-toolbar-save {
+  width: 100%;
+  min-width: 0;
+}
+
+.exam-editor-controls-panel-top .exam-editor-toolbar-save .save-path {
+  flex: 1 1 300px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 :root[data-design-mode="modern"] .exam-editor-action-buttons {
@@ -357,6 +395,12 @@
   width: 100%;
 }
 
+.card-palette .panel-body {
+  min-height: auto;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
 .exam-editor-structure.study-structure .card-palette {
   position: static;
   flex-shrink: 0;
@@ -431,12 +475,31 @@
 }
 
 .exam-canvas.is-split .exam-canvas-side {
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .exam-canvas.is-split .exam-canvas-side .properties-panel {
   height: 100%;
   min-height: 0;
+}
+
+.exam-canvas.is-split .exam-canvas-side .card-palette {
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+}
+
+.exam-canvas.is-split .exam-canvas-side .card-palette .panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.exam-title-panel .panel-body {
+  min-height: auto;
+  overflow: visible;
 }
 
 .exam-canvas-section {
@@ -1121,6 +1184,11 @@
   scrollbar-gutter: stable;
 }
 
+.content-editor > .panel-header {
+  border-bottom: 1px solid var(--line-soft);
+  padding-bottom: 8px;
+}
+
 .content-task-item {
   border-radius: 12px;
   border: 1px solid transparent;
@@ -1484,6 +1552,6 @@
   }
 
   .exam-editor-action-buttons {
-    margin-left: auto;
+    margin-left: 0;
   }
 }

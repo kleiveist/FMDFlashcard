@@ -130,12 +130,12 @@ const DashboardPageInner = (
   const [pendingExamLeaveTarget, setPendingExamLeaveTarget] =
     useState<ExamLeaveGuardTarget | null>(null);
   const [isExamLeaveSavePending, setIsExamLeaveSavePending] = useState(false);
-  const isDesktopViewport = useMediaQuery("(min-width: 1201px)", false);
+  const isDesktopViewport = useMediaQuery("(min-width: 1200px)", false);
   const [examPanelsCollapsed, setExamPanelsCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
     }
-    return window.matchMedia("(min-width: 1201px)").matches;
+    return window.matchMedia("(min-width: 1200px)").matches;
   });
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const didApplyPreviewDefaultModeRef = useRef(false);
@@ -798,26 +798,65 @@ const DashboardPageInner = (
     setEditCaretIndex(null);
   }, []);
   const handleExamSave = useCallback(
-    ({ path, markdown }: { path: string; markdown: string }) => {
-      if (preview.selectedFile?.path === path) {
+    ({
+      path,
+      markdown,
+      renamedFromPath,
+    }: {
+      path: string;
+      markdown: string;
+      renamedFromPath?: string;
+    }) => {
+      const normalizedSavedPath = normalizeVaultPath(path);
+      const normalizedRenamedFromPath = renamedFromPath
+        ? normalizeVaultPath(renamedFromPath)
+        : "";
+      const savedRelativePath = resolveVaultRelativePath(path);
+      const selectedPath = preview.selectedFile?.path ?? "";
+      const selectedMatchesRenamedPath =
+        Boolean(normalizedRenamedFromPath) &&
+        normalizeVaultPath(selectedPath) === normalizedRenamedFromPath;
+
+      if (selectedMatchesRenamedPath && savedRelativePath) {
+        actions.handleSelectFile({
+          path,
+          relative_path: savedRelativePath,
+        });
+      } else if (preview.selectedFile?.path === path) {
         preview.setPreview(markdown);
       }
-      if (!vault.files.some((file) => file.path === path)) {
-        const relativePath = resolveVaultRelativePath(path);
-        if (relativePath) {
-          const nextFiles = [
-            ...vault.files,
-            { path, relative_path: relativePath },
-          ].sort((a, b) => a.relative_path.localeCompare(b.relative_path));
-          vault.setFiles(nextFiles);
+
+      vault.setFiles((previous) => {
+        const filtered = previous.filter((file) => {
+          const filePath = normalizeVaultPath(file.path);
+          if (!filePath) {
+            return true;
+          }
+          if (
+            normalizedRenamedFromPath &&
+            filePath === normalizedRenamedFromPath
+          ) {
+            return false;
+          }
+          return true;
+        });
+        if (!savedRelativePath) {
+          return filtered;
         }
-      }
+        const withoutSavedPath = filtered.filter(
+          (file) => normalizeVaultPath(file.path) !== normalizedSavedPath,
+        );
+        return [
+          ...withoutSavedPath,
+          { path, relative_path: savedRelativePath },
+        ].sort((a, b) => a.relative_path.localeCompare(b.relative_path));
+      });
     },
     [
+      actions,
       preview.selectedFile?.path,
       preview.setPreview,
       resolveVaultRelativePath,
-      vault.files,
       vault.setFiles,
     ],
   );
@@ -940,9 +979,88 @@ const DashboardPageInner = (
     })();
   }, [isExamLeaveSavePending, pendingExamLeaveControls, runPendingExamLeaveAction]);
 
+  const examModeTabs = examControls ? (
+    <div className="pill-grid" role="tablist" aria-label="Editor mode">
+      <button
+        type="button"
+        className={`pill pill-button ${examControls.mode === "structure" ? "active" : ""}`}
+        onClick={() => examControls.onModeChange("structure")}
+        role="tab"
+        aria-selected={examControls.mode === "structure"}
+      >
+        Structure
+      </button>
+      <button
+        type="button"
+        className={`pill pill-button ${examControls.mode === "content" ? "active" : ""}`}
+        onClick={() => examControls.onModeChange("content")}
+        role="tab"
+        aria-selected={examControls.mode === "content"}
+      >
+        Content
+      </button>
+      <button
+        type="button"
+        className={`pill pill-button ${examControls.mode === "points" ? "active" : ""}`}
+        onClick={() => examControls.onModeChange("points")}
+        role="tab"
+        aria-selected={examControls.mode === "points"}
+      >
+        Points
+      </button>
+    </div>
+  ) : null;
+  const examEditorActions = examControls ? (
+    <div className="exam-editor-action-buttons">
+      <button
+        type="button"
+        className="ghost small"
+        onClick={examControls.onNewExam}
+      >
+        New exam
+      </button>
+      <button
+        type="button"
+        className="ghost small"
+        onClick={examControls.onSaveAs}
+        disabled={!examControls.canSave || examControls.isSaving}
+      >
+        Save as
+      </button>
+      <button
+        type="button"
+        className="primary small"
+        onClick={examControls.onSave}
+        disabled={!examControls.canSave || examControls.isSaving}
+      >
+        Save
+      </button>
+    </div>
+  ) : null;
+  const examSaveState =
+    examControls?.saveState === "saving" ? (
+      <span className="pill">Saving...</span>
+    ) : examControls?.saveState === "saved" ? (
+      <span className="pill success">Saved</span>
+    ) : null;
+  const desktopExamToolbar =
+    vaultView === "exam" && isExamDesktop && examControls ? (
+      <section className="panel toolbar-panel exam-editor-controls-panel exam-editor-controls-panel-top">
+        <div className="exam-editor-toolbar exam-editor-toolbar-main">
+          {examEditorActions}
+          {examModeTabs}
+        </div>
+        <div className="exam-editor-save-row exam-editor-toolbar-save">
+          <span className="muted">Saved path:</span>
+          <span className="save-path">{examControls.savePath ?? "Not saved yet"}</span>
+          {examSaveState}
+        </div>
+      </section>
+    ) : null;
+
   return (
     <div className="dashboard-page">
-      {vaultView === "exam" ? (
+      {vaultView === "exam" && !isExamDesktop ? (
         <header className="content-header">
           <div className="vault-header-row">
             <div className="vault-saved-path">
@@ -950,15 +1068,12 @@ const DashboardPageInner = (
               <span className="save-path">
                 {examControls?.savePath ?? "Not saved yet"}
               </span>
-              {examControls?.saveState === "saving" ? (
-                <span className="pill">Saving...</span>
-              ) : examControls?.saveState === "saved" ? (
-                <span className="pill success">Saved</span>
-              ) : null}
+              {examSaveState}
             </div>
           </div>
         </header>
       ) : null}
+      {desktopExamToolbar}
 
       {showGate ? (
         <section className="panel">
@@ -1059,7 +1174,7 @@ const DashboardPageInner = (
           )
         ) : (
           <div className="note-column">
-            {panelsCollapsed ? (
+            {!isExamDesktop && panelsCollapsed ? (
               <section className="panel toolbar-panel exam-editor-controls-panel is-collapsed">
                 <button
                   type="button"
@@ -1079,69 +1194,11 @@ const DashboardPageInner = (
                   </span>
                 </button>
               </section>
-            ) : examControls ? (
+            ) : !isExamDesktop && examControls ? (
               <section className="panel toolbar-panel exam-editor-controls-panel">
                 <div className="exam-editor-toolbar">
-                  <div className="pill-grid" role="tablist" aria-label="Editor mode">
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        examControls.mode === "structure" ? "active" : ""
-                      }`}
-                      onClick={() => examControls.onModeChange("structure")}
-                      role="tab"
-                      aria-selected={examControls.mode === "structure"}
-                    >
-                      Structure
-                    </button>
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        examControls.mode === "content" ? "active" : ""
-                      }`}
-                      onClick={() => examControls.onModeChange("content")}
-                      role="tab"
-                      aria-selected={examControls.mode === "content"}
-                    >
-                      Content
-                    </button>
-                    <button
-                      type="button"
-                      className={`pill pill-button ${
-                        examControls.mode === "points" ? "active" : ""
-                      }`}
-                      onClick={() => examControls.onModeChange("points")}
-                      role="tab"
-                      aria-selected={examControls.mode === "points"}
-                    >
-                      Points
-                    </button>
-                  </div>
-                  <div className="exam-editor-action-buttons">
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={examControls.onNewExam}
-                    >
-                      New exam
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={examControls.onSaveAs}
-                      disabled={!examControls.canSave || examControls.isSaving}
-                    >
-                      Save as
-                    </button>
-                    <button
-                      type="button"
-                      className="primary small"
-                      onClick={examControls.onSave}
-                      disabled={!examControls.canSave || examControls.isSaving}
-                    >
-                      Save
-                    </button>
-                  </div>
+                  {examEditorActions}
+                  {examModeTabs}
                 </div>
               </section>
             ) : null}

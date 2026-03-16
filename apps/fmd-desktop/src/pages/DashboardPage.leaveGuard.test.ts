@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
 import { useAppState } from "../components/AppStateProvider";
 import type { ExamEditorControlsState } from "./exam-editor/types";
+import { useMediaQuery } from "../lib/useMediaQuery";
 
 const examEditorMock = vi.hoisted(() => ({
   queue: [] as ExamEditorControlsState[],
@@ -143,6 +144,7 @@ vi.mock("./exam-editor/ExamEditorView", async () => {
 });
 
 const mockUseAppState = vi.mocked(useAppState);
+const mockUseMediaQuery = vi.mocked(useMediaQuery);
 
 const createExamControls = (
   overrides: Partial<ExamEditorControlsState> = {},
@@ -277,6 +279,7 @@ describe("DashboardPage exam leave guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     examEditorMock.queue = [];
+    mockUseMediaQuery.mockReturnValue(false);
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockReturnValue({
@@ -303,6 +306,35 @@ describe("DashboardPage exam leave guard", () => {
 
     await clickModalButtonByText(container, "Unsaved changes", "Cancel");
     expect(handleSelectFile).not.toHaveBeenCalled();
+
+    cleanup();
+  });
+
+  it("renders a full-width top toolbar in desktop exam view", () => {
+    mockUseMediaQuery.mockReturnValue(true);
+    examEditorMock.queue = [createExamControls()];
+    const { container, cleanup } = renderDashboard({ initialVaultView: "exam" });
+
+    const topToolbar = container.querySelector(".exam-editor-controls-panel-top");
+    expect(topToolbar).toBeTruthy();
+    expect(topToolbar?.textContent).toContain("New exam");
+    expect(topToolbar?.textContent).toContain("Save as");
+    expect(topToolbar?.textContent).toContain("Save");
+    expect(topToolbar?.textContent).toContain("Structure");
+    expect(topToolbar?.textContent).toContain("Content");
+    expect(topToolbar?.textContent).toContain("Points");
+    expect(topToolbar?.textContent).toContain("Saved path:");
+    expect(container.querySelector(".note-column .exam-editor-controls-panel")).toBeFalsy();
+
+    cleanup();
+  });
+
+  it("keeps controls in the note column below desktop width", () => {
+    examEditorMock.queue = [createExamControls()];
+    const { container, cleanup } = renderDashboard({ initialVaultView: "exam" });
+
+    expect(container.querySelector(".exam-editor-controls-panel-top")).toBeFalsy();
+    expect(container.querySelector(".note-column .exam-editor-controls-panel")).toBeTruthy();
 
     cleanup();
   });

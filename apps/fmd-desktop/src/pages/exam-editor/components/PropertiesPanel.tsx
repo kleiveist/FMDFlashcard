@@ -5,13 +5,13 @@
 import type { ExamBlueprint, CardType } from "../../../features/exam-editor/types";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
 import type { ExamEditorSelection } from "../types";
-import { AutoGrowTextarea } from "./AutoGrowTextarea";
 
 const CARD_TYPES: CardType[] = ["qa", "tf", "m1", "m2", "cl", "cd", "cld"];
 
 type PropertiesPanelProps = {
   exam: ExamBlueprint;
   selection: ExamEditorSelection;
+  className?: string;
   onExamUpdate: (updates: Pick<ExamBlueprint, "title" | "description">) => void;
   onTaskUpdate: (
     taskId: string,
@@ -23,17 +23,22 @@ type PropertiesPanelProps = {
 export const PropertiesPanel = ({
   exam,
   selection,
+  className,
   onExamUpdate,
   onTaskUpdate,
   onCardTypeChange,
 }: PropertiesPanelProps) => {
+  const panelClassName = ["panel", "exam-editor-panel", "properties-panel", className]
+    .filter(Boolean)
+    .join(" ");
+
   if (selection.type === "task") {
     const task = exam.tasks.find((entry) => entry.id === selection.taskId);
     if (!task) {
       return null;
     }
     return (
-      <aside className="panel exam-editor-panel properties-panel">
+      <aside className={panelClassName}>
         <header className="panel-header">
           <div>
             <h2>Task properties</h2>
@@ -83,7 +88,7 @@ export const PropertiesPanel = ({
       return null;
     }
     return (
-      <aside className="panel exam-editor-panel properties-panel">
+      <aside className={panelClassName}>
         <header className="panel-header">
           <div>
             <h2>Card properties</h2>
@@ -116,11 +121,11 @@ export const PropertiesPanel = ({
   }
 
   return (
-    <aside className="panel exam-editor-panel properties-panel">
+    <aside className={panelClassName}>
       <header className="panel-header">
         <div>
           <h2>Exam properties</h2>
-          <span className="muted small">Title & description</span>
+          <span className="muted small">Title</span>
         </div>
       </header>
       <div className="panel-body">
@@ -136,21 +141,6 @@ export const PropertiesPanel = ({
               })
             }
             placeholder="Exam title"
-          />
-        </label>
-        <label className="field">
-          <span className="label">Description</span>
-          <AutoGrowTextarea
-            className="text-input exam-textarea exam-description"
-            rows={6}
-            value={exam.description}
-            onChange={(value) =>
-              onExamUpdate({
-                title: exam.title,
-                description: value,
-              })
-            }
-            placeholder="Short description"
           />
         </label>
       </div>

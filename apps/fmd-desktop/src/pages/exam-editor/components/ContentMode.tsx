@@ -123,7 +123,6 @@ const ContentEditorPanel = ({
     <header className="panel-header">
       <div>
         <h2>Content</h2>
-        <p className="muted">Fill prompts, answers, and options.</p>
       </div>
     </header>
     <div className="panel-body">
@@ -135,7 +134,6 @@ const ContentEditorPanel = ({
         <div className="content-editor-body">
           <header className="content-task-header">
             <div>
-              <span className="eyebrow">Task</span>
               <h3>{activeTask.title.trim() || "Untitled task"}</h3>
             </div>
             {isCompositeTask(activeTask) ? (
