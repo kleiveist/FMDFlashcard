@@ -114,4 +114,70 @@ describe("MarkdownBlocks math rendering", () => {
     expect(markup).toContain("data-md-code-language=\"typescript\"");
     expect(markup).toContain("data-md-code-language-label=\"TypeScript\"");
   });
+
+  it("renders inline markdown styles in text and lists", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "1. **Bold** item",
+          "2. *Italic* and ~~Strike~~ and ==Mark==",
+          "",
+          "- **Nested** style",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("<ol");
+    expect(markup).toContain("<ul");
+    expect(markup).toContain("<strong>Bold</strong>");
+    expect(markup).toContain("<em>Italic</em>");
+    expect(markup).toContain("<del>Strike</del>");
+    expect(markup).toContain("<mark class=\"md-inline-highlight\">Mark</mark>");
+  });
+
+  it("preserves soft line breaks inside list items", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "1. First line",
+          "   second line",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("<ol");
+    expect(markup).toContain("<br");
+  });
+
+  it("preserves ordered-list ) delimiter metadata", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "1) Item A",
+          "2) Item B",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("data-md-ordered-delimiter=\")\"");
+  });
+
+  it("renders cloze placeholders inside nested markdown lists", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "1. **Prompt** @@@CLOZE:first@@@",
+          "   - Child @@@CLOZE:child@@@",
+        ].join("\n"),
+        renderPlaceholder: (id) => createElement("span", { className: "cloze-blank" }, id),
+      }),
+    );
+
+    expect(markup).toContain("<ol");
+    expect(markup).toContain("<ul");
+    expect(markup).toContain("<strong>Prompt</strong>");
+    expect(markup).toContain("<span class=\"cloze-blank\">first</span>");
+    expect(markup).toContain("<span class=\"cloze-blank\">child</span>");
+    expect(markup).not.toContain("@@@CLOZE:");
+  });
 });

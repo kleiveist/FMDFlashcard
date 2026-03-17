@@ -1894,6 +1894,38 @@ body.focus-mode .spaced-repetition-sidebar {
   padding-left: 1.4rem;
 }
 
+.exam-markdown li > p {
+  margin: 0;
+}
+
+.exam-markdown ol[data-md-ordered-delimiter=")"] {
+  list-style: none;
+  counter-reset: md-ordered var(--md-ordered-start, 0);
+}
+
+.exam-markdown ol[data-md-ordered-delimiter=")"] > li {
+  counter-increment: md-ordered;
+  position: relative;
+  padding-left: 2.1rem;
+  margin-left: -2.1rem;
+}
+
+.exam-markdown ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered) ") ";
+  position: absolute;
+  left: 0;
+  width: 1.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.exam-markdown mark.md-inline-highlight {
+  border-radius: 0.3em;
+  padding: 0.02em 0.24em;
+  background: color-mix(in srgb, var(--accent-soft) 64%, transparent);
+  color: color-mix(in srgb, var(--accent-strong) 88%, var(--preview-ink));
+}
+
 .exam-markdown .md-math {
   max-width: 100%;
 }

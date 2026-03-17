@@ -7,6 +7,7 @@ import {
   ADVANCED_INSERT_TEMPLATE_CATALOG,
   buildAdvancedInsertTemplateVariant,
 } from "./insertTemplates";
+import { ExamMarkdown } from "../../pages/exam-simulation/components/ExamMarkdown";
 
 const INTERNAL_BLOCK_CLIPBOARD_MIME = "application/x-fmd-markdown-hybrid-blocks+json";
 
@@ -7188,6 +7189,44 @@ describe("MarkdownHybridEditor", () => {
     expect(latestMarkdown).toBe(
       ["| A | B |", "| --- | --- |", "| 3 | 4 |", "| 1 | 2 |"].join("\n"),
     );
+    cleanup();
+  });
+
+  it("renders exam markdown preview in content layer with inline styles and list metadata", () => {
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(
+        [
+          "1) **Bold**",
+          "2) *Italic* and ~~Strike~~ and ==Mark==",
+          "",
+          "1. Soft line",
+          "   break",
+        ].join("\n"),
+      );
+      return (
+        <MarkdownHybridEditor
+          historyKey="exam-markdown-preview-sync"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <ExamMarkdown content={value} />}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const contentLayer = container.querySelector(".markdown-hybrid-content-layer");
+    expect(contentLayer).toBeTruthy();
+
+    const preview = container.querySelector(".markdown-hybrid-block-preview .exam-markdown");
+    expect(preview).toBeTruthy();
+    expect(preview?.querySelector("strong")?.textContent).toBe("Bold");
+    expect(preview?.querySelector("em")?.textContent).toBe("Italic");
+    expect(preview?.querySelector("del")?.textContent).toBe("Strike");
+    expect(preview?.querySelector("mark.md-inline-highlight")?.textContent).toBe("Mark");
+    expect(preview?.querySelector("ol[data-md-ordered-delimiter=')']")).toBeTruthy();
+    expect(preview?.querySelector("li br")).toBeTruthy();
+
     cleanup();
   });
 });

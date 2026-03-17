@@ -278,8 +278,57 @@
   max-width: 100%;
 }
 
+.flashcard-markdown > :first-child {
+  margin-top: 0;
+}
+
+.flashcard-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.flashcard-markdown p {
+  margin: 0 0 0.8rem;
+}
+
+.flashcard-markdown ul,
+.flashcard-markdown ol {
+  margin: 0 0 0.8rem;
+  padding-left: 1.4rem;
+}
+
+.flashcard-markdown li > p {
+  margin: 0;
+}
+
+.flashcard-markdown ol[data-md-ordered-delimiter=")"] {
+  list-style: none;
+  counter-reset: md-ordered var(--md-ordered-start, 0);
+}
+
+.flashcard-markdown ol[data-md-ordered-delimiter=")"] > li {
+  counter-increment: md-ordered;
+  position: relative;
+  padding-left: 2.1rem;
+  margin-left: -2.1rem;
+}
+
+.flashcard-markdown ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered) ") ";
+  position: absolute;
+  left: 0;
+  width: 1.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.flashcard-markdown mark.md-inline-highlight {
+  border-radius: 0.3em;
+  padding: 0.02em 0.24em;
+  background: color-mix(in srgb, var(--accent-soft) 64%, transparent);
+  color: color-mix(in srgb, var(--accent-strong) 88%, var(--preview-ink));
+}
+
 .flashcard-markdown-text {
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
   min-width: 0;

@@ -20,12 +20,25 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { Children, Fragment, cloneElement, isValidElement, type ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  cloneElement,
+  isValidElement,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { buildMarkdownMediaPreviewSource } from "../../../lib/cardMedia";
+import {
+  normalizeInlineFormattingForPreview,
+  remarkPreserveOrderedListDelimiters,
+  remarkPreserveSoftBreaks,
+  resolveOrderedListDelimiter,
+} from "../../../lib/markdownPreviewShared";
 import {
   resolveMarkdownTableCellSegments,
   SHARED_TABLE_CELL_IMAGE_CLASS,
@@ -43,6 +56,9 @@ const markdownSchema = {
   ...defaultSchema,
   tagNames: [
     ...(defaultSchema.tagNames ?? []),
+    "br",
+    "del",
+    "mark",
     "table",
     "thead",
     "tbody",
@@ -50,6 +66,7 @@ const markdownSchema = {
     "tr",
     "th",
     "td",
+    "u",
   ],
   attributes: {
     ...defaultSchema.attributes,
@@ -58,6 +75,8 @@ const markdownSchema = {
       "data-fmd-media-block",
       "data-media-index",
     ],
+    mark: [...(defaultSchema.attributes?.mark ?? []), "className"],
+    ol: [...(defaultSchema.attributes?.ol ?? []), "data-md-ordered-delimiter"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
     th: [...(defaultSchema.attributes?.th ?? []), "align"],
     td: [...(defaultSchema.attributes?.td ?? []), "align"],
@@ -92,6 +111,31 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
 };
 
 const mediaPlaceholderTextPattern = /__FMD_MEDIA_(\d+)__/;
+
+const readMarkdownNodeStartPosition = (
+  node: unknown,
+): { offset?: number; line?: number } | undefined => {
+  if (
+    !node ||
+    typeof node !== "object" ||
+    !("position" in node) ||
+    !node.position ||
+    typeof node.position !== "object" ||
+    !("start" in node.position) ||
+    !node.position.start ||
+    typeof node.position.start !== "object"
+  ) {
+    return undefined;
+  }
+  const start = node.position.start as {
+    offset?: number;
+    line?: number;
+  };
+  return {
+    offset: typeof start.offset === "number" ? start.offset : undefined,
+    line: typeof start.line === "number" ? start.line : undefined,
+  };
+};
 
 const readMarkdownNodeText = (node: unknown): string => {
   if (!node || typeof node !== "object") {
@@ -300,12 +344,17 @@ export const ExamMarkdown = ({
   vaultPngAssets,
 }: ExamMarkdownProps) => {
   const classes = ["exam-markdown", className].filter(Boolean).join(" ");
-  const mediaPreview = buildMarkdownMediaPreviewSource(content, "exam-markdown");
+  const normalizedContent = normalizeInlineFormattingForPreview(content);
+  const mediaPreview = buildMarkdownMediaPreviewSource(normalizedContent, "exam-markdown");
 
   return (
     <div className={classes}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[
+          remarkGfm,
+          remarkPreserveSoftBreaks,
+          remarkPreserveOrderedListDelimiters,
+        ]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
         components={{
           h1: ({ node: _node, children, ...props }) => (
@@ -329,6 +378,26 @@ export const ExamMarkdown = ({
           p: ({ node: _node, children, ...props }) => (
             <p {...props}>{renderExamMathChildren(children, "exam-p")}</p>
           ),
+          ol: ({ node, ...props }) => {
+            const delimiterFromNode = readMarkdownElementProperty(node, "data-md-ordered-delimiter");
+            const delimiterFromPosition = resolveOrderedListDelimiter(
+              mediaPreview.markdown,
+              readMarkdownNodeStartPosition(node),
+            );
+            if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
+              return <ol {...props} />;
+            }
+            const startRaw = props.start;
+            const startValue = typeof startRaw === "number"
+              ? startRaw
+              : Number.parseInt(String(startRaw ?? "1"), 10);
+            const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
+            const style = {
+              ...(props.style ?? {}),
+              "--md-ordered-start": String(previous),
+            } as CSSProperties;
+            return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
+          },
           li: ({ node: _node, children, ...props }) => (
             <li {...props}>{renderExamMathChildren(children, "exam-li")}</li>
           ),

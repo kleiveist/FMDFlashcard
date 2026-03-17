@@ -49,4 +49,51 @@ describe("ExamMarkdown", () => {
     expect(markup).toContain("md-table-cell-image");
     expect(markup).toContain("https://example.com/a.png");
   });
+
+  it("renders inline markdown styles and list formatting", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamMarkdown, {
+        content: [
+          "1. **Bold** item",
+          "2. *Italic* and ~~Strike~~ and ==Mark==",
+          "",
+          "- **Nested** style",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("<ol");
+    expect(markup).toContain("<ul");
+    expect(markup).toContain("<strong>Bold</strong>");
+    expect(markup).toContain("<em>Italic</em>");
+    expect(markup).toContain("<del>Strike</del>");
+    expect(markup).toContain("<mark class=\"md-inline-highlight\">Mark</mark>");
+  });
+
+  it("preserves soft line breaks inside list items", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamMarkdown, {
+        content: [
+          "1. First line",
+          "   second line",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("<ol");
+    expect(markup).toContain("<br");
+  });
+
+  it("preserves ordered-list ) delimiter metadata", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamMarkdown, {
+        content: [
+          "1) Item A",
+          "2) Item B",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("data-md-ordered-delimiter=\")\"");
+  });
 });
