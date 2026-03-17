@@ -71,6 +71,12 @@ export const useSrSessionViewModel = () => {
   const [autoTimeRemainingSeconds, setAutoTimeRemainingSeconds] =
     useState<number | null>(null);
   const autoTimeTimerRef = useRef<number | null>(null);
+  const autoTimeLatestRef = useRef({
+    flashcards: spacedRepetition.spacedRepetitionFlashcards,
+    submissions: spacedRepetition.spacedRepetitionSubmissions,
+    handleSubmit: spacedRepetition.handleSpacedRepetitionSubmit,
+    handleSelfGrade: spacedRepetition.handleSpacedRepetitionSelfGrade,
+  });
   const flashcardFilterMode = settings.flashcardMode;
   const setFlashcardFilterMode = settings.setFlashcardMode;
   const statsView = spacedRepetition.spacedRepetitionStatsView;
@@ -282,30 +288,40 @@ export const useSrSessionViewModel = () => {
       typeValues: settings.examTaskTypeDefaultTimeSeconds,
     });
   }, [activeTimedEntry, settings.examTaskTypeDefaultTimeSeconds]);
-  const handleAutoTimeTimeout = useCallback(
-    (cardIndex: number) => {
-      if (spacedRepetition.spacedRepetitionSubmissions[cardIndex]) {
-        return;
-      }
-      const timedCard = spacedRepetition.spacedRepetitionFlashcards[cardIndex];
-      if (!timedCard) {
-        return;
-      }
-      if (timedCard.kind === "free-text") {
-        spacedRepetition.handleSpacedRepetitionSelfGrade(cardIndex, "incorrect");
-        return;
-      }
-      spacedRepetition.handleSpacedRepetitionSubmit(cardIndex, true);
-    },
-    [
-      spacedRepetition,
-      spacedRepetition.spacedRepetitionFlashcards,
-      spacedRepetition.spacedRepetitionSubmissions,
-    ],
-  );
+  const activeTimedCardIndex = activeTimedEntry?.cardIndex ?? null;
 
   useEffect(() => {
-    if (!autoTimeEnabled || !activeTimedEntry) {
+    autoTimeLatestRef.current = {
+      flashcards: spacedRepetition.spacedRepetitionFlashcards,
+      submissions: spacedRepetition.spacedRepetitionSubmissions,
+      handleSubmit: spacedRepetition.handleSpacedRepetitionSubmit,
+      handleSelfGrade: spacedRepetition.handleSpacedRepetitionSelfGrade,
+    };
+  }, [
+    spacedRepetition.handleSpacedRepetitionSelfGrade,
+    spacedRepetition.handleSpacedRepetitionSubmit,
+    spacedRepetition.spacedRepetitionFlashcards,
+    spacedRepetition.spacedRepetitionSubmissions,
+  ]);
+
+  const handleAutoTimeTimeout = useCallback((cardIndex: number) => {
+    const latest = autoTimeLatestRef.current;
+    if (latest.submissions[cardIndex]) {
+      return;
+    }
+    const timedCard = latest.flashcards[cardIndex];
+    if (!timedCard) {
+      return;
+    }
+    if (timedCard.kind === "free-text") {
+      latest.handleSelfGrade(cardIndex, "incorrect");
+      return;
+    }
+    latest.handleSubmit(cardIndex, true);
+  }, []);
+
+  useEffect(() => {
+    if (!autoTimeEnabled || activeTimedCardIndex === null) {
       if (autoTimeTimerRef.current !== null) {
         window.clearInterval(autoTimeTimerRef.current);
         autoTimeTimerRef.current = null;
@@ -316,7 +332,7 @@ export const useSrSessionViewModel = () => {
 
     if (activeTimedDurationSeconds <= 0) {
       setAutoTimeRemainingSeconds(0);
-      handleAutoTimeTimeout(activeTimedEntry.cardIndex);
+      handleAutoTimeTimeout(activeTimedCardIndex);
       return;
     }
 
@@ -332,7 +348,7 @@ export const useSrSessionViewModel = () => {
             window.clearInterval(autoTimeTimerRef.current);
             autoTimeTimerRef.current = null;
           }
-          handleAutoTimeTimeout(activeTimedEntry.cardIndex);
+          handleAutoTimeTimeout(activeTimedCardIndex);
           return 0;
         }
         return next;
@@ -346,8 +362,8 @@ export const useSrSessionViewModel = () => {
       }
     };
   }, [
+    activeTimedCardIndex,
     activeTimedDurationSeconds,
-    activeTimedEntry,
     autoTimeEnabled,
     handleAutoTimeTimeout,
   ]);

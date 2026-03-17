@@ -77,8 +77,34 @@
     order: 2;
   }
 
+  .spaced-repetition-main .sr-diagram-panel .panel-body {
+    min-height: auto;
+    gap: 8px;
+  }
+
   .sr-stats-top {
     grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .spaced-repetition-main .sr-diagram-panel .sr-stats-right {
+    gap: 8px;
+  }
+
+  .spaced-repetition-main .sr-diagram-panel .sr-stats-right .stats-summary {
+    gap: 10px;
+    align-items: center;
+    position: relative;
+  }
+
+  .spaced-repetition-main .sr-diagram-panel .sr-stats-right .stats-counters {
+    gap: 8px;
+  }
+
+  .spaced-repetition-main .sr-diagram-panel .sr-stats-right .stats-chart {
+    align-self: center;
+    margin-top: -84px;
+    z-index: 1;
   }
 
   .app-shell[data-active-tab="dashboard"][data-study-subview="exam"]

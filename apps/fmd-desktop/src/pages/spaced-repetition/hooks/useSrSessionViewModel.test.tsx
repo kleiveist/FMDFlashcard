@@ -184,6 +184,48 @@ describe("useSrSessionViewModel auto time", () => {
     vi.useRealTimers();
   });
 
+  it("does not restart timer on rerender while staying on same card", () => {
+    const onSubmit = vi.fn();
+    const onSelfGrade = vi.fn();
+    const cards = [
+      {
+        kind: "multiple-choice",
+        question: "Q1",
+        options: [{ key: "a", text: "A" }],
+        correctKeys: ["a"],
+      },
+    ];
+
+    mockUseAppState.mockImplementation(() =>
+      createMockAppState({
+        cards,
+        submissions: {},
+        autoTimeEnabled: true,
+        onSubmit,
+        onSelfGrade,
+      }),
+    );
+
+    const { rerender, cleanup } = renderHook(() => undefined);
+
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    rerender();
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith(0, true);
+    expect(onSelfGrade).not.toHaveBeenCalled();
+
+    cleanup();
+    vi.useRealTimers();
+  });
+
   it("retargets timer to next unsubmitted visible card", () => {
     let submissions: Record<number, boolean> = {};
     const onSelfGrade = vi.fn();
