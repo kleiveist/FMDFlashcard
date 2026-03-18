@@ -58,6 +58,8 @@ type FlashcardPageProps = {
   onSectionSelect?: (section: StudySectionKey) => void;
 };
 
+const EMPTY_CLOZE_RESPONSES: Record<string, string> = {};
+
 export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   const {
     actions,
@@ -680,7 +682,10 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                       vaultPngAssets={vault.pngAssets}
                       helpText={card.helpText}
                       helpEnabled={helpEnabled}
-                      responses={flashcards.flashcardClozeResponses[cardIndex] ?? {}}
+                      responses={
+                        flashcards.flashcardClozeResponses[cardIndex] ??
+                        EMPTY_CLOZE_RESPONSES
+                      }
                       onInputChange={handleClozeInputChange}
                       onTokenDrop={handleClozeTokenDrop}
                       onTokenRemove={handleClozeTokenRemove}

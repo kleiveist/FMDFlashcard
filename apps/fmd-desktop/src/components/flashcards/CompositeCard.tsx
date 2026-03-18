@@ -37,6 +37,9 @@ import {
 import { HelpButton, hasHelpContent } from "../HelpButton";
 import type { VaultPngAsset } from "../../lib/tree";
 
+const EMPTY_CLOZE_RESPONSES: Record<string, string> = {};
+const EMPTY_PART_STATE: CompositePartState = {};
+
 type CompositeCardProps = {
   card: CompositeFlashcard;
   cardIndex: number;
@@ -147,7 +150,7 @@ export const CompositeCard = ({
     <article className="flashcard-item composite-card">
       <div className="composite-parts">
         {card.parts.map((part, partIndex) => {
-          const state = partStates[partIndex] ?? {};
+          const state = partStates[partIndex] ?? EMPTY_PART_STATE;
           if (part.kind === "cloze") {
             return (
               <ClozeCard
@@ -157,7 +160,7 @@ export const CompositeCard = ({
                 partIndex={partIndex}
                 submitted={submitted}
                 submissionLocked={submissionLocked}
-                responses={state.clozeResponses ?? {}}
+                responses={state.clozeResponses ?? EMPTY_CLOZE_RESPONSES}
                 showResult={showResult}
                 revealCorrectness={revealCorrectness}
                 showSolution={showSolution}

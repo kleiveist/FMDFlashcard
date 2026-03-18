@@ -31,6 +31,8 @@ import { SrReviewActions } from "./SrReviewActions";
 import type { ClozeDragPayload, FlashcardSelfGrade } from "../../../features/flashcards/logic";
 import type { VaultPngAsset } from "../../../lib/tree";
 
+const EMPTY_CLOZE_RESPONSES: Record<string, string> = {};
+
 type SrCardHostProps = {
   filteredFlashcardEntries: { card: any; cardIndex: number }[];
   spacedRepetitionSubmissions: Record<number, boolean>;
@@ -199,7 +201,9 @@ export const SrCardHost = ({
               vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
-              responses={spacedRepetitionClozeResponses[cardIndex] ?? {}}
+              responses={
+                spacedRepetitionClozeResponses[cardIndex] ?? EMPTY_CLOZE_RESPONSES
+              }
               onInputChange={handleClozeInputChange}
               onTokenDrop={handleClozeTokenDrop}
               onTokenRemove={handleClozeTokenRemove}

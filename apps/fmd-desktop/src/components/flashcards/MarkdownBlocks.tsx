@@ -11,6 +11,7 @@ import {
   Fragment,
   cloneElement,
   isValidElement,
+  useMemo,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -228,7 +229,9 @@ const renderTextWithMathAndPlaceholders = (
         nodes.push(buildPlaceholder(placeholderId));
       } else {
         nodes.push(
-          <Fragment key={`${keyPrefix}-placeholder-${segmentIndex}`}>
+          <Fragment
+            key={`${keyPrefix}-placeholder-${placeholderId}-${match.index}`}
+          >
             {rendered}
           </Fragment>,
         );
@@ -360,227 +363,289 @@ export const MarkdownBlocks = ({
   vaultPath,
   vaultPngAssets,
 }: MarkdownBlocksProps) => {
-  const segments = splitMarkdownMediaSegments(text, "flashcard-markdown");
-  const containerClass = ["flashcard-markdown", className]
-    .filter(Boolean)
-    .join(" ");
-  const tableClass = [
-    "flashcard-table",
-    allowTableScroll ? "scrollable" : "no-scroll",
-    SHARED_TABLE_WRAP_CLASS,
-  ].join(" ");
+  const segments = useMemo(
+    () => splitMarkdownMediaSegments(text, "flashcard-markdown"),
+    [text],
+  );
+  const containerClass = useMemo(
+    () => ["flashcard-markdown", className].filter(Boolean).join(" "),
+    [className],
+  );
+  const tableClass = useMemo(
+    () =>
+      [
+        "flashcard-table",
+        allowTableScroll ? "scrollable" : "no-scroll",
+        SHARED_TABLE_WRAP_CLASS,
+      ].join(" "),
+    [allowTableScroll],
+  );
 
-  const renderTableCellContent = ({
-    node,
-    children,
-    keyPrefix,
-    markdownSource,
-  }: {
-    node: unknown;
-    children: ReactNode;
-    keyPrefix: string;
-    markdownSource: string;
-  }) => {
-    const cellSource = readMarkdownNodeSource(node, markdownSource);
-    const cellText = readMarkdownNodeText(node);
-    const segments = resolveMarkdownTableCellSegments({
-      cellSource,
-      cellText,
-      scope: `flashcard-table-cell-${keyPrefix}`,
-    });
-    const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
-    if (!hasMediaSegments) {
-      return renderFlashcardRichChildren(children, keyPrefix, renderPlaceholder);
-    }
-
-    return segments.map((segment, index) => {
-      const segmentKey = `${keyPrefix}-segment-${index}`;
-      if (segment.kind === "text") {
-        return (
-          <Fragment key={segmentKey}>
-            {renderFlashcardInlineMarkdown(
-              segment.text,
-              `${segmentKey}-text`,
-              renderPlaceholder,
-            )}
-          </Fragment>
+  const renderedSegments = useMemo(() => {
+    const renderTableCellContent = ({
+      node,
+      children,
+      keyPrefix,
+      markdownSource,
+    }: {
+      node: unknown;
+      children: ReactNode;
+      keyPrefix: string;
+      markdownSource: string;
+    }) => {
+      const cellSource = readMarkdownNodeSource(node, markdownSource);
+      const cellText = readMarkdownNodeText(node);
+      const resolvedSegments = resolveMarkdownTableCellSegments({
+        cellSource,
+        cellText,
+        scope: `flashcard-table-cell-${keyPrefix}`,
+      });
+      const hasMediaSegments = resolvedSegments.some(
+        (segment) => segment.kind !== "text",
+      );
+      if (!hasMediaSegments) {
+        return renderFlashcardRichChildren(
+          children,
+          keyPrefix,
+          renderPlaceholder,
         );
       }
-      if (segment.kind === "media") {
+
+      return resolvedSegments.map((segment, index) => {
+        const segmentKey = `${keyPrefix}-segment-${index}`;
+        if (segment.kind === "text") {
+          return (
+            <Fragment key={segmentKey}>
+              {renderFlashcardInlineMarkdown(
+                segment.text,
+                `${segmentKey}-text`,
+                renderPlaceholder,
+              )}
+            </Fragment>
+          );
+        }
+        if (segment.kind === "media") {
+          return (
+            <div
+              className={`flashcard-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
+              key={segmentKey}
+            >
+              <FlashcardMediaGroup
+                media={segment.items}
+                vaultPngAssets={vaultPngAssets}
+                vaultPath={vaultPath}
+              />
+            </div>
+          );
+        }
         return (
           <div
             className={`flashcard-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
             key={segmentKey}
           >
-            <FlashcardMediaGroup
-              media={segment.items}
-              vaultPngAssets={vaultPngAssets}
-              vaultPath={vaultPath}
+            <img
+              src={segment.src}
+              alt={segment.alt ?? ""}
+              title={segment.title}
+              className={`flashcard-table-cell-image ${SHARED_TABLE_CELL_IMAGE_CLASS}`}
+              loading="lazy"
+              decoding="async"
+              draggable={false}
             />
           </div>
         );
+      });
+    };
+
+    const renderMarkdownSegment = (source: string, keyPrefix: string) => {
+      const normalizedSource = normalizeInlineFormattingForPreview(source);
+      return (
+        <ReactMarkdown
+          key={`${keyPrefix}-markdown`}
+          remarkPlugins={[
+            remarkGfm,
+            remarkPreserveSoftBreaks,
+            remarkPreserveOrderedListDelimiters,
+          ]}
+          rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+          components={{
+            h1: ({ node: _node, children, ...props }) => (
+              <h1 {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-h1`,
+                  renderPlaceholder,
+                )}
+              </h1>
+            ),
+            h2: ({ node: _node, children, ...props }) => (
+              <h2 {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-h2`,
+                  renderPlaceholder,
+                )}
+              </h2>
+            ),
+            h3: ({ node: _node, children, ...props }) => (
+              <h3 {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-h3`,
+                  renderPlaceholder,
+                )}
+              </h3>
+            ),
+            h4: ({ node: _node, children, ...props }) => (
+              <h4 {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-h4`,
+                  renderPlaceholder,
+                )}
+              </h4>
+            ),
+            h5: ({ node: _node, children, ...props }) => (
+              <h5 {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-h5`,
+                  renderPlaceholder,
+                )}
+              </h5>
+            ),
+            h6: ({ node: _node, children, ...props }) => (
+              <h6 {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-h6`,
+                  renderPlaceholder,
+                )}
+              </h6>
+            ),
+            p: ({ node: _node, children, ...props }) => (
+              <p {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-p`,
+                  renderPlaceholder,
+                )}
+              </p>
+            ),
+            ol: ({ node, ...props }) => {
+              const delimiterFromNode = readMarkdownElementProperty(
+                node,
+                "data-md-ordered-delimiter",
+              );
+              const delimiterFromPosition = resolveOrderedListDelimiter(
+                normalizedSource,
+                readMarkdownNodeStartPosition(node),
+              );
+              if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
+                return <ol {...props} />;
+              }
+              const startRaw = props.start;
+              const startValue = typeof startRaw === "number"
+                ? startRaw
+                : Number.parseInt(String(startRaw ?? "1"), 10);
+              const previous = Number.isNaN(startValue)
+                ? 0
+                : Math.max(0, startValue - 1);
+              const style = {
+                ...(props.style ?? {}),
+                "--md-ordered-start": String(previous),
+              } as CSSProperties;
+              return (
+                <ol {...props} style={style} data-md-ordered-delimiter=")" />
+              );
+            },
+            li: ({ node: _node, children, ...props }) => (
+              <li {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-li`,
+                  renderPlaceholder,
+                )}
+              </li>
+            ),
+            blockquote: ({ node: _node, children, ...props }) => (
+              <blockquote {...props}>
+                {renderFlashcardRichChildren(
+                  children,
+                  `${keyPrefix}-blockquote`,
+                  renderPlaceholder,
+                )}
+              </blockquote>
+            ),
+            pre: ({ node: _node, children, ...props }) => {
+              const svgSource = extractSvgCodeBlockSource(children);
+              if (svgSource !== null) {
+                return (
+                  <SvgPreviewBlock
+                    source={svgSource}
+                    className="md-svg-preview-block"
+                  />
+                );
+              }
+              const preClassName = ["flashcard-code-block", props.className]
+                .filter(Boolean)
+                .join(" ");
+              return (
+                <MarkdownHighlightedPre {...props} className={preClassName}>
+                  {children}
+                </MarkdownHighlightedPre>
+              );
+            },
+            table: ({ node: _node, ...props }) => (
+              <div className={tableClass}>
+                <table {...props} />
+              </div>
+            ),
+            th: ({ node: tableNode, children, ...props }) => (
+              <th {...props}>
+                {renderTableCellContent({
+                  node: tableNode,
+                  children,
+                  keyPrefix: `${keyPrefix}-th`,
+                  markdownSource: normalizedSource,
+                })}
+              </th>
+            ),
+            td: ({ node: tableNode, children, ...props }) => (
+              <td {...props}>
+                {renderTableCellContent({
+                  node: tableNode,
+                  children,
+                  keyPrefix: `${keyPrefix}-td`,
+                  markdownSource: normalizedSource,
+                })}
+              </td>
+            ),
+          }}
+        >
+          {normalizedSource}
+        </ReactMarkdown>
+      );
+    };
+
+    return segments.map((segment, segmentIndex) => {
+      if (segment.kind === "media") {
+        return (
+          <FlashcardMediaGroup
+            key={`media-${segmentIndex}`}
+            media={segment.items}
+            vaultPngAssets={vaultPngAssets}
+            vaultPath={vaultPath}
+          />
+        );
       }
       return (
-        <div
-          className={`flashcard-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
-          key={segmentKey}
-        >
-          <img
-            src={segment.src}
-            alt={segment.alt ?? ""}
-            title={segment.title}
-            className={`flashcard-table-cell-image ${SHARED_TABLE_CELL_IMAGE_CLASS}`}
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-          />
-        </div>
+        <Fragment key={`markdown-${segmentIndex}`}>
+          {renderMarkdownSegment(segment.source, `segment-${segmentIndex}`)}
+        </Fragment>
       );
     });
-  };
+  }, [segments, renderPlaceholder, tableClass, vaultPngAssets, vaultPath]);
 
-  const renderMarkdownSegment = (source: string, keyPrefix: string) => {
-    const normalizedSource = normalizeInlineFormattingForPreview(source);
-    return (
-      <ReactMarkdown
-        key={`${keyPrefix}-markdown`}
-        remarkPlugins={[
-          remarkGfm,
-          remarkPreserveSoftBreaks,
-          remarkPreserveOrderedListDelimiters,
-        ]}
-        rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
-        components={{
-          h1: ({ node: _node, children, ...props }) => (
-            <h1 {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-h1`, renderPlaceholder)}
-            </h1>
-          ),
-          h2: ({ node: _node, children, ...props }) => (
-            <h2 {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-h2`, renderPlaceholder)}
-            </h2>
-          ),
-          h3: ({ node: _node, children, ...props }) => (
-            <h3 {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-h3`, renderPlaceholder)}
-            </h3>
-          ),
-          h4: ({ node: _node, children, ...props }) => (
-            <h4 {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-h4`, renderPlaceholder)}
-            </h4>
-          ),
-          h5: ({ node: _node, children, ...props }) => (
-            <h5 {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-h5`, renderPlaceholder)}
-            </h5>
-          ),
-          h6: ({ node: _node, children, ...props }) => (
-            <h6 {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-h6`, renderPlaceholder)}
-            </h6>
-          ),
-          p: ({ node: _node, children, ...props }) => (
-            <p {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-p`, renderPlaceholder)}
-            </p>
-          ),
-          ol: ({ node, ...props }) => {
-            const delimiterFromNode = readMarkdownElementProperty(node, "data-md-ordered-delimiter");
-            const delimiterFromPosition = resolveOrderedListDelimiter(
-              normalizedSource,
-              readMarkdownNodeStartPosition(node),
-            );
-            if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
-              return <ol {...props} />;
-            }
-            const startRaw = props.start;
-            const startValue = typeof startRaw === "number"
-              ? startRaw
-              : Number.parseInt(String(startRaw ?? "1"), 10);
-            const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
-            const style = {
-              ...(props.style ?? {}),
-              "--md-ordered-start": String(previous),
-            } as CSSProperties;
-            return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
-          },
-          li: ({ node: _node, children, ...props }) => (
-            <li {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-li`, renderPlaceholder)}
-            </li>
-          ),
-          blockquote: ({ node: _node, children, ...props }) => (
-            <blockquote {...props}>
-              {renderFlashcardRichChildren(children, `${keyPrefix}-blockquote`, renderPlaceholder)}
-            </blockquote>
-          ),
-          pre: ({ node: _node, children, ...props }) => {
-            const svgSource = extractSvgCodeBlockSource(children);
-            if (svgSource !== null) {
-              return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
-            }
-            const preClassName = ["flashcard-code-block", props.className]
-              .filter(Boolean)
-              .join(" ");
-            return (
-              <MarkdownHighlightedPre {...props} className={preClassName}>
-                {children}
-              </MarkdownHighlightedPre>
-            );
-          },
-          table: ({ node: _node, ...props }) => (
-            <div className={tableClass}>
-              <table {...props} />
-            </div>
-          ),
-          th: ({ node: tableNode, children, ...props }) => (
-            <th {...props}>
-              {renderTableCellContent({
-                node: tableNode,
-                children,
-                keyPrefix: `${keyPrefix}-th`,
-                markdownSource: normalizedSource,
-              })}
-            </th>
-          ),
-          td: ({ node: tableNode, children, ...props }) => (
-            <td {...props}>
-              {renderTableCellContent({
-                node: tableNode,
-                children,
-                keyPrefix: `${keyPrefix}-td`,
-                markdownSource: normalizedSource,
-              })}
-            </td>
-          ),
-        }}
-      >
-        {normalizedSource}
-      </ReactMarkdown>
-    );
-  };
-
-  return (
-    <div className={containerClass}>
-      {segments.map((segment, segmentIndex) => {
-        if (segment.kind === "media") {
-          return (
-            <FlashcardMediaGroup
-              key={`media-${segmentIndex}`}
-              media={segment.items}
-              vaultPngAssets={vaultPngAssets}
-              vaultPath={vaultPath}
-            />
-          );
-        }
-        return (
-          <Fragment key={`markdown-${segmentIndex}`}>
-            {renderMarkdownSegment(segment.source, `segment-${segmentIndex}`)}
-          </Fragment>
-        );
-      })}
-    </div>
-  );
+  return <div className={containerClass}>{renderedSegments}</div>;
 };

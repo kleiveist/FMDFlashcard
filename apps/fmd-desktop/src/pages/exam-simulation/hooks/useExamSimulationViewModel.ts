@@ -141,6 +141,8 @@ type SelectedExamIgnoredEntry = {
   reason: string;
 };
 
+const EMPTY_PART_STATES: CompositePartState[] = [];
+
 const buildSelectionSignature = (rows: ExamSelectionRows) =>
   rows.map((row) => row.join(",")).join("|");
 const STANDARD_RUN_PROFILE_NAME = "Standard (no profile)";
@@ -2014,7 +2016,9 @@ export const useExamSimulationViewModel = () => {
     ],
   );
 
-  const activeTaskPartStates = activeTask ? partStates[activeTaskIndex] ?? [] : [];
+  const activeTaskPartStates = activeTask
+    ? partStates[activeTaskIndex] ?? EMPTY_PART_STATES
+    : EMPTY_PART_STATES;
   const activeTaskAwardedPoints = activeTask
     ? awardedPoints[activeTaskIndex] ?? null
     : null;
@@ -2031,8 +2035,9 @@ export const useExamSimulationViewModel = () => {
     : 0;
   const correctionActivePartStates =
     correctionActiveEntry && correctionState
-      ? correctionState.partStates[correctionActiveEntry.sessionTaskId] ?? []
-      : [];
+      ? correctionState.partStates[correctionActiveEntry.sessionTaskId] ??
+        EMPTY_PART_STATES
+      : EMPTY_PART_STATES;
   const correctionActiveSubmitted =
     correctionActiveEntry && correctionState
       ? Boolean(correctionState.submissions[correctionActiveEntry.sessionTaskId])

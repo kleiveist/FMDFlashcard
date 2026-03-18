@@ -21,9 +21,11 @@
  */
 
 import {
+  memo,
   type DragEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  useCallback,
   useMemo,
   useRef,
   useState,
@@ -115,7 +117,99 @@ type SelectedTokenState = {
 
 const POINTER_DRAG_THRESHOLD = 8;
 
-export const ClozeCard = ({
+const SEGMENT_KEY_SEPARATOR = "\u001e";
+const SEGMENT_VALUE_SEPARATOR = "\u001f";
+const TOKEN_KEY_SEPARATOR = "\u001d";
+
+const areStringRecordValuesEqual = (
+  previous: Record<string, string>,
+  next: Record<string, string>,
+) => {
+  const previousKeys = Object.keys(previous);
+  const nextKeys = Object.keys(next);
+  if (previousKeys.length !== nextKeys.length) {
+    return false;
+  }
+  for (const key of previousKeys) {
+    if (previous[key] !== next[key]) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const buildClozeSegmentStructureKey = (segments: ClozeCardType["segments"]) =>
+  segments
+    .map((segment) => {
+      if (segment.type === "text") {
+        return `text${SEGMENT_VALUE_SEPARATOR}${segment.value}`;
+      }
+      if (segment.kind === "input") {
+        return [
+          "blank-input",
+          segment.id,
+          segment.solution,
+          (segment.acceptedSolutions ?? []).join(SEGMENT_VALUE_SEPARATOR),
+        ].join(SEGMENT_VALUE_SEPARATOR);
+      }
+      return ["blank-drag", segment.id, segment.solution].join(SEGMENT_VALUE_SEPARATOR);
+    })
+    .join(SEGMENT_KEY_SEPARATOR);
+
+const buildClozeTokenStructureKey = (tokens: ClozeCardType["dragTokens"]) =>
+  tokens.map((token) => `${token.id}${SEGMENT_VALUE_SEPARATOR}${token.value}`).join(
+    TOKEN_KEY_SEPARATOR,
+  );
+
+const areHelpTextPropsEqual = (
+  previous: ClozeCardProps["helpText"],
+  next: ClozeCardProps["helpText"],
+) => {
+  if (previous === next) {
+    return true;
+  }
+  if (
+    typeof previous === "string" ||
+    typeof next === "string" ||
+    !Array.isArray(previous) ||
+    !Array.isArray(next)
+  ) {
+    return false;
+  }
+  if (previous.length !== next.length) {
+    return false;
+  }
+  for (let index = 0; index < previous.length; index += 1) {
+    if (previous[index] !== next[index]) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const areClozeCardPropsEqual = (previous: ClozeCardProps, next: ClozeCardProps) =>
+  previous.card === next.card &&
+  previous.cardIndex === next.cardIndex &&
+  previous.submitted === next.submitted &&
+  areStringRecordValuesEqual(previous.responses, next.responses) &&
+  previous.submissionLocked === next.submissionLocked &&
+  previous.partIndex === next.partIndex &&
+  previous.showSubmit === next.showSubmit &&
+  previous.showResult === next.showResult &&
+  previous.revealCorrectness === next.revealCorrectness &&
+  previous.showSolution === next.showSolution &&
+  areHelpTextPropsEqual(previous.helpText, next.helpText) &&
+  previous.helpEnabled === next.helpEnabled &&
+  previous.vaultPath === next.vaultPath &&
+  previous.vaultPngAssets === next.vaultPngAssets &&
+  previous.onInputChange === next.onInputChange &&
+  previous.onTokenDrop === next.onTokenDrop &&
+  previous.onTokenRemove === next.onTokenRemove &&
+  previous.onTokenDragStart === next.onTokenDragStart &&
+  previous.onBlankDragOver === next.onBlankDragOver &&
+  previous.onSubmit === next.onSubmit;
+
+const ClozeCardComponent = ({
   card,
   cardIndex,
   submitted,
@@ -140,14 +234,57 @@ export const ClozeCard = ({
   const cardRef = useRef<HTMLElement | null>(null);
   const pointerDragRef = useRef<PointerDragState | null>(null);
   const suppressClickRef = useRef(false);
+  const segmentStructureKey = useMemo(
+    () => buildClozeSegmentStructureKey(card.segments),
+    [card.segments],
+  );
+  const stableSegmentsRef = useRef<{
+    key: string;
+    value: ClozeCardType["segments"];
+  }>({
+    key: segmentStructureKey,
+    value: card.segments,
+  });
+  if (stableSegmentsRef.current.key !== segmentStructureKey) {
+    stableSegmentsRef.current = {
+      key: segmentStructureKey,
+      value: card.segments,
+    };
+  }
+  const stableSegments = stableSegmentsRef.current.value;
+  const tokenStructureKey = useMemo(
+    () => buildClozeTokenStructureKey(card.dragTokens),
+    [card.dragTokens],
+  );
+  const stableDragTokensRef = useRef<{
+    key: string;
+    value: ClozeCardType["dragTokens"];
+  }>({
+    key: tokenStructureKey,
+    value: card.dragTokens,
+  });
+  if (stableDragTokensRef.current.key !== tokenStructureKey) {
+    stableDragTokensRef.current = {
+      key: tokenStructureKey,
+      value: card.dragTokens,
+    };
+  }
+  const stableDragTokens = stableDragTokensRef.current.value;
   const [dragGhost, setDragGhost] = useState<DragGhostState | null>(null);
   const [activeDropBlankId, setActiveDropBlankId] = useState<string | null>(null);
   const [selectedToken, setSelectedToken] = useState<SelectedTokenState | null>(null);
-  const blanks = getClozeBlanks(card.segments);
-  const dragBlanks = blanks.filter((blank) => blank.kind === "drag");
-  const dragBlankIds = new Set(dragBlanks.map((blank) => blank.id));
-  const tokenById = new Map(
-    card.dragTokens.map((token) => [token.id, token.value]),
+  const blanks = useMemo(() => getClozeBlanks(stableSegments), [stableSegments]);
+  const dragBlanks = useMemo(
+    () => blanks.filter((blank) => blank.kind === "drag"),
+    [blanks],
+  );
+  const dragBlankIds = useMemo(
+    () => new Set(dragBlanks.map((blank) => blank.id)),
+    [dragBlanks],
+  );
+  const tokenById = useMemo(
+    () => new Map(stableDragTokens.map((token) => [token.id, token.value])),
+    [stableDragTokens],
   );
   const { placeholderText, blankById, blankOrderById } = useMemo(() => {
     let text = "";
@@ -155,7 +292,7 @@ export const ClozeCard = ({
     const orderMap = new Map<string, number>();
     let blankIndex = 0;
 
-    card.segments.forEach((segment) => {
+    stableSegments.forEach((segment) => {
       if (segment.type === "text") {
         text += segment.value;
         return;
@@ -167,7 +304,7 @@ export const ClozeCard = ({
     });
 
     return { placeholderText: text, blankById: blankMap, blankOrderById: orderMap };
-  }, [card.segments]);
+  }, [stableSegments]);
   const { markdownText, questionText } = useMemo(() => {
     const trimmedQuestion = card.question.trim();
     if (!trimmedQuestion) {
@@ -186,24 +323,48 @@ export const ClozeCard = ({
   const tokenBank = useMemo(() => {
     const identifier = `${cardIndex}:${normalizedPartIndex}:${card.question}`;
     const seed = resolveSeed(identifier);
-    return seededShuffle(card.dragTokens, seed);
-  }, [card.dragTokens, cardIndex, normalizedPartIndex, card.question]);
-  const assignedTokenIds = new Set(
-    dragBlanks
-      .map((blank) => responses[blank.id])
-      .filter((tokenId) => tokenById.has(tokenId)),
+    return seededShuffle(stableDragTokens, seed);
+  }, [stableDragTokens, cardIndex, normalizedPartIndex, card.question]);
+  const stableResponsesRef = useRef(responses);
+  if (!areStringRecordValuesEqual(stableResponsesRef.current, responses)) {
+    stableResponsesRef.current = responses;
+  }
+  const stableResponses = stableResponsesRef.current;
+  const assignedTokenIds = useMemo(
+    () =>
+      new Set(
+        dragBlanks
+          .map((blank) => stableResponses[blank.id])
+          .filter((tokenId) => tokenById.has(tokenId)),
+      ),
+    [dragBlanks, stableResponses, tokenById],
   );
   const hasDragTokens = tokenBank.length > 0;
-  const validTokenIds = new Set(card.dragTokens.map((token) => token.id));
-  const canSubmit = areClozeBlanksComplete(card, responses);
-  const isCorrect = isClozeCardCorrect(card, responses);
+  const validTokenIds = useMemo(
+    () => new Set(stableDragTokens.map((token) => token.id)),
+    [stableDragTokens],
+  );
+  const canSubmit = areClozeBlanksComplete(card, stableResponses);
+  const isCorrect = isClozeCardCorrect(card, stableResponses);
   const reveal = revealCorrectness ?? submitted;
   const shouldShowSolution = showSolution ?? submitted;
   const resultLabel = submitted && showResult ? (isCorrect ? "Correct" : "Incorrect") : "";
   const hasHelp = helpEnabled && hasHelpContent(helpText);
   const showActions = showSubmit || (submitted && showResult) || hasHelp;
+  const onInputChangeRef = useRef(onInputChange);
+  const onTokenDropRef = useRef(onTokenDrop);
+  const onTokenRemoveRef = useRef(onTokenRemove);
+  const onTokenDragStartRef = useRef(onTokenDragStart);
+  const onBlankDragOverRef = useRef(onBlankDragOver);
+  const onSubmitRef = useRef(onSubmit);
+  onInputChangeRef.current = onInputChange;
+  onTokenDropRef.current = onTokenDrop;
+  onTokenRemoveRef.current = onTokenRemove;
+  onTokenDragStartRef.current = onTokenDragStart;
+  onBlankDragOverRef.current = onBlankDragOver;
+  onSubmitRef.current = onSubmit;
 
-  const resolveDropBlankId = (clientX: number, clientY: number) => {
+  const resolveDropBlankId = useCallback((clientX: number, clientY: number) => {
     if (typeof document === "undefined" || !document.elementsFromPoint) {
       return null;
     }
@@ -225,9 +386,9 @@ export const ClozeCard = ({
       }
     }
     return null;
-  };
+  }, [dragBlankIds]);
 
-  const createSyntheticDragEvent = (payload: ClozeDragPayload) => {
+  const createSyntheticDragEvent = useCallback((payload: ClozeDragPayload) => {
     const dataTransfer = {
       getData: (type: string) =>
         type === CLOZE_TOKEN_DRAG_TYPE ? JSON.stringify(payload) : "",
@@ -236,9 +397,61 @@ export const ClozeCard = ({
       preventDefault: () => {},
       dataTransfer,
     } as DragEvent<HTMLElement>;
-  };
+  }, []);
 
-  const handleTokenPointerDown = (
+  const dispatchInputChange = useCallback(
+    (blankId: string, value: string) => {
+      onInputChangeRef.current(cardIndex, blankId, value);
+    },
+    [cardIndex],
+  );
+
+  const dispatchTokenDrop = useCallback(
+    (event: DragEvent<HTMLElement>, blankId: string) => {
+      onTokenDropRef.current(event, cardIndex, blankId, validTokenIds, dragBlankIds);
+    },
+    [cardIndex, dragBlankIds, validTokenIds],
+  );
+
+  const dispatchTokenDropFromPayload = useCallback(
+    (payload: ClozeDragPayload, blankId: string) => {
+      onTokenDropRef.current(
+        createSyntheticDragEvent(payload),
+        cardIndex,
+        blankId,
+        validTokenIds,
+        dragBlankIds,
+      );
+    },
+    [cardIndex, createSyntheticDragEvent, dragBlankIds, validTokenIds],
+  );
+
+  const dispatchTokenRemove = useCallback(
+    (blankId: string) => {
+      onTokenRemoveRef.current(cardIndex, blankId);
+    },
+    [cardIndex],
+  );
+
+  const dispatchTokenDragStart = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      payload: { cardIndex: number; tokenId: string; partIndex?: number },
+    ) => {
+      onTokenDragStartRef.current(event, payload);
+    },
+    [],
+  );
+
+  const dispatchBlankDragOver = useCallback((event: DragEvent<HTMLElement>) => {
+    onBlankDragOverRef.current(event);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    onSubmitRef.current(cardIndex, canSubmit);
+  }, [cardIndex, canSubmit]);
+
+  const handleTokenPointerDown = useCallback((
     event: ReactPointerEvent<HTMLButtonElement>,
     tokenId: string,
     tokenValue: string,
@@ -268,9 +481,9 @@ export const ClozeCard = ({
     };
     setActiveDropBlankId(null);
     setDragGhost(null);
-  };
+  }, [submitted]);
 
-  const handleTokenPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+  const handleTokenPointerMove = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
     const state = pointerDragRef.current;
     if (!state || event.pointerId !== state.pointerId) {
       return;
@@ -301,9 +514,9 @@ export const ClozeCard = ({
     }
     const blankId = resolveDropBlankId(event.clientX, event.clientY);
     setActiveDropBlankId(blankId);
-  };
+  }, [resolveDropBlankId]);
 
-  const finishPointerDrag = (
+  const finishPointerDrag = useCallback((
     event: ReactPointerEvent<HTMLButtonElement>,
     cancelled: boolean,
   ) => {
@@ -325,28 +538,34 @@ export const ClozeCard = ({
           tokenId: state.tokenId,
           partIndex,
         };
-        onTokenDrop(
-          createSyntheticDragEvent(payload),
-          cardIndex,
-          blankId,
-          validTokenIds,
-          dragBlankIds,
-        );
+        dispatchTokenDropFromPayload(payload, blankId);
       } else if (state.sourceBlankId) {
-        onTokenRemove(cardIndex, state.sourceBlankId);
+        dispatchTokenRemove(state.sourceBlankId);
       }
     }
     setDragGhost(null);
     setActiveDropBlankId(null);
-  };
+  }, [
+    cardIndex,
+    dispatchTokenDropFromPayload,
+    dispatchTokenRemove,
+    partIndex,
+    resolveDropBlankId,
+  ]);
 
-  const handleTokenPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) =>
-    finishPointerDrag(event, false);
+  const handleTokenPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) =>
+      finishPointerDrag(event, false),
+    [finishPointerDrag],
+  );
 
-  const handleTokenPointerCancel = (event: ReactPointerEvent<HTMLButtonElement>) =>
-    finishPointerDrag(event, true);
+  const handleTokenPointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) =>
+      finishPointerDrag(event, true),
+    [finishPointerDrag],
+  );
 
-  const handleTokenClick = (
+  const handleTokenClick = useCallback((
     event: ReactMouseEvent<HTMLButtonElement>,
     tokenId: string,
     tokenValue: string,
@@ -365,9 +584,9 @@ export const ClozeCard = ({
       return;
     }
     setSelectedToken({ tokenId, tokenValue, sourceBlankId });
-  };
+  }, [selectedToken?.tokenId, submitted]);
 
-  const handleBlankClick = (blankId: string) => {
+  const handleBlankClick = useCallback((blankId: string) => {
     if (submitted) {
       return;
     }
@@ -379,150 +598,180 @@ export const ClozeCard = ({
       tokenId: selectedToken.tokenId,
       partIndex,
     };
-    onTokenDrop(
-      createSyntheticDragEvent(payload),
-      cardIndex,
-      blankId,
-      validTokenIds,
-      dragBlankIds,
-    );
+    dispatchTokenDropFromPayload(payload, blankId);
     setSelectedToken(null);
-  };
+  }, [
+    cardIndex,
+    dispatchTokenDropFromPayload,
+    partIndex,
+    selectedToken,
+    submitted,
+  ]);
 
-  const handleTokenRemoveClick = (blankId: string, tokenId: string) => {
+  const handleTokenRemoveClick = useCallback((blankId: string, tokenId: string) => {
     if (selectedToken?.tokenId === tokenId) {
       setSelectedToken(null);
     }
-    onTokenRemove(cardIndex, blankId);
-  };
+    dispatchTokenRemove(blankId);
+  }, [dispatchTokenRemove, selectedToken?.tokenId]);
 
-  const renderBlank = (blankId: string) => {
-    const segment = blankById.get(blankId);
-    if (!segment) {
-      return null;
-    }
-    const blankNumber = blankOrderById.get(blankId) ?? 0;
+  const renderBlank = useCallback(
+    (blankId: string) => {
+      const segment = blankById.get(blankId);
+      if (!segment) {
+        return null;
+      }
+      const blankNumber = blankOrderById.get(blankId) ?? 0;
 
-    if (segment.kind === "input") {
-      const value = responses[segment.id] ?? "";
+      if (segment.kind === "input") {
+        const value = stableResponses[segment.id] ?? "";
+        const isBlankCorrect = reveal
+          ? isInputAnswerMatch(value, segment.solution, segment.acceptedSolutions)
+          : false;
+        const blankClasses = [
+          "cloze-blank",
+          "input",
+          value.trim() ? "filled" : "",
+          reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return (
+          <span className={blankClasses}>
+            <input
+              type="text"
+              className="cloze-input"
+              value={value}
+              onChange={(event) => dispatchInputChange(segment.id, event.target.value)}
+              disabled={submitted}
+              placeholder="____"
+              aria-label={`Blank ${blankNumber}`}
+            />
+          </span>
+        );
+      }
+
+      const assignedTokenId = stableResponses[segment.id] ?? "";
+      const assignedValue = assignedTokenId
+        ? tokenById.get(assignedTokenId) ?? ""
+        : "";
+      const hasToken = Boolean(assignedValue);
       const isBlankCorrect = reveal
-        ? isInputAnswerMatch(value, segment.solution, segment.acceptedSolutions)
+        ? isDragAnswerMatch(assignedValue, segment.solution)
         : false;
       const blankClasses = [
         "cloze-blank",
-        "input",
-        value.trim() ? "filled" : "",
+        "drag",
+        hasToken ? "filled" : "",
+        activeDropBlankId === segment.id ? "drop-target" : "",
         reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
       ]
         .filter(Boolean)
         .join(" ");
 
       return (
-        <span className={blankClasses}>
-          <input
-            type="text"
-            className="cloze-input"
-            value={value}
-            onChange={(event) =>
-              onInputChange(cardIndex, segment.id, event.target.value)
-            }
-            disabled={submitted}
-            placeholder="____"
-            aria-label={`Blank ${blankNumber}`}
-          />
-        </span>
-      );
-    }
-
-    const assignedTokenId = responses[segment.id] ?? "";
-    const assignedValue = assignedTokenId
-      ? tokenById.get(assignedTokenId) ?? ""
-      : "";
-    const hasToken = Boolean(assignedValue);
-    const isBlankCorrect = reveal
-      ? isDragAnswerMatch(assignedValue, segment.solution)
-      : false;
-    const blankClasses = [
-      "cloze-blank",
-      "drag",
-      hasToken ? "filled" : "",
-      activeDropBlankId === segment.id ? "drop-target" : "",
-      reveal ? (isBlankCorrect ? "correct" : "incorrect") : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    return (
-      <span
-        className={blankClasses}
-        aria-label={`Drop zone ${blankNumber}`}
-        data-dropzone="cloze-blank"
-        data-blank-id={segment.id}
-        onClick={() => handleBlankClick(segment.id)}
-        onDragOver={onBlankDragOver}
-        onDrop={(event) =>
-          onTokenDrop(event, cardIndex, segment.id, validTokenIds, dragBlankIds)
-        }
-      >
-        {hasToken ? (
-          <span className="cloze-token">
-            <button
-              type="button"
-              className={`token-chip${
-                dragGhost?.tokenId === assignedTokenId ? " is-dragging" : ""
-              }${selectedToken?.tokenId === assignedTokenId ? " selected" : ""}`}
-              draggable={!submitted}
-              onDragStart={(event) =>
-                onTokenDragStart(event, {
-                  cardIndex,
-                  tokenId: assignedTokenId,
-                  partIndex,
-                })
-              }
-              onClick={(event) =>
-                handleTokenClick(event, assignedTokenId, assignedValue, segment.id)
-              }
-              onPointerDown={(event) =>
-                handleTokenPointerDown(event, assignedTokenId, assignedValue, segment.id)
-              }
-              onPointerMove={handleTokenPointerMove}
-              onPointerUp={handleTokenPointerUp}
-              onPointerCancel={handleTokenPointerCancel}
-              disabled={submitted}
-            >
-              {assignedValue}
-            </button>
-            {!submitted ? (
+        <span
+          className={blankClasses}
+          aria-label={`Drop zone ${blankNumber}`}
+          data-dropzone="cloze-blank"
+          data-blank-id={segment.id}
+          onClick={() => handleBlankClick(segment.id)}
+          onDragOver={dispatchBlankDragOver}
+          onDrop={(event) => dispatchTokenDrop(event, segment.id)}
+        >
+          {hasToken ? (
+            <span className="cloze-token">
               <button
                 type="button"
-                className="token-remove"
-                onClick={() => handleTokenRemoveClick(segment.id, assignedTokenId)}
-                aria-label="Remove token"
+                className={`token-chip${
+                  dragGhost?.tokenId === assignedTokenId ? " is-dragging" : ""
+                }${selectedToken?.tokenId === assignedTokenId ? " selected" : ""}`}
+                draggable={!submitted}
+                onDragStart={(event) =>
+                  dispatchTokenDragStart(event, {
+                    cardIndex,
+                    tokenId: assignedTokenId,
+                    partIndex,
+                  })
+                }
+                onClick={(event) =>
+                  handleTokenClick(event, assignedTokenId, assignedValue, segment.id)
+                }
+                onPointerDown={(event) =>
+                  handleTokenPointerDown(
+                    event,
+                    assignedTokenId,
+                    assignedValue,
+                    segment.id,
+                  )
+                }
+                onPointerMove={handleTokenPointerMove}
+                onPointerUp={handleTokenPointerUp}
+                onPointerCancel={handleTokenPointerCancel}
+                disabled={submitted}
               >
-                x
+                {assignedValue}
               </button>
-            ) : null}
-          </span>
-        ) : (
-          <span className="cloze-placeholder">Drop token</span>
-        )}
-      </span>
-    );
-  };
+              {!submitted ? (
+                <button
+                  type="button"
+                  className="token-remove"
+                  onClick={() => handleTokenRemoveClick(segment.id, assignedTokenId)}
+                  aria-label="Remove token"
+                >
+                  x
+                </button>
+              ) : null}
+            </span>
+          ) : (
+            <span className="cloze-placeholder">Drop token</span>
+          )}
+        </span>
+      );
+    },
+    [
+      activeDropBlankId,
+      blankById,
+      blankOrderById,
+      cardIndex,
+      dispatchBlankDragOver,
+      dispatchInputChange,
+      dispatchTokenDragStart,
+      dispatchTokenDrop,
+      dragGhost?.tokenId,
+      handleBlankClick,
+      handleTokenClick,
+      handleTokenPointerCancel,
+      handleTokenPointerDown,
+      handleTokenPointerMove,
+      handleTokenPointerUp,
+      partIndex,
+      reveal,
+      selectedToken?.tokenId,
+      stableResponses,
+      submitted,
+      tokenById,
+      handleTokenRemoveClick,
+    ],
+  );
 
-  const renderSolutionBlank = (blankId: string) => {
-    const segment = blankById.get(blankId);
-    if (!segment) {
-      return null;
-    }
-    return (
-      <span className="cloze-solution-token">
-        {renderMarkdownMathNode(segment.solution, {
-          keyPrefix: `cloze-solution-blank-${cardIndex}-${blankId}`,
-        })}
-      </span>
-    );
-  };
+  const renderSolutionBlank = useCallback(
+    (blankId: string) => {
+      const segment = blankById.get(blankId);
+      if (!segment) {
+        return null;
+      }
+      return (
+        <span className="cloze-solution-token">
+          {renderMarkdownMathNode(segment.solution, {
+            keyPrefix: `cloze-solution-blank-${cardIndex}-${blankId}`,
+          })}
+        </span>
+      );
+    },
+    [blankById, cardIndex],
+  );
 
   return (
     <article
@@ -564,7 +813,7 @@ export const ClozeCard = ({
                   }${selectedToken?.tokenId === token.id ? " selected" : ""}`}
                   draggable={!submitted && !isUsed}
                   onDragStart={(event) =>
-                    onTokenDragStart(event, {
+                    dispatchTokenDragStart(event, {
                       cardIndex,
                       tokenId: token.id,
                       partIndex,
@@ -592,7 +841,7 @@ export const ClozeCard = ({
             <button
               type="button"
               className="ghost small flashcard-submit"
-              onClick={() => onSubmit(cardIndex, canSubmit)}
+              onClick={handleSubmit}
               disabled={submitted || !canSubmit || submissionLocked}
             >
               Submit
@@ -644,3 +893,7 @@ export const ClozeCard = ({
     </article>
   );
 };
+
+ClozeCardComponent.displayName = "ClozeCard";
+
+export const ClozeCard = memo(ClozeCardComponent, areClozeCardPropsEqual);

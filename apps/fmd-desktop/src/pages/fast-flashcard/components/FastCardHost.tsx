@@ -30,6 +30,8 @@ import { TrueFalseCard } from "../../../components/flashcards/TrueFalseCard";
 import type { ClozeDragPayload } from "../../../features/flashcards/logic";
 import type { VaultPngAsset } from "../../../lib/tree";
 
+const EMPTY_CLOZE_RESPONSES: Record<string, string> = {};
+
 type FastCardHostProps = {
   hasScannedCards: boolean;
   hasFilteredCards: boolean;
@@ -198,7 +200,8 @@ export const FastCardHost = ({
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
             responses={
-              fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ?? {}
+              fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ??
+              EMPTY_CLOZE_RESPONSES
             }
             onInputChange={handleClozeInputChange}
             onTokenDrop={handleClozeTokenDrop}
