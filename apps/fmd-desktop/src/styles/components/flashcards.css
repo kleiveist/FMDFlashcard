@@ -741,6 +741,55 @@ figure.flashcard-media-item {
   border-color: var(--error-border);
 }
 
+.flashcard-code-block .cloze-blank {
+  min-width: 72px;
+  min-height: 1.5em;
+  padding: 1px 4px;
+  margin: 0 2px;
+  border-radius: 6px;
+  vertical-align: baseline;
+  line-height: 1.2;
+  font-family: inherit;
+}
+
+.flashcard-code-block .cloze-blank.input {
+  min-width: 64px;
+}
+
+.flashcard-code-block .cloze-input {
+  min-width: 58px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.2;
+}
+
+.flashcard-code-block .cloze-token {
+  gap: 4px;
+  font-family: inherit;
+}
+
+.flashcard-code-block .cloze-blank .token-chip {
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.2;
+}
+
+.flashcard-code-block .cloze-blank .token-remove {
+  width: 18px;
+  height: 18px;
+  font-size: 0.65rem;
+}
+
+.flashcard-code-block .cloze-placeholder {
+  font-size: 0.75em;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
 .cloze-placeholder {
   font-size: 0.75rem;
   color: var(--muted);

@@ -18,7 +18,7 @@
 
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseFlashcards } from "../../../lib/flashcards";
 import type { ExamTask } from "../../../lib/exam";
 import { ExamTaskRunner } from "./ExamTaskRunner";
@@ -152,6 +152,44 @@ const buildProps = (
   canGoNext: false,
   ...overrides,
 });
+
+const readTokenOrderFromMarkup = (markup: string) => {
+  const tokenPoolBlocks = Array.from(
+    markup.matchAll(/<div class="token-pool">([\s\S]*?)<\/div>/g),
+    (match) => match[1] ?? "",
+  );
+  return tokenPoolBlocks.flatMap((poolMarkup) =>
+    Array.from(
+      poolMarkup.matchAll(/class="token-chip[^"]*"[^>]*>([^<]*)<\/button>/g),
+      (match) => (match[1] ?? "").trim(),
+    ).filter((value) => value.length > 0),
+  );
+};
+
+const buildDragTask = (tokenPrefix: string): ExamTask =>
+  buildTaskWithParts(
+    [
+      {
+        kind: "cloze",
+        subtype: "cd",
+        question: `Drag ${tokenPrefix}`,
+        segments: [
+          { type: "text", value: "Token " },
+          {
+            type: "blank",
+            id: "blank-0",
+            kind: "drag",
+            solution: `${tokenPrefix}-0`,
+          },
+        ],
+        dragTokens: Array.from({ length: 6 }, (_, index) => ({
+          id: `${tokenPrefix}-${index}`,
+          value: `${tokenPrefix}-${index}`,
+        })),
+      },
+    ],
+    "auto",
+  );
 
 const autoScoringCases: Array<
   [string, ExamTask, ExamTaskRunnerProps["partStates"]]
@@ -342,6 +380,92 @@ Answer: Done
     expect(markup).toContain("cloze-placeholder");
     expect(markup).toContain("flashcard-table no-scroll");
     expect(markup).not.toContain("flashcard-table scrollable");
+  });
+
+  it("renders cloze inputs and drop zones inside fenced code blocks", () => {
+    const task = buildTaskFromMarkdown(`#card
+\`\`\`sql
+SELECT %column%, "table" FROM country;
+\`\`\`
+#endcard`);
+
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ phase: "exam", task })),
+    );
+
+    expect(markup).toContain("flashcard-code-block");
+    expect(markup).toContain("cloze-input");
+    expect(markup).toContain("cloze-placeholder");
+    expect(markup).not.toContain("@@@CLOZE:");
+  });
+
+  it("reshuffles drag tokens after switching tasks and revisiting a task", () => {
+    const randomUuidSpy = vi.spyOn(globalThis.crypto, "randomUUID");
+    randomUuidSpy
+      .mockReturnValueOnce("10000000-0000-4000-8000-0000000000a1")
+      .mockReturnValueOnce("20000000-0000-4000-8000-0000000000b1")
+      .mockReturnValueOnce("10000000-0000-4000-8000-0000000000a2");
+
+    const taskA = {
+      ...buildDragTask("task-a"),
+      id: "exam-task-a",
+      index: 0,
+    };
+    const taskB = {
+      ...buildDragTask("task-b"),
+      id: "exam-task-b",
+      index: 1,
+    };
+
+    try {
+      const initialTaskMarkup = renderToStaticMarkup(
+        createElement(
+          ExamTaskRunner,
+          buildProps({
+            phase: "exam",
+            task: taskA,
+            taskIndex: 0,
+            taskCount: 2,
+            partStates: [{}],
+          }),
+        ),
+      );
+      const initialOrder = readTokenOrderFromMarkup(initialTaskMarkup);
+      expect(initialOrder).toHaveLength(6);
+
+      const switchedTaskMarkup = renderToStaticMarkup(
+        createElement(
+          ExamTaskRunner,
+          buildProps({
+            phase: "exam",
+            task: taskB,
+            taskIndex: 1,
+            taskCount: 2,
+            partStates: [{}],
+          }),
+        ),
+      );
+      const switchedOrder = readTokenOrderFromMarkup(switchedTaskMarkup);
+      expect(switchedOrder).toHaveLength(6);
+
+      const revisitedTaskMarkup = renderToStaticMarkup(
+        createElement(
+          ExamTaskRunner,
+          buildProps({
+            phase: "exam",
+            task: taskA,
+            taskIndex: 0,
+            taskCount: 2,
+            partStates: [{}],
+          }),
+        ),
+      );
+      const revisitedOrder = readTokenOrderFromMarkup(revisitedTaskMarkup);
+      expect(revisitedOrder).toHaveLength(6);
+      expect(revisitedOrder).not.toEqual(initialOrder);
+    } finally {
+      randomUuidSpy.mockRestore();
+    }
   });
 
   it("renders tables in multiple-choice context blocks", () => {

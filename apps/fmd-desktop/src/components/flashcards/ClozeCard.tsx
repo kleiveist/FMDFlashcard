@@ -169,6 +169,13 @@ const buildClozeTokenStructureKey = (tokens: ClozeCardType["dragTokens"]) =>
     TOKEN_KEY_SEPARATOR,
   );
 
+const createShuffleEntropy = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 const areHelpTextPropsEqual = (
   previous: ClozeCardProps["helpText"],
   next: ClozeCardProps["helpText"],
@@ -339,11 +346,24 @@ const ClozeCardComponent = ({
     return { markdownText: placeholderText, questionText: card.question };
   }, [card.question, placeholderText]);
   const normalizedPartIndex = partIndex ?? 0;
+  const shuffleTriggerKey = `${cardIndex}${SEGMENT_VALUE_SEPARATOR}${normalizedPartIndex}${SEGMENT_VALUE_SEPARATOR}${segmentStructureKey}${SEGMENT_VALUE_SEPARATOR}${tokenStructureKey}`;
+  const tokenShuffleStateRef = useRef<{
+    triggerKey: string;
+    seed: number;
+  } | null>(null);
+  if (
+    !tokenShuffleStateRef.current ||
+    tokenShuffleStateRef.current.triggerKey !== shuffleTriggerKey
+  ) {
+    tokenShuffleStateRef.current = {
+      triggerKey: shuffleTriggerKey,
+      seed: resolveSeed(createShuffleEntropy()),
+    };
+  }
+  const tokenShuffleSeed = tokenShuffleStateRef.current.seed;
   const tokenBank = useMemo(() => {
-    const identifier = `${cardIndex}:${normalizedPartIndex}:${card.question}`;
-    const seed = resolveSeed(identifier);
-    return seededShuffle(stableDragTokens, seed);
-  }, [stableDragTokens, cardIndex, normalizedPartIndex, card.question]);
+    return seededShuffle(stableDragTokens, tokenShuffleSeed);
+  }, [stableDragTokens, tokenShuffleSeed]);
   const stableResponsesRef = useRef(responses);
   if (!areStringRecordValuesEqual(stableResponsesRef.current, responses)) {
     stableResponsesRef.current = responses;

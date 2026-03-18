@@ -15,6 +15,8 @@ import {
   useContext,
   useMemo,
   useRef,
+  type ComponentPropsWithoutRef,
+  type ReactElement,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -36,6 +38,7 @@ import {
   SHARED_TABLE_WRAP_CLASS,
 } from "../../lib/markdownTableCellMedia";
 import { renderMarkdownMathNode } from "../../lib/markdownMath";
+import { flattenCodeTextContent } from "../../lib/markdownCodeHighlight";
 import type { VaultPngAsset } from "../../lib/tree";
 import { MarkdownHighlightedPre } from "../MarkdownHighlightedPre";
 import { extractSvgCodeBlockSource } from "../markdownSvg";
@@ -223,6 +226,62 @@ const shouldSkipFlashcardRichTransform = (tagName: string | null) =>
   tagName === "button" ||
   tagName === "input" ||
   tagName === "textarea";
+
+const hasClozePlaceholderToken = (value: string) => {
+  placeholderTokenPattern.lastIndex = 0;
+  return placeholderTokenPattern.test(value);
+};
+
+const renderTextWithPlaceholders = (
+  value: string,
+  keyPrefix: string,
+): ReactNode[] => {
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null = null;
+  let placeholderOccurrence = 0;
+  placeholderTokenPattern.lastIndex = 0;
+
+  while ((match = placeholderTokenPattern.exec(value)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(value.slice(lastIndex, match.index));
+    }
+    const placeholderId = match[1] ?? "";
+    nodes.push(
+      <PlaceholderSlot
+        id={placeholderId}
+        key={`${keyPrefix}-placeholder-${placeholderId}-${placeholderOccurrence}`}
+      />,
+    );
+    placeholderOccurrence += 1;
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < value.length) {
+    nodes.push(value.slice(lastIndex));
+  }
+
+  return nodes;
+};
+
+const resolveCodeElement = (children: ReactNode): ReactElement<ComponentPropsWithoutRef<"code">> | null => {
+  const codeNode = Children.toArray(children).find(
+    (node) => isValidElement(node) && typeof node.type === "string" && node.type.toLowerCase() === "code",
+  );
+  if (!codeNode || !isValidElement<ComponentPropsWithoutRef<"code">>(codeNode)) {
+    return null;
+  }
+  return codeNode as ReactElement<ComponentPropsWithoutRef<"code">>;
+};
+
+const resolveCodeText = (children: ReactNode): string | null => {
+  const codeElement = resolveCodeElement(children);
+  if (!codeElement) {
+    return null;
+  }
+  const codeProps = codeElement.props as ComponentPropsWithoutRef<"code">;
+  return flattenCodeTextContent(codeProps.children ?? null);
+};
 
 const renderTextWithMathAndPlaceholders = (
   value: string,
@@ -554,7 +613,10 @@ export const MarkdownBlocks = ({
               </blockquote>
             ),
             pre: ({ node: _node, children, ...props }) => {
-              const svgSource = extractSvgCodeBlockSource(children);
+              const codeText = resolveCodeText(children);
+              const hasClozePlaceholders = typeof codeText === "string" &&
+                hasClozePlaceholderToken(codeText);
+              const svgSource = hasClozePlaceholders ? null : extractSvgCodeBlockSource(children);
               if (svgSource !== null) {
                 return (
                   <SvgPreviewBlock
@@ -566,6 +628,32 @@ export const MarkdownBlocks = ({
               const preClassName = ["flashcard-code-block", props.className]
                 .filter(Boolean)
                 .join(" ");
+              if (hasClozePlaceholders && typeof codeText === "string") {
+                const codeElement = resolveCodeElement(children);
+                const codeProps = codeElement?.props as ComponentPropsWithoutRef<"code"> | undefined;
+                if (codeProps) {
+                  const {
+                    className: codeClassName,
+                    children: _ignoredCodeChildren,
+                    ...restCodeProps
+                  } = codeProps;
+                  return (
+                    <pre
+                      {...props}
+                      className={`${preClassName} flashcard-code-block-cloze`}
+                      data-md-code-highlighted="false"
+                    >
+                      <code
+                        {...restCodeProps}
+                        className={codeClassName}
+                        data-md-code-highlighted="false"
+                      >
+                        {renderTextWithPlaceholders(codeText, `${keyPrefix}-code`)}
+                      </code>
+                    </pre>
+                  );
+                }
+              }
               return (
                 <MarkdownHighlightedPre {...props} className={preClassName}>
                   {children}

@@ -66,6 +66,18 @@ const buildMixedCard = (): ClozeCardType => ({
   dragTokens: [{ id: "token-0", value: "two" }],
 });
 
+const buildTypedCodeCard = (): ClozeCardType => ({
+  kind: "cloze",
+  subtype: "cl",
+  question: "",
+  segments: [
+    { type: "text", value: "```sql\nSELECT " },
+    { type: "blank", id: "blank-typed", kind: "input", solution: "one" },
+    { type: "text", value: " FROM table;\n```" },
+  ],
+  dragTokens: [],
+});
+
 const cloneCard = (card: ClozeCardType): ClozeCardType => ({
   ...card,
   segments: card.segments.map((segment) => ({ ...segment })),
@@ -75,6 +87,50 @@ const cloneCard = (card: ClozeCardType): ClozeCardType => ({
 describe("ClozeCard focus stability", () => {
   it("keeps CL input focus across unrelated parent rerenders", () => {
     const card = buildTypedCard();
+    const buildProps = () => ({
+      card: cloneCard(card),
+      cardIndex: 0,
+      submitted: false,
+      responses: {} as Record<string, string>,
+      onInputChange: () => undefined,
+      onTokenDrop: () => undefined,
+      onTokenRemove: () => undefined,
+      onTokenDragStart: () => undefined,
+      onBlankDragOver: () => undefined,
+      onSubmit: () => undefined,
+    });
+    const { container, rerender, cleanup } = render(
+      createElement("div", { "data-tick": 0 }, createElement(ClozeCard, buildProps())),
+    );
+
+    const input = container.querySelector<HTMLInputElement>(".cloze-input");
+    expect(input).toBeTruthy();
+
+    act(() => {
+      input?.focus();
+    });
+    expect(document.activeElement).toBe(input);
+
+    rerender(
+      createElement("div", { "data-tick": 1 }, createElement(ClozeCard, buildProps())),
+    );
+
+    const inputAfterFirstRerender =
+      container.querySelector<HTMLInputElement>(".cloze-input");
+    expect(document.activeElement).toBe(inputAfterFirstRerender);
+
+    rerender(
+      createElement("div", { "data-tick": 2 }, createElement(ClozeCard, buildProps())),
+    );
+
+    const inputAfterSecondRerender =
+      container.querySelector<HTMLInputElement>(".cloze-input");
+    expect(document.activeElement).toBe(inputAfterSecondRerender);
+    cleanup();
+  });
+
+  it("keeps CL input focus inside fenced code blocks across parent rerenders", () => {
+    const card = buildTypedCodeCard();
     const buildProps = () => ({
       card: cloneCard(card),
       cardIndex: 0,

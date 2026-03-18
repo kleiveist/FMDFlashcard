@@ -115,6 +115,43 @@ describe("MarkdownBlocks math rendering", () => {
     expect(markup).toContain("data-md-code-language-label=\"TypeScript\"");
   });
 
+  it("renders interactive cloze placeholders inside fenced code blocks", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "```sql",
+          "SELECT @@@CLOZE:first@@@, @@@CLOZE:second@@@;",
+          "```",
+        ].join("\n"),
+        renderPlaceholder: (id) => createElement("span", { className: "cloze-blank" }, id),
+      }),
+    );
+
+    expect(markup).toContain("flashcard-code-block");
+    expect(markup).toContain("<code");
+    expect(markup).toContain("<span class=\"cloze-blank\">first</span>");
+    expect(markup).toContain("<span class=\"cloze-blank\">second</span>");
+    expect(markup).not.toContain("@@@CLOZE:");
+    expect(markup).toContain("data-md-code-highlighted=\"false\"");
+  });
+
+  it("keeps svg codeblocks interactive when cloze placeholders are present", () => {
+    const markup = renderToStaticMarkup(
+      createElement(MarkdownBlocks, {
+        text: [
+          "```svg",
+          "<svg><text>@@@CLOZE:token@@@</text></svg>",
+          "```",
+        ].join("\n"),
+        renderPlaceholder: (id) => createElement("span", { className: "cloze-blank" }, id),
+      }),
+    );
+
+    expect(markup).toContain("flashcard-code-block");
+    expect(markup).toContain("<span class=\"cloze-blank\">token</span>");
+    expect(markup).not.toContain("md-svg-preview-block");
+  });
+
   it("renders inline markdown styles in text and lists", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
