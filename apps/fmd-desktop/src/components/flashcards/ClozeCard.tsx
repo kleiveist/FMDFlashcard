@@ -23,9 +23,11 @@
 import {
   memo,
   type DragEvent,
+  type FocusEvent as ReactFocusEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -113,6 +115,12 @@ type SelectedTokenState = {
   tokenId: string;
   tokenValue: string;
   sourceBlankId?: string;
+};
+
+type ActiveInputState = {
+  blankId: string | null;
+  selectionStart: number | null;
+  selectionEnd: number | null;
 };
 
 const POINTER_DRAG_THRESHOLD = 8;
@@ -234,6 +242,17 @@ const ClozeCardComponent = ({
   const cardRef = useRef<HTMLElement | null>(null);
   const pointerDragRef = useRef<PointerDragState | null>(null);
   const suppressClickRef = useRef(false);
+  const inputElementByBlankIdRef = useRef<Map<string, HTMLInputElement>>(new Map());
+  const inputRefCallbackByBlankIdRef = useRef<
+    Map<string, (element: HTMLInputElement | null) => void>
+  >(new Map());
+  const activeInputStateRef = useRef<ActiveInputState>({
+    blankId: null,
+    selectionStart: null,
+    selectionEnd: null,
+  });
+  const suppressFocusRestoreRef = useRef(false);
+  const pendingFocusRestoreRef = useRef(false);
   const segmentStructureKey = useMemo(
     () => buildClozeSegmentStructureKey(card.segments),
     [card.segments],
@@ -363,6 +382,153 @@ const ClozeCardComponent = ({
   onTokenDragStartRef.current = onTokenDragStart;
   onBlankDragOverRef.current = onBlankDragOver;
   onSubmitRef.current = onSubmit;
+
+  const clearActiveInputState = useCallback(() => {
+    activeInputStateRef.current = {
+      blankId: null,
+      selectionStart: null,
+      selectionEnd: null,
+    };
+    pendingFocusRestoreRef.current = false;
+  }, []);
+
+  const updateTrackedInputSelection = useCallback(
+    (blankId: string, input: HTMLInputElement) => {
+      if (activeInputStateRef.current.blankId !== blankId) {
+        return;
+      }
+      activeInputStateRef.current = {
+        blankId,
+        selectionStart: input.selectionStart,
+        selectionEnd: input.selectionEnd,
+      };
+    },
+    [],
+  );
+
+  const trackFocusedInput = useCallback((blankId: string, input: HTMLInputElement) => {
+    suppressFocusRestoreRef.current = false;
+    pendingFocusRestoreRef.current = false;
+    activeInputStateRef.current = {
+      blankId,
+      selectionStart: input.selectionStart,
+      selectionEnd: input.selectionEnd,
+    };
+  }, []);
+
+  const registerInputElement = useCallback(
+    (blankId: string, element: HTMLInputElement | null) => {
+      if (element) {
+        inputElementByBlankIdRef.current.set(blankId, element);
+        return;
+      }
+      if (
+        activeInputStateRef.current.blankId === blankId &&
+        !suppressFocusRestoreRef.current
+      ) {
+        pendingFocusRestoreRef.current = true;
+      }
+      inputElementByBlankIdRef.current.delete(blankId);
+    },
+    [],
+  );
+
+  const getInputRefCallback = useCallback(
+    (blankId: string) => {
+      const existing = inputRefCallbackByBlankIdRef.current.get(blankId);
+      if (existing) {
+        return existing;
+      }
+      const callback = (element: HTMLInputElement | null) => {
+        registerInputElement(blankId, element);
+      };
+      inputRefCallbackByBlankIdRef.current.set(blankId, callback);
+      return callback;
+    },
+    [registerInputElement],
+  );
+
+  const handleInputBlur = useCallback(
+    (blankId: string, event: ReactFocusEvent<HTMLInputElement>) => {
+      updateTrackedInputSelection(blankId, event.currentTarget);
+      if (event.relatedTarget instanceof Element) {
+        suppressFocusRestoreRef.current = true;
+        clearActiveInputState();
+      }
+    },
+    [clearActiveInputState, updateTrackedInputSelection],
+  );
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      const activeBlankId = activeInputStateRef.current.blankId;
+      if (!activeBlankId) {
+        return;
+      }
+      const activeInput = inputElementByBlankIdRef.current.get(activeBlankId);
+      const targetNode = event.target instanceof Node ? event.target : null;
+      if (!targetNode) {
+        return;
+      }
+      if (activeInput?.contains(targetNode)) {
+        return;
+      }
+      suppressFocusRestoreRef.current = true;
+      clearActiveInputState();
+    };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+    };
+  }, [clearActiveInputState]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    if (!pendingFocusRestoreRef.current) {
+      return;
+    }
+    if (suppressFocusRestoreRef.current) {
+      return;
+    }
+    const state = activeInputStateRef.current;
+    if (!state.blankId) {
+      return;
+    }
+    const targetInput = inputElementByBlankIdRef.current.get(state.blankId);
+    if (!targetInput || targetInput.disabled || !targetInput.isConnected) {
+      return;
+    }
+    if (document.activeElement === targetInput) {
+      pendingFocusRestoreRef.current = false;
+      return;
+    }
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && activeElement !== document.body) {
+      return;
+    }
+    try {
+      targetInput.focus({ preventScroll: true });
+    } catch {
+      targetInput.focus();
+    }
+    const valueLength = targetInput.value.length;
+    const resolvedStart =
+      state.selectionStart === null
+        ? valueLength
+        : Math.min(valueLength, Math.max(0, state.selectionStart));
+    const resolvedEndRaw =
+      state.selectionEnd === null
+        ? resolvedStart
+        : Math.min(valueLength, Math.max(0, state.selectionEnd));
+    const resolvedEnd = Math.max(resolvedStart, resolvedEndRaw);
+    targetInput.setSelectionRange(resolvedStart, resolvedEnd);
+    pendingFocusRestoreRef.current = false;
+  });
 
   const resolveDropBlankId = useCallback((clientX: number, clientY: number) => {
     if (typeof document === "undefined" || !document.elementsFromPoint) {
@@ -640,10 +806,25 @@ const ClozeCardComponent = ({
         return (
           <span className={blankClasses}>
             <input
+              ref={getInputRefCallback(segment.id)}
               type="text"
               className="cloze-input"
               value={value}
-              onChange={(event) => dispatchInputChange(segment.id, event.target.value)}
+              onFocus={(event) => trackFocusedInput(segment.id, event.currentTarget)}
+              onBlur={(event) => handleInputBlur(segment.id, event)}
+              onSelect={(event) =>
+                updateTrackedInputSelection(segment.id, event.currentTarget)
+              }
+              onClick={(event) =>
+                updateTrackedInputSelection(segment.id, event.currentTarget)
+              }
+              onKeyUp={(event) =>
+                updateTrackedInputSelection(segment.id, event.currentTarget)
+              }
+              onChange={(event) => {
+                updateTrackedInputSelection(segment.id, event.currentTarget);
+                dispatchInputChange(segment.id, event.target.value);
+              }}
               disabled={submitted}
               placeholder="____"
               aria-label={`Blank ${blankNumber}`}
@@ -746,6 +927,10 @@ const ClozeCardComponent = ({
       handleTokenPointerDown,
       handleTokenPointerMove,
       handleTokenPointerUp,
+      getInputRefCallback,
+      handleInputBlur,
+      trackFocusedInput,
+      updateTrackedInputSelection,
       partIndex,
       reveal,
       selectedToken?.tokenId,

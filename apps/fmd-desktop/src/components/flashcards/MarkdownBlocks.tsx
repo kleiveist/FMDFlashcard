@@ -9,9 +9,12 @@
 import {
   Children,
   Fragment,
+  createContext,
   cloneElement,
   isValidElement,
+  useContext,
   useMemo,
+  useRef,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -46,6 +49,29 @@ const buildPlaceholder = (id: string) =>
   `${CLOZE_PLACEHOLDER_PREFIX}${id}${CLOZE_PLACEHOLDER_SUFFIX}`;
 
 const placeholderTokenPattern = /@@@CLOZE:([^@]+?)@@@/g;
+
+type PlaceholderRenderer = ((id: string) => ReactNode) | undefined;
+
+type PlaceholderRenderContextValue = {
+  renderPlaceholderRef: { current: PlaceholderRenderer };
+};
+
+const PlaceholderRenderContext = createContext<PlaceholderRenderContextValue | null>(
+  null,
+);
+
+const PlaceholderSlot = ({ id }: { id: string }) => {
+  const context = useContext(PlaceholderRenderContext);
+  const resolver = context?.renderPlaceholderRef.current;
+  if (!resolver) {
+    return buildPlaceholder(id);
+  }
+  const rendered = resolver(id);
+  if (rendered === null || rendered === undefined) {
+    return buildPlaceholder(id);
+  }
+  return <>{rendered}</>;
+};
 
 const markdownSchema = {
   ...defaultSchema,
@@ -200,7 +226,6 @@ const shouldSkipFlashcardRichTransform = (tagName: string | null) =>
 
 const renderTextWithMathAndPlaceholders = (
   value: string,
-  renderPlaceholder: ((id: string) => ReactNode) | undefined,
   keyPrefix: string,
 ): ReactNode[] => {
   const nodes: ReactNode[] = [];
@@ -208,6 +233,7 @@ const renderTextWithMathAndPlaceholders = (
   let match: RegExpExecArray | null = null;
   placeholderTokenPattern.lastIndex = 0;
   let segmentIndex = 0;
+  let placeholderOccurrence = 0;
 
   while ((match = placeholderTokenPattern.exec(value)) !== null) {
     if (match.index > lastIndex) {
@@ -221,22 +247,13 @@ const renderTextWithMathAndPlaceholders = (
     }
 
     const placeholderId = match[1] ?? "";
-    if (!renderPlaceholder) {
-      nodes.push(buildPlaceholder(placeholderId));
-    } else {
-      const rendered = renderPlaceholder(placeholderId);
-      if (rendered === null || rendered === undefined) {
-        nodes.push(buildPlaceholder(placeholderId));
-      } else {
-        nodes.push(
-          <Fragment
-            key={`${keyPrefix}-placeholder-${placeholderId}-${match.index}`}
-          >
-            {rendered}
-          </Fragment>,
-        );
-      }
-    }
+    nodes.push(
+      <PlaceholderSlot
+        id={placeholderId}
+        key={`${keyPrefix}-placeholder-${placeholderId}-${placeholderOccurrence}`}
+      />,
+    );
+    placeholderOccurrence += 1;
     segmentIndex += 1;
     lastIndex = match.index + match[0].length;
   }
@@ -255,10 +272,9 @@ const renderTextWithMathAndPlaceholders = (
 const renderFlashcardRichNode = (
   node: ReactNode,
   keyPrefix: string,
-  renderPlaceholder: ((id: string) => ReactNode) | undefined,
 ): ReactNode => {
   if (typeof node === "string") {
-    const rendered = renderTextWithMathAndPlaceholders(node, renderPlaceholder, keyPrefix);
+    const rendered = renderTextWithMathAndPlaceholders(node, keyPrefix);
     if (rendered.length === 1) {
       return rendered[0] ?? null;
     }
@@ -279,18 +295,14 @@ const renderFlashcardRichNode = (
     return node;
   }
   const nextChildren = Children.map(rawChildren, (child, index) =>
-    renderFlashcardRichNode(child, `${keyPrefix}-${index}`, renderPlaceholder),
+    renderFlashcardRichNode(child, `${keyPrefix}-${index}`),
   );
   return cloneElement(node, undefined, nextChildren);
 };
 
-const renderFlashcardRichChildren = (
-  children: ReactNode,
-  keyPrefix: string,
-  renderPlaceholder: ((id: string) => ReactNode) | undefined,
-) =>
+const renderFlashcardRichChildren = (children: ReactNode, keyPrefix: string) =>
   Children.map(children, (child, index) =>
-    renderFlashcardRichNode(child, `${keyPrefix}-${index}`, renderPlaceholder),
+    renderFlashcardRichNode(child, `${keyPrefix}-${index}`),
   );
 
 type MarkdownBlocksProps = {
@@ -305,7 +317,6 @@ type MarkdownBlocksProps = {
 const renderFlashcardInlineMarkdown = (
   source: string,
   keyPrefix: string,
-  renderPlaceholder: ((id: string) => ReactNode) | undefined,
 ) => {
   const normalizedSource = normalizeInlineFormattingForPreview(source);
   return (
@@ -320,7 +331,7 @@ const renderFlashcardInlineMarkdown = (
       components={{
         p: ({ node: _node, children, ...props }) => (
           <p {...props}>
-            {renderFlashcardRichChildren(children, `${keyPrefix}-p`, renderPlaceholder)}
+            {renderFlashcardRichChildren(children, `${keyPrefix}-p`)}
           </p>
         ),
         ol: ({ node, ...props }) => {
@@ -345,7 +356,7 @@ const renderFlashcardInlineMarkdown = (
         },
         li: ({ node: _node, children, ...props }) => (
           <li {...props}>
-            {renderFlashcardRichChildren(children, `${keyPrefix}-li`, renderPlaceholder)}
+            {renderFlashcardRichChildren(children, `${keyPrefix}-li`)}
           </li>
         ),
       }}
@@ -363,6 +374,12 @@ export const MarkdownBlocks = ({
   vaultPath,
   vaultPngAssets,
 }: MarkdownBlocksProps) => {
+  const renderPlaceholderRef = useRef<PlaceholderRenderer>(renderPlaceholder);
+  renderPlaceholderRef.current = renderPlaceholder;
+  const placeholderRenderContext = useMemo<PlaceholderRenderContextValue>(
+    () => ({ renderPlaceholderRef }),
+    [renderPlaceholder],
+  );
   const segments = useMemo(
     () => splitMarkdownMediaSegments(text, "flashcard-markdown"),
     [text],
@@ -404,11 +421,7 @@ export const MarkdownBlocks = ({
         (segment) => segment.kind !== "text",
       );
       if (!hasMediaSegments) {
-        return renderFlashcardRichChildren(
-          children,
-          keyPrefix,
-          renderPlaceholder,
-        );
+        return renderFlashcardRichChildren(children, keyPrefix);
       }
 
       return resolvedSegments.map((segment, index) => {
@@ -419,7 +432,6 @@ export const MarkdownBlocks = ({
               {renderFlashcardInlineMarkdown(
                 segment.text,
                 `${segmentKey}-text`,
-                renderPlaceholder,
               )}
             </Fragment>
           );
@@ -471,65 +483,37 @@ export const MarkdownBlocks = ({
           components={{
             h1: ({ node: _node, children, ...props }) => (
               <h1 {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-h1`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-h1`)}
               </h1>
             ),
             h2: ({ node: _node, children, ...props }) => (
               <h2 {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-h2`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-h2`)}
               </h2>
             ),
             h3: ({ node: _node, children, ...props }) => (
               <h3 {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-h3`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-h3`)}
               </h3>
             ),
             h4: ({ node: _node, children, ...props }) => (
               <h4 {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-h4`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-h4`)}
               </h4>
             ),
             h5: ({ node: _node, children, ...props }) => (
               <h5 {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-h5`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-h5`)}
               </h5>
             ),
             h6: ({ node: _node, children, ...props }) => (
               <h6 {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-h6`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-h6`)}
               </h6>
             ),
             p: ({ node: _node, children, ...props }) => (
               <p {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-p`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-p`)}
               </p>
             ),
             ol: ({ node, ...props }) => {
@@ -561,20 +545,12 @@ export const MarkdownBlocks = ({
             },
             li: ({ node: _node, children, ...props }) => (
               <li {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-li`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-li`)}
               </li>
             ),
             blockquote: ({ node: _node, children, ...props }) => (
               <blockquote {...props}>
-                {renderFlashcardRichChildren(
-                  children,
-                  `${keyPrefix}-blockquote`,
-                  renderPlaceholder,
-                )}
+                {renderFlashcardRichChildren(children, `${keyPrefix}-blockquote`)}
               </blockquote>
             ),
             pre: ({ node: _node, children, ...props }) => {
@@ -645,7 +621,11 @@ export const MarkdownBlocks = ({
         </Fragment>
       );
     });
-  }, [segments, renderPlaceholder, tableClass, vaultPngAssets, vaultPath]);
+  }, [segments, tableClass, vaultPngAssets, vaultPath]);
 
-  return <div className={containerClass}>{renderedSegments}</div>;
+  return (
+    <PlaceholderRenderContext.Provider value={placeholderRenderContext}>
+      <div className={containerClass}>{renderedSegments}</div>
+    </PlaceholderRenderContext.Provider>
+  );
 };

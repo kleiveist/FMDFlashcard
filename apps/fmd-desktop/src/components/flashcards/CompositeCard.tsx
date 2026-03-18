@@ -21,7 +21,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import type { DragEvent } from "react";
+import { useMemo, type DragEvent } from "react";
 import { ClozeCard } from "./ClozeCard";
 import { FreeTextCard } from "./FreeTextCard";
 import { MultipleChoiceCard } from "./MultipleChoiceCard";
@@ -119,8 +119,9 @@ export const CompositeCard = ({
   onTextInputChange,
   onTrueFalseSelect,
 }: CompositeCardProps) => {
+  const partCount = card.parts.length;
   const canSubmit =
-    card.parts.length > 0 &&
+    partCount > 0 &&
     card.parts.every((part, index) => {
       if (part.kind === "free-text") {
         return true;
@@ -145,6 +146,89 @@ export const CompositeCard = ({
   }`;
   const hasHelp = helpEnabled && hasHelpContent(helpText);
   const showActions = showSubmit || (submitted && showResult) || hasHelp;
+  const optionSelectHandlers = useMemo(
+    () =>
+      Array.from({ length: partCount }, (_, partIndex) => (index: number, keys: string[]) =>
+        onOptionSelect(index, partIndex, keys)
+      ),
+    [onOptionSelect, partCount],
+  );
+  const trueFalseSelectHandlers = useMemo(
+    () =>
+      Array.from(
+        { length: partCount },
+        (_, partIndex) =>
+          (index: number, itemId: string, value: TrueFalseSelection) =>
+            onTrueFalseSelect(index, partIndex, itemId, value),
+      ),
+    [onTrueFalseSelect, partCount],
+  );
+  const clozeInputHandlers = useMemo(
+    () =>
+      Array.from(
+        { length: partCount },
+        (_, partIndex) => (index: number, blankId: string, value: string) =>
+          onClozeInputChange(index, partIndex, blankId, value),
+      ),
+    [onClozeInputChange, partCount],
+  );
+  const clozeTokenDropHandlers = useMemo(
+    () =>
+      Array.from(
+        { length: partCount },
+        (_, partIndex) =>
+          (
+            event: DragEvent<HTMLElement>,
+            index: number,
+            blankId: string,
+            validTokenIds: Set<string>,
+            dragBlankIds: Set<string>,
+          ) =>
+            onClozeTokenDrop(
+              event,
+              index,
+              partIndex,
+              blankId,
+              validTokenIds,
+              dragBlankIds,
+            ),
+      ),
+    [onClozeTokenDrop, partCount],
+  );
+  const clozeTokenRemoveHandlers = useMemo(
+    () =>
+      Array.from(
+        { length: partCount },
+        (_, partIndex) => (index: number, blankId: string) =>
+          onClozeTokenRemove(index, partIndex, blankId),
+      ),
+    [onClozeTokenRemove, partCount],
+  );
+  const textInputHandlers = useMemo(
+    () =>
+      Array.from(
+        { length: partCount },
+        (_, partIndex) => (index: number, value: string) =>
+          onTextInputChange(index, partIndex, value),
+      ),
+    [onTextInputChange, partCount],
+  );
+  const textCheckHandlers = useMemo(
+    () =>
+      Array.from({ length: partCount }, (_, partIndex) => (index: number) =>
+        onTextCheck(index, partIndex)
+      ),
+    [onTextCheck, partCount],
+  );
+  const selfGradeHandlers = useMemo(
+    () =>
+      Array.from(
+        { length: partCount },
+        (_, partIndex) => (index: number, grade: FlashcardSelfGrade) =>
+          onSelfGrade(index, partIndex, grade),
+      ),
+    [onSelfGrade, partCount],
+  );
 
   return (
     <article className="flashcard-item composite-card">
@@ -166,22 +250,9 @@ export const CompositeCard = ({
                 showSolution={showSolution}
                 vaultPath={vaultPath}
                 vaultPngAssets={vaultPngAssets}
-                onInputChange={(index, blankId, value) =>
-                  onClozeInputChange(index, partIndex, blankId, value)
-                }
-                onTokenDrop={(event, index, blankId, validTokenIds, dragBlankIds) =>
-                  onClozeTokenDrop(
-                    event,
-                    index,
-                    partIndex,
-                    blankId,
-                    validTokenIds,
-                    dragBlankIds,
-                  )
-                }
-                onTokenRemove={(index, blankId) =>
-                  onClozeTokenRemove(index, partIndex, blankId)
-                }
+                onInputChange={clozeInputHandlers[partIndex]}
+                onTokenDrop={clozeTokenDropHandlers[partIndex]}
+                onTokenRemove={clozeTokenRemoveHandlers[partIndex]}
                 onTokenDragStart={onClozeTokenDragStart}
                 onBlankDragOver={onBlankDragOver}
                 onSubmit={onSubmit}
@@ -204,9 +275,7 @@ export const CompositeCard = ({
                 showSolution={showSolution}
                 vaultPath={vaultPath}
                 vaultPngAssets={vaultPngAssets}
-                onSelect={(index, itemId, value) =>
-                  onTrueFalseSelect(index, partIndex, itemId, value)
-                }
+                onSelect={trueFalseSelectHandlers[partIndex]}
                 onSubmit={onSubmit}
                 showSubmit={false}
               />
@@ -227,11 +296,9 @@ export const CompositeCard = ({
                 showActions={showResult}
                 vaultPath={vaultPath}
                 vaultPngAssets={vaultPngAssets}
-                onInputChange={(index, value) =>
-                  onTextInputChange(index, partIndex, value)
-                }
-                onCheck={(index) => onTextCheck(index, partIndex)}
-                onSelfGrade={(index, grade) => onSelfGrade(index, partIndex, grade)}
+                onInputChange={textInputHandlers[partIndex]}
+                onCheck={textCheckHandlers[partIndex]}
+                onSelfGrade={selfGradeHandlers[partIndex]}
               />
             );
           }
@@ -248,7 +315,7 @@ export const CompositeCard = ({
               revealCorrectness={revealCorrectness}
               vaultPath={vaultPath}
               vaultPngAssets={vaultPngAssets}
-              onSelect={(index, keys) => onOptionSelect(index, partIndex, keys)}
+              onSelect={optionSelectHandlers[partIndex]}
               onSubmit={onSubmit}
               showSubmit={false}
             />

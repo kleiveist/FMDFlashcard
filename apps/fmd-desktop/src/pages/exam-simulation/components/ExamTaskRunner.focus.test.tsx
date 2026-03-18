@@ -2,6 +2,7 @@
 import {
   act,
   createElement,
+  useEffect,
   useState,
   type ComponentProps,
   type ReactElement,
@@ -10,6 +11,7 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import type { CompositePartState } from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
+import { isEditableTarget } from "../../../lib/shortcuts/bindings";
 import { ExamTaskRunner } from "./ExamTaskRunner";
 
 type ExamTaskRunnerProps = ComponentProps<typeof ExamTaskRunner>;
@@ -236,6 +238,141 @@ describe("ExamTaskRunner focus stability", () => {
       container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterSecondTick);
     expect(inputAfterSecondTick?.value).toBe("on");
+    cleanup();
+  });
+
+  it("keeps focused cloze input stable when host arrow-key navigation is active", () => {
+    const task = buildTask();
+
+    const Harness = () => {
+      const [partStates, setPartStates] = useState<CompositePartState[]>([{}]);
+      const [navigationCount, setNavigationCount] = useState(0);
+
+      useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+          if (event.defaultPrevented) {
+            return;
+          }
+          if (isEditableTarget(event.target)) {
+            return;
+          }
+          if (event.key !== "ArrowRight") {
+            return;
+          }
+          event.preventDefault();
+          setNavigationCount((previous) => previous + 1);
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+      }, []);
+
+      const handleClozeInputChange: ExamTaskRunnerProps["onClozeInputChange"] = (
+        _taskIndex,
+        partIndex,
+        blankId,
+        value,
+      ) => {
+        setPartStates((previous) => {
+          const next = [...previous];
+          const current = next[partIndex] ?? {};
+          next[partIndex] = {
+            ...current,
+            clozeResponses: {
+              ...(current.clozeResponses ?? {}),
+              [blankId]: value,
+            },
+          };
+          return next;
+        });
+      };
+
+      return createElement(
+        "div",
+        null,
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "outside-control",
+          },
+          "outside",
+        ),
+        createElement(
+          "output",
+          {
+            "data-testid": "navigation-count",
+          },
+          String(navigationCount),
+        ),
+        createElement(ExamTaskRunner, {
+          task: cloneTask(task),
+          taskIndex: 0,
+          taskCount: 1,
+          maxPoints: 5,
+          phase: "exam",
+          partStates,
+          awardedPoints: null,
+          onOptionSelect: noopOptionSelect,
+          onTrueFalseSelect: noopTrueFalseSelect,
+          onClozeInputChange: handleClozeInputChange,
+          onClozeTokenDrop: noopClozeTokenDrop,
+          onClozeTokenRemove: noopClozeTokenRemove,
+          onClozeTokenDragStart: noopClozeTokenDragStart,
+          onBlankDragOver: noopBlankDragOver,
+          onTextInputChange: noopTextInputChange,
+          onAwardedPointsChange: noopAwardedPointsChange,
+          onAutoGradeDecision: noopAutoGradeDecision,
+          onBack: noopNavigate,
+          onNext: noopNavigate,
+          canGoBack: false,
+          canGoNext: false,
+        }),
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const input = container.querySelector<HTMLInputElement>(".cloze-input");
+    const outsideControl = container.querySelector<HTMLButtonElement>(
+      '[data-testid="outside-control"]',
+    );
+    const navigationCountOutput = container.querySelector<HTMLOutputElement>(
+      '[data-testid="navigation-count"]',
+    );
+    expect(input).toBeTruthy();
+    expect(outsideControl).toBeTruthy();
+    expect(navigationCountOutput).toBeTruthy();
+
+    if (!input || !outsideControl || !navigationCountOutput) {
+      cleanup();
+      return;
+    }
+
+    act(() => {
+      input.focus();
+    });
+    expect(document.activeElement).toBe(input);
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+      );
+    });
+
+    expect(document.activeElement).toBe(input);
+    expect(navigationCountOutput.textContent).toBe("0");
+
+    act(() => {
+      outsideControl.focus();
+    });
+    expect(document.activeElement).toBe(outsideControl);
+
+    act(() => {
+      outsideControl.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+      );
+    });
+
+    expect(navigationCountOutput.textContent).toBe("1");
     cleanup();
   });
 });

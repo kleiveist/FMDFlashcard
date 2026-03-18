@@ -35,6 +35,13 @@ const typeInto = (input: HTMLInputElement, value: string) => {
   });
 };
 
+const setCaret = (input: HTMLInputElement, start: number, end = start) => {
+  act(() => {
+    input.setSelectionRange(start, end);
+    input.dispatchEvent(new Event("select", { bubbles: true }));
+  });
+};
+
 const buildTypedCard = (): ClozeCardType => ({
   kind: "cloze",
   subtype: "cl",
@@ -181,6 +188,156 @@ describe("ClozeCard focus stability", () => {
     typeInto(inputAfterRerender as HTMLInputElement, "one");
     expect(document.activeElement).toBe(inputAfterRerender);
     expect(inputAfterRerender?.value).toBe("one");
+    cleanup();
+  });
+
+  it("keeps caret position stable across parent ticks with text-only card changes", () => {
+    const baseCard = buildTypedCard();
+
+    const Harness = () => {
+      const [responses, setResponses] = useState<Record<string, string>>({});
+      const [tick, setTick] = useState(0);
+      const card = {
+        ...cloneCard(baseCard),
+        question: tick % 2 === 0 ? "Typed cloze A" : "Typed cloze B",
+      };
+
+      return createElement(
+        "div",
+        { "data-tick": tick },
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "force-rerender",
+            onClick: () => setTick((previous) => previous + 1),
+          },
+          "rerender",
+        ),
+        createElement(ClozeCard, {
+          card,
+          cardIndex: 0,
+          submitted: false,
+          responses,
+          onInputChange: (_cardIndex, blankId, value) =>
+            setResponses((previous) => ({ ...previous, [blankId]: value })),
+          onTokenDrop: () => undefined,
+          onTokenRemove: () => undefined,
+          onTokenDragStart: () => undefined,
+          onBlankDragOver: () => undefined,
+          onSubmit: () => undefined,
+        }),
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const input = container.querySelector<HTMLInputElement>(".cloze-input");
+    const rerenderButton =
+      container.querySelector<HTMLButtonElement>('[data-testid="force-rerender"]');
+    expect(input).toBeTruthy();
+    expect(rerenderButton).toBeTruthy();
+
+    if (!input || !rerenderButton) {
+      cleanup();
+      return;
+    }
+
+    act(() => {
+      input.focus();
+    });
+    typeInto(input, "one");
+    setCaret(input, 1);
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(1);
+    expect(input.selectionEnd).toBe(1);
+
+    act(() => {
+      rerenderButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const inputAfterRerender =
+      container.querySelector<HTMLInputElement>(".cloze-input");
+    expect(document.activeElement).toBe(inputAfterRerender);
+    expect(inputAfterRerender?.selectionStart).toBe(1);
+    expect(inputAfterRerender?.selectionEnd).toBe(1);
+    cleanup();
+  });
+
+  it("does not force-refocus input after explicit blur to another control", () => {
+    const card = buildTypedCard();
+
+    const Harness = () => {
+      const [responses, setResponses] = useState<Record<string, string>>({});
+      const [tick, setTick] = useState(0);
+
+      return createElement(
+        "div",
+        { "data-tick": tick },
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "outside-control",
+            onClick: () => undefined,
+          },
+          "outside",
+        ),
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "force-rerender",
+            onClick: () => setTick((previous) => previous + 1),
+          },
+          "rerender",
+        ),
+        createElement(ClozeCard, {
+          card: cloneCard(card),
+          cardIndex: 0,
+          submitted: false,
+          responses,
+          onInputChange: (_cardIndex, blankId, value) =>
+            setResponses((previous) => ({ ...previous, [blankId]: value })),
+          onTokenDrop: () => undefined,
+          onTokenRemove: () => undefined,
+          onTokenDragStart: () => undefined,
+          onBlankDragOver: () => undefined,
+          onSubmit: () => undefined,
+        }),
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const input = container.querySelector<HTMLInputElement>(".cloze-input");
+    const outsideControl = container.querySelector<HTMLButtonElement>(
+      '[data-testid="outside-control"]',
+    );
+    const rerenderButton =
+      container.querySelector<HTMLButtonElement>('[data-testid="force-rerender"]');
+    expect(input).toBeTruthy();
+    expect(outsideControl).toBeTruthy();
+    expect(rerenderButton).toBeTruthy();
+
+    if (!input || !outsideControl || !rerenderButton) {
+      cleanup();
+      return;
+    }
+
+    act(() => {
+      input.focus();
+    });
+    expect(document.activeElement).toBe(input);
+
+    act(() => {
+      outsideControl.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      outsideControl.focus();
+    });
+    expect(document.activeElement).toBe(outsideControl);
+
+    act(() => {
+      rerenderButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(document.activeElement).toBe(outsideControl);
     cleanup();
   });
 });
