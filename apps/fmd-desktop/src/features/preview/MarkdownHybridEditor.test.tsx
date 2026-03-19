@@ -4430,16 +4430,32 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("renders markdown inline formatting tokens only outside the active editor line", () => {
+    const longSegment = "VERYLONGTOKENSEGMENT".repeat(10);
+    const highlightToken = `==${longSegment}==`;
+    const boldToken = `**${longSegment}**`;
+    const italicToken = `*${longSegment}*`;
+    const underlineToken = `__${longSegment}__`;
+    const strikethroughToken = `~~${longSegment}~~`;
+    const inlineCodeToken = `\`${longSegment}\``;
+    const mathToken = `$${longSegment}$`;
+    const boldItalicToken = `***${longSegment}***`;
+    const clozeToken = `%${"CLOZEWRAP".repeat(18)}%`;
+    const quotedToken = `"${"QUOTEDWRAP".repeat(16)}"`;
+    const singleQuotedText = `'${"SINGLEWRAP".repeat(16)}'`;
+
     const initialMarkdown = [
       "QUESTION TEXT",
-      "a) ==OPTION== A",
-      "b) **OPTION** B",
-      "c) *OPTION* C",
-      "d) __OPTION__ D",
-      "e) ~~OPTION~~ A",
-      "f) `OPTION` B",
-      "g) $OPTION$ C",
-      "h) ***OPTION*** D",
+      `a) ${highlightToken} A`,
+      `b) ${boldToken} B`,
+      `c) ${italicToken} C`,
+      `d) ${underlineToken} D`,
+      `e) ${strikethroughToken} A`,
+      `f) ${inlineCodeToken} B`,
+      `g) ${mathToken} C`,
+      `h) ${boldItalicToken} D`,
+      `i) ${clozeToken} E`,
+      `j) ${quotedToken} F`,
+      `k) ${singleQuotedText} G`,
       "-a",
       "-c",
     ].join("\n");
@@ -4476,17 +4492,31 @@ describe("MarkdownHybridEditor", () => {
         text: node.textContent,
       })),
     ).toEqual([
-      { kind: "markdown-highlight", text: "==OPTION==" },
-      { kind: "markdown-bold", text: "**OPTION**" },
-      { kind: "markdown-italic", text: "*OPTION*" },
-      { kind: "markdown-underline", text: "__OPTION__" },
-      { kind: "markdown-strikethrough", text: "~~OPTION~~" },
-      { kind: "markdown-inline-code", text: "`OPTION`" },
-      { kind: "markdown-math", text: "$OPTION$" },
-      { kind: "markdown-bold-italic", text: "***OPTION***" },
+      { kind: "markdown-highlight", text: highlightToken },
+      { kind: "markdown-bold", text: boldToken },
+      { kind: "markdown-italic", text: italicToken },
+      { kind: "markdown-underline", text: underlineToken },
+      { kind: "markdown-strikethrough", text: strikethroughToken },
+      { kind: "markdown-inline-code", text: inlineCodeToken },
+      { kind: "markdown-math", text: mathToken },
+      { kind: "markdown-bold-italic", text: boldItalicToken },
     ]);
+    const allInlineSyntaxNodes = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-block-editor-overlay [data-md-inline-syntax]",
+      ),
+    );
+    const allInlineSyntaxPayload = allInlineSyntaxNodes.map((node) => ({
+      kind: node.dataset.mdInlineSyntax,
+      text: node.textContent,
+    }));
+    expect(allInlineSyntaxPayload).toContainEqual({ kind: "cloze", text: clozeToken });
+    expect(allInlineSyntaxPayload).toContainEqual({ kind: "quoted-token", text: quotedToken });
+    expect(allInlineSyntaxPayload.some((entry) => entry.text === singleQuotedText)).toBe(false);
+    const overlayText = container.querySelector(".markdown-hybrid-block-editor-overlay")?.textContent ?? "";
+    expect(overlayText).toContain(singleQuotedText);
 
-    const italicLineStart = textarea?.value.indexOf("c) *OPTION* C") ?? -1;
+    const italicLineStart = textarea?.value.indexOf(`c) ${italicToken} C`) ?? -1;
     expect(italicLineStart).toBeGreaterThanOrEqual(0);
     setTextareaSelection(textarea, italicLineStart, italicLineStart);
 
@@ -4501,16 +4531,16 @@ describe("MarkdownHybridEditor", () => {
         text: node.textContent,
       })),
     ).toEqual([
-      { kind: "markdown-highlight", text: "==OPTION==" },
-      { kind: "markdown-bold", text: "**OPTION**" },
-      { kind: "markdown-underline", text: "__OPTION__" },
-      { kind: "markdown-strikethrough", text: "~~OPTION~~" },
-      { kind: "markdown-inline-code", text: "`OPTION`" },
-      { kind: "markdown-math", text: "$OPTION$" },
-      { kind: "markdown-bold-italic", text: "***OPTION***" },
+      { kind: "markdown-highlight", text: highlightToken },
+      { kind: "markdown-bold", text: boldToken },
+      { kind: "markdown-underline", text: underlineToken },
+      { kind: "markdown-strikethrough", text: strikethroughToken },
+      { kind: "markdown-inline-code", text: inlineCodeToken },
+      { kind: "markdown-math", text: mathToken },
+      { kind: "markdown-bold-italic", text: boldItalicToken },
     ]);
 
-    const codeLineStart = textarea?.value.indexOf("f) `OPTION` B") ?? -1;
+    const codeLineStart = textarea?.value.indexOf(`f) ${inlineCodeToken} B`) ?? -1;
     expect(codeLineStart).toBeGreaterThanOrEqual(0);
     setTextareaSelection(textarea, codeLineStart, codeLineStart);
 
@@ -4525,21 +4555,21 @@ describe("MarkdownHybridEditor", () => {
         text: node.textContent,
       })),
     ).toEqual([
-      { kind: "markdown-highlight", text: "==OPTION==" },
-      { kind: "markdown-bold", text: "**OPTION**" },
-      { kind: "markdown-italic", text: "*OPTION*" },
-      { kind: "markdown-underline", text: "__OPTION__" },
-      { kind: "markdown-strikethrough", text: "~~OPTION~~" },
-      { kind: "markdown-inline-code", text: "`OPTION`" },
-      { kind: "markdown-math", text: "$OPTION$" },
-      { kind: "markdown-bold-italic", text: "***OPTION***" },
+      { kind: "markdown-highlight", text: highlightToken },
+      { kind: "markdown-bold", text: boldToken },
+      { kind: "markdown-italic", text: italicToken },
+      { kind: "markdown-underline", text: underlineToken },
+      { kind: "markdown-strikethrough", text: strikethroughToken },
+      { kind: "markdown-inline-code", text: inlineCodeToken },
+      { kind: "markdown-math", text: mathToken },
+      { kind: "markdown-bold-italic", text: boldItalicToken },
     ]);
     const activeCodeNode = container.querySelector<HTMLElement>(
       ".markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-inline-code.is-active-line",
     );
-    expect(activeCodeNode?.textContent).toBe("`OPTION`");
+    expect(activeCodeNode?.textContent).toBe(inlineCodeToken);
 
-    const boldLineStart = textarea?.value.indexOf("b) **OPTION** B") ?? -1;
+    const boldLineStart = textarea?.value.indexOf(`b) ${boldToken} B`) ?? -1;
     expect(boldLineStart).toBeGreaterThanOrEqual(0);
     act(() => {
       textarea?.setSelectionRange(boldLineStart, boldLineStart);
@@ -4557,13 +4587,13 @@ describe("MarkdownHybridEditor", () => {
         text: node.textContent,
       })),
     ).toEqual([
-      { kind: "markdown-highlight", text: "==OPTION==" },
-      { kind: "markdown-italic", text: "*OPTION*" },
-      { kind: "markdown-underline", text: "__OPTION__" },
-      { kind: "markdown-strikethrough", text: "~~OPTION~~" },
-      { kind: "markdown-inline-code", text: "`OPTION`" },
-      { kind: "markdown-math", text: "$OPTION$" },
-      { kind: "markdown-bold-italic", text: "***OPTION***" },
+      { kind: "markdown-highlight", text: highlightToken },
+      { kind: "markdown-italic", text: italicToken },
+      { kind: "markdown-underline", text: underlineToken },
+      { kind: "markdown-strikethrough", text: strikethroughToken },
+      { kind: "markdown-inline-code", text: inlineCodeToken },
+      { kind: "markdown-math", text: mathToken },
+      { kind: "markdown-bold-italic", text: boldItalicToken },
     ]);
 
     cleanup();

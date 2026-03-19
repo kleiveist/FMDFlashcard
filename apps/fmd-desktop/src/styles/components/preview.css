@@ -2892,15 +2892,18 @@ textarea.preview-editor {
 .markdown-hybrid-block-preview .md-inline-syntax,
 .markdown-hybrid-block-editor-overlay .md-inline-syntax,
 .md-preview .md-inline-syntax {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
   vertical-align: baseline;
   margin: 0 0.06em;
   padding: 0.05em 0.45em;
   border: 1px solid transparent;
   line-height: 1.35;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-break: anywhere;
 }
 
 .md-preview th .md-inline-syntax,
@@ -2961,11 +2964,17 @@ textarea.preview-editor {
 
 .markdown-hybrid-block-editor-overlay [data-md-inline-syntax^="markdown-"] {
   display: inline;
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   box-shadow: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-break: anywhere;
 }
 
 .markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-highlight {
@@ -3005,6 +3014,8 @@ textarea.preview-editor {
 
 .markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-inline-code {
   display: inline-block;
+  max-width: 100%;
+  min-width: 0;
   vertical-align: baseline;
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -3013,6 +3024,10 @@ textarea.preview-editor {
   border: 1px solid var(--preview-code-border);
   border-radius: 6px;
   padding: 2px 6px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-break: anywhere;
 }
 
 .markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-inline-code.is-active-line {
@@ -4192,6 +4207,10 @@ textarea.preview-editor {
 }
 
 .md-preview code {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: baseline;
   font-family: var(--mono);
   font-size: 0.85rem;
   color: var(--preview-code-ink);
@@ -4199,6 +4218,10 @@ textarea.preview-editor {
   border: 1px solid var(--preview-code-border);
   border-radius: 6px;
   padding: 2px 6px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-break: anywhere;
 }
 
 .md-preview pre {
@@ -4257,9 +4280,17 @@ textarea.preview-editor {
 }
 
 .md-preview pre code {
+  display: inline;
+  max-width: none;
+  min-width: 0;
+  vertical-align: baseline;
   background: transparent;
   border: none;
   padding: 0;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+  line-break: auto;
 }
 
 .md-preview blockquote {
