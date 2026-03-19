@@ -33,7 +33,9 @@ git --version
 # Linux/macOS: ~/Projects
 mkdir -p ~/Projects
 cd ~/Projects
+```
 
+```bash
 # Clone repository (replace URL if needed)
 git clone https://github.com/kleiveist/FMDFlashcard.git
 cd FMDFlashcard
