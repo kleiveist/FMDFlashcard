@@ -9,6 +9,7 @@
 
 ## 📄 Pages
 - 📝 [ADR 0001: Documentation source of truth](0001-documentation-source-of-truth.md)
+- 📝 [ADR 0002: Hybrid-Editor Performance Redesign (Big Bang)](0002-hybrid-editor-performance-redesign.md)
 - 📝 [User Vault Mode Unterschiede](user-vault-mode.md)
 - 📝 [Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)](wallet-onboarding-gates.md)
 

@@ -58,6 +58,7 @@ import {
   replaceMarkdownBlock,
   type MarkdownBlock,
 } from "./markdownBlocks";
+import { useMarkdownDocumentModel } from "./useMarkdownDocumentModel";
 import {
   canRedoMarkdownHistory,
   canUndoMarkdownHistory,
@@ -1371,6 +1372,10 @@ const clampIndex = (value: number, maxExclusive: number) => {
 
 const OVERLAY_LEFT_GUTTER_WIDTH = 56;
 const OVERLAY_RIGHT_GUTTER_WIDTH = 34;
+const VIRTUALIZATION_BLOCK_THRESHOLD = 120;
+const VIRTUALIZATION_OVERSCAN_PX = 560;
+const VIRTUALIZATION_FALLBACK_ROW_GAP = 6;
+const VIRTUAL_PLACEHOLDER_BLOCK_CHROME_PX = 6;
 const SELECTION_DRAG_THRESHOLD_PX = 5;
 const SELECTION_AUTO_SCROLL_EDGE_PX = 48;
 const SELECTION_AUTO_SCROLL_MAX_STEP_PX = 22;
@@ -2160,6 +2165,38 @@ const isStructuralSeparatorBlankBlock = (blocks: MarkdownBlock[], index: number)
   return isTextLikeBlockKind(previous.kind) && isTextLikeBlockKind(next.kind);
 };
 
+const resolveVirtualizationFallbackHeight = (kind: MarkdownBlock["kind"]) => {
+  switch (kind) {
+    case "blank":
+      return 30;
+    case "heading":
+      return 52;
+    case "paragraph":
+      return 84;
+    case "math-block":
+      return 120;
+    case "card-block":
+      return 168;
+    case "help-block":
+      return 110;
+    case "image-embed":
+      return 176;
+    case "ordered-list":
+    case "unordered-list":
+      return 98;
+    case "table":
+      return 168;
+    case "code-fence":
+      return 152;
+    case "blockquote":
+      return 88;
+    case "hr":
+      return 56;
+    default:
+      return 96;
+  }
+};
+
 const needsHelpEndPreviewSeparator = (line: string) =>
   orderedListLikeLinePattern.test(line) ||
   unorderedListLikeLinePattern.test(line) ||
@@ -2889,7 +2926,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   onDirtyChange,
   renderPreview,
 }: MarkdownHybridEditorProps, ref) => {
-  const blocks = useMemo(() => parseMarkdownBlocks(markdown), [markdown]);
+  const { snapshot: markdownDocumentSnapshot } = useMarkdownDocumentModel(markdown);
+  const blocks = markdownDocumentSnapshot.markdown === markdown
+    ? markdownDocumentSnapshot.blocks
+    : parseMarkdownBlocks(markdown);
   const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
   const [activeDraft, setActiveDraft] = useState("");
   const [activeDirty, setActiveDirty] = useState(false);
@@ -2940,6 +2980,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     contentPaddingLeft: OVERLAY_LEFT_GUTTER_WIDTH,
     contentPaddingRight: OVERLAY_RIGHT_GUTTER_WIDTH,
   }));
+  const [virtualViewport, setVirtualViewport] = useState<{ top: number; bottom: number }>({
+    top: 0,
+    bottom: Number.POSITIVE_INFINITY,
+  });
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentLayerRef = useRef<HTMLDivElement | null>(null);
   const insertMenuRef = useRef<HTMLDivElement | null>(null);
@@ -2958,8 +3002,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const selectionGestureRef = useRef<SelectionGestureState | null>(null);
   const suppressNextBlockContextMenuRef = useRef(false);
   const overlayMeasureFrameRef = useRef<number | null>(null);
+  const virtualViewportFrameRef = useRef<number | null>(null);
   const selectionAutoScrollFrameRef = useRef<number | null>(null);
   const selectionDragUpdateFrameRef = useRef<number | null>(null);
+  const activeTextareaLayoutFrameRef = useRef<number | null>(null);
   const selectionDragPointerRef = useRef<{ x: number; y: number } | null>(null);
   const inlineFormattingToolbarTimerRef = useRef<number | null>(null);
   const inlineFormattingToolbarPendingSignatureRef = useRef<string | null>(null);
@@ -2980,6 +3026,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const activeTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
   const activeCardTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
   const codeFencePreviewHeightsRef = useRef<Map<string, number>>(new Map());
+  const blockHeightCacheRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     activeDraftRef.current = activeDraft;
@@ -3081,7 +3128,97 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         cachedHeights.delete(blockId);
       }
     }
+    const blockHeights = blockHeightCacheRef.current;
+    for (const blockId of Array.from(blockHeights.keys())) {
+      if (!knownBlockIds.has(blockId)) {
+        blockHeights.delete(blockId);
+      }
+    }
   }, [blocks]);
+
+  useEffect(() => {
+    const blockHeights = blockHeightCacheRef.current;
+    for (const row of overlayRows) {
+      const block = blocks[row.index];
+      if (!block) {
+        continue;
+      }
+      blockHeights.set(block.id, Math.max(1, Math.round(row.height)));
+    }
+  }, [blocks, overlayRows]);
+
+  const resolveEstimatedBlockHeight = useCallback(
+    (blockIndex: number, block: MarkdownBlock) => {
+      const fromOverlay = overlayLayout.byIndex.get(blockIndex)?.height;
+      if (typeof fromOverlay === "number" && Number.isFinite(fromOverlay) && fromOverlay > 0) {
+        return fromOverlay;
+      }
+      const fromCache = blockHeightCacheRef.current.get(block.id);
+      if (typeof fromCache === "number" && Number.isFinite(fromCache) && fromCache > 0) {
+        return fromCache;
+      }
+      const fromSvgCache = resolveStoredSvgCodeFencePreviewHeight(block);
+      if (typeof fromSvgCache === "number" && Number.isFinite(fromSvgCache) && fromSvgCache > 0) {
+        return fromSvgCache;
+      }
+      return resolveVirtualizationFallbackHeight(block.kind);
+    },
+    [overlayLayout.byIndex, resolveStoredSvgCodeFencePreviewHeight],
+  );
+
+  const shouldVirtualizeBlocks = blocks.length >= VIRTUALIZATION_BLOCK_THRESHOLD;
+  const pinnedVirtualizedIndices = useMemo(() => {
+    const pinned = new Set<number>();
+    if (typeof activeBlockIndex === "number" && activeBlockIndex >= 0) {
+      pinned.add(activeBlockIndex);
+    }
+    if (selectedBlockSelection) {
+      for (const selectedIndex of selectedBlockSelection.selectedIndices) {
+        pinned.add(selectedIndex);
+      }
+    }
+    if (typeof draggedBlockIndex === "number" && draggedBlockIndex >= 0) {
+      pinned.add(draggedBlockIndex);
+    }
+    if (typeof dropIndicatorIndex === "number") {
+      pinned.add(dropIndicatorIndex);
+      pinned.add(Math.max(0, dropIndicatorIndex - 1));
+    }
+    return pinned;
+  }, [activeBlockIndex, draggedBlockIndex, dropIndicatorIndex, selectedBlockSelection]);
+
+  const visibleVirtualizedIndices = useMemo(() => {
+    if (!shouldVirtualizeBlocks) {
+      return null;
+    }
+    if (!Number.isFinite(virtualViewport.bottom) || virtualViewport.bottom <= 0) {
+      return null;
+    }
+    const top = Math.max(0, virtualViewport.top - VIRTUALIZATION_OVERSCAN_PX);
+    const bottom = Math.max(top, virtualViewport.bottom + VIRTUALIZATION_OVERSCAN_PX);
+    const visible = new Set<number>();
+    let fallbackTop = 0;
+
+    for (let index = 0; index < blocks.length; index += 1) {
+      const block = blocks[index]!;
+      const row = overlayLayout.byIndex.get(index);
+      const height = resolveEstimatedBlockHeight(index, block);
+      const rowTop = row ? row.top : fallbackTop;
+      const rowBottom = rowTop + height;
+      if (rowBottom >= top && rowTop <= bottom) {
+        visible.add(index);
+      }
+      fallbackTop = rowTop + height + VIRTUALIZATION_FALLBACK_ROW_GAP;
+    }
+    return visible;
+  }, [
+    blocks,
+    overlayLayout.byIndex,
+    resolveEstimatedBlockHeight,
+    shouldVirtualizeBlocks,
+    virtualViewport.bottom,
+    virtualViewport.top,
+  ]);
 
   const editorSurfaceStyle = useMemo<CSSProperties>(
     () =>
@@ -3241,6 +3378,40 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       measureOverlayLayout();
     });
   }, [measureOverlayLayout]);
+
+  const measureVirtualViewport = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    const scrollHost = findScrollableAncestor(container);
+    if (!scrollHost) {
+      setVirtualViewport({
+        top: 0,
+        bottom: Number.POSITIVE_INFINITY,
+      });
+      return;
+    }
+    const hostRect = scrollHost.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const top = Math.max(0, hostRect.top - containerRect.top);
+    const bottom = Math.max(top, top + scrollHost.clientHeight);
+    setVirtualViewport((current) => (
+      current.top === top && current.bottom === bottom
+        ? current
+        : { top, bottom }
+    ));
+  }, []);
+
+  const scheduleVirtualViewportMeasure = useCallback(() => {
+    if (virtualViewportFrameRef.current !== null) {
+      return;
+    }
+    virtualViewportFrameRef.current = window.requestAnimationFrame(() => {
+      virtualViewportFrameRef.current = null;
+      measureVirtualViewport();
+    });
+  }, [measureVirtualViewport]);
 
   const getContainerLocalPoint = useCallback((clientX: number, clientY: number) => {
     const container = containerRef.current;
@@ -3406,6 +3577,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
       selectionDragUpdateFrameRef.current = null;
     }
+    if (virtualViewportFrameRef.current !== null) {
+      window.cancelAnimationFrame(virtualViewportFrameRef.current);
+      virtualViewportFrameRef.current = null;
+    }
+    if (activeTextareaLayoutFrameRef.current !== null) {
+      window.cancelAnimationFrame(activeTextareaLayoutFrameRef.current);
+      activeTextareaLayoutFrameRef.current = null;
+    }
     selectionDragPointerRef.current = null;
     selectionGestureRef.current = null;
     suppressNextBlockContextMenuRef.current = false;
@@ -3425,6 +3604,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (overlayMeasureFrameRef.current !== null) {
         window.cancelAnimationFrame(overlayMeasureFrameRef.current);
         overlayMeasureFrameRef.current = null;
+      }
+      if (virtualViewportFrameRef.current !== null) {
+        window.cancelAnimationFrame(virtualViewportFrameRef.current);
+        virtualViewportFrameRef.current = null;
+      }
+      if (activeTextareaLayoutFrameRef.current !== null) {
+        window.cancelAnimationFrame(activeTextareaLayoutFrameRef.current);
+        activeTextareaLayoutFrameRef.current = null;
       }
       if (selectionAutoScrollFrameRef.current !== null) {
         window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
@@ -3455,7 +3642,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   );
 
   useLayoutEffect(() => {
-    measureOverlayLayout();
+    scheduleOverlayLayoutMeasure();
+    scheduleVirtualViewportMeasure();
   }, [
     blocks,
     activeBlockIndex,
@@ -3464,7 +3652,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     dropIndicatorIndex,
     insertMenuState,
     isSelectionDragging,
-    measureOverlayLayout,
+    scheduleOverlayLayoutMeasure,
+    scheduleVirtualViewportMeasure,
   ]);
 
   useEffect(() => {
@@ -3478,6 +3667,30 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     observer.observe(contentLayer);
     return () => observer.disconnect();
   }, [scheduleOverlayLayoutMeasure]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    const scrollHost = findScrollableAncestor(container);
+    if (!scrollHost) {
+      return;
+    }
+    const handleScroll = () => {
+      scheduleVirtualViewportMeasure();
+    };
+    const handleResize = () => {
+      scheduleVirtualViewportMeasure();
+    };
+    scheduleVirtualViewportMeasure();
+    scrollHost.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleResize);
+    return () => {
+      scrollHost.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [scheduleVirtualViewportMeasure]);
 
   useEffect(() => {
     if (!selectedBlockSelection) {
@@ -6551,15 +6764,20 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     };
   }, [activeBlockIndex, blocks]);
 
-  useLayoutEffect(() => {
-    syncActiveTextareaAutoHeight();
-    syncEditorSyntaxOverlayScroll();
-    const handle = window.requestAnimationFrame(() => {
+  const scheduleActiveTextareaLayoutSync = useCallback(() => {
+    if (activeTextareaLayoutFrameRef.current !== null) {
+      return;
+    }
+    activeTextareaLayoutFrameRef.current = window.requestAnimationFrame(() => {
+      activeTextareaLayoutFrameRef.current = null;
       syncActiveTextareaAutoHeight();
       syncEditorSyntaxOverlayScroll();
     });
-    return () => window.cancelAnimationFrame(handle);
-  }, [activeBlockIndex, activeDraft, syncActiveTextareaAutoHeight, syncEditorSyntaxOverlayScroll]);
+  }, [syncActiveTextareaAutoHeight, syncEditorSyntaxOverlayScroll]);
+
+  useEffect(() => {
+    scheduleActiveTextareaLayoutSync();
+  }, [activeBlockIndex, activeDraft, scheduleActiveTextareaLayoutSync]);
 
   const applyActiveBlockDraft = useCallback(
     (nextDraft: string, nextCaretPosition?: number) => {
@@ -8653,6 +8871,465 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     </div>
   ) : null;
 
+  const inactiveBlockBodyByIndex = useMemo(() => {
+    const bodyByIndex = new Map<number, ReactNode>();
+
+    for (let index = 0; index < blocks.length; index += 1) {
+      if (activeBlockIndex === index) {
+        continue;
+      }
+      const block = blocks[index]!;
+      const isOutsideVirtualWindow = Boolean(
+        shouldVirtualizeBlocks &&
+          visibleVirtualizedIndices &&
+          !visibleVirtualizedIndices.has(index) &&
+          !pinnedVirtualizedIndices.has(index),
+      );
+      if (isOutsideVirtualWindow) {
+        const placeholderOuterHeight = Math.max(24, resolveEstimatedBlockHeight(index, block));
+        const placeholderContentHeight = Math.max(
+          1,
+          Math.round(placeholderOuterHeight - VIRTUAL_PLACEHOLDER_BLOCK_CHROME_PX),
+        );
+        bodyByIndex.set(
+          index,
+          <div
+            className="markdown-hybrid-virtual-placeholder"
+            aria-hidden="true"
+            style={{ height: `${placeholderContentHeight}px` }}
+          />,
+        );
+        continue;
+      }
+
+      const headingPreviewPlaceholder = resolveHeadingEditorPlaceholder(block, block.raw);
+      const mathBlockBodySource = block.kind === "math-block"
+        ? extractMathBlockBody(block.raw)
+        : "";
+      let previewBlockSource = block.kind === "help-block"
+        ? normalizeHelpBlockPreviewSource(block.raw)
+        : block.kind === "hr"
+        ? normalizeHorizontalRuleBlockSource(block.raw)
+        : block.raw;
+      const cardBlockPreviewParts = block.kind === "card-block"
+        ? extractCardBlockPreviewParts(block.raw)
+        : null;
+      const isCardTableSegmentActive = (partIndex: number, segmentIndex: number) =>
+        Boolean(
+          activeCardTableState &&
+            activeCardTableState.blockIndex === index &&
+            activeCardTableState.blockId === block.id &&
+            activeCardTableState.partIndex === partIndex &&
+            activeCardTableState.segmentIndex === segmentIndex,
+        );
+      const imageEmbedPreviewItems = block.kind === "image-embed"
+        ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-image-embed-preview")
+          .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
+        : [];
+      const imageEmbedToken = block.kind === "image-embed"
+        ? extractImageEmbedTokenFromRaw(block.raw)
+        : null;
+      const isImageEmbedReplacePickerOpen = Boolean(
+        imageEmbedReplacePickerState &&
+          imageEmbedReplacePickerState.blockIndex === index &&
+          imageEmbedReplacePickerState.blockId === block.id,
+      );
+      const codeFencePreviewItems = block.kind === "code-fence"
+        ? resolveCodeFencePreviewItems(block.raw)
+        : [];
+
+      if (block.kind !== "hr" && block.kind !== "code-fence") {
+        previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
+      }
+
+      if (block.kind === "table") {
+        bodyByIndex.set(
+          index,
+          <MarkdownHybridTableBlock
+            blockIndex={index}
+            raw={block.raw}
+            active={false}
+            codeViewPolicy={tableCodeViewPolicy}
+            disabled={disabled}
+            vaultFiles={vaultFiles}
+            vaultPngAssets={vaultPngAssets}
+            renderPreview={renderPreviewWithPageLinks}
+            pendingActivation={
+              pendingTableActivation?.blockIndex === index
+                ? pendingTableActivation.request
+                : null
+            }
+            onConsumePendingActivation={() => clearPendingTableActivation(index)}
+            onRequestActivate={(request) => handleTableBlockRequestActivate(index, request)}
+            onCommitRaw={(nextRaw) => {
+              handleTableBlockCommitRaw(index, nextRaw);
+            }}
+            onDirtyChange={(dirty) => {
+              if (activeBlockIndex === index) {
+                setActiveTableDirty(dirty);
+              }
+            }}
+            registerSession={(controller) => {
+              if (activeBlockIndex === index || controller === null) {
+                registerActiveTableSession(controller);
+              }
+            }}
+            onGlobalUndo={handleGlobalUndo}
+            onGlobalRedo={handleGlobalRedo}
+          />,
+        );
+        continue;
+      }
+
+      if (block.kind === "math-block") {
+        bodyByIndex.set(
+          index,
+          <div className="markdown-hybrid-math-block-shell">
+            <div className="markdown-hybrid-math-block-toolbar">
+              <button
+                type="button"
+                className="markdown-hybrid-math-toolbox-trigger"
+                data-md-block-control="true"
+                data-md-math-toolbox-trigger="true"
+                aria-label="Open math toolbox"
+                title="Open math toolbox"
+                onMouseDown={handleMathToolboxButtonMouseDown}
+                onClick={handleMathToolboxButtonClick(index)}
+              >
+                <InsertMenuIconGraphic icon="math-block" />
+              </button>
+            </div>
+            <div className="markdown-hybrid-math-preview-shell">
+              <MathBlockRenderer source={mathBlockBodySource} />
+            </div>
+          </div>,
+        );
+        continue;
+      }
+
+      if (block.kind === "blank") {
+        bodyByIndex.set(index, <div className="markdown-hybrid-blank-preview" aria-hidden="true" />);
+        continue;
+      }
+
+      if (block.kind === "heading" && headingPreviewPlaceholder) {
+        bodyByIndex.set(
+          index,
+          <div className="markdown-hybrid-block-preview">
+            <div
+              className={`markdown-hybrid-heading-preview-placeholder markdown-hybrid-heading-preview-placeholder-level-${headingPreviewPlaceholder.level}`}
+              aria-hidden="true"
+            >
+              {headingPreviewPlaceholder.label}
+            </div>
+          </div>,
+        );
+        continue;
+      }
+
+      if (block.kind === "hr") {
+        bodyByIndex.set(
+          index,
+          <div className="markdown-hybrid-hr-shell">
+            <button
+              type="button"
+              className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-top"
+              data-md-block-control="true"
+              onMouseDown={handleHrEnterZoneMouseDown}
+              onClick={handleHrEnterZoneClick}
+              onKeyDown={handleHrEnterZoneKeyDown(index, true)}
+              aria-label="Textblock oberhalb der Trennlinie einfuegen"
+              title="Enterbereich oberhalb der Trennlinie"
+            />
+            <div
+              className="markdown-hybrid-block-preview"
+              onChange={handleRenderedTaskCheckboxChange(index)}
+            >
+              {renderPreviewWithPageLinks(previewBlockSource)}
+            </div>
+            <button
+              type="button"
+              className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-bottom"
+              data-md-block-control="true"
+              onMouseDown={handleHrEnterZoneMouseDown}
+              onClick={handleHrEnterZoneClick}
+              onKeyDown={handleHrEnterZoneKeyDown(index, false)}
+              aria-label="Textblock unterhalb der Trennlinie einfuegen"
+              title="Enterbereich unterhalb der Trennlinie"
+            />
+          </div>,
+        );
+        continue;
+      }
+
+      if (block.kind === "card-block" && cardBlockPreviewParts) {
+        bodyByIndex.set(
+          index,
+          <div
+            className="markdown-hybrid-card-block-preview"
+            onChange={handleRenderedTaskCheckboxChange(index)}
+          >
+            <div className="markdown-hybrid-card-block-frame">
+              {cardBlockPreviewParts.parts.map((part, partIndex) =>
+                part.kind === "help" ? (
+                  <div
+                    key={`card-part:${index}:${partIndex}`}
+                    className="markdown-hybrid-card-help-subbox"
+                  >
+                    <div className="markdown-hybrid-block-preview">
+                      {part.source.trim().length > 0 ? renderPreviewWithPageLinks(part.source) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    key={`card-part:${index}:${partIndex}`}
+                    className="markdown-hybrid-card-body-part"
+                  >
+                    {part.segments.length > 0 ? (
+                      part.segments.map((segment, segmentIndex) =>
+                        segment.kind === "media" ? (
+                          <div
+                            key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
+                            className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview"
+                          >
+                            {segment.items.length > 0 ? (
+                              <FlashcardMediaGroup
+                                media={segment.items}
+                                vaultPngAssets={vaultPngAssets}
+                                vaultPath={vaultPath}
+                                sourceRelativePath={sourceRelativePath}
+                              />
+                            ) : (
+                              <pre className="flashcard-code-block media-block-card-source">
+                                <code>{segment.raw}</code>
+                              </pre>
+                            )}
+                          </div>
+                        ) : segment.kind === "table" ? (
+                          <div
+                            key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
+                            className="markdown-hybrid-card-table-segment"
+                            data-md-block-control="true"
+                          >
+                            <MarkdownHybridTableBlock
+                              blockIndex={index}
+                              raw={segment.raw}
+                              active={isCardTableSegmentActive(partIndex, segmentIndex)}
+                              allowCodeView={false}
+                              codeViewPolicy={tableCodeViewPolicy}
+                              disabled={disabled}
+                              vaultFiles={vaultFiles}
+                              vaultPngAssets={vaultPngAssets}
+                              renderPreview={renderPreviewWithPageLinks}
+                              pendingActivation={
+                                isCardTableSegmentActive(partIndex, segmentIndex)
+                                  ? activeCardTableState?.pendingActivation ?? null
+                                  : null
+                              }
+                              onConsumePendingActivation={() =>
+                                consumeCardTablePendingActivation({
+                                  blockIndex: index,
+                                  blockId: block.id,
+                                  partIndex,
+                                  segmentIndex,
+                                })}
+                              onRequestActivate={(request) =>
+                                handleCardTableSegmentRequestActivate(
+                                  {
+                                    blockIndex: index,
+                                    blockId: block.id,
+                                    partIndex,
+                                    segmentIndex,
+                                  },
+                                  request,
+                                )}
+                              onCommitRaw={(nextRaw) => {
+                                handleCardTableSegmentCommitRaw(
+                                  {
+                                    blockIndex: index,
+                                    blockId: block.id,
+                                    partIndex,
+                                    segmentIndex,
+                                  },
+                                  nextRaw,
+                                );
+                              }}
+                              onDirtyChange={(dirty) => {
+                                if (isCardTableSegmentActive(partIndex, segmentIndex)) {
+                                  setActiveCardTableDirty(dirty);
+                                }
+                              }}
+                              registerSession={(controller) => {
+                                if (isCardTableSegmentActive(partIndex, segmentIndex) || controller === null) {
+                                  registerActiveCardTableSession(controller);
+                                }
+                              }}
+                              onGlobalUndo={handleGlobalUndo}
+                              onGlobalRedo={handleGlobalRedo}
+                            />
+                          </div>
+                        ) : segment.source.trim().length > 0 ? (
+                          <div
+                            key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
+                            className="markdown-hybrid-block-preview"
+                          >
+                            {renderPreviewWithPageLinks(segment.source)}
+                          </div>
+                        ) : null
+                      )
+                    ) : (
+                      <div className="markdown-hybrid-card-block-empty" aria-hidden="true" />
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          </div>,
+        );
+        continue;
+      }
+
+      if (block.kind === "image-embed") {
+        bodyByIndex.set(
+          index,
+          <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview markdown-hybrid-image-embed-preview-shell">
+            {imageEmbedPreviewItems.length > 0 ? (
+              <FlashcardMediaGroup
+                media={imageEmbedPreviewItems}
+                vaultPngAssets={vaultPngAssets}
+                vaultPath={vaultPath}
+                sourceRelativePath={sourceRelativePath}
+              />
+            ) : (
+              <pre className="flashcard-code-block media-block-card-source">
+                <code>{block.raw}</code>
+              </pre>
+            )}
+            <div
+              className={`markdown-hybrid-image-embed-replace-shell${isImageEmbedReplacePickerOpen ? " is-open" : ""}`}
+              data-md-block-control="true"
+              onMouseDown={(event) => {
+                event.stopPropagation();
+              }}
+            >
+              <button
+                type="button"
+                className="markdown-hybrid-image-embed-replace-trigger"
+                data-md-block-control="true"
+                data-md-image-embed-replace-trigger="true"
+                aria-label="Bild austauschen"
+                title="Bild austauschen"
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                }}
+                onClick={handleOpenImageEmbedReplacePicker(index)}
+                disabled={disabled}
+              >
+                Bild austauschen
+              </button>
+              {isImageEmbedReplacePickerOpen ? (
+                <div
+                  ref={imageEmbedReplacePickerRef}
+                  className="markdown-hybrid-image-embed-picker"
+                  data-md-block-control="true"
+                  role="dialog"
+                  aria-label="Select replacement PNG"
+                  onMouseDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                >
+                  <VaultPngPicker
+                    assets={vaultPngAssets}
+                    query={imageEmbedReplacePickerState?.query ?? ""}
+                    onQueryChange={handleImageEmbedReplaceQueryChange}
+                    onSearchKeyDown={handleImageEmbedReplaceSearchKeyDown}
+                    onSelect={handleImageEmbedReplaceSelectCandidate}
+                    highlightedIndex={imageEmbedReplacePickerState?.highlightedIndex ?? 0}
+                    onHighlightedIndexChange={(nextIndex) =>
+                      setImageEmbedReplacePickerState((current) =>
+                        current
+                          ? { ...current, highlightedIndex: nextIndex }
+                          : current
+                      )
+                    }
+                    selectedRelPath={imageEmbedToken?.src ?? null}
+                    emptyLabel="No PNG files found in the current vault."
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>,
+        );
+        continue;
+      }
+
+      if (block.kind === "code-fence" && codeFencePreviewItems.length > 0) {
+        bodyByIndex.set(
+          index,
+          <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">
+            <FlashcardMediaGroup
+              media={codeFencePreviewItems}
+              vaultPngAssets={vaultPngAssets}
+              vaultPath={vaultPath}
+              sourceRelativePath={sourceRelativePath}
+            />
+          </div>,
+        );
+        continue;
+      }
+
+      bodyByIndex.set(
+        index,
+        <div
+          className="markdown-hybrid-block-preview"
+          onChange={handleRenderedTaskCheckboxChange(index)}
+        >
+          {renderPreviewWithPageLinks(previewBlockSource)}
+        </div>,
+      );
+    }
+
+    return bodyByIndex;
+  }, [
+    activeBlockIndex,
+    activeCardTableState,
+    blocks,
+    clearPendingTableActivation,
+    consumeCardTablePendingActivation,
+    disabled,
+    handleCardTableSegmentCommitRaw,
+    handleCardTableSegmentRequestActivate,
+    handleGlobalRedo,
+    handleGlobalUndo,
+    handleHrEnterZoneClick,
+    handleHrEnterZoneKeyDown,
+    handleHrEnterZoneMouseDown,
+    handleImageEmbedReplaceQueryChange,
+    handleImageEmbedReplaceSearchKeyDown,
+    handleImageEmbedReplaceSelectCandidate,
+    handleMathToolboxButtonClick,
+    handleMathToolboxButtonMouseDown,
+    handleOpenImageEmbedReplacePicker,
+    handleRenderedTaskCheckboxChange,
+    handleTableBlockCommitRaw,
+    handleTableBlockRequestActivate,
+    imageEmbedReplacePickerState,
+    pinnedVirtualizedIndices,
+    pendingTableActivation,
+    registerActiveCardTableSession,
+    registerActiveTableSession,
+    renderPreviewWithPageLinks,
+    resolveCodeFencePreviewItems,
+    resolveEstimatedBlockHeight,
+    shouldVirtualizeBlocks,
+    sourceRelativePath,
+    tableCodeViewPolicy,
+    vaultFiles,
+    vaultPath,
+    vaultPngAssets,
+    visibleVirtualizedIndices,
+  ]);
+
   if (blocks.length === 0) {
     const emptyOverlayRect = overlayLayout.byIndex.get(0) ?? {
       index: 0,
@@ -8799,9 +9476,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           const headingEditorPlaceholder = isActive
             ? resolveHeadingEditorPlaceholder(block, activeDraft)
             : null;
-          const headingPreviewPlaceholder = !isActive
-            ? resolveHeadingEditorPlaceholder(block, block.raw)
-            : null;
           const isStructuralBlankSeparator =
             !isActive && isStructuralSeparatorBlankBlock(blocks, index);
           const isRangeSelected = !disabled && isBlockIndexSelected(selectedBlockSelection, index);
@@ -8816,37 +9490,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             : draggedBlockIndex === index;
           const hasDropIndicatorTop = dropIndicatorIndex === index;
           const hasDropIndicatorBottom = dropIndicatorIndex === index + 1;
-          const mathBlockBodySource = block.kind === "math-block"
-            ? extractMathBlockBody(isActive ? activeDraft : block.raw)
+          const mathBlockBodySource = isActive && block.kind === "math-block"
+            ? extractMathBlockBody(activeDraft)
             : "";
-          let previewBlockSource = block.kind === "help-block"
-            ? normalizeHelpBlockPreviewSource(block.raw)
-            : block.kind === "hr"
-            ? normalizeHorizontalRuleBlockSource(block.raw)
-            : block.raw;
-          const cardBlockPreviewParts = block.kind === "card-block"
-            ? extractCardBlockPreviewParts(block.raw)
-            : null;
-          const isCardTableSegmentActive = (partIndex: number, segmentIndex: number) =>
-            Boolean(
-              activeCardTableState &&
-              activeCardTableState.blockIndex === index &&
-              activeCardTableState.blockId === block.id &&
-              activeCardTableState.partIndex === partIndex &&
-              activeCardTableState.segmentIndex === segmentIndex,
-            );
-          const imageEmbedPreviewItems = block.kind === "image-embed"
-            ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-image-embed-preview")
-              .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
-            : [];
-          const imageEmbedToken = block.kind === "image-embed"
-            ? extractImageEmbedTokenFromRaw(block.raw)
-            : null;
-          const isImageEmbedReplacePickerOpen = Boolean(
-            imageEmbedReplacePickerState &&
-            imageEmbedReplacePickerState.blockIndex === index &&
-            imageEmbedReplacePickerState.blockId === block.id,
-          );
           const codeFencePreviewItems = block.kind === "code-fence"
             ? resolveCodeFencePreviewItems(block.raw)
             : [];
@@ -8856,9 +9502,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           const useSyncedSvgCodeFenceEditorHeight = isActive &&
             hasSvgCodeFenceMediaPreview &&
             syncedSvgCodeFenceHeight !== null;
-          if (block.kind !== "hr" && block.kind !== "code-fence") {
-            previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
-          }
+          const inactiveBlockBody = !isActive
+            ? (inactiveBlockBodyByIndex.get(index) ?? <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />)
+            : null;
           return (
             <div
               key={blockRenderKeys[index] ?? block.id}
@@ -9028,272 +9674,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                       ) : null}
                     </div>
                   )
-                ) : block.kind === "math-block" ? (
-                  <div className="markdown-hybrid-math-block-shell">
-                    <div className="markdown-hybrid-math-block-toolbar">
-                      <button
-                        type="button"
-                        className="markdown-hybrid-math-toolbox-trigger"
-                        data-md-block-control="true"
-                        data-md-math-toolbox-trigger="true"
-                        aria-label="Open math toolbox"
-                        title="Open math toolbox"
-                        onMouseDown={handleMathToolboxButtonMouseDown}
-                        onClick={handleMathToolboxButtonClick(index)}
-                      >
-                        <InsertMenuIconGraphic icon="math-block" />
-                      </button>
-                    </div>
-                    <div className="markdown-hybrid-math-preview-shell">
-                      <MathBlockRenderer source={mathBlockBodySource} />
-                    </div>
-                  </div>
-                ) : block.kind === "blank" ? (
-                  <div className="markdown-hybrid-blank-preview" aria-hidden="true" />
-                ) : block.kind === "heading" && headingPreviewPlaceholder ? (
-                  <div className="markdown-hybrid-block-preview">
-                    <div
-                      className={`markdown-hybrid-heading-preview-placeholder markdown-hybrid-heading-preview-placeholder-level-${headingPreviewPlaceholder.level}`}
-                      aria-hidden="true"
-                    >
-                      {headingPreviewPlaceholder.label}
-                    </div>
-                  </div>
-                ) : block.kind === "hr" ? (
-                  <div className="markdown-hybrid-hr-shell">
-                    <button
-                      type="button"
-                      className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-top"
-                      data-md-block-control="true"
-                      onMouseDown={handleHrEnterZoneMouseDown}
-                      onClick={handleHrEnterZoneClick}
-                      onKeyDown={handleHrEnterZoneKeyDown(index, true)}
-                      aria-label="Textblock oberhalb der Trennlinie einfuegen"
-                      title="Enterbereich oberhalb der Trennlinie"
-                    />
-                    <div
-                      className="markdown-hybrid-block-preview"
-                      onChange={handleRenderedTaskCheckboxChange(index)}
-                    >
-                      {renderPreviewWithPageLinks(previewBlockSource)}
-                    </div>
-                    <button
-                      type="button"
-                      className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-bottom"
-                      data-md-block-control="true"
-                      onMouseDown={handleHrEnterZoneMouseDown}
-                      onClick={handleHrEnterZoneClick}
-                      onKeyDown={handleHrEnterZoneKeyDown(index, false)}
-                      aria-label="Textblock unterhalb der Trennlinie einfuegen"
-                      title="Enterbereich unterhalb der Trennlinie"
-                    />
-                  </div>
-                ) : block.kind === "card-block" && cardBlockPreviewParts ? (
-                  <div
-                    className="markdown-hybrid-card-block-preview"
-                    onChange={handleRenderedTaskCheckboxChange(index)}
-                  >
-                    <div className="markdown-hybrid-card-block-frame">
-                      {cardBlockPreviewParts.parts.map((part, partIndex) =>
-                        part.kind === "help" ? (
-                          <div
-                            key={`card-part:${index}:${partIndex}`}
-                            className="markdown-hybrid-card-help-subbox"
-                          >
-                            <div className="markdown-hybrid-block-preview">
-                              {part.source.trim().length > 0 ? renderPreviewWithPageLinks(part.source) : null}
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            key={`card-part:${index}:${partIndex}`}
-                            className="markdown-hybrid-card-body-part"
-                          >
-                            {part.segments.length > 0 ? (
-                              part.segments.map((segment, segmentIndex) =>
-                                segment.kind === "media" ? (
-                                  <div
-                                    key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
-                                    className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview"
-                                  >
-                                    {segment.items.length > 0 ? (
-                                      <FlashcardMediaGroup
-                                        media={segment.items}
-                                        vaultPngAssets={vaultPngAssets}
-                                        vaultPath={vaultPath}
-                                        sourceRelativePath={sourceRelativePath}
-                                      />
-                                    ) : (
-                                      <pre className="flashcard-code-block media-block-card-source">
-                                        <code>{segment.raw}</code>
-                                      </pre>
-                                    )}
-                                  </div>
-                                ) : segment.kind === "table" ? (
-                                  <div
-                                    key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
-                                    className="markdown-hybrid-card-table-segment"
-                                    data-md-block-control="true"
-                                  >
-                                    <MarkdownHybridTableBlock
-                                      blockIndex={index}
-                                      raw={segment.raw}
-                                      active={isCardTableSegmentActive(partIndex, segmentIndex)}
-                                      allowCodeView={false}
-                                      codeViewPolicy={tableCodeViewPolicy}
-                                      disabled={disabled}
-                                      vaultFiles={vaultFiles}
-                                      vaultPngAssets={vaultPngAssets}
-                                      renderPreview={renderPreviewWithPageLinks}
-                                      pendingActivation={
-                                        isCardTableSegmentActive(partIndex, segmentIndex)
-                                          ? activeCardTableState?.pendingActivation ?? null
-                                          : null
-                                      }
-                                      onConsumePendingActivation={() =>
-                                        consumeCardTablePendingActivation({
-                                          blockIndex: index,
-                                          blockId: block.id,
-                                          partIndex,
-                                          segmentIndex,
-                                        })}
-                                      onRequestActivate={(request) =>
-                                        handleCardTableSegmentRequestActivate(
-                                          {
-                                            blockIndex: index,
-                                            blockId: block.id,
-                                            partIndex,
-                                            segmentIndex,
-                                          },
-                                          request,
-                                        )}
-                                      onCommitRaw={(nextRaw) => {
-                                        handleCardTableSegmentCommitRaw(
-                                          {
-                                            blockIndex: index,
-                                            blockId: block.id,
-                                            partIndex,
-                                            segmentIndex,
-                                          },
-                                          nextRaw,
-                                        );
-                                      }}
-                                      onDirtyChange={(dirty) => {
-                                        if (isCardTableSegmentActive(partIndex, segmentIndex)) {
-                                          setActiveCardTableDirty(dirty);
-                                        }
-                                      }}
-                                      registerSession={(controller) => {
-                                        if (isCardTableSegmentActive(partIndex, segmentIndex) || controller === null) {
-                                          registerActiveCardTableSession(controller);
-                                        }
-                                      }}
-                                      onGlobalUndo={handleGlobalUndo}
-                                      onGlobalRedo={handleGlobalRedo}
-                                    />
-                                  </div>
-                                ) : segment.source.trim().length > 0 ? (
-                                  <div
-                                    key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
-                                    className="markdown-hybrid-block-preview"
-                                  >
-                                    {renderPreviewWithPageLinks(segment.source)}
-                                  </div>
-                                ) : null
-                              )
-                            ) : (
-                              <div className="markdown-hybrid-card-block-empty" aria-hidden="true" />
-                            )}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                ) : block.kind === "image-embed" ? (
-                  <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview markdown-hybrid-image-embed-preview-shell">
-                    {imageEmbedPreviewItems.length > 0 ? (
-                      <FlashcardMediaGroup
-                        media={imageEmbedPreviewItems}
-                        vaultPngAssets={vaultPngAssets}
-                        vaultPath={vaultPath}
-                        sourceRelativePath={sourceRelativePath}
-                      />
-                    ) : (
-                      <pre className="flashcard-code-block media-block-card-source">
-                        <code>{block.raw}</code>
-                      </pre>
-                    )}
-                    <div
-                      className={`markdown-hybrid-image-embed-replace-shell${isImageEmbedReplacePickerOpen ? " is-open" : ""}`}
-                      data-md-block-control="true"
-                      onMouseDown={(event) => {
-                        event.stopPropagation();
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="markdown-hybrid-image-embed-replace-trigger"
-                        data-md-block-control="true"
-                        data-md-image-embed-replace-trigger="true"
-                        aria-label="Bild austauschen"
-                        title="Bild austauschen"
-                        onMouseDown={(event) => {
-                          event.stopPropagation();
-                        }}
-                        onClick={handleOpenImageEmbedReplacePicker(index)}
-                        disabled={disabled}
-                      >
-                        Bild austauschen
-                      </button>
-                      {isImageEmbedReplacePickerOpen ? (
-                        <div
-                          ref={imageEmbedReplacePickerRef}
-                          className="markdown-hybrid-image-embed-picker"
-                          data-md-block-control="true"
-                          role="dialog"
-                          aria-label="Select replacement PNG"
-                          onMouseDown={(event) => {
-                            event.stopPropagation();
-                          }}
-                        >
-                          <VaultPngPicker
-                            assets={vaultPngAssets}
-                            query={imageEmbedReplacePickerState?.query ?? ""}
-                            onQueryChange={handleImageEmbedReplaceQueryChange}
-                            onSearchKeyDown={handleImageEmbedReplaceSearchKeyDown}
-                            onSelect={handleImageEmbedReplaceSelectCandidate}
-                            highlightedIndex={imageEmbedReplacePickerState?.highlightedIndex ?? 0}
-                            onHighlightedIndexChange={(nextIndex) =>
-                              setImageEmbedReplacePickerState((current) =>
-                                current
-                                  ? { ...current, highlightedIndex: nextIndex }
-                                  : current
-                              )
-                            }
-                            selectedRelPath={imageEmbedToken?.src ?? null}
-                            emptyLabel="No PNG files found in the current vault."
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : block.kind === "code-fence" && codeFencePreviewItems.length > 0 ? (
-                  <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">
-                    <FlashcardMediaGroup
-                      media={codeFencePreviewItems}
-                      vaultPngAssets={vaultPngAssets}
-                      vaultPath={vaultPath}
-                      sourceRelativePath={sourceRelativePath}
-                    />
-                  </div>
-                ) : (
-                  <div
-                    className="markdown-hybrid-block-preview"
-                    onChange={handleRenderedTaskCheckboxChange(index)}
-                  >
-                    {renderPreviewWithPageLinks(previewBlockSource)}
-                  </div>
-                )}
+                ) : inactiveBlockBody}
               </div>
             </div>
           );

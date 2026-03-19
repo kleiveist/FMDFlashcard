@@ -1208,6 +1208,8 @@ textarea.preview-editor {
   border: 1px solid transparent;
   border-radius: 10px;
   padding: 2px 4px;
+  content-visibility: auto;
+  contain-intrinsic-size: 96px;
   transition:
     border-color 0.12s ease,
     background-color 0.12s ease,
@@ -1353,6 +1355,13 @@ textarea.preview-editor {
 
 .markdown-hybrid-block-body {
   min-width: 0;
+}
+
+.markdown-hybrid-virtual-placeholder {
+  width: 100%;
+  min-height: 18px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-2) 40%, transparent);
 }
 
 .markdown-hybrid-block-control {
