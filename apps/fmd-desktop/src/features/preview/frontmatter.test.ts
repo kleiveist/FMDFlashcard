@@ -596,6 +596,17 @@ describe("frontmatter suggestion index", () => {
     expect(keys).toEqual(["Rank", "Cover", "Section"]);
   });
 
+  it("ignores non-string markdown documents in runtime data", () => {
+    const index = buildFrontmatterSuggestionIndex([
+      undefined as unknown as string,
+      ["---", "Rank: SE1", "---", "Body"].join("\n"),
+      null as unknown as string,
+    ]);
+
+    expect(index.keyIndex.Rank).toBe(1);
+    expect(index.valueIndex.Rank?.SE1).toBe(1);
+  });
+
   it("builds value map from index with numeric sort and count ordering", () => {
     const map = buildFrontmatterValueSuggestionMapFromIndex({
       Rank: { "10": 1, "2": 4 },

@@ -96,8 +96,11 @@ const PROPERTY_SCHEMA: Record<string, FrontmatterSchemaEntry> = {
   thumbnail: { kind: "cover", icon: "cover" },
 };
 
-const detectLineEnding = (value: string): "\n" | "\r\n" =>
-  value.includes("\r\n") ? "\r\n" : "\n";
+const asMarkdownString = (value: unknown): string =>
+  typeof value === "string" ? value : "";
+
+const detectLineEnding = (value: string | null | undefined): "\n" | "\r\n" =>
+  typeof value === "string" && value.includes("\r\n") ? "\r\n" : "\n";
 
 const normalizeNewlines = (value: string) => value.replace(/\r\n?/g, "\n");
 
@@ -508,13 +511,14 @@ const parseYamlFrontmatter = (
 const parseFrontmatterDocumentInternal = (
   markdown: string,
 ): ParsedFrontmatterDocumentInternal => {
-  const lineEnding = detectLineEnding(markdown);
-  const match = markdown.match(FRONTMATTER_PATTERN);
+  const safeMarkdown = asMarkdownString(markdown);
+  const lineEnding = detectLineEnding(safeMarkdown);
+  const match = safeMarkdown.match(FRONTMATTER_PATTERN);
   if (!match) {
     return {
       hasFrontmatter: false,
       error: null,
-      body: markdown,
+      body: safeMarkdown,
       bodyStartOffset: 0,
       lineEnding,
       properties: [],
@@ -526,7 +530,7 @@ const parseFrontmatterDocumentInternal = (
   const rawBlock = match[0] ?? "";
   const rawYaml = match[1] ?? "";
   const bodyStartOffset = rawBlock.length;
-  const body = markdown.slice(bodyStartOffset);
+  const body = safeMarkdown.slice(bodyStartOffset);
   const parsed = parseYamlFrontmatter(rawYaml);
 
   return {
@@ -538,7 +542,7 @@ const parseFrontmatterDocumentInternal = (
     properties: parsed.properties
       .filter((property) => !property.hidden)
       .map(({ rawLines, preserveRaw, hidden: _hidden, ...property }) => property),
-    frontmatterPrefix: markdown.slice(0, bodyStartOffset),
+    frontmatterPrefix: safeMarkdown.slice(0, bodyStartOffset),
     parsedProperties: parsed.properties,
   };
 };
