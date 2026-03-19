@@ -1436,6 +1436,13 @@ type PreviewPanelProps = {
   >;
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
+  markdownTabs?: Array<{
+    path: string;
+    relativePath: string;
+  }>;
+  activeMarkdownTabPath?: string | null;
+  onSelectMarkdownTab?: (path: string) => void;
+  onCloseMarkdownTab?: (path: string) => void;
 };
 
 type PendingHybridPostCommitAction =
@@ -5972,6 +5979,10 @@ export const PreviewPanel = ({
   taskProfileSummariesByName,
   valueSuggestionsByKey,
   keySuggestions,
+  markdownTabs = [],
+  activeMarkdownTabPath = null,
+  onSelectMarkdownTab,
+  onCloseMarkdownTab,
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const markdownViewRef = useRef<HTMLDivElement | null>(null);
@@ -7237,6 +7248,22 @@ export const PreviewPanel = ({
     );
   }, [isNarrowFrontmatterViewport]);
 
+  const handleMarkdownTabSelect = useCallback(
+    (path: string) => {
+      onSelectMarkdownTab?.(path);
+    },
+    [onSelectMarkdownTab],
+  );
+
+  const handleMarkdownTabClose = useCallback(
+    (event: MouseEvent<HTMLButtonElement>, path: string) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onCloseMarkdownTab?.(path);
+    },
+    [onCloseMarkdownTab],
+  );
+
   useEffect(() => {
     if (!isEditing) {
       rawCodeToggleClosePendingRef.current = false;
@@ -7365,6 +7392,42 @@ export const PreviewPanel = ({
           {previewState === "loading" ? <span className="chip">Lade...</span> : null}
         </div>
       </div>
+      {markdownTabs.length > 0 ? (
+        <div className="preview-tab-strip" role="tablist" aria-label="Open markdown files">
+          {markdownTabs.map((tab) => {
+            const isActive = activeMarkdownTabPath === tab.path;
+            const label = tab.relativePath || tab.path;
+            return (
+              <div
+                key={tab.path}
+                className={`preview-tab ${isActive ? "active" : ""}`}
+              >
+                <button
+                  type="button"
+                  className={`preview-tab-button ${isActive ? "active" : ""}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => handleMarkdownTabSelect(tab.path)}
+                  title={label}
+                >
+                  <span className="preview-tab-label">{label}</span>
+                </button>
+                {onCloseMarkdownTab ? (
+                  <button
+                    type="button"
+                    className="preview-tab-close"
+                    aria-label={`Close ${label}`}
+                    title={`Close ${label}`}
+                    onClick={(event) => handleMarkdownTabClose(event, tab.path)}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       <div className="panel-body preview-body">
         {previewState === "error" ? (
           <div className="error">{previewError}</div>

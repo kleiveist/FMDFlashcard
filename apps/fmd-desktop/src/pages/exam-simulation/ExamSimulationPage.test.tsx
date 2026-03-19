@@ -259,6 +259,7 @@ describe("ExamSimulationPage popup sync", () => {
   it("passes shared mode/profile handlers to sidebar and popup, renders panel header KPIs, and splits run summary tasks", () => {
     const viewModel = createViewModel();
     mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+    const openMarkdownSpy = vi.fn();
 
     const { container, cleanup } = render(
       createElement(ExamSimulationPage, {
@@ -267,6 +268,7 @@ describe("ExamSimulationPage popup sync", () => {
         isRunSummaryNoteActionActive: true,
         isExamFilesNoteOpen: true,
         onCloseExamFilesNote: vi.fn(),
+        onOpenExamFileInMarkdownEditor: openMarkdownSpy,
       }),
     );
 
@@ -301,6 +303,21 @@ describe("ExamSimulationPage popup sync", () => {
     expect(sidebarProps?.onCombinationModeChange).toBe(
       popupProps?.onCombinationModeChange,
     );
+    expect(sidebarProps?.onOpenFile).toBe(popupProps?.onOpenFile);
+    const openFileHandler = sidebarProps?.onOpenFile as
+      | ((entry: { path: string; relative_path: string }) => void)
+      | undefined;
+    expect(openFileHandler).toBeTruthy();
+    act(() => {
+      openFileHandler?.({
+        path: "/vault/from-exam.md",
+        relative_path: "from-exam.md",
+      });
+    });
+    expect(openMarkdownSpy).toHaveBeenCalledWith({
+      path: "/vault/from-exam.md",
+      relative_path: "from-exam.md",
+    });
     const examNoteModalProps = capturedNoteModalProps.find(
       (entry) => entry.title === "Exam Files",
     );

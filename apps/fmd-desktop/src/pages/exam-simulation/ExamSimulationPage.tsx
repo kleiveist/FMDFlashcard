@@ -61,6 +61,10 @@ const studyPrevCommand = getShortcutById("studyPrevious");
 const studyNextCommand = getShortcutById("studyNext");
 const studySubmitCommand = getShortcutById("studySubmit");
 const STANDARD_RUN_PROFILE_LABEL = "Standard (no profile)";
+type OpenExamFileTarget = {
+  path: string;
+  relative_path: string;
+};
 
 type ExamSimulationPageProps = {
   runSummaryNoteActionEnabled?: boolean;
@@ -68,6 +72,7 @@ type ExamSimulationPageProps = {
   isRunSummaryNoteActionActive?: boolean;
   isExamFilesNoteOpen?: boolean;
   onCloseExamFilesNote?: () => void;
+  onOpenExamFileInMarkdownEditor?: (file: OpenExamFileTarget) => void;
 };
 
 export const ExamSimulationPage = ({
@@ -76,6 +81,7 @@ export const ExamSimulationPage = ({
   isRunSummaryNoteActionActive = false,
   isExamFilesNoteOpen = false,
   onCloseExamFilesNote = () => undefined,
+  onOpenExamFileInMarkdownEditor,
 }: ExamSimulationPageProps) => {
   const {
     settings,
@@ -209,6 +215,15 @@ export const ExamSimulationPage = ({
         : combinationMode === "sequential-shuffled"
           ? "Sequential + internal shuffle"
           : "Nested";
+  const handleOpenExamFile = useCallback(
+    (entry: OpenExamFileTarget) => {
+      onOpenExamFileInMarkdownEditor?.({
+        path: entry.path,
+        relative_path: entry.relative_path,
+      });
+    },
+    [onOpenExamFileInMarkdownEditor],
+  );
   const runSelectionSummary = `${selectedExamCount} selected, ${selectedIncludedExamCount} included`;
   const runTasksTotalSummary = `${plannedTaskCount} tasks total`;
   const hasSelectedExamFiles = selectedExamCount > 0;
@@ -269,6 +284,7 @@ export const ExamSimulationPage = ({
     onSetSelectedPathRows: handleSetSelectedExamRows,
     onClearSelection: handleClearExamSelection,
     onPlaceSelectedFile: handlePlaceSelectedExamFile,
+    onOpenFile: handleOpenExamFile,
     listScrollMode: "external" as const,
   };
   const requestResetExam = useCallback(() => {

@@ -1711,6 +1711,22 @@ body.focus-mode .spaced-repetition-sidebar {
   text-overflow: ellipsis;
 }
 
+.exam-file-row-title.is-open-action {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.exam-file-row-title.is-open-action:hover {
+  color: var(--accent-strong);
+}
+
+.exam-file-row-title.is-open-action:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
+  border-radius: 4px;
+}
+
 .exam-file-row-path {
   font-size: 0.76rem;
   color: var(--muted);

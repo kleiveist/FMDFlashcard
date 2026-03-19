@@ -119,11 +119,32 @@ vi.mock("./pages/DashboardPage", async () => {
 });
 
 vi.mock("./pages/ExamSimulationPage", () => ({
-  ExamSimulationPage: () =>
+  ExamSimulationPage: ({
+    onOpenExamFileInMarkdownEditor,
+  }: {
+    onOpenExamFileInMarkdownEditor?: (file: { path: string; relative_path: string }) => void;
+  }) =>
     React.createElement(
-      "div",
-      { "data-testid": "mock-exam-simulation-page" },
-      "Exam",
+      React.Fragment,
+      null,
+      React.createElement(
+        "div",
+        { "data-testid": "mock-exam-simulation-page" },
+        "Exam",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "mock-exam-open-markdown-file",
+          onClick: () =>
+            onOpenExamFileInMarkdownEditor?.({
+              path: "/vault/from-exam-open.md",
+              relative_path: "from-exam-open.md",
+            }),
+        },
+        "Exam: open markdown file",
+      ),
     ),
 }));
 
@@ -356,6 +377,24 @@ describe("App dashboard leave guard integration", () => {
       path: "/vault/from-sidebar.md",
       relative_path: "from-sidebar.md",
     });
+
+    cleanup();
+  });
+
+  it("opens exam file in dashboard markdown editor and selects file", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "study-nav-switch-exam");
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
+
+    await clickTestId(container, "mock-exam-open-markdown-file");
+
+    expect(getSelectFileSpy()).toHaveBeenCalledWith({
+      path: "/vault/from-exam-open.md",
+      relative_path: "from-exam-open.md",
+    });
+    expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
 
     cleanup();
   });

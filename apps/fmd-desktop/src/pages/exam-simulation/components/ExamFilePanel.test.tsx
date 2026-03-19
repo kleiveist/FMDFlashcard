@@ -325,6 +325,140 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
+  it("opens file action popup from filename click and invokes open callback", () => {
+    const onOpenFile = vi.fn();
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: [],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onOpenFile,
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const titleTrigger = container.querySelector<HTMLElement>(
+      ".exam-file-row-title.is-open-action",
+    );
+    expect(titleTrigger).toBeTruthy();
+    act(() => {
+      titleTrigger?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    const popupButton = document.body.querySelector<HTMLButtonElement>(
+      ".exam-file-open-menu .context-menu-item",
+    );
+    expect(popupButton?.textContent).toContain("Open file");
+    act(() => {
+      popupButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    expect(onOpenFile).toHaveBeenCalledTimes(1);
+    expect(onOpenFile.mock.calls[0]?.[0]?.path).toBe("/vault/a.md");
+    expect(document.body.querySelector(".exam-file-open-menu")).toBeNull();
+    cleanup();
+  });
+
+  it("closes file action popup on outside click and Escape", () => {
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: [],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onOpenFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const titleTrigger = container.querySelector<HTMLElement>(
+      ".exam-file-row-title.is-open-action",
+    );
+    act(() => {
+      titleTrigger?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    expect(document.body.querySelector(".exam-file-open-menu")).not.toBeNull();
+
+    const backdrop = document.body.querySelector<HTMLElement>(".context-menu-backdrop");
+    act(() => {
+      backdrop?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    });
+    expect(document.body.querySelector(".exam-file-open-menu")).toBeNull();
+
+    act(() => {
+      titleTrigger?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    expect(document.body.querySelector(".exam-file-open-menu")).not.toBeNull();
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(document.body.querySelector(".exam-file-open-menu")).toBeNull();
+    cleanup();
+  });
+
+  it("opens file directly via Ctrl/Cmd + right click", () => {
+    const onOpenFile = vi.fn();
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: [],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onOpenFile,
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const rowButton = container.querySelector<HTMLButtonElement>("button.exam-file-row-button");
+    expect(rowButton).toBeTruthy();
+    act(() => {
+      rowButton?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+        }),
+      );
+    });
+    act(() => {
+      rowButton?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          metaKey: true,
+        }),
+      );
+    });
+
+    expect(onOpenFile).toHaveBeenCalledTimes(2);
+    expect(onOpenFile.mock.calls[0]?.[0]?.path).toBe("/vault/a.md");
+    expect(onOpenFile.mock.calls[1]?.[0]?.path).toBe("/vault/a.md");
+    expect(document.body.querySelector(".exam-file-open-menu")).toBeNull();
+    cleanup();
+  });
+
   it("does not render the select-all button", () => {
     const { container, cleanup } = render(
       createElement(ExamFilePanel, {

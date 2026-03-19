@@ -316,6 +316,17 @@ const AppContent = () => {
     setNoteDialogSection(null);
   }, []);
 
+  const handleOpenExamFileInMarkdownEditor = useCallback(
+    (file: VaultFile) => {
+      actions.handleSelectFile(file);
+      setDashboardView("markdown");
+      setActiveTab("dashboard");
+      setIsMobileNavOpen(false);
+      handleNoteModalClose();
+    },
+    [actions, handleNoteModalClose],
+  );
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
@@ -537,6 +548,7 @@ const AppContent = () => {
             }
             isExamFilesNoteOpen={isNoteModalOpen && noteDialogSection === "exam"}
             onCloseExamFilesNote={handleNoteModalClose}
+            onOpenExamFileInMarkdownEditor={handleOpenExamFileInMarkdownEditor}
           />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage onSectionSelect={handleStudySectionSelect} />

@@ -65,6 +65,10 @@ const stripMarkdownExtension = (value: string) =>
 export { shouldApplyPreviewDefaultMode, type DashboardView };
 
 type MarkdownDocumentMode = "edit" | "write";
+type MarkdownEditorTab = {
+  path: string;
+  relativePath: string;
+};
 type ExamLeaveGuardTarget = "main-editor" | "profile-modal";
 type PendingExamLeaveAction =
   | "file-select"
@@ -116,6 +120,7 @@ const DashboardPageInner = (
   const [isHybridBlockDirty, setIsHybridBlockDirty] = useState(false);
   const [documentMode, setDocumentMode] = useState<MarkdownDocumentMode>("edit");
   const [pendingWriteFilePath, setPendingWriteFilePath] = useState<string | null>(null);
+  const [markdownTabs, setMarkdownTabs] = useState<MarkdownEditorTab[]>([]);
   const [vaultView, setVaultView] = useState<DashboardView>(initialVaultView);
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
@@ -290,6 +295,47 @@ const DashboardPageInner = (
     },
     [vault.vaultPath],
   );
+
+  useEffect(() => {
+    const selected = preview.selectedFile;
+    if (!selected) {
+      return;
+    }
+    setMarkdownTabs((previous) => {
+      const existingIndex = previous.findIndex((tab) => tab.path === selected.path);
+      if (existingIndex >= 0) {
+        const existing = previous[existingIndex];
+        if (existing?.relativePath === selected.relative_path) {
+          return previous;
+        }
+        const next = previous.slice();
+        next[existingIndex] = {
+          path: selected.path,
+          relativePath: selected.relative_path,
+        };
+        return next;
+      }
+      return [
+        ...previous,
+        {
+          path: selected.path,
+          relativePath: selected.relative_path,
+        },
+      ];
+    });
+  }, [preview.selectedFile?.path, preview.selectedFile?.relative_path]);
+
+  useEffect(() => {
+    if (!vault.vaultPath) {
+      setMarkdownTabs([]);
+      return;
+    }
+    const validPathSet = new Set(vault.files.map((file) => file.path));
+    setMarkdownTabs((previous) => {
+      const next = previous.filter((tab) => validPathSet.has(tab.path));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [vault.files, vault.vaultPath]);
 
   useEffect(() => {
     setIsEditing(false);
@@ -696,6 +742,82 @@ const DashboardPageInner = (
       })();
     },
     [actions, runDashboardNavigationGuard],
+  );
+
+  const resolveMarkdownFileByPath = useCallback(
+    (path: string) => {
+      if (!path) {
+        return null;
+      }
+      const normalizedTargetPath = normalizeVaultPath(path);
+      return (
+        vault.files.find((file) => {
+          const normalizedFilePath = normalizeVaultPath(file.path);
+          if (!normalizedFilePath || !normalizedTargetPath) {
+            return file.path === path;
+          }
+          return normalizedFilePath === normalizedTargetPath;
+        }) ?? null
+      );
+    },
+    [vault.files],
+  );
+
+  const handleSelectMarkdownTab = useCallback(
+    (path: string) => {
+      if (!path || preview.selectedFile?.path === path) {
+        return;
+      }
+      const targetFile = resolveMarkdownFileByPath(path);
+      if (!targetFile) {
+        return;
+      }
+      handleSelectMarkdownFile(targetFile);
+    },
+    [handleSelectMarkdownFile, preview.selectedFile?.path, resolveMarkdownFileByPath],
+  );
+
+  const handleCloseMarkdownTab = useCallback(
+    (path: string) => {
+      const closingIndex = markdownTabs.findIndex((tab) => tab.path === path);
+      if (closingIndex < 0) {
+        return;
+      }
+      const remainingTabs = markdownTabs.filter((tab) => tab.path !== path);
+      const activePath = preview.selectedFile?.path ?? null;
+      const nextActivePath =
+        activePath === path
+          ? (remainingTabs[closingIndex]?.path ??
+            remainingTabs[closingIndex - 1]?.path ??
+            null)
+          : activePath;
+
+      void (async () => {
+        await runDashboardNavigationGuard("file-select", async () => {
+          setMarkdownTabs(remainingTabs);
+          if (activePath !== path) {
+            return;
+          }
+          if (!nextActivePath) {
+            preview.resetPreview();
+            return;
+          }
+          const nextFile = resolveMarkdownFileByPath(nextActivePath);
+          if (!nextFile) {
+            preview.resetPreview();
+            return;
+          }
+          actions.handleSelectFile(nextFile);
+        });
+      })();
+    },
+    [
+      actions,
+      markdownTabs,
+      preview,
+      resolveMarkdownFileByPath,
+      runDashboardNavigationGuard,
+    ],
   );
 
   const handleFrontmatterSave = useCallback(
@@ -1134,6 +1256,10 @@ const DashboardPageInner = (
             taskProfileSummariesByName={frontmatterTaskProfileSummaries}
             valueSuggestionsByKey={frontmatterValueSuggestions}
             keySuggestions={frontmatterKeySuggestions}
+            markdownTabs={markdownTabs}
+            activeMarkdownTabPath={preview.selectedFile?.path ?? null}
+            onSelectMarkdownTab={handleSelectMarkdownTab}
+            onCloseMarkdownTab={handleCloseMarkdownTab}
           />
         ) : (
           <ExamEditorView

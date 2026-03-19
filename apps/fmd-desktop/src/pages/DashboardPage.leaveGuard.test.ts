@@ -12,6 +12,9 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 const examEditorMock = vi.hoisted(() => ({
   queue: [] as ExamEditorControlsState[],
 }));
+const capturedPreviewPanelProps = vi.hoisted(
+  () => [] as Array<Record<string, unknown>>,
+);
 
 vi.mock("../components/AppStateProvider", () => ({
   useAppState: vi.fn(),
@@ -41,12 +44,15 @@ vi.mock("../components/FileList", () => ({
 vi.mock("../components/PreviewPanel", () => ({
   PreviewPanel: ({
     onOpenTaskProfileEditor,
+    ...props
   }: {
     onOpenTaskProfileEditor?: (payload: {
       taskValue: string | null;
       propertyKey: string;
     }) => void;
-  }) =>
+  } & Record<string, unknown>) => {
+    capturedPreviewPanelProps.push(props);
+    return (
     React.createElement(
       "button",
       {
@@ -59,7 +65,9 @@ vi.mock("../components/PreviewPanel", () => ({
           }),
       },
       "Open task profile editor",
-    ),
+    )
+    );
+  },
 }));
 
 vi.mock("../components/ModalShell", () => ({
@@ -206,7 +214,10 @@ const createMockAppState = ({
     },
     vault: {
       activeFolderPath: null,
-      files: [],
+      files: [
+        { path: "/vault/source.md", relative_path: "source.md" },
+        { path: "/vault/target.md", relative_path: "target.md" },
+      ],
       pngAssets: [],
       listError: "",
       listState: "idle",
@@ -279,6 +290,7 @@ describe("DashboardPage exam leave guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     examEditorMock.queue = [];
+    capturedPreviewPanelProps.length = 0;
     mockUseMediaQuery.mockReturnValue(false);
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -406,6 +418,24 @@ describe("DashboardPage exam leave guard", () => {
     await clickTestId(container, "modal-close:Points Profile Editor");
     await clickModalButtonByText(container, "Unsaved changes", "Discard");
     expect(container.textContent).not.toContain("Points Profile Editor");
+
+    cleanup();
+  });
+
+  it("provides markdown tab session props to PreviewPanel", () => {
+    const { cleanup } = renderDashboard({ initialVaultView: "markdown" });
+
+    const latestProps = capturedPreviewPanelProps[capturedPreviewPanelProps.length - 1];
+    expect(latestProps).toBeTruthy();
+    expect(latestProps?.markdownTabs).toEqual([
+      {
+        path: "/vault/source.md",
+        relativePath: "source.md",
+      },
+    ]);
+    expect(latestProps?.activeMarkdownTabPath).toBe("/vault/source.md");
+    expect(typeof latestProps?.onSelectMarkdownTab).toBe("function");
+    expect(typeof latestProps?.onCloseMarkdownTab).toBe("function");
 
     cleanup();
   });

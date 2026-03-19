@@ -14,7 +14,9 @@ import {
   useState,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import type { ExamCombinationMode } from "../../../lib/examMixedSession";
 import type { LoadState } from "../../../lib/types";
 import {
@@ -57,6 +59,7 @@ type ExamFilePanelProps = {
   profileOptions: ProfileOption[];
   onProfileChange: (profileId: string) => void;
   onToggleFile: (path: string) => void;
+  onOpenFile?: (entry: ExamFileEntry) => void;
   onSetSelectedPathRows?: (rows: ExamSelectionRows) => void;
   onSetSelectedPaths?: (paths: string[]) => void;
   onClearSelection: () => void;
@@ -91,6 +94,11 @@ type ChipDropHint = {
 };
 
 type SlotDropHint = ExamSelectionPlacementTarget;
+type FileOpenPopupState = {
+  entry: ExamFileEntry;
+  x: number;
+  y: number;
+};
 
 const FILE_ROW_HEIGHT = 84;
 const FILE_LIST_OVERSCAN = 5;
@@ -110,6 +118,7 @@ export const ExamFilePanel = ({
   profileOptions,
   onProfileChange,
   onToggleFile,
+  onOpenFile,
   onSetSelectedPathRows,
   onSetSelectedPaths,
   onClearSelection,
@@ -128,6 +137,7 @@ export const ExamFilePanel = ({
   const [dragSourcePath, setDragSourcePath] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<ChipDropHint | null>(null);
   const [slotDropHint, setSlotDropHint] = useState<SlotDropHint | null>(null);
+  const [fileOpenPopup, setFileOpenPopup] = useState<FileOpenPopupState | null>(null);
   const [toolbarHeight, setToolbarHeight] = useState(FILE_VIEWPORT_TOOLBAR_HEIGHT);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const selectedOrderRef = useRef<HTMLDivElement | null>(null);
@@ -269,6 +279,29 @@ export const ExamFilePanel = ({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [moveSourcePath]);
+
+  useEffect(() => {
+    if (!fileOpenPopup) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setFileOpenPopup(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [fileOpenPopup]);
+
+  useEffect(() => {
+    if (!fileOpenPopup) {
+      return;
+    }
+    const exists = validFiles.some((entry) => entry.path === fileOpenPopup.entry.path);
+    if (!exists) {
+      setFileOpenPopup(null);
+    }
+  }, [fileOpenPopup, validFiles]);
 
   const selectedCount = selectedEntries.length;
 
@@ -574,19 +607,91 @@ export const ExamFilePanel = ({
     entries.map((entry) => {
       const isSelected = selectedSet.has(entry.path);
       const { fileName, folderPath } = splitExamFilePathParts(entry.relative_path);
+
+      const openFileDirect = () => {
+        setFileOpenPopup(null);
+        onOpenFile?.(entry);
+      };
+
+      const openFilePopup = (
+        event: Pick<ReactMouseEvent<HTMLElement>, "currentTarget" | "clientX" | "clientY">,
+      ) => {
+        const target = event.currentTarget;
+        const rect = target.getBoundingClientRect();
+        const anchorX = Number.isFinite(event.clientX) && event.clientX > 0
+          ? event.clientX
+          : rect.left;
+        const anchorY = Number.isFinite(event.clientY) && event.clientY > 0
+          ? event.clientY
+          : rect.bottom;
+        setFileOpenPopup({
+          entry,
+          x: Math.max(8, Math.round(anchorX)),
+          y: Math.max(8, Math.round(anchorY + 6)),
+        });
+      };
+
+      const handleTitleClick = (event: ReactMouseEvent<HTMLSpanElement>) => {
+        if (!onOpenFile) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        openFilePopup(event);
+      };
+
+      const handleTitleKeyDown = (event: ReactKeyboardEvent<HTMLSpanElement>) => {
+        if (!onOpenFile) {
+          return;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          openFilePopup({
+            currentTarget: event.currentTarget,
+            clientX: 0,
+            clientY: 0,
+          });
+        }
+      };
+
+      const handleFileRowContextMenu = (
+        event: ReactMouseEvent<HTMLButtonElement>,
+      ) => {
+        if (!onOpenFile) {
+          return;
+        }
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          event.stopPropagation();
+          openFileDirect();
+        }
+      };
+
       return (
         <div key={entry.path} className={`exam-file-row-item ${isSelected ? "selected" : ""}`}>
           <button
             type="button"
             className="exam-file-row-button"
             onClick={() => onToggleFile(entry.path)}
+            onContextMenu={handleFileRowContextMenu}
             aria-pressed={isSelected}
           >
             <span className="exam-file-row-check" aria-hidden="true">
               <input type="checkbox" checked={isSelected} readOnly tabIndex={-1} />
             </span>
             <span className="exam-file-row-main">
-              <span className="exam-file-row-title">{fileName}</span>
+              <span
+                className={`exam-file-row-title ${onOpenFile ? "is-open-action" : ""}`}
+                role={onOpenFile ? "button" : undefined}
+                tabIndex={onOpenFile ? 0 : undefined}
+                onClick={handleTitleClick}
+                onKeyDown={handleTitleKeyDown}
+                title={onOpenFile ? "Open file actions" : undefined}
+                aria-label={onOpenFile ? `Open actions for ${fileName}` : undefined}
+              >
+                {fileName}
+              </span>
               <span className="exam-file-row-path">{folderPath || "(root)"}</span>
               <span className="exam-file-row-meta">
                 <span className="exam-file-row-tasks">{entry.taskCount} Tasks</span>
@@ -602,6 +707,34 @@ export const ExamFilePanel = ({
         </div>
       );
     });
+
+  const fileOpenPopupLayer = fileOpenPopup && onOpenFile
+    ? createPortal(
+        <div
+          className="context-menu-backdrop"
+          role="presentation"
+          onMouseDown={() => setFileOpenPopup(null)}
+        >
+          <div
+            className="context-menu exam-file-open-menu"
+            style={{ left: `${fileOpenPopup.x}px`, top: `${fileOpenPopup.y}px` }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="context-menu-item"
+              onClick={() => {
+                onOpenFile(fileOpenPopup.entry);
+                setFileOpenPopup(null);
+              }}
+            >
+              Open file
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )
+    : null;
 
   const renderPlacementSlot = (
     target: ExamSelectionPlacementTarget,
@@ -924,6 +1057,7 @@ export const ExamFilePanel = ({
           </>
         ) : null}
       </div>
+      {fileOpenPopupLayer}
     </section>
   );
 };

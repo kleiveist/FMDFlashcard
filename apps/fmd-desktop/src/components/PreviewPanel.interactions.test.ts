@@ -150,6 +150,10 @@ const buildHarness = (
     vaultPngAssets?: VaultPngAsset[];
     vaultPath?: string;
     sourceRelativePath?: string;
+    markdownTabs?: Array<{ path: string; relativePath: string }>;
+    activeMarkdownTabPath?: string | null;
+    onSelectMarkdownTab?: (path: string) => void;
+    onCloseMarkdownTab?: (path: string) => void;
   } = {},
 ) => {
   const onEditExit = vi.fn();
@@ -165,6 +169,10 @@ const buildHarness = (
     vaultPngAssets,
     vaultPath = "/vault",
     sourceRelativePath = baseFile.relative_path,
+    markdownTabs,
+    activeMarkdownTabPath,
+    onSelectMarkdownTab,
+    onCloseMarkdownTab,
   } = options;
 
   const Harness = () => {
@@ -210,6 +218,10 @@ const buildHarness = (
       onNavigateWikilink,
       valueSuggestionsByKey,
       keySuggestions,
+      markdownTabs,
+      activeMarkdownTabPath,
+      onSelectMarkdownTab,
+      onCloseMarkdownTab,
     });
   };
 
@@ -233,6 +245,43 @@ afterEach(() => {
 });
 
 describe("PreviewPanel edit-safe interactions", () => {
+  it("renders markdown tabs and routes select/close actions", () => {
+    const onSelectMarkdownTab = vi.fn();
+    const onCloseMarkdownTab = vi.fn();
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/One.md", relativePath: "One.md" },
+        { path: "/vault/Two.md", relativePath: "folder/Two.md" },
+      ],
+      activeMarkdownTabPath: "/vault/Two.md",
+      onSelectMarkdownTab,
+      onCloseMarkdownTab,
+    });
+    cleanup = localCleanup;
+
+    const tabButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".preview-tab-button"),
+    );
+    expect(tabButtons).toHaveLength(2);
+    expect(tabButtons[1]?.className).toContain("active");
+    expect(tabButtons[0]?.textContent).toContain("One.md");
+    expect(tabButtons[1]?.textContent).toContain("folder/Two.md");
+
+    act(() => {
+      tabButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onSelectMarkdownTab).toHaveBeenCalledWith("/vault/One.md");
+
+    const closeButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".preview-tab-close"),
+    );
+    expect(closeButtons).toHaveLength(2);
+    act(() => {
+      closeButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onCloseMarkdownTab).toHaveBeenCalledWith("/vault/Two.md");
+  });
+
   it("prevents normal link clicks from navigating while editing", () => {
     const { container, cleanup: localCleanup, onEditExit } = buildHarness(
       "Link: [Example](https://example.com)",
