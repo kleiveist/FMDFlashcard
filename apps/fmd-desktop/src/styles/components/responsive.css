@@ -159,6 +159,10 @@ body.focus-mode .app-shell[data-active-tab="exam"] .mobile-nav-header {
 }
 
 @media (max-width: 980px) {
+  .study-section-nav .study-section-tab {
+    padding-inline: var(--ui-space-md);
+  }
+
   .app-shell[data-active-tab="dashboard"][data-study-subview="exam"] .dashboard-page > .content-header {
     display: none;
   }
