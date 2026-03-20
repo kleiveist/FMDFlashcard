@@ -4491,7 +4491,7 @@ const FrontmatterPropertiesPanel = ({
         <div className="frontmatter-cover-panel-stage">
           <button
             type="button"
-            className={`frontmatter-cover-thumbnail-button frontmatter-cover-hero-button ${
+            className={`frontmatter-cover-hero-button ${
               isCoverPanelEmpty ? "is-empty" : ""
             }`.trim()}
             disabled={controlsDisabled}
@@ -4582,6 +4582,7 @@ const FrontmatterPropertiesPanel = ({
               }`.trim()}
               disabled={controlsDisabled}
               aria-label="Cover Bild aus Vault waehlen"
+              title="Cover waehlen"
               aria-haspopup="listbox"
               aria-expanded={isCoverPickerListOpen}
               aria-controls={isCoverPickerListOpen ? coverPickerListId : undefined}
@@ -4602,7 +4603,9 @@ const FrontmatterPropertiesPanel = ({
                 setIsCoverPickerOpen((current) => !current);
               }}
             >
-              {isCoverVisible ? "Cover waehlen" : "Cover hinzufuegen"}
+              <span className="frontmatter-cover-trigger-icon" aria-hidden="true">
+                <FrontmatterImageIcon />
+              </span>
             </button>
             {isCoverVisible ? (
               <button
@@ -4610,6 +4613,7 @@ const FrontmatterPropertiesPanel = ({
                 className="frontmatter-cover-picker-trigger frontmatter-cover-remove-trigger is-subtle"
                 disabled={controlsDisabled}
                 aria-label="Cover entfernen"
+                title="Cover entfernen"
                 onMouseDown={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -4620,47 +4624,43 @@ const FrontmatterPropertiesPanel = ({
                   handleRemoveCover();
                 }}
               >
-                Entfernen
+                <span className="frontmatter-cover-trigger-icon" aria-hidden="true">
+                  ×
+                </span>
               </button>
             ) : null}
           </div>
-        </div>
-        <div className="frontmatter-cover-panel-copy">
           {coverDisplaySubline ? (
-            <>
+            <div className="frontmatter-cover-panel-copy">
               <span className="frontmatter-cover-name" title={coverDisplayName}>
                 {coverDisplayName}
               </span>
               <span className="frontmatter-cover-target" title={coverDisplaySubline}>
                 {coverDisplaySubline}
               </span>
-            </>
-          ) : (
-            <span className="frontmatter-empty-value">
-              Cover aus dem Vault auswaehlen.
-            </span>
-          )}
-          {isCoverBroken ? (
-            <span
-              className="frontmatter-row-error"
-              title={hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : undefined}
-            >
-              {hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : "Datei nicht gefunden."}
-            </span>
+            </div>
           ) : null}
-          {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
-            <span className="frontmatter-cover-debug" title={coverImageError.src}>
-              src: {coverImageError.src}
-            </span>
-          ) : null}
-          {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
-            <span className="frontmatter-cover-debug" title={coverImageError.absolutePath}>
-              path: {coverImageError.absolutePath}
-            </span>
-          ) : null}
-          {coverRowError ? <span className="frontmatter-row-error">{coverRowError}</span> : null}
         </div>
-        <div className="frontmatter-cover-panel-picker-wrap">
+        {isCoverBroken ? (
+          <span
+            className="frontmatter-row-error"
+            title={hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : undefined}
+          >
+            {hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : "Datei nicht gefunden."}
+          </span>
+        ) : null}
+        {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
+          <span className="frontmatter-cover-debug" title={coverImageError.src}>
+            src: {coverImageError.src}
+          </span>
+        ) : null}
+        {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
+          <span className="frontmatter-cover-debug" title={coverImageError.absolutePath}>
+            path: {coverImageError.absolutePath}
+          </span>
+        ) : null}
+        {coverRowError ? <span className="frontmatter-row-error">{coverRowError}</span> : null}
+        <div className={`frontmatter-cover-panel-picker-wrap ${isCoverPickerListOpen ? "is-open" : ""}`.trim()}>
           {isCoverPickerListOpen ? (
             <ul
               id={coverPickerListId}

@@ -548,29 +548,56 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 .frontmatter-cover-panel-stage {
   position: relative;
+  width: 100%;
 }
 
 .frontmatter-cover-hero-button {
+  display: grid;
+  place-items: center;
   width: 100%;
   min-width: 0;
-  min-height: clamp(140px, 30vw, 320px);
-  aspect-ratio: 16 / 6;
-  border-radius: 10px;
-  border-color: color-mix(in srgb, var(--line-soft) 80%, transparent);
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  min-height: clamp(176px, 34vw, 360px);
+  aspect-ratio: 16 / 7;
+  border: none;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--panel) 68%, transparent);
+  padding: 0;
   position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.frontmatter-cover-hero-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.frontmatter-cover-hero-button:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
 }
 
 .frontmatter-cover-hero-button.is-empty {
+  border: 1px dashed color-mix(in srgb, var(--line-soft) 88%, transparent);
   border-style: dashed;
+  border-radius: 12px;
+  min-height: clamp(152px, 28vw, 280px);
 }
 
+.frontmatter-cover-hero-button .frontmatter-cover-thumb-frame,
 .frontmatter-cover-hero-button .frontmatter-cover-thumbnail-viewport {
+  width: 100%;
+  height: 100%;
+}
+
+.frontmatter-cover-hero-button .frontmatter-cover-thumbnail {
   width: 100%;
   height: 100%;
 }
@@ -592,22 +619,28 @@
 
 .frontmatter-cover-panel-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   z-index: 4;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .frontmatter-cover-picker-trigger {
   border: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
-  border-radius: 7px;
-  padding: 4px 8px;
+  border-radius: 999px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--ink);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   line-height: 1.25;
-  background: color-mix(in srgb, var(--panel) 58%, transparent);
+  background: color-mix(in srgb, var(--panel) 34%, transparent);
   backdrop-filter: blur(2px);
   cursor: pointer;
   transition:
@@ -618,19 +651,22 @@
 }
 
 .frontmatter-cover-picker-trigger.is-prominent {
-  background: color-mix(in srgb, var(--accent-soft) 50%, var(--panel));
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--panel));
   border-color: color-mix(in srgb, var(--accent-border) 40%, var(--line-soft));
 }
 
 .frontmatter-cover-picker-trigger.is-subtle {
-  opacity: 0.04;
-  background: color-mix(in srgb, var(--panel) 30%, transparent);
+  opacity: 0;
+  transform: translateY(-2px);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--panel) 18%, transparent);
 }
 
 .frontmatter-cover-panel.has-cover:hover .frontmatter-cover-picker-trigger.is-subtle,
 .frontmatter-cover-panel.has-cover:focus-within .frontmatter-cover-picker-trigger.is-subtle,
 .frontmatter-cover-picker-trigger[aria-expanded="true"] {
   opacity: 0.96;
+  pointer-events: auto;
   background: color-mix(in srgb, var(--panel) 75%, transparent);
   border-color: color-mix(in srgb, var(--line-soft) 85%, transparent);
   transform: translateY(0);
@@ -650,11 +686,53 @@
   color: color-mix(in srgb, var(--muted) 84%, var(--ink));
 }
 
+.frontmatter-cover-trigger-icon {
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.frontmatter-cover-trigger-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.frontmatter-cover-remove-trigger .frontmatter-cover-trigger-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .frontmatter-cover-panel-copy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
+  padding: 30px 12px 10px;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--panel) 74%, transparent),
+    transparent
+  );
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  pointer-events: none;
+}
+
+.frontmatter-cover-panel.has-cover:hover .frontmatter-cover-panel-copy,
+.frontmatter-cover-panel.has-cover:focus-within .frontmatter-cover-panel-copy {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .frontmatter-cover-panel-picker-wrap {
@@ -663,16 +741,26 @@
   min-height: 0;
 }
 
+.frontmatter-cover-panel-picker-wrap.is-open {
+  padding: 8px 10px 10px;
+}
+
 .frontmatter-cover-picker.frontmatter-cover-panel-picker {
   position: static;
   top: auto;
   left: auto;
   right: auto;
-  width: min(460px, 100%);
+  margin: 0;
+  width: min(540px, 100%);
   max-width: 100%;
   border: 1px solid color-mix(in srgb, var(--line-soft) 88%, transparent);
   box-shadow: 0 10px 24px color-mix(in srgb, var(--ink) 14%, transparent);
   z-index: 40;
+}
+
+.frontmatter-cover-panel > .frontmatter-row-error,
+.frontmatter-cover-panel > .frontmatter-cover-debug {
+  margin: 8px 10px 0;
 }
 
 .frontmatter-row.frontmatter-row-cover-active {
@@ -1553,7 +1641,25 @@ textarea.preview-editor {
 .markdown-hybrid-block.has-drop-indicator-top::before,
 .markdown-hybrid-block.has-drop-indicator-bottom::after {
   background: color-mix(in srgb, var(--accent-border) 88%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-border) 24%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-border) 28%, transparent),
+    0 0 10px color-mix(in srgb, var(--accent-border) 24%, transparent);
+}
+
+.markdown-hybrid-block.has-drop-indicator-top {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--accent-soft) 16%, transparent) 0%,
+    transparent 42%
+  );
+}
+
+.markdown-hybrid-block.has-drop-indicator-bottom {
+  background-image: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--accent-soft) 16%, transparent) 0%,
+    transparent 42%
+  );
 }
 
 .markdown-hybrid-overlay-row {
@@ -1590,6 +1696,46 @@ textarea.preview-editor {
 
 .markdown-hybrid-overlay-control {
   pointer-events: auto;
+}
+
+.markdown-hybrid-drop-slot-indicator {
+  position: absolute;
+  left: calc(var(--mdh-left-gutter-width) + 10px);
+  right: calc(var(--mdh-right-gutter-width) + 10px);
+  height: 0;
+  pointer-events: none;
+  z-index: 13;
+}
+
+.markdown-hybrid-drop-slot-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-border) 92%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent-border) 28%, transparent),
+    0 0 12px color-mix(in srgb, var(--accent-border) 24%, transparent);
+}
+
+.markdown-hybrid-drop-slot-badge {
+  position: absolute;
+  right: 0;
+  top: -14px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--accent-strong) 92%, var(--text));
+  background: color-mix(in srgb, var(--accent-soft) 24%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent-border) 38%, transparent);
+  box-shadow: 0 5px 14px color-mix(in srgb, black 12%, transparent);
+  white-space: nowrap;
 }
 
 .markdown-hybrid-overlay-right-status {
@@ -1688,6 +1834,62 @@ textarea.preview-editor {
   line-height: 1;
   font-size: 12px;
   letter-spacing: -1px;
+}
+
+.markdown-hybrid-editor.is-drag-reordering {
+  cursor: grabbing;
+}
+
+.markdown-hybrid-drag-preview {
+  width: min(320px, 46vw);
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent-border) 38%, transparent);
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  box-shadow:
+    0 14px 28px color-mix(in srgb, black 24%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--line-soft) 38%, transparent);
+  padding: 7px 9px;
+  opacity: 0.94;
+  user-select: none;
+  pointer-events: none;
+}
+
+.markdown-hybrid-drag-preview {
+  position: fixed;
+  z-index: 34;
+}
+
+.markdown-hybrid-block-drag-image {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  z-index: -1;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.markdown-hybrid-drag-preview-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-strong) 86%, var(--text));
+}
+
+.markdown-hybrid-drag-preview-snippet {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--text) 92%, var(--muted));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .markdown-hybrid-block-insert-button > span {
@@ -4218,15 +4420,41 @@ textarea.preview-editor {
   font-size: inherit;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1199px) {
   .frontmatter-cover-panel-actions {
-    position: static;
-    justify-content: flex-end;
-    margin-top: 8px;
+    top: 8px;
+    right: 8px;
   }
 
   .frontmatter-cover-picker-trigger.is-subtle {
     opacity: 0.92;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .frontmatter-cover-panel-copy {
+    position: static;
+    opacity: 1;
+    transform: none;
+    background: color-mix(in srgb, var(--panel) 80%, transparent);
+    padding: 8px 10px;
+    pointer-events: auto;
+  }
+
+  .frontmatter-cover-panel-picker-wrap.is-open {
+    padding-top: 0;
+  }
+
+  .frontmatter-cover-picker.frontmatter-cover-panel-picker {
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .frontmatter-cover-panel-actions {
+    position: static;
+    justify-content: flex-end;
+    margin: 8px 10px 0;
   }
 
   .frontmatter-cover-picker.frontmatter-cover-panel-picker {

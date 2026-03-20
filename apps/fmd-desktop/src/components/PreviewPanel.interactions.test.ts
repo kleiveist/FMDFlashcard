@@ -3196,7 +3196,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     ) as HTMLImageElement | null;
     expect(coverThumb).toBeTruthy();
     expect(coverThumb?.getAttribute("src") ?? "").toContain("cover.png");
-    expect(coverThumb?.closest(".frontmatter-cover-thumbnail-button")).toBeTruthy();
+    expect(coverThumb?.closest(".frontmatter-cover-hero-button")).toBeTruthy();
     expect(container.querySelector(".frontmatter-cover-panel")).toBeTruthy();
     expect(container.querySelector(".frontmatter-panel")).toBeTruthy();
     expect(container.querySelector('[data-frontmatter-key="Cover"]')).toBeNull();
@@ -3226,6 +3226,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     ) as HTMLButtonElement | null;
     expect(pickerButton).toBeTruthy();
     expect(pickerButton?.className ?? "").toContain("is-subtle");
+    expect((pickerButton?.textContent ?? "").trim()).toBe("");
 
     act(() => {
       pickerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -3266,6 +3267,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     ) as HTMLButtonElement | null;
     expect(pickerButton).toBeTruthy();
     expect(pickerButton?.className ?? "").toContain("is-prominent");
+    expect((pickerButton?.textContent ?? "").trim()).toBe("");
 
     act(() => {
       pickerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));

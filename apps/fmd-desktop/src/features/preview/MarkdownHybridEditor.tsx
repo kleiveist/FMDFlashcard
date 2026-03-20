@@ -220,6 +220,14 @@ type OverlayLayoutState = {
   contentPaddingRight: number;
 };
 
+type DragPreviewState = {
+  pointerX: number;
+  pointerY: number;
+  title: string;
+  snippet: string;
+  itemCount: number;
+};
+
 type InsertMenuCategoryId =
   | "standard-blocks"
   | "structure"
@@ -1391,6 +1399,10 @@ const VIRTUAL_PLACEHOLDER_BLOCK_CHROME_PX = 6;
 const SELECTION_DRAG_THRESHOLD_PX = 5;
 const SELECTION_AUTO_SCROLL_EDGE_PX = 48;
 const SELECTION_AUTO_SCROLL_MAX_STEP_PX = 22;
+const DRAG_PREVIEW_MAX_CHARS = 84;
+const DRAG_PREVIEW_POINTER_OFFSET_X = 16;
+const DRAG_PREVIEW_POINTER_OFFSET_Y = 18;
+const dragPreviewDirectiveLinePattern = /^\s*#(?:card|endcard|exam|endexam|help|helpend)\s*$/i;
 
 const isVerticallyScrollable = (element: HTMLElement) => {
   const style = window.getComputedStyle(element);
@@ -2192,6 +2204,102 @@ const isStructuralSeparatorBlankBlock = (blocks: MarkdownBlock[], index: number)
   return isTextLikeBlockKind(previous.kind) && isTextLikeBlockKind(next.kind);
 };
 
+const truncateDragPreviewText = (value: string, maxChars = DRAG_PREVIEW_MAX_CHARS) => {
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return `${value.slice(0, Math.max(0, maxChars - 3)).trimEnd()}...`;
+};
+
+const resolveDragPreviewKindLabel = (kind: MarkdownBlock["kind"]) => {
+  switch (kind) {
+    case "blank":
+      return "Blank";
+    case "heading":
+      return "Heading";
+    case "paragraph":
+      return "Paragraph";
+    case "math-block":
+      return "Math";
+    case "card-block":
+      return "Card";
+    case "help-block":
+      return "Help";
+    case "image-embed":
+      return "Image";
+    case "ordered-list":
+      return "Numbered List";
+    case "unordered-list":
+      return "Bulleted List";
+    case "table":
+      return "Table";
+    case "code-fence":
+      return "Code";
+    case "blockquote":
+      return "Quote";
+    case "hr":
+      return "Divider";
+    default:
+      return "Block";
+  }
+};
+
+const resolveDragPreviewSnippetFromBlock = (block: MarkdownBlock | null | undefined) => {
+  if (!block) {
+    return "No preview available";
+  }
+  if (block.kind === "hr") {
+    return "---";
+  }
+  for (const rawLine of block.raw.split("\n")) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      continue;
+    }
+    if (dragPreviewDirectiveLinePattern.test(trimmed)) {
+      continue;
+    }
+    return truncateDragPreviewText(trimmed.replace(/\s+/g, " "));
+  }
+  return block.kind === "blank" ? "Blank line" : "No preview available";
+};
+
+const resolveDragPreviewPayload = (
+  blocks: MarkdownBlock[],
+  fromIndex: number,
+  selection: BlockSelectionState | null,
+) => {
+  const movingSelection =
+    Boolean(
+      selection &&
+        selection.selectedIndices.length > 1 &&
+        isBlockIndexSelected(selection, fromIndex),
+    );
+  const movedIndices = movingSelection
+    ? [...(selection?.selectedIndices ?? [])]
+      .sort((left, right) => left - right)
+      .filter((index) => index >= 0 && index < blocks.length)
+    : [fromIndex];
+  const leadBlock = blocks[movedIndices[0] ?? fromIndex] ?? blocks[fromIndex] ?? null;
+  const leadKindLabel = resolveDragPreviewKindLabel(leadBlock?.kind ?? "paragraph");
+  const leadSnippet = resolveDragPreviewSnippetFromBlock(leadBlock);
+  const itemCount = movedIndices.length;
+
+  if (itemCount > 1) {
+    return {
+      title: `${itemCount} blocks`,
+      snippet: `${leadKindLabel}: ${leadSnippet}`,
+      itemCount,
+    };
+  }
+
+  return {
+    title: leadKindLabel,
+    snippet: leadSnippet,
+    itemCount: 1,
+  };
+};
+
 const resolveVirtualizationFallbackHeight = (kind: MarkdownBlock["kind"]) => {
   switch (kind) {
     case "blank":
@@ -2978,6 +3086,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const [isSelectionDragging, setIsSelectionDragging] = useState(false);
   const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
   const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null);
+  const [dragPreviewState, setDragPreviewState] = useState<DragPreviewState | null>(null);
   const [insertMenuState, setInsertMenuState] = useState<InsertMenuState | null>(null);
   const [mathToolboxState, setMathToolboxState] = useState<MathToolboxState | null>(null);
   const [selectionContextMenuState, setSelectionContextMenuState] =
@@ -3033,6 +3142,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const virtualViewportFrameRef = useRef<number | null>(null);
   const selectionAutoScrollFrameRef = useRef<number | null>(null);
   const selectionDragUpdateFrameRef = useRef<number | null>(null);
+  const dragPreviewFrameRef = useRef<number | null>(null);
+  const dragPreviewPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const dragImageElementRef = useRef<HTMLDivElement | null>(null);
   const activeTextareaLayoutFrameRef = useRef<number | null>(null);
   const selectionDragPointerRef = useRef<{ x: number; y: number } | null>(null);
   const inlineFormattingToolbarTimerRef = useRef<number | null>(null);
@@ -3072,6 +3184,74 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     activeDraftRef.current = nextDraft;
     setActiveDraft(nextDraft);
   }, []);
+
+  const removeDragImageElement = useCallback(() => {
+    const current = dragImageElementRef.current;
+    if (current && current.parentNode) {
+      current.parentNode.removeChild(current);
+    }
+    dragImageElementRef.current = null;
+  }, []);
+
+  const createDragImageElement = useCallback(() => {
+    if (typeof document === "undefined") {
+      return null;
+    }
+    removeDragImageElement();
+    const element = document.createElement("div");
+    element.className = "markdown-hybrid-block-drag-image";
+    document.body.appendChild(element);
+    dragImageElementRef.current = element;
+    return element;
+  }, [removeDragImageElement]);
+
+  const scheduleDragPreviewPointerUpdate = useCallback((clientX: number, clientY: number) => {
+    dragPreviewPointerRef.current = { x: clientX, y: clientY };
+    if (dragPreviewFrameRef.current !== null) {
+      return;
+    }
+    dragPreviewFrameRef.current = window.requestAnimationFrame(() => {
+      dragPreviewFrameRef.current = null;
+      const point = dragPreviewPointerRef.current;
+      if (!point) {
+        return;
+      }
+      setDragPreviewState((current) =>
+        current
+          ? {
+              ...current,
+              pointerX: point.x,
+              pointerY: point.y,
+            }
+          : current,
+      );
+    });
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (dragPreviewFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragPreviewFrameRef.current);
+        dragPreviewFrameRef.current = null;
+      }
+      dragPreviewPointerRef.current = null;
+      removeDragImageElement();
+    },
+    [removeDragImageElement],
+  );
+
+  useEffect(() => {
+    if (draggedBlockIndex !== null) {
+      return;
+    }
+    setDragPreviewState(null);
+    dragPreviewPointerRef.current = null;
+    if (dragPreviewFrameRef.current !== null) {
+      window.cancelAnimationFrame(dragPreviewFrameRef.current);
+      dragPreviewFrameRef.current = null;
+    }
+    removeDragImageElement();
+  }, [draggedBlockIndex, removeDragImageElement]);
 
   const resolveCodeFencePreviewItems = useCallback(
     (raw: string): MediaItem[] =>
@@ -8129,18 +8309,34 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setInsertMenuState(null);
       setDraggedBlockIndex(index);
       setDropIndicatorIndex(index);
+      const previewPayload = resolveDragPreviewPayload(blocks, index, selectedBlockSelection);
+      setDragPreviewState({
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+        title: previewPayload.title,
+        snippet: previewPayload.snippet,
+        itemCount: previewPayload.itemCount,
+      });
+      scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
       try {
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", String(index));
+        const dragImageElement = createDragImageElement();
+        if (dragImageElement) {
+          event.dataTransfer.setDragImage(dragImageElement, 0, 0);
+        }
       } catch {
         // ignore restricted dataTransfer implementations
       }
     },
     [
       activeBlockIndex,
+      blocks,
       clearSelectedBlockRange,
       commitActiveBlock,
+      createDragImageElement,
       disabled,
+      scheduleDragPreviewPointerUpdate,
       selectedBlockSelection,
     ],
   );
@@ -8179,7 +8375,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const handleDragHandleDragEnd = useCallback(() => {
     setDraggedBlockIndex(null);
     setDropIndicatorIndex(null);
-  }, []);
+    setDragPreviewState(null);
+    dragPreviewPointerRef.current = null;
+    removeDragImageElement();
+  }, [removeDragImageElement]);
 
   const handleBlockDragOver = useCallback(
     (index: number) => (event: DragEvent<HTMLDivElement>) => {
@@ -8187,6 +8386,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         return;
       }
       event.preventDefault();
+      scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
       const rect = event.currentTarget.getBoundingClientRect();
       const nextDropIndex = event.clientY < rect.top + rect.height / 2
         ? index
@@ -8200,7 +8400,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         // ignore
       }
     },
-    [disabled, draggedBlockIndex, dropIndicatorIndex],
+    [disabled, draggedBlockIndex, dropIndicatorIndex, scheduleDragPreviewPointerUpdate],
   );
 
   const handleBlockDrop = useCallback(
@@ -8215,6 +8415,107 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     },
     [disabled, draggedBlockIndex, dropIndicatorIndex, reorderBlockByDrop],
   );
+
+  const handleContentLayerDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (disabled || draggedBlockIndex === null) {
+        return;
+      }
+      if (event.target instanceof HTMLElement) {
+        const targetBlock = event.target.closest(".markdown-hybrid-block[data-md-block-index]");
+        if (targetBlock) {
+          return;
+        }
+      }
+      event.preventDefault();
+      scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
+      const blockElements = Array.from(
+        event.currentTarget.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
+      let nextDropIndex = blocks.length;
+      for (const blockElement of blockElements) {
+        const blockIndexRaw = blockElement.dataset.mdBlockIndex;
+        if (typeof blockIndexRaw !== "string") {
+          continue;
+        }
+        const blockIndex = Number.parseInt(blockIndexRaw, 10);
+        if (!Number.isFinite(blockIndex)) {
+          continue;
+        }
+        const rect = blockElement.getBoundingClientRect();
+        if (event.clientY < rect.top + rect.height / 2) {
+          nextDropIndex = blockIndex;
+          break;
+        }
+        nextDropIndex = blockIndex + 1;
+      }
+      if (dropIndicatorIndex !== nextDropIndex) {
+        setDropIndicatorIndex(nextDropIndex);
+      }
+      try {
+        event.dataTransfer.dropEffect = "move";
+      } catch {
+        // ignore
+      }
+    },
+    [
+      blocks.length,
+      disabled,
+      draggedBlockIndex,
+      dropIndicatorIndex,
+      scheduleDragPreviewPointerUpdate,
+    ],
+  );
+
+  const handleContentLayerDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      if (disabled || draggedBlockIndex === null || dropIndicatorIndex === null) {
+        return;
+      }
+      if (event.target instanceof HTMLElement) {
+        const targetBlock = event.target.closest(".markdown-hybrid-block[data-md-block-index]");
+        if (targetBlock) {
+          return;
+        }
+      }
+      event.preventDefault();
+      reorderBlockByDrop(draggedBlockIndex, dropIndicatorIndex);
+      setDraggedBlockIndex(null);
+      setDropIndicatorIndex(null);
+      setDragPreviewState(null);
+      dragPreviewPointerRef.current = null;
+      removeDragImageElement();
+    },
+    [
+      disabled,
+      draggedBlockIndex,
+      dropIndicatorIndex,
+      removeDragImageElement,
+      reorderBlockByDrop,
+    ],
+  );
+
+  useEffect(() => {
+    if (draggedBlockIndex === null) {
+      return;
+    }
+    const handleWindowDragOver = (event: globalThis.DragEvent) => {
+      scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
+    };
+    const handleWindowDropOrEnd = () => {
+      setDragPreviewState(null);
+      dragPreviewPointerRef.current = null;
+      removeDragImageElement();
+    };
+    window.addEventListener("dragover", handleWindowDragOver);
+    window.addEventListener("drop", handleWindowDropOrEnd);
+    window.addEventListener("dragend", handleWindowDropOrEnd);
+    return () => {
+      window.removeEventListener("dragover", handleWindowDragOver);
+      window.removeEventListener("drop", handleWindowDropOrEnd);
+      window.removeEventListener("dragend", handleWindowDropOrEnd);
+    };
+  }, [draggedBlockIndex, removeDragImageElement, scheduleDragPreviewPointerUpdate]);
 
   const handleHybridEditorContextMenu = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -8329,6 +8630,50 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         Number.isFinite(insertMenuState.advancedSequenceNumber)
       ? Math.max(1, Math.floor(insertMenuState.advancedSequenceNumber))
       : resolveNextGlobalSequenceNumber(markdown)
+    : null;
+  const activeDropSlotTop = useMemo(() => {
+    if (draggedBlockIndex === null || dropIndicatorIndex === null) {
+      return null;
+    }
+    const resolveRow = (index: number) =>
+      overlayLayout.byIndex.get(index) ??
+      overlayRows.find((row) => row.index === index) ??
+      null;
+    if (dropIndicatorIndex <= 0) {
+      const first = resolveRow(0);
+      return first ? Math.max(0, first.top - 5) : 0;
+    }
+    if (dropIndicatorIndex >= blocks.length) {
+      const lastIndex = Math.max(0, blocks.length - 1);
+      const last = resolveRow(lastIndex);
+      return last ? Math.max(0, last.top + last.height + 5) : null;
+    }
+    const target = resolveRow(dropIndicatorIndex);
+    if (target) {
+      return Math.max(0, target.top - 5);
+    }
+    const previous = resolveRow(dropIndicatorIndex - 1);
+    return previous ? Math.max(0, previous.top + previous.height + 5) : null;
+  }, [blocks.length, draggedBlockIndex, dropIndicatorIndex, overlayLayout.byIndex, overlayRows]);
+  const activeDropSlotLabel = draggedBlockIndex !== null && dropIndicatorIndex !== null
+    ? dragPreviewState?.itemCount && dragPreviewState.itemCount > 1
+      ? `Move ${dragPreviewState.itemCount} blocks here`
+      : "Move block here"
+    : null;
+  const dragPreviewOverlay = dragPreviewState && draggedBlockIndex !== null && !disabled
+    ? (
+      <div
+        className="markdown-hybrid-drag-preview"
+        aria-hidden="true"
+        style={{
+          left: dragPreviewState.pointerX + DRAG_PREVIEW_POINTER_OFFSET_X,
+          top: dragPreviewState.pointerY + DRAG_PREVIEW_POINTER_OFFSET_Y,
+        }}
+      >
+        <div className="markdown-hybrid-drag-preview-title">{dragPreviewState.title}</div>
+        <div className="markdown-hybrid-drag-preview-snippet">{dragPreviewState.snippet}</div>
+      </div>
+    )
     : null;
 
   const handleInsertMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
@@ -9391,7 +9736,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         ref={containerRef}
         className={`markdown-hybrid-editor${disabled ? " is-disabled" : ""}${
           isSelectionDragging ? " is-selection-dragging" : ""
-        }`}
+        }${draggedBlockIndex !== null ? " is-drag-reordering" : ""}`}
         style={editorSurfaceStyle}
         tabIndex={0}
         onMouseDownCapture={handleEditorRootMouseDownCapture}
@@ -9400,11 +9745,15 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         onCopy={handleEditorCopy}
         onCut={handleEditorCut}
         onPaste={handleEditorPaste}
+        onDragOver={handleContentLayerDragOver}
+        onDrop={handleContentLayerDrop}
       >
         <div
           ref={contentLayerRef}
           className="markdown-hybrid-content-layer"
           onMouseDownCapture={handleContentLayerMouseDownCapture}
+          onDragOver={handleContentLayerDragOver}
+          onDrop={handleContentLayerDrop}
         >
           <div
             className={`markdown-hybrid-block markdown-hybrid-block-empty${
@@ -9490,7 +9839,18 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             isDragHandleDisabled: true,
             insertButtonTitle: "Insert block",
           })}
+          {activeDropSlotTop !== null && activeDropSlotLabel ? (
+            <div
+              className="markdown-hybrid-drop-slot-indicator"
+              style={{ top: activeDropSlotTop }}
+              aria-hidden="true"
+            >
+              <span className="markdown-hybrid-drop-slot-line" />
+              <span className="markdown-hybrid-drop-slot-badge">{activeDropSlotLabel}</span>
+            </div>
+          ) : null}
         </div>
+        {dragPreviewOverlay}
         {pageLinkPickerPopup}
         {typedImageLinkPickerPopup}
         {mathToolboxPopup}
@@ -9505,7 +9865,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       ref={containerRef}
       className={`markdown-hybrid-editor${disabled ? " is-disabled" : ""}${
         isSelectionDragging ? " is-selection-dragging" : ""
-      }`}
+      }${draggedBlockIndex !== null ? " is-drag-reordering" : ""}`}
       style={editorSurfaceStyle}
       tabIndex={0}
       onMouseDownCapture={handleEditorRootMouseDownCapture}
@@ -9514,11 +9874,15 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       onCopy={handleEditorCopy}
       onCut={handleEditorCut}
       onPaste={handleEditorPaste}
+      onDragOver={handleContentLayerDragOver}
+      onDrop={handleContentLayerDrop}
     >
       <div
         ref={contentLayerRef}
         className="markdown-hybrid-content-layer"
         onMouseDownCapture={handleContentLayerMouseDownCapture}
+        onDragOver={handleContentLayerDragOver}
+        onDrop={handleContentLayerDrop}
       >
         {blocks.map((block, index) => {
           const isActive = activeBlockIndex === index && !disabled;
@@ -9756,7 +10120,18 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             height: overlayRow.height,
           });
         })}
+        {activeDropSlotTop !== null && activeDropSlotLabel ? (
+          <div
+            className="markdown-hybrid-drop-slot-indicator"
+            style={{ top: activeDropSlotTop }}
+            aria-hidden="true"
+          >
+            <span className="markdown-hybrid-drop-slot-line" />
+            <span className="markdown-hybrid-drop-slot-badge">{activeDropSlotLabel}</span>
+          </div>
+        ) : null}
       </div>
+      {dragPreviewOverlay}
       {pageLinkPickerPopup}
       {typedImageLinkPickerPopup}
       {mathToolboxPopup}
