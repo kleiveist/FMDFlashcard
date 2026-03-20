@@ -4318,6 +4318,7 @@ const FrontmatterPropertiesPanel = ({
   const hasCoverImageLoadError = Boolean(
     coverImageError && coverImageError.src === coverImageSrc,
   );
+  const hasRenderableCoverImage = Boolean(resolvedCoverImage && !hasCoverImageLoadError);
   const coverDisplayWikilink = coverActiveWikilink ||
     (coverTarget ? normalizeWikilinkValue(coverTarget) : "");
   const coverDisplayName = coverDisplayWikilink || "Kein Cover";
@@ -4328,6 +4329,7 @@ const FrontmatterPropertiesPanel = ({
   const isCoverPanelActive = activeCoverKey === coverPanelKey;
   const isCoverVisible = Boolean(coverProperty);
   const isCoverPanelEmpty = !isCoverVisible;
+  const isCoverCompact = !hasRenderableCoverImage;
   const coverPickerListId = `frontmatter-cover-picker-${coverPanelKey
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")}`;
@@ -4485,6 +4487,8 @@ const FrontmatterPropertiesPanel = ({
         ref={frontmatterCoverPanelRef}
         className={`frontmatter-cover-panel ${
           isCoverVisible ? "has-cover" : "is-empty"
+        } ${
+          isCoverCompact ? "is-compact" : ""
         }`.trim()}
         aria-label="Cover"
       >
@@ -4493,6 +4497,8 @@ const FrontmatterPropertiesPanel = ({
             type="button"
             className={`frontmatter-cover-hero-button ${
               isCoverPanelEmpty ? "is-empty" : ""
+            } ${
+              isCoverCompact ? "is-compact" : ""
             }`.trim()}
             disabled={controlsDisabled}
             aria-label={coverTarget ? "Cover oeffnen" : "Cover auswaehlen"}
@@ -4532,7 +4538,7 @@ const FrontmatterPropertiesPanel = ({
               setIsCoverPickerOpen((current) => !current);
             }}
           >
-            {resolvedCoverImage && !hasCoverImageLoadError ? (
+            {hasRenderableCoverImage && resolvedCoverImage ? (
               <CoverThumbnailImage
                 variant="main"
                 image={resolvedCoverImage}
@@ -4563,48 +4569,123 @@ const FrontmatterPropertiesPanel = ({
                   }));
                 }}
               />
-            ) : (
+            ) : !isCoverCompact ? (
               <span className="frontmatter-cover-placeholder frontmatter-cover-hero-placeholder" aria-hidden="true">
                 <FrontmatterImageIcon />
-              </span>
-            )}
-            {isCoverPanelEmpty ? (
-              <span className="frontmatter-cover-empty-copy">
-                Kein Cover gesetzt
               </span>
             ) : null}
           </button>
           <div className="frontmatter-cover-panel-actions">
-            <button
-              type="button"
-              className="frontmatter-cover-picker-trigger is-subtle"
-              disabled={controlsDisabled}
-              aria-label="Cover Bild aus Vault waehlen"
-              title="Cover waehlen"
-              aria-haspopup="listbox"
-              aria-expanded={isCoverPickerListOpen}
-              aria-controls={isCoverPickerListOpen ? coverPickerListId : undefined}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (controlsDisabled) {
-                  return;
-                }
-                if (!isCoverPanelActive) {
-                  activateCoverRow(coverPanelKey, { openImagePicker: true });
-                  return;
-                }
-                setIsCoverPickerOpen((current) => !current);
-              }}
-            >
-              <span className="frontmatter-cover-trigger-icon" aria-hidden="true">
-                <FrontmatterImageIcon />
-              </span>
-            </button>
+            <div className="frontmatter-cover-picker-anchor">
+              <button
+                type="button"
+                className="frontmatter-cover-picker-trigger is-subtle"
+                disabled={controlsDisabled}
+                aria-label="Cover Bild aus Vault waehlen"
+                title="Cover waehlen"
+                aria-haspopup="listbox"
+                aria-expanded={isCoverPickerListOpen}
+                aria-controls={isCoverPickerListOpen ? coverPickerListId : undefined}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (controlsDisabled) {
+                    return;
+                  }
+                  if (!isCoverPanelActive) {
+                    activateCoverRow(coverPanelKey, { openImagePicker: true });
+                    return;
+                  }
+                  setIsCoverPickerOpen((current) => !current);
+                }}
+              >
+                <span className="frontmatter-cover-trigger-icon" aria-hidden="true">
+                  <FrontmatterImageIcon />
+                </span>
+              </button>
+              {isCoverPickerListOpen ? (
+                <ul
+                  id={coverPickerListId}
+                  className="frontmatter-cover-picker frontmatter-cover-panel-picker"
+                  role="listbox"
+                  aria-label="Cover Bildauswahl"
+                >
+                  {filteredCoverImageEntries.length === 0 ? (
+                    <li className="frontmatter-cover-picker-empty">
+                      Keine PNG im aktiven Vault.
+                    </li>
+                  ) : (
+                    filteredCoverImageEntries.map((entry) => {
+                      const pickerSrc = entry.src ?? entry.path;
+                      const pickerImageError = coverImageErrors[entry.relativePath];
+                      const hasPickerImageError = Boolean(
+                        pickerImageError && pickerImageError.src === pickerSrc,
+                      );
+                      return (
+                        <li key={`cover-image-${entry.relativePath}`}>
+                          <button
+                            type="button"
+                            className={`frontmatter-cover-picker-option ${
+                              coverTargetCandidates.includes(entry.relativePath)
+                                ? "active"
+                                : ""
+                            }`}
+                            role="option"
+                            aria-selected={coverTargetCandidates.includes(entry.relativePath)}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            }}
+                            onClick={() => {
+                              void commitCoverSelection(entry.relativePath);
+                            }}
+                          >
+                            {hasPickerImageError ? (
+                              <span className="frontmatter-cover-picker-thumb-placeholder" aria-hidden="true">
+                                <FrontmatterImageIcon />
+                              </span>
+                            ) : (
+                              <CoverThumbnailImage
+                                variant="picker"
+                                image={entry}
+                                alt={entry.fileName}
+                                onError={(event) => {
+                                  const failedSrc =
+                                    event.currentTarget.currentSrc ||
+                                    event.currentTarget.src ||
+                                    entry.src ||
+                                    entry.path;
+                                  setCoverImageErrors((current) => ({
+                                    ...current,
+                                    [entry.relativePath]: {
+                                      src: failedSrc,
+                                      relativePath: entry.relativePath,
+                                      absolutePath: entry.path,
+                                    },
+                                  }));
+                                }}
+                              />
+                            )}
+                            <span className="frontmatter-cover-picker-copy">
+                              <span title={entry.fileName}>
+                                {entry.fileName}
+                              </span>
+                              <span title={entry.relativePath}>
+                                {entry.relativePath}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              ) : null}
+            </div>
             {isCoverVisible ? (
               <button
                 type="button"
@@ -4628,7 +4709,7 @@ const FrontmatterPropertiesPanel = ({
               </button>
             ) : null}
           </div>
-          {coverDisplaySubline ? (
+          {!isCoverCompact && coverDisplaySubline ? (
             <div className="frontmatter-cover-panel-copy">
               <span className="frontmatter-cover-name" title={coverDisplayName}>
                 {coverDisplayName}
@@ -4658,86 +4739,6 @@ const FrontmatterPropertiesPanel = ({
           </span>
         ) : null}
         {coverRowError ? <span className="frontmatter-row-error">{coverRowError}</span> : null}
-        <div className={`frontmatter-cover-panel-picker-wrap ${isCoverPickerListOpen ? "is-open" : ""}`.trim()}>
-          {isCoverPickerListOpen ? (
-            <ul
-              id={coverPickerListId}
-              className="frontmatter-cover-picker frontmatter-cover-panel-picker"
-              role="listbox"
-              aria-label="Cover Bildauswahl"
-            >
-              {filteredCoverImageEntries.length === 0 ? (
-                <li className="frontmatter-cover-picker-empty">
-                  Keine PNG im aktiven Vault.
-                </li>
-              ) : (
-                filteredCoverImageEntries.map((entry) => {
-                  const pickerSrc = entry.src ?? entry.path;
-                  const pickerImageError = coverImageErrors[entry.relativePath];
-                  const hasPickerImageError = Boolean(
-                    pickerImageError && pickerImageError.src === pickerSrc,
-                  );
-                  return (
-                    <li key={`cover-image-${entry.relativePath}`}>
-                      <button
-                        type="button"
-                        className={`frontmatter-cover-picker-option ${
-                          coverTargetCandidates.includes(entry.relativePath)
-                            ? "active"
-                            : ""
-                        }`}
-                        role="option"
-                        aria-selected={coverTargetCandidates.includes(entry.relativePath)}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                        }}
-                        onClick={() => {
-                          void commitCoverSelection(entry.relativePath);
-                        }}
-                      >
-                        {hasPickerImageError ? (
-                          <span className="frontmatter-cover-picker-thumb-placeholder" aria-hidden="true">
-                            <FrontmatterImageIcon />
-                          </span>
-                        ) : (
-                          <CoverThumbnailImage
-                            variant="picker"
-                            image={entry}
-                            alt={entry.fileName}
-                            onError={(event) => {
-                              const failedSrc =
-                                event.currentTarget.currentSrc ||
-                                event.currentTarget.src ||
-                                entry.src ||
-                                entry.path;
-                              setCoverImageErrors((current) => ({
-                                ...current,
-                                [entry.relativePath]: {
-                                  src: failedSrc,
-                                  relativePath: entry.relativePath,
-                                  absolutePath: entry.path,
-                                },
-                              }));
-                            }}
-                          />
-                        )}
-                        <span className="frontmatter-cover-picker-copy">
-                          <span title={entry.fileName}>
-                            {entry.fileName}
-                          </span>
-                          <span title={entry.relativePath}>
-                            {entry.relativePath}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })
-              )}
-            </ul>
-          ) : null}
-        </div>
       </section>
       <section className="frontmatter-panel" aria-label="Eigenschaften">
       <div className="frontmatter-header">

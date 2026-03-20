@@ -1496,6 +1496,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(hybridEditorSurface).toBeTruthy();
     expect(container.querySelector(".frontmatter-cover-panel")).toBeTruthy();
     expect(container.querySelector(".frontmatter-cover-panel.has-cover")).toBeTruthy();
+    expect(container.querySelector(".frontmatter-cover-panel.is-compact")).toBeNull();
     expect(container.querySelector('[data-frontmatter-key="Cover"]')).toBeNull();
 
     const coverThumb = container.querySelector(
@@ -3257,7 +3258,10 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(coverThumb).toBeTruthy();
     expect(coverThumb?.getAttribute("src") ?? "").toContain("cover.png");
     expect(coverThumb?.closest(".frontmatter-cover-hero-button")).toBeTruthy();
-    expect(container.querySelector(".frontmatter-cover-panel")).toBeTruthy();
+    const coverPanel = container.querySelector(".frontmatter-cover-panel");
+    expect(coverPanel).toBeTruthy();
+    expect(coverPanel?.className ?? "").toContain("has-cover");
+    expect(coverPanel?.className ?? "").not.toContain("is-compact");
     expect(container.querySelector(".frontmatter-panel")).toBeTruthy();
     expect(container.querySelector('[data-frontmatter-key="Cover"]')).toBeNull();
 
@@ -3295,9 +3299,13 @@ describe("PreviewPanel edit-safe interactions", () => {
       await Promise.resolve();
     });
 
-    const pickerText = (
-      container.querySelector("#frontmatter-cover-picker-cover.frontmatter-cover-picker")
-    )?.textContent ?? "";
+    const coverPicker = container.querySelector(
+      "#frontmatter-cover-picker-cover.frontmatter-cover-picker.frontmatter-cover-panel-picker",
+    );
+    expect(coverPicker).toBeTruthy();
+    expect(coverPicker?.closest(".frontmatter-cover-picker-anchor")).toBeTruthy();
+
+    const pickerText = coverPicker?.textContent ?? "";
     expect(pickerText).toContain("cover.png");
     expect(pickerText).not.toContain("alt.jpg");
     expect(pickerText).not.toContain("Note.md");
@@ -3320,7 +3328,12 @@ describe("PreviewPanel edit-safe interactions", () => {
     const coverPanel = container.querySelector(".frontmatter-cover-panel");
     expect(coverPanel).toBeTruthy();
     expect(coverPanel?.className ?? "").toContain("is-empty");
+    expect(coverPanel?.className ?? "").toContain("is-compact");
     expect(container.querySelector('[data-frontmatter-key="Cover"]')).toBeNull();
+
+    const heroButton = container.querySelector(".frontmatter-cover-hero-button");
+    expect(heroButton).toBeTruthy();
+    expect(heroButton?.className ?? "").toContain("is-compact");
 
     const pickerButton = container.querySelector(
       'button[aria-label="Cover Bild aus Vault waehlen"]',
@@ -3335,7 +3348,11 @@ describe("PreviewPanel edit-safe interactions", () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(container.querySelector("#frontmatter-cover-picker-cover")).toBeTruthy();
+    const coverPicker = container.querySelector(
+      "#frontmatter-cover-picker-cover.frontmatter-cover-picker.frontmatter-cover-panel-picker",
+    );
+    expect(coverPicker).toBeTruthy();
+    expect(coverPicker?.closest(".frontmatter-cover-picker-anchor")).toBeTruthy();
   });
 
   it("removes cover from the separate cover panel", async () => {
