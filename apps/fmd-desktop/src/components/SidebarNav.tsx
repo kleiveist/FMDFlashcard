@@ -44,6 +44,7 @@ import {
 } from "./icons";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
+import type { PreviewFileOpenOptions } from "../features/preview/usePreview";
 import type { DashboardView } from "../pages/DashboardPage";
 import { CARD_SECTION_KEYS, CARD_SECTIONS, type StudySectionKey } from "../lib/studySections";
 import type { VaultFile } from "../lib/tree";
@@ -53,7 +54,7 @@ type ToolbarMode = "cards" | "vault";
 type SidebarNavProps = {
   activeTab: StudySectionKey;
   onTabChange: (tab: StudySectionKey) => void;
-  onSelectVaultFile?: (file: VaultFile) => void;
+  onSelectVaultFile?: (file: VaultFile, options?: PreviewFileOpenOptions) => void;
   vaultView: DashboardView;
   onVaultViewChange: (view: DashboardView) => void;
   onOpenHelp: () => void;
@@ -148,12 +149,12 @@ export const SidebarNav = ({
   const isMarkdownView = isDashboard && vaultView === "markdown";
   const isExamView = isDashboard && vaultView === "exam";
   const handleVaultFileSelect = useCallback(
-    (file: VaultFile) => {
+    (file: VaultFile, options?: PreviewFileOpenOptions) => {
       if (onSelectVaultFile) {
-        onSelectVaultFile(file);
+        onSelectVaultFile(file, options);
         return;
       }
-      actions.handleSelectFile(file);
+      actions.handleSelectFile(file, options);
     },
     [actions, onSelectVaultFile],
   );

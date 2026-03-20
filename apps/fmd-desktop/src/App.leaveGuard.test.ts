@@ -51,7 +51,10 @@ vi.mock("./components/SidebarNav", () => ({
     onSelectVaultFile,
   }: {
     onTabChange: (tab: string) => void;
-    onSelectVaultFile?: (file: { path: string; relative_path: string }) => void;
+    onSelectVaultFile?: (
+      file: { path: string; relative_path: string },
+      options?: { openInNewTab?: boolean },
+    ) => void;
   }) =>
     React.createElement(
       React.Fragment,
@@ -77,6 +80,22 @@ vi.mock("./components/SidebarNav", () => ({
             }),
         },
         "Sidebar: select file",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "sidebar-select-file-new-tab",
+          onClick: () =>
+            onSelectVaultFile?.(
+              {
+                path: "/vault/from-sidebar-new-tab.md",
+                relative_path: "from-sidebar-new-tab.md",
+              },
+              { openInNewTab: true },
+            ),
+        },
+        "Sidebar: select file new tab",
       ),
     ),
 }));
@@ -392,10 +411,31 @@ describe("App dashboard leave guard integration", () => {
     await clickTestId(container, "sidebar-select-file");
 
     expect(dashboardGuard.requests).toBe(1);
-    expect(getSelectFileSpy()).toHaveBeenCalledWith({
-      path: "/vault/from-sidebar.md",
-      relative_path: "from-sidebar.md",
-    });
+    expect(getSelectFileSpy()).toHaveBeenCalledWith(
+      {
+        path: "/vault/from-sidebar.md",
+        relative_path: "from-sidebar.md",
+      },
+      undefined,
+    );
+
+    cleanup();
+  });
+
+  it("passes sidebar ctrl-open options when leave is confirmed", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "sidebar-select-file-new-tab");
+
+    expect(dashboardGuard.requests).toBe(1);
+    expect(getSelectFileSpy()).toHaveBeenCalledWith(
+      {
+        path: "/vault/from-sidebar-new-tab.md",
+        relative_path: "from-sidebar-new-tab.md",
+      },
+      { openInNewTab: true },
+    );
 
     cleanup();
   });

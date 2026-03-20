@@ -276,7 +276,7 @@ const AppContent = () => {
     [handleStudySectionSelect, handleTabChange],
   );
   const handleSidebarVaultFileSelect = useCallback(
-    (file: VaultFile) => {
+    (file: VaultFile, options?: PreviewFileOpenOptions) => {
       void (async () => {
         if (activeTab === "dashboard" && dashboardRef.current) {
           const canLeaveDashboard =
@@ -285,7 +285,7 @@ const AppContent = () => {
             return;
           }
         }
-        actions.handleSelectFile(file);
+        actions.handleSelectFile(file, options);
       })();
     },
     [actions, activeTab],

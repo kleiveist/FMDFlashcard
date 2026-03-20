@@ -1051,8 +1051,10 @@
 }
 
 .preview-tab-strip {
+  --preview-tab-width: 240px;
+  --preview-folder-button-width: 180px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--ui-space-xs);
   flex: 0 0 auto;
   position: relative;
@@ -1067,12 +1069,77 @@
   border-bottom: 1px solid var(--ui-border-subtle);
 }
 
+.preview-tab-row,
+.preview-tab-folder-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-xs);
+  width: max-content;
+  min-width: 100%;
+}
+
+.preview-tab-folder-row {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.preview-tab-folder-group {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  width: fit-content;
+  min-width: 0;
+  max-width: var(--preview-folder-button-width);
+  border: 1px solid color-mix(in srgb, var(--ui-border-subtle) 72%, transparent);
+  border-radius: var(--ui-radius-control);
+  background: color-mix(in srgb, var(--panel) 92%, var(--block-bg));
+}
+
+.preview-tab-folder-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 22px;
+  line-height: 22px;
+}
+
+.preview-tab-folder-button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 var(--ui-space-sm);
+  min-height: 22px;
+  border-radius: calc(var(--ui-radius-control) - 1px);
+  cursor: pointer;
+  text-align: left;
+}
+
+.preview-tab-folder-button:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ui-nav-button-hover-bg) 80%, transparent);
+}
+
+.preview-tab-folder-button.active {
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-soft) 26%, transparent);
+}
+
 .preview-tab {
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
+  width: fit-content;
   min-width: 0;
-  max-width: min(360px, 44vw);
+  max-width: var(--preview-tab-width);
   border: 1px solid var(--ui-border-subtle);
   border-radius: var(--ui-radius-control);
   background: color-mix(in srgb, var(--panel) 88%, var(--block-bg));
@@ -1084,7 +1151,8 @@
 }
 
 .preview-tab-button {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  width: auto;
   min-width: 0;
   max-width: 100%;
   border: none;

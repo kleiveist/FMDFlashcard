@@ -323,7 +323,12 @@ type VaultTreeProps = {
   onRescanVault: (source?: string) => Promise<boolean>;
   onActiveFolderChange: (path: string | null) => void;
   onTogglePath: (path: string, isOpen: boolean) => void;
-  onSelectFile: (file: VaultFile) => void;
+  onSelectFile: (
+    file: VaultFile,
+    options?: {
+      openInNewTab?: boolean;
+    },
+  ) => void;
   onClearSelection?: () => void;
   selectedFile: VaultFile | null;
   vaultPath: string | null;
@@ -1801,12 +1806,14 @@ export const VaultTree = ({
           className={`tree-item tree-file ${isActive ? "active" : ""}${
             isDragging ? " is-dragging" : ""
           }${hiddenClass}`}
-          onClick={() => {
+          onClick={(event) => {
             if (!fileRef) {
               return;
             }
             setSelectedNode({ kind: "file", file: fileRef });
-            onSelectFile(fileRef);
+            onSelectFile(fileRef, {
+              openInNewTab: event.ctrlKey || event.metaKey,
+            });
           }}
           title={node.path}
           disabled={!fileRef}

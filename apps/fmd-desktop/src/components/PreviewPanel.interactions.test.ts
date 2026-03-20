@@ -30,6 +30,46 @@ vi.mock("@tauri-apps/plugin-opener", () => ({
 
 const openUrlMock = vi.mocked(openUrl);
 const originalMatchMedia = window.matchMedia;
+const originalResizeObserver = window.ResizeObserver;
+
+type ResizeObserverCallback = (
+  entries: ResizeObserverEntry[],
+  observer: ResizeObserver,
+) => void;
+
+const resizeObserverInstances: ResizeObserverMock[] = [];
+
+class ResizeObserverMock {
+  private readonly callback: ResizeObserverCallback;
+  private readonly observed = new Set<Element>();
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+    resizeObserverInstances.push(this);
+  }
+
+  observe = (target: Element) => {
+    this.observed.add(target);
+  };
+
+  unobserve = (target: Element) => {
+    this.observed.delete(target);
+  };
+
+  disconnect = () => {
+    this.observed.clear();
+  };
+
+  notify = (target: Element) => {
+    if (!this.observed.has(target)) {
+      return;
+    }
+    this.callback(
+      [{ target } as ResizeObserverEntry],
+      this as unknown as ResizeObserver,
+    );
+  };
+}
 
 const baseFile: VaultFile = {
   path: "/vault/Note.md",
@@ -136,6 +176,40 @@ const flushAsyncInteraction = () =>
     await Promise.resolve();
   });
 
+const installMockResizeObserver = () => {
+  resizeObserverInstances.length = 0;
+  Object.defineProperty(window, "ResizeObserver", {
+    configurable: true,
+    writable: true,
+    value: ResizeObserverMock as unknown as typeof ResizeObserver,
+  });
+};
+
+const setElementClientWidth = (element: HTMLElement, width: number) => {
+  Object.defineProperty(element, "clientWidth", {
+    configurable: true,
+    get: () => width,
+  });
+};
+
+const triggerResize = (target: Element) => {
+  resizeObserverInstances.forEach((observer) => {
+    observer.notify(target);
+  });
+};
+
+const resizeMarkdownTabStrip = async (container: ParentNode, width: number) => {
+  const strip = container.querySelector<HTMLElement>(".preview-tab-strip");
+  expect(strip).toBeTruthy();
+  if (!strip) {
+    throw new Error("Expected preview tab strip to be rendered.");
+  }
+  setElementClientWidth(strip, width);
+  triggerResize(strip);
+  await flushAsyncInteraction();
+  return strip;
+};
+
 const buildHarness = (
   markdown: string,
   options: {
@@ -241,6 +315,12 @@ afterEach(() => {
     writable: true,
     value: originalMatchMedia,
   });
+  Object.defineProperty(window, "ResizeObserver", {
+    configurable: true,
+    writable: true,
+    value: originalResizeObserver,
+  });
+  resizeObserverInstances.length = 0;
   openUrlMock.mockClear();
 });
 
@@ -280,6 +360,243 @@ describe("PreviewPanel edit-safe interactions", () => {
       closeButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onCloseMarkdownTab).toHaveBeenCalledWith("/vault/Two.md");
+  });
+
+  it("keeps single-row path labels when tab width is wide enough", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const { container, cleanup: localCleanup } = buildHarness("Body", {
+        markdownTabs: [
+          { path: "/vault/One.md", relativePath: "One.md" },
+          { path: "/vault/Two.md", relativePath: "folder/Two.md" },
+        ],
+        activeMarkdownTabPath: "/vault/Two.md",
+      });
+      cleanup = localCleanup;
+
+      const strip = await resizeMarkdownTabStrip(container, 960);
+      const labels = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-label"),
+      ).map((element) => element.textContent?.trim() ?? "");
+
+      expect(strip.style.getPropertyValue("--preview-tab-width")).toBe("360px");
+      expect(container.querySelector(".preview-tab-folder-row")).toBeNull();
+      expect(labels).toEqual(["One.md", "folder/Two.md"]);
+    });
+  });
+
+  it("keeps folder row hidden when fewer than three tabs are open", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const { container, cleanup: localCleanup } = buildHarness("Body", {
+        markdownTabs: [
+          { path: "/vault/One.md", relativePath: "folder-a/One.md" },
+          { path: "/vault/Two.md", relativePath: "folder-b/Two.md" },
+        ],
+        activeMarkdownTabPath: "/vault/Two.md",
+      });
+      cleanup = localCleanup;
+
+      const strip = await resizeMarkdownTabStrip(container, 420);
+      const fileLabels = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-label"),
+      ).map((element) => element.textContent?.trim() ?? "");
+
+      expect(strip.style.getPropertyValue("--preview-tab-width")).toBe("210px");
+      expect(container.querySelector(".preview-tab-folder-row")).toBeNull();
+      expect(fileLabels).toEqual(["One.md", "Two.md"]);
+    });
+  });
+
+  it("shows folder row for three or more tabs with folder differences", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const { container, cleanup: localCleanup } = buildHarness("Body", {
+        markdownTabs: [
+          { path: "/vault/One.md", relativePath: "folder-a/One.md" },
+          { path: "/vault/Two.md", relativePath: "folder-b/Two.md" },
+          { path: "/vault/Three.md", relativePath: "folder-c/Three.md" },
+        ],
+        activeMarkdownTabPath: "/vault/Two.md",
+      });
+      cleanup = localCleanup;
+
+      const strip = await resizeMarkdownTabStrip(container, 960);
+      const folderLabels = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-folder-label"),
+      ).map((element) => element.textContent?.trim() ?? "");
+      const fileLabels = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-label"),
+      ).map((element) => element.textContent?.trim() ?? "");
+
+      expect(container.querySelector(".preview-tab-folder-row")).toBeTruthy();
+      expect(folderLabels).toEqual(["folder-a", "folder-b", "folder-c"]);
+      expect(fileLabels).toEqual(["folder-a/One.md", "folder-b/Two.md", "folder-c/Three.md"]);
+      expect(strip.style.getPropertyValue("--preview-folder-button-width")).toBe("260px");
+    });
+  });
+
+  it("allows clicking folder labels to group markdown tabs", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const onSelectMarkdownTab = vi.fn();
+      const { container, cleanup: localCleanup } = buildHarness("Body", {
+        markdownTabs: [
+          { path: "/vault/One.md", relativePath: "folder-a/One.md" },
+          { path: "/vault/Two.md", relativePath: "folder-b/Two.md" },
+          { path: "/vault/Three.md", relativePath: "folder-b/Three.md" },
+        ],
+        activeMarkdownTabPath: "/vault/One.md",
+        onSelectMarkdownTab,
+      });
+      cleanup = localCleanup;
+
+      await resizeMarkdownTabStrip(container, 420);
+
+      const folderButtons = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(".preview-tab-folder-button"),
+      );
+      expect(folderButtons).toHaveLength(2);
+      expect(folderButtons[1]?.textContent?.trim()).toBe("folder-b");
+
+      act(() => {
+        folderButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      const groupedLabels = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-label"),
+      ).map((element) => element.textContent?.trim() ?? "");
+
+      expect(onSelectMarkdownTab).toHaveBeenCalledWith("/vault/Two.md");
+      expect(groupedLabels).toEqual(["Two.md", "Three.md"]);
+      expect(folderButtons[1]?.getAttribute("aria-pressed")).toBe("true");
+
+      act(() => {
+        folderButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      const restoredLabels = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-label"),
+      ).map((element) => element.textContent?.trim() ?? "");
+
+      expect(restoredLabels).toEqual(["One.md", "Two.md", "Three.md"]);
+      expect(folderButtons[1]?.getAttribute("aria-pressed")).toBe("false");
+    });
+  });
+
+  it("uses one shared folder-button width that is independent from tab group spans", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const { container, cleanup: localCleanup } = buildHarness("Body", {
+        markdownTabs: [
+          { path: "/vault/One.md", relativePath: "folder-a/One.md" },
+          { path: "/vault/Two.md", relativePath: "folder-b/Two.md" },
+          { path: "/vault/Three.md", relativePath: "folder-b/Three.md" },
+          { path: "/vault/Four.md", relativePath: "folder-a/Four.md" },
+        ],
+        activeMarkdownTabPath: "/vault/One.md",
+      });
+      cleanup = localCleanup;
+
+      const strip = await resizeMarkdownTabStrip(container, 420);
+      const folderGroups = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-folder-group"),
+      );
+      const folderButtons = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-folder-button"),
+      );
+
+      expect(strip.style.getPropertyValue("--preview-folder-button-width")).toBe("210px");
+      expect(folderGroups).toHaveLength(2);
+      expect(folderButtons).toHaveLength(2);
+      expect(folderGroups.every((group) => group.style.getPropertyValue("--preview-tab-group-span") === "")).toBe(true);
+    });
+  });
+
+  it("keeps select and close actions working in two-row folder mode", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const onSelectMarkdownTab = vi.fn();
+      const onCloseMarkdownTab = vi.fn();
+      const { container, cleanup: localCleanup } = buildHarness("Body", {
+        markdownTabs: [
+          { path: "/vault/One.md", relativePath: "folder-a/One.md" },
+          { path: "/vault/Two.md", relativePath: "folder-b/Two.md" },
+          { path: "/vault/Three.md", relativePath: "folder-c/Three.md" },
+        ],
+        activeMarkdownTabPath: "/vault/Two.md",
+        onSelectMarkdownTab,
+        onCloseMarkdownTab,
+      });
+      cleanup = localCleanup;
+
+      await resizeMarkdownTabStrip(container, 960);
+      expect(container.querySelector(".preview-tab-folder-row")).toBeTruthy();
+
+      const tabButtons = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(".preview-tab-button"),
+      );
+      const closeButtons = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(".preview-tab-close"),
+      );
+
+      expect(tabButtons).toHaveLength(3);
+      expect(closeButtons).toHaveLength(3);
+
+      act(() => {
+        tabButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      expect(onSelectMarkdownTab).toHaveBeenCalledWith("/vault/One.md");
+
+      act(() => {
+        closeButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      expect(onCloseMarkdownTab).toHaveBeenCalledWith("/vault/Two.md");
+    });
+  });
+
+  it("keeps folder row hidden when all tabs share one folder", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const { container, cleanup: localCleanup } = buildHarness("Body", {
+        markdownTabs: [
+          { path: "/vault/One.md", relativePath: "folder/One.md" },
+          { path: "/vault/Two.md", relativePath: "folder/Two.md" },
+          { path: "/vault/Three.md", relativePath: "folder/Three.md" },
+        ],
+        activeMarkdownTabPath: "/vault/Two.md",
+      });
+      cleanup = localCleanup;
+
+      const strip = await resizeMarkdownTabStrip(container, 420);
+      const fileLabels = Array.from(
+        container.querySelectorAll<HTMLElement>(".preview-tab-label"),
+      ).map((element) => element.textContent?.trim() ?? "");
+
+      expect(strip.style.getPropertyValue("--preview-tab-width")).toBe("140px");
+      expect(container.querySelector(".preview-tab-folder-row")).toBeNull();
+      expect(fileLabels).toEqual(["One.md", "Two.md", "Three.md"]);
+    });
+  });
+
+  it("clamps tab width to 120px and enables overflow scrolling when tighter", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const { container, cleanup: localCleanup } = buildHarness("Body", {
+        markdownTabs: [
+          { path: "/vault/One.md", relativePath: "folder/One.md" },
+          { path: "/vault/Two.md", relativePath: "folder/Two.md" },
+        ],
+        activeMarkdownTabPath: "/vault/Two.md",
+      });
+      cleanup = localCleanup;
+
+      const strip = await resizeMarkdownTabStrip(container, 200);
+      const row = container.querySelector<HTMLElement>(".preview-tab-row");
+      expect(row).toBeTruthy();
+      expect(strip.style.getPropertyValue("--preview-tab-width")).toBe("120px");
+      expect(container.querySelector(".preview-tab-folder-row")).toBeNull();
+    });
   });
 
   it("prevents normal link clicks from navigating while editing", () => {

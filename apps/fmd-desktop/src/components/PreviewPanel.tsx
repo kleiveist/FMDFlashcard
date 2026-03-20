@@ -815,9 +815,9 @@ const CoverThumbnailImage = ({
     };
     const scheduleMeasure = () => {
       if (frame) {
-        cancelAnimationFrame(frame);
+        window.cancelAnimationFrame(frame);
       }
-      frame = requestAnimationFrame(measure);
+      frame = window.requestAnimationFrame(measure);
     };
 
     scheduleMeasure();
@@ -826,7 +826,7 @@ const CoverThumbnailImage = ({
       window.addEventListener("resize", scheduleMeasure);
       return () => {
         if (frame) {
-          cancelAnimationFrame(frame);
+          window.cancelAnimationFrame(frame);
         }
         window.removeEventListener("resize", scheduleMeasure);
       };
@@ -836,7 +836,7 @@ const CoverThumbnailImage = ({
     observer.observe(element);
     return () => {
       if (frame) {
-        cancelAnimationFrame(frame);
+        window.cancelAnimationFrame(frame);
       }
       observer.disconnect();
     };
@@ -1467,6 +1467,58 @@ export const canStartPreviewEdit = ({
 
 const MARKDOWN_EDITABLE_REHIGHLIGHT_DEBOUNCE_MS = 90;
 const MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS = 160;
+const PREVIEW_TAB_MIN_WIDTH_PX = 120;
+const PREVIEW_TAB_MAX_WIDTH_PX = 360;
+const PREVIEW_TAB_COMPACT_THRESHOLD_PX = 240;
+const PREVIEW_TAB_FOLDER_MODE_MIN_TABS = 3;
+const PREVIEW_TAB_ROOT_LABEL = "Root";
+const PREVIEW_FOLDER_BUTTON_MIN_WIDTH_PX = 140;
+const PREVIEW_FOLDER_BUTTON_MAX_WIDTH_PX = 260;
+
+type MarkdownTabDisplayInfo = {
+  path: string;
+  fullLabel: string;
+  fileLabel: string;
+  folderLabel: string;
+};
+
+type MarkdownTabFolderEntry = {
+  key: string;
+  label: string;
+};
+
+const clampPreviewTabWidth = (value: number) =>
+  Math.max(PREVIEW_TAB_MIN_WIDTH_PX, Math.min(PREVIEW_TAB_MAX_WIDTH_PX, value));
+
+const clampPreviewFolderButtonWidth = (value: number) =>
+  Math.max(PREVIEW_FOLDER_BUTTON_MIN_WIDTH_PX, Math.min(PREVIEW_FOLDER_BUTTON_MAX_WIDTH_PX, value));
+
+const resolveMarkdownTabDisplayInfo = (tab: { path: string; relativePath: string }) => {
+  const fullLabel = tab.relativePath || tab.path;
+  const normalizedLabel = normalizeRelativePath(fullLabel);
+  const normalizedSegments = normalizedLabel
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const fallbackSegments = fullLabel
+    .split(/[\\/]/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const segments = normalizedSegments.length > 0 ? normalizedSegments : fallbackSegments;
+  const fallbackFileLabel = fullLabel.trim() || tab.path;
+  const fileLabel = segments[segments.length - 1] ?? fallbackFileLabel;
+  const folderLabel =
+    segments.length > 1
+      ? segments.slice(0, -1).join("/")
+      : PREVIEW_TAB_ROOT_LABEL;
+
+  return {
+    path: tab.path,
+    fullLabel,
+    fileLabel,
+    folderLabel,
+  } satisfies MarkdownTabDisplayInfo;
+};
 
 const getRangeOffset = (container: HTMLElement, range: Range) => {
   const offsetRange = document.createRange();
@@ -5989,6 +6041,7 @@ export const PreviewPanel = ({
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const markdownEditorScrollRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
+  const markdownTabStripRef = useRef<HTMLDivElement | null>(null);
   const hybridEditorRef = useRef<MarkdownHybridEditorHandle | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
@@ -6009,6 +6062,10 @@ export const PreviewPanel = ({
   const [isHybridEditModeActive, setIsHybridEditModeActive] = useState(true);
   const [pendingHybridPostCommitAction, setPendingHybridPostCommitAction] =
     useState<PendingHybridPostCommitAction | null>(null);
+  const [markdownTabStripWidth, setMarkdownTabStripWidth] = useState(0);
+  const [activeMarkdownTabFolderLabel, setActiveMarkdownTabFolderLabel] = useState<string | null>(
+    null,
+  );
   const isNarrowFrontmatterViewport = useMediaQuery("(max-width: 980px)", false);
   const effectiveFrontmatterPanelCollapsed =
     userFrontmatterCollapsed ?? isNarrowFrontmatterViewport;
@@ -6039,6 +6096,50 @@ export const PreviewPanel = ({
       setIsHybridEditModeActive(true);
     }
   }, [documentMode]);
+
+  useLayoutEffect(() => {
+    if (markdownTabs.length === 0) {
+      setMarkdownTabStripWidth(0);
+      return;
+    }
+    const element = markdownTabStripRef.current;
+    if (!element) {
+      return;
+    }
+
+    let frame = 0;
+    const measure = () => {
+      const nextWidth = element.clientWidth;
+      setMarkdownTabStripWidth((current) => (current === nextWidth ? current : nextWidth));
+    };
+    const scheduleMeasure = () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+      frame = window.requestAnimationFrame(measure);
+    };
+
+    scheduleMeasure();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", scheduleMeasure);
+      return () => {
+        if (frame) {
+          window.cancelAnimationFrame(frame);
+        }
+        window.removeEventListener("resize", scheduleMeasure);
+      };
+    }
+
+    const observer = new ResizeObserver(scheduleMeasure);
+    observer.observe(element);
+    return () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+      observer.disconnect();
+    };
+  }, [markdownTabs.length]);
 
   const captureScroll = useCallback((element: HTMLElement | null) => {
     if (!element) {
@@ -7264,6 +7365,119 @@ export const PreviewPanel = ({
     [onCloseMarkdownTab],
   );
 
+  const markdownTabDisplayInfos = useMemo(
+    () => markdownTabs.map((tab) => resolveMarkdownTabDisplayInfo(tab)),
+    [markdownTabs],
+  );
+  const availableTabStripWidth = useMemo(() => {
+    if (markdownTabs.length === 0) {
+      return 0;
+    }
+    if (markdownTabStripWidth > 0) {
+      return markdownTabStripWidth;
+    }
+    return markdownTabs.length * PREVIEW_TAB_MAX_WIDTH_PX;
+  }, [markdownTabStripWidth, markdownTabs.length]);
+  const idealTabWidth =
+    markdownTabs.length > 0
+      ? availableTabStripWidth / markdownTabs.length
+      : PREVIEW_TAB_MAX_WIDTH_PX;
+  const resolvedTabWidth = clampPreviewTabWidth(idealTabWidth);
+  const isCompactMarkdownTabLabels =
+    markdownTabs.length > 0 && idealTabWidth < PREVIEW_TAB_COMPACT_THRESHOLD_PX;
+  const hasFolderDifferences = useMemo(
+    () => new Set(markdownTabDisplayInfos.map((tab) => tab.folderLabel)).size > 1,
+    [markdownTabDisplayInfos],
+  );
+  const useFolderRowMode =
+    markdownTabs.length >= PREVIEW_TAB_FOLDER_MODE_MIN_TABS && hasFolderDifferences;
+  const markdownTabFolderEntries = useMemo(() => {
+    if (!useFolderRowMode || markdownTabDisplayInfos.length === 0) {
+      return [] as MarkdownTabFolderEntry[];
+    }
+    const seen = new Set<string>();
+    const entries: MarkdownTabFolderEntry[] = [];
+    markdownTabDisplayInfos.forEach((tab) => {
+      if (seen.has(tab.folderLabel)) {
+        return;
+      }
+      seen.add(tab.folderLabel);
+      entries.push({
+        key: `${tab.folderLabel}-${entries.length}`,
+        label: tab.folderLabel,
+      });
+    });
+    return entries;
+  }, [markdownTabDisplayInfos, useFolderRowMode]);
+  const filteredMarkdownTabDisplayInfos = useMemo(() => {
+    if (!useFolderRowMode || !activeMarkdownTabFolderLabel) {
+      return markdownTabDisplayInfos;
+    }
+    return markdownTabDisplayInfos.filter((tab) => tab.folderLabel === activeMarkdownTabFolderLabel);
+  }, [activeMarkdownTabFolderLabel, markdownTabDisplayInfos, useFolderRowMode]);
+  const resolvedFolderButtonWidth = useMemo(() => {
+    if (markdownTabFolderEntries.length === 0) {
+      return PREVIEW_FOLDER_BUTTON_MAX_WIDTH_PX;
+    }
+    const idealFolderButtonWidth = availableTabStripWidth / markdownTabFolderEntries.length;
+    return clampPreviewFolderButtonWidth(idealFolderButtonWidth);
+  }, [availableTabStripWidth, markdownTabFolderEntries.length]);
+  const markdownTabStripStyle = useMemo(
+    () =>
+      ({
+        "--preview-tab-width": `${resolvedTabWidth}px`,
+        "--preview-folder-button-width": `${resolvedFolderButtonWidth}px`,
+      }) as CSSProperties,
+    [resolvedFolderButtonWidth, resolvedTabWidth],
+  );
+
+  useEffect(() => {
+    if (!useFolderRowMode || markdownTabFolderEntries.length === 0) {
+      setActiveMarkdownTabFolderLabel(null);
+      return;
+    }
+    if (!activeMarkdownTabFolderLabel) {
+      return;
+    }
+    const stillExists = markdownTabFolderEntries.some(
+      (entry) => entry.label === activeMarkdownTabFolderLabel,
+    );
+    if (!stillExists) {
+      setActiveMarkdownTabFolderLabel(null);
+    }
+  }, [activeMarkdownTabFolderLabel, markdownTabFolderEntries, useFolderRowMode]);
+
+  const handleMarkdownFolderGroupSelect = useCallback(
+    (folderLabel: string) => {
+      const isActivatingFolder = activeMarkdownTabFolderLabel !== folderLabel;
+      setActiveMarkdownTabFolderLabel((current) => {
+        if (current === folderLabel) {
+          return null;
+        }
+        return folderLabel;
+      });
+      if (!isActivatingFolder) {
+        return;
+      }
+
+      const nextFolderTabs = markdownTabDisplayInfos.filter((tab) => tab.folderLabel === folderLabel);
+      if (nextFolderTabs.length === 0) {
+        return;
+      }
+      const activeTab = markdownTabDisplayInfos.find((tab) => tab.path === activeMarkdownTabPath);
+      if (activeTab?.folderLabel === folderLabel) {
+        return;
+      }
+      onSelectMarkdownTab?.(nextFolderTabs[0].path);
+    },
+    [
+      activeMarkdownTabFolderLabel,
+      activeMarkdownTabPath,
+      markdownTabDisplayInfos,
+      onSelectMarkdownTab,
+    ],
+  );
+
   useEffect(() => {
     if (!isEditing) {
       rawCodeToggleClosePendingRef.current = false;
@@ -7393,39 +7607,67 @@ export const PreviewPanel = ({
         </div>
       </div>
       {markdownTabs.length > 0 ? (
-        <div className="preview-tab-strip" role="tablist" aria-label="Open markdown files">
-          {markdownTabs.map((tab) => {
-            const isActive = activeMarkdownTabPath === tab.path;
-            const label = tab.relativePath || tab.path;
-            return (
-              <div
-                key={tab.path}
-                className={`preview-tab ${isActive ? "active" : ""}`}
-              >
-                <button
-                  type="button"
-                  className={`preview-tab-button ${isActive ? "active" : ""}`}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => handleMarkdownTabSelect(tab.path)}
-                  title={label}
+        <div
+          ref={markdownTabStripRef}
+          className={`preview-tab-strip ${useFolderRowMode ? "is-two-row" : ""}`}
+          style={markdownTabStripStyle}
+        >
+          {useFolderRowMode ? (
+            <div className="preview-tab-folder-row" role="toolbar" aria-label="Open markdown folders">
+              {markdownTabFolderEntries.map((entry) => (
+                <div
+                  key={entry.key}
+                  className="preview-tab-folder-group"
                 >
-                  <span className="preview-tab-label">{label}</span>
-                </button>
-                {onCloseMarkdownTab ? (
                   <button
                     type="button"
-                    className="preview-tab-close"
-                    aria-label={`Close ${label}`}
-                    title={`Close ${label}`}
-                    onClick={(event) => handleMarkdownTabClose(event, tab.path)}
+                    className={`preview-tab-folder-button ${
+                      activeMarkdownTabFolderLabel === entry.label ? "active" : ""
+                    }`}
+                    aria-pressed={activeMarkdownTabFolderLabel === entry.label}
+                    title={entry.label}
+                    onClick={() => handleMarkdownFolderGroupSelect(entry.label)}
                   >
-                    ×
+                    <span className="preview-tab-folder-label">{entry.label}</span>
                   </button>
-                ) : null}
-              </div>
-            );
-          })}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="preview-tab-row" role="tablist" aria-label="Open markdown files">
+            {filteredMarkdownTabDisplayInfos.map((tab) => {
+              const isActive = activeMarkdownTabPath === tab.path;
+              const visibleLabel = isCompactMarkdownTabLabels ? tab.fileLabel : tab.fullLabel;
+              return (
+                <div
+                  key={tab.path}
+                  className={`preview-tab ${isActive ? "active" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className={`preview-tab-button ${isActive ? "active" : ""}`}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => handleMarkdownTabSelect(tab.path)}
+                    title={tab.fullLabel}
+                  >
+                    <span className="preview-tab-label">{visibleLabel}</span>
+                  </button>
+                  {onCloseMarkdownTab ? (
+                    <button
+                      type="button"
+                      className="preview-tab-close"
+                      aria-label={`Close ${tab.fullLabel}`}
+                      title={`Close ${tab.fullLabel}`}
+                      onClick={(event) => handleMarkdownTabClose(event, tab.path)}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : null}
       <div className="panel-body preview-body">
