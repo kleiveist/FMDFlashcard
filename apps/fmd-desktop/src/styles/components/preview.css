@@ -125,9 +125,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-:is(.frontmatter-cover-panel, .frontmatter-panel) {
   border: 1px solid var(--line-soft);
   border-radius: 12px;
   background: var(--field-bg);
@@ -139,13 +136,8 @@
   border-radius: var(--ui-radius-control);
 }
 
-:root[data-design-mode="modern"] .frontmatter-cover-panel {
-  border: 1px solid var(--ui-border-subtle);
-  border-radius: var(--ui-radius-control);
-}
-
-.preview :is(.frontmatter-cover-panel, .frontmatter-panel),
-.preview-surface > :is(.frontmatter-cover-panel, .frontmatter-panel) {
+.preview .frontmatter-panel,
+.preview-surface > .frontmatter-panel {
   margin-bottom: 10px;
 }
 
@@ -549,7 +541,11 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
   padding: 0;
+  margin: 0 0 8px;
   overflow: hidden;
 }
 
@@ -585,10 +581,16 @@
 }
 
 .frontmatter-cover-hero-button.is-empty {
-  border: 1px dashed color-mix(in srgb, var(--line-soft) 88%, transparent);
-  border-style: dashed;
+  border: 1px dashed transparent;
   border-radius: 12px;
   min-height: clamp(152px, 28vw, 280px);
+  background: transparent;
+}
+
+.frontmatter-cover-panel.is-empty:hover .frontmatter-cover-hero-button.is-empty,
+.frontmatter-cover-panel.is-empty:focus-within .frontmatter-cover-hero-button.is-empty {
+  border-color: color-mix(in srgb, var(--line-soft) 72%, transparent);
+  background: color-mix(in srgb, var(--panel) 42%, transparent);
 }
 
 .frontmatter-cover-hero-button .frontmatter-cover-thumb-frame,
@@ -650,11 +652,6 @@
     transform 0.18s ease;
 }
 
-.frontmatter-cover-picker-trigger.is-prominent {
-  background: color-mix(in srgb, var(--accent-soft) 42%, var(--panel));
-  border-color: color-mix(in srgb, var(--accent-border) 40%, var(--line-soft));
-}
-
 .frontmatter-cover-picker-trigger.is-subtle {
   opacity: 0;
   transform: translateY(-2px);
@@ -662,8 +659,8 @@
   background: color-mix(in srgb, var(--panel) 18%, transparent);
 }
 
-.frontmatter-cover-panel.has-cover:hover .frontmatter-cover-picker-trigger.is-subtle,
-.frontmatter-cover-panel.has-cover:focus-within .frontmatter-cover-picker-trigger.is-subtle,
+.frontmatter-cover-panel:hover .frontmatter-cover-picker-trigger.is-subtle,
+.frontmatter-cover-panel:focus-within .frontmatter-cover-picker-trigger.is-subtle,
 .frontmatter-cover-picker-trigger[aria-expanded="true"] {
   opacity: 0.96;
   pointer-events: auto;

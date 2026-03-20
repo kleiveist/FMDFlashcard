@@ -4577,9 +4577,7 @@ const FrontmatterPropertiesPanel = ({
           <div className="frontmatter-cover-panel-actions">
             <button
               type="button"
-              className={`frontmatter-cover-picker-trigger ${
-                isCoverVisible ? "is-subtle" : "is-prominent"
-              }`.trim()}
+              className="frontmatter-cover-picker-trigger is-subtle"
               disabled={controlsDisabled}
               aria-label="Cover Bild aus Vault waehlen"
               title="Cover waehlen"
@@ -7597,10 +7595,35 @@ export const PreviewPanel = ({
   const hasVisiblePreviewContent = rawPreview
     ? preview.length > 0
     : markdownSource.length > 0;
+  const isEditModeActive = documentMode === "write" || isHybridEditModeActive;
+  const frontmatterPanelSource = useMemo(() => {
+    if (previewFrontmatter.hasFrontmatter && !previewFrontmatter.error) {
+      return {
+        sourceMarkdown: preview,
+        properties: previewFrontmatter.properties,
+      };
+    }
+    if (isEditModeActive && editFrontmatter.hasFrontmatter && !editFrontmatter.error) {
+      return {
+        sourceMarkdown: editDraft,
+        properties: editFrontmatter.properties,
+      };
+    }
+    return null;
+  }, [
+    previewFrontmatter.hasFrontmatter,
+    previewFrontmatter.error,
+    previewFrontmatter.properties,
+    preview,
+    isEditModeActive,
+    editFrontmatter.hasFrontmatter,
+    editFrontmatter.error,
+    editFrontmatter.properties,
+    editDraft,
+  ]);
   const showFrontmatterPanel = !rawPreview &&
     previewState === "idle" &&
-    previewFrontmatter.hasFrontmatter &&
-    !previewFrontmatter.error;
+    frontmatterPanelSource !== null;
   const canUseHybridMarkdownEditor = Boolean(
     markdownHybridEnabled &&
       canEdit &&
@@ -7608,7 +7631,6 @@ export const PreviewPanel = ({
       !hasFrontmatterError,
   );
   const viewMode = rawPreview ? "code" : "preview";
-  const isEditModeActive = documentMode === "write" || isHybridEditModeActive;
   const editEnabled = isEditModeActive;
   const showMarkdownEditor = markdownViewEditEnabled && !rawPreview;
   const showHybridMarkdownEditor = Boolean(
@@ -8090,8 +8112,8 @@ export const PreviewPanel = ({
               >
                 {showFrontmatterPanel ? (
                   <FrontmatterPropertiesPanel
-                    sourceMarkdown={preview}
-                    properties={previewFrontmatter.properties}
+                    sourceMarkdown={frontmatterPanelSource?.sourceMarkdown ?? preview}
+                    properties={frontmatterPanelSource?.properties ?? previewFrontmatter.properties}
                     sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
                     vaultFiles={vaultFiles}
                     vaultPngAssets={vaultPngAssets}
@@ -8151,8 +8173,8 @@ export const PreviewPanel = ({
                 >
                   {showFrontmatterPanel ? (
                     <FrontmatterPropertiesPanel
-                      sourceMarkdown={preview}
-                      properties={previewFrontmatter.properties}
+                      sourceMarkdown={frontmatterPanelSource?.sourceMarkdown ?? preview}
+                      properties={frontmatterPanelSource?.properties ?? previewFrontmatter.properties}
                       sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
                       vaultFiles={vaultFiles}
                       vaultPngAssets={vaultPngAssets}
@@ -8204,8 +8226,8 @@ export const PreviewPanel = ({
                   <>
                     {showFrontmatterPanel ? (
                       <FrontmatterPropertiesPanel
-                        sourceMarkdown={preview}
-                        properties={previewFrontmatter.properties}
+                        sourceMarkdown={frontmatterPanelSource?.sourceMarkdown ?? preview}
+                        properties={frontmatterPanelSource?.properties ?? previewFrontmatter.properties}
                         sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
                         vaultFiles={vaultFiles}
                         vaultPngAssets={vaultPngAssets}

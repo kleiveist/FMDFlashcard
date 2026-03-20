@@ -1445,6 +1445,66 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(panelWhileEditing?.textContent ?? "").toContain("title");
   });
 
+  it("renders the cover panel in hybrid edit mode when frontmatter is only in the edit draft", () => {
+    const markdownWithCover = [
+      "---",
+      "Cover: '[[assets/cover.png]]'",
+      "---",
+      "Body line",
+    ].join("\n");
+
+    const Harness = () => {
+      const [editDraft, setEditDraft] = useState(markdownWithCover);
+      return createElement(PreviewPanel, {
+        editDraft,
+        editError: "",
+        editCaretIndex: null,
+        isEditing: false,
+        emptyPreview: "",
+        preview: "Body line",
+        previewError: "",
+        previewState: "idle",
+        rawPreview: false,
+        markdownViewEditEnabled: true,
+        markdownHybridEnabled: true,
+        selectedFile: baseFile,
+        vaultPath: "/vault",
+        sourceRelativePath: baseFile.relative_path,
+        vaultPngAssets: [
+          {
+            path: "/vault/assets/cover.png",
+            relative_path: "assets/cover.png",
+            file_name: "cover.png",
+            extension: "png",
+          },
+        ],
+        canEdit: true,
+        onEditChange: setEditDraft,
+        onEditCaretApplied: () => {},
+        onEditExit: async () => true,
+        onEditStart: () => {},
+        onToggleRawPreview: () => {},
+      });
+    };
+
+    const { container, cleanup: localCleanup } = render(createElement(Harness));
+    cleanup = localCleanup;
+
+    const hybridEditorSurface = container.querySelector(
+      ".preview.preview-editor.markdown.md-preview.markdown-hybrid-surface",
+    );
+    expect(hybridEditorSurface).toBeTruthy();
+    expect(container.querySelector(".frontmatter-cover-panel")).toBeTruthy();
+    expect(container.querySelector(".frontmatter-cover-panel.has-cover")).toBeTruthy();
+    expect(container.querySelector('[data-frontmatter-key="Cover"]')).toBeNull();
+
+    const coverThumb = container.querySelector(
+      ".frontmatter-cover-thumbnail",
+    ) as HTMLImageElement | null;
+    expect(coverThumb).toBeTruthy();
+    expect(coverThumb?.getAttribute("src") ?? "").toContain("cover.png");
+  });
+
   it("toggles the properties panel on desktop", () => {
     mockMatchMedia(false);
     const { container, cleanup: localCleanup } = buildHarness(
@@ -3266,7 +3326,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       'button[aria-label="Cover Bild aus Vault waehlen"]',
     ) as HTMLButtonElement | null;
     expect(pickerButton).toBeTruthy();
-    expect(pickerButton?.className ?? "").toContain("is-prominent");
+    expect(pickerButton?.className ?? "").toContain("is-subtle");
     expect((pickerButton?.textContent ?? "").trim()).toBe("");
 
     act(() => {
