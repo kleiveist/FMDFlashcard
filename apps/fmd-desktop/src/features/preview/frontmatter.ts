@@ -702,8 +702,12 @@ const applyFrontmatterUpdate = ({
     lineEnding: parsed.lineEnding,
     includeBodySeparator: parsed.body.length > 0,
   });
-  const bom = markdown.startsWith("\uFEFF") ? "\uFEFF" : "";
-  const nextMarkdown = `${bom}${nextFrontmatterBlock}${parsed.body}`;
+  const hasBom = markdown.startsWith("\uFEFF");
+  const bodyWithoutLeadingBom = !parsed.hasFrontmatter && hasBom && parsed.body.startsWith("\uFEFF")
+    ? parsed.body.slice(1)
+    : parsed.body;
+  const bom = hasBom ? "\uFEFF" : "";
+  const nextMarkdown = `${bom}${nextFrontmatterBlock}${bodyWithoutLeadingBom}`;
   return { markdown: nextMarkdown, error: null };
 };
 
@@ -1341,12 +1345,6 @@ export const addFrontmatterProperty = ({
   kind?: FrontmatterPropertyKind;
 }): { markdown: string; error: string | null } => {
   const parsed = parseFrontmatterDocumentInternal(markdown);
-  if (!parsed.hasFrontmatter) {
-    return {
-      markdown,
-      error: "No YAML frontmatter block found at document start.",
-    };
-  }
   if (parsed.error) {
     return {
       markdown,
@@ -1361,7 +1359,8 @@ export const addFrontmatterProperty = ({
       error: "Property key is required.",
     };
   }
-  const hasDuplicate = parsed.parsedProperties.some(
+  const existingProperties = parsed.hasFrontmatter ? parsed.parsedProperties : [];
+  const hasDuplicate = existingProperties.some(
     (property) => property.key === nextKey,
   );
   if (hasDuplicate) {
@@ -1399,7 +1398,7 @@ export const addFrontmatterProperty = ({
   return applyFrontmatterUpdate({
     parsed,
     markdown,
-    properties: [...parsed.parsedProperties, nextProperty],
+    properties: [...existingProperties, nextProperty],
   });
 };
 

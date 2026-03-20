@@ -577,6 +577,10 @@
   opacity: 0.55;
 }
 
+.frontmatter-cover-hero-button.is-readonly {
+  cursor: default;
+}
+
 .frontmatter-cover-hero-button:focus-visible {
   outline: var(--ui-focus-outline);
   outline-offset: var(--ui-focus-offset);

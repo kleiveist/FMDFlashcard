@@ -3218,6 +3218,45 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
   });
 
+  it("renders cover as read-only in markdown view mode without picker controls", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "Cover: '[[assets/cover.png]]'",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      vaultPngAssets: [
+        {
+          path: "/vault/assets/cover.png",
+          relative_path: "assets/cover.png",
+          file_name: "cover.png",
+          extension: "png",
+        },
+      ],
+    });
+    cleanup = localCleanup;
+
+    const coverPanel = container.querySelector(".frontmatter-cover-panel");
+    expect(coverPanel).toBeTruthy();
+    expect(coverPanel?.className ?? "").toContain("has-cover");
+    expect(coverPanel?.className ?? "").toContain("is-readonly");
+
+    const readonlyCover = container.querySelector(".frontmatter-cover-hero-button.is-readonly");
+    expect(readonlyCover).toBeTruthy();
+    expect(container.querySelector('button[aria-label="Cover Bild aus Vault waehlen"]')).toBeNull();
+    expect(container.querySelector('button[aria-label="Cover entfernen"]')).toBeNull();
+
+    act(() => {
+      readonlyCover?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container.querySelector("#frontmatter-cover-picker-cover")).toBeNull();
+  });
+
   it("renders cover thumbnail and shows PNG vault images in the picker", async () => {
     const markdown = [
       "---",
@@ -3227,6 +3266,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       "Body line",
     ].join("\n");
     const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      markdownHybridEnabled: true,
       vaultFiles: [
         {
           path: "/vault/assets/cover.png",
@@ -3314,6 +3354,7 @@ describe("PreviewPanel edit-safe interactions", () => {
   it("shows an empty cover panel with visible add button when no cover is set", async () => {
     const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
     const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      markdownHybridEnabled: true,
       vaultPngAssets: [
         {
           path: "/vault/assets/cover.png",
@@ -3355,6 +3396,69 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(coverPicker?.closest(".frontmatter-cover-picker-anchor")).toBeTruthy();
   });
 
+  it("creates a minimal cover frontmatter block when selecting cover on markdown without frontmatter", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = ["# Mein Dokument", "", "Inhalt ohne YAML-Block."].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      markdownHybridEnabled: true,
+      onFrontmatterSave,
+      vaultPngAssets: [
+        {
+          path: "/vault/cover/IDBS01-TestL1.png",
+          relative_path: "cover/IDBS01-TestL1.png",
+          file_name: "IDBS01-TestL1.png",
+          extension: "png",
+        },
+      ],
+    });
+    cleanup = localCleanup;
+
+    const coverPanel = container.querySelector(".frontmatter-cover-panel");
+    expect(coverPanel).toBeTruthy();
+    expect(coverPanel?.className ?? "").toContain("is-empty");
+    expect(coverPanel?.className ?? "").toContain("is-compact");
+    expect(container.querySelector(".frontmatter-panel")).toBeNull();
+
+    const pickerButton = container.querySelector(
+      'button[aria-label="Cover Bild aus Vault waehlen"]',
+    ) as HTMLButtonElement | null;
+    expect(pickerButton).toBeTruthy();
+
+    act(() => {
+      pickerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const optionButton = container.querySelector(
+      ".frontmatter-cover-panel-picker .frontmatter-cover-picker-option",
+    ) as HTMLButtonElement | null;
+    expect(optionButton).toBeTruthy();
+
+    act(() => {
+      optionButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalled();
+    const lastCallIndex = onFrontmatterSave.mock.calls.length - 1;
+    const savedMarkdown = String(
+      lastCallIndex >= 0 ? onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? "" : "",
+    );
+    expect(savedMarkdown.startsWith("---\nCover: '[[cover/IDBS01-TestL1.png]]'\n---\n")).toBe(
+      true,
+    );
+    expect(savedMarkdown).toContain("# Mein Dokument\n\nInhalt ohne YAML-Block.");
+    expect(savedMarkdown).not.toContain("Section:");
+    expect(savedMarkdown).not.toContain("Rank:");
+    expect(savedMarkdown).not.toContain("Projekt:");
+    expect(savedMarkdown).not.toContain("\ntags:");
+  });
+
   it("removes cover from the separate cover panel", async () => {
     const onFrontmatterSave = vi.fn().mockResolvedValue(true);
     const markdown = [
@@ -3365,6 +3469,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       "Body line",
     ].join("\n");
     const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      markdownHybridEnabled: true,
       onFrontmatterSave,
       vaultPngAssets: [
         {

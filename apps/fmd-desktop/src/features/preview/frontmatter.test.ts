@@ -278,6 +278,48 @@ describe("removeFrontmatterProperty", () => {
 });
 
 describe("addFrontmatterProperty", () => {
+  it("creates a minimal frontmatter block when source has no frontmatter", () => {
+    const source = ["# Mein Dokument", "", "Inhalt ohne YAML-Block."].join("\n");
+
+    const updated = addFrontmatterProperty({
+      markdown: source,
+      key: "Cover",
+      value: "cover/IDBS01-TestL1.png",
+      kind: "cover",
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toBe([
+      "---",
+      "Cover: '[[cover/IDBS01-TestL1.png]]'",
+      "---",
+      "# Mein Dokument",
+      "",
+      "Inhalt ohne YAML-Block.",
+    ].join("\n"));
+    expect(updated.markdown).not.toContain("Section:");
+    expect(updated.markdown).not.toContain("Rank:");
+    expect(updated.markdown).not.toContain("Projekt:");
+    expect(updated.markdown).not.toContain("tags:");
+  });
+
+  it("keeps a single BOM when creating frontmatter on BOM-prefixed markdown", () => {
+    const source = "\uFEFF# Titel";
+
+    const updated = addFrontmatterProperty({
+      markdown: source,
+      key: "Cover",
+      value: "cover.png",
+      kind: "cover",
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown.startsWith("\uFEFF---\nCover: '[[cover.png]]'\n---\n# Titel")).toBe(
+      true,
+    );
+    expect(updated.markdown.indexOf("\uFEFF", 1)).toBe(-1);
+  });
+
   it("appends a new key while keeping body unchanged", () => {
     const source = ["---", "title: Demo", "---", "Body"].join("\n");
 
