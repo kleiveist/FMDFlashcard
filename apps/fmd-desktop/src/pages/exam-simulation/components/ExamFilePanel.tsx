@@ -47,6 +47,10 @@ type ExamFilePanelCompactSummary = {
   minDurationMinutes: number;
 };
 
+type ExamFileOpenOptions = {
+  openInNewTab?: boolean;
+};
+
 type ExamFilePanelProps = {
   files: ExamFileEntry[];
   listState: LoadState;
@@ -59,7 +63,7 @@ type ExamFilePanelProps = {
   profileOptions: ProfileOption[];
   onProfileChange: (profileId: string) => void;
   onToggleFile: (path: string) => void;
-  onOpenFile?: (entry: ExamFileEntry) => void;
+  onOpenFile?: (entry: ExamFileEntry, options?: ExamFileOpenOptions) => void;
   onSetSelectedPathRows?: (rows: ExamSelectionRows) => void;
   onSetSelectedPaths?: (paths: string[]) => void;
   onClearSelection: () => void;
@@ -608,9 +612,9 @@ export const ExamFilePanel = ({
       const isSelected = selectedSet.has(entry.path);
       const { fileName, folderPath } = splitExamFilePathParts(entry.relative_path);
 
-      const openFileDirect = () => {
+      const openFileDirect = (options?: ExamFileOpenOptions) => {
         setFileOpenPopup(null);
-        onOpenFile?.(entry);
+        onOpenFile?.(entry, options);
       };
 
       const openFilePopup = (
@@ -637,6 +641,10 @@ export const ExamFilePanel = ({
         }
         event.preventDefault();
         event.stopPropagation();
+        if (event.ctrlKey || event.metaKey) {
+          openFileDirect({ openInNewTab: true });
+          return;
+        }
         openFilePopup(event);
       };
 
@@ -655,6 +663,16 @@ export const ExamFilePanel = ({
         }
       };
 
+      const handleFileRowClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+        if (onOpenFile && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          event.stopPropagation();
+          openFileDirect({ openInNewTab: true });
+          return;
+        }
+        onToggleFile(entry.path);
+      };
+
       const handleFileRowContextMenu = (
         event: ReactMouseEvent<HTMLButtonElement>,
       ) => {
@@ -664,7 +682,7 @@ export const ExamFilePanel = ({
         if (event.ctrlKey || event.metaKey) {
           event.preventDefault();
           event.stopPropagation();
-          openFileDirect();
+          openFileDirect({ openInNewTab: true });
         }
       };
 
@@ -673,7 +691,7 @@ export const ExamFilePanel = ({
           <button
             type="button"
             className="exam-file-row-button"
-            onClick={() => onToggleFile(entry.path)}
+            onClick={handleFileRowClick}
             onContextMenu={handleFileRowContextMenu}
             aria-pressed={isSelected}
           >

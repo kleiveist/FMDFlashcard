@@ -1054,7 +1054,15 @@
   display: flex;
   align-items: center;
   gap: var(--ui-space-xs);
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable both-edges;
   padding: 0 var(--ui-space-lg) var(--ui-space-sm);
   border-bottom: 1px solid var(--ui-border-subtle);
 }
@@ -1062,7 +1070,9 @@
 .preview-tab {
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   min-width: 0;
+  max-width: min(360px, 44vw);
   border: 1px solid var(--ui-border-subtle);
   border-radius: var(--ui-radius-control);
   background: color-mix(in srgb, var(--panel) 88%, var(--block-bg));
@@ -1074,8 +1084,9 @@
 }
 
 .preview-tab-button {
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: min(320px, 40vw);
+  max-width: 100%;
   border: none;
   background: transparent;
   color: inherit;

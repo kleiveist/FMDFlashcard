@@ -117,7 +117,12 @@ type FileListProps = {
     file: VaultFile,
     meta: { origin: "new-button" | "context-menu" },
   ) => void;
-  onSelectFile: (file: VaultFile) => void;
+  onSelectFile: (
+    file: VaultFile,
+    options?: {
+      openInNewTab?: boolean;
+    },
+  ) => void;
   onToggleCollapsed: () => void;
   selectedFile: VaultFile | null;
   showCollapseStrip?: boolean;
@@ -643,7 +648,10 @@ export const FileList = ({
                   <button
                     type="button"
                     className={`file-item ${isActive ? "active" : ""}`}
-                    onClick={() => onSelectFile(file)}
+                    onClick={(event) =>
+                      onSelectFile(file, {
+                        openInNewTab: event.ctrlKey || event.metaKey,
+                      })}
                     onContextMenu={(event) =>
                       openContextMenu(event, { kind: "file", file })
                     }

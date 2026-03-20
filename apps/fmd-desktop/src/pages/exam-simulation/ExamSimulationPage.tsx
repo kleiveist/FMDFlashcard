@@ -65,6 +65,9 @@ type OpenExamFileTarget = {
   path: string;
   relative_path: string;
 };
+type OpenExamFileOptions = {
+  openInNewTab?: boolean;
+};
 
 type ExamSimulationPageProps = {
   runSummaryNoteActionEnabled?: boolean;
@@ -72,7 +75,10 @@ type ExamSimulationPageProps = {
   isRunSummaryNoteActionActive?: boolean;
   isExamFilesNoteOpen?: boolean;
   onCloseExamFilesNote?: () => void;
-  onOpenExamFileInMarkdownEditor?: (file: OpenExamFileTarget) => void;
+  onOpenExamFileInMarkdownEditor?: (
+    file: OpenExamFileTarget,
+    options?: OpenExamFileOptions,
+  ) => void;
 };
 
 export const ExamSimulationPage = ({
@@ -216,11 +222,14 @@ export const ExamSimulationPage = ({
           ? "Sequential + internal shuffle"
           : "Nested";
   const handleOpenExamFile = useCallback(
-    (entry: OpenExamFileTarget) => {
-      onOpenExamFileInMarkdownEditor?.({
-        path: entry.path,
-        relative_path: entry.relative_path,
-      });
+    (entry: OpenExamFileTarget, options?: OpenExamFileOptions) => {
+      onOpenExamFileInMarkdownEditor?.(
+        {
+          path: entry.path,
+          relative_path: entry.relative_path,
+        },
+        options,
+      );
     },
     [onOpenExamFileInMarkdownEditor],
   );

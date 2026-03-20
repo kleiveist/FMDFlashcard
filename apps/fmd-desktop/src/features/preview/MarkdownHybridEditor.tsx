@@ -1373,6 +1373,7 @@ const clampIndex = (value: number, maxExclusive: number) => {
 const OVERLAY_LEFT_GUTTER_WIDTH = 56;
 const OVERLAY_RIGHT_GUTTER_WIDTH = 34;
 const VIRTUALIZATION_BLOCK_THRESHOLD = 120;
+const VIRTUALIZATION_MIN_DEVICE_MEMORY_GB = 8;
 const VIRTUALIZATION_OVERSCAN_PX = 560;
 const VIRTUALIZATION_FALLBACK_ROW_GAP = 6;
 const VIRTUAL_PLACEHOLDER_BLOCK_CHROME_PX = 6;
@@ -1399,6 +1400,21 @@ const findScrollableAncestor = (element: HTMLElement | null) => {
     return scrollingElement;
   }
   return null;
+};
+
+const resolveDeviceMemoryInGb = () => {
+  if (typeof navigator === "undefined") {
+    return null;
+  }
+  const deviceMemory = (
+    navigator as Navigator & {
+      deviceMemory?: unknown;
+    }
+  ).deviceMemory;
+  if (typeof deviceMemory !== "number" || !Number.isFinite(deviceMemory) || deviceMemory <= 0) {
+    return null;
+  }
+  return deviceMemory;
 };
 
 const areOverlayLayoutsEqual = (left: OverlayLayoutState, right: OverlayLayoutState) => {
@@ -2975,6 +2991,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const [editorOverlaySelectionStart, setEditorOverlaySelectionStart] = useState<number | null>(
     null,
   );
+  const deviceMemoryGb = useMemo(() => resolveDeviceMemoryInGb(), []);
   const [overlayLayout, setOverlayLayout] = useState<OverlayLayoutState>(() => ({
     byIndex: new Map(),
     contentPaddingLeft: OVERLAY_LEFT_GUTTER_WIDTH,
@@ -3166,7 +3183,12 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     [overlayLayout.byIndex, resolveStoredSvgCodeFencePreviewHeight],
   );
 
-  const shouldVirtualizeBlocks = blocks.length >= VIRTUALIZATION_BLOCK_THRESHOLD;
+  const allowVirtualizationByMemory =
+    typeof deviceMemoryGb === "number" &&
+    deviceMemoryGb > VIRTUALIZATION_MIN_DEVICE_MEMORY_GB;
+  const shouldVirtualizeBlocks =
+    allowVirtualizationByMemory &&
+    blocks.length >= VIRTUALIZATION_BLOCK_THRESHOLD;
   const pinnedVirtualizedIndices = useMemo(() => {
     const pinned = new Set<number>();
     if (typeof activeBlockIndex === "number" && activeBlockIndex >= 0) {

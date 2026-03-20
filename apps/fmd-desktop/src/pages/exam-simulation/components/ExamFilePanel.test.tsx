@@ -454,7 +454,115 @@ describe("ExamFilePanel", () => {
 
     expect(onOpenFile).toHaveBeenCalledTimes(2);
     expect(onOpenFile.mock.calls[0]?.[0]?.path).toBe("/vault/a.md");
+    expect(onOpenFile.mock.calls[0]?.[1]).toEqual({ openInNewTab: true });
     expect(onOpenFile.mock.calls[1]?.[0]?.path).toBe("/vault/a.md");
+    expect(onOpenFile.mock.calls[1]?.[1]).toEqual({ openInNewTab: true });
+    expect(document.body.querySelector(".exam-file-open-menu")).toBeNull();
+    cleanup();
+  });
+
+  it("opens file directly via Ctrl/Cmd + left click on row without toggling selection", () => {
+    const onOpenFile = vi.fn();
+    const onToggleFile = vi.fn();
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: [],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile,
+        onOpenFile,
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const rowButton = container.querySelector<HTMLButtonElement>("button.exam-file-row-button");
+    expect(rowButton).toBeTruthy();
+    act(() => {
+      rowButton?.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+        }),
+      );
+    });
+    act(() => {
+      rowButton?.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          metaKey: true,
+        }),
+      );
+    });
+
+    expect(onOpenFile).toHaveBeenCalledTimes(2);
+    expect(onOpenFile.mock.calls[0]?.[0]?.path).toBe("/vault/a.md");
+    expect(onOpenFile.mock.calls[0]?.[1]).toEqual({ openInNewTab: true });
+    expect(onOpenFile.mock.calls[1]?.[0]?.path).toBe("/vault/a.md");
+    expect(onOpenFile.mock.calls[1]?.[1]).toEqual({ openInNewTab: true });
+    expect(onToggleFile).not.toHaveBeenCalled();
+    expect(document.body.querySelector(".exam-file-open-menu")).toBeNull();
+    cleanup();
+  });
+
+  it("opens file directly via Ctrl/Cmd + left click on title without opening popup", () => {
+    const onOpenFile = vi.fn();
+    const onToggleFile = vi.fn();
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: [],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile,
+        onOpenFile,
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const titleTrigger = container.querySelector<HTMLElement>(
+      ".exam-file-row-title.is-open-action",
+    );
+    expect(titleTrigger).toBeTruthy();
+    act(() => {
+      titleTrigger?.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+        }),
+      );
+    });
+    act(() => {
+      titleTrigger?.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          metaKey: true,
+        }),
+      );
+    });
+
+    expect(onOpenFile).toHaveBeenCalledTimes(2);
+    expect(onOpenFile.mock.calls[0]?.[0]?.path).toBe("/vault/a.md");
+    expect(onOpenFile.mock.calls[0]?.[1]).toEqual({ openInNewTab: true });
+    expect(onOpenFile.mock.calls[1]?.[0]?.path).toBe("/vault/a.md");
+    expect(onOpenFile.mock.calls[1]?.[1]).toEqual({ openInNewTab: true });
+    expect(onToggleFile).not.toHaveBeenCalled();
     expect(document.body.querySelector(".exam-file-open-menu")).toBeNull();
     cleanup();
   });

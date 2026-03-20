@@ -122,7 +122,10 @@ vi.mock("./pages/ExamSimulationPage", () => ({
   ExamSimulationPage: ({
     onOpenExamFileInMarkdownEditor,
   }: {
-    onOpenExamFileInMarkdownEditor?: (file: { path: string; relative_path: string }) => void;
+    onOpenExamFileInMarkdownEditor?: (
+      file: { path: string; relative_path: string },
+      options?: { openInNewTab?: boolean },
+    ) => void;
   }) =>
     React.createElement(
       React.Fragment,
@@ -144,6 +147,22 @@ vi.mock("./pages/ExamSimulationPage", () => ({
             }),
         },
         "Exam: open markdown file",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "mock-exam-open-markdown-file-new-tab",
+          onClick: () =>
+            onOpenExamFileInMarkdownEditor?.(
+              {
+                path: "/vault/from-exam-open-new-tab.md",
+                relative_path: "from-exam-open-new-tab.md",
+              },
+              { openInNewTab: true },
+            ),
+        },
+        "Exam: open markdown file in new tab",
       ),
     ),
 }));
@@ -393,7 +412,28 @@ describe("App dashboard leave guard integration", () => {
     expect(getSelectFileSpy()).toHaveBeenCalledWith({
       path: "/vault/from-exam-open.md",
       relative_path: "from-exam-open.md",
-    });
+    }, undefined);
+    expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("passes new-tab open options when exam opens markdown file with ctrl intent", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "study-nav-switch-exam");
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
+
+    await clickTestId(container, "mock-exam-open-markdown-file-new-tab");
+
+    expect(getSelectFileSpy()).toHaveBeenCalledWith(
+      {
+        path: "/vault/from-exam-open-new-tab.md",
+        relative_path: "from-exam-open-new-tab.md",
+      },
+      { openInNewTab: true },
+    );
     expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
 
     cleanup();

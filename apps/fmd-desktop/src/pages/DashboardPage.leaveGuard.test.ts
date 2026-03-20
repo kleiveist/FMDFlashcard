@@ -3,6 +3,7 @@
 import React from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
 import { useAppState } from "../components/AppStateProvider";
@@ -153,6 +154,7 @@ vi.mock("./exam-editor/ExamEditorView", async () => {
 
 const mockUseAppState = vi.mocked(useAppState);
 const mockUseMediaQuery = vi.mocked(useMediaQuery);
+const invokeMock = vi.mocked(invoke);
 
 const createExamControls = (
   overrides: Partial<ExamEditorControlsState> = {},
@@ -175,8 +177,20 @@ const createExamControls = (
 
 const createMockAppState = ({
   handleSelectFile,
+  selectedFile = { path: "/vault/source.md", relative_path: "source.md" },
+  selectedFileOpenInNewTab = false,
+  markdownEditorOpenInNewTabByDefault = false,
+  previewMarkdown = "# demo",
+  previewState = "idle",
+  markdownViewEditEnabled = false,
 }: {
   handleSelectFile: ReturnType<typeof vi.fn>;
+  selectedFile?: { path: string; relative_path: string } | null;
+  selectedFileOpenInNewTab?: boolean;
+  markdownEditorOpenInNewTabByDefault?: boolean;
+  previewMarkdown?: string;
+  previewState?: "idle" | "loading" | "error";
+  markdownViewEditEnabled?: boolean;
 }) =>
   ({
     actions: {
@@ -192,9 +206,10 @@ const createMockAppState = ({
       createProfile: vi.fn(async () => ({ ok: true, profile: null })),
     },
     preview: {
-      selectedFile: { path: "/vault/source.md", relative_path: "source.md" },
-      preview: "# demo",
-      previewState: "idle",
+      selectedFile,
+      selectedFileOpenInNewTab,
+      preview: previewMarkdown,
+      previewState,
       previewError: "",
       rawPreview: false,
       setRawPreview: vi.fn(),
@@ -202,7 +217,7 @@ const createMockAppState = ({
       resetPreview: vi.fn(),
     },
     settings: {
-      markdownViewEditEnabled: false,
+      markdownViewEditEnabled,
       markdownEditorAccentEnabled: false,
       accentColor: "#33aa77",
       theme: "light",
@@ -210,6 +225,7 @@ const createMockAppState = ({
       markdownEditorAccentLightHex: "#33aa77",
       settingsLoaded: true,
       markdownPreviewDefaultMode: "markdown",
+      markdownEditorOpenInNewTabByDefault,
       examEditorShowMoveButtons: false,
     },
     vault: {
@@ -217,6 +233,7 @@ const createMockAppState = ({
       files: [
         { path: "/vault/source.md", relative_path: "source.md" },
         { path: "/vault/target.md", relative_path: "target.md" },
+        { path: "/vault/third.md", relative_path: "third.md" },
       ],
       pngAssets: [],
       listError: "",
@@ -228,15 +245,18 @@ const createMockAppState = ({
 
 const renderDashboard = ({
   initialVaultView = "exam",
+  appState,
 }: {
   initialVaultView?: "exam" | "markdown";
+  appState?: ReturnType<typeof createMockAppState>;
 } = {}) => {
-  const handleSelectFile = vi.fn();
-  mockUseAppState.mockReturnValue(
+  const fallbackHandleSelectFile = vi.fn();
+  const resolvedAppState =
+    appState ??
     createMockAppState({
-      handleSelectFile,
-    }),
-  );
+      handleSelectFile: fallbackHandleSelectFile,
+    });
+  mockUseAppState.mockReturnValue(resolvedAppState);
 
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -252,7 +272,16 @@ const renderDashboard = ({
 
   return {
     container,
-    handleSelectFile,
+    handleSelectFile: resolvedAppState.actions.handleSelectFile as ReturnType<typeof vi.fn>,
+    rerender: () => {
+      act(() => {
+        root.render(
+          React.createElement(DashboardPage, {
+            initialVaultView,
+          }),
+        );
+      });
+    },
     cleanup: () => {
       act(() => {
         root.unmount();
@@ -286,9 +315,14 @@ const clickModalButtonByText = async (
   });
 };
 
+const getLatestPreviewPanelProps = () =>
+  capturedPreviewPanelProps[capturedPreviewPanelProps.length - 1];
+
 describe("DashboardPage exam leave guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    invokeMock.mockReset();
+    invokeMock.mockResolvedValue("");
     examEditorMock.queue = [];
     capturedPreviewPanelProps.length = 0;
     mockUseMediaQuery.mockReturnValue(false);
@@ -425,7 +459,7 @@ describe("DashboardPage exam leave guard", () => {
   it("provides markdown tab session props to PreviewPanel", () => {
     const { cleanup } = renderDashboard({ initialVaultView: "markdown" });
 
-    const latestProps = capturedPreviewPanelProps[capturedPreviewPanelProps.length - 1];
+    const latestProps = getLatestPreviewPanelProps();
     expect(latestProps).toBeTruthy();
     expect(latestProps?.markdownTabs).toEqual([
       {
@@ -436,6 +470,155 @@ describe("DashboardPage exam leave guard", () => {
     expect(latestProps?.activeMarkdownTabPath).toBe("/vault/source.md");
     expect(typeof latestProps?.onSelectMarkdownTab).toBe("function");
     expect(typeof latestProps?.onCloseMarkdownTab).toBe("function");
+
+    cleanup();
+  });
+
+  it("replaces the active markdown tab on standard selections", () => {
+    const handleSelectFile = vi.fn();
+    const initialState = createMockAppState({
+      handleSelectFile,
+      selectedFile: { path: "/vault/source.md", relative_path: "source.md" },
+      selectedFileOpenInNewTab: false,
+      markdownEditorOpenInNewTabByDefault: false,
+    });
+    const { rerender, cleanup } = renderDashboard({
+      initialVaultView: "markdown",
+      appState: initialState,
+    });
+
+    let latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+    ]);
+
+    mockUseAppState.mockReturnValue(
+      createMockAppState({
+        handleSelectFile,
+        selectedFile: { path: "/vault/target.md", relative_path: "target.md" },
+        selectedFileOpenInNewTab: false,
+        markdownEditorOpenInNewTabByDefault: false,
+      }),
+    );
+    rerender();
+
+    latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownTabs).toEqual([
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
+
+    cleanup();
+  });
+
+  it("appends a new markdown tab when ctrl/cmd open intent is set", () => {
+    const handleSelectFile = vi.fn();
+    const initialState = createMockAppState({
+      handleSelectFile,
+      selectedFile: { path: "/vault/source.md", relative_path: "source.md" },
+      selectedFileOpenInNewTab: false,
+      markdownEditorOpenInNewTabByDefault: false,
+    });
+    const { rerender, cleanup } = renderDashboard({
+      initialVaultView: "markdown",
+      appState: initialState,
+    });
+
+    mockUseAppState.mockReturnValue(
+      createMockAppState({
+        handleSelectFile,
+        selectedFile: { path: "/vault/target.md", relative_path: "target.md" },
+        selectedFileOpenInNewTab: true,
+        markdownEditorOpenInNewTabByDefault: false,
+      }),
+    );
+    rerender();
+
+    const latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
+
+    cleanup();
+  });
+
+  it("appends tabs when markdown setting defaults to new-tab open", () => {
+    const handleSelectFile = vi.fn();
+    const initialState = createMockAppState({
+      handleSelectFile,
+      selectedFile: { path: "/vault/source.md", relative_path: "source.md" },
+      selectedFileOpenInNewTab: false,
+      markdownEditorOpenInNewTabByDefault: true,
+    });
+    const { rerender, cleanup } = renderDashboard({
+      initialVaultView: "markdown",
+      appState: initialState,
+    });
+
+    mockUseAppState.mockReturnValue(
+      createMockAppState({
+        handleSelectFile,
+        selectedFile: { path: "/vault/target.md", relative_path: "target.md" },
+        selectedFileOpenInNewTab: false,
+        markdownEditorOpenInNewTabByDefault: true,
+      }),
+    );
+    rerender();
+
+    const latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
+
+    cleanup();
+  });
+
+  it("does not write markdown files while the selected file is still loading", async () => {
+    const handleSelectFile = vi.fn();
+    const sourceState = createMockAppState({
+      handleSelectFile,
+      selectedFile: { path: "/vault/source.md", relative_path: "source.md" },
+      previewMarkdown: "Source content",
+      previewState: "idle",
+      markdownViewEditEnabled: true,
+    });
+    const { rerender, cleanup } = renderDashboard({
+      initialVaultView: "markdown",
+      appState: sourceState,
+    });
+
+    const sourceProps = getLatestPreviewPanelProps();
+    const onEditChange = sourceProps?.onEditChange as ((value: string) => void) | undefined;
+    expect(onEditChange).toBeTypeOf("function");
+    act(() => {
+      onEditChange?.("Source draft change");
+    });
+
+    invokeMock.mockClear();
+
+    mockUseAppState.mockReturnValue(
+      createMockAppState({
+        handleSelectFile,
+        selectedFile: { path: "/vault/target.md", relative_path: "target.md" },
+        previewMarkdown: "",
+        previewState: "loading",
+        markdownViewEditEnabled: true,
+      }),
+    );
+    rerender();
+
+    const loadingProps = getLatestPreviewPanelProps();
+    const onWriteSave = loadingProps?.onWriteSave as (() => Promise<void>) | undefined;
+    expect(onWriteSave).toBeTypeOf("function");
+    await act(async () => {
+      await onWriteSave?.();
+    });
+
+    const writeCalls = invokeMock.mock.calls.filter(
+      ([command]) => command === "write_text_file",
+    );
+    expect(writeCalls).toHaveLength(0);
 
     cleanup();
   });

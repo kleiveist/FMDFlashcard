@@ -305,19 +305,25 @@ describe("ExamSimulationPage popup sync", () => {
     );
     expect(sidebarProps?.onOpenFile).toBe(popupProps?.onOpenFile);
     const openFileHandler = sidebarProps?.onOpenFile as
-      | ((entry: { path: string; relative_path: string }) => void)
+      | ((
+          entry: { path: string; relative_path: string },
+          options?: { openInNewTab?: boolean },
+        ) => void)
       | undefined;
     expect(openFileHandler).toBeTruthy();
     act(() => {
       openFileHandler?.({
         path: "/vault/from-exam.md",
         relative_path: "from-exam.md",
-      });
+      }, { openInNewTab: true });
     });
-    expect(openMarkdownSpy).toHaveBeenCalledWith({
-      path: "/vault/from-exam.md",
-      relative_path: "from-exam.md",
-    });
+    expect(openMarkdownSpy).toHaveBeenCalledWith(
+      {
+        path: "/vault/from-exam.md",
+        relative_path: "from-exam.md",
+      },
+      { openInNewTab: true },
+    );
     const examNoteModalProps = capturedNoteModalProps.find(
       (entry) => entry.title === "Exam Files",
     );

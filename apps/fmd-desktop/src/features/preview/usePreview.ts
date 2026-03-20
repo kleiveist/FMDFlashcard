@@ -21,7 +21,7 @@
  * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { asErrorMessage } from "../../lib/errors";
 import { type LoadState } from "../../lib/types";
@@ -29,32 +29,49 @@ import { type VaultFile } from "../../lib/tree";
 
 export type PreviewSnapshot = {
   selectedFile: VaultFile | null;
+  selectedFileOpenInNewTab: boolean;
   preview: string;
   previewState: LoadState;
   previewError: string;
   rawPreview: boolean;
 };
 
+export type PreviewFileOpenOptions = {
+  openInNewTab?: boolean;
+};
+
 export const usePreview = () => {
   const [selectedFile, setSelectedFile] = useState<VaultFile | null>(null);
+  const [selectedFileOpenInNewTab, setSelectedFileOpenInNewTab] = useState(false);
   const [preview, setPreview] = useState("");
   const [previewState, setPreviewState] = useState<LoadState>("idle");
   const [previewError, setPreviewError] = useState("");
   const [rawPreview, setRawPreview] = useState(false);
+  const selectRequestIdRef = useRef(0);
 
   const takeSnapshot = useCallback(
     (): PreviewSnapshot => ({
       selectedFile,
+      selectedFileOpenInNewTab,
       preview,
       previewState,
       previewError,
       rawPreview,
     }),
-    [preview, previewError, previewState, rawPreview, selectedFile],
+    [
+      preview,
+      previewError,
+      previewState,
+      rawPreview,
+      selectedFile,
+      selectedFileOpenInNewTab,
+    ],
   );
 
   const restoreSnapshot = useCallback((snapshot: PreviewSnapshot) => {
+    selectRequestIdRef.current += 1;
     setSelectedFile(snapshot.selectedFile);
+    setSelectedFileOpenInNewTab(Boolean(snapshot.selectedFileOpenInNewTab));
     setPreview(snapshot.preview);
     setPreviewState(snapshot.previewState);
     setPreviewError(snapshot.previewError);
@@ -62,14 +79,19 @@ export const usePreview = () => {
   }, []);
 
   const resetPreview = useCallback(() => {
+    selectRequestIdRef.current += 1;
     setSelectedFile(null);
+    setSelectedFileOpenInNewTab(false);
     setPreview("");
     setPreviewState("idle");
     setPreviewError("");
   }, []);
 
-  const selectFile = useCallback(async (file: VaultFile) => {
+  const selectFile = useCallback(async (file: VaultFile, options?: PreviewFileOpenOptions) => {
+    selectRequestIdRef.current += 1;
+    const requestId = selectRequestIdRef.current;
     setSelectedFile(file);
+    setSelectedFileOpenInNewTab(Boolean(options?.openInNewTab));
     setPreview("");
     setPreviewError("");
     setPreviewState("loading");
@@ -77,9 +99,15 @@ export const usePreview = () => {
       const contents = await invoke<string>("read_text_file", {
         path: file.path,
       });
+      if (requestId !== selectRequestIdRef.current) {
+        return;
+      }
       setPreview(contents);
       setPreviewState("idle");
     } catch (error) {
+      if (requestId !== selectRequestIdRef.current) {
+        return;
+      }
       const message = asErrorMessage(error, "Failed to load file contents.");
       setPreviewError(message);
       setPreviewState("error");
@@ -95,6 +123,7 @@ export const usePreview = () => {
     restoreSnapshot,
     selectFile,
     selectedFile,
+    selectedFileOpenInNewTab,
     setPreview,
     setPreviewError,
     setPreviewState,

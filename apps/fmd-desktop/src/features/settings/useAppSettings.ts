@@ -141,6 +141,7 @@ export type AppSettings = {
   editor_markdown_backslash_enabled?: boolean | null;
   editor_markdown_view_edit_enabled?: boolean | null;
   editor_markdown_preview_default_mode?: string | null;
+  editor_markdown_open_in_new_tab_by_default?: boolean | null;
   exam_editor_show_move_buttons?: boolean | null;
   language?: AppLanguage | null;
   max_files_per_scan?: string | null;
@@ -222,6 +223,7 @@ type PersistUpdates = {
   cursorAccessoryEnabled?: boolean;
   markdownViewEditEnabled?: boolean;
   markdownPreviewDefaultMode?: MarkdownPreviewDefaultMode;
+  markdownEditorOpenInNewTabByDefault?: boolean;
   examEditorShowMoveButtons?: boolean;
   language?: AppLanguage;
   maxFilesPerScan?: string;
@@ -290,6 +292,7 @@ export type SettingsSnapshot = {
   cursorAccessoryEnabled: boolean;
   markdownViewEditEnabled: boolean;
   markdownPreviewDefaultMode: MarkdownPreviewDefaultMode;
+  markdownEditorOpenInNewTabByDefault: boolean;
   examEditorShowMoveButtons: boolean;
   language: AppLanguage;
   maxFilesPerScan: string;
@@ -355,6 +358,7 @@ const DEFAULT_CURSOR_ACCESSORY_ENABLED = resolveDefaultCursorAccessoryEnabled();
 const DEFAULT_MARKDOWN_VIEW_EDIT_ENABLED = false;
 const DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE: MarkdownPreviewDefaultMode =
   "markdown";
+const DEFAULT_MARKDOWN_EDITOR_OPEN_IN_NEW_TAB_BY_DEFAULT = false;
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
 const DEFAULT_SHOW_HIDDEN_FOLDERS = false;
@@ -924,6 +928,8 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   ui_cursor_accessory_enabled: settings.cursorAccessoryEnabled,
   editor_markdown_view_edit_enabled: settings.markdownViewEditEnabled,
   editor_markdown_preview_default_mode: settings.markdownPreviewDefaultMode,
+  editor_markdown_open_in_new_tab_by_default:
+    settings.markdownEditorOpenInNewTabByDefault,
   exam_editor_show_move_buttons: settings.examEditorShowMoveButtons,
   language: settings.language,
   max_files_per_scan: settings.maxFilesPerScan,
@@ -1031,6 +1037,10 @@ export const normalizeSettings = (
     stored.editor_markdown_preview_default_mode === "markdown"
       ? stored.editor_markdown_preview_default_mode
       : DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE;
+  const storedMarkdownEditorOpenInNewTabByDefault =
+    typeof stored.editor_markdown_open_in_new_tab_by_default === "boolean"
+      ? stored.editor_markdown_open_in_new_tab_by_default
+      : DEFAULT_MARKDOWN_EDITOR_OPEN_IN_NEW_TAB_BY_DEFAULT;
   const storedExamEditorShowMoveButtons =
     typeof stored.exam_editor_show_move_buttons === "boolean"
       ? stored.exam_editor_show_move_buttons
@@ -1327,6 +1337,7 @@ export const normalizeSettings = (
       cursorAccessoryEnabled: storedCursorAccessoryEnabled,
       markdownViewEditEnabled: storedMarkdownViewEditEnabled,
       markdownPreviewDefaultMode: storedMarkdownPreviewDefaultMode,
+      markdownEditorOpenInNewTabByDefault: storedMarkdownEditorOpenInNewTabByDefault,
       examEditorShowMoveButtons: storedExamEditorShowMoveButtons,
       language: storedLanguage,
       maxFilesPerScan: storedMaxFilesPerScan,
@@ -1408,6 +1419,10 @@ export const useAppSettings = () => {
   );
   const [markdownPreviewDefaultMode, setMarkdownPreviewDefaultModeState] =
     useState<MarkdownPreviewDefaultMode>(DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE);
+  const [
+    markdownEditorOpenInNewTabByDefault,
+    setMarkdownEditorOpenInNewTabByDefaultState,
+  ] = useState(DEFAULT_MARKDOWN_EDITOR_OPEN_IN_NEW_TAB_BY_DEFAULT);
   const [examEditorShowMoveButtons, setExamEditorShowMoveButtonsState] =
     useState(DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -1907,6 +1922,10 @@ export const useAppSettings = () => {
     [],
   );
 
+  const setMarkdownEditorOpenInNewTabByDefault = useCallback((value: boolean) => {
+    setMarkdownEditorOpenInNewTabByDefaultState(Boolean(value));
+  }, []);
+
   const setSpacedRepetitionHelpEnabled = useCallback((value: boolean) => {
     setSpacedRepetitionHelpEnabledState(Boolean(value));
   }, []);
@@ -1937,6 +1956,7 @@ export const useAppSettings = () => {
       cursorAccessoryEnabled,
       markdownViewEditEnabled,
       markdownPreviewDefaultMode,
+      markdownEditorOpenInNewTabByDefault,
       examEditorShowMoveButtons,
       language,
       maxFilesPerScan,
@@ -1995,6 +2015,7 @@ export const useAppSettings = () => {
       cursorAccessoryEnabled,
       markdownViewEditEnabled,
       markdownPreviewDefaultMode,
+      markdownEditorOpenInNewTabByDefault,
       examEditorShowMoveButtons,
       examAiEvaluation,
       examMaxTotalPoints,
@@ -2084,6 +2105,8 @@ export const useAppSettings = () => {
           uiCursorAccessoryEnabled: settings.cursorAccessoryEnabled,
           editorMarkdownViewEditEnabled: settings.markdownViewEditEnabled,
           editorMarkdownPreviewDefaultMode: settings.markdownPreviewDefaultMode,
+          editorMarkdownOpenInNewTabByDefault:
+            settings.markdownEditorOpenInNewTabByDefault,
           examEditorShowMoveButtons: settings.examEditorShowMoveButtons,
           language: settings.language,
           maxFilesPerScan: settings.maxFilesPerScan,
@@ -2176,6 +2199,9 @@ export const useAppSettings = () => {
           updates.markdownViewEditEnabled ?? markdownViewEditEnabled,
         markdownPreviewDefaultMode:
           updates.markdownPreviewDefaultMode ?? markdownPreviewDefaultMode,
+        markdownEditorOpenInNewTabByDefault:
+          updates.markdownEditorOpenInNewTabByDefault ??
+          markdownEditorOpenInNewTabByDefault,
         examEditorShowMoveButtons:
           updates.examEditorShowMoveButtons ?? examEditorShowMoveButtons,
         language: updates.language ?? language,
@@ -2284,6 +2310,7 @@ export const useAppSettings = () => {
       cursorAccessoryEnabled,
       markdownViewEditEnabled,
       markdownPreviewDefaultMode,
+      markdownEditorOpenInNewTabByDefault,
       examEditorShowMoveButtons,
       examAiEvaluation,
       examGradeScale,
@@ -2377,6 +2404,9 @@ export const useAppSettings = () => {
     setCursorAccessoryEnabledState(normalized.cursorAccessoryEnabled);
     setMarkdownViewEditEnabledState(normalized.markdownViewEditEnabled);
     setMarkdownPreviewDefaultModeState(normalized.markdownPreviewDefaultMode);
+    setMarkdownEditorOpenInNewTabByDefaultState(
+      normalized.markdownEditorOpenInNewTabByDefault,
+    );
     setExamEditorShowMoveButtonsState(normalized.examEditorShowMoveButtons);
     setActiveNotePath(normalized.activeNotePath);
     setVaultPath(normalized.vaultPath);
@@ -2615,6 +2645,7 @@ export const useAppSettings = () => {
     cursorAccessoryEnabled,
     markdownViewEditEnabled,
     markdownPreviewDefaultMode,
+    markdownEditorOpenInNewTabByDefault,
     examEditorShowMoveButtons,
     examAiEvaluation,
     inputDebugEnabled,
@@ -2662,6 +2693,7 @@ export const useAppSettings = () => {
     setCursorAccessoryEnabled,
     setMarkdownViewEditEnabled,
     setMarkdownPreviewDefaultMode,
+    setMarkdownEditorOpenInNewTabByDefault,
     setExamEditorShowMoveButtons,
     setExamAiEvaluation,
     setInputDebugEnabled,

@@ -500,6 +500,9 @@ export const SettingsPage = () => {
               editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
               cursorAccessoryEnabled={settings.cursorAccessoryEnabled}
               markdownPreviewDefaultMode={settings.markdownPreviewDefaultMode}
+              markdownEditorOpenInNewTabByDefault={
+                settings.markdownEditorOpenInNewTabByDefault
+              }
               onMarkdownEditorAccentEnabledToggle={
                 settings.setMarkdownEditorAccentEnabled
               }
@@ -511,6 +514,9 @@ export const SettingsPage = () => {
               onCursorAccessoryEnabledToggle={settings.setCursorAccessoryEnabled}
               onMarkdownPreviewDefaultModeChange={
                 settings.setMarkdownPreviewDefaultMode
+              }
+              onMarkdownEditorOpenInNewTabByDefaultToggle={
+                settings.setMarkdownEditorOpenInNewTabByDefault
               }
             />
           </div>

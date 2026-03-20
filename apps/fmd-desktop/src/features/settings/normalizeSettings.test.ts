@@ -25,6 +25,15 @@ describe("normalizeSettings", () => {
 
     expect(settings.markdownViewEditEnabled).toBe(false);
     expect(settings.markdownPreviewDefaultMode).toBe("markdown");
+    expect(settings.markdownEditorOpenInNewTabByDefault).toBe(false);
+  });
+
+  it("restores stored markdown new-tab default when present", () => {
+    const { settings } = normalizeSettings({
+      editor_markdown_open_in_new_tab_by_default: true,
+    } as AppSettings);
+
+    expect(settings.markdownEditorOpenInNewTabByDefault).toBe(true);
   });
 
   it("coerces invalid enum values to defaults", () => {

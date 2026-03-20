@@ -103,6 +103,7 @@ struct AppSettings {
     editor_markdown_backslash_enabled: Option<bool>,
     editor_markdown_view_edit_enabled: Option<bool>,
     editor_markdown_preview_default_mode: Option<String>,
+    editor_markdown_open_in_new_tab_by_default: Option<bool>,
     exam_editor_show_move_buttons: Option<bool>,
     language: Option<String>,
     max_files_per_scan: Option<String>,
@@ -247,6 +248,7 @@ impl AppSettings {
             && self.editor_markdown_custom_accent_hex.is_none()
             && self.editor_blueprint_grid.is_none()
             && self.editor_blueprint_grid_intensity.is_none()
+            && self.editor_markdown_open_in_new_tab_by_default.is_none()
             && self.exam_editor_show_move_buttons.is_none()
             && self.language.is_none()
             && self.max_files_per_scan.is_none()
@@ -518,6 +520,7 @@ fn save_app_settings(
     ui_cursor_accessory_enabled: Option<bool>,
     editor_markdown_view_edit_enabled: Option<bool>,
     editor_markdown_preview_default_mode: Option<String>,
+    editor_markdown_open_in_new_tab_by_default: Option<bool>,
     exam_editor_show_move_buttons: Option<bool>,
     language: Option<String>,
     max_files_per_scan: Option<String>,
@@ -580,6 +583,7 @@ fn save_app_settings(
         editor_markdown_backslash_enabled: None,
         editor_markdown_view_edit_enabled,
         editor_markdown_preview_default_mode,
+        editor_markdown_open_in_new_tab_by_default,
         exam_editor_show_move_buttons,
         language,
         max_files_per_scan,

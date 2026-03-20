@@ -41,7 +41,10 @@ import { type VaultFile } from "../lib/tree";
 import type { LoadState } from "../lib/types";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
 import { useFlashcardNoteFiles } from "../features/flashcards/useFlashcardNoteFiles";
-import { usePreview } from "../features/preview/usePreview";
+import {
+  usePreview,
+  type PreviewFileOpenOptions,
+} from "../features/preview/usePreview";
 import {
   buildRecentVaultId,
   createRecentVaultEntry,
@@ -76,7 +79,7 @@ type AppActions = {
   handleRemoveRecentVault: (path: string) => void;
   handleOpenVaultManager: () => void;
   handleClearVault: () => void;
-  handleSelectFile: (file: VaultFile) => void;
+  handleSelectFile: (file: VaultFile, options?: PreviewFileOpenOptions) => void;
   handleToggleExamFileSelection: (path: string) => void;
   handleSetSelectedExamFiles: (paths: string[]) => void;
   handleSetSelectedExamFileRows: (rows: ExamSelectionRows) => void;
@@ -1115,9 +1118,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const handleSelectFile = useCallback(
-    (file: VaultFile) => {
+    (file: VaultFile, options?: PreviewFileOpenOptions) => {
       resetFlashcards();
-      void selectFile(file);
+      void selectFile(file, options);
     },
     [resetFlashcards, selectFile],
   );

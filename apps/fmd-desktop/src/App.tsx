@@ -52,6 +52,7 @@ import { isSyncProviderEnabled, logWordPressFeatureStatus } from "./lib/featureF
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
 import { useInputDebugInstrumentation } from "./features/input-debug/useInputDebug";
 import { subscribeSettingsFocus } from "./features/settings/settingsDeepLink";
+import type { PreviewFileOpenOptions } from "./features/preview/usePreview";
 import { DashboardPage, type DashboardPageHandle, type DashboardView } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
@@ -317,8 +318,8 @@ const AppContent = () => {
   }, []);
 
   const handleOpenExamFileInMarkdownEditor = useCallback(
-    (file: VaultFile) => {
-      actions.handleSelectFile(file);
+    (file: VaultFile, options?: PreviewFileOpenOptions) => {
+      actions.handleSelectFile(file, options);
       setDashboardView("markdown");
       setActiveTab("dashboard");
       setIsMobileNavOpen(false);

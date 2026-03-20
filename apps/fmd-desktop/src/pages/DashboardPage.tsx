@@ -114,6 +114,7 @@ const DashboardPageInner = (
   const { actions, pointsProfiles, preview, settings, vault } = useAppState();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
+  const [editDraftSourcePath, setEditDraftSourcePath] = useState<string | null>(null);
   const [editError, setEditError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
@@ -135,6 +136,7 @@ const DashboardPageInner = (
   const [pendingExamLeaveTarget, setPendingExamLeaveTarget] =
     useState<ExamLeaveGuardTarget | null>(null);
   const [isExamLeaveSavePending, setIsExamLeaveSavePending] = useState(false);
+  const previousSelectedMarkdownPathRef = useRef<string | null>(null);
   const isDesktopViewport = useMediaQuery("(min-width: 1200px)", false);
   const [examPanelsCollapsed, setExamPanelsCollapsed] = useState(() => {
     if (typeof window === "undefined") {
@@ -232,8 +234,14 @@ const DashboardPageInner = (
   }, [normalizedActiveFolderPath, visibleFiles.length, vault.vaultPath]);
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
+  const selectedMarkdownPath = preview.selectedFile?.path ?? null;
+  const isDraftSyncedToSelectedFile =
+    Boolean(selectedMarkdownPath) &&
+    editDraftSourcePath === selectedMarkdownPath;
   const hasUnsavedMarkdownDraftChanges =
-    Boolean(preview.selectedFile) && editDraft !== preview.preview;
+    preview.previewState === "idle" &&
+    isDraftSyncedToSelectedFile &&
+    editDraft !== preview.preview;
   const markdownEditorAccentHex = useMemo(() => {
     if (!settings.markdownEditorAccentEnabled) {
       return settings.accentColor;
@@ -299,31 +307,54 @@ const DashboardPageInner = (
   useEffect(() => {
     const selected = preview.selectedFile;
     if (!selected) {
+      previousSelectedMarkdownPathRef.current = null;
       return;
     }
+    const selectedPath = selected.path;
+    const selectedRelativePath = selected.relative_path;
+    const previousSelectedPath = previousSelectedMarkdownPathRef.current;
+    previousSelectedMarkdownPathRef.current = selectedPath;
+    const shouldOpenInNewTab =
+      preview.selectedFileOpenInNewTab ||
+      settings.markdownEditorOpenInNewTabByDefault;
+
     setMarkdownTabs((previous) => {
-      const existingIndex = previous.findIndex((tab) => tab.path === selected.path);
+      const existingIndex = previous.findIndex((tab) => tab.path === selectedPath);
       if (existingIndex >= 0) {
         const existing = previous[existingIndex];
-        if (existing?.relativePath === selected.relative_path) {
+        if (existing?.relativePath === selectedRelativePath) {
           return previous;
         }
         const next = previous.slice();
         next[existingIndex] = {
-          path: selected.path,
-          relativePath: selected.relative_path,
+          path: selectedPath,
+          relativePath: selectedRelativePath,
         };
         return next;
       }
-      return [
-        ...previous,
-        {
-          path: selected.path,
-          relativePath: selected.relative_path,
-        },
-      ];
+      const nextTab: MarkdownEditorTab = {
+        path: selectedPath,
+        relativePath: selectedRelativePath,
+      };
+      if (previous.length === 0) {
+        return [nextTab];
+      }
+      if (shouldOpenInNewTab) {
+        return [...previous, nextTab];
+      }
+      const replaceIndex = previousSelectedPath
+        ? previous.findIndex((tab) => tab.path === previousSelectedPath)
+        : -1;
+      const fallbackReplaceIndex = replaceIndex >= 0 ? replaceIndex : previous.length - 1;
+      const next = previous.slice();
+      next[fallbackReplaceIndex] = nextTab;
+      return next;
     });
-  }, [preview.selectedFile?.path, preview.selectedFile?.relative_path]);
+  }, [
+    preview.selectedFile,
+    preview.selectedFileOpenInNewTab,
+    settings.markdownEditorOpenInNewTabByDefault,
+  ]);
 
   useEffect(() => {
     if (!vault.vaultPath) {
@@ -340,6 +371,7 @@ const DashboardPageInner = (
   useEffect(() => {
     setIsEditing(false);
     setEditDraft("");
+    setEditDraftSourcePath(null);
     setEditError("");
     setIsSaving(false);
     setEditCaretIndex(null);
@@ -352,6 +384,7 @@ const DashboardPageInner = (
       return;
     }
     setEditDraft(preview.preview);
+    setEditDraftSourcePath(preview.selectedFile.path);
   }, [preview.preview, preview.previewState, preview.selectedFile?.path]);
 
   useEffect(() => {
@@ -366,6 +399,7 @@ const DashboardPageInner = (
     }
     setDocumentMode("write");
     setEditDraft(preview.preview);
+    setEditDraftSourcePath(preview.selectedFile.path);
     setPendingWriteFilePath(null);
   }, [
     pendingWriteFilePath,
@@ -468,12 +502,21 @@ const DashboardPageInner = (
     setExamPanelsCollapsed((current) => !current);
   }, []);
 
+  const handleEditDraftChange = useCallback(
+    (nextValue: string) => {
+      setEditDraft(nextValue);
+      setEditDraftSourcePath(preview.selectedFile?.path ?? null);
+    },
+    [preview.selectedFile?.path],
+  );
+
   const handleEditStart = useCallback(
     (options?: { caretIndex?: number | null; origin?: "raw" | "markdown" }) => {
       if (!preview.selectedFile || preview.previewState !== "idle") {
         return;
       }
       setEditDraft(preview.preview);
+      setEditDraftSourcePath(preview.selectedFile.path);
       setEditError("");
       setEditCaretIndex(
         typeof options?.caretIndex === "number" ? options.caretIndex : null,
@@ -491,7 +534,14 @@ const DashboardPageInner = (
       closeLegacyEditor?: boolean;
       exitWriteMode?: boolean;
     } = {}) => {
-      if (!preview.selectedFile || isSaving) {
+      const selectedPath = preview.selectedFile?.path ?? null;
+      if (!selectedPath || isSaving) {
+        return false;
+      }
+      if (preview.previewState !== "idle") {
+        return false;
+      }
+      if (editDraftSourcePath !== selectedPath) {
         return false;
       }
       if (editDraft === preview.preview) {
@@ -509,10 +559,11 @@ const DashboardPageInner = (
       setEditError("");
       try {
         await invoke("write_text_file", {
-          path: preview.selectedFile.path,
+          path: selectedPath,
           contents: editDraft,
         });
         preview.setPreview(editDraft);
+        setEditDraftSourcePath(selectedPath);
         setIsHybridBlockDirty(false);
         if (closeLegacyEditor) {
           setIsEditing(false);
@@ -529,7 +580,7 @@ const DashboardPageInner = (
         setIsSaving(false);
       }
     },
-    [editDraft, isSaving, preview],
+    [editDraft, editDraftSourcePath, isSaving, preview],
   );
 
   const handleEditAutosave = useCallback(async () => {
@@ -589,11 +640,12 @@ const DashboardPageInner = (
   const handleWriteCancel = useCallback(() => {
     setEditError("");
     setEditDraft(preview.preview);
+    setEditDraftSourcePath(preview.selectedFile?.path ?? null);
     setIsHybridBlockDirty(false);
     setDocumentMode("edit");
     setIsEditing(false);
     setEditCaretIndex(null);
-  }, [preview.preview]);
+  }, [preview.preview, preview.selectedFile?.path]);
 
   const persistMarkdownBeforeNavigation = useCallback(async () => {
     if (documentMode === "write") {
@@ -733,11 +785,14 @@ const DashboardPageInner = (
   );
 
   const handleSelectMarkdownFile = useCallback(
-    (file: Parameters<typeof actions.handleSelectFile>[0]) => {
+    (
+      file: Parameters<typeof actions.handleSelectFile>[0],
+      options?: Parameters<typeof actions.handleSelectFile>[1],
+    ) => {
       void (async () => {
         await runDashboardNavigationGuard("file-select", async () => {
           setDocumentMode("edit");
-          actions.handleSelectFile(file);
+          actions.handleSelectFile(file, options);
         });
       })();
     },
@@ -845,6 +900,7 @@ const DashboardPageInner = (
         });
         preview.setPreview(nextMarkdown);
         setEditDraft(nextMarkdown);
+        setEditDraftSourcePath(preview.selectedFile.path);
         return true;
       } catch (error) {
         setEditError(asErrorMessage(error, "Failed to save file."));
@@ -1242,7 +1298,7 @@ const DashboardPageInner = (
             sourceRelativePath={preview.selectedFile?.relative_path ?? null}
             canEdit={canEdit}
             markdownEditorStyle={markdownEditorStyle}
-            onEditChange={setEditDraft}
+            onEditChange={handleEditDraftChange}
             onHybridDirtyChange={setIsHybridBlockDirty}
             onEditCaretApplied={handleEditCaretApplied}
             onEditExit={handleEditAutosave}

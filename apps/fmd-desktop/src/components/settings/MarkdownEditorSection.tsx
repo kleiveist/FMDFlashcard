@@ -32,6 +32,7 @@ type MarkdownEditorSectionProps = {
   editorBlueprintGridIntensity: "light" | "medium" | "strong";
   cursorAccessoryEnabled: boolean;
   markdownPreviewDefaultMode: "markdown" | "raw";
+  markdownEditorOpenInNewTabByDefault: boolean;
   onMarkdownEditorAccentEnabledToggle: (value: boolean) => void;
   onMarkdownEditorAccentHexChange: (mode: AccentMode, value: string) => void;
   onEditorBlueprintGridToggle: (value: boolean) => void;
@@ -40,6 +41,7 @@ type MarkdownEditorSectionProps = {
   ) => void;
   onCursorAccessoryEnabledToggle: (value: boolean) => void;
   onMarkdownPreviewDefaultModeChange: (value: "markdown" | "raw") => void;
+  onMarkdownEditorOpenInNewTabByDefaultToggle: (value: boolean) => void;
 };
 
 type ExamEditorSectionProps = {
@@ -89,12 +91,14 @@ export const MarkdownEditorSection = ({
   editorBlueprintGridIntensity,
   cursorAccessoryEnabled,
   markdownPreviewDefaultMode,
+  markdownEditorOpenInNewTabByDefault,
   onMarkdownEditorAccentEnabledToggle,
   onMarkdownEditorAccentHexChange,
   onEditorBlueprintGridToggle,
   onEditorBlueprintGridIntensityChange,
   onCursorAccessoryEnabledToggle,
   onMarkdownPreviewDefaultModeChange,
+  onMarkdownEditorOpenInNewTabByDefaultToggle,
 }: MarkdownEditorSectionProps) => {
   const [accentMode, setAccentMode] = useState<AccentMode>("light");
   const [isCopied, setIsCopied] = useState(false);
@@ -349,6 +353,29 @@ export const MarkdownEditorSection = ({
           >
             Rohtext
           </button>
+        </div>
+      </div>
+      <div className="setting-row">
+        <span className="label">Immer in neuem Tab oeffnen</span>
+        <div className="setting-subrow">
+          <div className="theme-toggle">
+            <span className="toggle-label">Off</span>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={markdownEditorOpenInNewTabByDefault}
+                onChange={(event) =>
+                  onMarkdownEditorOpenInNewTabByDefaultToggle(event.target.checked)
+                }
+                aria-label="Immer in neuem Tab oeffnen"
+              />
+              <span className="slider" />
+            </label>
+            <span className="toggle-label">On</span>
+          </div>
+          <span className="helper-text">
+            Wenn aktiv, oeffnen Markdown-Dateien standardmaessig in neuen Tabs.
+          </span>
         </div>
       </div>
     </div>
