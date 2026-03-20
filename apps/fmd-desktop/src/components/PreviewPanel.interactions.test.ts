@@ -3197,6 +3197,15 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(coverThumb).toBeTruthy();
     expect(coverThumb?.getAttribute("src") ?? "").toContain("cover.png");
     expect(coverThumb?.closest(".frontmatter-cover-thumbnail-button")).toBeTruthy();
+    expect(container.querySelector(".frontmatter-cover-panel")).toBeTruthy();
+    expect(container.querySelector(".frontmatter-panel")).toBeTruthy();
+    expect(container.querySelector('[data-frontmatter-key="Cover"]')).toBeNull();
+
+    const panelOrder = Array.from(
+      container.querySelectorAll(".frontmatter-cover-panel, .frontmatter-panel"),
+    );
+    expect(panelOrder[0]?.classList.contains("frontmatter-cover-panel")).toBe(true);
+    expect(panelOrder[1]?.classList.contains("frontmatter-panel")).toBe(true);
 
     const coverValueInput = container.querySelector(
       'input[aria-label="Cover value"]',
@@ -3212,50 +3221,101 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(coverNameText).toBe("[[assets/cover.png]]");
     expect(coverTargetText).toBe("[[assets/cover.png]]");
 
-    const coverRow = container.querySelector(
-      '[data-frontmatter-key="Cover"]',
-    ) as HTMLDivElement | null;
-    const coverLabel = coverRow?.querySelector(".frontmatter-label") as HTMLSpanElement | null;
-    expect(coverRow).toBeTruthy();
-    expect(coverLabel).toBeTruthy();
+    const pickerButton = container.querySelector(
+      'button[aria-label="Cover Bild aus Vault waehlen"]',
+    ) as HTMLButtonElement | null;
+    expect(pickerButton).toBeTruthy();
+    expect(pickerButton?.className ?? "").toContain("is-subtle");
 
     act(() => {
-      coverRow?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      pickerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await act(async () => {
       await Promise.resolve();
     });
-    expect(
-      container.querySelector('[aria-label="Cover Dateityp Auswahl"]'),
-    ).toBeNull();
-    expect(container.textContent ?? "").not.toContain("Typ: PNG");
 
-    act(() => {
-      coverRow?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    await act(async () => {
-      await Promise.resolve();
-    });
-    expect(
-      container.querySelector('[aria-label="Cover Dateityp Auswahl"]'),
-    ).toBeNull();
+    const pickerText = (
+      container.querySelector("#frontmatter-cover-picker-cover.frontmatter-cover-picker")
+    )?.textContent ?? "";
+    expect(pickerText).toContain("cover.png");
+    expect(pickerText).not.toContain("alt.jpg");
+    expect(pickerText).not.toContain("Note.md");
+  });
 
-    act(() => {
-      coverThumb?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  it("shows an empty cover panel with visible add button when no cover is set", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      vaultPngAssets: [
+        {
+          path: "/vault/assets/cover.png",
+          relative_path: "assets/cover.png",
+          file_name: "cover.png",
+          extension: "png",
+        },
+      ],
     });
-    await act(async () => {
-      await Promise.resolve();
-    });
+    cleanup = localCleanup;
+
+    const coverPanel = container.querySelector(".frontmatter-cover-panel");
+    expect(coverPanel).toBeTruthy();
+    expect(coverPanel?.className ?? "").toContain("is-empty");
+    expect(container.querySelector('[data-frontmatter-key="Cover"]')).toBeNull();
 
     const pickerButton = container.querySelector(
       'button[aria-label="Cover Bild aus Vault waehlen"]',
     ) as HTMLButtonElement | null;
-    expect(pickerButton).toBeNull();
+    expect(pickerButton).toBeTruthy();
+    expect(pickerButton?.className ?? "").toContain("is-prominent");
 
-    const pickerText = container.querySelector(".frontmatter-cover-picker")?.textContent ?? "";
-    expect(pickerText).toContain("cover.png");
-    expect(pickerText).not.toContain("alt.jpg");
-    expect(pickerText).not.toContain("Note.md");
+    act(() => {
+      pickerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(container.querySelector("#frontmatter-cover-picker-cover")).toBeTruthy();
+  });
+
+  it("removes cover from the separate cover panel", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = [
+      "---",
+      "title: Demo",
+      "Cover: '[[assets/cover.png]]'",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+      vaultPngAssets: [
+        {
+          path: "/vault/assets/cover.png",
+          relative_path: "assets/cover.png",
+          file_name: "cover.png",
+          extension: "png",
+        },
+      ],
+    });
+    cleanup = localCleanup;
+
+    const removeButton = container.querySelector(
+      'button[aria-label="Cover entfernen"]',
+    ) as HTMLButtonElement | null;
+    expect(removeButton).toBeTruthy();
+
+    act(() => {
+      removeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onFrontmatterSave).toHaveBeenCalled();
+    const lastCallIndex = onFrontmatterSave.mock.calls.length - 1;
+    const lastSaved = lastCallIndex >= 0
+      ? onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? ""
+      : "";
+    expect(String(lastSaved)).not.toContain("Cover:");
   });
 
   it("never suggests links/tags keys in text attribute key suggestions", async () => {

@@ -748,6 +748,17 @@ const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
           <polyline points="15,13.5 16.2,14.6 15,15.7" />
         </svg>
       );
+    case "advanced-help":
+      return (
+        <svg {...svgProps}>
+          <circle cx="7" cy="8.1" r="2.4" />
+          <line x1="7" y1="11.2" x2="7" y2="16.7" />
+          <circle cx="7" cy="18.4" r="0.8" fill="currentColor" stroke="none" />
+          <line x1="11.5" y1="8.1" x2="19" y2="8.1" />
+          <line x1="11.5" y1="12.9" x2="19" y2="12.9" />
+          <line x1="11.5" y1="17.2" x2="17.2" y2="17.2" />
+        </svg>
+      );
     case "close":
       return (
         <svg {...svgProps}>
@@ -5962,6 +5973,16 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     (templateId: string) => (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
+      const template = getAdvancedInsertTemplateById(templateId);
+      if (!template || !insertMenuState) {
+        return;
+      }
+      if (template.insertBehavior === "direct") {
+        insertBlockRelativeTo(insertMenuState.blockIndex, template.payload, insertMenuState.insertAbove, {
+          firstPlaceholder: template.firstPlaceholder,
+        });
+        return;
+      }
       const nextSequenceNumber = resolveNextGlobalSequenceNumber(markdown);
       setInsertMenuState((current) => {
         if (!current) {
@@ -5976,7 +5997,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         };
       });
     },
-    [markdown],
+    [insertBlockRelativeTo, insertMenuState, markdown],
   );
 
   const handleInsertMenuBack = useCallback((event: MouseEvent<HTMLButtonElement>) => {
@@ -6308,6 +6329,12 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       }
       const template = getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId);
       if (!template) {
+        return;
+      }
+      if (template.insertBehavior === "direct") {
+        insertBlockRelativeTo(insertMenuState.blockIndex, template.payload, insertMenuState.insertAbove, {
+          firstPlaceholder: template.firstPlaceholder,
+        });
         return;
       }
       const sequenceNumber = typeof insertMenuState.advancedSequenceNumber === "number" &&

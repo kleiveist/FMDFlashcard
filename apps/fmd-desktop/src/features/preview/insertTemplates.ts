@@ -10,6 +10,7 @@ export type AdvancedInsertTemplateMode =
   | "cd"
   | "cl"
   | "cld"
+  | "help"
   | "m1"
   | "m2"
   | "qa"
@@ -31,7 +32,10 @@ export type AdvancedInsertTemplateIconId =
   | "advanced-m2"
   | "advanced-cl"
   | "advanced-cd"
-  | "advanced-cld";
+  | "advanced-cld"
+  | "advanced-help";
+
+export type AdvancedInsertTemplateInsertBehavior = "variant" | "direct";
 
 export type AdvancedInsertTemplateContext = {
   insideCard: boolean;
@@ -54,6 +58,7 @@ export type AdvancedInsertTemplateDefinition = {
   taskPayload: string;
   taskFirstPlaceholder: string;
   icon: AdvancedInsertTemplateIconId;
+  insertBehavior?: AdvancedInsertTemplateInsertBehavior;
   contextRules?: AdvancedInsertTemplateContextRules;
 };
 
@@ -195,6 +200,19 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
       hideInsideCard: true,
     },
   },
+  {
+    id: "help-block",
+    label: "Help Block",
+    description: "Standalone hint block (#help ... #helpend)",
+    mode: "help",
+    groupId: "flashcard",
+    icon: "advanced-help",
+    payload: "#help\nhelp hint\n#helpend",
+    firstPlaceholder: "help hint",
+    taskPayload: "#help\nhelp hint\n#helpend",
+    taskFirstPlaceholder: "help hint",
+    insertBehavior: "direct",
+  },
 ];
 
 export const getAdvancedInsertTemplateById = (id: string) =>
@@ -205,6 +223,13 @@ export const buildAdvancedInsertTemplateVariant = (
   variant: AdvancedInsertTemplateVariant,
   options?: { sequenceNumber?: number },
 ): ResolvedAdvancedInsertTemplate => {
+  if (template.insertBehavior === "direct") {
+    return {
+      payload: template.payload,
+      firstPlaceholder: template.firstPlaceholder,
+    };
+  }
+
   const sequenceNumber = Math.max(1, options?.sequenceNumber ?? 1);
 
   if (variant === "card") {

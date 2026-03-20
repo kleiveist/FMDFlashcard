@@ -1724,7 +1724,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("inserts every Advanced template as a card and selects the first placeholder", () => {
+  it("inserts Advanced templates, including direct single-step templates, and selects the first placeholder", () => {
     withImmediateRaf(() => {
       const expectedVisibleLabels = new Set(
         ADVANCED_INSERT_TEMPLATE_CATALOG.map((template) => template.label),
@@ -1765,7 +1765,28 @@ describe("MarkdownHybridEditor", () => {
         expect(
           templateButton?.querySelector(".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon]"),
         ).toBeTruthy();
+        const markdownBeforeInsert = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        expect(markdownBeforeInsert).toBe("");
         dispatchClick(templateButton);
+
+        if (template.insertBehavior === "direct") {
+          expect(findMenuItemButtonByLabel(container, "Task")).toBeNull();
+          expect(findMenuItemButtonByLabel(container, "Card")).toBeNull();
+          expect(container.querySelector("input[aria-label='Task number']")).toBeNull();
+
+          const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+          expect(markdownValue).toBe(template.payload);
+
+          const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+          expect(textarea).toBeTruthy();
+          const selectedText = textarea && textarea.selectionStart !== null && textarea.selectionEnd !== null
+            ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
+            : "";
+          expect(selectedText).toBe(template.firstPlaceholder);
+
+          cleanup();
+          continue;
+        }
 
         const markdownBeforeVariant = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         expect(markdownBeforeVariant).toBe("");
@@ -1794,7 +1815,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("inserts every Advanced template as a numbered task and selects the task heading", () => {
     withImmediateRaf(() => {
-      for (const template of ADVANCED_INSERT_TEMPLATE_CATALOG) {
+      for (const template of ADVANCED_INSERT_TEMPLATE_CATALOG.filter((entry) => entry.insertBehavior !== "direct")) {
         const expectedTaskVariant = buildAdvancedInsertTemplateVariant(template, "task", {
           sequenceNumber: 1,
         });

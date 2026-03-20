@@ -2676,6 +2676,7 @@ export const buildEditableMarkdownHtml = (
   };
 
   clone.querySelectorAll(".frontmatter-panel").forEach((panel) => panel.remove());
+  clone.querySelectorAll(".frontmatter-cover-panel").forEach((panel) => panel.remove());
   clone.querySelectorAll(".md-code-copy-button").forEach((button) => button.remove());
   clone.querySelectorAll<HTMLElement>("pre").forEach((codeBlock) => {
     let wrapper = codeBlock.parentElement;
@@ -3474,6 +3475,20 @@ const FrontmatterPropertiesPanel = ({
     () => properties.filter((property) => !isLinkPropertyKey(property.key)),
     [properties],
   );
+  const coverProperty = useMemo(
+    () =>
+      visibleProperties.find(
+        (property) => property.kind === "cover" || isCoverKeyName(property.key),
+      ) ?? null,
+    [visibleProperties],
+  );
+  const gridProperties = useMemo(
+    () =>
+      visibleProperties.filter(
+        (property) => !(property.kind === "cover" || isCoverKeyName(property.key)),
+      ),
+    [visibleProperties],
+  );
   const initialDrafts = useMemo(() => {
     const next: Record<string, string> = {};
     visibleProperties.forEach((property) => {
@@ -3529,6 +3544,7 @@ const FrontmatterPropertiesPanel = ({
   const addKeyInputRef = useRef<HTMLInputElement | null>(null);
   const addValueInputRef = useRef<HTMLInputElement | null>(null);
   const pendingFrameHandlesRef = useRef<Set<number>>(new Set());
+  const frontmatterCoverPanelRef = useRef<HTMLDivElement | null>(null);
   const frontmatterGridRef = useRef<HTMLDivElement | null>(null);
   const [dragPropertyKey, setDragPropertyKey] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{
@@ -3553,23 +3569,11 @@ const FrontmatterPropertiesPanel = ({
     [properties],
   );
   const hasExistingTaskAttribute = useMemo(
-    () => visibleProperties.some((property) => property.kind === "task" || isTaskKeyName(property.key)),
-    [visibleProperties],
+    () => gridProperties.some((property) => property.kind === "task" || isTaskKeyName(property.key)),
+    [gridProperties],
   );
-  const hasExistingCoverAttribute = useMemo(
-    () =>
-      visibleProperties.some(
-        (property) => property.kind === "cover" || isCoverKeyName(property.key),
-      ),
-    [visibleProperties],
-  );
-  const existingCoverPropertyKey = useMemo(
-    () =>
-      visibleProperties.find(
-        (property) => property.kind === "cover" || isCoverKeyName(property.key),
-      )?.key ?? null,
-    [visibleProperties],
-  );
+  const hasExistingCoverAttribute = coverProperty !== null;
+  const existingCoverPropertyKey = coverProperty?.key ?? null;
   const addTypeOptions = useMemo(
     () =>
       FRONTMATTER_ADD_TYPE_OPTIONS.filter((option) => {
@@ -3662,7 +3666,7 @@ const FrontmatterPropertiesPanel = ({
   const hasLinksRow =
     linksDocument.links.length > 0 ||
     properties.some((property) => isLinkPropertyKey(property.key));
-  const collapsedAttributeCount = visibleProperties.length + (hasLinksRow ? 1 : 0);
+  const collapsedAttributeCount = gridProperties.length + (hasLinksRow ? 1 : 0);
 
   const coverImageEntries = useMemo(
     () =>
@@ -3744,16 +3748,9 @@ const FrontmatterPropertiesPanel = ({
     if (!normalizedKey) {
       return;
     }
-    const row = Array.from(
-      frontmatterGridRef.current?.querySelectorAll<HTMLDivElement>(".frontmatter-row") ?? [],
-    ).find((candidate) =>
-      (candidate.getAttribute("data-frontmatter-key") ?? "").trim().toLowerCase() === normalizedKey
-    );
-    if (!row) {
-      return;
-    }
-    if (typeof row.scrollIntoView === "function") {
-      row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const coverPanel = frontmatterCoverPanelRef.current;
+    if (coverPanel && typeof coverPanel.scrollIntoView === "function") {
+      coverPanel.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
     setActiveCoverKey(existingCoverPropertyKey);
   }, [existingCoverPropertyKey]);
@@ -3765,12 +3762,12 @@ const FrontmatterPropertiesPanel = ({
 
   const activateCoverRow = useCallback(
     (
-      property: FrontmatterProperty,
+      key: string,
       options?: {
         openImagePicker?: boolean;
       },
     ) => {
-      setActiveCoverKey(property.key);
+      setActiveCoverKey(key);
       setIsCoverPickerOpen(options?.openImagePicker ?? false);
     },
     [],
@@ -4299,6 +4296,126 @@ const FrontmatterPropertiesPanel = ({
     [controlsDisabled, onFrontmatterSave, sourceMarkdown],
   );
 
+  const coverPanelKey = coverProperty?.key ?? "Cover";
+  const coverCurrentValue =
+    coverProperty && typeof coverProperty.value === "string" ? coverProperty.value : "";
+  const coverDraftValue = coverProperty ? drafts[coverProperty.key] ?? "" : "";
+  const coverPreferredValue = coverDraftValue || coverCurrentValue;
+  const coverActiveWikilink = normalizeWikilinkValue(coverPreferredValue);
+  const coverTarget =
+    extractWikilinkTarget(coverActiveWikilink) ??
+    extractVaultAssetRelativePath(coverPreferredValue);
+  const coverTargetCandidates = coverTarget
+    ? resolveRelativePathCandidates(coverTarget, sourceRelativePath)
+    : [];
+  const resolvedCoverImage = resolveCoverImageFromTarget(coverTarget);
+  const coverImageSrc = resolvedCoverImage
+    ? (resolvedCoverImage.src ?? resolvedCoverImage.path)
+    : "";
+  const coverImageError = resolvedCoverImage
+    ? coverImageErrors[resolvedCoverImage.relativePath]
+    : undefined;
+  const hasCoverImageLoadError = Boolean(
+    coverImageError && coverImageError.src === coverImageSrc,
+  );
+  const coverDisplayWikilink = coverActiveWikilink ||
+    (coverTarget ? normalizeWikilinkValue(coverTarget) : "");
+  const coverDisplayName = coverDisplayWikilink || "Kein Cover";
+  const coverDisplaySubline = coverDisplayWikilink;
+  const isCoverBroken = Boolean(coverTarget) &&
+    (!resolvedCoverImage || hasCoverImageLoadError);
+  const coverRowError = coverProperty ? rowErrors[coverProperty.key] ?? "" : "";
+  const isCoverPanelActive = activeCoverKey === coverPanelKey;
+  const isCoverVisible = Boolean(coverProperty);
+  const isCoverPanelEmpty = !isCoverVisible;
+  const coverPickerListId = `frontmatter-cover-picker-${coverPanelKey
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")}`;
+  const isCoverPickerListOpen = isCoverPanelActive && isCoverPickerOpen && !controlsDisabled;
+
+  const commitCoverSelection = useCallback(
+    async (nextRawValue: string) => {
+      const nextValue = normalizeWikilinkValue(nextRawValue);
+      if (!nextValue) {
+        return false;
+      }
+      if (coverProperty) {
+        setDrafts((current) => ({
+          ...current,
+          [coverProperty.key]: nextValue,
+        }));
+        setRowErrors((current) => ({
+          ...current,
+          [coverProperty.key]: "",
+        }));
+        const saved = await commitPropertyChange({
+          property: coverProperty,
+          kind: "cover",
+          value: nextValue,
+        });
+        if (saved) {
+          setIsCoverPickerOpen(false);
+        }
+        return saved;
+      }
+      if (controlsDisabled || !onFrontmatterSave) {
+        return false;
+      }
+      const updated = addFrontmatterProperty({
+        markdown: sourceMarkdown,
+        key: coverPanelKey,
+        value: nextValue,
+        kind: "cover",
+      });
+      if (updated.error) {
+        setPanelError(updated.error);
+        return false;
+      }
+      setPanelError("");
+      setSavingKey("__cover_add__");
+      let saved = false;
+      try {
+        saved = await onFrontmatterSave(updated.markdown);
+      } catch {
+        saved = false;
+      } finally {
+        setSavingKey(null);
+      }
+      if (!saved) {
+        setPanelError("Eigenschaften konnten nicht gespeichert werden.");
+        return false;
+      }
+      updateKeySuggestionCache([coverPanelKey]);
+      updateSuggestionCache(coverPanelKey, [nextValue]);
+      setActiveCoverKey(coverPanelKey);
+      setIsCoverPickerOpen(false);
+      return true;
+    },
+    [
+      commitPropertyChange,
+      controlsDisabled,
+      coverPanelKey,
+      coverProperty,
+      onFrontmatterSave,
+      sourceMarkdown,
+      updateKeySuggestionCache,
+      updateSuggestionCache,
+    ],
+  );
+
+  const handleRemoveCover = useCallback(() => {
+    if (!coverProperty) {
+      return;
+    }
+    void (async () => {
+      const removed = await commitRemoveProperty(coverProperty.key);
+      if (removed) {
+        setIsCoverPickerOpen(false);
+        setActiveCoverKey(null);
+      }
+    })();
+  }, [commitRemoveProperty, coverProperty]);
+
   const addTypeOption = FRONTMATTER_ADD_TYPE_OPTIONS.find(
     (option) => option.kind === addTypeDraft,
   ) ?? addTypeOptions[0]!;
@@ -4363,7 +4480,268 @@ const FrontmatterPropertiesPanel = ({
   const activeAddTypeSuggestion = addTypeOptions[safeAddTypeSuggestionIndex] ?? null;
 
   return (
-    <section className="frontmatter-panel" aria-label="Eigenschaften">
+    <>
+      <section
+        ref={frontmatterCoverPanelRef}
+        className={`frontmatter-cover-panel ${
+          isCoverVisible ? "has-cover" : "is-empty"
+        }`.trim()}
+        aria-label="Cover"
+      >
+        <div className="frontmatter-cover-panel-stage">
+          <button
+            type="button"
+            className={`frontmatter-cover-thumbnail-button frontmatter-cover-hero-button ${
+              isCoverPanelEmpty ? "is-empty" : ""
+            }`.trim()}
+            disabled={controlsDisabled}
+            aria-label={coverTarget ? "Cover oeffnen" : "Cover auswaehlen"}
+            title={
+              hasCoverImageLoadError
+                ? "Bild konnte nicht geladen werden. Klicken zum erneuten Laden."
+                : undefined
+            }
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (controlsDisabled) {
+                return;
+              }
+              if ((event.metaKey || event.ctrlKey) && coverActiveWikilink) {
+                onNavigateWikilink?.(coverActiveWikilink);
+                return;
+              }
+              if (resolvedCoverImage && hasCoverImageLoadError) {
+                setCoverImageErrors((current) => {
+                  if (!current[resolvedCoverImage.relativePath]) {
+                    return current;
+                  }
+                  const next = { ...current };
+                  delete next[resolvedCoverImage.relativePath];
+                  return next;
+                });
+              }
+              if (!isCoverPanelActive) {
+                activateCoverRow(coverPanelKey, { openImagePicker: true });
+                return;
+              }
+              setIsCoverPickerOpen((current) => !current);
+            }}
+          >
+            {resolvedCoverImage && !hasCoverImageLoadError ? (
+              <CoverThumbnailImage
+                variant="main"
+                image={resolvedCoverImage}
+                alt={coverDisplayName}
+                onLoad={() => {
+                  setCoverImageErrors((current) => {
+                    if (!current[resolvedCoverImage.relativePath]) {
+                      return current;
+                    }
+                    const next = { ...current };
+                    delete next[resolvedCoverImage.relativePath];
+                    return next;
+                  });
+                }}
+                onError={(event) => {
+                  const failedSrc =
+                    event.currentTarget.currentSrc ||
+                    event.currentTarget.src ||
+                    resolvedCoverImage.src ||
+                    resolvedCoverImage.path;
+                  setCoverImageErrors((current) => ({
+                    ...current,
+                    [resolvedCoverImage.relativePath]: {
+                      src: failedSrc,
+                      relativePath: resolvedCoverImage.relativePath,
+                      absolutePath: resolvedCoverImage.path,
+                    },
+                  }));
+                }}
+              />
+            ) : (
+              <span className="frontmatter-cover-placeholder frontmatter-cover-hero-placeholder" aria-hidden="true">
+                <FrontmatterImageIcon />
+              </span>
+            )}
+            {isCoverPanelEmpty ? (
+              <span className="frontmatter-cover-empty-copy">
+                Kein Cover gesetzt
+              </span>
+            ) : null}
+          </button>
+          <div className="frontmatter-cover-panel-actions">
+            <button
+              type="button"
+              className={`frontmatter-cover-picker-trigger ${
+                isCoverVisible ? "is-subtle" : "is-prominent"
+              }`.trim()}
+              disabled={controlsDisabled}
+              aria-label="Cover Bild aus Vault waehlen"
+              aria-haspopup="listbox"
+              aria-expanded={isCoverPickerListOpen}
+              aria-controls={isCoverPickerListOpen ? coverPickerListId : undefined}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (controlsDisabled) {
+                  return;
+                }
+                if (!isCoverPanelActive) {
+                  activateCoverRow(coverPanelKey, { openImagePicker: true });
+                  return;
+                }
+                setIsCoverPickerOpen((current) => !current);
+              }}
+            >
+              {isCoverVisible ? "Cover waehlen" : "Cover hinzufuegen"}
+            </button>
+            {isCoverVisible ? (
+              <button
+                type="button"
+                className="frontmatter-cover-picker-trigger frontmatter-cover-remove-trigger is-subtle"
+                disabled={controlsDisabled}
+                aria-label="Cover entfernen"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleRemoveCover();
+                }}
+              >
+                Entfernen
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="frontmatter-cover-panel-copy">
+          {coverDisplaySubline ? (
+            <>
+              <span className="frontmatter-cover-name" title={coverDisplayName}>
+                {coverDisplayName}
+              </span>
+              <span className="frontmatter-cover-target" title={coverDisplaySubline}>
+                {coverDisplaySubline}
+              </span>
+            </>
+          ) : (
+            <span className="frontmatter-empty-value">
+              Cover aus dem Vault auswaehlen.
+            </span>
+          )}
+          {isCoverBroken ? (
+            <span
+              className="frontmatter-row-error"
+              title={hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : undefined}
+            >
+              {hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : "Datei nicht gefunden."}
+            </span>
+          ) : null}
+          {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
+            <span className="frontmatter-cover-debug" title={coverImageError.src}>
+              src: {coverImageError.src}
+            </span>
+          ) : null}
+          {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
+            <span className="frontmatter-cover-debug" title={coverImageError.absolutePath}>
+              path: {coverImageError.absolutePath}
+            </span>
+          ) : null}
+          {coverRowError ? <span className="frontmatter-row-error">{coverRowError}</span> : null}
+        </div>
+        <div className="frontmatter-cover-panel-picker-wrap">
+          {isCoverPickerListOpen ? (
+            <ul
+              id={coverPickerListId}
+              className="frontmatter-cover-picker frontmatter-cover-panel-picker"
+              role="listbox"
+              aria-label="Cover Bildauswahl"
+            >
+              {filteredCoverImageEntries.length === 0 ? (
+                <li className="frontmatter-cover-picker-empty">
+                  Keine PNG im aktiven Vault.
+                </li>
+              ) : (
+                filteredCoverImageEntries.map((entry) => {
+                  const pickerSrc = entry.src ?? entry.path;
+                  const pickerImageError = coverImageErrors[entry.relativePath];
+                  const hasPickerImageError = Boolean(
+                    pickerImageError && pickerImageError.src === pickerSrc,
+                  );
+                  return (
+                    <li key={`cover-image-${entry.relativePath}`}>
+                      <button
+                        type="button"
+                        className={`frontmatter-cover-picker-option ${
+                          coverTargetCandidates.includes(entry.relativePath)
+                            ? "active"
+                            : ""
+                        }`}
+                        role="option"
+                        aria-selected={coverTargetCandidates.includes(entry.relativePath)}
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        onClick={() => {
+                          void commitCoverSelection(entry.relativePath);
+                        }}
+                      >
+                        {hasPickerImageError ? (
+                          <span className="frontmatter-cover-picker-thumb-placeholder" aria-hidden="true">
+                            <FrontmatterImageIcon />
+                          </span>
+                        ) : (
+                          <CoverThumbnailImage
+                            variant="picker"
+                            image={entry}
+                            alt={entry.fileName}
+                            onError={(event) => {
+                              const failedSrc =
+                                event.currentTarget.currentSrc ||
+                                event.currentTarget.src ||
+                                entry.src ||
+                                entry.path;
+                              setCoverImageErrors((current) => ({
+                                ...current,
+                                [entry.relativePath]: {
+                                  src: failedSrc,
+                                  relativePath: entry.relativePath,
+                                  absolutePath: entry.path,
+                                },
+                              }));
+                            }}
+                          />
+                        )}
+                        <span className="frontmatter-cover-picker-copy">
+                          <span title={entry.fileName}>
+                            {entry.fileName}
+                          </span>
+                          <span title={entry.relativePath}>
+                            {entry.relativePath}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          ) : null}
+        </div>
+      </section>
+      <section className="frontmatter-panel" aria-label="Eigenschaften">
       <div className="frontmatter-header">
         <button
           type="button"
@@ -4396,7 +4774,7 @@ const FrontmatterPropertiesPanel = ({
             role="table"
             aria-label="Frontmatter properties"
           >
-            {visibleProperties.map((property) => {
+            {gridProperties.map((property) => {
               const isRowSaving = savingKey === property.key;
               const rowDisabled = controlsDisabled || isRowSaving;
               const tags = Array.isArray(property.value) ? property.value : [];
@@ -4866,7 +5244,7 @@ const FrontmatterPropertiesPanel = ({
                                 });
                               }
                               if (!isCoverRowActive) {
-                                activateCoverRow(property, { openImagePicker: true });
+                                activateCoverRow(property.key, { openImagePicker: true });
                                 return;
                               }
                               setIsCoverPickerOpen((current) => !current);
@@ -5082,11 +5460,6 @@ const FrontmatterPropertiesPanel = ({
                   data-frontmatter-key={property.key}
                   onClick={() => {
                     if (rowDisabled) {
-                      return;
-                    }
-                    if (property.kind === "cover") {
-                      setActiveCoverKey(property.key);
-                      setIsCoverPickerOpen(false);
                       return;
                     }
                     setActiveCoverKey(null);
@@ -5993,7 +6366,8 @@ const FrontmatterPropertiesPanel = ({
         </p>
       )}
       {panelError ? <div className="error frontmatter-error">{panelError}</div> : null}
-    </section>
+      </section>
+    </>
   );
 };
 
@@ -6786,7 +7160,7 @@ export const PreviewPanel = ({
         return;
       }
       const eventElement = resolveEventElement(event.target);
-      if (!rawPreview && eventElement?.closest(".frontmatter-panel")) {
+      if (!rawPreview && eventElement?.closest(".frontmatter-panel, .frontmatter-cover-panel")) {
         return;
       }
       if (event.button !== 0) {

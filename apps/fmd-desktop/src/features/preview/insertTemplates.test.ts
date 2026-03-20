@@ -6,9 +6,9 @@ import {
 } from "./insertTemplates";
 
 describe("insertTemplates", () => {
-  it("contains only the remaining Advanced card template modes and icons", () => {
+  it("contains the expected Advanced template modes and icons", () => {
     const modes = new Set(ADVANCED_INSERT_TEMPLATE_CATALOG.map((template) => template.mode));
-    const requiredModes = ["cd", "cl", "cld", "m1", "m2", "qa", "tf"] as const;
+    const requiredModes = ["cd", "cl", "cld", "help", "m1", "m2", "qa", "tf"] as const;
 
     requiredModes.forEach((mode) => {
       expect(modes.has(mode)).toBe(true);
@@ -21,8 +21,13 @@ describe("insertTemplates", () => {
     ADVANCED_INSERT_TEMPLATE_CATALOG.forEach((template) => {
       expect(typeof template.icon).toBe("string");
       expect(template.icon.length).toBeGreaterThan(0);
-      expect(template.taskPayload).toContain("{{TASK_NUMBER}})");
-      expect(template.taskFirstPlaceholder).toBe("TASK HEADING");
+      if (template.insertBehavior === "direct") {
+        expect(template.taskPayload).toBe(template.payload);
+        expect(template.taskFirstPlaceholder).toBe(template.firstPlaceholder);
+      } else {
+        expect(template.taskPayload).toContain("{{TASK_NUMBER}})");
+        expect(template.taskFirstPlaceholder).toBe("TASK HEADING");
+      }
     });
 
     const labels = new Set(ADVANCED_INSERT_TEMPLATE_CATALOG.map((template) => template.label));
@@ -32,7 +37,7 @@ describe("insertTemplates", () => {
     expect(labels.has("Exam Task Blueprint")).toBe(false);
   });
 
-  it("filters all remaining Advanced templates inside card context to prevent nesting", () => {
+  it("keeps direct help visible inside card context while preventing nested task/card templates", () => {
     const sections = getAdvancedInsertTemplateSections({
       insideCard: true,
       insideExam: false,
@@ -46,7 +51,9 @@ describe("insertTemplates", () => {
         false,
       );
     });
-    expect(sections).toHaveLength(0);
+    expect(visibleModes.has("help")).toBe(true);
+    expect(sections).toHaveLength(1);
+    expect(sections[0]?.id).toBe("flashcard");
   });
 
   it("does not surface empty exam/markdown sections after removing those Advanced templates", () => {
@@ -65,16 +72,23 @@ describe("insertTemplates", () => {
       const cardVariant = buildAdvancedInsertTemplateVariant(template, "card", {
         sequenceNumber: 4,
       });
-      expect(cardVariant.payload).toContain("#card\n4) CARD HEADING");
-      expect(cardVariant.payload).toContain("#endcard");
-      expect(cardVariant.firstPlaceholder).toBe(template.firstPlaceholder);
-
       const taskVariant = buildAdvancedInsertTemplateVariant(template, "task", {
         sequenceNumber: 4,
       });
-      expect(taskVariant.payload).toContain("4) TASK HEADING");
-      expect(taskVariant.payload).toContain("---");
-      expect(taskVariant.firstPlaceholder).toBe("TASK HEADING");
+
+      if (template.insertBehavior === "direct") {
+        expect(cardVariant.payload).toBe(template.payload);
+        expect(taskVariant.payload).toBe(template.payload);
+        expect(cardVariant.firstPlaceholder).toBe(template.firstPlaceholder);
+        expect(taskVariant.firstPlaceholder).toBe(template.firstPlaceholder);
+      } else {
+        expect(cardVariant.payload).toContain("#card\n4) CARD HEADING");
+        expect(cardVariant.payload).toContain("#endcard");
+        expect(cardVariant.firstPlaceholder).toBe(template.firstPlaceholder);
+        expect(taskVariant.payload).toContain("4) TASK HEADING");
+        expect(taskVariant.payload).toContain("---");
+        expect(taskVariant.firstPlaceholder).toBe("TASK HEADING");
+      }
     });
   });
 });

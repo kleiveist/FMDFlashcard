@@ -548,16 +548,21 @@ describe("canStartPreviewEdit", () => {
 describe("buildEditableMarkdownHtml", () => {
   it("removes frontmatter panel markup from markdown edit html", () => {
     const container = document.createElement("div");
+    const coverPanel = document.createElement("section");
+    coverPanel.className = "frontmatter-cover-panel";
+    coverPanel.textContent = "Cover";
     const panel = document.createElement("section");
     panel.className = "frontmatter-panel";
     panel.textContent = "title: Demo";
     const body = document.createElement("p");
     body.textContent = "Body";
+    container.appendChild(coverPanel);
     container.appendChild(panel);
     container.appendChild(body);
 
     const html = buildEditableMarkdownHtml(container);
 
+    expect(html).not.toContain("frontmatter-cover-panel");
     expect(html).not.toContain("frontmatter-panel");
     expect(html).toContain("Body");
   });
