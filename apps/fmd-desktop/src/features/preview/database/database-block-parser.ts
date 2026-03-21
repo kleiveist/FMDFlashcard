@@ -16,6 +16,7 @@ import {
   type DatabaseFilterGroupOp,
   type DatabaseFilterRule,
   type DatabaseAttributeOrigin,
+  type DatabaseGanttZoom,
   type DatabaseSortRule,
   type DatabaseSourceSpec,
   type DatabaseSourceType,
@@ -521,15 +522,29 @@ const parseViewType = (value: unknown): DatabaseViewType => {
   return "table";
 };
 
+const parseGanttZoom = (value: unknown): DatabaseGanttZoom => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (
+    normalized === "day" ||
+    normalized === "week" ||
+    normalized === "quarter"
+  ) {
+    return normalized;
+  }
+  return "month";
+};
+
 const parseViewSpec = (value: unknown): DatabaseViewSpec => {
   if (typeof value === "string") {
     return {
       type: parseViewType(value),
+      ganttZoom: "month",
     };
   }
   if (!isRecord(value)) {
     return {
       type: "table",
+      ganttZoom: "month",
     };
   }
   const type = parseViewType(value.type);
@@ -539,6 +554,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
     groupBy: asString(value.groupBy) || null,
     timelineStartField: asString(value.timelineStartField) || null,
     timelineEndField: asString(value.timelineEndField) || null,
+    ganttZoom: parseGanttZoom(value.ganttZoom),
     pieGroupField: asString(value.pieGroupField) || null,
     pieAggregate:
       pieAggregateRaw === "sum" || pieAggregateRaw === "avg"
@@ -555,6 +571,7 @@ export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
   },
   view: {
     type: "table",
+    ganttZoom: "month",
   },
   fields: [],
   columns: [
@@ -702,6 +719,24 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
   lines.push(`  type: ${formatYamlScalar(config.view.type)}`);
   if (config.view.groupBy) {
     lines.push(`  groupBy: ${formatYamlScalar(config.view.groupBy)}`);
+  }
+  if (config.view.timelineStartField) {
+    lines.push(`  timelineStartField: ${formatYamlScalar(config.view.timelineStartField)}`);
+  }
+  if (config.view.timelineEndField) {
+    lines.push(`  timelineEndField: ${formatYamlScalar(config.view.timelineEndField)}`);
+  }
+  if (config.view.ganttZoom) {
+    lines.push(`  ganttZoom: ${formatYamlScalar(config.view.ganttZoom)}`);
+  }
+  if (config.view.pieGroupField) {
+    lines.push(`  pieGroupField: ${formatYamlScalar(config.view.pieGroupField)}`);
+  }
+  if (config.view.pieAggregate) {
+    lines.push(`  pieAggregate: ${formatYamlScalar(config.view.pieAggregate)}`);
+  }
+  if (config.view.pieAggregateField) {
+    lines.push(`  pieAggregateField: ${formatYamlScalar(config.view.pieAggregateField)}`);
   }
 
   const fields = config.fields ?? [];

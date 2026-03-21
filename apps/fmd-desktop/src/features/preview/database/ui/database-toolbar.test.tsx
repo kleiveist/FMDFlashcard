@@ -41,10 +41,14 @@ const buildProps = () => ({
   isFilterPanelOpen: false,
   isSortPanelOpen: false,
   isPropertiesPanelOpen: false,
+  isGanttPanelOpen: false,
+  isPiePanelOpen: false,
   onToggleSourcePanel: vi.fn(),
   onToggleFilterPanel: vi.fn(),
   onToggleSortPanel: vi.fn(),
   onTogglePropertiesPanel: vi.fn(),
+  onToggleGanttPanel: vi.fn(),
+  onTogglePiePanel: vi.fn(),
 });
 
 describe("DatabaseToolbar", () => {
@@ -140,6 +144,48 @@ describe("DatabaseToolbar", () => {
 
     expect(groupSelect).toBeTruthy();
     expect(props.onKanbanGroupByChange).toHaveBeenCalledWith(null);
+
+    cleanup();
+  });
+
+  it("renders timeline options button for gantt view", () => {
+    const props = {
+      ...buildProps(),
+      viewType: "gantt" as const,
+    };
+    const { container, cleanup } = render(
+      createElement(DatabaseToolbar, props),
+    );
+
+    const timelineButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Timeline Optionen"));
+    act(() => {
+      timelineButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(timelineButton).toBeTruthy();
+    expect(props.onToggleGanttPanel).toHaveBeenCalledTimes(1);
+
+    cleanup();
+  });
+
+  it("renders pie options button for pie view", () => {
+    const props = {
+      ...buildProps(),
+      viewType: "pie" as const,
+    };
+    const { container, cleanup } = render(
+      createElement(DatabaseToolbar, props),
+    );
+
+    const pieButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Pie Optionen"));
+    act(() => {
+      pieButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(pieButton).toBeTruthy();
+    expect(props.onTogglePiePanel).toHaveBeenCalledTimes(1);
 
     cleanup();
   });

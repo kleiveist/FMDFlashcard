@@ -5611,6 +5611,211 @@ textarea.preview-editor {
   font-size: 0.78rem;
 }
 
+.database-pie-view {
+  display: grid;
+  grid-template-columns: minmax(220px, auto) minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-table);
+  background: var(--db-surface-raised);
+  padding: 12px;
+}
+
+.database-pie-chart-wrap {
+  position: relative;
+  inline-size: 220px;
+  block-size: 220px;
+  display: grid;
+  place-items: center;
+}
+
+.database-pie-chart {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.database-pie-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.database-pie-center strong {
+  display: block;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.database-pie-center span {
+  color: var(--db-muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.database-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  align-content: flex-start;
+}
+
+.database-pie-legend li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-control);
+  padding: 6px 8px;
+}
+
+.database-pie-legend-dot {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 50%;
+}
+
+.database-pie-legend-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.database-pie-legend-value {
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.database-pie-legend-percent {
+  color: var(--db-muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.database-gantt-view {
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-table);
+  background: var(--db-surface-raised);
+  overflow: hidden;
+}
+
+.database-gantt-header,
+.database-gantt-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.9fr) minmax(340px, 1fr);
+  align-items: stretch;
+}
+
+.database-gantt-header {
+  border-bottom: 1px solid var(--db-border);
+  background: color-mix(in srgb, var(--db-surface-base) 72%, var(--db-surface-raised));
+}
+
+.database-gantt-header-title {
+  font-size: 0.76rem;
+  color: var(--db-muted);
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-right: 1px solid var(--db-border);
+}
+
+.database-gantt-header-scale {
+  position: relative;
+  min-height: 34px;
+  overflow: hidden;
+}
+
+.database-gantt-header-tick {
+  position: absolute;
+  inset-block: 0;
+  border-left: 1px solid var(--db-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 6px;
+  font-size: 0.7rem;
+  color: var(--db-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.database-gantt-body {
+  display: grid;
+}
+
+.database-gantt-row {
+  min-height: 38px;
+  border-bottom: 1px solid var(--db-border);
+}
+
+.database-gantt-row:last-child {
+  border-bottom: none;
+}
+
+.database-gantt-row-title {
+  border: none;
+  border-right: 1px solid var(--db-border);
+  background: transparent;
+  color: var(--db-text);
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.database-gantt-row-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.database-gantt-row-track {
+  position: relative;
+  min-height: 38px;
+}
+
+.database-gantt-row-track::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 50%;
+  border-top: 1px dashed color-mix(in srgb, var(--db-border) 76%, transparent);
+  transform: translateY(-50%);
+}
+
+.database-gantt-bar {
+  position: absolute;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  min-inline-size: 3px;
+  block-size: 10px;
+  border-radius: var(--db-radius-pill);
+  background: color-mix(in srgb, var(--accent-border) 82%, var(--accent-soft));
+}
+
+.database-gantt-milestone {
+  position: absolute;
+  inset-block-start: 50%;
+  inline-size: 11px;
+  block-size: 11px;
+  background: color-mix(in srgb, var(--accent-border) 82%, var(--accent-soft));
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-radius: 1px;
+}
+
 .database-kanban-view {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -5739,6 +5944,20 @@ textarea.preview-editor {
   .database-block-panel {
     width: min(760px, calc(100vw - 24px));
     max-height: min(72vh, 560px);
+  }
+
+  .database-pie-view {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .database-pie-legend {
+    width: 100%;
+  }
+
+  .database-gantt-header,
+  .database-gantt-row {
+    grid-template-columns: minmax(130px, 0.8fr) minmax(220px, 1fr);
   }
 }
 

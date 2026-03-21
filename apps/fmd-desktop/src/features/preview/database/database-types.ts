@@ -5,6 +5,7 @@
  */
 
 export type DatabaseViewType = "table" | "kanban" | "gantt" | "pie";
+export type DatabaseGanttZoom = "day" | "week" | "month" | "quarter";
 
 export type DatabaseSourceType =
   | "current-folder"
@@ -106,6 +107,7 @@ export type DatabaseViewSpec = {
   groupBy?: string | null;
   timelineStartField?: string | null;
   timelineEndField?: string | null;
+  ganttZoom?: DatabaseGanttZoom;
   pieGroupField?: string | null;
   pieAggregate?: "count" | "sum" | "avg";
   pieAggregateField?: string | null;

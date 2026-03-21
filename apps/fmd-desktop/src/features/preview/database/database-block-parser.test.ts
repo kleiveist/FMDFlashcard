@@ -162,6 +162,48 @@ describe("database-block-parser", () => {
     expect((reparsed.config.fields ?? [])[0]?.formula).toBe("if(percent(Score) >= 50, \"pass\", \"fail\")");
   });
 
+  it("roundtrips complete gantt/pie view config including gantt zoom", () => {
+    const raw = [
+      "::::",
+      "title: View Roundtrip",
+      "view:",
+      "  type: pie",
+      "  timelineStartField: startDate",
+      "  timelineEndField: dueDate",
+      "  ganttZoom: quarter",
+      "  pieGroupField: status",
+      "  pieAggregate: avg",
+      "  pieAggregateField: percent",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.view.timelineStartField).toBe("startDate");
+    expect(parsed.config.view.timelineEndField).toBe("dueDate");
+    expect(parsed.config.view.ganttZoom).toBe("quarter");
+    expect(parsed.config.view.pieGroupField).toBe("status");
+    expect(parsed.config.view.pieAggregate).toBe("avg");
+    expect(parsed.config.view.pieAggregateField).toBe("percent");
+
+    const serialized = serializeDatabaseBlockConfig(parsed.config);
+    expect(serialized).toContain("timelineStartField: startDate");
+    expect(serialized).toContain("timelineEndField: dueDate");
+    expect(serialized).toContain("ganttZoom: quarter");
+    expect(serialized).toContain("pieGroupField: status");
+    expect(serialized).toContain("pieAggregate: avg");
+    expect(serialized).toContain("pieAggregateField: percent");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.view.timelineStartField).toBe("startDate");
+    expect(reparsed.config.view.timelineEndField).toBe("dueDate");
+    expect(reparsed.config.view.ganttZoom).toBe("quarter");
+    expect(reparsed.config.view.pieGroupField).toBe("status");
+    expect(reparsed.config.view.pieAggregate).toBe("avg");
+    expect(reparsed.config.view.pieAggregateField).toBe("percent");
+  });
+
   it("preserves nested filter groups during serialize/parse roundtrip", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.filters = {

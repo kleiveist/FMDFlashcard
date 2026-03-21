@@ -24,10 +24,14 @@ type DatabaseToolbarProps = {
   isFilterPanelOpen: boolean;
   isSortPanelOpen: boolean;
   isPropertiesPanelOpen: boolean;
+  isGanttPanelOpen: boolean;
+  isPiePanelOpen: boolean;
   onToggleSourcePanel: () => void;
   onToggleFilterPanel: () => void;
   onToggleSortPanel: () => void;
   onTogglePropertiesPanel: () => void;
+  onToggleGanttPanel: () => void;
+  onTogglePiePanel: () => void;
 };
 
 const viewOptions: Array<{ value: DatabaseViewType; label: string }> = [
@@ -54,10 +58,14 @@ export const DatabaseToolbar = ({
   isFilterPanelOpen,
   isSortPanelOpen,
   isPropertiesPanelOpen,
+  isGanttPanelOpen,
+  isPiePanelOpen,
   onToggleSourcePanel,
   onToggleFilterPanel,
   onToggleSortPanel,
   onTogglePropertiesPanel,
+  onToggleGanttPanel,
+  onTogglePiePanel,
 }: DatabaseToolbarProps) => {
   const handleViewChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value as DatabaseViewType;
@@ -152,6 +160,28 @@ export const DatabaseToolbar = ({
           >
             Eigenschaften
           </button>
+          {viewType === "gantt" ? (
+            <button
+              type="button"
+              className={`database-block-toolbar-button${isGanttPanelOpen ? " is-active" : ""}`}
+              onClick={onToggleGanttPanel}
+              aria-expanded={isGanttPanelOpen}
+              data-md-block-control="true"
+            >
+              Timeline Optionen
+            </button>
+          ) : null}
+          {viewType === "pie" ? (
+            <button
+              type="button"
+              className={`database-block-toolbar-button${isPiePanelOpen ? " is-active" : ""}`}
+              onClick={onTogglePiePanel}
+              aria-expanded={isPiePanelOpen}
+              data-md-block-control="true"
+            >
+              Pie Optionen
+            </button>
+          ) : null}
         </div>
         {showSearch ? (
           <div className="database-block-toolbar-search-wrap">

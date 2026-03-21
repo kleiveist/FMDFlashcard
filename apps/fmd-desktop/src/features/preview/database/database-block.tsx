@@ -32,6 +32,7 @@ import {
   type DatabaseFieldDefinition,
   type DatabaseFieldType,
   type DatabaseFilterGroup,
+  type DatabaseGanttZoom,
   type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
   type DatabaseSourceSpec,
@@ -45,6 +46,8 @@ import {
   upsertDatabaseRecordField,
 } from "./frontmatter-update";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
+import { DatabaseGanttPanel } from "./ui/database-gantt-panel";
+import { DatabasePiePanel } from "./ui/database-pie-panel";
 import { DatabasePropertiesPanel } from "./ui/database-properties-panel";
 import { DatabaseSourcePanel } from "./ui/database-source-panel";
 import { DatabaseSortPanel } from "./ui/database-sort-panel";
@@ -67,6 +70,8 @@ type DatabaseBlockOpenPanels = {
   properties: boolean;
   filter: boolean;
   sort: boolean;
+  gantt: boolean;
+  pie: boolean;
 };
 
 type DatabaseCellEditState = {
@@ -251,7 +256,7 @@ const pickTimelineAttribute = (
   preferredKey: string | null | undefined,
 ) => {
   if (preferredKey) {
-    const preferred = attributes.find((attribute) => attribute.key === preferredKey) ?? null;
+    const preferred = attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
     if (preferred && preferred.viewCompatibility.supportsTimeline) {
       return preferred;
     }
@@ -264,7 +269,7 @@ const pickPieGroupAttribute = (
   preferredKey: string | null | undefined,
 ) => {
   if (preferredKey) {
-    const preferred = attributes.find((attribute) => attribute.key === preferredKey) ?? null;
+    const preferred = attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
     if (preferred && preferred.viewCompatibility.supportsPieGrouping) {
       return preferred;
     }
@@ -277,9 +282,12 @@ const defaultPanels: DatabaseBlockOpenPanels = {
   properties: false,
   filter: false,
   sort: false,
+  gantt: false,
+  pie: false,
 };
 
 const TITLE_COMMIT_DEBOUNCE_MS = 280;
+const DEFAULT_GANTT_ZOOM: DatabaseGanttZoom = "month";
 
 export const MarkdownHybridDatabaseBlock = ({
   raw,
@@ -302,6 +310,24 @@ export const MarkdownHybridDatabaseBlock = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [viewType, setViewType] = useState<DatabaseViewType>(parsed.config.view.type);
   const [kanbanGroupBy, setKanbanGroupBy] = useState<string | null>(parsed.config.view.groupBy ?? null);
+  const [timelineStartField, setTimelineStartField] = useState<string | null>(
+    parsed.config.view.timelineStartField ?? null,
+  );
+  const [timelineEndField, setTimelineEndField] = useState<string | null>(
+    parsed.config.view.timelineEndField ?? null,
+  );
+  const [ganttZoom, setGanttZoom] = useState<DatabaseGanttZoom>(
+    parsed.config.view.ganttZoom ?? DEFAULT_GANTT_ZOOM,
+  );
+  const [pieGroupField, setPieGroupField] = useState<string | null>(
+    parsed.config.view.pieGroupField ?? null,
+  );
+  const [pieAggregate, setPieAggregate] = useState<"count" | "sum" | "avg">(
+    parsed.config.view.pieAggregate ?? "count",
+  );
+  const [pieAggregateField, setPieAggregateField] = useState<string | null>(
+    parsed.config.view.pieAggregateField ?? null,
+  );
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(parsed.config.columns);
   const [activeFilters, setActiveFilters] = useState<DatabaseFilterGroup>(cloneFilterGroup(parsed.config.filters));
   const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(cloneSortRules(parsed.config.sort));
@@ -322,6 +348,12 @@ export const MarkdownHybridDatabaseBlock = ({
   const fieldDefinitionsRef = useRef(fieldDefinitions);
   const viewTypeRef = useRef(viewType);
   const kanbanGroupByRef = useRef<string | null>(kanbanGroupBy);
+  const timelineStartFieldRef = useRef<string | null>(timelineStartField);
+  const timelineEndFieldRef = useRef<string | null>(timelineEndField);
+  const ganttZoomRef = useRef<DatabaseGanttZoom>(ganttZoom);
+  const pieGroupFieldRef = useRef<string | null>(pieGroupField);
+  const pieAggregateRef = useRef<"count" | "sum" | "avg">(pieAggregate);
+  const pieAggregateFieldRef = useRef<string | null>(pieAggregateField);
   const visibleColumnKeysRef = useRef(visibleColumnKeys);
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
@@ -336,6 +368,12 @@ export const MarkdownHybridDatabaseBlock = ({
     setFieldDefinitions(cloneFieldDefinitions(parsed.config.fields ?? []));
     setViewType(parsed.config.view.type);
     setKanbanGroupBy(parsed.config.view.groupBy ?? null);
+    setTimelineStartField(parsed.config.view.timelineStartField ?? null);
+    setTimelineEndField(parsed.config.view.timelineEndField ?? null);
+    setGanttZoom(parsed.config.view.ganttZoom ?? DEFAULT_GANTT_ZOOM);
+    setPieGroupField(parsed.config.view.pieGroupField ?? null);
+    setPieAggregate(parsed.config.view.pieAggregate ?? "count");
+    setPieAggregateField(parsed.config.view.pieAggregateField ?? null);
     setVisibleColumnKeys(parsed.config.columns);
     setActiveFilters(cloneFilterGroup(parsed.config.filters));
     setActiveSorts(cloneSortRules(parsed.config.sort));
@@ -351,10 +389,31 @@ export const MarkdownHybridDatabaseBlock = ({
     fieldDefinitionsRef.current = fieldDefinitions;
     viewTypeRef.current = viewType;
     kanbanGroupByRef.current = kanbanGroupBy;
+    timelineStartFieldRef.current = timelineStartField;
+    timelineEndFieldRef.current = timelineEndField;
+    ganttZoomRef.current = ganttZoom;
+    pieGroupFieldRef.current = pieGroupField;
+    pieAggregateRef.current = pieAggregate;
+    pieAggregateFieldRef.current = pieAggregateField;
     visibleColumnKeysRef.current = visibleColumnKeys;
     activeFiltersRef.current = activeFilters;
     activeSortsRef.current = activeSorts;
-  }, [activeFilters, activeSorts, fieldDefinitions, kanbanGroupBy, source, title, viewType, visibleColumnKeys]);
+  }, [
+    activeFilters,
+    activeSorts,
+    fieldDefinitions,
+    ganttZoom,
+    kanbanGroupBy,
+    pieAggregate,
+    pieAggregateField,
+    pieGroupField,
+    source,
+    timelineEndField,
+    timelineStartField,
+    title,
+    viewType,
+    visibleColumnKeys,
+  ]);
 
   useEffect(
     () => () => {
@@ -496,11 +555,12 @@ export const MarkdownHybridDatabaseBlock = ({
       ...parsed.config.view,
       type: nextViewType,
       groupBy: next.view?.groupBy ?? kanbanGroupByRef.current ?? null,
-      timelineStartField: next.view?.timelineStartField ?? parsed.config.view.timelineStartField ?? null,
-      timelineEndField: next.view?.timelineEndField ?? parsed.config.view.timelineEndField ?? null,
-      pieGroupField: next.view?.pieGroupField ?? parsed.config.view.pieGroupField ?? null,
-      pieAggregate: next.view?.pieAggregate ?? parsed.config.view.pieAggregate ?? "count",
-      pieAggregateField: next.view?.pieAggregateField ?? parsed.config.view.pieAggregateField ?? null,
+      timelineStartField: next.view?.timelineStartField ?? timelineStartFieldRef.current ?? null,
+      timelineEndField: next.view?.timelineEndField ?? timelineEndFieldRef.current ?? null,
+      ganttZoom: next.view?.ganttZoom ?? ganttZoomRef.current ?? DEFAULT_GANTT_ZOOM,
+      pieGroupField: next.view?.pieGroupField ?? pieGroupFieldRef.current ?? null,
+      pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
+      pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
     };
     const nextVisibleColumns = next.visibleColumns ?? visibleColumnKeysRef.current;
     const nextFilters = next.filters ?? activeFiltersRef.current;
@@ -531,6 +591,12 @@ export const MarkdownHybridDatabaseBlock = ({
           ...parsed.config.view,
           type: viewType,
           groupBy: kanbanGroupBy,
+          timelineStartField,
+          timelineEndField,
+          ganttZoom,
+          pieGroupField,
+          pieAggregate,
+          pieAggregateField,
         },
         columns: visibleColumnKeys,
         filters: activeFilters,
@@ -558,6 +624,12 @@ export const MarkdownHybridDatabaseBlock = ({
       title,
       kanbanGroupBy,
       viewType,
+      timelineStartField,
+      timelineEndField,
+      ganttZoom,
+      pieGroupField,
+      pieAggregate,
+      pieAggregateField,
       visibleColumnKeys,
     ],
   );
@@ -575,6 +647,8 @@ export const MarkdownHybridDatabaseBlock = ({
       properties: panel === "properties",
       filter: panel === "filter",
       sort: panel === "sort",
+      gantt: panel === "gantt",
+      pie: panel === "pie",
     });
   };
 
@@ -628,6 +702,58 @@ export const MarkdownHybridDatabaseBlock = ({
     persistConfig({
       view: {
         groupBy: nextGroupBy,
+      },
+    });
+  };
+
+  const handleGanttOptionsChange = (next: {
+    startField?: string | null;
+    endField?: string | null;
+    zoom?: DatabaseGanttZoom;
+  }) => {
+    const nextStart = typeof next.startField === "undefined"
+      ? timelineStartFieldRef.current
+      : next.startField ?? null;
+    const nextEnd = typeof next.endField === "undefined"
+      ? timelineEndFieldRef.current
+      : next.endField ?? null;
+    const nextZoom = next.zoom ?? ganttZoomRef.current ?? DEFAULT_GANTT_ZOOM;
+
+    setTimelineStartField(nextStart);
+    setTimelineEndField(nextEnd);
+    setGanttZoom(nextZoom);
+    persistConfig({
+      view: {
+        timelineStartField: nextStart,
+        timelineEndField: nextEnd,
+        ganttZoom: nextZoom,
+      },
+    });
+  };
+
+  const handlePieOptionsChange = (next: {
+    groupField?: string | null;
+    aggregate?: "count" | "sum" | "avg";
+    aggregateField?: string | null;
+  }) => {
+    const nextGroup = typeof next.groupField === "undefined"
+      ? pieGroupFieldRef.current
+      : next.groupField ?? null;
+    const nextAggregate = next.aggregate ?? pieAggregateRef.current ?? "count";
+    const nextAggregateField = nextAggregate === "count"
+      ? null
+      : typeof next.aggregateField === "undefined"
+      ? pieAggregateFieldRef.current
+      : next.aggregateField ?? null;
+
+    setPieGroupField(nextGroup);
+    setPieAggregate(nextAggregate);
+    setPieAggregateField(nextAggregateField);
+    persistConfig({
+      view: {
+        pieGroupField: nextGroup,
+        pieAggregate: nextAggregate,
+        pieAggregateField: nextAggregateField,
       },
     });
   };
@@ -986,17 +1112,32 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const timelineStartAttribute = pickTimelineAttribute(
     store.attributeRegistry,
-    parsed.config.view.timelineStartField,
+    timelineStartField,
   );
   const timelineEndAttribute = pickTimelineAttribute(
     store.attributeRegistry,
-    parsed.config.view.timelineEndField,
+    timelineEndField,
   );
   const pieGroupAttribute = pickPieGroupAttribute(
     store.attributeRegistry,
-    parsed.config.view.pieGroupField,
+    pieGroupField,
   );
-  const hasOpenPanel = panels.source || panels.properties || panels.filter || panels.sort;
+  const pieAggregateAttribute = useMemo(
+    () => {
+      if (!pieAggregateField) {
+        return null;
+      }
+      return store.attributeRegistry.find((attribute) =>
+        toLower(attribute.key) === toLower(pieAggregateField)) ?? null;
+    },
+    [pieAggregateField, store.attributeRegistry],
+  );
+  const hasOpenPanel = panels.source ||
+    panels.properties ||
+    panels.filter ||
+    panels.sort ||
+    panels.gantt ||
+    panels.pie;
 
   return (
     <section className="database-block" ref={rootRef} data-md-block-control="true">
@@ -1019,10 +1160,14 @@ export const MarkdownHybridDatabaseBlock = ({
             isFilterPanelOpen={panels.filter}
             isSortPanelOpen={panels.sort}
             isPropertiesPanelOpen={panels.properties}
+            isGanttPanelOpen={panels.gantt}
+            isPiePanelOpen={panels.pie}
             onToggleSourcePanel={() => setPanel("source")}
             onToggleFilterPanel={() => setPanel("filter")}
             onToggleSortPanel={() => setPanel("sort")}
             onTogglePropertiesPanel={() => setPanel("properties")}
+            onToggleGanttPanel={() => setPanel("gantt")}
+            onTogglePiePanel={() => setPanel("pie")}
           />
         ) : null}
 
@@ -1096,6 +1241,26 @@ export const MarkdownHybridDatabaseBlock = ({
               onClose={() => setPanels(defaultPanels)}
             />
           ) : null}
+          {panels.gantt ? (
+            <DatabaseGanttPanel
+              attributes={store.attributeRegistry}
+              startField={timelineStartField}
+              endField={timelineEndField}
+              zoom={ganttZoom}
+              onChange={handleGanttOptionsChange}
+              onClose={() => setPanels(defaultPanels)}
+            />
+          ) : null}
+          {panels.pie ? (
+            <DatabasePiePanel
+              attributes={store.attributeRegistry}
+              groupField={pieGroupField}
+              aggregate={pieAggregate}
+              aggregateField={pieAggregateField}
+              onChange={handlePieOptionsChange}
+              onClose={() => setPanels(defaultPanels)}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -1126,11 +1291,15 @@ export const MarkdownHybridDatabaseBlock = ({
             records={store.visibleRecords}
             startAttribute={timelineStartAttribute}
             endAttribute={timelineEndAttribute}
+            zoom={ganttZoom}
+            onOpenRecord={openRecord}
           />
         ) : (
           <DatabasePieView
             records={store.visibleRecords}
             groupAttribute={pieGroupAttribute}
+            aggregate={pieAggregate}
+            aggregateAttribute={pieAggregateAttribute}
           />
         )}
       </div>

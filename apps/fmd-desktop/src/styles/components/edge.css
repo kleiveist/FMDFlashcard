@@ -379,3 +379,12 @@
 :root[data-design-mode="edge"] .database-block-panel input[type="checkbox"] {
   border-radius: 0;
 }
+
+:root[data-design-mode="edge"] :is(
+    .database-pie-view,
+    .database-gantt-view,
+    .database-pie-legend li,
+    .database-gantt-bar
+  ) {
+  border-radius: 0;
+}

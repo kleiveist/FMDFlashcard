@@ -1,0 +1,275 @@
+// @vitest-environment jsdom
+import { act, createElement, type ReactElement } from "react";
+import { createRoot } from "react-dom/client";
+import { describe, expect, it } from "vitest";
+import { DatabasePieView } from "./pie-view";
+import {
+  type DatabaseAttributeMeta,
+  type DatabaseRecord,
+} from "../database-types";
+
+const render = (element: ReactElement) => {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  act(() => {
+    root.render(element);
+  });
+  return {
+    container,
+    cleanup: () => {
+      act(() => {
+        root.unmount();
+      });
+      container.remove();
+    },
+  };
+};
+
+const statusGroupAttribute: DatabaseAttributeMeta = {
+  key: "status",
+  label: "Status",
+  type: "status",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
+  },
+};
+
+const tagsGroupAttribute: DatabaseAttributeMeta = {
+  ...statusGroupAttribute,
+  key: "tags",
+  label: "Tags",
+  type: "tags",
+};
+
+const scoreAggregateAttribute: DatabaseAttributeMeta = {
+  key: "Score",
+  label: "Score",
+  type: "score",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: true,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: false,
+    supportsTimeline: false,
+    supportsPieGrouping: false,
+    supportsAggregation: true,
+  },
+};
+
+const baseRecord: DatabaseRecord = {
+  fileId: "a.md",
+  filePath: "/vault/a.md",
+  relativePath: "a.md",
+  fileName: "a.md",
+  folder: "",
+  extension: "md",
+  frontmatter: {},
+  systemFields: {
+    Dateiname: "A",
+  },
+  normalizedFields: {
+    status: { raw: "Open" },
+    tags: ["alpha", "beta"],
+    Score: {
+      raw: "20/25",
+      value: 20,
+      max: 25,
+      ratio: 0.8,
+    },
+  },
+};
+
+describe("DatabasePieView", () => {
+  it("shows validation message for missing group field", () => {
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord],
+        groupAttribute: null,
+        aggregate: "count",
+        aggregateAttribute: null,
+      }),
+    );
+
+    expect(container.textContent).toContain("gruppierbares Feld");
+    cleanup();
+  });
+
+  it("aggregates count by categorical field", () => {
+    const doneRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "b.md",
+      filePath: "/vault/b.md",
+      relativePath: "b.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Done" },
+      },
+    };
+    const doneRecord2: DatabaseRecord = {
+      ...doneRecord,
+      fileId: "b-2.md",
+      filePath: "/vault/b-2.md",
+      relativePath: "b-2.md",
+      fileName: "b-2.md",
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, doneRecord, doneRecord2],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+      }),
+    );
+
+    expect(container.querySelectorAll(".database-pie-legend li").length).toBeGreaterThan(0);
+    expect(container.textContent).toContain("Done");
+    expect(container.textContent).toContain("2");
+
+    cleanup();
+  });
+
+  it("explodes tags into separate buckets", () => {
+    const secondRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "c.md",
+      filePath: "/vault/c.md",
+      relativePath: "c.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        tags: ["beta"],
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, secondRecord],
+        groupAttribute: tagsGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+      }),
+    );
+
+    expect(container.textContent).toContain("alpha");
+    expect(container.textContent).toContain("beta");
+    expect(container.textContent).toContain("2");
+
+    cleanup();
+  });
+
+  it("shows validation when numeric aggregate field is missing", () => {
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "avg",
+        aggregateAttribute: null,
+      }),
+    );
+
+    expect(container.textContent).toContain("numerisches Aggregatfeld");
+    cleanup();
+  });
+
+  it("aggregates score using normalized percent basis", () => {
+    const secondRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "d.md",
+      filePath: "/vault/d.md",
+      relativePath: "d.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Open" },
+        Score: {
+          raw: "10/20",
+          value: 10,
+          max: 20,
+          ratio: 0.5,
+        },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, secondRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "sum",
+        aggregateAttribute: scoreAggregateAttribute,
+      }),
+    );
+
+    // 20/25 => 80, 10/20 => 50, sum => 130
+    expect(container.textContent).toContain("130");
+
+    cleanup();
+  });
+
+  it("supports formula numeric fields as aggregate source", () => {
+    const formulaAggregateAttribute: DatabaseAttributeMeta = {
+      key: "scoreRatio",
+      label: "Score Ratio",
+      type: "number",
+      origin: "formula",
+      formula: "percent(score)",
+      editable: false,
+      sortable: true,
+      filterable: true,
+      aggregatable: true,
+      viewCompatibility: {
+        supportsTable: true,
+        supportsKanbanGrouping: false,
+        supportsTimeline: false,
+        supportsPieGrouping: false,
+        supportsAggregation: true,
+      },
+    };
+
+    const first: DatabaseRecord = {
+      ...baseRecord,
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "A" },
+        scoreRatio: 80,
+      },
+    };
+
+    const second: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "formula-2.md",
+      filePath: "/vault/formula-2.md",
+      relativePath: "formula-2.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "A" },
+        scoreRatio: 20,
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [first, second],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "avg",
+        aggregateAttribute: formulaAggregateAttribute,
+      }),
+    );
+
+    expect(container.textContent).toContain("50");
+    cleanup();
+  });
+});
