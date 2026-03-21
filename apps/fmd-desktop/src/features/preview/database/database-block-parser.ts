@@ -1,0 +1,700 @@
+/**
+ * @file apps/fmd-desktop/src/features/preview/database/database-block-parser.ts
+ *
+ * Parser/serializer for the standalone markdown database block.
+ */
+
+import {
+  DATABASE_BLOCK_MARKER,
+  isDatabaseBlockMarkerLine,
+} from "../../../lib/databaseBlockSyntax";
+import {
+  type DatabaseBlockConfig,
+  type DatabaseFilterGroup,
+  type DatabaseFilterGroupOp,
+  type DatabaseFilterRule,
+  type DatabaseSortRule,
+  type DatabaseSourceSpec,
+  type DatabaseSourceType,
+  type DatabaseViewSpec,
+  type DatabaseViewType,
+} from "./database-types";
+
+export const DATABASE_BLOCK_OPEN_MARKER = DATABASE_BLOCK_MARKER;
+export const DATABASE_BLOCK_CLOSE_MARKER = DATABASE_BLOCK_MARKER;
+
+export type DatabaseBlockParseResult = {
+  config: DatabaseBlockConfig;
+  errors: string[];
+  isClosed: boolean;
+};
+
+type ParsedLine = {
+  indent: number;
+  trimmed: string;
+  lineNumber: number;
+};
+
+const parseIdCounterSeed = 0;
+
+const normalizeNewlines = (value: string) => value.replace(/\r\n?/g, "\n");
+
+const parseSingleQuoted = (value: string) => {
+  if (!value.startsWith("'") || !value.endsWith("'")) {
+    return null;
+  }
+  return value.slice(1, -1).replace(/''/g, "'");
+};
+
+const parseDoubleQuoted = (value: string) => {
+  if (!value.startsWith('"') || !value.endsWith('"')) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    return typeof parsed === "string" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const parseScalar = (rawValue: string): unknown => {
+  const value = rawValue.trim();
+  if (value.length === 0) {
+    return "";
+  }
+  const singleQuoted = parseSingleQuoted(value);
+  if (singleQuoted !== null) {
+    return singleQuoted;
+  }
+  const doubleQuoted = parseDoubleQuoted(value);
+  if (doubleQuoted !== null) {
+    return doubleQuoted;
+  }
+  if (/^(true|false)$/i.test(value)) {
+    return value.toLowerCase() === "true";
+  }
+  if (/^(null|~)$/i.test(value)) {
+    return null;
+  }
+  if (/^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value)) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  if (value.startsWith("[") && value.endsWith("]")) {
+    const inner = value.slice(1, -1).trim();
+    if (!inner) {
+      return [];
+    }
+    return inner
+      .split(",")
+      .map((part) => parseScalar(part))
+      .filter((part) => part !== null)
+      .map((part) => String(part));
+  }
+  return value;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const asString = (value: unknown, fallback = "") =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
+
+const asStringArray = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+    .filter((entry) => entry.length > 0);
+};
+
+const toParsedLines = (yamlSource: string) =>
+  normalizeNewlines(yamlSource)
+    .split("\n")
+    .map((line, index): ParsedLine => {
+      const indentMatch = line.match(/^[ \t]*/);
+      return {
+        indent: indentMatch ? indentMatch[0].length : 0,
+        trimmed: line.trim(),
+        lineNumber: index + 1,
+      };
+    })
+    .filter((line) => line.trimmed.length > 0);
+
+const parseYamlSubset = (yamlSource: string) => {
+  const errors: string[] = [];
+  const lines = toParsedLines(yamlSource);
+  let index = 0;
+
+  const parseNode = (expectedIndent: number): unknown => {
+    if (index >= lines.length) {
+      return null;
+    }
+    const current = lines[index]!;
+    if (current.indent < expectedIndent) {
+      return null;
+    }
+    if (current.indent > expectedIndent) {
+      errors.push(
+        `Unexpected indent on config line ${current.lineNumber}: expected ${expectedIndent}, got ${current.indent}.`,
+      );
+      return parseNode(current.indent);
+    }
+    if (current.trimmed.startsWith("- ")) {
+      return parseSequence(expectedIndent);
+    }
+    return parseMapping(expectedIndent);
+  };
+
+  const parseMapping = (expectedIndent: number): Record<string, unknown> => {
+    const output: Record<string, unknown> = {};
+
+    while (index < lines.length) {
+      const current = lines[index]!;
+      if (current.indent < expectedIndent) {
+        break;
+      }
+      if (current.indent > expectedIndent) {
+        errors.push(`Unexpected nested mapping line ${current.lineNumber}.`);
+        index += 1;
+        continue;
+      }
+      if (current.trimmed.startsWith("- ")) {
+        break;
+      }
+
+      const colonIndex = current.trimmed.indexOf(":");
+      if (colonIndex <= 0) {
+        errors.push(`Invalid mapping line ${current.lineNumber}: ${current.trimmed}`);
+        index += 1;
+        continue;
+      }
+
+      const key = current.trimmed.slice(0, colonIndex).trim();
+      const tail = current.trimmed.slice(colonIndex + 1).trim();
+      index += 1;
+
+      if (!key) {
+        continue;
+      }
+
+      if (tail.length > 0) {
+        output[key] = parseScalar(tail);
+        continue;
+      }
+
+      const next = lines[index];
+      if (next && next.indent > expectedIndent) {
+        output[key] = parseNode(next.indent);
+      } else {
+        output[key] = null;
+      }
+    }
+
+    return output;
+  };
+
+  const parseSequence = (expectedIndent: number): unknown[] => {
+    const output: unknown[] = [];
+
+    while (index < lines.length) {
+      const current = lines[index]!;
+      if (current.indent < expectedIndent) {
+        break;
+      }
+      if (current.indent > expectedIndent) {
+        errors.push(`Unexpected nested list line ${current.lineNumber}.`);
+        index += 1;
+        continue;
+      }
+      if (!current.trimmed.startsWith("- ")) {
+        break;
+      }
+
+      const tail = current.trimmed.slice(2).trim();
+      index += 1;
+
+      if (tail.length === 0) {
+        const nested = lines[index];
+        if (nested && nested.indent > expectedIndent) {
+          output.push(parseNode(nested.indent));
+        } else {
+          output.push(null);
+        }
+        continue;
+      }
+
+      const inlineColon = tail.indexOf(":");
+      if (inlineColon > 0) {
+        const itemKey = tail.slice(0, inlineColon).trim();
+        const itemTail = tail.slice(inlineColon + 1).trim();
+        const item: Record<string, unknown> = {};
+
+        if (itemTail.length > 0) {
+          item[itemKey] = parseScalar(itemTail);
+        } else {
+          const nested = lines[index];
+          item[itemKey] = nested && nested.indent > expectedIndent
+            ? parseNode(nested.indent)
+            : null;
+        }
+
+        const continuationIndent = expectedIndent + 2;
+        while (index < lines.length) {
+          const nested = lines[index]!;
+          if (nested.indent < continuationIndent) {
+            break;
+          }
+          if (nested.indent === expectedIndent && nested.trimmed.startsWith("- ")) {
+            break;
+          }
+          if (nested.indent !== continuationIndent || nested.trimmed.startsWith("- ")) {
+            break;
+          }
+          const continuation = parseMapping(continuationIndent);
+          Object.assign(item, continuation);
+        }
+
+        output.push(item);
+        continue;
+      }
+
+      output.push(parseScalar(tail));
+    }
+
+    return output;
+  };
+
+  if (lines.length === 0) {
+    return {
+      value: {},
+      errors,
+    };
+  }
+
+  const rootIndent = lines[0]!.indent;
+  const value = parseNode(rootIndent);
+
+  return {
+    value,
+    errors,
+  };
+};
+
+const nextGeneratedId = (() => {
+  let sequence = parseIdCounterSeed;
+  return (prefix: string) => {
+    sequence += 1;
+    return `${prefix}-${sequence}`;
+  };
+})();
+
+const createDefaultFilterGroup = (): DatabaseFilterGroup => ({
+  id: nextGeneratedId("filter-group"),
+  op: "and",
+  rules: [],
+});
+
+const parseFilterGroupOp = (value: unknown): DatabaseFilterGroupOp =>
+  typeof value === "string" && value.toLowerCase() === "or" ? "or" : "and";
+
+const parseFilterRule = (value: unknown): DatabaseFilterRule | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+  const field = asString(value.field);
+  const op = asString(value.op);
+  if (!field || !op) {
+    return null;
+  }
+  const rule: DatabaseFilterRule = {
+    id: nextGeneratedId("filter-rule"),
+    field,
+    op,
+  };
+  if ("value" in value) {
+    rule.value = value.value;
+  }
+  if ("valueTo" in value) {
+    rule.valueTo = value.valueTo;
+  }
+  return rule;
+};
+
+const parseFilterGroup = (value: unknown): DatabaseFilterGroup => {
+  if (Array.isArray(value)) {
+    return {
+      id: nextGeneratedId("filter-group"),
+      op: "and",
+      rules: value
+        .map((entry) => parseFilterRule(entry))
+        .filter((entry): entry is DatabaseFilterRule => Boolean(entry)),
+    };
+  }
+
+  if (!isRecord(value)) {
+    return createDefaultFilterGroup();
+  }
+
+  const rawRules = Array.isArray(value.rules)
+    ? value.rules
+    : Array.isArray(value.filters)
+    ? value.filters
+    : [];
+
+  const rules = rawRules
+    .map((entry) => {
+      if (isRecord(entry) && Array.isArray(entry.rules)) {
+        return parseFilterGroup(entry);
+      }
+      return parseFilterRule(entry);
+    })
+    .filter((entry): entry is DatabaseFilterRule | DatabaseFilterGroup => Boolean(entry));
+
+  return {
+    id: nextGeneratedId("filter-group"),
+    op: parseFilterGroupOp(value.op),
+    rules,
+  };
+};
+
+const parseSortRules = (value: unknown): DatabaseSortRule[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((entry): DatabaseSortRule | null => {
+      if (!isRecord(entry)) {
+        return null;
+      }
+      const field = asString(entry.field);
+      if (!field) {
+        return null;
+      }
+      const dir = asString(entry.dir, "asc").toLowerCase() === "desc" ? "desc" : "asc";
+      const nulls = asString(entry.nulls).toLowerCase();
+      return {
+        id: nextGeneratedId("sort-rule"),
+        field,
+        dir,
+        nulls: nulls === "first" || nulls === "last" ? nulls : undefined,
+        natural: Boolean(entry.natural),
+      };
+    })
+    .filter((entry): entry is DatabaseSortRule => Boolean(entry));
+};
+
+const parseSourceType = (value: unknown): DatabaseSourceType => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (
+    normalized === "explicit-folder" ||
+    normalized === "multi-folder" ||
+    normalized === "tag-query" ||
+    normalized === "manual-query" ||
+    normalized === "linked-files"
+  ) {
+    return normalized;
+  }
+  return "current-folder";
+};
+
+const parseSourceSpec = (value: unknown): DatabaseSourceSpec => {
+  if (typeof value === "string") {
+    return {
+      type: parseSourceType(value),
+    };
+  }
+  if (!isRecord(value)) {
+    return {
+      type: "current-folder",
+    };
+  }
+  const type = parseSourceType(value.type);
+  const path = asString(value.path);
+  const paths = asStringArray(value.paths);
+  const tags = asStringArray(value.tags);
+  const query = asString(value.query);
+  return {
+    type,
+    ...(path ? { path } : {}),
+    ...(paths.length > 0 ? { paths } : {}),
+    ...(tags.length > 0 ? { tags } : {}),
+    ...(query ? { query } : {}),
+  };
+};
+
+const parseViewType = (value: unknown): DatabaseViewType => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (normalized === "kanban" || normalized === "gantt" || normalized === "pie") {
+    return normalized;
+  }
+  return "table";
+};
+
+const parseViewSpec = (value: unknown): DatabaseViewSpec => {
+  if (typeof value === "string") {
+    return {
+      type: parseViewType(value),
+    };
+  }
+  if (!isRecord(value)) {
+    return {
+      type: "table",
+    };
+  }
+  const type = parseViewType(value.type);
+  const pieAggregateRaw = asString(value.pieAggregate, "count").toLowerCase();
+  return {
+    type,
+    groupBy: asString(value.groupBy) || null,
+    timelineStartField: asString(value.timelineStartField) || null,
+    timelineEndField: asString(value.timelineEndField) || null,
+    pieGroupField: asString(value.pieGroupField) || null,
+    pieAggregate:
+      pieAggregateRaw === "sum" || pieAggregateRaw === "avg"
+        ? pieAggregateRaw
+        : "count",
+    pieAggregateField: asString(value.pieAggregateField) || null,
+  };
+};
+
+export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
+  title: "Database",
+  source: {
+    type: "current-folder",
+  },
+  view: {
+    type: "table",
+  },
+  columns: [
+    "Dateiname",
+    "Dateipfad",
+  ],
+  filters: createDefaultFilterGroup(),
+  sort: [],
+  options: {
+    editable: false,
+    showSearch: true,
+    showToolbar: true,
+  },
+});
+
+const parseOptions = (value: unknown) => {
+  if (!isRecord(value)) {
+    return {
+      editable: false,
+      showSearch: true,
+      showToolbar: true,
+    };
+  }
+  return {
+    editable: Boolean(value.editable),
+    showSearch: "showSearch" in value ? Boolean(value.showSearch) : true,
+    showToolbar: "showToolbar" in value ? Boolean(value.showToolbar) : true,
+  };
+};
+
+const parseConfigObject = (value: unknown): DatabaseBlockConfig => {
+  const defaults = createDefaultDatabaseBlockConfig();
+  const record = isRecord(value) ? value : {};
+  const hasExplicitColumns = Array.isArray(record.columns);
+  const columns = asStringArray(record.columns);
+
+  return {
+    title: asString(record.title, defaults.title),
+    source: parseSourceSpec(record.source),
+    view: parseViewSpec(record.view),
+    columns: hasExplicitColumns ? columns : defaults.columns,
+    filters: parseFilterGroup(record.filters),
+    sort: parseSortRules(record.sort),
+    options: parseOptions(record.options),
+  };
+};
+
+const escapeYamlString = (value: string) => {
+  if (value.length === 0) {
+    return "''";
+  }
+  if (/^[A-Za-z0-9_./-]+$/.test(value)) {
+    return value;
+  }
+  return `'${value.replace(/'/g, "''")}'`;
+};
+
+const formatYamlScalar = (value: unknown) => {
+  if (typeof value === "string") {
+    return escapeYamlString(value);
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (value === null || typeof value === "undefined") {
+    return "null";
+  }
+  return escapeYamlString(String(value));
+};
+
+const writeFilterGroupYaml = (
+  group: DatabaseFilterGroup,
+  indent: number,
+  lines: string[],
+) => {
+  const indentText = " ".repeat(indent);
+  lines.push(`${indentText}op: ${group.op}`);
+  if (group.rules.length === 0) {
+    lines.push(`${indentText}rules: []`);
+    return;
+  }
+  lines.push(`${indentText}rules:`);
+
+  for (const rule of group.rules) {
+    if ("rules" in rule) {
+      lines.push(`${indentText}  - op: ${rule.op}`);
+      lines.push(`${indentText}    rules:`);
+      for (const nestedRule of rule.rules) {
+        if ("rules" in nestedRule) {
+          continue;
+        }
+        lines.push(`${indentText}      - field: ${formatYamlScalar(nestedRule.field)}`);
+        lines.push(`${indentText}        op: ${formatYamlScalar(nestedRule.op)}`);
+        if (typeof nestedRule.value !== "undefined") {
+          lines.push(`${indentText}        value: ${formatYamlScalar(nestedRule.value)}`);
+        }
+        if (typeof nestedRule.valueTo !== "undefined") {
+          lines.push(`${indentText}        valueTo: ${formatYamlScalar(nestedRule.valueTo)}`);
+        }
+      }
+      continue;
+    }
+    lines.push(`${indentText}  - field: ${formatYamlScalar(rule.field)}`);
+    lines.push(`${indentText}    op: ${formatYamlScalar(rule.op)}`);
+    if (typeof rule.value !== "undefined") {
+      lines.push(`${indentText}    value: ${formatYamlScalar(rule.value)}`);
+    }
+    if (typeof rule.valueTo !== "undefined") {
+      lines.push(`${indentText}    valueTo: ${formatYamlScalar(rule.valueTo)}`);
+    }
+  }
+};
+
+export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
+  const lines: string[] = [];
+  lines.push(DATABASE_BLOCK_OPEN_MARKER);
+  lines.push(`title: ${formatYamlScalar(config.title)}`);
+  lines.push("source:");
+  lines.push(`  type: ${formatYamlScalar(config.source.type)}`);
+  if (config.source.path) {
+    lines.push(`  path: ${formatYamlScalar(config.source.path)}`);
+  }
+  if (config.source.paths && config.source.paths.length > 0) {
+    lines.push("  paths:");
+    config.source.paths.forEach((path) => {
+      lines.push(`    - ${formatYamlScalar(path)}`);
+    });
+  }
+  if (config.source.tags && config.source.tags.length > 0) {
+    lines.push("  tags:");
+    config.source.tags.forEach((tag) => {
+      lines.push(`    - ${formatYamlScalar(tag)}`);
+    });
+  }
+  if (config.source.query) {
+    lines.push(`  query: ${formatYamlScalar(config.source.query)}`);
+  }
+
+  lines.push("view:");
+  lines.push(`  type: ${formatYamlScalar(config.view.type)}`);
+  if (config.view.groupBy) {
+    lines.push(`  groupBy: ${formatYamlScalar(config.view.groupBy)}`);
+  }
+
+  if (config.columns.length === 0) {
+    lines.push("columns: []");
+  } else {
+    lines.push("columns:");
+    config.columns.forEach((column) => {
+      lines.push(`  - ${formatYamlScalar(column)}`);
+    });
+  }
+
+  lines.push("filters:");
+  writeFilterGroupYaml(config.filters, 2, lines);
+
+  if (config.sort.length === 0) {
+    lines.push("sort: []");
+  } else {
+    lines.push("sort:");
+    config.sort.forEach((sortRule) => {
+      lines.push(`  - field: ${formatYamlScalar(sortRule.field)}`);
+      lines.push(`    dir: ${formatYamlScalar(sortRule.dir)}`);
+      if (sortRule.nulls) {
+        lines.push(`    nulls: ${formatYamlScalar(sortRule.nulls)}`);
+      }
+      if (sortRule.natural) {
+        lines.push("    natural: true");
+      }
+    });
+  }
+
+  lines.push("options:");
+  lines.push(`  editable: ${formatYamlScalar(config.options.editable)}`);
+  lines.push(`  showSearch: ${formatYamlScalar(config.options.showSearch)}`);
+  lines.push(`  showToolbar: ${formatYamlScalar(config.options.showToolbar)}`);
+  lines.push(DATABASE_BLOCK_CLOSE_MARKER);
+
+  return lines.join("\n");
+};
+
+export const parseDatabaseBlockConfigFromRaw = (blockRaw: string): DatabaseBlockParseResult => {
+  const defaults = createDefaultDatabaseBlockConfig();
+  const normalizedRaw = normalizeNewlines(blockRaw);
+  const lines = normalizedRaw.split("\n");
+  const errors: string[] = [];
+
+  if (lines.length === 0 || !isDatabaseBlockMarkerLine(lines[0] ?? "")) {
+    return {
+      config: defaults,
+      errors: ["Database block must start with a standalone :::: marker."],
+      isClosed: false,
+    };
+  }
+
+  let closingLineIndex = -1;
+  for (let index = 1; index < lines.length; index += 1) {
+    if (isDatabaseBlockMarkerLine(lines[index] ?? "")) {
+      closingLineIndex = index;
+      break;
+    }
+  }
+
+  const isClosed = closingLineIndex >= 0;
+  if (!isClosed) {
+    errors.push("Database block is missing the closing :::: marker.");
+  }
+
+  const bodyLines = lines.slice(1, isClosed ? closingLineIndex : lines.length);
+  const bodySource = bodyLines.join("\n").trim();
+  if (!bodySource) {
+    return {
+      config: defaults,
+      errors,
+      isClosed,
+    };
+  }
+
+  const parsedYaml = parseYamlSubset(bodySource);
+  errors.push(...parsedYaml.errors);
+
+  return {
+    config: parseConfigObject(parsedYaml.value),
+    errors,
+    isClosed,
+  };
+};

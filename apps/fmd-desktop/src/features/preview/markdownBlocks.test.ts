@@ -97,6 +97,59 @@ describe("markdownBlocks", () => {
     expect(blocks[2]?.raw).toBe("![[images/example.png]]");
   });
 
+  it("treats :::: ... :::: as a single database block", () => {
+    const markdown = [
+      "Vorher",
+      "::::",
+      "title: Demo",
+      "view:",
+      "  type: table",
+      "::::",
+      "Nachher",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "database-block",
+      "paragraph",
+    ]);
+    expect(blocks[1]?.raw).toBe(
+      [
+        "::::",
+        "title: Demo",
+        "view:",
+        "  type: table",
+        "::::",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps markers inside database blocks parser-isolated", () => {
+    const markdown = [
+      "Vorher",
+      "::::",
+      "#card",
+      "a) Option",
+      "-a",
+      "#endcard",
+      "#exam",
+      "1) Task",
+      "#endexam",
+      "::::",
+      "Nachher",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "database-block",
+      "paragraph",
+    ]);
+    expect(blocks[1]?.raw).toContain("#card");
+    expect(blocks[1]?.raw).toContain("#exam");
+  });
+
   it("treats #card ... #endcard as a single card block and keeps nested help inside it", () => {
     const markdown = [
       "Vorher",
@@ -138,6 +191,25 @@ describe("markdownBlocks", () => {
     expect(blocks).toHaveLength(1);
     expect(blocks[0]?.kind).toBe("card-block");
     expect(blocks[0]?.raw).toBe(["#card", "#endcard"].join("\n"));
+  });
+
+  it("parses an unclosed database opener as one trailing database block", () => {
+    const markdown = [
+      "Heading",
+      "",
+      "::::",
+      "title: Incomplete",
+      "source:",
+      "  type: current-folder",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "blank",
+      "database-block",
+    ]);
+    expect(blocks[2]?.raw).toContain("title: Incomplete");
   });
 
   it("only normalizes same-line suffix content on #endcard", () => {

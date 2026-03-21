@@ -8,12 +8,14 @@
 
 import { parseMarkdownPipeTableAt } from "../../lib/markdownTables";
 import { parseStandalonePngEmbedLine } from "../../lib/markdownMedia";
+import { isDatabaseBlockMarkerLine } from "../../lib/databaseBlockSyntax";
 
 export type MarkdownBlockKind =
   | "blank"
   | "heading"
   | "paragraph"
   | "math-block"
+  | "database-block"
   | "card-block"
   | "help-block"
   | "image-embed"
@@ -56,6 +58,7 @@ const isHorizontalRuleLineForNormalization = (line: string) =>
 const isHelpBlockStartLine = (line: string) => line.trim().toLowerCase() === "#help";
 const isHelpBlockEndLine = (line: string) => line.trim().toLowerCase() === "#helpend";
 const isStandaloneImageEmbedLine = (line: string) => parseStandalonePngEmbedLine(line) !== null;
+const isDatabaseBlockMarker = (line: string) => isDatabaseBlockMarkerLine(line);
 const isCardBlockStartLine = (line: string) => line.trim().toLowerCase() === "#card";
 const isCardBlockEndLine = (line: string) => line.trim().toLowerCase() === "#endcard";
 
@@ -82,6 +85,9 @@ const isListContinuationLine = (line: string) => {
     return false;
   }
   if (isStandaloneImageEmbedLine(line)) {
+    return false;
+  }
+  if (isDatabaseBlockMarker(line)) {
     return false;
   }
   if (isCardBlockStartLine(line) || isCardBlockEndLine(line)) {
@@ -115,6 +121,9 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
     return true;
   }
   if (isStandaloneImageEmbedLine(line)) {
+    return true;
+  }
+  if (isDatabaseBlockMarker(line)) {
     return true;
   }
   if (isCardBlockStartLine(line)) {
@@ -253,6 +262,20 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "math-block", i, i));
       blockIndex += 1;
       i += 1;
+      continue;
+    }
+
+    if (isDatabaseBlockMarker(line)) {
+      let end = i;
+      for (let j = i + 1; j < lines.length; j += 1) {
+        end = j;
+        if (isDatabaseBlockMarker(lines[j] ?? "")) {
+          break;
+        }
+      }
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "database-block", i, end));
+      blockIndex += 1;
+      i = end + 1;
       continue;
     }
 
@@ -525,6 +548,7 @@ export const isSingleLineCommitBlock = (block: MarkdownBlock) => {
     block.kind === "table" ||
     block.kind === "code-fence" ||
     block.kind === "math-block" ||
+    block.kind === "database-block" ||
     block.kind === "card-block" ||
     block.kind === "help-block" ||
     block.kind === "image-embed" ||

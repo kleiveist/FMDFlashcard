@@ -17,6 +17,7 @@
  */
 
 import { answerMarkers, falseTokens, trueTokens } from "./flashcardKeywords";
+import { maskDatabaseBlockLines } from "./databaseBlockSyntax";
 import { findTableLineIndices } from "./markdownTables";
 import {
   extractAuxiliaryBlocksFromLines,
@@ -1237,7 +1238,7 @@ export const parseFlashcards = (
   options?: ParseFlashcardsOptions,
 ): Flashcard[] => {
   const answerMatch = resolveAnswerMatch(options);
-  const lines = normalizeLines(markdown);
+  const lines = maskDatabaseBlockLines(normalizeLines(markdown));
   const cards: Flashcard[] = [];
   let index = 0;
 

@@ -58,6 +58,27 @@ Answer: Secret solution
     expect(inlineSplit.prompt).toBe("This is the answer: maybe");
   });
 
+  it("ignores #exam markers inside database blocks", () => {
+    const markdown = `::::
+#exam
+1) Hidden task
+Answer: hidden
+#endexam
+::::
+
+#exam
+1) Visible task
+Answer: visible
+#endexam`;
+
+    const { tasks, hasExamBlock } = parseExamTasks(markdown);
+    expect(hasExamBlock).toBe(true);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.prompt).toContain("1) Visible task");
+    expect(tasks[0]?.prompt).not.toContain("Hidden task");
+    expect(tasks[0]?.officialAnswer).toBe("visible");
+  });
+
   it("keeps inline Answer markers as prompt text", () => {
     const markdown = `#exam
 1) Define foreign key. Answer: A foreign key is an attribute.

@@ -88,6 +88,7 @@ import {
   type MarkdownHybridTableCodeViewPolicy,
   type MarkdownHybridTableSessionController,
 } from "./MarkdownHybridTableBlock";
+import { MarkdownHybridDatabaseBlock } from "./database/database-block";
 import {
   FloatingInlineFormattingToolbar,
   type InlineFormattingToolbarAnchor,
@@ -276,6 +277,7 @@ type InsertMenuAdvancedVariantOption = {
 type InsertMenuIconId =
   | "blocks"
   | "table"
+  | "database"
   | "link"
   | "page-file"
   | "sparkles"
@@ -335,6 +337,7 @@ const MARKDOWN_BLOCK_KIND_SET = new Set<MarkdownBlock["kind"]>([
   "heading",
   "paragraph",
   "math-block",
+  "database-block",
   "card-block",
   "help-block",
   "image-embed",
@@ -470,6 +473,30 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
       icon: "table",
       firstPlaceholder: "Column A",
     },
+    {
+      id: "database",
+      label: "Database",
+      template: [
+        "::::",
+        "title: Database",
+        "source:",
+        "  type: current-folder",
+        "view:",
+        "  type: table",
+        "columns:",
+        "  - Dateiname",
+        "filters:",
+        "  op: and",
+        "  rules: []",
+        "sort: []",
+        "options:",
+        "  editable: false",
+        "  showSearch: true",
+        "  showToolbar: true",
+        "::::",
+      ].join("\n"),
+      icon: "database",
+    },
   ],
   links: [
     {
@@ -532,6 +559,14 @@ const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
           <line x1="4" y1="10" x2="20" y2="10" />
           <line x1="9.5" y1="5" x2="9.5" y2="19" />
           <line x1="15" y1="5" x2="15" y2="19" />
+        </svg>
+      );
+    case "database":
+      return (
+        <svg {...svgProps}>
+          <ellipse cx="12" cy="6.5" rx="7.5" ry="2.8" />
+          <path d="M4.5 6.5v7.8c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8V6.5" />
+          <path d="M4.5 10.4c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8" />
         </svg>
       );
     case "link":
@@ -920,7 +955,11 @@ const parseInlineWikilink = (raw: string) => {
 };
 
 const canOpenPageLinkPickerInBlockKind = (kind: MarkdownBlock["kind"]) =>
-  kind !== "code-fence" && kind !== "hr" && kind !== "table" && kind !== "math-block";
+  kind !== "code-fence" &&
+  kind !== "hr" &&
+  kind !== "table" &&
+  kind !== "database-block" &&
+  kind !== "math-block";
 
 const detectTypedPageLinkTrigger = (
   value: string,
@@ -2221,6 +2260,8 @@ const resolveDragPreviewKindLabel = (kind: MarkdownBlock["kind"]) => {
       return "Paragraph";
     case "math-block":
       return "Math";
+    case "database-block":
+      return "Database";
     case "card-block":
       return "Card";
     case "help-block":
@@ -2310,6 +2351,8 @@ const resolveVirtualizationFallbackHeight = (kind: MarkdownBlock["kind"]) => {
       return 84;
     case "math-block":
       return 120;
+    case "database-block":
+      return 360;
     case "card-block":
       return 168;
     case "help-block":
@@ -5037,10 +5080,12 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       }
 
       const liveBlock = blocks[activeBlockIndex] ?? null;
-      if (liveBlock?.kind === "table") {
-        const session = activeTableSessionRef.current;
-        if (session?.blockIndex === activeBlockIndex && !session.flush()) {
-          return false;
+      if (liveBlock?.kind === "table" || liveBlock?.kind === "database-block") {
+        if (liveBlock.kind === "table") {
+          const session = activeTableSessionRef.current;
+          if (session?.blockIndex === activeBlockIndex && !session.flush()) {
+            return false;
+          }
         }
         if (options?.deactivate ?? true) {
           resetActiveEditorUi();
@@ -9375,6 +9420,22 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         continue;
       }
 
+      if (block.kind === "database-block") {
+        bodyByIndex.set(
+          index,
+          <MarkdownHybridDatabaseBlock
+            raw={block.raw}
+            vaultFiles={vaultFiles}
+            sourceRelativePath={sourceRelativePath}
+            onNavigateWikilink={onNavigateWikilink}
+            onCommitRaw={(nextRaw) => {
+              handleTableBlockCommitRaw(index, nextRaw);
+            }}
+          />,
+        );
+        continue;
+      }
+
       if (block.kind === "math-block") {
         bodyByIndex.set(
           index,
@@ -9708,6 +9769,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     handleTableBlockCommitRaw,
     handleTableBlockRequestActivate,
     imageEmbedReplacePickerState,
+    onNavigateWikilink,
     pinnedVirtualizedIndices,
     pendingTableActivation,
     registerActiveCardTableSession,
@@ -9975,6 +10037,16 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     }}
                     onGlobalUndo={handleGlobalUndo}
                     onGlobalRedo={handleGlobalRedo}
+                  />
+                ) : block.kind === "database-block" ? (
+                  <MarkdownHybridDatabaseBlock
+                    raw={block.raw}
+                    vaultFiles={vaultFiles}
+                    sourceRelativePath={sourceRelativePath}
+                    onNavigateWikilink={onNavigateWikilink}
+                    onCommitRaw={(nextRaw) => {
+                      handleTableBlockCommitRaw(index, nextRaw);
+                    }}
                   />
                 ) : isActive ? (
                   block.kind === "math-block" ? (

@@ -100,6 +100,29 @@ Answer: 4
     expect(cards).toHaveLength(1);
   });
 
+  it("ignores #card markers inside database blocks", () => {
+    const markdown = `::::
+#card
+Question in database?
+Answer: hidden
+#endcard
+::::
+
+#card
+Visible question?
+Answer: visible
+#endcard`;
+
+    const cards = parseFlashcards(markdown);
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("Visible question?");
+      expect(part.back).toBe("visible");
+    }
+  });
+
   it("parses multi-line options with fenced code blocks", () => {
     const markdown = `#card
 Question with code options?
