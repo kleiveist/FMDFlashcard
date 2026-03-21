@@ -537,6 +537,11 @@
 }
 
 .frontmatter-cover-panel {
+  --frontmatter-cover-main-height: clamp(
+    225px,
+    calc(555px - ((100vw - 1661px) * 330 / 1106)),
+    555px
+  );
   position: relative;
   display: flex;
   flex-direction: column;
@@ -553,6 +558,7 @@
 .frontmatter-cover-panel-stage {
   position: relative;
   width: 100%;
+  max-width: 100%;
   z-index: 0;
 }
 
@@ -561,11 +567,13 @@
   place-items: center;
   width: 100%;
   min-width: 0;
-  min-height: clamp(176px, 34vw, 360px);
-  aspect-ratio: 16 / 7;
+  min-height: var(--frontmatter-cover-main-height);
+  height: var(--frontmatter-cover-main-height);
+  max-height: var(--frontmatter-cover-main-height);
+  aspect-ratio: auto;
   border: none;
   border-radius: inherit;
-  background: color-mix(in srgb, var(--panel) 68%, transparent);
+  background: transparent;
   padding: 0;
   position: relative;
   overflow: hidden;

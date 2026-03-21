@@ -192,6 +192,13 @@ const setElementClientWidth = (element: HTMLElement, width: number) => {
   });
 };
 
+const setElementClientHeight = (element: HTMLElement, height: number) => {
+  Object.defineProperty(element, "clientHeight", {
+    configurable: true,
+    get: () => height,
+  });
+};
+
 const triggerResize = (target: Element) => {
   resizeObserverInstances.forEach((observer) => {
     observer.notify(target);
@@ -3349,6 +3356,79 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(pickerText).toContain("cover.png");
     expect(pickerText).not.toContain("alt.jpg");
     expect(pickerText).not.toContain("Note.md");
+  });
+
+  it("renders main cover without top/bottom bars and keeps side blur for narrow covers", async () => {
+    await withImmediateRaf(async () => {
+      installMockResizeObserver();
+      const markdown = [
+        "---",
+        "title: Demo",
+        "Cover: '[[assets/cover.png]]'",
+        "---",
+        "Body line",
+      ].join("\n");
+      const { container, cleanup: localCleanup } = buildHarness(markdown, {
+        markdownHybridEnabled: true,
+        vaultPngAssets: [
+          {
+            path: "/vault/assets/cover.png",
+            relative_path: "assets/cover.png",
+            file_name: "cover.png",
+            extension: "png",
+          },
+        ],
+      });
+      cleanup = localCleanup;
+
+      const viewport = container.querySelector(
+        ".frontmatter-cover-thumbnail-viewport",
+      ) as HTMLElement | null;
+      expect(viewport).toBeTruthy();
+      if (!viewport) {
+        throw new Error("Expected a cover thumbnail viewport to be rendered.");
+      }
+      setElementClientWidth(viewport, 320);
+      setElementClientHeight(viewport, 180);
+      triggerResize(viewport);
+      await flushAsyncInteraction();
+
+      const coverThumb = container.querySelector(
+        ".frontmatter-cover-thumbnail",
+      ) as HTMLImageElement | null;
+      expect(coverThumb).toBeTruthy();
+      if (!coverThumb) {
+        throw new Error("Expected a cover thumbnail image to be rendered.");
+      }
+      Object.defineProperty(coverThumb, "naturalWidth", {
+        configurable: true,
+        value: 120,
+      });
+      Object.defineProperty(coverThumb, "naturalHeight", {
+        configurable: true,
+        value: 360,
+      });
+      act(() => {
+        coverThumb.dispatchEvent(new Event("load", { bubbles: true }));
+      });
+      await flushAsyncInteraction();
+
+      const transform = coverThumb.style.transform;
+      const transformMatch =
+        /translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)/.exec(transform);
+      expect(transformMatch).toBeTruthy();
+      const translateY = Number(transformMatch?.[2] ?? Number.NaN);
+      const scale = Number(transformMatch?.[3] ?? Number.NaN);
+      expect(Number.isFinite(translateY)).toBe(true);
+      expect(Math.abs(translateY)).toBeLessThan(0.01);
+      expect(Number.isFinite(scale)).toBe(true);
+      expect(scale).toBeCloseTo(0.5, 5);
+
+      const backdrop = container.querySelector(
+        ".frontmatter-cover-thumbnail-backdrop",
+      ) as HTMLImageElement | null;
+      expect(backdrop).toBeTruthy();
+    });
   });
 
   it("shows an empty cover panel with visible add button when no cover is set", async () => {

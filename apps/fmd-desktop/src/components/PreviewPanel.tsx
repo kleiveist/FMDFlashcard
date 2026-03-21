@@ -667,7 +667,7 @@ type CoverThumbnailRect = {
   h: number;
 };
 
-type CoverThumbnailTransformMode = "contain" | "cover";
+type CoverThumbnailTransformMode = "contain" | "cover" | "fill-height";
 
 type CoverThumbnailTransformResult = {
   style: CSSProperties;
@@ -757,7 +757,18 @@ const resolveCoverThumbnailTransform = ({
 
   const scaleX = viewportWidth / rect.w;
   const scaleY = viewportHeight / rect.h;
-  const baseScale = mode === "cover" ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY);
+  let baseScale: number;
+  switch (mode) {
+    case "cover":
+      baseScale = Math.max(scaleX, scaleY);
+      break;
+    case "fill-height":
+      baseScale = scaleY;
+      break;
+    default:
+      baseScale = Math.min(scaleX, scaleY);
+      break;
+  }
   const scale = baseScale * Math.max(1, scaleBoost);
   const contentWidth = rect.w * scale;
   const contentHeight = rect.h * scale;
@@ -874,10 +885,10 @@ const CoverThumbnailImage = ({
             sourceWidth: sourceMetrics.width,
             sourceHeight: sourceMetrics.height,
             rect: sourceMetrics.rect,
-            mode: "contain",
+            mode: variant === "main" ? "fill-height" : "contain",
           })
         : null,
-    [sourceMetrics, viewportSize.height, viewportSize.width],
+    [sourceMetrics, variant, viewportSize.height, viewportSize.width],
   );
 
   const backdropTransform = useMemo(
@@ -896,16 +907,24 @@ const CoverThumbnailImage = ({
     [sourceMetrics, viewportSize.height, viewportSize.width],
   );
 
-  const hasBars = useMemo(() => {
+  const freeSpace = useMemo(() => {
     if (!foregroundTransform) {
-      return false;
+      return { x: 0, y: 0 };
     }
     const freeX = Math.max(0, viewportSize.width - foregroundTransform.contentWidth);
     const freeY = Math.max(0, viewportSize.height - foregroundTransform.contentHeight);
-    return freeX > COVER_THUMBNAIL_BAR_EPSILON_PX || freeY > COVER_THUMBNAIL_BAR_EPSILON_PX;
+    return { x: freeX, y: freeY };
   }, [foregroundTransform, viewportSize.height, viewportSize.width]);
 
-  const showBackdrop = Boolean(backdropTransform && hasBars);
+  const showBackdrop = Boolean(
+    backdropTransform &&
+      (
+        variant === "main"
+          ? true
+          : freeSpace.x > COVER_THUMBNAIL_BAR_EPSILON_PX ||
+            freeSpace.y > COVER_THUMBNAIL_BAR_EPSILON_PX
+      ),
+  );
   const isTransformed = Boolean(foregroundTransform);
   const src = image.src ?? image.path;
   const frameClassName = resolveCoverThumbnailFrameClassName(variant);
