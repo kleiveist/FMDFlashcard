@@ -5013,12 +5013,25 @@ textarea.preview-editor {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
-.database-block-title {
-  margin: 0;
-  font-size: 0.95rem;
+.database-block-title-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.database-block-title-input {
+  min-height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  background: var(--field-bg);
   color: var(--ink);
+  padding: 4px 8px;
+  min-width: 180px;
 }
 
 .database-block-source {
@@ -5041,6 +5054,11 @@ textarea.preview-editor {
   align-items: center;
   gap: 6px;
   font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.database-block-toolbar-label {
+  font-size: 0.74rem;
   color: var(--muted);
 }
 
@@ -5069,6 +5087,11 @@ textarea.preview-editor {
   border-color: var(--line-strong);
 }
 
+.database-block-toolbar-button.is-active {
+  border-color: color-mix(in srgb, var(--accent-border) 68%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 22%, var(--panel));
+}
+
 .database-block-search {
   min-height: 30px;
   min-width: 180px;
@@ -5077,6 +5100,33 @@ textarea.preview-editor {
   background: var(--field-bg);
   color: var(--ink);
   padding: 4px 8px;
+}
+
+.database-block-source-button {
+  max-width: min(360px, 80vw);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.database-block-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.database-block-filter-chip {
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--ink);
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.database-block-filter-chip-clear {
+  color: var(--muted);
 }
 
 .database-block-content {
@@ -5134,7 +5184,7 @@ textarea.preview-editor {
   background: transparent;
   color: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
   padding: 0;
 }
 
@@ -5157,6 +5207,20 @@ textarea.preview-editor {
 
 .database-table-cell:last-child {
   border-right: none;
+}
+
+.database-table-open-record {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.database-table-open-record:hover {
+  text-decoration: underline;
 }
 
 .database-table-empty,
@@ -5231,14 +5295,12 @@ textarea.preview-editor {
 }
 
 .database-block-panel-layer {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 10;
+  display: grid;
+  gap: 8px;
 }
 
 .database-block-panel {
-  width: min(520px, calc(100vw - 96px));
+  width: min(620px, calc(100vw - 96px));
   max-height: 360px;
   overflow: auto;
   border: 1px solid var(--line-soft);
@@ -5326,7 +5388,7 @@ textarea.preview-editor {
 .database-block-sort-row {
   display: grid;
   gap: 6px;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(130px, auto) minmax(0, 1fr) auto auto;
   align-items: center;
 }
 
@@ -5347,6 +5409,66 @@ textarea.preview-editor {
   gap: 8px;
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.database-block-filter-group {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.database-block-filter-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.database-block-filter-group-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.database-block-filter-value-empty {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.database-block-properties-create {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 8px;
+}
+
+.database-block-properties-create h6 {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.database-block-properties-toggle {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.database-block-source-list {
+  display: grid;
+  gap: 6px;
+}
+
+.database-block-source-item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.78rem;
 }
 
 .database-pie-placeholder {

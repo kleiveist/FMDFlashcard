@@ -77,11 +77,20 @@ export type DatabaseAttributeMeta = {
   label: string;
   type: DatabaseFieldType;
   origin: DatabaseAttributeOrigin;
+  formula?: string | null;
   editable: boolean;
   sortable: boolean;
   filterable: boolean;
   aggregatable: boolean;
   viewCompatibility: DatabaseViewCompatibility;
+};
+
+export type DatabaseFieldDefinition = {
+  key: string;
+  label?: string;
+  type: DatabaseFieldType;
+  origin: DatabaseAttributeOrigin;
+  formula?: string | null;
 };
 
 export type DatabaseSourceSpec = {
@@ -112,6 +121,7 @@ export type DatabaseBlockConfig = {
   title: string;
   source: DatabaseSourceSpec;
   view: DatabaseViewSpec;
+  fields?: DatabaseFieldDefinition[];
   columns: string[];
   filters: DatabaseFilterGroup;
   sort: DatabaseSortRule[];

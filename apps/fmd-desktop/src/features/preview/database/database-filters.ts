@@ -382,8 +382,15 @@ const evaluateRuleByType = (
   }
 };
 
-const getNormalizedFieldValue = (record: DatabaseRecord, field: string) =>
-  record.normalizedFields[field] ?? null;
+const getNormalizedFieldValue = (record: DatabaseRecord, field: string) => {
+  if (field in record.normalizedFields) {
+    return record.normalizedFields[field] ?? null;
+  }
+  const normalizedField = field.trim().toLowerCase();
+  const matchedKey = Object.keys(record.normalizedFields)
+    .find((key) => key.trim().toLowerCase() === normalizedField);
+  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+};
 
 export const getFilterOperatorsForType = (type: DatabaseFieldType): DatabaseFilterOperator[] => {
   switch (type) {
@@ -414,7 +421,7 @@ const evaluateFilterRule = (
   rule: DatabaseFilterRule,
   attributeByKey: Map<string, DatabaseAttributeMeta>,
 ) => {
-  const attribute = attributeByKey.get(rule.field);
+  const attribute = attributeByKey.get(rule.field.trim().toLowerCase());
   const value = getNormalizedFieldValue(record, rule.field);
   const fieldType = attribute?.type ?? "text";
   return evaluateRuleByType(value, fieldType, rule);
@@ -444,7 +451,9 @@ export const applyDatabaseFilters = (
   searchQuery: string,
   searchableFields?: string[],
 ) => {
-  const attributeByKey = new Map(attributes.map((attribute) => [attribute.key, attribute]));
+  const attributeByKey = new Map(
+    attributes.map((attribute) => [attribute.key.trim().toLowerCase(), attribute]),
+  );
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   return records.filter((record) => {

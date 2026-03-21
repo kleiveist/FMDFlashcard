@@ -146,4 +146,17 @@ describe("database-sorts", () => {
     const sorted = applyDatabaseSorts(records, rules, attributes);
     expect(sorted.map((record) => record.fileId)).toEqual(["item-2", "item-10", "item-1"]);
   });
+
+  it("resolves sort fields case-insensitively", () => {
+    const rules: DatabaseSortRule[] = [
+      {
+        id: "sort-1",
+        field: "score",
+        dir: "desc",
+      },
+    ];
+
+    const sorted = applyDatabaseSorts(records, rules, attributes);
+    expect(sorted.map((record) => record.fileId)).toEqual(["item-2", "item-10", "item-1"]);
+  });
 });

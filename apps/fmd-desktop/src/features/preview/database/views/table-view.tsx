@@ -24,6 +24,21 @@ type DatabaseTableViewProps = {
 const TABLE_ROW_HEIGHT = 34;
 const TABLE_OVERSCAN = 10;
 const TABLE_VIEWPORT_HEIGHT = 320;
+const OPEN_RECORD_COLUMN_KEYS = new Set([
+  "dateiname",
+  "dateiname mit endung",
+  "dateipfad",
+]);
+
+const getRecordValueByField = (record: DatabaseRecord, field: string) => {
+  if (field in record.normalizedFields) {
+    return record.normalizedFields[field] ?? null;
+  }
+  const normalizedField = field.trim().toLowerCase();
+  const matchedKey = Object.keys(record.normalizedFields)
+    .find((key) => key.trim().toLowerCase() === normalizedField);
+  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+};
 
 export const DatabaseTableView = ({
   records,
@@ -71,26 +86,41 @@ export const DatabaseTableView = ({
             const rowIndex = visibleRange.start + localIndex;
             const top = rowIndex * TABLE_ROW_HEIGHT;
             return (
-              <button
+              <div
                 key={record.fileId}
-                type="button"
                 className="database-table-row"
                 role="row"
-                onClick={() => onOpenRecord(record)}
+                onDoubleClick={() => onOpenRecord(record)}
                 style={{
                   top: `${top}px`,
                   height: `${TABLE_ROW_HEIGHT}px`,
                 }}
+                data-md-block-control="true"
               >
                 {columns.map((column) => (
                   <span key={`${record.fileId}:${column.key}`} className="database-table-cell" role="cell">
-                    <DatabaseCellRenderer
-                      attribute={column}
-                      value={record.normalizedFields[column.key] ?? null}
-                    />
+                    {OPEN_RECORD_COLUMN_KEYS.has(column.key.trim().toLowerCase()) ? (
+                      <button
+                        type="button"
+                        className="database-table-open-record"
+                        onClick={() => onOpenRecord(record)}
+                        title="Datei oeffnen"
+                        data-md-block-control="true"
+                      >
+                        <DatabaseCellRenderer
+                          attribute={column}
+                          value={getRecordValueByField(record, column.key)}
+                        />
+                      </button>
+                    ) : (
+                      <DatabaseCellRenderer
+                        attribute={column}
+                        value={getRecordValueByField(record, column.key)}
+                      />
+                    )}
                   </span>
                 ))}
-              </button>
+              </div>
             );
           })}
         </div>

@@ -7,15 +7,19 @@
 import {
   applyDatabaseFilters,
 } from "./database-filters";
+import { evaluateDatabaseFormula } from "./database-formulas";
 import {
   inferFieldType,
+  normalizeFieldValueByType,
   resolveFieldCompatibility,
 } from "./database-normalizers";
 import { applyDatabaseSorts } from "./database-sorts";
 import {
   type DatabaseAttributeMeta,
   type DatabaseBlockConfig,
+  type DatabaseFieldDefinition,
   type DatabaseFilterGroup,
+  type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
   type DatabaseSortRule,
   type DatabaseStoreSnapshot,
@@ -70,6 +74,7 @@ const buildAttributeMeta = (
     label: key,
     type,
     origin,
+    formula: null,
     editable: origin === "frontmatter",
     sortable: true,
     filterable: true,
@@ -88,19 +93,63 @@ const getFrontmatterKeys = (records: DatabaseRecord[]) => {
   return dedupeByCaseInsensitiveKey(keys);
 };
 
-const buildAttributeRegistry = (
-  records: DatabaseRecord[],
-  preferredColumnOrder: string[],
-): DatabaseAttributeMeta[] => {
+const buildInferredAttributeRegistry = (records: DatabaseRecord[]): DatabaseAttributeMeta[] => {
   const systemKeys = getSystemKeys(records);
   const frontmatterKeys = getFrontmatterKeys(records)
     .filter((key) => !systemKeys.some((systemKey) => toLowerKey(systemKey) === toLowerKey(key)));
 
-  const attributes: DatabaseAttributeMeta[] = [
+  return [
     ...systemKeys.map((key) => buildAttributeMeta(key, "system", records)),
     ...frontmatterKeys.map((key) => buildAttributeMeta(key, "frontmatter", records)),
   ];
+};
 
+const mergeConfiguredFieldDefinitions = (
+  attributes: DatabaseAttributeMeta[],
+  fieldDefinitions: DatabaseFieldDefinition[],
+): DatabaseAttributeMeta[] => {
+  const merged = [...attributes];
+
+  fieldDefinitions.forEach((definition) => {
+    const normalizedKey = toLowerKey(definition.key);
+    if (!normalizedKey) {
+      return;
+    }
+
+    const existingIndex = merged.findIndex((attribute) => toLowerKey(attribute.key) === normalizedKey);
+    const compatibility = resolveFieldCompatibility(definition.type);
+
+    const nextMeta: DatabaseAttributeMeta = {
+      key: definition.key,
+      label: definition.label?.trim() || definition.key,
+      type: definition.type,
+      origin: definition.origin,
+      formula: definition.formula ?? null,
+      editable: definition.origin === "frontmatter",
+      sortable: true,
+      filterable: true,
+      aggregatable: compatibility.supportsAggregation,
+      viewCompatibility: compatibility,
+    };
+
+    if (existingIndex >= 0) {
+      merged[existingIndex] = {
+        ...merged[existingIndex],
+        ...nextMeta,
+      };
+      return;
+    }
+
+    merged.push(nextMeta);
+  });
+
+  return merged;
+};
+
+const sortAttributeRegistry = (
+  attributes: DatabaseAttributeMeta[],
+  preferredColumnOrder: string[],
+) => {
   if (attributes.length === 0) {
     return [];
   }
@@ -123,7 +172,18 @@ const buildAttributeRegistry = (
       return 1;
     }
     if (left.origin !== right.origin) {
-      return left.origin === "system" ? -1 : 1;
+      if (left.origin === "system") {
+        return -1;
+      }
+      if (right.origin === "system") {
+        return 1;
+      }
+      if (left.origin === "formula") {
+        return 1;
+      }
+      if (right.origin === "formula") {
+        return -1;
+      }
     }
     return left.label.localeCompare(right.label);
   });
@@ -165,17 +225,71 @@ const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
       : { ...entry }),
 });
 
+const getCaseInsensitiveFieldValue = (
+  normalizedFields: Record<string, DatabaseNormalizedFieldValue>,
+  field: string,
+) => {
+  if (field in normalizedFields) {
+    return normalizedFields[field];
+  }
+  const normalizedField = toLowerKey(field);
+  const matchedKey = Object.keys(normalizedFields)
+    .find((key) => toLowerKey(key) === normalizedField);
+  return matchedKey ? normalizedFields[matchedKey] : null;
+};
+
+const evaluateFormulaFields = (
+  records: DatabaseRecord[],
+  fieldDefinitions: DatabaseFieldDefinition[],
+): DatabaseRecord[] => {
+  if (fieldDefinitions.length === 0) {
+    return records;
+  }
+
+  const formulaDefinitions = fieldDefinitions
+    .filter((definition) => definition.formula && definition.formula.trim().length > 0);
+
+  if (formulaDefinitions.length === 0) {
+    return records;
+  }
+
+  return records.map((record) => {
+    const nextNormalizedFields: Record<string, DatabaseNormalizedFieldValue> = {
+      ...record.normalizedFields,
+    };
+
+    formulaDefinitions.forEach((definition) => {
+      const formula = definition.formula ?? "";
+      const evaluated = evaluateDatabaseFormula(formula, {
+        getFieldValue: (key) => getCaseInsensitiveFieldValue(nextNormalizedFields, key),
+      });
+
+      nextNormalizedFields[definition.key] = normalizeFieldValueByType(definition.type, evaluated);
+    });
+
+    return {
+      ...record,
+      normalizedFields: nextNormalizedFields,
+    };
+  });
+};
+
 export const buildDatabaseStoreSnapshot = (
   params: BuildDatabaseStoreSnapshotParams,
 ): DatabaseStoreSnapshot => {
   const rawRecords = params.records;
-  const normalizedRecords = params.records;
   const preferredOrder = dedupeByCaseInsensitiveKey([
     ...params.config.columns,
     ...(params.visibleColumnKeys ?? []),
   ]);
 
-  const attributeRegistry = buildAttributeRegistry(params.records, preferredOrder);
+  const inferredAttributes = buildInferredAttributeRegistry(params.records);
+  const configuredFields = params.config.fields ?? [];
+  const mergedAttributes = mergeConfiguredFieldDefinitions(inferredAttributes, configuredFields);
+  const attributeRegistry = sortAttributeRegistry(mergedAttributes, preferredOrder);
+
+  const normalizedRecords = evaluateFormulaFields(params.records, configuredFields);
+
   const activeFilters = params.activeFilters
     ? cloneFilterGroup(params.activeFilters)
     : cloneFilterGroup(params.config.filters);

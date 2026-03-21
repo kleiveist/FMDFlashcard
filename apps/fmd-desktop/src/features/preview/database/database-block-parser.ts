@@ -10,9 +10,12 @@ import {
 } from "../../../lib/databaseBlockSyntax";
 import {
   type DatabaseBlockConfig,
+  type DatabaseFieldDefinition,
+  type DatabaseFieldType,
   type DatabaseFilterGroup,
   type DatabaseFilterGroupOp,
   type DatabaseFilterRule,
+  type DatabaseAttributeOrigin,
   type DatabaseSortRule,
   type DatabaseSourceSpec,
   type DatabaseSourceType,
@@ -110,6 +113,51 @@ const asStringArray = (value: unknown) => {
   return value
     .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
     .filter((entry) => entry.length > 0);
+};
+
+const parseFieldType = (value: unknown): DatabaseFieldType => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  switch (normalized) {
+    case "text":
+    case "longtext":
+    case "number":
+    case "percent":
+    case "boolean":
+    case "date":
+    case "datetime":
+    case "select":
+    case "multiselect":
+    case "tags":
+    case "link":
+    case "file":
+    case "image":
+    case "status":
+    case "rating":
+    case "relation":
+    case "formula":
+    case "duration":
+    case "progress":
+    case "score":
+      return normalized;
+    default:
+      return "text";
+  }
+};
+
+const parseAttributeOrigin = (
+  value: unknown,
+  fallback: DatabaseAttributeOrigin,
+): DatabaseAttributeOrigin => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  switch (normalized) {
+    case "system":
+    case "computed":
+    case "formula":
+    case "frontmatter":
+      return normalized;
+    default:
+      return fallback;
+  }
 };
 
 const toParsedLines = (yamlSource: string) =>
@@ -388,6 +436,44 @@ const parseSortRules = (value: unknown): DatabaseSortRule[] => {
     .filter((entry): entry is DatabaseSortRule => Boolean(entry));
 };
 
+const parseFieldDefinitions = (value: unknown): DatabaseFieldDefinition[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const dedupe = new Set<string>();
+  const fields: DatabaseFieldDefinition[] = [];
+
+  value.forEach((entry) => {
+    if (!isRecord(entry)) {
+      return;
+    }
+    const key = asString(entry.key);
+    if (!key) {
+      return;
+    }
+    const dedupeKey = key.trim().toLowerCase();
+    if (dedupe.has(dedupeKey)) {
+      return;
+    }
+    dedupe.add(dedupeKey);
+
+    const formula = asString(entry.formula) || null;
+    const originFallback: DatabaseAttributeOrigin = formula ? "formula" : "frontmatter";
+    const origin = parseAttributeOrigin(entry.origin, originFallback);
+
+    fields.push({
+      key,
+      label: asString(entry.label) || undefined,
+      type: parseFieldType(entry.type),
+      origin,
+      formula,
+    });
+  });
+
+  return fields;
+};
+
 const parseSourceType = (value: unknown): DatabaseSourceType => {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (
@@ -470,6 +556,7 @@ export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
   view: {
     type: "table",
   },
+  fields: [],
   columns: [
     "Dateiname",
     "Dateipfad",
@@ -508,6 +595,7 @@ const parseConfigObject = (value: unknown): DatabaseBlockConfig => {
     title: asString(record.title, defaults.title),
     source: parseSourceSpec(record.source),
     view: parseViewSpec(record.view),
+    fields: parseFieldDefinitions(record.fields),
     columns: hasExplicitColumns ? columns : defaults.columns,
     filters: parseFilterGroup(record.filters),
     sort: parseSortRules(record.sort),
@@ -541,11 +629,11 @@ const formatYamlScalar = (value: unknown) => {
   return escapeYamlString(String(value));
 };
 
-const writeFilterGroupYaml = (
+function writeFilterGroupYaml(
   group: DatabaseFilterGroup,
   indent: number,
   lines: string[],
-) => {
+) {
   const indentText = " ".repeat(indent);
   lines.push(`${indentText}op: ${group.op}`);
   if (group.rules.length === 0) {
@@ -553,36 +641,37 @@ const writeFilterGroupYaml = (
     return;
   }
   lines.push(`${indentText}rules:`);
+  writeFilterGroupRulesYaml(group.rules, indent + 2, lines);
+}
 
-  for (const rule of group.rules) {
+function writeFilterGroupRulesYaml(
+  rules: DatabaseFilterGroup["rules"],
+  indent: number,
+  lines: string[],
+) {
+  const indentText = " ".repeat(indent);
+  for (const rule of rules) {
     if ("rules" in rule) {
-      lines.push(`${indentText}  - op: ${rule.op}`);
-      lines.push(`${indentText}    rules:`);
-      for (const nestedRule of rule.rules) {
-        if ("rules" in nestedRule) {
-          continue;
-        }
-        lines.push(`${indentText}      - field: ${formatYamlScalar(nestedRule.field)}`);
-        lines.push(`${indentText}        op: ${formatYamlScalar(nestedRule.op)}`);
-        if (typeof nestedRule.value !== "undefined") {
-          lines.push(`${indentText}        value: ${formatYamlScalar(nestedRule.value)}`);
-        }
-        if (typeof nestedRule.valueTo !== "undefined") {
-          lines.push(`${indentText}        valueTo: ${formatYamlScalar(nestedRule.valueTo)}`);
-        }
+      lines.push(`${indentText}- op: ${rule.op}`);
+      if (rule.rules.length === 0) {
+        lines.push(`${indentText}  rules: []`);
+      } else {
+        lines.push(`${indentText}  rules:`);
+        writeFilterGroupRulesYaml(rule.rules, indent + 4, lines);
       }
       continue;
     }
-    lines.push(`${indentText}  - field: ${formatYamlScalar(rule.field)}`);
-    lines.push(`${indentText}    op: ${formatYamlScalar(rule.op)}`);
+
+    lines.push(`${indentText}- field: ${formatYamlScalar(rule.field)}`);
+    lines.push(`${indentText}  op: ${formatYamlScalar(rule.op)}`);
     if (typeof rule.value !== "undefined") {
-      lines.push(`${indentText}    value: ${formatYamlScalar(rule.value)}`);
+      lines.push(`${indentText}  value: ${formatYamlScalar(rule.value)}`);
     }
     if (typeof rule.valueTo !== "undefined") {
-      lines.push(`${indentText}    valueTo: ${formatYamlScalar(rule.valueTo)}`);
+      lines.push(`${indentText}  valueTo: ${formatYamlScalar(rule.valueTo)}`);
     }
   }
-};
+}
 
 export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
   const lines: string[] = [];
@@ -613,6 +702,24 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
   lines.push(`  type: ${formatYamlScalar(config.view.type)}`);
   if (config.view.groupBy) {
     lines.push(`  groupBy: ${formatYamlScalar(config.view.groupBy)}`);
+  }
+
+  const fields = config.fields ?? [];
+  if (fields.length === 0) {
+    lines.push("fields: []");
+  } else {
+    lines.push("fields:");
+    fields.forEach((field) => {
+      lines.push(`  - key: ${formatYamlScalar(field.key)}`);
+      if (field.label) {
+        lines.push(`    label: ${formatYamlScalar(field.label)}`);
+      }
+      lines.push(`    type: ${formatYamlScalar(field.type)}`);
+      lines.push(`    origin: ${formatYamlScalar(field.origin)}`);
+      if (field.formula) {
+        lines.push(`    formula: ${formatYamlScalar(field.formula)}`);
+      }
+    });
   }
 
   if (config.columns.length === 0) {

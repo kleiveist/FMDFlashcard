@@ -11,6 +11,12 @@ describe("database-block-parser", () => {
       "  path: UI-OnlineTest",
       "view:",
       "  type: table",
+      "fields:",
+      "  - key: ProgressLabel",
+      "    label: Progress Label",
+      "    type: formula",
+      "    origin: formula",
+      "    formula: 'concat(percent, \" / \", status)'",
       "columns:",
       "  - Section",
       "  - Rank",
@@ -36,6 +42,14 @@ describe("database-block-parser", () => {
     expect(parsed.config.title).toBe("Exam Uebersicht");
     expect(parsed.config.source.type).toBe("explicit-folder");
     expect(parsed.config.source.path).toBe("UI-OnlineTest");
+    expect(parsed.config.fields ?? []).toHaveLength(1);
+    expect((parsed.config.fields ?? [])[0]).toEqual({
+      key: "ProgressLabel",
+      label: "Progress Label",
+      type: "formula",
+      origin: "formula",
+      formula: "concat(percent, \" / \", status)",
+    });
     expect(parsed.config.columns).toEqual(["Section", "Rank"]);
     expect(parsed.config.filters.op).toBe("and");
     expect(parsed.config.sort).toHaveLength(1);
@@ -85,6 +99,14 @@ describe("database-block-parser", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.title = "Serialize Test";
     config.columns = ["Dateiname", "Score"];
+    config.fields = [
+      {
+        key: "ScoreRatio",
+        type: "percent",
+        origin: "formula",
+        formula: "percent(score)",
+      },
+    ];
 
     const serialized = serializeDatabaseBlockConfig(config);
     const lines = serialized.split("\n");
@@ -92,11 +114,89 @@ describe("database-block-parser", () => {
     expect(lines[0]).toBe("::::");
     expect(lines[lines.length - 1]).toBe("::::");
     expect(serialized).toContain("title: 'Serialize Test'");
+    expect(serialized).toContain("fields:");
+    expect(serialized).toContain("key: ScoreRatio");
     expect(serialized).toContain("- Score");
 
     const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
     expect(reparsed.errors).toEqual([]);
     expect(reparsed.config.title).toBe("Serialize Test");
+    expect((reparsed.config.fields ?? [])[0]?.formula).toBe("percent(score)");
     expect(reparsed.config.columns).toEqual(["Dateiname", "Score"]);
+  });
+
+  it("roundtrips multi-folder sources with fields", () => {
+    const raw = [
+      "::::",
+      "title: Folder Mix",
+      "source:",
+      "  type: multi-folder",
+      "  paths:",
+      "    - Exams",
+      "    - Tasks/Sub",
+      "fields:",
+      "  - key: ScoreBucket",
+      "    type: text",
+      "    origin: formula",
+      "    formula: 'if(percent(Score) >= 50, \"pass\", \"fail\")'",
+      "columns:",
+      "  - ScoreBucket",
+      "options:",
+      "  editable: false",
+      "  showSearch: true",
+      "  showToolbar: true",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.source.type).toBe("multi-folder");
+    expect(parsed.config.source.paths).toEqual(["Exams", "Tasks/Sub"]);
+    expect((parsed.config.fields ?? [])[0]?.key).toBe("ScoreBucket");
+
+    const serialized = serializeDatabaseBlockConfig(parsed.config);
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.source.type).toBe("multi-folder");
+    expect(reparsed.config.source.paths).toEqual(["Exams", "Tasks/Sub"]);
+    expect((reparsed.config.fields ?? [])[0]?.formula).toBe("if(percent(Score) >= 50, \"pass\", \"fail\")");
+  });
+
+  it("preserves nested filter groups during serialize/parse roundtrip", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.filters = {
+      id: "root",
+      op: "and",
+      rules: [
+        { id: "rule-1", field: "Section", op: "is", value: "IUFS" },
+        {
+          id: "group-1",
+          op: "or",
+          rules: [
+            { id: "rule-2", field: "status", op: "is", value: "3 🟡" },
+            {
+              id: "group-2",
+              op: "and",
+              rules: [{ id: "rule-3", field: "percent", op: ">=", value: 50 }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const serialized = serializeDatabaseBlockConfig(config);
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.filters.rules).toHaveLength(2);
+    const nested = reparsed.config.filters.rules[1];
+    expect(nested && "rules" in nested).toBe(true);
+    if (nested && "rules" in nested) {
+      expect(nested.rules).toHaveLength(2);
+      const deepNested = nested.rules[1];
+      expect(deepNested && "rules" in deepNested).toBe(true);
+      if (deepNested && "rules" in deepNested) {
+        expect(deepNested.rules).toHaveLength(1);
+      }
+    }
   });
 });

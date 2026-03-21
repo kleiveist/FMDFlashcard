@@ -17,8 +17,44 @@ type DatabasePropertiesPanelProps = {
   onReorderVisibleColumns: (fromKey: string, toKey: string) => void;
   onHideAll: () => void;
   onRestoreDefault: () => void;
+  onCreateAttribute: (payload: {
+    key: string;
+    type: DatabaseFieldType;
+    initialValue: string;
+    overwriteExisting: boolean;
+  }) => Promise<void>;
+  onCreateFormula: (payload: {
+    key: string;
+    label?: string;
+    type: DatabaseFieldType;
+    formula: string;
+  }) => void;
+  isMutatingFrontmatter: boolean;
   onClose: () => void;
 };
+
+const fieldTypeOptions: DatabaseFieldType[] = [
+  "text",
+  "longtext",
+  "number",
+  "percent",
+  "boolean",
+  "date",
+  "datetime",
+  "select",
+  "multiselect",
+  "tags",
+  "link",
+  "file",
+  "image",
+  "status",
+  "rating",
+  "relation",
+  "formula",
+  "duration",
+  "progress",
+  "score",
+];
 
 const resolveTypeIcon = (type: DatabaseFieldType) => {
   switch (type) {
@@ -36,6 +72,8 @@ const resolveTypeIcon = (type: DatabaseFieldType) => {
       return "✓";
     case "link":
       return "↗";
+    case "formula":
+      return "ƒ";
     default:
       return "Aa";
   }
@@ -48,10 +86,21 @@ export const DatabasePropertiesPanel = ({
   onReorderVisibleColumns,
   onHideAll,
   onRestoreDefault,
+  onCreateAttribute,
+  onCreateFormula,
+  isMutatingFrontmatter,
   onClose,
 }: DatabasePropertiesPanelProps) => {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<DatabaseFieldType | "all">("all");
+  const [newAttributeKey, setNewAttributeKey] = useState("");
+  const [newAttributeType, setNewAttributeType] = useState<DatabaseFieldType>("text");
+  const [newAttributeValue, setNewAttributeValue] = useState("");
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
+  const [newFormulaKey, setNewFormulaKey] = useState("");
+  const [newFormulaLabel, setNewFormulaLabel] = useState("");
+  const [newFormulaType, setNewFormulaType] = useState<DatabaseFieldType>("formula");
+  const [newFormulaExpression, setNewFormulaExpression] = useState("");
 
   const visibleByKey = useMemo(
     () => new Set(visibleColumnKeys.map((key) => key.toLowerCase())),
@@ -92,6 +141,36 @@ export const DatabasePropertiesPanel = ({
     }
     event.preventDefault();
     onReorderVisibleColumns(sourceKey, targetKey);
+  };
+
+  const handleCreateAttributeSubmit = async () => {
+    if (!newAttributeKey.trim()) {
+      return;
+    }
+    await onCreateAttribute({
+      key: newAttributeKey.trim(),
+      type: newAttributeType,
+      initialValue: newAttributeValue,
+      overwriteExisting,
+    });
+    setNewAttributeKey("");
+    setNewAttributeValue("");
+    setOverwriteExisting(false);
+  };
+
+  const handleCreateFormulaSubmit = () => {
+    if (!newFormulaKey.trim() || !newFormulaExpression.trim()) {
+      return;
+    }
+    onCreateFormula({
+      key: newFormulaKey.trim(),
+      label: newFormulaLabel.trim() || undefined,
+      type: newFormulaType,
+      formula: newFormulaExpression.trim(),
+    });
+    setNewFormulaKey("");
+    setNewFormulaLabel("");
+    setNewFormulaExpression("");
   };
 
   return (
@@ -147,7 +226,7 @@ export const DatabasePropertiesPanel = ({
                   onChange={(event) => onToggleVisibility(attribute.key, event.target.checked)}
                 />
                 <span className="database-block-properties-icon" aria-hidden="true">{resolveTypeIcon(attribute.type)}</span>
-                <span className="database-block-properties-key">{attribute.key}</span>
+                <span className="database-block-properties-key">{attribute.label || attribute.key}</span>
                 <span className="database-block-properties-type">{attribute.type}</span>
                 <span className="database-block-properties-origin">{attribute.origin}</span>
               </label>
@@ -155,6 +234,88 @@ export const DatabasePropertiesPanel = ({
           );
         })}
       </ul>
+
+      <section className="database-block-properties-create">
+        <h6>Attribut hinzufügen</h6>
+        <div className="database-block-panel-controls">
+          <input
+            type="text"
+            value={newAttributeKey}
+            onChange={(event) => setNewAttributeKey(event.target.value)}
+            placeholder="Name"
+          />
+          <select
+            value={newAttributeType}
+            onChange={(event) => setNewAttributeType(event.target.value as DatabaseFieldType)}
+          >
+            {fieldTypeOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={newAttributeValue}
+            onChange={(event) => setNewAttributeValue(event.target.value)}
+            placeholder="Startwert"
+          />
+        </div>
+        <label className="database-block-properties-toggle">
+          <input
+            type="checkbox"
+            checked={overwriteExisting}
+            onChange={(event) => setOverwriteExisting(event.target.checked)}
+          />
+          Bestehende Werte überschreiben
+        </label>
+        <button
+          type="button"
+          className="database-block-toolbar-button"
+          onClick={() => void handleCreateAttributeSubmit()}
+          disabled={isMutatingFrontmatter}
+        >
+          {isMutatingFrontmatter ? "Speichert..." : "Attribut anlegen"}
+        </button>
+      </section>
+
+      <section className="database-block-properties-create">
+        <h6>Formel hinzufügen</h6>
+        <div className="database-block-panel-controls">
+          <input
+            type="text"
+            value={newFormulaKey}
+            onChange={(event) => setNewFormulaKey(event.target.value)}
+            placeholder="Key"
+          />
+          <input
+            type="text"
+            value={newFormulaLabel}
+            onChange={(event) => setNewFormulaLabel(event.target.value)}
+            placeholder="Label (optional)"
+          />
+          <select
+            value={newFormulaType}
+            onChange={(event) => setNewFormulaType(event.target.value as DatabaseFieldType)}
+          >
+            {fieldTypeOptions.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={newFormulaExpression}
+            onChange={(event) => setNewFormulaExpression(event.target.value)}
+            placeholder="concat(percent, ' / ', status)"
+          />
+        </div>
+        <button
+          type="button"
+          className="database-block-toolbar-button"
+          onClick={handleCreateFormulaSubmit}
+        >
+          Formel anlegen
+        </button>
+      </section>
+
       <footer className="database-block-panel-footer">
         <button type="button" className="database-block-toolbar-button" onClick={onHideAll}>Alle ausblenden</button>
         <button type="button" className="database-block-toolbar-button" onClick={onRestoreDefault}>Standard wiederherstellen</button>

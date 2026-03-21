@@ -218,4 +218,44 @@ describe("database-filters", () => {
 
     expect(filtered.map((record) => record.fileId)).toEqual(["b"]);
   });
+
+  it("resolves fields case-insensitively", () => {
+    const filtered = applyDatabaseFilters(
+      records,
+      {
+        id: "group-1",
+        op: "and",
+        rules: [{ id: "rule-1", field: "section", op: "is", value: "IUFS" }],
+      },
+      attributes,
+      "",
+    );
+
+    expect(filtered.map((record) => record.fileId)).toEqual(["a"]);
+  });
+
+  it("supports nested AND/OR groups", () => {
+    const filtered = applyDatabaseFilters(
+      records,
+      {
+        id: "root",
+        op: "and",
+        rules: [
+          { id: "rule-1", field: "Section", op: "is", value: "IUFS" },
+          {
+            id: "nested",
+            op: "or",
+            rules: [
+              { id: "rule-2", field: "passed", op: "is true" },
+              { id: "rule-3", field: "status", op: "is", value: "1 red" },
+            ],
+          },
+        ],
+      },
+      attributes,
+      "",
+    );
+
+    expect(filtered.map((record) => record.fileId)).toEqual(["a"]);
+  });
 });

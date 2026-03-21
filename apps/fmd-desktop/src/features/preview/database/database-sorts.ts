@@ -154,7 +154,15 @@ const compareWithNullHandling = (
 };
 
 const getFieldValue = (record: DatabaseRecord, field: string) =>
-  record.normalizedFields[field] ?? null;
+  (() => {
+    if (field in record.normalizedFields) {
+      return record.normalizedFields[field] ?? null;
+    }
+    const normalizedField = field.trim().toLowerCase();
+    const matchedKey = Object.keys(record.normalizedFields)
+      .find((key) => key.trim().toLowerCase() === normalizedField);
+    return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  })();
 
 const compareByRule = (
   leftRecord: DatabaseRecord,
@@ -170,7 +178,7 @@ const compareByRule = (
     return rule.dir === "desc" ? -nullCompare : nullCompare;
   }
 
-  const type = attributeByKey.get(rule.field)?.type ?? "text";
+  const type = attributeByKey.get(rule.field.trim().toLowerCase())?.type ?? "text";
   const compare = compareByType(left, right, type, Boolean(rule.natural));
   if (compare === 0) {
     return 0;
@@ -187,7 +195,9 @@ export const applyDatabaseSorts = (
     return records;
   }
 
-  const attributeByKey = new Map(attributes.map((attribute) => [attribute.key, attribute]));
+  const attributeByKey = new Map(
+    attributes.map((attribute) => [attribute.key.trim().toLowerCase(), attribute]),
+  );
 
   return [...records].sort((left, right) => {
     for (const rule of sortRules) {

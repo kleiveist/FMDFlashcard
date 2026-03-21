@@ -13,8 +13,15 @@ type DatabaseToolbarProps = {
   viewType: DatabaseViewType;
   searchQuery: string;
   showSearch: boolean;
+  onTitleChange: (nextTitle: string) => void;
+  onTitleBlur: (nextTitle: string) => void;
   onSearchChange: (nextValue: string) => void;
   onViewTypeChange: (nextView: DatabaseViewType) => void;
+  isSourcePanelOpen: boolean;
+  isFilterPanelOpen: boolean;
+  isSortPanelOpen: boolean;
+  isPropertiesPanelOpen: boolean;
+  onToggleSourcePanel: () => void;
   onToggleFilterPanel: () => void;
   onToggleSortPanel: () => void;
   onTogglePropertiesPanel: () => void;
@@ -33,8 +40,15 @@ export const DatabaseToolbar = ({
   viewType,
   searchQuery,
   showSearch,
+  onTitleChange,
+  onTitleBlur,
   onSearchChange,
   onViewTypeChange,
+  isSourcePanelOpen,
+  isFilterPanelOpen,
+  isSortPanelOpen,
+  isPropertiesPanelOpen,
+  onToggleSourcePanel,
   onToggleFilterPanel,
   onToggleSortPanel,
   onTogglePropertiesPanel,
@@ -47,8 +61,34 @@ export const DatabaseToolbar = ({
   return (
     <header className="database-block-toolbar" data-md-block-control="true">
       <div className="database-block-toolbar-main">
-        <h4 className="database-block-title">{title || "Database"}</h4>
-        <span className="database-block-source">{sourceLabel}</span>
+        <label className="database-block-title-field">
+          <span className="database-block-toolbar-label">Name</span>
+          <input
+            type="text"
+            className="database-block-title-input"
+            value={title}
+            onChange={(event) => onTitleChange(event.target.value)}
+            onBlur={(event) => onTitleBlur(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.currentTarget.blur();
+              }
+            }}
+            placeholder="Database Name"
+            data-md-block-control="true"
+          />
+        </label>
+        <button
+          type="button"
+          className={`database-block-toolbar-button database-block-source-button${
+            isSourcePanelOpen ? " is-active" : ""
+          }`}
+          onClick={onToggleSourcePanel}
+          aria-expanded={isSourcePanelOpen}
+          data-md-block-control="true"
+        >
+          {sourceLabel}
+        </button>
       </div>
       <div className="database-block-toolbar-actions">
         <label className="database-block-view-select-wrap">
@@ -63,13 +103,31 @@ export const DatabaseToolbar = ({
             ))}
           </select>
         </label>
-        <button type="button" className="database-block-toolbar-button" onClick={onToggleSortPanel}>
+        <button
+          type="button"
+          className={`database-block-toolbar-button${isSortPanelOpen ? " is-active" : ""}`}
+          onClick={onToggleSortPanel}
+          aria-expanded={isSortPanelOpen}
+          data-md-block-control="true"
+        >
           Sortieren
         </button>
-        <button type="button" className="database-block-toolbar-button" onClick={onToggleFilterPanel}>
+        <button
+          type="button"
+          className={`database-block-toolbar-button${isFilterPanelOpen ? " is-active" : ""}`}
+          onClick={onToggleFilterPanel}
+          aria-expanded={isFilterPanelOpen}
+          data-md-block-control="true"
+        >
           Filtern
         </button>
-        <button type="button" className="database-block-toolbar-button" onClick={onTogglePropertiesPanel}>
+        <button
+          type="button"
+          className={`database-block-toolbar-button${isPropertiesPanelOpen ? " is-active" : ""}`}
+          onClick={onTogglePropertiesPanel}
+          aria-expanded={isPropertiesPanelOpen}
+          data-md-block-control="true"
+        >
           Eigenschaften
         </button>
         {showSearch ? (
@@ -79,6 +137,7 @@ export const DatabaseToolbar = ({
             value={searchQuery}
             placeholder="Suche"
             onChange={(event) => onSearchChange(event.target.value)}
+            data-md-block-control="true"
           />
         ) : null}
       </div>

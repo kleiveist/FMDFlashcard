@@ -31,6 +31,25 @@ export const DatabaseSortPanel = ({
   onChange,
   onClose,
 }: DatabaseSortPanelProps) => {
+  if (attributes.length === 0) {
+    return (
+      <aside
+        className="database-block-panel database-block-sort-panel"
+        data-md-block-control="true"
+        role="dialog"
+        aria-label="Database Sortierung"
+      >
+        <header className="database-block-panel-header">
+          <h5>Sortierung</h5>
+          <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+            ×
+          </button>
+        </header>
+        <p className="database-block-state">Keine Attribute verfuegbar.</p>
+      </aside>
+    );
+  }
+
   const updateRule = (ruleId: string, patch: Partial<DatabaseSortRule>) => {
     onChange(
       sortRules.map((rule) =>

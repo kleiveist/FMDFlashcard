@@ -15,6 +15,16 @@ type DatabasePieViewProps = {
   groupAttribute: DatabaseAttributeMeta | null;
 };
 
+const getRecordValueByField = (record: DatabaseRecord, field: string) => {
+  if (field in record.normalizedFields) {
+    return record.normalizedFields[field] ?? null;
+  }
+  const normalizedField = field.trim().toLowerCase();
+  const matchedKey = Object.keys(record.normalizedFields)
+    .find((key) => key.trim().toLowerCase() === normalizedField);
+  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+};
+
 export const DatabasePieView = ({
   records,
   groupAttribute,
@@ -25,7 +35,7 @@ export const DatabasePieView = ({
     }
     const counts = new Map<string, number>();
     records.forEach((record) => {
-      const rawValue = record.normalizedFields[groupAttribute.key];
+      const rawValue = getRecordValueByField(record, groupAttribute.key);
       const label = Array.isArray(rawValue)
         ? rawValue.join(", ") || "(leer)"
         : String(rawValue ?? "(leer)");

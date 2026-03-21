@@ -483,6 +483,7 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
         "  type: current-folder",
         "view:",
         "  type: table",
+        "fields: []",
         "columns:",
         "  - Dateiname",
         "filters:",
