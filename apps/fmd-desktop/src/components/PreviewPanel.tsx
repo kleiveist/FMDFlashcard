@@ -51,6 +51,8 @@ import {
   type MarkdownHybridEditorHandle,
   type MarkdownHybridEditorMode,
 } from "../features/preview/MarkdownHybridEditor";
+import { MarkdownHybridDatabaseBlock } from "../features/preview/database/database-block";
+import { splitDatabaseViewSegments } from "../features/preview/database/database-view-segments";
 import {
   addFrontmatterProperty,
   collectFrontmatterValueSuggestions,
@@ -7686,6 +7688,13 @@ export const PreviewPanel = ({
     },
     [renderedPreviewWithInlineFormatting],
   );
+  const databaseViewSegments = useMemo(
+    () =>
+      rawPreview
+        ? null
+        : splitDatabaseViewSegments(renderedPreview),
+    [rawPreview, renderedPreview],
+  );
   const hasVisiblePreviewContent = rawPreview
     ? preview.length > 0
     : markdownSource.length > 0;
@@ -8358,146 +8367,168 @@ export const PreviewPanel = ({
                       />
                     ) : null}
                     <div ref={markdownViewRef}>
-                      <ReactMarkdown
-                        remarkPlugins={[
-                          remarkGfm,
-                          remarkPreserveSoftBreaks,
-                          remarkPreserveOrderedListDelimiters,
-                        ]}
-                        rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
-                        components={{
-                          h1: ({ node: _node, children, ...props }) => (
-                            <h1 {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-h1")}
-                            </h1>
+                      {databaseViewSegments ? (
+                        databaseViewSegments.map((segment) =>
+                          segment.type === "database-block" ? (
+                            <MarkdownHybridDatabaseBlock
+                              key={segment.key}
+                              raw={segment.raw}
+                              vaultFiles={vaultFiles}
+                              sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
+                              onNavigateWikilink={onNavigateWikilink}
+                              onCommitRaw={() => {}}
+                              allowCellEditing={false}
+                            />
+                          ) : (
+                            <Fragment key={segment.key}>
+                              {renderHybridMarkdownPreview(
+                                normalizeTableSpacingForRender(segment.markdown),
+                              )}
+                            </Fragment>
                           ),
-                          h2: ({ node: _node, children, ...props }) => (
-                            <h2 {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-h2")}
-                            </h2>
-                          ),
-                          h3: ({ node: _node, children, ...props }) => (
-                            <h3 {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-h3")}
-                            </h3>
-                          ),
-                          h4: ({ node: _node, children, ...props }) => (
-                            <h4 {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-h4")}
-                            </h4>
-                          ),
-                          h5: ({ node: _node, children, ...props }) => (
-                            <h5 {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-h5")}
-                            </h5>
-                          ),
-                          h6: ({ node: _node, children, ...props }) => (
-                            <h6 {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-h6")}
-                            </h6>
-                          ),
-                          p: ({ node: _node, children, ...props }) => (
-                            <p {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-p")}
-                            </p>
-                          ),
-                          ol: ({ node, ...props }) => {
-                            const delimiterFromNode =
-                              node &&
-                              typeof node === "object" &&
-                              "properties" in node &&
-                              node.properties &&
-                              typeof node.properties === "object"
-                                ? (node.properties as Record<string, unknown>)[
-                                    "data-md-ordered-delimiter"
-                                  ]
-                                : null;
-                            const delimiterFromPosition = resolveOrderedListDelimiter(
-                              renderedPreviewWithInlineFormatting,
-                              node &&
+                        )
+                      ) : (
+                        <ReactMarkdown
+                          remarkPlugins={[
+                            remarkGfm,
+                            remarkPreserveSoftBreaks,
+                            remarkPreserveOrderedListDelimiters,
+                          ]}
+                          rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+                          components={{
+                            h1: ({ node: _node, children, ...props }) => (
+                              <h1 {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-h1")}
+                              </h1>
+                            ),
+                            h2: ({ node: _node, children, ...props }) => (
+                              <h2 {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-h2")}
+                              </h2>
+                            ),
+                            h3: ({ node: _node, children, ...props }) => (
+                              <h3 {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-h3")}
+                              </h3>
+                            ),
+                            h4: ({ node: _node, children, ...props }) => (
+                              <h4 {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-h4")}
+                              </h4>
+                            ),
+                            h5: ({ node: _node, children, ...props }) => (
+                              <h5 {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-h5")}
+                              </h5>
+                            ),
+                            h6: ({ node: _node, children, ...props }) => (
+                              <h6 {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-h6")}
+                              </h6>
+                            ),
+                            p: ({ node: _node, children, ...props }) => (
+                              <p {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-p")}
+                              </p>
+                            ),
+                            ol: ({ node, ...props }) => {
+                              const delimiterFromNode =
+                                node &&
                                 typeof node === "object" &&
-                                "position" in node &&
-                                node.position &&
-                                typeof node.position === "object" &&
-                                "start" in node.position &&
-                                node.position.start &&
-                                typeof node.position.start === "object" &&
-                                ("offset" in node.position.start || "line" in node.position.start)
-                                ? (node.position.start as { offset?: number; line?: number })
-                                : undefined,
-                            );
-                            if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
-                              return <ol {...props} />;
-                            }
-                            const startRaw = props.start;
-                            const startValue = typeof startRaw === "number"
-                              ? startRaw
-                              : Number.parseInt(String(startRaw ?? "1"), 10);
-                            const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
-                            const style = {
-                              ...(props.style ?? {}),
-                              "--md-ordered-start": String(previous),
-                            } as CSSProperties;
-                            return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
-                          },
-                          li: ({ node: _node, children, ...props }) => (
-                            <li {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-li")}
-                            </li>
-                          ),
-                          blockquote: ({ node: _node, children, ...props }) => (
-                            <blockquote {...props}>
-                              {renderHighlightedInlineSyntaxChildren(children, "view-blockquote")}
-                            </blockquote>
-                          ),
-                          pre: ({ node: _node, children, ...props }) =>
-                            renderMarkdownCodePre({ children, ...props }),
-                          table: ({ node: _node, ...props }) => (
-                            <div className={`markdown-table ${SHARED_TABLE_WRAP_CLASS}`}>
-                              <table {...props} />
-                            </div>
-                          ),
-                          th: ({ node: _node, children, ...props }) => (
-                            <th {...props}>
-                              {renderMarkdownTableCellWithMedia({
-                                node: _node,
-                                children,
-                                keyPrefix: "view-th",
-                                markdownSource: renderedPreviewWithMedia.markdown,
+                                "properties" in node &&
+                                node.properties &&
+                                typeof node.properties === "object"
+                                  ? (node.properties as Record<string, unknown>)[
+                                      "data-md-ordered-delimiter"
+                                    ]
+                                  : null;
+                              const delimiterFromPosition = resolveOrderedListDelimiter(
+                                renderedPreviewWithInlineFormatting,
+                                node &&
+                                  typeof node === "object" &&
+                                  "position" in node &&
+                                  node.position &&
+                                  typeof node.position === "object" &&
+                                  "start" in node.position &&
+                                  node.position.start &&
+                                  typeof node.position.start === "object" &&
+                                  ("offset" in node.position.start || "line" in node.position.start)
+                                  ? (node.position.start as { offset?: number; line?: number })
+                                  : undefined,
+                              );
+                              if (delimiterFromNode !== ")" && delimiterFromPosition !== ")") {
+                                return <ol {...props} />;
+                              }
+                              const startRaw = props.start;
+                              const startValue = typeof startRaw === "number"
+                                ? startRaw
+                                : Number.parseInt(String(startRaw ?? "1"), 10);
+                              const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
+                              const style = {
+                                ...(props.style ?? {}),
+                                "--md-ordered-start": String(previous),
+                              } as CSSProperties;
+                              return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
+                            },
+                            li: ({ node: _node, children, ...props }) => (
+                              <li {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-li")}
+                              </li>
+                            ),
+                            blockquote: ({ node: _node, children, ...props }) => (
+                              <blockquote {...props}>
+                                {renderHighlightedInlineSyntaxChildren(children, "view-blockquote")}
+                              </blockquote>
+                            ),
+                            pre: ({ node: _node, children, ...props }) =>
+                              renderMarkdownCodePre({ children, ...props }),
+                            table: ({ node: _node, ...props }) => (
+                              <div className={`markdown-table ${SHARED_TABLE_WRAP_CLASS}`}>
+                                <table {...props} />
+                              </div>
+                            ),
+                            th: ({ node: _node, children, ...props }) => (
+                              <th {...props}>
+                                {renderMarkdownTableCellWithMedia({
+                                  node: _node,
+                                  children,
+                                  keyPrefix: "view-th",
+                                  markdownSource: renderedPreviewWithMedia.markdown,
+                                  vaultPngAssets,
+                                  vaultPath,
+                                  sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
+                                })}
+                              </th>
+                            ),
+                            div: ({ node, ...props }) =>
+                              renderMarkdownMediaGroup({
+                                node,
+                                groups: renderedPreviewWithMedia.groups,
                                 vaultPngAssets,
                                 vaultPath,
                                 sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
-                              })}
-                            </th>
-                          ),
-                          div: ({ node, ...props }) =>
-                            renderMarkdownMediaGroup({
-                              node,
-                              groups: renderedPreviewWithMedia.groups,
-                              vaultPngAssets,
-                              vaultPath,
-                              sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
-                            }) ?? <div {...props} />,
-                          td: ({ node: _node, children, ...props }) => (
-                            <td {...props}>
-                              {renderMarkdownTableCellWithMedia({
-                                node: _node,
-                                children,
-                                keyPrefix: "view-td",
-                                markdownSource: renderedPreviewWithMedia.markdown,
-                                vaultPngAssets,
-                                vaultPath,
-                                sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
-                              })}
-                            </td>
-                          ),
-                          img: ({ node: _node, ...props }) => (
-                            <img {...props} draggable={false} />
-                          ),
-                        }}
-                      >
-                        {renderedPreviewWithMedia.markdown}
-                      </ReactMarkdown>
+                              }) ?? <div {...props} />,
+                            td: ({ node: _node, children, ...props }) => (
+                              <td {...props}>
+                                {renderMarkdownTableCellWithMedia({
+                                  node: _node,
+                                  children,
+                                  keyPrefix: "view-td",
+                                  markdownSource: renderedPreviewWithMedia.markdown,
+                                  vaultPngAssets,
+                                  vaultPath,
+                                  sourceRelativePath: sourceRelativePath ?? selectedFile?.relative_path,
+                                })}
+                              </td>
+                            ),
+                            img: ({ node: _node, ...props }) => (
+                              <img {...props} draggable={false} />
+                            ),
+                          }}
+                        >
+                          {renderedPreviewWithMedia.markdown}
+                        </ReactMarkdown>
+                      )}
                     </div>
                   </>
                 )}

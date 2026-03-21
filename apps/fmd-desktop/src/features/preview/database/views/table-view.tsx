@@ -5,6 +5,7 @@
  */
 
 import {
+  type DragEvent,
   type KeyboardEvent,
   type UIEvent,
   useMemo,
@@ -14,11 +15,13 @@ import { DatabaseCellRenderer } from "../ui/database-cell-renderers";
 import {
   type DatabaseAttributeMeta,
   type DatabaseRecord,
+  type DatabaseSortRule,
 } from "../database-types";
 
 type DatabaseTableViewProps = {
   records: DatabaseRecord[];
   columns: DatabaseAttributeMeta[];
+  sortRules: DatabaseSortRule[];
   editable: boolean;
   activeEditCell: {
     recordId: string;
@@ -27,6 +30,8 @@ type DatabaseTableViewProps = {
   } | null;
   pendingCellMutations: string[];
   onOpenRecord: (record: DatabaseRecord) => void;
+  onToggleColumnSort: (columnKey: string) => void;
+  onReorderColumns: (fromKey: string, toKey: string) => void;
   onStartCellEdit: (record: DatabaseRecord, column: DatabaseAttributeMeta) => void;
   onEditCellDraftChange: (nextDraft: string | boolean) => void;
   onCommitCellEdit: (
@@ -39,7 +44,7 @@ type DatabaseTableViewProps = {
 
 const TABLE_ROW_HEIGHT = 34;
 const TABLE_OVERSCAN = 10;
-const TABLE_VIEWPORT_HEIGHT = 320;
+const TABLE_MAX_VISIBLE_ROWS = 50;
 const OPEN_RECORD_COLUMN_KEYS = new Set([
   "dateiname",
   "dateiname mit endung",
@@ -92,25 +97,31 @@ const getRecordValueByField = (record: DatabaseRecord, field: string) => {
 export const DatabaseTableView = ({
   records,
   columns,
+  sortRules,
   editable,
   activeEditCell,
   pendingCellMutations,
   onOpenRecord,
+  onToggleColumnSort,
+  onReorderColumns,
   onStartCellEdit,
   onEditCellDraftChange,
   onCommitCellEdit,
   onCancelCellEdit,
 }: DatabaseTableViewProps) => {
   const [scrollTop, setScrollTop] = useState(0);
+  const [draggedColumnKey, setDraggedColumnKey] = useState<string | null>(null);
+  const [dropTargetColumnKey, setDropTargetColumnKey] = useState<string | null>(null);
 
   const totalHeight = records.length * TABLE_ROW_HEIGHT;
+  const viewportHeight = Math.min(records.length, TABLE_MAX_VISIBLE_ROWS) * TABLE_ROW_HEIGHT;
 
   const visibleRange = useMemo(() => {
     const start = Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT) - TABLE_OVERSCAN);
-    const visibleCount = Math.ceil(TABLE_VIEWPORT_HEIGHT / TABLE_ROW_HEIGHT) + TABLE_OVERSCAN * 2;
+    const visibleCount = Math.ceil(viewportHeight / TABLE_ROW_HEIGHT) + TABLE_OVERSCAN * 2;
     const end = Math.min(records.length, start + visibleCount);
     return { start, end };
-  }, [records.length, scrollTop]);
+  }, [records.length, scrollTop, viewportHeight]);
 
   const visibleRows = records.slice(visibleRange.start, visibleRange.end);
   const pendingByKey = useMemo(
@@ -133,9 +144,60 @@ export const DatabaseTableView = ({
     });
     return map;
   }, [columns, records]);
+  const sortRuleByKey = useMemo(() => {
+    const next = new Map<string, DatabaseSortRule>();
+    sortRules.forEach((rule) => {
+      const normalized = toLower(rule.field);
+      if (!normalized || next.has(normalized)) {
+        return;
+      }
+      next.set(normalized, rule);
+    });
+    return next;
+  }, [sortRules]);
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
     setScrollTop(event.currentTarget.scrollTop);
+  };
+
+  const handleHeaderDragStart = (event: DragEvent<HTMLDivElement>, columnKey: string) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", columnKey);
+    setDraggedColumnKey(columnKey);
+    setDropTargetColumnKey(null);
+  };
+
+  const handleHeaderDragOver = (event: DragEvent<HTMLDivElement>, targetColumnKey: string) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const sourceKey = event.dataTransfer.getData("text/plain");
+    if (!sourceKey || toLower(sourceKey) === toLower(targetColumnKey)) {
+      if (dropTargetColumnKey !== null) {
+        setDropTargetColumnKey(null);
+      }
+      return;
+    }
+    if (toLower(dropTargetColumnKey ?? "") !== toLower(targetColumnKey)) {
+      setDropTargetColumnKey(targetColumnKey);
+    }
+  };
+
+  const handleHeaderDrop = (event: DragEvent<HTMLDivElement>, targetColumnKey: string) => {
+    event.preventDefault();
+    const sourceKey = event.dataTransfer.getData("text/plain");
+    if (!sourceKey || toLower(sourceKey) === toLower(targetColumnKey)) {
+      setDraggedColumnKey(null);
+      setDropTargetColumnKey(null);
+      return;
+    }
+    onReorderColumns(sourceKey, targetColumnKey);
+    setDraggedColumnKey(null);
+    setDropTargetColumnKey(null);
+  };
+
+  const handleHeaderDragEnd = () => {
+    setDraggedColumnKey(null);
+    setDropTargetColumnKey(null);
   };
 
   const handleEditorKeyDown = (
@@ -161,17 +223,53 @@ export const DatabaseTableView = ({
   return (
     <div className="database-table-view">
       <div className="database-table-header-row" role="row">
-        {columns.map((column) => (
-          <div key={column.key} className="database-table-header-cell" role="columnheader">
-            {column.label}
-          </div>
-        ))}
+        {columns.map((column) => {
+          const sortRule = sortRuleByKey.get(toLower(column.key)) ?? null;
+          const sortDirection = sortRule?.dir ?? null;
+          const isDragging = Boolean(draggedColumnKey) && toLower(draggedColumnKey ?? "") === toLower(column.key);
+          const isDropTarget = Boolean(dropTargetColumnKey) &&
+            toLower(dropTargetColumnKey ?? "") === toLower(column.key);
+          return (
+            <div
+              key={column.key}
+              className={`database-table-header-cell${isDragging ? " is-dragging" : ""}${isDropTarget ? " is-drop-target" : ""}`}
+              role="columnheader"
+              aria-sort={
+                sortDirection === "asc"
+                  ? "ascending"
+                  : sortDirection === "desc"
+                  ? "descending"
+                  : "none"
+              }
+              draggable
+              onDragStart={(event) => handleHeaderDragStart(event, column.key)}
+              onDragOver={(event) => handleHeaderDragOver(event, column.key)}
+              onDrop={(event) => handleHeaderDrop(event, column.key)}
+              onDragEnd={handleHeaderDragEnd}
+              data-md-block-control="true"
+            >
+              <button
+                type="button"
+                className={`database-table-header-button${sortDirection ? " is-sorted" : ""}`}
+                onClick={() => onToggleColumnSort(column.key)}
+                data-md-block-control="true"
+              >
+                <span className="database-table-header-label">{column.label}</span>
+                {sortDirection ? (
+                  <span className="database-table-header-sort-indicator" aria-hidden="true">
+                    {sortDirection === "asc" ? "↑" : "↓"}
+                  </span>
+                ) : null}
+              </button>
+            </div>
+          );
+        })}
       </div>
       <div
         className="database-table-scroll"
         role="rowgroup"
         onScroll={handleScroll}
-        style={{ maxHeight: `${TABLE_VIEWPORT_HEIGHT}px` }}
+        style={{ maxHeight: `${viewportHeight}px` }}
       >
         <div className="database-table-spacer" style={{ height: `${totalHeight}px` }}>
           {visibleRows.map((record, localIndex) => {

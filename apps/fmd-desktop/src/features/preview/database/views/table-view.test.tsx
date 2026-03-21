@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { act, createElement, type ReactElement } from "react";
+import { act, createElement, type ComponentProps, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseTableView } from "./table-view";
 import {
   type DatabaseAttributeMeta,
   type DatabaseRecord,
+  type DatabaseSortRule,
 } from "../database-types";
 
 const render = (element: ReactElement) => {
@@ -81,23 +82,49 @@ const record: DatabaseRecord = {
   },
 };
 
+const buildRecord = (index: number): DatabaseRecord => ({
+  ...record,
+  fileId: `docs/a-${index}.md`,
+  filePath: `/vault/docs/a-${index}.md`,
+  relativePath: `docs/a-${index}.md`,
+  fileName: `a-${index}.md`,
+});
+
+const createDragDataTransfer = () => {
+  const values = new Map<string, string>();
+  return {
+    effectAllowed: "all",
+    dropEffect: "none",
+    setData: (type: string, value: string) => {
+      values.set(type, value);
+    },
+    getData: (type: string) => values.get(type) ?? "",
+  };
+};
+
+const buildProps = (overrides: Partial<ComponentProps<typeof DatabaseTableView>> = {}) => ({
+  records: [record],
+  columns: [taskAttribute],
+  sortRules: [] as DatabaseSortRule[],
+  editable: true,
+  activeEditCell: null,
+  pendingCellMutations: [],
+  onOpenRecord: vi.fn(),
+  onToggleColumnSort: vi.fn(),
+  onReorderColumns: vi.fn(),
+  onStartCellEdit: vi.fn(),
+  onEditCellDraftChange: vi.fn(),
+  onCommitCellEdit: vi.fn(),
+  onCancelCellEdit: vi.fn(),
+  ...overrides,
+});
+
 describe("DatabaseTableView", () => {
   it("starts inline editing on double click for editable cells", () => {
     const onStartCellEdit = vi.fn();
-    const { container, cleanup } = render(
-      createElement(DatabaseTableView, {
-        records: [record],
-        columns: [taskAttribute],
-        editable: true,
-        activeEditCell: null,
-        pendingCellMutations: [],
-        onOpenRecord: vi.fn(),
-        onStartCellEdit,
-        onEditCellDraftChange: vi.fn(),
-        onCommitCellEdit: vi.fn(),
-        onCancelCellEdit: vi.fn(),
-      }),
-    );
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      onStartCellEdit,
+    })));
 
     const cell = container.querySelector(".database-table-cell");
     act(() => {
@@ -111,26 +138,33 @@ describe("DatabaseTableView", () => {
     cleanup();
   });
 
+  it("does not start inline editing when table editing is disabled", () => {
+    const onStartCellEdit = vi.fn();
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      editable: false,
+      onStartCellEdit,
+    })));
+
+    const cell = container.querySelector(".database-table-cell");
+    act(() => {
+      cell?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+
+    expect(onStartCellEdit).not.toHaveBeenCalled();
+
+    cleanup();
+  });
+
   it("commits active inline edit on Enter", () => {
     const onCommitCellEdit = vi.fn();
-    const { container, cleanup } = render(
-      createElement(DatabaseTableView, {
-        records: [record],
-        columns: [taskAttribute],
-        editable: true,
-        activeEditCell: {
-          recordId: record.fileId,
-          fieldKey: "Task",
-          draftValue: "Alpha",
-        },
-        pendingCellMutations: [],
-        onOpenRecord: vi.fn(),
-        onStartCellEdit: vi.fn(),
-        onEditCellDraftChange: vi.fn(),
-        onCommitCellEdit,
-        onCancelCellEdit: vi.fn(),
-      }),
-    );
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      activeEditCell: {
+        recordId: record.fileId,
+        fieldKey: "Task",
+        draftValue: "Alpha",
+      },
+      onCommitCellEdit,
+    })));
 
     const input = container.querySelector<HTMLInputElement>(".database-table-cell-editor");
     act(() => {
@@ -146,20 +180,10 @@ describe("DatabaseTableView", () => {
 
   it("opens record from filename system cell in same flow", () => {
     const onOpenRecord = vi.fn();
-    const { container, cleanup } = render(
-      createElement(DatabaseTableView, {
-        records: [record],
-        columns: [fileNameAttribute],
-        editable: true,
-        activeEditCell: null,
-        pendingCellMutations: [],
-        onOpenRecord,
-        onStartCellEdit: vi.fn(),
-        onEditCellDraftChange: vi.fn(),
-        onCommitCellEdit: vi.fn(),
-        onCancelCellEdit: vi.fn(),
-      }),
-    );
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      columns: [fileNameAttribute],
+      onOpenRecord,
+    })));
 
     const button = container.querySelector<HTMLButtonElement>(".database-table-open-record");
     act(() => {
@@ -168,6 +192,67 @@ describe("DatabaseTableView", () => {
 
     expect(onOpenRecord).toHaveBeenCalledTimes(1);
     expect(onOpenRecord.mock.calls[0]?.[0]?.fileId).toBe(record.fileId);
+
+    cleanup();
+  });
+
+  it("toggles column sort when clicking a header cell", () => {
+    const onToggleColumnSort = vi.fn();
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      onToggleColumnSort,
+    })));
+
+    const headerButton = container.querySelector<HTMLButtonElement>(".database-table-header-button");
+    act(() => {
+      headerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onToggleColumnSort).toHaveBeenCalledTimes(1);
+    expect(onToggleColumnSort).toHaveBeenCalledWith("Task");
+
+    cleanup();
+  });
+
+  it("reorders columns via header drag and drop", () => {
+    const onReorderColumns = vi.fn();
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      columns: [taskAttribute, fileNameAttribute],
+      onReorderColumns,
+    })));
+
+    const headerCells = container.querySelectorAll<HTMLDivElement>(".database-table-header-cell");
+    const source = headerCells[0];
+    const target = headerCells[1];
+    const dataTransfer = createDragDataTransfer();
+
+    act(() => {
+      const dragStart = new Event("dragstart", { bubbles: true, cancelable: true });
+      Object.defineProperty(dragStart, "dataTransfer", { value: dataTransfer });
+      source?.dispatchEvent(dragStart);
+
+      const dragOver = new Event("dragover", { bubbles: true, cancelable: true });
+      Object.defineProperty(dragOver, "dataTransfer", { value: dataTransfer });
+      target?.dispatchEvent(dragOver);
+
+      const drop = new Event("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(drop, "dataTransfer", { value: dataTransfer });
+      target?.dispatchEvent(drop);
+    });
+
+    expect(onReorderColumns).toHaveBeenCalledTimes(1);
+    expect(onReorderColumns).toHaveBeenCalledWith("Task", "Dateiname");
+
+    cleanup();
+  });
+
+  it("uses a max viewport of 50 visible rows", () => {
+    const records = Array.from({ length: 60 }, (_, index) => buildRecord(index));
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      records,
+    })));
+
+    const scroll = container.querySelector<HTMLDivElement>(".database-table-scroll");
+    expect(scroll?.style.maxHeight).toBe(`${50 * 34}px`);
 
     cleanup();
   });

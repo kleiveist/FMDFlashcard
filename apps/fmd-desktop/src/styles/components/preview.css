@@ -5225,15 +5225,65 @@ textarea.preview-editor {
 }
 
 .database-table-header-cell {
-  padding: 8px var(--db-cell-padding-x);
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--db-muted);
+  padding: 0;
   border-right: 1px solid var(--db-border);
+  background: transparent;
+}
+
+.database-table-header-cell.is-dragging {
+  opacity: 0.5;
+}
+
+.database-table-header-cell.is-drop-target {
+  background: color-mix(in srgb, var(--accent-soft) 20%, transparent);
 }
 
 .database-table-header-cell:last-child {
   border-right: none;
+}
+
+.database-table-header-button {
+  width: 100%;
+  min-height: 100%;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px var(--db-cell-padding-x);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--db-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.database-table-header-button:hover {
+  color: var(--db-text);
+  background: color-mix(in srgb, var(--db-surface-hover) 70%, transparent);
+}
+
+.database-table-header-button:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: -2px;
+}
+
+.database-table-header-button.is-sorted {
+  color: var(--db-text);
+}
+
+.database-table-header-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.database-table-header-sort-indicator {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--db-text);
 }
 
 .database-table-scroll {

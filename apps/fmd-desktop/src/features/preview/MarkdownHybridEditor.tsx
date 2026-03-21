@@ -9440,6 +9440,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             onCommitRaw={(nextRaw) => {
               handleTableBlockCommitRaw(index, nextRaw);
             }}
+            allowCellEditing={!disabled}
           />,
         );
         continue;
@@ -10056,6 +10057,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     onCommitRaw={(nextRaw) => {
                       handleTableBlockCommitRaw(index, nextRaw);
                     }}
+                    allowCellEditing={!disabled}
                   />
                 ) : isActive ? (
                   block.kind === "math-block" ? (

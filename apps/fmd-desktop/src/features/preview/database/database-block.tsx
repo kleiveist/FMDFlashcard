@@ -22,6 +22,7 @@ import {
   buildNormalizedRecord,
   createSystemFieldsForRecord,
 } from "./database-normalizers";
+import { toggleDatabaseSortRuleByField } from "./database-sort-rules";
 import {
   resolveDatabaseSourceFiles,
   type DatabaseSourceResolverContext,
@@ -63,6 +64,7 @@ type DatabaseBlockProps = {
   sourceRelativePath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
   onCommitRaw: (nextRaw: string) => void;
+  allowCellEditing?: boolean;
 };
 
 type DatabaseBlockOpenPanels = {
@@ -295,6 +297,7 @@ export const MarkdownHybridDatabaseBlock = ({
   sourceRelativePath,
   onNavigateWikilink,
   onCommitRaw,
+  allowCellEditing = true,
 }: DatabaseBlockProps) => {
   const parsed = useMemo(() => parseDatabaseBlockConfigFromRaw(raw), [raw]);
   const defaultConfig = useMemo(() => createDefaultDatabaseBlockConfig(), []);
@@ -640,6 +643,7 @@ export const MarkdownHybridDatabaseBlock = ({
       .filter((attribute): attribute is DatabaseAttributeMeta => Boolean(attribute)),
     [store.attributeRegistry, store.visibleColumnKeys],
   );
+  const tableCellEditingEnabled = allowCellEditing;
 
   const setPanel = (panel: keyof DatabaseBlockOpenPanels) => {
     setPanels({
@@ -803,7 +807,7 @@ export const MarkdownHybridDatabaseBlock = ({
       draftValue: string | boolean;
       clearEditWhenDone: boolean;
     }) => {
-      if (!parsed.config.options.editable || !attribute.editable) {
+      if (!tableCellEditingEnabled || !attribute.editable) {
         return;
       }
 
@@ -875,7 +879,7 @@ export const MarkdownHybridDatabaseBlock = ({
         removePendingRecordMutation(record.fileId);
       }
     },
-    [parsed.config.options.editable, pendingCellMutations, records],
+    [pendingCellMutations, records, tableCellEditingEnabled],
   );
 
   const handleToggleVisibility = (key: string, visible: boolean) => {
@@ -921,12 +925,20 @@ export const MarkdownHybridDatabaseBlock = ({
   };
 
   const handleSortChange = (nextSorts: DatabaseSortRule[]) => {
+    activeSortsRef.current = nextSorts;
+    setActiveSorts(nextSorts);
+    persistConfig({ sorts: nextSorts });
+  };
+
+  const handleToggleColumnSort = (columnKey: string) => {
+    const nextSorts = toggleDatabaseSortRuleByField(activeSortsRef.current, columnKey);
+    activeSortsRef.current = nextSorts;
     setActiveSorts(nextSorts);
     persistConfig({ sorts: nextSorts });
   };
 
   const handleStartCellEdit = (record: DatabaseRecord, attribute: DatabaseAttributeMeta) => {
-    if (!parsed.config.options.editable || !attribute.editable) {
+    if (!tableCellEditingEnabled || !attribute.editable) {
       return;
     }
     const value = getRecordValueByField(record, attribute.key);
@@ -1269,10 +1281,13 @@ export const MarkdownHybridDatabaseBlock = ({
           <DatabaseTableView
             records={store.visibleRecords}
             columns={visibleColumns}
-            editable={parsed.config.options.editable}
+            sortRules={activeSorts}
+            editable={tableCellEditingEnabled}
             activeEditCell={activeCellEdit}
             pendingCellMutations={pendingCellMutations}
             onOpenRecord={openRecord}
+            onToggleColumnSort={handleToggleColumnSort}
+            onReorderColumns={handleReorderVisibleColumns}
             onStartCellEdit={handleStartCellEdit}
             onEditCellDraftChange={handleCellEditDraftChange}
             onCommitCellEdit={handleCommitCellEdit}
