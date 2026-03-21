@@ -916,17 +916,13 @@ const CoverThumbnailImage = ({
     return { x: freeX, y: freeY };
   }, [foregroundTransform, viewportSize.height, viewportSize.width]);
 
-  const showBackdrop = Boolean(
-    backdropTransform &&
-      (
-        variant === "main"
-          ? true
-          : freeSpace.x > COVER_THUMBNAIL_BAR_EPSILON_PX ||
-            freeSpace.y > COVER_THUMBNAIL_BAR_EPSILON_PX
-      ),
-  );
-  const isTransformed = Boolean(foregroundTransform);
   const src = image.src ?? image.path;
+  const hasEdgeGap = freeSpace.x > COVER_THUMBNAIL_BAR_EPSILON_PX ||
+    freeSpace.y > COVER_THUMBNAIL_BAR_EPSILON_PX;
+  const showBackdrop = variant === "main"
+    ? Boolean(src) && (hasEdgeGap || !foregroundTransform)
+    : Boolean(backdropTransform && hasEdgeGap);
+  const isTransformed = Boolean(foregroundTransform);
   const frameClassName = resolveCoverThumbnailFrameClassName(variant);
   const foregroundClassName = resolveCoverThumbnailForegroundClassName(variant, isTransformed);
   const backdropClassName = resolveCoverThumbnailBackdropClassName(variant);
