@@ -11,12 +11,15 @@ type DatabaseToolbarProps = {
   title: string;
   sourceLabel: string;
   viewType: DatabaseViewType;
+  kanbanGroupBy: string | null;
+  kanbanGroupByOptions: Array<{ key: string; label: string }>;
   searchQuery: string;
   showSearch: boolean;
   onTitleChange: (nextTitle: string) => void;
   onTitleBlur: (nextTitle: string) => void;
   onSearchChange: (nextValue: string) => void;
   onViewTypeChange: (nextView: DatabaseViewType) => void;
+  onKanbanGroupByChange: (nextValue: string | null) => void;
   isSourcePanelOpen: boolean;
   isFilterPanelOpen: boolean;
   isSortPanelOpen: boolean;
@@ -38,12 +41,15 @@ export const DatabaseToolbar = ({
   title,
   sourceLabel,
   viewType,
+  kanbanGroupBy,
+  kanbanGroupByOptions,
   searchQuery,
   showSearch,
   onTitleChange,
   onTitleBlur,
   onSearchChange,
   onViewTypeChange,
+  onKanbanGroupByChange,
   isSourcePanelOpen,
   isFilterPanelOpen,
   isSortPanelOpen,
@@ -104,6 +110,21 @@ export const DatabaseToolbar = ({
               ))}
             </select>
           </label>
+          {viewType === "kanban" ? (
+            <label className="database-block-view-select-wrap">
+              <span className="database-block-toolbar-label">Group by</span>
+              <select
+                className="database-block-view-select"
+                value={kanbanGroupBy ?? ""}
+                onChange={(event) => onKanbanGroupByChange(event.target.value || null)}
+              >
+                <option value="">Auto</option>
+                {kanbanGroupByOptions.map((option) => (
+                  <option key={option.key} value={option.key}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <button
             type="button"
             className={`database-block-toolbar-button${isSortPanelOpen ? " is-active" : ""}`}

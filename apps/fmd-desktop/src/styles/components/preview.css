@@ -5282,6 +5282,30 @@ textarea.preview-editor {
   border-right: none;
 }
 
+.database-table-cell.is-editing {
+  background: color-mix(in srgb, var(--accent-soft) 24%, transparent);
+}
+
+.database-table-cell.is-pending {
+  opacity: 0.7;
+}
+
+.database-table-cell-editor {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-height: calc(var(--db-control-height) - 6px);
+  border-radius: max(4px, calc(var(--db-radius-control) - 2px));
+  border: 1px solid var(--db-border);
+  background: var(--field-bg);
+  color: var(--db-text);
+  padding: 2px 6px;
+}
+
+.database-table-cell-boolean-editor {
+  display: inline-flex;
+  align-items: center;
+}
+
 .database-table-open-record {
   border: none;
   background: transparent;
@@ -5587,10 +5611,85 @@ textarea.preview-editor {
   font-size: 0.78rem;
 }
 
+.database-kanban-view {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.database-kanban-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-table);
+  background: var(--db-surface-raised);
+  min-height: 180px;
+  padding: 8px;
+}
+
+.database-kanban-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.database-kanban-column-header h6 {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.database-kanban-column-header span {
+  color: var(--db-muted);
+  font-size: 0.74rem;
+}
+
+.database-kanban-column-body {
+  display: grid;
+  gap: 6px;
+}
+
+.database-kanban-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-control);
+  background: color-mix(in srgb, var(--db-surface-base) 86%, transparent);
+  padding: 6px 8px;
+}
+
+.database-kanban-card.is-pending {
+  opacity: 0.72;
+}
+
+.database-kanban-card-title {
+  border: none;
+  background: transparent;
+  color: var(--db-text);
+  font-weight: 600;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.database-kanban-card-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.database-kanban-card-meta {
+  margin: 0;
+  color: var(--db-muted);
+  font-size: 0.72rem;
+  word-break: break-all;
+}
+
 .database-block-title-input:focus-visible,
 .database-block-view-select:focus-visible,
 .database-block-toolbar-button:focus-visible,
 .database-block-search:focus-visible,
+.database-table-cell-editor:focus-visible,
 .database-block-panel select:focus-visible,
 .database-block-panel input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   outline: var(--ui-focus-outline);

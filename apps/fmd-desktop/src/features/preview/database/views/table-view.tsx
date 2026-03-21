@@ -5,6 +5,7 @@
  */
 
 import {
+  type KeyboardEvent,
   type UIEvent,
   useMemo,
   useState,
@@ -18,7 +19,22 @@ import {
 type DatabaseTableViewProps = {
   records: DatabaseRecord[];
   columns: DatabaseAttributeMeta[];
+  editable: boolean;
+  activeEditCell: {
+    recordId: string;
+    fieldKey: string;
+    draftValue: string | boolean;
+  } | null;
+  pendingCellMutations: string[];
   onOpenRecord: (record: DatabaseRecord) => void;
+  onStartCellEdit: (record: DatabaseRecord, column: DatabaseAttributeMeta) => void;
+  onEditCellDraftChange: (nextDraft: string | boolean) => void;
+  onCommitCellEdit: (
+    record: DatabaseRecord,
+    column: DatabaseAttributeMeta,
+    draftOverride?: string | boolean,
+  ) => void;
+  onCancelCellEdit: () => void;
 };
 
 const TABLE_ROW_HEIGHT = 34;
@@ -29,6 +45,39 @@ const OPEN_RECORD_COLUMN_KEYS = new Set([
   "dateiname mit endung",
   "dateipfad",
 ]);
+
+const toLower = (value: string) => value.trim().toLowerCase();
+
+const buildMutationKey = (recordId: string, fieldKey: string) => `${recordId}::${toLower(fieldKey)}`;
+
+const asTextValue = (value: unknown): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry)).join(", ");
+  }
+  if (value && typeof value === "object" && "raw" in value) {
+    return String((value as { raw?: unknown }).raw ?? "");
+  }
+  return "";
+};
+
+const resolveEditorInputType = (type: DatabaseAttributeMeta["type"]) => {
+  if (type === "number" || type === "percent") {
+    return "number";
+  }
+  if (type === "date") {
+    return "date";
+  }
+  return "text";
+};
 
 const getRecordValueByField = (record: DatabaseRecord, field: string) => {
   if (field in record.normalizedFields) {
@@ -43,7 +92,14 @@ const getRecordValueByField = (record: DatabaseRecord, field: string) => {
 export const DatabaseTableView = ({
   records,
   columns,
+  editable,
+  activeEditCell,
+  pendingCellMutations,
   onOpenRecord,
+  onStartCellEdit,
+  onEditCellDraftChange,
+  onCommitCellEdit,
+  onCancelCellEdit,
 }: DatabaseTableViewProps) => {
   const [scrollTop, setScrollTop] = useState(0);
 
@@ -57,9 +113,45 @@ export const DatabaseTableView = ({
   }, [records.length, scrollTop]);
 
   const visibleRows = records.slice(visibleRange.start, visibleRange.end);
+  const pendingByKey = useMemo(
+    () => new Set(pendingCellMutations),
+    [pendingCellMutations],
+  );
+  const valueOptionsByField = useMemo(() => {
+    const map = new Map<string, string[]>();
+    columns.forEach((column) => {
+      const key = toLower(column.key);
+      const values = new Set<string>();
+      records.forEach((record) => {
+        const value = getRecordValueByField(record, column.key);
+        const text = asTextValue(value).trim();
+        if (text) {
+          values.add(text);
+        }
+      });
+      map.set(key, Array.from(values).slice(0, 200));
+    });
+    return map;
+  }, [columns, records]);
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
     setScrollTop(event.currentTarget.scrollTop);
+  };
+
+  const handleEditorKeyDown = (
+    event: KeyboardEvent<HTMLInputElement | HTMLSelectElement>,
+    record: DatabaseRecord,
+    column: DatabaseAttributeMeta,
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancelCellEdit();
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      onCommitCellEdit(record, column);
+    }
   };
 
   if (columns.length === 0) {
@@ -90,7 +182,6 @@ export const DatabaseTableView = ({
                 key={record.fileId}
                 className="database-table-row"
                 role="row"
-                onDoubleClick={() => onOpenRecord(record)}
                 style={{
                   top: `${top}px`,
                   height: `${TABLE_ROW_HEIGHT}px`,
@@ -98,8 +189,71 @@ export const DatabaseTableView = ({
                 data-md-block-control="true"
               >
                 {columns.map((column) => (
-                  <span key={`${record.fileId}:${column.key}`} className="database-table-cell" role="cell">
-                    {OPEN_RECORD_COLUMN_KEYS.has(column.key.trim().toLowerCase()) ? (
+                  <span
+                    key={`${record.fileId}:${column.key}`}
+                    className={`database-table-cell${
+                      activeEditCell &&
+                      activeEditCell.recordId === record.fileId &&
+                      toLower(activeEditCell.fieldKey) === toLower(column.key)
+                        ? " is-editing"
+                        : ""
+                    }${
+                      pendingByKey.has(buildMutationKey(record.fileId, column.key))
+                        ? " is-pending"
+                        : ""
+                    }`}
+                    role="cell"
+                    onDoubleClick={() => {
+                      if (!editable || !column.editable) {
+                        return;
+                      }
+                      onStartCellEdit(record, column);
+                    }}
+                  >
+                    {activeEditCell &&
+                    activeEditCell.recordId === record.fileId &&
+                    toLower(activeEditCell.fieldKey) === toLower(column.key) ? (
+                      column.type === "boolean" ? (
+                        <label className="database-table-cell-boolean-editor">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(activeEditCell.draftValue)}
+                            onChange={(event) => {
+                              onEditCellDraftChange(event.target.checked);
+                              onCommitCellEdit(record, column, event.target.checked);
+                            }}
+                            onKeyDown={(event) => handleEditorKeyDown(event, record, column)}
+                            disabled={pendingByKey.has(buildMutationKey(record.fileId, column.key))}
+                            autoFocus
+                            data-md-block-control="true"
+                          />
+                        </label>
+                      ) : (
+                        <>
+                          <input
+                            type={resolveEditorInputType(column.type)}
+                            value={typeof activeEditCell.draftValue === "string" ? activeEditCell.draftValue : ""}
+                            className="database-table-cell-editor"
+                            onChange={(event) => onEditCellDraftChange(event.target.value)}
+                            onBlur={() => onCommitCellEdit(record, column)}
+                            onKeyDown={(event) => handleEditorKeyDown(event, record, column)}
+                            list={column.type === "select" || column.type === "status"
+                              ? `database-cell-options-${toLower(column.key).replace(/[^a-z0-9_-]/g, "-")}`
+                              : undefined}
+                            disabled={pendingByKey.has(buildMutationKey(record.fileId, column.key))}
+                            autoFocus
+                            data-md-block-control="true"
+                          />
+                          {(column.type === "select" || column.type === "status") ? (
+                            <datalist id={`database-cell-options-${toLower(column.key).replace(/[^a-z0-9_-]/g, "-")}`}>
+                              {(valueOptionsByField.get(toLower(column.key)) ?? []).map((optionValue) => (
+                                <option key={optionValue} value={optionValue} />
+                              ))}
+                            </datalist>
+                          ) : null}
+                        </>
+                      )
+                    ) : OPEN_RECORD_COLUMN_KEYS.has(column.key.trim().toLowerCase()) ? (
                       <button
                         type="button"
                         className="database-table-open-record"

@@ -26,12 +26,17 @@ const buildProps = () => ({
   title: "Exam Uebersicht",
   sourceLabel: "Quelle: aktueller Ordner",
   viewType: "table" as const,
+  kanbanGroupBy: null,
+  kanbanGroupByOptions: [
+    { key: "status", label: "Status" },
+  ],
   searchQuery: "",
   showSearch: true,
   onTitleChange: vi.fn(),
   onTitleBlur: vi.fn(),
   onSearchChange: vi.fn(),
   onViewTypeChange: vi.fn(),
+  onKanbanGroupByChange: vi.fn(),
   isSourcePanelOpen: false,
   isFilterPanelOpen: false,
   isSortPanelOpen: false,
@@ -108,6 +113,33 @@ describe("DatabaseToolbar", () => {
     expect(props.onSearchChange).toHaveBeenCalled();
     expect(props.onViewTypeChange).toHaveBeenCalled();
     expect(props.onTitleChange).toHaveBeenCalled();
+
+    cleanup();
+  });
+
+  it("shows and forwards kanban group-by selection", () => {
+    const props = {
+      ...buildProps(),
+      viewType: "kanban" as const,
+      kanbanGroupBy: "status",
+    };
+    const { container, cleanup } = render(
+      createElement(DatabaseToolbar, props),
+    );
+
+    const groupSelect = Array.from(container.querySelectorAll("select")).find((select) =>
+      select.value === "status",
+    );
+
+    act(() => {
+      if (groupSelect) {
+        groupSelect.value = "";
+      }
+      groupSelect?.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(groupSelect).toBeTruthy();
+    expect(props.onKanbanGroupByChange).toHaveBeenCalledWith(null);
 
     cleanup();
   });

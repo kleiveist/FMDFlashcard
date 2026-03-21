@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   bulkUpsertDatabaseAttribute,
+  coerceDatabaseRecordFieldValue,
   mapDatabaseFieldTypeToFrontmatterKind,
+  upsertDatabaseRecordField,
+  upsertDatabaseRecordFieldInMarkdown,
   upsertFrontmatterAttributeInMarkdown,
 } from "./frontmatter-update";
 
@@ -107,5 +110,76 @@ describe("frontmatter-update", () => {
     expect(result.skipped).toBe(0);
     expect(writes["/tmp/a.md"]).toContain("Section: IUFS");
     expect(writes["/tmp/b.md"]).toContain("Section: IUFS");
+  });
+
+  it("coerces core phase-2 inline edit values", () => {
+    expect(coerceDatabaseRecordFieldValue("number", "12.5")).toMatchObject({
+      typedValue: 12.5,
+      kind: "number",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("boolean", "true")).toMatchObject({
+      typedValue: true,
+      kind: "boolean",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("date", "2026-03-21")).toMatchObject({
+      typedValue: "2026-03-21",
+      kind: "text",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("percent", "80")).toMatchObject({
+      typedValue: "80%",
+      kind: "text",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("number", "not-a-number").error).toBe("Number value must be numeric.");
+    expect(coerceDatabaseRecordFieldValue("boolean", "nope").error).toBe("Boolean value must be true or false.");
+  });
+
+  it("upserts record field values case-insensitively without duplicating yaml header", () => {
+    const source = [
+      "---",
+      "section: old",
+      "other: keep",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const result = upsertDatabaseRecordFieldInMarkdown({
+      markdown: source,
+      key: "Section",
+      type: "text",
+      value: "new",
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.action).toBe("updated");
+    expect(result.markdown).toContain("section: new");
+    expect(result.markdown).toContain("other: keep");
+    expect((result.markdown.match(/^---$/gm) ?? []).length).toBe(2);
+  });
+
+  it("writes single-record upserts through injected io", async () => {
+    const writes: Record<string, string> = {};
+    const result = await upsertDatabaseRecordField({
+      path: "/tmp/record.md",
+      relativePath: "record.md",
+      key: "percent",
+      type: "percent",
+      value: "75",
+      io: {
+        readFile: async () => ["---", "title: Demo", "---", "Body"].join("\n"),
+        writeFile: async (path, contents) => {
+          writes[path] = contents;
+        },
+      },
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.action).toBe("added");
+    expect(result.changed).toBe(true);
+    expect(writes["/tmp/record.md"]).toMatch(/percent:\s*'?75%'?/);
+    expect((writes["/tmp/record.md"].match(/^---$/gm) ?? []).length).toBe(2);
   });
 });

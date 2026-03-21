@@ -42,6 +42,36 @@ export type BulkUpsertDatabaseAttributeResult = {
   failed: Array<{ path: string; error: string }>;
 };
 
+export type DatabaseRecordFieldDraftValue = string | number | boolean | null;
+
+export type DatabaseRecordFieldCoercionResult = {
+  kind: FrontmatterPropertyKind;
+  typedValue: FrontmatterPropertyValue;
+  addDraftValue: string;
+  error: string | null;
+};
+
+export type UpsertDatabaseRecordFieldInMarkdownResult = {
+  markdown: string;
+  action: "updated" | "added" | "skipped" | "failed";
+  changed: boolean;
+  persistedKey: string;
+  persistedValue: FrontmatterPropertyValue;
+  error: string | null;
+};
+
+export type UpsertDatabaseRecordFieldParams = {
+  path: string;
+  relativePath: string;
+  key: string;
+  type: DatabaseFieldType;
+  value: DatabaseRecordFieldDraftValue;
+  io?: {
+    readFile: (path: string) => Promise<string>;
+    writeFile: (path: string, contents: string) => Promise<void>;
+  };
+};
+
 export const mapDatabaseFieldTypeToFrontmatterKind = (
   type: DatabaseFieldType,
 ): FrontmatterPropertyKind => {
@@ -115,6 +145,202 @@ const normalizeDraftStringForAdd = (rawValue: string, kind: FrontmatterPropertyK
   return rawValue;
 };
 
+const toFiniteNumber = (value: DatabaseRecordFieldDraftValue) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toBooleanOrNull = (value: DatabaseRecordFieldDraftValue): boolean | null => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0") {
+    return false;
+  }
+  if (!normalized) {
+    return null;
+  }
+  return null;
+};
+
+const toDateStringOrNull = (value: DatabaseRecordFieldDraftValue): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const parsed = Date.parse(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return new Date(parsed).toISOString().slice(0, 10);
+};
+
+const toPercentStringOrNull = (value: DatabaseRecordFieldDraftValue): string | null => {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? `${value}%` : null;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const normalized = trimmed.endsWith("%")
+    ? trimmed.slice(0, -1).trim()
+    : trimmed;
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return `${parsed}%`;
+};
+
+const stringifyAddDraftValue = (value: FrontmatterPropertyValue): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "";
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+  return "";
+};
+
+export const coerceDatabaseRecordFieldValue = (
+  type: DatabaseFieldType,
+  value: DatabaseRecordFieldDraftValue,
+): DatabaseRecordFieldCoercionResult => {
+  if (type === "number") {
+    const numeric = toFiniteNumber(value);
+    if (numeric === null && typeof value === "string" && value.trim().length > 0) {
+      return {
+        kind: "number",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Number value must be numeric.",
+      };
+    }
+    return {
+      kind: "number",
+      typedValue: numeric,
+      addDraftValue: numeric === null ? "" : String(numeric),
+      error: null,
+    };
+  }
+
+  if (type === "boolean") {
+    const booleanValue = toBooleanOrNull(value);
+    if (booleanValue === null && typeof value === "string" && value.trim().length > 0) {
+      return {
+        kind: "boolean",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Boolean value must be true or false.",
+      };
+    }
+    return {
+      kind: "boolean",
+      typedValue: booleanValue,
+      addDraftValue: booleanValue === null ? "" : booleanValue ? "true" : "false",
+      error: null,
+    };
+  }
+
+  if (type === "date") {
+    const dateValue = toDateStringOrNull(value);
+    if (value !== null && typeof value === "string" && value.trim().length > 0 && !dateValue) {
+      return {
+        kind: "text",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Date value must be a valid date.",
+      };
+    }
+    return {
+      kind: "text",
+      typedValue: dateValue,
+      addDraftValue: dateValue ?? "",
+      error: null,
+    };
+  }
+
+  if (type === "percent") {
+    const percent = toPercentStringOrNull(value);
+    if (value !== null && (typeof value !== "string" || value.trim().length > 0) && !percent) {
+      return {
+        kind: "text",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Percent value must be numeric.",
+      };
+    }
+    return {
+      kind: "text",
+      typedValue: percent,
+      addDraftValue: percent ?? "",
+      error: null,
+    };
+  }
+
+  if (type === "link") {
+    const raw = typeof value === "string" ? value.trim() : "";
+    const normalized = raw ? normalizeWikilinkValue(raw) : null;
+    return {
+      kind: "link",
+      typedValue: normalized,
+      addDraftValue: normalized ?? "",
+      error: null,
+    };
+  }
+
+  const text = value === null
+    ? null
+    : typeof value === "string"
+    ? value
+    : String(value);
+  return {
+    kind: "text",
+    typedValue: text,
+    addDraftValue: stringifyAddDraftValue(text),
+    error: null,
+  };
+};
+
 export const upsertFrontmatterAttributeInMarkdown = ({
   markdown,
   key,
@@ -185,9 +411,107 @@ export const upsertFrontmatterAttributeInMarkdown = ({
   };
 };
 
+export const upsertDatabaseRecordFieldInMarkdown = ({
+  markdown,
+  key,
+  type,
+  value,
+}: {
+  markdown: string;
+  key: string;
+  type: DatabaseFieldType;
+  value: DatabaseRecordFieldDraftValue;
+}): UpsertDatabaseRecordFieldInMarkdownResult => {
+  const nextKey = key.trim();
+  if (!nextKey) {
+    return {
+      markdown,
+      action: "failed",
+      changed: false,
+      persistedKey: key,
+      persistedValue: null,
+      error: "Attribute key is required.",
+    };
+  }
+
+  const coercion = coerceDatabaseRecordFieldValue(type, value);
+  if (coercion.error) {
+    return {
+      markdown,
+      action: "failed",
+      changed: false,
+      persistedKey: nextKey,
+      persistedValue: null,
+      error: coercion.error,
+    };
+  }
+
+  const parsed = parseFrontmatterDocument(markdown);
+  const existing = parsed.properties.find(
+    (property) => property.key.trim().toLowerCase() === nextKey.toLowerCase(),
+  );
+
+  if (existing) {
+    const updated = updateFrontmatterProperty({
+      markdown,
+      key: existing.key,
+      kind: coercion.kind,
+      value: coercion.typedValue,
+    });
+    return {
+      markdown: updated.markdown,
+      action: updated.error ? "failed" : "updated",
+      changed: !updated.error && updated.markdown !== markdown,
+      persistedKey: existing.key,
+      persistedValue: coercion.typedValue,
+      error: updated.error,
+    };
+  }
+
+  const added = addFrontmatterProperty({
+    markdown,
+    key: nextKey,
+    value: coercion.addDraftValue,
+    kind: coercion.kind,
+  });
+  return {
+    markdown: added.markdown,
+    action: added.error ? "failed" : "added",
+    changed: !added.error && added.markdown !== markdown,
+    persistedKey: nextKey,
+    persistedValue: coercion.typedValue,
+    error: added.error,
+  };
+};
+
 const defaultReadFile = async (path: string) => invoke<string>("read_text_file", { path });
 const defaultWriteFile = async (path: string, contents: string) =>
   invoke<void>("write_text_file", { path, contents });
+
+export const upsertDatabaseRecordField = async (
+  params: UpsertDatabaseRecordFieldParams,
+) => {
+  const readFile = params.io?.readFile ?? defaultReadFile;
+  const writeFile = params.io?.writeFile ?? defaultWriteFile;
+
+  const source = await readFile(params.path);
+  const result = upsertDatabaseRecordFieldInMarkdown({
+    markdown: source,
+    key: params.key,
+    type: params.type,
+    value: params.value,
+  });
+
+  if (!result.error && result.changed) {
+    await writeFile(params.path, result.markdown);
+  }
+
+  return {
+    ...result,
+    path: params.path,
+    relativePath: params.relativePath,
+  };
+};
 
 export const bulkUpsertDatabaseAttribute = async (
   params: BulkUpsertDatabaseAttributeParams,

@@ -32,13 +32,17 @@ import {
   type DatabaseFieldDefinition,
   type DatabaseFieldType,
   type DatabaseFilterGroup,
+  type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
   type DatabaseSourceSpec,
   type DatabaseSortRule,
+  type DatabaseViewSpec,
   type DatabaseViewType,
 } from "./database-types";
 import {
   bulkUpsertDatabaseAttribute,
+  coerceDatabaseRecordFieldValue,
+  upsertDatabaseRecordField,
 } from "./frontmatter-update";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
 import { DatabasePropertiesPanel } from "./ui/database-properties-panel";
@@ -63,6 +67,12 @@ type DatabaseBlockOpenPanels = {
   properties: boolean;
   filter: boolean;
   sort: boolean;
+};
+
+type DatabaseCellEditState = {
+  recordId: string;
+  fieldKey: string;
+  draftValue: string | boolean;
 };
 
 const getFolderLabel = (source: ReturnType<typeof parseDatabaseBlockConfigFromRaw>["config"]["source"]) => {
@@ -126,6 +136,74 @@ const appendVisibleColumnIfMissing = (columns: string[], key: string) =>
     ? columns
     : [...columns, key];
 
+const buildCellMutationKey = (recordId: string, fieldKey: string) =>
+  `${recordId}::${toLower(fieldKey)}`;
+
+const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseNormalizedFieldValue => {
+  if (field in record.normalizedFields) {
+    return record.normalizedFields[field] ?? null;
+  }
+  const normalizedField = toLower(field);
+  const matchedKey = Object.keys(record.normalizedFields)
+    .find((key) => toLower(key) === normalizedField);
+  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+};
+
+const resolveCellDraftValue = (
+  attribute: DatabaseAttributeMeta,
+  value: DatabaseNormalizedFieldValue,
+): string | boolean => {
+  if (attribute.type === "boolean") {
+    return typeof value === "boolean" ? value : false;
+  }
+  if (attribute.type === "percent") {
+    if (value && typeof value === "object" && "value" in value) {
+      const numeric = Number(value.value ?? Number.NaN);
+      return Number.isFinite(numeric) ? String(numeric) : "";
+    }
+  }
+  if (attribute.type === "date" || attribute.type === "datetime") {
+    if (value instanceof Date) {
+      return value.toISOString().slice(0, 10);
+    }
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry)).join(", ");
+  }
+  if (value && typeof value === "object" && "raw" in value) {
+    return String(value.raw ?? "");
+  }
+  return "";
+};
+
+const upsertFrontmatterFieldCaseInsensitive = (
+  frontmatter: Record<string, unknown>,
+  key: string,
+  value: unknown,
+) => {
+  const existingKey = Object.keys(frontmatter)
+    .find((entry) => toLower(entry) === toLower(key));
+  if (existingKey) {
+    return {
+      ...frontmatter,
+      [existingKey]: value,
+    };
+  }
+  return {
+    ...frontmatter,
+    [key]: value,
+  };
+};
+
 const getFlatFilterRules = (group: DatabaseFilterGroup): Array<{ groupId: string; ruleId: string; field: string; op: string; value?: unknown; valueTo?: unknown }> => {
   const entries: Array<{ groupId: string; ruleId: string; field: string; op: string; value?: unknown; valueTo?: unknown }> = [];
   group.rules.forEach((entry) => {
@@ -160,7 +238,7 @@ const pickKanbanGroupAttribute = (
   preferredKey: string | null | undefined,
 ) => {
   if (preferredKey) {
-    const preferred = attributes.find((attribute) => attribute.key === preferredKey) ?? null;
+    const preferred = attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
     if (preferred && preferred.viewCompatibility.supportsKanbanGrouping) {
       return preferred;
     }
@@ -223,9 +301,13 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [viewType, setViewType] = useState<DatabaseViewType>(parsed.config.view.type);
+  const [kanbanGroupBy, setKanbanGroupBy] = useState<string | null>(parsed.config.view.groupBy ?? null);
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(parsed.config.columns);
   const [activeFilters, setActiveFilters] = useState<DatabaseFilterGroup>(cloneFilterGroup(parsed.config.filters));
   const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(cloneSortRules(parsed.config.sort));
+  const [activeCellEdit, setActiveCellEdit] = useState<DatabaseCellEditState | null>(null);
+  const [pendingCellMutations, setPendingCellMutations] = useState<string[]>([]);
+  const [pendingRecordMutations, setPendingRecordMutations] = useState<string[]>([]);
   const [records, setRecords] = useState<DatabaseRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -234,10 +316,12 @@ export const MarkdownHybridDatabaseBlock = ({
   const [isMutatingFrontmatter, setIsMutatingFrontmatter] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [panels, setPanels] = useState<DatabaseBlockOpenPanels>(defaultPanels);
+  const rollbackRecordSnapshotRef = useRef<Map<string, DatabaseRecord>>(new Map());
   const titleRef = useRef(title);
   const sourceRef = useRef(source);
   const fieldDefinitionsRef = useRef(fieldDefinitions);
   const viewTypeRef = useRef(viewType);
+  const kanbanGroupByRef = useRef<string | null>(kanbanGroupBy);
   const visibleColumnKeysRef = useRef(visibleColumnKeys);
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
@@ -251,9 +335,14 @@ export const MarkdownHybridDatabaseBlock = ({
     setSource(cloneSourceSpec(parsed.config.source));
     setFieldDefinitions(cloneFieldDefinitions(parsed.config.fields ?? []));
     setViewType(parsed.config.view.type);
+    setKanbanGroupBy(parsed.config.view.groupBy ?? null);
     setVisibleColumnKeys(parsed.config.columns);
     setActiveFilters(cloneFilterGroup(parsed.config.filters));
     setActiveSorts(cloneSortRules(parsed.config.sort));
+    setActiveCellEdit(null);
+    setPendingCellMutations([]);
+    setPendingRecordMutations([]);
+    rollbackRecordSnapshotRef.current.clear();
   }, [parsed.config]);
 
   useEffect(() => {
@@ -261,10 +350,11 @@ export const MarkdownHybridDatabaseBlock = ({
     sourceRef.current = source;
     fieldDefinitionsRef.current = fieldDefinitions;
     viewTypeRef.current = viewType;
+    kanbanGroupByRef.current = kanbanGroupBy;
     visibleColumnKeysRef.current = visibleColumnKeys;
     activeFiltersRef.current = activeFilters;
     activeSortsRef.current = activeSorts;
-  }, [activeFilters, activeSorts, fieldDefinitions, source, title, viewType, visibleColumnKeys]);
+  }, [activeFilters, activeSorts, fieldDefinitions, kanbanGroupBy, source, title, viewType, visibleColumnKeys]);
 
   useEffect(
     () => () => {
@@ -393,6 +483,7 @@ export const MarkdownHybridDatabaseBlock = ({
     source?: DatabaseSourceSpec;
     fields?: DatabaseFieldDefinition[];
     viewType?: DatabaseViewType;
+    view?: Partial<DatabaseViewSpec>;
     visibleColumns?: string[];
     filters?: DatabaseFilterGroup;
     sorts?: DatabaseSortRule[];
@@ -401,6 +492,16 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextSource = cloneSourceSpec(next.source ?? sourceRef.current);
     const nextFields = cloneFieldDefinitions(next.fields ?? fieldDefinitionsRef.current);
     const nextViewType = next.viewType ?? viewTypeRef.current;
+    const nextView: DatabaseViewSpec = {
+      ...parsed.config.view,
+      type: nextViewType,
+      groupBy: next.view?.groupBy ?? kanbanGroupByRef.current ?? null,
+      timelineStartField: next.view?.timelineStartField ?? parsed.config.view.timelineStartField ?? null,
+      timelineEndField: next.view?.timelineEndField ?? parsed.config.view.timelineEndField ?? null,
+      pieGroupField: next.view?.pieGroupField ?? parsed.config.view.pieGroupField ?? null,
+      pieAggregate: next.view?.pieAggregate ?? parsed.config.view.pieAggregate ?? "count",
+      pieAggregateField: next.view?.pieAggregateField ?? parsed.config.view.pieAggregateField ?? null,
+    };
     const nextVisibleColumns = next.visibleColumns ?? visibleColumnKeysRef.current;
     const nextFilters = next.filters ?? activeFiltersRef.current;
     const nextSorts = next.sorts ?? activeSortsRef.current;
@@ -410,10 +511,7 @@ export const MarkdownHybridDatabaseBlock = ({
       title: nextTitle,
       source: nextSource,
       fields: nextFields,
-      view: {
-        ...parsed.config.view,
-        type: nextViewType,
-      },
+      view: nextView,
       columns: nextVisibleColumns,
       filters: cloneFilterGroup(nextFilters),
       sort: cloneSortRules(nextSorts),
@@ -432,6 +530,7 @@ export const MarkdownHybridDatabaseBlock = ({
         view: {
           ...parsed.config.view,
           type: viewType,
+          groupBy: kanbanGroupBy,
         },
         columns: visibleColumnKeys,
         filters: activeFilters,
@@ -457,6 +556,7 @@ export const MarkdownHybridDatabaseBlock = ({
       source,
       sourceResolution.warning,
       title,
+      kanbanGroupBy,
       viewType,
       visibleColumnKeys,
     ],
@@ -523,6 +623,135 @@ export const MarkdownHybridDatabaseBlock = ({
     persistConfig({ viewType: nextType });
   };
 
+  const handleKanbanGroupByChange = (nextGroupBy: string | null) => {
+    setKanbanGroupBy(nextGroupBy);
+    persistConfig({
+      view: {
+        groupBy: nextGroupBy,
+      },
+    });
+  };
+
+  const addPendingCellMutation = (mutationKey: string) => {
+    setPendingCellMutations((previous) =>
+      previous.includes(mutationKey) ? previous : [...previous, mutationKey]);
+  };
+
+  const removePendingCellMutation = (mutationKey: string) => {
+    setPendingCellMutations((previous) => previous.filter((entry) => entry !== mutationKey));
+  };
+
+  const addPendingRecordMutation = (recordId: string) => {
+    setPendingRecordMutations((previous) =>
+      previous.includes(recordId) ? previous : [...previous, recordId]);
+  };
+
+  const removePendingRecordMutation = (recordId: string) => {
+    setPendingRecordMutations((previous) => previous.filter((entry) => entry !== recordId));
+  };
+
+  const applyOptimisticRecordFieldValue = (
+    record: DatabaseRecord,
+    fieldKey: string,
+    value: unknown,
+  ): DatabaseRecord => {
+    const nextFrontmatter = upsertFrontmatterFieldCaseInsensitive(record.frontmatter, fieldKey, value);
+    return buildNormalizedRecord({
+      fileId: record.fileId,
+      filePath: record.filePath,
+      relativePath: record.relativePath,
+      frontmatter: nextFrontmatter,
+      systemFields: record.systemFields,
+    });
+  };
+
+  const commitRecordFieldMutation = useCallback(
+    async ({
+      record,
+      attribute,
+      draftValue,
+      clearEditWhenDone,
+    }: {
+      record: DatabaseRecord;
+      attribute: DatabaseAttributeMeta;
+      draftValue: string | boolean;
+      clearEditWhenDone: boolean;
+    }) => {
+      if (!parsed.config.options.editable || !attribute.editable) {
+        return;
+      }
+
+      const mutationKey = buildCellMutationKey(record.fileId, attribute.key);
+      if (pendingCellMutations.includes(mutationKey)) {
+        return;
+      }
+
+      const coercion = coerceDatabaseRecordFieldValue(attribute.type, draftValue);
+      if (coercion.error) {
+        setOperationError(coercion.error);
+        return;
+      }
+
+      const previousRecord = records.find((entry) => entry.fileId === record.fileId);
+      if (!previousRecord) {
+        return;
+      }
+
+      rollbackRecordSnapshotRef.current.set(mutationKey, previousRecord);
+      const optimisticRecord = applyOptimisticRecordFieldValue(
+        previousRecord,
+        attribute.key,
+        coercion.typedValue,
+      );
+      setRecords((previous) =>
+        previous.map((entry) =>
+          entry.fileId === record.fileId
+            ? optimisticRecord
+            : entry));
+
+      addPendingCellMutation(mutationKey);
+      addPendingRecordMutation(record.fileId);
+      setOperationError(null);
+      if (clearEditWhenDone) {
+        setActiveCellEdit((previous) =>
+          previous && previous.recordId === record.fileId && toLower(previous.fieldKey) === toLower(attribute.key)
+            ? null
+            : previous);
+      }
+
+      try {
+        const result = await upsertDatabaseRecordField({
+          path: previousRecord.filePath,
+          relativePath: previousRecord.relativePath,
+          key: attribute.key,
+          type: attribute.type,
+          value: draftValue,
+        });
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        fileCacheRef.current.set(previousRecord.filePath, result.markdown);
+        setOperationState("Wert gespeichert.");
+      } catch (error) {
+        const rollback = rollbackRecordSnapshotRef.current.get(mutationKey);
+        if (rollback) {
+          setRecords((previous) =>
+            previous.map((entry) =>
+              entry.fileId === rollback.fileId
+                ? rollback
+                : entry));
+        }
+        setOperationState(null);
+        setOperationError(error instanceof Error ? error.message : "Wert konnte nicht gespeichert werden.");
+      } finally {
+        rollbackRecordSnapshotRef.current.delete(mutationKey);
+        removePendingCellMutation(mutationKey);
+        removePendingRecordMutation(record.fileId);
+      }
+    },
+    [parsed.config.options.editable, pendingCellMutations, records],
+  );
+
   const handleToggleVisibility = (key: string, visible: boolean) => {
     const nextColumns = visible
       ? appendVisibleColumnIfMissing(visibleColumnKeys, key)
@@ -568,6 +797,65 @@ export const MarkdownHybridDatabaseBlock = ({
   const handleSortChange = (nextSorts: DatabaseSortRule[]) => {
     setActiveSorts(nextSorts);
     persistConfig({ sorts: nextSorts });
+  };
+
+  const handleStartCellEdit = (record: DatabaseRecord, attribute: DatabaseAttributeMeta) => {
+    if (!parsed.config.options.editable || !attribute.editable) {
+      return;
+    }
+    const value = getRecordValueByField(record, attribute.key);
+    setActiveCellEdit({
+      recordId: record.fileId,
+      fieldKey: attribute.key,
+      draftValue: resolveCellDraftValue(attribute, value),
+    });
+  };
+
+  const handleCellEditDraftChange = (nextDraft: string | boolean) => {
+    setActiveCellEdit((previous) =>
+      previous
+        ? {
+          ...previous,
+          draftValue: nextDraft,
+        }
+        : previous);
+  };
+
+  const handleCancelCellEdit = () => {
+    setActiveCellEdit(null);
+  };
+
+  const handleCommitCellEdit = async (
+    record: DatabaseRecord,
+    attribute: DatabaseAttributeMeta,
+    draftOverride?: string | boolean,
+  ) => {
+    const activeDraft = draftOverride ?? activeCellEdit?.draftValue;
+    if (typeof activeDraft === "undefined") {
+      return;
+    }
+    await commitRecordFieldMutation({
+      record,
+      attribute,
+      draftValue: activeDraft,
+      clearEditWhenDone: true,
+    });
+  };
+
+  const handleMoveKanbanRecord = async (
+    record: DatabaseRecord,
+    nextGroupValue: string,
+  ) => {
+    const groupAttribute = pickKanbanGroupAttribute(store.attributeRegistry, kanbanGroupBy);
+    if (!groupAttribute) {
+      return;
+    }
+    await commitRecordFieldMutation({
+      record,
+      attribute: groupAttribute,
+      draftValue: nextGroupValue,
+      clearEditWhenDone: false,
+    });
   };
 
   const handleCreateFormulaField = ({
@@ -685,7 +973,16 @@ export const MarkdownHybridDatabaseBlock = ({
 
   const kanbanGroupAttribute = pickKanbanGroupAttribute(
     store.attributeRegistry,
-    parsed.config.view.groupBy,
+    kanbanGroupBy,
+  );
+  const kanbanGroupByOptions = useMemo(
+    () => store.attributeRegistry
+      .filter((attribute) => attribute.viewCompatibility.supportsKanbanGrouping)
+      .map((attribute) => ({
+        key: attribute.key,
+        label: attribute.label || attribute.key,
+      })),
+    [store.attributeRegistry],
   );
   const timelineStartAttribute = pickTimelineAttribute(
     store.attributeRegistry,
@@ -709,12 +1006,15 @@ export const MarkdownHybridDatabaseBlock = ({
             title={title}
             sourceLabel={getFolderLabel(source)}
             viewType={viewType}
+            kanbanGroupBy={kanbanGroupBy}
+            kanbanGroupByOptions={kanbanGroupByOptions}
             searchQuery={searchQuery}
             showSearch={parsed.config.options.showSearch}
             onTitleChange={handleTitleChange}
             onTitleBlur={handleTitleBlur}
             onSearchChange={setSearchQuery}
             onViewTypeChange={handleViewChange}
+            onKanbanGroupByChange={handleKanbanGroupByChange}
             isSourcePanelOpen={panels.source}
             isFilterPanelOpen={panels.filter}
             isSortPanelOpen={panels.sort}
@@ -804,12 +1104,22 @@ export const MarkdownHybridDatabaseBlock = ({
           <DatabaseTableView
             records={store.visibleRecords}
             columns={visibleColumns}
+            editable={parsed.config.options.editable}
+            activeEditCell={activeCellEdit}
+            pendingCellMutations={pendingCellMutations}
             onOpenRecord={openRecord}
+            onStartCellEdit={handleStartCellEdit}
+            onEditCellDraftChange={handleCellEditDraftChange}
+            onCommitCellEdit={handleCommitCellEdit}
+            onCancelCellEdit={handleCancelCellEdit}
           />
         ) : viewType === "kanban" ? (
           <DatabaseKanbanView
             records={store.visibleRecords}
             groupAttribute={kanbanGroupAttribute}
+            pendingRecordIds={pendingRecordMutations}
+            onMoveRecord={handleMoveKanbanRecord}
+            onOpenRecord={openRecord}
           />
         ) : viewType === "gantt" ? (
           <DatabaseGanttView
