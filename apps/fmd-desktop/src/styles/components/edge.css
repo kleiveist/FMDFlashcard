@@ -335,3 +335,47 @@
 :root[data-design-mode="edge"] :is(.label, .chip, .helper-text) {
   letter-spacing: 0.08em;
 }
+
+:root[data-design-mode="edge"] .database-block {
+  --db-control-height: 30px;
+  --db-cell-padding-x: 8px;
+  --db-radius-block: 0;
+  --db-radius-control: 0;
+  --db-radius-table: 0;
+  --db-radius-pill: 0;
+  --db-border: var(--ui-border-subtle);
+  --db-border-strong: var(--ui-border-hover);
+  --db-surface-base: transparent;
+  --db-surface-raised: color-mix(in srgb, var(--panel) 90%, transparent);
+  --db-surface-hover: var(--ui-nav-button-hover-bg);
+  --db-shadow-block: none;
+  --db-shadow-panel: none;
+}
+
+:root[data-design-mode="edge"] :is(
+    .database-block-title-input,
+    .database-block-view-select,
+    .database-block-toolbar-button,
+    .database-block-search,
+    .database-block-panel select,
+    .database-block-panel input:not([type="checkbox"]):not([type="radio"])
+  ) {
+  border-radius: 0;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+:root[data-design-mode="edge"] :is(
+    .database-block-toolbar-button:hover,
+    .database-block-toolbar-button.is-active
+  ) {
+  border-color: transparent;
+}
+
+:root[data-design-mode="edge"] .database-block-panel-layer.is-open {
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
+}
+
+:root[data-design-mode="edge"] .database-block-panel input[type="checkbox"] {
+  border-radius: 0;
+}

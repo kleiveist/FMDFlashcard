@@ -91,54 +91,58 @@ export const DatabaseToolbar = ({
         </button>
       </div>
       <div className="database-block-toolbar-actions">
-        <label className="database-block-view-select-wrap">
-          <span className="database-block-toolbar-label">View</span>
-          <select
-            className="database-block-view-select"
-            value={viewType}
-            onChange={handleViewChange}
-          >
-            {viewOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          className={`database-block-toolbar-button${isSortPanelOpen ? " is-active" : ""}`}
-          onClick={onToggleSortPanel}
-          aria-expanded={isSortPanelOpen}
-          data-md-block-control="true"
-        >
-          Sortieren
-        </button>
-        <button
-          type="button"
-          className={`database-block-toolbar-button${isFilterPanelOpen ? " is-active" : ""}`}
-          onClick={onToggleFilterPanel}
-          aria-expanded={isFilterPanelOpen}
-          data-md-block-control="true"
-        >
-          Filtern
-        </button>
-        <button
-          type="button"
-          className={`database-block-toolbar-button${isPropertiesPanelOpen ? " is-active" : ""}`}
-          onClick={onTogglePropertiesPanel}
-          aria-expanded={isPropertiesPanelOpen}
-          data-md-block-control="true"
-        >
-          Eigenschaften
-        </button>
-        {showSearch ? (
-          <input
-            type="search"
-            className="database-block-search"
-            value={searchQuery}
-            placeholder="Suche"
-            onChange={(event) => onSearchChange(event.target.value)}
+        <div className="database-block-toolbar-action-buttons">
+          <label className="database-block-view-select-wrap">
+            <span className="database-block-toolbar-label">View</span>
+            <select
+              className="database-block-view-select"
+              value={viewType}
+              onChange={handleViewChange}
+            >
+              {viewOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className={`database-block-toolbar-button${isSortPanelOpen ? " is-active" : ""}`}
+            onClick={onToggleSortPanel}
+            aria-expanded={isSortPanelOpen}
             data-md-block-control="true"
-          />
+          >
+            Sortieren
+          </button>
+          <button
+            type="button"
+            className={`database-block-toolbar-button${isFilterPanelOpen ? " is-active" : ""}`}
+            onClick={onToggleFilterPanel}
+            aria-expanded={isFilterPanelOpen}
+            data-md-block-control="true"
+          >
+            Filtern
+          </button>
+          <button
+            type="button"
+            className={`database-block-toolbar-button${isPropertiesPanelOpen ? " is-active" : ""}`}
+            onClick={onTogglePropertiesPanel}
+            aria-expanded={isPropertiesPanelOpen}
+            data-md-block-control="true"
+          >
+            Eigenschaften
+          </button>
+        </div>
+        {showSearch ? (
+          <div className="database-block-toolbar-search-wrap">
+            <input
+              type="search"
+              className="database-block-search"
+              value={searchQuery}
+              placeholder="Suche"
+              onChange={(event) => onSearchChange(event.target.value)}
+              data-md-block-control="true"
+            />
+          </div>
         ) : null}
       </div>
     </header>

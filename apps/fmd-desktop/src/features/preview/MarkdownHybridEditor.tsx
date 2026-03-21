@@ -2103,7 +2103,10 @@ type StableRenderKeyToken = {
 
 // Content-derived signatures remount active block editors on each keystroke and
 // can trigger blur/exit loops. Use a structural block identity instead.
-const getBlockSignature = (block: MarkdownBlock) => block.id;
+const getBlockSignature = (block: MarkdownBlock) =>
+  block.kind === "database-block"
+    ? `${block.kind}:${block.startLine}`
+    : block.id;
 
 const assignStableRenderKeys = (
   blocks: MarkdownBlock[],
@@ -2160,6 +2163,11 @@ const assignStableRenderKeys = (
   }
 
   return { keys, tokens: nextTokens };
+};
+
+export const __markdownHybridEditorTestables = {
+  getBlockSignature,
+  assignStableRenderKeys,
 };
 
 const orderedListLikeLinePattern = /^\s*\d+(?:\.|\)|\.\))\s+\S/;

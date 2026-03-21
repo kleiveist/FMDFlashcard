@@ -164,7 +164,7 @@ const compareNumber = (
   left: number,
   right: number,
   op: string,
-  rightBoundary?: number,
+  rightBoundary: number = Number.NaN,
 ) => {
   if (!Number.isFinite(left) || !Number.isFinite(right)) {
     return false;

@@ -289,17 +289,25 @@ export const MarkdownHybridDatabaseBlock = ({
   }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handlePointerDownOutside = (event: PointerEvent) => {
       if (!rootRef.current) {
         return;
       }
-      if (event.target instanceof Node && !rootRef.current.contains(event.target)) {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      const composedPath = typeof event.composedPath === "function"
+        ? event.composedPath()
+        : [];
+      const clickedInside = rootRef.current.contains(target) || composedPath.includes(rootRef.current);
+      if (!clickedInside) {
         setPanels(defaultPanels);
       }
     };
-    window.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("pointerdown", handlePointerDownOutside);
     return () => {
-      window.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("pointerdown", handlePointerDownOutside);
     };
   }, []);
 
@@ -462,12 +470,12 @@ export const MarkdownHybridDatabaseBlock = ({
   );
 
   const setPanel = (panel: keyof DatabaseBlockOpenPanels) => {
-    setPanels((current) => ({
-      source: panel === "source" ? !current.source : false,
-      properties: panel === "properties" ? !current.properties : false,
-      filter: panel === "filter" ? !current.filter : false,
-      sort: panel === "sort" ? !current.sort : false,
-    }));
+    setPanels({
+      source: panel === "source",
+      properties: panel === "properties",
+      filter: panel === "filter",
+      sort: panel === "sort",
+    });
   };
 
   const openRecord = (record: DatabaseRecord) => {
@@ -691,93 +699,104 @@ export const MarkdownHybridDatabaseBlock = ({
     store.attributeRegistry,
     parsed.config.view.pieGroupField,
   );
+  const hasOpenPanel = panels.source || panels.properties || panels.filter || panels.sort;
 
   return (
     <section className="database-block" ref={rootRef} data-md-block-control="true">
-      {parsed.config.options.showToolbar ? (
-        <DatabaseToolbar
-          title={title}
-          sourceLabel={getFolderLabel(source)}
-          viewType={viewType}
-          searchQuery={searchQuery}
-          showSearch={parsed.config.options.showSearch}
-          onTitleChange={handleTitleChange}
-          onTitleBlur={handleTitleBlur}
-          onSearchChange={setSearchQuery}
-          onViewTypeChange={handleViewChange}
-          isSourcePanelOpen={panels.source}
-          isFilterPanelOpen={panels.filter}
-          isSortPanelOpen={panels.sort}
-          isPropertiesPanelOpen={panels.properties}
-          onToggleSourcePanel={() => setPanel("source")}
-          onToggleFilterPanel={() => setPanel("filter")}
-          onToggleSortPanel={() => setPanel("sort")}
-          onTogglePropertiesPanel={() => setPanel("properties")}
-        />
-      ) : null}
+      <div className="database-block-header" data-md-block-control="true">
+        {parsed.config.options.showToolbar ? (
+          <DatabaseToolbar
+            title={title}
+            sourceLabel={getFolderLabel(source)}
+            viewType={viewType}
+            searchQuery={searchQuery}
+            showSearch={parsed.config.options.showSearch}
+            onTitleChange={handleTitleChange}
+            onTitleBlur={handleTitleBlur}
+            onSearchChange={setSearchQuery}
+            onViewTypeChange={handleViewChange}
+            isSourcePanelOpen={panels.source}
+            isFilterPanelOpen={panels.filter}
+            isSortPanelOpen={panels.sort}
+            isPropertiesPanelOpen={panels.properties}
+            onToggleSourcePanel={() => setPanel("source")}
+            onToggleFilterPanel={() => setPanel("filter")}
+            onToggleSortPanel={() => setPanel("sort")}
+            onTogglePropertiesPanel={() => setPanel("properties")}
+          />
+        ) : null}
 
-      {flatFilterRules.length > 0 ? (
-        <div className="database-block-filter-chips" data-md-block-control="true">
-          {flatFilterRules.map((entry) => (
+        {flatFilterRules.length > 0 ? (
+          <div className="database-block-filter-chips" data-md-block-control="true">
+            {flatFilterRules.map((entry) => (
+              <button
+                key={entry.ruleId}
+                type="button"
+                className="database-block-filter-chip"
+                onClick={() => handleRemoveFilterRule(entry.ruleId)}
+                title="Filter entfernen"
+              >
+                {`${entry.field} ${entry.op}${typeof entry.value !== "undefined" ? ` ${String(entry.value)}` : ""}`}
+              </button>
+            ))}
             <button
-              key={entry.ruleId}
               type="button"
-              className="database-block-filter-chip"
-              onClick={() => handleRemoveFilterRule(entry.ruleId)}
-              title="Filter entfernen"
+              className="database-block-filter-chip database-block-filter-chip-clear"
+              onClick={handleClearAllFilters}
             >
-              {`${entry.field} ${entry.op}${typeof entry.value !== "undefined" ? ` ${String(entry.value)}` : ""}`}
+              Alle Filter loeschen
             </button>
-          ))}
-          <button
-            type="button"
-            className="database-block-filter-chip database-block-filter-chip-clear"
-            onClick={handleClearAllFilters}
-          >
-            Alle Filter loeschen
-          </button>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
 
-      <div className="database-block-panel-layer" data-md-block-control="true">
-        {panels.source ? (
-          <DatabaseSourcePanel
-            source={source}
-            availableFolders={availableFolders}
-            onChange={handleSourceChange}
-            onClose={() => setPanels(defaultPanels)}
-          />
-        ) : null}
-        {panels.properties ? (
-          <DatabasePropertiesPanel
-            attributes={store.attributeRegistry}
-            visibleColumnKeys={visibleColumnKeys}
-            onToggleVisibility={handleToggleVisibility}
-            onReorderVisibleColumns={handleReorderVisibleColumns}
-            onHideAll={handleHideAllColumns}
-            onRestoreDefault={handleRestoreDefaultColumns}
-            onCreateAttribute={handleCreateAttribute}
-            onCreateFormula={handleCreateFormulaField}
-            isMutatingFrontmatter={isMutatingFrontmatter}
-            onClose={() => setPanels(defaultPanels)}
-          />
-        ) : null}
-        {panels.filter ? (
-          <DatabaseFilterPanel
-            attributes={store.attributeRegistry}
-            filterGroup={activeFilters}
-            onChange={handleFilterChange}
-            onClose={() => setPanels(defaultPanels)}
-          />
-        ) : null}
-        {panels.sort ? (
-          <DatabaseSortPanel
-            attributes={store.attributeRegistry}
-            sortRules={activeSorts}
-            onChange={handleSortChange}
-            onClose={() => setPanels(defaultPanels)}
-          />
-        ) : null}
+        <div
+          className={`database-block-panel-layer${hasOpenPanel ? " is-open" : ""}`}
+          data-md-block-control="true"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setPanels(defaultPanels);
+            }
+          }}
+        >
+          {panels.source ? (
+            <DatabaseSourcePanel
+              source={source}
+              availableFolders={availableFolders}
+              onChange={handleSourceChange}
+              onClose={() => setPanels(defaultPanels)}
+            />
+          ) : null}
+          {panels.properties ? (
+            <DatabasePropertiesPanel
+              attributes={store.attributeRegistry}
+              visibleColumnKeys={visibleColumnKeys}
+              onToggleVisibility={handleToggleVisibility}
+              onReorderVisibleColumns={handleReorderVisibleColumns}
+              onHideAll={handleHideAllColumns}
+              onRestoreDefault={handleRestoreDefaultColumns}
+              onCreateAttribute={handleCreateAttribute}
+              onCreateFormula={handleCreateFormulaField}
+              isMutatingFrontmatter={isMutatingFrontmatter}
+              onClose={() => setPanels(defaultPanels)}
+            />
+          ) : null}
+          {panels.filter ? (
+            <DatabaseFilterPanel
+              attributes={store.attributeRegistry}
+              filterGroup={activeFilters}
+              onChange={handleFilterChange}
+              onClose={() => setPanels(defaultPanels)}
+            />
+          ) : null}
+          {panels.sort ? (
+            <DatabaseSortPanel
+              attributes={store.attributeRegistry}
+              sortRules={activeSorts}
+              onChange={handleSortChange}
+              onClose={() => setPanels(defaultPanels)}
+            />
+          ) : null}
+        </div>
       </div>
 
       <div className="database-block-content">
