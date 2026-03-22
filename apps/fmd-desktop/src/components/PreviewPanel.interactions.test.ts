@@ -517,6 +517,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     act(() => {
       sourceTab.dispatchEvent(dragStart);
+    });
+    await flushAsyncInteraction();
+
+    act(() => {
       targetTab.dispatchEvent(drop);
     });
     await flushAsyncInteraction();
