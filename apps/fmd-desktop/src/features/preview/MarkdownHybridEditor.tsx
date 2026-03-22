@@ -90,11 +90,16 @@ import {
 } from "./MarkdownHybridTableBlock";
 import { MarkdownHybridDatabaseBlock } from "./database/database-block";
 import {
+  createDefaultDatabaseBlockConfig,
+  serializeDatabaseBlockConfig,
+} from "./database/database-block-parser";
+import {
   FloatingInlineFormattingToolbar,
   type InlineFormattingToolbarAnchor,
   type InlineFormattingToolbarLinkState,
   type InlineFormattingToolbarMenu,
 } from "./FloatingInlineFormattingToolbar";
+import { parseFrontmatterDocument } from "./frontmatter";
 import {
   INLINE_FORMATTING_WRAPPERS,
   applyInlineMarkdownLink,
@@ -233,6 +238,7 @@ type InsertMenuCategoryId =
   | "standard-blocks"
   | "structure"
   | "links"
+  | "database"
   | "advanced";
 
 type InsertMenuItemId = string;
@@ -265,6 +271,7 @@ type InsertMenuItem = {
     end: number;
   };
   icon?: InsertMenuIconId;
+  prependDatabaseFrontmatterHeader?: boolean;
 };
 
 type InsertMenuAdvancedVariantOption = {
@@ -321,6 +328,7 @@ type MarkdownHybridEditorProps = {
   vaultFiles?: VaultFile[];
   vaultPngAssets?: VaultPngAsset[];
   vaultPath?: string | null;
+  sourceHasFrontmatter?: boolean;
   sourceRelativePath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
   onChange: (value: string) => void;
@@ -361,10 +369,55 @@ type InternalBlockClipboardPayload = {
   blocks: ClipboardBlockEntry[];
 };
 
+const DATABASE_DEFAULT_FRONTMATTER_HEADER_TEMPLATE = [
+  "---",
+  "Section: IUFS",
+  "Rank: SE1",
+  "Projekt: IDBS01",
+  "Task: Exam",
+  "Text: Exam Lektion 7 als 10 Aufgaben",
+  "tags:",
+  "  - IDBS01-ExamL7",
+  "  - IUFS",
+  "  - SE1",
+  "  - IDBS01",
+  "  - ToDoList",
+  "link1: '[[IDBS01-ExamL7]]'",
+  "Cover: '[[Exam/IDBS01-Exam.png]]'",
+  "percent: null",
+  "Score: null",
+  "---",
+  "",
+].join("\n");
+
+const buildDatabaseInsertTemplate = (viewType: "table" | "kanban" | "gantt" | "pie") => {
+  const config = createDefaultDatabaseBlockConfig();
+  config.view = { type: viewType };
+  config.columns = ["Dateiname"];
+  return serializeDatabaseBlockConfig(config);
+};
+
+const prependDatabaseFrontmatterHeaderIfMissing = (
+  markdown: string,
+  sourceHasFrontmatter: boolean,
+) => {
+  if (sourceHasFrontmatter) {
+    return markdown;
+  }
+  const parsed = parseFrontmatterDocument(markdown);
+  if (parsed.hasFrontmatter) {
+    return markdown;
+  }
+  const hasBom = markdown.startsWith("\uFEFF");
+  const bodyWithoutBom = hasBom ? markdown.slice(1) : markdown;
+  return `${hasBom ? "\uFEFF" : ""}${DATABASE_DEFAULT_FRONTMATTER_HEADER_TEMPLATE}${bodyWithoutBom}`;
+};
+
 const INSERT_MENU_CATEGORIES: InsertMenuCategory[] = [
   { id: "standard-blocks", label: "Standard Blocks", icon: "blocks" },
   { id: "structure", label: "Structure", icon: "table" },
   { id: "links", label: "Links", icon: "link" },
+  { id: "database", label: "Database", icon: "database" },
   { id: "advanced", label: "Advanced", icon: "sparkles" },
 ];
 
@@ -473,31 +526,6 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
       icon: "table",
       firstPlaceholder: "Column A",
     },
-    {
-      id: "database",
-      label: "Database",
-      template: [
-        "::::",
-        "title: Database",
-        "source:",
-        "  type: current-folder",
-        "view:",
-        "  type: table",
-        "fields: []",
-        "columns:",
-        "  - Dateiname",
-        "filters:",
-        "  op: and",
-        "  rules: []",
-        "sort: []",
-        "options:",
-        "  editable: false",
-        "  showSearch: true",
-        "  showToolbar: true",
-        "::::",
-      ].join("\n"),
-      icon: "database",
-    },
   ],
   links: [
     {
@@ -512,6 +540,36 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
       template: "",
       description: "Insert a standalone PNG embed block",
       icon: "page-file",
+    },
+  ],
+  database: [
+    {
+      id: "db-table",
+      label: "DB-Table",
+      template: buildDatabaseInsertTemplate("table"),
+      icon: "database",
+      prependDatabaseFrontmatterHeader: true,
+    },
+    {
+      id: "db-kanban",
+      label: "DB-Kanban",
+      template: buildDatabaseInsertTemplate("kanban"),
+      icon: "database",
+      prependDatabaseFrontmatterHeader: true,
+    },
+    {
+      id: "db-timeline",
+      label: "DB-Timeline",
+      template: buildDatabaseInsertTemplate("gantt"),
+      icon: "database",
+      prependDatabaseFrontmatterHeader: true,
+    },
+    {
+      id: "db-pie",
+      label: "DB-Pie",
+      template: buildDatabaseInsertTemplate("pie"),
+      icon: "database",
+      prependDatabaseFrontmatterHeader: true,
     },
   ],
   advanced: [],
@@ -3106,6 +3164,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   vaultFiles,
   vaultPngAssets,
   vaultPath,
+  sourceHasFrontmatter = false,
   sourceRelativePath,
   onNavigateWikilink,
   onChange,
@@ -6546,12 +6605,23 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         });
         return;
       }
+      const transformNextMarkdown = item.prependDatabaseFrontmatterHeader
+        ? (value: string) => prependDatabaseFrontmatterHeaderIfMissing(value, sourceHasFrontmatter)
+        : undefined;
       insertBlockRelativeTo(insertMenuState.blockIndex, item.template, insertMenuState.insertAbove, {
         firstPlaceholder: item.firstPlaceholder,
         selection: item.initialSelection,
+        transformNextMarkdown,
       });
     },
-    [blocks.length, insertBlockRelativeTo, insertEmptyParagraphRelativeTo, insertMenuState, requestPageLinkPickerOpen],
+    [
+      blocks.length,
+      insertBlockRelativeTo,
+      insertEmptyParagraphRelativeTo,
+      insertMenuState,
+      requestPageLinkPickerOpen,
+      sourceHasFrontmatter,
+    ],
   );
 
   const handleAdvancedInsertTemplateVariantSelect = useCallback(

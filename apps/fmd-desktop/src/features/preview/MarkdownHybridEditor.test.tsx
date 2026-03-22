@@ -145,6 +145,43 @@ const dispatchContextMenu = (
   });
 };
 
+const createDragDataTransferMock = () =>
+  ({
+    effectAllowed: "all",
+    dropEffect: "move",
+    files: [],
+    items: [],
+    types: [],
+    setData: () => undefined,
+    getData: () => "",
+    clearData: () => undefined,
+    setDragImage: () => undefined,
+  }) as unknown as DataTransfer;
+
+const dispatchDragEvent = (
+  element: Element | null,
+  type: "dragstart" | "dragover" | "drop" | "dragend",
+  options: { clientX?: number; clientY?: number; dataTransfer?: DataTransfer } = {},
+) => {
+  const event = new Event(type, { bubbles: true, cancelable: true }) as DragEvent;
+  Object.defineProperty(event, "clientX", {
+    value: options.clientX ?? 0,
+    configurable: true,
+  });
+  Object.defineProperty(event, "clientY", {
+    value: options.clientY ?? 0,
+    configurable: true,
+  });
+  Object.defineProperty(event, "dataTransfer", {
+    value: options.dataTransfer ?? createDragDataTransferMock(),
+    configurable: true,
+  });
+  act(() => {
+    element?.dispatchEvent(event);
+  });
+  return event;
+};
+
 const createClipboardDataMock = (initialData: Record<string, string> = {}) => {
   const store = new Map<string, string>(Object.entries(initialData));
   const clipboard = {
@@ -1302,6 +1339,52 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("renders drag preview overlay and marks the dragged source block while dragging", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("# One\n# Two");
+        return (
+          <MarkdownHybridEditor
+            historyKey="drag-preview-overlay-visibility"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const firstDragHandle = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-index='0'] .markdown-hybrid-block-drag-handle",
+      );
+      const firstBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='0']",
+      );
+      expect(firstDragHandle).toBeTruthy();
+      expect(firstBlock).toBeTruthy();
+
+      const dataTransfer = createDragDataTransferMock();
+      dispatchDragEvent(firstDragHandle, "dragstart", {
+        dataTransfer,
+        clientX: 120,
+        clientY: 80,
+      });
+
+      expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeTruthy();
+      expect(firstBlock?.classList.contains("is-dragging")).toBe(true);
+
+      dispatchDragEvent(firstDragHandle, "dragend", {
+        dataTransfer,
+        clientX: 120,
+        clientY: 80,
+      });
+      expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeNull();
+
+      cleanup();
+    });
+  });
+
   it("opens a block selection context menu on right click and suppresses it after right-drag", () => {
     const Harness = () => {
       const [markdown, setMarkdown] = useState(["# One", "# Two", "# Three"].join("\n"));
@@ -1451,6 +1534,16 @@ describe("MarkdownHybridEditor", () => {
       const categoryButtons = Array.from(
         container.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-insert-menu-item[role='menuitem']"),
       );
+      const categoryLabels = categoryButtons.map(
+        (button) => button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ?? "",
+      );
+      expect(categoryLabels).toEqual([
+        "Standard Blocks",
+        "Structure",
+        "Links",
+        "Database",
+        "Advanced",
+      ]);
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Page")).toBe(false);
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Text & Headings")).toBe(false);
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Lists")).toBe(false);
@@ -1678,6 +1771,120 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       expect(textarea?.selectionStart).toBe(3);
       expect(textarea?.selectionEnd).toBe(3);
+
+      cleanup();
+    });
+  });
+
+  it("shows Database presets in dedicated Database category and removes Database from Structure", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("# One");
+        return (
+          <MarkdownHybridEditor
+            historyKey="insert-menu-database-category-layout"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+
+      dispatchClick(findButtonByExactText(container, "Structure"));
+      expect(findMenuItemButtonByLabel(container, "Database")).toBeNull();
+
+      dispatchClick(findButtonByExactText(container, "Back"));
+      dispatchClick(findButtonByExactText(container, "Database"));
+
+      const menuButtons = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(
+          ".markdown-hybrid-insert-menu-item[role='menuitem']",
+        ),
+      );
+      const labels = menuButtons.map((button) =>
+        button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ?? "",
+      );
+      expect(labels).toEqual(["DB-Table", "DB-Kanban", "DB-Timeline", "DB-Pie"]);
+
+      cleanup();
+    });
+  });
+
+  it("inserts each Database preset with matching view type and prepends default frontmatter header", () => {
+    withImmediateRaf(() => {
+      const expectations: Array<{ label: string; viewType: string }> = [
+        { label: "DB-Table", viewType: "table" },
+        { label: "DB-Kanban", viewType: "kanban" },
+        { label: "DB-Timeline", viewType: "gantt" },
+        { label: "DB-Pie", viewType: "pie" },
+      ];
+
+      for (const entry of expectations) {
+        const Harness = () => {
+          const [markdown, setMarkdown] = useState("");
+          return (
+            <div>
+              <div data-testid="markdown-value">{markdown}</div>
+              <MarkdownHybridEditor
+                historyKey={`insert-menu-database-${entry.label}`}
+                markdown={markdown}
+                mode="edit"
+                onChange={setMarkdown}
+                renderPreview={(value) => <div>{value}</div>}
+              />
+            </div>
+          );
+        };
+
+        const { container, cleanup } = render(createElement(Harness));
+        dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+        dispatchClick(findButtonByExactText(container, "Database"));
+        dispatchClick(findMenuItemButtonByLabel(container, entry.label));
+
+        const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        expect(markdownValue.startsWith("---\nSection: IUFS\nRank: SE1\nProjekt: IDBS01\n")).toBe(true);
+        expect(markdownValue).toContain("tags:\n  - IDBS01-ExamL7");
+        expect(markdownValue).toContain("::::");
+        expect(markdownValue).toContain(`view:\n  type: ${entry.viewType}`);
+
+        cleanup();
+      }
+    });
+  });
+
+  it("does not prepend database frontmatter header when sourceHasFrontmatter is true", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-menu-database-with-existing-frontmatter"
+              markdown={markdown}
+              mode="edit"
+              sourceHasFrontmatter
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+      dispatchClick(findButtonByExactText(container, "Database"));
+      dispatchClick(findMenuItemButtonByLabel(container, "DB-Table"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue.startsWith("::::\n")).toBe(true);
+      expect(markdownValue).toContain("view:\n  type: table");
+      expect(markdownValue).not.toContain("Section: IUFS");
+      expect(markdownValue).not.toContain("Projekt: IDBS01");
 
       cleanup();
     });

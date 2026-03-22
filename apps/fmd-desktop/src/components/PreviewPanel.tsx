@@ -8260,6 +8260,7 @@ export const PreviewPanel = ({
                   vaultFiles={vaultFiles}
                   vaultPngAssets={vaultPngAssets}
                   vaultPath={vaultPath}
+                  sourceHasFrontmatter={editFrontmatter.hasFrontmatter}
                   sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
                   onNavigateWikilink={onNavigateWikilink}
                   onChange={handleHybridBodyChange}
