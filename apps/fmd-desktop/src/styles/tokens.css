@@ -193,6 +193,7 @@
   --page-bg-edge-base: #0b1012;
   --panel: #151c20;
   --panel-warm: #1b2429;
+  --field-bg-base: #262626;
   --left-bg-base: var(--panel);
   --left-bg-tint: var(--left-bg-base);
   --ink: #edf2f4;

@@ -694,6 +694,12 @@
   padding: 10px;
   border-radius: 12px;
   background: var(--field-bg);
+  background:
+    linear-gradient(
+      rgba(var(--accent-rgb), 0.04),
+      rgba(var(--accent-rgb), 0.04)
+    ),
+    var(--field-bg);
   border: 1px solid var(--field-border);
   position: relative;
   cursor: grab;
