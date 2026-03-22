@@ -875,6 +875,37 @@ const DashboardPageInner = (
     ],
   );
 
+  const handleReorderMarkdownTabs = useCallback(
+    (sourcePath: string, targetPath: string, position: "before" | "after") => {
+      if (!sourcePath || !targetPath || sourcePath === targetPath) {
+        return;
+      }
+      setMarkdownTabs((previous) => {
+        const sourceIndex = previous.findIndex((tab) => tab.path === sourcePath);
+        const targetIndex = previous.findIndex((tab) => tab.path === targetPath);
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+          return previous;
+        }
+        const next = previous.slice();
+        const [movedTab] = next.splice(sourceIndex, 1);
+        if (!movedTab) {
+          return previous;
+        }
+        const adjustedTargetIndex = next.findIndex((tab) => tab.path === targetPath);
+        if (adjustedTargetIndex < 0) {
+          return previous;
+        }
+        const insertIndex = position === "before"
+          ? adjustedTargetIndex
+          : adjustedTargetIndex + 1;
+        next.splice(insertIndex, 0, movedTab);
+        const orderChanged = next.some((tab, index) => tab.path !== previous[index]?.path);
+        return orderChanged ? next : previous;
+      });
+    },
+    [],
+  );
+
   const handleFrontmatterSave = useCallback(
     async (nextMarkdown: string) => {
       if (!preview.selectedFile || isEditing || isSaving) {
@@ -1316,6 +1347,7 @@ const DashboardPageInner = (
             activeMarkdownTabPath={preview.selectedFile?.path ?? null}
             onSelectMarkdownTab={handleSelectMarkdownTab}
             onCloseMarkdownTab={handleCloseMarkdownTab}
+            onReorderMarkdownTabs={handleReorderMarkdownTabs}
           />
         ) : (
           <ExamEditorView

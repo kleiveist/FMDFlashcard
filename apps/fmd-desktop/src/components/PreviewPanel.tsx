@@ -1460,6 +1460,11 @@ type PreviewPanelProps = {
   activeMarkdownTabPath?: string | null;
   onSelectMarkdownTab?: (path: string) => void;
   onCloseMarkdownTab?: (path: string) => void;
+  onReorderMarkdownTabs?: (
+    sourcePath: string,
+    targetPath: string,
+    position: "before" | "after",
+  ) => void;
 };
 
 type PendingHybridPostCommitAction =
@@ -1535,6 +1540,17 @@ const resolveMarkdownTabDisplayInfo = (tab: { path: string; relativePath: string
     fileLabel,
     folderLabel,
   } satisfies MarkdownTabDisplayInfo;
+};
+
+const createMarkdownTabDragPreviewElement = (label: string) => {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  const preview = document.createElement("div");
+  preview.className = "preview-tab-drag-preview";
+  preview.textContent = label;
+  document.body.appendChild(preview);
+  return preview;
 };
 
 const getRangeOffset = (container: HTMLElement, range: Range) => {
@@ -6503,6 +6519,7 @@ export const PreviewPanel = ({
   activeMarkdownTabPath = null,
   onSelectMarkdownTab,
   onCloseMarkdownTab,
+  onReorderMarkdownTabs,
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const markdownViewRef = useRef<HTMLDivElement | null>(null);
@@ -6534,6 +6551,12 @@ export const PreviewPanel = ({
   const [activeMarkdownTabFolderLabel, setActiveMarkdownTabFolderLabel] = useState<string | null>(
     null,
   );
+  const [dragMarkdownTabPath, setDragMarkdownTabPath] = useState<string | null>(null);
+  const [markdownTabDropHint, setMarkdownTabDropHint] = useState<{
+    path: string;
+    position: "before" | "after";
+  } | null>(null);
+  const markdownTabDragPreviewRef = useRef<HTMLElement | null>(null);
   const isNarrowFrontmatterViewport = useMediaQuery("(max-width: 980px)", false);
   const effectiveFrontmatterPanelCollapsed =
     userFrontmatterCollapsed ?? isNarrowFrontmatterViewport;
@@ -7878,6 +7901,150 @@ export const PreviewPanel = ({
     [onCloseMarkdownTab],
   );
 
+  const clearMarkdownTabDragPreview = useCallback(() => {
+    const previewNode = markdownTabDragPreviewRef.current;
+    if (!previewNode) {
+      return;
+    }
+    if (previewNode.parentElement) {
+      previewNode.parentElement.removeChild(previewNode);
+    }
+    markdownTabDragPreviewRef.current = null;
+  }, []);
+
+  useEffect(
+    () => () => {
+      clearMarkdownTabDragPreview();
+    },
+    [clearMarkdownTabDragPreview],
+  );
+
+  useEffect(() => {
+    if (!dragMarkdownTabPath) {
+      return;
+    }
+    if (markdownTabs.some((tab) => tab.path === dragMarkdownTabPath)) {
+      return;
+    }
+    setDragMarkdownTabPath(null);
+    setMarkdownTabDropHint(null);
+    clearMarkdownTabDragPreview();
+  }, [clearMarkdownTabDragPreview, dragMarkdownTabPath, markdownTabs]);
+
+  const isMarkdownTabReorderEnabled = Boolean(onReorderMarkdownTabs) && markdownTabs.length > 1;
+
+  const resolveMarkdownTabDropPosition = useCallback(
+    (event: Pick<DragEvent<HTMLDivElement>, "currentTarget" | "clientX">) => {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const midpoint = rect.left + rect.width / 2;
+      return event.clientX > midpoint ? "after" : "before";
+    },
+    [],
+  );
+
+  const handleMarkdownTabDragStart = useCallback(
+    (event: DragEvent<HTMLDivElement>, path: string, label: string) => {
+      if (!isMarkdownTabReorderEnabled) {
+        return;
+      }
+      setDragMarkdownTabPath(path);
+      setMarkdownTabDropHint(null);
+      if (!event.dataTransfer) {
+        return;
+      }
+      event.dataTransfer.effectAllowed = "move";
+      try {
+        event.dataTransfer.setData("text/plain", path);
+      } catch {
+        // Ignore dataTransfer limitations in certain runtimes.
+      }
+      clearMarkdownTabDragPreview();
+      const preview = createMarkdownTabDragPreviewElement(label);
+      if (!preview) {
+        return;
+      }
+      markdownTabDragPreviewRef.current = preview;
+      event.dataTransfer.setDragImage(preview, 18, 12);
+    },
+    [clearMarkdownTabDragPreview, isMarkdownTabReorderEnabled],
+  );
+
+  const handleMarkdownTabDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>, targetPath: string) => {
+      if (!isMarkdownTabReorderEnabled || !dragMarkdownTabPath) {
+        return;
+      }
+      if (dragMarkdownTabPath === targetPath) {
+        setMarkdownTabDropHint(null);
+        return;
+      }
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+      const position = resolveMarkdownTabDropPosition(event);
+      setMarkdownTabDropHint((current) => {
+        if (current?.path === targetPath && current.position === position) {
+          return current;
+        }
+        return {
+          path: targetPath,
+          position,
+        };
+      });
+    },
+    [
+      dragMarkdownTabPath,
+      isMarkdownTabReorderEnabled,
+      resolveMarkdownTabDropPosition,
+    ],
+  );
+
+  const handleMarkdownTabDragLeave = useCallback(
+    (event: DragEvent<HTMLDivElement>, targetPath: string) => {
+      if (!markdownTabDropHint || markdownTabDropHint.path !== targetPath) {
+        return;
+      }
+      const nextTarget = event.relatedTarget;
+      if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+        return;
+      }
+      setMarkdownTabDropHint(null);
+    },
+    [markdownTabDropHint],
+  );
+
+  const handleMarkdownTabDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>, targetPath: string) => {
+      if (!isMarkdownTabReorderEnabled || !dragMarkdownTabPath) {
+        return;
+      }
+      event.preventDefault();
+      const sourcePath = dragMarkdownTabPath;
+      setDragMarkdownTabPath(null);
+      setMarkdownTabDropHint(null);
+      clearMarkdownTabDragPreview();
+      if (sourcePath === targetPath) {
+        return;
+      }
+      const position = resolveMarkdownTabDropPosition(event);
+      onReorderMarkdownTabs?.(sourcePath, targetPath, position);
+    },
+    [
+      clearMarkdownTabDragPreview,
+      dragMarkdownTabPath,
+      isMarkdownTabReorderEnabled,
+      onReorderMarkdownTabs,
+      resolveMarkdownTabDropPosition,
+    ],
+  );
+
+  const handleMarkdownTabDragEnd = useCallback(() => {
+    setDragMarkdownTabPath(null);
+    setMarkdownTabDropHint(null);
+    clearMarkdownTabDragPreview();
+  }, [clearMarkdownTabDragPreview]);
+
   const markdownTabDisplayInfos = useMemo(
     () => markdownTabs.map((tab) => resolveMarkdownTabDisplayInfo(tab)),
     [markdownTabs],
@@ -8151,10 +8318,27 @@ export const PreviewPanel = ({
             {filteredMarkdownTabDisplayInfos.map((tab) => {
               const isActive = activeMarkdownTabPath === tab.path;
               const visibleLabel = isCompactMarkdownTabLabels ? tab.fileLabel : tab.fullLabel;
+              const isDropTarget = markdownTabDropHint?.path === tab.path;
               return (
                 <div
                   key={tab.path}
-                  className={`preview-tab ${isActive ? "active" : ""}`}
+                  className={`preview-tab ${isActive ? "active" : ""} ${
+                    dragMarkdownTabPath === tab.path ? "is-drag-source" : ""
+                  } ${
+                    isDropTarget
+                      ? markdownTabDropHint?.position === "before"
+                        ? "is-drop-before"
+                        : "is-drop-after"
+                      : ""
+                  }`.trim()}
+                  draggable={isMarkdownTabReorderEnabled}
+                  onDragStart={(event) =>
+                    handleMarkdownTabDragStart(event, tab.path, tab.fullLabel)
+                  }
+                  onDragOver={(event) => handleMarkdownTabDragOver(event, tab.path)}
+                  onDragLeave={(event) => handleMarkdownTabDragLeave(event, tab.path)}
+                  onDrop={(event) => handleMarkdownTabDrop(event, tab.path)}
+                  onDragEnd={handleMarkdownTabDragEnd}
                 >
                   <button
                     type="button"
@@ -8170,6 +8354,7 @@ export const PreviewPanel = ({
                     <button
                       type="button"
                       className="preview-tab-close"
+                      draggable={false}
                       aria-label={`Close ${tab.fullLabel}`}
                       title={`Close ${tab.fullLabel}`}
                       onClick={(event) => handleMarkdownTabClose(event, tab.path)}

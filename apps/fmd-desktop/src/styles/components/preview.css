@@ -1408,11 +1408,48 @@
   border: 1px solid var(--ui-border-subtle);
   border-radius: var(--ui-radius-control);
   background: color-mix(in srgb, var(--panel) 88%, var(--block-bg));
+  position: relative;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    opacity 140ms ease;
 }
 
 .preview-tab.active {
   border-color: var(--accent-border);
   background: color-mix(in srgb, var(--accent-active-bg) 74%, var(--panel));
+}
+
+.preview-tab.is-drag-source {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preview-tab.is-drop-before,
+.preview-tab.is-drop-after {
+  border-color: color-mix(in srgb, var(--accent-border) 78%, var(--ui-border-subtle));
+  background: color-mix(in srgb, var(--accent-soft) 20%, var(--panel));
+}
+
+.preview-tab.is-drop-before::before,
+.preview-tab.is-drop-after::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent-border) 84%, var(--accent-strong));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-soft) 44%, transparent);
+  pointer-events: none;
+}
+
+.preview-tab.is-drop-before::before {
+  left: -5px;
+}
+
+.preview-tab.is-drop-after::after {
+  right: -5px;
 }
 
 .preview-tab-button {
@@ -1460,6 +1497,27 @@
 .preview-tab-close:hover {
   color: var(--ink);
   background: var(--ui-nav-button-hover-bg);
+}
+
+.preview-tab-drag-preview {
+  position: fixed;
+  top: -2000px;
+  left: -2000px;
+  z-index: 9999;
+  max-width: min(280px, 56vw);
+  padding: 4px 10px;
+  border-radius: var(--ui-radius-control);
+  border: 1px solid color-mix(in srgb, var(--accent-border) 70%, var(--ui-border-subtle));
+  background: color-mix(in srgb, var(--panel) 90%, var(--block-bg));
+  color: var(--ink);
+  font-size: 0.74rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.92;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.22);
+  pointer-events: none;
 }
 
 .preview-mode-toggle {

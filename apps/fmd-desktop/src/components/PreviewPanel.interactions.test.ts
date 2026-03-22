@@ -199,6 +199,27 @@ const setElementClientHeight = (element: HTMLElement, height: number) => {
   });
 };
 
+const setElementBoundingRect = (
+  element: HTMLElement,
+  rect: { left: number; top: number; width: number; height: number },
+) => {
+  Object.defineProperty(element, "getBoundingClientRect", {
+    configurable: true,
+    value: () =>
+      ({
+        x: rect.left,
+        y: rect.top,
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+        right: rect.left + rect.width,
+        bottom: rect.top + rect.height,
+        toJSON: () => ({}),
+      }) as DOMRect,
+  });
+};
+
 const triggerResize = (target: Element) => {
   resizeObserverInstances.forEach((observer) => {
     observer.notify(target);
@@ -235,6 +256,11 @@ const buildHarness = (
     activeMarkdownTabPath?: string | null;
     onSelectMarkdownTab?: (path: string) => void;
     onCloseMarkdownTab?: (path: string) => void;
+    onReorderMarkdownTabs?: (
+      sourcePath: string,
+      targetPath: string,
+      position: "before" | "after",
+    ) => void;
   } = {},
 ) => {
   const onEditExit = vi.fn();
@@ -254,6 +280,7 @@ const buildHarness = (
     activeMarkdownTabPath,
     onSelectMarkdownTab,
     onCloseMarkdownTab,
+    onReorderMarkdownTabs,
   } = options;
 
   const Harness = () => {
@@ -303,6 +330,7 @@ const buildHarness = (
       activeMarkdownTabPath,
       onSelectMarkdownTab,
       onCloseMarkdownTab,
+      onReorderMarkdownTabs,
     });
   };
 
@@ -367,6 +395,137 @@ describe("PreviewPanel edit-safe interactions", () => {
       closeButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onCloseMarkdownTab).toHaveBeenCalledWith("/vault/Two.md");
+  });
+
+  it("reorders markdown tabs via drag and drop with before hint", async () => {
+    const onReorderMarkdownTabs = vi.fn();
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/One.md", relativePath: "One.md" },
+        { path: "/vault/Two.md", relativePath: "Two.md" },
+        { path: "/vault/Three.md", relativePath: "Three.md" },
+      ],
+      activeMarkdownTabPath: "/vault/Two.md",
+      onReorderMarkdownTabs,
+    });
+    cleanup = localCleanup;
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>(".preview-tab"));
+    expect(tabs).toHaveLength(3);
+    const sourceTab = tabs[2] ?? null;
+    const targetTab = tabs[0] ?? null;
+    expect(sourceTab).toBeTruthy();
+    expect(targetTab).toBeTruthy();
+    if (!sourceTab || !targetTab) {
+      return;
+    }
+
+    setElementBoundingRect(targetTab, { left: 300, top: 0, width: 160, height: 28 });
+    const dataTransfer = {
+      effectAllowed: "all",
+      dropEffect: "none",
+      setData: vi.fn(),
+      setDragImage: vi.fn(),
+    };
+
+    const dragStart = new Event("dragstart", { bubbles: true, cancelable: true });
+    Object.defineProperty(dragStart, "dataTransfer", {
+      configurable: true,
+      value: dataTransfer,
+    });
+
+    act(() => {
+      sourceTab.dispatchEvent(dragStart);
+    });
+    await flushAsyncInteraction();
+
+    expect(sourceTab.className).toContain("is-drag-source");
+    expect(document.querySelector(".preview-tab-drag-preview")).toBeTruthy();
+
+    const dragOver = new Event("dragover", { bubbles: true, cancelable: true });
+    Object.defineProperty(dragOver, "clientX", { configurable: true, value: 320 });
+    Object.defineProperty(dragOver, "dataTransfer", {
+      configurable: true,
+      value: dataTransfer,
+    });
+    const drop = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, "clientX", { configurable: true, value: 320 });
+    Object.defineProperty(drop, "dataTransfer", {
+      configurable: true,
+      value: dataTransfer,
+    });
+
+    act(() => {
+      targetTab.dispatchEvent(dragOver);
+    });
+    await flushAsyncInteraction();
+    expect(targetTab.className).toContain("is-drop-before");
+
+    act(() => {
+      targetTab.dispatchEvent(drop);
+    });
+    await flushAsyncInteraction();
+
+    expect(onReorderMarkdownTabs).toHaveBeenCalledWith(
+      "/vault/Three.md",
+      "/vault/One.md",
+      "before",
+    );
+    expect(document.querySelector(".preview-tab-drag-preview")).toBeNull();
+  });
+
+  it("uses right half drop position as after for markdown tab reorder", async () => {
+    const onReorderMarkdownTabs = vi.fn();
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/One.md", relativePath: "One.md" },
+        { path: "/vault/Two.md", relativePath: "Two.md" },
+        { path: "/vault/Three.md", relativePath: "Three.md" },
+      ],
+      activeMarkdownTabPath: "/vault/Two.md",
+      onReorderMarkdownTabs,
+    });
+    cleanup = localCleanup;
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>(".preview-tab"));
+    const sourceTab = tabs[0] ?? null;
+    const targetTab = tabs[1] ?? null;
+    expect(sourceTab).toBeTruthy();
+    expect(targetTab).toBeTruthy();
+    if (!sourceTab || !targetTab) {
+      return;
+    }
+
+    setElementBoundingRect(targetTab, { left: 100, top: 0, width: 180, height: 28 });
+    const dataTransfer = {
+      effectAllowed: "all",
+      dropEffect: "none",
+      setData: vi.fn(),
+      setDragImage: vi.fn(),
+    };
+    const dragStart = new Event("dragstart", { bubbles: true, cancelable: true });
+    Object.defineProperty(dragStart, "dataTransfer", {
+      configurable: true,
+      value: dataTransfer,
+    });
+    const drop = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, "clientX", { configurable: true, value: 250 });
+    Object.defineProperty(drop, "dataTransfer", {
+      configurable: true,
+      value: dataTransfer,
+    });
+
+    act(() => {
+      sourceTab.dispatchEvent(dragStart);
+      targetTab.dispatchEvent(drop);
+    });
+    await flushAsyncInteraction();
+
+    expect(onReorderMarkdownTabs).toHaveBeenCalledWith(
+      "/vault/One.md",
+      "/vault/Two.md",
+      "after",
+    );
   });
 
   it("keeps single-row path labels when tab width is wide enough", async () => {

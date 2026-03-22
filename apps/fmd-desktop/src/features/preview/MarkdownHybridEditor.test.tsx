@@ -1776,7 +1776,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("shows Database presets in dedicated Database category and removes Database from Structure", () => {
+  it("shows Database section with Attributes + DB presets and removes Database from Structure", () => {
     withImmediateRaf(() => {
       const Harness = () => {
         const [markdown, setMarkdown] = useState("# One");
@@ -1808,13 +1808,13 @@ describe("MarkdownHybridEditor", () => {
       const labels = menuButtons.map((button) =>
         button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ?? "",
       );
-      expect(labels).toEqual(["DB-Table", "DB-Kanban", "DB-Timeline", "DB-Pie"]);
+      expect(labels).toEqual(["Attributes", "DB-Table", "DB-Kanban", "DB-Timeline", "DB-Pie"]);
 
       cleanup();
     });
   });
 
-  it("inserts each Database preset with matching view type and prepends default frontmatter header", () => {
+  it("inserts each Database preset with matching view type without prepending Attributes block", () => {
     withImmediateRaf(() => {
       const expectations: Array<{ label: string; viewType: string }> = [
         { label: "DB-Table", viewType: "table" },
@@ -1846,25 +1846,61 @@ describe("MarkdownHybridEditor", () => {
         dispatchClick(findMenuItemButtonByLabel(container, entry.label));
 
         const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-        expect(markdownValue.startsWith("---\nSection: IUFS\nRank: SE1\nProjekt: IDBS01\n")).toBe(true);
-        expect(markdownValue).toContain("tags:\n  - IDBS01-ExamL7");
-        expect(markdownValue).toContain("::::");
+        expect(markdownValue.startsWith("::::\n")).toBe(true);
         expect(markdownValue).toContain(`view:\n  type: ${entry.viewType}`);
+        expect(markdownValue).not.toContain("Section: IUFS");
+        expect(markdownValue).not.toContain("Projekt: IDBS01");
 
         cleanup();
       }
     });
   });
 
-  it("does not prepend database frontmatter header when sourceHasFrontmatter is true", () => {
+  it("inserts the Attributes block always at document top", () => {
     withImmediateRaf(() => {
       const Harness = () => {
-        const [markdown, setMarkdown] = useState("");
+        const [markdown, setMarkdown] = useState("alpha\nbeta");
         return (
           <div>
             <div data-testid="markdown-value">{markdown}</div>
             <MarkdownHybridEditor
-              historyKey="insert-menu-database-with-existing-frontmatter"
+              historyKey="insert-menu-database-attributes-top"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(
+        container.querySelector(
+          ".markdown-hybrid-overlay-row[data-md-block-index='1'] .markdown-hybrid-block-insert-button",
+        ),
+      );
+      dispatchClick(findButtonByExactText(container, "Database"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Attributes"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue.startsWith("---\nSection: IUFS\nRank: SE1\nProjekt: IDBS01\nTask: Exam\nText: text\n---\n")).toBe(true);
+      expect(markdownValue).toContain("\nalpha\nbeta");
+
+      cleanup();
+    });
+  });
+
+  it("keeps markdown unchanged when sourceHasFrontmatter is true and Attributes is clicked", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "alpha\nbeta";
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-menu-database-attributes-source-frontmatter"
               markdown={markdown}
               mode="edit"
               sourceHasFrontmatter
@@ -1878,13 +1914,49 @@ describe("MarkdownHybridEditor", () => {
       const { container, cleanup } = render(createElement(Harness));
       dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
       dispatchClick(findButtonByExactText(container, "Database"));
-      dispatchClick(findMenuItemButtonByLabel(container, "DB-Table"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Attributes"));
 
       const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-      expect(markdownValue.startsWith("::::\n")).toBe(true);
-      expect(markdownValue).toContain("view:\n  type: table");
-      expect(markdownValue).not.toContain("Section: IUFS");
-      expect(markdownValue).not.toContain("Projekt: IDBS01");
+      expect(markdownValue).toBe(initialMarkdown);
+      expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("keeps markdown unchanged when body already starts with frontmatter and Attributes is clicked", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "---",
+        "Cover: '[[Exam/IDBS01-Exam.png]]'",
+        "---",
+        "",
+        "alpha",
+      ].join("\n");
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-menu-database-attributes-existing-frontmatter-body"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+      dispatchClick(findButtonByExactText(container, "Database"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Attributes"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(initialMarkdown);
+      expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
 
       cleanup();
     });

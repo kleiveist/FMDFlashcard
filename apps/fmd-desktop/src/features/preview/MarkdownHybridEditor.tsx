@@ -271,7 +271,6 @@ type InsertMenuItem = {
     end: number;
   };
   icon?: InsertMenuIconId;
-  prependDatabaseFrontmatterHeader?: boolean;
 };
 
 type InsertMenuAdvancedVariantOption = {
@@ -369,23 +368,13 @@ type InternalBlockClipboardPayload = {
   blocks: ClipboardBlockEntry[];
 };
 
-const DATABASE_DEFAULT_FRONTMATTER_HEADER_TEMPLATE = [
+const DATABASE_ATTRIBUTES_BLOCK_TEMPLATE = [
   "---",
   "Section: IUFS",
   "Rank: SE1",
   "Projekt: IDBS01",
   "Task: Exam",
-  "Text: Exam Lektion 7 als 10 Aufgaben",
-  "tags:",
-  "  - IDBS01-ExamL7",
-  "  - IUFS",
-  "  - SE1",
-  "  - IDBS01",
-  "  - ToDoList",
-  "link1: '[[IDBS01-ExamL7]]'",
-  "Cover: '[[Exam/IDBS01-Exam.png]]'",
-  "percent: null",
-  "Score: null",
+  "Text: text",
   "---",
   "",
 ].join("\n");
@@ -395,22 +384,6 @@ const buildDatabaseInsertTemplate = (viewType: "table" | "kanban" | "gantt" | "p
   config.view = { type: viewType };
   config.columns = ["Dateiname"];
   return serializeDatabaseBlockConfig(config);
-};
-
-const prependDatabaseFrontmatterHeaderIfMissing = (
-  markdown: string,
-  sourceHasFrontmatter: boolean,
-) => {
-  if (sourceHasFrontmatter) {
-    return markdown;
-  }
-  const parsed = parseFrontmatterDocument(markdown);
-  if (parsed.hasFrontmatter) {
-    return markdown;
-  }
-  const hasBom = markdown.startsWith("\uFEFF");
-  const bodyWithoutBom = hasBom ? markdown.slice(1) : markdown;
-  return `${hasBom ? "\uFEFF" : ""}${DATABASE_DEFAULT_FRONTMATTER_HEADER_TEMPLATE}${bodyWithoutBom}`;
 };
 
 const INSERT_MENU_CATEGORIES: InsertMenuCategory[] = [
@@ -544,32 +517,34 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
   ],
   database: [
     {
+      id: "db-attributes",
+      label: "Attributes",
+      template: DATABASE_ATTRIBUTES_BLOCK_TEMPLATE,
+      icon: "database",
+    },
+    {
       id: "db-table",
       label: "DB-Table",
       template: buildDatabaseInsertTemplate("table"),
       icon: "database",
-      prependDatabaseFrontmatterHeader: true,
     },
     {
       id: "db-kanban",
       label: "DB-Kanban",
       template: buildDatabaseInsertTemplate("kanban"),
       icon: "database",
-      prependDatabaseFrontmatterHeader: true,
     },
     {
       id: "db-timeline",
       label: "DB-Timeline",
       template: buildDatabaseInsertTemplate("gantt"),
       icon: "database",
-      prependDatabaseFrontmatterHeader: true,
     },
     {
       id: "db-pie",
       label: "DB-Pie",
       template: buildDatabaseInsertTemplate("pie"),
       icon: "database",
-      prependDatabaseFrontmatterHeader: true,
     },
   ],
   advanced: [],
@@ -6605,13 +6580,20 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         });
         return;
       }
-      const transformNextMarkdown = item.prependDatabaseFrontmatterHeader
-        ? (value: string) => prependDatabaseFrontmatterHeaderIfMissing(value, sourceHasFrontmatter)
-        : undefined;
+      if (item.id === "db-attributes") {
+        if (sourceHasFrontmatter || parseFrontmatterDocument(markdown).hasFrontmatter) {
+          setInsertMenuState(null);
+          return;
+        }
+        insertBlockRelativeTo(0, item.template, true, {
+          firstPlaceholder: item.firstPlaceholder,
+          selection: item.initialSelection,
+        });
+        return;
+      }
       insertBlockRelativeTo(insertMenuState.blockIndex, item.template, insertMenuState.insertAbove, {
         firstPlaceholder: item.firstPlaceholder,
         selection: item.initialSelection,
-        transformNextMarkdown,
       });
     },
     [
@@ -6619,6 +6601,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       insertBlockRelativeTo,
       insertEmptyParagraphRelativeTo,
       insertMenuState,
+      markdown,
       requestPageLinkPickerOpen,
       sourceHasFrontmatter,
     ],
