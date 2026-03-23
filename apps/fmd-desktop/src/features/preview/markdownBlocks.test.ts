@@ -150,7 +150,7 @@ describe("markdownBlocks", () => {
     expect(blocks[1]?.raw).toContain("#exam");
   });
 
-  it("treats #card ... #endcard as a single card block and keeps nested help inside it", () => {
+  it("splits #card wrappers into marker blocks and keeps inner blocks grouped", () => {
     const markdown = [
       "Vorher",
       "#card",
@@ -168,29 +168,158 @@ describe("markdownBlocks", () => {
     const blocks = parseMarkdownBlocks(markdown);
     expect(blocks.map((block) => block.kind)).toEqual([
       "paragraph",
-      "card-block",
+      "card-start",
+      "paragraph",
+      "blank",
+      "help-block",
+      "blank",
+      "paragraph",
+      "card-end",
       "paragraph",
     ]);
-    expect(blocks[1]?.raw).toBe(
-      [
-        "#card",
-        "Frage",
-        "",
-        "#help",
-        "Hinweis",
-        "#helpend",
-        "",
-        "Answer: Antwort",
-        "#endcard",
-      ].join("\n"),
-    );
+    expect(blocks[1]?.raw).toBe("#card");
+    expect(blocks[7]?.raw).toBe("#endcard");
+
+    const cardGroupId = blocks[1]?.meta?.cardGroupId;
+    expect(cardGroupId).toBeTruthy();
+    expect(blocks[1]?.meta?.cardGroupRole).toBe("start");
+    expect(blocks[2]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[2]?.meta?.cardGroupRole).toBe("inner");
+    expect(blocks[3]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[4]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[5]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[6]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[7]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[7]?.meta?.cardGroupRole).toBe("end");
+    expect(blocks[0]?.meta?.cardGroupId).toBeUndefined();
+    expect(blocks[8]?.meta?.cardGroupId).toBeUndefined();
   });
 
-  it("keeps an empty #card/#endcard pair as one card block", () => {
+  it("keeps an empty #card/#endcard pair as two marker blocks in the same card group", () => {
     const blocks = parseMarkdownBlocks(["#card", "#endcard"].join("\n"));
-    expect(blocks).toHaveLength(1);
-    expect(blocks[0]?.kind).toBe("card-block");
-    expect(blocks[0]?.raw).toBe(["#card", "#endcard"].join("\n"));
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]?.kind).toBe("card-start");
+    expect(blocks[0]?.raw).toBe("#card");
+    expect(blocks[1]?.kind).toBe("card-end");
+    expect(blocks[1]?.raw).toBe("#endcard");
+    expect(blocks[0]?.meta?.cardGroupRole).toBe("start");
+    expect(blocks[1]?.meta?.cardGroupRole).toBe("end");
+    expect(blocks[0]?.meta?.cardGroupId).toBe(blocks[1]?.meta?.cardGroupId);
+  });
+
+  it("keeps an unclosed #card group open through EOF", () => {
+    const blocks = parseMarkdownBlocks(
+      [
+        "Before",
+        "#card",
+        "Inside paragraph",
+        "",
+        "1. item",
+      ].join("\n"),
+    );
+
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "card-start",
+      "paragraph",
+      "blank",
+      "ordered-list",
+    ]);
+    const cardGroupId = blocks[1]?.meta?.cardGroupId;
+    expect(cardGroupId).toBeTruthy();
+    expect(blocks[1]?.meta?.cardGroupRole).toBe("start");
+    expect(blocks[2]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[3]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[4]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[4]?.meta?.cardGroupRole).toBe("inner");
+  });
+
+  it("keeps mixed inner card content granular while preserving one card group id", () => {
+    const markdown = [
+      "#card",
+      "## Heading",
+      "",
+      "1. item",
+      "",
+      "| A | B |",
+      "| --- | --- |",
+      "| 1 | 2 |",
+      "",
+      "```ts",
+      "const x = 1;",
+      "```",
+      "",
+      "#help",
+      "hint",
+      "#helpend",
+      "",
+      "![[images/example.png]]",
+      "#endcard",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "card-start",
+      "heading",
+      "blank",
+      "ordered-list",
+      "blank",
+      "table",
+      "blank",
+      "code-fence",
+      "blank",
+      "help-block",
+      "blank",
+      "image-embed",
+      "card-end",
+    ]);
+
+    const cardGroupId = blocks[0]?.meta?.cardGroupId;
+    expect(cardGroupId).toBeTruthy();
+    expect(blocks[0]?.meta?.cardGroupRole).toBe("start");
+    for (let i = 1; i < blocks.length - 1; i += 1) {
+      expect(blocks[i]?.meta?.cardGroupId).toBe(cardGroupId);
+      expect(blocks[i]?.meta?.cardGroupRole).toBe("inner");
+    }
+    expect(blocks[blocks.length - 1]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[blocks.length - 1]?.meta?.cardGroupRole).toBe("end");
+  });
+
+  it("does not assign a card group to unmatched #endcard markers", () => {
+    const blocks = parseMarkdownBlocks(["Before", "#endcard", "After"].join("\n"));
+
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "card-end", "paragraph"]);
+    expect(blocks[1]?.meta?.cardGroupId).toBeUndefined();
+    expect(blocks[1]?.meta?.cardGroupRole).toBeUndefined();
+  });
+
+  it("closes an open card at the first #endcard and leaves trailing #endcard unmatched", () => {
+    const blocks = parseMarkdownBlocks(
+      ["#card", "Outer", "#card", "Inner", "#endcard", "#endcard"].join("\n"),
+    );
+
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "card-start",
+      "paragraph",
+      "card-start",
+      "paragraph",
+      "card-end",
+      "card-end",
+    ]);
+
+    const cardGroupId = blocks[0]?.meta?.cardGroupId;
+    expect(cardGroupId).toBeTruthy();
+    expect(blocks[0]?.meta?.cardGroupRole).toBe("start");
+    expect(blocks[1]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[1]?.meta?.cardGroupRole).toBe("inner");
+    expect(blocks[2]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[2]?.meta?.cardGroupRole).toBe("inner");
+    expect(blocks[3]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[3]?.meta?.cardGroupRole).toBe("inner");
+    expect(blocks[4]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[4]?.meta?.cardGroupRole).toBe("end");
+    expect(blocks[5]?.meta?.cardGroupId).toBeUndefined();
+    expect(blocks[5]?.meta?.cardGroupRole).toBeUndefined();
   });
 
   it("parses an unclosed database opener as one trailing database block", () => {

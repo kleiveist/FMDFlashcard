@@ -1694,6 +1694,54 @@ textarea.preview-editor {
     transform 0.12s ease;
 }
 
+.md-card-group-rail {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-border) 46%, transparent);
+}
+
+.md-card-group-rail::before,
+.md-card-group-rail::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-border) 42%, transparent);
+  opacity: 0;
+}
+
+.md-card-group-rail::before {
+  top: 0;
+}
+
+.md-card-group-rail::after {
+  bottom: 0;
+}
+
+.md-card-group-rail.has-start-cap::before {
+  opacity: 1;
+}
+
+.md-card-group-rail.has-end-cap::after {
+  opacity: 1;
+}
+
+.markdown-hybrid-card-group-rails-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.markdown-hybrid-card-group-rail {
+  right: calc(var(--mdh-right-gutter-width) + 8px);
+  width: 7px;
+}
+
 .markdown-hybrid-block:hover {
   border-color: color-mix(in srgb, var(--line-soft) 85%, transparent);
 }
@@ -1890,6 +1938,8 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block-body {
+  position: relative;
+  z-index: 1;
   min-width: 0;
 }
 
@@ -2588,53 +2638,6 @@ textarea.preview-editor {
 
 .markdown-hybrid-block-hr .markdown-hybrid-block-preview > hr {
   margin: 0;
-}
-
-.markdown-hybrid-card-block-preview {
-  display: grid;
-  gap: 0;
-}
-
-.markdown-hybrid-card-block-frame {
-  display: grid;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--line-soft) 78%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--panel-2) 42%, transparent);
-}
-
-.markdown-hybrid-card-body-part {
-  display: grid;
-  gap: 10px;
-}
-
-.markdown-hybrid-card-table-segment {
-  display: grid;
-  gap: 0;
-}
-
-.markdown-hybrid-card-table-segment .markdown-hybrid-table-block {
-  margin: 0;
-}
-
-.markdown-hybrid-card-table-segment .markdown-table {
-  margin-block: 0.8rem;
-}
-
-.markdown-hybrid-card-block-empty {
-  min-height: 1rem;
-}
-
-.markdown-hybrid-card-help-subbox {
-  border: 1px solid color-mix(in srgb, var(--line-soft) 72%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--panel) 82%, transparent);
-  padding: 8px 10px;
-}
-
-.markdown-hybrid-card-help-subbox .markdown-hybrid-block-preview {
-  padding: 0;
 }
 
 .markdown-hybrid-image-embed-preview-shell {
@@ -4589,6 +4592,39 @@ textarea.preview-editor {
 }
 
 .md-preview > :last-child {
+  margin-bottom: 0;
+}
+
+.preview-markdown-view-root {
+  position: relative;
+}
+
+.preview-markdown-view-block {
+  position: relative;
+  display: flow-root;
+}
+
+.preview-markdown-view-block-blank {
+  min-height: 0.72rem;
+}
+
+.preview-markdown-card-group {
+  position: relative;
+  padding-right: 14px;
+}
+
+.preview-markdown-card-group-rail {
+  top: 0;
+  bottom: 0;
+  right: 4px;
+  width: 7px;
+}
+
+.preview-markdown-view-root > :first-child .preview-markdown-view-block:first-child > :first-child {
+  margin-top: 0;
+}
+
+.preview-markdown-view-root > :last-child .preview-markdown-view-block:last-child > :last-child {
   margin-bottom: 0;
 }
 

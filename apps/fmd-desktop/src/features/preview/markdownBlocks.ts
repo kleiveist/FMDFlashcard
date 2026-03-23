@@ -16,7 +16,8 @@ export type MarkdownBlockKind =
   | "paragraph"
   | "math-block"
   | "database-block"
-  | "card-block"
+  | "card-start"
+  | "card-end"
   | "help-block"
   | "image-embed"
   | "ordered-list"
@@ -36,6 +37,8 @@ export type MarkdownBlock = {
   raw: string;
   meta?: {
     orderedDelimiter?: "." | ")";
+    cardGroupId?: string;
+    cardGroupRole?: "start" | "inner" | "end";
   };
 };
 
@@ -129,6 +132,9 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
   if (isCardBlockStartLine(line)) {
     return true;
   }
+  if (isCardBlockEndLine(line)) {
+    return true;
+  }
   if (isHeadingLine(line)) {
     return true;
   }
@@ -145,6 +151,61 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
     return true;
   }
   return false;
+};
+
+export const assignCardGroupMeta = (blocks: MarkdownBlock[]): MarkdownBlock[] => {
+  if (blocks.length === 0) {
+    return blocks;
+  }
+
+  const nextBlocks = blocks.map((block) => ({
+    ...block,
+    meta: block.meta ? { ...block.meta } : undefined,
+  }));
+  let openCardGroupId: string | null = null;
+  let nextGroupSequence = 1;
+
+  for (let index = 0; index < nextBlocks.length; index += 1) {
+    const block = nextBlocks[index]!;
+    if (block.kind === "card-start") {
+      const hasOpenCardGroup = openCardGroupId !== null;
+      const cardGroupId = openCardGroupId ?? `card-group-${nextGroupSequence}`;
+      if (!openCardGroupId) {
+        nextGroupSequence += 1;
+        openCardGroupId = cardGroupId;
+      }
+      block.meta = {
+        ...(block.meta ?? {}),
+        cardGroupId,
+        cardGroupRole: hasOpenCardGroup ? "inner" : "start",
+      };
+      continue;
+    }
+
+    if (block.kind === "card-end") {
+      if (!openCardGroupId) {
+        continue;
+      }
+      block.meta = {
+        ...(block.meta ?? {}),
+        cardGroupId: openCardGroupId,
+        cardGroupRole: "end",
+      };
+      openCardGroupId = null;
+      continue;
+    }
+
+    if (!openCardGroupId) {
+      continue;
+    }
+    block.meta = {
+      ...(block.meta ?? {}),
+      cardGroupId: openCardGroupId,
+      cardGroupRole: "inner",
+    };
+  }
+
+  return nextBlocks;
 };
 
 const buildLineStarts = (markdown: string, lines: string[]) => {
@@ -280,16 +341,16 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
     }
 
     if (isCardBlockStartLine(line)) {
-      let end = i;
-      for (let j = i + 1; j < lines.length; j += 1) {
-        end = j;
-        if (isCardBlockEndLine(lines[j] ?? "")) {
-          break;
-        }
-      }
-      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "card-block", i, end));
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "card-start", i, i));
       blockIndex += 1;
-      i = end + 1;
+      i += 1;
+      continue;
+    }
+
+    if (isCardBlockEndLine(line)) {
+      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "card-end", i, i));
+      blockIndex += 1;
+      i += 1;
       continue;
     }
 
@@ -381,7 +442,7 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
     i = end + 1;
   }
 
-  return blocks;
+  return assignCardGroupMeta(blocks);
 };
 
 export const replaceMarkdownBlock = (
@@ -549,7 +610,6 @@ export const isSingleLineCommitBlock = (block: MarkdownBlock) => {
     block.kind === "code-fence" ||
     block.kind === "math-block" ||
     block.kind === "database-block" ||
-    block.kind === "card-block" ||
     block.kind === "help-block" ||
     block.kind === "image-embed" ||
     block.kind === "ordered-list" ||

@@ -1568,6 +1568,56 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(orderedItems[1]?.textContent ?? "").toContain("Zweite");
   });
 
+  it("renders a single right-aligned card rail per #card group in markdown view", () => {
+    const markdown = [
+      "Before",
+      "#card",
+      "1) Erste",
+      "2) Zweite",
+      "#endcard",
+      "After",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const groups = container.querySelectorAll<HTMLElement>(
+      ".preview-markdown-card-group[data-md-card-group-id]",
+    );
+    expect(groups).toHaveLength(1);
+    const group = groups[0];
+    expect(group?.querySelector(".preview-markdown-card-group-rail.md-card-group-rail.has-start-cap.has-end-cap")).toBeTruthy();
+    expect(group?.querySelector('ol[data-md-ordered-delimiter=")"]')).toBeTruthy();
+    const groupedKinds = Array.from(
+      group?.querySelectorAll<HTMLElement>(".preview-markdown-view-block[data-md-block-kind]") ?? [],
+    ).map((node) => node.getAttribute("data-md-block-kind"));
+    expect(groupedKinds).toEqual(["card-start", "ordered-list", "card-end"]);
+  });
+
+  it("does not render a card rail for unmatched #endcard markers in markdown view", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["Before", "#endcard", "After"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    expect(container.querySelector(".preview-markdown-card-group")).toBeNull();
+    expect(container.querySelector(".preview-markdown-card-group-rail")).toBeNull();
+  });
+
+  it("keeps an open #card group visible with a single rail through EOF in markdown view", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["#card", "Open question", "", "1) Item"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const group = container.querySelector<HTMLElement>(".preview-markdown-card-group[data-md-card-group-id]");
+    expect(group).toBeTruthy();
+    expect(group?.querySelector(".preview-markdown-card-group-rail.md-card-group-rail")).toBeTruthy();
+    const groupedKinds = Array.from(
+      group?.querySelectorAll<HTMLElement>(".preview-markdown-view-block[data-md-block-kind]") ?? [],
+    ).map((node) => node.getAttribute("data-md-block-kind"));
+    expect(groupedKinds).toEqual(["card-start", "paragraph", "blank", "ordered-list"]);
+  });
+
   it("shows a properties panel and hides frontmatter text in markdown view", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       [

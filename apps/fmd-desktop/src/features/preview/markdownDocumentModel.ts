@@ -8,6 +8,7 @@
  */
 
 import {
+  assignCardGroupMeta,
   parseMarkdownBlocks,
   type MarkdownBlock,
   type MarkdownBlockKind,
@@ -192,7 +193,10 @@ const toReindexable = (block: MarkdownBlock): ReindexableBlock => ({
 const areBlockMetaEquivalent = (
   left: MarkdownBlock["meta"] | undefined,
   right: MarkdownBlock["meta"] | undefined,
-) => (left?.orderedDelimiter ?? null) === (right?.orderedDelimiter ?? null);
+) =>
+  (left?.orderedDelimiter ?? null) === (right?.orderedDelimiter ?? null) &&
+  (left?.cardGroupId ?? null) === (right?.cardGroupId ?? null) &&
+  (left?.cardGroupRole ?? null) === (right?.cardGroupRole ?? null);
 
 const areBlocksEquivalent = (
   left: Pick<ReindexableBlock, "kind" | "raw" | "meta">,
@@ -358,7 +362,7 @@ export const parseMarkdownDocument = (
         continue;
       }
 
-      const reindexedBlocks = reindexBlocks(merged);
+      const reindexedBlocks = assignCardGroupMeta(reindexBlocks(merged));
       return {
         snapshot: {
           markdown: nextMarkdown,

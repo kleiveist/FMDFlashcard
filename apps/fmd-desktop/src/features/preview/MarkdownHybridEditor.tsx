@@ -140,17 +140,6 @@ type PendingTableActivation = {
   request: MarkdownHybridTableActivationRequest;
 };
 
-type CardTableSegmentTarget = {
-  blockIndex: number;
-  blockId: string;
-  partIndex: number;
-  segmentIndex: number;
-};
-
-type ActiveCardTableState = CardTableSegmentTarget & {
-  pendingActivation: MarkdownHybridTableActivationRequest | null;
-};
-
 type ActiveEditSnapshot = {
   blockIndex: number;
   blockId: string;
@@ -224,6 +213,14 @@ type OverlayLayoutState = {
   byIndex: Map<number, OverlayBlockRect>;
   contentPaddingLeft: number;
   contentPaddingRight: number;
+};
+
+type CardGroupOverlayRail = {
+  groupId: string;
+  top: number;
+  height: number;
+  showStartCap: boolean;
+  showEndCap: boolean;
 };
 
 type DragPreviewState = {
@@ -345,7 +342,8 @@ const MARKDOWN_BLOCK_KIND_SET = new Set<MarkdownBlock["kind"]>([
   "paragraph",
   "math-block",
   "database-block",
-  "card-block",
+  "card-start",
+  "card-end",
   "help-block",
   "image-embed",
   "ordered-list",
@@ -1557,6 +1555,10 @@ const sortUniqueSelectionIndices = (indices: number[]) =>
 const isMarkdownBlockKind = (value: unknown): value is MarkdownBlock["kind"] =>
   typeof value === "string" && MARKDOWN_BLOCK_KIND_SET.has(value as MarkdownBlock["kind"]);
 
+// Legacy internal clipboard payloads may still contain removed "card-block" entries.
+const isLegacyClipboardCardBlockKind = (value: unknown): value is "card-block" =>
+  value === "card-block";
+
 const serializeInternalBlockClipboardPayload = (
   blocks: ClipboardBlockEntry[],
 ) =>
@@ -1604,11 +1606,19 @@ const parseInternalBlockClipboardPayload = (rawPayload: string): InternalBlockCl
       kind?: unknown;
       raw?: unknown;
     };
-    if (!isMarkdownBlockKind(blockEntry.kind) || typeof blockEntry.raw !== "string") {
+    if (typeof blockEntry.raw !== "string") {
+      return null;
+    }
+    const blockKind = isMarkdownBlockKind(blockEntry.kind)
+      ? blockEntry.kind
+      : isLegacyClipboardCardBlockKind(blockEntry.kind)
+      ? "paragraph"
+      : null;
+    if (!blockKind) {
       return null;
     }
     blocks.push({
-      kind: blockEntry.kind,
+      kind: blockKind,
       raw: blockEntry.raw,
     });
   }
@@ -2304,8 +2314,10 @@ const resolveDragPreviewKindLabel = (kind: MarkdownBlock["kind"]) => {
       return "Math";
     case "database-block":
       return "Database";
-    case "card-block":
-      return "Card";
+    case "card-start":
+      return "Card Start";
+    case "card-end":
+      return "Card End";
     case "help-block":
       return "Help";
     case "image-embed":
@@ -2395,8 +2407,9 @@ const resolveVirtualizationFallbackHeight = (kind: MarkdownBlock["kind"]) => {
       return 120;
     case "database-block":
       return 360;
-    case "card-block":
-      return 168;
+    case "card-start":
+    case "card-end":
+      return 60;
     case "help-block":
       return 110;
     case "image-embed":
@@ -2628,341 +2641,6 @@ const renderEditorInlineSyntaxOverlay = (
   return nodes;
 };
 
-type CardBodyPreviewSegment =
-  | {
-      kind: "markdown";
-      source: string;
-      startOffset: number;
-      endOffset: number;
-    }
-  | {
-      kind: "media";
-      items: MediaItem[];
-      raw: string;
-      startOffset: number;
-      endOffset: number;
-    }
-  | {
-      kind: "table";
-      raw: string;
-      startOffset: number;
-      endOffset: number;
-    };
-
-type CardBlockPreviewParts = {
-  parts: Array<
-    | {
-        kind: "body";
-        segments: CardBodyPreviewSegment[];
-      }
-    | {
-        kind: "help";
-        source: string;
-      }
-  >;
-};
-
-const isCardDirectivePreviewLine = (line: string, directive: "#card" | "#endcard") =>
-  line.trim().toLowerCase() === directive;
-
-const isHelpDirectivePreviewLine = (line: string, directive: "#help" | "#helpend") =>
-  line.trim().toLowerCase() === directive;
-
-const buildPreviewLineStarts = (source: string, lines: string[]) => {
-  const starts: number[] = [];
-  let offset = 0;
-  for (let i = 0; i < lines.length; i += 1) {
-    starts.push(offset);
-    offset += (lines[i] ?? "").length;
-    if (offset < source.length || i < lines.length - 1) {
-      offset += 1;
-    }
-  }
-  return starts;
-};
-
-const resolveLineRangeOffsets = (
-  lineStarts: number[],
-  sourceLength: number,
-  startLine: number,
-  endLineExclusive: number,
-) => {
-  const startOffset = lineStarts[startLine] ?? sourceLength;
-  if (endLineExclusive <= startLine) {
-    return { startOffset, endOffset: startOffset };
-  }
-  if (endLineExclusive >= lineStarts.length) {
-    return { startOffset, endOffset: sourceLength };
-  }
-  return {
-    startOffset,
-    endOffset: Math.max(startOffset, (lineStarts[endLineExclusive] ?? sourceLength) - 1),
-  };
-};
-
-type CardDirectiveBoundarySegment = {
-  kind: "body" | "directive";
-  raw: string;
-  startOffset: number;
-  endOffset: number;
-};
-
-const splitCardDirectiveMarkdownSegments = (
-  blockRaw: string,
-  startOffset: number,
-): CardDirectiveBoundarySegment[] => {
-  if (!blockRaw) {
-    return [];
-  }
-
-  const lines = blockRaw.split("\n");
-  const segments: CardDirectiveBoundarySegment[] = [];
-  let cursor = 0;
-  let chunkStart = 0;
-
-  const pushChunk = (kind: CardDirectiveBoundarySegment["kind"], from: number, to: number) => {
-    if (to <= from) {
-      return;
-    }
-    segments.push({
-      kind,
-      raw: blockRaw.slice(from, to),
-      startOffset: startOffset + from,
-      endOffset: startOffset + to,
-    });
-  };
-
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-    const line = lines[lineIndex] ?? "";
-    const lineStart = cursor;
-    const hasTrailingNewline = lineIndex < lines.length - 1;
-    const lineEnd = lineStart + line.length + (hasTrailingNewline ? 1 : 0);
-    if (isCardDirectivePreviewLine(line, "#card") || isCardDirectivePreviewLine(line, "#endcard")) {
-      pushChunk("body", chunkStart, lineStart);
-      pushChunk("directive", lineStart, lineEnd);
-      chunkStart = lineEnd;
-    }
-    cursor = lineEnd;
-  }
-
-  pushChunk("body", chunkStart, blockRaw.length);
-
-  return segments.length > 0
-    ? segments
-    : [{
-      kind: "body",
-      raw: blockRaw,
-      startOffset,
-      endOffset: startOffset + blockRaw.length,
-    }];
-};
-
-const buildCardBodyPreviewSegments = (
-  source: string,
-  scope: string,
-  baseOffset = 0,
-): CardBodyPreviewSegment[] => {
-  const previewSegments: CardBodyPreviewSegment[] = [];
-  const boundarySegments = splitCardDirectiveMarkdownSegments(source, baseOffset);
-
-  const pushMarkdownSegment = (segmentSource: string, startOffset: number, endOffset: number) => {
-    if (!segmentSource) {
-      return;
-    }
-    previewSegments.push({
-      kind: "markdown",
-      source: escapeHybridPreviewSpecialLines(segmentSource),
-      startOffset,
-      endOffset,
-    });
-  };
-
-  for (let boundaryIndex = 0; boundaryIndex < boundarySegments.length; boundaryIndex += 1) {
-    const boundarySegment = boundarySegments[boundaryIndex];
-    if (!boundarySegment) {
-      continue;
-    }
-    if (boundarySegment.kind === "directive") {
-      pushMarkdownSegment(
-        boundarySegment.raw,
-        boundarySegment.startOffset,
-        boundarySegment.endOffset,
-      );
-      continue;
-    }
-
-    const mediaSegments = splitMarkdownMediaSegments(boundarySegment.raw, `${scope}-${boundaryIndex}`);
-    let boundaryOffset = 0;
-
-    for (const segment of mediaSegments) {
-      if (segment.kind === "media") {
-        const startOffset = boundarySegment.startOffset + boundaryOffset;
-        const endOffset = startOffset + segment.raw.length;
-        previewSegments.push({
-          kind: "media",
-          items: segment.items,
-          raw: segment.raw,
-          startOffset,
-          endOffset,
-        });
-        boundaryOffset += segment.raw.length;
-        continue;
-      }
-
-      const markdownSource = segment.source;
-      const markdownOffset = boundarySegment.startOffset + boundaryOffset;
-      const markdownBlocks = parseMarkdownBlocks(markdownSource);
-
-      if (markdownBlocks.length === 0) {
-        pushMarkdownSegment(
-          markdownSource,
-          markdownOffset,
-          markdownOffset + markdownSource.length,
-        );
-        boundaryOffset += markdownSource.length;
-        continue;
-      }
-
-      for (const markdownBlock of markdownBlocks) {
-        const blockStartOffset = markdownOffset + markdownBlock.startOffset;
-        const blockEndOffset = markdownOffset + markdownBlock.endOffset;
-        if (markdownBlock.kind === "table") {
-          previewSegments.push({
-            kind: "table",
-            raw: markdownBlock.raw,
-            startOffset: blockStartOffset,
-            endOffset: blockEndOffset,
-          });
-          continue;
-        }
-        pushMarkdownSegment(markdownBlock.raw, blockStartOffset, blockEndOffset);
-      }
-
-      boundaryOffset += markdownSource.length;
-    }
-  }
-
-  return previewSegments;
-};
-
-const extractCardBlockPreviewParts = (blockRaw: string): CardBlockPreviewParts => {
-  const lines = blockRaw.split("\n");
-  const lineStarts = buildPreviewLineStarts(blockRaw, lines);
-  if (lines.length === 0 || !isCardDirectivePreviewLine(lines[0] ?? "", "#card")) {
-    return {
-      parts: [
-        {
-          kind: "body",
-          segments: buildCardBodyPreviewSegments(blockRaw, "card-block-preview-root", 0),
-        },
-      ],
-    };
-  }
-
-  let closingIndex = -1;
-  for (let i = 1; i < lines.length; i += 1) {
-    if (isCardDirectivePreviewLine(lines[i] ?? "", "#endcard")) {
-      closingIndex = i;
-      break;
-    }
-  }
-  const scanEndExclusive = closingIndex >= 0 ? closingIndex : lines.length;
-  const parts: CardBlockPreviewParts["parts"] = [];
-
-  const pushBodyPart = (start: number, endExclusive: number) => {
-    if (endExclusive <= start) {
-      return;
-    }
-    const { startOffset, endOffset } = resolveLineRangeOffsets(
-      lineStarts,
-      blockRaw.length,
-      start,
-      endExclusive,
-    );
-    const raw = blockRaw.slice(startOffset, endOffset);
-    if (raw.length === 0) {
-      return;
-    }
-    parts.push({
-      kind: "body",
-      segments: buildCardBodyPreviewSegments(
-        raw,
-        `card-block-preview-${start}-${endExclusive}`,
-        startOffset,
-      ),
-    });
-  };
-
-  let segmentStart = 0;
-  for (let i = 1; i < scanEndExclusive; i += 1) {
-    if (!isHelpDirectivePreviewLine(lines[i] ?? "", "#help")) {
-      continue;
-    }
-
-    pushBodyPart(segmentStart, i);
-
-    let helpEndInclusive = i;
-    for (let j = i + 1; j < scanEndExclusive; j += 1) {
-      helpEndInclusive = j;
-      if (isHelpDirectivePreviewLine(lines[j] ?? "", "#helpend")) {
-        break;
-      }
-    }
-
-    const helpRaw = lines.slice(i, helpEndInclusive + 1).join("\n");
-    parts.push({
-      kind: "help",
-      source: escapeHybridPreviewSpecialLines(normalizeHelpBlockPreviewSource(helpRaw)),
-    });
-
-    segmentStart = helpEndInclusive + 1;
-    i = helpEndInclusive;
-  }
-
-  pushBodyPart(segmentStart, lines.length);
-
-  if (parts.length === 0) {
-    return {
-      parts: [
-        {
-          kind: "body",
-          segments: buildCardBodyPreviewSegments(blockRaw, "card-block-preview-fallback", 0),
-        },
-      ],
-    };
-  }
-
-  return { parts };
-};
-
-const isSameCardTableSegmentTarget = (
-  left: CardTableSegmentTarget | ActiveCardTableState | null,
-  right: CardTableSegmentTarget | ActiveCardTableState | null,
-) =>
-  Boolean(
-    left &&
-      right &&
-      left.blockIndex === right.blockIndex &&
-      left.blockId === right.blockId &&
-      left.partIndex === right.partIndex &&
-      left.segmentIndex === right.segmentIndex,
-  );
-
-const resolveCardTableSegmentFromParts = (
-  parts: CardBlockPreviewParts,
-  target: CardTableSegmentTarget,
-) => {
-  const part = parts.parts[target.partIndex];
-  if (!part || part.kind !== "body") {
-    return null;
-  }
-  const segment = part.segments[target.segmentIndex];
-  if (!segment || segment.kind !== "table") {
-    return null;
-  }
-  return segment;
-};
-
 const extractHorizontalRuleEditorDraft = (blockRaw: string) => {
   const normalized = normalizeHorizontalRuleBlockSource(blockRaw);
   for (const line of normalized.split("\n")) {
@@ -3074,7 +2752,7 @@ const toPersistedBlockRawForDraft = (
     ? serializeHorizontalRuleEditorDraft(draft)
     : block.kind === "math-block"
     ? normalizeMathBlockSource(draft)
-    : block.kind === "card-block"
+    : block.kind === "card-end"
     ? normalizeCardBlockSource(draft)
     : draft;
 
@@ -3157,8 +2835,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const [activeEditSnapshot, setActiveEditSnapshot] = useState<ActiveEditSnapshot | null>(null);
   const [activeComposing, setActiveComposing] = useState(false);
   const [activeTableDirty, setActiveTableDirty] = useState(false);
-  const [activeCardTableState, setActiveCardTableState] = useState<ActiveCardTableState | null>(null);
-  const [activeCardTableDirty, setActiveCardTableDirty] = useState(false);
   const [history, setHistory] = useState<MarkdownHistoryState>(() =>
     createMarkdownHistory(markdown),
   );
@@ -3250,7 +2926,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const stableBlockRenderKeyCounterRef = useRef(0);
   const pendingActivationMarkdownRef = useRef<string | null>(null);
   const activeTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
-  const activeCardTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
   const codeFencePreviewHeightsRef = useRef<Map<string, number>>(new Map());
   const blockHeightCacheRef = useRef<Map<string, number>>(new Map());
 
@@ -3413,6 +3088,102 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     () => Array.from(overlayLayout.byIndex.values()),
     [overlayLayout.byIndex],
   );
+  const cardGroupRails = useMemo(() => {
+    if (blocks.length === 0 || overlayLayout.byIndex.size === 0) {
+      return [] as CardGroupOverlayRail[];
+    }
+
+    const fullBoundsByGroupId = new Map<string, {
+      firstIndex: number;
+      lastIndex: number;
+      hasStart: boolean;
+    }>();
+    for (let index = 0; index < blocks.length; index += 1) {
+      const groupId = blocks[index]?.meta?.cardGroupId;
+      if (!groupId) {
+        continue;
+      }
+      const role = blocks[index]?.meta?.cardGroupRole;
+      const current = fullBoundsByGroupId.get(groupId);
+      if (!current) {
+        fullBoundsByGroupId.set(groupId, {
+          firstIndex: index,
+          lastIndex: index,
+          hasStart: role === "start",
+        });
+        continue;
+      }
+      if (index < current.firstIndex) {
+        current.firstIndex = index;
+      }
+      if (index > current.lastIndex) {
+        current.lastIndex = index;
+      }
+      if (role === "start") {
+        current.hasStart = true;
+      }
+    }
+
+    const visibleBoundsByGroupId = new Map<string, {
+      top: number;
+      bottom: number;
+      firstIndex: number;
+      lastIndex: number;
+    }>();
+    for (const [index, row] of overlayLayout.byIndex) {
+      const groupId = blocks[index]?.meta?.cardGroupId;
+      if (!groupId) {
+        continue;
+      }
+      const current = visibleBoundsByGroupId.get(groupId);
+      const rowTop = row.top;
+      const rowBottom = row.top + row.height;
+      if (!current) {
+        visibleBoundsByGroupId.set(groupId, {
+          top: rowTop,
+          bottom: rowBottom,
+          firstIndex: index,
+          lastIndex: index,
+        });
+        continue;
+      }
+      if (rowTop < current.top) {
+        current.top = rowTop;
+      }
+      if (rowBottom > current.bottom) {
+        current.bottom = rowBottom;
+      }
+      if (index < current.firstIndex) {
+        current.firstIndex = index;
+      }
+      if (index > current.lastIndex) {
+        current.lastIndex = index;
+      }
+    }
+
+    const nextRails: CardGroupOverlayRail[] = [];
+    for (const [groupId, visible] of visibleBoundsByGroupId) {
+      const full = fullBoundsByGroupId.get(groupId);
+      const top = Math.max(0, visible.top);
+      const height = Math.max(1, visible.bottom - visible.top);
+      nextRails.push({
+        groupId,
+        top,
+        height,
+        showStartCap: full
+          ? visible.firstIndex === full.firstIndex && full.hasStart
+          : true,
+        showEndCap: full
+          ? visible.lastIndex === full.lastIndex
+          : true,
+      });
+    }
+
+    nextRails.sort((left, right) => (
+      left.top - right.top || left.groupId.localeCompare(right.groupId)
+    ));
+    return nextRails;
+  }, [blocks, overlayLayout.byIndex]);
 
   useEffect(() => {
     const knownBlockIds = new Set(blocks.map((block) => block.id));
@@ -3812,7 +3583,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     [blocks, overlayRows],
   );
 
-  const editorDirty = activeDirty || activeTableDirty || activeCardTableDirty;
+  const editorDirty = activeDirty || activeTableDirty;
 
   useEffect(() => {
     onDirtyChange?.(editorDirty);
@@ -3837,8 +3608,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setActiveEditSnapshot(null);
     setActiveComposing(false);
     setActiveTableDirty(false);
-    setActiveCardTableState(null);
-    setActiveCardTableDirty(false);
     setPendingActivation(null);
     setPendingTableActivation(null);
     pendingActivationMarkdownRef.current = null;
@@ -3889,7 +3658,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     suppressNextBlockContextMenuRef.current = false;
     stableBlockRenderTokensRef.current = [];
     pendingActivationMarkdownRef.current = null;
-    activeCardTableSessionRef.current = null;
     inlineFormattingToolbarRangeRef.current = null;
     inlineFormattingToolbarPendingSignatureRef.current = null;
     if (inlineFormattingToolbarTimerRef.current !== null) {
@@ -3929,7 +3697,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
         deferredEditFlushFrameRef.current = null;
       }
-      activeCardTableSessionRef.current = null;
       deferredEditActionRef.current = null;
       deferredEditRequestsRef.current.splice(0).forEach((request) => {
         request.resolve(false);
@@ -4739,7 +4506,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     }
     if (
       activeBlockIndex !== null ||
-      activeCardTableState !== null ||
       insertMenuState !== null ||
       pageLinkPickerState !== null ||
       typedImageLinkPickerState !== null ||
@@ -4751,7 +4517,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     }
   }, [
     activeBlockIndex,
-    activeCardTableState,
     disabled,
     imageEmbedReplacePickerState,
     insertMenuState,
@@ -4812,65 +4577,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     };
   }, [closeImageEmbedReplacePicker, imageEmbedReplacePickerState]);
 
-  useEffect(() => {
-    if (!activeCardTableState) {
-      return;
-    }
-    setActiveCardTableState((current) => {
-      if (!current) {
-        return current;
-      }
-      const block = blocks[current.blockIndex];
-      if (!block || block.kind !== "card-block" || block.id !== current.blockId) {
-        activeCardTableSessionRef.current = null;
-        setActiveCardTableDirty(false);
-        return null;
-      }
-      const segment = resolveCardTableSegmentFromParts(
-        extractCardBlockPreviewParts(block.raw),
-        current,
-      );
-      if (!segment) {
-        activeCardTableSessionRef.current = null;
-        setActiveCardTableDirty(false);
-        return null;
-      }
-      return current;
-    });
-  }, [activeCardTableState, blocks]);
-
-  useEffect(() => {
-    if (!activeCardTableState) {
-      return;
-    }
-    if (
-      activeBlockIndex !== null ||
-      insertMenuState !== null ||
-      pageLinkPickerState !== null ||
-      mathToolboxState !== null ||
-      selectionContextMenuState !== null ||
-      imageEmbedReplacePickerState !== null ||
-      disabled
-    ) {
-      const session = activeCardTableSessionRef.current;
-      if (session && !session.flush()) {
-        return;
-      }
-      activeCardTableSessionRef.current = null;
-      setActiveCardTableState(null);
-      setActiveCardTableDirty(false);
-    }
-  }, [
-    activeBlockIndex,
-    activeCardTableState,
-    disabled,
-    imageEmbedReplacePickerState,
-    insertMenuState,
-    mathToolboxState,
-    pageLinkPickerState,
-    selectionContextMenuState,
-  ]);
-
   const applyGlobalHistory = useCallback(
     (nextHistory: MarkdownHistoryState) => {
       setHistory(nextHistory);
@@ -4880,8 +4586,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setActiveEditSnapshot(null);
       setActiveComposing(false);
       setActiveTableDirty(false);
-      setActiveCardTableState(null);
-      setActiveCardTableDirty(false);
       setPendingActivation(null);
       setPendingTableActivation(null);
       setSelectedBlockSelection(null);
@@ -4904,7 +4608,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       suppressNextBlockContextMenuRef.current = false;
       pendingActivationMarkdownRef.current = null;
       activeTableSessionRef.current = null;
-      activeCardTableSessionRef.current = null;
       deferredEditActionRef.current = null;
       deferredEditRequestsRef.current.splice(0).forEach((request) => {
         request.resolve(false);
@@ -4938,74 +4641,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       }
     },
     [],
-  );
-
-  const clearActiveCardTableState = useCallback(
-    (options?: { flush?: boolean }) => {
-      const session = activeCardTableSessionRef.current;
-      if (options?.flush && session && !session.flush()) {
-        return false;
-      }
-      activeCardTableSessionRef.current = null;
-      setActiveCardTableState(null);
-      setActiveCardTableDirty(false);
-      return true;
-    },
-    [],
-  );
-
-  const registerActiveCardTableSession = useCallback(
-    (controller: MarkdownHybridTableSessionController | null) => {
-      activeCardTableSessionRef.current = controller;
-      if (!controller) {
-        setActiveCardTableDirty(false);
-      }
-    },
-    [],
-  );
-
-  const consumeCardTablePendingActivation = useCallback((target: CardTableSegmentTarget) => {
-    setActiveCardTableState((current) => {
-      if (!current || !isSameCardTableSegmentTarget(current, target) || !current.pendingActivation) {
-        return current;
-      }
-      return {
-        ...current,
-        pendingActivation: null,
-      };
-    });
-  }, []);
-
-  const handleCardTableSegmentCommitRaw = useCallback(
-    (target: CardTableSegmentTarget, nextRaw: string) => {
-      const block = blocks[target.blockIndex];
-      if (!block || block.kind !== "card-block" || block.id !== target.blockId) {
-        return false;
-      }
-      const previewParts = extractCardBlockPreviewParts(block.raw);
-      const segment = resolveCardTableSegmentFromParts(previewParts, target);
-      if (!segment) {
-        return false;
-      }
-      if (segment.raw === nextRaw) {
-        return true;
-      }
-      const nextBlockRaw = `${block.raw.slice(0, segment.startOffset)}${nextRaw}${block.raw.slice(segment.endOffset)}`;
-      if (nextBlockRaw === block.raw) {
-        return true;
-      }
-      const nextMarkdown = applyEditorMarkdownNormalization(
-        replaceMarkdownBlock(markdown, block, nextBlockRaw),
-      );
-      if (nextMarkdown === markdown) {
-        return true;
-      }
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-      onCommit?.(nextMarkdown, { block: { ...block, raw: nextBlockRaw } });
-      return true;
-    },
-    [blocks, markdown, onChange, onCommit],
   );
 
   const handleTableBlockCommitRaw = useCallback(
@@ -5114,11 +4749,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const commitActiveBlockNow = useCallback(
     (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
       if (activeBlockIndex === null) {
-        if (options?.deactivate ?? true) {
-          if (!clearActiveCardTableState({ flush: true })) {
-            return false;
-          }
-        }
         return true;
       }
 
@@ -5137,7 +4767,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           setActiveDirty(false);
           setActiveEditSnapshot(null);
           setActiveComposing(false);
-          clearActiveCardTableState();
           if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
             setPendingTableActivation(null);
           }
@@ -5158,7 +4787,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           setActiveDirty(false);
           setActiveEditSnapshot(null);
           setActiveComposing(false);
-          clearActiveCardTableState();
           if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
             setPendingTableActivation(null);
           }
@@ -5236,7 +4864,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         setActiveDirty(false);
         setActiveEditSnapshot(null);
         setActiveComposing(false);
-        clearActiveCardTableState();
         if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
           setPendingTableActivation(null);
         }
@@ -5266,7 +4893,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       markdown,
       onChange,
       onCommit,
-      clearActiveCardTableState,
       pendingTableActivation,
       resetActiveEditorUi,
       updateActiveDraftState,
@@ -5274,7 +4900,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   );
 
   const discardActiveBlockNow = useCallback(() => {
-    clearActiveCardTableState();
     resetActiveEditorUi();
     setActiveBlockIndex(null);
     updateActiveDraftState("");
@@ -5285,7 +4910,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     setPendingActivation(null);
     setPendingTableActivation(null);
     return true;
-  }, [clearActiveCardTableState, resetActiveEditorUi, updateActiveDraftState]);
+  }, [resetActiveEditorUi, updateActiveDraftState]);
 
   const flushDeferredEditAction = useCallback(() => {
     const action = deferredEditActionRef.current;
@@ -5358,57 +4983,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     return Promise.resolve(discardActiveBlockNow());
   }, [discardActiveBlockNow, queueDeferredEditAction]);
 
-  const handleCardTableSegmentRequestActivate = useCallback(
-    (target: CardTableSegmentTarget, request?: MarkdownHybridTableActivationRequest) => {
-      if (disabled) {
-        return;
-      }
-      const block = blocks[target.blockIndex];
-      if (!block || block.kind !== "card-block" || block.id !== target.blockId) {
-        return;
-      }
-      if (!resolveCardTableSegmentFromParts(extractCardBlockPreviewParts(block.raw), target)) {
-        return;
-      }
-      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
-        return;
-      }
-      setPendingActivation(null);
-      setPendingTableActivation(null);
-      setInsertMenuState(null);
-      setMathToolboxState(null);
-      setSelectionContextMenuState(null);
-      closeImageEmbedReplacePicker();
-      closePageLinkPicker();
-      setActiveCardTableDirty(false);
-      setActiveCardTableState((current) =>
-        current && isSameCardTableSegmentTarget(current, target)
-          ? {
-            ...current,
-            pendingActivation: request ?? null,
-          }
-          : {
-            ...target,
-            pendingActivation: request ?? null,
-          }
-      );
-    },
-    [
-      activeBlockIndex,
-      blocks,
-      closeImageEmbedReplacePicker,
-      closePageLinkPicker,
-      commitActiveBlock,
-      disabled,
-    ],
-  );
-
   const activateBlock = useCallback(
     (index: number, caret: "start" | "end" = "end") => {
       if (disabled) {
-        return;
-      }
-      if (!clearActiveCardTableState({ flush: true })) {
         return;
       }
       if (blocks.length === 0) {
@@ -5444,7 +5021,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       activeBlockIndex,
       blocks,
       cacheSvgCodeFencePreviewHeightForBlock,
-      clearActiveCardTableState,
       commitActiveBlock,
       disabled,
     ],
@@ -5453,9 +5029,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const handleTableBlockRequestActivate = useCallback(
     (index: number, request?: MarkdownHybridTableActivationRequest) => {
       if (disabled) {
-        return;
-      }
-      if (!clearActiveCardTableState({ flush: true })) {
         return;
       }
       const nextIndex = clampIndex(index, blocks.length);
@@ -5488,7 +5061,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setActiveComposing(false);
       setActiveTableDirty(false);
     },
-    [activeBlockIndex, blocks, clearActiveCardTableState, commitActiveBlock, disabled],
+    [activeBlockIndex, blocks, commitActiveBlock, disabled],
   );
 
   const handleMathToolboxButtonMouseDown = useCallback(
@@ -6751,14 +6324,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (disabled || activeBlockIndex !== null) {
         return;
       }
-      const eventTarget = event.target;
-      if (
-        activeCardTableState &&
-        eventTarget instanceof Element &&
-        eventTarget.closest(".markdown-hybrid-card-table-segment .markdown-hybrid-table-block")
-      ) {
-        return;
-      }
       if (event.key === "Escape" && imageEmbedReplacePickerState) {
         event.preventDefault();
         event.stopPropagation();
@@ -6806,7 +6371,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     },
     [
       activeBlockIndex,
-      activeCardTableState,
       clearSelectedBlockRange,
       closeImageEmbedReplacePicker,
       deleteSelectedBlocks,
@@ -6915,9 +6479,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (
         activeBlockIndex === null ||
         activeDirty ||
-        activeTableDirty ||
-        activeCardTableState !== null ||
-        activeCardTableDirty
+        activeTableDirty
       ) {
         return;
       }
@@ -6935,8 +6497,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     },
     [
       activeBlockIndex,
-      activeCardTableDirty,
-      activeCardTableState,
       activeDirty,
       activeTableDirty,
       disabled,
@@ -9062,6 +8622,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     kind: MarkdownBlock["kind"];
     top: number;
     height: number;
+    cardGroupId?: string;
+    cardGroupRole?: "start" | "inner" | "end";
     isDragHandleDisabled?: boolean;
     insertButtonTitle?: string;
   }) => {
@@ -9084,6 +8646,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         data-md-block-index={blockIndex}
         data-md-block-id={String(blockIndex)}
         data-md-block-kind={options.kind}
+        data-md-card-group-id={options.cardGroupId ?? undefined}
+        data-md-card-group-role={options.cardGroupRole ?? undefined}
         style={{ top: options.top, height: options.height }}
       >
         <div className="markdown-hybrid-overlay-rail markdown-hybrid-overlay-rail-left">
@@ -9412,17 +8976,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         : block.kind === "hr"
         ? normalizeHorizontalRuleBlockSource(block.raw)
         : block.raw;
-      const cardBlockPreviewParts = block.kind === "card-block"
-        ? extractCardBlockPreviewParts(block.raw)
-        : null;
-      const isCardTableSegmentActive = (partIndex: number, segmentIndex: number) =>
-        Boolean(
-          activeCardTableState &&
-            activeCardTableState.blockIndex === index &&
-            activeCardTableState.blockId === block.id &&
-            activeCardTableState.partIndex === partIndex &&
-            activeCardTableState.segmentIndex === segmentIndex,
-        );
       const imageEmbedPreviewItems = block.kind === "image-embed"
         ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-image-embed-preview")
           .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
@@ -9580,133 +9133,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         continue;
       }
 
-      if (block.kind === "card-block" && cardBlockPreviewParts) {
-        bodyByIndex.set(
-          index,
-          <div
-            className="markdown-hybrid-card-block-preview"
-            onChange={handleRenderedTaskCheckboxChange(index)}
-          >
-            <div className="markdown-hybrid-card-block-frame">
-              {cardBlockPreviewParts.parts.map((part, partIndex) =>
-                part.kind === "help" ? (
-                  <div
-                    key={`card-part:${index}:${partIndex}`}
-                    className="markdown-hybrid-card-help-subbox"
-                  >
-                    <div className="markdown-hybrid-block-preview">
-                      {part.source.trim().length > 0 ? renderPreviewWithPageLinks(part.source) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    key={`card-part:${index}:${partIndex}`}
-                    className="markdown-hybrid-card-body-part"
-                  >
-                    {part.segments.length > 0 ? (
-                      part.segments.map((segment, segmentIndex) =>
-                        segment.kind === "media" ? (
-                          <div
-                            key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
-                            className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview"
-                          >
-                            {segment.items.length > 0 ? (
-                              <FlashcardMediaGroup
-                                media={segment.items}
-                                vaultPngAssets={vaultPngAssets}
-                                vaultPath={vaultPath}
-                                sourceRelativePath={sourceRelativePath}
-                              />
-                            ) : (
-                              <pre className="flashcard-code-block media-block-card-source">
-                                <code>{segment.raw}</code>
-                              </pre>
-                            )}
-                          </div>
-                        ) : segment.kind === "table" ? (
-                          <div
-                            key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
-                            className="markdown-hybrid-card-table-segment"
-                            data-md-block-control="true"
-                          >
-                            <MarkdownHybridTableBlock
-                              blockIndex={index}
-                              raw={segment.raw}
-                              active={isCardTableSegmentActive(partIndex, segmentIndex)}
-                              allowCodeView={false}
-                              codeViewPolicy={tableCodeViewPolicy}
-                              disabled={disabled}
-                              vaultFiles={vaultFiles}
-                              vaultPngAssets={vaultPngAssets}
-                              renderPreview={renderPreviewWithPageLinks}
-                              pendingActivation={
-                                isCardTableSegmentActive(partIndex, segmentIndex)
-                                  ? activeCardTableState?.pendingActivation ?? null
-                                  : null
-                              }
-                              onConsumePendingActivation={() =>
-                                consumeCardTablePendingActivation({
-                                  blockIndex: index,
-                                  blockId: block.id,
-                                  partIndex,
-                                  segmentIndex,
-                                })}
-                              onRequestActivate={(request) =>
-                                handleCardTableSegmentRequestActivate(
-                                  {
-                                    blockIndex: index,
-                                    blockId: block.id,
-                                    partIndex,
-                                    segmentIndex,
-                                  },
-                                  request,
-                                )}
-                              onCommitRaw={(nextRaw) => {
-                                handleCardTableSegmentCommitRaw(
-                                  {
-                                    blockIndex: index,
-                                    blockId: block.id,
-                                    partIndex,
-                                    segmentIndex,
-                                  },
-                                  nextRaw,
-                                );
-                              }}
-                              onDirtyChange={(dirty) => {
-                                if (isCardTableSegmentActive(partIndex, segmentIndex)) {
-                                  setActiveCardTableDirty(dirty);
-                                }
-                              }}
-                              registerSession={(controller) => {
-                                if (isCardTableSegmentActive(partIndex, segmentIndex) || controller === null) {
-                                  registerActiveCardTableSession(controller);
-                                }
-                              }}
-                              onGlobalUndo={handleGlobalUndo}
-                              onGlobalRedo={handleGlobalRedo}
-                            />
-                          </div>
-                        ) : segment.source.trim().length > 0 ? (
-                          <div
-                            key={`card-segment:${index}:${partIndex}:${segmentIndex}`}
-                            className="markdown-hybrid-block-preview"
-                          >
-                            {renderPreviewWithPageLinks(segment.source)}
-                          </div>
-                        ) : null
-                      )
-                    ) : (
-                      <div className="markdown-hybrid-card-block-empty" aria-hidden="true" />
-                    )}
-                  </div>
-                )
-              )}
-            </div>
-          </div>,
-        );
-        continue;
-      }
-
       if (block.kind === "image-embed") {
         bodyByIndex.set(
           index,
@@ -9810,13 +9236,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     return bodyByIndex;
   }, [
     activeBlockIndex,
-    activeCardTableState,
     blocks,
     clearPendingTableActivation,
-    consumeCardTablePendingActivation,
     disabled,
-    handleCardTableSegmentCommitRaw,
-    handleCardTableSegmentRequestActivate,
     handleGlobalRedo,
     handleGlobalUndo,
     handleHrEnterZoneClick,
@@ -9835,7 +9257,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     onNavigateWikilink,
     pinnedVirtualizedIndices,
     pendingTableActivation,
-    registerActiveCardTableSession,
     registerActiveTableSession,
     renderPreviewWithPageLinks,
     resolveCodeFencePreviewItems,
@@ -10009,6 +9430,20 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         onDragOver={handleContentLayerDragOver}
         onDrop={handleContentLayerDrop}
       >
+        {cardGroupRails.length > 0 ? (
+          <div className="markdown-hybrid-card-group-rails-layer" aria-hidden="true">
+            {cardGroupRails.map((rail) => (
+              <span
+                key={`card-group-rail:${rail.groupId}`}
+                className={`md-card-group-rail markdown-hybrid-card-group-rail${
+                  rail.showStartCap ? " has-start-cap" : ""
+                }${rail.showEndCap ? " has-end-cap" : ""}`}
+                data-md-card-group-id={rail.groupId}
+                style={{ top: rail.top, height: rail.height }}
+              />
+            ))}
+          </div>
+        ) : null}
         {blocks.map((block, index) => {
           const isActive = activeBlockIndex === index && !disabled;
           const headingEditorPlaceholder = isActive
@@ -10040,6 +9475,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           const useSyncedSvgCodeFenceEditorHeight = isActive &&
             hasSvgCodeFenceMediaPreview &&
             syncedSvgCodeFenceHeight !== null;
+          const cardGroupId = block.meta?.cardGroupId;
+          const cardGroupRole = block.meta?.cardGroupRole;
           const inactiveBlockBody = !isActive
             ? (inactiveBlockBodyByIndex.get(index) ?? <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />)
             : null;
@@ -10061,6 +9498,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
               data-md-code-fence-media-preview={hasSvgCodeFenceMediaPreview ? "true" : undefined}
               data-md-block-index={index}
               data-md-block-id={String(index)}
+              data-md-card-group-id={cardGroupId ?? undefined}
+              data-md-card-group-role={cardGroupRole ?? undefined}
               onMouseDownCapture={handleBlockMouseDownCapture(index)}
               onMouseDown={handleBlockMouseDown(index)}
               onMouseEnter={handleBlockMouseEnter(index)}
@@ -10249,11 +9688,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           ) {
             return null;
           }
+          const overlayBlock = blocks[overlayRow.index];
           return renderOverlayRow({
             blockIndex: overlayRow.index,
             kind: overlayRow.kind,
             top: overlayRow.top,
             height: overlayRow.height,
+            cardGroupId: overlayBlock?.meta?.cardGroupId,
+            cardGroupRole: overlayBlock?.meta?.cardGroupRole,
           });
         })}
         {activeDropSlotTop !== null && activeDropSlotLabel ? (

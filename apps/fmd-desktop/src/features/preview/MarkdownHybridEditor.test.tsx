@@ -844,18 +844,16 @@ describe("MarkdownHybridEditor", () => {
       const initialMarkdown = ["# A", "# B", "# C"].join("\n");
       const internalBlocks = [
         {
-          kind: "card-block",
-          raw: [
-            "#card",
-            "Question",
-            "Answer: 42",
-            "-true",
-            "a) option",
-            "-a",
-            "%%cloze%%",
-            "tocken \"drag\"",
-            "#endcard",
-          ].join("\n"),
+          kind: "card-start",
+          raw: "#card",
+        },
+        {
+          kind: "paragraph",
+          raw: ["Question", "Answer: 42", "-true", "a) option", "-a", "%%cloze%%", "tocken \"drag\""].join("\n"),
+        },
+        {
+          kind: "card-end",
+          raw: "#endcard",
         },
         {
           kind: "table",
@@ -914,7 +912,7 @@ describe("MarkdownHybridEditor", () => {
       const activeTextarea = container.querySelector<HTMLTextAreaElement>(
         ".markdown-hybrid-block[data-md-block-index='0'] .markdown-hybrid-block-editor",
       );
-      expect(activeTextarea?.value).toBe(internalBlocks[0]?.raw);
+      expect(activeTextarea?.value).toBe("#card");
       dispatchKeyDown(activeTextarea, "z", { ctrlKey: true });
       expect(readMarkdown()).toBe(initialMarkdown);
 
@@ -2491,7 +2489,7 @@ describe("MarkdownHybridEditor", () => {
       expect(markdownAfterTaskBlur.match(/^1\) TASK HEADING$/m)).toHaveLength(1);
 
       const cardInsertButtons = container.querySelectorAll<HTMLButtonElement>(
-        ".markdown-hybrid-overlay-row[data-md-block-kind='card-block'] .markdown-hybrid-block-insert-button",
+        ".markdown-hybrid-overlay-row[data-md-card-group-role='end'] .markdown-hybrid-block-insert-button",
       );
       const lastCardInsertButton = cardInsertButtons[cardInsertButtons.length - 1];
       expect(lastCardInsertButton).toBeTruthy();
@@ -2645,7 +2643,7 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("renders #card ... #endcard as one card block and nests #help content inside a subbox", () => {
+  it("renders #card/#endcard as separate blocks and keeps card group metadata on inner blocks", () => {
     const markdown = [
       "Before",
       "#card",
@@ -2677,21 +2675,57 @@ describe("MarkdownHybridEditor", () => {
     const blocks = Array.from(
       container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
     );
-    expect(blocks).toHaveLength(3);
-    expect(
-      container.querySelector(".markdown-hybrid-block[data-md-block-kind='card-block']"),
-    ).toBeTruthy();
-    const cardFrame = container.querySelector<HTMLElement>(".markdown-hybrid-card-block-frame");
-    expect(cardFrame?.textContent ?? "").toContain("#card");
-    expect(cardFrame?.textContent ?? "").toContain("#endcard");
-    expect(cardFrame?.textContent ?? "").toContain("#help");
-    expect(cardFrame?.textContent ?? "").toContain("#helpend");
-    const helpSubboxes = container.querySelectorAll<HTMLElement>(".markdown-hybrid-card-help-subbox");
-    expect(helpSubboxes).toHaveLength(1);
-    expect(helpSubboxes[0]?.textContent ?? "").toContain("#help");
-    expect(helpSubboxes[0]?.textContent ?? "").toContain("#helpend");
-    const frameChildren = Array.from(cardFrame?.children ?? []);
-    expect(frameChildren[1]?.classList.contains("markdown-hybrid-card-help-subbox")).toBe(true);
+    expect(blocks).toHaveLength(9);
+    const blockKinds = blocks.map((block) => block.getAttribute("data-md-block-kind"));
+    expect(blockKinds).toEqual([
+      "paragraph",
+      "card-start",
+      "paragraph",
+      "blank",
+      "help-block",
+      "blank",
+      "paragraph",
+      "card-end",
+      "paragraph",
+    ]);
+
+    const startBlock = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='card-start'][data-md-card-group-role='start']",
+    );
+    const endBlock = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='card-end'][data-md-card-group-role='end']",
+    );
+    expect(startBlock).toBeTruthy();
+    expect(endBlock).toBeTruthy();
+    const groupId = startBlock?.getAttribute("data-md-card-group-id");
+    expect(groupId).toBeTruthy();
+    expect(endBlock?.getAttribute("data-md-card-group-id")).toBe(groupId);
+    if (!groupId) {
+      throw new Error("Expected card group id for #card marker block");
+    }
+    const groupRails = container.querySelectorAll<HTMLElement>(
+      `.markdown-hybrid-card-group-rail[data-md-card-group-id='${groupId}']`,
+    );
+    expect(groupRails).toHaveLength(1);
+    expect(groupRails[0]?.classList.contains("has-start-cap")).toBe(true);
+    expect(groupRails[0]?.classList.contains("has-end-cap")).toBe(true);
+    expect(container.querySelector(".markdown-hybrid-card-group-marker-rail")).toBeNull();
+
+    const groupedInnerBlocks = container.querySelectorAll<HTMLElement>(
+      ".markdown-hybrid-block[data-md-card-group-role='inner']",
+    );
+    expect(groupedInnerBlocks).toHaveLength(5);
+    groupedInnerBlocks.forEach((block) => {
+      expect(block.getAttribute("data-md-card-group-id")).toBe(groupId);
+    });
+
+    const helpBlock = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='help-block'][data-md-card-group-role='inner']",
+    );
+    expect(helpBlock?.textContent ?? "").toContain("#help");
+    expect(helpBlock?.textContent ?? "").toContain("#helpend");
+    expect(container.querySelector(".markdown-hybrid-card-block-frame")).toBeNull();
+    expect(container.querySelector(".markdown-hybrid-card-help-subbox")).toBeNull();
     cleanup();
   });
 
@@ -2710,7 +2744,7 @@ describe("MarkdownHybridEditor", () => {
 
     const { container, cleanup } = render(
       <MarkdownHybridEditor
-        historyKey="card-block-media-preview"
+        historyKey="card-granular-media-preview"
         markdown={markdown}
         mode="edit"
         onChange={() => undefined}
@@ -2729,9 +2763,101 @@ describe("MarkdownHybridEditor", () => {
     const image = container.querySelector<HTMLImageElement>(".flashcard-media-image");
     expect(image?.getAttribute("alt")).toBe("Example image");
     expect(container.querySelector(".flashcard-media-svg-surface svg")).toBeTruthy();
-    expect(container.querySelector(".markdown-hybrid-card-block-frame")?.textContent ?? "").toContain(
-      "Question text",
+    const innerParagraph = container.querySelector(
+      ".markdown-hybrid-block[data-md-block-kind='paragraph'][data-md-card-group-role='inner']",
     );
+    expect(innerParagraph?.textContent ?? "").toContain("Question text");
+    expect(container.querySelector(".markdown-hybrid-card-block-frame")).toBeNull();
+    cleanup();
+  });
+
+  it("renders the card group rail in write mode from #card to #endcard", () => {
+    const markdown = [
+      "Before",
+      "#card",
+      "Inner line",
+      "#endcard",
+      "After",
+    ].join("\n");
+
+    const { container, cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="card-group-rail-write-mode"
+        markdown={markdown}
+        mode="write"
+        onChange={() => undefined}
+        renderPreview={(previewValue) => <div>{previewValue}</div>}
+      />,
+    );
+
+    const startBlock = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='card-start'][data-md-card-group-role='start']",
+    );
+    const endBlock = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='card-end'][data-md-card-group-role='end']",
+    );
+    expect(startBlock).toBeTruthy();
+    expect(endBlock).toBeTruthy();
+    const groupId = startBlock?.getAttribute("data-md-card-group-id");
+    expect(groupId).toBeTruthy();
+    if (!groupId) {
+      throw new Error("Expected card group id in write mode");
+    }
+    const groupRails = container.querySelectorAll<HTMLElement>(
+      `.markdown-hybrid-card-group-rail[data-md-card-group-id='${groupId}']`,
+    );
+    expect(groupRails).toHaveLength(1);
+    expect(groupRails[0]?.classList.contains("has-start-cap")).toBe(true);
+    expect(groupRails[0]?.classList.contains("has-end-cap")).toBe(true);
+    cleanup();
+  });
+
+  it("keeps a single card rail for open card groups through EOF", () => {
+    const markdown = [
+      "#card",
+      "Open question",
+      "",
+      "1) Item",
+    ].join("\n");
+
+    const { container, cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="card-group-open-rail"
+        markdown={markdown}
+        mode="edit"
+        onChange={() => undefined}
+        renderPreview={(previewValue) => <div>{previewValue}</div>}
+      />,
+    );
+
+    const groupId = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='card-start'][data-md-card-group-role='start']",
+    )?.getAttribute("data-md-card-group-id");
+    expect(groupId).toBeTruthy();
+    if (!groupId) {
+      throw new Error("Expected open card group id");
+    }
+    const groupRails = container.querySelectorAll<HTMLElement>(
+      `.markdown-hybrid-card-group-rail[data-md-card-group-id='${groupId}']`,
+    );
+    expect(groupRails).toHaveLength(1);
+    expect(groupRails[0]?.classList.contains("has-start-cap")).toBe(true);
+    expect(groupRails[0]?.classList.contains("has-end-cap")).toBe(true);
+    cleanup();
+  });
+
+  it("does not render a card rail for unmatched #endcard blocks", () => {
+    const { container, cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="card-group-unmatched-end-rail"
+        markdown={["Before", "#endcard", "After"].join("\n")}
+        mode="edit"
+        onChange={() => undefined}
+        renderPreview={(previewValue) => <div>{previewValue}</div>}
+      />,
+    );
+
+    expect(container.querySelector(".markdown-hybrid-card-group-rail")).toBeNull();
     cleanup();
   });
 
@@ -3180,7 +3306,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("keeps Enter inside a card body within the card block and does not create outer page blocks", () => {
+  it("keeps Enter in an inner card block local until commit and reparses granular blocks on blur", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
 
@@ -3204,41 +3330,30 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      let textarea = activateBlockEditor(container, 0);
+      let textarea = activateBlockEditor(container, 1);
       expect(textarea).toBeTruthy();
-      const caret = textarea?.value.indexOf("QUESTION TEXT") ?? -1;
-      expect(caret).toBeGreaterThanOrEqual(0);
-      setTextareaSelection(textarea, caret + "QUESTION TEXT".length);
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "Enter");
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-      expect(textarea?.value).toBe(["#card", "QUESTION TEXT", "", "#endcard"].join("\n"));
+      expect(textarea?.value).toBe("QUESTION TEXT\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
-      ).toHaveLength(1);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(3);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "", "#endcard"].join("\n"));
+      const blockKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(blockKinds).toEqual(["card-start", "paragraph", "blank", "card-end"]);
 
       cleanup();
     });
   });
 
-  it("keeps Shift+Enter at the top of a card block local until commit without duplicating blocks", () => {
+  it("keeps Shift+Enter in an inner card block local until commit without duplicating outer blocks", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = [
-        "#card",
-        "QUESTION TEXT",
-        "a) OPTION A",
-        "b) OPTION B",
-        "c) OPTION C",
-        "d) OPTION D",
-        "-a",
-        "-c",
-        "#endcard",
-      ].join("\n");
+      const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -3260,7 +3375,7 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      let textarea = activateBlockEditor(container, 0);
+      let textarea = activateBlockEditor(container, 1);
       expect(textarea).toBeTruthy();
       const questionLineEnd = textarea?.value.indexOf("QUESTION TEXT") ?? -1;
       expect(questionLineEnd).toBeGreaterThanOrEqual(0);
@@ -3271,39 +3386,22 @@ describe("MarkdownHybridEditor", () => {
       dispatchKeyDown(textarea, "Enter", { shiftKey: true });
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
 
-      expect(textarea?.value).toBe([
-        "#card",
-        "QUESTION TEXT",
-        "",
-        "",
-        "a) OPTION A",
-        "b) OPTION B",
-        "c) OPTION C",
-        "d) OPTION D",
-        "-a",
-        "-c",
-        "#endcard",
-      ].join("\n"));
+      expect(textarea?.value).toBe("QUESTION TEXT\n\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
-      ).toHaveLength(1);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(3);
 
       blurTextarea(textarea);
-      expect(readMarkdown()).toBe([
-        "#card",
-        "QUESTION TEXT",
-        "",
-        "",
-        "a) OPTION A",
-        "b) OPTION B",
-        "c) OPTION C",
-        "d) OPTION D",
-        "-a",
-        "-c",
-        "#endcard",
-      ].join("\n"));
+      expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "", "", "#endcard"].join("\n"));
+      const blockKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(blockKinds).toEqual([
+        "card-start",
+        "paragraph",
+        "blank",
+        "blank",
+        "card-end",
+      ]);
 
       cleanup();
     });
@@ -3333,22 +3431,22 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      let textarea = activateBlockEditor(container, 0);
+      let textarea = activateBlockEditor(container, 2);
       expect(textarea).toBeTruthy();
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "Enter");
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-      expect(textarea?.value).toBe(`${initialMarkdown}\n`);
+      expect(textarea?.value).toBe("#endcard\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(3);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
-      expect(blockKinds).toEqual(["card-block", "blank"]);
+      expect(blockKinds).toEqual(["card-start", "paragraph", "card-end", "blank"]);
 
       cleanup();
     });
@@ -3378,22 +3476,22 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      let textarea = activateBlockEditor(container, 0);
+      let textarea = activateBlockEditor(container, 2);
       expect(textarea).toBeTruthy();
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
       dispatchKeyDown(textarea, "Enter", { shiftKey: true });
 
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-      expect(textarea?.value).toBe(`${initialMarkdown}\n`);
+      expect(textarea?.value).toBe("#endcard\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(3);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
-      expect(blockKinds).toEqual(["card-block", "blank"]);
+      expect(blockKinds).toEqual(["card-start", "paragraph", "card-end", "blank"]);
 
       cleanup();
     });
@@ -3757,7 +3855,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("keeps typed letters or digits after #endcard inside the current card block", () => {
+  it("keeps typed letters after #endcard local and commits them as inner card content", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["#card", "QUESTION TEXT", "#endcard"].join("\n");
 
@@ -3781,25 +3879,29 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      let textarea = activateBlockEditor(container, 0);
+      let textarea = activateBlockEditor(container, 2);
       expect(textarea).toBeTruthy();
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
-      applyTextareaInput(textarea, ["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
+      applyTextareaInput(textarea, "#endcarda");
 
       expect(readMarkdown()).toBe(initialMarkdown);
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
-      expect(blockKinds).toEqual(["card-block"]);
+      expect(blockKinds).toEqual(["card-start", "paragraph", "card-end"]);
 
       textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-block[data-md-block-index='0'] .markdown-hybrid-block-editor",
+        ".markdown-hybrid-block[data-md-block-index='2'] .markdown-hybrid-block-editor",
       );
       expect(textarea).toBeTruthy();
-      expect(textarea?.value).toBe(["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
+      expect(textarea?.value).toBe("#endcarda");
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "a", "#endcard"].join("\n"));
+      const committedKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(committedKinds).toEqual(["card-start", "paragraph", "paragraph", "card-end"]);
 
       cleanup();
     });
@@ -3829,17 +3931,14 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      const textarea = activateBlockEditor(container, 0);
+      const textarea = activateBlockEditor(container, 2);
       expect(textarea).toBeTruthy();
-      applyTextareaInput(textarea, `${initialMarkdown}\nPASTED TEXT`);
+      applyTextareaInput(textarea, "#endcard\nPASTED TEXT");
 
       expect(readMarkdown()).toBe(initialMarkdown);
       expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
-      ).toHaveLength(1);
-      expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='paragraph']"),
-      ).toHaveLength(0);
+      ).toHaveLength(1);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(`${initialMarkdown}\nPASTED TEXT`);
@@ -3847,7 +3946,7 @@ describe("MarkdownHybridEditor", () => {
         Array.from(
           container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
         ).map((block) => block.getAttribute("data-md-block-kind")),
-      ).toEqual(["card-block", "paragraph"]);
+      ).toEqual(["card-start", "paragraph", "card-end", "paragraph"]);
 
       cleanup();
     });
@@ -3877,9 +3976,9 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      const textarea = activateBlockEditor(container, 0);
+      const textarea = activateBlockEditor(container, 2);
       expect(textarea).toBeTruthy();
-      applyTextareaInput(textarea, `${initialMarkdown}\n## Follow up`);
+      applyTextareaInput(textarea, "#endcard\n## Follow up");
 
       expect(readMarkdown()).toBe(initialMarkdown);
       expect(
@@ -3892,13 +3991,13 @@ describe("MarkdownHybridEditor", () => {
         Array.from(
           container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
         ).map((block) => block.getAttribute("data-md-block-kind")),
-      ).toEqual(["card-block", "heading"]);
+      ).toEqual(["card-start", "paragraph", "card-end", "heading"]);
 
       cleanup();
     });
   });
 
-  it("persists removing card wrappers and reparses the result after blur", () => {
+  it("persists removing #endcard and keeps remaining card content as an open group", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["#card", "## Heading", "Body text", "#endcard"].join("\n");
 
@@ -3922,22 +4021,20 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
-      const textarea = activateBlockEditor(container, 0);
+      const textarea = activateBlockEditor(container, 3);
       expect(textarea).toBeTruthy();
-      applyTextareaInput(textarea, ["## Heading", "Body text"].join("\n"));
+      applyTextareaInput(textarea, "");
 
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
-      ).toHaveLength(1);
+      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-end']")).toHaveLength(1);
 
       blurTextarea(textarea);
-      expect(readMarkdown()).toBe(["## Heading", "Body text"].join("\n"));
+      expect(readMarkdown()).toBe(["#card", "## Heading", "Body text", ""].join("\n"));
       expect(
         Array.from(
           container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
         ).map((block) => block.getAttribute("data-md-block-kind")),
-      ).toEqual(["heading", "paragraph"]);
+      ).toEqual(["card-start", "heading", "paragraph", "blank"]);
 
       cleanup();
     });
@@ -6251,23 +6348,38 @@ describe("MarkdownHybridEditor", () => {
     );
 
     expect(container.querySelectorAll(".markdown-hybrid-table-block")).toHaveLength(2);
-    expect(container.querySelector(".markdown-hybrid-card-table-segment .markdown-hybrid-table-block")).toBeTruthy();
-    expect(container.querySelector(".markdown-hybrid-card-block-frame")?.textContent ?? "").toContain("#card");
-    expect(container.querySelector(".markdown-hybrid-card-block-frame")?.textContent ?? "").toContain("#endcard");
+    expect(
+      container.querySelector(
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-block",
+      ),
+    ).toBeTruthy();
+    expect(
+      container.querySelector(
+        ".markdown-hybrid-block[data-md-block-kind='card-start'][data-md-card-group-role='start']",
+      ),
+    ).toBeTruthy();
+    expect(
+      container.querySelector(
+        ".markdown-hybrid-block[data-md-block-kind='card-end'][data-md-card-group-role='end']",
+      ),
+    ).toBeTruthy();
+    expect(container.querySelector(".markdown-hybrid-card-table-segment")).toBeNull();
 
     dispatchMouseDown(
       container.querySelector<HTMLElement>(
-        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-header",
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-cell-header",
       ),
     );
     expect(
-      container.querySelector(".markdown-hybrid-card-table-segment .markdown-hybrid-table-view-toggle"),
-    ).toBeNull();
+      container.querySelector(
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-block",
+      ),
+    ).toBeTruthy();
 
     cleanup();
   });
 
-  it("commits card-internal table cell edits in-place inside the same #card block", () => {
+  it("commits table cell edits inside a card using the standard table block path", () => {
     withImmediateRaf(() => {
       const initialMarkdown = [
         "#card",
@@ -6299,11 +6411,11 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchMouseDown(
         container.querySelector<HTMLElement>(
-          ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-header",
+          ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-cell-header",
         ),
       );
       const textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-editor",
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-cell-editor",
       );
       expect(textarea).toBeTruthy();
       applyTextInput(textarea, "Renamed card header");
@@ -6315,7 +6427,7 @@ describe("MarkdownHybridEditor", () => {
       expect(readMarkdown().match(/#card/g)).toHaveLength(1);
       expect(readMarkdown().match(/#endcard/g)).toHaveLength(1);
       expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']"),
       ).toHaveLength(1);
       cleanup();
     });
@@ -6439,7 +6551,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("supports [[ typing autocomplete inside #card table segments without creating new blocks", () => {
+  it("supports [[ typing autocomplete inside table blocks that belong to a card group", () => {
     withImmediateRaf(() => {
       const initialMarkdown = [
         "#card",
@@ -6474,11 +6586,11 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchMouseDown(
         container.querySelector<HTMLElement>(
-          ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+          ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
         ),
       );
       let textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-editor",
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-cell-editor",
       );
       expect(textarea).toBeTruthy();
 
@@ -6487,7 +6599,7 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findPageLinkPickerOptionByLabel(container, "Beta"));
 
       textarea = container.querySelector<HTMLTextAreaElement>(
-        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-editor",
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-cell-editor",
       );
       expect(textarea?.value).toBe("Alpha [[Folder/Beta]]");
       expect(textarea?.selectionStart).toBe("Alpha [[Folder/Beta]]".length);
@@ -6499,7 +6611,7 @@ describe("MarkdownHybridEditor", () => {
       expect(readMarkdown().match(/#card/g)).toHaveLength(1);
       expect(readMarkdown().match(/#endcard/g)).toHaveLength(1);
       expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']"),
       ).toHaveLength(1);
 
       cleanup();
@@ -6568,7 +6680,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("replaces a standalone PNG embed inside a #card table cell in-place without creating new blocks", () => {
+  it("replaces a standalone PNG embed inside a card-group table cell in-place", () => {
     withImmediateRaf(() => {
       const initialMarkdown = [
         "#card",
@@ -6612,12 +6724,12 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       const replaceTrigger = container.querySelector<HTMLButtonElement>(
-        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-image-replace-trigger",
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-cell-image-replace-trigger",
       );
 
       dispatchClick(replaceTrigger);
       const picker = container.querySelector<HTMLElement>(
-        ".markdown-hybrid-card-table-segment .markdown-hybrid-table-cell-image-replace-picker",
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-cell-image-replace-picker",
       );
       expect(picker).toBeTruthy();
 
@@ -6630,7 +6742,7 @@ describe("MarkdownHybridEditor", () => {
       expect(readMarkdown()).not.toContain("![[images/old.png|Cell label]]");
       expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
       expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-block']"),
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']"),
       ).toHaveLength(1);
 
       cleanup();
@@ -6655,10 +6767,16 @@ describe("MarkdownHybridEditor", () => {
       />,
     );
 
-    expect(container.querySelector(".markdown-hybrid-card-table-segment .markdown-hybrid-table-block")).toBeNull();
-    const cardFrameText = container.querySelector(".markdown-hybrid-card-block-frame")?.textContent ?? "";
-    expect(cardFrameText).toContain("| A | B |");
-    expect(cardFrameText).toContain("| not-a-separator |");
+    expect(
+      container.querySelector(
+        ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner'] .markdown-hybrid-table-block",
+      ),
+    ).toBeNull();
+    const innerParagraph = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='paragraph'][data-md-card-group-role='inner']",
+    );
+    expect(innerParagraph?.textContent ?? "").toContain("| A | B |");
+    expect(innerParagraph?.textContent ?? "").toContain("| not-a-separator |");
     cleanup();
   });
 
