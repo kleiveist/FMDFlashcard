@@ -41,6 +41,74 @@ const viewOptions: Array<{ value: DatabaseViewType; label: string }> = [
   { value: "pie", label: "Pie" },
 ];
 
+type CompactToolbarActionKind = "sort" | "filter" | "properties";
+
+const CompactToolbarActionIcon = ({ kind }: { kind: CompactToolbarActionKind }) => {
+  switch (kind) {
+    case "sort":
+      return (
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M3 3h7" />
+          <path d="M3 8h5" />
+          <path d="M3 13h3" />
+          <path d="M11 3v10" />
+          <path d="m9 11 2 2 2-2" />
+        </svg>
+      );
+    case "filter":
+      return (
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M2 3h12" />
+          <path d="m4.5 3 3.5 4v5l2-1.2V7L13.5 3" />
+        </svg>
+      );
+    case "properties":
+      return (
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M3 4h10" />
+          <circle cx="6" cy="4" r="1.2" />
+          <path d="M3 8h10" />
+          <circle cx="10" cy="8" r="1.2" />
+          <path d="M3 12h10" />
+          <circle cx="7.5" cy="12" r="1.2" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+};
+
+const CompactToolbarActionButton = ({
+  kind,
+  label,
+  active,
+  expanded,
+  onClick,
+}: {
+  kind: CompactToolbarActionKind;
+  label: string;
+  active: boolean;
+  expanded: boolean;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    className={`database-block-toolbar-button database-block-toolbar-button-compactable${
+      active ? " is-active" : ""
+    }`}
+    onClick={onClick}
+    aria-expanded={expanded}
+    aria-label={label}
+    title={label}
+    data-md-block-control="true"
+  >
+    <span className="database-block-toolbar-button-icon" aria-hidden="true">
+      <CompactToolbarActionIcon kind={kind} />
+    </span>
+    <span className="database-block-toolbar-button-label">{label}</span>
+  </button>
+);
+
 export const DatabaseToolbar = ({
   title,
   sourceLabel,
@@ -133,33 +201,27 @@ export const DatabaseToolbar = ({
               </select>
             </label>
           ) : null}
-          <button
-            type="button"
-            className={`database-block-toolbar-button${isSortPanelOpen ? " is-active" : ""}`}
+          <CompactToolbarActionButton
+            kind="sort"
+            label="Sortieren"
+            active={isSortPanelOpen}
+            expanded={isSortPanelOpen}
             onClick={onToggleSortPanel}
-            aria-expanded={isSortPanelOpen}
-            data-md-block-control="true"
-          >
-            Sortieren
-          </button>
-          <button
-            type="button"
-            className={`database-block-toolbar-button${isFilterPanelOpen ? " is-active" : ""}`}
+          />
+          <CompactToolbarActionButton
+            kind="filter"
+            label="Filtern"
+            active={isFilterPanelOpen}
+            expanded={isFilterPanelOpen}
             onClick={onToggleFilterPanel}
-            aria-expanded={isFilterPanelOpen}
-            data-md-block-control="true"
-          >
-            Filtern
-          </button>
-          <button
-            type="button"
-            className={`database-block-toolbar-button${isPropertiesPanelOpen ? " is-active" : ""}`}
+          />
+          <CompactToolbarActionButton
+            kind="properties"
+            label="Eigenschaften"
+            active={isPropertiesPanelOpen}
+            expanded={isPropertiesPanelOpen}
             onClick={onTogglePropertiesPanel}
-            aria-expanded={isPropertiesPanelOpen}
-            data-md-block-control="true"
-          >
-            Eigenschaften
-          </button>
+          />
           {viewType === "gantt" ? (
             <button
               type="button"

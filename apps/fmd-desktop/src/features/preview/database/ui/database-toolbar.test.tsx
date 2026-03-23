@@ -77,6 +77,27 @@ describe("DatabaseToolbar", () => {
     expect(sortButton).toBeTruthy();
     expect(filterButton).toBeTruthy();
     expect(propertiesButton).toBeTruthy();
+    expect(
+      container.querySelectorAll(".database-block-toolbar-button-compactable"),
+    ).toHaveLength(3);
+    expect(sortButton?.getAttribute("aria-label")).toBe("Sortieren");
+    expect(filterButton?.getAttribute("aria-label")).toBe("Filtern");
+    expect(propertiesButton?.getAttribute("aria-label")).toBe("Eigenschaften");
+    expect(sortButton?.getAttribute("title")).toBe("Sortieren");
+    expect(filterButton?.getAttribute("title")).toBe("Filtern");
+    expect(propertiesButton?.getAttribute("title")).toBe("Eigenschaften");
+    expect(sortButton?.querySelector(".database-block-toolbar-button-icon svg")).toBeTruthy();
+    expect(filterButton?.querySelector(".database-block-toolbar-button-icon svg")).toBeTruthy();
+    expect(propertiesButton?.querySelector(".database-block-toolbar-button-icon svg")).toBeTruthy();
+    expect(sortButton?.querySelector(".database-block-toolbar-button-label")?.textContent).toContain(
+      "Sortieren",
+    );
+    expect(filterButton?.querySelector(".database-block-toolbar-button-label")?.textContent).toContain(
+      "Filtern",
+    );
+    expect(propertiesButton?.querySelector(".database-block-toolbar-button-label")?.textContent).toContain(
+      "Eigenschaften",
+    );
 
     cleanup();
   });
@@ -87,9 +108,7 @@ describe("DatabaseToolbar", () => {
       createElement(DatabaseToolbar, props),
     );
 
-    const sortButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Sortieren"),
-    );
+    const sortButton = container.querySelector<HTMLButtonElement>("button[aria-label='Sortieren']");
     const sourceButton = container.querySelector(".database-block-source-button");
     const search = container.querySelector<HTMLInputElement>(".database-block-search");
     const viewSelect = container.querySelector<HTMLSelectElement>(".database-block-view-select");

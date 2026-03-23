@@ -5133,7 +5133,7 @@ textarea.preview-editor {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .database-block-toolbar-main {
@@ -5148,6 +5148,8 @@ textarea.preview-editor {
 .database-block-title-field {
   display: inline-flex;
   align-items: center;
+  flex: 1 1 220px;
+  min-width: min(100%, 220px);
   gap: 6px;
   font-size: 0.76rem;
   color: var(--db-muted);
@@ -5160,7 +5162,9 @@ textarea.preview-editor {
   background: var(--field-bg);
   color: var(--db-text);
   padding: 4px 8px;
-  min-width: 180px;
+  min-width: 140px;
+  width: min(420px, 100%);
+  flex: 1 1 220px;
 }
 
 .database-block-source {
@@ -5173,27 +5177,33 @@ textarea.preview-editor {
 
 .database-block-toolbar-actions {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: 8px;
   margin-left: auto;
-  flex: 1 1 340px;
-  min-width: min(100%, 320px);
-  flex-wrap: nowrap;
+  flex: 1 1 420px;
+  min-width: min(100%, 280px);
+  flex-wrap: wrap;
+  align-content: flex-start;
+  container-type: inline-size;
+  container-name: database-toolbar-actions;
 }
 
 .database-block-toolbar-action-buttons {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  flex-wrap: nowrap;
+  flex: 1 1 340px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .database-block-toolbar-search-wrap {
-  display: inline-flex;
+  display: flex;
   justify-content: flex-end;
-  flex: 1 1 200px;
+  flex: 1 1 220px;
+  min-width: 160px;
 }
 
 .database-block-view-select-wrap {
@@ -5247,6 +5257,11 @@ textarea.preview-editor {
 }
 
 .database-block-toolbar-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: var(--db-control-height);
   border-radius: var(--db-radius-control);
   border: 1px solid var(--db-border);
@@ -5254,6 +5269,33 @@ textarea.preview-editor {
   color: var(--db-text);
   cursor: pointer;
   padding: 0 10px;
+}
+
+.database-block-toolbar-button-compactable {
+  flex: 0 0 auto;
+}
+
+.database-block-toolbar-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 14px;
+  block-size: 14px;
+  flex: 0 0 14px;
+}
+
+.database-block-toolbar-button-icon svg {
+  inline-size: 14px;
+  block-size: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.database-block-toolbar-button-label {
+  display: inline;
 }
 
 .database-block-toolbar-button:hover {
@@ -5268,7 +5310,7 @@ textarea.preview-editor {
 
 .database-block-search {
   min-height: var(--db-control-height);
-  min-width: 180px;
+  min-width: 140px;
   width: 100%;
   border-radius: var(--db-radius-control);
   border: 1px solid var(--db-border);
@@ -5278,10 +5320,32 @@ textarea.preview-editor {
 }
 
 .database-block-source-button {
+  flex: 0 1 320px;
   max-width: min(360px, 80vw);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@container database-toolbar-actions (max-width: 700px) {
+  .database-block-toolbar-button-compactable {
+    inline-size: var(--db-control-height);
+    min-inline-size: var(--db-control-height);
+    padding-inline: 0;
+  }
+
+  .database-block-toolbar-button-compactable .database-block-toolbar-button-label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+  }
 }
 
 .database-block-filter-chips {
@@ -6055,10 +6119,6 @@ textarea.preview-editor {
 }
 
 @media (max-width: 980px) {
-  .database-block-toolbar {
-    flex-wrap: wrap;
-  }
-
   .database-block-toolbar-main,
   .database-block-toolbar-actions {
     flex: 1 1 100%;
@@ -6067,10 +6127,12 @@ textarea.preview-editor {
 
   .database-block-toolbar-actions {
     margin-left: 0;
+    justify-content: flex-start;
   }
 
   .database-block-toolbar-action-buttons {
     flex: 1 1 100%;
+    justify-content: flex-start;
     flex-wrap: wrap;
   }
 
