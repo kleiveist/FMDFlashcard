@@ -1998,13 +1998,28 @@ const hasBalancedExamWrapper = (markdown: string) => {
   return collectBalancedExamRanges(lines).length > 0;
 };
 
-const withExamWrapper = (markdown: string) => {
-  const withoutLeadingBlankLines = markdown.replace(/^\n+/, "");
-  const trimmedBody = withoutLeadingBlankLines.replace(/\n+$/, "");
+const ensureExamWrapperBoundaryMarkers = (markdown: string) => {
+  const trimmedBody = markdown.replace(/^\n+/, "").replace(/\n+$/, "");
   if (!trimmedBody) {
     return "#exam\n#endexam";
   }
-  return `#exam\n${trimmedBody}\n#endexam`;
+
+  const lines = trimmedBody.split("\n");
+  if (lines.length === 0) {
+    return "#exam\n#endexam";
+  }
+
+  const hasExamStartMarkerAtTop = isStandaloneDirectiveLine(lines[0] ?? "", "#exam");
+  const hasExamEndMarkerAtBottom = isStandaloneDirectiveLine(lines[lines.length - 1] ?? "", "#endexam");
+
+  if (!hasExamStartMarkerAtTop) {
+    lines.unshift("#exam");
+  }
+  if (!hasExamEndMarkerAtBottom) {
+    lines.push("#endexam");
+  }
+
+  return lines.join("\n");
 };
 
 const orderedListCommitLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
@@ -6201,13 +6216,15 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           Number.isFinite(insertMenuState.advancedSequenceNumber)
         ? Math.max(1, Math.floor(insertMenuState.advancedSequenceNumber))
         : resolveNextGlobalSequenceNumber(markdown);
-      const shouldWrapWithExam = variant === "task" && !hasBalancedExamWrapper(markdown);
+      const shouldEnsureExamWrapperBoundaries = variant === "task" && !hasBalancedExamWrapper(markdown);
       const resolved = buildAdvancedInsertTemplateVariant(template, variant, {
         sequenceNumber,
       });
       insertBlockRelativeTo(insertMenuState.blockIndex, resolved.payload, insertMenuState.insertAbove, {
         firstPlaceholder: resolved.firstPlaceholder,
-        transformNextMarkdown: shouldWrapWithExam ? withExamWrapper : undefined,
+        transformNextMarkdown: shouldEnsureExamWrapperBoundaries
+          ? ensureExamWrapperBoundaryMarkers
+          : undefined,
       });
     },
     [insertBlockRelativeTo, insertMenuState, markdown],

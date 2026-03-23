@@ -2352,6 +2352,98 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("adds only #endexam when inserting a task into markdown that already starts with #exam", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#exam",
+        "1) Existing task",
+        "Answer: Existing answer",
+        "---",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-task-template-repair-missing-endexam"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const hrInsertButton = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-kind='hr'] .markdown-hybrid-block-insert-button",
+      );
+      expect(hrInsertButton).toBeTruthy();
+
+      dispatchClick(hrInsertButton);
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
+      expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
+      expect(markdownValue.startsWith("#exam\n")).toBe(true);
+      expect(markdownValue.endsWith("\n#endexam")).toBe(true);
+
+      cleanup();
+    });
+  });
+
+  it("adds only #exam when inserting a task into markdown that already ends with #endexam", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "1) Existing task",
+        "Answer: Existing answer",
+        "---",
+        "#endexam",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-task-template-repair-missing-exam"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const hrInsertButton = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-kind='hr'] .markdown-hybrid-block-insert-button",
+      );
+      expect(hrInsertButton).toBeTruthy();
+
+      dispatchClick(hrInsertButton);
+      dispatchClick(findButtonByExactText(container, "Advanced"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
+      dispatchClick(findMenuItemButtonByLabel(container, "Task"));
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
+      expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
+      expect(markdownValue.startsWith("#exam\n")).toBe(true);
+      expect(markdownValue.endsWith("\n#endexam")).toBe(true);
+
+      cleanup();
+    });
+  });
+
   it("shares sequence numbering between inserted tasks and cards", () => {
     withImmediateRaf(() => {
       const Harness = () => {
