@@ -169,7 +169,7 @@ export const assignCardGroupMeta = (blocks: MarkdownBlock[]): MarkdownBlock[] =>
     const block = nextBlocks[index]!;
     if (block.kind === "card-start") {
       const hasOpenCardGroup = openCardGroupId !== null;
-      const cardGroupId = openCardGroupId ?? `card-group-${nextGroupSequence}`;
+      const cardGroupId: string = openCardGroupId ?? `card-group-${nextGroupSequence}`;
       if (!openCardGroupId) {
         nextGroupSequence += 1;
         openCardGroupId = cardGroupId;
