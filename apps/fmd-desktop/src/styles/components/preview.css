@@ -1836,6 +1836,7 @@ textarea.preview-editor {
   gap: 4px;
   padding: 4px 0 0 4px;
   justify-content: flex-start;
+  pointer-events: auto;
 }
 
 .markdown-hybrid-overlay-rail-right {
@@ -1846,6 +1847,24 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-overlay-control {
+  pointer-events: auto;
+}
+
+.markdown-hybrid-overlay-rail-left .markdown-hybrid-overlay-control {
+  opacity: 0;
+  transform: translateX(-4px);
+  pointer-events: none;
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.markdown-hybrid-overlay-row.is-left-controls-visible .markdown-hybrid-overlay-rail-left .markdown-hybrid-overlay-control {
+  opacity: 1;
+  transform: translateX(0);
   pointer-events: auto;
 }
 
@@ -1870,24 +1889,6 @@ textarea.preview-editor {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--accent-border) 28%, transparent),
     0 0 12px color-mix(in srgb, var(--accent-border) 24%, transparent);
-}
-
-.markdown-hybrid-drop-slot-badge {
-  position: absolute;
-  right: 0;
-  top: -14px;
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: color-mix(in srgb, var(--accent-strong) 92%, var(--text));
-  background: color-mix(in srgb, var(--accent-soft) 24%, var(--panel));
-  border: 1px solid color-mix(in srgb, var(--accent-border) 38%, transparent);
-  box-shadow: 0 5px 14px color-mix(in srgb, black 12%, transparent);
-  white-space: nowrap;
 }
 
 .markdown-hybrid-overlay-right-status {
@@ -1978,13 +1979,19 @@ textarea.preview-editor {
 
 .markdown-hybrid-block-drag-handle {
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .markdown-hybrid-block-drag-handle:active {
   cursor: grabbing;
 }
 
-.markdown-hybrid-block-drag-handle > span {
+.markdown-hybrid-block-drag-handle-grip {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
   line-height: 1;
   font-size: 12px;
   letter-spacing: -1px;
@@ -1995,17 +2002,20 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-drag-preview {
-  width: min(320px, 46vw);
+  max-width: min(320px, 52vw);
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--accent-border) 38%, transparent);
-  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-border) 44%, transparent);
+  background: color-mix(in srgb, var(--panel) 93%, transparent);
   box-shadow:
-    0 14px 28px color-mix(in srgb, black 24%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--line-soft) 38%, transparent);
-  padding: 7px 9px;
-  opacity: 0.94;
+    0 10px 22px color-mix(in srgb, black 18%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--line-soft) 34%, transparent);
+  padding: 6px 10px;
+  opacity: 0.96;
   user-select: none;
   pointer-events: none;
+  display: grid;
+  grid-auto-flow: row;
+  gap: 2px;
 }
 
 .markdown-hybrid-drag-preview {
@@ -2028,19 +2038,32 @@ textarea.preview-editor {
   padding: 0;
 }
 
-.markdown-hybrid-drag-preview-title {
-  font-size: 10px;
+.markdown-hybrid-drag-preview-label {
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--accent-strong) 86%, var(--text));
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--text) 92%, var(--muted));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.markdown-hybrid-drag-preview-meta {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--accent-strong) 78%, var(--text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .markdown-hybrid-drag-preview-snippet {
-  margin-top: 3px;
-  font-size: 12px;
-  line-height: 1.35;
-  color: color-mix(in srgb, var(--text) 92%, var(--muted));
+  font-size: 11px;
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--text) 90%, var(--muted));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

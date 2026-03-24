@@ -10,6 +10,7 @@ import {
 import { ExamMarkdown } from "../../pages/exam-simulation/components/ExamMarkdown";
 
 const INTERNAL_BLOCK_CLIPBOARD_MIME = "application/x-fmd-markdown-hybrid-blocks+json";
+const INTERNAL_BLOCK_REORDER_DRAG_MIME = "application/x-fmd-markdown-hybrid-block-reorder";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -29,7 +30,7 @@ const render = (element: ReactElement) => {
   };
 };
 
-const dispatchClick = (element: Element | null) => {
+const dispatchClick = (element: Element | null | undefined) => {
   act(() => {
     element?.dispatchEvent(
       new MouseEvent("click", {
@@ -42,7 +43,7 @@ const dispatchClick = (element: Element | null) => {
 };
 
 const dispatchMouseDown = (
-  element: Element | null,
+  element: Element | null | undefined,
   options: Partial<MouseEventInit> = {},
 ) => {
   act(() => {
@@ -56,6 +57,46 @@ const dispatchMouseDown = (
       }),
     );
   });
+};
+
+const dispatchMouseEnter = (
+  element: Element | null | undefined,
+  options: { relatedTarget?: EventTarget | null } = {},
+) => {
+  const event = new MouseEvent("mouseover", {
+    bubbles: true,
+    cancelable: true,
+  });
+  if (Object.prototype.hasOwnProperty.call(options, "relatedTarget")) {
+    Object.defineProperty(event, "relatedTarget", {
+      value: options.relatedTarget ?? null,
+      configurable: true,
+    });
+  }
+  act(() => {
+    element?.dispatchEvent(event);
+  });
+  return event;
+};
+
+const dispatchMouseLeave = (
+  element: Element | null | undefined,
+  options: { relatedTarget?: EventTarget | null } = {},
+) => {
+  const event = new MouseEvent("mouseout", {
+    bubbles: true,
+    cancelable: true,
+  });
+  if (Object.prototype.hasOwnProperty.call(options, "relatedTarget")) {
+    Object.defineProperty(event, "relatedTarget", {
+      value: options.relatedTarget ?? null,
+      configurable: true,
+    });
+  }
+  act(() => {
+    element?.dispatchEvent(event);
+  });
+  return event;
 };
 
 const dispatchWindowMouseMove = (options: Partial<MouseEventInit> = {}) => {
@@ -86,7 +127,7 @@ const dispatchWindowMouseUp = (options: Partial<MouseEventInit> = {}) => {
 };
 
 const dispatchKeyDown = (
-  element: Element | null,
+  element: Element | null | undefined,
   key: string,
   options: Partial<KeyboardEventInit> = {},
 ) => {
@@ -116,7 +157,7 @@ const dispatchWindowKeyDown = (key: string, options: Partial<KeyboardEventInit> 
 };
 
 const dispatchCompositionEvent = (
-  element: Element | null,
+  element: Element | null | undefined,
   type: "compositionstart" | "compositionend",
 ) => {
   act(() => {
@@ -129,7 +170,7 @@ const dispatchCompositionEvent = (
 };
 
 const dispatchContextMenu = (
-  element: Element | null,
+  element: Element | null | undefined,
   options: Partial<MouseEventInit> = {},
 ) => {
   act(() => {
@@ -159,7 +200,7 @@ const createDragDataTransferMock = () =>
   }) as unknown as DataTransfer;
 
 const dispatchDragEvent = (
-  element: Element | null,
+  element: Element | null | undefined,
   type: "dragstart" | "dragover" | "drop" | "dragend",
   options: { clientX?: number; clientY?: number; dataTransfer?: DataTransfer } = {},
 ) => {
@@ -201,7 +242,7 @@ const createClipboardDataMock = (initialData: Record<string, string> = {}) => {
 };
 
 const dispatchClipboardEvent = (
-  element: Element | null,
+  element: Element | null | undefined,
   type: "copy" | "cut" | "paste",
   clipboardData: DataTransfer,
 ): ClipboardEvent => {
@@ -233,7 +274,7 @@ const activateBlockEditor = (container: ParentNode, index = 0) => {
   return container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
 };
 
-const ctrlSelectBlock = (block: Element | null) => {
+const ctrlSelectBlock = (block: Element | null | undefined) => {
   act(() => {
     block?.dispatchEvent(
       new MouseEvent("mousedown", {
@@ -1337,6 +1378,173 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("reveals left overlay controls on block hover and hides them after leaving block/rail", () => {
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState("# One\n# Two");
+      return (
+        <MarkdownHybridEditor
+          historyKey="overlay-left-hover-visibility"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const overlayRow = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-overlay-row[data-md-block-index='0']",
+    );
+    const block = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-index='0']",
+    );
+    const leftRail = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-overlay-rail-left");
+    expect(overlayRow).toBeTruthy();
+    expect(block).toBeTruthy();
+    expect(leftRail).toBeTruthy();
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(false);
+
+    dispatchMouseEnter(block);
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchMouseLeave(block, { relatedTarget: leftRail });
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchMouseLeave(leftRail, { relatedTarget: null });
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(false);
+
+    cleanup();
+  });
+
+  it("reveals left overlay controls in empty state and keeps them stable while hovering the rail", () => {
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState("");
+      return (
+        <MarkdownHybridEditor
+          historyKey="overlay-left-hover-empty-state"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const overlayRow = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-overlay-row[data-md-block-index='0']",
+    );
+    const block = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
+    const leftRail = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-overlay-rail-left");
+    expect(overlayRow).toBeTruthy();
+    expect(block).toBeTruthy();
+    expect(leftRail).toBeTruthy();
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(false);
+
+    dispatchMouseEnter(block);
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchMouseLeave(block, { relatedTarget: leftRail });
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchMouseLeave(leftRail, { relatedTarget: null });
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(false);
+
+    cleanup();
+  });
+
+  it("keeps left overlay controls stable when pointer moves between block and handle controls", () => {
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState("# One\n# Two");
+      return (
+        <MarkdownHybridEditor
+          historyKey="overlay-left-hover-anti-flicker"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const overlayRow = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-overlay-row[data-md-block-index='0']",
+    );
+    const block = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-index='0']",
+    );
+    const dragHandle = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-block-drag-handle");
+    const insertButton = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-block-insert-button");
+    const secondBlock = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-index='1']",
+    );
+    expect(overlayRow).toBeTruthy();
+    expect(block).toBeTruthy();
+    expect(dragHandle).toBeTruthy();
+    expect(insertButton).toBeTruthy();
+    expect(secondBlock).toBeTruthy();
+
+    dispatchMouseEnter(block);
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchMouseLeave(block, { relatedTarget: dragHandle });
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchMouseLeave(dragHandle, { relatedTarget: insertButton });
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchMouseLeave(insertButton, { relatedTarget: secondBlock });
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(false);
+
+    cleanup();
+  });
+
+  it("keeps left overlay controls visible while the insert menu is open", () => {
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState("# One\n# Two");
+      return (
+        <MarkdownHybridEditor
+          historyKey="overlay-left-insert-menu-visibility"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const overlayRow = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-overlay-row[data-md-block-index='0']",
+    );
+    const block = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-index='0']",
+    );
+    const leftRail = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-overlay-rail-left");
+    const insertButton = overlayRow?.querySelector<HTMLButtonElement>(".markdown-hybrid-block-insert-button");
+    expect(overlayRow).toBeTruthy();
+    expect(block).toBeTruthy();
+    expect(leftRail).toBeTruthy();
+    expect(insertButton).toBeTruthy();
+
+    dispatchMouseEnter(block);
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchClick(insertButton);
+    expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeTruthy();
+
+    dispatchMouseLeave(leftRail, { relatedTarget: null });
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(true);
+
+    dispatchClick(findButtonByExactText(container, "Close Menu (Esc)"));
+    expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
+    expect(overlayRow?.classList.contains("is-left-controls-visible")).toBe(false);
+
+    cleanup();
+  });
+
   it("renders drag preview overlay and marks the dragged source block while dragging", () => {
     withImmediateRaf(() => {
       const Harness = () => {
@@ -1369,8 +1577,16 @@ describe("MarkdownHybridEditor", () => {
         clientY: 80,
       });
 
-      expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeTruthy();
+      const dragPreview = container.querySelector<HTMLElement>(".markdown-hybrid-drag-preview");
+      expect(dragPreview).toBeTruthy();
+      expect(dragPreview?.textContent).toContain("Move block");
+      expect(dragPreview?.textContent).toContain("Type: Heading");
+      expect(dragPreview?.textContent).toContain("Source #1");
+      expect(dragPreview?.textContent).toContain("# One");
+      expect(dragPreview?.style.left).toBe("136px");
+      expect(dragPreview?.style.top).toBe("98px");
       expect(firstBlock?.classList.contains("is-dragging")).toBe(true);
+      expect(container.querySelector(".markdown-hybrid-drop-slot-badge")).toBeNull();
 
       dispatchDragEvent(firstDragHandle, "dragend", {
         dataTransfer,
@@ -1378,6 +1594,215 @@ describe("MarkdownHybridEditor", () => {
         clientY: 80,
       });
       expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("allows immediate dragover after handle dragstart and marks it as a valid move", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("# One\n# Two\n# Three");
+        return (
+          <MarkdownHybridEditor
+            historyKey="drag-handle-immediate-dragover"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const firstDragHandle = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-index='0'] .markdown-hybrid-block-drag-handle",
+      );
+      const secondBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='1']",
+      );
+      const firstBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='0']",
+      );
+      expect(firstDragHandle).toBeTruthy();
+      expect(secondBlock).toBeTruthy();
+      expect(firstBlock).toBeTruthy();
+
+      const dragDataStore = new Map<string, string>();
+      const dragSetData = vi.fn((format: string, value: string) => {
+        dragDataStore.set(format, value);
+      });
+      const dataTransfer = {
+        effectAllowed: "all",
+        dropEffect: "none",
+        files: [],
+        items: [],
+        types: [],
+        setData: dragSetData,
+        getData: (format: string) => dragDataStore.get(format) ?? "",
+        clearData: () => undefined,
+        setDragImage: () => undefined,
+      } as unknown as DataTransfer;
+
+      let dragOverPrevented = false;
+      act(() => {
+        const startEvent = new Event("dragstart", { bubbles: true, cancelable: true }) as DragEvent;
+        Object.defineProperty(startEvent, "clientX", { value: 120, configurable: true });
+        Object.defineProperty(startEvent, "clientY", { value: 80, configurable: true });
+        Object.defineProperty(startEvent, "dataTransfer", {
+          value: dataTransfer,
+          configurable: true,
+        });
+        firstDragHandle?.dispatchEvent(startEvent);
+
+        const overEvent = new Event("dragover", { bubbles: true, cancelable: true }) as DragEvent;
+        Object.defineProperty(overEvent, "clientX", { value: 132, configurable: true });
+        Object.defineProperty(overEvent, "clientY", { value: 96, configurable: true });
+        Object.defineProperty(overEvent, "dataTransfer", {
+          value: dataTransfer,
+          configurable: true,
+        });
+        secondBlock?.dispatchEvent(overEvent);
+        dragOverPrevented = overEvent.defaultPrevented;
+      });
+
+      expect(dragSetData).toHaveBeenCalledWith(INTERNAL_BLOCK_REORDER_DRAG_MIME, "0");
+      expect(dragSetData).toHaveBeenCalledWith("text/plain", "0");
+      expect(dataTransfer.effectAllowed).toBe("move");
+      expect(dataTransfer.dropEffect).toBe("move");
+      expect(dragOverPrevented).toBe(true);
+      const dragPreview = container.querySelector<HTMLElement>(".markdown-hybrid-drag-preview");
+      expect(dragPreview).toBeTruthy();
+      expect(dragPreview?.textContent).toContain("Move block");
+      expect(dragPreview?.textContent).toContain("Type: Heading");
+      expect(dragPreview?.textContent).toContain("Source #1");
+      expect(dragPreview?.textContent).toContain("# One");
+      expect(firstBlock?.classList.contains("is-dragging")).toBe(true);
+      expect(container.querySelector(".markdown-hybrid-drop-slot-badge")).toBeNull();
+
+      dispatchDragEvent(firstDragHandle, "dragend", {
+        dataTransfer,
+        clientX: 132,
+        clientY: 96,
+      });
+      cleanup();
+    });
+  });
+
+  it("reorders markdown blocks via drag handle drop and clears drag visuals on drop", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("# One\n# Two\n# Three");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="drag-handle-reorder-drop"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const firstDragHandle = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-index='0'] .markdown-hybrid-block-drag-handle",
+      );
+      const lastBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='2']",
+      );
+      expect(firstDragHandle).toBeTruthy();
+      expect(lastBlock).toBeTruthy();
+
+      const dataTransfer = createDragDataTransferMock();
+      dispatchDragEvent(firstDragHandle, "dragstart", {
+        dataTransfer,
+        clientX: 100,
+        clientY: 60,
+      });
+      const dragOverEvent = dispatchDragEvent(lastBlock, "dragover", {
+        dataTransfer,
+        clientX: 100,
+        clientY: 120,
+      });
+      expect(dragOverEvent.defaultPrevented).toBe(true);
+      expect(container.querySelector(".markdown-hybrid-drop-slot-line")).toBeTruthy();
+      expect(container.querySelector(".markdown-hybrid-drop-slot-badge")).toBeNull();
+      dispatchDragEvent(lastBlock, "drop", {
+        dataTransfer,
+        clientX: 100,
+        clientY: 120,
+      });
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe("# Two\n# Three\n# One");
+      expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeNull();
+      expect(container.querySelector(".markdown-hybrid-block.is-dragging")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("clears drop indicators and preview when dragging ends without drop", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("# One\n# Two\n# Three");
+        return (
+          <MarkdownHybridEditor
+            historyKey="drag-handle-dragend-cleanup"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const firstDragHandle = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-overlay-row[data-md-block-index='0'] .markdown-hybrid-block-drag-handle",
+      );
+      const secondBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='1']",
+      );
+      expect(firstDragHandle).toBeTruthy();
+      expect(secondBlock).toBeTruthy();
+
+      const dataTransfer = createDragDataTransferMock();
+      dispatchDragEvent(firstDragHandle, "dragstart", {
+        dataTransfer,
+        clientX: 110,
+        clientY: 70,
+      });
+      dispatchDragEvent(secondBlock, "dragover", {
+        dataTransfer,
+        clientX: 110,
+        clientY: 90,
+      });
+      expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeTruthy();
+      expect(container.querySelector(".markdown-hybrid-drop-slot-badge")).toBeNull();
+      expect(
+        container.querySelector(
+          ".markdown-hybrid-block.has-drop-indicator-top,.markdown-hybrid-block.has-drop-indicator-bottom",
+        ),
+      ).toBeTruthy();
+
+      dispatchDragEvent(firstDragHandle, "dragend", {
+        dataTransfer,
+        clientX: 110,
+        clientY: 90,
+      });
+
+      expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeNull();
+      expect(container.querySelector(".markdown-hybrid-block.is-dragging")).toBeNull();
+      expect(
+        container.querySelector(
+          ".markdown-hybrid-block.has-drop-indicator-top,.markdown-hybrid-block.has-drop-indicator-bottom",
+        ),
+      ).toBeNull();
 
       cleanup();
     });
