@@ -9,6 +9,7 @@
 
 import {
   assignCardGroupMeta,
+  assignListGroupMeta,
   parseMarkdownBlocks,
   type MarkdownBlock,
   type MarkdownBlockParseProfile,
@@ -438,7 +439,7 @@ export const parseMarkdownDocument = (
         continue;
       }
 
-      const reindexedBlocks = assignCardGroupMeta(reindexBlocks(merged));
+      const reindexedBlocks = assignCardGroupMeta(assignListGroupMeta(reindexBlocks(merged)));
       return {
         snapshot: {
           markdown: nextMarkdown,

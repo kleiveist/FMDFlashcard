@@ -222,6 +222,51 @@ export const assignCardGroupMeta = (blocks: MarkdownBlock[]): MarkdownBlock[] =>
   return nextBlocks;
 };
 
+export const assignListGroupMeta = (blocks: MarkdownBlock[]): MarkdownBlock[] => {
+  if (blocks.length === 0) {
+    return blocks;
+  }
+
+  const hasHybridListMeta = blocks.some((block) =>
+    (block.kind === "ordered-list" || block.kind === "unordered-list") &&
+    (
+      typeof block.meta?.listDepth === "number" ||
+      typeof block.meta?.listIndentWidth === "number" ||
+      typeof block.meta?.listParentStartLine === "number" ||
+      typeof block.meta?.listItemType === "string" ||
+      typeof block.meta?.listGroupId === "string"
+    ));
+  if (!hasHybridListMeta) {
+    return blocks;
+  }
+
+  const nextBlocks = blocks.map((block) => ({
+    ...block,
+    meta: block.meta ? { ...block.meta } : undefined,
+  }));
+  let activeListGroupId: string | null = null;
+  let nextGroupSequence = 1;
+
+  for (let index = 0; index < nextBlocks.length; index += 1) {
+    const block = nextBlocks[index]!;
+    const isListBlock = block.kind === "ordered-list" || block.kind === "unordered-list";
+    if (!isListBlock) {
+      activeListGroupId = null;
+      continue;
+    }
+    if (!activeListGroupId) {
+      activeListGroupId = `list-group-${nextGroupSequence}`;
+      nextGroupSequence += 1;
+    }
+    block.meta = {
+      ...(block.meta ?? {}),
+      listGroupId: activeListGroupId,
+    };
+  }
+
+  return nextBlocks;
+};
+
 const buildLineStarts = (markdown: string, lines: string[]) => {
   const starts: number[] = [];
   let offset = 0;
@@ -545,7 +590,7 @@ export const parseMarkdownBlocks = (
     i = end + 1;
   }
 
-  return assignCardGroupMeta(blocks);
+  return assignCardGroupMeta(assignListGroupMeta(blocks));
 };
 
 export const replaceMarkdownBlock = (
