@@ -1349,26 +1349,6 @@
   min-width: 100%;
 }
 
-.preview-tab-row-shell {
-  display: flex;
-  align-items: center;
-  gap: var(--ui-space-xs);
-  width: 100%;
-  min-width: 0;
-}
-
-.preview-tab-row-shell .preview-tab-row {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.preview-tab-row-actions {
-  margin-left: auto;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-}
-
 .preview-tab-folder-row {
   color: var(--muted);
   font-size: 0.7rem;

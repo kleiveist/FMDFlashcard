@@ -38,6 +38,7 @@ import { FileList } from "../components/FileList";
 import { NoteModal } from "../components/NoteModal";
 import { ModalShell } from "../components/ModalShell";
 import { PreviewPanel } from "../components/PreviewPanel";
+import { RightOverlayRail } from "../components/RightOverlayRail";
 import { FileIcon } from "../components/icons";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
@@ -147,8 +148,7 @@ const DashboardPageInner = (
     return window.matchMedia("(min-width: 1200px)").matches;
   });
   const workspaceRef = useRef<HTMLDivElement | null>(null);
-  const markdownNoteTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const examNoteTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const desktopNoteRailTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [isDesktopNotePopupOpen, setIsDesktopNotePopupOpen] = useState(false);
   const didApplyPreviewDefaultModeRef = useRef(false);
   const pendingExamLeaveProceedRef = useRef<(() => void | Promise<void>) | null>(null);
@@ -1284,24 +1284,6 @@ const DashboardPageInner = (
     ) : examControls?.saveState === "saved" ? (
       <span className="pill success">Saved</span>
     ) : null;
-  const markdownTabRowActions = desktopNotePopupEnabled ? (
-    <button
-      ref={markdownNoteTriggerRef}
-      type="button"
-      className={`ghost small desktop-note-trigger ${
-        vaultView === "markdown" && isDesktopNotePopupOpen ? "active" : ""
-      }`}
-      onClick={() => setIsDesktopNotePopupOpen((current) => !current)}
-      aria-label="Open note panel"
-      aria-haspopup="dialog"
-      aria-expanded={vaultView === "markdown" && isDesktopNotePopupOpen}
-      title="Note"
-    >
-      <FileIcon />
-    </button>
-  ) : null;
-  const activeDesktopNoteAnchorRef =
-    vaultView === "exam" ? examNoteTriggerRef : markdownNoteTriggerRef;
   const desktopExamToolbar =
     vaultView === "exam" && isExamDesktop && examControls ? (
       <section className="panel toolbar-panel exam-editor-controls-panel exam-editor-controls-panel-top">
@@ -1313,22 +1295,6 @@ const DashboardPageInner = (
           <span className="muted">Saved path:</span>
           <span className="save-path">{examControls.savePath ?? "Not saved yet"}</span>
           {examSaveState}
-          {desktopNotePopupEnabled ? (
-            <button
-              ref={examNoteTriggerRef}
-              type="button"
-              className={`ghost small exam-save-note-trigger ${
-                isDesktopNotePopupOpen ? "active" : ""
-              }`}
-              onClick={() => setIsDesktopNotePopupOpen((current) => !current)}
-              aria-label="Open note panel"
-              aria-haspopup="dialog"
-              aria-expanded={isDesktopNotePopupOpen}
-              title="Note"
-            >
-              <FileIcon />
-            </button>
-          ) : null}
         </div>
       </section>
     ) : null;
@@ -1416,7 +1382,6 @@ const DashboardPageInner = (
             onSelectMarkdownTab={handleSelectMarkdownTab}
             onCloseMarkdownTab={handleCloseMarkdownTab}
             onReorderMarkdownTabs={handleReorderMarkdownTabs}
-            tabRowActions={markdownTabRowActions}
           />
         ) : (
           <ExamEditorView
@@ -1508,10 +1473,31 @@ const DashboardPageInner = (
           ) : null
         )}
       </div>
+      <RightOverlayRail
+        enabled={
+          desktopNotePopupEnabled &&
+          (vaultView === "markdown" || vaultView === "exam")
+        }
+        pinned={isDesktopNotePopupOpen}
+        ariaLabel={vaultView === "exam" ? "Exam quick actions" : "Editor quick actions"}
+        className="dashboard-overlay-rail"
+        actions={[
+          {
+            id: "note-panel",
+            icon: <FileIcon />,
+            label: "Note",
+            onClick: () => setIsDesktopNotePopupOpen((current) => !current),
+            isActive: isDesktopNotePopupOpen,
+            buttonRef: desktopNoteRailTriggerRef,
+            ariaHaspopup: "dialog",
+            ariaExpanded: isDesktopNotePopupOpen,
+          },
+        ]}
+      />
       <AnchoredPopup
         isOpen={desktopNotePopupEnabled && isDesktopNotePopupOpen}
         onClose={handleDesktopNotePopupClose}
-        anchorRef={activeDesktopNoteAnchorRef}
+        anchorRef={desktopNoteRailTriggerRef}
         closeLayerId="dashboard-desktop-note-panel"
         placement="bottom-end"
         ariaLabel="Note panel"
