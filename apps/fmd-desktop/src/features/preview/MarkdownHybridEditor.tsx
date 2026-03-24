@@ -2403,6 +2403,83 @@ const isExamTaskOrderedListLine = (markdown: string, lineIndex: number) => {
   return openExamDepth > 0 && openCardDepth === 0;
 };
 
+const normalizeExamTaskHeadingIndentationInMarkdown = (sourceMarkdown: string) => {
+  if (!sourceMarkdown) {
+    return sourceMarkdown;
+  }
+
+  const lines = sourceMarkdown.split("\n");
+  if (lines.length === 0) {
+    return sourceMarkdown;
+  }
+
+  let inFence = false;
+  let fenceToken = "";
+  let openExamDepth = 0;
+  let openCardDepth = 0;
+  let didChange = false;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? "";
+    const trimmed = line.trimStart();
+    const fenceMatch = trimmed.match(codeFenceBoundaryPattern);
+    if (fenceMatch) {
+      const token = fenceMatch[1] ?? "";
+      if (inFence && token === fenceToken) {
+        inFence = false;
+        fenceToken = "";
+      } else if (!inFence) {
+        inFence = true;
+        fenceToken = token;
+      }
+      continue;
+    }
+    if (inFence) {
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#card")) {
+      openCardDepth += 1;
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#endcard")) {
+      openCardDepth = Math.max(0, openCardDepth - 1);
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#exam")) {
+      openExamDepth += 1;
+      continue;
+    }
+    if (isStandaloneDirectiveLine(line, "#endexam")) {
+      openExamDepth = Math.max(0, openExamDepth - 1);
+      continue;
+    }
+    if (openExamDepth <= 0 || openCardDepth > 0) {
+      continue;
+    }
+
+    const orderedMatch = line.match(orderedListCommitLinePattern);
+    if (!orderedMatch) {
+      continue;
+    }
+    const indent = orderedMatch[1] ?? "";
+    if (indent.length === 0) {
+      continue;
+    }
+    const delimiter = orderedMatch[3] ?? ".";
+    if (resolveOrderedListDelimiter(delimiter) !== ")") {
+      continue;
+    }
+
+    const nextLine = `${orderedMatch[2] ?? "1"}${delimiter}${orderedMatch[4] ?? " "}${orderedMatch[5] ?? ""}`;
+    if (nextLine !== line) {
+      lines[index] = nextLine;
+      didChange = true;
+    }
+  }
+
+  return didChange ? lines.join("\n") : sourceMarkdown;
+};
+
 const normalizeOrderedListSegmentsInMarkdown = (sourceMarkdown: string) => {
   if (!sourceMarkdown) {
     return sourceMarkdown;
@@ -3163,7 +3240,9 @@ const toPersistedBlockRawForDraft = (
     : draft;
 
 const applyEditorMarkdownNormalization = (value: string) =>
-  normalizeHorizontalRuleSpacingInMarkdown(value);
+  normalizeExamTaskHeadingIndentationInMarkdown(
+    normalizeHorizontalRuleSpacingInMarkdown(value),
+  );
 
 const createActiveEditSnapshotFromBlock = (
   blockIndex: number,
@@ -10370,9 +10449,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           const listParentStartLine = block.meta?.listParentStartLine;
           const isListBlock = block.kind === "ordered-list" || block.kind === "unordered-list";
           const previousBlock = index > 0 ? blocks[index - 1] : null;
-          const previousListDepthValue = typeof previousBlock?.meta?.listDepth === "number"
-            ? Math.max(0, previousBlock.meta.listDepth)
-            : null;
           const listMarkerVariant = isListBlock
             ? resolveListMarkerVariant(
               block.kind === "ordered-list" ? "ordered-list" : "unordered-list",
@@ -10382,12 +10458,9 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           const isListGroupContinuation = Boolean(
             isListBlock &&
               listGroupId &&
-              listDepthValue !== null &&
               previousBlock &&
               (previousBlock.kind === "ordered-list" || previousBlock.kind === "unordered-list") &&
-              previousBlock.meta?.listGroupId === listGroupId &&
-              previousListDepthValue !== null &&
-              previousListDepthValue === listDepthValue,
+              previousBlock.meta?.listGroupId === listGroupId,
           );
           const listDepthStyle = listDepthValue !== null
             ? ({ "--mdh-list-depth": String(listDepthValue) } as CSSProperties)

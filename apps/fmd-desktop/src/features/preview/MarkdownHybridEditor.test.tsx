@@ -3259,6 +3259,102 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("resets task-style n) heading indentation to column zero inside exam outside card blocks", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#exam",
+        "#card",
+        "1) CARD HEADING",
+        "QUESTION TEXT",
+        "#endcard",
+        "   4) TASK HEADING",
+        "TASK DESCRIPTION",
+        "-true",
+        "#endexam",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="ordered-list-task-heading-indent-reset-inside-exam"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const taskHeadingBlock = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-kind='ordered-list']"),
+      ).find((block) => block.textContent?.includes("TASK HEADING"));
+      expect(taskHeadingBlock).toBeTruthy();
+      const taskHeadingBlockIndex = Number.parseInt(taskHeadingBlock?.dataset.mdBlockIndex ?? "-1", 10);
+      const textarea = Number.isInteger(taskHeadingBlockIndex) && taskHeadingBlockIndex >= 0
+        ? activateBlockEditor(container, taskHeadingBlockIndex)
+        : null;
+      expect(textarea).toBeTruthy();
+      blurTextarea(textarea);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toContain("4) TASK HEADING");
+      expect(markdownValue).not.toContain("   4) TASK HEADING");
+
+      cleanup();
+    });
+  });
+
+  it("keeps task-style n) heading indentation unchanged inside card blocks", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "#exam",
+        "#card",
+        "   4) CARD HEADING",
+        "QUESTION TEXT",
+        "#endcard",
+        "#endexam",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="ordered-list-task-heading-indent-keeps-card-heading-indent"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const cardHeadingBlock = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-kind='ordered-list']"),
+      ).find((block) => block.textContent?.includes("CARD HEADING"));
+      expect(cardHeadingBlock).toBeTruthy();
+      const cardHeadingBlockIndex = Number.parseInt(cardHeadingBlock?.dataset.mdBlockIndex ?? "-1", 10);
+      const textarea = Number.isInteger(cardHeadingBlockIndex) && cardHeadingBlockIndex >= 0
+        ? activateBlockEditor(container, cardHeadingBlockIndex)
+        : null;
+      expect(textarea).toBeTruthy();
+      blurTextarea(textarea);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(initialMarkdown);
+
+      cleanup();
+    });
+  });
+
   it("renders list items as separate hybrid blocks with hierarchy metadata", () => {
     withImmediateRaf(() => {
       const initialMarkdown = [
@@ -3359,7 +3455,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("marks only same-depth consecutive list item blocks for compact visual grouping", () => {
+  it("marks consecutive list item blocks from the same group for compact visual grouping", () => {
     withImmediateRaf(() => {
       const initialMarkdown = [
         "1. Root",
@@ -3387,12 +3483,11 @@ describe("MarkdownHybridEditor", () => {
       const third = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='2']");
       const fourth = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='3']");
       expect(first?.classList.contains("is-list-group-continuation")).toBe(false);
-      expect(second?.classList.contains("is-list-group-continuation")).toBe(false);
+      expect(second?.classList.contains("is-list-group-continuation")).toBe(true);
       expect(third?.classList.contains("is-list-group-continuation")).toBe(true);
-      expect(fourth?.classList.contains("is-list-group-continuation")).toBe(false);
-      expect(second?.dataset.mdListDepth).toBe("1");
-      expect(third?.dataset.mdListDepth).toBe("1");
+      expect(fourth?.classList.contains("is-list-group-continuation")).toBe(true);
       expect(second?.dataset.mdListGroupId).toBe(third?.dataset.mdListGroupId);
+      expect(third?.dataset.mdListGroupId).toBe(fourth?.dataset.mdListGroupId);
       cleanup();
     });
   });

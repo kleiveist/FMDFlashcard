@@ -1700,7 +1700,7 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block.is-list-group-continuation {
-  margin-top: calc(var(--ui-space-xs) * -1);
+  margin-top: calc(var(--ui-space-xs) * -1.4);
 }
 
 .md-card-group-rail {
