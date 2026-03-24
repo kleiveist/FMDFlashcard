@@ -20,19 +20,22 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnchoredPopup } from "../../components/AnchoredPopup";
 import { FastCardHost } from "./components/FastCardHost";
 import { FastHeader } from "./components/FastHeader";
 import { FastStatsPanel } from "./components/FastStatsPanel";
 import { FastToolsPanel } from "./components/FastToolsPanel";
 import { StudyTimeBar } from "../../components/StudyTimeBar";
 import { NoteFilesPanel } from "../../components/NoteFilesPanel";
+import { FileIcon, SettingsIcon } from "../../components/icons";
 import { useFastSession } from "./hooks/useFastSession";
 import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
   isFlashcardPartComplete,
 } from "../../features/flashcards/logic";
+import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
 import {
   formatBinding,
   getEffectiveBinding,
@@ -120,8 +123,11 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
   } = useFastSession();
   const [isViewMode, setIsViewMode] = useState(false);
   const isTableView = useTableView();
+  const isDesktopView = !isTableView;
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isNoteFilesPopupOpen, setIsNoteFilesPopupOpen] = useState(false);
+  const noteFilesButtonRef = useRef<HTMLButtonElement | null>(null);
   const platform = getShortcutPlatform();
   const viewBinding = useMemo(() => {
     if (!viewToggleCommand) {
@@ -163,6 +169,13 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
       document.body.classList.remove("focus-mode");
     };
   }, [isViewMode]);
+
+  useEffect(() => {
+    if (isDesktopView && !isViewMode) {
+      return;
+    }
+    setIsNoteFilesPopupOpen(false);
+  }, [isDesktopView, isViewMode]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -399,7 +412,9 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
 
   return (
     <div
-      className={`fast-flashcard-layout ${isViewMode ? "focus-mode" : ""} ${
+      className={`fast-flashcard-layout ${
+        isDesktopView ? "desktop-rail-layout" : ""
+      } ${isViewMode ? "focus-mode" : ""} ${
         isTableView ? "table-view" : ""
       }`}
     >
@@ -407,10 +422,58 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
         {statsPanel}
         {flashcardPanel}
       </div>
-      <aside className="fast-flashcard-sidebar">
+      {isDesktopView ? (
+        isViewMode ? null : (
+          <aside className="study-popup-rail fast-popup-rail">
+            <button
+              type="button"
+              className="ghost small study-popup-rail-button"
+              onClick={() => {
+                setIsNoteFilesPopupOpen(false);
+                requestSettingsFocus({
+                  pageId: "review-tools",
+                  subPageId: "fast-flashcard-tools",
+                  scrollSelector: ".fast-flashcard-tools-panel",
+                  highlight: true,
+                });
+              }}
+              aria-label="Open Fast Flashcard Tools settings"
+              title="Fast Flashcard Tools"
+            >
+              <SettingsIcon />
+            </button>
+            <button
+              ref={noteFilesButtonRef}
+              type="button"
+              className={`ghost small study-popup-rail-button ${
+                isNoteFilesPopupOpen ? "active" : ""
+              }`}
+              onClick={() => setIsNoteFilesPopupOpen((prev) => !prev)}
+              aria-label="Open Note Files"
+              aria-haspopup="dialog"
+              aria-expanded={isNoteFilesPopupOpen}
+              title="Note Files"
+            >
+              <FileIcon />
+            </button>
+          </aside>
+        )
+      ) : (
+        <aside className="fast-flashcard-sidebar">
+          {noteFilesPanel}
+          {toolsPanel}
+        </aside>
+      )}
+      <AnchoredPopup
+        isOpen={isDesktopView && !isViewMode && isNoteFilesPopupOpen}
+        onClose={() => setIsNoteFilesPopupOpen(false)}
+        anchorRef={noteFilesButtonRef}
+        closeLayerId="fast-flashcard-note-files"
+        ariaLabel="Fast flashcard note files"
+        className="note-files-popup"
+      >
         {noteFilesPanel}
-        {toolsPanel}
-      </aside>
+      </AnchoredPopup>
     </div>
   );
 };

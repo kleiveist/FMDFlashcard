@@ -204,3 +204,47 @@
 .ui-tooltip-bottom {
   transform: translate(-50%, 10px);
 }
+
+.anchored-popup {
+  position: fixed;
+  z-index: 68;
+  min-width: min(360px, calc(100vw - 16px));
+  max-width: min(460px, calc(100vw - 16px));
+}
+
+.anchored-popup-body {
+  min-width: 0;
+  min-height: 0;
+}
+
+.anchored-popup-close {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border-subtle);
+  background: var(--panel);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--ui-shadow-flyout);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.anchored-popup-close:hover {
+  border-color: var(--ui-border-hover);
+  color: var(--accent-strong);
+}
+
+.anchored-popup-close:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
+}
+
+.anchored-popup-close svg {
+  width: 14px;
+  height: 14px;
+}

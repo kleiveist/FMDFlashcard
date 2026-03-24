@@ -1479,6 +1479,7 @@ type PreviewPanelProps = {
     targetPath: string,
     position: "before" | "after",
   ) => void;
+  tabRowActions?: ReactNode;
 };
 
 type PendingHybridPostCommitAction =
@@ -6534,6 +6535,7 @@ export const PreviewPanel = ({
   onSelectMarkdownTab,
   onCloseMarkdownTab,
   onReorderMarkdownTabs,
+  tabRowActions,
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const markdownViewRef = useRef<HTMLDivElement | null>(null);
@@ -8389,7 +8391,7 @@ export const PreviewPanel = ({
           {previewState === "loading" ? <span className="chip">Lade...</span> : null}
         </div>
       </div>
-      {markdownTabs.length > 0 ? (
+      {markdownTabs.length > 0 || tabRowActions ? (
         <div
           ref={markdownTabStripRef}
           className={`preview-tab-strip ${useFolderRowMode ? "is-two-row" : ""}`}
@@ -8417,57 +8419,66 @@ export const PreviewPanel = ({
               ))}
             </div>
           ) : null}
-          <div className="preview-tab-row" role="tablist" aria-label="Open markdown files">
-            {filteredMarkdownTabDisplayInfos.map((tab) => {
-              const isActive = activeMarkdownTabPath === tab.path;
-              const visibleLabel = isCompactMarkdownTabLabels ? tab.fileLabel : tab.fullLabel;
-              const isDropTarget = markdownTabDropHint?.path === tab.path;
-              return (
-                <div
-                  key={tab.path}
-                  className={`preview-tab ${isActive ? "active" : ""} ${
-                    dragMarkdownTabPath === tab.path ? "is-drag-source" : ""
-                  } ${
-                    isDropTarget
-                      ? markdownTabDropHint?.position === "before"
-                        ? "is-drop-before"
-                        : "is-drop-after"
-                      : ""
-                  }`.trim()}
-                  draggable={isMarkdownTabReorderEnabled}
-                  onDragStart={(event) =>
-                    handleMarkdownTabDragStart(event, tab.path, tab.fullLabel)
-                  }
-                  onDragOver={(event) => handleMarkdownTabDragOver(event, tab.path)}
-                  onDragLeave={(event) => handleMarkdownTabDragLeave(event, tab.path)}
-                  onDrop={(event) => handleMarkdownTabDrop(event, tab.path)}
-                  onDragEnd={handleMarkdownTabDragEnd}
-                >
-                  <button
-                    type="button"
-                    className={`preview-tab-button ${isActive ? "active" : ""}`}
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => handleMarkdownTabSelect(tab.path)}
-                    title={tab.fullLabel}
+          <div className="preview-tab-row-shell">
+            <div
+              className="preview-tab-row"
+              role={markdownTabs.length > 0 ? "tablist" : undefined}
+              aria-label={markdownTabs.length > 0 ? "Open markdown files" : undefined}
+            >
+              {filteredMarkdownTabDisplayInfos.map((tab) => {
+                const isActive = activeMarkdownTabPath === tab.path;
+                const visibleLabel = isCompactMarkdownTabLabels ? tab.fileLabel : tab.fullLabel;
+                const isDropTarget = markdownTabDropHint?.path === tab.path;
+                return (
+                  <div
+                    key={tab.path}
+                    className={`preview-tab ${isActive ? "active" : ""} ${
+                      dragMarkdownTabPath === tab.path ? "is-drag-source" : ""
+                    } ${
+                      isDropTarget
+                        ? markdownTabDropHint?.position === "before"
+                          ? "is-drop-before"
+                          : "is-drop-after"
+                        : ""
+                    }`.trim()}
+                    draggable={isMarkdownTabReorderEnabled}
+                    onDragStart={(event) =>
+                      handleMarkdownTabDragStart(event, tab.path, tab.fullLabel)
+                    }
+                    onDragOver={(event) => handleMarkdownTabDragOver(event, tab.path)}
+                    onDragLeave={(event) => handleMarkdownTabDragLeave(event, tab.path)}
+                    onDrop={(event) => handleMarkdownTabDrop(event, tab.path)}
+                    onDragEnd={handleMarkdownTabDragEnd}
                   >
-                    <span className="preview-tab-label">{visibleLabel}</span>
-                  </button>
-                  {onCloseMarkdownTab ? (
                     <button
                       type="button"
-                      className="preview-tab-close"
-                      draggable={false}
-                      aria-label={`Close ${tab.fullLabel}`}
-                      title={`Close ${tab.fullLabel}`}
-                      onClick={(event) => handleMarkdownTabClose(event, tab.path)}
+                      className={`preview-tab-button ${isActive ? "active" : ""}`}
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => handleMarkdownTabSelect(tab.path)}
+                      title={tab.fullLabel}
                     >
-                      ×
+                      <span className="preview-tab-label">{visibleLabel}</span>
                     </button>
-                  ) : null}
-                </div>
-              );
-            })}
+                    {onCloseMarkdownTab ? (
+                      <button
+                        type="button"
+                        className="preview-tab-close"
+                        draggable={false}
+                        aria-label={`Close ${tab.fullLabel}`}
+                        title={`Close ${tab.fullLabel}`}
+                        onClick={(event) => handleMarkdownTabClose(event, tab.path)}
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+            {tabRowActions ? (
+              <div className="preview-tab-row-actions">{tabRowActions}</div>
+            ) : null}
           </div>
         </div>
       ) : null}

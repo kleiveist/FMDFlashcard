@@ -20,16 +20,19 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { AnchoredPopup } from "../../components/AnchoredPopup";
 import { SrCardHost } from "./components/SrCardHost";
 import { SrHeader } from "./components/SrHeader";
 import { SrStatsAndChart } from "./components/SrStatsAndChart";
 import { SrToolsPanel } from "./components/SrToolsPanel";
 import { NoteFilesPanel } from "../../components/NoteFilesPanel";
+import { FileIcon, SettingsIcon } from "../../components/icons";
 import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
 import { useTableView } from "../../lib/useTableView";
 import { useAppState } from "../../components/AppStateProvider";
 import type { StudySectionKey } from "../../lib/studySections";
+import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
 
 type SpacedRepetitionPageProps = {
   onSectionSelect?: (section: StudySectionKey) => void;
@@ -92,8 +95,11 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     autoTimeIsTimeUp,
   } = useSrSessionViewModel();
   const isTableView = useTableView();
+  const isDesktopView = !isTableView;
   const [isDiagramOpen, setIsDiagramOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isNoteFilesPopupOpen, setIsNoteFilesPopupOpen] = useState(false);
+  const noteFilesButtonRef = useRef<HTMLButtonElement | null>(null);
   const isFlashcardsPanelEmpty = filteredFlashcardEntries.length === 0;
   const autoTimeBarStyle = useMemo(
     () =>
@@ -118,9 +124,18 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     />
   );
 
+  useEffect(() => {
+    if (isDesktopView && !isFocusMode) {
+      return;
+    }
+    setIsNoteFilesPopupOpen(false);
+  }, [isDesktopView, isFocusMode]);
+
   return (
     <div
-      className={`spaced-repetition-layout ${isFocusMode ? "focus-mode" : ""} ${
+      className={`spaced-repetition-layout ${
+        isDesktopView ? "desktop-rail-layout" : ""
+      } ${isFocusMode ? "focus-mode" : ""} ${
         isTableView ? "table-view" : ""
       }`}
     >
@@ -256,26 +271,74 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
         </section>
       </div>
 
-      {isFocusMode ? null : (
-        <aside className="spaced-repetition-sidebar">
-          {noteFilesPanel}
-          <SrToolsPanel
-            spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
-            setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
-            spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
-            setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
-            flashcardFilterMode={flashcardFilterMode}
-            setFlashcardFilterMode={setFlashcardFilterMode}
-            autoTimeEnabled={autoTimeEnabled}
-            setAutoTimeEnabled={setAutoTimeEnabled}
-            statusLabel={spacedRepetition.spacedRepetitionStatusLabel}
-            isCollapsible={isTableView}
-            isCollapsed={isTableView && !isToolsOpen}
-            onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
-            controlsId="sr-tools-body"
-          />
-        </aside>
+      {isDesktopView ? (
+        isFocusMode ? null : (
+          <aside className="study-popup-rail spaced-repetition-popup-rail">
+            <button
+              type="button"
+              className="ghost small study-popup-rail-button"
+              onClick={() => {
+                setIsNoteFilesPopupOpen(false);
+                requestSettingsFocus({
+                  pageId: "review-tools",
+                  subPageId: "spaced-repetition-tools",
+                  scrollSelector: ".spaced-repetition-panel",
+                  highlight: true,
+                });
+              }}
+              aria-label="Open Spaced Repetition Tools settings"
+              title="Spaced Repetition Tools"
+            >
+              <SettingsIcon />
+            </button>
+            <button
+              ref={noteFilesButtonRef}
+              type="button"
+              className={`ghost small study-popup-rail-button ${
+                isNoteFilesPopupOpen ? "active" : ""
+              }`}
+              onClick={() => setIsNoteFilesPopupOpen((prev) => !prev)}
+              aria-label="Open Note Files"
+              aria-haspopup="dialog"
+              aria-expanded={isNoteFilesPopupOpen}
+              title="Note Files"
+            >
+              <FileIcon />
+            </button>
+          </aside>
+        )
+      ) : (
+        isFocusMode ? null : (
+          <aside className="spaced-repetition-sidebar">
+            {noteFilesPanel}
+            <SrToolsPanel
+              spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
+              setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
+              spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
+              setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
+              flashcardFilterMode={flashcardFilterMode}
+              setFlashcardFilterMode={setFlashcardFilterMode}
+              autoTimeEnabled={autoTimeEnabled}
+              setAutoTimeEnabled={setAutoTimeEnabled}
+              statusLabel={spacedRepetition.spacedRepetitionStatusLabel}
+              isCollapsible={isTableView}
+              isCollapsed={isTableView && !isToolsOpen}
+              onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
+              controlsId="sr-tools-body"
+            />
+          </aside>
+        )
       )}
+      <AnchoredPopup
+        isOpen={isDesktopView && !isFocusMode && isNoteFilesPopupOpen}
+        onClose={() => setIsNoteFilesPopupOpen(false)}
+        anchorRef={noteFilesButtonRef}
+        closeLayerId="spaced-repetition-note-files"
+        ariaLabel="Spaced repetition note files"
+        className="note-files-popup"
+      >
+        {noteFilesPanel}
+      </AnchoredPopup>
     </div>
   );
 };

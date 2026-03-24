@@ -21,7 +21,15 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
+import { AnchoredPopup } from "../components/AnchoredPopup";
 import { CollapsiblePanelHeader } from "../components/CollapsiblePanelHeader";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { CompositeCard } from "../components/flashcards/CompositeCard";
@@ -30,6 +38,7 @@ import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard"
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
 import { StatsPanel } from "../components/StatsPanel";
 import { NoteFilesPanel } from "../components/NoteFilesPanel";
+import { FileIcon, SettingsIcon } from "../components/icons";
 import { useAppState } from "../components/AppStateProvider";
 import {
   areClozeBlanksComplete,
@@ -37,6 +46,7 @@ import {
   isFlashcardPartComplete,
 } from "../features/flashcards/logic";
 import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
+import { requestSettingsFocus } from "../features/settings/settingsDeepLink";
 import {
   formatBinding,
   getEffectiveBinding,
@@ -73,8 +83,11 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   } = useAppState();
   const [isFocusMode, setIsFocusMode] = useState(false);
   const isTableView = useTableView();
+  const isDesktopView = !isTableView;
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isNoteFilesPopupOpen, setIsNoteFilesPopupOpen] = useState(false);
+  const noteFilesButtonRef = useRef<HTMLButtonElement | null>(null);
   const [activeCardIndex, setActiveCardIndex] = useState<number | null>(null);
   const totalQuestions = flashcards.filteredFlashcardCount;
   const hasScannedCards = flashcards.flashcards.length > 0;
@@ -119,6 +132,13 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
       document.body.classList.remove("focus-mode");
     };
   }, [isFocusMode]);
+
+  useEffect(() => {
+    if (isDesktopView && !isFocusMode) {
+      return;
+    }
+    setIsNoteFilesPopupOpen(false);
+  }, [isDesktopView, isFocusMode]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -588,155 +608,64 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
     </>
   );
 
-  return (
-    <div className={`flashcard-layout ${isFocusMode ? "focus-mode" : ""}`}>
-      <section className="panel flashcard-panel">
-        <div className="panel-header">
-          <div>
-            <h2>
-              <button
-                type="button"
-                className="panel-title-button"
-                onClick={() => onSectionSelect?.("flashcard")}
-              >
-                Flashcard
-              </button>
-            </h2>
-            {!hasScannedCards ? (
-              <p className="muted">{flashcardStatusLabel}</p>
-            ) : null}
-          </div>
-          <div className="panel-actions">
+  const flashcardPanel = (
+    <section className="panel flashcard-panel">
+      <div className="panel-header">
+        <div>
+          <h2>
             <button
               type="button"
-              className={`focus-toggle ${isFocusMode ? "active" : ""}`}
-              onClick={() => setIsFocusMode((prev) => !prev)}
-              aria-pressed={isFocusMode}
-              aria-label={focusTitle}
-              title={focusTitle}
+              className="panel-title-button"
+              onClick={() => onSectionSelect?.("flashcard")}
             >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-                <circle cx="12" cy="12" r="3.5" />
-              </svg>
+              Flashcard
             </button>
-          </div>
-        </div>
-        <div className="panel-body">
+          </h2>
           {!hasScannedCards ? (
-            <div className="empty-state">
-              Select a note from DASHBOARD and start the flashcard scan
-            </div>
-          ) : !hasFilteredCards ? (
-            <div className="empty-state">No cards match the selected mode.</div>
-          ) : (
-            <div className="flashcard-list">
-              {flashcards.visibleFlashcardEntries.map((entry) => {
-                const cardIndex = entry.cardIndex;
-                const card = entry.card;
-                const submitted = !!flashcards.flashcardSubmissions[cardIndex];
+            <p className="muted">{flashcardStatusLabel}</p>
+          ) : null}
+        </div>
+        <div className="panel-actions">
+          <button
+            type="button"
+            className={`focus-toggle ${isFocusMode ? "active" : ""}`}
+            onClick={() => setIsFocusMode((prev) => !prev)}
+            aria-pressed={isFocusMode}
+            aria-label={focusTitle}
+            title={focusTitle}
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+              <circle cx="12" cy="12" r="3.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div className="panel-body">
+        {!hasScannedCards ? (
+          <div className="empty-state">
+            Select a note from DASHBOARD and start the flashcard scan
+          </div>
+        ) : !hasFilteredCards ? (
+          <div className="empty-state">No cards match the selected mode.</div>
+        ) : (
+          <div className="flashcard-list">
+            {flashcards.visibleFlashcardEntries.map((entry) => {
+              const cardIndex = entry.cardIndex;
+              const card = entry.card;
+              const submitted = !!flashcards.flashcardSubmissions[cardIndex];
 
-                if (card.kind === "composite") {
-                  return (
-                    <CompositeCard
-                      key={`flashcard-${cardIndex}`}
-                      card={card}
-                      cardIndex={cardIndex}
-                      submitted={submitted}
-                      vaultPath={vault.vaultPath}
-                      vaultPngAssets={vault.pngAssets}
-                      helpText={card.helpText}
-                      helpEnabled={helpEnabled}
-                      partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
-                      onOptionSelect={handleCompositeOptionSelect}
-                      onTrueFalseSelect={handleCompositeTrueFalseSelect}
-                      onClozeInputChange={handleCompositeClozeInputChange}
-                      onClozeTokenDrop={handleCompositeClozeTokenDrop}
-                      onClozeTokenRemove={handleCompositeClozeTokenRemove}
-                      onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
-                      onBlankDragOver={flashcards.handleClozeBlankDragOver}
-                      onTextInputChange={handleCompositeTextInputChange}
-                      onTextCheck={handleCompositeTextCheck}
-                      onSelfGrade={handleCompositeSelfGrade}
-                      onSubmit={flashcards.handleFlashcardSubmit}
-                    />
-                  );
-                }
-
-                if (card.kind === "cloze") {
-                  return (
-                    <ClozeCard
-                      key={`flashcard-${cardIndex}`}
-                      card={card}
-                      cardIndex={cardIndex}
-                      submitted={submitted}
-                      vaultPath={vault.vaultPath}
-                      vaultPngAssets={vault.pngAssets}
-                      helpText={card.helpText}
-                      helpEnabled={helpEnabled}
-                      responses={
-                        flashcards.flashcardClozeResponses[cardIndex] ??
-                        EMPTY_CLOZE_RESPONSES
-                      }
-                      onInputChange={handleClozeInputChange}
-                      onTokenDrop={handleClozeTokenDrop}
-                      onTokenRemove={handleClozeTokenRemove}
-                      onTokenDragStart={flashcards.handleClozeTokenDragStart}
-                      onBlankDragOver={flashcards.handleClozeBlankDragOver}
-                      onSubmit={flashcards.handleFlashcardSubmit}
-                    />
-                  );
-                }
-
-                if (card.kind === "true-false") {
-                  return (
-                    <TrueFalseCard
-                      key={`flashcard-${cardIndex}`}
-                      card={card}
-                      cardIndex={cardIndex}
-                      submitted={submitted}
-                      vaultPath={vault.vaultPath}
-                      vaultPngAssets={vault.pngAssets}
-                      helpText={card.helpText}
-                      helpEnabled={helpEnabled}
-                      selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
-                      onSelect={handleTrueFalseSelect}
-                      onSubmit={flashcards.handleFlashcardSubmit}
-                    />
-                  );
-                }
-
-                if (card.kind === "free-text") {
-                  return (
-                    <FreeTextCard
-                      key={`flashcard-${cardIndex}`}
-                      card={card}
-                      cardIndex={cardIndex}
-                      submitted={submitted}
-                      vaultPath={vault.vaultPath}
-                      vaultPngAssets={vault.pngAssets}
-                      helpText={card.helpText}
-                      helpEnabled={helpEnabled}
-                      response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
-                      revealed={flashcards.flashcardTextRevealed[cardIndex] ?? false}
-                      selfGrade={flashcards.flashcardSelfGrades[cardIndex]}
-                      onInputChange={handleTextInputChange}
-                      onCheck={handleTextCheck}
-                      onSelfGrade={handleSelfGrade}
-                    />
-                  );
-                }
-
+              if (card.kind === "composite") {
                 return (
-                  <MultipleChoiceCard
+                  <CompositeCard
                     key={`flashcard-${cardIndex}`}
                     card={card}
                     cardIndex={cardIndex}
@@ -745,40 +674,194 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                     vaultPngAssets={vault.pngAssets}
                     helpText={card.helpText}
                     helpEnabled={helpEnabled}
-                    selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}
-                    onSelect={handleOptionSelect}
+                    partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
+                    onOptionSelect={handleCompositeOptionSelect}
+                    onTrueFalseSelect={handleCompositeTrueFalseSelect}
+                    onClozeInputChange={handleCompositeClozeInputChange}
+                    onClozeTokenDrop={handleCompositeClozeTokenDrop}
+                    onClozeTokenRemove={handleCompositeClozeTokenRemove}
+                    onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
+                    onBlankDragOver={flashcards.handleClozeBlankDragOver}
+                    onTextInputChange={handleCompositeTextInputChange}
+                    onTextCheck={handleCompositeTextCheck}
+                    onSelfGrade={handleCompositeSelfGrade}
                     onSubmit={flashcards.handleFlashcardSubmit}
                   />
                 );
-              })}
-            </div>
-          )}
-          <div className="flashcard-pagination">
-            <button
-              type="button"
-              className="ghost small"
-              onClick={flashcards.handleFlashcardPageBack}
-              disabled={!flashcards.canGoBack}
-              title={prevShortcutTitle}
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              className="ghost small"
-              onClick={flashcards.handleFlashcardPageNext}
-              disabled={!flashcards.canGoNext}
-              title={nextShortcutTitle}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </section>
+              }
 
-      {isFocusMode ? null : (
-        <div className="flashcard-sidebar">{sidebarPanels}</div>
+              if (card.kind === "cloze") {
+                return (
+                  <ClozeCard
+                    key={`flashcard-${cardIndex}`}
+                    card={card}
+                    cardIndex={cardIndex}
+                    submitted={submitted}
+                    vaultPath={vault.vaultPath}
+                    vaultPngAssets={vault.pngAssets}
+                    helpText={card.helpText}
+                    helpEnabled={helpEnabled}
+                    responses={
+                      flashcards.flashcardClozeResponses[cardIndex] ??
+                      EMPTY_CLOZE_RESPONSES
+                    }
+                    onInputChange={handleClozeInputChange}
+                    onTokenDrop={handleClozeTokenDrop}
+                    onTokenRemove={handleClozeTokenRemove}
+                    onTokenDragStart={flashcards.handleClozeTokenDragStart}
+                    onBlankDragOver={flashcards.handleClozeBlankDragOver}
+                    onSubmit={flashcards.handleFlashcardSubmit}
+                  />
+                );
+              }
+
+              if (card.kind === "true-false") {
+                return (
+                  <TrueFalseCard
+                    key={`flashcard-${cardIndex}`}
+                    card={card}
+                    cardIndex={cardIndex}
+                    submitted={submitted}
+                    vaultPath={vault.vaultPath}
+                    vaultPngAssets={vault.pngAssets}
+                    helpText={card.helpText}
+                    helpEnabled={helpEnabled}
+                    selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
+                    onSelect={handleTrueFalseSelect}
+                    onSubmit={flashcards.handleFlashcardSubmit}
+                  />
+                );
+              }
+
+              if (card.kind === "free-text") {
+                return (
+                  <FreeTextCard
+                    key={`flashcard-${cardIndex}`}
+                    card={card}
+                    cardIndex={cardIndex}
+                    submitted={submitted}
+                    vaultPath={vault.vaultPath}
+                    vaultPngAssets={vault.pngAssets}
+                    helpText={card.helpText}
+                    helpEnabled={helpEnabled}
+                    response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
+                    revealed={flashcards.flashcardTextRevealed[cardIndex] ?? false}
+                    selfGrade={flashcards.flashcardSelfGrades[cardIndex]}
+                    onInputChange={handleTextInputChange}
+                    onCheck={handleTextCheck}
+                    onSelfGrade={handleSelfGrade}
+                  />
+                );
+              }
+
+              return (
+                <MultipleChoiceCard
+                  key={`flashcard-${cardIndex}`}
+                  card={card}
+                  cardIndex={cardIndex}
+                  submitted={submitted}
+                  vaultPath={vault.vaultPath}
+                  vaultPngAssets={vault.pngAssets}
+                  helpText={card.helpText}
+                  helpEnabled={helpEnabled}
+                  selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}
+                  onSelect={handleOptionSelect}
+                  onSubmit={flashcards.handleFlashcardSubmit}
+                />
+              );
+            })}
+          </div>
+        )}
+        <div className="flashcard-pagination">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={flashcards.handleFlashcardPageBack}
+            disabled={!flashcards.canGoBack}
+            title={prevShortcutTitle}
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={flashcards.handleFlashcardPageNext}
+            disabled={!flashcards.canGoNext}
+            title={nextShortcutTitle}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+
+  return (
+    <div
+      className={`flashcard-layout ${
+        isDesktopView ? "desktop-rail-layout" : ""
+      } ${isFocusMode ? "focus-mode" : ""}`}
+    >
+      {isDesktopView ? (
+        <>
+          <div className="flashcard-main-stack">
+            {isFocusMode ? null : statsPanel}
+            {flashcardPanel}
+          </div>
+          {isFocusMode ? null : (
+            <aside className="study-popup-rail flashcard-popup-rail">
+              <button
+                type="button"
+                className="ghost small study-popup-rail-button"
+                onClick={() => {
+                  setIsNoteFilesPopupOpen(false);
+                  requestSettingsFocus({
+                    pageId: "review-tools",
+                    subPageId: "flashcard-tools",
+                    scrollSelector: ".settings-flashcards-panel",
+                    highlight: true,
+                  });
+                }}
+                aria-label="Open Flashcard Tools settings"
+                title="Flashcard Tools"
+              >
+                <SettingsIcon />
+              </button>
+              <button
+                ref={noteFilesButtonRef}
+                type="button"
+                className={`ghost small study-popup-rail-button ${
+                  isNoteFilesPopupOpen ? "active" : ""
+                }`}
+                onClick={() => setIsNoteFilesPopupOpen((prev) => !prev)}
+                aria-label="Open Note Files"
+                aria-haspopup="dialog"
+                aria-expanded={isNoteFilesPopupOpen}
+                title="Note Files"
+              >
+                <FileIcon />
+              </button>
+            </aside>
+          )}
+        </>
+      ) : (
+        <>
+          {flashcardPanel}
+          {isFocusMode ? null : (
+            <div className="flashcard-sidebar">{sidebarPanels}</div>
+          )}
+        </>
       )}
+      <AnchoredPopup
+        isOpen={isDesktopView && !isFocusMode && isNoteFilesPopupOpen}
+        onClose={() => setIsNoteFilesPopupOpen(false)}
+        anchorRef={noteFilesButtonRef}
+        closeLayerId="flashcard-note-files"
+        ariaLabel="Flashcard note files"
+        className="note-files-popup"
+      >
+        {noteFilesPanel}
+      </AnchoredPopup>
     </div>
   );
 };

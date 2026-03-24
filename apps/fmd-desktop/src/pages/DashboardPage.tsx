@@ -33,10 +33,12 @@ import {
   useState,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { AnchoredPopup } from "../components/AnchoredPopup";
 import { FileList } from "../components/FileList";
 import { NoteModal } from "../components/NoteModal";
 import { ModalShell } from "../components/ModalShell";
 import { PreviewPanel } from "../components/PreviewPanel";
+import { FileIcon } from "../components/icons";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
 import { isValidHex, normalizeHex } from "../lib/color";
@@ -145,6 +147,9 @@ const DashboardPageInner = (
     return window.matchMedia("(min-width: 1200px)").matches;
   });
   const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const markdownNoteTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const examNoteTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [isDesktopNotePopupOpen, setIsDesktopNotePopupOpen] = useState(false);
   const didApplyPreviewDefaultModeRef = useRef(false);
   const pendingExamLeaveProceedRef = useRef<(() => void | Promise<void>) | null>(null);
   const pendingExamLeaveResolveRef = useRef<((allowed: boolean) => void) | null>(null);
@@ -178,6 +183,8 @@ const DashboardPageInner = (
     [pointsProfiles.profiles],
   );
   const isExamDesktop = vaultView === "exam" && isDesktopViewport;
+  const desktopNotePopupEnabled = isDesktopViewport;
+  const showInlineNotePanel = !noteModalEnabled && !desktopNotePopupEnabled;
   const panelsCollapsed = isExamDesktop ? examPanelsCollapsed : noteCollapsed;
   const normalizedActiveFolderPath = useMemo(() => {
     if (!vault.activeFolderPath) {
@@ -1127,6 +1134,13 @@ const DashboardPageInner = (
   const handleNoteModalClose = useCallback(() => {
     onNoteModalClose?.();
   }, [onNoteModalClose]);
+  const handleDesktopNotePopupClose = useCallback(() => {
+    setIsDesktopNotePopupOpen(false);
+  }, []);
+  const handleDesktopPopupPanelToggle = useCallback(() => {
+    // Popup variant keeps file list expanded; panel collapse is not used here.
+    void 0;
+  }, []);
 
   useEffect(() => {
     if (!noteModalActive) {
@@ -1136,6 +1150,24 @@ const DashboardPageInner = (
       setNoteCollapsed(false);
     }
   }, [noteCollapsed, noteModalActive]);
+
+  useEffect(() => {
+    if (!isDesktopNotePopupOpen || !noteCollapsed) {
+      return;
+    }
+    setNoteCollapsed(false);
+  }, [isDesktopNotePopupOpen, noteCollapsed]);
+
+  useEffect(() => {
+    if (desktopNotePopupEnabled) {
+      return;
+    }
+    setIsDesktopNotePopupOpen(false);
+  }, [desktopNotePopupEnabled]);
+
+  useEffect(() => {
+    setIsDesktopNotePopupOpen(false);
+  }, [vaultView]);
 
   useEffect(() => {
     if (initialVaultView === vaultView) {
@@ -1252,6 +1284,24 @@ const DashboardPageInner = (
     ) : examControls?.saveState === "saved" ? (
       <span className="pill success">Saved</span>
     ) : null;
+  const markdownTabRowActions = desktopNotePopupEnabled ? (
+    <button
+      ref={markdownNoteTriggerRef}
+      type="button"
+      className={`ghost small desktop-note-trigger ${
+        vaultView === "markdown" && isDesktopNotePopupOpen ? "active" : ""
+      }`}
+      onClick={() => setIsDesktopNotePopupOpen((current) => !current)}
+      aria-label="Open note panel"
+      aria-haspopup="dialog"
+      aria-expanded={vaultView === "markdown" && isDesktopNotePopupOpen}
+      title="Note"
+    >
+      <FileIcon />
+    </button>
+  ) : null;
+  const activeDesktopNoteAnchorRef =
+    vaultView === "exam" ? examNoteTriggerRef : markdownNoteTriggerRef;
   const desktopExamToolbar =
     vaultView === "exam" && isExamDesktop && examControls ? (
       <section className="panel toolbar-panel exam-editor-controls-panel exam-editor-controls-panel-top">
@@ -1263,6 +1313,22 @@ const DashboardPageInner = (
           <span className="muted">Saved path:</span>
           <span className="save-path">{examControls.savePath ?? "Not saved yet"}</span>
           {examSaveState}
+          {desktopNotePopupEnabled ? (
+            <button
+              ref={examNoteTriggerRef}
+              type="button"
+              className={`ghost small exam-save-note-trigger ${
+                isDesktopNotePopupOpen ? "active" : ""
+              }`}
+              onClick={() => setIsDesktopNotePopupOpen((current) => !current)}
+              aria-label="Open note panel"
+              aria-haspopup="dialog"
+              aria-expanded={isDesktopNotePopupOpen}
+              title="Note"
+            >
+              <FileIcon />
+            </button>
+          ) : null}
         </div>
       </section>
     ) : null;
@@ -1304,7 +1370,9 @@ const DashboardPageInner = (
         </section>
       ) : null}
       <div
-        className={`workspace${panelsCollapsed ? " note-collapsed" : ""}`}
+        className={`workspace${panelsCollapsed ? " note-collapsed" : ""}${
+          showInlineNotePanel ? "" : " no-inline-note"
+        }`}
         ref={workspaceRef}
         tabIndex={-1}
       >
@@ -1348,6 +1416,7 @@ const DashboardPageInner = (
             onSelectMarkdownTab={handleSelectMarkdownTab}
             onCloseMarkdownTab={handleCloseMarkdownTab}
             onReorderMarkdownTabs={handleReorderMarkdownTabs}
+            tabRowActions={markdownTabRowActions}
           />
         ) : (
           <ExamEditorView
@@ -1369,7 +1438,7 @@ const DashboardPageInner = (
         )}
 
         {vaultView === "markdown" ? (
-          noteModalEnabled ? null : (
+          showInlineNotePanel ? (
             <FileList
               activeFolderPath={normalizedActiveFolderPath || null}
               fileCountLabel={fileCountLabel}
@@ -1385,58 +1454,85 @@ const DashboardPageInner = (
               selectedFile={preview.selectedFile}
               vaultPath={vault.vaultPath}
             />
-          )
+          ) : null
         ) : (
-          <div className="note-column">
-            {!isExamDesktop && panelsCollapsed ? (
-              <section className="panel toolbar-panel exam-editor-controls-panel is-collapsed">
-                <button
-                  type="button"
-                  className="exam-editor-controls-handle"
-                  onClick={handleTogglePanelsCollapsed}
-                  aria-label="Expand editor panels"
-                >
-                  <span className="note-handle-icon" aria-hidden="true">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="M15 6l-6 6 6 6" />
-                    </svg>
-                  </span>
-                </button>
-              </section>
-            ) : !isExamDesktop && examControls ? (
-              <section className="panel toolbar-panel exam-editor-controls-panel">
-                <div className="exam-editor-toolbar">
-                  {examEditorActions}
-                  {examModeTabs}
-                </div>
-              </section>
-            ) : null}
-            {noteModalEnabled ? null : (
-              <FileList
-                activeFolderPath={normalizedActiveFolderPath || null}
-                fileCountLabel={fileCountLabel}
-                files={visibleFiles}
-                isCollapsed={panelsCollapsed}
-                listError={vault.listError}
-                listState={vault.listState}
-                onClearSelection={preview.resetPreview}
-                onFileCreated={handleNoteFileCreated}
-                onRescanVault={actions.handleRescanVault}
-                onSelectFile={handleSelectMarkdownFile}
-                onToggleCollapsed={handleTogglePanelsCollapsed}
-                selectedFile={preview.selectedFile}
-                showCollapseStrip
-                vaultPath={vault.vaultPath}
-              />
-            )}
-          </div>
+          !isExamDesktop || showInlineNotePanel ? (
+            <div className="note-column">
+              {!isExamDesktop && panelsCollapsed ? (
+                <section className="panel toolbar-panel exam-editor-controls-panel is-collapsed">
+                  <button
+                    type="button"
+                    className="exam-editor-controls-handle"
+                    onClick={handleTogglePanelsCollapsed}
+                    aria-label="Expand editor panels"
+                  >
+                    <span className="note-handle-icon" aria-hidden="true">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M15 6l-6 6 6 6" />
+                      </svg>
+                    </span>
+                  </button>
+                </section>
+              ) : !isExamDesktop && examControls ? (
+                <section className="panel toolbar-panel exam-editor-controls-panel">
+                  <div className="exam-editor-toolbar">
+                    {examEditorActions}
+                    {examModeTabs}
+                  </div>
+                </section>
+              ) : null}
+              {showInlineNotePanel ? (
+                <FileList
+                  activeFolderPath={normalizedActiveFolderPath || null}
+                  fileCountLabel={fileCountLabel}
+                  files={visibleFiles}
+                  isCollapsed={panelsCollapsed}
+                  listError={vault.listError}
+                  listState={vault.listState}
+                  onClearSelection={preview.resetPreview}
+                  onFileCreated={handleNoteFileCreated}
+                  onRescanVault={actions.handleRescanVault}
+                  onSelectFile={handleSelectMarkdownFile}
+                  onToggleCollapsed={handleTogglePanelsCollapsed}
+                  selectedFile={preview.selectedFile}
+                  showCollapseStrip
+                  vaultPath={vault.vaultPath}
+                />
+              ) : null}
+            </div>
+          ) : null
         )}
       </div>
+      <AnchoredPopup
+        isOpen={desktopNotePopupEnabled && isDesktopNotePopupOpen}
+        onClose={handleDesktopNotePopupClose}
+        anchorRef={activeDesktopNoteAnchorRef}
+        closeLayerId="dashboard-desktop-note-panel"
+        placement="bottom-end"
+        ariaLabel="Note panel"
+        className="dashboard-note-popup"
+      >
+        <FileList
+          activeFolderPath={normalizedActiveFolderPath || null}
+          fileCountLabel={fileCountLabel}
+          files={visibleFiles}
+          isCollapsed={false}
+          listError={vault.listError}
+          listState={vault.listState}
+          onClearSelection={preview.resetPreview}
+          onFileCreated={handleNoteFileCreated}
+          onRescanVault={actions.handleRescanVault}
+          onSelectFile={handleSelectMarkdownFile}
+          onToggleCollapsed={handleDesktopPopupPanelToggle}
+          selectedFile={preview.selectedFile}
+          vaultPath={vault.vaultPath}
+        />
+      </AnchoredPopup>
       {noteModalEnabled ? (
         <NoteModal isOpen={noteModalActive} onClose={handleNoteModalClose}>
           <FileList

@@ -125,14 +125,13 @@ export const PropertiesPanel = ({
       <header className="panel-header">
         <div>
           <h2>Exam properties</h2>
-          <span className="muted small">Title</span>
         </div>
       </header>
       <div className="panel-body">
-        <label className="field">
-          <span className="label">Title</span>
+        <div className="field">
           <input
             className="text-input"
+            aria-label="Title"
             value={exam.title}
             onChange={(event) =>
               onExamUpdate({
@@ -142,7 +141,7 @@ export const PropertiesPanel = ({
             }
             placeholder="Exam title"
           />
-        </label>
+        </div>
       </div>
     </aside>
   );

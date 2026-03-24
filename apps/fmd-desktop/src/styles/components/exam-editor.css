@@ -220,6 +220,18 @@
   gap: 8px;
 }
 
+.exam-title-panel .panel-header {
+  padding-bottom: 0;
+}
+
+.exam-title-panel .panel-body {
+  padding-top: 0;
+}
+
+.exam-title-panel .field {
+  margin: 0;
+}
+
 .exam-canvas-header {
   align-items: center;
   flex-wrap: wrap;

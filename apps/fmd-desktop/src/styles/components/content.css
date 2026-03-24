@@ -582,6 +582,10 @@ h2 {
   grid-template-columns: minmax(0, 1fr) minmax(0, var(--note-panel-collapsed-width));
 }
 
+.workspace.no-inline-note {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .dashboard-page {
   display: flex;
   flex-direction: column;
@@ -632,6 +636,17 @@ h2 {
   align-items: start;
 }
 
+.flashcard-layout.desktop-rail-layout {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.flashcard-main-stack {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-layout-gap);
+}
+
 .flashcard-panel {
   min-width: 0;
   max-width: 100%;
@@ -663,6 +678,11 @@ h2 {
   align-content: start;
 }
 
+.fast-flashcard-layout.desktop-rail-layout {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "fast-main fast-rail";
+}
+
 .spaced-repetition-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -670,6 +690,11 @@ h2 {
   gap: var(--ui-layout-gap);
   align-items: start;
   align-content: start;
+}
+
+.spaced-repetition-layout.desktop-rail-layout {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "sr-main sr-rail";
 }
 
 body.focus-mode .app-shell,
@@ -904,6 +929,64 @@ body.focus-mode .spaced-repetition-sidebar {
   min-width: 0;
 }
 
+.study-popup-rail {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--ui-space-xs);
+  align-items: center;
+  align-self: start;
+  position: sticky;
+  top: var(--ui-space-lg);
+  z-index: 2;
+  padding: var(--ui-space-xs);
+  border-radius: var(--ui-radius-control);
+  border: 1px solid var(--ui-border-subtle);
+  background: color-mix(in srgb, var(--panel) 88%, var(--block-bg));
+  box-shadow: var(--ui-shadow-panel);
+}
+
+.fast-popup-rail {
+  grid-area: fast-rail;
+}
+
+.spaced-repetition-popup-rail {
+  grid-area: sr-rail;
+}
+
+.study-popup-rail-button {
+  width: var(--ui-control-height-compact);
+  height: var(--ui-control-height-compact);
+  min-height: var(--ui-control-height-compact);
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.study-popup-rail-button svg {
+  width: var(--ui-control-icon-size);
+  height: var(--ui-control-icon-size);
+}
+
+.desktop-note-trigger,
+.exam-save-note-trigger {
+  width: var(--ui-control-height-compact);
+  height: var(--ui-control-height-compact);
+  min-height: var(--ui-control-height-compact);
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.desktop-note-trigger svg,
+.exam-save-note-trigger svg {
+  width: var(--ui-control-icon-size);
+  height: var(--ui-control-icon-size);
+}
+
+.exam-save-note-trigger {
+  margin-left: auto;
+}
+
 .flashcard-sidebar {
   display: flex;
   flex-direction: column;
@@ -1097,6 +1180,19 @@ body.focus-mode .spaced-repetition-sidebar {
   position: sticky;
   top: 0;
   z-index: 2;
+}
+
+.dashboard-note-popup {
+  min-width: min(420px, calc(100vw - 16px));
+  max-width: min(560px, calc(100vw - 16px));
+}
+
+.dashboard-note-popup .note-panel {
+  margin: 0;
+}
+
+.note-files-popup .list-panel {
+  width: min(420px, calc(100vw - 16px));
 }
 
 .exam-overview {
