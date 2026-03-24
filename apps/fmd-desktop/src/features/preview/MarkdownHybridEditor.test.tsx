@@ -646,6 +646,90 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("shifts inline list position for all selected blocks via Tab + ArrowLeft/ArrowRight", () => {
+    const initialMarkdown = ["- Alpha", "- Beta", "- Gamma"].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <div>
+          <div data-testid="markdown-value">{markdown}</div>
+          <MarkdownHybridEditor
+            historyKey="list-inline-shift-multi-selection"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        </div>
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+    const blocks = Array.from(
+      container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+    );
+    const readMarkdown = () =>
+      container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+    expect(editor).toBeTruthy();
+    expect(blocks).toHaveLength(3);
+
+    ctrlSelectBlock(blocks[0]);
+    ctrlSelectBlock(blocks[1]);
+
+    dispatchKeyDown(editor, "Tab");
+    dispatchKeyDown(editor, "ArrowRight");
+    expect(readMarkdown()).toBe(["  - Alpha", "  - Beta", "- Gamma"].join("\n"));
+
+    // Selection remains active so repeated inline shifts work without reselecting.
+    dispatchKeyDown(editor, "Tab");
+    dispatchKeyDown(editor, "ArrowLeft");
+    expect(readMarkdown()).toBe(initialMarkdown);
+
+    cleanup();
+  });
+
+  it("does not shift selected list blocks on ArrowLeft/ArrowRight without Tab arming", () => {
+    const initialMarkdown = ["- Alpha", "- Beta"].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <div>
+          <div data-testid="markdown-value">{markdown}</div>
+          <MarkdownHybridEditor
+            historyKey="list-inline-shift-requires-tab-arming"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        </div>
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+    const blocks = Array.from(
+      container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+    );
+    const readMarkdown = () =>
+      container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+    expect(editor).toBeTruthy();
+    expect(blocks).toHaveLength(2);
+
+    ctrlSelectBlock(blocks[0]);
+    ctrlSelectBlock(blocks[1]);
+
+    dispatchKeyDown(editor, "ArrowRight");
+    expect(readMarkdown()).toBe(initialMarkdown);
+
+    cleanup();
+  });
+
   it("supports right-click drag range selection with delete and undo", () => {
     const initialMarkdown = ["# Alpha", "# Beta", "# Gamma", "# Delta"].join("\n");
 

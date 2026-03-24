@@ -1462,6 +1462,8 @@ const isDeleteRangeShortcut = (event: KeyboardEvent<HTMLElement>) =>
   (event.key === "Delete" || event.key === "Backspace");
 
 const INLINE_FORMATTING_TOOLBAR_DELAY_MS = 320;
+const LIST_INLINE_SHIFT_WIDTH = 2;
+const LIST_INLINE_SHIFT_TAB_ARM_WINDOW_MS = 1400;
 
 const clampIndex = (value: number, maxExclusive: number) => {
   if (maxExclusive <= 0) {
@@ -2183,6 +2185,19 @@ const buildOutdentedListItemRaw = (
     lineInfo.isTaskList ? "[ ] " : ""
   }`;
 };
+
+const shiftListBlockInlineIndent = (
+  blockRaw: string,
+  direction: "left" | "right",
+) => blockRaw
+  .split("\n")
+  .map((line) => {
+    if (direction === "right") {
+      return line.length > 0 ? `${" ".repeat(LIST_INLINE_SHIFT_WIDTH)}${line}` : line;
+    }
+    return stripIndentWidthFromLine(line, LIST_INLINE_SHIFT_WIDTH);
+  })
+  .join("\n");
 
 const isExamTaskOrderedListLine = (markdown: string, lineIndex: number) => {
   if (!markdown) {
@@ -3153,6 +3168,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const blockReorderDragSessionRef = useRef<BlockReorderDragSessionState>(
     createInactiveBlockReorderDragSession(),
   );
+  const listInlineShiftShortcutArmedUntilRef = useRef(0);
   const activeTextareaLayoutFrameRef = useRef<number | null>(null);
   const selectionDragPointerRef = useRef<{ x: number; y: number } | null>(null);
   const inlineFormattingToolbarTimerRef = useRef<number | null>(null);
@@ -6654,10 +6670,125 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     [clearSelectedBlockRange, focusContainer, handleSelectionContextMenuClose],
   );
 
+  const shiftSelectedBlocksInlinePosition = useCallback(
+    (direction: "left" | "right") => {
+      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+        return false;
+      }
+      const selectedIndices = sortUniqueSelectionIndices(
+        selectedBlockSelection.selectedIndices.filter((index) =>
+          Number.isInteger(index) && index >= 0 && index < blocks.length
+        ),
+      );
+      if (selectedIndices.length === 0) {
+        return false;
+      }
+
+      const selectedIndexSet = new Set<number>(selectedIndices);
+      let didChange = false;
+      const nextBlocks = blocks.map((block, index) => {
+        if (!selectedIndexSet.has(index)) {
+          return block;
+        }
+        if (block.kind !== "ordered-list" && block.kind !== "unordered-list") {
+          return block;
+        }
+        const nextRaw = shiftListBlockInlineIndent(block.raw, direction);
+        if (nextRaw === block.raw) {
+          return block;
+        }
+        didChange = true;
+        return {
+          ...block,
+          raw: nextRaw,
+        };
+      });
+
+      if (!didChange) {
+        return false;
+      }
+
+      let nextMarkdown = applyEditorMarkdownNormalization(serializeMarkdownFromBlocks(nextBlocks));
+      nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
+      if (nextMarkdown === markdown) {
+        return false;
+      }
+
+      const nextParsedBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+      const nextSelectedIndices = selectedIndices.filter((index) => index < nextParsedBlocks.length);
+      const nextAnchor = nextSelectedIndices.includes(selectedBlockSelection.anchorIndex)
+        ? selectedBlockSelection.anchorIndex
+        : nextSelectedIndices[0];
+
+      if (selectionAutoScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+        selectionAutoScrollFrameRef.current = null;
+      }
+      if (selectionDragUpdateFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+        selectionDragUpdateFrameRef.current = null;
+      }
+      selectionDragPointerRef.current = null;
+      selectionGestureRef.current = null;
+      setIsSelectionDragging(false);
+      setSelectionMarqueeRect(null);
+      setSelectionContextMenuState(null);
+
+      onChange(nextMarkdown);
+      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+      if (typeof nextAnchor === "number" && nextSelectedIndices.length > 0) {
+        setSelectedBlockSelection({
+          anchorIndex: nextAnchor,
+          selectedIndices: nextSelectedIndices,
+        });
+      } else {
+        setSelectedBlockSelection(null);
+      }
+      return true;
+    },
+    [
+      activeBlockIndex,
+      blocks,
+      disabled,
+      markdown,
+      onChange,
+      selectedBlockSelection,
+    ],
+  );
+
   const handleContainerKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (disabled || activeBlockIndex !== null) {
         return;
+      }
+      const isPlainTabKey =
+        event.key === "Tab" &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey;
+      if (selectedBlockSelection && isPlainTabKey) {
+        listInlineShiftShortcutArmedUntilRef.current = Date.now() + LIST_INLINE_SHIFT_TAB_ARM_WINDOW_MS;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      const isPlainHorizontalArrow =
+        (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey;
+      const isInlineShiftShortcutArmed = listInlineShiftShortcutArmedUntilRef.current >= Date.now();
+      if (selectedBlockSelection && isPlainHorizontalArrow && isInlineShiftShortcutArmed) {
+        listInlineShiftShortcutArmedUntilRef.current = 0;
+        shiftSelectedBlocksInlinePosition(event.key === "ArrowRight" ? "right" : "left");
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (event.key !== "Tab") {
+        listInlineShiftShortcutArmedUntilRef.current = 0;
       }
       if (event.key === "Escape" && imageEmbedReplacePickerState) {
         event.preventDefault();
@@ -6716,6 +6847,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       insertMenuState,
       selectionContextMenuState,
       selectedBlockSelection,
+      shiftSelectedBlocksInlinePosition,
     ],
   );
 
