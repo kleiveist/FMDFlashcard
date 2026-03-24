@@ -2480,6 +2480,64 @@ const normalizeExamTaskHeadingIndentationInMarkdown = (sourceMarkdown: string) =
   return didChange ? lines.join("\n") : sourceMarkdown;
 };
 
+const UNORDERED_LIST_CANONICAL_INDENT_WIDTH = 4;
+
+const normalizeUnorderedListIndentationInMarkdown = (sourceMarkdown: string) => {
+  if (!sourceMarkdown) {
+    return sourceMarkdown;
+  }
+
+  const blocks = parseHybridMarkdownBlocks(sourceMarkdown);
+  if (blocks.length === 0) {
+    return sourceMarkdown;
+  }
+
+  let didChange = false;
+  const normalizedBlocks = blocks.map((block) => {
+    if (block.kind !== "unordered-list") {
+      return block;
+    }
+    const listDepth = typeof block.meta?.listDepth === "number"
+      ? Math.max(0, Math.floor(block.meta.listDepth))
+      : null;
+    const currentIndentWidth = typeof block.meta?.listIndentWidth === "number"
+      ? Math.max(0, Math.floor(block.meta.listIndentWidth))
+      : null;
+    if (listDepth === null || currentIndentWidth === null) {
+      return block;
+    }
+    const targetIndentWidth = listDepth * UNORDERED_LIST_CANONICAL_INDENT_WIDTH;
+    const indentDelta = targetIndentWidth - currentIndentWidth;
+    if (indentDelta === 0) {
+      return block;
+    }
+
+    const nextRaw = block.raw
+      .split("\n")
+      .map((line) => {
+        if (indentDelta > 0) {
+          return line.length > 0 ? `${" ".repeat(indentDelta)}${line}` : line;
+        }
+        return stripIndentWidthFromLine(line, Math.abs(indentDelta));
+      })
+      .join("\n");
+    if (nextRaw === block.raw) {
+      return block;
+    }
+    didChange = true;
+    return {
+      ...block,
+      raw: nextRaw,
+    };
+  });
+
+  if (!didChange) {
+    return sourceMarkdown;
+  }
+
+  return serializeMarkdownFromBlocks(normalizedBlocks);
+};
+
 const normalizeOrderedListSegmentsInMarkdown = (sourceMarkdown: string) => {
   if (!sourceMarkdown) {
     return sourceMarkdown;
@@ -3240,8 +3298,10 @@ const toPersistedBlockRawForDraft = (
     : draft;
 
 const applyEditorMarkdownNormalization = (value: string) =>
-  normalizeExamTaskHeadingIndentationInMarkdown(
-    normalizeHorizontalRuleSpacingInMarkdown(value),
+  normalizeUnorderedListIndentationInMarkdown(
+    normalizeExamTaskHeadingIndentationInMarkdown(
+      normalizeHorizontalRuleSpacingInMarkdown(value),
+    ),
   );
 
 const createActiveEditSnapshotFromBlock = (

@@ -3355,6 +3355,155 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("normalizes irregular unordered-list indentation to canonical 4-space depth levels on blur", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "- Root",
+        "          - Child",
+        "                   - Grandchild",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="unordered-list-indent-normalization-irregular"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      blurTextarea(textarea);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe([
+        "- Root",
+        "    - Child",
+        "        - Grandchild",
+      ].join("\n"));
+
+      const unorderedBlocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-kind='unordered-list']"),
+      );
+      expect(unorderedBlocks).toHaveLength(3);
+      expect(unorderedBlocks[0]?.dataset.mdListDepth).toBe("0");
+      expect(unorderedBlocks[1]?.dataset.mdListDepth).toBe("1");
+      expect(unorderedBlocks[2]?.dataset.mdListDepth).toBe("2");
+
+      cleanup();
+    });
+  });
+
+  it("keeps list hierarchy while normalizing mixed-depth unordered list indentation inside one group", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "- Root A",
+        "          - Child A",
+        "- Root B",
+        "                   - Child B",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="unordered-list-indent-normalization-mixed-depth"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const textarea = activateBlockEditor(container, 1);
+      expect(textarea).toBeTruthy();
+      blurTextarea(textarea);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe([
+        "- Root A",
+        "    - Child A",
+        "- Root B",
+        "    - Child B",
+      ].join("\n"));
+
+      const blocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-kind='unordered-list']"),
+      );
+      expect(blocks).toHaveLength(4);
+      expect(blocks[0]?.dataset.mdListDepth).toBe("0");
+      expect(blocks[1]?.dataset.mdListDepth).toBe("1");
+      expect(blocks[2]?.dataset.mdListDepth).toBe("0");
+      expect(blocks[3]?.dataset.mdListDepth).toBe("1");
+      expect(blocks[0]?.dataset.mdListGroupId).toBe(blocks[1]?.dataset.mdListGroupId);
+      expect(blocks[1]?.dataset.mdListGroupId).toBe(blocks[2]?.dataset.mdListGroupId);
+      expect(blocks[2]?.dataset.mdListGroupId).toBe(blocks[3]?.dataset.mdListGroupId);
+
+      cleanup();
+    });
+  });
+
+  it("does not mutate non-list blocks while normalizing unordered list indentation", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "Paragraph line",
+        "      continuation with spaces",
+        "- Root",
+        "          - Child",
+        "",
+        "> Quote line",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="unordered-list-indent-normalization-non-list-guard"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const textarea = activateBlockEditor(container, 2);
+      expect(textarea).toBeTruthy();
+      blurTextarea(textarea);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe([
+        "Paragraph line",
+        "      continuation with spaces",
+        "- Root",
+        "    - Child",
+        "",
+        "> Quote line",
+      ].join("\n"));
+      expect(markdownValue).toContain("      continuation with spaces");
+
+      cleanup();
+    });
+  });
+
   it("renders list items as separate hybrid blocks with hierarchy metadata", () => {
     withImmediateRaf(() => {
       const initialMarkdown = [
