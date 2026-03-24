@@ -27,6 +27,12 @@ export type MarkdownBlockKind =
   | "blockquote"
   | "hr";
 
+export type MarkdownBlockParseProfile = "default" | "hybrid-list-items";
+
+export type ParseMarkdownBlocksOptions = {
+  profile?: MarkdownBlockParseProfile;
+};
+
 export type MarkdownBlock = {
   id: string;
   kind: MarkdownBlockKind;
@@ -37,6 +43,12 @@ export type MarkdownBlock = {
   raw: string;
   meta?: {
     orderedDelimiter?: "." | ")";
+    unorderedMarker?: "-" | "+" | "*";
+    listGroupId?: string;
+    listDepth?: number;
+    listIndentWidth?: number;
+    listParentStartLine?: number;
+    listItemType?: "ordered" | "unordered";
     cardGroupId?: string;
     cardGroupRole?: "start" | "inner" | "end";
   };
@@ -69,11 +81,13 @@ const resolveOrderedDelimiter = (raw: string): "." | ")" =>
   raw === "." ? "." : ")";
 
 const matchOrderedListLine = (line: string) => line.match(orderedListLinePattern);
+const matchUnorderedListLine = (line: string) =>
+  line.match(taskListLinePattern) ?? line.match(unorderedListLinePattern);
 
 const isOrderedListLine = (line: string) => Boolean(matchOrderedListLine(line));
 
 const isUnorderedListLine = (line: string) =>
-  Boolean(line.match(taskListLinePattern) || line.match(unorderedListLinePattern));
+  Boolean(matchUnorderedListLine(line));
 
 const isListStartLine = (line: string) => isOrderedListLine(line) || isUnorderedListLine(line);
 
@@ -256,20 +270,73 @@ const findHorizontalRuleLineInBlockRaw = (blockRaw: string) => {
   return null;
 };
 
-export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
+type ListLineMatch = {
+  kind: "ordered-list" | "unordered-list";
+  itemType: "ordered" | "unordered";
+  indentWidth: number;
+  orderedDelimiter?: "." | ")";
+  unorderedMarker?: "-" | "+" | "*";
+};
+
+const resolveListLineMatch = (line: string): ListLineMatch | null => {
+  const orderedMatch = matchOrderedListLine(line);
+  if (orderedMatch) {
+    return {
+      kind: "ordered-list",
+      itemType: "ordered",
+      indentWidth: getIndentWidth(orderedMatch[1] ?? ""),
+      orderedDelimiter: resolveOrderedDelimiter(orderedMatch[3] ?? "."),
+    };
+  }
+
+  const unorderedMatch = matchUnorderedListLine(line);
+  if (unorderedMatch) {
+    const marker = unorderedMatch[2];
+    const unorderedMarker: "-" | "+" | "*" =
+      marker === "+" || marker === "*" ? marker : "-";
+    return {
+      kind: "unordered-list",
+      itemType: "unordered",
+      indentWidth: getIndentWidth(unorderedMatch[1] ?? ""),
+      unorderedMarker,
+    };
+  }
+
+  return null;
+};
+
+const resolveParseProfile = (options?: ParseMarkdownBlocksOptions): MarkdownBlockParseProfile =>
+  options?.profile ?? "default";
+
+export const parseMarkdownBlocks = (
+  markdown: string,
+  options?: ParseMarkdownBlocksOptions,
+): MarkdownBlock[] => {
   if (markdown.length === 0) {
     return [];
   }
 
+  const parseProfile = resolveParseProfile(options);
   const lines = markdown.split("\n");
   const lineStarts = buildLineStarts(markdown, lines);
   const blocks: MarkdownBlock[] = [];
   let i = 0;
   let blockIndex = 0;
+  let nextListGroupSequence = 1;
+  let activeListGroupId: string | null = null;
+  const listParentStack: Array<{ indentWidth: number; startLine: number }> = [];
+  const resetListContext = () => {
+    activeListGroupId = null;
+    listParentStack.length = 0;
+  };
 
   while (i < lines.length) {
     const line = lines[i] ?? "";
     const nextLine = lines[i + 1] ?? "";
+    const listLineMatch = resolveListLineMatch(line);
+    if (!listLineMatch) {
+      resetListContext();
+    }
 
     // HR-Sonderregel: blank + hr (+ blank) als EIN Block behandeln, damit
     // die impliziten Absaetze nicht als separate blank-Bloecke erscheinen.
@@ -412,20 +479,56 @@ export const parseMarkdownBlocks = (markdown: string): MarkdownBlock[] => {
       continue;
     }
 
-    if (isOrderedListLine(line) || isUnorderedListLine(line)) {
-      const orderedMatch = matchOrderedListLine(line);
-      let orderedDelimiter: "." | ")" | undefined;
-      if (orderedMatch) {
-        orderedDelimiter = resolveOrderedDelimiter(orderedMatch[3] ?? ".");
+    if (listLineMatch) {
+      if (parseProfile === "hybrid-list-items") {
+        if (!activeListGroupId) {
+          activeListGroupId = `list-group-${nextListGroupSequence}`;
+          nextListGroupSequence += 1;
+        }
+        while (
+          listParentStack.length > 0 &&
+          (listParentStack[listParentStack.length - 1]?.indentWidth ?? 0) >= listLineMatch.indentWidth
+        ) {
+          listParentStack.pop();
+        }
+        const parent = listParentStack[listParentStack.length - 1] ?? null;
+        const listDepth = listParentStack.length;
+        let end = i;
+        while (end + 1 < lines.length && isListContinuationLine(lines[end + 1] ?? "")) {
+          if (isListStartLine(lines[end + 1] ?? "")) {
+            break;
+          }
+          end += 1;
+        }
+
+        blocks.push(
+          buildBlock(markdown, lines, lineStarts, blockIndex, listLineMatch.kind, i, end, {
+            orderedDelimiter: listLineMatch.orderedDelimiter,
+            unorderedMarker: listLineMatch.unorderedMarker,
+            listGroupId: activeListGroupId,
+            listDepth,
+            listIndentWidth: listLineMatch.indentWidth,
+            listParentStartLine: parent?.startLine,
+            listItemType: listLineMatch.itemType,
+          }),
+        );
+        listParentStack.push({
+          indentWidth: listLineMatch.indentWidth,
+          startLine: i,
+        });
+        blockIndex += 1;
+        i = end + 1;
+        continue;
       }
-      const kind: MarkdownBlockKind = orderedMatch ? "ordered-list" : "unordered-list";
+
       let end = i;
       while (end + 1 < lines.length && isListContinuationLine(lines[end + 1] ?? "")) {
         end += 1;
       }
       blocks.push(
-        buildBlock(markdown, lines, lineStarts, blockIndex, kind, i, end, {
-          orderedDelimiter,
+        buildBlock(markdown, lines, lineStarts, blockIndex, listLineMatch.kind, i, end, {
+          orderedDelimiter: listLineMatch.orderedDelimiter,
+          unorderedMarker: listLineMatch.unorderedMarker,
         }),
       );
       blockIndex += 1;

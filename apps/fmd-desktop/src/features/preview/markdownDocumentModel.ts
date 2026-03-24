@@ -11,6 +11,7 @@ import {
   assignCardGroupMeta,
   parseMarkdownBlocks,
   type MarkdownBlock,
+  type MarkdownBlockParseProfile,
   type MarkdownBlockKind,
 } from "./markdownBlocks";
 
@@ -32,6 +33,7 @@ export type MarkdownDocumentSnapshot = {
   markdown: string;
   blocks: MarkdownBlock[];
   version: number;
+  profile: MarkdownBlockParseProfile;
 };
 
 export type MarkdownParseStats = {
@@ -45,10 +47,15 @@ export type MarkdownParseResult = {
   stats: MarkdownParseStats;
 };
 
+export type MarkdownDocumentParseOptions = {
+  profile?: MarkdownBlockParseProfile;
+};
+
 type ReindexableBlock = {
   id: string;
   kind: MarkdownBlockKind;
   raw: string;
+  startLine: number;
   meta?: MarkdownBlock["meta"];
 };
 
@@ -66,6 +73,24 @@ const countNewlines = (value: string) => {
 
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
+
+const resolveProfile = (
+  options: MarkdownDocumentParseOptions | undefined,
+  fallbackProfile: MarkdownBlockParseProfile = "default",
+) => options?.profile ?? fallbackProfile;
+
+const offsetListMetaLineNumbers = (
+  meta: MarkdownBlock["meta"] | undefined,
+  lineOffset: number,
+) => {
+  if (!meta || lineOffset === 0 || meta.listParentStartLine === undefined) {
+    return meta;
+  }
+  return {
+    ...meta,
+    listParentStartLine: meta.listParentStartLine + lineOffset,
+  };
+};
 
 const resolveDiffRange = (previous: string, next: string): MarkdownDiffRange => {
   if (previous === next) {
@@ -187,6 +212,7 @@ const toReindexable = (block: MarkdownBlock): ReindexableBlock => ({
   id: block.id,
   kind: block.kind,
   raw: block.raw,
+  startLine: block.startLine,
   meta: block.meta,
 });
 
@@ -195,6 +221,12 @@ const areBlockMetaEquivalent = (
   right: MarkdownBlock["meta"] | undefined,
 ) =>
   (left?.orderedDelimiter ?? null) === (right?.orderedDelimiter ?? null) &&
+  (left?.unorderedMarker ?? null) === (right?.unorderedMarker ?? null) &&
+  (left?.listGroupId ?? null) === (right?.listGroupId ?? null) &&
+  (left?.listDepth ?? null) === (right?.listDepth ?? null) &&
+  (left?.listIndentWidth ?? null) === (right?.listIndentWidth ?? null) &&
+  (left?.listParentStartLine ?? null) === (right?.listParentStartLine ?? null) &&
+  (left?.listItemType ?? null) === (right?.listItemType ?? null) &&
   (left?.cardGroupId ?? null) === (right?.cardGroupId ?? null) &&
   (left?.cardGroupRole ?? null) === (right?.cardGroupRole ?? null);
 
@@ -209,17 +241,33 @@ const areBlocksEquivalent = (
 const isBoundaryStable = (
   left: ReindexableBlock | null,
   right: ReindexableBlock | null,
+  profile: MarkdownBlockParseProfile,
 ) => {
   if (!left || !right) {
     return true;
   }
-  const parsed = parseMarkdownBlocks([left.raw, right.raw].join("\n"));
+  const lineOffset = left.startLine;
+  const parsed = parseMarkdownBlocks([left.raw, right.raw].join("\n"), { profile });
   if (parsed.length !== 2) {
     return false;
   }
   const first = parsed[0]!;
   const second = parsed[1]!;
-  return areBlocksEquivalent(left, first) && areBlocksEquivalent(right, second);
+  const shiftedFirst: ReindexableBlock = {
+    id: left.id,
+    kind: first.kind,
+    raw: first.raw,
+    startLine: first.startLine + lineOffset,
+    meta: offsetListMetaLineNumbers(first.meta, lineOffset),
+  };
+  const shiftedSecond: ReindexableBlock = {
+    id: right.id,
+    kind: second.kind,
+    raw: second.raw,
+    startLine: second.startLine + lineOffset,
+    meta: offsetListMetaLineNumbers(second.meta, lineOffset),
+  };
+  return areBlocksEquivalent(left, shiftedFirst) && areBlocksEquivalent(right, shiftedSecond);
 };
 
 const resolveFullParseResult = (
@@ -227,13 +275,15 @@ const resolveFullParseResult = (
   version: number,
   mode: MarkdownParseMode,
   diffRange: MarkdownDiffRange,
+  profile: MarkdownBlockParseProfile,
 ): MarkdownParseResult => {
-  const blocks = parseMarkdownBlocks(markdown);
+  const blocks = parseMarkdownBlocks(markdown, { profile });
   return {
     snapshot: {
       markdown,
       blocks,
       version,
+      profile,
     },
     stats: {
       mode,
@@ -252,20 +302,24 @@ const resolveFullParseResult = (
 const resolveIncrementalSegmentIds = (
   parsedBlocks: MarkdownBlock[],
   nextVersion: number,
+  lineOffset: number,
 ) =>
   parsedBlocks.map((block, index) => ({
     id: `mdh-inc:${nextVersion}:${index}:${block.kind}`,
     kind: block.kind,
     raw: block.raw,
-    meta: block.meta,
+    startLine: block.startLine + lineOffset,
+    meta: offsetListMetaLineNumbers(block.meta, lineOffset),
   }));
 
 export const createMarkdownDocumentSnapshot = (
   markdown: string,
   version = 0,
+  options?: MarkdownDocumentParseOptions,
 ): MarkdownDocumentSnapshot => ({
+  profile: resolveProfile(options),
   markdown,
-  blocks: parseMarkdownBlocks(markdown),
+  blocks: parseMarkdownBlocks(markdown, { profile: resolveProfile(options) }),
   version,
 });
 
@@ -273,7 +327,9 @@ export const parseMarkdownDocument = (
   nextMarkdown: string,
   previousSnapshot: MarkdownDocumentSnapshot | null,
   nextVersion: number,
+  options?: MarkdownDocumentParseOptions,
 ): MarkdownParseResult => {
+  const profile = resolveProfile(options, previousSnapshot?.profile ?? "default");
   if (!previousSnapshot) {
     return resolveFullParseResult(
       nextMarkdown,
@@ -285,6 +341,22 @@ export const parseMarkdownDocument = (
         endOffsetPrev: 0,
         endOffsetNext: nextMarkdown.length,
       },
+      profile,
+    );
+  }
+
+  if (previousSnapshot.profile !== profile) {
+    return resolveFullParseResult(
+      nextMarkdown,
+      nextVersion,
+      "full",
+      {
+        changed: true,
+        startOffset: 0,
+        endOffsetPrev: previousSnapshot.markdown.length,
+        endOffsetNext: nextMarkdown.length,
+      },
+      profile,
     );
   }
 
@@ -295,6 +367,7 @@ export const parseMarkdownDocument = (
         markdown: previousSnapshot.markdown,
         blocks: previousSnapshot.blocks,
         version: nextVersion,
+        profile,
       },
       stats: {
         mode: "incremental",
@@ -305,12 +378,12 @@ export const parseMarkdownDocument = (
   }
 
   if (previousSnapshot.blocks.length === 0) {
-    return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange);
+    return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange, profile);
   }
 
   const overlapRange = resolveOverlappingRange(previousSnapshot.blocks, diffRange);
   if (!overlapRange) {
-    return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange);
+    return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange, profile);
   }
 
   const totalDelta = nextMarkdown.length - previousSnapshot.markdown.length;
@@ -336,10 +409,11 @@ export const parseMarkdownDocument = (
       nextMarkdown.length,
     );
     const nextSegmentSource = nextMarkdown.slice(previousStartOffset, nextEndOffset);
-    const parsedSegment = parseMarkdownBlocks(nextSegmentSource);
+    const parsedSegment = parseMarkdownBlocks(nextSegmentSource, { profile });
+    const segmentLineOffset = previousSnapshot.blocks[reparsedStartIndex]?.startLine ?? 0;
 
     const prefix = previousSnapshot.blocks.slice(0, reparsedStartIndex).map(toReindexable);
-    const segment = resolveIncrementalSegmentIds(parsedSegment, nextVersion);
+    const segment = resolveIncrementalSegmentIds(parsedSegment, nextVersion, segmentLineOffset);
     const suffix = previousSnapshot.blocks.slice(reparsedEndIndex + 1).map(toReindexable);
     const merged = [...prefix, ...segment, ...suffix];
     const reconstructedMarkdown = merged.map((block) => block.raw).join("\n");
@@ -349,13 +423,15 @@ export const parseMarkdownDocument = (
       const boundariesAreStable = isBoundaryStable(
         merged[reparsedStartIndex - 1] ?? null,
         merged[reparsedStartIndex] ?? null,
+        profile,
       ) && isBoundaryStable(
         merged[segmentEndExclusive - 1] ?? null,
         merged[segmentEndExclusive] ?? null,
+        profile,
       );
       if (!boundariesAreStable) {
         if (reparsedStartIndex === 0 && reparsedEndIndex === lastPreviousIndex) {
-          return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange);
+          return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange, profile);
         }
         reparsedStartIndex = Math.max(0, reparsedStartIndex - 1);
         reparsedEndIndex = Math.min(lastPreviousIndex, reparsedEndIndex + 1);
@@ -368,6 +444,7 @@ export const parseMarkdownDocument = (
           markdown: nextMarkdown,
           blocks: reindexedBlocks,
           version: nextVersion,
+          profile,
         },
         stats: {
           mode: "incremental",
@@ -384,7 +461,7 @@ export const parseMarkdownDocument = (
     }
 
     if (reparsedStartIndex === 0 && reparsedEndIndex === lastPreviousIndex) {
-      return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange);
+      return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange, profile);
     }
 
     reparsedStartIndex = Math.max(0, reparsedStartIndex - 1);

@@ -51,6 +51,85 @@ describe("markdownBlocks", () => {
     expect(blocks[0]?.raw).toContain("continuation");
   });
 
+  it("splits list markers into one block per item in hybrid-list-items profile", () => {
+    const markdown = [
+      "1. Alpha",
+      "   continuation",
+      "2. Beta",
+      "   - child A",
+      "     child continuation",
+      "   - child B",
+      "3. Gamma",
+    ].join("\n");
+    const blocks = parseMarkdownBlocks(markdown, { profile: "hybrid-list-items" });
+
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "ordered-list",
+      "ordered-list",
+      "unordered-list",
+      "unordered-list",
+      "ordered-list",
+    ]);
+
+    const firstGroupId = blocks[0]?.meta?.listGroupId;
+    expect(firstGroupId).toBeTruthy();
+    expect(blocks.every((block) => block.meta?.listGroupId === firstGroupId)).toBe(true);
+
+    expect(blocks[0]?.raw).toBe(["1. Alpha", "   continuation"].join("\n"));
+    expect(blocks[0]?.meta?.listDepth).toBe(0);
+    expect(blocks[0]?.meta?.listParentStartLine).toBeUndefined();
+    expect(blocks[0]?.meta?.listItemType).toBe("ordered");
+    expect(blocks[0]?.meta?.orderedDelimiter).toBe(".");
+
+    expect(blocks[1]?.raw).toBe("2. Beta");
+    expect(blocks[1]?.meta?.listDepth).toBe(0);
+    expect(blocks[1]?.meta?.listParentStartLine).toBeUndefined();
+    expect(blocks[1]?.meta?.listIndentWidth).toBe(0);
+
+    expect(blocks[2]?.raw).toBe(["   - child A", "     child continuation"].join("\n"));
+    expect(blocks[2]?.meta?.listDepth).toBe(1);
+    expect(blocks[2]?.meta?.listParentStartLine).toBe(2);
+    expect(blocks[2]?.meta?.listIndentWidth).toBe(3);
+    expect(blocks[2]?.meta?.unorderedMarker).toBe("-");
+    expect(blocks[2]?.meta?.listItemType).toBe("unordered");
+
+    expect(blocks[3]?.raw).toBe("   - child B");
+    expect(blocks[3]?.meta?.listDepth).toBe(1);
+    expect(blocks[3]?.meta?.listParentStartLine).toBe(2);
+    expect(blocks[3]?.meta?.listIndentWidth).toBe(3);
+
+    expect(blocks[4]?.raw).toBe("3. Gamma");
+    expect(blocks[4]?.meta?.listDepth).toBe(0);
+    expect(blocks[4]?.meta?.listParentStartLine).toBeUndefined();
+    expect(blocks[4]?.meta?.listIndentWidth).toBe(0);
+  });
+
+  it("resets hybrid list groups across non-list boundary blocks", () => {
+    const markdown = [
+      "1. One",
+      "2. Two",
+      "#help",
+      "hint",
+      "#helpend",
+      "3. Three",
+    ].join("\n");
+    const blocks = parseMarkdownBlocks(markdown, { profile: "hybrid-list-items" });
+
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "ordered-list",
+      "ordered-list",
+      "help-block",
+      "ordered-list",
+    ]);
+
+    const firstGroup = blocks[0]?.meta?.listGroupId;
+    const secondGroup = blocks[3]?.meta?.listGroupId;
+    expect(firstGroup).toBeTruthy();
+    expect(secondGroup).toBeTruthy();
+    expect(blocks[1]?.meta?.listGroupId).toBe(firstGroup);
+    expect(secondGroup).not.toBe(firstGroup);
+  });
+
   it("treats #help ... #helpend as a single special block", () => {
     const markdown = [
       "Vorher",

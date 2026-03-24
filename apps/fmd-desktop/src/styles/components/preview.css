@@ -1629,6 +1629,7 @@ textarea.preview-editor {
 .markdown-hybrid-editor {
   --mdh-left-gutter-width: 56px;
   --mdh-right-gutter-width: 34px;
+  --mdh-list-depth-indent-step: 12px;
   position: relative;
   gap: var(--ui-space-xs);
   min-height: 100%;
@@ -1692,6 +1693,14 @@ textarea.preview-editor {
     box-shadow 0.12s ease,
     opacity 0.12s ease,
     transform 0.12s ease;
+}
+
+.markdown-hybrid-block[data-md-list-group-id] .markdown-hybrid-block-body {
+  padding-inline-start: calc(var(--mdh-list-depth, 0) * var(--mdh-list-depth-indent-step));
+}
+
+.markdown-hybrid-block.is-list-group-continuation {
+  margin-top: calc((var(--ui-space-xs) * -1) + 1px);
 }
 
 .md-card-group-rail {

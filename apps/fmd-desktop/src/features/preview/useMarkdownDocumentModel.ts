@@ -13,6 +13,7 @@ import {
   type MarkdownDocumentSnapshot,
   type MarkdownParseStats,
 } from "./markdownDocumentModel";
+import { type MarkdownBlockParseProfile } from "./markdownBlocks";
 import {
   type MarkdownBlockWorkerRequest,
   type MarkdownBlockWorkerResponse,
@@ -26,6 +27,10 @@ type MarkdownDocumentModelState = {
 type UseMarkdownDocumentModelResult = {
   snapshot: MarkdownDocumentSnapshot;
   stats: MarkdownParseStats;
+};
+
+type UseMarkdownDocumentModelOptions = {
+  profile?: MarkdownBlockParseProfile;
 };
 
 const createFallbackStats = (markdown: string): MarkdownParseStats => ({
@@ -43,9 +48,11 @@ const canUseWorker = () => typeof Worker !== "undefined";
 
 export const useMarkdownDocumentModel = (
   markdown: string,
+  options?: UseMarkdownDocumentModelOptions,
 ): UseMarkdownDocumentModelResult => {
+  const profile = options?.profile ?? "default";
   const [state, setState] = useState<MarkdownDocumentModelState>(() => ({
-    snapshot: createMarkdownDocumentSnapshot(markdown, 0),
+    snapshot: createMarkdownDocumentSnapshot(markdown, 0, { profile }),
     stats: createFallbackStats(markdown),
   }));
 
@@ -74,7 +81,7 @@ export const useMarkdownDocumentModel = (
     const nextVersion = versionRef.current;
 
     if (!canUseWorker() || workerUnavailableRef.current) {
-      const next = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion);
+      const next = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
       setState(next);
       return;
     }
@@ -87,7 +94,7 @@ export const useMarkdownDocumentModel = (
         );
       } catch {
         workerUnavailableRef.current = true;
-        const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion);
+        const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
         setState(fallback);
         return;
       }
@@ -95,7 +102,7 @@ export const useMarkdownDocumentModel = (
 
     const currentWorker = workerRef.current;
     if (!currentWorker) {
-      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion);
+      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
       setState(fallback);
       return;
     }
@@ -114,7 +121,7 @@ export const useMarkdownDocumentModel = (
           workerRef.current.terminate();
           workerRef.current = null;
         }
-        const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion);
+        const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
         setState(fallback);
         return;
       }
@@ -136,7 +143,7 @@ export const useMarkdownDocumentModel = (
         workerRef.current.terminate();
         workerRef.current = null;
       }
-      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion);
+      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
       setState(fallback);
     };
 
@@ -149,12 +156,13 @@ export const useMarkdownDocumentModel = (
       nextVersion,
       markdown,
       previousSnapshot: stateRef.current.snapshot,
+      profile,
     };
 
     try {
       currentWorker.postMessage(requestPayload);
     } catch {
-      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion);
+      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
       setState(fallback);
       currentWorker.removeEventListener("message", handleMessage);
       currentWorker.removeEventListener("error", handleError);
@@ -168,7 +176,7 @@ export const useMarkdownDocumentModel = (
       currentWorker.removeEventListener("message", handleMessage);
       currentWorker.removeEventListener("error", handleError);
     };
-  }, [markdown]);
+  }, [markdown, profile]);
 
   return {
     snapshot: state.snapshot,

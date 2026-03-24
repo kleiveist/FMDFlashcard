@@ -53,7 +53,6 @@ import {
   normalizeHelpBlockSource,
   normalizeHorizontalRuleBlockSource,
   normalizeHorizontalRuleSpacingInMarkdown,
-  normalizeOrderedListBlockSource,
   parseMarkdownBlocks,
   replaceMarkdownBlock,
   type MarkdownBlock,
@@ -344,6 +343,9 @@ const INTERNAL_BLOCK_CLIPBOARD_MIME = "application/x-fmd-markdown-hybrid-blocks+
 const INTERNAL_BLOCK_REORDER_DRAG_MIME = "application/x-fmd-markdown-hybrid-block-reorder";
 const INTERNAL_BLOCK_CLIPBOARD_SOURCE = "fmd-markdown-hybrid-editor";
 const INTERNAL_BLOCK_CLIPBOARD_VERSION = 1;
+const HYBRID_MARKDOWN_PARSE_OPTIONS = { profile: "hybrid-list-items" } as const;
+const parseHybridMarkdownBlocks = (source: string) =>
+  parseMarkdownBlocks(source, HYBRID_MARKDOWN_PARSE_OPTIONS);
 const MARKDOWN_BLOCK_KIND_SET = new Set<MarkdownBlock["kind"]>([
   "blank",
   "heading",
@@ -1880,7 +1882,7 @@ const resolveInsertedBlockActivationIndex = (
     return startSearchIndex;
   }
 
-  const insertedBlocks = parseMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
+  const insertedBlocks = parseHybridMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
   const primaryInsertedBlock = insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
   if (!primaryInsertedBlock) {
     return Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
@@ -2036,6 +2038,151 @@ const ensureExamWrapperBoundaryMarkers = (markdown: string) => {
 };
 
 const orderedListCommitLinePattern = /^(\s*)(\d+)(\.|\)|\.\))(\s+)(.*)$/;
+const unorderedListCommitLinePattern = /^(\s*)([-+*])(\s+)(.*)$/;
+const taskListCheckboxPrefixPattern = /^\[[ xX]\](?:\s+|$)/;
+
+type ListLineInfo = {
+  kind: "ordered-list" | "unordered-list";
+  indent: string;
+  spacing: string;
+  content: string;
+  orderedNumber?: number;
+  orderedDelimiter?: "." | ")";
+  unorderedMarker?: "-" | "+" | "*";
+  isTaskList: boolean;
+};
+
+const resolveOrderedListDelimiter = (raw: string): "." | ")" =>
+  raw === "." ? "." : ")";
+
+const getIndentWidthFromWhitespace = (indent: string) =>
+  Array.from(indent).reduce((width, char) => width + (char === "\t" ? 4 : 1), 0);
+
+const stripIndentWidthFromLine = (line: string, indentWidth: number) => {
+  if (!line || indentWidth <= 0) {
+    return line;
+  }
+  let consumedWidth = 0;
+  let cursor = 0;
+  while (cursor < line.length && consumedWidth < indentWidth) {
+    const char = line[cursor];
+    if (char === " ") {
+      consumedWidth += 1;
+      cursor += 1;
+      continue;
+    }
+    if (char === "\t") {
+      consumedWidth += 4;
+      cursor += 1;
+      continue;
+    }
+    break;
+  }
+  return line.slice(cursor);
+};
+
+const dedentListBlockPreviewSource = (block: MarkdownBlock, previewSource: string) => {
+  if (
+    (block.kind !== "ordered-list" && block.kind !== "unordered-list") ||
+    !previewSource
+  ) {
+    return previewSource;
+  }
+  const baseIndentWidth = block.meta?.listIndentWidth ?? 0;
+  if (!baseIndentWidth) {
+    return previewSource;
+  }
+  return previewSource
+    .split("\n")
+    .map((line) => stripIndentWidthFromLine(line, baseIndentWidth))
+    .join("\n");
+};
+
+const resolveListLineInfo = (blockRaw: string): ListLineInfo | null => {
+  if (!blockRaw) {
+    return null;
+  }
+  const firstLine = blockRaw.split("\n")[0] ?? "";
+  const orderedMatch = firstLine.match(orderedListCommitLinePattern);
+  if (orderedMatch) {
+    const content = orderedMatch[5] ?? "";
+    return {
+      kind: "ordered-list",
+      indent: orderedMatch[1] ?? "",
+      spacing: orderedMatch[4] ?? " ",
+      content,
+      orderedNumber: Number.parseInt(orderedMatch[2] ?? "1", 10) || 1,
+      orderedDelimiter: resolveOrderedListDelimiter(orderedMatch[3] ?? "."),
+      isTaskList: taskListCheckboxPrefixPattern.test(content),
+    };
+  }
+  const unorderedMatch = firstLine.match(unorderedListCommitLinePattern);
+  if (unorderedMatch) {
+    const marker = unorderedMatch[2];
+    const unorderedMarker: "-" | "+" | "*" = marker === "+" || marker === "*" ? marker : "-";
+    const content = unorderedMatch[4] ?? "";
+    return {
+      kind: "unordered-list",
+      indent: unorderedMatch[1] ?? "",
+      spacing: unorderedMatch[3] ?? " ",
+      content,
+      unorderedMarker,
+      isTaskList: taskListCheckboxPrefixPattern.test(content),
+    };
+  }
+  return null;
+};
+
+const stripListContentForEmptyCheck = (content: string) =>
+  content.replace(taskListCheckboxPrefixPattern, "").trim();
+
+const isListItemRawEffectivelyEmpty = (blockRaw: string, lineInfo: ListLineInfo | null) => {
+  if (!lineInfo) {
+    return blockRaw.trim().length === 0;
+  }
+  const lines = blockRaw.split("\n");
+  const firstLineContent = stripListContentForEmptyCheck(lineInfo.content);
+  const continuationContent = lines
+    .slice(1)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
+  return `${firstLineContent}${continuationContent}`.trim().length === 0;
+};
+
+const buildSiblingListItemRaw = (lineInfo: ListLineInfo) => {
+  if (lineInfo.kind === "ordered-list") {
+    const nextNumber = Math.max(1, (lineInfo.orderedNumber ?? 0) + 1);
+    return `${lineInfo.indent}${nextNumber}${lineInfo.orderedDelimiter ?? "."}${lineInfo.spacing}${
+      lineInfo.isTaskList ? "[ ] " : ""
+    }`;
+  }
+  return `${lineInfo.indent}${lineInfo.unorderedMarker ?? "-"}${lineInfo.spacing}${
+    lineInfo.isTaskList ? "[ ] " : ""
+  }`;
+};
+
+const resolveOutdentedListIndent = (lineInfo: ListLineInfo, parentIndent: string | null) => {
+  if (typeof parentIndent === "string") {
+    return parentIndent;
+  }
+  return stripIndentWidthFromLine(lineInfo.indent, 2);
+};
+
+const buildOutdentedListItemRaw = (
+  lineInfo: ListLineInfo,
+  parentIndent: string | null,
+) => {
+  const nextIndent = resolveOutdentedListIndent(lineInfo, parentIndent);
+  if (lineInfo.kind === "ordered-list") {
+    return `${nextIndent}${lineInfo.orderedNumber ?? 1}${lineInfo.orderedDelimiter ?? "."}${lineInfo.spacing}${
+      lineInfo.isTaskList ? "[ ] " : ""
+    }`;
+  }
+  return `${nextIndent}${lineInfo.unorderedMarker ?? "-"}${lineInfo.spacing}${
+    lineInfo.isTaskList ? "[ ] " : ""
+  }`;
+};
 
 const isExamTaskOrderedListLine = (markdown: string, lineIndex: number) => {
   if (!markdown) {
@@ -2090,17 +2237,75 @@ const isExamTaskOrderedListLine = (markdown: string, lineIndex: number) => {
   return openExamDepth > 0 && openCardDepth === 0;
 };
 
-const shouldNormalizeOrderedListOnCommit = (markdown: string, lineIndex: number, blockRaw: string) => {
-  if (isExamTaskOrderedListLine(markdown, lineIndex)) {
-    return false;
+const normalizeOrderedListSegmentsInMarkdown = (sourceMarkdown: string) => {
+  if (!sourceMarkdown) {
+    return sourceMarkdown;
   }
-  const firstOrderedLineMatch = blockRaw
-    .split("\n")
-    .map((line) => line.match(orderedListCommitLinePattern))
-    .find((match) => Boolean(match));
-  const delimiter = firstOrderedLineMatch?.[3] ?? ".";
-  // Task-style headings use `n) ...` and must keep their explicit number.
-  return delimiter === ".";
+
+  const blocks = parseHybridMarkdownBlocks(sourceMarkdown);
+  if (blocks.length === 0) {
+    return sourceMarkdown;
+  }
+
+  const countersByGroup = new Map<string, Map<number, number>>();
+  const delimitersByGroup = new Map<string, Map<number, "." | ")">>();
+  const nextRawByBlockIndex = new Map<number, string>();
+
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index];
+    if (!block || block.kind !== "ordered-list") {
+      continue;
+    }
+
+    const lineInfo = resolveListLineInfo(block.raw);
+    if (!lineInfo || lineInfo.kind !== "ordered-list") {
+      continue;
+    }
+
+    if (isExamTaskOrderedListLine(sourceMarkdown, block.startLine)) {
+      continue;
+    }
+    if (lineInfo.orderedDelimiter !== ".") {
+      continue;
+    }
+
+    const groupId = block.meta?.listGroupId ?? `ordered-list-group:${index}`;
+    const counters = countersByGroup.get(groupId) ?? new Map<number, number>();
+    const delimiters = delimitersByGroup.get(groupId) ?? new Map<number, "." | ")">();
+    countersByGroup.set(groupId, counters);
+    delimitersByGroup.set(groupId, delimiters);
+
+    const indentWidth = getIndentWidthFromWhitespace(lineInfo.indent);
+    Array.from(counters.keys()).forEach((key) => {
+      if (key > indentWidth) {
+        counters.delete(key);
+        delimiters.delete(key);
+      }
+    });
+    const nextNumber = (counters.get(indentWidth) ?? 0) + 1;
+    counters.set(indentWidth, nextNumber);
+    if (!delimiters.has(indentWidth)) {
+      delimiters.set(indentWidth, lineInfo.orderedDelimiter ?? ".");
+    }
+    const delimiter = delimiters.get(indentWidth) ?? ".";
+
+    const lines = block.raw.split("\n");
+    const nextFirstLine = `${lineInfo.indent}${nextNumber}${delimiter}${lineInfo.spacing}${lineInfo.content}`;
+    const nextRaw = [nextFirstLine, ...lines.slice(1)].join("\n");
+    if (nextRaw !== block.raw) {
+      nextRawByBlockIndex.set(index, nextRaw);
+    }
+  }
+
+  if (nextRawByBlockIndex.size === 0) {
+    return sourceMarkdown;
+  }
+
+  const normalizedBlocks = blocks.map((block, index) => ({
+    ...block,
+    raw: nextRawByBlockIndex.get(index) ?? block.raw,
+  }));
+  return applyEditorMarkdownNormalization(serializeMarkdownFromBlocks(normalizedBlocks));
 };
 
 const resolveNextGlobalSequenceNumber = (markdown: string) => {
@@ -2860,10 +3065,12 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   onDirtyChange,
   renderPreview,
 }: MarkdownHybridEditorProps, ref) => {
-  const { snapshot: markdownDocumentSnapshot } = useMarkdownDocumentModel(markdown);
+  const { snapshot: markdownDocumentSnapshot } = useMarkdownDocumentModel(markdown, {
+    profile: HYBRID_MARKDOWN_PARSE_OPTIONS.profile,
+  });
   const blocks = markdownDocumentSnapshot.markdown === markdown
     ? markdownDocumentSnapshot.blocks
-    : parseMarkdownBlocks(markdown);
+    : parseHybridMarkdownBlocks(markdown);
   const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
   const [activeDraft, setActiveDraft] = useState("");
   const [activeDirty, setActiveDirty] = useState(false);
@@ -4881,7 +5088,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
 
       if (snapshot.isDetachedEmptyBlock) {
         nextResolvedMarkdown = applyEditorMarkdownNormalization(normalizedDraftForPersist);
-        committedBlock = parseMarkdownBlocks(nextResolvedMarkdown)[0] ?? {
+        committedBlock = parseHybridMarkdownBlocks(nextResolvedMarkdown)[0] ?? {
           id: snapshot.blockId,
           kind: "blank",
           startLine: snapshot.startLine,
@@ -4892,11 +5099,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         };
       } else {
         let nextBlockRaw = toPersistedBlockRawForDraft({ kind: snapshot.kind }, normalizedDraftForPersist);
-        if (snapshot.kind === "ordered-list") {
-          if (shouldNormalizeOrderedListOnCommit(markdown, snapshot.startLine, nextBlockRaw)) {
-            nextBlockRaw = normalizeOrderedListBlockSource(nextBlockRaw);
-          }
-        } else if (snapshot.kind === "help-block") {
+        if (snapshot.kind === "help-block") {
           nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
         } else if (snapshot.kind === "hr") {
           nextBlockRaw = normalizeHorizontalRuleBlockSource(nextBlockRaw);
@@ -4915,6 +5118,17 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             endOffset: snapshot.endOffset,
             raw: nextBlockRaw,
           };
+      }
+
+      if (snapshot.kind === "ordered-list") {
+        nextResolvedMarkdown = normalizeOrderedListSegmentsInMarkdown(nextResolvedMarkdown);
+        const normalizedBlocks = parseHybridMarkdownBlocks(nextResolvedMarkdown);
+        const normalizedCommittedBlock = normalizedBlocks.find(
+          (block) => block.kind === "ordered-list" && block.startLine === snapshot.startLine,
+        ) ?? normalizedBlocks[clampIndex(activeBlockIndex ?? 0, normalizedBlocks.length)] ?? null;
+        if (normalizedCommittedBlock) {
+          committedBlock = normalizedCommittedBlock;
+        }
       }
 
       if (nextResolvedMarkdown !== markdown) {
@@ -5382,7 +5596,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         return false;
       }
       const nextMarkdown = applyEditorMarkdownNormalization(nextMarkdownRaw);
-      const nextBlocks = parseMarkdownBlocks(nextMarkdown);
+      const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
       const firstSelectedIndex = normalizedSelectedIndices[0]!;
       const shouldFocusNeighborBlock = options?.source === "cut";
 
@@ -5461,7 +5675,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       const withoutSelectionMarkdown = applyEditorMarkdownNormalization(
         deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection),
       );
-      const blocksWithoutSelection = parseMarkdownBlocks(withoutSelectionMarkdown);
+      const blocksWithoutSelection = parseHybridMarkdownBlocks(withoutSelectionMarkdown);
       const insertionIndex = Math.max(0, Math.min(firstSelectedIndex, blocksWithoutSelection.length));
       const nextMarkdown = applyEditorMarkdownNormalization(
         withInsertedRawBlock(blocksWithoutSelection, insertionIndex, insertedRaw),
@@ -5469,7 +5683,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (nextMarkdown === markdown) {
         return false;
       }
-      const nextBlocks = parseMarkdownBlocks(nextMarkdown);
+      const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
       const activationIndex = resolveInsertedBlockActivationIndex(nextBlocks, insertedRaw, insertionIndex);
 
       setActiveBlockIndex(null);
@@ -5510,6 +5724,53 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     ],
   );
 
+  const applyMarkdownWithPendingActivation = useCallback(
+    (
+      nextMarkdown: string,
+      activation: PendingActivation | null,
+      historyReason: "block-commit" | "block-delete" = "block-commit",
+    ) => {
+      if (nextMarkdown === markdown) {
+        return false;
+      }
+      const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+
+      setActiveBlockIndex(null);
+      updateActiveDraftState("");
+      setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
+      setActiveTableDirty(false);
+      if (nextBlocks.length === 0) {
+        pendingActivationMarkdownRef.current = null;
+        setPendingActivation(null);
+        setActiveBlockIndex(0);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(createDetachedEmptyEditSnapshot(nextMarkdown));
+        setActiveComposing(false);
+      } else {
+        pendingActivationMarkdownRef.current = activation ? nextMarkdown : null;
+        setPendingActivation(activation);
+      }
+      setPendingTableActivation(null);
+      setSelectedBlockSelection(null);
+      setIsSelectionDragging(false);
+      setDraggedBlockIndex(null);
+      setDropIndicatorIndex(null);
+      setInsertMenuState(null);
+      setMathToolboxState(null);
+      setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
+      selectionGestureRef.current = null;
+      suppressNextBlockContextMenuRef.current = false;
+      onChange(nextMarkdown);
+      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, historyReason));
+      return true;
+    },
+    [markdown, onChange, updateActiveDraftState],
+  );
+
   const insertBlockRelativeTo = useCallback(
     (
       blockIndex: number,
@@ -5538,8 +5799,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         return false;
       }
 
-      const nextBlocks = parseMarkdownBlocks(nextMarkdown);
-      const insertedBlocks = parseMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
+      const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+      const insertedBlocks = parseHybridMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
       const primaryInsertedBlock = insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
       let activationSelection: PendingActivation["selection"] | undefined;
       if (primaryInsertedBlock) {
@@ -5563,12 +5824,14 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setActiveDirty(false);
       setActiveEditSnapshot(null);
       setActiveComposing(false);
+      setActiveTableDirty(false);
       pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
       setPendingActivation(
         activationIndex >= 0
           ? { index: activationIndex, caret: "end", selection: activationSelection }
           : null,
       );
+      setPendingTableActivation(null);
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
       setDraggedBlockIndex(null);
@@ -7507,7 +7770,120 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         }
       }
 
-      if (event.key === "Enter" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      const isPlainEnterKey =
+        event.key === "Enter" &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey;
+
+      if (
+        isPlainEnterKey &&
+        !event.shiftKey &&
+        (block.kind === "ordered-list" || block.kind === "unordered-list")
+      ) {
+        const snapshot = activeEditSnapshotRef.current;
+        if (snapshot && snapshot.kind === block.kind && !snapshot.isDetachedEmptyBlock) {
+          const persistedBlockRaw = toPersistedBlockRawForDraft(
+            { kind: block.kind },
+            textarea.value,
+          );
+          const lineInfo = resolveListLineInfo(persistedBlockRaw);
+          const baseMarkdown = applyEditorMarkdownNormalization(
+            replaceMarkdownBlock(markdown, snapshot, persistedBlockRaw),
+          );
+          const baseBlocks = parseHybridMarkdownBlocks(baseMarkdown);
+          if (baseBlocks.length > 0 && lineInfo) {
+            const fallbackIndex = clampIndex(activeBlockIndex, baseBlocks.length);
+            const resolvedCurrentIndex = baseBlocks.findIndex(
+              (candidate) =>
+                candidate.kind === block.kind &&
+                candidate.startLine === snapshot.startLine,
+            );
+            const currentIndex = resolvedCurrentIndex >= 0
+              ? resolvedCurrentIndex
+              : fallbackIndex;
+            const currentBlock = baseBlocks[currentIndex];
+            if (currentBlock && (currentBlock.kind === "ordered-list" || currentBlock.kind === "unordered-list")) {
+              const isEmptyListItem = isListItemRawEffectivelyEmpty(currentBlock.raw, lineInfo);
+              let nextMarkdown = baseMarkdown;
+              let activationSelection: PendingActivation["selection"] | undefined;
+              let activationIndex = currentIndex;
+
+              if (!isEmptyListItem) {
+                const insertedRaw = buildSiblingListItemRaw(lineInfo);
+                const nextRawBlocks = baseBlocks.map((candidate) => candidate.raw);
+                nextRawBlocks.splice(currentIndex + 1, 0, insertedRaw);
+                nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
+                nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
+                const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+                activationIndex = resolveInsertedBlockActivationIndex(
+                  nextBlocks,
+                  insertedRaw,
+                  currentIndex + 1,
+                );
+                activationSelection = {
+                  start: insertedRaw.length,
+                  end: insertedRaw.length,
+                };
+              } else {
+                const listDepth = currentBlock.meta?.listDepth ?? 0;
+                if (listDepth > 0) {
+                  const parentStartLine = currentBlock.meta?.listParentStartLine;
+                  const parentBlock = typeof parentStartLine === "number"
+                    ? baseBlocks.find(
+                      (candidate) =>
+                        candidate.startLine === parentStartLine &&
+                        candidate.meta?.listGroupId === currentBlock.meta?.listGroupId &&
+                        (candidate.kind === "ordered-list" || candidate.kind === "unordered-list"),
+                    ) ?? null
+                    : null;
+                  const parentIndent = parentBlock
+                    ? (resolveListLineInfo(parentBlock.raw)?.indent ?? null)
+                    : null;
+                  const nextRawBlocks = baseBlocks.map((candidate, index) =>
+                    index === currentIndex
+                      ? buildOutdentedListItemRaw(lineInfo, parentIndent)
+                      : candidate.raw,
+                  );
+                  nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
+                  nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
+                  const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+                  activationIndex = clampIndex(currentIndex, nextBlocks.length);
+                  const nextActiveBlock = nextBlocks[activationIndex];
+                  const nextRaw = nextActiveBlock?.raw ?? "";
+                  activationSelection = {
+                    start: nextRaw.length,
+                    end: nextRaw.length,
+                  };
+                } else {
+                  const nextRawBlocks = baseBlocks.map((candidate, index) =>
+                    index === currentIndex ? "" : candidate.raw,
+                  );
+                  nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
+                  nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
+                  const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+                  activationIndex = clampIndex(currentIndex, nextBlocks.length);
+                  activationSelection = { start: 0, end: 0 };
+                }
+              }
+
+              event.preventDefault();
+              event.stopPropagation();
+              applyMarkdownWithPendingActivation(
+                nextMarkdown,
+                {
+                  index: activationIndex,
+                  caret: "end",
+                  selection: activationSelection,
+                },
+              );
+              return;
+            }
+          }
+        }
+      }
+
+      if (isPlainEnterKey) {
         const nextDraft = `${activeDraft.slice(0, textarea.selectionStart)}\n${
           activeDraft.slice(textarea.selectionEnd)
         }`;
@@ -7552,6 +7928,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       activeBlockIndex,
       activeDraft,
       applyActiveBlockDraft,
+      applyMarkdownWithPendingActivation,
       applyInlineFormattingAction,
       activeDirty,
       blocks,
@@ -7562,6 +7939,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       handleGlobalUndo,
       hideInlineFormattingToolbar,
       inlineFormattingToolbarSelection,
+      markdown,
       openInlineFormattingLinkEditor,
       pageLinkPickerState,
       closeTypedImageLinkPicker,
@@ -9195,6 +9573,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         ? resolveCodeFencePreviewItems(block.raw)
         : [];
 
+      if (block.kind === "ordered-list" || block.kind === "unordered-list") {
+        previewBlockSource = dedentListBlockPreviewSource(block, previewBlockSource);
+      }
+
       if (block.kind !== "hr" && block.kind !== "code-fence") {
         previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
       }
@@ -9683,6 +10065,23 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             syncedSvgCodeFenceHeight !== null;
           const cardGroupId = block.meta?.cardGroupId;
           const cardGroupRole = block.meta?.cardGroupRole;
+          const listGroupId = block.meta?.listGroupId;
+          const listDepthValue = typeof block.meta?.listDepth === "number"
+            ? Math.max(0, block.meta.listDepth)
+            : null;
+          const listParentStartLine = block.meta?.listParentStartLine;
+          const isListBlock = block.kind === "ordered-list" || block.kind === "unordered-list";
+          const previousBlock = index > 0 ? blocks[index - 1] : null;
+          const isListGroupContinuation = Boolean(
+            isListBlock &&
+              listGroupId &&
+              previousBlock &&
+              (previousBlock.kind === "ordered-list" || previousBlock.kind === "unordered-list") &&
+              previousBlock.meta?.listGroupId === listGroupId,
+          );
+          const listDepthStyle = listDepthValue !== null
+            ? ({ "--mdh-list-depth": String(listDepthValue) } as CSSProperties)
+            : undefined;
           const inactiveBlockBody = !isActive
             ? (inactiveBlockBodyByIndex.get(index) ?? <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />)
             : null;
@@ -9692,12 +10091,15 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
               className={`markdown-hybrid-block markdown-hybrid-block-${block.kind}${
                 isActive ? " is-active" : ""
               }${isStructuralBlankSeparator ? " is-structural-separator" : ""}${
+                isListGroupContinuation ? " is-list-group-continuation" : ""
+              }${
                 isRangeSelected ? " is-range-selected" : ""
               }${
                 isDragging ? " is-dragging" : ""
               }${hasDropIndicatorTop ? " has-drop-indicator-top" : ""}${
                 hasDropIndicatorBottom ? " has-drop-indicator-bottom" : ""
               }`}
+              style={listDepthStyle}
               aria-selected={isRangeSelected || undefined}
               data-md-block-selected={isRangeSelected ? "true" : undefined}
               data-md-block-kind={block.kind}
@@ -9706,6 +10108,18 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
               data-md-block-id={String(index)}
               data-md-card-group-id={cardGroupId ?? undefined}
               data-md-card-group-role={cardGroupRole ?? undefined}
+              data-md-list-group-id={listGroupId ?? undefined}
+              data-md-list-depth={listDepthValue !== null ? String(listDepthValue) : undefined}
+              data-md-list-parent-start-line={
+                typeof listParentStartLine === "number" ? String(listParentStartLine) : undefined
+              }
+              data-md-list-item-type={block.meta?.listItemType ?? undefined}
+              data-md-list-indent-width={
+                typeof block.meta?.listIndentWidth === "number"
+                  ? String(block.meta.listIndentWidth)
+                  : undefined
+              }
+              data-md-unordered-marker={block.meta?.unorderedMarker ?? undefined}
               onMouseDownCapture={handleBlockMouseDownCapture(index)}
               onMouseDown={handleBlockMouseDown(index)}
               onMouseEnter={handleBlockMouseEnter(index)}

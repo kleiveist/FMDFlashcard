@@ -26,6 +26,7 @@ const sanitizeSnapshot = (
 ): MarkdownDocumentSnapshot => ({
   markdown: snapshot.markdown,
   version: snapshot.version,
+  profile: snapshot.profile,
   blocks: snapshot.blocks.map((block): MarkdownBlock => ({
     id: block.id,
     kind: block.kind,
@@ -51,6 +52,7 @@ workerContext.onmessage = (event: MessageEvent<MarkdownBlockWorkerRequest>) => {
       request.markdown,
       request.previousSnapshot,
       request.nextVersion,
+      { profile: request.profile },
     );
 
     const response: MarkdownBlockWorkerResponse = {

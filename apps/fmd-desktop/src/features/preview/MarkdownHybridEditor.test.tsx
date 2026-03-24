@@ -1204,7 +1204,7 @@ describe("MarkdownHybridEditor", () => {
       container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
     );
     expect(editor).toBeTruthy();
-    expect(blocks).toHaveLength(3);
+    expect(blocks).toHaveLength(4);
 
     const orderedListBlock = container.querySelector<HTMLElement>(
       ".markdown-hybrid-block[data-md-block-kind='ordered-list']",
@@ -3090,6 +3090,83 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("renders list items as separate hybrid blocks with hierarchy metadata", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "1. Parent",
+        "   - Child A",
+        "   - Child B",
+        "2. Parent 2",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="hybrid-list-item-metadata"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const blockKinds = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      ).map((block) => block.getAttribute("data-md-block-kind"));
+      expect(blockKinds).toEqual([
+        "ordered-list",
+        "unordered-list",
+        "unordered-list",
+        "ordered-list",
+      ]);
+
+      const root = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
+      const childA = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='1']");
+      const childB = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='2']");
+      expect(root?.dataset.mdListDepth).toBe("0");
+      expect(childA?.dataset.mdListDepth).toBe("1");
+      expect(childA?.dataset.mdListParentStartLine).toBe("0");
+      expect(childA?.dataset.mdListItemType).toBe("unordered");
+      expect(childA?.dataset.mdUnorderedMarker).toBe("-");
+      expect(childB?.dataset.mdListDepth).toBe("1");
+      expect(childB?.dataset.mdListParentStartLine).toBe("0");
+      expect(childA?.dataset.mdListGroupId).toBe(root?.dataset.mdListGroupId);
+      expect(childB?.dataset.mdListGroupId).toBe(root?.dataset.mdListGroupId);
+
+      cleanup();
+    });
+  });
+
+  it("marks consecutive list item blocks for compact visual grouping", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["1. One", "2. Two", "", "After"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="hybrid-list-compact-grouping"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const first = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
+      const second = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='1']");
+      expect(first?.classList.contains("is-list-group-continuation")).toBe(false);
+      expect(second?.classList.contains("is-list-group-continuation")).toBe(true);
+      expect(second?.dataset.mdListGroupId).toBe(first?.dataset.mdListGroupId);
+      cleanup();
+    });
+  });
+
   it("inserts Image embed links as standalone isolated blocks from the Insert menu", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["Top paragraph", "", "Bottom paragraph"].join("\n");
@@ -4834,6 +4911,124 @@ describe("MarkdownHybridEditor", () => {
     expect(readMarkdown()).toBe("#######Titel");
     expect(readMarkdown().includes("###### #")).toBe(false);
     cleanup();
+  });
+
+  it("creates a new same-level list item on plain Enter and activates it", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["1. First", "2. Second"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="list-enter-same-level"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      expect(readMarkdown()).toBe(["1. First", "2. ", "3. Second"].join("\n"));
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("2. ");
+      expect(textarea?.selectionStart).toBe(3);
+      expect(textarea?.selectionEnd).toBe(3);
+
+      cleanup();
+    });
+  });
+
+  it("outdents an empty nested list item on plain Enter", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["1. Parent", "   - ", "2. After"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="list-enter-outdent-nested"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 1);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      expect(readMarkdown()).toBe(["1. Parent", "- ", "2. After"].join("\n"));
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("- ");
+      expect(textarea?.selectionStart).toBe(2);
+      expect(textarea?.selectionEnd).toBe(2);
+
+      cleanup();
+    });
+  });
+
+  it("exits a root-level empty list item on plain Enter", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = "1. ";
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="list-enter-exit-root-empty"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      expect(readMarkdown().trim()).toBe("");
+      expect(readMarkdown().includes("1.")).toBe(false);
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("");
+      expect(textarea?.selectionStart).toBe(0);
+      expect(textarea?.selectionEnd).toBe(0);
+
+      cleanup();
+    });
   });
 
   it("keeps Enter inside a paragraph local until blur commits the draft", () => {
@@ -8183,14 +8378,20 @@ describe("MarkdownHybridEditor", () => {
     const contentLayer = container.querySelector(".markdown-hybrid-content-layer");
     expect(contentLayer).toBeTruthy();
 
-    const preview = container.querySelector(".markdown-hybrid-block-preview .exam-markdown");
-    expect(preview).toBeTruthy();
-    expect(preview?.querySelector("strong")?.textContent).toBe("Bold");
-    expect(preview?.querySelector("em")?.textContent).toBe("Italic");
-    expect(preview?.querySelector("del")?.textContent).toBe("Strike");
-    expect(preview?.querySelector("mark.md-inline-highlight")?.textContent).toBe("Mark");
-    expect(preview?.querySelector("ol[data-md-ordered-delimiter=')']")).toBeTruthy();
-    expect(preview?.querySelector("li br")).toBeTruthy();
+    const previews = Array.from(
+      container.querySelectorAll<HTMLElement>(".markdown-hybrid-block-preview .exam-markdown"),
+    );
+    expect(previews.length).toBeGreaterThan(0);
+    expect(previews.some((preview) => preview.querySelector("strong")?.textContent === "Bold")).toBe(true);
+    expect(previews.some((preview) => preview.querySelector("em")?.textContent === "Italic")).toBe(true);
+    expect(previews.some((preview) => preview.querySelector("del")?.textContent === "Strike")).toBe(true);
+    expect(
+      previews.some(
+        (preview) => preview.querySelector("mark.md-inline-highlight")?.textContent === "Mark",
+      ),
+    ).toBe(true);
+    expect(previews.some((preview) => Boolean(preview.querySelector("ol[data-md-ordered-delimiter=')']")))).toBe(true);
+    expect(previews.some((preview) => Boolean(preview.querySelector("li br")))).toBe(true);
 
     cleanup();
   });

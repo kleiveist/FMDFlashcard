@@ -6,8 +6,11 @@ import {
   parseMarkdownDocument,
 } from "./markdownDocumentModel";
 
-const toComparableBlocks = (markdown: string) =>
-  parseMarkdownBlocks(markdown).map((block) => ({
+const toComparableBlocks = (
+  markdown: string,
+  profile: "default" | "hybrid-list-items" = "default",
+) =>
+  parseMarkdownBlocks(markdown, { profile }).map((block) => ({
     kind: block.kind,
     raw: block.raw,
     startLine: block.startLine,
@@ -146,5 +149,60 @@ describe("markdownDocumentModel", () => {
         meta: block.meta,
       })),
     ).toEqual(toComparableBlocks(nextMarkdown));
+  });
+
+  it("keeps incremental parse output equivalent in hybrid-list-items profile", () => {
+    const random = createDeterministicRandom(0xa5fe19bc);
+    let markdown = [
+      "1. Root",
+      "   1. Child A",
+      "   2. Child B",
+      "2. Root 2",
+      "",
+      "- [ ] Task A",
+      "- [x] Task B",
+      "",
+      "Tail paragraph",
+    ].join("\n");
+
+    let snapshot = createMarkdownDocumentSnapshot(markdown, 0, { profile: "hybrid-list-items" });
+
+    for (let version = 1; version <= 120; version += 1) {
+      markdown = mutateMarkdown(markdown, random);
+      const next = parseMarkdownDocument(markdown, snapshot, version, {
+        profile: "hybrid-list-items",
+      });
+      const comparable = next.snapshot.blocks.map((block) => ({
+        kind: block.kind,
+        raw: block.raw,
+        startLine: block.startLine,
+        endLine: block.endLine,
+        startOffset: block.startOffset,
+        endOffset: block.endOffset,
+        meta: block.meta,
+      }));
+
+      expect(comparable).toEqual(toComparableBlocks(markdown, "hybrid-list-items"));
+      snapshot = next.snapshot;
+    }
+  });
+
+  it("switches to full parse when parser profile changes", () => {
+    const markdown = ["1. One", "2. Two", "After"].join("\n");
+    const previousSnapshot = createMarkdownDocumentSnapshot(markdown, 0, {
+      profile: "default",
+    });
+
+    const result = parseMarkdownDocument(markdown, previousSnapshot, 1, {
+      profile: "hybrid-list-items",
+    });
+
+    expect(result.stats.mode).toBe("full");
+    expect(result.snapshot.profile).toBe("hybrid-list-items");
+    expect(result.snapshot.blocks.map((block) => block.kind)).toEqual([
+      "ordered-list",
+      "ordered-list",
+      "paragraph",
+    ]);
   });
 });

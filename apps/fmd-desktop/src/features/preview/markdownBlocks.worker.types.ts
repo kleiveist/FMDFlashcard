@@ -10,6 +10,7 @@ import type {
   MarkdownDocumentSnapshot,
   MarkdownParseStats,
 } from "./markdownDocumentModel";
+import type { MarkdownBlockParseProfile } from "./markdownBlocks";
 
 type WorkerParseRequest = {
   type: "parse";
@@ -17,6 +18,7 @@ type WorkerParseRequest = {
   nextVersion: number;
   markdown: string;
   previousSnapshot: MarkdownDocumentSnapshot | null;
+  profile?: MarkdownBlockParseProfile;
 };
 
 type WorkerParseSuccessResponse = {
