@@ -21,7 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, type ReactNode, useState } from "react";
 import { KpiGrid } from "../../../components/KpiGrid";
 import { ChevronDownIcon } from "../../../components/icons";
 import { buildLineChartPoints } from "../../../lib/chart";
@@ -46,6 +46,7 @@ type SrStatsAndChartProps = {
   spacedRepetitionIncorrectCount: number;
   spacedRepetitionTotalQuestions: number;
   kpiItems: { label: string; value: number }[];
+  headerActions?: ReactNode;
   isCollapsible?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -70,6 +71,7 @@ export const SrStatsAndChart = ({
   spacedRepetitionIncorrectCount,
   spacedRepetitionTotalQuestions,
   kpiItems,
+  headerActions,
   isCollapsible = false,
   isCollapsed = false,
   onToggleCollapse,
@@ -81,27 +83,32 @@ export const SrStatsAndChart = ({
 
   return (
     <section className="panel sr-diagram-panel">
-      <div className="panel-header">
-        <div className="sr-panel-header-content">
-          <div className="sr-stats-toggle" role="group" aria-label="Statistics view">
-            <button
-              type="button"
-              className={`pill pill-button ${view === "diagram" ? "active" : ""}`}
-              aria-pressed={view === "diagram"}
-              onClick={() => setView("diagram")}
-            >
-              Statistics Diagram
-            </button>
-            <button
-              type="button"
-              className={`pill pill-button ${view === "stats" ? "active" : ""}`}
-              aria-pressed={view === "stats"}
-              onClick={() => setView("stats")}
-            >
-              Statistics
-            </button>
+      <div className="panel-header sr-panel-header">
+        <div className="sr-panel-header-main">
+          <div className="sr-panel-header-content">
+            <div className="sr-stats-toggle" role="group" aria-label="Statistics view">
+              <button
+                type="button"
+                className={`pill pill-button ${view === "diagram" ? "active" : ""}`}
+                aria-pressed={view === "diagram"}
+                onClick={() => setView("diagram")}
+              >
+                Statistics Diagram
+              </button>
+              <button
+                type="button"
+                className={`pill pill-button ${view === "stats" ? "active" : ""}`}
+                aria-pressed={view === "stats"}
+                onClick={() => setView("stats")}
+              >
+                Statistics
+              </button>
+            </div>
+            <h2 className="sr-panel-title">{activeTitle}</h2>
           </div>
-          <h2 className="sr-panel-title">{activeTitle}</h2>
+          {headerActions ? (
+            <div className="sr-panel-header-actions">{headerActions}</div>
+          ) : null}
         </div>
         {showCollapseToggle ? (
           <button

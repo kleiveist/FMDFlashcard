@@ -28,7 +28,6 @@ import { SrStatsAndChart } from "./components/SrStatsAndChart";
 import { SrToolsPanel } from "./components/SrToolsPanel";
 import { NoteFilesPanel } from "../../components/NoteFilesPanel";
 import { FileIcon, SettingsIcon } from "../../components/icons";
-import { RightOverlayRail } from "../../components/RightOverlayRail";
 import { useSrSessionViewModel } from "./hooks/useSrSessionViewModel";
 import { useTableView } from "../../lib/useTableView";
 import { useAppState } from "../../components/AppStateProvider";
@@ -125,6 +124,47 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     />
   );
 
+  const statsHeaderActions =
+    isDesktopView && !isFocusMode ? (
+      <div className="study-header-quick-actions">
+        <button
+          ref={noteFilesButtonRef}
+          type="button"
+          className={`ghost small study-header-quick-action-button ${
+            isNoteFilesPopupOpen ? "active" : ""
+          }`}
+          onClick={() => setIsNoteFilesPopupOpen((prev) => !prev)}
+          aria-label="Note Files"
+          aria-haspopup="dialog"
+          aria-expanded={isNoteFilesPopupOpen}
+          title="Note Files"
+        >
+          <span className="study-header-quick-action-icon" aria-hidden="true">
+            <FileIcon />
+          </span>
+        </button>
+        <button
+          type="button"
+          className="ghost small study-header-quick-action-button"
+          onClick={() => {
+            setIsNoteFilesPopupOpen(false);
+            requestSettingsFocus({
+              pageId: "review-tools",
+              subPageId: "spaced-repetition-tools",
+              scrollSelector: ".spaced-repetition-panel",
+              highlight: true,
+            });
+          }}
+          aria-label="Spaced Repetition Tools"
+          title="Spaced Repetition Tools"
+        >
+          <span className="study-header-quick-action-icon" aria-hidden="true">
+            <SettingsIcon />
+          </span>
+        </button>
+      </div>
+    ) : null;
+
   useEffect(() => {
     if (isDesktopView && !isFocusMode) {
       return;
@@ -178,6 +218,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
             isCollapsed={isTableView && !isDiagramOpen}
             onToggleCollapse={() => setIsDiagramOpen((prev) => !prev)}
             controlsId="sr-diagram-body"
+            headerActions={statsHeaderActions}
           />
         )}
         {autoTimeEnabled ? (
@@ -296,44 +337,14 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           </aside>
         )
       )}
-      <RightOverlayRail
-        enabled={isDesktopView && !isFocusMode}
-        pinned={isNoteFilesPopupOpen}
-        ariaLabel="Spaced repetition quick actions"
-        className="spaced-repetition-overlay-rail"
-        actions={[
-          {
-            id: "tools",
-            icon: <SettingsIcon />,
-            label: "Spaced Repetition Tools",
-            onClick: () => {
-              setIsNoteFilesPopupOpen(false);
-              requestSettingsFocus({
-                pageId: "review-tools",
-                subPageId: "spaced-repetition-tools",
-                scrollSelector: ".spaced-repetition-panel",
-                highlight: true,
-              });
-            },
-          },
-          {
-            id: "note-files",
-            icon: <FileIcon />,
-            label: "Note Files",
-            onClick: () => setIsNoteFilesPopupOpen((prev) => !prev),
-            isActive: isNoteFilesPopupOpen,
-            buttonRef: noteFilesButtonRef,
-            ariaHaspopup: "dialog",
-            ariaExpanded: isNoteFilesPopupOpen,
-          },
-        ]}
-      />
       <AnchoredPopup
         isOpen={isDesktopView && !isFocusMode && isNoteFilesPopupOpen}
         onClose={() => setIsNoteFilesPopupOpen(false)}
         anchorRef={noteFilesButtonRef}
         closeLayerId="spaced-repetition-note-files"
         ariaLabel="Spaced repetition note files"
+        mode="centered"
+        showBackdrop
         className="note-files-popup"
       >
         {noteFilesPanel}

@@ -23,6 +23,7 @@ type AnchoredPopupPlacement =
   | "bottom-start"
   | "bottom-end"
   | "right-start";
+type AnchoredPopupMode = "anchored" | "centered";
 
 type PopupPosition = {
   left: number;
@@ -36,6 +37,8 @@ type AnchoredPopupProps = {
   closeLayerId: string;
   ariaLabel?: string;
   placement?: AnchoredPopupPlacement;
+  mode?: AnchoredPopupMode;
+  showBackdrop?: boolean;
   className?: string;
   closeLayerPriority?: number;
   children: ReactNode;
@@ -74,12 +77,15 @@ export const AnchoredPopup = ({
   closeLayerId,
   ariaLabel = "Popup",
   placement = "bottom-end",
+  mode = "anchored",
+  showBackdrop = mode === "centered",
   className,
   closeLayerPriority = 230,
   children,
 }: AnchoredPopupProps) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const isCenteredMode = mode === "centered";
   const [position, setPosition] = useState<PopupPosition | null>(null);
   const wasOpenRef = useRef(false);
 
@@ -104,13 +110,13 @@ export const AnchoredPopup = ({
   }, [anchorRef, placement]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || isCenteredMode) {
       return;
     }
     if (!anchorRef.current) {
       onClose();
     }
-  }, [anchorRef, isOpen, onClose]);
+  }, [anchorRef, isOpen, isCenteredMode, onClose]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -125,14 +131,14 @@ export const AnchoredPopup = ({
   }, [closeLayerId, closeLayerPriority, isOpen, onClose]);
 
   useLayoutEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || isCenteredMode) {
       return;
     }
     updatePosition();
-  }, [isOpen, updatePosition, children]);
+  }, [children, isOpen, isCenteredMode, updatePosition]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || isCenteredMode) {
       return;
     }
     const handleViewportUpdate = () => updatePosition();
@@ -142,7 +148,7 @@ export const AnchoredPopup = ({
       window.removeEventListener("resize", handleViewportUpdate);
       window.removeEventListener("scroll", handleViewportUpdate, true);
     };
-  }, [isOpen, updatePosition]);
+  }, [isOpen, isCenteredMode, updatePosition]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -253,15 +259,20 @@ export const AnchoredPopup = ({
     }
     : undefined;
 
-  const popup = (
+  const popupPanel = (
     <div
       ref={panelRef}
-      className={["anchored-popup", className].filter(Boolean).join(" ")}
+      className={[
+        "anchored-popup",
+        isCenteredMode ? "anchored-popup-centered" : "",
+        className,
+      ].filter(Boolean).join(" ")}
       role="dialog"
-      aria-modal="false"
+      aria-modal={isCenteredMode ? "true" : "false"}
       aria-label={ariaLabel}
-      style={style}
+      style={isCenteredMode ? undefined : style}
       onKeyDown={handlePanelKeyDown}
+      onMouseDown={isCenteredMode ? (event) => event.stopPropagation() : undefined}
     >
       <button
         ref={closeButtonRef}
@@ -276,5 +287,18 @@ export const AnchoredPopup = ({
     </div>
   );
 
-  return createPortal(popup, document.body);
+  if (isCenteredMode && showBackdrop) {
+    return createPortal(
+      <div
+        className="anchored-popup-backdrop"
+        role="presentation"
+        onMouseDown={onClose}
+      >
+        {popupPanel}
+      </div>,
+      document.body,
+    );
+  }
+
+  return createPortal(popupPanel, document.body);
 };

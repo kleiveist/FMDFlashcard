@@ -1195,19 +1195,6 @@ body.focus-mode .spaced-repetition-sidebar {
   z-index: 2;
 }
 
-.dashboard-note-popup {
-  min-width: min(420px, calc(100vw - 16px));
-  max-width: min(560px, calc(100vw - 16px));
-}
-
-.dashboard-note-popup .note-panel {
-  margin: 0;
-}
-
-.note-files-popup .list-panel {
-  width: min(420px, calc(100vw - 16px));
-}
-
 .exam-overview {
   display: flex;
   flex-direction: column;
@@ -2557,7 +2544,7 @@ body.focus-mode .spaced-repetition-sidebar {
   background: var(--panel);
 }
 
-@media (max-width: 1199px) {
+@media (max-width: 1200px) {
   .exam-file-panel .panel-header {
     flex-wrap: wrap;
     align-items: flex-start;

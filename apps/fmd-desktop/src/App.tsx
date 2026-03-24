@@ -62,6 +62,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
 import type { StudySectionKey } from "./lib/studySections";
+import { SMART_QUERY } from "./lib/breakpoints";
 
 type WalletGateId = "custom-path" | "profile" | "sync-provider";
 
@@ -107,8 +108,8 @@ const AppContent = () => {
   const layoutMode = useLayoutMode();
   const showStudySectionNav = layoutMode === "table";
   const isToolbarCollapsed = layoutMode === "table";
-  const isNoteViewport = useMediaQuery("(max-width: 980px)", false);
-  const isExamNoteViewport = useMediaQuery("(max-width: 1199.98px)", false);
+  const isNoteViewport = useMediaQuery(SMART_QUERY, false);
+  const isExamNoteViewport = useMediaQuery(SMART_QUERY, false);
   const isDashboardNoteEligible =
     activeTab === "dashboard" &&
     (dashboardView === "markdown" || dashboardView === "exam") &&
@@ -563,6 +564,8 @@ const AppContent = () => {
         isOpen={noteFilesDialogOpen}
         onClose={handleNoteModalClose}
         title={noteModalTitle}
+        panelClassName="note-files-modal-panel"
+        bodyClassName="note-files-modal-body"
       >
         <NoteFilesPanel
           files={flashcardNoteFiles}

@@ -39,7 +39,6 @@ import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
 import { StatsPanel } from "../components/StatsPanel";
 import { NoteFilesPanel } from "../components/NoteFilesPanel";
 import { FileIcon, SettingsIcon } from "../components/icons";
-import { RightOverlayRail } from "../components/RightOverlayRail";
 import { useAppState } from "../components/AppStateProvider";
 import {
   areClozeBlanksComplete,
@@ -443,6 +442,47 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
     [flashcards],
   );
 
+  const statsHeaderActions =
+    isDesktopView && !isFocusMode ? (
+      <div className="study-header-quick-actions">
+        <button
+          ref={noteFilesButtonRef}
+          type="button"
+          className={`ghost small study-header-quick-action-button ${
+            isNoteFilesPopupOpen ? "active" : ""
+          }`}
+          onClick={() => setIsNoteFilesPopupOpen((prev) => !prev)}
+          aria-label="Note Files"
+          aria-haspopup="dialog"
+          aria-expanded={isNoteFilesPopupOpen}
+          title="Note Files"
+        >
+          <span className="study-header-quick-action-icon" aria-hidden="true">
+            <FileIcon />
+          </span>
+        </button>
+        <button
+          type="button"
+          className="ghost small study-header-quick-action-button"
+          onClick={() => {
+            setIsNoteFilesPopupOpen(false);
+            requestSettingsFocus({
+              pageId: "review-tools",
+              subPageId: "flashcard-tools",
+              scrollSelector: ".settings-flashcards-panel",
+              highlight: true,
+            });
+          }}
+          aria-label="Flashcard Tools"
+          title="Flashcard Tools"
+        >
+          <span className="study-header-quick-action-icon" aria-hidden="true">
+            <SettingsIcon />
+          </span>
+        </button>
+      </div>
+    ) : null;
+
   const statsPanel = (
     <StatsPanel
       correctCount={flashcards.correctCount}
@@ -453,6 +493,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
       isCollapsed={isTableView && !isStatsOpen}
       onToggleCollapse={() => setIsStatsOpen((prev) => !prev)}
       controlsId="flashcard-stats-body"
+      headerActions={statsHeaderActions}
     />
   );
 
@@ -816,44 +857,14 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
           )}
         </>
       )}
-      <RightOverlayRail
-        enabled={isDesktopView && !isFocusMode}
-        pinned={isNoteFilesPopupOpen}
-        ariaLabel="Flashcard quick actions"
-        className="flashcard-overlay-rail"
-        actions={[
-          {
-            id: "tools",
-            icon: <SettingsIcon />,
-            label: "Flashcard Tools",
-            onClick: () => {
-              setIsNoteFilesPopupOpen(false);
-              requestSettingsFocus({
-                pageId: "review-tools",
-                subPageId: "flashcard-tools",
-                scrollSelector: ".settings-flashcards-panel",
-                highlight: true,
-              });
-            },
-          },
-          {
-            id: "note-files",
-            icon: <FileIcon />,
-            label: "Note Files",
-            onClick: () => setIsNoteFilesPopupOpen((prev) => !prev),
-            isActive: isNoteFilesPopupOpen,
-            buttonRef: noteFilesButtonRef,
-            ariaHaspopup: "dialog",
-            ariaExpanded: isNoteFilesPopupOpen,
-          },
-        ]}
-      />
       <AnchoredPopup
         isOpen={isDesktopView && !isFocusMode && isNoteFilesPopupOpen}
         onClose={() => setIsNoteFilesPopupOpen(false)}
         anchorRef={noteFilesButtonRef}
         closeLayerId="flashcard-note-files"
         ariaLabel="Flashcard note files"
+        mode="centered"
+        showBackdrop
         className="note-files-popup"
       >
         {noteFilesPanel}

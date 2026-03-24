@@ -104,6 +104,7 @@ import {
   type CommandResult,
 } from "./previewMarkdownListCommands";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { SMART_QUERY } from "../lib/breakpoints";
 import { ChevronDownIcon, CodeIcon, EditIcon, MarkdownIcon } from "./icons";
 import { FlashcardMediaGroup } from "./flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "./flashcards/SvgPreviewBlock";
@@ -6571,7 +6572,7 @@ export const PreviewPanel = ({
     position: "before" | "after";
   } | null>(null);
   const markdownTabDragPreviewRef = useRef<HTMLElement | null>(null);
-  const isNarrowFrontmatterViewport = useMediaQuery("(max-width: 980px)", false);
+  const isNarrowFrontmatterViewport = useMediaQuery(SMART_QUERY, false);
   const effectiveFrontmatterPanelCollapsed =
     userFrontmatterCollapsed ?? isNarrowFrontmatterViewport;
 

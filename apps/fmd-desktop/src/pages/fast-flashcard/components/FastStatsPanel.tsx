@@ -20,7 +20,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, type ReactNode, useState } from "react";
 import { ChevronDownIcon } from "../../../components/icons";
 import { FastSessionHistory } from "./FastHistoryPanel";
 import type {
@@ -50,6 +50,7 @@ type FastStatsPanelProps = {
   sessionScore: number;
   sessionMultiplier: number;
   handleTimeToggle: () => void;
+  headerActions?: ReactNode;
   isCollapsible?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -78,6 +79,7 @@ export const FastStatsPanel = ({
   sessionScore,
   sessionMultiplier,
   handleTimeToggle,
+  headerActions,
   isCollapsible = false,
   isCollapsed = false,
   onToggleCollapse,
@@ -89,27 +91,32 @@ export const FastStatsPanel = ({
 
   return (
     <section className="panel fast-stats-panel">
-      <div className="panel-header">
-        <div className="fast-panel-header-content">
-          <div className="fast-stats-toggle" role="group" aria-label="Fast statistics view">
-            <button
-              type="button"
-              className={`pill pill-button ${view === "diagram" ? "active" : ""}`}
-              aria-pressed={view === "diagram"}
-              onClick={() => setView("diagram")}
-            >
-              Statistics Diagram
-            </button>
-            <button
-              type="button"
-              className={`pill pill-button ${view === "history" ? "active" : ""}`}
-              aria-pressed={view === "history"}
-              onClick={() => setView("history")}
-            >
-              Session History
-            </button>
+      <div className="panel-header fast-panel-header">
+        <div className="fast-panel-header-main">
+          <div className="fast-panel-header-content">
+            <div className="fast-stats-toggle" role="group" aria-label="Fast statistics view">
+              <button
+                type="button"
+                className={`pill pill-button ${view === "diagram" ? "active" : ""}`}
+                aria-pressed={view === "diagram"}
+                onClick={() => setView("diagram")}
+              >
+                Statistics Diagram
+              </button>
+              <button
+                type="button"
+                className={`pill pill-button ${view === "history" ? "active" : ""}`}
+                aria-pressed={view === "history"}
+                onClick={() => setView("history")}
+              >
+                Session History
+              </button>
+            </div>
+            <h2 className="fast-panel-title">{activeTitle}</h2>
           </div>
-          <h2 className="fast-panel-title">{activeTitle}</h2>
+          {headerActions ? (
+            <div className="fast-panel-header-actions">{headerActions}</div>
+          ) : null}
         </div>
         {showCollapseToggle ? (
           <button

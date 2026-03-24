@@ -371,6 +371,25 @@ describe("DashboardPage exam leave guard", () => {
     expect(topToolbar?.textContent).toContain("Points");
     expect(topToolbar?.textContent).toContain("Saved path:");
     expect(container.querySelector(".note-column .exam-editor-controls-panel")).toBeFalsy();
+    expect(container.querySelector(".right-overlay-rail.dashboard-overlay-rail")).toBeFalsy();
+    expect(container.querySelector(".note-column")).toBeTruthy();
+    expect(container.querySelector(".workspace")?.classList.contains("no-inline-note")).toBe(
+      false,
+    );
+    expect(container.querySelectorAll('[data-testid="mock-file-select"]')).toHaveLength(1);
+
+    cleanup();
+  });
+
+  it("uses inline note panel in desktop markdown view without overlay rail", () => {
+    mockUseMediaQuery.mockReturnValue(true);
+    const { container, cleanup } = renderDashboard({ initialVaultView: "markdown" });
+
+    expect(container.querySelector(".right-overlay-rail.dashboard-overlay-rail")).toBeFalsy();
+    expect(container.querySelector(".workspace")?.classList.contains("no-inline-note")).toBe(
+      false,
+    );
+    expect(container.querySelectorAll('[data-testid="mock-file-select"]')).toHaveLength(1);
 
     cleanup();
   });
@@ -381,6 +400,7 @@ describe("DashboardPage exam leave guard", () => {
 
     expect(container.querySelector(".exam-editor-controls-panel-top")).toBeFalsy();
     expect(container.querySelector(".note-column .exam-editor-controls-panel")).toBeTruthy();
+    expect(container.querySelector(".right-overlay-rail.dashboard-overlay-rail")).toBeFalsy();
 
     cleanup();
   });

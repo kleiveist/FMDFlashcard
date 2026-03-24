@@ -107,4 +107,64 @@ describe("AnchoredPopup", () => {
     expect(document.activeElement).toBe(trigger);
     cleanup();
   });
+
+  it("supports centered modal mode with backdrop and aria-modal", () => {
+    const Harness = () => {
+      const [open, setOpen] = useState(false);
+      const triggerRef = useRef<HTMLButtonElement | null>(null);
+      return (
+        <>
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-label="Open centered popup"
+            aria-haspopup="dialog"
+            aria-expanded={open}
+            onClick={() => setOpen((prev) => !prev)}
+          >
+            Open centered
+          </button>
+          <AnchoredPopup
+            isOpen={open}
+            onClose={() => setOpen(false)}
+            anchorRef={triggerRef}
+            closeLayerId="anchored-popup-centered-test"
+            ariaLabel="Centered popup test"
+            mode="centered"
+            showBackdrop
+          >
+            <section className="panel">
+              <div className="panel-body">
+                <button type="button">Inner centered button</button>
+              </div>
+            </section>
+          </AnchoredPopup>
+        </>
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const trigger = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Open centered popup"]',
+    );
+    expect(trigger?.getAttribute("aria-expanded")).toBe("false");
+
+    act(() => {
+      trigger?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const backdrop = document.querySelector<HTMLDivElement>(".anchored-popup-backdrop");
+    const popup = document.querySelector<HTMLDivElement>(".anchored-popup");
+    expect(backdrop).toBeTruthy();
+    expect(popup?.getAttribute("aria-modal")).toBe("true");
+
+    act(() => {
+      backdrop?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
+
+    expect(trigger?.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector(".anchored-popup")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    cleanup();
+  });
 });

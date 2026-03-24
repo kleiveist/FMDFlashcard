@@ -4559,7 +4559,7 @@ textarea.preview-editor {
   font-size: inherit;
 }
 
-@media (max-width: 1199px) {
+@media (max-width: 1200px) {
   .frontmatter-cover-panel-actions {
     top: 8px;
     right: 8px;
@@ -5280,7 +5280,7 @@ textarea.preview-editor {
   font-style: italic;
 }
 
-@media (max-width: 1199.98px) {
+@media (max-width: 1200px) {
   .preview-panel,
   .preview-panel .preview-content,
   .preview-panel .preview-surface {

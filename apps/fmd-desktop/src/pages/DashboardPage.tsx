@@ -33,13 +33,10 @@ import {
   useState,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { AnchoredPopup } from "../components/AnchoredPopup";
 import { FileList } from "../components/FileList";
 import { NoteModal } from "../components/NoteModal";
 import { ModalShell } from "../components/ModalShell";
 import { PreviewPanel } from "../components/PreviewPanel";
-import { RightOverlayRail } from "../components/RightOverlayRail";
-import { FileIcon } from "../components/icons";
 import { useAppState } from "../components/AppStateProvider";
 import { asErrorMessage } from "../lib/errors";
 import { isValidHex, normalizeHex } from "../lib/color";
@@ -52,6 +49,7 @@ import {
 import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { DESKTOP_QUERY } from "../lib/breakpoints";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
 import type { ExamEditorControlsState } from "./exam-editor/types";
 import {
@@ -140,16 +138,14 @@ const DashboardPageInner = (
     useState<ExamLeaveGuardTarget | null>(null);
   const [isExamLeaveSavePending, setIsExamLeaveSavePending] = useState(false);
   const previousSelectedMarkdownPathRef = useRef<string | null>(null);
-  const isDesktopViewport = useMediaQuery("(min-width: 1200px)", false);
+  const isDesktopViewport = useMediaQuery(DESKTOP_QUERY, false);
   const [examPanelsCollapsed, setExamPanelsCollapsed] = useState(() => {
     if (typeof window === "undefined") {
       return false;
     }
-    return window.matchMedia("(min-width: 1200px)").matches;
+    return window.matchMedia(DESKTOP_QUERY).matches;
   });
   const workspaceRef = useRef<HTMLDivElement | null>(null);
-  const desktopNoteRailTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const [isDesktopNotePopupOpen, setIsDesktopNotePopupOpen] = useState(false);
   const didApplyPreviewDefaultModeRef = useRef(false);
   const pendingExamLeaveProceedRef = useRef<(() => void | Promise<void>) | null>(null);
   const pendingExamLeaveResolveRef = useRef<((allowed: boolean) => void) | null>(null);
@@ -183,8 +179,7 @@ const DashboardPageInner = (
     [pointsProfiles.profiles],
   );
   const isExamDesktop = vaultView === "exam" && isDesktopViewport;
-  const desktopNotePopupEnabled = isDesktopViewport;
-  const showInlineNotePanel = !noteModalEnabled && !desktopNotePopupEnabled;
+  const showInlineNotePanel = !noteModalEnabled;
   const panelsCollapsed = isExamDesktop ? examPanelsCollapsed : noteCollapsed;
   const normalizedActiveFolderPath = useMemo(() => {
     if (!vault.activeFolderPath) {
@@ -1134,13 +1129,6 @@ const DashboardPageInner = (
   const handleNoteModalClose = useCallback(() => {
     onNoteModalClose?.();
   }, [onNoteModalClose]);
-  const handleDesktopNotePopupClose = useCallback(() => {
-    setIsDesktopNotePopupOpen(false);
-  }, []);
-  const handleDesktopPopupPanelToggle = useCallback(() => {
-    // Popup variant keeps file list expanded; panel collapse is not used here.
-    void 0;
-  }, []);
 
   useEffect(() => {
     if (!noteModalActive) {
@@ -1150,24 +1138,6 @@ const DashboardPageInner = (
       setNoteCollapsed(false);
     }
   }, [noteCollapsed, noteModalActive]);
-
-  useEffect(() => {
-    if (!isDesktopNotePopupOpen || !noteCollapsed) {
-      return;
-    }
-    setNoteCollapsed(false);
-  }, [isDesktopNotePopupOpen, noteCollapsed]);
-
-  useEffect(() => {
-    if (desktopNotePopupEnabled) {
-      return;
-    }
-    setIsDesktopNotePopupOpen(false);
-  }, [desktopNotePopupEnabled]);
-
-  useEffect(() => {
-    setIsDesktopNotePopupOpen(false);
-  }, [vaultView]);
 
   useEffect(() => {
     if (initialVaultView === vaultView) {
@@ -1473,52 +1443,6 @@ const DashboardPageInner = (
           ) : null
         )}
       </div>
-      <RightOverlayRail
-        enabled={
-          desktopNotePopupEnabled &&
-          (vaultView === "markdown" || vaultView === "exam")
-        }
-        pinned={isDesktopNotePopupOpen}
-        ariaLabel={vaultView === "exam" ? "Exam quick actions" : "Editor quick actions"}
-        className="dashboard-overlay-rail"
-        actions={[
-          {
-            id: "note-panel",
-            icon: <FileIcon />,
-            label: "Note",
-            onClick: () => setIsDesktopNotePopupOpen((current) => !current),
-            isActive: isDesktopNotePopupOpen,
-            buttonRef: desktopNoteRailTriggerRef,
-            ariaHaspopup: "dialog",
-            ariaExpanded: isDesktopNotePopupOpen,
-          },
-        ]}
-      />
-      <AnchoredPopup
-        isOpen={desktopNotePopupEnabled && isDesktopNotePopupOpen}
-        onClose={handleDesktopNotePopupClose}
-        anchorRef={desktopNoteRailTriggerRef}
-        closeLayerId="dashboard-desktop-note-panel"
-        placement="bottom-end"
-        ariaLabel="Note panel"
-        className="dashboard-note-popup"
-      >
-        <FileList
-          activeFolderPath={normalizedActiveFolderPath || null}
-          fileCountLabel={fileCountLabel}
-          files={visibleFiles}
-          isCollapsed={false}
-          listError={vault.listError}
-          listState={vault.listState}
-          onClearSelection={preview.resetPreview}
-          onFileCreated={handleNoteFileCreated}
-          onRescanVault={actions.handleRescanVault}
-          onSelectFile={handleSelectMarkdownFile}
-          onToggleCollapsed={handleDesktopPopupPanelToggle}
-          selectedFile={preview.selectedFile}
-          vaultPath={vault.vaultPath}
-        />
-      </AnchoredPopup>
       {noteModalEnabled ? (
         <NoteModal isOpen={noteModalActive} onClose={handleNoteModalClose}>
           <FileList

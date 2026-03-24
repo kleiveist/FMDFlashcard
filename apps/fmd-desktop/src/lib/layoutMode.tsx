@@ -5,10 +5,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { DESKTOP_QUERY } from "./breakpoints";
 
 export type LayoutMode = "desktop" | "table";
-
-const DESKTOP_QUERY = "(min-width: 1200px)";
 
 const resolveLayoutMode = (): LayoutMode => {
   if (typeof window === "undefined" || !window.matchMedia) {

@@ -8,6 +8,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
 import { joinPath, normalizeRelativePath, normalizeVaultPath } from "../../lib/path";
 import { useMediaQuery } from "../../lib/useMediaQuery";
+import { DESKTOP_QUERY, SMART_QUERY } from "../../lib/breakpoints";
 import { type VaultFile } from "../../lib/tree";
 import { composeMarkdownWithBody } from "../../features/preview/frontmatter";
 import {
@@ -384,9 +385,9 @@ export const ExamEditorView = ({
   });
   const lastVaultPathRef = useRef<string | null>(vaultPath ?? null);
   const isStudyView = variant === "study";
-  const isPaletteOverlayMode = useMediaQuery("(max-width: 1199px)", false);
-  const isContentPopupMode = useMediaQuery("(max-width: 1199px)", false);
-  const isDesktopViewport = useMediaQuery("(min-width: 1200px)", false);
+  const isPaletteOverlayMode = useMediaQuery(SMART_QUERY, false);
+  const isContentPopupMode = useMediaQuery(SMART_QUERY, false);
+  const isDesktopViewport = useMediaQuery(DESKTOP_QUERY, false);
   const paletteOverlayActive = isStudyView && isPaletteOverlayMode;
   const contentPopupActive = isStudyView && isContentPopupMode;
   const propertiesPopupActive = isStudyView && isContentPopupMode;

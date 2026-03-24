@@ -20,7 +20,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { CollapsiblePanelHeader } from "./CollapsiblePanelHeader";
 
 type StatsPanelProps = {
@@ -32,6 +32,7 @@ type StatsPanelProps = {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   controlsId?: string;
+  headerActions?: ReactNode;
 };
 
 export const StatsPanel = ({
@@ -43,6 +44,7 @@ export const StatsPanel = ({
   isCollapsed = false,
   onToggleCollapse,
   controlsId,
+  headerActions,
 }: StatsPanelProps) => {
   const statsTotal = correctCount + incorrectCount;
   const statsChartStyle = useMemo(
@@ -67,10 +69,13 @@ export const StatsPanel = ({
           controlsId={controlsId ?? ""}
         />
       ) : (
-        <div className="panel-header">
+        <div className="panel-header stats-panel-header">
           <div>
             <h2>Statistics</h2>
           </div>
+          {headerActions ? (
+            <div className="stats-panel-header-actions">{headerActions}</div>
+          ) : null}
         </div>
       )}
       <div
