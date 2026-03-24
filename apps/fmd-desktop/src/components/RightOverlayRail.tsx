@@ -134,29 +134,31 @@ export const RightOverlayRail = ({
         }
       }}
     >
-      {actions.map((action) => (
-        <button
-          key={action.id}
-          ref={action.buttonRef}
-          type="button"
-          className={`ghost small right-overlay-rail-button${
-            action.isActive ? " active" : ""
-          }`}
-          onClick={action.onClick}
-          aria-label={action.label}
-          aria-haspopup={action.ariaHaspopup}
-          aria-expanded={
-            typeof action.ariaExpanded === "boolean"
-              ? action.ariaExpanded
-              : undefined
-          }
-          title={action.label}
-        >
-          <span className="right-overlay-rail-icon" aria-hidden="true">
-            {action.icon}
-          </span>
-        </button>
-      ))}
+      <div className="right-overlay-rail-actions">
+        {actions.map((action) => (
+          <button
+            key={action.id}
+            ref={action.buttonRef}
+            type="button"
+            className={`ghost small right-overlay-rail-button${
+              action.isActive ? " active" : ""
+            }`}
+            onClick={action.onClick}
+            aria-label={action.label}
+            aria-haspopup={action.ariaHaspopup}
+            aria-expanded={
+              typeof action.ariaExpanded === "boolean"
+                ? action.ariaExpanded
+                : undefined
+            }
+            title={action.label}
+          >
+            <span className="right-overlay-rail-icon" aria-hidden="true">
+              {action.icon}
+            </span>
+          </button>
+        ))}
+      </div>
     </aside>
   );
 };
